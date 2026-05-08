@@ -1,5 +1,7 @@
 export const LOUDNESS_REFERENCE_PROFILE_IDS = {
   ebuR128Minus23: "ebu-r128--23",
+  youtubeMinus14: "youtube--14",
+  spotifyMinus14: "spotify--14",
 };
 
 /**
@@ -14,6 +16,24 @@ export const LOUDNESS_REFERENCE_PROFILES = [
     source: {
       title: "EBU R 128",
       url: "https://tech.ebu.ch/publications/r128",
+    },
+  },
+  {
+    id: LOUDNESS_REFERENCE_PROFILE_IDS.youtubeMinus14,
+    label: "YouTube (observed -14 LUFS)",
+    targetLufs: -14,
+    source: {
+      title: "YouTube loudness target references (docs)",
+      url: "docs/loudness-references.md",
+    },
+  },
+  {
+    id: LOUDNESS_REFERENCE_PROFILE_IDS.spotifyMinus14,
+    label: "Spotify (-14 LUFS)",
+    targetLufs: -14,
+    source: {
+      title: "Spotify for Artists: Loudness normalization",
+      url: "https://support.spotify.com/artists/article/loudness-normalization/",
     },
   },
 ];
