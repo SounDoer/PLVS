@@ -17,6 +17,7 @@ import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useHoverState } from "./hooks/useHoverState";
 import { useMeterHealth } from "./hooks/useMeterHealth";
+import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { PillButton } from "./components/PillButton";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { isTauri } from "./ipc/env.js";
@@ -200,6 +201,12 @@ export default function App() {
   const tpMaxText = hasTpMaxValue ? `${displayAudio.tpMax.toFixed(1)} dBTP` : "-";
   const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
   const startLabel = startMode === "live" ? "LIVE" : startMode === "stop" ? "STOP" : "START";
+  const channelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
+  const layoutResolution = useMemo(
+    () => resolveChannelLayout(channelLayout, { channelCount }),
+    [channelLayout, channelCount]
+  );
+  const showLayoutUnknownMessage = layoutResolution.mode === "auto" && layoutResolution.resolved === "unknown" && channelCount > 2;
 
   const totalSamples = histSourceList.length;
   const { clampedWindowSec, visibleSamples, maxOffsetSamples, effectiveOffsetSamples, effectiveOffsetSec } = getHistoryViewport(
@@ -633,6 +640,17 @@ export default function App() {
           <span>{status}</span>
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
           <span>{status2}</span>
+          {showLayoutUnknownMessage ? (
+            <>
+              <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
+              <span
+                className="text-[color:var(--ui-color-text-muted)]"
+                title="Auto channel layout detection is not available yet. Select a preset in Settings → Channel layout (Advanced)."
+              >
+                Multi-channel detected. Layout unknown (Auto) — select a preset in Settings.
+              </span>
+            </>
+          ) : null}
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
           <MeterHealthBadge health={meterHealth} />
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
