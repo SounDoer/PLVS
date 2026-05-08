@@ -9,6 +9,7 @@ use crate::audio::capture::AudioCapture;
 use crate::audio::cpal_backend;
 use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
+use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AudioDevicePreview, AudioFramePayload, EngineStateChanged, FrameSubscribers, MeterHistoryEntry,
 };
@@ -77,8 +78,9 @@ pub fn audio_start(
   }
   let mh = state.inner().meter_history.clone();
   let pair = state.inner().vectorscope_pair.clone();
+  let layout = state.inner().channel_layout.clone();
   let session =
-    AudioCapture::start_session(&AppAudioBackend, &device_id, pool, app.clone(), mh, pair)?;
+    AudioCapture::start_session(&AppAudioBackend, &device_id, pool, app.clone(), mh, pair, layout)?;
   {
     let mut g = state
       .inner()
@@ -109,6 +111,19 @@ pub fn set_vectorscope_pair(x: u16, y: u16, state: State<'_, AppState>) -> Resul
     .lock()
     .map_err(|_| "vectorscope pair lock poisoned".to_string())?;
   *g = (x, y);
+  Ok(())
+}
+
+/// Update channel layout preset. Applied on the capture thread for subsequent frames.
+#[tauri::command]
+pub fn set_channel_layout(layout: String, state: State<'_, AppState>) -> Result<(), String> {
+  let v = ChannelLayoutSetting::from_str_lossy(&layout);
+  let mut g = state
+    .inner()
+    .channel_layout
+    .lock()
+    .map_err(|_| "channel layout lock poisoned".to_string())?;
+  *g = v;
   Ok(())
 }
 

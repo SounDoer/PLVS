@@ -19,6 +19,7 @@ use super::cpal_backend::{
 };
 use super::device::DeviceInfo;
 use super::device_id;
+use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{FrameSubscribers, MeterHistoryBuf};
 
 use pcm_shim::PcmBridgeCtx;
@@ -132,6 +133,7 @@ fn run_macos_tap_worker(
   stop_rx: std::sync::mpsc::Receiver<()>,
   clear_peak_history: Arc<AtomicBool>,
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
+  channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   meter_history: MeterHistoryBuf,
   dropped_chunks: Arc<AtomicU64>,
 ) -> Result<(), String> {
@@ -148,6 +150,7 @@ fn run_macos_tap_worker(
       app,
       clear_for_thread,
       vectorscope_pair,
+      channel_layout,
       meter_history,
       dropped_for_thread,
     );
@@ -226,6 +229,7 @@ impl MacosTapCaptureSession {
     app: AppHandle,
     meter_history: MeterHistoryBuf,
     vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
+    channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   ) -> Result<Self, String> {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let clear_peak_history = Arc::new(AtomicBool::new(false));
@@ -242,6 +246,7 @@ impl MacosTapCaptureSession {
           stop_rx,
           clear_worker,
           vectorscope_pair,
+          channel_layout,
           meter_history,
           dropped_chunks,
         )
@@ -268,6 +273,7 @@ pub fn start_session(
   app: AppHandle,
   meter_history: MeterHistoryBuf,
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
+  channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
 ) -> Result<Box<dyn AudioCaptureSession>, String> {
   if is_macos_loopback_selection(device_id) {
     Ok(Box::new(MacosTapCaptureSession::start(
@@ -276,8 +282,16 @@ pub fn start_session(
       app,
       meter_history,
       vectorscope_pair,
+      channel_layout,
     )?))
   } else {
-    CpalBackend.start_session(device_id, frame_subscribers, app, meter_history, vectorscope_pair)
+    CpalBackend.start_session(
+      device_id,
+      frame_subscribers,
+      app,
+      meter_history,
+      vectorscope_pair,
+      channel_layout,
+    )
   }
 }

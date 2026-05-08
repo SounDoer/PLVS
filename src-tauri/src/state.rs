@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 use crate::audio::capture::AudioCaptureSession;
+use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 use crate::ipc::types::MeterHistoryBuf;
 
@@ -14,6 +15,8 @@ pub struct AppState {
   pub frame_subscribers: Mutex<Option<FrameSubscribers>>,
   /// Selected vectorscope XY channel pair (0-based). Updated by UI.
   pub vectorscope_pair: Arc<Mutex<(u16, u16)>>,
+  /// User-selected channel layout preset. Updated by UI; applied on the capture thread.
+  pub channel_layout: Arc<Mutex<ChannelLayoutSetting>>,
 }
 
 impl Default for AppState {
@@ -23,6 +26,7 @@ impl Default for AppState {
       meter_history: Arc::new(Mutex::new(VecDeque::new())),
       frame_subscribers: Mutex::new(None),
       vectorscope_pair: Arc::new(Mutex::new((0, 1))),
+      channel_layout: Arc::new(Mutex::new(ChannelLayoutSetting::default())),
     }
   }
 }

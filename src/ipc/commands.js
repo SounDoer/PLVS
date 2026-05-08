@@ -65,3 +65,8 @@ export function meterRemoveFrameSubscriber(id) {
 export function setVectorscopePair({ x, y }) {
   return invoke("set_vectorscope_pair", { x, y });
 }
+
+/** @param {{ layout: "auto" | "stereo" | "5.1" | string }} opts */
+export function setChannelLayout({ layout }) {
+  return invoke("set_channel_layout", { layout });
+}

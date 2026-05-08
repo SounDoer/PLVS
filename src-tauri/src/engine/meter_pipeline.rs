@@ -9,6 +9,7 @@ use crate::dsp::peak::{
   sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
 };
 use crate::dsp::{LoudnessMeter, SpectrumEngine, VectorscopeState};
+use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AudioFramePayload, LoudnessSlowPayload, MeterHistoryBuf, MeterHistoryEntry,
 };
@@ -134,10 +135,12 @@ impl MeterPipeline {
     &mut self,
     interleaved: &[f32],
     vectorscope_pair: (u16, u16),
+    channel_layout: ChannelLayoutSetting,
   ) -> (Option<AudioFramePayload>, Option<LoudnessSlowPayload>) {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
     let (pair_x, pair_y) = vectorscope_pair;
+
     if ch == 1 {
       self.mono_scratch.clear();
       self.mono_scratch.extend_from_slice(interleaved);
@@ -154,7 +157,7 @@ impl MeterPipeline {
     } else {
       if let Some(lb) = self
         .loudness
-        .push_interleaved_multichannel(interleaved, self.channels)
+        .push_interleaved_multichannel(interleaved, self.channels, channel_layout)
       {
         self.apply_loudness_block(&lb);
       }
@@ -375,7 +378,7 @@ mod tests {
     // frame1: [1.1, 1.2, 1.3]
     let pcm = vec![0.1_f32, 0.2, 0.3, 1.1, 1.2, 1.3];
     let mut p = MeterPipeline::new(48_000, 3, dummy_history());
-    let _ = p.push_pcm_f32(&pcm, (2, 0));
+    let _ = p.push_pcm_f32(&pcm, (2, 0), crate::engine::ChannelLayoutSetting::Auto);
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R).
     assert_eq!(p.vs_l.back().copied().unwrap_or_default(), 1.3);
     assert_eq!(p.vs_r.back().copied().unwrap_or_default(), 1.1);

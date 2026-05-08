@@ -7,6 +7,7 @@ use tauri::AppHandle;
 use super::device::DeviceInfo;
 use crate::ipc::types::FrameSubscribers;
 use crate::ipc::types::MeterHistoryBuf;
+use crate::engine::ChannelLayoutSetting;
 
 /// One PCM buffer from the device; channel count is never hard-coded to stereo.
 #[derive(Clone, Debug)]
@@ -33,5 +34,6 @@ pub trait AudioCapture: Send + Sync {
     app: AppHandle,
     meter_history: MeterHistoryBuf,
     vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
+    channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String>;
 }

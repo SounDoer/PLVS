@@ -4,6 +4,7 @@ import {
   previewAudioDevice,
   startAudioCapture,
   stopAudioCapture,
+  setChannelLayout,
 } from "../ipc/commands.js";
 import { onLoudnessSlow } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
@@ -12,6 +13,7 @@ import { buildTauriFrameApply } from "./tauriFrameApply.js";
 export function useAudioEngine({
   running,
   captureDeviceId = "default",
+  channelLayout = "auto",
   histMaxSamples,
   audioRef,
   spectrumStateRef: _spectrumStateRef,
@@ -147,6 +149,10 @@ export function useAudioEngine({
             baseApply(f);
           };
 
+          try {
+            await setChannelLayout({ layout: channelLayout });
+          } catch (_) {}
+
           await startAudioCapture({
             deviceId: engineDeviceId,
             onFrame: applyFrame,
@@ -191,5 +197,5 @@ export function useAudioEngine({
         } catch (_) {}
       }
     };
-  }, [running, captureDeviceId]);
+  }, [running, captureDeviceId, channelLayout]);
 }

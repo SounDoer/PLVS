@@ -8,6 +8,7 @@ use super::cpal_backend::CpalBackend;
 use super::device::DeviceInfo;
 #[cfg(target_os = "macos")]
 use super::macos;
+use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{FrameSubscribers, MeterHistoryBuf};
 
 /// Single type used by IPC and the device-watch thread.
@@ -32,14 +33,29 @@ impl AudioCapture for AppAudioBackend {
     app: AppHandle,
     meter_history: MeterHistoryBuf,
     vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
+    channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     #[cfg(target_os = "macos")]
     {
-      macos::start_session(device_id, frame_subscribers, app, meter_history, vectorscope_pair)
+      macos::start_session(
+        device_id,
+        frame_subscribers,
+        app,
+        meter_history,
+        vectorscope_pair,
+        channel_layout,
+      )
     }
     #[cfg(not(target_os = "macos"))]
     {
-      CpalBackend.start_session(device_id, frame_subscribers, app, meter_history, vectorscope_pair)
+      CpalBackend.start_session(
+        device_id,
+        frame_subscribers,
+        app,
+        meter_history,
+        vectorscope_pair,
+        channel_layout,
+      )
     }
   }
 }

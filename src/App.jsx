@@ -494,6 +494,7 @@ export default function App() {
   useAudioEngine({
     running,
     captureDeviceId,
+    channelLayout,
     histMaxSamples: HIST_MAX_SAMPLES,
     audioRef,
     spectrumStateRef,
