@@ -10,6 +10,7 @@ function buildSpectrumAreaPath(path) {
 export function SpectrumPanel({
   displaySpectrumPath,
   displaySpectrumPeakPath,
+  channelCount = 0,
   selectedOffset,
   spectrumHover,
   onSpectrumHoverMove,
@@ -17,10 +18,21 @@ export function SpectrumPanel({
 }) {
   const spectrumSvgRef = useRef(null);
   const displaySpectrumAreaPath = buildSpectrumAreaPath(displaySpectrumPath);
+  const isSummedMultichannel = Number.isFinite(channelCount) && channelCount > 2;
 
   return (
     <article className="ui-article ui-min-h-spectrum flex-1">
-      <div className="ui-section-title ui-section-title-main min-w-0">Spectrum</div>
+      <div className="ui-section-title ui-section-title-main min-w-0 flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate">Spectrum</span>
+        {isSummedMultichannel ? (
+          <span
+            className="ui-caption shrink-0 text-[color:var(--ui-color-text-muted)]"
+            title="All channels (summed): per-band linear power/energy is summed across channels, then converted to dB."
+          >
+            All channels (summed)
+          </span>
+        ) : null}
+      </div>
       <div className="grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch ui-min-h-spectrum">
         <div className="ui-w-spectrum-y-axis relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-muted)]">
           <div className="absolute inset-x-0 top-[var(--ui-spectrum-display-top-inset)] bottom-[var(--ui-spectrum-display-bottom-inset)]">

@@ -252,6 +252,7 @@ function FloatSpectrumView({ core }) {
       <SpectrumPanel
         displaySpectrumPath={core.displaySpectrumPath}
         displaySpectrumPeakPath={core.displaySpectrumPeakPath}
+        channelCount={Array.isArray(core.displayAudio?.peakDb) ? core.displayAudio.peakDb.length : 0}
         selectedOffset={core.selectedOffset}
         spectrumHover={spectrumHover}
         onSpectrumHoverMove={onSpectrumHoverMove}

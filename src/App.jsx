@@ -628,6 +628,7 @@ export default function App() {
             <SpectrumPanel
               displaySpectrumPath={displaySpectrumPath}
               displaySpectrumPeakPath={displaySpectrumPeakPath}
+              channelCount={Array.isArray(displayAudio?.peakDb) ? displayAudio.peakDb.length : 0}
               selectedOffset={selectedOffset}
               spectrumHover={spectrumHover}
               onSpectrumHoverMove={onSpectrumHoverMove}
