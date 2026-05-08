@@ -47,6 +47,7 @@ export function LoudnessPanel({
   loudnessHistWidthRatio,
   historyYAxisTicks,
   targetLufs,
+  referenceProfile,
   hasHistoryData,
   historyChartInteractive,
   running,
@@ -81,6 +82,9 @@ export function LoudnessPanel({
     () => historyYAxisTicks.filter((t) => !(t.v === targetLufs && !hasHistoryData)),
     [historyYAxisTicks, targetLufs, hasHistoryData]
   );
+
+  const referenceLufs = Number.isFinite(referenceProfile?.targetLufs) ? referenceProfile.targetLufs : null;
+  const referenceBandLu = 1;
 
   const historyGridRef = useRef(null);
   /** Per-tick horizontal guide line top (px), full container height on whole pixels to reduce subpixel AA banding */
@@ -215,6 +219,32 @@ export function LoudnessPanel({
                 )}
               </svg>
               <div className="pointer-events-none absolute inset-x-[var(--ui-history-svg-pad)] top-[var(--ui-history-display-top-inset)] bottom-[var(--ui-history-display-bottom-inset)] z-10">
+                {referenceLufs != null ? (
+                  <>
+                    <div
+                      className="absolute left-0 right-0"
+                      style={{
+                        top: `${loudnessFromTopFrac(referenceLufs + referenceBandLu) * 100}%`,
+                        bottom: `${(1 - loudnessFromTopFrac(referenceLufs - referenceBandLu)) * 100}%`,
+                        background: "color-mix(in srgb, var(--ui-color-loudness-target-line) 12%, transparent)",
+                      }}
+                    />
+                    <div
+                      className="absolute left-0 right-0 h-0 -translate-y-1/2 border-t"
+                      style={{
+                        top: `${loudnessFromTopFrac(referenceLufs) * 100}%`,
+                        borderTopColor: "var(--ui-color-loudness-target-line)",
+                        borderTopWidth: 2,
+                      }}
+                    />
+                    <div
+                      className="absolute left-[var(--ui-hud-inset)] bottom-[var(--ui-hud-inset)] rounded border border-[color:var(--ui-color-divider)] bg-[color:var(--ui-color-panel-bg-splitter)] px-2 py-0.5 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-secondary)]"
+                      style={{ opacity: 0.9 }}
+                    >
+                      Ref {referenceProfile?.label ?? `${referenceLufs} LUFS`}
+                    </div>
+                  </>
+                ) : null}
                 {hasHistoryData ? (
                   <div
                     className="absolute left-0 right-0 h-0 -translate-y-1/2 border-t border-dashed border-[color:var(--ui-color-loudness-target-line)]"

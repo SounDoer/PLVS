@@ -13,6 +13,7 @@ import { PeakPanel } from "./components/panels/PeakPanel";
 import { LoudnessPanel } from "./components/panels/LoudnessPanel";
 import { SpectrumPanel } from "./components/panels/SpectrumPanel";
 import { VectorscopePanel } from "./components/panels/VectorscopePanel";
+import { getLoudnessReferenceProfileById } from "./loudnessReferenceProfiles.js";
 
 const HISTORY_TIME_TICK_STEPS = 4;
 const PANELS = new Set(["peak", "loudness", "spectrum", "vector"]);
@@ -51,6 +52,7 @@ function FloatLoudnessBody({ core }) {
   const {
     engineRunning,
     standard,
+    referenceProfileId,
     HIST_SAMPLE_SEC,
     selectedOffset,
     setSelectedOffset,
@@ -66,6 +68,7 @@ function FloatLoudnessBody({ core }) {
   const [histCurves, setHistCurves] = useState({ m: false, st: true });
   const loudnessHistWidthRatio = UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio;
   const targetLufs = standard === "ebu" ? -23 : -14;
+  const referenceProfile = useMemo(() => getLoudnessReferenceProfileById(referenceProfileId), [referenceProfileId]);
   const historyYAxisTicks = useMemo(() => {
     const out = [...LOUDNESS_TICKS];
     if (!out.some((t) => t.v === targetLufs)) out.push({ v: targetLufs, lb: String(targetLufs) });
@@ -190,6 +193,7 @@ function FloatLoudnessBody({ core }) {
       loudnessHistWidthRatio={loudnessHistWidthRatio}
       historyYAxisTicks={historyYAxisTicks}
       targetLufs={targetLufs}
+      referenceProfile={referenceProfile}
       hasHistoryData={hasHistoryData}
       historyChartInteractive={historyChartInteractive}
       running={engineRunning}
