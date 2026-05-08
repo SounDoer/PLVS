@@ -1,6 +1,6 @@
 # 参与贡献
 
-感谢你对 AudioMeter 的兴趣。以下为本地开发与 CI 约定；更完整的架构决策见 [`docs/architecture.md`](docs/architecture.md)。
+感谢你对 AudioMeter 的兴趣。以下为本地开发与 CI 约定；产品范围与承诺见 [`docs/prd.md`](docs/prd.md)，技术架构见 [`docs/architecture.md`](docs/architecture.md)。
 
 ## 环境
 

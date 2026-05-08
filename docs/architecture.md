@@ -4,7 +4,17 @@
 >
 > **面向读者**：项目作者本人 + 未来参与开发的 AI agent / 协作者。每项决策都附带了原因和被否决的替代方案，便于任何人快速理解"为什么是现在这样"。
 >
-> **文档状态**：随仓库演进维护；与代码不一致时以 **main 分支实现** 为准，重大修订记在 **§15 Changelog**。
+> **文档状态**：随仓库演进维护；与代码不一致时以 **main 分支实现** 为准，重大修订记在 **§15 Changelog**。  
+> **与 PRD 分工**：**产品范围、用户故事、体验原则、非目标与路线图**以 **[`prd.md`](prd.md)** 为准；本文负责 **技术栈、分层、IPC、设备与发版工程**。若冲突：先对齐 **用户承诺（PRD）**，再改实现与本文技术描述。
+
+---
+
+### 配套文档
+
+| 文档 | 职责 |
+|---|---|
+| **[`prd.md`](prd.md)** | 产品需求（PRD）：目标用户、承诺、明确不做、隐私/分发、多声道路线图等；附录含与 main 的 **实现对照 / gap** 摘要。 |
+| **`architecture.md`（本文）** | 架构与实现决策：目录、协议、DSP 口径摘要、平台采集路径、CI/Release、Agent 工程约束。 |
 
 ---
 
@@ -22,10 +32,12 @@
 
 ### 明确不做的（避免未来被反复提起）
 
+**完整非目标列表、Legacy 政策、会话边界等**以 **[`prd.md`](prd.md) §6** 为准；下表从 **架构可行性** 角度保留高频否决项，便于与 §附录 A、ADR 交叉引用。
+
 | 不做 | 原因 |
 |---|---|
 | 离线音频文件分析 | 定位是实时监测工具，不是分析工具 |
-| 真实 EQ / 任何音频处理 | 一旦处理声音，"从哪里输出"是无解的架构难题（见 §9.2） |
+| 真实 EQ / 任何音频处理 | 一旦处理声音，"从哪里输出"是无解的架构难题（见 **[`prd.md`](prd.md) §6**，及本文 §0） |
 | VST / AU / AAX 插件 | 放弃 DAW 生态，专注独立软件形态 |
 | 多设备同时监测 / A-B 信号源对比 | v1.0 范围外，可能永远不做 |
 | 商店上架（Microsoft Store / Mac App Store） | 避开沙箱限制，保持技术自由度 |
@@ -671,9 +683,10 @@ interface LoudnessSlowPayload {
 
 ### 开工前必做
 
-1. **先读这个 `architecture.md` 整份文档**，然后再读项目代码。
-2. 读 `src-tauri/Cargo.toml` 和 `package.json` 看当前依赖状态。
-3. 读 `src/ipc/` 和 `src-tauri/src/ipc/` 理解前后端边界。
+1. **涉及用户可见行为、新能力范围、非目标取舍时**：先读 **[`prd.md`](prd.md)** 相关章节。  
+2. **再读本文 `architecture.md` 整份**，然后读项目代码。  
+3. 读 `src-tauri/Cargo.toml` 和 `package.json` 看当前依赖状态。  
+4. 读 `src/ipc/` 和 `src-tauri/src/ipc/` 理解前后端边界。
 
 ### 硬性约束（不要违反，违反请立刻停下和用户确认）
 
@@ -722,6 +735,7 @@ interface LoudnessSlowPayload {
 | 2026-04 | — | 浮窗补齐：`meter-history-cleared` + 共享 `meter_history` 同步清空；`floatWindowBoundsV1` 存位置；§7 浮窗要点；`resetFloatMeteringState` / `historyViewEpoch` |
 | 2026-04 | — | 浮窗 bounds：`v:2` 逻辑像素，inner/outer 与 `scaleFactor` 对齐，修正高 DPI 重开累积误差；旧存盘按物理→逻辑迁移 |
 | 2026-05 | — | 对齐 main：§0/§9 **macOS + Release DMG**；§4 目录树与 **ipc** 约束；§5 `FrameSubscribers`；§10/§10.1 双平台 CI；§12 PCM 预留未实现；§13 浮窗/macOS **已部分落地**；§14 与 §4  ipc 规则一致 |
+| 2026-05 | — | 引入 **[`prd.md`](prd.md)**；文首与 **§0 / §14** 写明与 PRD 分工；非目标表注明以 PRD 为准 |
 
 ---
 
