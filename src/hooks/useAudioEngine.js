@@ -43,6 +43,9 @@ export function useAudioEngine({
 }) {
   const defaultSampleRateRef = useRef(48000);
 
+  // This effect intentionally depends only on the capture/run inputs.
+  // The remaining refs/setters are stable across renders for the app shell.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!running) {
       if (audioRef.current?.mode === "tauri") {
@@ -66,7 +69,6 @@ export function useAudioEngine({
       return;
     }
     let mounted = true;
-
     const init = async () => {
       try {
         if (isTauri()) {
@@ -179,7 +181,8 @@ export function useAudioEngine({
     init();
     return () => {
       mounted = false;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      const rafId = rafRef.current;
+      if (rafId) cancelAnimationFrame(rafId);
       if (audioRef.current?.mode === "tauri") {
         void stopAudioCapture();
         for (const u of audioRef.current?.unsubs || []) {
@@ -198,4 +201,5 @@ export function useAudioEngine({
       }
     };
   }, [running, captureDeviceId, channelLayout]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 }

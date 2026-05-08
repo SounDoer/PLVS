@@ -16,7 +16,6 @@ export function useMeterHealth() {
 
   useEffect(() => {
     if (!isTauri()) {
-      setHealth("stopped");
       return undefined;
     }
     let u = () => {};
