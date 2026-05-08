@@ -347,7 +347,7 @@ pub struct PcmFrame {
 
 **用户体验**：用户选哪个设备就自动切换到对应通道数——选 stereo 扬声器显示 2 通道，选 5.1 设备显示 6 通道，选 mono 麦克风显示 1 通道。
 
-**多声道与 Vectorscope（v1.0 已落地）**：`channels > 2` 时，Rust 侧 **Peak（采样峰值 L/R）/ Spectrum（立体声 FFT 环）/ Loudness（BS.1770 立体声路径）/ Vectorscope + 相关** 一律从交错 PCM **每帧取前两路**（与常见「表头 = ch1/ch2」降级一致）。**未做**：隐藏 VS、或 UI 任选两路、或多通道相关矩阵——仍列为后续产品项（见 §13 候选）。
+**多声道与 Vectorscope（v1.0 已落地）**：`channels > 2` 时，Rust 侧 **Peak（采样峰值 L/R）/ Loudness（BS.1770 立体声路径）/ Vectorscope + 相关** 仍从交错 PCM **每帧取前两路**（与常见「表头 = ch1/ch2」降级一致）。但 **Spectrum** 的口径不同：当 `channels > 2` 时，Spectrum 显示为 **单条聚合曲线**，其每个频带读数为 **对所有通道的线性功率/能量求和后再转 dB**（stereo/mono 行为不变）。**未做**：隐藏 VS、或 UI 任选两路、或多通道相关矩阵——仍列为后续产品项（见 §13 候选）。
 
 ---
 

@@ -161,7 +161,9 @@ impl SpectrumEngine {
   }
 
   /// Returns `(smooth_db, peak_db)` for SVG paths on the frontend, or `None` until the ring is full.
-  /// `channels` samples per frame; when **N>2**, only the first two channels per frame feed the stereo FFT ring (v1.0 meter policy; see architecture §5).
+  /// `channels` samples per frame:
+  /// - **Mono / stereo (N<=2)**: unchanged; spectrum is based on the stereo-average signal \(0.5·(L+R)\).
+  /// - **Multichannel (N>2)**: a single curve represents **summed per-band power/energy across all channels**, then converted to dB.
   pub fn push_interleaved(
     &mut self,
     interleaved: &[f32],
