@@ -1,4 +1,14 @@
-export function SettingsPanel({ settingsOpen, setSettingsOpen, uiMode, setUiMode, standard, setStandard, resetLayout }) {
+export function SettingsPanel({
+  settingsOpen,
+  setSettingsOpen,
+  uiMode,
+  setUiMode,
+  standard,
+  setStandard,
+  channelLayout,
+  setChannelLayout,
+  resetLayout,
+}) {
   if (!settingsOpen) return null;
   return (
     <div
@@ -46,6 +56,14 @@ export function SettingsPanel({ settingsOpen, setSettingsOpen, uiMode, setUiMode
             <button type="button" onClick={resetLayout} className="ui-settings-btn ui-settings-btn-pill">
               Reset Layout
             </button>
+          </div>
+          <div className="ui-settings-row">
+            <span className="ui-settings-label">Channel layout (Advanced)</span>
+            <select value={channelLayout} onChange={(e) => setChannelLayout(e.target.value)} className="ui-select">
+              <option value="auto">Auto</option>
+              <option value="stereo">Stereo</option>
+              <option value="5.1">5.1</option>
+            </select>
           </div>
         </div>
       </div>

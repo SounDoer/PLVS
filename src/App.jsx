@@ -47,6 +47,7 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [audioDevices, setAudioDevices] = useState([]);
   const [captureDeviceId, setCaptureDeviceId] = useState(() => readCaptureDeviceIdFromLocalStorage());
+  const [channelLayout, setChannelLayout] = useState("auto");
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [historyWindowSec, setHistoryWindowSec] = useState(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
   const [historyOffsetSec, setHistoryOffsetSec] = useState(0);
@@ -647,6 +648,8 @@ export default function App() {
         setUiMode={setUiMode}
         standard={standard}
         setStandard={setStandard}
+        channelLayout={channelLayout}
+        setChannelLayout={setChannelLayout}
         resetLayout={resetLayout}
       />
     </div>
