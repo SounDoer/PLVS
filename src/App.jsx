@@ -362,6 +362,7 @@ export default function App() {
       if (typeof s.leftTopRatio === "number") setLeftTopRatio(s.leftTopRatio);
       if (typeof s.rightTopRatio === "number") setRightTopRatio(s.rightTopRatio);
       if (typeof s.loudnessHistWidthRatio === "number") setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
+      if (s.channelLayout === "auto" || s.channelLayout === "stereo" || s.channelLayout === "5.1") setChannelLayout(s.channelLayout);
     } catch (_) {}
   }, []);
 
@@ -369,10 +370,10 @@ export default function App() {
     try {
       localStorage.setItem(
         STORE_KEY,
-        JSON.stringify({ mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, standard, uiMode })
+        JSON.stringify({ mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, standard, uiMode, channelLayout })
       );
     } catch (_) {}
-  }, [mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, standard, uiMode]);
+  }, [mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, standard, uiMode, channelLayout]);
 
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;
