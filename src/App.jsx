@@ -699,9 +699,9 @@ export default function App() {
               <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
               <span
                 className="text-[color:var(--ui-color-text-muted)]"
-                title="Auto channel layout detection is not available yet. Select a preset in Settings → Channel layout (Advanced)."
+                title="Auto channel layout detection is not available yet. Loudness (L1) falls back to Ch 1/Ch 2 until you select a preset in Settings → Channel layout (Advanced)."
               >
-                Multi-channel detected. Layout unknown (Auto) — select a preset in Settings.
+                Multi-channel detected. Layout unknown (Auto) — loudness uses Ch 1/Ch 2 until you select a preset.
               </span>
             </>
           ) : null}

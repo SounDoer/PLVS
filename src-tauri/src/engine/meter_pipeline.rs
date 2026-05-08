@@ -21,6 +21,27 @@ const SLOW_EMIT_MS: u128 = 500;
 const HIST_EMIT_MS: u128 = 95;
 const HIST_RING_CAP: usize = 36_000;
 
+fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> (String, bool) {
+  let ch = channels.max(1);
+  match channel_layout {
+    ChannelLayoutSetting::Stereo => ("stereo".to_string(), true),
+    ChannelLayoutSetting::Surround51 => {
+      if ch >= 6 {
+        ("5.1".to_string(), true)
+      } else {
+        ("stereo".to_string(), false)
+      }
+    }
+    ChannelLayoutSetting::Auto => {
+      if ch <= 2 {
+        ("stereo".to_string(), true)
+      } else {
+        ("unknown".to_string(), false)
+      }
+    }
+  }
+}
+
 pub struct MeterPipeline {
   channels: u16,
   loudness: LoudnessMeter,
@@ -140,6 +161,7 @@ impl MeterPipeline {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
     let (pair_x, pair_y) = vectorscope_pair;
+    let (loudness_layout, loudness_layout_known) = loudness_layout_meta(ch, channel_layout);
 
     if ch == 1 {
       self.mono_scratch.clear();
@@ -301,6 +323,8 @@ impl MeterPipeline {
         spectrum_peak_path: spk.clone(),
         spectrum_band_centers_hz: centers.clone(),
         spectrum_smooth_db: smooth.clone(),
+        loudness_layout: loudness_layout.clone(),
+        loudness_layout_known,
       };
       if let Ok(mut g) = self.meter_history.lock() {
         while g.len() >= HIST_RING_CAP {
@@ -333,6 +357,8 @@ impl MeterPipeline {
       spectrum_peak_path: spk,
       spectrum_band_centers_hz: centers.clone(),
       spectrum_smooth_db: smooth.clone(),
+      loudness_layout,
+      loudness_layout_known,
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
       loudness_hist_tick,
     };
@@ -382,5 +408,26 @@ mod tests {
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R).
     assert_eq!(p.vs_l.back().copied().unwrap_or_default(), 1.3);
     assert_eq!(p.vs_r.back().copied().unwrap_or_default(), 1.1);
+  }
+
+  #[test]
+  fn loudness_layout_meta_marks_unknown_for_auto_multichannel() {
+    let (s, known) = loudness_layout_meta(6, ChannelLayoutSetting::Auto);
+    assert_eq!(s, "unknown");
+    assert!(!known);
+  }
+
+  #[test]
+  fn loudness_layout_meta_marks_51_for_manual_51() {
+    let (s, known) = loudness_layout_meta(6, ChannelLayoutSetting::Surround51);
+    assert_eq!(s, "5.1");
+    assert!(known);
+  }
+
+  #[test]
+  fn loudness_layout_meta_downgrades_manual_51_when_channels_too_low() {
+    let (s, known) = loudness_layout_meta(2, ChannelLayoutSetting::Surround51);
+    assert_eq!(s, "stereo");
+    assert!(!known);
   }
 }

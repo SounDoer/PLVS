@@ -54,6 +54,10 @@ pub struct MeterHistoryEntry {
   pub spectrum_peak_path: String,
   pub spectrum_band_centers_hz: Vec<f64>,
   pub spectrum_smooth_db: Vec<f64>,
+  /// Loudness layout semantics for this entry (e.g. `stereo`, `5.1`, `unknown`).
+  pub loudness_layout: String,
+  /// Whether the loudness layout is known/correct for the input stream.
+  pub loudness_layout_known: bool,
 }
 
 pub type MeterHistoryBuf = Arc<Mutex<VecDeque<MeterHistoryEntry>>>;
@@ -81,6 +85,10 @@ pub struct AudioFramePayload {
   pub spectrum_peak_path: String,
   pub spectrum_band_centers_hz: Vec<f64>,
   pub spectrum_smooth_db: Vec<f64>,
+  /// Loudness layout semantics for this frame (e.g. `stereo`, `5.1`, `unknown`).
+  pub loudness_layout: String,
+  /// Whether the loudness layout is known/correct for the input stream.
+  pub loudness_layout_known: bool,
   pub timestamp_ms: u64,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub loudness_hist_tick: Option<MeterHistoryEntry>,
