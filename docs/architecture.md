@@ -1,10 +1,10 @@
 # AudioMeter — Architecture & Roadmap
 
-> **文档用途**：这是 AudioMeter 从"无需安装的网页工具"重构为"正式 Windows 桌面软件"的架构决策档案。内容覆盖技术选型、项目结构、通信协议、分发策略和路线图。
+> **文档用途**：这是 AudioMeter 从「无需安装的网页工具」重构为「**Windows / macOS 原生壳（Tauri）**」的架构决策档案。内容覆盖技术选型、项目结构、通信协议、分发策略和路线图。
 >
 > **面向读者**：项目作者本人 + 未来参与开发的 AI agent / 协作者。每项决策都附带了原因和被否决的替代方案，便于任何人快速理解"为什么是现在这样"。
 >
-> **文档状态**：重构启动前的决策冻结版。开工后如有调整，在本文末尾维护 Changelog。
+> **文档状态**：随仓库演进维护；与代码不一致时以 **main 分支实现** 为准，重大修订记在 **§15 Changelog**。
 
 ---
 
@@ -15,9 +15,10 @@
 ### 核心承诺
 
 - **纯监测、不处理音频**：只读系统正在播放的信号，给出测量数据。永远不动声音本身。
-- **Windows 优先**：v1.0 只发 Windows，macOS 放在 v1.5。不考虑 Linux。
+- **Windows 优先**：主力用户与文档仍以 **Windows + WASAPI Loopback** 为第一叙述；**不考虑 Linux**。
+- **macOS 桌面版（当前 main）**：与 Windows **同源 Tauri 应用**，**GitHub Release** 上由 CI 同时产出 **Windows（NSIS + 便携）** 与 **macOS DMG（Apple Silicon）**；系统音频走 **macOS 14.2+ Core Audio process tap**（见 §9），**不**依赖网页版那套 BlackHole 路由方案。低于 14.2 / 无 tap 时的回退与限制以代码与 Release 说明为准。
 - **独立应用形态**：永远不做 VST / AU / AAX 插件，不进 DAW 宿主。
-- **用户无需安装虚拟声卡**：这是 v1.0 相对于网页版和 Youlean standalone 的核心体验提升。
+- **用户无需安装虚拟声卡（相对旧网页版）**：在 **Windows** 上对「听系统正在播的声音」成立（WASAPI Loopback）；**macOS** 上对应能力来自 **系统级 tap**（非第三方虚拟声卡）。
 
 ### 明确不做的（避免未来被反复提起）
 
@@ -73,7 +74,7 @@
 │                                                            │
 │  ┌──────────────────┐         ┌─────────────────────────┐  │
 │  │   Frontend       │         │   Rust Backend          │  │
-│  │   (WebView2)     │◄────────┤                         │  │
+│  │ (系统 WebView)   │◄────────┤                         │  │
 │  │                  │ Channel │  ┌─────────────────┐    │  │
 │  │  React + Vite    │  60Hz   │  │ Audio Engine    │    │  │
 │  │                  │         │  │                 │    │  │
@@ -102,7 +103,7 @@
 
 ### 数据流简述
 
-1. **采集**：Rust 通过 `cpal` 打开 WASAPI Loopback，从系统输出设备直接读取 PCM 流。
+1. **采集**：**Windows** 上 Rust 通过 `cpal` 打开 **WASAPI Loopback**，从当前选的输出设备读 PCM；**macOS** 上系统播放路径由 **`audio/macos/` + Core Audio tap** 提供 PCM，物理麦克风等输入仍可走 **cpal**（由 `AppAudioBackend` / `platform_backend` 分发）。
 2. **DSP**：PCM 进入 Rust 音频线程，并行计算 Peak / True Peak / LUFS / FFT / Correlation 等指标。
 3. **推送**：
    - 高频指标（~60Hz）通过 Tauri Channel 推给前端。
@@ -119,7 +120,7 @@
 | **系统音频捕获** | 泛指"监听系统正在播放的声音"这个**目标**。不指定具体技术。 |
 | **loopback** | 特指 **WASAPI Loopback**——Windows 原生 API，允许应用直接把输出设备当输入读。**不需要任何第三方驱动**。v1.0 的核心技术。 |
 | **虚拟声卡 / Virtual Audio Device** | VB-Cable、BlackHole、Loopback by Rogue Amoeba 等第三方驱动方案。旧网页版依赖这种方式，v1.0 要消灭这个依赖。 |
-| **Core Audio Taps** | macOS 14.2+ 的原生系统音频捕获 API，地位类似 Windows 的 WASAPI Loopback。v1.5 的目标。 |
+| **Core Audio Taps** | macOS 14.2+ 的原生系统音频捕获 API，地位类似 Windows 的 WASAPI Loopback。**当前 main** 在受支持系统上用于系统音频路径（实现见 `src-tauri/src/audio/macos/`、`native/macos/tap_bridge.m`）。 |
 | **realtime-safe** | 音频回调线程中不做任何可能阻塞或不可预测延迟的操作（无内存分配、无锁、无 syscall 等）。 |
 
 ---
@@ -147,7 +148,8 @@ AudioMeter/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                   # lint + test（前端 + Rust）
-│       └── release.yml              # 打包 Windows 安装包
+│       ├── release.yml              # Windows NSIS + 便携 exe；macOS DMG（tag 时 attach Release）
+│       └── deploy-pages.yml         # （若启用）legacy / Pages 相关构建
 ├── .editorconfig
 ├── .gitignore                       # 含 src-tauri/target/、dist/
 ├── LICENSE                          # MIT 保持不变
@@ -162,27 +164,38 @@ AudioMeter/
 ├── src/                             # 前端 React 代码
 │   ├── main.jsx                     # React 挂载入口
 │   ├── App.jsx                      # 顶层组件（页面编排）
+│   ├── index.css                    # 全局样式（无单独 styles/ 目录）
+│   ├── FloatApp.jsx                 # `?float=` 辅窗口入口
 │   ├── components/
 │   │   ├── panels/
 │   │   │   ├── PeakPanel.jsx
 │   │   │   ├── LoudnessPanel.jsx
 │   │   │   ├── SpectrumPanel.jsx
 │   │   │   └── VectorscopePanel.jsx
-│   │   ├── Controls/                # START/STOP/LIVE/Clear/Settings 按钮栏
-│   │   ├── Splitters/               # 可拖动分割线
-│   │   └── Settings/                # 设置面板
+│   │   ├── PillButton.jsx           # 顶栏按钮等
+│   │   ├── SettingsPanel.jsx
+│   │   ├── TitleBarWindowControls.jsx
+│   │   └── HelpPopover.jsx
 │   ├── hooks/
 │   │   ├── useAudioEngine.js        # 订阅 Rust emit 的音频指标
-│   │   ├── useHistoryBuffer.js      # 历史数据（可能从旧版复用）
+│   │   ├── useHistoryInteraction.js # 历史窗拖拽 / 视口
 │   │   ├── useSnapshot.js           # 快照模式逻辑
-│   │   └── useLayout.js             # 分割线状态 + 本地存储
-│   ├── ipc/                         # ★ 前后端通信层（唯一入口）
-│   │   ├── commands.js              # 封装所有 invoke 调用
-│   │   ├── events.js                # 封装所有 listen / Channel 订阅
-│   │   ├── capturePrefs.js          # 采集设备 id：`tauri-plugin-store`（桌面）/ localStorage（浏览器）
-│   │   └── types.js                 # 与 Rust payload 对齐的 JSDoc / 常量（可选）
-│   ├── styles/
-│   └── utils/                       # 纯函数工具（dB 转换、格式化等）
+│   │   ├── useLayoutDrag.js         # 可拖动分割线 + 持久化
+│   │   ├── useSettings.js           # 设置 / UI 模式
+│   │   ├── useFloatMeteringCore.js  # 浮窗与主窗共用计量订阅
+│   │   └── …                        # 其它浮窗与 Frame 订阅封装
+│   ├── ipc/                         # ★ 前后端通信层（invoke/listen/Channel 的唯一入口）
+│   │   ├── commands.js              # 所有 invoke
+│   │   ├── events.js                # listen + Channel 订阅封装
+│   │   ├── capturePrefs.js          # 采集设备 id：tauri-plugin-store / localStorage
+│   │   ├── floatWindow.js           # 辅 WebviewWindow、Pop out
+│   │   ├── floatWindowPrefs.js      # 浮窗几何持久化（与 dpi / window API）
+│   │   ├── mainWindowControls.js
+│   │   ├── env.js
+│   │   └── types.js
+│   ├── math/                        # 纯函数（刻度、历史路径、格式、频谱辅助等）
+│   ├── scales.js                    # 与 Rust DSP / UI 共享的刻度约定
+│   └── uiPreferences.js
 │
 ├── public/                          # 静态资源（图标等）
 │   └── (不再有 worklets/)
@@ -192,6 +205,9 @@ AudioMeter/
 │   ├── Cargo.lock
 │   ├── tauri.conf.json              # 窗口、权限、bundle 配置
 │   ├── build.rs
+│   ├── native/
+│   │   └── macos/
+│   │       └── tap_bridge.m         # Core Audio process tap（仅 macOS 构建）
 │   ├── icons/                       # 应用图标（多平台多尺寸）
 │   ├── capabilities/                # Tauri 2.x 权限声明
 │   │   └── default.json
@@ -201,10 +217,12 @@ AudioMeter/
 │       │
 │       ├── audio/                   # 【音频采集层】
 │       │   ├── mod.rs
-│       │   ├── capture.rs           # AudioCapture trait（抽象层）
-│       │   ├── cpal_backend.rs      # cpal 具体实现（Windows loopback）
-│       │   ├── device_id.rs         # 稳定设备 id（lb-* / cap-*）与 legacy 解析
-│       │   └── device.rs            # DeviceInfo 元数据（与前端 JSON 对齐）
+│       │   ├── capture.rs           # AudioCapture trait、PcmFrame
+│       │   ├── platform_backend.rs  # 按 OS 选择 cpal 与/或 macOS tap
+│       │   ├── cpal_backend.rs      # WASAPI loopback + 物理输入（Windows / 跨平台 cpal）
+│       │   ├── macos/               # （仅 macOS 编译）Core Audio tap、PCM 桥
+│       │   ├── device_id.rs
+│       │   └── device.rs
 │       │
 │       ├── dsp/                     # 【DSP 计算层】
 │       │   ├── mod.rs
@@ -230,8 +248,7 @@ AudioMeter/
 ├── tests/                           # 前端测试（Vitest）
 │
 └── docs/
-    ├── architecture.md              # 本文档
-    └── dsp-notes.md                 # DSP 算法实现注记（EBU R128 公式等）
+    └── architecture.md              # 本文档（DSP 算法长篇注记预留为 dsp-notes.md，尚未添加）
 ```
 
 ### 分层设计的关键决策
@@ -245,7 +262,7 @@ AudioMeter/
 
 **好处**：加新表头时只在 `dsp/` 加一个文件，不会像网页版那样 hooks 和 panel 互相交织。
 
-**前端 `ipc/` 层的硬约束**：任何 React 组件或 hook **不得直接**调 `invoke()` 或 `listen()`。所有 Tauri API 走 `src/ipc/`。好处：换协议时只改一处；测试时可 mock；保持 UI 代码"不知道自己在 Tauri 里"。
+**前端 `ipc/` 层的硬约束**：业务组件与 hooks **不得直接**调 `invoke()`、`listen()` 或自建 Channel 订阅；一律经 `src/ipc/commands.js`、`src/ipc/events.js` 等。窗口几何、多 webview、DPI 等仅封装在 `ipc/floatWindow.js`、`ipc/floatWindowPrefs.js`、`ipc/mainWindowControls.js` 等文件内，**不得**在 Panel 里散落 `import "@tauri-apps/api"`。好处：换协议只改一处；测试可 mock；UI 不依赖具体 Tauri 细节。
 
 ---
 
@@ -259,7 +276,7 @@ AudioMeter/
 
 - Rust 音频圈事实标准，文档、example、AI 熟悉度都最高。
 - v0.15+ 原生支持 WASAPI Loopback（Windows 上直接把 output device 当 input stream 打开）。
-- 同一套 API 未来可对接 macOS Core Audio（v1.5 复用成本低）。
+- 同一套抽象在 **macOS** 上与 **Core Audio tap + cpal 输入** 并存（见 `audio/platform_backend.rs`），复用 `dsp/` / `meter_pipeline`。
 
 **被否决的替代**：
 
@@ -271,7 +288,7 @@ AudioMeter/
 在 `cpal` 之外包一层薄的 `AudioCapture` trait：
 
 ```rust
-// src-tauri/src/audio/capture.rs（v1.0 实际收敛范围）
+// src-tauri/src/audio/capture.rs（节选；以仓库为准）
 pub trait AudioCaptureSession: Send {
     fn request_clear_peak_history(&self);
 }
@@ -280,20 +297,20 @@ pub trait AudioCapture: Send + Sync {
     fn start_session(
         &self,
         device_id: &str,
-        frame_tx: tauri::ipc::Channel<AudioFramePayload>,
+        frame_subscribers: FrameSubscribers, // 主窗 Channel + 浮窗订阅者，代替单一 Channel
         app: tauri::AppHandle,
         meter_history: MeterHistoryBuf,
     ) -> Result<Box<dyn AudioCaptureSession>, String>;
 }
-// 具体类型 `CaptureSession` 只在 `cpal_backend.rs`；trait 返回 `Box<dyn AudioCaptureSession>` 打破循环依赖。
+// `FrameSubscribers` 定义见 `ipc/types.rs`。`CaptureSession` 在 `cpal_backend.rs`；macOS tap 路径在 `audio/macos/`。
 // `build_device_list` 为 `pub(crate)`，外部只经 `AudioCapture::list_devices`。
 ```
 
 **为什么要这层抽象**：
 
-- v1.5 加 macOS Core Audio Taps 时，只是新增一个 `CoreAudioBackend` 实现，上层 DSP 代码不动。
+- **macOS** 已实现为 **独立 tap 路径 + cpal 输入**，由 `AppAudioBackend` 选用；上层 **DSP / `meter_pipeline` 不感知**具体是 loopback 还是 tap。
 - 如果某天发现 `cpal` 在某平台有硬伤，可以局部换实现。
-- **不是过度设计**——这层非常薄，只是把 cpal 的 API 归口，未来可换。
+- **不是过度设计**——这层很薄，只是归口设备枚举与 `start_session`。
 
 ### 设备 `id`：稳定句柄与兼容
 
@@ -464,7 +481,7 @@ interface LoudnessSlowPayload {
 
 ---
 
-## 8. 设备选择 UX（Windows loopback）
+## 8. 设备选择 UX（以 Windows loopback 为主；macOS 同类下拉由同一 UI 驱动）
 
 ### 核心问题
 
@@ -488,7 +505,7 @@ interface LoudnessSlowPayload {
 
 1. **麦克风和 loopback 合在一个下拉**，不做 tab 切换——用户要选的就是"信号源"，底层技术无关。
 2. **Output 分组下列出各播放端的 loopback**，展示名即系统设备名（与「扬声器 / 耳机」等资源管理器命名一致）。
-3. **下拉首项 Automatic（`captureDeviceId: "default"`）**：`audio_start` 固定传 `"default"`，Rust `resolve_default_output()` 通过 cpal 的 **`default_output_device()`** 绑定 **Windows 当前默认播放设备**（与控制面板中带绿色勾选的那台一致）；**不是**列表按字母序的第一条输出。开始前 Web 端调用 **`preview_audio_device("default")`**，用返回的 `label` / `sampleRateHz` 更新状态栏与前端 DSP 默认值。
+3. **下拉首项 Automatic（`captureDeviceId: "default"`）**：`audio_start` 传 `"default"`，Rust 侧解析为**当前默认输出设备**（Windows 上为 cpal **`default_output_device()`**，与系统默认扬声器一致；**不是**列表按字母序第一条）。macOS 上具体解析见 `platform_backend` / 设备枚举实现。开始前 Web 端调用 **`preview_audio_device("default")`**，用返回的 `label` / `sampleRateHz` 更新状态栏与默认值。
 4. **热插拔 / 列表刷新**：Rust 侧**每 2 秒**枚举设备（`CpalBackend::list_devices`），与上次结果比较，变化则 `emit("device-list-changed")`（`src-tauri/src/lib.rs` 设备轮询线程）。**不是**依赖 cpal 的 OS 级「设备已插拔」回调——轮询实现简单、与将来换后端（macOS）时行为一致；若以后要亚秒级刷新，可改为注册系统设备通知后再触发同一路枚举。
 5. **记住上次选择**：桌面端用 **`tauri-plugin-store`** 写入 `audiometer-settings.json`（键 `captureDeviceId`）；前端封装在 `src/ipc/capturePrefs.js`，启动时 `Store.load` 后若缺键则从旧版 **`localStorage`**（`audiometer.captureDeviceId`）迁移一次。非 Tauri 预览仍只用 `localStorage`。
 
@@ -503,26 +520,20 @@ interface LoudnessSlowPayload {
 
 ## 9. 平台支持
 
-### v1.0：仅 Windows
+### Windows（主力）
 
-- Windows 10 1809 及以上（WebView2 runtime 要求）
-- 用 cpal 的 WASAPI backend 开 loopback
-- 不装任何虚拟声卡
+- Windows 10 1809 及以上（**WebView2** runtime）
+- 系统播放监测：**cpal + WASAPI Loopback**，无需 VB-Cable 等虚拟声卡路由（相对旧网页版的体验目标）
 
-### v1.5：macOS（独立里程碑）
+### macOS（main 已构建、Release 发 DMG）
 
-**不进 v1.0 的理由**：
+- **桌面壳**：Tauri 使用系统 **WKWebView**（非 Edge WebView2）。
+- **系统音频（「正在播放」）**：**macOS 14.2+** 使用 **Core Audio process tap**（Objective-C / FFI：`native/macos/tap_bridge.m`，Rust 侧 `src-tauri/src/audio/macos/`）。低于该系统版本或缺少 tap API 时的行为以当时构建与 README 为准（可能仅能选物理输入等）。
+- **物理输入**：与其它平台一样经 **cpal**。
+- **分发**：`.github/workflows/release.yml` 中 `build-macos` 产出 **DMG（Apple Silicon）**；未公证时首次打开可能被 Gatekeeper 拦截，README 中有 `xattr` 等说明。
+- **商店 / 公证**：仍遵循 §0「不上架 Mac App Store」；代码签名与 Apple 公证为可选改进项，与 §10 一致。
 
-1. macOS 13 及以下**没有**原生 loopback API，必须靠 BlackHole 等虚拟声卡——这等于"消灭虚拟声卡依赖"这个 v1.0 承诺在 macOS 上还兑现不了。
-2. macOS 14.2+ 的 Core Audio Taps API 才是原生解决方案，但需要 Objective-C FFI，`cpal` 支持还在跟进中。
-3. Apple Developer 账号（$99/年）+ 公证（notarization）流程是独立工作量。
-
-**v1.5 实现策略**：
-
-- 新增 `CoreAudioBackend` 实现 `AudioCapture` trait
-- macOS 13 及以下：兼容 BlackHole（检测到该设备时自动归入 loopback 分组）
-- macOS 14+：优先用 Core Audio Taps，BlackHole 装了也当作备选
-- UI 对用户完全透明（还是那个统一下拉菜单）
+原规划中的「v1.5 才上 macOS」已被 **提前并入 main**：文档保留 **v1.5** 一词时可仅指「BlackHole 回退 polish、证书公证、Intel 构建」等 **后续完善**，而非「首个 macOS 应用从零开始」。
 
 ### 永不支持
 
@@ -531,20 +542,21 @@ interface LoudnessSlowPayload {
 
 ---
 
-## 10. 分发与更新（v1.0）
+## 10. 分发与更新（当前 main）
 
-| 项目 | v1.0 方案 | 未来 |
+| 项目 | 当前方案 | 未来 |
 |---|---|---|
-| **安装包格式** | **NSIS** 安装程序（`*-setup.exe`）+ **便携**：`cargo` 主程序 `target/release/app.exe`（Release 中另存为 `AudioMeter-<tag>-x64-portable.exe`；依赖本机已装 WebView2，与 NSIS 相同） | 同 |
-| **代码签名** | **不签名**（Release 页说明 SmartScreen 处理方法） | 有预算再说 |
-| **自动更新** | **不做**，靠 GitHub Release 通知 | v1.1 加 `tauri-plugin-updater`（Ed25519 签名，免费） |
+| **Windows 安装包** | **NSIS**（`*-setup.exe`）+ **便携** `AudioMeter-<tag>-x64-portable.exe`（由 `app.exe` 复制；依赖本机 WebView2） | 同 |
+| **macOS 安装包** | **DMG**（Apple Silicon），由 `release.yml` 的 `build-macos` job 产出并随 `v*` tag attach | Intel 变体、公证等按需 |
+| **代码签名** | **不签名 / 无公证**（README / Release 说明 SmartScreen、Gatekeeper、`xattr` 等） | 有预算再说 |
+| **自动更新** | **不做**，靠 GitHub Release 通知 | 加 `tauri-plugin-updater`（Ed25519 等） |
 | **发布渠道** | GitHub Releases | 同 |
 
-### 不签名的代价（用户知情）
+### 不签名 / 未公证的代价（用户知情）
 
-- Windows SmartScreen 首次运行会警告（用户点"更多信息 → 仍要运行"）
-- 部分杀毒软件可能拦截（国内 360 / 金山等）
-- README / Release 说明里必须明确写清楚处理方法
+- **Windows**：SmartScreen 首次运行会警告（用户点「更多信息 → 仍要运行」）；部分杀毒软件可能拦截。
+- **macOS**：Gatekeeper 可能提示已损坏，需按 README 去掉隔离属性等。
+- README / Release 说明里应写明处理方式。
 
 ### 不做自动更新的理由
 
@@ -558,16 +570,16 @@ interface LoudnessSlowPayload {
 
 | 触发方式 | 行为 |
 |---|---|
-| `git push origin v*`（**推荐**，`v` 前缀 + SemVer，如 `v0.0.3`） | 在 `windows-latest` 上执行 `npm ci` → `npm run build` → `npm run desktop:release-nsis`；上传 **artifact** `windows-nsis` 与 `windows-portable-exe`（原始 `app.exe`）；打 tag 时另复制为 `AudioMeter-<tag>-x64-portable.exe` 并与 NSIS 安装包一并 **attach 到 GitHub Release**。 |
-| 仅 Actions 里 **Run workflow**（`workflow_dispatch`） | 同样构建并上传上述 **artifact**，**不会**自动挂到 Releases（便于试打安装包、不污染版本列表）。 |
+| `git push origin v*`（**推荐**，`v` 前缀 + SemVer） | 并行跑 **`build-windows`** 与 **`build-macos`**：`build-windows` 产出 NSIS、便携 exe 并打 tag 时 attach；**`build-macos`** 产出 DMG 并 attach。两 job 均上传 workflow **artifact** 便于仅审阅构建结果。 |
+| 仅 Actions 里 **Run workflow**（`workflow_dispatch`） | 同样构建并上传 **artifact**，**不会**自动创建带附件的公开 Release。 |
 
 **维护者操作清单（对外发版）**：
 
-1. 将 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`（及必要时 `Cargo.lock`）中的 **版本号改成一致**。
+1. 将 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`（及必要时 `Cargo.lock`）中的 **版本号改成一致**（`npm run version:check`）。
 2. 提交并 `git push origin main`。
 3. `git tag -a vX.Y.Z -m "AudioMeter X.Y.Z"`，再 `git push origin vX.Y.Z`。
-4. 等待 **Release (Windows)** 成功；在 **Releases** 核对附件与版本说明。
-5. 在 Release 说明中写明 **§10 不签名 / SmartScreen** 等用户须知（可复制 README 相关句或简短重写）。
+4. 等待 **Release** workflow 成功；在 **Releases** 核对 **Windows + macOS** 附件与版本说明。
+5. 在 Release 说明中写明 **§10 不签名 / SmartScreen / Gatekeeper** 等用户须知（可复制 README）。
 
 ---
 
@@ -610,11 +622,11 @@ interface LoudnessSlowPayload {
 
 | 文档章节 / Phase | 状态 | 说明 |
 |---|---|---|
-| Phase 0–1：Tauri 壳 + 采集 | 已完成 | `cpal` + WASAPI loopback；前端走 `src/ipc/` |
+| Phase 0–1：Tauri 壳 + 采集 | 已完成 | Windows：`cpal` + WASAPI loopback；macOS：`platform_backend` + tap / cpal；前端走 `src/ipc/` |
 | Phase 2：DSP 在 Rust、删 worklet | **核心已完成** | `public/worklets/*` 已移除；Channel 推算好的指标；**meter 历史 ring** 在 Rust（`MeterHistoryEntry` + `get_meter_history`） |
 | §6 历史 ring 在 Rust | **主 ring 在 Rust（对齐快照）** | `VecDeque<MeterHistoryEntry>` 经 `Arc<Mutex<…>>` 共享；~95ms 一行，含响度 + spectrum/vectorscope/corr 与 `audioSnap` 所需字段；Channel `loudnessHistTick` 推送最新行；`get_meter_history` 全量拉取；Clear 清空 deque 并重置 Loudness/Spectrum/Vectorscope |
-| Phase 3：Windows 打包 | **已完成** | `.github/workflows/release.yml`：`npm run desktop:release-nsis` → NSIS + `target/release/app.exe` 双 artifact；打 `v*` tag 时 **Release** 附安装包与 `AudioMeter-<tag>-x64-portable.exe`（§10.1） |
-| `AudioCapture` / `AudioCaptureSession` | 已实现 | `audio/capture.rs`；`cpal_backend.rs` 含 `CaptureSession` + `build_device_list`（`pub(crate)`） |
+| Phase 3：安装包 | **已完成** | `release.yml`：**Windows** NSIS + 便携 exe；**macOS** DMG（`build-macos`）；打 `v*` tag 时 attach **GitHub Release**（§10.1） |
+| `AudioCapture` / `AudioCaptureSession` | 已实现 | `audio/capture.rs`；**Windows** `cpal_backend.rs`；**macOS** `audio/macos/` + `platform_backend.rs` |
 
 ---
 
@@ -622,31 +634,30 @@ interface LoudnessSlowPayload {
 
 | 扩展点 | 在代码里怎么体现 | 为谁服务 |
 |---|---|---|
-| **AudioCapture trait 抽象层** | `src-tauri/src/audio/capture.rs` 定义 trait，`cpal_backend.rs` 实现 | v1.5 macOS 后端 |
+| **AudioCapture trait 抽象层** | `audio/capture.rs`；`cpal_backend` + **macOS tap** 经 `platform_backend` | 跨平台采集、后续换后端 |
 | **PCM 数据结构带 `channels` 字段** | `PcmFrame { samples, channels, sample_rate, timestamp_ns }` | 多声道设备支持 |
-| **面板组件完全自包含** | 每个 Panel 组件不依赖 `App.jsx` 的外部状态，能作为独立窗口内容 | v1.1 浮窗 |
-| **Tauri 多窗口基础铺好** | Rust 侧状态管理和 event 分发按"多个 listener"设计 | v1.1 浮窗 |
-| **PCM tap 点** | 采集后、DSP 前留一个 `broadcast::channel<PcmFrame>`，v1.0 空闲 | 未来录音功能 |
+| **面板 + 辅窗口** | `FloatApp.jsx`、`?float=`、Pop out；Rust `FrameSubscribers` / `meter_add_frame_subscriber` | 浮窗已落地；可迭代 always-on-top 等 |
+| **Tauri 多窗口** | 主/辅 webview 共享一路引擎；event 多 listener | 浮窗与未来多窗 |
+| **PCM tap 点（预留）** | **尚未实现**：规划采集后、DSP 前可订阅 PCM（如 `broadcast` / 等价），供未来 **WAV 内录**；当前仓库**无** `broadcast::channel<PcmFrame>` | 未来录音 |
 | **历史 ring buffer 在 Rust** | DSP 输出同时 emit + 写 buffer | 数据导出、对比、长时间分析 |
 
-### 为多窗口做准备的代价
+### 多窗口与主界面
 
-为 v1.1 浮窗做架构准备，会让 v1.0 工作量 **+20% 左右**。但作者明确说"希望成为声音设计师常驻桌面的工具"，投入值得。
-
-**v1.0 UX 仍是单主窗口四合一**——但代码结构是多窗口就绪的。v1.1 加"右键面板 → 在独立窗口打开"功能时不用大改。
+浮窗与 **`FrameSubscribers`** 已在 main 落地（见 §7）。主界面默认仍是 **单窗口四面板**；后续多为体验与策略（置顶、多实例等），骨架已具备。
 
 ---
 
-## 13. 未来路线图（v1.0 后，不排序）
+## 13. 未来路线图（持续演进，不排序）
 
-**v1.1**：浮窗 / 多窗口（面板可独立出去、always-on-top、独立窗口配置持久化）
+**已部分落地（仍可加强）**
 
-**v1.5**：macOS 支持（BlackHole 兼容 + Core Audio Taps on macOS 14+）
+- **浮窗 / 辅 webview**：`?float=`、Pop out、边界持久化、与主窗共用采集与 `meter-history-cleared`（详见 §7）。可选后续：**always-on-top**、更多窗口管理策略。
+- **macOS 桌面版**：**main** 已含 **14.2+ tap** 与 **DMG** 发布流程。可选后续：公证、代码签名、Intel、更老系统的 BlackHole 文档化回退等。
 
-**其他候选**（顺序由未来决定）：
+**其他候选**（顺序由未来决定）
 
 - 多声道 UI 完善（Vectorscope 在多声道下的处理策略）
-- 监测期间录音（订阅 PCM tap，写 WAV）
+- 监测期间录音（需先实现 §12 **PCM tap** 或等价路径，再写 WAV）
 - 数据导出（CSV / 截图 / 分析报告）
 - 两段时间对比模式
 - Spectrogram 面板（瀑布图，纯前端新增）
@@ -667,7 +678,7 @@ interface LoudnessSlowPayload {
 ### 硬性约束（不要违反，违反请立刻停下和用户确认）
 
 1. **Rust 侧绝不往前端推 PCM**，一律推算好的指标。
-2. **前端组件不得直接调 `invoke` 或 `listen`**，所有 Tauri API 走 `src/ipc/`。
+2. **前端业务代码不得直接调 `invoke`、`listen` 或自建 Channel**；经 `src/ipc/` 封装。窗口 / DPI 相关 API 仅出现在 `ipc/floatWindow*.js`、`ipc/mainWindowControls.js` 等（见 §4）。
 3. **PCM 数据结构必须带 `channels` 字段**，不硬编码 stereo。
 4. **不引入"处理声音"的代码路径**——本项目永不做 EQ / 任何音频处理。
 5. **不改变目录结构**（`audio/` / `dsp/` / `engine/` / `ipc/` 的分层），新功能按关注点归入已有模块。
@@ -710,6 +721,7 @@ interface LoudnessSlowPayload {
 | 2026-04 | — | v1.1 浮窗首版：主/辅 webview 共享一路原生采集；`FrameSubscribers`（`main` + 动态 id）、`meter_add_frame_subscriber` / `get_engine_state`；`index.html?float=` + `WebviewWindow`；面板「Pop out」 |
 | 2026-04 | — | 浮窗补齐：`meter-history-cleared` + 共享 `meter_history` 同步清空；`floatWindowBoundsV1` 存位置；§7 浮窗要点；`resetFloatMeteringState` / `historyViewEpoch` |
 | 2026-04 | — | 浮窗 bounds：`v:2` 逻辑像素，inner/outer 与 `scaleFactor` 对齐，修正高 DPI 重开累积误差；旧存盘按物理→逻辑迁移 |
+| 2026-05 | — | 对齐 main：§0/§9 **macOS + Release DMG**；§4 目录树与 **ipc** 约束；§5 `FrameSubscribers`；§10/§10.1 双平台 CI；§12 PCM 预留未实现；§13 浮窗/macOS **已部分落地**；§14 与 §4  ipc 规则一致 |
 
 ---
 
