@@ -14,8 +14,8 @@ use tauri::AppHandle;
 
 use super::capture::{AudioCapture, AudioCaptureSession};
 use super::cpal_backend::{
-  append_input_devices, collect_outputs, pick_output_by_index, resolve_default_output,
-  run_meter_pipeline_bridge_thread, CpalBackend,
+  append_input_devices, collect_outputs, device_display_name, pick_output_by_index,
+  resolve_default_output, run_meter_pipeline_bridge_thread, CpalBackend,
 };
 use super::device::DeviceInfo;
 use super::device_id;
@@ -72,16 +72,15 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
   let mut out = Vec::new();
   let mut used_lb = HashSet::new();
   for (_idx, device, cfg) in collect_outputs()? {
-    let label = device.name().map_err(|e| e.to_string())?;
+    let label = device_display_name(&device)?;
     let core_uid = uid_for_output_name(&label);
-    let id =
-      device_id::alloc_loopback_id(&label, cfg.channels(), cfg.sample_rate().0, &mut used_lb);
+    let id = device_id::alloc_loopback_id(&label, cfg.channels(), cfg.sample_rate(), &mut used_lb);
     out.push(DeviceInfo {
       id,
       label,
       is_system_output_monitor: true,
       is_loopback: true,
-      default_sample_rate: cfg.sample_rate().0,
+      default_sample_rate: cfg.sample_rate(),
       channels: cfg.channels(),
       core_audio_output_uid: core_uid,
     });
@@ -99,15 +98,15 @@ fn resolve_tap_uid_channels_rate(device_id: &str) -> Result<(String, u32, u16), 
   if device_id.is_empty() || device_id == "default" {
     let uid = uid_for_default_output()?;
     let (_dev, cfg) = resolve_default_output()?;
-    return Ok((uid, cfg.sample_rate().0, cfg.channels()));
+    return Ok((uid, cfg.sample_rate(), cfg.channels()));
   }
   if let Some(n) = device_id::parse_legacy_output_index(device_id) {
     let (dev, cfg) = pick_output_by_index(n)?;
-    let name = dev.name().map_err(|e| e.to_string())?;
+    let name = device_display_name(&dev)?;
     let uid = uid_for_output_name(&name).ok_or_else(|| {
       format!("no Core Audio UID for output device \"{name}\" (macOS 14.2+ tap requires a UID)")
     })?;
-    return Ok((uid, cfg.sample_rate().0, cfg.channels()));
+    return Ok((uid, cfg.sample_rate(), cfg.channels()));
   }
   if device_id::is_stable_loopback_id(device_id) {
     for d in list_loopback_rows_macos()? {
