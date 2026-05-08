@@ -1,6 +1,7 @@
 //! ITU-R BS.1770 / EBU R128 style loudness (ported from `loudness-meter.js`).
 
-use super::filters::KWeightStereo;
+use super::filters::{KWeightMono, KWeightStereo};
+use crate::engine::ChannelLayoutSetting;
 
 const IBL_CAP: usize = 36_000;
 const STH_CAP: usize = 36_000;
@@ -53,6 +54,7 @@ fn init_true_peak_filters() -> (usize, usize, Vec<Vec<f64>>) {
 pub struct LoudnessMeter {
   sample_rate: f64,
   kf: KWeightStereo,
+  kf_mc: Vec<KWeightMono>,
   bsz: usize,
   ba: [f64; 2],
   bn: usize,
@@ -81,6 +83,7 @@ impl LoudnessMeter {
     Self {
       sample_rate: sr,
       kf: KWeightStereo::new(sr),
+      kf_mc: Vec::new(),
       bsz: bsz.max(1),
       ba: [0.0, 0.0],
       bn: 0,
@@ -294,11 +297,132 @@ impl LoudnessMeter {
     &mut self,
     interleaved: &[f32],
     channels: u16,
+    channel_layout: ChannelLayoutSetting,
   ) -> Option<LoudnessBlock> {
     let ch = channels.max(1) as usize;
     if ch == 1 {
       return self.push_mono_duplex(interleaved);
     }
+
+    // Manual 5.1 preset: Ch1..Ch6 => FL FR C LFE SL SR.
+    // Loudness aggregation per BS.1770 sums K-weighted mean-squares across channels; LFE has 0 weight.
+    if channel_layout == ChannelLayoutSetting::Surround51 && ch >= 6 {
+      if self.kf_mc.len() != 6 {
+        self.kf_mc = (0..6).map(|_| KWeightMono::new(self.sample_rate)).collect();
+      }
+      let mut out = None;
+      let frames = interleaved.len() / ch;
+      for i in 0..frames {
+        let base = i * ch;
+        let mut sum_ms = 0.0_f64;
+        for (ci, w) in [1.0_f64, 1.0, 1.0, 0.0, 1.0, 1.0].into_iter().enumerate() {
+          let x = interleaved[base + ci] as f64;
+          let kw = self.kf_mc[ci].tick(x);
+          if w != 0.0 {
+            sum_ms += w * kw * kw;
+          }
+        }
+        self.ba[0] += sum_ms;
+        self.ba[1] += 0.0;
+
+        // Keep true-peak semantics consistent with the existing UI: report L/R from channels 1/2.
+        let xl = interleaved[base] as f64;
+        let xr = interleaved[base + 1] as f64;
+        let tp0 = self.tp_sample(xl, 0);
+        let tp1 = self.tp_sample(xr, 1);
+        if tp0 > self.tp_block {
+          self.tp_block = tp0;
+        }
+        if tp1 > self.tp_block {
+          self.tp_block = tp1;
+        }
+        if tp0 > self.tp_block_ch[0] {
+          self.tp_block_ch[0] = tp0;
+        }
+        if tp1 > self.tp_block_ch[1] {
+          self.tp_block_ch[1] = tp1;
+        }
+
+        self.bn += 1;
+        if self.bn >= self.bsz {
+          let m0 = self.ba[0] / self.bn as f64;
+          let m1 = 0.0_f64;
+          let idx = self.rh * 2;
+          self.ring[idx] = m0;
+          self.ring[idx + 1] = m1;
+          self.rh = (self.rh + 1) % self.rn;
+          self.rc = (self.rc + 1).min(self.rn);
+          self.ibl.push([m0, m1]);
+          if self.ibl.len() > IBL_CAP {
+            self.ibl.remove(0);
+          }
+          let mut a0 = 0.0;
+          let mut a1 = 0.0;
+          let mut an = 0_usize;
+          for b in 0..4.min(self.rc) {
+            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
+            a0 += self.ring[idx];
+            a1 += self.ring[idx + 1];
+            an += 1;
+          }
+          let momentary = if an > 0 {
+            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
+          } else {
+            f64::NEG_INFINITY
+          };
+          a0 = 0.0;
+          a1 = 0.0;
+          an = 0;
+          for b in 0..30.min(self.rc) {
+            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
+            a0 += self.ring[idx];
+            a1 += self.ring[idx + 1];
+            an += 1;
+          }
+          let short_term = if an > 0 {
+            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
+          } else {
+            f64::NEG_INFINITY
+          };
+          if short_term.is_finite() {
+            self.sth.push(short_term);
+            if self.sth.len() > STH_CAP {
+              self.sth.remove(0);
+            }
+          }
+          let tp_now = if self.tp_block > 0.0 {
+            20.0 * self.tp_block.log10()
+          } else {
+            f64::NEG_INFINITY
+          };
+          let tp_now_l = if self.tp_block_ch[0] > 0.0 {
+            20.0 * self.tp_block_ch[0].log10()
+          } else {
+            f64::NEG_INFINITY
+          };
+          let tp_now_r = if self.tp_block_ch[1] > 0.0 {
+            20.0 * self.tp_block_ch[1].log10()
+          } else {
+            f64::NEG_INFINITY
+          };
+          out = Some(LoudnessBlock {
+            momentary,
+            short_term,
+            integrated: self.integrated(),
+            lra: self.lra(),
+            true_peak: tp_now,
+            true_peak_l: tp_now_l,
+            true_peak_r: tp_now_r,
+          });
+          self.ba = [0.0, 0.0];
+          self.bn = 0;
+          self.tp_block = 0.0;
+          self.tp_block_ch = [0.0, 0.0];
+        }
+      }
+      return out;
+    }
+
     let frames = interleaved.len() / ch;
     if frames == 0 {
       return None;

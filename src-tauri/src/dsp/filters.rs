@@ -89,3 +89,23 @@ impl KWeightStereo {
     (kl, kr)
   }
 }
+
+/// Two K-weighting stages in series for one channel.
+#[derive(Clone)]
+pub struct KWeightMono {
+  s: [Biquad; 2],
+}
+
+impl KWeightMono {
+  pub fn new(sample_rate: f64) -> Self {
+    let (s1, s2) = kw_coeffs(sample_rate);
+    Self {
+      s: [Biquad::new(s1), Biquad::new(s2)],
+    }
+  }
+
+  pub fn tick(&mut self, x: f64) -> f64 {
+    let y0 = self.s[0].tick(x);
+    self.s[1].tick(y0)
+  }
+}
