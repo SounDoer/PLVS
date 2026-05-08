@@ -3,20 +3,15 @@
 use serde::{Deserialize, Serialize};
 
 /// Layout preset selected in UI Settings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ChannelLayoutSetting {
+  #[default]
   Auto,
   Stereo,
   /// 5.1 (FL, FR, C, LFE, SL, SR).
   #[serde(rename = "5.1")]
   Surround51,
-}
-
-impl Default for ChannelLayoutSetting {
-  fn default() -> Self {
-    Self::Auto
-  }
 }
 
 impl ChannelLayoutSetting {

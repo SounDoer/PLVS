@@ -523,10 +523,10 @@ mod tests {
     let mut pcm2 = vec![0.0_f32; frames * 2];
     for f in 0..frames {
       let base = f * ch;
-      pcm51[base + 0] = 0.1;
+      pcm51[base] = 0.1;
       pcm51[base + 1] = -0.1;
       // other channels are silent
-      pcm2[f * 2 + 0] = 0.1;
+      pcm2[f * 2] = 0.1;
       pcm2[f * 2 + 1] = -0.1;
     }
     let mut m_st = LoudnessMeter::new(sr);
