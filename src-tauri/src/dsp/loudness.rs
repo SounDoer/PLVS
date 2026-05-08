@@ -456,3 +456,74 @@ pub struct LoudnessBlock {
   pub true_peak_l: f64,
   pub true_peak_r: f64,
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn run_once_100ms(
+    m: &mut LoudnessMeter,
+    interleaved: &[f32],
+    channels: u16,
+    layout: ChannelLayoutSetting,
+  ) -> LoudnessBlock {
+    m.push_interleaved_multichannel(interleaved, channels, layout)
+      .expect("expected a 100ms loudness block")
+  }
+
+  #[test]
+  fn manual_51_ignores_lfe_for_loudness() {
+    let sr = 48_000.0;
+    let frames = 4_800usize; // ~100ms
+    let ch = 6usize;
+    let mut pcm0 = vec![0.0_f32; frames * ch];
+    let mut pcm1 = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      // FL FR C LFE SL SR
+      for (ci, v) in [(0, 0.1_f32), (1, 0.1), (2, 0.1), (3, 0.0), (4, 0.1), (5, 0.1)] {
+        pcm0[base + ci] = v;
+      }
+      for (ci, v) in [(0, 0.1_f32), (1, 0.1), (2, 0.1), (3, 0.8), (4, 0.1), (5, 0.1)] {
+        pcm1[base + ci] = v;
+      }
+    }
+    let mut m0 = LoudnessMeter::new(sr);
+    let mut m1 = LoudnessMeter::new(sr);
+    let b0 = run_once_100ms(&mut m0, &pcm0, 6, ChannelLayoutSetting::Surround51);
+    let b1 = run_once_100ms(&mut m1, &pcm1, 6, ChannelLayoutSetting::Surround51);
+    assert!(
+      (b0.momentary - b1.momentary).abs() < 0.15,
+      "LFE must not change 5.1 loudness: {} vs {}",
+      b0.momentary,
+      b1.momentary
+    );
+  }
+
+  #[test]
+  fn manual_51_matches_stereo_when_only_fl_fr_present() {
+    let sr = 48_000.0;
+    let frames = 4_800usize; // ~100ms
+    let ch = 6usize;
+    let mut pcm51 = vec![0.0_f32; frames * ch];
+    let mut pcm2 = vec![0.0_f32; frames * 2];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm51[base + 0] = 0.1;
+      pcm51[base + 1] = -0.1;
+      // other channels are silent
+      pcm2[f * 2 + 0] = 0.1;
+      pcm2[f * 2 + 1] = -0.1;
+    }
+    let mut m_st = LoudnessMeter::new(sr);
+    let mut m_51 = LoudnessMeter::new(sr);
+    let b_st = m_st.push_interleaved(&pcm2).expect("stereo block");
+    let b_51 = run_once_100ms(&mut m_51, &pcm51, 6, ChannelLayoutSetting::Surround51);
+    assert!(
+      (b_st.momentary - b_51.momentary).abs() < 0.15,
+      "5.1 should match stereo when only FL/FR carry signal: {} vs {}",
+      b_st.momentary,
+      b_51.momentary
+    );
+  }
+}
