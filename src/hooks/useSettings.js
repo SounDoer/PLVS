@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { UI_PREFERENCES, applyUiPreferencesToDocument, readPersistedUiMode } from "../uiPreferences";
+import { getDefaultLoudnessReferenceProfileId, normalizeLoudnessReferenceProfileId } from "../loudnessReferenceProfiles";
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -12,6 +13,15 @@ export function useSettings() {
       if (s.standard === "ebu" || s.standard === "stream") return s.standard;
     } catch (_) {}
     return "ebu";
+  });
+  const [referenceProfileId, setReferenceProfileId] = useState(() => {
+    try {
+      const raw = localStorage.getItem(UI_PREFERENCES.layoutPersistKey);
+      if (!raw) return getDefaultLoudnessReferenceProfileId();
+      const s = JSON.parse(raw);
+      return normalizeLoudnessReferenceProfileId(s.referenceProfileId);
+    } catch (_) {}
+    return getDefaultLoudnessReferenceProfileId();
   });
   const uiModeRef = useRef(uiMode);
 
@@ -35,5 +45,15 @@ export function useSettings() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [settingsOpen]);
 
-  return { settingsOpen, setSettingsOpen, uiMode, setUiMode, standard, setStandard, uiModeRef };
+  return {
+    settingsOpen,
+    setSettingsOpen,
+    uiMode,
+    setUiMode,
+    standard,
+    setStandard,
+    referenceProfileId,
+    setReferenceProfileId,
+    uiModeRef,
+  };
 }

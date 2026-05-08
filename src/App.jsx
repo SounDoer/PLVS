@@ -19,6 +19,7 @@ import { useHoverState } from "./hooks/useHoverState";
 import { useMeterHealth } from "./hooks/useMeterHealth";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
+import { getLoudnessReferenceProfileById, LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
 import { PillButton } from "./components/PillButton";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { isTauri } from "./ipc/env.js";
@@ -44,7 +45,17 @@ export default function App() {
   const buildVersion = buildVersionRaw === "dev" ? "dev" : buildVersionRaw.slice(0, 7);
   const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
 
-  const { settingsOpen, setSettingsOpen, uiMode, setUiMode, standard, setStandard, uiModeRef } = useSettings();
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    uiMode,
+    setUiMode,
+    standard,
+    setStandard,
+    referenceProfileId,
+    setReferenceProfileId,
+    uiModeRef,
+  } = useSettings();
 
   const [running, setRunning] = useState(false);
   const [audioDevices, setAudioDevices] = useState([]);
@@ -172,6 +183,7 @@ export default function App() {
     );
   const toggleCurve = (key) => setHistCurves((prev) => ({ ...prev, [key]: !prev[key] }));
   const targetLufs = standard === "ebu" ? -23 : -14;
+  const referenceProfile = useMemo(() => getLoudnessReferenceProfileById(referenceProfileId), [referenceProfileId]);
   const historyYAxisTicks = useMemo(() => {
     const out = [...LOUDNESS_TICKS];
     if (!out.some((t) => t.v === targetLufs)) out.push({ v: targetLufs, lb: String(targetLufs) });
@@ -402,10 +414,19 @@ export default function App() {
     try {
       localStorage.setItem(
         STORE_KEY,
-        JSON.stringify({ mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, standard, uiMode, channelLayout })
+        JSON.stringify({
+          mainLeft,
+          leftTopRatio,
+          rightTopRatio,
+          loudnessHistWidthRatio,
+          standard,
+          referenceProfileId,
+          uiMode,
+          channelLayout,
+        })
       );
     } catch (_) {}
-  }, [mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, standard, uiMode, channelLayout]);
+  }, [mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, standard, referenceProfileId, uiMode, channelLayout]);
 
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;
@@ -617,6 +638,7 @@ export default function App() {
               loudnessHistWidthRatio={loudnessHistWidthRatio}
               historyYAxisTicks={historyYAxisTicks}
               targetLufs={targetLufs}
+              referenceProfile={referenceProfile}
               hasHistoryData={hasHistoryData}
               historyChartInteractive={historyChartInteractive}
               running={running}
@@ -698,6 +720,9 @@ export default function App() {
         setUiMode={setUiMode}
         standard={standard}
         setStandard={setStandard}
+        referenceProfileId={referenceProfileId}
+        setReferenceProfileId={setReferenceProfileId}
+        loudnessReferenceProfiles={LOUDNESS_REFERENCE_PROFILES}
         channelLayout={channelLayout}
         setChannelLayout={setChannelLayout}
         resetLayout={resetLayout}

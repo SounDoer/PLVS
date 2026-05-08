@@ -5,6 +5,9 @@ export function SettingsPanel({
   setUiMode,
   standard,
   setStandard,
+  referenceProfileId,
+  setReferenceProfileId,
+  loudnessReferenceProfiles,
   channelLayout,
   setChannelLayout,
   resetLayout,
@@ -30,6 +33,20 @@ export function SettingsPanel({
             <select value={standard} onChange={(e) => setStandard(e.target.value)} className="ui-select">
               <option value="ebu">EBU R128</option>
               <option value="stream">Streaming</option>
+            </select>
+          </div>
+          <div className="ui-settings-row">
+            <span className="ui-settings-label">Loudness reference</span>
+            <select
+              value={referenceProfileId}
+              onChange={(e) => setReferenceProfileId(e.target.value)}
+              className="ui-select"
+            >
+              {(loudnessReferenceProfiles || []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="ui-settings-row">
