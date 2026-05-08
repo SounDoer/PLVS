@@ -16,6 +16,7 @@ import { useAudioEngine } from "./hooks/useAudioEngine";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useHoverState } from "./hooks/useHoverState";
+import { useMeterHealth } from "./hooks/useMeterHealth";
 import { PillButton } from "./components/PillButton";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { isTauri } from "./ipc/env.js";
@@ -27,6 +28,7 @@ import {
   saveCaptureDeviceId,
 } from "./ipc/capturePrefs.js";
 import { TitleBarWindowControls } from "./components/TitleBarWindowControls";
+import { MeterHealthBadge } from "./components/MeterHealthBadge";
 import { PeakPanel } from "./components/panels/PeakPanel";
 import { LoudnessPanel } from "./components/panels/LoudnessPanel";
 import { SpectrumPanel } from "./components/panels/SpectrumPanel";
@@ -53,6 +55,7 @@ export default function App() {
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
   const [histCurves, setHistCurves] = useState({ m: false, st: true });
+  const meterHealth = useMeterHealth();
   const [audio, setAudio] = useState({
     momentary: -Infinity,
     shortTerm: -Infinity,
@@ -626,6 +629,8 @@ export default function App() {
           <span>{status}</span>
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
           <span>{status2}</span>
+          <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
+          <MeterHealthBadge health={meterHealth} />
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
           <span>Loudness standard: {standard === "ebu" ? "EBU R128" : "Streaming"}</span>
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />

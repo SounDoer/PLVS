@@ -58,4 +58,9 @@
  * @property {string|undefined} error
  */
 
+/**
+ * @typedef {object} EngineBackpressurePayload
+ * @property {number} droppedChunks
+ */
+
 export {};

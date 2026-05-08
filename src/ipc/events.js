@@ -34,6 +34,16 @@ export async function onEngineStateChanged(handler) {
 }
 
 /**
+ * @param {(payload: import("./types.js").EngineBackpressurePayload) => void} handler
+ * @returns {Promise<() => void>}
+ */
+export async function onEngineBackpressure(handler) {
+  return listen("engine-backpressure", (e) => {
+    handler(e.payload);
+  });
+}
+
+/**
  * @param {(sampleRateHz: number) => void} handler
  * @returns {Promise<() => void>}
  */

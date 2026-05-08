@@ -15,6 +15,13 @@ pub struct EngineStateChanged {
   pub error: Option<String>,
 }
 
+/// Backpressure / drop signal for user-visible meter health (low-frequency).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineBackpressurePayload {
+  pub dropped_chunks: u64,
+}
+
 /// Resolved device name and format for UI (e.g. before `audio_start` with `deviceId: "default"`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

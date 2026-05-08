@@ -15,7 +15,7 @@ use super::device::DeviceInfo;
 use super::device_id;
 
 use crate::engine::MeterPipeline;
-use crate::ipc::types::MeterHistoryBuf;
+use crate::ipc::types::{EngineBackpressurePayload, MeterHistoryBuf};
 use tauri::{AppHandle, Emitter};
 
 fn is_name_heuristic_loopback(name: &str) -> bool {
@@ -274,6 +274,12 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
       if dropped > 0 {
         log::warn!("cpal→meter queue dropped {dropped} audio chunks (callback backpressure)");
+        let _ = app.emit(
+          "engine-backpressure",
+          EngineBackpressurePayload {
+            dropped_chunks: dropped,
+          },
+        );
       }
     }
     if clear_peak_history.load(Ordering::Acquire) {
