@@ -1,4 +1,5 @@
 import { UI_PREFERENCES } from "../../uiPreferences";
+import { buildVectorscopePairOptions, formatVectorscopePairLabel } from "../../math/vectorscopePairMath.js";
 
 export function VectorscopePanel({
   vsGridDiagInset,
@@ -10,22 +11,21 @@ export function VectorscopePanel({
   pairX = 0,
   pairY = 1,
   onPairChange,
+  pairLabel,
 }) {
+  const effectiveLabel =
+    typeof pairLabel === "string" && pairLabel.length > 0
+      ? pairLabel
+      : formatVectorscopePairLabel({ x: pairX, y: pairY, layoutKnown: false });
   const canSelect = typeof onPairChange === "function" && Number.isFinite(channelCount) && channelCount >= 2;
-  const options = [];
-  if (canSelect) {
-    for (let x = 0; x < channelCount; x += 1) {
-      for (let y = x + 1; y < channelCount; y += 1) {
-        options.push({ x, y, key: `${x}-${y}`, label: `Ch ${x + 1}/Ch ${y + 1}` });
-      }
-    }
-  }
+  const options = canSelect ? buildVectorscopePairOptions(channelCount) : [];
   const valueKey = `${Number(pairX)}-${Number(pairY)}`;
   return (
     <article className="ui-article ui-min-h-spectrum flex-1">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <div className="ui-section-title ui-section-title-main min-w-0">Vectorscope</div>
         <div className="flex shrink-0 items-baseline gap-2 text-[length:var(--ui-fs-extra)]">
+          <span className="text-[color:var(--ui-color-text-muted)]">{effectiveLabel}</span>
           {canSelect ? (
             <select
               className="ui-select"

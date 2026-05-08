@@ -18,6 +18,7 @@ import { useSnapshot } from "./hooks/useSnapshot";
 import { useHoverState } from "./hooks/useHoverState";
 import { useMeterHealth } from "./hooks/useMeterHealth";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
+import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import { PillButton } from "./components/PillButton";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { isTauri } from "./ipc/env.js";
@@ -210,6 +211,12 @@ export default function App() {
     [channelLayout, channelCount]
   );
   const showLayoutUnknownMessage = layoutResolution.mode === "auto" && layoutResolution.resolved === "unknown" && channelCount > 2;
+
+  const vectorscopePairLabel = formatVectorscopePairLabel({
+    x: vectorscopePairUi.x,
+    y: vectorscopePairUi.y,
+    layoutKnown: layoutResolution.resolved !== "unknown",
+  });
 
 
   useEffect(() => {
@@ -590,6 +597,7 @@ export default function App() {
               pairX={vectorscopePairUi.x}
               pairY={vectorscopePairUi.y}
               onPairChange={onVectorscopePairChange}
+              pairLabel={vectorscopePairLabel}
             />
           </section>
 
