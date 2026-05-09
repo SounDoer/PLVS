@@ -27,15 +27,38 @@ fn is_name_heuristic_loopback(name: &str) -> bool {
     || n.contains("立体声混音")
 }
 
-/// Human-readable device label (cpal 0.17+ `DeviceTrait::description` name field).
-pub(crate) fn device_display_name(device: &cpal::Device) -> Result<String, String> {
+/// Short name from cpal / WASAPI (`DeviceDesc` on Windows). Used for **stable device ids** (`lb-*` / `cap-*`)
+/// so ids do not change when we only enrich the UI label.
+pub(crate) fn device_id_key(device: &cpal::Device) -> Result<String, String> {
   Ok(
     device
       .description()
       .map_err(|e| e.to_string())?
       .name()
+      .trim()
       .to_string(),
   )
+}
+
+/// User-facing list label: on Windows, cpal often puts the generic endpoint name in `name()` and the
+/// hardware / driver product string in `extended()` (e.g. FriendlyName vs DeviceDesc).
+pub(crate) fn device_list_label(device: &cpal::Device) -> Result<String, String> {
+  let d = device.description().map_err(|e| e.to_string())?;
+  let primary = d.name().trim();
+  let parts: Vec<&str> = d
+    .extended()
+    .iter()
+    .map(|s| s.trim())
+    .filter(|s| !s.is_empty())
+    .collect();
+  if parts.is_empty() {
+    return Ok(primary.to_string());
+  }
+  let detail = parts.join(" · ");
+  if detail == primary {
+    return Ok(primary.to_string());
+  }
+  Ok(format!("{detail} — {primary}"))
 }
 
 pub(crate) fn collect_outputs(
@@ -52,8 +75,8 @@ pub(crate) fn collect_outputs(
     }
   }
   rows.sort_by(|a, b| {
-    let na = device_display_name(&a.1).unwrap_or_default();
-    let nb = device_display_name(&b.1).unwrap_or_default();
+    let na = device_list_label(&a.1).unwrap_or_default();
+    let nb = device_list_label(&b.1).unwrap_or_default();
     na.to_lowercase().cmp(&nb.to_lowercase())
   });
   Ok(rows)
@@ -69,8 +92,8 @@ pub(crate) fn collect_inputs(
     }
   }
   rows.sort_by(|a, b| {
-    let na = device_display_name(&a.1).unwrap_or_default();
-    let nb = device_display_name(&b.1).unwrap_or_default();
+    let na = device_list_label(&a.1).unwrap_or_default();
+    let nb = device_list_label(&b.1).unwrap_or_default();
     na.to_lowercase().cmp(&nb.to_lowercase())
   });
   Ok(rows)
@@ -114,18 +137,20 @@ fn pick_input_by_index(
 
 /// Selectable sources: system **outputs** (loopback) first, then **inputs** (mics, line in, virtual cables, etc.).
 ///
-/// Device ids are stable across UI refreshes (`lb-*` / `cap-*` hashes). Legacy `out:N` / `in:N` index ids are still
-/// accepted in [`resolve_device`].
+/// Device ids are stable across **UI refreshes and default format changes** (`lb-*` / `cap-*`: short
+/// endpoint name + collision nonce). List `label` may include extra lines from cpal (e.g. Windows
+/// hardware name). Legacy format-based v1 hashes and `out:N` / `in:N` index ids are still accepted in [`resolve_device`].
 pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
   let mut out = Vec::new();
   let mut used_lb = HashSet::new();
 
   for (_idx, device, cfg) in collect_outputs()? {
-    let name = device_display_name(&device)?;
-    let id = device_id::alloc_loopback_id(&name, cfg.channels(), cfg.sample_rate(), &mut used_lb);
+    let key = device_id_key(&device)?;
+    let label = device_list_label(&device)?;
+    let id = device_id::alloc_loopback_id(&key, &mut used_lb);
     out.push(DeviceInfo {
       id,
-      label: name,
+      label,
       is_system_output_monitor: true,
       is_loopback: true,
       default_sample_rate: cfg.sample_rate(),
@@ -143,9 +168,11 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
 pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), String> {
   let mut used_cap = HashSet::new();
   for (_idx, device, cfg) in collect_inputs()? {
-    let label = device_display_name(&device)?;
-    let is_loopback = is_name_heuristic_loopback(&label);
-    let id = device_id::alloc_capture_id(&label, cfg.channels(), cfg.sample_rate(), &mut used_cap);
+    let key = device_id_key(&device)?;
+    let label = device_list_label(&device)?;
+    let is_loopback =
+      is_name_heuristic_loopback(&key) || is_name_heuristic_loopback(&label);
+    let id = device_id::alloc_capture_id(&key, &mut used_cap);
     out.push(DeviceInfo {
       id,
       label,
@@ -164,9 +191,9 @@ pub(crate) fn resolve_default_output() -> Result<(cpal::Device, cpal::SupportedS
 {
   let host = cpal::default_host();
   if let Some(def) = host.default_output_device() {
-    let def_name = device_display_name(&def)?;
+    let def_name = device_id_key(&def)?;
     for device in host.output_devices().map_err(|e| e.to_string())? {
-      let Ok(name) = device_display_name(&device) else {
+      let Ok(name) = device_id_key(&device) else {
         continue;
       };
       if name == def_name {
@@ -191,8 +218,16 @@ fn resolve_stable_loopback(
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
   let mut used_lb = HashSet::new();
   for (_, device, cfg) in collect_outputs()? {
-    let name = device_display_name(&device)?;
-    let id = device_id::alloc_loopback_id(&name, cfg.channels(), cfg.sample_rate(), &mut used_lb);
+    let key = device_id_key(&device)?;
+    let id = device_id::alloc_loopback_id(&key, &mut used_lb);
+    if id == target {
+      return Ok((device, cfg));
+    }
+  }
+  let mut used_legacy = HashSet::new();
+  for (_, device, cfg) in collect_outputs()? {
+    let name = device_id_key(&device)?;
+    let id = device_id::legacy_alloc_loopback_id(&name, cfg.channels(), cfg.sample_rate(), &mut used_legacy);
     if id == target {
       return Ok((device, cfg));
     }
@@ -205,13 +240,47 @@ fn resolve_stable_capture(
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
   let mut used_cap = HashSet::new();
   for (_, device, cfg) in collect_inputs()? {
-    let name = device_display_name(&device)?;
-    let id = device_id::alloc_capture_id(&name, cfg.channels(), cfg.sample_rate(), &mut used_cap);
+    let key = device_id_key(&device)?;
+    let id = device_id::alloc_capture_id(&key, &mut used_cap);
+    if id == target {
+      return Ok((device, cfg));
+    }
+  }
+  let mut used_legacy = HashSet::new();
+  for (_, device, cfg) in collect_inputs()? {
+    let name = device_id_key(&device)?;
+    let id = device_id::legacy_alloc_capture_id(&name, cfg.channels(), cfg.sample_rate(), &mut used_legacy);
     if id == target {
       return Ok((device, cfg));
     }
   }
   Err(format!("Unknown capture device id: {target}"))
+}
+
+/// v2 list id for a loopback row that matches the given **id key** (short name) and current default format.
+pub fn loopback_list_id_for_row(name: &str, channels: u16, sample_rate: u32) -> Result<Option<String>, String> {
+  let mut used_lb = HashSet::new();
+  for (_, device, cfg) in collect_outputs()? {
+    let row_key = device_id_key(&device)?;
+    let id = device_id::alloc_loopback_id(&row_key, &mut used_lb);
+    if row_key == name && cfg.channels() == channels && cfg.sample_rate() == sample_rate {
+      return Ok(Some(id));
+    }
+  }
+  Ok(None)
+}
+
+/// v2 list id for a capture row that matches the given **id key** (short name) and current default format.
+pub fn capture_list_id_for_row(name: &str, channels: u16, sample_rate: u32) -> Result<Option<String>, String> {
+  let mut used_cap = HashSet::new();
+  for (_, device, cfg) in collect_inputs()? {
+    let row_key = device_id_key(&device)?;
+    let id = device_id::alloc_capture_id(&row_key, &mut used_cap);
+    if row_key == name && cfg.channels() == channels && cfg.sample_rate() == sample_rate {
+      return Ok(Some(id));
+    }
+  }
+  Ok(None)
 }
 
 fn resolve_device(device_id: &str) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
@@ -244,11 +313,18 @@ pub fn device_default_format(device_id: &str) -> Result<(u32, u16), String> {
   Ok((supported.sample_rate(), supported.channels()))
 }
 
-/// Human-readable device name and format for a capture target (including `"default"` → OS default output).
-pub fn preview_device(device_id: &str) -> Result<(String, u32, u16), String> {
+/// Human-readable list label, **stable id key** (short name), and format for a capture target
+/// (including `"default"` → OS default output).
+pub fn preview_device(device_id: &str) -> Result<(String, String, u32, u16), String> {
   let (device, supported) = resolve_device(device_id)?;
-  let label = device_display_name(&device)?;
-  Ok((label, supported.sample_rate(), supported.channels()))
+  let label = device_list_label(&device)?;
+  let key = device_id_key(&device)?;
+  Ok((
+    label,
+    key,
+    supported.sample_rate(),
+    supported.channels(),
+  ))
 }
 
 struct RunCaptureArgs {

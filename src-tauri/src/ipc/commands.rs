@@ -22,12 +22,36 @@ pub fn list_audio_devices() -> Result<Vec<DeviceInfo>, String> {
 
 #[tauri::command]
 pub fn preview_audio_device(device_id: String) -> Result<AudioDevicePreview, String> {
-  let (label, sample_rate_hz, channels) = cpal_backend::preview_device(&device_id)?;
+  let (label, _id_key, sample_rate_hz, channels) = cpal_backend::preview_device(&device_id)?;
   Ok(AudioDevicePreview {
     label,
     sample_rate_hz,
     channels,
   })
+}
+
+/// If `device_id` is an old format-based `lb-*` / `cap-*` v1 hash, resolve it and return the current v2 id;
+/// [`None`] if unknown or unplugged (caller may fall back to `"default"`).
+#[tauri::command]
+pub fn migrate_capture_device_id(device_id: String) -> Result<Option<String>, String> {
+  if device_id.is_empty() || device_id == "default" {
+    return Ok(None);
+  }
+  let list = AudioCapture::list_devices(&AppAudioBackend)?;
+  if list.iter().any(|d| d.id == device_id) {
+    return Ok(Some(device_id.clone()));
+  }
+  let (_label, id_key, sr, ch) = match cpal_backend::preview_device(&device_id) {
+    Ok(v) => v,
+    Err(_) => return Ok(None),
+  };
+  if let Some(id) = cpal_backend::loopback_list_id_for_row(&id_key, ch, sr)? {
+    return Ok(Some(id));
+  }
+  if let Some(id) = cpal_backend::capture_list_id_for_row(&id_key, ch, sr)? {
+    return Ok(Some(id));
+  }
+  Ok(None)
 }
 
 #[tauri::command]

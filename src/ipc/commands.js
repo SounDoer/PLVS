@@ -12,6 +12,11 @@ export async function previewAudioDevice(deviceId) {
   return invoke("preview_audio_device", { deviceId });
 }
 
+/** @returns {Promise<string | null | undefined>} Current v2 id, or nothing if unknown/unplugged. */
+export function migrateCaptureDeviceId(deviceId) {
+  return invoke("migrate_capture_device_id", { deviceId });
+}
+
 /** @param {{ deviceId: string; onFrame: (payload: object) => void }} opts */
 export async function startAudioCapture({ deviceId, onFrame }) {
   const onAudio = new Channel();

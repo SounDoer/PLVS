@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   peakFromTopFrac,
   PEAK_DB_MIN,
@@ -18,12 +18,19 @@ import { useSnapshot } from "./hooks/useSnapshot";
 import { useHoverState } from "./hooks/useHoverState";
 import { useMeterHealth } from "./hooks/useMeterHealth";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
+import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import { getLoudnessReferenceProfileById, LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
 import { PillButton } from "./components/PillButton";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { isTauri } from "./ipc/env.js";
-import { clearAudioHistory, listAudioDevices, setVectorscopePair } from "./ipc/commands.js";
+import {
+  clearAudioHistory,
+  listAudioDevices,
+  migrateCaptureDeviceId,
+  previewAudioDevice,
+  setVectorscopePair,
+} from "./ipc/commands.js";
 import { onDeviceListChanged } from "./ipc/events.js";
 import {
   loadCaptureDeviceId,
@@ -60,6 +67,8 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [audioDevices, setAudioDevices] = useState([]);
   const [captureDeviceId, setCaptureDeviceId] = useState(() => readCaptureDeviceIdFromLocalStorage());
+  /** `channels:sampleRate` for `"default"` (OS playback); refreshed when device list / default route changes */
+  const [defaultOutputFormatSig, setDefaultOutputFormatSig] = useState("");
   const [channelLayout, setChannelLayout] = useState("auto");
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [historyWindowSec, setHistoryWindowSec] = useState(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
@@ -222,7 +231,10 @@ export default function App() {
     () => resolveChannelLayout(channelLayout, { channelCount }),
     [channelLayout, channelCount]
   );
-  const showLayoutUnknownMessage = layoutResolution.mode === "auto" && layoutResolution.resolved === "unknown" && channelCount > 2;
+  const meteringFootnotes = useMemo(
+    () => buildMeteringFootnoteHints({ running, channelLayout, channelCount }),
+    [running, channelLayout, channelCount]
+  );
 
   const vectorscopePairLabel = formatVectorscopePairLabel({
     x: vectorscopePairUi.x,
@@ -230,6 +242,29 @@ export default function App() {
     layoutKnown: layoutResolution.resolved !== "unknown",
   });
 
+  const captureFormatSignature = useMemo(() => {
+    if (!isTauri()) return "";
+    if (captureDeviceId === "default") {
+      return defaultOutputFormatSig || "";
+    }
+    const d = audioDevices.find((x) => x.id === captureDeviceId);
+    return d ? `${d.channels}:${d.defaultSampleRate}` : "";
+  }, [captureDeviceId, audioDevices, defaultOutputFormatSig]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    void previewAudioDevice("default").then(
+      (p) => {
+        if (cancelled || !p || !Number.isFinite(p.channels) || !Number.isFinite(p.sampleRateHz)) return;
+        setDefaultOutputFormatSig(`${p.channels}:${p.sampleRateHz}`);
+      },
+      () => {}
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [audioDevices]);
 
   useEffect(() => {
     const x = Number.isFinite(displayAudio?.vectorscopePairX) ? Number(displayAudio.vectorscopePairX) : 0;
@@ -477,12 +512,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!audioDevices.length) return;
+    if (!isTauri() || !audioDevices.length) return;
     if (captureDeviceId === "default") return;
-    if (!audioDevices.some((d) => d.id === captureDeviceId)) {
+    if (audioDevices.some((d) => d.id === captureDeviceId)) return;
+    let cancelled = false;
+    void migrateCaptureDeviceId(captureDeviceId).then((newId) => {
+      if (cancelled) return;
+      if (typeof newId === "string" && newId.length > 0) {
+        setCaptureDeviceId(newId);
+        void saveCaptureDeviceId(newId);
+        return;
+      }
       setCaptureDeviceId("default");
       void saveCaptureDeviceId("default");
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [audioDevices, captureDeviceId]);
 
   /** Matches Loudness History snapshot mode: meters/spectrum/vector read the selected instant, not live input */
@@ -494,6 +540,7 @@ export default function App() {
   useAudioEngine({
     running,
     captureDeviceId,
+    captureFormatSignature,
     channelLayout,
     histMaxSamples: HIST_MAX_SAMPLES,
     audioRef,
@@ -694,17 +741,14 @@ export default function App() {
           <span>{status}</span>
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
           <span>{status2}</span>
-          {showLayoutUnknownMessage ? (
-            <>
+          {meteringFootnotes.map((hint) => (
+            <Fragment key={hint.id}>
               <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
-              <span
-                className="text-[color:var(--ui-color-text-muted)]"
-                title="Auto channel layout detection is not available yet. Loudness (L1) falls back to Ch 1/Ch 2 until you select a preset in Settings → Channel layout (Advanced)."
-              >
-                Multi-channel detected. Layout unknown (Auto) — loudness uses Ch 1/Ch 2 until you select a preset.
+              <span className="text-[color:var(--ui-color-text-muted)]" title={hint.title}>
+                {hint.message}
               </span>
-            </>
-          ) : null}
+            </Fragment>
+          ))}
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
           <MeterHealthBadge health={meterHealth} />
           <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />

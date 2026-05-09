@@ -13,6 +13,8 @@ import { buildTauriFrameApply } from "./tauriFrameApply.js";
 export function useAudioEngine({
   running,
   captureDeviceId = "default",
+  /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
+  captureFormatSignature = "",
   channelLayout = "auto",
   histMaxSamples,
   audioRef,
@@ -200,6 +202,6 @@ export function useAudioEngine({
         } catch (_) {}
       }
     };
-  }, [running, captureDeviceId, channelLayout]);
+  }, [running, captureDeviceId, captureFormatSignature, channelLayout]);
   /* eslint-enable react-hooks/exhaustive-deps */
 }

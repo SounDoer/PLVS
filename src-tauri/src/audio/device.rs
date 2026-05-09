@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceInfo {
-  /// Stable `lb-*` / `cap-*` id (hash of name + format); legacy `out:N` / `in:N` still accepted by the backend.
+  /// Stable `lb-*` / `cap-*` id (v2: short endpoint name hash; unaffected by speaker layout changes). Legacy `out:N` / `in:N`
+  /// and v1 ids still accepted by the backend.
   pub id: String,
+  /// UI label (may include extra detail from cpal `DeviceDescription`, e.g. Windows hardware name + endpoint).
   pub label: String,
   /// WASAPI loopback on a **render** endpoint (`out:*`). True when this row is real system-playback monitoring.
   pub is_system_output_monitor: bool,

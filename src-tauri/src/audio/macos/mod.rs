@@ -14,7 +14,7 @@ use tauri::AppHandle;
 
 use super::capture::{AudioCapture, AudioCaptureSession};
 use super::cpal_backend::{
-  append_input_devices, collect_outputs, device_display_name, pick_output_by_index,
+  append_input_devices, collect_outputs, device_id_key, device_list_label, pick_output_by_index,
   resolve_default_output, run_meter_pipeline_bridge_thread, CpalBackend,
 };
 use super::device::DeviceInfo;
@@ -72,9 +72,10 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
   let mut out = Vec::new();
   let mut used_lb = HashSet::new();
   for (_idx, device, cfg) in collect_outputs()? {
-    let label = device_display_name(&device)?;
-    let core_uid = uid_for_output_name(&label);
-    let id = device_id::alloc_loopback_id(&label, cfg.channels(), cfg.sample_rate(), &mut used_lb);
+    let key = device_id_key(&device)?;
+    let label = device_list_label(&device)?;
+    let core_uid = uid_for_output_name(&key);
+    let id = device_id::alloc_loopback_id(&key, &mut used_lb);
     out.push(DeviceInfo {
       id,
       label,
@@ -102,9 +103,9 @@ fn resolve_tap_uid_channels_rate(device_id: &str) -> Result<(String, u32, u16), 
   }
   if let Some(n) = device_id::parse_legacy_output_index(device_id) {
     let (dev, cfg) = pick_output_by_index(n)?;
-    let name = device_display_name(&dev)?;
-    let uid = uid_for_output_name(&name).ok_or_else(|| {
-      format!("no Core Audio UID for output device \"{name}\" (macOS 14.2+ tap requires a UID)")
+    let key = device_id_key(&dev)?;
+    let uid = uid_for_output_name(&key).ok_or_else(|| {
+      format!("no Core Audio UID for output device \"{key}\" (macOS 14.2+ tap requires a UID)")
     })?;
     return Ok((uid, cfg.sample_rate(), cfg.channels()));
   }
@@ -118,6 +119,21 @@ fn resolve_tap_uid_channels_rate(device_id: &str) -> Result<(String, u32, u16), 
           )
         })?;
         return Ok((uid, d.default_sample_rate, d.channels));
+      }
+    }
+    // Legacy v1 ids (included channel count + sample rate); still resolve to the same Core Audio UID.
+    let mut used_legacy = HashSet::new();
+    for (_idx, device, cfg) in collect_outputs()? {
+      let key = device_id_key(&device)?;
+      let legacy_id =
+        device_id::legacy_alloc_loopback_id(&key, cfg.channels(), cfg.sample_rate(), &mut used_legacy);
+      if legacy_id == device_id {
+        let uid = uid_for_output_name(&key).ok_or_else(|| {
+          format!(
+            "Core Audio tap is unavailable for \"{key}\" (could not map legacy id to device UID)"
+          )
+        })?;
+        return Ok((uid, cfg.sample_rate(), cfg.channels()));
       }
     }
     return Err(format!("unknown loopback device id: {device_id}"));

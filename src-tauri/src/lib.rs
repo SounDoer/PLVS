@@ -20,6 +20,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
       ipc::commands::preview_audio_device,
+      ipc::commands::migrate_capture_device_id,
       ipc::commands::audio_start,
       ipc::commands::set_vectorscope_pair,
       ipc::commands::set_channel_layout,
