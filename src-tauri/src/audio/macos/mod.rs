@@ -9,7 +9,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use cpal::traits::DeviceTrait;
 use tauri::AppHandle;
 
 use super::capture::{AudioCapture, AudioCaptureSession};

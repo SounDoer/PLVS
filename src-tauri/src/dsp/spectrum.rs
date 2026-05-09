@@ -310,6 +310,7 @@ impl SpectrumEngine {
     }
     let n_hist = self.band_power_hist.len();
     let min_f = self.min_hz.max(20.0);
+    let max_f = self.max_hz.max(min_f + 1.0);
     let log_min_f = min_f.log2();
     let mut weighted_db = Vec::with_capacity(self.bands.len());
     for (i, (_f_lo, _f_hi, f_center)) in self.bands.iter().enumerate() {
@@ -320,7 +321,7 @@ impl SpectrumEngine {
       let mean_p = acc / n_hist as f64;
       let mut db = 10.0 * mean_p.max(1e-16).log10();
       db += weighting_db(*f_center, &self.weighting);
-      let oct = f_center.max(min_f).log2() - log_min_f;
+      let oct = f_center.max(min_f).min(max_f).log2() - log_min_f;
       db += self.tilt_db_per_octave * oct;
       weighted_db.push(db);
     }
