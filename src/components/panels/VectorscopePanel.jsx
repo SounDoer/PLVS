@@ -24,16 +24,20 @@ export function VectorscopePanel({
     typeof pairLabel === "string" && pairLabel.length > 0
       ? pairLabel
       : formatVectorscopePairLabel({ x: pairX, y: pairY, channelLabels: stripLabels });
+  const px = Number.isFinite(pairX) ? Math.max(0, Math.floor(Number(pairX))) : 0;
+  const py = Number.isFinite(pairY) ? Math.max(0, Math.floor(Number(pairY))) : 1;
+  const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
+  const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
   const valueKey = `${Number(pairX)}-${Number(pairY)}`;
   return (
     <article className="ui-article ui-min-h-spectrum flex-1">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <div className="ui-section-title ui-section-title-main min-w-0">Vectorscope</div>
         <div className="flex shrink-0 items-baseline gap-2 text-[length:var(--ui-fs-extra)]">
-          <span className="text-[color:var(--ui-color-text-muted)]">{effectiveLabel}</span>
           {canSelect ? (
             <select
               className="ui-select"
+              title={effectiveLabel}
               value={valueKey}
               onChange={(e) => {
                 const [xRaw, yRaw] = String(e.target.value).split("-");
@@ -48,6 +52,8 @@ export function VectorscopePanel({
                 </option>
               ))}
             </select>
+          ) : stripLabels.length > 1 ? (
+            <span className="text-[color:var(--ui-color-text-muted)]">{effectiveLabel}</span>
           ) : null}
         </div>
       </div>
@@ -108,10 +114,8 @@ export function VectorscopePanel({
             />
           </svg>
         </div>
-        <span className="ui-caption absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]">L</span>
-        <span className="ui-caption absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]">R</span>
-        <span className="ui-caption absolute left-[var(--ui-vector-corner-inset)] bottom-[var(--ui-vector-corner-inset)]">-1</span>
-        <span className="ui-caption absolute right-[var(--ui-vector-corner-inset)] bottom-[var(--ui-vector-corner-inset)]">+1</span>
+        <span className="ui-caption absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]">{axisXLabel}</span>
+        <span className="ui-caption absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]">{axisYLabel}</span>
       </div>
       <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-extra)]">
         <div className="shrink-0" style={{ width: "var(--ui-corr-info-left-blank)" }} />
