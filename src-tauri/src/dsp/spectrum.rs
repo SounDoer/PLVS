@@ -4,12 +4,17 @@
 //! Summary: rFFT + Hann → bin magnitudes scaled **2/N (interior) / 1/N (DC, Nyquist)** to dB → **per-band linear power** by integrating each bin’s
 //! power over Hz assuming **uniform density within the bin**, i.e. multiply clamped bin power by `overlap([f_lo,f_hi], bin_edges) / bin_width`
 //! (not integer `floor`/`ceil` bin inclusion, which caused flat low-frequency steps on a log axis). Then `10·log10` → Z/A/C weighting and smoothing.
+//! **STFT**: after the ring is full, run FFT on a **fixed hop** grid (`hop = N/4`) once per `hop` ingested frames (sample-accurate when callbacks batch many frames).
+//! **Non-coherent time average**: average **per-band linear power** over the last **4** STFT frames before `log10` (then frequency-kernel + attack/release as before).
 //! `realfft` does not apply N scaling for you; missing normalization clips the dB top.
 
 use realfft::RealFftPlanner;
 use rustfft::num_complex::Complex;
+use std::collections::VecDeque;
 
 const FFT_LEN: usize = 4096;
+const STFT_HOP: usize = FFT_LEN / 4;
+const POWER_AVG_FRAMES: usize = 4;
 
 fn rta_bands_per_octave(resolution: &str) -> f64 {
   match resolution {
@@ -140,6 +145,12 @@ pub struct SpectrumEngine {
   tilt_db_per_octave: f64,
   min_hz: f64,
   max_hz: f64,
+  /// Monotonic frame count (one stereo/mono frame or one multichannel frame per tick).
+  ingested_frames: u64,
+  /// Last `POWER_AVG_FRAMES` per-band **linear** power rows (post fractional RTA sum, pre `log10`).
+  band_power_hist: VecDeque<Vec<f64>>,
+  /// Last frequency-kernel-smoothed dB curve (input to attack/release).
+  last_freq_smoothed_db: Vec<f64>,
 }
 
 impl SpectrumEngine {
@@ -182,6 +193,9 @@ impl SpectrumEngine {
       tilt_db_per_octave: 0.0,
       min_hz,
       max_hz,
+      ingested_frames: 0,
+      band_power_hist: VecDeque::new(),
+      last_freq_smoothed_db: Vec::new(),
     }
   }
 
@@ -213,47 +227,15 @@ impl SpectrumEngine {
       self.ring_multi.clear();
     }
     self.last_input_channels = channels;
+    self.ingested_frames = 0;
+    self.band_power_hist.clear();
+    self.last_freq_smoothed_db.clear();
   }
 
-  /// Returns `(smooth_db, peak_db)` for SVG paths on the frontend, or `None` until the ring is full.
-  /// `channels` samples per frame:
-  /// - **Mono / stereo (N<=2)**: unchanged; spectrum is based on the stereo-average signal \(0.5·(L+R)\).
-  /// - **Multichannel (N>2)**: a single curve represents **summed per-band power/energy across all channels**, then converted to dB.
-  pub fn push_interleaved(
-    &mut self,
-    interleaved: &[f32],
-    channels: u16,
-    now_sec: f64,
-  ) -> Option<(Vec<f64>, Vec<f64>)> {
-    let ch = channels.max(1) as usize;
-    if self.last_input_channels != ch {
-      self.reset_rings_for_channels(ch);
-    }
-    let frames = interleaved.len() / ch;
-    for i in 0..frames {
-      let base = i * ch;
-      if ch <= 2 {
-        let l = interleaved[base];
-        let r = if ch >= 2 { interleaved[base + 1] } else { l };
-        self.push_sample_pair(l, r);
-      } else {
-        self.push_sample_frame(&interleaved[base..base + ch]);
-      }
-    }
-    if self.ring_filled < FFT_LEN {
-      return None;
-    }
-    let delta_sec = if self.last_time_sec > 0.0 {
-      (now_sec - self.last_time_sec).clamp(1.0 / 240.0, 0.25)
-    } else {
-      1.0 / 60.0
-    };
-    self.last_time_sec = now_sec;
+  /// One STFT snapshot: windowed rFFT from the current ring → per-band linear power (fractional bins).
+  fn compute_band_linear_powers(&mut self, ch: usize) -> Vec<f64> {
     let sr = self.sample_rate;
     let n = FFT_LEN as f64;
-    let min_f = self.min_hz.max(20.0);
-    let _max_f = self.max_hz.max(min_f * 1.2).min(sr * 0.5);
-    let log_min_f = min_f.log2();
     let bin_count = self.scratch_spec.len();
     let mut bin_power = vec![0.0_f64; bin_count];
 
@@ -268,7 +250,6 @@ impl SpectrumEngine {
         .expect("fft");
       for (k, c) in self.scratch_spec.iter().enumerate() {
         let m = (c.re * c.re + c.im * c.im).sqrt() as f64;
-        // Real-signal rFFT: DC / Nyquist bins are real; interior uses 2/N per one-sided energy convention (full-scale sine peak |X|≈N/2).
         let m_norm = if k == 0 || k + 1 == bin_count {
           m / n
         } else {
@@ -298,14 +279,12 @@ impl SpectrumEngine {
       }
     }
 
-    // Match the legacy per-bin dB clamp behavior: clamp bin power to [-160, +20] dB in the power domain.
     let min_bin_power = 10_f64.powf(-160.0 / 10.0);
     let max_bin_power = 10_f64.powf(20.0 / 10.0);
-    let mut weighted_db = Vec::with_capacity(self.bands.len());
-    for (_f_lo, _f_hi, f_center) in &self.bands {
+    let mut band_powers = Vec::with_capacity(self.bands.len());
+    for (_f_lo, _f_hi, _) in &self.bands {
       let f_lo = *_f_lo;
       let f_hi = *_f_hi;
-      // Narrow bin index range: only bins whose Hz tile can intersect [f_lo, f_hi].
       let k_est_lo = ((f_lo / sr) * n).floor() as isize - 1;
       let k_est_hi = ((f_hi / sr) * n).ceil() as isize + 1;
       let k0 = k_est_lo.clamp(0, bin_count as isize - 1) as usize;
@@ -319,13 +298,78 @@ impl SpectrumEngine {
           power_sum += p * w;
         }
       }
-      let mut db = 10.0 * power_sum.max(1e-16).log10();
+      band_powers.push(power_sum);
+    }
+    band_powers
+  }
+
+  fn push_stft_power_row(&mut self, band_linear: Vec<f64>) {
+    self.band_power_hist.push_back(band_linear);
+    while self.band_power_hist.len() > POWER_AVG_FRAMES {
+      self.band_power_hist.pop_front();
+    }
+    let n_hist = self.band_power_hist.len();
+    let min_f = self.min_hz.max(20.0);
+    let log_min_f = min_f.log2();
+    let mut weighted_db = Vec::with_capacity(self.bands.len());
+    for (i, (_f_lo, _f_hi, f_center)) in self.bands.iter().enumerate() {
+      let mut acc = 0.0_f64;
+      for row in &self.band_power_hist {
+        acc += row[i].max(1e-20);
+      }
+      let mean_p = acc / n_hist as f64;
+      let mut db = 10.0 * mean_p.max(1e-16).log10();
       db += weighting_db(*f_center, &self.weighting);
       let oct = f_center.max(min_f).log2() - log_min_f;
       db += self.tilt_db_per_octave * oct;
       weighted_db.push(db);
     }
-    let freq_smoothed = smooth_by_kernel(&weighted_db, &self.freq_kernel);
+    self.last_freq_smoothed_db = smooth_by_kernel(&weighted_db, &self.freq_kernel);
+  }
+
+  /// Returns `(smooth_db, peak_db)` for SVG paths on the frontend, or `None` until the ring is full.
+  /// `channels` samples per frame:
+  /// - **Mono / stereo (N<=2)**: unchanged; spectrum is based on the stereo-average signal \(0.5·(L+R)\).
+  /// - **Multichannel (N>2)**: a single curve represents **summed per-band power/energy across all channels**, then converted to dB.
+  pub fn push_interleaved(
+    &mut self,
+    interleaved: &[f32],
+    channels: u16,
+    now_sec: f64,
+  ) -> Option<(Vec<f64>, Vec<f64>)> {
+    let ch = channels.max(1) as usize;
+    if self.last_input_channels != ch {
+      self.reset_rings_for_channels(ch);
+    }
+    let frames = interleaved.len() / ch;
+    for i in 0..frames {
+      let base = i * ch;
+      if ch <= 2 {
+        let l = interleaved[base];
+        let r = if ch >= 2 { interleaved[base + 1] } else { l };
+        self.push_sample_pair(l, r);
+      } else {
+        self.push_sample_frame(&interleaved[base..base + ch]);
+      }
+      self.ingested_frames = self.ingested_frames.wrapping_add(1);
+      if self.ring_filled >= FFT_LEN && self.ingested_frames % (STFT_HOP as u64) == 0 {
+        let band_linear = self.compute_band_linear_powers(ch);
+        self.push_stft_power_row(band_linear);
+      }
+    }
+    if self.ring_filled < FFT_LEN {
+      return None;
+    }
+    if self.last_freq_smoothed_db.is_empty() {
+      return None;
+    }
+    let delta_sec = if self.last_time_sec > 0.0 {
+      (now_sec - self.last_time_sec).clamp(1.0 / 240.0, 0.25)
+    } else {
+      1.0 / 60.0
+    };
+    self.last_time_sec = now_sec;
+    let freq_smoothed = &self.last_freq_smoothed_db;
     if self.smooth_db.len() != freq_smoothed.len() {
       self.smooth_db = freq_smoothed.clone();
       self.peak_db = freq_smoothed.clone();
