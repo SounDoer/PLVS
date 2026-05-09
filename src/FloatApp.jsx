@@ -279,6 +279,12 @@ function FloatSpectrumView({ core }) {
 }
 
 function FloatVectorView({ core }) {
+  const persistedLayout = usePersistedChannelLayout();
+  const chCount = Array.isArray(core.displayAudio?.peakDb) ? core.displayAudio.peakDb.length : 0;
+  const layoutResolution = useMemo(
+    () => resolveChannelLayout(persistedLayout, { channelCount: chCount }),
+    [persistedLayout, chCount]
+  );
   const vsGridDiagInset = Math.max(0, Math.min(20, UI_PREFERENCES.modules.vector.charts.vectorscope.gridDiagInsetPct ?? 0));
   const vsGridDiagFar = 100 - vsGridDiagInset;
   return (
@@ -289,7 +295,11 @@ function FloatVectorView({ core }) {
         displayVectorPath={core.displayVectorPath}
         selectedOffset={core.selectedOffset}
         correlation={core.correlation}
-        channelCount={Array.isArray(core.displayAudio?.peakDb) ? core.displayAudio.peakDb.length : 0}
+        channelCount={chCount}
+        peakLabelContext={{
+          channelLayout: persistedLayout,
+          resolvedLayout: layoutResolution.resolved,
+        }}
         pairX={core.displayAudio?.vectorscopePairX}
         pairY={core.displayAudio?.vectorscopePairY}
       />

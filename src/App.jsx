@@ -19,6 +19,7 @@ import { useHoverState } from "./hooks/useHoverState";
 import { useMeterHealth } from "./hooks/useMeterHealth";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
+import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import { getLoudnessReferenceProfileById, LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
 import { PillButton } from "./components/PillButton";
@@ -236,10 +237,15 @@ export default function App() {
     [running, channelLayout, channelCount]
   );
 
+  const peakMeterChannelLabels = useMemo(
+    () => getPeakMeterChannelLabels(channelCount, { channelLayout, resolvedLayout: layoutResolution.resolved }),
+    [channelCount, channelLayout, layoutResolution.resolved]
+  );
+
   const vectorscopePairLabel = formatVectorscopePairLabel({
     x: vectorscopePairUi.x,
     y: vectorscopePairUi.y,
-    layoutKnown: layoutResolution.resolved !== "unknown",
+    channelLabels: peakMeterChannelLabels,
   });
 
   const captureFormatSignature = useMemo(() => {
@@ -667,6 +673,10 @@ export default function App() {
               selectedOffset={selectedOffset}
               correlation={correlation}
               channelCount={channelCount}
+              peakLabelContext={{
+                channelLayout,
+                resolvedLayout: layoutResolution.resolved,
+              }}
               pairX={vectorscopePairUi.x}
               pairY={vectorscopePairUi.y}
               onPairChange={onVectorscopePairChange}

@@ -1,4 +1,5 @@
 import { UI_PREFERENCES } from "../../uiPreferences";
+import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { buildVectorscopePairOptions, formatVectorscopePairLabel } from "../../math/vectorscopePairMath.js";
 
 export function VectorscopePanel({
@@ -8,17 +9,21 @@ export function VectorscopePanel({
   selectedOffset,
   correlation,
   channelCount = 0,
+  /** @type {import("../../math/peakMeterChannelLabels.js").PeakMeterChannelLabelsContext | undefined} */
+  peakLabelContext,
   pairX = 0,
   pairY = 1,
   onPairChange,
   pairLabel,
 }) {
+  const canSelect = typeof onPairChange === "function" && Number.isFinite(channelCount) && channelCount >= 2;
+  const stripLabels =
+    Number.isFinite(channelCount) && channelCount >= 2 ? getPeakMeterChannelLabels(channelCount, peakLabelContext || {}) : [];
+  const options = canSelect ? buildVectorscopePairOptions(channelCount, peakLabelContext) : [];
   const effectiveLabel =
     typeof pairLabel === "string" && pairLabel.length > 0
       ? pairLabel
-      : formatVectorscopePairLabel({ x: pairX, y: pairY, layoutKnown: false });
-  const canSelect = typeof onPairChange === "function" && Number.isFinite(channelCount) && channelCount >= 2;
-  const options = canSelect ? buildVectorscopePairOptions(channelCount) : [];
+      : formatVectorscopePairLabel({ x: pairX, y: pairY, channelLabels: stripLabels });
   const valueKey = `${Number(pairX)}-${Number(pairY)}`;
   return (
     <article className="ui-article ui-min-h-spectrum flex-1">
