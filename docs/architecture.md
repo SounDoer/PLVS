@@ -186,7 +186,6 @@ AudioMeter/
 │   │   │   └── VectorscopePanel.jsx
 │   │   ├── PillButton.jsx           # 顶栏按钮等
 │   │   ├── SettingsPanel.jsx
-│   │   ├── TitleBarWindowControls.jsx
 │   │   └── HelpPopover.jsx
 │   ├── hooks/
 │   │   ├── useAudioEngine.js        # 订阅 Rust emit 的音频指标
@@ -202,7 +201,6 @@ AudioMeter/
 │   │   ├── capturePrefs.js          # 采集设备 id：tauri-plugin-store / localStorage
 │   │   ├── floatWindow.js           # 辅 WebviewWindow、Pop out
 │   │   ├── floatWindowPrefs.js      # 浮窗几何持久化（与 dpi / window API）
-│   │   ├── mainWindowControls.js
 │   │   ├── env.js
 │   │   └── types.js
 │   ├── math/                        # 纯函数（刻度、历史路径、格式、频谱辅助等）
@@ -274,7 +272,7 @@ AudioMeter/
 
 **好处**：加新表头时只在 `dsp/` 加一个文件，不会像网页版那样 hooks 和 panel 互相交织。
 
-**前端 `ipc/` 层的硬约束**：业务组件与 hooks **不得直接**调 `invoke()`、`listen()` 或自建 Channel 订阅；一律经 `src/ipc/commands.js`、`src/ipc/events.js` 等。窗口几何、多 webview、DPI 等仅封装在 `ipc/floatWindow.js`、`ipc/floatWindowPrefs.js`、`ipc/mainWindowControls.js` 等文件内，**不得**在 Panel 里散落 `import "@tauri-apps/api"`。好处：换协议只改一处；测试可 mock；UI 不依赖具体 Tauri 细节。
+**前端 `ipc/` 层的硬约束**：业务组件与 hooks **不得直接**调 `invoke()`、`listen()` 或自建 Channel 订阅；一律经 `src/ipc/commands.js`、`src/ipc/events.js` 等。窗口几何、多 webview、DPI 等仅封装在 `ipc/floatWindow.js`、`ipc/floatWindowPrefs.js` 等文件内，**不得**在 Panel 里散落 `import "@tauri-apps/api"`。好处：换协议只改一处；测试可 mock；UI 不依赖具体 Tauri 细节。
 
 ---
 
@@ -691,7 +689,7 @@ interface LoudnessSlowPayload {
 ### 硬性约束（不要违反，违反请立刻停下和用户确认）
 
 1. **Rust 侧绝不往前端推 PCM**，一律推算好的指标。
-2. **前端业务代码不得直接调 `invoke`、`listen` 或自建 Channel**；经 `src/ipc/` 封装。窗口 / DPI 相关 API 仅出现在 `ipc/floatWindow*.js`、`ipc/mainWindowControls.js` 等（见 §4）。
+2. **前端业务代码不得直接调 `invoke`、`listen` 或自建 Channel**；经 `src/ipc/` 封装。窗口 / DPI 相关 API 仅出现在 `ipc/floatWindow*.js` 等（见 §4）。
 3. **PCM 数据结构必须带 `channels` 字段**，不硬编码 stereo。
 4. **不引入"处理声音"的代码路径**——本项目永不做 EQ / 任何音频处理。
 5. **不改变目录结构**（`audio/` / `dsp/` / `engine/` / `ipc/` 的分层），新功能按关注点归入已有模块。

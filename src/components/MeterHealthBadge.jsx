@@ -22,7 +22,6 @@ export function MeterHealthBadge({ health = "ok", onToggle }) {
       onClick={onToggle}
       aria-label={m.label}
       title={m.label}
-      data-tauri-no-drag
     >
       {m.label}
     </button>

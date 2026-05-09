@@ -1,13 +1,5 @@
 @import "tailwindcss";
 
-/* Undecorated window: WebView2 uses -webkit-app-region; data-* is handled by Tauri (needs allow-start-dragging). */
-[data-tauri-drag-region] {
-  -webkit-app-region: drag;
-}
-[data-tauri-no-drag] {
-  -webkit-app-region: no-drag;
-}
-
 /* Defaults aligned with --ui-* tokens injected by uiPreferences.applyUiPreferencesToDocument */
 :root {
   font-family: var(--ui-font-sans, Inter, system-ui, sans-serif);

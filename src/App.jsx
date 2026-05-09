@@ -38,7 +38,6 @@ import {
   readCaptureDeviceIdFromLocalStorage,
   saveCaptureDeviceId,
 } from "./ipc/capturePrefs.js";
-import { TitleBarWindowControls } from "./components/TitleBarWindowControls";
 import { MeterHealthBadge } from "./components/MeterHealthBadge";
 import { PeakPanel } from "./components/panels/PeakPanel";
 import { LoudnessPanel } from "./components/panels/LoudnessPanel";
@@ -576,13 +575,13 @@ export default function App() {
   return (
     <div className="ui-page">
       <div className="ui-shell-inner">
-        <header className="ui-header" {...(isTauri() ? { "data-tauri-drag-region": "" } : {})}>
+        <header className="ui-header">
           <div className="ui-app-title">
             Audio<span className="ui-app-title-brand">Meter</span>
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-3 pr-2">
             {isTauri() && (
-              <div className="flex min-w-0 max-w-[min(22rem,42vw)] items-center gap-2" data-tauri-no-drag="">
+              <div className="flex min-w-0 max-w-[min(22rem,42vw)] items-center gap-2">
                 <label htmlFor="capture-device-select" className="shrink-0 text-[length:var(--ui-fs-metric-meta)] text-[color:var(--ui-color-muted)]">
                   Device
                 </label>
@@ -624,13 +623,12 @@ export default function App() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-[var(--ui-header-action-gap)]" {...(isTauri() ? { "data-tauri-no-drag": "" } : {})}>
+          <div className="flex items-center gap-[var(--ui-header-action-gap)]">
             <PillButton onClick={clearAll}>Clear</PillButton>
             <PillButton accent liveSnap={startMode === "live"} onClick={onStartClick}>
               {startLabel}
             </PillButton>
             <PillButton onClick={() => setSettingsOpen(true)}>Settings</PillButton>
-            {isTauri() ? <TitleBarWindowControls /> : null}
           </div>
         </header>
 
