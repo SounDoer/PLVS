@@ -238,7 +238,7 @@ AudioMeter/
 │       │   ├── mod.rs
 │       │   ├── peak.rs              # 采样峰值 + True Peak（过采样）
 │       │   ├── loudness.rs          # LUFS: K-weighting + gating
-│       │   ├── spectrum.rs          # FFT + 窗函数
+│       │   ├── spectrum.rs          # rFFT + Hann；RTA 带内分数 bin 积分
 │       │   ├── paths.rs             # 频谱 SVG path（与前端 scales 对齐）
 │       │   ├── vectorscope.rs       # L/R → XY + 相关系数
 │       │   └── filters.rs           # K-weighting 等滤波器
@@ -366,9 +366,16 @@ pub struct PcmFrame {
 
 | 采用（v1.0） | 说明 |
 |---|---|
-| **FFT 型 RTA 显示** | 短时 **rFFT + Hann 窗** → 各 bin 幅度经 **N 归一** 后转 dB；在 **按倍频程几何划分的 f_lo～f_hi** 带内对**线性功率**求和再 `10·log10` 得到每档读数；再叠加 **Z/A/C**、邻频/时间平滑。与多数 DAW / 监听类插件的「常 Q / 倍频程条带」观感一致，**低延迟、实现成本可控**。 |
+| **FFT 型 RTA 显示** | 短时 **rFFT + Hann 窗** → 各 bin 幅度经 **N 归一** 后得**线性功率**；对每个 **按倍频程几何划分的 f_lo～f_hi** 档，将各 bin 的功率按 **连续 Hz 边界** 做带内积分：**假定功率在每个 bin 对应的 Hz 子区间内均匀分布**，用该档与 bin 子区间的**重叠长度占 bin 宽度的比例**加权累加（**分数 bin / partial band integration**），再 `10·log10` 得档内 dB。**不再**用 `floor`/`ceil` 把整档映射到整数 bin 全计入（否则在低频、对数横轴上易出现「横线台阶」）。其后叠加 **Z/A/C**、邻频/时间平滑。与多数 DAW / 监听类插件的「常 Q / 倍频程条带」观感一致，**低延迟、实现成本可控**。 |
 | **与 IEC 61260 的关系** | IEC 61260-1 规定的是**带通滤波器**的相对衰减与允差；若未来要**对外宣称**符合该标准，须改为（或并行提供）**标准滤波器组或经认证的等效结构**，单独立项。 |
 | **与 Loudness 的关系** | Spectrum 为 **dBFS 域**带内能量示意；**LUFS** 为 **K 计权 + gating + 积分时间常数**；**数值不可横向等同**。 |
+
+#### 纵轴单位与参考（dBFS，精确定义）
+
+- **叫什么**：纵轴表示各 RTA 档在 **数字采样域** 内的 **带内线性能量**（对经 Hann 窗与 **N 归一** 后的 bin 线性功率做档内加权积分，见上表），再取 **`10·log10`** 得到的分贝读数；参考量为 **数字满刻度（full scale）**，工程命名应为 **dBFS**（decibels relative to full scale）。也可表述为 **dB re. FS** 或 **band / spectrum level in dBFS**。
+- **不是什么**：**不是**声压级（**dB SPL**，re. 20 µPa）；**不是**模拟线路电平（**dBu** / **dBV**）；**不是**响度（**LUFS** / **LKFS**，K 计权 + gating + 积分时间常数，见 **Loudness** 路径）。
+- **与 Peak 表「dBFS」的差别（易混点）**：AES / 常见数字音频语境下，**dBFS** 最狭义的用法是 **相对满幅的采样峰值**（例如 0 dBFS = 可编码最大幅度）。Spectrum 纵轴是 **各倍频程档内的谱功率估计**（FFT 型 RTA），**检波/定义与采样峰值表不同**，但 **参考域仍是同一套数字满幅与实现中的 FFT 归一约定**，因此单位名称仍用 **dBFS** 是正确且与多数 DAW / 监听类插件表述一致；对比两条表头时，应理解成 **「同一参考域、不同物理量」**，不可把两列数值当作同一检波器的重复读数。
+- **UI 与文档**：界面刻度可能只标数字、悬停写 **`dB`** 而未写 **`FS`**；对外说明或帮助文案若需严谨，应明确为 **dBFS（带内能量，数字满幅为参考）**。
 
 ### 迁移策略
 
@@ -734,6 +741,8 @@ interface LoudnessSlowPayload {
 | 2026-04 | — | 浮窗 bounds：`v:2` 逻辑像素，inner/outer 与 `scaleFactor` 对齐，修正高 DPI 重开累积误差；旧存盘按物理→逻辑迁移 |
 | 2026-05 | — | 对齐 main：§0/§9 **macOS + Release DMG**；§4 目录树与 **ipc** 约束；§5 `FrameSubscribers`；§10/§10.1 双平台 CI；§12 PCM 预留未实现；§13 浮窗/macOS **已部分落地**；§14 与 §4  ipc 规则一致 |
 | 2026-05 | — | 引入 **[`prd.md`](prd.md)**；文首与 **§0 / §14** 写明与 PRD 分工；非目标表注明以 PRD 为准 |
+| 2026-05 | — | §6 Spectrum：**RTA 带内能量**改为按 Hz 与 FFT bin 子区间的**分数重叠**积分（`dsp/spectrum.rs`），文档与 README/PRD 计量表述对齐 |
+| 2026-05 | — | §6 新增 **「纵轴单位与参考（dBFS）」**：带内谱功率 vs 峰值 dBFS、与 SPL/LUFS 的区分 |
 
 ---
 

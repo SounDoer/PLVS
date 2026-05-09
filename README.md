@@ -147,6 +147,8 @@ xattr -cr /Applications/AudioMeter.app
 
 显示实时频率响应曲线，横轴为频率（对数刻度，20 Hz–20 kHz），纵轴为幅度（dB）。
 
+**实现口径（Rust）**：短时 FFT + Hann 窗；各倍频程几何档的读数由**带内线性功率**经 **Hz 连续边界与各 FFT bin 的频率子区间求重叠比例**后加权累加得到（分数 bin 积分），避免仅用整数 bin 边界时在低频出现台阶状「横线」。纵轴为 **dBFS 域**的带内能量（与峰值表 dBFS 同参考域、不同检波定义），精确定义见 **[`docs/architecture.md`](docs/architecture.md)** §6「Spectrum / RTA」及小节 **「纵轴单位与参考（dBFS）」**。
+
 **悬停（Hover）**：鼠标移入图表，会显示：
 - 垂直和水平两条虚线交叉定位当前位置。
 - 提示框显示该点的**频率**（Hz 或 kHz）和**幅度**（dB）。

@@ -1,8 +1,10 @@
 //! **FFT-style RTA display** (aligned with `src/scales.js` `buildRtaBands` + legacy `spectrumMath`): matches common pro-spectrum-plugin practice,
 //! **not** IEC 61260 metrology-grade per-band filter banks. Product wording: **`docs/architecture.md` §6 Spectrum / RTA**.
 //!
-//! Summary: rFFT + Hann → bin magnitudes scaled **2/N (interior) / 1/N (DC, Nyquist)** to dB → linear power sum in each `[f_lo, f_hi]` band
-//! then `10·log10` → Z/A/C weighting and smoothing. `realfft` does not apply N scaling for you; missing normalization clips the dB top.
+//! Summary: rFFT + Hann → bin magnitudes scaled **2/N (interior) / 1/N (DC, Nyquist)** to dB → **per-band linear power** by integrating each bin’s
+//! power over Hz assuming **uniform density within the bin**, i.e. multiply clamped bin power by `overlap([f_lo,f_hi], bin_edges) / bin_width`
+//! (not integer `floor`/`ceil` bin inclusion, which caused flat low-frequency steps on a log axis). Then `10·log10` → Z/A/C weighting and smoothing.
+//! `realfft` does not apply N scaling for you; missing normalization clips the dB top.
 
 use realfft::RealFftPlanner;
 use rustfft::num_complex::Complex;
@@ -65,6 +67,33 @@ fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
     "c" => weighting_c(f),
     _ => 0.0,
   }
+}
+
+/// Hz edges for rFFT bin `k` (`0..bin_count`, `bin_count = N/2+1`): tiles `[0, sr/2]` with half-width bins at DC and Nyquist.
+fn bin_hz_edges(sr: f64, n_fft: usize, k: usize, bin_count: usize) -> (f64, f64) {
+  let nf = n_fft as f64;
+  let kk = k as f64;
+  let left = if k == 0 {
+    0.0
+  } else {
+    (kk - 0.5) * sr / nf
+  };
+  let right = if k + 1 >= bin_count {
+    0.5 * sr
+  } else {
+    (kk + 0.5) * sr / nf
+  };
+  (left, right)
+}
+
+/// Fraction of bin `[bl, br]` covered by `[f_lo, f_hi]` (for uniform power density: contribution weight).
+fn overlap_weight(f_lo: f64, f_hi: f64, bl: f64, br: f64) -> f64 {
+  let w = br - bl;
+  if w <= 1e-30 {
+    return 0.0;
+  }
+  let overlap = (f_hi.min(br) - f_lo.max(bl)).max(0.0);
+  overlap / w
 }
 
 fn smooth_by_kernel(values: &[f64], kernel: &[f64]) -> Vec<f64> {
@@ -274,15 +303,21 @@ impl SpectrumEngine {
     let max_bin_power = 10_f64.powf(20.0 / 10.0);
     let mut weighted_db = Vec::with_capacity(self.bands.len());
     for (_f_lo, _f_hi, f_center) in &self.bands {
-      let lo_bin = ((*_f_lo / sr) * n)
-        .floor()
-        .clamp(0.0, (bin_count - 1) as f64) as usize;
-      let hi_bin = ((*_f_hi / sr) * n)
-        .ceil()
-        .clamp(lo_bin as f64, (bin_count - 1) as f64) as usize;
+      let f_lo = *_f_lo;
+      let f_hi = *_f_hi;
+      // Narrow bin index range: only bins whose Hz tile can intersect [f_lo, f_hi].
+      let k_est_lo = ((f_lo / sr) * n).floor() as isize - 1;
+      let k_est_hi = ((f_hi / sr) * n).ceil() as isize + 1;
+      let k0 = k_est_lo.clamp(0, bin_count as isize - 1) as usize;
+      let k1 = k_est_hi.clamp(0, bin_count as isize - 1) as usize;
       let mut power_sum = 0.0_f64;
-      for &p in bin_power.get(lo_bin..=hi_bin).unwrap_or(&[]) {
-        power_sum += p.clamp(min_bin_power, max_bin_power);
+      for k in k0..=k1 {
+        let (bl, br) = bin_hz_edges(sr, FFT_LEN, k, bin_count);
+        let w = overlap_weight(f_lo, f_hi, bl, br);
+        if w > 0.0 {
+          let p = bin_power[k].clamp(min_bin_power, max_bin_power);
+          power_sum += p * w;
+        }
       }
       let mut db = 10.0 * power_sum.max(1e-16).log10();
       db += weighting_db(*f_center, &self.weighting);
@@ -337,6 +372,57 @@ impl SpectrumEngine {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn bin_edges_tile_nyquist() {
+    let sr = 48_000.0;
+    let n = 4096_usize;
+    let bin_count = n / 2 + 1;
+    let mut span = 0.0_f64;
+    for k in 0..bin_count {
+      let (l, r) = bin_hz_edges(sr, n, k, bin_count);
+      assert!(r > l, "k={k}");
+      span += r - l;
+    }
+    assert!((span - 0.5 * sr).abs() < 1e-3);
+  }
+
+  #[test]
+  fn fractional_band_power_differs_across_adjacent_low_rta_bands() {
+    let sr = 48_000.0;
+    let n = FFT_LEN;
+    let bin_count = n / 2 + 1;
+    let bands = build_rta_bands(20.0, 20000.0, "1/24");
+    let mut bin_power = vec![1e-10_f64; bin_count];
+    for k in 0..bin_count {
+      bin_power[k] = 1.0;
+    }
+    let min_bin_power = 10_f64.powf(-160.0 / 10.0);
+    let max_bin_power = 10_f64.powf(20.0 / 10.0);
+    let mut sums = Vec::new();
+    for (f_lo, f_hi, _) in bands.iter().take(8) {
+      let nf = n as f64;
+      let k0 = (((*f_lo / sr) * nf).floor() as isize - 1).clamp(0, bin_count as isize - 1) as usize;
+      let k1 = (((*f_hi / sr) * nf).ceil() as isize + 1).clamp(0, bin_count as isize - 1) as usize;
+      let mut power_sum = 0.0_f64;
+      for k in k0..=k1 {
+        let (bl, br) = bin_hz_edges(sr, n, k, bin_count);
+        let w = overlap_weight(*f_lo, *f_hi, bl, br);
+        if w > 0.0 {
+          let p = bin_power[k].clamp(min_bin_power, max_bin_power);
+          power_sum += p * w;
+        }
+      }
+      sums.push(power_sum);
+    }
+    for w in sums.windows(2) {
+      assert!(
+        (w[0] - w[1]).abs() > 1e-9,
+        "adjacent LF RTA bands should not get identical integrated power under flat bins: {:?}",
+        sums
+      );
+    }
+  }
 
   fn tone_interleaved(frames: usize, channels: usize, sample_rate: f64, hz: f64) -> Vec<f32> {
     let mut out = vec![0.0_f32; frames * channels];
