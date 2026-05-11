@@ -211,7 +211,7 @@ AudioMeter/
 │   ├── scales.js                    # 与 Rust DSP / UI 共享的刻度约定
 │   ├── uiPreferences.js             # 对外入口（re-export）
 │   ├── preferences/                 # 数据 / 持久化 / apply 拆分
-│   │   ├── data.js                  # `UI_PREFERENCES`、`getResolvedCharts`
+│   │   ├── data.js                  # `UI_PREFERENCES`（布局/字号；图表色在 `builtinThemes.js`）
 │   │   ├── layoutPersistence.js     # 布局相关 localStorage 读写
 │   │   ├── themeResolve.js          # `parsePersistedUiStateJson`、`resolveThemeId`
 │   │   └── applyDocumentTheme.js    # `applyLayoutToDocument`、`applyThemeToDocument`

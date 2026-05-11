@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, CHART_INSET_MIN_H, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { FREQ_LABELS, SPEC_Y_TICKS, freqToXFrac, spectrumDbToTopFrac, spectrumDbToYViewBox } from "../../scales";
-import { UI_PREFERENCES } from "../../uiPreferences";
-
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
   return `${path} L 1000 260 L 0 260 Z`;
@@ -159,7 +157,7 @@ export function SpectrumPanel({
                         d={displaySpectrumPath}
                         fill="none"
                         stroke={selectedOffset >= 0 ? "var(--ui-chart-spectrum-snap)" : "var(--ui-chart-spectrum-live)"}
-                        strokeWidth={UI_PREFERENCES.modules.spectrum.charts.spectrum.strokeWidth}
+                        strokeWidth="var(--ui-sp-stroke-w)"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
@@ -168,7 +166,7 @@ export function SpectrumPanel({
                           d={displaySpectrumPeakPath}
                           fill="none"
                           stroke="var(--ui-chart-spectrum-snap)"
-                          strokeWidth={Math.max(1, UI_PREFERENCES.modules.spectrum.charts.spectrum.strokeWidth - 1)}
+                          strokeWidth="var(--ui-sp-stroke-w-inner)"
                           strokeDasharray="8 6"
                           opacity="0.8"
                         />

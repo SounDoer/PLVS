@@ -21,6 +21,7 @@ import { usePeakVis } from "./hooks/usePeakVis.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
 import { buildVectorscopePairOptions, clampVectorscopePairToAvailable } from "./math/vectorscopePairMath.js";
+import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { getLoudnessReferenceProfileById, LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -208,7 +209,10 @@ export default function App() {
   ];
 
   const historyChartInteractive = running || hasHistoryData;
-  const vsGridDiagInset = Math.max(0, Math.min(20, UI_PREFERENCES.modules.vector.charts.vectorscope.gridDiagInsetPct ?? 0));
+  const vsGridDiagInset = useMemo(() => {
+    const pct = getBuiltinTheme(resolvedThemeId).charts.vectorscope.gridDiagInsetPct ?? 0;
+    return Math.max(0, Math.min(20, pct));
+  }, [resolvedThemeId]);
   const vsGridDiagFar = 100 - vsGridDiagInset;
   const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
   const startLabel = startMode === "live" ? "LIVE" : startMode === "stop" ? "STOP" : "START";

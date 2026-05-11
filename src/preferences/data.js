@@ -1,6 +1,7 @@
 /**
- * Default layout, typography, radii, and per-module chart geometry (`UI_PREFERENCES`).
- * Colour strokes and meter gradients live in builtin themes (`src/theme/builtinThemes.js`).
+ * Default layout, typography, radii, and per-module **non-theme** tuning (`UI_PREFERENCES`).
+ * Chart stroke colours, stroke widths, vectorscope geometry, and meter gradients are defined per
+ * builtin theme in `src/theme/builtinThemes.js` and applied via `applyThemeToDocument` (CSS vars).
  */
 
 export const UI_PREFERENCES = {
@@ -145,36 +146,6 @@ export const UI_PREFERENCES = {
         rowPaddingYRem: 0.375,
         rowGapRem: 0.5,
       },
-      charts: {
-        loudnessHistory: {
-          momentaryStroke: "#22d3ee",
-          momentaryStrokeSnap: "#fb923c",
-          momentaryStrokeWidth: 1.2,
-          shortTermStroke: "#007AFF",
-          shortTermStrokeSnap: "#f59e0b",
-          shortTermStrokeWidth: 1.2,
-          shortTermOpacity: 0.95,
-          selectionStroke: "#f59e0b",
-          selectionStrokeWidth: 1.2,
-          /** Horizontal history guides aligned to the left axis ticks (any CSS <color>, including color-mix) */
-          historyGridLineColor: "color-mix(in srgb, var(--ui-color-divider) 10%, transparent)",
-        },
-      },
-    },
-    vector: {
-      charts: {
-        vectorscope: {
-          strokeLive: "#007AFF",
-          strokeSnap: "#f59e0b",
-          strokeWidth: 1,
-          axisOpacity: 0.8,
-          gridDiagInsetPct: 1.2,
-          plotRadius: 240,
-          /** Diagonal grid dashes: CSS <color>; `gridDiagDash` is stroke-dasharray in 0–100 viewBox user units */
-          gridDiagStroke: "color-mix(in srgb, var(--ui-color-divider) 80%, transparent)",
-          gridDiagDash: "2.6 3.4",
-        },
-      },
     },
     spectrum: {
       /**
@@ -194,15 +165,6 @@ export const UI_PREFERENCES = {
       spectrumGrid: {
         verticalSpacingPx: 56,
         horizontalSpacingPx: 34,
-      },
-      charts: {
-        spectrum: {
-          strokeLive: "#007AFF",
-          strokeSnap: "#f59e0b",
-          strokeWidth: 1.5,
-          fillOpacityTop: 0.22,
-          fillOpacityBottom: 0.03,
-        },
       },
     },
   },

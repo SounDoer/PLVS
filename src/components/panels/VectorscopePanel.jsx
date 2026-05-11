@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
-import { UI_PREFERENCES } from "../../uiPreferences";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 
 export function VectorscopePanel({
@@ -23,7 +22,6 @@ export function VectorscopePanel({
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
   const px = Number.isFinite(pairX) ? Math.max(0, Math.floor(Number(pairX))) : 0;
   const py = Number.isFinite(pairY) ? Math.max(0, Math.floor(Number(pairY))) : 1;
-  const vs = UI_PREFERENCES.modules.vector.charts.vectorscope;
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
   return (
@@ -77,16 +75,16 @@ export function VectorscopePanel({
               d={displayVectorPath || "M 130 130 L 130 130"}
               fill="none"
               stroke={selectedOffset >= 0 ? "var(--ui-chart-vectorscope-snap)" : "var(--ui-chart-vectorscope-live)"}
-              strokeWidth={vs.strokeWidth * 3}
-              opacity={vs.axisOpacity * 0.22}
+              strokeWidth="var(--ui-vs-stroke-w-halo)"
+              opacity="var(--ui-vs-path-glow-opacity)"
               strokeLinecap="round"
             />
             <path
               d={displayVectorPath || "M 130 130 L 130 130"}
               fill="none"
               stroke={selectedOffset >= 0 ? "var(--ui-chart-vectorscope-snap)" : "var(--ui-chart-vectorscope-live)"}
-              strokeWidth={vs.strokeWidth}
-              opacity={vs.axisOpacity}
+              strokeWidth="var(--ui-vs-stroke-w)"
+              opacity="var(--ui-vs-axis-op)"
               strokeLinecap="round"
             />
             <circle

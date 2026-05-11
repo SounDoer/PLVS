@@ -279,7 +279,7 @@ export function LoudnessPanel({
                     d={displayHistoryPathM}
                     fill="none"
                     stroke={selectedOffset >= 0 ? "var(--ui-chart-momentary-snap)" : "var(--ui-chart-momentary)"}
-                    strokeWidth={UI_PREFERENCES.modules.loudness.charts.loudnessHistory.momentaryStrokeWidth}
+                    strokeWidth="var(--ui-lh-stroke-m-w)"
                   />
                 )}
                 {histCurves.st && displayHistoryPathST && (
@@ -287,8 +287,8 @@ export function LoudnessPanel({
                     d={displayHistoryPathST}
                     fill="none"
                     stroke={selectedOffset >= 0 ? "var(--ui-chart-shortterm-snap)" : "var(--ui-chart-shortterm)"}
-                    strokeWidth={UI_PREFERENCES.modules.loudness.charts.loudnessHistory.shortTermStrokeWidth}
-                    opacity={UI_PREFERENCES.modules.loudness.charts.loudnessHistory.shortTermOpacity}
+                    strokeWidth="var(--ui-lh-stroke-st-w)"
+                    opacity="var(--ui-lh-stroke-st-op)"
                   />
                 )}
                 {selectedOffset >= 0 && showSelLine ? (
@@ -298,7 +298,7 @@ export function LoudnessPanel({
                     y1={0}
                     y2={220}
                     stroke="var(--ui-chart-selection)"
-                    strokeWidth={UI_PREFERENCES.modules.loudness.charts.loudnessHistory.selectionStrokeWidth}
+                    strokeWidth="var(--ui-lh-stroke-sel-w)"
                     strokeDasharray="5 4"
                     vectorEffect="non-scaling-stroke"
                   />

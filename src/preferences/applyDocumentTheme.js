@@ -221,12 +221,15 @@ export function applyThemeToDocument(themeId) {
 
   const vs = charts.vectorscope;
   setCssVar("--ui-vs-stroke-w", String(vs.strokeWidth));
+  setCssVar("--ui-vs-stroke-w-halo", String(vs.strokeWidth * 3));
   setCssVar("--ui-vs-axis-op", String(vs.axisOpacity));
+  setCssVar("--ui-vs-path-glow-opacity", String(vs.axisOpacity * 0.22));
   setCssVar("--ui-vs-grid-diag-stroke", vs.gridDiagStroke);
   setCssVar("--ui-vs-grid-diag-dash", vs.gridDiagDash);
 
   const spectrum = charts.spectrum;
   setCssVar("--ui-sp-stroke-w", String(spectrum.strokeWidth));
+  setCssVar("--ui-sp-stroke-w-inner", String(Math.max(1, spectrum.strokeWidth - 1)));
   setCssVar("--ui-sp-fill-top", String(spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-sp-fill-bottom", String(spectrum.fillOpacityBottom ?? 0.02));
 }

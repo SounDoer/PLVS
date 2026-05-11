@@ -11,6 +11,7 @@ import {
 import { fmtMetric } from "./math/formatMath";
 import { isTauri } from "./ipc/env.js";
 import { LOUDNESS_TICKS, loudnessHistY } from "./scales";
+import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useFloatMeteringCore } from "./hooks/useFloatMeteringCore";
@@ -254,7 +255,10 @@ function FloatVectorView({ core }) {
     () => resolveChannelLayout(persistedLayout, { channelCount: chCount }),
     [persistedLayout, chCount]
   );
-  const vsGridDiagInset = Math.max(0, Math.min(20, UI_PREFERENCES.modules.vector.charts.vectorscope.gridDiagInsetPct ?? 0));
+  const vsGridDiagInset = useMemo(() => {
+    const pct = getBuiltinTheme(core.resolvedThemeId).charts.vectorscope.gridDiagInsetPct ?? 0;
+    return Math.max(0, Math.min(20, pct));
+  }, [core.resolvedThemeId]);
   const vsGridDiagFar = 100 - vsGridDiagInset;
   return (
     <div className="p-2">

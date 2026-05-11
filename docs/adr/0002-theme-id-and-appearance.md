@@ -6,7 +6,7 @@ Accepted
 
 ## Implementation status
 
-- **Delivered in tree**: persisted `appearance` / `themeId` (`layoutPersistKey`), `resolveThemeId`, `src/theme/builtinThemes.js` registry, `applyLayoutToDocument` / `applyThemeToDocument` split, Settings separates **follow system** vs **fixed theme**, and **`system` → `fixed` seeds `themeId` from the currently resolved builtin** (Decision 6).
+- **Delivered in tree**: persisted `appearance` / `themeId` (`layoutPersistKey`), `resolveThemeId`, `src/theme/builtinThemes.js` registry, `applyLayoutToDocument` / `applyThemeToDocument` split, Settings separates **follow system** vs **fixed theme**, and **`system` → `fixed` seeds `themeId` from the currently resolved builtin** (Decision 6). Loudness / spectrum / vectorscope **stroke widths and colours** are owned by each builtin theme’s `charts` object and **`--ui-*` CSS variables** (no duplicate chart hex blocks under `UI_PREFERENCES.modules.*.charts` in `data.js`).
 - **GitHub #55 (multi-theme first-paint CSS)**: still **deferred** per **Decision 9**; only a single `theme-fallbacks.css` placeholder (`audiometer-dark`) is generated until first-paint flash with many builtins becomes a product issue.
 
 ## Context
