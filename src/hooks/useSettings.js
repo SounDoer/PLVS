@@ -7,7 +7,7 @@ import {
   readSystemPrefersDark,
   resolveThemeId,
 } from "../uiPreferences";
-import { getBuiltinTheme } from "../theme/builtinThemes.js";
+import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { getDefaultLoudnessReferenceProfileId, normalizeLoudnessReferenceProfileId } from "../loudnessReferenceProfiles";
 
 export function useSettings() {
@@ -30,21 +30,30 @@ export function useSettings() {
     [appearance, themeId, systemPrefersDark]
   );
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
-  const uiThemeSelection = useMemo(() => {
-    if (appearance === "system") return "system";
-    if (themeId === "audiometer-light") return "light";
-    return "dark";
-  }, [appearance, themeId]);
 
-  function setUiThemeSelection(value) {
-    if (value === "system") {
+  /** ADR 0002 §6: switching system → fixed seeds `themeId` from the resolved builtin at that moment. */
+  function setAppearanceMode(mode) {
+    if (mode === "system") {
       setAppearance("system");
       setThemeId(null);
       return;
     }
+    if (appearance === "system") {
+      setThemeId(resolveThemeId({ appearance: "system", themeId: null }, systemPrefersDark));
+    }
     setAppearance("fixed");
-    setThemeId(value === "light" ? "audiometer-light" : "audiometer-dark");
   }
+
+  function setFixedThemeIdFromPicker(id) {
+    if (!isThemeId(id)) return;
+    setAppearance("fixed");
+    setThemeId(id);
+  }
+
+  const fixedThemeSelectValue = useMemo(() => {
+    if (appearance !== "fixed") return "";
+    return isThemeId(themeId) ? themeId : resolvedThemeId;
+  }, [appearance, themeId, resolvedThemeId]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -80,9 +89,10 @@ export function useSettings() {
     setThemeId,
     /** Resolved builtin theme id (follows OS when `appearance === "system"`). */
     resolvedThemeId,
-    /** Settings UI value for the theme `<Select>`. */
-    uiThemeSelection,
-    setUiThemeSelection,
+    themeSelectOptions: THEME_SELECT_OPTIONS,
+    setAppearanceMode,
+    setFixedThemeIdFromPicker,
+    fixedThemeSelectValue,
     referenceProfileId,
     setReferenceProfileId,
   };

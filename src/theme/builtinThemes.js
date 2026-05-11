@@ -1,10 +1,9 @@
 /**
  * Builtin colour themes (full token bundles per ADR 0002).
- * @typedef {import("../preferences/themeResolve.js").ThemeId} ThemeId
+ * @typedef {"audiometer-dark"|"audiometer-light"|"audiometer-ember"} ThemeId
  */
 
 import { AUDIOMETER_SEMANTIC_DARK, AUDIOMETER_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.js";
-import { DEFAULT_THEME_ID } from "../preferences/themeResolve.js";
 
 /** @typedef {import("./shadcnSemanticPreset.js").ShadcnSemantic} ShadcnSemantic */
 
@@ -28,12 +27,15 @@ import { DEFAULT_THEME_ID } from "../preferences/themeResolve.js";
 /**
  * @typedef {{
  *   id: ThemeId;
+ *   label: string;
  *   semantic: ShadcnSemantic;
  *   charts: ChartsBundle;
  *   meterGradient: MeterGradient;
  *   colorScheme: "light" | "dark";
  * }} BuiltinTheme
  */
+
+export const DEFAULT_THEME_ID = /** @type {ThemeId} */ ("audiometer-dark");
 
 /** Dark resolved charts (former module defaults + empty `themes.dark`). */
 const CHARTS_DARK = {
@@ -90,6 +92,28 @@ const CHARTS_LIGHT = {
   },
 };
 
+/** Third dark theme: same semantic shell as `audiometer-dark`, warmer chart accents. */
+const CHARTS_EMBER = {
+  loudnessHistory: {
+    ...CHARTS_DARK.loudnessHistory,
+    momentaryStroke: "#fb7185",
+    momentaryStrokeSnap: "#fdba74",
+    shortTermStroke: "#f43f5e",
+    shortTermStrokeSnap: "#fb923c",
+    selectionStroke: "#fb923c",
+  },
+  vectorscope: {
+    ...CHARTS_DARK.vectorscope,
+    strokeLive: "#f43f5e",
+    strokeSnap: "#fdba74",
+  },
+  spectrum: {
+    ...CHARTS_DARK.spectrum,
+    strokeLive: "#f43f5e",
+    strokeSnap: "#fdba74",
+  },
+};
+
 const METER_GRADIENT = {
   top: "#f97373",
   mid: "#fbbf3b",
@@ -97,10 +121,18 @@ const METER_GRADIENT = {
   bottom: "#34d399",
 };
 
+const METER_GRADIENT_EMBER = {
+  top: "#fb923c",
+  mid: "#fbbf24",
+  midStopPercent: 46,
+  bottom: "#4ade80",
+};
+
 /** @type {Record<ThemeId, BuiltinTheme>} */
 export const BUILTIN_THEMES = {
   "audiometer-dark": {
     id: "audiometer-dark",
+    label: "Dark",
     semantic: AUDIOMETER_SEMANTIC_DARK,
     charts: CHARTS_DARK,
     meterGradient: METER_GRADIENT,
@@ -108,12 +140,39 @@ export const BUILTIN_THEMES = {
   },
   "audiometer-light": {
     id: "audiometer-light",
+    label: "Light",
     semantic: AUDIOMETER_SEMANTIC_LIGHT,
     charts: CHARTS_LIGHT,
     meterGradient: METER_GRADIENT,
     colorScheme: "light",
   },
+  "audiometer-ember": {
+    id: "audiometer-ember",
+    label: "Ember (dark)",
+    semantic: AUDIOMETER_SEMANTIC_DARK,
+    charts: CHARTS_EMBER,
+    meterGradient: METER_GRADIENT_EMBER,
+    colorScheme: "dark",
+  },
 };
+
+/** @type {readonly ThemeId[]} */
+export const THEME_IDS = Object.freeze(
+  /** @type {ThemeId[]} */ (["audiometer-dark", "audiometer-light", "audiometer-ember"])
+);
+
+/**
+ * @param {unknown} id
+ * @returns {id is ThemeId}
+ */
+export function isThemeId(id) {
+  return typeof id === "string" && THEME_IDS.includes(/** @type {ThemeId} */ (id));
+}
+
+/** Settings and pickers: stable order + human label per ADR 0002 §13. */
+export const THEME_SELECT_OPTIONS = Object.freeze(
+  THEME_IDS.map((id) => ({ id, label: BUILTIN_THEMES[id].label }))
+);
 
 /**
  * @param {ThemeId} id

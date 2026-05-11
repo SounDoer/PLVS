@@ -51,7 +51,7 @@
 
 **Tauri 2 + Rust（后端）+ React / Vite（前端）**
 
-**前端 UI 约定（展示层）**：壳与表单控件优先使用 **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)**（Radix 原语、`components.json`、`@/` 别名，源码位于 `src/components/ui/`）。**主题与语义色**：shadcn 的 oklch 语义表定义在 **`src/theme/shadcnSemanticPreset.js`**；`applyUiPreferencesToDocument` 调用 **`applyShadcnSemanticTokensToDocument`** 写入 `--background`、`--card`、`--primary`、`--ring` 等，并用 **`buildMeterColorBridge`** 从同一语义派生 **`--ui-color-*`**（仪表读数、分割线、内嵌背景等）。**首屏与持久模式**：`src/main.jsx` 在 `createRoot` 之前用 **`resolveEffectiveUiMode`**（持久化的 theme 偏好 + `prefers-color-scheme`）调用 `applyUiPreferencesToDocument`。**布局与图表 stroke**：`--ui-*` 仍由 `UI_PREFERENCES` 注入（间距、字号、**`--ui-chart-*`** 等）；面板壳层优先 Tailwind 语义类（如 `bg-muted`、`border-border`）；Tailwind 的 **`text-chart-*` / `bg-chart-*`** 通过 `index.css` 的 `@theme inline` 映射到 shadcn 的 **`--chart-1`…`--chart-5`**。详见 **[`docs/adr/0001-ui-layout-vs-shadcn-theme.md`](adr/0001-ui-layout-vs-shadcn-theme.md)**。
+**前端 UI 约定（展示层）**：壳与表单控件优先使用 **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)**（Radix 原语、`components.json`、`@/` 别名，源码位于 `src/components/ui/`）。**主题与语义色（ADR 0002）**：内置主题注册表在 **`src/theme/builtinThemes.js`**（`themeId`、`THEME_IDS`、`BUILTIN_THEMES`）。`src/main.jsx` 在 `createRoot` 之前从 **`localStorage` 键 `audiometer.ui`**（`UI_PREFERENCES.layoutPersistKey`）读出 **`appearance`（`system` \| `fixed`）** 与可选 **`themeId`**，用 **`resolveThemeId`**（结合 **`prefers-color-scheme`**）得到当前 **`themeId`**，再 **`applyLayoutToDocument`**（布局 / 字号 / 非调色 `--ui-*`）与 **`applyThemeToDocument`**（`data-theme`、`color-scheme`、`applyShadcnSemanticTokensToDocument`、`--ui-color-*`、`--ui-chart-*`、Peak 渐变等）。首屏 shadcn 占位变量由 **`npm run theme:generate`** 写入 **`src/generated/theme-fallbacks.css`**（与默认暗色语义同源）。主窗与浮窗共用同一持久化键；跨 WebView 的偏好更新通过浏览器 **`storage` 事件** 同步（`useSettings` 监听）。详见 **[`docs/adr/0001-ui-layout-vs-shadcn-theme.md`](adr/0001-ui-layout-vs-shadcn-theme.md)** 与 **[`docs/adr/0002-theme-id-and-appearance.md`](adr/0002-theme-id-and-appearance.md)**。
 
 ### 为什么是这个组合
 
@@ -196,7 +196,7 @@ AudioMeter/
 │   │   ├── useHistoryInteraction.js # 历史窗拖拽 / 视口
 │   │   ├── useSnapshot.js           # 快照模式逻辑
 │   │   ├── useLayoutDrag.js         # 可拖动分割线 + 持久化
-│   │   ├── useSettings.js           # 设置 / UI 模式
+│   │   ├── useSettings.js           # 设置：`appearance` / `themeId`、`storage` 同步
 │   │   ├── useFloatMeteringCore.js  # 浮窗与主窗共用计量订阅
 │   │   └── …                        # 其它浮窗与 Frame 订阅封装
 │   ├── ipc/                         # ★ 前后端通信层（invoke/listen/Channel 的唯一入口）
@@ -212,8 +212,9 @@ AudioMeter/
 │   ├── uiPreferences.js             # 对外入口（re-export）
 │   ├── preferences/                 # 数据 / 持久化 / apply 拆分
 │   │   ├── data.js                  # `UI_PREFERENCES`、`getResolvedCharts`
-│   │   ├── layoutPersistence.js     # localStorage 中的 uiMode / 布局键
-│   │   └── applyDocumentTheme.js    # `applyUiPreferencesToDocument`
+│   │   ├── layoutPersistence.js     # 布局相关 localStorage 读写
+│   │   ├── themeResolve.js          # `parsePersistedUiStateJson`、`resolveThemeId`
+│   │   └── applyDocumentTheme.js    # `applyLayoutToDocument`、`applyThemeToDocument`
 │   ├── generated/
 │   │   └── theme-fallbacks.css      # `npm run theme:generate`（首屏 shadcn 变量）
 │

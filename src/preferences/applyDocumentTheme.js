@@ -30,9 +30,9 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorSchem
   } = prefs.layout;
 
   const byScheme = prefs.modules.spectrum.spectrumOpacityByColorScheme;
+  const schemeKey = colorScheme === "light" ? "colorSchemeLight" : "colorSchemeDark";
   const spectrumOpacities =
-    (byScheme && byScheme[colorScheme]) ||
-    (byScheme && byScheme.dark) || { verticalLineOpacity: 0.08, horizontalLineOpacity: 0.08 };
+    (byScheme && byScheme[schemeKey]) || { verticalLineOpacity: 0.08, horizontalLineOpacity: 0.08 };
 
   setCssVar("--ui-font-sans", typography.fontFamily);
 
@@ -136,7 +136,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorSchem
 
 /**
  * Theme-owned palette tokens (ADR 0002 `applyTheme`).
- * @param {import("../preferences/themeResolve.js").ThemeId} themeId
+ * @param {import("../theme/builtinThemes.js").ThemeId} themeId
  */
 export function applyThemeToDocument(themeId) {
   if (typeof document === "undefined") return;

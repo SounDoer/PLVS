@@ -16,8 +16,11 @@ import { cn } from "@/lib/utils";
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,
-  uiThemeSelection,
-  setUiThemeSelection,
+  appearance,
+  setAppearanceMode,
+  fixedThemeSelectValue,
+  setFixedThemeIdFromPicker,
+  themeSelectOptions,
   referenceProfileId,
   setReferenceProfileId,
   loudnessReferenceProfiles,
@@ -107,18 +110,34 @@ export function SettingsPanel({
                 </div>
                 <Separator />
                 <div className="grid gap-2">
-                  <Label htmlFor="settings-theme">Theme</Label>
-                  <Select value={uiThemeSelection} onValueChange={setUiThemeSelection}>
-                    <SelectTrigger id="settings-theme">
-                      <SelectValue placeholder="Theme" />
+                  <Label htmlFor="settings-appearance">Appearance</Label>
+                  <Select value={appearance} onValueChange={setAppearanceMode}>
+                    <SelectTrigger id="settings-appearance">
+                      <SelectValue placeholder="Appearance" />
                     </SelectTrigger>
                     <SelectContent position="popper">
                       <SelectItem value="system">Follow system</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="fixed">Fixed theme</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                {appearance === "fixed" ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="settings-theme-id">Colour theme</Label>
+                    <Select value={fixedThemeSelectValue} onValueChange={setFixedThemeIdFromPicker}>
+                      <SelectTrigger id="settings-theme-id">
+                        <SelectValue placeholder="Theme" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {themeSelectOptions.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.id}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <Separator />
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Label className="shrink-0">Layout</Label>

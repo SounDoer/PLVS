@@ -3,20 +3,13 @@
  * @see docs/adr/0002-theme-id-and-appearance.md
  */
 
-/** @typedef {"audiometer-dark"|"audiometer-light"} ThemeId */
+import {
+  DEFAULT_THEME_ID,
+  isThemeId,
+  THEME_IDS,
+} from "../theme/builtinThemes.js";
 
-export const DEFAULT_THEME_ID = /** @type {ThemeId} */ ("audiometer-dark");
-
-/** @type {readonly ThemeId[]} */
-export const THEME_IDS = Object.freeze([DEFAULT_THEME_ID, "audiometer-light"]);
-
-/**
- * @param {unknown} id
- * @returns {id is ThemeId}
- */
-export function isThemeId(id) {
-  return typeof id === "string" && THEME_IDS.includes(/** @type {ThemeId} */ (id));
-}
+export { DEFAULT_THEME_ID, isThemeId, THEME_IDS };
 
 /**
  * @param {unknown} raw
@@ -37,16 +30,6 @@ export function parsePersistedUiStateJson(raw) {
         appearance: s.appearance,
         themeId: s.appearance === "system" ? null : themeId,
       };
-    }
-    // Legacy `uiMode` (same localStorage key, pre–ADR-0002).
-    if (s.uiMode === "dark") {
-      return { appearance: "fixed", themeId: DEFAULT_THEME_ID };
-    }
-    if (s.uiMode === "light") {
-      return { appearance: "fixed", themeId: "audiometer-light" };
-    }
-    if (s.uiMode === "system") {
-      return { appearance: "system", themeId: null };
     }
     return { appearance: "system", themeId: null };
   } catch {
@@ -76,7 +59,7 @@ export function readPersistedShellThemeFields(prefs) {
 /**
  * @param {{ appearance?: unknown; themeId?: unknown }} shell
  * @param {boolean} systemPrefersDark
- * @returns {ThemeId}
+ * @returns {import("../theme/builtinThemes.js").ThemeId}
  */
 export function resolveThemeId(shell, systemPrefersDark) {
   const appearance = shell?.appearance === "fixed" ? "fixed" : "system";

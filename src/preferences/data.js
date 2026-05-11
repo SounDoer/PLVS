@@ -177,13 +177,16 @@ export const UI_PREFERENCES = {
       },
     },
     spectrum: {
-      /** Spectrum grid line opacities depend on active `color-scheme` (see `applyLayoutToDocument`). */
+      /**
+       * Spectrum grid line opacities keyed by **browser `color-scheme` hint** from the active theme
+       * (`"light"` | `"dark"`), not Tailwind `.dark` / `dark:`.
+       */
       spectrumOpacityByColorScheme: {
-        dark: {
+        colorSchemeDark: {
           verticalLineOpacity: 0.08,
           horizontalLineOpacity: 0.08,
         },
-        light: {
+        colorSchemeLight: {
           verticalLineOpacity: 0.07,
           horizontalLineOpacity: 0.05,
         },

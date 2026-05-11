@@ -4,6 +4,11 @@
 
 Accepted
 
+## Implementation status
+
+- **Delivered in tree**: persisted `appearance` / `themeId` (`layoutPersistKey`), `resolveThemeId`, `src/theme/builtinThemes.js` registry, `applyLayoutToDocument` / `applyThemeToDocument` split, Settings separates **follow system** vs **fixed theme**, and **`system` → `fixed` seeds `themeId` from the currently resolved builtin** (Decision 6).
+- **GitHub #55 (multi-theme first-paint CSS)**: still **deferred** per **Decision 9**; only a single `theme-fallbacks.css` placeholder (`audiometer-dark`) is generated until first-paint flash with many builtins becomes a product issue.
+
 ## Context
 
 AudioMeter will support **multiple named colour themes** (not only built-in light/dark pairs). The UI must stay aligned with **shadcn-style semantic CSS variables** and Tailwind v4, while keeping **layout and typography** easy to tune without duplicating them per theme. Persistence is required during development and for production (layout, splitter ratios, etc.); **custom colour packs** are explicitly **out of scope for now** (may revisit later).

@@ -21,6 +21,7 @@ describe("resolveThemeId", () => {
 
   it("uses stored themeId when appearance is fixed and valid", () => {
     expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-light" }, true)).toBe("audiometer-light");
+    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-ember" }, false)).toBe("audiometer-ember");
   });
 
   it("falls back to audiometer-dark for fixed appearance with missing or invalid themeId", () => {
@@ -49,16 +50,8 @@ describe("parsePersistedUiStateJson", () => {
     });
   });
 
-  it("migrates legacy uiMode when appearance is absent", () => {
+  it("legacy uiMode-only blobs are ignored (no migration)", () => {
     expect(parsePersistedUiStateJson(JSON.stringify({ uiMode: "dark" }))).toEqual({
-      appearance: "fixed",
-      themeId: "audiometer-dark",
-    });
-    expect(parsePersistedUiStateJson(JSON.stringify({ uiMode: "light" }))).toEqual({
-      appearance: "fixed",
-      themeId: "audiometer-light",
-    });
-    expect(parsePersistedUiStateJson(JSON.stringify({ uiMode: "system" }))).toEqual({
       appearance: "system",
       themeId: null,
     });
@@ -89,5 +82,6 @@ describe("THEME_IDS", () => {
   it("lists known builtin ids", () => {
     expect(THEME_IDS).toContain("audiometer-dark");
     expect(THEME_IDS).toContain("audiometer-light");
+    expect(THEME_IDS).toContain("audiometer-ember");
   });
 });

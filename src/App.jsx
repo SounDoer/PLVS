@@ -75,8 +75,11 @@ export default function App() {
   const {
     settingsOpen,
     setSettingsOpen,
-    uiThemeSelection,
-    setUiThemeSelection,
+    appearance,
+    setAppearanceMode,
+    fixedThemeSelectValue,
+    setFixedThemeIdFromPicker,
+    themeSelectOptions,
     resolvedThemeId,
     referenceProfileId,
     setReferenceProfileId,
@@ -469,8 +472,7 @@ export default function App() {
       let prev = {};
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) prev = JSON.parse(raw);
-      const appearance = uiThemeSelection === "system" ? "system" : "fixed";
-      const themeId = uiThemeSelection === "system" ? null : uiThemeSelection === "light" ? "audiometer-light" : "audiometer-dark";
+      const persistedThemeId = appearance === "system" ? null : fixedThemeSelectValue;
       localStorage.setItem(
         STORE_KEY,
         JSON.stringify({
@@ -481,7 +483,7 @@ export default function App() {
           loudnessHistWidthRatio,
           referenceProfileId,
           appearance,
-          themeId,
+          themeId: persistedThemeId,
           channelLayout,
           vectorscopePairX: vectorscopePairUi.x,
           vectorscopePairY: vectorscopePairUi.y,
@@ -494,7 +496,8 @@ export default function App() {
     rightTopRatio,
     loudnessHistWidthRatio,
     referenceProfileId,
-    uiThemeSelection,
+    appearance,
+    fixedThemeSelectValue,
     channelLayout,
     vectorscopePairUi,
   ]);
@@ -793,8 +796,11 @@ export default function App() {
       <SettingsPanel
         settingsOpen={settingsOpen}
         setSettingsOpen={setSettingsOpen}
-        uiThemeSelection={uiThemeSelection}
-        setUiThemeSelection={setUiThemeSelection}
+        appearance={appearance}
+        setAppearanceMode={setAppearanceMode}
+        fixedThemeSelectValue={fixedThemeSelectValue}
+        setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
+        themeSelectOptions={themeSelectOptions}
         referenceProfileId={referenceProfileId}
         setReferenceProfileId={setReferenceProfileId}
         loudnessReferenceProfiles={LOUDNESS_REFERENCE_PROFILES}

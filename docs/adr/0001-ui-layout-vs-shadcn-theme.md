@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-AudioMeter injects many CSS custom properties from `applyUiPreferencesToDocument` (`src/preferences/applyDocumentTheme.js`, exported via `uiPreferences.js`): spacing, radii, chart stroke colours (`--ui-chart-*`), and meter-specific colours bridged from the shadcn semantic palette (`meterColorBridge`). The UI also uses Tailwind v4 + shadcn tokens (`bg-muted`, `border-border`, `text-chart-*`, etc.). First-paint shadcn variables are generated into `src/generated/theme-fallbacks.css` from `AUDIOMETER_SEMANTIC_*` (`npm run theme:generate`, wired to `prebuild`). **Theme identity (`themeId`, appearance, no `.dark` axis) and how `--chart-*` relate to curves** are defined in **[ADR 0002](0002-theme-id-and-appearance.md)**.
+AudioMeter injects many CSS custom properties from `applyLayoutToDocument` / `applyThemeToDocument` (`src/preferences/applyDocumentTheme.js`, exported via `uiPreferences.js`): spacing, radii, chart stroke colours (`--ui-chart-*`), and meter-specific colours bridged from the shadcn semantic palette (`meterColorBridge`). The UI also uses Tailwind v4 + shadcn tokens (`bg-muted`, `border-border`, `text-chart-*`, etc.). First-paint shadcn variables are generated into `src/generated/theme-fallbacks.css` from `AUDIOMETER_SEMANTIC_*` (`npm run theme:generate`, wired to `prebuild`). **Theme identity (`themeId`, appearance, no `.dark` axis) and how `--chart-*` relate to curves** are defined in **[ADR 0002](0002-theme-id-and-appearance.md)**.
 
 ## Decision
 
