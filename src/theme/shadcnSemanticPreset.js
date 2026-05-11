@@ -5,7 +5,8 @@
  * `--radius` matches the same preset. Product accent (`primary` / `ring`) overrides neutral
  * primaries so metering CTAs stay cyan-readable on both modes.
  *
- * Keep `index.css` `:root` / `.dark` fallbacks in sync with `AUDIOMETER_SEMANTIC_*` for first paint.
+ * First-paint `:root` / `.dark` blocks are generated from these objects via `buildThemeFallbackCss`
+ * (`npm run theme:generate` → `src/generated/theme-fallbacks.css`, imported by `index.css`).
  */
 
 /** @typedef {Record<string, string>} ShadcnSemantic */
@@ -82,7 +83,8 @@ export const AUDIOMETER_SEMANTIC_DARK = {
   ring: "#22d3ee",
 };
 
-const SEMANTIC_TO_CSS = [
+/** shadcn semantic keys → CSS custom property names (single source for runtime + generated first paint). */
+export const SHADCN_SEMANTIC_CSS_VAR_BINDINGS = [
   ["--background", "background"],
   ["--foreground", "foreground"],
   ["--card", "card"],
@@ -109,6 +111,31 @@ const SEMANTIC_TO_CSS = [
   ["--chart-5", "chart5"],
 ];
 
+/**
+ * CSS text for `:root` + `.dark` first paint (must match `applyShadcnSemanticTokensToDocument` mapping).
+ * @param {ShadcnSemantic} light
+ * @param {ShadcnSemantic} dark
+ * @param {string} radiusCss e.g. `0.625rem` — keep aligned with `UI_PREFERENCES.radii.card`
+ */
+export function buildThemeFallbackCss(light, dark, radiusCss) {
+  const header = [
+    "/* AUTO-GENERATED — run `npm run theme:generate` after editing AUDIOMETER_SEMANTIC_* */",
+    "/* First-paint shadcn semantic tokens; runtime re-applied by applyShadcnSemanticTokensToDocument */",
+    "",
+  ].join("\n");
+
+  function block(selector, semantic) {
+    const lines = [`${selector} {`, `  --radius: ${radiusCss};`];
+    for (const [cssName, key] of SHADCN_SEMANTIC_CSS_VAR_BINDINGS) {
+      lines.push(`  ${cssName}: ${semantic[key]};`);
+    }
+    lines.push("}");
+    return lines.join("\n");
+  }
+
+  return `${header}${block(":root", light)}\n\n${block(".dark", dark)}\n`;
+}
+
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
   document.documentElement.style.setProperty(name, String(value));
@@ -120,7 +147,7 @@ function setCssVar(name, value) {
  */
 export function applyShadcnSemanticTokensToDocument(semantic) {
   if (typeof document === "undefined") return;
-  for (const [cssName, key] of SEMANTIC_TO_CSS) {
+  for (const [cssName, key] of SHADCN_SEMANTIC_CSS_VAR_BINDINGS) {
     setCssVar(cssName, semantic[key]);
   }
 }

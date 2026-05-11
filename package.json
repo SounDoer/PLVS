@@ -9,6 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "theme:generate": "node scripts/generate-theme-fallbacks.mjs",
+    "prebuild": "npm run theme:generate",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

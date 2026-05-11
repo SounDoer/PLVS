@@ -207,7 +207,13 @@ AudioMeter/
 │   │   └── types.js
 │   ├── math/                        # 纯函数（刻度、历史路径、格式、频谱辅助等）
 │   ├── scales.js                    # 与 Rust DSP / UI 共享的刻度约定
-│   └── uiPreferences.js
+│   ├── uiPreferences.js             # 对外入口（re-export）
+│   ├── preferences/                 # 数据 / 持久化 / apply 拆分
+│   │   ├── data.js                  # `UI_PREFERENCES`、`getResolvedCharts`
+│   │   ├── layoutPersistence.js     # localStorage 中的 uiMode / 布局键
+│   │   └── applyDocumentTheme.js    # `applyUiPreferencesToDocument`
+│   ├── generated/
+│   │   └── theme-fallbacks.css      # `npm run theme:generate`（首屏 shadcn 变量）
 │
 ├── public/                          # 静态资源（图标等）
 │   └── (不再有 worklets/)

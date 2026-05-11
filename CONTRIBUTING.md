@@ -11,6 +11,7 @@
 
 ```bash
 npm ci
+npm run theme:generate   # optional: regenerates src/generated/theme-fallbacks.css (also runs via prebuild)
 npm run lint
 npm test
 npm run build
