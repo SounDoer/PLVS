@@ -2,7 +2,7 @@
   "name": "audiometer-modern-ui",
   "description": "Browser-based real-time audio meter — loudness (LUFS), peak, spectrum, and vectorscope",
   "private": true,
-  "version": "0.0.11",
+  "version": "0.0.12",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
