@@ -32,7 +32,7 @@ export function getResolvedCharts(prefs = UI_PREFERENCES, mode = "dark") {
 }
 
 export const UI_PREFERENCES = {
-  layoutPersistKey: "am.react.layout",
+  layoutPersistKey: "audiometer.ui",
 
   layout: {
     shell: {

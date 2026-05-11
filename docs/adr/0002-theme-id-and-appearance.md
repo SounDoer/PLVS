@@ -16,36 +16,44 @@ This ADR supersedes the following earlier ideas where they conflict with ADR 000
 
 2. **Builtin themes are self-contained** — Each registered **`themeId`** ships a **full** token bundle: at least **`semantic`** (shadcn-shaped surface tokens) and **`charts`** (all module stroke/fill inputs that today feed `--ui-chart-*`). **No runtime merge** with separate “module default charts”; copying defaults when authoring a new theme is acceptable.
 
-3. **`buildMeterColorBridge(semantic)`** — **One shared bridge** maps `semantic` → legacy **`--ui-color-*`** for metering chrome and mixed SVG/auxiliary colours. Per-theme exceptions use a small optional **`meterColorOverrides`** object merged on top of the bridge output.
+3. **`buildMeterColorBridge` + optional overrides** — **One shared** function maps shadcn **`semantic`** + a theme’s **`colorScheme`** (`"light"` | `"dark"`, browser hint only — not a second theme axis) to the **bridge object** (keys such as `pageBg`, `divider`, `metricRowBg`, … — same names as today’s `buildMeterColorBridge` return value). Signature: **`buildMeterColorBridge(semantic, colorScheme)`**. **`meterColorOverrides` is not** passed into the bridge; it lives on the **builtin theme record** and is applied **after** the bridge: **`finalColors = { …buildMeterColorBridge(semantic, colorScheme), …(theme.meterColorOverrides ?? {}) }`**, then write **`--ui-color-*`** from `finalColors`. **`meterColorOverrides` shape**: a **partial object with the same keys as the bridge return type**; values are CSS **`<color>`** strings. Omitted keys keep bridge defaults.
 
 4. **Typography scale is global** — Font sizes / `--ui-fs-*` (and related) are **not duplicated per `themeId`**; they live in a single layout/typography configuration applied by **`applyLayout`** (or equivalent).
 
 5. **Layout is orthogonal to theme** — Splitter spacing, min-heights, insets, and other **`--ui-*` layout variables** do **not** vary with `themeId`. If a future “compact density” preset is needed, model it as a separate **`layoutPresetId`** (or similar), not as part of colour themes.
 
-6. **Persistence** — One **JSON blob** under a **storage key** that changes when the persisted shape changes (**no migration** from older keys during solo dev). Use **`audiometer.ui`** as `layoutPersistKey` (do **not** embed version suffixes like `v2` in the key name). Fields include at least:
+6. **Persistence** — One **JSON blob** under **`layoutPersistKey === "audiometer.ui"`** in code (`src/preferences/data.js`). When the persisted shape changes, the key string may change again (**no migration** from older keys during solo dev). Do **not** embed version suffixes like `v2` in the key name. Fields include at least:
    - **`appearance`**: `"system"` | `"fixed"`.
    - **`themeId`**: required when `appearance === "fixed"`; **omit or `null` when `appearance === "system"`** (resolved theme is computed at runtime, not stored as a fixed choice).
+   - **UX when switching `system` → `fixed`**: Settings (or equivalent) **must initialise `themeId` to the currently resolved theme** (`resolveThemeId` / same helper used for `applyTheme` at that moment), **not** blindly `audiometer-dark`, so the UI does not jump unless the user picks another id.
 
 7. **`--chart-1`…`--chart-5`** — Come **only** from the active theme’s **`semantic.chart1`…`semantic.chart5`** (after `applyShadcnSemanticTokensToDocument`). **Do not** copy product curve colours into these slots. **`--ui-chart-*`** remain the source of truth for SVG paths (live/snap and multiple traces). Tailwind **`text-chart-*` / `bg-chart-*`** are **decorative palette slots**, not guaranteed to match a specific trace.
 
 8. **`color-scheme`** — Each theme declares **`colorScheme: "light" | "dark"`** (browser hint for native controls/scrollbars). This is **not** the same as Tailwind `dark:` / `.dark`.
 
-9. **First paint** — Keep the **simple strategy**: static CSS provides **one placeholder theme** aligned with **`audiometer-dark`** until JS runs; then **`applyTheme(resolvedThemeId)`** applies the real theme. Do **not** pre-generate static CSS for every builtin theme in v1.
+9. **First paint** — Keep the **simple strategy**: static CSS (**`src/generated/theme-fallbacks.css`**, produced by **`npm run theme:generate`**) provides **one placeholder token set** that matches the **builtin `audiometer-dark` semantic palette** (same source module the runtime uses for that id — **no separate “old .dark preset” naming** in the generator). Until JS runs, **`data-theme` may be absent**; after `applyTheme`, set **`data-theme="<resolvedThemeId>"`**. Do **not** pre-generate static CSS for every builtin theme in v1.
 
 10. **Root marker** — Set **`data-theme="<themeId>"`** on `<html>` (or document root) for debugging and for any attribute-scoped CSS in the future.
 
-11. **Apply order** — On boot and when saving settings: **`applyLayout` first**, then **`applyTheme(resolvedThemeId)`**, so layout/typography variables exist before colour tokens that might reference them.
+11. **Apply order and split boundary** — On boot and when saving settings: **`applyLayoutToDocument(prefs)` first**, then **`applyThemeToDocument(resolvedThemeId)`**. Split **by token kind**, not by file count:
+    - **`applyLayoutToDocument`**: everything that is **spatial / typographic / non-palette product tuning** from the shared prefs object: **`--ui-font-sans`**, all **`--ui-fs-*`**, **`--ui-fw-*`**, **`--radius`** and **`--ui-radius-*`** (from `prefs.radii`), shell/splitter/article/header/footer **lengths**, **`--ui-min-h-*`**, **`--ui-w-*`**, **`--ui-*-gap`**, **`--ui-*-inset`**, **`--ui-*-pad`**, chart **geometry** (stroke **widths**, dash strings, opacity **numbers** where not a `<color>`), **`--ui-loudness-history-grid-line`** only if it remains a derived non-theme string (prefer moving colour-mix lines to theme when possible), **`--ui-meter-grad-*`**, **`--ui-spectrum-grid-v` / `-h`** (numeric opacities from prefs), **`--ui-metric-row-*` lengths**, etc. **Rule of thumb**: if it is **not** a shadcn semantic (`--background`…`--chart-5`) and **not** a **`--ui-color-*` / `--ui-chart-*` paint** from the active theme bundle, it belongs in **layout** until a future ADR moves it.
+    - **`applyThemeToDocument`**: **`data-theme`**, **`color-scheme`**, **`applyShadcnSemanticTokensToDocument(semantic)`**, **`mergeMeterColors` → `--ui-color-*`**, **`--ui-chart-*`** from the theme’s **`charts`**, and any **theme-owned** colour strings. **Does not** set radii or layout lengths.
 
 12. **`appearance === "system"` resolution (v1)** — Hard-code: OS prefers light → **`audiometer-light`**, prefers dark → **`audiometer-dark`**. No user-configurable system mapping in v1.
 
-13. **`themeId` registry** — **Controlled list** of ids in code; unknown ids from storage **fall back to `audiometer-dark`** and **`console.warn`**.
+13. **`themeId` registry** — **Controlled list** of ids in code; unknown ids from storage **fall back to `audiometer-dark`** and **`console.warn` only in development** (`import.meta.env.DEV`). **Registry location (recipe for adding a theme)**:
+    - **Module**: e.g. **`src/theme/builtinThemes.js`** (name may vary; keep **one** registry module).
+    - **Exports** (illustrative): **`ThemeId`** (JSDoc typedef union of string literals), **`THEME_IDS`** (frozen array of all valid ids), **`BUILTIN_THEMES`** (`Record<ThemeId, BuiltinTheme>`), **`isThemeId(unknown)`**, **`getBuiltinTheme(id)`**.
+    - **`BuiltinTheme` shape**: `{ id: ThemeId, semantic: ShadcnSemantic, charts: ChartsBundle, colorScheme: "light" | "dark", meterColorOverrides?: Partial<BridgeOutput> }` where **`ChartsBundle`** is the loudness/vector/spectrum chart stroke object shape used today for **`--ui-chart-*`**.
 
-14. **Float vs main window** — **Same persistence and same resolution rules**; both listen for system colour-scheme changes when `appearance === "system"`.
+14. **Float vs main window** — **Same `layoutPersistKey`**, **same resolution rules**, both listen for **`prefers-color-scheme`** when `appearance === "system"`. **Concurrency**: `localStorage` for a given origin is **shared** across WebViews; **last write wins** at the storage API level. **Mitigations (v1)**:
+    - **Read–merge–write**: never replace the whole blob without reading the latest JSON first; merge only the keys being updated (layout vs theme fields).
+    - **`storage` event**: already used for channel layout — extend the same pattern so a theme change in one window triggers **re-read + `applyTheme`** in others where applicable.
+    - **No “main window authoritative” IPC in v1** unless product later requires it; document that **simultaneous Settings edits in two windows** can race.
 
 ## Consequences
 
-- ADR 0001 must be read together with this ADR; **§4 of ADR 0001** (runtime overwrite of `--chart-*` from resolved charts) is **replaced** by Decision 7 above.
-- Implementing this ADR implies removing **`resolvedChartsToShadcnChartCssVars`** usage from the theme apply path (and deleting or repurposing that helper if unused).
+- ADR 0001 must be read together with this ADR; **§4 of ADR 0001** (runtime overwrite of `--chart-*` from resolved charts) is **replaced** by Decision 7 above (remove **`resolvedChartsToShadcnChartCssVars`** from the apply path and delete the helper/tests once unused).
 - New themes require maintaining **`semantic` + `charts`** in full; tooling or copy-from-template is optional follow-up.
 
 ## Alternatives considered
