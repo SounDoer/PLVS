@@ -7,6 +7,7 @@ import {
   LOUDNESS_TICKS,
 } from "./scales";
 import { UI_PREFERENCES, readPersistedVectorscopePair } from "./uiPreferences";
+import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { buildHistoryPath, getHistoryViewport, HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { fmtMetric } from "./math/formatMath";
 import { samplePeakLineColor } from "./math/colorMath";
@@ -74,12 +75,11 @@ export default function App() {
   const {
     settingsOpen,
     setSettingsOpen,
-    uiMode,
-    effectiveUiMode,
-    setUiMode,
+    uiThemeSelection,
+    setUiThemeSelection,
+    resolvedThemeId,
     referenceProfileId,
     setReferenceProfileId,
-    uiModeRef,
   } = useSettings();
 
   const [running, setRunning] = useState(false);
@@ -186,10 +186,7 @@ export default function App() {
   }, [historyOffsetSec, historyWindowSec]);
 
   const fmt = (v) => (Number.isFinite(v) ? v.toFixed(1) : "-");
-  const meterGradientCfg = {
-    ...UI_PREFERENCES.modules.peak.meterGradient,
-    ...(UI_PREFERENCES.themes[effectiveUiMode === "light" ? "light" : "dark"]?.meterGradient || {}),
-  };
+  const meterGradientCfg = getBuiltinTheme(resolvedThemeId).meterGradient;
   const getSamplePeakLineColor = (dbValue) =>
     samplePeakLineColor(
       dbValue,
@@ -469,22 +466,38 @@ export default function App() {
 
   useEffect(() => {
     try {
+      let prev = {};
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) prev = JSON.parse(raw);
+      const appearance = uiThemeSelection === "system" ? "system" : "fixed";
+      const themeId = uiThemeSelection === "system" ? null : uiThemeSelection === "light" ? "audiometer-light" : "audiometer-dark";
       localStorage.setItem(
         STORE_KEY,
         JSON.stringify({
+          ...prev,
           mainLeft,
           leftTopRatio,
           rightTopRatio,
           loudnessHistWidthRatio,
           referenceProfileId,
-          uiMode,
+          appearance,
+          themeId,
           channelLayout,
           vectorscopePairX: vectorscopePairUi.x,
           vectorscopePairY: vectorscopePairUi.y,
         })
       );
     } catch (_) {}
-  }, [mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, referenceProfileId, uiMode, channelLayout, vectorscopePairUi]);
+  }, [
+    mainLeft,
+    leftTopRatio,
+    rightTopRatio,
+    loudnessHistWidthRatio,
+    referenceProfileId,
+    uiThemeSelection,
+    channelLayout,
+    vectorscopePairUi,
+  ]);
 
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;
@@ -580,7 +593,6 @@ export default function App() {
     corrSnapRef,
     audioSnapRef,
     selectedOffsetRef,
-    uiModeRef,
     vectorscopePairRef,
     setAudio,
     setSpectrumPath,
@@ -781,8 +793,8 @@ export default function App() {
       <SettingsPanel
         settingsOpen={settingsOpen}
         setSettingsOpen={setSettingsOpen}
-        uiMode={uiMode}
-        setUiMode={setUiMode}
+        uiThemeSelection={uiThemeSelection}
+        setUiThemeSelection={setUiThemeSelection}
         referenceProfileId={referenceProfileId}
         setReferenceProfileId={setReferenceProfileId}
         loudnessReferenceProfiles={LOUDNESS_REFERENCE_PROFILES}

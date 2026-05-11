@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,
-  uiMode,
-  setUiMode,
+  uiThemeSelection,
+  setUiThemeSelection,
   referenceProfileId,
   setReferenceProfileId,
   loudnessReferenceProfiles,
@@ -108,7 +108,7 @@ export function SettingsPanel({
                 <Separator />
                 <div className="grid gap-2">
                   <Label htmlFor="settings-theme">Theme</Label>
-                  <Select value={uiMode} onValueChange={setUiMode}>
+                  <Select value={uiThemeSelection} onValueChange={setUiThemeSelection}>
                     <SelectTrigger id="settings-theme">
                       <SelectValue placeholder="Theme" />
                     </SelectTrigger>

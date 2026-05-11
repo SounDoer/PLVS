@@ -1,22 +1,27 @@
 /**
- * Public entry for UI preferences: tunable layout/typography + chart defaults.
+ * Public entry for UI preferences: tunable layout/typography + chart geometry.
  *
- * - **Data** — `src/preferences/data.js` (`UI_PREFERENCES`, `getResolvedCharts`)
- * - **Persistence** — `src/preferences/layoutPersistence.js` (theme + layout keys in localStorage)
- * - **Apply** — `src/preferences/applyDocumentTheme.js` (`applyUiPreferencesToDocument`)
+ * - **Data** — `src/preferences/data.js` (`UI_PREFERENCES`)
+ * - **Persistence** — `src/preferences/layoutPersistence.js` + `src/preferences/themeResolve.js`
+ * - **Apply** — `src/preferences/applyDocumentTheme.js` (`applyLayoutToDocument`, `applyThemeToDocument`)
  *
- * `applyUiPreferencesToDocument` writes `--ui-*` layout/chart variables, applies shadcn semantic
- * tokens (`src/theme/shadcnSemanticPreset.js`), maps resolved chart strokes to `--chart-*` for Tailwind,
- * and derives legacy `--ui-color-*` via `meterColorBridge`.
+ * `applyLayoutToDocument` writes spatial/typographic `--ui-*` variables; `applyThemeToDocument` sets
+ * `data-theme`, `color-scheme`, shadcn semantic tokens, `--ui-color-*`, chart strokes, and the peak gradient.
  *
  * Debug: DevTools → `<html>` → Computed → filter `--ui-` or `--background`.
  */
 
-export { UI_PREFERENCES, getResolvedCharts } from "./preferences/data.js";
+export { UI_PREFERENCES } from "./preferences/data.js";
 export {
   readPersistedVectorscopePair,
-  readPersistedUiMode,
   readSystemPrefersDark,
-  resolveEffectiveUiMode,
 } from "./preferences/layoutPersistence.js";
-export { applyUiPreferencesToDocument } from "./preferences/applyDocumentTheme.js";
+export {
+  DEFAULT_THEME_ID,
+  isThemeId,
+  parsePersistedUiStateJson,
+  readPersistedShellThemeFields,
+  resolveThemeId,
+  THEME_IDS,
+} from "./preferences/themeResolve.js";
+export { applyLayoutToDocument, applyThemeToDocument } from "./preferences/applyDocumentTheme.js";

@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   UI_PREFERENCES,
-  applyUiPreferencesToDocument,
-  readPersistedUiMode,
+  applyLayoutToDocument,
+  applyThemeToDocument,
+  readPersistedShellThemeFields,
   readSystemPrefersDark,
-  resolveEffectiveUiMode,
+  resolveThemeId,
 } from "../uiPreferences";
+import { getBuiltinTheme } from "../theme/builtinThemes.js";
 import { getDefaultLoudnessReferenceProfileId, normalizeLoudnessReferenceProfileId } from "../loudnessReferenceProfiles";
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [uiMode, setUiMode] = useState(() => readPersistedUiMode());
+  const [appearance, setAppearance] = useState(() => readPersistedShellThemeFields(UI_PREFERENCES).appearance);
+  const [themeId, setThemeId] = useState(() => readPersistedShellThemeFields(UI_PREFERENCES).themeId);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
   const [referenceProfileId, setReferenceProfileId] = useState(() => {
     try {
@@ -21,8 +24,27 @@ export function useSettings() {
     } catch (_) {}
     return getDefaultLoudnessReferenceProfileId();
   });
-  const effectiveUiMode = resolveEffectiveUiMode(uiMode, systemPrefersDark);
-  const uiModeRef = useRef(effectiveUiMode);
+
+  const resolvedThemeId = useMemo(
+    () => resolveThemeId({ appearance, themeId }, systemPrefersDark),
+    [appearance, themeId, systemPrefersDark]
+  );
+  const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
+  const uiThemeSelection = useMemo(() => {
+    if (appearance === "system") return "system";
+    if (themeId === "audiometer-light") return "light";
+    return "dark";
+  }, [appearance, themeId]);
+
+  function setUiThemeSelection(value) {
+    if (value === "system") {
+      setAppearance("system");
+      setThemeId(null);
+      return;
+    }
+    setAppearance("fixed");
+    setThemeId(value === "light" ? "audiometer-light" : "audiometer-dark");
+  }
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -33,23 +55,35 @@ export function useSettings() {
   }, []);
 
   useEffect(() => {
-    uiModeRef.current = effectiveUiMode;
-  }, [effectiveUiMode]);
+    applyLayoutToDocument(UI_PREFERENCES, { colorScheme: resolvedTheme.colorScheme });
+    applyThemeToDocument(resolvedThemeId);
+  }, [resolvedThemeId, resolvedTheme.colorScheme]);
 
   useEffect(() => {
-    applyUiPreferencesToDocument(UI_PREFERENCES, effectiveUiMode);
-  }, [effectiveUiMode]);
+    const key = UI_PREFERENCES.layoutPersistKey;
+    const onStorage = (e) => {
+      if (e.key !== key && e.key !== null) return;
+      const next = readPersistedShellThemeFields(UI_PREFERENCES);
+      setAppearance(next.appearance);
+      setThemeId(next.themeId);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   return {
     settingsOpen,
     setSettingsOpen,
-    /** Stored preference: follow OS, force dark, or force light */
-    uiMode,
-    setUiMode,
-    /** Resolved `"dark"` | `"light"` for charts and CSS */
-    effectiveUiMode,
+    appearance,
+    setAppearance,
+    themeId,
+    setThemeId,
+    /** Resolved builtin theme id (follows OS when `appearance === "system"`). */
+    resolvedThemeId,
+    /** Settings UI value for the theme `<Select>`. */
+    uiThemeSelection,
+    setUiThemeSelection,
     referenceProfileId,
     setReferenceProfileId,
-    uiModeRef,
   };
 }

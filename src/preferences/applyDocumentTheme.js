@@ -1,41 +1,21 @@
-import {
-  AUDIOMETER_SEMANTIC_DARK,
-  AUDIOMETER_SEMANTIC_LIGHT,
-  applyColorSchemeClass,
-  applyShadcnSemanticTokensToDocument,
-} from "../theme/shadcnSemanticPreset.js";
+import { applyShadcnSemanticTokensToDocument } from "../theme/shadcnSemanticPreset.js";
 import { buildMeterColorBridge } from "../theme/meterColorBridge.js";
-import { resolvedChartsToShadcnChartCssVars } from "../theme/resolvedChartsToShadcnCharts.js";
-import { UI_PREFERENCES, getResolvedCharts } from "./data.js";
+import { getBuiltinTheme } from "../theme/builtinThemes.js";
+import { UI_PREFERENCES } from "./data.js";
 
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
   document.documentElement.style.setProperty(name, String(value));
 }
 
-function mergeShallow(base, override) {
-  return { ...base, ...(override || {}) };
-}
-
 /**
+ * Spatial / typographic / non-palette tuning (ADR 0002 `applyLayout`).
  * @param {typeof UI_PREFERENCES} prefs
- * @param {"dark" | "light"} mode
+ * @param {{ colorScheme: "light" | "dark" }} ctx Active theme’s `colorScheme` (for spectrum grid opacities only).
  */
-export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dark") {
-  const m = mode === "light" ? "light" : "dark";
-  const theme = prefs.themes[m];
-  const semantic = m === "light" ? AUDIOMETER_SEMANTIC_LIGHT : AUDIOMETER_SEMANTIC_DARK;
-  applyColorSchemeClass(m);
-  applyShadcnSemanticTokensToDocument(semantic);
-
-  const charts = getResolvedCharts(prefs, m);
-  for (const [name, val] of Object.entries(resolvedChartsToShadcnChartCssVars(charts))) {
-    setCssVar(name, val);
-  }
-
-  const colors = buildMeterColorBridge(semantic, m);
-  const spectrumGrid = mergeShallow(prefs.modules.spectrum.spectrumGrid, theme.spectrumGrid);
-  const meterGradient = mergeShallow(prefs.modules.peak.meterGradient, theme.meterGradient);
+export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorScheme: "dark" }) {
+  if (typeof document === "undefined") return;
+  const colorScheme = ctx.colorScheme === "light" ? "light" : "dark";
   const { typography, radii } = prefs;
   const {
     shell,
@@ -49,8 +29,12 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
     widthsPx,
   } = prefs.layout;
 
+  const byScheme = prefs.modules.spectrum.spectrumOpacityByColorScheme;
+  const spectrumOpacities =
+    (byScheme && byScheme[colorScheme]) ||
+    (byScheme && byScheme.dark) || { verticalLineOpacity: 0.08, horizontalLineOpacity: 0.08 };
+
   setCssVar("--ui-font-sans", typography.fontFamily);
-  setCssVar("color-scheme", m);
 
   const s = typography.sizesPx;
   setCssVar("--ui-fs-app-title", `${s.title}px`);
@@ -66,62 +50,6 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
   setCssVar("--ui-fw-app-title", String(typography.weights.appTitle));
   setCssVar("--ui-fw-section", String(typography.weights.section));
 
-  setCssVar("--ui-color-page-bg", colors.pageBg);
-  setCssVar("--ui-color-text-primary", colors.textPrimary);
-  setCssVar("--ui-color-text-secondary", colors.textSecondary);
-  setCssVar("--ui-color-text-muted", colors.textMuted);
-  setCssVar("--ui-color-text-subtle", colors.textSubtle);
-  setCssVar("--ui-color-panel-bg", colors.panelBg);
-  setCssVar("--ui-color-panel-bg-splitter", colors.panelBgSplitter);
-  setCssVar("--ui-color-inset-bg", colors.insetBg);
-  setCssVar("--ui-color-inset-dark", colors.insetDark);
-  setCssVar("--ui-color-border-default", colors.borderDefault);
-  setCssVar("--ui-color-divider", colors.divider);
-  setCssVar("--ui-color-brand", colors.brand);
-  setCssVar("--ui-color-brand-light", colors.brandLight);
-  setCssVar("--ui-color-brand-hover", colors.brandHover);
-  setCssVar("--ui-color-control-bg", colors.controlBg);
-  setCssVar("--ui-color-peak-sample", colors.peakSamplePeak);
-  setCssVar("--ui-color-peak-true", colors.peakTruePeak);
-  setCssVar("--ui-color-tp-max", colors.tpMaxText);
-  setCssVar("--ui-color-corr-bad", colors.correlation.bad);
-  setCssVar("--ui-color-corr-mid", colors.correlation.mid);
-  setCssVar("--ui-color-corr-good", colors.correlation.good);
-  setCssVar("--ui-color-loudness-target-line", colors.loudnessTargetLine);
-  setCssVar("--ui-color-settings-overlay", colors.settingsOverlay);
-  setCssVar("--ui-color-settings-row-bg", colors.settingsRowBg);
-  setCssVar("--ui-color-legend-on-bg", colors.legendHistOnBg);
-  setCssVar("--ui-color-legend-on-text", colors.legendHistOnText);
-  setCssVar("--ui-color-legend-off-bg", colors.legendHistOffBg);
-  setCssVar("--ui-color-legend-off-text", colors.legendHistOffText);
-  setCssVar("--ui-color-metric-row-bg", colors.metricRowBg);
-  setCssVar("--ui-color-metric-row-border", colors.metricRowBorder);
-  setCssVar("--ui-color-metric-row-hover-bg", colors.metricRowHoverBg);
-  setCssVar("--ui-color-metric-row-toggle-on-bg", colors.metricRowToggleOnBg);
-  setCssVar("--ui-color-metric-row-toggle-on-border", colors.metricRowToggleOnBorder);
-  setCssVar("--ui-color-metric-row-toggle-on-glow", colors.metricRowToggleOnGlow);
-  setCssVar("--ui-color-metric-label", colors.metricLabelText);
-  setCssVar("--ui-color-metric-value", colors.metricValueText);
-  setCssVar("--ui-color-metric-unit", colors.metricUnitText);
-  setCssVar("--ui-color-metric-toggle-on-label", colors.metricToggleOnLabelText);
-  setCssVar("--ui-color-metric-toggle-on-unit", colors.metricToggleOnUnitText);
-  setCssVar("--ui-color-target-label", colors.targetLabel);
-  setCssVar("--ui-color-target-value", colors.targetValue);
-  setCssVar("--ui-color-control-hover-bg", colors.controlHoverBg);
-  setCssVar("--ui-shadow-settings-dialog", colors.settingsDialogShadow);
-
-  setCssVar("--ui-chart-momentary", charts.loudnessHistory.momentaryStroke);
-  setCssVar("--ui-chart-momentary-snap", charts.loudnessHistory.momentaryStrokeSnap);
-  setCssVar("--ui-chart-shortterm", charts.loudnessHistory.shortTermStroke);
-  setCssVar("--ui-chart-shortterm-snap", charts.loudnessHistory.shortTermStrokeSnap);
-  setCssVar("--ui-chart-selection", charts.loudnessHistory.selectionStroke);
-  setCssVar("--ui-chart-vectorscope-live", charts.vectorscope.strokeLive);
-  setCssVar("--ui-chart-vectorscope-snap", charts.vectorscope.strokeSnap);
-  setCssVar("--ui-chart-spectrum-live", charts.spectrum.strokeLive);
-  setCssVar("--ui-chart-spectrum-snap", charts.spectrum.strokeSnap);
-  setCssVar("--ui-chart-spectrum-fill-top", String(charts.spectrum.fillOpacityTop ?? 0.18));
-  setCssVar("--ui-chart-spectrum-fill-bottom", String(charts.spectrum.fillOpacityBottom ?? 0.02));
-
   setCssVar("--radius", radii.card);
   setCssVar("--ui-radius-card", radii.card);
   setCssVar("--ui-radius-modal", radii.modal);
@@ -134,13 +62,8 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
   setCssVar("--ui-shell-gap", `${shell.gapRem.base}rem`);
   setCssVar("--ui-shell-gap-lg", `${shell.gapRem.lg}rem`);
 
-  setCssVar("--ui-spectrum-grid-v", String(spectrumGrid.verticalLineOpacity));
-  setCssVar("--ui-spectrum-grid-h", String(spectrumGrid.horizontalLineOpacity));
-
-  setCssVar("--ui-meter-grad-top", meterGradient.top);
-  setCssVar("--ui-meter-grad-mid", meterGradient.mid);
-  setCssVar("--ui-meter-grad-mid-stop", `${meterGradient.midStopPercent}%`);
-  setCssVar("--ui-meter-grad-bottom", meterGradient.bottom);
+  setCssVar("--ui-spectrum-grid-v", String(spectrumOpacities.verticalLineOpacity));
+  setCssVar("--ui-spectrum-grid-h", String(spectrumOpacities.horizontalLineOpacity));
 
   setCssVar("--ui-min-h-peak", `${heightsRem.peakModuleMin}rem`);
   setCssVar("--ui-min-h-history", `${heightsRem.historyModuleMin}rem`);
@@ -153,11 +76,9 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
   setCssVar("--ui-w-peak-ticks", `${widthsPx.peakTickCol}px`);
 
   setCssVar("--ui-section-gap", `${splitters.sectionGapPx}px`);
-  // splitters track size drives actual section spacing
   setCssVar("--ui-splitter-main", `${splitters.sectionGapPx}px`);
   setCssVar("--ui-splitter-row", `${splitters.sectionGapPx}px`);
   setCssVar("--ui-loudness-gap", `${splitters.loudnessGapPx}px`);
-  // visual splitter bar thickness inside the track
   setCssVar("--ui-splitter-bar-thickness", `${splitters.barThicknessPx}px`);
 
   const lm = prefs.modules.loudness.metrics;
@@ -211,6 +132,85 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
   setCssVar("--ui-settings-inline-gap", `${settingsModal.inlineGapRem}rem`);
   setCssVar("--ui-settings-action-pad-x", `${settingsModal.actionPadXRem}rem`);
   setCssVar("--ui-settings-action-pad-y", `${settingsModal.actionPadYRem}rem`);
+}
+
+/**
+ * Theme-owned palette tokens (ADR 0002 `applyTheme`).
+ * @param {import("../preferences/themeResolve.js").ThemeId} themeId
+ */
+export function applyThemeToDocument(themeId) {
+  if (typeof document === "undefined") return;
+  const theme = getBuiltinTheme(themeId);
+  document.documentElement.dataset.theme = theme.id;
+  document.documentElement.style.setProperty("color-scheme", theme.colorScheme);
+
+  applyShadcnSemanticTokensToDocument(theme.semantic);
+
+  const bridge = buildMeterColorBridge(theme.semantic, theme.colorScheme);
+  const colors = { ...bridge, ...(theme.meterColorOverrides ?? {}) };
+
+  setCssVar("--ui-color-page-bg", colors.pageBg);
+  setCssVar("--ui-color-text-primary", colors.textPrimary);
+  setCssVar("--ui-color-text-secondary", colors.textSecondary);
+  setCssVar("--ui-color-text-muted", colors.textMuted);
+  setCssVar("--ui-color-text-subtle", colors.textSubtle);
+  setCssVar("--ui-color-panel-bg", colors.panelBg);
+  setCssVar("--ui-color-panel-bg-splitter", colors.panelBgSplitter);
+  setCssVar("--ui-color-inset-bg", colors.insetBg);
+  setCssVar("--ui-color-inset-dark", colors.insetDark);
+  setCssVar("--ui-color-border-default", colors.borderDefault);
+  setCssVar("--ui-color-divider", colors.divider);
+  setCssVar("--ui-color-brand", colors.brand);
+  setCssVar("--ui-color-brand-light", colors.brandLight);
+  setCssVar("--ui-color-brand-hover", colors.brandHover);
+  setCssVar("--ui-color-control-bg", colors.controlBg);
+  setCssVar("--ui-color-peak-sample", colors.peakSamplePeak);
+  setCssVar("--ui-color-peak-true", colors.peakTruePeak);
+  setCssVar("--ui-color-tp-max", colors.tpMaxText);
+  setCssVar("--ui-color-corr-bad", colors.correlation.bad);
+  setCssVar("--ui-color-corr-mid", colors.correlation.mid);
+  setCssVar("--ui-color-corr-good", colors.correlation.good);
+  setCssVar("--ui-color-loudness-target-line", colors.loudnessTargetLine);
+  setCssVar("--ui-color-settings-overlay", colors.settingsOverlay);
+  setCssVar("--ui-color-settings-row-bg", colors.settingsRowBg);
+  setCssVar("--ui-color-legend-on-bg", colors.legendHistOnBg);
+  setCssVar("--ui-color-legend-on-text", colors.legendHistOnText);
+  setCssVar("--ui-color-legend-off-bg", colors.legendHistOffBg);
+  setCssVar("--ui-color-legend-off-text", colors.legendHistOffText);
+  setCssVar("--ui-color-metric-row-bg", colors.metricRowBg);
+  setCssVar("--ui-color-metric-row-border", colors.metricRowBorder);
+  setCssVar("--ui-color-metric-row-hover-bg", colors.metricRowHoverBg);
+  setCssVar("--ui-color-metric-row-toggle-on-bg", colors.metricRowToggleOnBg);
+  setCssVar("--ui-color-metric-row-toggle-on-border", colors.metricRowToggleOnBorder);
+  setCssVar("--ui-color-metric-row-toggle-on-glow", colors.metricRowToggleOnGlow);
+  setCssVar("--ui-color-metric-label", colors.metricLabelText);
+  setCssVar("--ui-color-metric-value", colors.metricValueText);
+  setCssVar("--ui-color-metric-unit", colors.metricUnitText);
+  setCssVar("--ui-color-metric-toggle-on-label", colors.metricToggleOnLabelText);
+  setCssVar("--ui-color-metric-toggle-on-unit", colors.metricToggleOnUnitText);
+  setCssVar("--ui-color-target-label", colors.targetLabel);
+  setCssVar("--ui-color-target-value", colors.targetValue);
+  setCssVar("--ui-color-control-hover-bg", colors.controlHoverBg);
+  setCssVar("--ui-shadow-settings-dialog", colors.settingsDialogShadow);
+
+  const charts = theme.charts;
+  setCssVar("--ui-chart-momentary", charts.loudnessHistory.momentaryStroke);
+  setCssVar("--ui-chart-momentary-snap", charts.loudnessHistory.momentaryStrokeSnap);
+  setCssVar("--ui-chart-shortterm", charts.loudnessHistory.shortTermStroke);
+  setCssVar("--ui-chart-shortterm-snap", charts.loudnessHistory.shortTermStrokeSnap);
+  setCssVar("--ui-chart-selection", charts.loudnessHistory.selectionStroke);
+  setCssVar("--ui-chart-vectorscope-live", charts.vectorscope.strokeLive);
+  setCssVar("--ui-chart-vectorscope-snap", charts.vectorscope.strokeSnap);
+  setCssVar("--ui-chart-spectrum-live", charts.spectrum.strokeLive);
+  setCssVar("--ui-chart-spectrum-snap", charts.spectrum.strokeSnap);
+  setCssVar("--ui-chart-spectrum-fill-top", String(charts.spectrum.fillOpacityTop ?? 0.18));
+  setCssVar("--ui-chart-spectrum-fill-bottom", String(charts.spectrum.fillOpacityBottom ?? 0.02));
+
+  const meterGradient = theme.meterGradient;
+  setCssVar("--ui-meter-grad-top", meterGradient.top);
+  setCssVar("--ui-meter-grad-mid", meterGradient.mid);
+  setCssVar("--ui-meter-grad-mid-stop", `${meterGradient.midStopPercent}%`);
+  setCssVar("--ui-meter-grad-bottom", meterGradient.bottom);
 
   const lh = charts.loudnessHistory;
   setCssVar("--ui-lh-stroke-m-w", String(lh.momentaryStrokeWidth));

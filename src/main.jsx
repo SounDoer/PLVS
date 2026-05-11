@@ -5,16 +5,20 @@ import { FloatApp, getFloatParamFromUrl } from "./FloatApp";
 import "./index.css";
 import {
   UI_PREFERENCES,
-  applyUiPreferencesToDocument,
-  readPersistedUiMode,
+  applyLayoutToDocument,
+  applyThemeToDocument,
+  readPersistedShellThemeFields,
   readSystemPrefersDark,
-  resolveEffectiveUiMode,
+  resolveThemeId,
 } from "./uiPreferences";
+import { getBuiltinTheme } from "./theme/builtinThemes.js";
 
-applyUiPreferencesToDocument(
-  UI_PREFERENCES,
-  resolveEffectiveUiMode(readPersistedUiMode(), readSystemPrefersDark()),
-);
+const systemPrefersDark = readSystemPrefersDark();
+const shell = readPersistedShellThemeFields(UI_PREFERENCES);
+const resolvedThemeId = resolveThemeId(shell, systemPrefersDark);
+const resolvedTheme = getBuiltinTheme(resolvedThemeId);
+applyLayoutToDocument(UI_PREFERENCES, { colorScheme: resolvedTheme.colorScheme });
+applyThemeToDocument(resolvedThemeId);
 
 const float = getFloatParamFromUrl();
 

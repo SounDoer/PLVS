@@ -32,7 +32,6 @@ export function useAudioEngine({
   corrSnapRef,
   audioSnapRef,
   selectedOffsetRef,
-  uiModeRef: _uiModeRef,
   vectorscopePairRef,
   setAudio,
   setSpectrumPath,

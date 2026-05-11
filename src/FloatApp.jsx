@@ -5,6 +5,7 @@ import { fmtMetric } from "./math/formatMath";
 import { isTauri } from "./ipc/env.js";
 import { peakFromTopFrac, LOUDNESS_TICKS, loudnessHistY, PEAK_DB_MAX, PEAK_DB_MIN } from "./scales";
 import { UI_PREFERENCES } from "./uiPreferences";
+import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { samplePeakLineColor } from "./math/colorMath";
 import { useFloatMeteringCore } from "./hooks/useFloatMeteringCore";
 import { usePersistedChannelLayout } from "./hooks/usePersistedChannelLayout.js";
@@ -24,12 +25,9 @@ import { SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
 const HISTORY_TIME_TICK_STEPS = 4;
 const PANELS = new Set(["peak", "loudness", "spectrum", "vector"]);
 
-function useSharedPeakVis(uiMode, displayAudio) {
+function useSharedPeakVis(resolvedThemeId, displayAudio) {
   const fmt = (v) => (Number.isFinite(v) ? v.toFixed(1) : "-");
-  const meterGradientCfg = {
-    ...UI_PREFERENCES.modules.peak.meterGradient,
-    ...(UI_PREFERENCES.themes[uiMode === "light" ? "light" : "dark"]?.meterGradient || {}),
-  };
+  const meterGradientCfg = getBuiltinTheme(resolvedThemeId).meterGradient;
   const getSamplePeakLineColor = (dbValue) =>
     samplePeakLineColor(
       dbValue,
@@ -218,8 +216,8 @@ function FloatLoudnessBody({ core }) {
   );
 }
 
-function FloatPeakView({ core, uiMode }) {
-  const v = useSharedPeakVis(uiMode, core.displayAudio);
+function FloatPeakView({ core, resolvedThemeId }) {
+  const v = useSharedPeakVis(resolvedThemeId, core.displayAudio);
   const persistedLayout = usePersistedChannelLayout();
   const chCount = Array.isArray(core.displayAudio?.peakDb) ? core.displayAudio.peakDb.length : 0;
   const layoutResolution = useMemo(
@@ -302,7 +300,7 @@ function FloatVectorView({ core }) {
 export function FloatApp({ kind }) {
   useFloatWindowPersistence(kind);
   const core = useFloatMeteringCore(kind);
-  const { uiMode } = core;
+  const { resolvedThemeId } = core;
   const reduceMotion = useReducedMotion();
   if (!PANELS.has(kind)) {
     return (
@@ -352,7 +350,7 @@ export function FloatApp({ kind }) {
                   exit={reduceMotion ? { opacity: 1 } : { opacity: 0, x: 8 }}
                   transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <FloatPeakView core={core} uiMode={uiMode} />
+                  <FloatPeakView core={core} resolvedThemeId={resolvedThemeId} />
                 </motion.div>
               ) : kind === "spectrum" ? (
                 <motion.div

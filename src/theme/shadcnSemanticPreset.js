@@ -5,7 +5,7 @@
  * `--radius` matches the same preset. Product accent (`primary` / `ring`) overrides neutral
  * primaries so metering CTAs stay cyan-readable on both modes.
  *
- * First-paint `:root` / `.dark` blocks are generated from these objects via `buildThemeFallbackCss`
+ * First-paint `:root` tokens are generated from the builtin dark semantic via `buildThemeFallbackCss`
  * (`npm run theme:generate` → `src/generated/theme-fallbacks.css`, imported by `index.css`).
  */
 
@@ -39,7 +39,7 @@ export const SHADCN_NEUTRAL_SEMANTIC_LIGHT = {
   chart5: "oklch(0.769 0.188 70.08)",
 };
 
-/** shadcn docs — `.dark` neutral */
+/** shadcn docs — dark neutral (reference; AudioMeter ships `AUDIOMETER_SEMANTIC_*`). */
 export const SHADCN_NEUTRAL_SEMANTIC_DARK = {
   background: "oklch(0.145 0 0)",
   foreground: "oklch(0.985 0 0)",
@@ -112,28 +112,24 @@ export const SHADCN_SEMANTIC_CSS_VAR_BINDINGS = [
 ];
 
 /**
- * CSS text for `:root` + `.dark` first paint (must match `applyShadcnSemanticTokensToDocument` mapping).
- * @param {ShadcnSemantic} light
- * @param {ShadcnSemantic} dark
+ * CSS text for `:root` first paint (matches `applyShadcnSemanticTokensToDocument` mapping).
+ * Uses the builtin **`audiometer-dark`** semantic only (ADR 0002).
+ * @param {ShadcnSemantic} semanticDark
  * @param {string} radiusCss e.g. `0.625rem` — keep aligned with `UI_PREFERENCES.radii.card`
  */
-export function buildThemeFallbackCss(light, dark, radiusCss) {
+export function buildThemeFallbackCss(semanticDark, radiusCss) {
   const header = [
     "/* AUTO-GENERATED — run `npm run theme:generate` after editing AUDIOMETER_SEMANTIC_* */",
-    "/* First-paint shadcn semantic tokens; runtime re-applied by applyShadcnSemanticTokensToDocument */",
+    "/* First-paint shadcn semantic tokens (audiometer-dark); runtime re-applied by applyThemeToDocument */",
     "",
   ].join("\n");
 
-  function block(selector, semantic) {
-    const lines = [`${selector} {`, `  --radius: ${radiusCss};`];
-    for (const [cssName, key] of SHADCN_SEMANTIC_CSS_VAR_BINDINGS) {
-      lines.push(`  ${cssName}: ${semantic[key]};`);
-    }
-    lines.push("}");
-    return lines.join("\n");
+  const lines = [":root {", `  --radius: ${radiusCss};`];
+  for (const [cssName, key] of SHADCN_SEMANTIC_CSS_VAR_BINDINGS) {
+    lines.push(`  ${cssName}: ${semanticDark[key]};`);
   }
-
-  return `${header}${block(":root", light)}\n\n${block(".dark", dark)}\n`;
+  lines.push("}");
+  return `${header}${lines.join("\n")}\n`;
 }
 
 function setCssVar(name, value) {
@@ -152,11 +148,3 @@ export function applyShadcnSemanticTokensToDocument(semantic) {
   }
 }
 
-/**
- * Toggles Tailwind `dark:` variant (`@custom-variant dark (&:is(.dark *))`).
- * @param {"dark"|"light"} mode
- */
-export function applyColorSchemeClass(mode) {
-  if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle("dark", mode === "dark");
-}

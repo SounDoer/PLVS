@@ -4,10 +4,10 @@
  * accents pull from `chart-*` / `primary` where sensible.
  *
  * @param {import("./shadcnSemanticPreset.js").ShadcnSemantic} s
- * @param {"dark"|"light"} mode
+ * @param {"dark"|"light"} colorScheme Browser `color-scheme` hint; not a second theme axis (ADR 0002).
  */
-export function buildMeterColorBridge(s, mode) {
-  const isLight = mode === "light";
+export function buildMeterColorBridge(s, colorScheme) {
+  const isLight = colorScheme === "light";
   const settingsOverlay = isLight ? "oklch(0.145 0 0 / 0.35)" : "oklch(0 0 0 / 0.55)";
   const settingsDialogShadow = isLight
     ? "0 16px 34px -14px rgb(15 23 42 / 0.28)"

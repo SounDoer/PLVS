@@ -1,15 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Shadcn `dark:` modifier targets any descendant of an element with `.dark`. */
-@custom-variant dark (&:is(.dark *));
-
-/* First-paint shadcn semantic tokens — generated from `shadcnSemanticPreset.js` (`npm run theme:generate`). */
+/* First-paint shadcn semantic tokens — generated from builtin `audiometer-dark` (`npm run theme:generate`). */
 @import "./generated/theme-fallbacks.css";
 
-/* Runtime: `applyUiPreferencesToDocument` re-applies the same mapping and toggles `.dark` on `<html>`.
- * Chart strokes for SVG use injected `--ui-chart-*`; Tailwind `chart-*` uses `--chart-*` (overridden
- * at runtime from resolved product chart strokes when JS runs).
+/* Runtime: `applyLayoutToDocument` / `applyThemeToDocument` inject `--ui-*`; Tailwind `chart-*` maps to `--chart-*`
+ * from the active theme semantic (`applyShadcnSemanticTokensToDocument`). Theme id: `html[data-theme]`.
  */
 
 @theme inline {
@@ -53,7 +49,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Defaults aligned with --ui-* tokens injected by uiPreferences.applyUiPreferencesToDocument */
+/* Defaults aligned with --ui-* tokens injected by `applyLayoutToDocument` / `applyThemeToDocument` */
 :root {
   --ui-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-family: var(--ui-font-sans, Inter, system-ui, sans-serif);

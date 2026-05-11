@@ -1,35 +1,7 @@
 /**
- * Default layout, typography, radii, and per-module chart defaults (`UI_PREFERENCES`).
- * Merged at runtime with `themes[mode]` overrides — see `getResolvedCharts`.
+ * Default layout, typography, radii, and per-module chart geometry (`UI_PREFERENCES`).
+ * Colour strokes and meter gradients live in builtin themes (`src/theme/builtinThemes.js`).
  */
-
-function mergeCharts(base, override) {
-  if (!override) return base;
-  return {
-    loudnessHistory: { ...base.loudnessHistory, ...override.loudnessHistory },
-    vectorscope: { ...base.vectorscope, ...override.vectorscope },
-    spectrum: { ...base.spectrum, ...override.spectrum },
-  };
-}
-
-function chartsBaseFromPrefs(prefs) {
-  const { loudness, vector, spectrum } = prefs.modules;
-  return {
-    loudnessHistory: { ...loudness.charts.loudnessHistory },
-    vectorscope: { ...vector.charts.vectorscope },
-    spectrum: { ...spectrum.charts.spectrum },
-  };
-}
-
-/**
- * Resolved charts for the active theme (module defaults + `themes[mode].charts`).
- * @param {typeof UI_PREFERENCES} prefs
- * @param {"dark"|"light"} mode
- */
-export function getResolvedCharts(prefs = UI_PREFERENCES, mode = "dark") {
-  const m = mode === "light" ? "light" : "dark";
-  return mergeCharts(chartsBaseFromPrefs(prefs), prefs.themes[m]?.charts);
-}
 
 export const UI_PREFERENCES = {
   layoutPersistKey: "audiometer.ui",
@@ -160,42 +132,7 @@ export const UI_PREFERENCES = {
     metricRow: "0.375rem",
   },
 
-  themes: {
-    dark: {},
-    light: {
-      charts: {
-        loudnessHistory: {
-          momentaryStroke: "#0e7490",
-          momentaryStrokeSnap: "#c2410c",
-          shortTermStroke: "#1d4ed8",
-          shortTermStrokeSnap: "#9a3412",
-          selectionStroke: "#c2410c",
-        },
-        vectorscope: {
-          strokeLive: "#1d4ed8",
-          strokeSnap: "#c2410c",
-        },
-        spectrum: {
-          strokeLive: "#1d4ed8",
-          strokeSnap: "#c2410c",
-        },
-      },
-      spectrumGrid: {
-        verticalLineOpacity: 0.07,
-        horizontalLineOpacity: 0.05,
-      },
-    },
-  },
-
   modules: {
-    peak: {
-      meterGradient: {
-        top: "#f97373",
-        mid: "#fbbf3b",
-        midStopPercent: 46,
-        bottom: "#34d399",
-      },
-    },
     loudness: {
       history: {
         defaultWindowSec: 120,
@@ -240,9 +177,18 @@ export const UI_PREFERENCES = {
       },
     },
     spectrum: {
+      /** Spectrum grid line opacities depend on active `color-scheme` (see `applyLayoutToDocument`). */
+      spectrumOpacityByColorScheme: {
+        dark: {
+          verticalLineOpacity: 0.08,
+          horizontalLineOpacity: 0.08,
+        },
+        light: {
+          verticalLineOpacity: 0.07,
+          horizontalLineOpacity: 0.05,
+        },
+      },
       spectrumGrid: {
-        verticalLineOpacity: 0.08,
-        horizontalLineOpacity: 0.08,
         verticalSpacingPx: 56,
         horizontalSpacingPx: 34,
       },
