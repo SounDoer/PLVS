@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loudnessHistY, LOUDNESS_TICKS } from "../scales";
 import {
   buildHistoryPath,
@@ -30,27 +30,31 @@ export function useLoudnessHistory({
     UI_PREFERENCES.modules.loudness.history.defaultWindowSec
   );
   const [historyOffsetSec, setHistoryOffsetSec] = useState(0);
-  const [historyHudUntilTs, setHistoryHudUntilTs] = useState(0);
   const [historyHudHold, setHistoryHudHold] = useState(false);
+  const [isHudTimerActive, setIsHudTimerActive] = useState(false);
+  const hudUntilTsRef = useRef(0);
   const [histCurves, setHistCurves] = useState({ m: false, st: true });
 
   const historyChartInteractive = running || hasHistoryData;
 
-  // Auto-dismiss HUD after its timer expires
-  useEffect(() => {
-    if (historyHudHold) return;
-    const remain = historyHudUntilTs - Date.now();
-    if (remain <= 0) return;
-    const t = setTimeout(() => setHistoryHudUntilTs(0), remain + 24);
-    return () => clearTimeout(t);
-  }, [historyHudUntilTs, historyHudHold]);
+  // Stable setter exported to callers (useHistoryInteraction); stores timestamp in a ref
+  // and activates the boolean timer-active state so the effect below schedules the dismiss.
+  const setHistoryHudUntilTs = useCallback((ts) => {
+    hudUntilTsRef.current = ts;
+    setIsHudTimerActive(ts > Date.now());
+  }, []);
 
-  // Clear HUD when chart becomes non-interactive
+  // Auto-dismiss: schedule clearance when timer-active state is set
   useEffect(() => {
-    if (historyChartInteractive) return;
-    setHistoryHudHold(false);
-    setHistoryHudUntilTs(0);
-  }, [historyChartInteractive]);
+    if (historyHudHold || !isHudTimerActive) return;
+    const remain = hudUntilTsRef.current - Date.now();
+    if (remain <= 0) {
+      setIsHudTimerActive(false);
+      return;
+    }
+    const t = setTimeout(() => setIsHudTimerActive(false), remain + 24);
+    return () => clearTimeout(t);
+  }, [isHudTimerActive, historyHudHold]);
 
   // --- Viewport & display paths ---
 
@@ -85,8 +89,7 @@ export function useLoudnessHistory({
     totalSamples > 0 &&
     selectedHistSteps >= 0 &&
     selectedHistSteps < totalSamples;
-  const isHistoryHudVisible =
-    historyChartInteractive && (historyHudHold || historyHudUntilTs > Date.now());
+  const isHistoryHudVisible = historyChartInteractive && (historyHudHold || isHudTimerActive);
   const selLineX = Math.max(
     0,
     Math.min(
@@ -154,7 +157,6 @@ export function useLoudnessHistory({
     setHistoryWindowSec,
     historyOffsetSec,
     setHistoryOffsetSec,
-    historyHudUntilTs,
     setHistoryHudUntilTs,
     historyHudHold,
     setHistoryHudHold,

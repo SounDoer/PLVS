@@ -161,7 +161,6 @@ export default function App() {
     setHistoryWindowSec,
     historyOffsetSec,
     setHistoryOffsetSec,
-    historyHudUntilTs,
     setHistoryHudUntilTs,
     historyHudHold,
     setHistoryHudHold,
