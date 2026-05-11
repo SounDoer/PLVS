@@ -19,15 +19,27 @@ describe("getPeakMeterChannelLabels", () => {
   });
 
   it("falls back to Ch n for unknown counts (e.g. 7)", () => {
-    expect(getPeakMeterChannelLabels(7)).toEqual(["Ch 1", "Ch 2", "Ch 3", "Ch 4", "Ch 5", "Ch 6", "Ch 7"]);
+    expect(getPeakMeterChannelLabels(7)).toEqual([
+      "Ch 1",
+      "Ch 2",
+      "Ch 3",
+      "Ch 4",
+      "Ch 5",
+      "Ch 6",
+      "Ch 7",
+    ]);
   });
 
   it("honours formatId when channel count matches that format", () => {
-    expect(getPeakMeterChannelLabels(6, { formatId: "surround51" })).toEqual(PEAK_METER_CHANNEL_FORMATS.surround51.labels);
+    expect(getPeakMeterChannelLabels(6, { formatId: "surround51" })).toEqual(
+      PEAK_METER_CHANNEL_FORMATS.surround51.labels
+    );
     expect(getPeakMeterChannelLabels(2, { formatId: "stereo" })).toEqual(["L", "R"]);
   });
 
   it("ignores formatId when channel count mismatches", () => {
-    expect(getPeakMeterChannelLabels(6, { formatId: "stereo" })).toEqual(PEAK_METER_CHANNEL_FORMATS.surround51.labels);
+    expect(getPeakMeterChannelLabels(6, { formatId: "stereo" })).toEqual(
+      PEAK_METER_CHANNEL_FORMATS.surround51.labels
+    );
   });
 });

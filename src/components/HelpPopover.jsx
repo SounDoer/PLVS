@@ -21,7 +21,15 @@ function iconForHint(item) {
     return (
       <svg {...common}>
         <rect x="5.5" y="3" width="13" height="17" rx="5.4" />
-        <rect x="10.7" y="4.3" width="2.6" height="4.4" rx="1.3" fill="currentColor" stroke="none" />
+        <rect
+          x="10.7"
+          y="4.3"
+          width="2.6"
+          height="4.4"
+          rx="1.3"
+          fill="currentColor"
+          stroke="none"
+        />
       </svg>
     );
   }
@@ -30,7 +38,11 @@ function iconForHint(item) {
     return (
       <svg {...common}>
         <rect x="5.5" y="3" width="13" height="17" rx="5.4" />
-        <path d="M12 3.2H15.2A3.3 3.3 0 0 1 18.5 6.5V8.6H12V3.2Z" fill="currentColor" stroke="none" />
+        <path
+          d="M12 3.2H15.2A3.3 3.3 0 0 1 18.5 6.5V8.6H12V3.2Z"
+          fill="currentColor"
+          stroke="none"
+        />
         <line x1="12" y1="3.2" x2="12" y2="8.6" />
       </svg>
     );
@@ -82,10 +94,15 @@ export function HelpPopover({ items }) {
         side="bottom"
         align="start"
         sideOffset={6}
-        className={cn("flex w-max max-w-[min(100vw-1rem,24rem)] flex-col gap-1 p-3 text-[length:var(--ui-fs-metric-meta)]")}
+        className={cn(
+          "flex w-max max-w-[min(100vw-1rem,24rem)] flex-col gap-1 p-3 text-[length:var(--ui-fs-metric-meta)]"
+        )}
       >
         {items.map((item) => (
-          <div key={item} className="flex items-center gap-1.5 whitespace-nowrap text-muted-foreground">
+          <div
+            key={item}
+            className="flex items-center gap-1.5 whitespace-nowrap text-muted-foreground"
+          >
             {iconForHint(item)}
             <span>{item}</span>
           </div>

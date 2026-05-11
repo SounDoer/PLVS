@@ -10,10 +10,14 @@ const Separator = React.forwardRef(
       data-slot="separator"
       decorative={decorative}
       orientation={orientation}
-      className={cn("bg-border shrink-0", orientation === "horizontal" ? "h-px w-full" : "h-full w-px", className)}
+      className={cn(
+        "bg-border shrink-0",
+        orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
+        className
+      )}
       {...props}
     />
-  ),
+  )
 );
 Separator.displayName = SeparatorPrimitive.Root.displayName;
 

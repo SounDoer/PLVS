@@ -51,7 +51,8 @@
 
 /* Defaults aligned with --ui-* tokens injected by `applyLayoutToDocument` / `applyThemeToDocument` */
 :root {
-  --ui-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --ui-font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-family: var(--ui-font-sans, Inter, system-ui, sans-serif);
 }
 

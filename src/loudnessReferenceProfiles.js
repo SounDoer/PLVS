@@ -56,6 +56,7 @@ export function normalizeLoudnessReferenceProfileId(id) {
  */
 export function getLoudnessReferenceProfileById(id) {
   const normalized = normalizeLoudnessReferenceProfileId(id);
-  return LOUDNESS_REFERENCE_PROFILES.find((p) => p.id === normalized) ?? LOUDNESS_REFERENCE_PROFILES[0];
+  return (
+    LOUDNESS_REFERENCE_PROFILES.find((p) => p.id === normalized) ?? LOUDNESS_REFERENCE_PROFILES[0]
+  );
 }
-

@@ -28,7 +28,7 @@ export function VectorscopePanel({
     <Card
       className={cn(
         PANEL_MIN_SPECTRUM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
       )}
     >
       <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
@@ -37,86 +37,108 @@ export function VectorscopePanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
-      <div className="relative min-h-0 flex-1 rounded-lg bg-muted">
-        <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
-          <svg
-            className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <line
-              x1={vsGridDiagInset}
-              y1={vsGridDiagInset}
-              x2={vsGridDiagFar}
-              y2={vsGridDiagFar}
-              stroke="var(--ui-vs-grid-diag-stroke)"
-              strokeWidth="0.35"
-              strokeDasharray="var(--ui-vs-grid-diag-dash)"
-              vectorEffect="non-scaling-stroke"
-            />
-            <line
-              x1={vsGridDiagFar}
-              y1={vsGridDiagInset}
-              x2={vsGridDiagInset}
-              y2={vsGridDiagFar}
-              stroke="var(--ui-vs-grid-diag-stroke)"
-              strokeWidth="0.35"
-              strokeDasharray="var(--ui-vs-grid-diag-dash)"
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
-          <svg
-            viewBox="0 0 260 260"
-            preserveAspectRatio="none"
-            className="absolute inset-0 z-[1] block h-full w-full"
-          >
-            <path
-              d={displayVectorPath || "M 130 130 L 130 130"}
-              fill="none"
-              stroke={selectedOffset >= 0 ? "var(--ui-chart-vectorscope-snap)" : "var(--ui-chart-vectorscope-live)"}
-              strokeWidth="var(--ui-vs-stroke-w-halo)"
-              opacity="var(--ui-vs-path-glow-opacity)"
-              strokeLinecap="round"
-            />
-            <path
-              d={displayVectorPath || "M 130 130 L 130 130"}
-              fill="none"
-              stroke={selectedOffset >= 0 ? "var(--ui-chart-vectorscope-snap)" : "var(--ui-chart-vectorscope-live)"}
-              strokeWidth="var(--ui-vs-stroke-w)"
-              opacity="var(--ui-vs-axis-op)"
-              strokeLinecap="round"
-            />
-            <circle
-              cx="130"
-              cy="130"
-              r="2"
-              fill={selectedOffset >= 0 ? "var(--ui-chart-vectorscope-snap)" : "var(--ui-chart-vectorscope-live)"}
-            />
-          </svg>
-        </div>
-        <span className={cn(CAPTION_TEXT, "absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]")}>
-          {axisXLabel}
-        </span>
-        <span className={cn(CAPTION_TEXT, "absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]")}>
-          {axisYLabel}
-        </span>
-      </div>
-      <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-extra)]">
-        <div className="shrink-0" style={{ width: "var(--ui-corr-info-left-blank)" }} />
-        <div className="flex items-baseline gap-[var(--ui-inline-value-gap)]">
-          <span className="text-muted-foreground">CORRELATION</span>
+        <div className="relative min-h-0 flex-1 rounded-lg bg-muted">
+          <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
+            <svg
+              className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              <line
+                x1={vsGridDiagInset}
+                y1={vsGridDiagInset}
+                x2={vsGridDiagFar}
+                y2={vsGridDiagFar}
+                stroke="var(--ui-vs-grid-diag-stroke)"
+                strokeWidth="0.35"
+                strokeDasharray="var(--ui-vs-grid-diag-dash)"
+                vectorEffect="non-scaling-stroke"
+              />
+              <line
+                x1={vsGridDiagFar}
+                y1={vsGridDiagInset}
+                x2={vsGridDiagInset}
+                y2={vsGridDiagFar}
+                stroke="var(--ui-vs-grid-diag-stroke)"
+                strokeWidth="0.35"
+                strokeDasharray="var(--ui-vs-grid-diag-dash)"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <svg
+              viewBox="0 0 260 260"
+              preserveAspectRatio="none"
+              className="absolute inset-0 z-[1] block h-full w-full"
+            >
+              <path
+                d={displayVectorPath || "M 130 130 L 130 130"}
+                fill="none"
+                stroke={
+                  selectedOffset >= 0
+                    ? "var(--ui-chart-vectorscope-snap)"
+                    : "var(--ui-chart-vectorscope-live)"
+                }
+                strokeWidth="var(--ui-vs-stroke-w-halo)"
+                opacity="var(--ui-vs-path-glow-opacity)"
+                strokeLinecap="round"
+              />
+              <path
+                d={displayVectorPath || "M 130 130 L 130 130"}
+                fill="none"
+                stroke={
+                  selectedOffset >= 0
+                    ? "var(--ui-chart-vectorscope-snap)"
+                    : "var(--ui-chart-vectorscope-live)"
+                }
+                strokeWidth="var(--ui-vs-stroke-w)"
+                opacity="var(--ui-vs-axis-op)"
+                strokeLinecap="round"
+              />
+              <circle
+                cx="130"
+                cy="130"
+                r="2"
+                fill={
+                  selectedOffset >= 0
+                    ? "var(--ui-chart-vectorscope-snap)"
+                    : "var(--ui-chart-vectorscope-live)"
+                }
+              />
+            </svg>
+          </div>
           <span
-            className={
-              Number.isFinite(correlation)
-                ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-color-tp-max)]"
-                : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
-            }
+            className={cn(
+              CAPTION_TEXT,
+              "absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
+            )}
           >
-            {Number.isFinite(correlation) ? correlation.toFixed(2) : "-"}
+            {axisXLabel}
+          </span>
+          <span
+            className={cn(
+              CAPTION_TEXT,
+              "absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
+            )}
+          >
+            {axisYLabel}
           </span>
         </div>
-      </div>
+        <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-extra)]">
+          <div className="shrink-0" style={{ width: "var(--ui-corr-info-left-blank)" }} />
+          <div className="flex items-baseline gap-[var(--ui-inline-value-gap)]">
+            <span className="text-muted-foreground">CORRELATION</span>
+            <span
+              className={
+                Number.isFinite(correlation)
+                  ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-color-tp-max)]"
+                  : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
+              }
+            >
+              {Number.isFinite(correlation) ? correlation.toFixed(2) : "-"}
+            </span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

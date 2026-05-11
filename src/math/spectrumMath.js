@@ -26,7 +26,13 @@ export function smoothByKernel(values, kernel) {
 }
 
 export function dbPathFromBands(bands, dbList) {
-  if (!Array.isArray(bands) || !Array.isArray(dbList) || !bands.length || bands.length !== dbList.length) return "";
+  if (
+    !Array.isArray(bands) ||
+    !Array.isArray(dbList) ||
+    !bands.length ||
+    bands.length !== dbList.length
+  )
+    return "";
   const pts = [];
   for (let i = 0; i < bands.length; i++) {
     const x = freqToXFrac(bands[i].fCenter) * SPECTRUM_VIEW_W;

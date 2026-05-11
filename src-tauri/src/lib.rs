@@ -32,13 +32,12 @@ pub fn run() {
       ipc::commands::get_engine_state,
     ])
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
+      #[cfg(debug_assertions)]
+      app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+          .level(log::LevelFilter::Info)
+          .build(),
+      )?;
       let handle = app.handle().clone();
       std::thread::Builder::new()
         .name("audiometer-device-watch".into())

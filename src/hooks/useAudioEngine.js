@@ -130,7 +130,9 @@ export function useAudioEngine({
             setAudio((prev) => ({
               ...prev,
               integrated:
-                p.lufsIntegrated != null && Number.isFinite(p.lufsIntegrated) ? p.lufsIntegrated : -Infinity,
+                p.lufsIntegrated != null && Number.isFinite(p.lufsIntegrated)
+                  ? p.lufsIntegrated
+                  : -Infinity,
               mMax: Number.isFinite(p.lufsMMax) ? p.lufsMMax : -Infinity,
               stMax: Number.isFinite(p.lufsStMax) ? p.lufsStMax : -Infinity,
               lra: Number.isFinite(p.lra) ? p.lra : -Infinity,
@@ -186,7 +188,9 @@ export function useAudioEngine({
 
         setRunning(false);
         setSelectedOffset(-1);
-        setStatus("Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`.");
+        setStatus(
+          "Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`."
+        );
         setStatus2("Device: Not connected");
       } catch (err) {
         setRunning(false);

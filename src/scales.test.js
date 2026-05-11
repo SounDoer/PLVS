@@ -48,7 +48,8 @@ describe("loudnessFromTopFrac", () => {
 });
 
 describe("spectrumDbToYViewBox", () => {
-  it("0 dB maps below viewBox top by SPEC_VIEW_TOP_PAD", () => expect(spectrumDbToYViewBox(0)).toBe(SPEC_VIEW_TOP_PAD));
+  it("0 dB maps below viewBox top by SPEC_VIEW_TOP_PAD", () =>
+    expect(spectrumDbToYViewBox(0)).toBe(SPEC_VIEW_TOP_PAD));
   it("-100 dB maps above viewBox bottom by SPEC_VIEW_BOTTOM_PAD", () => {
     expect(spectrumDbToYViewBox(-100)).toBe(SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD);
   });
@@ -67,7 +68,9 @@ describe("spectrumDbToTopFrac", () => {
     expect(spectrumDbToTopFrac(0)).toBeCloseTo(SPEC_VIEW_TOP_PAD / SPEC_VIEW_H);
   });
   it("-100 dB maps to fraction just below full height", () => {
-    expect(spectrumDbToTopFrac(-100)).toBeCloseTo((SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD) / SPEC_VIEW_H);
+    expect(spectrumDbToTopFrac(-100)).toBeCloseTo(
+      (SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD) / SPEC_VIEW_H
+    );
   });
   it("consistent with spectrumDbToYViewBox", () => {
     expect(spectrumDbToTopFrac(-40)).toBeCloseTo(spectrumDbToYViewBox(-40) / SPEC_VIEW_H);

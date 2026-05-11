@@ -66,7 +66,7 @@ export function SettingsPanel({
         side="right"
         className={cn(
           "w-full gap-0 overflow-y-auto border-border bg-card/95 p-6 backdrop-blur-md sm:max-w-md",
-          "pt-12",
+          "pt-12"
         )}
       >
         <AnimatePresence
@@ -168,9 +168,14 @@ export function SettingsPanel({
                 <Separator />
                 <div className="grid gap-2">
                   <Label htmlFor="settings-vs-pair">Vectorscope channels</Label>
-                  {vectorscopePairOptions.length > 0 && typeof onVectorscopePairChange === "function" ? (
+                  {vectorscopePairOptions.length > 0 &&
+                  typeof onVectorscopePairChange === "function" ? (
                     <Select
-                      value={vectorscopePairOptions.some((o) => o.key === vsKey) ? vsKey : vectorscopePairOptions[0]?.key}
+                      value={
+                        vectorscopePairOptions.some((o) => o.key === vsKey)
+                          ? vsKey
+                          : vectorscopePairOptions[0]?.key
+                      }
                       onValueChange={(key) => {
                         const [xRaw, yRaw] = String(key).split("-");
                         const x = Number.parseInt(xRaw || "0", 10);
@@ -193,7 +198,9 @@ export function SettingsPanel({
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-muted-foreground text-sm">At least 2 channels (start monitoring)</p>
+                    <p className="text-muted-foreground text-sm">
+                      At least 2 channels (start monitoring)
+                    </p>
                   )}
                 </div>
               </div>

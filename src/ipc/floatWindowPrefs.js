@@ -86,7 +86,12 @@ export async function loadFloatWindowBounds(kind) {
       const wc = Math.max(200, Math.min(5000, roundLogical(w)));
       const hc = Math.max(200, Math.min(5000, roundLogical(h)));
       const out = { width: wc, height: hc };
-      if (typeof x === "number" && typeof y === "number" && Number.isFinite(x) && Number.isFinite(y)) {
+      if (
+        typeof x === "number" &&
+        typeof y === "number" &&
+        Number.isFinite(x) &&
+        Number.isFinite(y)
+      ) {
         out.x = clampPos(roundLogical(x));
         out.y = clampPos(roundLogical(y));
       }
@@ -110,7 +115,12 @@ export async function saveFloatWindowBounds(kind, size) {
   const w = Math.max(200, Math.min(5000, roundLogical(size.width)));
   const h = Math.max(200, Math.min(5000, roundLogical(size.height)));
   const entry = { width: w, height: h, v: BOUNDS_V2 };
-  if (typeof size.x === "number" && typeof size.y === "number" && Number.isFinite(size.x) && Number.isFinite(size.y)) {
+  if (
+    typeof size.x === "number" &&
+    typeof size.y === "number" &&
+    Number.isFinite(size.x) &&
+    Number.isFinite(size.y)
+  ) {
     entry.x = clampPos(roundLogical(size.x));
     entry.y = clampPos(roundLogical(size.y));
   }

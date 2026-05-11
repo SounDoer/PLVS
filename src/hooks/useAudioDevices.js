@@ -13,7 +13,9 @@ import { isTauri } from "../ipc/env.js";
  */
 export function useAudioDevices() {
   const [audioDevices, setAudioDevices] = useState([]);
-  const [captureDeviceId, setCaptureDeviceId] = useState(() => readCaptureDeviceIdFromLocalStorage());
+  const [captureDeviceId, setCaptureDeviceId] = useState(() =>
+    readCaptureDeviceIdFromLocalStorage()
+  );
   const [defaultOutputFormatSig, setDefaultOutputFormatSig] = useState("");
 
   useEffect(() => {
@@ -21,7 +23,8 @@ export function useAudioDevices() {
     let cancelled = false;
     void previewAudioDevice("default").then(
       (p) => {
-        if (cancelled || !p || !Number.isFinite(p.channels) || !Number.isFinite(p.sampleRateHz)) return;
+        if (cancelled || !p || !Number.isFinite(p.channels) || !Number.isFinite(p.sampleRateHz))
+          return;
         setDefaultOutputFormatSig(`${p.channels}:${p.sampleRateHz}`);
       },
       () => {}

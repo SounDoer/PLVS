@@ -28,7 +28,10 @@ const LOUDNESS_DB_RNG = LOUDNESS_DB_MAX - LOUDNESS_DB_MIN;
 
 /** Loudness: from-top normalized position; -3 dB → 0, -64 dB → 1 on this axis. */
 export function loudnessFromTopFrac(v) {
-  const c = Math.max(LOUDNESS_DB_MIN, Math.min(LOUDNESS_DB_MAX, Number.isFinite(v) ? v : LOUDNESS_DB_MIN));
+  const c = Math.max(
+    LOUDNESS_DB_MIN,
+    Math.min(LOUDNESS_DB_MAX, Number.isFinite(v) ? v : LOUDNESS_DB_MIN)
+  );
   return 1 - (c - LOUDNESS_DB_MIN) / LOUDNESS_DB_RNG;
 }
 
@@ -57,7 +60,7 @@ export const SPECTRUM_SETTINGS = {
   showPeakHold: false,
   peakHoldMs: 1000,
   peakDecayDbPerSec: 12,
-  freqSmoothingKernel: [0.12,0.76,0.12],
+  freqSmoothingKernel: [0.12, 0.76, 0.12],
   tiltDbPerOctave: 0,
   freeze: false,
   minHz: 20,

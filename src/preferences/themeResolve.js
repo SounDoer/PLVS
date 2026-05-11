@@ -3,11 +3,7 @@
  * @see docs/adr/0002-theme-id-and-appearance.md
  */
 
-import {
-  DEFAULT_THEME_ID,
-  isThemeId,
-  THEME_IDS,
-} from "../theme/builtinThemes.js";
+import { DEFAULT_THEME_ID, isThemeId, THEME_IDS } from "../theme/builtinThemes.js";
 
 export { DEFAULT_THEME_ID, isThemeId, THEME_IDS };
 

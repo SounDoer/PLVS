@@ -8,12 +8,19 @@ import {
   resolveThemeId,
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
-import { getDefaultLoudnessReferenceProfileId, normalizeLoudnessReferenceProfileId } from "../loudnessReferenceProfiles";
+import {
+  getDefaultLoudnessReferenceProfileId,
+  normalizeLoudnessReferenceProfileId,
+} from "../loudnessReferenceProfiles";
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [appearance, setAppearance] = useState(() => readPersistedShellThemeFields(UI_PREFERENCES).appearance);
-  const [themeId, setThemeId] = useState(() => readPersistedShellThemeFields(UI_PREFERENCES).themeId);
+  const [appearance, setAppearance] = useState(
+    () => readPersistedShellThemeFields(UI_PREFERENCES).appearance
+  );
+  const [themeId, setThemeId] = useState(
+    () => readPersistedShellThemeFields(UI_PREFERENCES).themeId
+  );
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
   const [referenceProfileId, setReferenceProfileId] = useState(() => {
     try {

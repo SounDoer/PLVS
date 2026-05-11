@@ -27,15 +27,25 @@ function mixRgb(a, b, t) {
   };
 }
 
-export function samplePeakLineColor(dbValue, dbToTopFrac, meterGradientCfg, fallback = "var(--ui-color-peak-sample)") {
+export function samplePeakLineColor(
+  dbValue,
+  dbToTopFrac,
+  meterGradientCfg,
+  fallback = "var(--ui-color-peak-sample)"
+) {
   if (!Number.isFinite(dbValue)) return fallback;
   const t = dbToTopFrac(dbValue);
-  const midStopPct = Number.isFinite(meterGradientCfg?.midStopPercent) ? meterGradientCfg.midStopPercent : 40;
+  const midStopPct = Number.isFinite(meterGradientCfg?.midStopPercent)
+    ? meterGradientCfg.midStopPercent
+    : 40;
   const midStop = Math.max(0.001, Math.min(0.999, midStopPct / 100));
   const cTop = parseHexColor(meterGradientCfg?.top);
   const cMid = parseHexColor(meterGradientCfg?.mid);
   const cBottom = parseHexColor(meterGradientCfg?.bottom);
   if (!cTop || !cMid || !cBottom) return fallback;
-  const rgb = t <= midStop ? mixRgb(cTop, cMid, t / midStop) : mixRgb(cMid, cBottom, (t - midStop) / (1 - midStop));
+  const rgb =
+    t <= midStop
+      ? mixRgb(cTop, cMid, t / midStop)
+      : mixRgb(cMid, cBottom, (t - midStop) / (1 - midStop));
   return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
 }

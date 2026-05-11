@@ -32,15 +32,27 @@ export function useHoverState({
   const [spectrumHover, setSpectrumHover] = useState(null);
 
   const onHistoryHoverMove = (clientX, rect) => {
-    if (!historyChartInteractive) { setHistoryHover(null); return; }
-    if (!histSourceList.length) { setHistoryHover(null); return; }
+    if (!historyChartInteractive) {
+      setHistoryHover(null);
+      return;
+    }
+    if (!histSourceList.length) {
+      setHistoryHover(null);
+      return;
+    }
     const width = Math.max(1, rect.width);
     const x = Math.max(0, Math.min(width, clientX - rect.left));
     const normalized = 1 - x / width;
     const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
-    const hoverIndex = Math.max(0, Math.min(histSourceList.length - 1, histSourceList.length - 1 - Math.round(fromEndSamples)));
+    const hoverIndex = Math.max(
+      0,
+      Math.min(histSourceList.length - 1, histSourceList.length - 1 - Math.round(fromEndSamples))
+    );
     const point = histSourceList[hoverIndex];
-    if (!point) { setHistoryHover(null); return; }
+    if (!point) {
+      setHistoryHover(null);
+      return;
+    }
     const offsetSec = Math.max(0, (histSourceList.length - 1 - hoverIndex) * sampleSec);
     const yValue = Number.isFinite(point.st) ? point.st : point.m;
     setHistoryHover({
@@ -56,7 +68,10 @@ export function useHoverState({
 
   const onSpectrumHoverMove = (clientX, rect) => {
     const data = displaySpectrumData;
-    if (!data?.bands?.length || !data?.dbList?.length) { setSpectrumHover(null); return; }
+    if (!data?.bands?.length || !data?.dbList?.length) {
+      setSpectrumHover(null);
+      return;
+    }
     const width = Math.max(1, rect.width);
     const x = Math.max(0, Math.min(width, clientX - rect.left));
     const xFrac = x / width;
@@ -64,11 +79,17 @@ export function useHoverState({
     let nearestDist = Infinity;
     for (let i = 0; i < data.bands.length; i += 1) {
       const dist = Math.abs(freqToXFrac(data.bands[i].fCenter) - xFrac);
-      if (dist < nearestDist) { nearestDist = dist; nearestIdx = i; }
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestIdx = i;
+      }
     }
     const band = data.bands[nearestIdx];
     const db = data.dbList[nearestIdx];
-    if (!band || !Number.isFinite(db)) { setSpectrumHover(null); return; }
+    if (!band || !Number.isFinite(db)) {
+      setSpectrumHover(null);
+      return;
+    }
     setSpectrumHover({
       leftPct: freqToXFrac(band.fCenter) * 100,
       topPct: spectrumDbToTopFrac(db) * 100,

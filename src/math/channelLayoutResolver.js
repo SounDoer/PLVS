@@ -33,4 +33,3 @@ export function resolveChannelLayout(setting, ctx) {
   void channelCount;
   return { mode: "auto", setting: "auto", resolved: "unknown" };
 }
-

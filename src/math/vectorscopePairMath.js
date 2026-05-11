@@ -51,4 +51,3 @@ export function clampVectorscopePairToAvailable(pair, channelCount, labelCtx = {
   if (options.some((o) => o.x === x && o.y === y)) return { x, y };
   return { x: options[0].x, y: options[0].y };
 }
-

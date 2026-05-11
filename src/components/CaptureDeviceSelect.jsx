@@ -21,8 +21,14 @@ import {
  * }} props
  */
 export function CaptureDeviceSelect({ audioDevices, value, onValueChange, disabled }) {
-  const outputs = useMemo(() => (audioDevices || []).filter((d) => d.isSystemOutputMonitor), [audioDevices]);
-  const inputs = useMemo(() => (audioDevices || []).filter((d) => !d.isSystemOutputMonitor), [audioDevices]);
+  const outputs = useMemo(
+    () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
+    [audioDevices]
+  );
+  const inputs = useMemo(
+    () => (audioDevices || []).filter((d) => !d.isSystemOutputMonitor),
+    [audioDevices]
+  );
   const allowed = useMemo(() => {
     const s = new Set(["default"]);
     for (const d of audioDevices || []) s.add(d.id);
@@ -32,7 +38,10 @@ export function CaptureDeviceSelect({ audioDevices, value, onValueChange, disabl
 
   return (
     <div className="flex min-w-0 max-w-[min(22rem,42vw)] flex-1 items-center gap-2">
-      <Label htmlFor="capture-device-select" className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground shrink-0">
+      <Label
+        htmlFor="capture-device-select"
+        className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground shrink-0"
+      >
         Device
       </Label>
       <Select value={safeValue} onValueChange={onValueChange} disabled={disabled}>

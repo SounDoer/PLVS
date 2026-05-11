@@ -147,4 +147,3 @@ export function applyShadcnSemanticTokensToDocument(semantic) {
     setCssVar(cssName, semantic[key]);
   }
 }
-

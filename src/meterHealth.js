@@ -32,4 +32,3 @@ export function meterHealthBadgeModel(health) {
   }
   return { health: h, label: "Meter: OK", tone: "ok" };
 }
-

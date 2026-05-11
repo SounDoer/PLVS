@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { fmtMetric, fmtSec, METRIC_NEGATIVE_INFINITY_FLOOR, METRIC_POSITIVE_INFINITY_CEIL } from "./formatMath";
+import {
+  fmtMetric,
+  fmtSec,
+  METRIC_NEGATIVE_INFINITY_FLOOR,
+  METRIC_POSITIVE_INFINITY_CEIL,
+} from "./formatMath";
 
 describe("fmtMetric", () => {
   it("formats a normal value to 1 decimal place", () => {

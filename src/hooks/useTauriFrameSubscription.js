@@ -72,7 +72,9 @@ export function useTauriFrameSubscription(
           setAudio((prev) => ({
             ...prev,
             integrated:
-              p.lufsIntegrated != null && Number.isFinite(p.lufsIntegrated) ? p.lufsIntegrated : -Infinity,
+              p.lufsIntegrated != null && Number.isFinite(p.lufsIntegrated)
+                ? p.lufsIntegrated
+                : -Infinity,
             mMax: Number.isFinite(p.lufsMMax) ? p.lufsMMax : -Infinity,
             stMax: Number.isFinite(p.lufsStMax) ? p.lufsStMax : -Infinity,
             lra: Number.isFinite(p.lra) ? p.lra : -Infinity,
@@ -104,8 +106,8 @@ export function useTauriFrameSubscription(
       unlistenSr();
       void meterRemoveFrameSubscriber(subscriptionId);
     };
-  // subscriptionId is stable for the instance; refs are stable.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // subscriptionId is stable for the instance; refs are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     engineRunning,
     histMaxSamples,

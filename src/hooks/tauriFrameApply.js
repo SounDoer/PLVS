@@ -113,11 +113,19 @@ export function buildTauriFrameApply({
         tpR: Number.isFinite(f.sampleRDb) ? f.sampleRDb : -Infinity,
         sampleL: Number.isFinite(f.sampleLDb) ? f.sampleLDb : -Infinity,
         sampleR: Number.isFinite(f.sampleRDb) ? f.sampleRDb : -Infinity,
-        samplePeakMaxL: Number.isFinite(f.sampleLDb) ? Math.max(prev.samplePeakMaxL, f.sampleLDb) : prev.samplePeakMaxL,
-        samplePeakMaxR: Number.isFinite(f.sampleRDb) ? Math.max(prev.samplePeakMaxR, f.sampleRDb) : prev.samplePeakMaxR,
+        samplePeakMaxL: Number.isFinite(f.sampleLDb)
+          ? Math.max(prev.samplePeakMaxL, f.sampleLDb)
+          : prev.samplePeakMaxL,
+        samplePeakMaxR: Number.isFinite(f.sampleRDb)
+          ? Math.max(prev.samplePeakMaxR, f.sampleRDb)
+          : prev.samplePeakMaxR,
         correlation: Number.isFinite(f.correlation) ? f.correlation : -Infinity,
-        vectorscopePairX: Number.isFinite(f.vectorscopePairX) ? f.vectorscopePairX : prev.vectorscopePairX ?? 0,
-        vectorscopePairY: Number.isFinite(f.vectorscopePairY) ? f.vectorscopePairY : prev.vectorscopePairY ?? 1,
+        vectorscopePairX: Number.isFinite(f.vectorscopePairX)
+          ? f.vectorscopePairX
+          : (prev.vectorscopePairX ?? 0),
+        vectorscopePairY: Number.isFinite(f.vectorscopePairY)
+          ? f.vectorscopePairY
+          : (prev.vectorscopePairY ?? 1),
       };
       if (histTick != null) {
         pushHistorySnapFromRow(histTick);

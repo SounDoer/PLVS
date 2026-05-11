@@ -38,17 +38,27 @@ export function useSnapshot({
   const snapVecList = snapSource ? snapSource.vector : vectorSnapRef.current;
   const snapAudioList = snapSource ? snapSource.audio : audioSnapRef.current;
 
-  const selectedHistSteps = selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / sampleSec)) : -1;
-  const snapIdx = selectedHistSteps >= 0 ? Math.max(0, snapSpecList.length - 1 - selectedHistSteps) : -1;
-  const audioSnapIdx = selectedHistSteps >= 0 ? Math.max(0, snapAudioList.length - 1 - selectedHistSteps) : -1;
+  const selectedHistSteps =
+    selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / sampleSec)) : -1;
+  const snapIdx =
+    selectedHistSteps >= 0 ? Math.max(0, snapSpecList.length - 1 - selectedHistSteps) : -1;
+  const audioSnapIdx =
+    selectedHistSteps >= 0 ? Math.max(0, snapAudioList.length - 1 - selectedHistSteps) : -1;
 
-  const displayAudio = audioSnapIdx >= 0 && snapAudioList[audioSnapIdx] ? snapAudioList[audioSnapIdx] : audio;
-  const displaySpectrumPath = snapIdx >= 0 && snapSpecList[snapIdx] ? snapSpecList[snapIdx] : spectrumPath;
+  const displayAudio =
+    audioSnapIdx >= 0 && snapAudioList[audioSnapIdx] ? snapAudioList[audioSnapIdx] : audio;
+  const displaySpectrumPath =
+    snapIdx >= 0 && snapSpecList[snapIdx] ? snapSpecList[snapIdx] : spectrumPath;
   const displaySpectrumPeakPath = selectedOffset >= 0 ? "" : spectrumPeakPath;
-  const displaySpectrumData = snapIdx >= 0 && snapSpecDataList[snapIdx] ? snapSpecDataList[snapIdx] : spectrumDataRef.current;
-  const displayVectorPath = snapIdx >= 0 && snapVecList[snapIdx] ? snapVecList[snapIdx] : vectorPath;
+  const displaySpectrumData =
+    snapIdx >= 0 && snapSpecDataList[snapIdx] ? snapSpecDataList[snapIdx] : spectrumDataRef.current;
+  const displayVectorPath =
+    snapIdx >= 0 && snapVecList[snapIdx] ? snapVecList[snapIdx] : vectorPath;
   const hasHistoryData = histSourceList.length > 0;
-  const correlation = snapIdx >= 0 && Number.isFinite(snapCorrList[snapIdx]) ? snapCorrList[snapIdx] : displayAudio.correlation;
+  const correlation =
+    snapIdx >= 0 && Number.isFinite(snapCorrList[snapIdx])
+      ? snapCorrList[snapIdx]
+      : displayAudio.correlation;
 
   return {
     histSourceList,

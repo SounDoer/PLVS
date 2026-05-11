@@ -21,9 +21,15 @@ import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
-import { buildVectorscopePairOptions, clampVectorscopePairToAvailable } from "./math/vectorscopePairMath.js";
+import {
+  buildVectorscopePairOptions,
+  clampVectorscopePairToAvailable,
+} from "./math/vectorscopePairMath.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
-import { getLoudnessReferenceProfileById, LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
+import {
+  getLoudnessReferenceProfileById,
+  LOUDNESS_REFERENCE_PROFILES,
+} from "./loudnessReferenceProfiles.js";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";
@@ -74,17 +80,15 @@ export default function App() {
     setReferenceProfileId,
   } = useSettings();
 
-  const {
-    audioDevices,
-    captureDeviceId,
-    setCaptureDeviceIdAndPersist,
-    defaultOutputFormatSig,
-  } = useAudioDevices();
+  const { audioDevices, captureDeviceId, setCaptureDeviceIdAndPersist, defaultOutputFormatSig } =
+    useAudioDevices();
 
   const [running, setRunning] = useState(false);
   const [channelLayout, setChannelLayout] = useState("auto");
   const [selectedOffset, setSelectedOffset] = useState(-1);
-  const [historyWindowSec, setHistoryWindowSec] = useState(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+  const [historyWindowSec, setHistoryWindowSec] = useState(
+    UI_PREFERENCES.modules.loudness.history.defaultWindowSec
+  );
   const [historyOffsetSec, setHistoryOffsetSec] = useState(0);
   const [historyHudUntilTs, setHistoryHudUntilTs] = useState(0);
   const [historyHudHold, setHistoryHudHold] = useState(false);
@@ -122,7 +126,9 @@ export default function App() {
   const [mainLeft, setMainLeft] = useState(UI_PREFERENCES.layout.mainColumn.initialPx);
   const [leftTopRatio, setLeftTopRatio] = useState(UI_PREFERENCES.layout.leftSplit.initialRatio);
   const [rightTopRatio, setRightTopRatio] = useState(UI_PREFERENCES.layout.rightSplit.initialRatio);
-  const [loudnessHistWidthRatio, setLoudnessHistWidthRatio] = useState(UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio);
+  const [loudnessHistWidthRatio, setLoudnessHistWidthRatio] = useState(
+    UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
+  );
 
   const audioRef = useRef(null);
   const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
@@ -170,10 +176,18 @@ export default function App() {
     [historyOffsetSec, historyWindowSec]
   );
 
-  const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(resolvedThemeId, displayAudio);
+  const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(
+    resolvedThemeId,
+    displayAudio
+  );
   const toggleCurve = (key) => setHistCurves((prev) => ({ ...prev, [key]: !prev[key] }));
-  const referenceProfile = useMemo(() => getLoudnessReferenceProfileById(referenceProfileId), [referenceProfileId]);
-  const targetLufs = Number.isFinite(referenceProfile?.targetLufs) ? referenceProfile.targetLufs : -23;
+  const referenceProfile = useMemo(
+    () => getLoudnessReferenceProfileById(referenceProfileId),
+    [referenceProfileId]
+  );
+  const targetLufs = Number.isFinite(referenceProfile?.targetLufs)
+    ? referenceProfile.targetLufs
+    : -23;
   const historyYAxisTicks = useMemo(() => {
     const out = [...LOUDNESS_TICKS];
     if (!out.some((t) => t.v === targetLufs)) out.push({ v: targetLufs, lb: String(targetLufs) });
@@ -181,12 +195,14 @@ export default function App() {
     return out;
   }, [targetLufs]);
 
-  const psr = Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.shortTerm)
-    ? displayAudio.tpMax - displayAudio.shortTerm
-    : -Infinity;
-  const plr = Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.integrated)
-    ? displayAudio.tpMax - displayAudio.integrated
-    : -Infinity;
+  const psr =
+    Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.shortTerm)
+      ? displayAudio.tpMax - displayAudio.shortTerm
+      : -Infinity;
+  const plr =
+    Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.integrated)
+      ? displayAudio.tpMax - displayAudio.integrated
+      : -Infinity;
   const primaryMetrics = [
     { label: "Momentary", value: fmtMetric(displayAudio.momentary), unit: "LUFS" },
     { label: "Short-term", value: fmtMetric(displayAudio.shortTerm), unit: "LUFS" },
@@ -239,13 +255,21 @@ export default function App() {
 
   useEffect(() => {
     if (!running) return;
-    const x = Number.isFinite(displayAudio?.vectorscopePairX) ? Number(displayAudio.vectorscopePairX) : 0;
-    const y = Number.isFinite(displayAudio?.vectorscopePairY) ? Number(displayAudio.vectorscopePairY) : 1;
+    const x = Number.isFinite(displayAudio?.vectorscopePairX)
+      ? Number(displayAudio.vectorscopePairX)
+      : 0;
+    const y = Number.isFinite(displayAudio?.vectorscopePairY)
+      ? Number(displayAudio.vectorscopePairY)
+      : 1;
     setVectorscopePairUi({ x, y });
   }, [running, displayAudio?.vectorscopePairX, displayAudio?.vectorscopePairY]);
 
   useEffect(() => {
-    const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, vectorscopeLabelContext);
+    const next = clampVectorscopePairToAvailable(
+      vectorscopePairUi,
+      channelCount,
+      vectorscopeLabelContext
+    );
     if (next.x === vectorscopePairUi.x && next.y === vectorscopePairUi.y) return;
     setVectorscopePairUi(next);
     if (isTauri() && running) void setVectorscopePair({ x: next.x, y: next.y });
@@ -264,25 +288,36 @@ export default function App() {
   }, [vectorscopePairUi]);
 
   const totalSamples = histSourceList.length;
-  const { clampedWindowSec, visibleSamples, maxOffsetSamples, effectiveOffsetSamples, effectiveOffsetSec } = getHistoryViewport(
-    totalSamples,
-    historyWindowSec,
-    historyOffsetSec,
-    HIST_SAMPLE_SEC
-  );
+  const {
+    clampedWindowSec,
+    visibleSamples,
+    maxOffsetSamples,
+    effectiveOffsetSamples,
+    effectiveOffsetSec,
+  } = getHistoryViewport(totalSamples, historyWindowSec, historyOffsetSec, HIST_SAMPLE_SEC);
   const displayHistoryPathM = buildHistoryPath(
-    histSourceList, "m", visibleSamples, effectiveOffsetSamples, (v) => loudnessHistY(v, 220)
+    histSourceList,
+    "m",
+    visibleSamples,
+    effectiveOffsetSamples,
+    (v) => loudnessHistY(v, 220)
   );
   const displayHistoryPathST = buildHistoryPath(
-    histSourceList, "st", visibleSamples, effectiveOffsetSamples, (v) => loudnessHistY(v, 220)
+    histSourceList,
+    "st",
+    visibleSamples,
+    effectiveOffsetSamples,
+    (v) => loudnessHistY(v, 220)
   );
-  const selectedHistSteps = selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / HIST_SAMPLE_SEC)) : -1;
+  const selectedHistSteps =
+    selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / HIST_SAMPLE_SEC)) : -1;
   const showSelLine =
     selectedOffset >= 0 &&
     totalSamples > 0 &&
     selectedHistSteps >= 0 &&
     selectedHistSteps < totalSamples;
-  const isHistoryHudVisible = historyChartInteractive && (historyHudHold || historyHudUntilTs > Date.now());
+  const isHistoryHudVisible =
+    historyChartInteractive && (historyHudHold || historyHudUntilTs > Date.now());
   const selLineX = Math.max(
     0,
     Math.min(
@@ -371,15 +406,32 @@ export default function App() {
     setVectorPath("");
     clearHoverState();
     setAudio({
-      momentary: -Infinity, shortTerm: -Infinity, integrated: -Infinity, mMax: -Infinity, stMax: -Infinity, lra: -Infinity,
-      tpL: -Infinity, tpR: -Infinity, truePeakL: -Infinity, truePeakR: -Infinity,
-      tpMax: -Infinity, samplePeakMaxL: -Infinity, samplePeakMaxR: -Infinity,
-      sampleL: -Infinity, sampleR: -Infinity, samplePeak: -Infinity, correlation: -Infinity,
+      momentary: -Infinity,
+      shortTerm: -Infinity,
+      integrated: -Infinity,
+      mMax: -Infinity,
+      stMax: -Infinity,
+      lra: -Infinity,
+      tpL: -Infinity,
+      tpR: -Infinity,
+      truePeakL: -Infinity,
+      truePeakR: -Infinity,
+      tpMax: -Infinity,
+      samplePeakMaxL: -Infinity,
+      samplePeakMaxR: -Infinity,
+      sampleL: -Infinity,
+      sampleR: -Infinity,
+      samplePeak: -Infinity,
+      correlation: -Infinity,
     });
     setSelectedOffset(-1);
     setHistoryOffsetSec(0);
     setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
-    setStatus(running ? "Running - cleared history and peak hold" : "Ready - click Start to begin monitoring");
+    setStatus(
+      running
+        ? "Running - cleared history and peak hold"
+        : "Ready - click Start to begin monitoring"
+    );
   };
 
   const resetLayout = () => {
@@ -390,7 +442,8 @@ export default function App() {
   };
 
   const onStartClick = () => {
-    if (selectedOffset >= 0) return void (setSelectedOffset(-1), setStatus("Monitoring live input"));
+    if (selectedOffset >= 0)
+      return void (setSelectedOffset(-1), setStatus("Monitoring live input"));
     if (running) {
       setRunning(false);
       setSelectedOffset(-1);
@@ -423,8 +476,10 @@ export default function App() {
       if (typeof s.mainLeft === "number") setMainLeft(s.mainLeft);
       if (typeof s.leftTopRatio === "number") setLeftTopRatio(s.leftTopRatio);
       if (typeof s.rightTopRatio === "number") setRightTopRatio(s.rightTopRatio);
-      if (typeof s.loudnessHistWidthRatio === "number") setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
-      if (s.channelLayout === "auto" || s.channelLayout === "stereo" || s.channelLayout === "5.1") setChannelLayout(s.channelLayout);
+      if (typeof s.loudnessHistWidthRatio === "number")
+        setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
+      if (s.channelLayout === "auto" || s.channelLayout === "stereo" || s.channelLayout === "5.1")
+        setChannelLayout(s.channelLayout);
     } catch (_) {}
   }, []);
 
@@ -524,7 +579,13 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-[var(--ui-header-action-gap)]">
-            <Button type="button" variant="outline" size="sm" onClick={clearAll} className="gap-2 font-semibold">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={clearAll}
+              className="gap-2 font-semibold"
+            >
               <Trash2 className="size-4 shrink-0" aria-hidden />
               Clear
             </Button>
@@ -536,7 +597,7 @@ export default function App() {
               className={cn(
                 "min-w-[5.75rem] gap-2 font-semibold",
                 startMode === "live" &&
-                  "live-snap-pulse !bg-[var(--ui-chart-vectorscope-snap)] !text-white shadow-none hover:!brightness-[0.94]",
+                  "live-snap-pulse !bg-[var(--ui-chart-vectorscope-snap)] !text-white shadow-none hover:!brightness-[0.94]"
               )}
             >
               {startMode === "live" ? (
@@ -548,7 +609,13 @@ export default function App() {
               )}
               {startLabel}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setSettingsOpen(true)} className="gap-2 font-semibold">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+              className="gap-2 font-semibold"
+            >
               <Settings className="size-4 shrink-0" aria-hidden />
               Settings
             </Button>

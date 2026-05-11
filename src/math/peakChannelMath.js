@@ -23,8 +23,15 @@ export function getPeakChannels(displayAudio, labelCtx) {
   const l = Number.isFinite(displayAudio?.sampleL) ? displayAudio.sampleL : -Infinity;
   const r = Number.isFinite(displayAudio?.sampleR) ? displayAudio.sampleR : -Infinity;
   return [
-    { label: "L", valueDb: l, holdDb: Number.isFinite(displayAudio?.samplePeakMaxL) ? displayAudio.samplePeakMaxL : null },
-    { label: "R", valueDb: r, holdDb: Number.isFinite(displayAudio?.samplePeakMaxR) ? displayAudio.samplePeakMaxR : null },
+    {
+      label: "L",
+      valueDb: l,
+      holdDb: Number.isFinite(displayAudio?.samplePeakMaxL) ? displayAudio.samplePeakMaxL : null,
+    },
+    {
+      label: "R",
+      valueDb: r,
+      holdDb: Number.isFinite(displayAudio?.samplePeakMaxR) ? displayAudio.samplePeakMaxR : null,
+    },
   ];
 }
-

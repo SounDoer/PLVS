@@ -28,7 +28,9 @@ describe("buildVectorscopePairOptions", () => {
 describe("formatVectorscopePairLabel", () => {
   test("formats with channelLabels when supplied", () => {
     expect(formatVectorscopePairLabel({ x: 0, y: 1, channelLabels: ["L", "R"] })).toBe("L/R");
-    expect(formatVectorscopePairLabel({ x: 2, y: 5, channelLabels: ["L", "R", "C", "LFE", "Ls", "Rs"] })).toBe("C/Rs");
+    expect(
+      formatVectorscopePairLabel({ x: 2, y: 5, channelLabels: ["L", "R", "C", "LFE", "Ls", "Rs"] })
+    ).toBe("C/Rs");
   });
 
   test("falls back to Ch numbering without labels array", () => {

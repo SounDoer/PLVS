@@ -43,26 +43,35 @@ function FloatLoudnessBody({ core }) {
     hasHistoryData,
     histSourceList,
   } = core;
-  const [historyWindowSec, setHistoryWindowSec] = useState(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+  const [historyWindowSec, setHistoryWindowSec] = useState(
+    UI_PREFERENCES.modules.loudness.history.defaultWindowSec
+  );
   const [historyOffsetSec, setHistoryOffsetSec] = useState(0);
   const [historyHudUntilTs, setHistoryHudUntilTs] = useState(0);
   const [historyHudHold, setHistoryHudHold] = useState(false);
   const [histCurves, setHistCurves] = useState({ m: false, st: true });
   const loudnessHistWidthRatio = UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio;
-  const referenceProfile = useMemo(() => getLoudnessReferenceProfileById(referenceProfileId), [referenceProfileId]);
-  const targetLufs = Number.isFinite(referenceProfile?.targetLufs) ? referenceProfile.targetLufs : -23;
+  const referenceProfile = useMemo(
+    () => getLoudnessReferenceProfileById(referenceProfileId),
+    [referenceProfileId]
+  );
+  const targetLufs = Number.isFinite(referenceProfile?.targetLufs)
+    ? referenceProfile.targetLufs
+    : -23;
   const historyYAxisTicks = useMemo(() => {
     const out = [...LOUDNESS_TICKS];
     if (!out.some((t) => t.v === targetLufs)) out.push({ v: targetLufs, lb: String(targetLufs) });
     out.sort((a, b) => b.v - a.v);
     return out;
   }, [targetLufs]);
-  const psr = Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.shortTerm)
-    ? displayAudio.tpMax - displayAudio.shortTerm
-    : -Infinity;
-  const plr = Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.integrated)
-    ? displayAudio.tpMax - displayAudio.integrated
-    : -Infinity;
+  const psr =
+    Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.shortTerm)
+      ? displayAudio.tpMax - displayAudio.shortTerm
+      : -Infinity;
+  const plr =
+    Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.integrated)
+      ? displayAudio.tpMax - displayAudio.integrated
+      : -Infinity;
   const primaryMetrics = useMemo(
     () => [
       { label: "Momentary", value: fmtMetric(displayAudio.momentary), unit: "LUFS" },
@@ -83,22 +92,36 @@ function FloatLoudnessBody({ core }) {
   );
   const historyChartInteractive = engineRunning || hasHistoryData;
   const totalSamples = histSourceList.length;
-  const { clampedWindowSec, visibleSamples, maxOffsetSamples, effectiveOffsetSamples, effectiveOffsetSec } = getHistoryViewport(
-    totalSamples,
-    historyWindowSec,
-    historyOffsetSec,
-    HIST_SAMPLE_SEC
-  );
+  const {
+    clampedWindowSec,
+    visibleSamples,
+    maxOffsetSamples,
+    effectiveOffsetSamples,
+    effectiveOffsetSec,
+  } = getHistoryViewport(totalSamples, historyWindowSec, historyOffsetSec, HIST_SAMPLE_SEC);
   const displayHistoryPathM = buildHistoryPath(
-    histSourceList, "m", visibleSamples, effectiveOffsetSamples, (v) => loudnessHistY(v, 220)
+    histSourceList,
+    "m",
+    visibleSamples,
+    effectiveOffsetSamples,
+    (v) => loudnessHistY(v, 220)
   );
   const displayHistoryPathST = buildHistoryPath(
-    histSourceList, "st", visibleSamples, effectiveOffsetSamples, (v) => loudnessHistY(v, 220)
+    histSourceList,
+    "st",
+    visibleSamples,
+    effectiveOffsetSamples,
+    (v) => loudnessHistY(v, 220)
   );
-  const selectedHistSteps = selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / HIST_SAMPLE_SEC)) : -1;
+  const selectedHistSteps =
+    selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / HIST_SAMPLE_SEC)) : -1;
   const showSelLine =
-    selectedOffset >= 0 && totalSamples > 0 && selectedHistSteps >= 0 && selectedHistSteps < totalSamples;
-  const isHistoryHudVisible = historyChartInteractive && (historyHudHold || historyHudUntilTs > Date.now());
+    selectedOffset >= 0 &&
+    totalSamples > 0 &&
+    selectedHistSteps >= 0 &&
+    selectedHistSteps < totalSamples;
+  const isHistoryHudVisible =
+    historyChartInteractive && (historyHudHold || historyHudUntilTs > Date.now());
   const selLineX = Math.max(
     0,
     Math.min(
@@ -238,7 +261,9 @@ function FloatSpectrumView({ core }) {
       <SpectrumPanel
         displaySpectrumPath={core.displaySpectrumPath}
         displaySpectrumPeakPath={core.displaySpectrumPeakPath}
-        channelCount={Array.isArray(core.displayAudio?.peakDb) ? core.displayAudio.peakDb.length : 0}
+        channelCount={
+          Array.isArray(core.displayAudio?.peakDb) ? core.displayAudio.peakDb.length : 0
+        }
         selectedOffset={core.selectedOffset}
         spectrumHover={spectrumHover}
         onSpectrumHoverMove={onSpectrumHoverMove}
@@ -294,7 +319,9 @@ export function FloatApp({ kind }) {
         <Card className="max-w-lg border-dashed border-muted-foreground/40">
           <CardContent className="p-4 text-sm text-muted-foreground">
             Unknown float panel. Use{" "}
-            <code className="rounded bg-muted px-1 font-mono text-xs">?float=peak|loudness|spectrum|vector</code>
+            <code className="rounded bg-muted px-1 font-mono text-xs">
+              ?float=peak|loudness|spectrum|vector
+            </code>
           </CardContent>
         </Card>
       </div>
@@ -317,8 +344,8 @@ export function FloatApp({ kind }) {
       <div className={cn(SHELL_INNER, "flex min-h-0 min-w-0 flex-1 flex-col")}>
         {!core.engineRunning ? (
           <main className="min-h-0 flex-1 p-3 text-sm text-muted-foreground">
-            The main window is not running the audio engine. Open AudioMeter, choose an input, and press <strong>START</strong> — this window
-            will mirror the same data.
+            The main window is not running the audio engine. Open AudioMeter, choose an input, and
+            press <strong>START</strong> — this window will mirror the same data.
           </main>
         ) : kind === "loudness" ? (
           <main key={core.historyViewEpoch} className="min-h-0 min-w-0 flex-1 overflow-auto p-1">

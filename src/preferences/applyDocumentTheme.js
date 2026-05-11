@@ -31,8 +31,10 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorSchem
 
   const byScheme = prefs.modules.spectrum.spectrumOpacityByColorScheme;
   const schemeKey = colorScheme === "light" ? "colorSchemeLight" : "colorSchemeDark";
-  const spectrumOpacities =
-    (byScheme && byScheme[schemeKey]) || { verticalLineOpacity: 0.08, horizontalLineOpacity: 0.08 };
+  const spectrumOpacities = (byScheme && byScheme[schemeKey]) || {
+    verticalLineOpacity: 0.08,
+    horizontalLineOpacity: 0.08,
+  };
 
   setCssVar("--ui-font-sans", typography.fontFamily);
 

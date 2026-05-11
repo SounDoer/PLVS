@@ -17,7 +17,10 @@
  */
 export function buildMeteringFootnoteHints({ running, channelLayout, channelCount }) {
   const ch = Number.isFinite(channelCount) ? Math.max(0, Math.floor(channelCount)) : 0;
-  const layout = channelLayout === "stereo" || channelLayout === "5.1" || channelLayout === "auto" ? channelLayout : "auto";
+  const layout =
+    channelLayout === "stereo" || channelLayout === "5.1" || channelLayout === "auto"
+      ? channelLayout
+      : "auto";
   const out = [];
 
   if (!running || ch < 1) {

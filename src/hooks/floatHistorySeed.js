@@ -113,8 +113,15 @@ function appendSeededRow(row, pick, ctx, histMax) {
  * @param {(s: string) => void} ctx.setVectorPath
  */
 function finalizeSeededState(row, pick, ctx) {
-  const { histRef, loudnessHistRef, spectrumDataRef, setAudio, setSpectrumPath, setSpectrumPeakPath, setVectorPath } =
-    ctx;
+  const {
+    histRef,
+    loudnessHistRef,
+    spectrumDataRef,
+    setAudio,
+    setSpectrumPath,
+    setSpectrumPeakPath,
+    setVectorPath,
+  } = ctx;
   histRef.current = loudnessHistRef.current;
   spectrumDataRef.current = buildSpectrumDataSnapshot(row, pick);
   setSpectrumPath(row.spectrumPath || "");

@@ -8,13 +8,19 @@ import {
 
 describe("loudnessReferenceProfiles", () => {
   it("defaults to EBU R128 -23", () => {
-    expect(getDefaultLoudnessReferenceProfileId()).toBe(LOUDNESS_REFERENCE_PROFILE_IDS.ebuR128Minus23);
-    expect(getLoudnessReferenceProfileById(undefined).id).toBe(LOUDNESS_REFERENCE_PROFILE_IDS.ebuR128Minus23);
+    expect(getDefaultLoudnessReferenceProfileId()).toBe(
+      LOUDNESS_REFERENCE_PROFILE_IDS.ebuR128Minus23
+    );
+    expect(getLoudnessReferenceProfileById(undefined).id).toBe(
+      LOUDNESS_REFERENCE_PROFILE_IDS.ebuR128Minus23
+    );
   });
 
   it("normalizes invalid ids to default", () => {
     expect(normalizeLoudnessReferenceProfileId(null)).toBe(getDefaultLoudnessReferenceProfileId());
-    expect(normalizeLoudnessReferenceProfileId("not-a-real-profile")).toBe(getDefaultLoudnessReferenceProfileId());
+    expect(normalizeLoudnessReferenceProfileId("not-a-real-profile")).toBe(
+      getDefaultLoudnessReferenceProfileId()
+    );
   });
 
   it("returns profile by id", () => {
@@ -23,4 +29,3 @@ describe("loudnessReferenceProfiles", () => {
     expect(p.label.toLowerCase()).toContain("ebu");
   });
 });
-

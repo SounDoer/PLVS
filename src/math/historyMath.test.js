@@ -60,7 +60,11 @@ describe("buildHistoryPath", () => {
     expect(path).toMatch(/^M /);
   });
   it("uses the correct key from each sample", () => {
-    const list = [{ m: -23, st: -20 }, { m: -18, st: -10 }, { m: -15, st: -8 }];
+    const list = [
+      { m: -23, st: -20 },
+      { m: -18, st: -10 },
+      { m: -15, st: -8 },
+    ];
     const mPath = buildHistoryPath(list, "m", 10, 0, (v) => v);
     const stPath = buildHistoryPath(list, "st", 10, 0, (v) => v);
     expect(mPath).not.toBe(stPath);

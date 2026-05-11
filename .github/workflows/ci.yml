@@ -26,6 +26,9 @@ jobs:
       - name: Verify package / Cargo versions match
         run: npm run version:check
 
+      - name: Format (Prettier)
+        run: npm run format:check
+
       - name: Lint
         run: npm run lint
 

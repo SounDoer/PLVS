@@ -48,7 +48,9 @@ export function buildMeterColorBridge(s, colorScheme) {
     metricRowBg: isLight ? "oklch(1 0 0 / 0.55)" : "oklch(0.269 0 0 / 0.45)",
     metricRowBorder: s.border,
     metricRowHoverBg: isLight ? "oklch(0.985 0 0 / 0.92)" : "oklch(0.269 0 0 / 0.62)",
-    metricRowToggleOnBg: isLight ? "oklch(0.58 0.15 245 / 0.18)" : "oklch(0.488 0.243 264.376 / 0.22)",
+    metricRowToggleOnBg: isLight
+      ? "oklch(0.58 0.15 245 / 0.18)"
+      : "oklch(0.488 0.243 264.376 / 0.22)",
     metricRowToggleOnBorder: s.primary,
     metricRowToggleOnGlow: isLight ? "oklch(0.58 0.15 245 / 0.28)" : "oklch(0.82 0.1 195 / 0.35)",
     metricLabelText: s.mutedForeground,

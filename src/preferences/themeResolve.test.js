@@ -16,18 +16,26 @@ describe("resolveThemeId", () => {
   });
 
   it("ignores stored themeId when appearance is system", () => {
-    expect(resolveThemeId({ appearance: "system", themeId: "audiometer-light" }, true)).toBe("audiometer-dark");
+    expect(resolveThemeId({ appearance: "system", themeId: "audiometer-light" }, true)).toBe(
+      "audiometer-dark"
+    );
   });
 
   it("uses stored themeId when appearance is fixed and valid", () => {
-    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-light" }, true)).toBe("audiometer-light");
-    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-ember" }, false)).toBe("audiometer-ember");
+    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-light" }, true)).toBe(
+      "audiometer-light"
+    );
+    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-ember" }, false)).toBe(
+      "audiometer-ember"
+    );
   });
 
   it("falls back to audiometer-dark for fixed appearance with missing or invalid themeId", () => {
     expect(resolveThemeId({ appearance: "fixed", themeId: null }, false)).toBe(DEFAULT_THEME_ID);
     expect(resolveThemeId({ appearance: "fixed", themeId: "" }, false)).toBe(DEFAULT_THEME_ID);
-    expect(resolveThemeId({ appearance: "fixed", themeId: "unknown-theme" }, false)).toBe(DEFAULT_THEME_ID);
+    expect(resolveThemeId({ appearance: "fixed", themeId: "unknown-theme" }, false)).toBe(
+      DEFAULT_THEME_ID
+    );
   });
 
   it("defaults appearance to system and themeId to null when fields missing", () => {
@@ -44,7 +52,11 @@ describe("parsePersistedUiStateJson", () => {
   });
 
   it("reads appearance and themeId when present", () => {
-    expect(parsePersistedUiStateJson(JSON.stringify({ appearance: "fixed", themeId: "audiometer-light" }))).toEqual({
+    expect(
+      parsePersistedUiStateJson(
+        JSON.stringify({ appearance: "fixed", themeId: "audiometer-light" })
+      )
+    ).toEqual({
       appearance: "fixed",
       themeId: "audiometer-light",
     });
