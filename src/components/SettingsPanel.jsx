@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,
@@ -16,21 +20,18 @@ export function SettingsPanel({
   resetLayout,
 }) {
   const vsKey = `${vectorscopePairX}-${vectorscopePairY}`;
-  if (!settingsOpen) return null;
   return (
-    <div
-      className="ui-settings-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) setSettingsOpen(false);
-      }}
-    >
-      <div className="ui-settings-dialog">
-        <div className="ui-settings-header flex items-center justify-between">
-          <h2 className="ui-settings-heading">Settings</h2>
-          <button type="button" className="ui-settings-btn ui-settings-btn-pill" onClick={() => setSettingsOpen(false)}>
-            Close
-          </button>
-        </div>
+    <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+      <SheetContent
+        side="right"
+        className={cn(
+          "w-full gap-0 overflow-y-auto border-border bg-card/95 p-6 backdrop-blur-md sm:max-w-md",
+          "pt-12",
+        )}
+      >
+        <SheetHeader className="mb-[var(--ui-settings-header-gap)] space-y-0 p-0 pr-10 text-left">
+          <SheetTitle className="ui-settings-heading">Settings</SheetTitle>
+        </SheetHeader>
         <div className="ui-settings-content flex flex-col text-[length:var(--ui-fs-metric-meta)]">
           <div className="ui-settings-row">
             <span className="ui-settings-label">Loudness reference</span>
@@ -56,9 +57,9 @@ export function SettingsPanel({
           </div>
           <div className="ui-settings-row">
             <span className="ui-settings-label">Layout</span>
-            <button type="button" onClick={resetLayout} className="ui-settings-btn ui-settings-btn-pill">
+            <Button type="button" variant="outline" size="sm" onClick={resetLayout} className="h-auto shrink-0 py-1 text-[length:var(--ui-fs-metric-meta)]">
               Reset Layout
-            </button>
+            </Button>
           </div>
           <div className="ui-settings-row">
             <span className="ui-settings-label">Channel layout (Advanced)</span>
@@ -95,7 +96,7 @@ export function SettingsPanel({
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1,4 +1,110 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* Shadcn `dark:` modifier targets any descendant of an element with `.dark`. */
+@custom-variant dark (&:is(.dark *));
+
+/* ---------- Shadcn / professional dark theme tokens ----------
+ * Independent from --ui-* (runtime-injected by `uiPreferences.applyUiPreferencesToDocument`).
+ * `:root` defaults to the dark palette; `.dark` mirrors it so shadcn `dark:` variants resolve identically.
+ * Accent: cyan-400 (#22d3ee). Surfaces: zinc-950/900. Borders: white/10.
+ */
+:root {
+  --radius: 0.5rem;
+
+  --background: #0a0a0b;
+  --foreground: #fafafa;
+
+  --card: #18181b;
+  --card-foreground: #fafafa;
+
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+
+  --primary: #22d3ee;
+  --primary-foreground: #0a0a0b;
+
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #22d3ee;
+}
+
+.dark {
+  --background: #0a0a0b;
+  --foreground: #fafafa;
+
+  --card: #18181b;
+  --card-foreground: #fafafa;
+
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+
+  --primary: #22d3ee;
+  --primary-foreground: #0a0a0b;
+
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #22d3ee;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
 
 /* Defaults aligned with --ui-* tokens injected by uiPreferences.applyUiPreferencesToDocument */
 :root {
@@ -72,8 +178,13 @@ body {
   align-items: center;
   gap: 0.75rem;
   border-radius: calc(var(--ui-radius-card) * 0.66);
-  background-color: color-mix(in srgb, var(--ui-color-panel-bg) 82%, transparent);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--ui-color-border-default) 26%, transparent);
+  background-color: color-mix(in srgb, var(--ui-color-panel-bg) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 0 color-mix(in srgb, var(--ui-color-border-default) 26%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
   padding: var(--ui-header-pad-y) var(--ui-header-pad-x);
 }
 
@@ -95,7 +206,13 @@ body {
   flex-direction: column;
   overflow: hidden;
   border-radius: var(--ui-radius-card);
-  background-color: var(--ui-color-panel-bg);
+  background-color: color-mix(in srgb, var(--ui-color-panel-bg) 70%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 30px -18px rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
   padding: var(--ui-article-pad-y) var(--ui-article-pad-x);
 }
 
@@ -128,58 +245,16 @@ body {
   align-items: center;
   gap: 0.75rem;
   border-radius: var(--ui-radius-card);
-  background-color: var(--ui-color-panel-bg);
+  background-color: color-mix(in srgb, var(--ui-color-panel-bg) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
   padding: var(--ui-footer-pad-y) var(--ui-footer-pad-x);
   font-size: var(--ui-fs-status);
   line-height: 1.35;
   color: var(--ui-color-text-secondary);
 }
-
-.ui-splitter-h {
-  display: none;
-  cursor: col-resize;
-  border-radius: var(--ui-radius-card);
-  background-color: transparent;
-  opacity: 0;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
-  width: var(--ui-splitter-bar-thickness);
-  justify-self: center;
-}
-
-@media (min-width: 1024px) {
-  .ui-splitter-h {
-    display: block;
-  }
-}
-
-.ui-splitter-v {
-  display: none;
-  cursor: row-resize;
-  border-radius: var(--ui-radius-card);
-  background-color: transparent;
-  opacity: 0;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
-  height: var(--ui-splitter-bar-thickness);
-  align-self: center;
-}
-
-@media (min-width: 1024px) {
-  .ui-splitter-v {
-    display: block;
-  }
-}
-
-.ui-splitter-h:hover,
-.ui-splitter-h:active,
-.ui-splitter-v:hover,
-.ui-splitter-v:active {
-  opacity: 1;
-  background-color: color-mix(in srgb, var(--ui-color-brand) 30%, var(--ui-color-panel-bg-splitter));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--ui-color-brand) 45%, transparent),
-    0 0 12px color-mix(in srgb, var(--ui-color-brand) 24%, transparent);
-}
-
 
 .ui-inset-chart {
   position: relative;
@@ -295,59 +370,7 @@ body {
   color: var(--ui-color-metric-toggle-on-unit);
 }
 
-.ui-pill {
-  border: 1px solid transparent;
-  border-radius: var(--ui-radius-pill);
-  padding: 0.32rem 0.9rem;
-  font-size: var(--ui-fs-action);
-  font-weight: 600;
-  line-height: 1.12;
-  cursor: pointer;
-  transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-  outline: none;
-}
-
-.ui-pill::-moz-focus-inner {
-  border: 0;
-}
-
-.ui-pill-default {
-  background: color-mix(in srgb, var(--ui-color-control-bg) 48%, transparent);
-  color: var(--ui-color-text-secondary);
-  border-color: color-mix(in srgb, var(--ui-color-border-default) 82%, var(--ui-color-panel-bg) 18%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
-}
-
-.ui-pill-default:hover {
-  background-color: color-mix(in srgb, var(--ui-color-control-hover-bg) 78%, var(--ui-color-control-bg) 22%);
-  border-color: color-mix(in srgb, var(--ui-color-border-default) 58%, var(--ui-color-brand) 42%);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 12%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--ui-color-brand) 16%, transparent);
-}
-
-.ui-pill-accent {
-  background-color: var(--ui-color-brand);
-  color: #fff;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ui-color-brand) 50%, transparent);
-}
-
-.ui-pill-accent:hover {
-  background-color: var(--ui-color-brand-hover);
-}
-
-/* History snapshot: primary control is LIVE, same hue as snap trace with subtle pulse */
-.ui-pill-accent.ui-pill-live-snap {
-  background-color: var(--ui-chart-vectorscope-snap);
-  color: #fff;
-  animation: ui-pill-live-snap-blink 1.15s ease-in-out infinite;
-}
-
-.ui-pill-accent.ui-pill-live-snap:hover {
-  background-color: var(--ui-chart-vectorscope-snap);
-  filter: brightness(0.94);
-}
-
+/* Reused by header primary control in LIVE (history snapshot) mode — see App.jsx */
 @keyframes ui-pill-live-snap-blink {
   0%,
   100% {
@@ -360,32 +383,15 @@ body {
   }
 }
 
+.ui-history-live-snap-pulse {
+  animation: ui-pill-live-snap-blink 1.15s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ui-pill-accent.ui-pill-live-snap {
+  .ui-history-live-snap-pulse {
     animation: none;
     box-shadow: none;
   }
-}
-
-.ui-settings-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ui-color-settings-overlay);
-  padding: var(--ui-settings-overlay-pad);
-}
-
-.ui-settings-dialog {
-  width: 100%;
-  max-width: var(--ui-settings-modal-max-w);
-  border-radius: var(--ui-radius-modal);
-  background-color: var(--ui-color-panel-bg);
-  padding: var(--ui-settings-modal-pad);
-  box-shadow: var(--ui-shadow-settings-dialog);
-  border: 1px solid color-mix(in srgb, var(--ui-color-border-default) 55%, transparent);
 }
 
 .ui-settings-heading {

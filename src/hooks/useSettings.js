@@ -40,18 +40,6 @@ export function useSettings() {
     applyUiPreferencesToDocument(UI_PREFERENCES, effectiveUiMode);
   }, [effectiveUiMode]);
 
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setSettingsOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [settingsOpen]);
-
   return {
     settingsOpen,
     setSettingsOpen,

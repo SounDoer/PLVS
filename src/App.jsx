@@ -21,8 +21,10 @@ import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
 import { buildVectorscopePairOptions, clampVectorscopePairToAvailable } from "./math/vectorscopePairMath.js";
 import { getLoudnessReferenceProfileById, LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
-import { PillButton } from "./components/PillButton";
+import { Button } from "@/components/ui/button";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { cn } from "@/lib/utils";
+import { Play, Radio, Settings, Square, Trash2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
@@ -46,6 +48,14 @@ import { VectorscopePanel } from "./components/panels/VectorscopePanel";
 const HIST_SAMPLE_SEC = 0.1;
 const HIST_MAX_SAMPLES = 36000;
 const HISTORY_TIME_TICK_STEPS = 4;
+
+/** Horizontal layout rails (column resize): subtle cyan-tinted hover glow using injected `--ui-*` tokens */
+const RESIZE_COL_CLASS =
+  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--ui-color-panel-bg-splitter))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--ui-color-panel-bg-splitter))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
+
+/** Vertical layout rails (row resize) */
+const RESIZE_ROW_CLASS =
+  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--ui-color-panel-bg-splitter))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--ui-color-panel-bg-splitter))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
 export default function App() {
   const buildVersionRaw = import.meta.env.VITE_APP_VERSION || "dev";
   const buildVersion = buildVersionRaw === "dev" ? "dev" : buildVersionRaw.slice(0, 7);
@@ -639,11 +649,34 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-[var(--ui-header-action-gap)]">
-            <PillButton onClick={clearAll}>Clear</PillButton>
-            <PillButton accent liveSnap={startMode === "live"} onClick={onStartClick}>
+            <Button type="button" variant="outline" size="sm" onClick={clearAll} className="gap-2 font-semibold">
+              <Trash2 className="size-4 shrink-0" aria-hidden />
+              Clear
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={onStartClick}
+              className={cn(
+                "min-w-[5.75rem] gap-2 font-semibold",
+                startMode === "live" &&
+                  "ui-history-live-snap-pulse !bg-[var(--ui-chart-vectorscope-snap)] !text-white shadow-none hover:!brightness-[0.94]",
+              )}
+            >
+              {startMode === "live" ? (
+                <Radio className="size-4 shrink-0" aria-hidden />
+              ) : startMode === "stop" ? (
+                <Square className="size-4 shrink-0" aria-hidden />
+              ) : (
+                <Play className="size-4 shrink-0" aria-hidden />
+              )}
               {startLabel}
-            </PillButton>
-            <PillButton onClick={() => setSettingsOpen(true)}>Settings</PillButton>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setSettingsOpen(true)} className="gap-2 font-semibold">
+              <Settings className="size-4 shrink-0" aria-hidden />
+              Settings
+            </Button>
           </div>
         </header>
 
@@ -669,7 +702,7 @@ export default function App() {
             />
 
             <div
-              className="ui-splitter-v"
+              className={RESIZE_ROW_CLASS}
               onPointerDown={(e) => beginLayoutDrag("left", e)}
               onPointerMove={onLayoutDragMove}
               onPointerUp={onLayoutDragUp}
@@ -693,7 +726,7 @@ export default function App() {
           </section>
 
           <div
-            className="ui-splitter-h"
+            className={RESIZE_COL_CLASS}
             onPointerDown={(e) => beginLayoutDrag("main", e)}
             onPointerMove={onLayoutDragMove}
             onPointerUp={onLayoutDragUp}
@@ -740,7 +773,7 @@ export default function App() {
             />
 
             <div
-              className="ui-splitter-v"
+              className={RESIZE_ROW_CLASS}
               onPointerDown={(e) => beginLayoutDrag("right", e)}
               onPointerMove={onLayoutDragMove}
               onPointerUp={onLayoutDragUp}
