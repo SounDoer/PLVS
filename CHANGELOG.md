@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `App.jsx`: capture device list / migration / default-route preview moved into `useAudioDevices` (#57 partial).
+
+### Documentation
+
+- Release workflow reads matching `CHANGELOG.md` section via `scripts/changelog-release-body.mjs` (#58 partial).
+
+## [0.0.11] - 2026-05-11
+
 ### Added
 
-- GitHub tracking issues for post-audit work (#57–#62).
+- GitHub tracking issues for post-audit work (#57, #58, #59, #60, #61, #62).
 - Vitest + `@testing-library/react` coverage for `useSettings` system→fixed theme seeding (#60).
 
 ### Changed
@@ -23,4 +33,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- This changelog file (#58 partial).
+- Root `CHANGELOG.md` and release-note extraction for tag builds (#58 partial).

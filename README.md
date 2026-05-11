@@ -1,5 +1,9 @@
 # AudioMeter
 
+**English (quick start)** — Real-time **desktop** audio metering (LUFS, peak, spectrum, vectorscope) using **React**, **Vite**, and **Tauri**. Product scope: [`docs/prd.md`](docs/prd.md). Local dev: `npm ci` then `npm run desktop` (Rust + Tauri platform deps required). One-command checks: [`CONTRIBUTING.md`](CONTRIBUTING.md) (`npm run check`). The **`main`** branch is **desktop-first**; the frozen in-browser build is on **`legacy-web`** (tag **`v0.9.0-web-final`**).
+
+---
+
 > **桌面版（Windows / macOS）**：产品范围与承诺见 **[`docs/prd.md`](docs/prd.md)**；技术架构与协议见 **[`docs/architecture.md`](docs/architecture.md)**。本地运行桌面壳：`npm install` → `npm run desktop`（需安装 [Rust](https://rustup.rs/) 与对应平台 Tauri 前置依赖）。参与开发与合并前自检见 [`CONTRIBUTING.md`](CONTRIBUTING.md)（一键 `npm run check`）。  
 > **网页版**：不再随 `main` 演进。最后冻结的浏览器版代码在 **`legacy-web` 分支**（标签 **`v0.9.0-web-final`**）；GitHub Pages 构建由该分支触发。若仍使用浏览器版，请查看该分支的 README。
 

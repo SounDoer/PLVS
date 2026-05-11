@@ -17,6 +17,7 @@ import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useHoverState } from "./hooks/useHoverState";
 import { useMeterHealth } from "./hooks/useMeterHealth";
+import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
@@ -38,19 +39,7 @@ import {
 } from "@/lib/shellLayout";
 import { Play, Radio, Settings, Square, Trash2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
-import {
-  clearAudioHistory,
-  listAudioDevices,
-  migrateCaptureDeviceId,
-  previewAudioDevice,
-  setVectorscopePair,
-} from "./ipc/commands.js";
-import { onDeviceListChanged } from "./ipc/events.js";
-import {
-  loadCaptureDeviceId,
-  readCaptureDeviceIdFromLocalStorage,
-  saveCaptureDeviceId,
-} from "./ipc/capturePrefs.js";
+import { clearAudioHistory, setVectorscopePair } from "./ipc/commands.js";
 import { MeterHealthBadge } from "./components/MeterHealthBadge";
 import { PeakPanel } from "./components/panels/PeakPanel";
 import { LoudnessPanel } from "./components/panels/LoudnessPanel";
@@ -85,11 +74,14 @@ export default function App() {
     setReferenceProfileId,
   } = useSettings();
 
+  const {
+    audioDevices,
+    captureDeviceId,
+    setCaptureDeviceIdAndPersist,
+    defaultOutputFormatSig,
+  } = useAudioDevices();
+
   const [running, setRunning] = useState(false);
-  const [audioDevices, setAudioDevices] = useState([]);
-  const [captureDeviceId, setCaptureDeviceId] = useState(() => readCaptureDeviceIdFromLocalStorage());
-  /** `channels:sampleRate` for `"default"` (OS playback); refreshed when device list / default route changes */
-  const [defaultOutputFormatSig, setDefaultOutputFormatSig] = useState("");
   const [channelLayout, setChannelLayout] = useState("auto");
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [historyWindowSec, setHistoryWindowSec] = useState(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
@@ -244,21 +236,6 @@ export default function App() {
     const d = audioDevices.find((x) => x.id === captureDeviceId);
     return d ? `${d.channels}:${d.defaultSampleRate}` : "";
   }, [captureDeviceId, audioDevices, defaultOutputFormatSig]);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    void previewAudioDevice("default").then(
-      (p) => {
-        if (cancelled || !p || !Number.isFinite(p.channels) || !Number.isFinite(p.sampleRateHz)) return;
-        setDefaultOutputFormatSig(`${p.channels}:${p.sampleRateHz}`);
-      },
-      () => {}
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [audioDevices]);
 
   useEffect(() => {
     if (!running) return;
@@ -490,70 +467,6 @@ export default function App() {
     selectedOffsetRef.current = selectedOffset;
   }, [selectedOffset]);
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = await listAudioDevices();
-        if (!cancelled) setAudioDevices(Array.isArray(list) ? list : []);
-      } catch (_) {
-        if (!cancelled) setAudioDevices([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    void loadCaptureDeviceId().then((id) => {
-      if (!cancelled) setCaptureDeviceId(id);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let disposed = false;
-    let unlisten = () => {};
-    (async () => {
-      const u = await onDeviceListChanged((list) => {
-        if (!disposed) setAudioDevices(Array.isArray(list) ? list : []);
-      });
-      if (!disposed) unlisten = u;
-      else u();
-    })();
-    return () => {
-      disposed = true;
-      unlisten();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isTauri() || !audioDevices.length) return;
-    if (captureDeviceId === "default") return;
-    if (audioDevices.some((d) => d.id === captureDeviceId)) return;
-    let cancelled = false;
-    void migrateCaptureDeviceId(captureDeviceId).then((newId) => {
-      if (cancelled) return;
-      if (typeof newId === "string" && newId.length > 0) {
-        setCaptureDeviceId(newId);
-        void saveCaptureDeviceId(newId);
-        return;
-      }
-      setCaptureDeviceId("default");
-      void saveCaptureDeviceId("default");
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [audioDevices, captureDeviceId]);
-
   /** Matches Loudness History snapshot mode: meters/spectrum/vector read the selected instant, not live input */
   useEffect(() => {
     if (!running || selectedOffset < 0) return;
@@ -606,10 +519,7 @@ export default function App() {
                 audioDevices={audioDevices}
                 value={captureDeviceId}
                 disabled={!audioDevices.length}
-                onValueChange={(v) => {
-                  setCaptureDeviceId(v);
-                  void saveCaptureDeviceId(v);
-                }}
+                onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
               />
             )}
           </div>
