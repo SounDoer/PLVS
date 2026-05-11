@@ -286,11 +286,11 @@ impl SpectrumEngine {
       let k0 = k_est_lo.clamp(0, bin_count as isize - 1) as usize;
       let k1 = k_est_hi.clamp(0, bin_count as isize - 1) as usize;
       let mut power_sum = 0.0_f64;
-      for k in k0..=k1 {
+      for (k, &p_raw) in bin_power.iter().enumerate().take(k1 + 1).skip(k0) {
         let (bl, br) = bin_hz_edges(sr, FFT_LEN, k, bin_count);
         let w = overlap_weight(f_lo, f_hi, bl, br);
         if w > 0.0 {
-          let p = bin_power[k].clamp(min_bin_power, max_bin_power);
+          let p = p_raw.clamp(min_bin_power, max_bin_power);
           power_sum += p * w;
         }
       }
@@ -434,10 +434,7 @@ mod tests {
     let n = FFT_LEN;
     let bin_count = n / 2 + 1;
     let bands = build_rta_bands(20.0, 20000.0, "1/24");
-    let mut bin_power = vec![1e-10_f64; bin_count];
-    for k in 0..bin_count {
-      bin_power[k] = 1.0;
-    }
+    let bin_power = vec![1.0_f64; bin_count];
     let min_bin_power = 10_f64.powf(-160.0 / 10.0);
     let max_bin_power = 10_f64.powf(20.0 / 10.0);
     let mut sums = Vec::new();
@@ -446,11 +443,11 @@ mod tests {
       let k0 = (((*f_lo / sr) * nf).floor() as isize - 1).clamp(0, bin_count as isize - 1) as usize;
       let k1 = (((*f_hi / sr) * nf).ceil() as isize + 1).clamp(0, bin_count as isize - 1) as usize;
       let mut power_sum = 0.0_f64;
-      for k in k0..=k1 {
+      for (k, &p_raw) in bin_power.iter().enumerate().take(k1 + 1).skip(k0) {
         let (bl, br) = bin_hz_edges(sr, n, k, bin_count);
         let w = overlap_weight(*f_lo, *f_hi, bl, br);
         if w > 0.0 {
-          let p = bin_power[k].clamp(min_bin_power, max_bin_power);
+          let p = p_raw.clamp(min_bin_power, max_bin_power);
           power_sum += p * w;
         }
       }
