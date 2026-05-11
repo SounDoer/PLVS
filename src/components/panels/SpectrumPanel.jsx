@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { CAPTION_TEXT, CHART_INSET_MIN_H, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { FREQ_LABELS, SPEC_Y_TICKS, freqToXFrac, spectrumDbToTopFrac, spectrumDbToYViewBox } from "../../scales";
 import { UI_PREFERENCES } from "../../uiPreferences";
 
@@ -28,16 +29,17 @@ export function SpectrumPanel({
   return (
     <Card
       className={cn(
-        "ui-min-h-spectrum flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+        PANEL_MIN_SPECTRUM,
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
       )}
     >
       <CardHeader className="flex min-w-0 flex-row items-center justify-between gap-2 space-y-0 p-0 pb-0">
-        <CardTitle className="ui-section-title ui-section-title-main min-w-0 truncate text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+        <CardTitle className="min-w-0 truncate text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
           Spectrum
         </CardTitle>
         {isSummedMultichannel ? (
           <span
-            className="ui-caption shrink-0 text-[color:var(--ui-color-text-muted)]"
+            className={cn(CAPTION_TEXT, "shrink-0")}
             title="All channels (summed): per-band linear power/energy is summed across channels, then converted to dB."
           >
             All channels (summed)
@@ -45,8 +47,18 @@ export function SpectrumPanel({
         ) : null}
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
-      <div className="grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch ui-min-h-spectrum">
-        <div className="ui-w-spectrum-y-axis relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-muted)]">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch",
+          PANEL_MIN_SPECTRUM,
+        )}
+      >
+        <div
+          className={cn(
+            W_SPECTRUM_Y_AXIS,
+            "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-muted-foreground",
+          )}
+        >
           <div className="absolute inset-x-0 top-[var(--ui-spectrum-display-top-inset)] bottom-[var(--ui-spectrum-display-bottom-inset)]">
             {SPEC_Y_TICKS.map(({ v, lb }) => (
               <span key={v} className="absolute right-0 -translate-y-1/2 leading-none" style={{ top: `${spectrumDbToTopFrac(v) * 100}%` }}>
@@ -57,7 +69,7 @@ export function SpectrumPanel({
         </div>
         <div className="relative min-h-0 min-w-0">
           <div
-            className="ui-inset-chart-spectrum relative min-h-0 h-full rounded-lg bg-[var(--ui-color-inset-bg)]"
+            className={cn("relative min-h-0 h-full rounded-lg bg-[var(--ui-color-inset-bg)]", CHART_INSET_MIN_H)}
             onPointerLeave={onSpectrumHoverLeave}
           >
             <div
@@ -194,7 +206,7 @@ export function SpectrumPanel({
         </div>
 
         <div />
-        <div className="ui-caption relative h-[var(--ui-chart-x-axis-row-h)] w-full">
+        <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}>
           <div className="absolute inset-x-[var(--ui-spectrum-svg-pad)] top-0 h-full">
             {FREQ_LABELS.map(([f, lb]) => (
               <span key={f} className="absolute top-0 -translate-x-1/2 whitespace-nowrap" style={{ left: `${freqToXFrac(f) * 100}%` }}>

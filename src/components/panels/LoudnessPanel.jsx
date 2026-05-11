@@ -2,6 +2,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import {
+  CAPTION_TEXT,
+  CHART_INSET_MIN_H,
+  METRICS_LIST_PAD,
+  PANEL_MIN_HISTORY,
+  W_LOUDNESS_Y_AXIS,
+} from "@/lib/shellLayout";
 import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, loudnessFromTopFrac } from "../../scales";
 import { UI_PREFERENCES } from "../../uiPreferences";
 import { fmtSec } from "../../math/formatMath";
@@ -127,11 +134,12 @@ export function LoudnessPanel({
   return (
     <Card
       className={cn(
-        "ui-min-h-history flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+        PANEL_MIN_HISTORY,
+        "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
       )}
     >
       <CardHeader className="flex shrink-0 flex-row items-center gap-2 space-y-0 p-0 pb-0">
-        <CardTitle className="ui-section-title ui-section-title-main min-w-0 shrink-0 text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+        <CardTitle className="min-w-0 shrink-0 text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
           Loudness
         </CardTitle>
         <HelpPopover items={LOUDNESS_HELP} />
@@ -142,8 +150,18 @@ export function LoudnessPanel({
         style={{ "--hmSplit": `${Math.round(loudnessHistWidthRatio * 100)}%` }}
       >
         <div className="min-h-0 min-w-0">
-          <div className="grid min-h-0 h-full grid-cols-[var(--ui-w-loudness-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch ui-min-h-history">
-            <div className="ui-w-loudness-y-axis relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-muted)]">
+          <div
+            className={cn(
+              "grid min-h-0 h-full grid-cols-[var(--ui-w-loudness-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch",
+              PANEL_MIN_HISTORY,
+            )}
+          >
+            <div
+              className={cn(
+                W_LOUDNESS_Y_AXIS,
+                "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-muted-foreground",
+              )}
+            >
               <div className="absolute inset-x-0 top-[var(--ui-history-display-top-inset)] bottom-[var(--ui-history-display-bottom-inset)]">
                 {historyYAxisTicksLabeled.map(({ v, lb }) => {
                   const isTargetTick = v === targetLufs;
@@ -174,7 +192,11 @@ export function LoudnessPanel({
               </div>
             </div>
             <div
-              className={`ui-inset-chart relative min-h-0 min-w-0 rounded-lg bg-[var(--ui-color-inset-bg)]${historyChartInteractive ? "" : " pointer-events-none"}`}
+              className={cn(
+                "relative flex min-h-0 min-w-0 flex-1 rounded-lg bg-[var(--ui-color-inset-bg)]",
+                CHART_INSET_MIN_H,
+                !historyChartInteractive && "pointer-events-none",
+              )}
               onContextMenu={(e) => e.preventDefault()}
               onDoubleClick={() => {
                 if (!historyChartInteractive) return;
@@ -319,7 +341,7 @@ export function LoudnessPanel({
             </div>
 
             <div />
-            <div className="ui-caption relative h-[var(--ui-chart-x-axis-row-h)]">
+            <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)]")}>
               <div className="absolute inset-x-[var(--ui-history-svg-pad)] top-0 h-full">
                 {historyTimeTicks.map((tick, i) => {
                   if (i === 0) {
@@ -347,7 +369,12 @@ export function LoudnessPanel({
         </div>
 
         <div className="min-h-0 min-w-0 flex flex-col">
-          <div className="ui-metrics-list flex min-h-0 flex-1 flex-col gap-[var(--ui-metrics-list-gap)] overflow-y-auto">
+          <div
+            className={cn(
+              METRICS_LIST_PAD,
+              "flex min-h-0 flex-1 flex-col gap-[var(--ui-metrics-list-gap)] overflow-y-auto",
+            )}
+          >
             {primaryMetrics.map((metric) => {
               if (metric.label === "Momentary") {
                 return (

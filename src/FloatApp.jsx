@@ -18,6 +18,8 @@ import { LoudnessPanel } from "./components/panels/LoudnessPanel";
 import { SpectrumPanel } from "./components/panels/SpectrumPanel";
 import { VectorscopePanel } from "./components/panels/VectorscopePanel";
 import { getLoudnessReferenceProfileById } from "./loudnessReferenceProfiles.js";
+import { cn } from "@/lib/utils";
+import { SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
 
 const HISTORY_TIME_TICK_STEPS = 4;
 const PANELS = new Set(["peak", "loudness", "spectrum", "vector"]);
@@ -304,7 +306,7 @@ export function FloatApp({ kind }) {
   const reduceMotion = useReducedMotion();
   if (!PANELS.has(kind)) {
     return (
-      <div className="ui-page flex min-h-0 flex-1 items-start p-4">
+      <div className={cn(SHELL_PAGE, "flex-1 items-start p-4")}>
         <Card className="max-w-lg border-dashed border-muted-foreground/40">
           <CardContent className="p-4 text-sm text-muted-foreground">
             Unknown float panel. Use{" "}
@@ -316,7 +318,7 @@ export function FloatApp({ kind }) {
   }
   if (!isTauri()) {
     return (
-      <div className="ui-page flex min-h-0 flex-1 items-start p-4">
+      <div className={cn(SHELL_PAGE, "flex-1 items-start p-4")}>
         <Card className="max-w-lg border-dashed border-muted-foreground/40">
           <CardContent className="p-4 text-sm text-muted-foreground">
             Float panels are for the Tauri desktop build only. Run{" "}
@@ -327,10 +329,10 @@ export function FloatApp({ kind }) {
     );
   }
   return (
-    <div className="ui-page min-h-0">
-      <div className="ui-shell-inner flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className={cn(SHELL_PAGE, "min-h-0")}>
+      <div className={cn(SHELL_INNER, "flex min-h-0 min-w-0 flex-1 flex-col")}>
         {!core.engineRunning ? (
-          <main className="min-h-0 flex-1 p-3 text-sm text-[color:var(--ui-color-muted)]">
+          <main className="min-h-0 flex-1 p-3 text-sm text-muted-foreground">
             The main window is not running the audio engine. Open AudioMeter, choose an input, and press <strong>START</strong> — this window
             will mirror the same data.
           </main>

@@ -26,6 +26,14 @@ import { Separator } from "@/components/ui/separator";
 import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { cn } from "@/lib/utils";
+import {
+  APP_TITLE,
+  APP_TITLE_BRAND,
+  SHELL_FOOTER,
+  SHELL_HEADER,
+  SHELL_INNER,
+  SHELL_PAGE,
+} from "@/lib/shellLayout";
 import { Play, Radio, Settings, Square, Trash2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import {
@@ -587,11 +595,11 @@ export default function App() {
   });
 
   return (
-    <div className="ui-page">
-      <div className="ui-shell-inner">
-        <header className="ui-header">
-          <div className="ui-app-title">
-            Audio<span className="ui-app-title-brand">Meter</span>
+    <div className={SHELL_PAGE}>
+      <div className={SHELL_INNER}>
+        <header className={SHELL_HEADER}>
+          <div className={APP_TITLE}>
+            Audio<span className={APP_TITLE_BRAND}>Meter</span>
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-3 pr-2">
             {isTauri() && (
@@ -749,14 +757,14 @@ export default function App() {
           </section>
         </main>
 
-        <footer className="ui-footer flex flex-wrap items-center gap-x-2 gap-y-1">
+        <footer className={SHELL_FOOTER}>
           <span>{status}</span>
           <Separator orientation="vertical" className="h-3 shrink-0" decorative />
           <span>{status2}</span>
           {meteringFootnotes.map((hint) => (
             <Fragment key={hint.id}>
               <Separator orientation="vertical" className="h-3 shrink-0" decorative />
-              <span className="text-[color:var(--ui-color-text-muted)]" title={hint.title}>
+              <span className="text-muted-foreground" title={hint.title}>
                 {hint.message}
               </span>
             </Fragment>

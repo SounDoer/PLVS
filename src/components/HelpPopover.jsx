@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CircleHelp } from "lucide-react";
 
 function iconForHint(item) {
   const text = String(item).toLowerCase();
-  const baseCls = "h-[1.1em] w-[1.1em] shrink-0 text-[color:var(--ui-color-text-secondary)]";
+  const baseCls = "h-[1.1em] w-[1.1em] shrink-0 text-muted-foreground";
   const common = {
     viewBox: "0 0 24 24",
     className: baseCls,
@@ -62,42 +65,32 @@ function iconForHint(item) {
 }
 
 export function HelpPopover({ items }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={[
-          "flex items-center justify-center w-[1.1em] h-[1.1em] rounded-full border leading-none transition-colors",
-          open
-            ? "border-[color:var(--ui-color-text-secondary)] text-[color:var(--ui-color-text-secondary)]"
-            : "border-[color:var(--ui-color-text-muted)] text-[color:var(--ui-color-text-muted)] hover:border-[color:var(--ui-color-text-secondary)] hover:text-[color:var(--ui-color-text-secondary)]",
-        ].join(" ")}
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 rounded-full border border-border text-muted-foreground hover:text-foreground"
+          aria-label="Shortcuts and gestures"
+        >
+          <CircleHelp className="size-4" aria-hidden />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        className={cn("flex w-max max-w-[min(100vw-1rem,24rem)] flex-col gap-1 p-3 text-[length:var(--ui-fs-metric-meta)]")}
       >
-        ?
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-max rounded-lg bg-[var(--ui-color-panel-bg)] border border-[color:var(--ui-color-text-muted)]/20 shadow-lg px-3 py-2.5 flex flex-col gap-1 text-[length:var(--ui-fs-metric-meta)]">
-          {items.map((item) => (
-            <div key={item} className="flex items-center gap-1.5 text-[color:var(--ui-color-text-muted)] whitespace-nowrap">
-              {iconForHint(item)}
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+        {items.map((item) => (
+          <div key={item} className="flex items-center gap-1.5 whitespace-nowrap text-muted-foreground">
+            {iconForHint(item)}
+            <span>{item}</span>
+          </div>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }

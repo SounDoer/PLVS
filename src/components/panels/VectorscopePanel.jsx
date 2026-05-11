@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { UI_PREFERENCES } from "../../uiPreferences";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 
@@ -28,11 +29,12 @@ export function VectorscopePanel({
   return (
     <Card
       className={cn(
-        "ui-min-h-spectrum flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+        PANEL_MIN_SPECTRUM,
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
       )}
     >
       <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
-        <CardTitle className="ui-section-title ui-section-title-main min-w-0 text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+        <CardTitle className="min-w-0 text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
           Vectorscope
         </CardTitle>
       </CardHeader>
@@ -95,18 +97,22 @@ export function VectorscopePanel({
             />
           </svg>
         </div>
-        <span className="ui-caption absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]">{axisXLabel}</span>
-        <span className="ui-caption absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]">{axisYLabel}</span>
+        <span className={cn(CAPTION_TEXT, "absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]")}>
+          {axisXLabel}
+        </span>
+        <span className={cn(CAPTION_TEXT, "absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]")}>
+          {axisYLabel}
+        </span>
       </div>
       <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-extra)]">
         <div className="shrink-0" style={{ width: "var(--ui-corr-info-left-blank)" }} />
         <div className="flex items-baseline gap-[var(--ui-inline-value-gap)]">
-          <span className="text-[color:var(--ui-color-text-muted)]">CORRELATION</span>
+          <span className="text-muted-foreground">CORRELATION</span>
           <span
             className={
               Number.isFinite(correlation)
                 ? "ui-numeric font-semibold text-[color:var(--ui-color-tp-max)]"
-                : "ui-numeric font-semibold text-[color:var(--ui-color-text-muted)]"
+                : "ui-numeric font-semibold text-muted-foreground"
             }
           >
             {Number.isFinite(correlation) ? correlation.toFixed(2) : "-"}
