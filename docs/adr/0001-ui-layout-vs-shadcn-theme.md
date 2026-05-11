@@ -6,19 +6,19 @@ Accepted
 
 ## Context
 
-AudioMeter injects many CSS custom properties from `applyUiPreferencesToDocument` (`src/preferences/applyDocumentTheme.js`, exported via `uiPreferences.js`): spacing, radii, chart stroke colours (`--ui-chart-*`), and meter-specific colours bridged from the shadcn semantic palette (`meterColorBridge`). The UI also uses Tailwind v4 + shadcn tokens (`bg-muted`, `border-border`, `text-chart-*`, etc.). First-paint shadcn variables are generated into `src/generated/theme-fallbacks.css` from `AUDIOMETER_SEMANTIC_*` (`npm run theme:generate`, wired to `prebuild`).
+AudioMeter injects many CSS custom properties from `applyUiPreferencesToDocument` (`src/preferences/applyDocumentTheme.js`, exported via `uiPreferences.js`): spacing, radii, chart stroke colours (`--ui-chart-*`), and meter-specific colours bridged from the shadcn semantic palette (`meterColorBridge`). The UI also uses Tailwind v4 + shadcn tokens (`bg-muted`, `border-border`, `text-chart-*`, etc.). First-paint shadcn variables are generated into `src/generated/theme-fallbacks.css` from `AUDIOMETER_SEMANTIC_*` (`npm run theme:generate`, wired to `prebuild`). **Theme identity (`themeId`, appearance, no `.dark` axis) and how `--chart-*` relate to curves** are defined in **[ADR 0002](0002-theme-id-and-appearance.md)**.
 
 ## Decision
 
 1. **Layout and chart geometry** stay on injected `--ui-*` variables (rem/px, min-heights, gaps, SVG padding). They are product-tuned and are not duplicated into `@theme` to avoid two sources of truth.
 2. **Surfaces and copy hierarchy** in React panels prefer shadcn semantics: `bg-muted` for chart insets, `border-border`, `bg-secondary`, `text-muted-foreground`, and `text-chart-*` where a chart-adjacent accent is needed without tying to a specific SVG stroke.
-3. **SVG strokes** continue to use `--ui-chart-*` resolved per theme via `getResolvedCharts`, so theme editors and modules control the exact path colours.
-4. **Tailwind chart utilities** map to `--chart-1`…`--chart-5` via `@theme inline` in `src/index.css` (`--color-chart-*`). After `applyShadcnSemanticTokensToDocument`, **`resolvedChartsToShadcnChartCssVars`** overwrites `--chart-*` from `getResolvedCharts` so `text-chart-*` / `bg-chart-*` track the same resolved product strokes as the main traces (momentary → short-term → vectorscope live → spectrum live → selection), while SVG paths still use `--ui-chart-*` (including snap variants).
+3. **SVG strokes** continue to use **`--ui-chart-*`**, sourced from the **active theme’s** chart token bundle (see ADR 0002), so each theme controls exact path colours including live/snap variants.
+4. **Tailwind chart utilities** map to `--chart-1`…`--chart-5` via `@theme inline` in `src/index.css` (`--color-chart-*`). Those variables follow **shadcn `semantic.chart1`…`chart5` only** — they are **not** mirrored from product curve strokes; see ADR 0002 Decision 7.
 
 ## Consequences
 
 - Panel JSX may mix `bg-muted` with `stroke="var(--ui-chart-…)"` in the same view; that is intentional.
-- Snap / secondary trace colours are not mapped into the five `--chart-*` slots; decorative UI that must match snap strokes should keep using `--ui-chart-*` or explicit CSS variables.
+- Decorative `text-chart-*` uses the five semantic chart slots; UI that must match a specific trace (including snap) should use **`--ui-chart-*`** or explicit variables.
 
 ## Alternatives considered
 

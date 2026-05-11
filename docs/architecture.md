@@ -15,6 +15,8 @@
 |---|---|
 | **[`prd.md`](prd.md)** | 产品需求（PRD）：目标用户、承诺、明确不做、隐私/分发、多声道路线图等；附录含与 main 的 **实现对照 / gap** 摘要。 |
 | **`architecture.md`（本文）** | 架构与实现决策：目录、协议、DSP 口径摘要、平台采集路径、CI/Release、Agent 工程约束。 |
+| **[`docs/adr/0001-ui-layout-vs-shadcn-theme.md`](adr/0001-ui-layout-vs-shadcn-theme.md)** | `--ui-*` 布局与 shadcn/Tailwind 表面职责划分。 |
+| **[`docs/adr/0002-theme-id-and-appearance.md`](adr/0002-theme-id-and-appearance.md)** | `themeId`、`appearance`、`data-theme`、首屏占位、`--chart-*` 与 `--ui-chart-*` 关系及持久化约定。 |
 
 ---
 
