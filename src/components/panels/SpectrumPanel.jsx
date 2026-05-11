@@ -1,5 +1,7 @@
 import { useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { FREQ_LABELS, SPEC_Y_TICKS, freqToXFrac, spectrumDbToTopFrac, spectrumDbToYViewBox } from "../../scales";
 import { UI_PREFERENCES } from "../../uiPreferences";
 
@@ -24,9 +26,15 @@ export function SpectrumPanel({
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
 
   return (
-    <article className="ui-article ui-min-h-spectrum flex-1">
-      <div className="ui-section-title ui-section-title-main min-w-0 flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate">Spectrum</span>
+    <Card
+      className={cn(
+        "ui-min-h-spectrum flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+      )}
+    >
+      <CardHeader className="flex min-w-0 flex-row items-center justify-between gap-2 space-y-0 p-0 pb-0">
+        <CardTitle className="ui-section-title ui-section-title-main min-w-0 truncate text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+          Spectrum
+        </CardTitle>
         {isSummedMultichannel ? (
           <span
             className="ui-caption shrink-0 text-[color:var(--ui-color-text-muted)]"
@@ -35,7 +43,8 @@ export function SpectrumPanel({
             All channels (summed)
           </span>
         ) : null}
-      </div>
+      </CardHeader>
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
       <div className="grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch ui-min-h-spectrum">
         <div className="ui-w-spectrum-y-axis relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-muted)]">
           <div className="absolute inset-x-0 top-[var(--ui-spectrum-display-top-inset)] bottom-[var(--ui-spectrum-display-bottom-inset)]">
@@ -198,6 +207,7 @@ export function SpectrumPanel({
         <div />
         <div />
       </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }

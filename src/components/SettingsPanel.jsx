@@ -1,6 +1,15 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -78,33 +87,41 @@ export function SettingsPanel({
               }
             >
               <SheetHeader className="mb-[var(--ui-settings-header-gap)] space-y-0 p-0 pr-10 text-left">
-                <SheetTitle className="ui-settings-heading">Settings</SheetTitle>
+                <SheetTitle className="text-lg font-semibold tracking-tight">Settings</SheetTitle>
               </SheetHeader>
-              <div className="ui-settings-content flex flex-col text-[length:var(--ui-fs-metric-meta)]">
-                <div className="ui-settings-row">
-                  <span className="ui-settings-label">Loudness reference</span>
-                  <select
-                    value={referenceProfileId}
-                    onChange={(e) => setReferenceProfileId(e.target.value)}
-                    className="ui-select"
-                  >
-                    {(loudnessReferenceProfiles || []).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
+              <div className="flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]">
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-ref-profile">Loudness reference</Label>
+                  <Select value={referenceProfileId} onValueChange={setReferenceProfileId}>
+                    <SelectTrigger id="settings-ref-profile">
+                      <SelectValue placeholder="Profile" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {(loudnessReferenceProfiles || []).map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="ui-settings-row">
-                  <span className="ui-settings-label">Theme</span>
-                  <select value={uiMode} onChange={(e) => setUiMode(e.target.value)} className="ui-select">
-                    <option value="system">Follow system</option>
-                    <option value="dark">Dark</option>
-                    <option value="light">Light</option>
-                  </select>
+                <Separator />
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-theme">Theme</Label>
+                  <Select value={uiMode} onValueChange={setUiMode}>
+                    <SelectTrigger id="settings-theme">
+                      <SelectValue placeholder="Theme" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="system">Follow system</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="light">Light</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="ui-settings-row">
-                  <span className="ui-settings-label">Layout</span>
+                <Separator />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label className="shrink-0">Layout</Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -115,22 +132,28 @@ export function SettingsPanel({
                     Reset Layout
                   </Button>
                 </div>
-                <div className="ui-settings-row">
-                  <span className="ui-settings-label">Channel layout (Advanced)</span>
-                  <select value={channelLayout} onChange={(e) => setChannelLayout(e.target.value)} className="ui-select">
-                    <option value="auto">Auto</option>
-                    <option value="stereo">Stereo</option>
-                    <option value="5.1">5.1</option>
-                  </select>
+                <Separator />
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-channel-layout">Channel layout (Advanced)</Label>
+                  <Select value={channelLayout} onValueChange={setChannelLayout}>
+                    <SelectTrigger id="settings-channel-layout">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="auto">Auto</SelectItem>
+                      <SelectItem value="stereo">Stereo</SelectItem>
+                      <SelectItem value="5.1">5.1</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="ui-settings-row">
-                  <span className="ui-settings-label">Vectorscope Channels</span>
+                <Separator />
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-vs-pair">Vectorscope channels</Label>
                   {vectorscopePairOptions.length > 0 && typeof onVectorscopePairChange === "function" ? (
-                    <select
-                      className="ui-select"
+                    <Select
                       value={vectorscopePairOptions.some((o) => o.key === vsKey) ? vsKey : vectorscopePairOptions[0]?.key}
-                      onChange={(e) => {
-                        const [xRaw, yRaw] = String(e.target.value).split("-");
+                      onValueChange={(key) => {
+                        const [xRaw, yRaw] = String(key).split("-");
                         const x = Number.parseInt(xRaw || "0", 10);
                         const y = Number.parseInt(yRaw || "1", 10);
                         onVectorscopePairChange({
@@ -139,14 +162,19 @@ export function SettingsPanel({
                         });
                       }}
                     >
-                      {vectorscopePairOptions.map((o) => (
-                        <option key={o.key} value={o.key}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="settings-vs-pair">
+                        <SelectValue placeholder="Pair" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {vectorscopePairOptions.map((o) => (
+                          <SelectItem key={o.key} value={o.key}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   ) : (
-                    <span className="text-[color:var(--ui-color-text-muted)]">At least 2 channels (start monitoring)</span>
+                    <p className="text-muted-foreground text-sm">At least 2 channels (start monitoring)</p>
                   )}
                 </div>
               </div>

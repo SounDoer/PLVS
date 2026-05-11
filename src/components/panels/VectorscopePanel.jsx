@@ -1,3 +1,5 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { UI_PREFERENCES } from "../../uiPreferences";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 
@@ -24,10 +26,17 @@ export function VectorscopePanel({
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
   return (
-    <article className="ui-article ui-min-h-spectrum flex-1">
-      <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <div className="ui-section-title ui-section-title-main min-w-0">Vectorscope</div>
-      </div>
+    <Card
+      className={cn(
+        "ui-min-h-spectrum flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+      )}
+    >
+      <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
+        <CardTitle className="ui-section-title ui-section-title-main min-w-0 text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+          Vectorscope
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
       <div className="relative min-h-0 flex-1 rounded-lg bg-[var(--ui-color-inset-bg)]">
         <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
           <svg
@@ -104,6 +113,7 @@ export function VectorscopePanel({
           </span>
         </div>
       </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }

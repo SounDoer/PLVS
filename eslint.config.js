@@ -6,6 +6,8 @@ export default [
   js.configs.recommended,
   {
     languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
       globals: { ...globals.browser },
     },
     plugins: { "react-hooks": reactHooks },

@@ -12,6 +12,7 @@ import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { useFloatWindowPersistence } from "./hooks/useFloatWindowPersistence";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useHoverState } from "./hooks/useHoverState";
+import { Card, CardContent } from "@/components/ui/card";
 import { PeakPanel } from "./components/panels/PeakPanel";
 import { LoudnessPanel } from "./components/panels/LoudnessPanel";
 import { SpectrumPanel } from "./components/panels/SpectrumPanel";
@@ -303,15 +304,25 @@ export function FloatApp({ kind }) {
   const reduceMotion = useReducedMotion();
   if (!PANELS.has(kind)) {
     return (
-      <div className="ui-page p-4 text-sm text-[color:var(--ui-color-muted)]">
-        Unknown float panel. Use <code className="rounded bg-[var(--ui-color-inset-bg)] px-1">?float=peak|loudness|spectrum|vector</code>
+      <div className="ui-page flex min-h-0 flex-1 items-start p-4">
+        <Card className="max-w-lg border-dashed border-muted-foreground/40">
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            Unknown float panel. Use{" "}
+            <code className="rounded bg-muted px-1 font-mono text-xs">?float=peak|loudness|spectrum|vector</code>
+          </CardContent>
+        </Card>
       </div>
     );
   }
   if (!isTauri()) {
     return (
-      <div className="ui-page p-4 text-sm text-[color:var(--ui-color-muted)]">
-        Float panels are for the Tauri desktop build only. Run <code className="rounded bg-[var(--ui-color-inset-bg)] px-1">npm run desktop</code>
+      <div className="ui-page flex min-h-0 flex-1 items-start p-4">
+        <Card className="max-w-lg border-dashed border-muted-foreground/40">
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            Float panels are for the Tauri desktop build only. Run{" "}
+            <code className="rounded bg-muted px-1 font-mono text-xs">npm run desktop</code>
+          </CardContent>
+        </Card>
       </div>
     );
   }

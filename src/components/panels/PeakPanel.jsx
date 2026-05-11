@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { PEAK_TICKS, peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../../scales";
 import { getPeakChannels } from "../../math/peakChannelMath";
 
@@ -55,10 +57,17 @@ export function PeakPanel({
 }) {
   const channels = getPeakChannels(displayAudio, peakLabelContext);
   return (
-    <article className="ui-article ui-min-h-peak min-h-0">
-      <div className="shrink-0">
-        <div className="ui-section-title ui-section-title-main min-w-0">Peak</div>
-      </div>
+    <Card
+      className={cn(
+        "ui-min-h-peak flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+      )}
+    >
+      <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
+        <CardTitle className="ui-section-title ui-section-title-main text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+          Peak
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
       <div className="grid min-h-0 flex-1 grid-cols-[auto_1fr] gap-[var(--ui-peak-axis-chart-gap)] ui-min-h-peak">
         <div className="ui-w-peak-ticks relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-muted)]">
           <div className="absolute inset-x-0 top-[var(--ui-peak-display-top-inset)] bottom-[var(--ui-peak-display-bottom-inset)]">
@@ -101,6 +110,7 @@ export function PeakPanel({
           </span>
         </div>
       </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }

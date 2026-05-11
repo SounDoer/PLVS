@@ -22,6 +22,8 @@ import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
 import { buildVectorscopePairOptions, clampVectorscopePairToAvailable } from "./math/vectorscopePairMath.js";
 import { getLoudnessReferenceProfileById, LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { cn } from "@/lib/utils";
 import { Play, Radio, Settings, Square, Trash2 } from "lucide-react";
@@ -593,46 +595,15 @@ export default function App() {
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-3 pr-2">
             {isTauri() && (
-              <div className="flex min-w-0 max-w-[min(22rem,42vw)] items-center gap-2">
-                <label htmlFor="capture-device-select" className="shrink-0 text-[length:var(--ui-fs-metric-meta)] text-[color:var(--ui-color-muted)]">
-                  Device
-                </label>
-                <select
-                  id="capture-device-select"
-                  className="ui-select min-w-0 flex-1 text-[length:var(--ui-fs-metric-meta)]"
-                  value={captureDeviceId}
-                  disabled={!audioDevices.length}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setCaptureDeviceId(v);
-                    void saveCaptureDeviceId(v);
-                  }}
-                >
-                  <option value="default">Automatic (default system output)</option>
-                  {audioDevices.some((d) => d.isSystemOutputMonitor) ? (
-                    <optgroup label="Output">
-                      {audioDevices
-                        .filter((d) => d.isSystemOutputMonitor)
-                        .map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.label}
-                          </option>
-                        ))}
-                    </optgroup>
-                  ) : null}
-                  {audioDevices.some((d) => !d.isSystemOutputMonitor) ? (
-                    <optgroup label="Input">
-                      {audioDevices
-                        .filter((d) => !d.isSystemOutputMonitor)
-                        .map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.label}
-                          </option>
-                        ))}
-                    </optgroup>
-                  ) : null}
-                </select>
-              </div>
+              <CaptureDeviceSelect
+                audioDevices={audioDevices}
+                value={captureDeviceId}
+                disabled={!audioDevices.length}
+                onValueChange={(v) => {
+                  setCaptureDeviceId(v);
+                  void saveCaptureDeviceId(v);
+                }}
+              />
             )}
           </div>
           <div className="flex items-center gap-[var(--ui-header-action-gap)]">
@@ -778,23 +749,23 @@ export default function App() {
           </section>
         </main>
 
-        <footer className="ui-footer">
+        <footer className="ui-footer flex flex-wrap items-center gap-x-2 gap-y-1">
           <span>{status}</span>
-          <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
+          <Separator orientation="vertical" className="h-3 shrink-0" decorative />
           <span>{status2}</span>
           {meteringFootnotes.map((hint) => (
             <Fragment key={hint.id}>
-              <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
+              <Separator orientation="vertical" className="h-3 shrink-0" decorative />
               <span className="text-[color:var(--ui-color-text-muted)]" title={hint.title}>
                 {hint.message}
               </span>
             </Fragment>
           ))}
-          <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
+          <Separator orientation="vertical" className="h-3 shrink-0" decorative />
           <MeterHealthBadge health={meterHealth} />
-          <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
+          <Separator orientation="vertical" className="h-3 shrink-0" decorative />
           <span>Ref: {referenceProfile.label}</span>
-          <span className="h-3 w-px bg-[color:var(--ui-color-divider)]" />
+          <Separator orientation="vertical" className="h-3 shrink-0" decorative />
           <span>Build: {buildVersion}</span>
         </footer>
       </div>

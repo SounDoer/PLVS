@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, loudnessFromTopFrac } from "../../scales";
 import { UI_PREFERENCES } from "../../uiPreferences";
 import { fmtSec } from "../../math/formatMath";
@@ -123,13 +125,18 @@ export function LoudnessPanel({
   }, [historyYAxisTicksLabeled, hasHistoryData, targetLufs]);
 
   return (
-    <article className="ui-article ui-min-h-history">
-      <div className="shrink-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="ui-section-title ui-section-title-main min-w-0 shrink-0">Loudness</div>
-          <HelpPopover items={LOUDNESS_HELP} />
-        </div>
-      </div>
+    <Card
+      className={cn(
+        "ui-min-h-history flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md",
+      )}
+    >
+      <CardHeader className="flex shrink-0 flex-row items-center gap-2 space-y-0 p-0 pb-0">
+        <CardTitle className="ui-section-title ui-section-title-main min-w-0 shrink-0 text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+          Loudness
+        </CardTitle>
+        <HelpPopover items={LOUDNESS_HELP} />
+      </CardHeader>
+      <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
       <div
         className="grid min-h-0 min-w-0 flex-1 grid-cols-[var(--hmSplit)_minmax(0,1fr)] gap-x-[var(--ui-loudness-gap)]"
         style={{ "--hmSplit": `${Math.round(loudnessHistWidthRatio * 100)}%` }}
@@ -370,6 +377,7 @@ export function LoudnessPanel({
           </div>
         </div>
       </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }
