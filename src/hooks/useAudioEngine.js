@@ -46,8 +46,17 @@ export function useAudioEngine({
 }) {
   const defaultSampleRateRef = useRef(48000);
 
-  // This effect intentionally depends only on the capture/run inputs.
-  // The remaining refs/setters are stable across renders for the app shell.
+  /**
+   * Start/stop native or browser audio capture. Dependency list is intentionally narrow:
+   * - `running`, `captureDeviceId`, `captureFormatSignature`, `channelLayout` are the only
+   *   inputs that should restart the engine when they change.
+   * - All `*Ref` arguments are mutable boxes read inside the effect; their **identities** are
+   *   stable (useRef), and the effect reads `.current` on each run — listing them would
+   *   not change behavior but would force redundant teardown/restart.
+   * - `setStatus`, `setRunning`, etc. are React state setters with stable identity; including
+   *   them is redundant. If a future caller passed an unstable inline setter, stale closures
+   *   would be a bug in the caller, not fixed by widening this array.
+   */
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!running) {

@@ -1,16 +1,15 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import {
-  peakFromTopFrac,
-  PEAK_DB_MIN,
-  PEAK_DB_MAX,
-  loudnessHistY,
-  LOUDNESS_TICKS,
-} from "./scales";
+import { loudnessHistY, LOUDNESS_TICKS } from "./scales";
 import { UI_PREFERENCES, readPersistedVectorscopePair } from "./uiPreferences";
-import { getBuiltinTheme } from "./theme/builtinThemes.js";
-import { buildHistoryPath, getHistoryViewport, HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
+import {
+  buildHistoryPath,
+  buildHistoryTimeAxisLabels,
+  getHistoryViewport,
+  HISTORY_MAX_WINDOW_SEC,
+  HISTORY_MIN_WINDOW_SEC,
+  HISTORY_TIME_TICK_STEPS,
+} from "./math/historyMath";
 import { fmtMetric } from "./math/formatMath";
-import { samplePeakLineColor } from "./math/colorMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLayoutDrag } from "./hooks/useLayoutDrag";
 import { useAudioEngine } from "./hooks/useAudioEngine";
@@ -18,6 +17,7 @@ import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useHoverState } from "./hooks/useHoverState";
 import { useMeterHealth } from "./hooks/useMeterHealth";
+import { usePeakVis } from "./hooks/usePeakVis.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import { buildMeteringFootnoteHints } from "./math/meteringFootnoteHints.js";
 import { buildVectorscopePairOptions, clampVectorscopePairToAvailable } from "./math/vectorscopePairMath.js";
@@ -58,7 +58,10 @@ import { VectorscopePanel } from "./components/panels/VectorscopePanel";
 
 const HIST_SAMPLE_SEC = 0.1;
 const HIST_MAX_SAMPLES = 36000;
-const HISTORY_TIME_TICK_STEPS = 4;
+
+const buildVersionRaw = import.meta.env.VITE_APP_VERSION || "dev";
+const buildVersion = buildVersionRaw === "dev" ? "dev" : buildVersionRaw.slice(0, 7);
+const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
 
 /** Horizontal layout rails (column resize): subtle cyan-tinted hover glow using injected `--ui-*` tokens */
 const RESIZE_COL_CLASS =
@@ -68,10 +71,6 @@ const RESIZE_COL_CLASS =
 const RESIZE_ROW_CLASS =
   "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
 export default function App() {
-  const buildVersionRaw = import.meta.env.VITE_APP_VERSION || "dev";
-  const buildVersion = buildVersionRaw === "dev" ? "dev" : buildVersionRaw.slice(0, 7);
-  const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
-
   const {
     settingsOpen,
     setSettingsOpen,
@@ -173,29 +172,12 @@ export default function App() {
     vectorPath,
   });
 
-  const historyTimeTicks = useMemo(() => {
-    const ticks = [];
-    for (let i = 0; i <= HISTORY_TIME_TICK_STEPS; i++) {
-      const sec = Math.round(historyOffsetSec + (historyWindowSec * (HISTORY_TIME_TICK_STEPS - i)) / HISTORY_TIME_TICK_STEPS);
-      if (sec >= 60) {
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        ticks.push(`${m}m${s ? `${s}s` : ""}`);
-      } else {
-        ticks.push(`${sec}s`);
-      }
-    }
-    return ticks;
-  }, [historyOffsetSec, historyWindowSec]);
+  const historyTimeTicks = useMemo(
+    () => buildHistoryTimeAxisLabels(historyOffsetSec, historyWindowSec),
+    [historyOffsetSec, historyWindowSec]
+  );
 
-  const fmt = (v) => (Number.isFinite(v) ? v.toFixed(1) : "-");
-  const meterGradientCfg = getBuiltinTheme(resolvedThemeId).meterGradient;
-  const getSamplePeakLineColor = (dbValue) =>
-    samplePeakLineColor(
-      dbValue,
-      (v) => peakFromTopFrac(Math.max(PEAK_DB_MIN, Math.min(PEAK_DB_MAX, v))),
-      meterGradientCfg
-    );
+  const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(resolvedThemeId, displayAudio);
   const toggleCurve = (key) => setHistCurves((prev) => ({ ...prev, [key]: !prev[key] }));
   const referenceProfile = useMemo(() => getLoudnessReferenceProfileById(referenceProfileId), [referenceProfileId]);
   const targetLufs = Number.isFinite(referenceProfile?.targetLufs) ? referenceProfile.targetLufs : -23;
@@ -228,8 +210,6 @@ export default function App() {
   const historyChartInteractive = running || hasHistoryData;
   const vsGridDiagInset = Math.max(0, Math.min(20, UI_PREFERENCES.modules.vector.charts.vectorscope.gridDiagInsetPct ?? 0));
   const vsGridDiagFar = 100 - vsGridDiagInset;
-  const hasTpMaxValue = Number.isFinite(displayAudio.tpMax);
-  const tpMaxText = hasTpMaxValue ? `${displayAudio.tpMax.toFixed(1)} dBTP` : "-";
   const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
   const startLabel = startMode === "live" ? "LIVE" : startMode === "stop" ? "STOP" : "START";
   const channelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;

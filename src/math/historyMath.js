@@ -1,6 +1,29 @@
 export const HISTORY_MIN_WINDOW_SEC = 5;
 export const HISTORY_MAX_WINDOW_SEC = 1800;
 
+/** Number of segments for the horizontal time-axis tick labels on the loudness history chart. */
+export const HISTORY_TIME_TICK_STEPS = 4;
+
+/**
+ * Build human-readable time labels (e.g. `0s`, `1m30s`) along the history X axis.
+ * @param {number} historyOffsetSec Viewport offset in seconds (older samples to the left).
+ * @param {number} windowSec Visible window width in seconds (may be clamped by caller for UI consistency).
+ */
+export function buildHistoryTimeAxisLabels(historyOffsetSec, windowSec) {
+  const ticks = [];
+  for (let i = 0; i <= HISTORY_TIME_TICK_STEPS; i++) {
+    const sec = Math.round(historyOffsetSec + (windowSec * (HISTORY_TIME_TICK_STEPS - i)) / HISTORY_TIME_TICK_STEPS);
+    if (sec >= 60) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      ticks.push(`${m}m${s ? `${s}s` : ""}`);
+    } else {
+      ticks.push(`${sec}s`);
+    }
+  }
+  return ticks;
+}
+
 export function getHistoryViewport(totalSamples, historyWindowSec, historyOffsetSec, sampleSec) {
   const safeTotal = Math.max(0, totalSamples);
   const clampedWindowSec = Math.max(HISTORY_MIN_WINDOW_SEC, Math.min(HISTORY_MAX_WINDOW_SEC, historyWindowSec));

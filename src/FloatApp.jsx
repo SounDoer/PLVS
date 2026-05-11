@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { buildHistoryPath, getHistoryViewport, HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
+import {
+  buildHistoryPath,
+  buildHistoryTimeAxisLabels,
+  getHistoryViewport,
+  HISTORY_MAX_WINDOW_SEC,
+  HISTORY_MIN_WINDOW_SEC,
+  HISTORY_TIME_TICK_STEPS,
+} from "./math/historyMath";
 import { fmtMetric } from "./math/formatMath";
 import { isTauri } from "./ipc/env.js";
-import { peakFromTopFrac, LOUDNESS_TICKS, loudnessHistY, PEAK_DB_MAX, PEAK_DB_MIN } from "./scales";
+import { LOUDNESS_TICKS, loudnessHistY } from "./scales";
 import { UI_PREFERENCES } from "./uiPreferences";
-import { getBuiltinTheme } from "./theme/builtinThemes.js";
-import { samplePeakLineColor } from "./math/colorMath";
+import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useFloatMeteringCore } from "./hooks/useFloatMeteringCore";
 import { usePersistedChannelLayout } from "./hooks/usePersistedChannelLayout.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
@@ -22,22 +28,7 @@ import { getLoudnessReferenceProfileById } from "./loudnessReferenceProfiles.js"
 import { cn } from "@/lib/utils";
 import { SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
 
-const HISTORY_TIME_TICK_STEPS = 4;
 const PANELS = new Set(["peak", "loudness", "spectrum", "vector"]);
-
-function useSharedPeakVis(resolvedThemeId, displayAudio) {
-  const fmt = (v) => (Number.isFinite(v) ? v.toFixed(1) : "-");
-  const meterGradientCfg = getBuiltinTheme(resolvedThemeId).meterGradient;
-  const getSamplePeakLineColor = (dbValue) =>
-    samplePeakLineColor(
-      dbValue,
-      (v) => peakFromTopFrac(Math.max(PEAK_DB_MIN, Math.min(PEAK_DB_MAX, v))),
-      meterGradientCfg
-    );
-  const hasTpMaxValue = Number.isFinite(displayAudio.tpMax);
-  const tpMaxText = hasTpMaxValue ? `${displayAudio.tpMax.toFixed(1)} dBTP` : "-";
-  return { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText };
-}
 
 function FloatLoudnessBody({ core }) {
   const {
@@ -114,22 +105,13 @@ function FloatLoudnessBody({ core }) {
       600 - ((selectedHistSteps - effectiveOffsetSamples) / Math.max(1, visibleSamples - 1)) * 600
     )
   );
-  const { historyTimeTicks, historyTickSteps } = useMemo(() => {
-    const ticks = [];
-    for (let i = 0; i <= HISTORY_TIME_TICK_STEPS; i++) {
-      const sec = Math.round(
-        historyOffsetSec + (clampedWindowSec * (HISTORY_TIME_TICK_STEPS - i)) / HISTORY_TIME_TICK_STEPS
-      );
-      if (sec >= 60) {
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        ticks.push(`${m}m${s ? `${s}s` : ""}`);
-      } else {
-        ticks.push(`${sec}s`);
-      }
-    }
-    return { historyTimeTicks: ticks, historyTickSteps: HISTORY_TIME_TICK_STEPS };
-  }, [clampedWindowSec, historyOffsetSec]);
+  const { historyTimeTicks, historyTickSteps } = useMemo(
+    () => ({
+      historyTimeTicks: buildHistoryTimeAxisLabels(historyOffsetSec, clampedWindowSec),
+      historyTickSteps: HISTORY_TIME_TICK_STEPS,
+    }),
+    [clampedWindowSec, historyOffsetSec]
+  );
   const {
     historyHover,
     spectrumHover,
@@ -217,7 +199,7 @@ function FloatLoudnessBody({ core }) {
 }
 
 function FloatPeakView({ core, resolvedThemeId }) {
-  const v = useSharedPeakVis(resolvedThemeId, core.displayAudio);
+  const v = usePeakVis(resolvedThemeId, core.displayAudio);
   const persistedLayout = usePersistedChannelLayout();
   const chCount = Array.isArray(core.displayAudio?.peakDb) ? core.displayAudio.peakDb.length : 0;
   const layoutResolution = useMemo(

@@ -4,6 +4,8 @@ import {
   buildHistoryPath,
   HISTORY_MIN_WINDOW_SEC,
   HISTORY_MAX_WINDOW_SEC,
+  HISTORY_TIME_TICK_STEPS,
+  buildHistoryTimeAxisLabels,
 } from "./historyMath";
 
 describe("getHistoryViewport", () => {
@@ -30,6 +32,18 @@ describe("getHistoryViewport", () => {
   it("maxOffsetSamples is zero when all samples are visible", () => {
     const { maxOffsetSamples } = getHistoryViewport(5, 120, 0, 0.1);
     expect(maxOffsetSamples).toBe(0);
+  });
+});
+
+describe("buildHistoryTimeAxisLabels", () => {
+  it("returns one more label than HISTORY_TIME_TICK_STEPS", () => {
+    const labels = buildHistoryTimeAxisLabels(0, 120);
+    expect(labels).toHaveLength(HISTORY_TIME_TICK_STEPS + 1);
+  });
+  it("brackets a 60s window with oldest and youngest tick labels", () => {
+    const labels = buildHistoryTimeAxisLabels(0, 60);
+    expect(labels[0]).toBe("1m");
+    expect(labels[labels.length - 1]).toBe("0s");
   });
 });
 
