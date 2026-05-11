@@ -39,7 +39,7 @@ export function VectorscopePanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
-      <div className="relative min-h-0 flex-1 rounded-lg bg-[var(--ui-color-inset-bg)]">
+      <div className="relative min-h-0 flex-1 rounded-lg bg-muted">
         <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
           <svg
             className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
@@ -111,8 +111,8 @@ export function VectorscopePanel({
           <span
             className={
               Number.isFinite(correlation)
-                ? "ui-numeric font-semibold text-[color:var(--ui-color-tp-max)]"
-                : "ui-numeric font-semibold text-muted-foreground"
+                ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-color-tp-max)]"
+                : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
             }
           >
             {Number.isFinite(correlation) ? correlation.toFixed(2) : "-"}

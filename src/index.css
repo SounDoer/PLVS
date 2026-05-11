@@ -8,7 +8,8 @@
  * First-paint fallbacks before JS. Must stay aligned with `AUDIOMETER_SEMANTIC_*` in
  * `src/theme/shadcnSemanticPreset.js` (shadcn default neutral preset + AudioMeter primary/ring).
  * `applyUiPreferencesToDocument` re-applies the same tokens and toggles `.dark` on `<html>`.
- * Chart stroke colours and layout metrics remain `--ui-*` only.
+ * Chart strokes for SVG paths use injected `--ui-chart-*` (product-tuned); Tailwind `chart-*`
+ * utilities map to shadcn `--chart-1`…`--chart-5` for non-SVG UI.
  */
 :root {
   --radius: 0.625rem;
@@ -97,6 +98,12 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -107,11 +114,6 @@
 :root {
   --ui-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-family: var(--ui-font-sans, Inter, system-ui, sans-serif);
-}
-
-.ui-numeric {
-  font-family: var(--ui-font-mono);
-  font-variant-numeric: tabular-nums;
 }
 
 html {
@@ -143,90 +145,8 @@ body {
   );
 }
 
-/* ---------- Loudness metric rows (toggle + static) ---------- */
-.ui-metric-row {
-  display: flex;
-  min-height: var(--ui-metric-row-min-h);
-  align-items: center;
-  gap: var(--ui-metric-row-gap);
-  border-radius: var(--ui-radius-metric-row);
-  padding: var(--ui-metric-row-pad-y) var(--ui-metric-row-pad-x);
-}
-
-.ui-metric-row-toggle {
-  width: 100%;
-  cursor: pointer;
-  text-align: left;
-  appearance: none;
-  -webkit-appearance: none;
-  border: 1px solid var(--ui-color-metric-row-border);
-  background-color: var(--ui-color-metric-row-bg);
-  border-radius: var(--ui-radius-pill);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
-}
-
-.ui-metric-row-toggle:hover {
-  background-color: var(--ui-color-metric-row-hover-bg);
-  border-color: color-mix(in srgb, var(--ui-color-metric-row-border) 72%, var(--ui-color-brand) 28%);
-}
-
-.ui-metric-row-toggle.on {
-  border-color: var(--ui-color-metric-row-toggle-on-border);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ui-color-metric-row-toggle-on-border) 28%, transparent), 0 0 12px var(--ui-color-metric-row-toggle-on-glow);
-  background-color: var(--ui-color-metric-row-toggle-on-bg);
-}
-
-.ui-metric-row-toggle:focus-visible {
-  outline: 2px solid var(--ui-color-brand);
-  outline-offset: 2px;
-}
-
-.ui-metric-label {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-  font-size: var(--ui-fs-metric-meta);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  line-height: 1;
-  color: var(--ui-color-metric-label);
-}
-
-.ui-metric-value {
-  flex-shrink: 0;
-  text-align: right;
-  font-family: var(--ui-font-mono);
-  font-size: var(--ui-fs-metric-value);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--ui-color-metric-value);
-}
-
-.ui-metric-unit {
-  flex-shrink: 0;
-  text-align: right;
-  font-size: var(--ui-fs-metric-meta);
-  font-weight: 500;
-  text-transform: uppercase;
-  line-height: 1;
-  color: var(--ui-color-metric-unit);
-}
-
-.ui-metric-row-toggle.on .ui-metric-label {
-  color: var(--ui-color-metric-toggle-on-label);
-}
-
-.ui-metric-row-toggle.on .ui-metric-unit {
-  color: var(--ui-color-metric-toggle-on-unit);
-}
-
-/* Reused by header primary control in LIVE (history snapshot) mode — see App.jsx */
-@keyframes ui-pill-live-snap-blink {
+/* LIVE (history snapshot) pulse on header primary control — see App.jsx */
+@keyframes live-snap-pulse-blink {
   0%,
   100% {
     opacity: 1;
@@ -238,12 +158,12 @@ body {
   }
 }
 
-.ui-history-live-snap-pulse {
-  animation: ui-pill-live-snap-blink 1.15s ease-in-out infinite;
+.live-snap-pulse {
+  animation: live-snap-pulse-blink 1.15s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-history-live-snap-pulse {
+  .live-snap-pulse {
     animation: none;
     box-shadow: none;
   }

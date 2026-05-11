@@ -24,15 +24,38 @@ const LOUDNESS_HELP = [
   "Click M / ST labels - Toggle curves",
 ];
 
+const METRIC_ROW_LAYOUT =
+  "flex min-h-[var(--ui-metric-row-min-h)] items-center gap-[var(--ui-metric-row-gap)] rounded-[var(--ui-radius-metric-row)] px-[var(--ui-metric-row-pad-x)] py-[var(--ui-metric-row-pad-y)]";
+
+const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
+
+const LOUDNESS_HUD_BOX =
+  "rounded border border-border bg-secondary px-2 py-0.5 text-[length:var(--ui-fs-axis-value)] text-muted-foreground";
+
+const LOUDNESS_HUD_BOX_POPOVER =
+  "rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis-value)] text-muted-foreground shadow-sm";
+
 function MetricRow({ label, value, unit, isActive = false, onToggle }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.loudness.metrics;
+  const labelClass = cn(
+    "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium uppercase tracking-wide leading-none text-[color:var(--ui-color-metric-label)]",
+    onToggle && isActive && "text-[color:var(--ui-color-metric-toggle-on-label)]",
+  );
+  const valueClass = cn(
+    METRIC_NUMERIC,
+    "shrink-0 text-right text-[length:var(--ui-fs-metric-value)] font-semibold leading-none text-[color:var(--ui-color-metric-value)]",
+  );
+  const unitClass = cn(
+    "shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium uppercase leading-none text-[color:var(--ui-color-metric-unit)]",
+    onToggle && isActive && "text-[color:var(--ui-color-metric-toggle-on-unit)]",
+  );
   const content = (
     <>
-      <span className="ui-metric-label">{label}</span>
-      <span className="ui-metric-value" style={{ width: `${valueColumnCh}ch` }}>
+      <span className={labelClass}>{label}</span>
+      <span className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
         {value}
       </span>
-      <span className="ui-metric-unit" style={{ width: `${unitColumnRem}rem` }}>
+      <span className={unitClass} style={{ width: `${unitColumnRem}rem` }}>
         {unit}
       </span>
     </>
@@ -42,15 +65,26 @@ function MetricRow({ label, value, unit, isActive = false, onToggle }) {
     return (
       <button
         type="button"
+        aria-pressed={isActive}
         onClick={onToggle}
-        className={isActive ? "ui-metric-row ui-metric-row-toggle on" : "ui-metric-row ui-metric-row-toggle"}
+        className={cn(
+          METRIC_ROW_LAYOUT,
+          "w-full cursor-pointer text-left appearance-none [-webkit-appearance:none]",
+          "rounded-[var(--ui-radius-pill)] border border-[color:var(--ui-color-metric-row-border)] bg-[color:var(--ui-color-metric-row-bg)]",
+          "transition-[border-color,box-shadow,background-color] duration-150 ease-out",
+          "hover:bg-[color:var(--ui-color-metric-row-hover-bg)]",
+          "hover:border-[color:color-mix(in_srgb,var(--ui-color-metric-row-border)_72%,var(--ui-color-brand)_28%)]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--ui-color-brand)]",
+          isActive &&
+            "border-[color:var(--ui-color-metric-row-toggle-on-border)] bg-[color:var(--ui-color-metric-row-toggle-on-bg)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-metric-row-toggle-on-border)_28%,transparent),0_0_12px_var(--ui-color-metric-row-toggle-on-glow)]",
+        )}
       >
         {content}
       </button>
     );
   }
 
-  return <div className="ui-metric-row">{content}</div>;
+  return <div className={METRIC_ROW_LAYOUT}>{content}</div>;
 }
 
 export function LoudnessPanel({
@@ -166,7 +200,7 @@ export function LoudnessPanel({
                 {historyYAxisTicksLabeled.map(({ v, lb }) => {
                   const isTargetTick = v === targetLufs;
                   const tickClass = isTargetTick
-                    ? "absolute right-0 leading-none font-semibold text-[color:var(--ui-color-target-value)]"
+                    ? "absolute right-0 leading-none font-semibold text-chart-3"
                     : "absolute right-0 leading-none";
                   /* Top/bottom: nudge labels inward so -50% translate does not collide with title or clip rounded corners; mid ticks share y with guides */
                   if (v === LOUDNESS_DB_MAX) {
@@ -193,7 +227,7 @@ export function LoudnessPanel({
             </div>
             <div
               className={cn(
-                "relative flex min-h-0 min-w-0 flex-1 rounded-lg bg-[var(--ui-color-inset-bg)]",
+                "relative flex min-h-0 min-w-0 flex-1 rounded-lg bg-muted",
                 CHART_INSET_MIN_H,
                 !historyChartInteractive && "pointer-events-none",
               )}
@@ -294,8 +328,7 @@ export function LoudnessPanel({
                       }}
                     />
                     <div
-                      className="absolute left-[var(--ui-hud-inset)] bottom-[var(--ui-hud-inset)] rounded border border-[color:var(--ui-color-divider)] bg-[color:var(--ui-color-panel-bg-splitter)] px-2 py-0.5 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-secondary)]"
-                      style={{ opacity: 0.9 }}
+                      className={cn("absolute left-[var(--ui-hud-inset)] bottom-[var(--ui-hud-inset)] opacity-90", LOUDNESS_HUD_BOX)}
                     >
                       Ref {referenceProfile?.label ?? `${referenceLufs} LUFS`}
                     </div>
@@ -303,35 +336,42 @@ export function LoudnessPanel({
                 ) : null}
                 {historyHover?.leftPct != null ? (
                   <div
-                    className="absolute bottom-0 top-0 border-l border-dashed border-[color:color-mix(in_srgb,var(--ui-color-text-secondary)_55%,transparent)]"
+                    className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
                     style={{ left: `${historyHover.leftPct}%` }}
                   />
                 ) : null}
                 {historyHover?.topPct != null ? (
                   <div
-                    className="absolute left-0 right-0 h-0 -translate-y-1/2 border-t border-dashed border-[color:color-mix(in_srgb,var(--ui-color-text-secondary)_38%,transparent)]"
+                    className="absolute left-0 right-0 h-0 -translate-y-1/2 border-t border-dashed border-muted-foreground/40"
                     style={{ top: `${historyHover.topPct}%` }}
                   />
                 ) : null}
                 {isHistoryHudVisible && (
-                  <div className="absolute bottom-[var(--ui-hud-inset)] right-[var(--ui-hud-inset)] rounded border border-[color:var(--ui-color-divider)] bg-[color:var(--ui-color-panel-bg-splitter)] px-2 py-0.5 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-secondary)]">
-                    <span className="ui-numeric">Window {fmtSec(clampedWindowSec)}</span>
+                  <div
+                    className={cn(
+                      "absolute bottom-[var(--ui-hud-inset)] right-[var(--ui-hud-inset)]",
+                      LOUDNESS_HUD_BOX,
+                    )}
+                  >
+                    <span className={METRIC_NUMERIC}>Window {fmtSec(clampedWindowSec)}</span>
                     {" | "}
-                    <span className="ui-numeric">Offset {fmtSec(effectiveOffsetSec)}</span>
+                    <span className={METRIC_NUMERIC}>Offset {fmtSec(effectiveOffsetSec)}</span>
                   </div>
                 )}
                 {historyHover ? (
-                  <div className="absolute left-[var(--ui-hud-inset)] top-[var(--ui-hud-inset)] rounded border border-[color:var(--ui-color-divider)] bg-[color:var(--ui-color-panel-bg-splitter)] px-2 py-1 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-secondary)] shadow-sm">
+                  <div
+                    className={cn("absolute left-[var(--ui-hud-inset)] top-[var(--ui-hud-inset)]", LOUDNESS_HUD_BOX_POPOVER)}
+                  >
                     <div>{historyHover.offsetLabel}</div>
                     <div>
                       M{" "}
-                      <span className="ui-numeric">
+                      <span className={METRIC_NUMERIC}>
                         {historyHover.momentary != null ? `${historyHover.momentary.toFixed(1)} LUFS` : "-"}
                       </span>
                     </div>
                     <div>
                       ST{" "}
-                      <span className="ui-numeric">
+                      <span className={METRIC_NUMERIC}>
                         {historyHover.shortTerm != null ? `${historyHover.shortTerm.toFixed(1)} LUFS` : "-"}
                       </span>
                     </div>

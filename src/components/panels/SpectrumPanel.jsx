@@ -69,7 +69,7 @@ export function SpectrumPanel({
         </div>
         <div className="relative min-h-0 min-w-0">
           <div
-            className={cn("relative min-h-0 h-full rounded-lg bg-[var(--ui-color-inset-bg)]", CHART_INSET_MIN_H)}
+            className={cn("relative min-h-0 h-full rounded-lg bg-muted", CHART_INSET_MIN_H)}
             onPointerLeave={onSpectrumHoverLeave}
           >
             <div
@@ -119,7 +119,7 @@ export function SpectrumPanel({
                       x2={1000}
                       y1={spectrumDbToYViewBox(v)}
                       y2={spectrumDbToYViewBox(v)}
-                      stroke="var(--ui-color-divider)"
+                      stroke="var(--border)"
                       strokeWidth={1}
                       vectorEffect="non-scaling-stroke"
                       style={{ strokeOpacity: "var(--ui-spectrum-grid-h)" }}
@@ -134,7 +134,7 @@ export function SpectrumPanel({
                         x2={x}
                         y1={0}
                         y2={260}
-                        stroke="var(--ui-color-divider)"
+                        stroke="var(--border)"
                         strokeWidth={1}
                         vectorEffect="non-scaling-stroke"
                         style={{ strokeOpacity: "var(--ui-spectrum-grid-v)" }}
@@ -181,24 +181,24 @@ export function SpectrumPanel({
             {spectrumHover ? (
               <div className="pointer-events-none absolute inset-[var(--ui-spectrum-svg-pad)] top-[var(--ui-spectrum-display-top-inset)] bottom-[var(--ui-spectrum-display-bottom-inset)] z-10">
                 <div
-                  className="absolute bottom-0 top-0 border-l border-dashed border-[color:var(--ui-color-text-secondary)] opacity-55"
+                  className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
                   style={{ left: `${spectrumHover.leftPct}%` }}
                 />
                 <div
-                  className="absolute left-0 right-0 border-t border-dashed border-[color:var(--ui-color-text-secondary)] opacity-40"
+                  className="absolute left-0 right-0 border-t border-dashed border-muted-foreground/40"
                   style={{ top: `${spectrumHover.topPct}%` }}
                 />
                 <div
-                  className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--ui-color-panel-bg)] bg-[color:var(--ui-chart-spectrum-live)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-chart-spectrum-live)_22%,transparent)]"
+                  className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-chart-spectrum-live)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-chart-spectrum-live)_22%,transparent)]"
                   style={{
                     left: `${spectrumHover.leftPct}%`,
                     top: `${spectrumHover.topPct}%`,
                     backgroundColor: selectedOffset >= 0 ? "var(--ui-chart-spectrum-snap)" : "var(--ui-chart-spectrum-live)",
                   }}
                 />
-                <div className="absolute left-[var(--ui-hud-inset)] top-[var(--ui-hud-inset)] rounded border border-[color:var(--ui-color-divider)] bg-[color:var(--ui-color-panel-bg-splitter)] px-2 py-1 text-[length:var(--ui-fs-axis-value)] text-[color:var(--ui-color-text-secondary)] shadow-sm">
+                <div className="absolute left-[var(--ui-hud-inset)] top-[var(--ui-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis-value)] text-muted-foreground shadow-sm">
                   <div>{spectrumHover.freqLabel}</div>
-                  <div className="ui-numeric">{spectrumHover.dbLabel}</div>
+                  <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">{spectrumHover.dbLabel}</div>
                 </div>
               </div>
             ) : null}

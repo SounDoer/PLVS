@@ -49,7 +49,7 @@
 
 **Tauri 2 + Rust（后端）+ React / Vite（前端）**
 
-**前端 UI 约定（展示层）**：壳与表单控件优先使用 **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)**（Radix 原语、`components.json`、`@/` 别名，源码位于 `src/components/ui/`）。**主题色单一来源**：`uiPreferences.js` 里 `themes[dark|light].colors` 在 `applyUiPreferencesToDocument` 中既写入 **`--ui-color-*`**，又通过 **`syncShadcnSemanticTokens`** 同步到 shadcn 语义变量（`--background`、`--card`、`--primary`、`--ring` 等），这样 Card/Select/Sheet 与 `.ui-page` 壳层随「Theme / 系统」切换保持一致；**频谱/响度/峰值等图表专用 stroke 与布局尺寸**仍只走 **`--ui-*`**，避免与 Radix 组件语义混淆。
+**前端 UI 约定（展示层）**：壳与表单控件优先使用 **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)**（Radix 原语、`components.json`、`@/` 别名，源码位于 `src/components/ui/`）。**主题与语义色**：shadcn 的 oklch 语义表定义在 **`src/theme/shadcnSemanticPreset.js`**；`applyUiPreferencesToDocument` 调用 **`applyShadcnSemanticTokensToDocument`** 写入 `--background`、`--card`、`--primary`、`--ring` 等，并用 **`buildMeterColorBridge`** 从同一语义派生 **`--ui-color-*`**（仪表读数、分割线、内嵌背景等）。**首屏与持久模式**：`src/main.jsx` 在 `createRoot` 之前用 **`resolveEffectiveUiMode`**（持久化的 theme 偏好 + `prefers-color-scheme`）调用 `applyUiPreferencesToDocument`。**布局与图表 stroke**：`--ui-*` 仍由 `UI_PREFERENCES` 注入（间距、字号、**`--ui-chart-*`** 等）；面板壳层优先 Tailwind 语义类（如 `bg-muted`、`border-border`）；Tailwind 的 **`text-chart-*` / `bg-chart-*`** 通过 `index.css` 的 `@theme inline` 映射到 shadcn 的 **`--chart-1`…`--chart-5`**。详见 **[`docs/adr/0001-ui-layout-vs-shadcn-theme.md`](adr/0001-ui-layout-vs-shadcn-theme.md)**。
 
 ### 为什么是这个组合
 

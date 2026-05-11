@@ -61,11 +61,11 @@ const HISTORY_TIME_TICK_STEPS = 4;
 
 /** Horizontal layout rails (column resize): subtle cyan-tinted hover glow using injected `--ui-*` tokens */
 const RESIZE_COL_CLASS =
-  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--ui-color-panel-bg-splitter))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--ui-color-panel-bg-splitter))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
+  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
 
 /** Vertical layout rails (row resize) */
 const RESIZE_ROW_CLASS =
-  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--ui-color-panel-bg-splitter))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--ui-color-panel-bg-splitter))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
+  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
 export default function App() {
   const buildVersionRaw = import.meta.env.VITE_APP_VERSION || "dev";
   const buildVersion = buildVersionRaw === "dev" ? "dev" : buildVersionRaw.slice(0, 7);
@@ -627,7 +627,7 @@ export default function App() {
               className={cn(
                 "min-w-[5.75rem] gap-2 font-semibold",
                 startMode === "live" &&
-                  "ui-history-live-snap-pulse !bg-[var(--ui-chart-vectorscope-snap)] !text-white shadow-none hover:!brightness-[0.94]",
+                  "live-snap-pulse !bg-[var(--ui-chart-vectorscope-snap)] !text-white shadow-none hover:!brightness-[0.94]",
               )}
             >
               {startMode === "live" ? (

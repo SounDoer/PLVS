@@ -13,7 +13,7 @@ export const SHELL_HEADER =
   "flex shrink-0 items-center gap-3 rounded-[calc(var(--ui-radius-card)*0.66)] border border-white/[0.08] bg-card/60 px-[var(--ui-header-pad-x)] py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_color-mix(in_srgb,var(--ui-color-border-default)_26%,transparent)] backdrop-blur-[14px] backdrop-saturate-[140%]";
 
 export const SHELL_FOOTER =
-  "flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--ui-radius-card)] border border-white/[0.08] bg-card/60 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-[color:var(--ui-color-text-secondary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]";
+  "flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--ui-radius-card)] border border-white/[0.08] bg-card/60 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]";
 
 export const APP_TITLE =
   "text-[length:var(--ui-fs-app-title)] font-[var(--ui-fw-app-title)] tracking-wide text-foreground";

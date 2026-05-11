@@ -87,16 +87,16 @@ export function PeakPanel({
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-[var(--ui-peak-channel-gap)]">
           {channels.map((c, idx) => (
-            <div key={`${idx}-${c.label}`} className="relative h-full min-h-0 rounded-lg bg-[var(--ui-color-inset-bg)] p-0">
+            <div key={`${idx}-${c.label}`} className="relative h-full min-h-0 rounded-lg bg-muted p-0">
               <div className="absolute inset-x-[var(--ui-meter-chart-inset-x)] bottom-[var(--ui-peak-display-bottom-inset)] top-[var(--ui-peak-display-top-inset)]">
                 <AnimatedPeakFill dbValue={c.valueDb} />
                 {Number.isFinite(c.holdDb) && (
                   <AnimatedHoldLine holdDb={c.holdDb} lineColor={getSamplePeakLineColor(c.holdDb)} />
                 )}
               </div>
-              <div className="absolute left-[var(--ui-meter-label-left-inset)] right-0 top-[var(--ui-meter-label-top-inset)] text-left text-[length:var(--ui-fs-extra)] text-[color:var(--ui-color-text-secondary)]">
+              <div className="absolute left-[var(--ui-meter-label-left-inset)] right-0 top-[var(--ui-meter-label-top-inset)] text-left text-[length:var(--ui-fs-extra)] text-muted-foreground">
                 {c.label}{" "}
-                <span className="ui-numeric text-muted-foreground">{fmt(c.valueDb)}</span>
+                <span className="font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">{fmt(c.valueDb)}</span>
               </div>
             </div>
           ))}
@@ -109,8 +109,8 @@ export function PeakPanel({
           <span
             className={
               hasTpMaxValue
-                ? "ui-numeric font-semibold text-[color:var(--ui-color-tp-max)]"
-                : "ui-numeric font-semibold text-muted-foreground"
+                ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-color-tp-max)]"
+                : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
             }
           >
             {tpMaxText}
