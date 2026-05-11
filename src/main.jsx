@@ -3,9 +3,18 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { FloatApp, getFloatParamFromUrl } from "./FloatApp";
 import "./index.css";
-import { UI_PREFERENCES, applyUiPreferencesToDocument, readPersistedUiMode } from "./uiPreferences";
+import {
+  UI_PREFERENCES,
+  applyUiPreferencesToDocument,
+  readPersistedUiMode,
+  readSystemPrefersDark,
+  resolveEffectiveUiMode,
+} from "./uiPreferences";
 
-applyUiPreferencesToDocument(UI_PREFERENCES, readPersistedUiMode());
+applyUiPreferencesToDocument(
+  UI_PREFERENCES,
+  resolveEffectiveUiMode(readPersistedUiMode(), readSystemPrefersDark()),
+);
 
 const float = getFloatParamFromUrl();
 

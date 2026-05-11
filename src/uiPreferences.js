@@ -1,54 +1,30 @@
 /**
- * Single-file tunable UI tokens: `applyUiPreferencesToDocument` writes `--ui-*` CSS variables and syncs shadcn
- * semantic tokens (`--background`, `--foreground`, `--card`, …) from the same theme `colors` object so Radix
- * surfaces match the metering shell (see `syncShadcnSemanticTokens`). Layout + theme persist via `layoutPersistKey`.
+ * Tunable layout/typography + chart defaults. `applyUiPreferencesToDocument` writes `--ui-*` layout/chart variables
+ * and applies the **shadcn/ui default neutral semantic theme** (oklch) plus AudioMeter `primary`/`ring` accents
+ * (`src/theme/shadcnSemanticPreset.js`). Legacy `--ui-color-*` for SVG/metrics are derived via `meterColorBridge`.
  *
  * Sections (Ctrl+F):
  * - `layoutPersistKey` — localStorage key (changing key abandons data under the old key)
- * - `layout` — shell, splitters, three-column drag, header/footer, article, spacingRem, heightsRem, widthsPx, settingsModal
+ * - `layout` — shell, splitters, drag rails, header/footer, article, spacingRem, heightsRem, widthsPx, settingsModal
  * - `typography` / `radii` — type scale, radii
- * - `themes` — per theme id: `colors` plus optional `charts`, `spectrumGrid`, `meterGradient` overrides
- * - `modules.peak` — dial gradients (theme may override)
- * - `modules.loudness` — History default window, Metrics rows, loudness chart tokens
- * - `modules.vector` — Vectorscope charts
- * - `modules.spectrum` — spectrum grid + Spectrum charts
+ * - `themes` — optional per-mode overrides: `charts`, `spectrumGrid`, `meterGradient` (no flat `colors` map)
+ * - `modules.*` — loudness history defaults, peak meter gradient, chart stroke defaults, spectrum grid
  *
  * Runtime: `getResolvedCharts(prefs, uiMode)` merges module chart defaults with `themes[mode].charts`.
  *
- * Debug: DevTools → `<html>` → Computed → filter `--ui-`.
+ * Debug: DevTools → `<html>` → Computed → filter `--ui-` or `--background`.
  */
+import {
+  AUDIOMETER_SEMANTIC_DARK,
+  AUDIOMETER_SEMANTIC_LIGHT,
+  applyColorSchemeClass,
+  applyShadcnSemanticTokensToDocument,
+} from "./theme/shadcnSemanticPreset.js";
+import { buildMeterColorBridge } from "./theme/meterColorBridge.js";
+
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
   document.documentElement.style.setProperty(name, String(value));
-}
-
-/**
- * Maps `themes[mode].colors` onto shadcn CSS variables (`--background`, `--card`, …) so Tailwind/shadcn components
- * track the active UI theme without duplicating hex values in `index.css`.
- *
- * Chart-only and layout tokens remain `--ui-*` only. Interactive accent follows `colors.brand` (primary / ring).
- *
- * @param {typeof DARK_THEME_COLORS} colors
- * @param {"dark"|"light"} mode
- */
-function syncShadcnSemanticTokens(colors, mode) {
-  setCssVar("--background", colors.pageBg);
-  setCssVar("--foreground", colors.textPrimary);
-  setCssVar("--card", colors.panelBg);
-  setCssVar("--card-foreground", colors.textPrimary);
-  setCssVar("--popover", colors.panelBg);
-  setCssVar("--popover-foreground", colors.textPrimary);
-  setCssVar("--muted", colors.insetBg);
-  setCssVar("--muted-foreground", colors.textMuted);
-  setCssVar("--accent", colors.controlBg);
-  setCssVar("--accent-foreground", colors.textPrimary);
-  setCssVar("--secondary", colors.panelBgSplitter);
-  setCssVar("--secondary-foreground", colors.textPrimary);
-  setCssVar("--border", colors.borderDefault);
-  setCssVar("--input", colors.borderDefault);
-  setCssVar("--primary", colors.brand);
-  setCssVar("--primary-foreground", mode === "light" ? "#ffffff" : "#fafafa");
-  setCssVar("--ring", colors.brandLight);
 }
 
 function mergeCharts(base, override) {
@@ -83,104 +59,6 @@ export function getResolvedCharts(prefs = UI_PREFERENCES, mode = "dark") {
   const m = mode === "light" ? "light" : "dark";
   return mergeCharts(chartsBaseFromPrefs(prefs), prefs.themes[m]?.charts);
 }
-
-/** Dark theme: page/panel/text/Peak lines/legends/settings (maps to --ui-color-*) */
-const DARK_THEME_COLORS = {
-  pageBg: "#111827", // outer page background
-  textPrimary: "#f3f4f6", // primary body/title text
-  textSecondary: "#d1d5db", // secondary copy
-  textMuted: "#b3bcc8", // tertiary (section titles, ticks) — tuned for scan on dark bg
-  textSubtle: "#8792a2", // metrics labels — still readable on dark inset
-  panelBg: "#1f2937", // rounded module cards (Peak, History, …)
-  panelBgSplitter: "rgba(31, 41, 55, 0.8)", // draggable splitter track
-  insetBg: "#111827", // deep plot wells (spectrum / history)
-  insetDark: "rgba(3, 7, 18, 0.9)", // metrics row inset background
-  borderDefault: "rgba(51, 65, 85, 0.8)", // default hairlines / borders
-  divider: "#4b5563", // footer rules, vector axes, etc.
-  brand: "#3b82f6", // primary accent / selected controls
-  brandLight: "#60a5fa", // logo “Meter” accent
-  brandHover: "#60a5fa", // primary hover
-  controlBg: "#374151", // settings selects, Close, unselected theme chips
-  peakSamplePeak: "rgba(251, 191, 36, 0.95)", // sample-peak hairline on peak meter
-  peakTruePeak: "rgba(207, 250, 254, 0.7)", // true-peak hairline
-  tpMaxText: "#67e8f9", // TP MAX readout emphasis
-  correlation: {
-    bad: "#f87171", // low correlation
-    mid: "#fcd34d", // mid correlation
-    good: "#6ee7b7", // good correlation
-  },
-  loudnessTargetLine: "rgba(74, 222, 128, 0.85)", // history target LUFS guide (green)
-  settingsOverlay: "rgba(0, 0, 0, 0.6)", // modal scrim
-  settingsRowBg: "rgba(17, 24, 39, 0.7)", // settings list row background
-  legendHistOnBg: "#374151", // loudness history legend “on” chip
-  legendHistOnText: "#f3f4f6",
-  legendHistOffBg: "#111827", // loudness history legend “off” chip
-  legendHistOffText: "#9ca3af",
-  metricRowBg: "rgba(31, 41, 55, 0.28)", // metrics row idle background
-  metricRowBorder: "rgba(71, 85, 105, 0.5)", // metrics row border
-  metricRowHoverBg: "rgba(30, 41, 59, 0.42)", // metrics row hover
-  metricRowToggleOnBg: "rgba(30, 58, 138, 0.22)", // metrics row selected background
-  metricRowToggleOnBorder: "#3b82f6", // metrics row selected border
-  metricRowToggleOnGlow: "rgba(59, 130, 246, 0.35)", // metrics row selected glow
-  metricLabelText: "#94a3b8", // metric name
-  metricValueText: "#f8fafc", // metric value
-  metricUnitText: "#cbd5e1", // metric unit
-  metricToggleOnLabelText: "#dbeafe", // metric name when row selected
-  metricToggleOnUnitText: "#bfdbfe", // metric unit when row selected
-  targetLabel: "#d1d5db", // “Target” label
-  targetValue: "#4ade80", // history axis target ticks (green)
-  controlHoverBg: "#6b7280", // light control hover fill
-  settingsDialogShadow: "0 25px 50px -12px rgb(0 0 0 / 0.5)", // settings dialog shadow
-};
-
-/** Light theme: same roles as DARK_THEME_COLORS with light-surface-friendly values */
-const LIGHT_THEME_COLORS = {
-  pageBg: "#e5e7eb",
-  textPrimary: "#111827",
-  textSecondary: "#374151",
-  textMuted: "#334155",
-  textSubtle: "#475569",
-  panelBg: "#ffffff",
-  panelBgSplitter: "rgba(209, 213, 219, 0.95)",
-  insetBg: "#f9fafb",
-  insetDark: "rgba(241, 245, 249, 0.98)",
-  borderDefault: "rgba(148, 163, 184, 0.75)",
-  divider: "#d1d5db",
-  brand: "#2563eb",
-  brandLight: "#3b82f6",
-  brandHover: "#1d4ed8",
-  controlBg: "#e5e7eb",
-  peakSamplePeak: "rgba(217, 119, 6, 0.95)",
-  peakTruePeak: "rgba(8, 145, 178, 0.85)",
-  tpMaxText: "#0e7490",
-  correlation: {
-    bad: "#dc2626",
-    mid: "#ca8a04",
-    good: "#15803d",
-  },
-  loudnessTargetLine: "rgba(22, 163, 74, 0.8)", // history target guide (green)
-  settingsOverlay: "rgba(15, 23, 42, 0.35)",
-  settingsRowBg: "rgba(243, 244, 246, 0.95)",
-  legendHistOnBg: "#e5e7eb",
-  legendHistOnText: "#111827",
-  legendHistOffBg: "#f3f4f6",
-  legendHistOffText: "#4b5563",
-  metricRowBg: "rgba(255, 255, 255, 0.55)",
-  metricRowBorder: "rgba(148, 163, 184, 0.5)",
-  metricRowHoverBg: "rgba(248, 250, 252, 0.92)",
-  metricRowToggleOnBg: "rgba(219, 234, 254, 0.72)",
-  metricRowToggleOnBorder: "#2563eb",
-  metricRowToggleOnGlow: "rgba(37, 99, 235, 0.25)",
-  metricLabelText: "#475569",
-  metricValueText: "#0f172a",
-  metricUnitText: "#475569",
-  metricToggleOnLabelText: "#1e40af",
-  metricToggleOnUnitText: "#1d4ed8",
-  targetLabel: "#4b5563",
-  targetValue: "#15803d", // history axis target ticks (green)
-  controlHoverBg: "#d3ddea", // light control hover fill
-  settingsDialogShadow: "0 16px 34px -14px rgb(15 23 42 / 0.28)", // lighter dialog shadow on light chrome
-};
 
 export const UI_PREFERENCES = {
   layoutPersistKey: "am.react.layout",
@@ -304,18 +182,15 @@ export const UI_PREFERENCES = {
   },
 
   radii: {
-    card: "0.75rem",
+    card: "0.625rem",
     modal: "1rem",
     pill: "9999px",
     metricRow: "0.375rem",
   },
 
   themes: {
-    dark: {
-      colors: DARK_THEME_COLORS,
-    },
+    dark: {},
     light: {
-      colors: LIGHT_THEME_COLORS,
       charts: {
         loudnessHistory: {
           momentaryStroke: "#0e7490",
@@ -465,7 +340,10 @@ export function resolveEffectiveUiMode(stored, systemPrefersDark) {
 export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dark") {
   const m = mode === "light" ? "light" : "dark";
   const theme = prefs.themes[m];
-  const colors = theme.colors;
+  const semantic = m === "light" ? AUDIOMETER_SEMANTIC_LIGHT : AUDIOMETER_SEMANTIC_DARK;
+  applyColorSchemeClass(m);
+  applyShadcnSemanticTokensToDocument(semantic);
+  const colors = buildMeterColorBridge(semantic, m);
   const charts = getResolvedCharts(prefs, m);
   const spectrumGrid = mergeShallow(prefs.modules.spectrum.spectrumGrid, theme.spectrumGrid);
   const meterGradient = mergeShallow(prefs.modules.peak.meterGradient, theme.meterGradient);
@@ -555,6 +433,7 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
   setCssVar("--ui-chart-spectrum-fill-top", String(charts.spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-chart-spectrum-fill-bottom", String(charts.spectrum.fillOpacityBottom ?? 0.02));
 
+  setCssVar("--radius", radii.card);
   setCssVar("--ui-radius-card", radii.card);
   setCssVar("--ui-radius-modal", radii.modal);
   setCssVar("--ui-radius-pill", radii.pill);
@@ -661,6 +540,4 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
   setCssVar("--ui-sp-stroke-w", String(spectrum.strokeWidth));
   setCssVar("--ui-sp-fill-top", String(spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-sp-fill-bottom", String(spectrum.fillOpacityBottom ?? 0.02));
-
-  syncShadcnSemanticTokens(colors, m);
 }
