@@ -49,7 +49,7 @@
 
 **Tauri 2 + Rust（后端）+ React / Vite（前端）**
 
-**前端 UI 约定（展示层）**：壳与表单控件优先使用 **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)**（Radix 原语、`components.json`、`@/` 别名，源码位于 `src/components/ui/`）。表计绘图（SVG/canvas 与坐标映射）仍以专用布局与 `--ui-*` 变量为主；长期方向是 **壳用 Shadcn token、表计保留 `--ui-*` 中仅与图表相关的 token**，避免两套主题互相踩脚——详见 GitHub **#44** 跟踪 issue。
+**前端 UI 约定（展示层）**：壳与表单控件优先使用 **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)**（Radix 原语、`components.json`、`@/` 别名，源码位于 `src/components/ui/`）。**主题色单一来源**：`uiPreferences.js` 里 `themes[dark|light].colors` 在 `applyUiPreferencesToDocument` 中既写入 **`--ui-color-*`**，又通过 **`syncShadcnSemanticTokens`** 同步到 shadcn 语义变量（`--background`、`--card`、`--primary`、`--ring` 等），这样 Card/Select/Sheet 与 `.ui-page` 壳层随「Theme / 系统」切换保持一致；**频谱/响度/峰值等图表专用 stroke 与布局尺寸**仍只走 **`--ui-*`**，避免与 Radix 组件语义混淆。
 
 ### 为什么是这个组合
 

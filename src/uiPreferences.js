@@ -1,5 +1,7 @@
 /**
- * Single-file tunable UI tokens: `applyUiPreferencesToDocument` writes `--ui-*` CSS variables; layout + theme persist via `layoutPersistKey`.
+ * Single-file tunable UI tokens: `applyUiPreferencesToDocument` writes `--ui-*` CSS variables and syncs shadcn
+ * semantic tokens (`--background`, `--foreground`, `--card`, …) from the same theme `colors` object so Radix
+ * surfaces match the metering shell (see `syncShadcnSemanticTokens`). Layout + theme persist via `layoutPersistKey`.
  *
  * Sections (Ctrl+F):
  * - `layoutPersistKey` — localStorage key (changing key abandons data under the old key)
@@ -18,6 +20,35 @@
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
   document.documentElement.style.setProperty(name, String(value));
+}
+
+/**
+ * Maps `themes[mode].colors` onto shadcn CSS variables (`--background`, `--card`, …) so Tailwind/shadcn components
+ * track the active UI theme without duplicating hex values in `index.css`.
+ *
+ * Chart-only and layout tokens remain `--ui-*` only. Interactive accent follows `colors.brand` (primary / ring).
+ *
+ * @param {typeof DARK_THEME_COLORS} colors
+ * @param {"dark"|"light"} mode
+ */
+function syncShadcnSemanticTokens(colors, mode) {
+  setCssVar("--background", colors.pageBg);
+  setCssVar("--foreground", colors.textPrimary);
+  setCssVar("--card", colors.panelBg);
+  setCssVar("--card-foreground", colors.textPrimary);
+  setCssVar("--popover", colors.panelBg);
+  setCssVar("--popover-foreground", colors.textPrimary);
+  setCssVar("--muted", colors.insetBg);
+  setCssVar("--muted-foreground", colors.textMuted);
+  setCssVar("--accent", colors.controlBg);
+  setCssVar("--accent-foreground", colors.textPrimary);
+  setCssVar("--secondary", colors.panelBgSplitter);
+  setCssVar("--secondary-foreground", colors.textPrimary);
+  setCssVar("--border", colors.borderDefault);
+  setCssVar("--input", colors.borderDefault);
+  setCssVar("--primary", colors.brand);
+  setCssVar("--primary-foreground", mode === "light" ? "#ffffff" : "#fafafa");
+  setCssVar("--ring", colors.brandLight);
 }
 
 function mergeCharts(base, override) {
@@ -630,4 +661,6 @@ export function applyUiPreferencesToDocument(prefs = UI_PREFERENCES, mode = "dar
   setCssVar("--ui-sp-stroke-w", String(spectrum.strokeWidth));
   setCssVar("--ui-sp-fill-top", String(spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-sp-fill-bottom", String(spectrum.fillOpacityBottom ?? 0.02));
+
+  syncShadcnSemanticTokens(colors, m);
 }

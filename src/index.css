@@ -4,10 +4,12 @@
 /* Shadcn `dark:` modifier targets any descendant of an element with `.dark`. */
 @custom-variant dark (&:is(.dark *));
 
-/* ---------- Shadcn / professional dark theme tokens ----------
- * Independent from --ui-* (runtime-injected by `uiPreferences.applyUiPreferencesToDocument`).
- * `:root` defaults to the dark palette; `.dark` mirrors it so shadcn `dark:` variants resolve identically.
- * Accent: cyan-400 (#22d3ee). Surfaces: zinc-950/900. Borders: white/10.
+/* ---------- Shadcn semantic tokens (surfaces + accent) ----------
+ * Static values below are **first-paint fallbacks** before JS runs. On startup and theme changes,
+ * `applyUiPreferencesToDocument` overwrites `--background`, `--foreground`, `--card`, `--primary`, `--ring`, etc.
+ * from the same `themes[mode].colors` used for `--ui-color-*` (see `syncShadcnSemanticTokens` in `uiPreferences.js`).
+ * Chart stroke colours and layout metrics remain `--ui-*` only.
+ * `.dark` mirrors `:root` so shadcn `dark:` variants resolve identically.
  */
 :root {
   --radius: 0.5rem;
