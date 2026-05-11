@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { FREQ_LABELS, SPEC_Y_TICKS, freqToXFrac, spectrumDbToTopFrac, spectrumDbToYViewBox } from "../../scales";
 import { UI_PREFERENCES } from "../../uiPreferences";
@@ -18,6 +18,7 @@ export function SpectrumPanel({
   onSpectrumHoverLeave,
 }) {
   const spectrumSvgRef = useRef(null);
+  const glowFilterId = `sp-line-glow-${useId().replace(/:/g, "")}`;
   const reduceMotion = useReducedMotion();
   const displaySpectrumAreaPath = buildSpectrumAreaPath(displaySpectrumPath);
   const isSummedMultichannel = Number.isFinite(channelCount) && channelCount > 2;
@@ -69,26 +70,40 @@ export function SpectrumPanel({
                     <stop
                       offset="0%"
                       stopColor="var(--ui-chart-spectrum-live)"
-                      stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                      stopOpacity="var(--ui-sp-fill-top, 0.26)"
                     />
                     <stop
                       offset="100%"
                       stopColor="var(--ui-chart-spectrum-live)"
-                      stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                      stopOpacity="var(--ui-sp-fill-bottom, 0.045)"
                     />
                   </linearGradient>
                   <linearGradient id="spectrumFillSnap" x1="0" x2="0" y1="0" y2="1">
                     <stop
                       offset="0%"
                       stopColor="var(--ui-chart-spectrum-snap)"
-                      stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                      stopOpacity="var(--ui-sp-fill-top, 0.26)"
                     />
                     <stop
                       offset="100%"
                       stopColor="var(--ui-chart-spectrum-snap)"
-                      stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                      stopOpacity="var(--ui-sp-fill-bottom, 0.045)"
                     />
                   </linearGradient>
+                  <filter
+                    id={glowFilterId}
+                    x="-4%"
+                    y="-8%"
+                    width="108%"
+                    height="116%"
+                    filterUnits="objectBoundingBox"
+                  >
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="glowBlur" />
+                    <feMerge>
+                      <feMergeNode in="glowBlur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
                 </defs>
                 <g pointerEvents="none" aria-hidden>
                   {SPEC_Y_TICKS.map(({ v }) => (
@@ -138,7 +153,19 @@ export function SpectrumPanel({
                         d={displaySpectrumPath}
                         fill="none"
                         stroke={selectedOffset >= 0 ? "var(--ui-chart-spectrum-snap)" : "var(--ui-chart-spectrum-live)"}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={UI_PREFERENCES.modules.spectrum.charts.spectrum.strokeWidth + 5}
+                        opacity={selectedOffset >= 0 ? 0.22 : 0.28}
+                        filter={`url(#${glowFilterId})`}
+                      />
+                      <path
+                        d={displaySpectrumPath}
+                        fill="none"
+                        stroke={selectedOffset >= 0 ? "var(--ui-chart-spectrum-snap)" : "var(--ui-chart-spectrum-live)"}
                         strokeWidth={UI_PREFERENCES.modules.spectrum.charts.spectrum.strokeWidth}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
                       {displaySpectrumPeakPath ? (
                         <path
