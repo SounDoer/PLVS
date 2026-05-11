@@ -3,8 +3,8 @@
 
 use std::collections::HashSet;
 
-use crate::audio::device_id;
 use crate::audio::device::DeviceInfo;
+use crate::audio::device_id;
 use cpal::traits::{DeviceTrait, HostTrait};
 
 pub(crate) fn is_name_heuristic_loopback(name: &str) -> bool {
@@ -168,8 +168,8 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
   Ok(())
 }
 
-pub(crate) fn resolve_default_output(
-) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
+pub(crate) fn resolve_default_output() -> Result<(cpal::Device, cpal::SupportedStreamConfig), String>
+{
   let host = cpal::default_host();
   if let Some(def) = host.default_output_device() {
     let def_name = device_id_key(&def)?;

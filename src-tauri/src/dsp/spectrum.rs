@@ -78,11 +78,7 @@ fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
 fn bin_hz_edges(sr: f64, n_fft: usize, k: usize, bin_count: usize) -> (f64, f64) {
   let nf = n_fft as f64;
   let kk = k as f64;
-  let left = if k == 0 {
-    0.0
-  } else {
-    (kk - 0.5) * sr / nf
-  };
+  let left = if k == 0 { 0.0 } else { (kk - 0.5) * sr / nf };
   let right = if k + 1 >= bin_count {
     0.5 * sr
   } else {
