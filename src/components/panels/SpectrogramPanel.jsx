@@ -6,7 +6,7 @@ import {
   PANEL_MIN_SPECTROGRAM,
   W_SPECTRUM_Y_AXIS,
 } from "@/lib/shellLayout";
-import { FREQ_LABELS, freqToXFrac } from "../../scales";
+import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 
 function useCanvasSize(canvasRef, containerRef) {

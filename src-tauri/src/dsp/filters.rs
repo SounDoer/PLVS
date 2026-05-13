@@ -109,3 +109,58 @@ impl KWeightMono {
     self.s[1].tick(y0)
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn biquad_silence_in_silence_out() {
+    let c = BiquadCoeffs { b0: 1.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0 };
+    let mut f = Biquad::new(c);
+    for _ in 0..100 {
+      assert_eq!(f.tick(0.0), 0.0);
+    }
+  }
+
+  #[test]
+  fn biquad_unity_passthrough() {
+    // All-pass: b0=1, rest 0
+    let c = BiquadCoeffs { b0: 1.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0 };
+    let mut f = Biquad::new(c);
+    assert!((f.tick(0.5) - 0.5).abs() < 1e-12);
+    assert!((f.tick(-0.3) - (-0.3)).abs() < 1e-12);
+  }
+
+  #[test]
+  fn kweight_stereo_silence_in_silence_out() {
+    let mut kw = KWeightStereo::new(48000.0);
+    for _ in 0..200 {
+      let (l, r) = kw.tick_lr(0.0, 0.0);
+      assert!(l.abs() < 1e-30, "expected silence, got {l}");
+      assert!(r.abs() < 1e-30, "expected silence, got {r}");
+    }
+  }
+
+  #[test]
+  fn kweight_mono_silence_in_silence_out() {
+    let mut kw = KWeightMono::new(48000.0);
+    for _ in 0..200 {
+      let y = kw.tick(0.0);
+      assert!(y.abs() < 1e-30, "expected silence, got {y}");
+    }
+  }
+
+  #[test]
+  fn kweight_stereo_settles_after_impulse() {
+    let mut kw = KWeightStereo::new(48000.0);
+    kw.tick_lr(1.0, 1.0);
+    for _ in 0..2000 {
+      let (l, r) = kw.tick_lr(0.0, 0.0);
+      let _ = (l, r);
+    }
+    let (l, r) = kw.tick_lr(0.0, 0.0);
+    assert!(l.abs() < 1e-4, "filter did not settle: l={l}");
+    assert!(r.abs() < 1e-4, "filter did not settle: r={r}");
+  }
+}

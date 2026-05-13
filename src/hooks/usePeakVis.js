@@ -1,4 +1,4 @@
-import { peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../scales.js";
+import { peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../config/scales.js";
 import { samplePeakLineColor } from "../math/colorMath.js";
 import { getBuiltinTheme } from "../theme/builtinThemes.js";
 

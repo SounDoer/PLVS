@@ -6,8 +6,8 @@ import { useSettings } from "./useSettings";
 import { useSnapshot } from "./useSnapshot";
 import { useTauriFrameSubscription } from "./useTauriFrameSubscription";
 import { useFloatEngineState } from "./useFloatEngineState";
-import { seedFloatHistoryFromRows } from "./floatHistorySeed.js";
-import { resetFloatMeteringState } from "./resetFloatMeteringState.js";
+import { seedFloatHistoryFromRows } from "../lib/floatHistorySeed.js";
+import { resetFloatMeteringState } from "../lib/resetFloatMeteringState.js";
 
 const HIST_MAX_SAMPLES = 36000;
 const HIST_SAMPLE_SEC = 0.1;

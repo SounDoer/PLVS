@@ -9,7 +9,7 @@ import {
 } from "../ipc/commands.js";
 import { onLoudnessSlow } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
-import { buildTauriFrameApply } from "./tauriFrameApply.js";
+import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
 export function useAudioEngine({
   running,

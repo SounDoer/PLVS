@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { loudnessFromTopFrac, freqToXFrac, spectrumDbToTopFrac } from "../scales";
+import { loudnessFromTopFrac, freqToXFrac, spectrumDbToTopFrac } from "../config/scales";
 
 function formatHoverOffset(sec) {
   const s = Math.max(0, sec);

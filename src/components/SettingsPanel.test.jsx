@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
-import { LOUDNESS_REFERENCE_PROFILES } from "../loudnessReferenceProfiles.js";
+import { LOUDNESS_REFERENCE_PROFILES } from "../config/loudnessReferenceProfiles.js";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 
 beforeEach(() => {

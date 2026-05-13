@@ -2,7 +2,7 @@ import { useEffect, useId, useRef } from "react";
 import { meterAddFrameSubscriber, meterRemoveFrameSubscriber } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { onLoudnessSlow, onSampleRateChanged } from "../ipc/events.js";
-import { buildTauriFrameApply } from "./tauriFrameApply.js";
+import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
 /**
  * Extra webview: attach to the same native frame stream as the main window (no second `audio_start`).

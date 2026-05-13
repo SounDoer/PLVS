@@ -3,7 +3,7 @@ import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
-import { PEAK_TICKS, peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../../scales";
+import { PEAK_TICKS, peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../../config/scales";
 import { getPeakChannels } from "../../math/peakChannelMath";
 
 function AnimatedPeakFill({ dbValue }) {

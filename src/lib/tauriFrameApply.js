@@ -1,4 +1,4 @@
-import { buildRtaBands, SPECTRUM_SETTINGS } from "../scales.js";
+import { buildRtaBands, SPECTRUM_SETTINGS } from "../config/scales.js";
 
 /**
  * @param {import("../ipc/types.js").MeterHistoryEntry} row

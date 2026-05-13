@@ -29,6 +29,16 @@ export default defineConfig({
       ignored: ["**/src-tauri/**"],
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["src/**/*.{js,jsx}"],
+      exclude: ["src/generated/**", "src/components/ui/**"],
+    },
+  },
   envPrefix: ["VITE_", "TAURI_"],
   build: {
     // Tauri injects TAURI_ENV_PLATFORM during `tauri build`; plain `vite build` must keep a modern target.

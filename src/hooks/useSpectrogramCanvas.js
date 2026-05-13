@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { spectrogramColor, spectrogramVisibleRange, SPEC_DB_MIN, SPEC_DB_MAX } from "../scales.js";
+import { spectrogramColor, spectrogramVisibleRange, SPEC_DB_MIN, SPEC_DB_MAX } from "../config/scales.js";
 import { HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 
 // Flat RGB byte lookup (256 entries × 3 bytes) for zero-allocation hot path.

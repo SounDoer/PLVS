@@ -14,7 +14,7 @@ import {
   freqToXFrac,
   spectrumDbToTopFrac,
   spectrumDbToYViewBox,
-} from "../../scales";
+} from "../../config/scales";
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
   return `${path} L 1000 260 L 0 260 Z`;

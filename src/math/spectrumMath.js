@@ -1,4 +1,4 @@
-import { freqToXFrac, spectrumDbToYViewBox } from "../scales";
+import { freqToXFrac, spectrumDbToYViewBox } from "../config/scales";
 
 const SPECTRUM_VIEW_W = 1000;
 

@@ -11,7 +11,7 @@ import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/built
 import {
   getDefaultLoudnessReferenceProfileId,
   normalizeLoudnessReferenceProfileId,
-} from "../loudnessReferenceProfiles";
+} from "../config/loudnessReferenceProfiles";
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);

@@ -76,3 +76,53 @@ impl VectorscopeState {
     (corr, vp)
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn empty_slices_return_zero_corr_and_empty_path() {
+    let mut vs = VectorscopeState::new();
+    let (corr, path) = vs.process(&[], &[]);
+    assert_eq!(corr, 0.0);
+    assert!(path.is_empty());
+  }
+
+  #[test]
+  fn in_phase_gives_correlation_one() {
+    let mut vs = VectorscopeState::new();
+    let signal: Vec<f32> = (0..48).map(|i| (i as f32 * 0.02).sin() * 0.5).collect();
+    let (corr, path) = vs.process(&signal, &signal);
+    assert!((corr - 1.0).abs() < 1e-6, "expected corr≈1.0, got {corr}");
+    assert!(path.starts_with('M'), "expected SVG path starting with M, got: {path}");
+  }
+
+  #[test]
+  fn out_of_phase_gives_correlation_minus_one() {
+    let mut vs = VectorscopeState::new();
+    let l: Vec<f32> = (0..48).map(|i| (i as f32 * 0.02).sin() * 0.5).collect();
+    let r: Vec<f32> = l.iter().map(|&x| -x).collect();
+    let (corr, _) = vs.process(&l, &r);
+    assert!((corr + 1.0).abs() < 1e-6, "expected corr≈-1.0, got {corr}");
+  }
+
+  #[test]
+  fn silence_gives_zero_correlation_and_center_point() {
+    let mut vs = VectorscopeState::new();
+    let zeros = vec![0.0f32; 12];
+    let (corr, path) = vs.process(&zeros, &zeros);
+    assert_eq!(corr, 0.0);
+    assert!(path.starts_with("M 130.00 130.00"), "expected center point, got: {path}");
+  }
+
+  #[test]
+  fn reset_clears_extent_hold() {
+    let mut vs = VectorscopeState::new();
+    let loud: Vec<f32> = vec![0.9; 12];
+    vs.process(&loud, &loud);
+    vs.reset();
+    let (_, path_after) = vs.process(&[0.0f32; 12], &[0.0f32; 12]);
+    assert!(path_after.starts_with("M 130.00 130.00"), "reset should clear extent hold");
+  }
+}

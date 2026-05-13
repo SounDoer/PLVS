@@ -7,7 +7,7 @@ import {
   PANEL_MIN_HISTORY,
   W_LOUDNESS_Y_AXIS,
 } from "@/lib/shellLayout";
-import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, loudnessFromTopFrac } from "../../scales";
+import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, loudnessFromTopFrac } from "../../config/scales";
 import { fmtSec } from "../../math/formatMath";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";

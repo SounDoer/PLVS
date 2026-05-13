@@ -64,6 +64,7 @@ export function SettingsPanel({
     <Sheet open={settingsOpen} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
+        aria-describedby={undefined}
         className={cn(
           "w-full gap-0 overflow-y-auto border-border bg-card/95 p-6 backdrop-blur-md sm:max-w-md",
           "pt-12"

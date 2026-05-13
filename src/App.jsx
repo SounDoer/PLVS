@@ -22,7 +22,7 @@ import {
   clampVectorscopePairToAvailable,
 } from "./math/vectorscopePairMath.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
-import { LOUDNESS_REFERENCE_PROFILES } from "./loudnessReferenceProfiles.js";
+import { LOUDNESS_REFERENCE_PROFILES } from "./config/loudnessReferenceProfiles.js";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";

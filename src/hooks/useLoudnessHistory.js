@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loudnessHistY, LOUDNESS_TICKS } from "../scales";
+import { loudnessHistY, LOUDNESS_TICKS } from "../config/scales";
 import {
   buildHistoryPath,
   buildHistoryTimeAxisLabels,
   getHistoryViewport,
 } from "../math/historyMath";
 import { fmtMetric } from "../math/formatMath";
-import { getLoudnessReferenceProfileById } from "../loudnessReferenceProfiles.js";
+import { getLoudnessReferenceProfileById } from "../config/loudnessReferenceProfiles.js";
 import { UI_PREFERENCES } from "../uiPreferences";
 
 export const HIST_SAMPLE_SEC = 0.1;
