@@ -5,12 +5,12 @@ const cfg = { top: "#ff0000", mid: "#ffff00", bottom: "#00ff00", midStopPercent:
 
 describe("samplePeakLineColor", () => {
   it("returns fallback for non-finite dB", () => {
-    expect(samplePeakLineColor(-Infinity, () => 0, cfg)).toBe("var(--ui-color-peak-sample)");
-    expect(samplePeakLineColor(NaN, () => 0, cfg)).toBe("var(--ui-color-peak-sample)");
+    expect(samplePeakLineColor(-Infinity, () => 0, cfg)).toBe("var(--ui-signal-peak-sample)");
+    expect(samplePeakLineColor(NaN, () => 0, cfg)).toBe("var(--ui-signal-peak-sample)");
   });
   it("returns fallback for invalid hex colors in config", () => {
     const badCfg = { top: "red", mid: "blue", bottom: "green", midStopPercent: 50 };
-    expect(samplePeakLineColor(-10, () => 0.5, badCfg)).toBe("var(--ui-color-peak-sample)");
+    expect(samplePeakLineColor(-10, () => 0.5, badCfg)).toBe("var(--ui-signal-peak-sample)");
   });
   it("returns an rgb() string for valid inputs", () => {
     const result = samplePeakLineColor(-10, () => 0.5, cfg);

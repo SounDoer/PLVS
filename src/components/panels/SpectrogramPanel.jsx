@@ -50,28 +50,28 @@ export function SpectrogramPanel({
     <Card
       className={cn(
         PANEL_MIN_SPECTROGRAM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
       )}
     >
       <CardHeader className="flex min-w-0 flex-row items-center justify-between gap-2 space-y-0 p-0 pb-0">
-        <CardTitle className="min-w-0 truncate text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+        <CardTitle className="min-w-0 truncate text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
           Spectrogram
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
         <div
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] gap-x-[var(--ui-axis-gap-y)] items-stretch",
+            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] gap-x-[var(--ui-chart-axis-gap)] items-stretch",
             PANEL_MIN_SPECTROGRAM
           )}
         >
           <div
             className={cn(
               W_SPECTRUM_Y_AXIS,
-              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-muted-foreground"
+              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
             )}
           >
-            <div className="absolute inset-x-0 top-[var(--ui-spectrum-display-top-inset)] bottom-[var(--ui-spectrum-display-bottom-inset)]">
+            <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
               {FREQ_LABELS.map(([hz, label]) => (
                 <span
                   key={hz}

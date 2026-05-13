@@ -31,7 +31,7 @@ export function samplePeakLineColor(
   dbValue,
   dbToTopFrac,
   meterGradientCfg,
-  fallback = "var(--ui-color-peak-sample)"
+  fallback = "var(--ui-signal-peak-sample)"
 ) {
   if (!Number.isFinite(dbValue)) return fallback;
   const t = dbToTopFrac(dbValue);

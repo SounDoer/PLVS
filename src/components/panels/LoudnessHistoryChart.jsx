@@ -13,10 +13,10 @@ import { fmtSec } from "../../math/formatMath";
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
 const LOUDNESS_HUD_BOX =
-  "rounded border border-border bg-secondary px-2 py-0.5 text-[length:var(--ui-fs-axis-value)] text-muted-foreground";
+  "rounded border border-border bg-secondary px-2 py-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground";
 
 const LOUDNESS_HUD_BOX_POPOVER =
-  "rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis-value)] text-muted-foreground shadow-sm";
+  "rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm";
 
 export function LoudnessHistoryChart({
   historyYAxisTicks,
@@ -95,7 +95,7 @@ export function LoudnessHistoryChart({
   return (
     <div
       className={cn(
-        "grid min-h-0 h-full grid-cols-[var(--ui-w-loudness-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch",
+        "grid min-h-0 h-full grid-cols-[var(--ui-w-loudness-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch",
         PANEL_MIN_HISTORY
       )}
     >
@@ -103,10 +103,10 @@ export function LoudnessHistoryChart({
       <div
         className={cn(
           W_LOUDNESS_Y_AXIS,
-          "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-muted-foreground"
+          "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
         )}
       >
-        <div className="absolute inset-x-0 top-[var(--ui-history-display-top-inset)] bottom-[var(--ui-history-display-bottom-inset)]">
+        <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
           {historyYAxisTicksLabeled.map(({ v, lb }) => {
             const isTargetTick = v === targetLufs;
             const tickClass = isTargetTick
@@ -167,7 +167,7 @@ export function LoudnessHistoryChart({
         {/* Horizontal grid lines */}
         <div
           ref={historyGridRef}
-          className="pointer-events-none absolute inset-x-[var(--ui-history-svg-pad)] top-[var(--ui-history-display-top-inset)] bottom-[var(--ui-history-display-bottom-inset)] z-0"
+          className="pointer-events-none absolute inset-x-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-0"
         >
           {historyYAxisTicksLabeled.map(({ v }) => {
             if (v === targetLufs && hasHistoryData) return null;
@@ -190,7 +190,7 @@ export function LoudnessHistoryChart({
         <svg
           viewBox="0 0 600 220"
           preserveAspectRatio="none"
-          className="relative z-[1] h-full w-full px-[var(--ui-history-svg-pad)] pt-[var(--ui-history-display-top-inset)] pb-[var(--ui-history-display-bottom-inset)]"
+          className="relative z-[1] h-full w-full px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
         >
           {histCurves.m && displayHistoryPathM && (
             <path
@@ -228,7 +228,7 @@ export function LoudnessHistoryChart({
         </svg>
 
         {/* Overlays: reference line, hover crosshair, HUD boxes */}
-        <div className="pointer-events-none absolute inset-x-[var(--ui-history-svg-pad)] top-[var(--ui-history-display-top-inset)] bottom-[var(--ui-history-display-bottom-inset)] z-10">
+        <div className="pointer-events-none absolute inset-x-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
           {referenceLufs != null ? (
             <>
               <div
@@ -254,7 +254,7 @@ export function LoudnessHistoryChart({
               />
               <div
                 className={cn(
-                  "absolute left-[var(--ui-hud-inset)] bottom-[var(--ui-hud-inset)] opacity-90",
+                  "absolute left-[var(--ui-chart-hud-inset)] bottom-[var(--ui-chart-hud-inset)] opacity-90",
                   LOUDNESS_HUD_BOX
                 )}
               >
@@ -277,7 +277,7 @@ export function LoudnessHistoryChart({
           {isHistoryHudVisible && (
             <div
               className={cn(
-                "absolute bottom-[var(--ui-hud-inset)] right-[var(--ui-hud-inset)]",
+                "absolute bottom-[var(--ui-chart-hud-inset)] right-[var(--ui-chart-hud-inset)]",
                 LOUDNESS_HUD_BOX
               )}
             >
@@ -289,11 +289,11 @@ export function LoudnessHistoryChart({
           {historyHover ? (
             <div
               className={cn(
-                "absolute left-[var(--ui-hud-inset)] top-[var(--ui-hud-inset)]",
+                "absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)]",
                 LOUDNESS_HUD_BOX_POPOVER
               )}
             >
-              <div>{historyHover.offsetLabel}</div>
+              <div><span className={METRIC_NUMERIC}>{historyHover.offsetLabel}</span></div>
               <div>
                 M{" "}
                 <span className={METRIC_NUMERIC}>
@@ -318,7 +318,7 @@ export function LoudnessHistoryChart({
       {/* X-axis time labels */}
       <div />
       <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)]")}>
-        <div className="absolute inset-x-[var(--ui-history-svg-pad)] top-0 h-full">
+        <div className="absolute inset-x-[var(--ui-chart-pad)] top-0 h-full">
           {historyTimeTicks.map((tick, i) => {
             if (i === 0) {
               return (

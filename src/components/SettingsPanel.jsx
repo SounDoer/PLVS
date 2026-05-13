@@ -89,8 +89,8 @@ export function SettingsPanel({
                   : { type: "spring", stiffness: 420, damping: 36, mass: 0.35 }
               }
             >
-              <SheetHeader className="mb-[var(--ui-settings-header-gap)] space-y-0 p-0 pr-10 text-left">
-                <SheetTitle className="text-lg font-semibold tracking-tight">Settings</SheetTitle>
+              <SheetHeader className="mb-[var(--ui-modal-header-gap)] space-y-0 p-0 pr-10 text-left">
+                <SheetTitle className="text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">Settings</SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]">
                 <div className="grid gap-2">

@@ -34,6 +34,13 @@ const BASE_PROPS = {
 };
 
 describe("SettingsPanel", () => {
+  it("Settings title uses --ui-fs-panel-title token, not hardcoded text-lg", () => {
+    render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
+    const title = screen.getByText("Settings");
+    expect(title.className).not.toContain("text-lg");
+    expect(title.className).toContain("--ui-fs-panel-title");
+  });
+
   it("renders core controls when open in system mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
     expect(screen.getByLabelText("Loudness reference")).toBeTruthy();

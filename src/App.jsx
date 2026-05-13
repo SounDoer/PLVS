@@ -54,11 +54,11 @@ const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
 
 /** Horizontal layout rails (column resize): subtle cyan-tinted hover glow using injected `--ui-*` tokens */
 const RESIZE_COL_CLASS =
-  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
+  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-[var(--radius)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
 
 /** Vertical layout rails (row resize) */
 const RESIZE_ROW_CLASS =
-  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--ui-radius-card)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--ui-color-brand)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--ui-color-brand)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--ui-color-brand)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-brand)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--ui-color-brand)_24%,transparent)]";
+  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--radius)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
 export default function App() {
   const {
     settingsOpen,
@@ -560,14 +560,14 @@ export default function App() {
         </header>
 
         <main
-          className="min-h-0 flex-1 gap-[var(--ui-section-gap)] overflow-y-auto lg:flex lg:flex-col lg:gap-0 lg:overflow-hidden lg:min-h-0"
+          className="min-h-0 flex-1 gap-[var(--ui-panel-gap)] overflow-y-auto lg:flex lg:flex-col lg:gap-0 lg:overflow-hidden lg:min-h-0"
         >
           <div
-            className="lg:grid lg:min-h-0 lg:gap-0 lg:grid-cols-[var(--left)_var(--ui-splitter-main)_1fr] lg:grid-rows-[minmax(0,1fr)]"
+            className="lg:grid lg:min-h-0 lg:gap-0 lg:grid-cols-[var(--left)_var(--ui-panel-gap)_1fr] lg:grid-rows-[minmax(0,1fr)]"
             style={{ "--left": `${mainLeft}px`, height: `${Math.round(spectrogramTopRatio * 100)}%` }}
           >
           <section
-            className="grid min-h-0 gap-[var(--ui-section-gap)] lg:h-full lg:min-h-0 lg:gap-0 lg:grid-rows-[var(--leftTop)_var(--ui-splitter-row)_minmax(0,1fr)]"
+            className="grid min-h-0 gap-[var(--ui-panel-gap)] lg:h-full lg:min-h-0 lg:gap-0 lg:grid-rows-[var(--leftTop)_var(--ui-panel-gap)_minmax(0,1fr)]"
             style={{ "--leftTop": `${Math.round(leftTopRatio * 100)}%` }}
           >
             <PeakPanel
@@ -615,7 +615,7 @@ export default function App() {
           />
 
           <section
-            className="grid min-h-0 gap-[var(--ui-section-gap)] lg:h-full lg:min-h-0 lg:gap-0 lg:grid-rows-[var(--rightTop)_var(--ui-splitter-row)_minmax(0,1fr)]"
+            className="grid min-h-0 gap-[var(--ui-panel-gap)] lg:h-full lg:min-h-0 lg:gap-0 lg:grid-rows-[var(--rightTop)_var(--ui-panel-gap)_minmax(0,1fr)]"
             style={{ "--rightTop": `${Math.round(rightTopRatio * 100)}%` }}
           >
             <LoudnessPanel

@@ -63,15 +63,15 @@ export function PeakPanel({
     <Card
       className={cn(
         PANEL_MIN_PEAK,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
       )}
     >
       <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
-        <CardTitle className="text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+        <CardTitle className="text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
           Peak
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
         <div
           className={cn(
             "grid min-h-0 flex-1 grid-cols-[auto_1fr] gap-[var(--ui-peak-axis-chart-gap)]",
@@ -81,10 +81,10 @@ export function PeakPanel({
           <div
             className={cn(
               W_PEAK_TICKS,
-              "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis-value)] text-muted-foreground"
+              "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
             )}
           >
-            <div className="absolute inset-x-0 top-[var(--ui-peak-display-top-inset)] bottom-[var(--ui-peak-display-bottom-inset)]">
+            <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
               {PEAK_TICKS.map(({ v, lb }) => (
                 <span
                   key={v}
@@ -102,7 +102,7 @@ export function PeakPanel({
                 key={`${idx}-${c.label}`}
                 className="relative h-full min-h-0 rounded-lg bg-muted p-0"
               >
-                <div className="absolute inset-x-[var(--ui-meter-chart-inset-x)] bottom-[var(--ui-peak-display-bottom-inset)] top-[var(--ui-peak-display-top-inset)]">
+                <div className="absolute inset-x-[var(--ui-meter-chart-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
                   <AnimatedPeakFill dbValue={c.valueDb} />
                   {Number.isFinite(c.holdDb) && (
                     <AnimatedHoldLine
@@ -111,7 +111,7 @@ export function PeakPanel({
                     />
                   )}
                 </div>
-                <div className="absolute left-[var(--ui-meter-label-left-inset)] right-0 top-[var(--ui-meter-label-top-inset)] text-left text-[length:var(--ui-fs-extra)] text-muted-foreground">
+                <div className="absolute left-[var(--ui-meter-label-left-inset)] right-0 top-[var(--ui-meter-label-top-inset)] text-left text-[length:var(--ui-fs-display)] text-muted-foreground">
                   {c.label}{" "}
                   <span className="font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
                     {fmt(c.valueDb)}
@@ -121,14 +121,14 @@ export function PeakPanel({
             ))}
           </div>
         </div>
-        <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-extra)]">
+        <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-display)]">
           <div className="shrink-0" style={{ width: "var(--ui-tp-info-left-blank)" }} />
-          <div className="flex items-baseline gap-[var(--ui-inline-value-gap)]">
+          <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
             <span className="text-muted-foreground">TP MAX</span>
             <span
               className={
                 hasTpMaxValue
-                  ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-color-tp-max)]"
+                  ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-signal-tp-max)]"
                   : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
               }
             >

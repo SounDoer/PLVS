@@ -28,15 +28,15 @@ export function VectorscopePanel({
     <Card
       className={cn(
         PANEL_MIN_SPECTRUM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
       )}
     >
       <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
-        <CardTitle className="min-w-0 text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+        <CardTitle className="min-w-0 text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
           Vectorscope
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
         <div className="relative min-h-0 flex-1 rounded-lg bg-muted">
           <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             <svg
@@ -124,14 +124,14 @@ export function VectorscopePanel({
             {axisYLabel}
           </span>
         </div>
-        <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-extra)]">
+        <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-display)]">
           <div className="shrink-0" style={{ width: "var(--ui-corr-info-left-blank)" }} />
-          <div className="flex items-baseline gap-[var(--ui-inline-value-gap)]">
+          <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
             <span className="text-muted-foreground">CORRELATION</span>
             <span
               className={
                 Number.isFinite(correlation)
-                  ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-color-tp-max)]"
+                  ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-signal-tp-max)]"
                   : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
               }
             >

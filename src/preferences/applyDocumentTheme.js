@@ -40,20 +40,17 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorSchem
 
   const s = typography.sizesPx;
   setCssVar("--ui-fs-app-title", `${s.title}px`);
-  setCssVar("--ui-fs-section", `${s.section}px`);
-  setCssVar("--ui-fs-settings-heading", `${s.section}px`);
-  setCssVar("--ui-fs-axis-value", `${s.axisValue}px`);
-  setCssVar("--ui-fs-axis-unit", `${s.axisUnit}px`);
-  setCssVar("--ui-fs-extra", `${s.extraValue}px`);
+  setCssVar("--ui-fs-panel-title", `${s.section}px`);
+  setCssVar("--ui-fs-axis", `${s.axisUnit}px`);
+  setCssVar("--ui-fs-display", `${s.extraValue}px`);
   setCssVar("--ui-fs-metric-meta", `${s.metricMeta}px`);
   setCssVar("--ui-fs-metric-value", `${s.metricValue}px`);
-  setCssVar("--ui-fs-action", `${s.action}px`);
+  setCssVar("--ui-fs-controls", `${s.action}px`);
   setCssVar("--ui-fs-status", `${s.status}px`);
   setCssVar("--ui-fw-app-title", String(typography.weights.appTitle));
   setCssVar("--ui-fw-section", String(typography.weights.section));
 
   setCssVar("--radius", radii.card);
-  setCssVar("--ui-radius-card", radii.card);
   setCssVar("--ui-radius-modal", radii.modal);
   setCssVar("--ui-radius-pill", radii.pill);
   setCssVar("--ui-radius-metric-row", radii.metricRow);
@@ -77,9 +74,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorSchem
   setCssVar("--ui-w-spectrum-y-axis", `${widthsPx.spectrumYAxis}px`);
   setCssVar("--ui-w-peak-ticks", `${widthsPx.peakTickCol}px`);
 
-  setCssVar("--ui-section-gap", `${splitters.sectionGapPx}px`);
-  setCssVar("--ui-splitter-main", `${splitters.sectionGapPx}px`);
-  setCssVar("--ui-splitter-row", `${splitters.sectionGapPx}px`);
+  setCssVar("--ui-panel-gap", `${splitters.sectionGapPx}px`);
   setCssVar("--ui-loudness-gap", `${splitters.loudnessGapPx}px`);
   setCssVar("--ui-splitter-bar-thickness", `${splitters.barThicknessPx}px`);
 
@@ -92,48 +87,39 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorSchem
   setCssVar("--ui-header-pad-x", `${header.paddingXRem}rem`);
   setCssVar("--ui-header-pad-y", `${header.paddingYRem}rem`);
 
-  setCssVar("--ui-article-pad-x", `${articlePadding.defaultXRem}rem`);
-  setCssVar("--ui-article-pad-y", `${articlePadding.defaultYRem}rem`);
-  setCssVar("--ui-article-pad-metrics", `${articlePadding.metricsRem}rem`);
-  setCssVar("--ui-section-title-gap", `${articlePadding.sectionTitleGapRem}rem`);
-  setCssVar("--ui-metrics-title-gap", `${articlePadding.metricsTitleGapRem}rem`);
+  setCssVar("--ui-panel-pad-x", `${articlePadding.defaultXRem}rem`);
+  setCssVar("--ui-panel-pad-y", `${articlePadding.defaultYRem}rem`);
+  setCssVar("--ui-panel-pad-metrics", `${articlePadding.metricsRem}rem`);
+  setCssVar("--ui-panel-title-gap", `${articlePadding.sectionTitleGapRem}rem`);
+  setCssVar("--ui-metric-title-gap", `${articlePadding.metricsTitleGapRem}rem`);
 
   setCssVar("--ui-panel-footer-gap", `${spacingRem.panelFooterGap}rem`);
-  setCssVar("--ui-metrics-list-gap", `${spacingRem.metricsListGap}rem`);
-  setCssVar("--ui-axis-gap-x", `${spacingRem.axisGapX}rem`);
+  setCssVar("--ui-metric-list-gap", `${spacingRem.metricsListGap}rem`);
+  setCssVar("--ui-chart-axis-gap", `${spacingRem.axisGapX}rem`);
   setCssVar("--ui-header-action-gap", `${spacingRem.headerActionGap}rem`);
-  setCssVar("--ui-inline-value-gap", `${spacingRem.inlineValueGap}rem`);
+  setCssVar("--ui-metric-inline-gap", `${spacingRem.inlineValueGap}rem`);
   setCssVar("--ui-tp-info-left-blank", `${spacingRem.tpInfoLeftBlank}rem`);
   setCssVar("--ui-corr-info-left-blank", `${spacingRem.corrInfoLeftBlank}rem`);
-  setCssVar("--ui-axis-gap-y", `${spacingRem.axisGapY}rem`);
   setCssVar("--ui-peak-axis-chart-gap", `${spacingRem.peakAxisChartGap}rem`);
   setCssVar("--ui-peak-channel-gap", `${spacingRem.peakChannelGap}rem`);
-  setCssVar("--ui-peak-display-top-inset", `${spacingRem.peakDisplayTopInset}rem`);
-  setCssVar("--ui-peak-display-bottom-inset", `${spacingRem.peakDisplayBottomInset}rem`);
+  setCssVar("--ui-chart-inset-top", `${spacingRem.spectrumDisplayTopInset}rem`);
+  setCssVar("--ui-chart-inset-bottom", `${spacingRem.spectrumDisplayBottomInset}rem`);
   setCssVar("--ui-meter-chart-inset-x", `${spacingRem.meterChartInsetX}rem`);
   setCssVar("--ui-meter-label-left-inset", `${spacingRem.meterLabelLeftInset}rem`);
   setCssVar("--ui-meter-label-top-inset", `${spacingRem.meterLabelTopInset}rem`);
   setCssVar("--ui-chart-outer-inset", `${spacingRem.chartOuterInset}rem`);
   setCssVar("--ui-vector-corner-inset", `${spacingRem.vectorCornerInset}rem`);
-  setCssVar("--ui-history-display-top-inset", `${spacingRem.historyDisplayTopInset}rem`);
-  setCssVar("--ui-history-display-bottom-inset", `${spacingRem.historyDisplayBottomInset}rem`);
-  setCssVar("--ui-history-svg-pad", `${spacingRem.historySvgPad}rem`);
-  setCssVar("--ui-hud-inset", `${spacingRem.hudInset}rem`);
-  setCssVar("--ui-spectrum-display-top-inset", `${spacingRem.spectrumDisplayTopInset}rem`);
-  setCssVar("--ui-spectrum-display-bottom-inset", `${spacingRem.spectrumDisplayBottomInset}rem`);
-  setCssVar("--ui-spectrum-svg-pad", `${spacingRem.spectrumSvgPad}rem`);
+  setCssVar("--ui-chart-pad", `${spacingRem.historySvgPad}rem`);
+  setCssVar("--ui-chart-hud-inset", `${spacingRem.hudInset}rem`);
 
   setCssVar("--ui-footer-pad-x", `${footer.paddingXRem}rem`);
   setCssVar("--ui-footer-pad-y", `${footer.paddingYRem}rem`);
 
-  setCssVar("--ui-settings-modal-max-w", `${settingsModal.maxWidthRem}rem`);
-  setCssVar("--ui-settings-modal-pad", `${settingsModal.paddingRem}rem`);
-  setCssVar("--ui-settings-overlay-pad", `${settingsModal.overlayPaddingRem}rem`);
-  setCssVar("--ui-settings-header-gap", `${settingsModal.headerGapRem}rem`);
-  setCssVar("--ui-settings-content-gap", `${settingsModal.contentGapRem}rem`);
-  setCssVar("--ui-settings-inline-gap", `${settingsModal.inlineGapRem}rem`);
-  setCssVar("--ui-settings-action-pad-x", `${settingsModal.actionPadXRem}rem`);
-  setCssVar("--ui-settings-action-pad-y", `${settingsModal.actionPadYRem}rem`);
+  setCssVar("--ui-modal-pad", `${settingsModal.paddingRem}rem`);
+  setCssVar("--ui-modal-header-gap", `${settingsModal.headerGapRem}rem`);
+  setCssVar("--ui-modal-gap", `${settingsModal.contentGapRem}rem`);
+  setCssVar("--ui-modal-action-pad-x", `${settingsModal.actionPadXRem}rem`);
+  setCssVar("--ui-modal-action-pad-y", `${settingsModal.actionPadYRem}rem`);
 }
 
 /**
@@ -151,49 +137,22 @@ export function applyThemeToDocument(themeId) {
   const bridge = buildMeterColorBridge(theme.semantic, theme.colorScheme);
   const colors = { ...bridge, ...(theme.meterColorOverrides ?? {}) };
 
-  setCssVar("--ui-color-page-bg", colors.pageBg);
-  setCssVar("--ui-color-text-primary", colors.textPrimary);
-  setCssVar("--ui-color-text-secondary", colors.textSecondary);
-  setCssVar("--ui-color-text-muted", colors.textMuted);
-  setCssVar("--ui-color-text-subtle", colors.textSubtle);
-  setCssVar("--ui-color-panel-bg", colors.panelBg);
-  setCssVar("--ui-color-panel-bg-splitter", colors.panelBgSplitter);
-  setCssVar("--ui-color-inset-bg", colors.insetBg);
   setCssVar("--ui-color-inset-dark", colors.insetDark);
-  setCssVar("--ui-color-border-default", colors.borderDefault);
-  setCssVar("--ui-color-divider", colors.divider);
-  setCssVar("--ui-color-brand", colors.brand);
-  setCssVar("--ui-color-brand-light", colors.brandLight);
-  setCssVar("--ui-color-brand-hover", colors.brandHover);
-  setCssVar("--ui-color-control-bg", colors.controlBg);
-  setCssVar("--ui-color-peak-sample", colors.peakSamplePeak);
-  setCssVar("--ui-color-peak-true", colors.peakTruePeak);
-  setCssVar("--ui-color-tp-max", colors.tpMaxText);
-  setCssVar("--ui-color-corr-bad", colors.correlation.bad);
-  setCssVar("--ui-color-corr-mid", colors.correlation.mid);
-  setCssVar("--ui-color-corr-good", colors.correlation.good);
-  setCssVar("--ui-color-loudness-target-line", colors.loudnessTargetLine);
   setCssVar("--ui-color-settings-overlay", colors.settingsOverlay);
-  setCssVar("--ui-color-settings-row-bg", colors.settingsRowBg);
-  setCssVar("--ui-color-legend-on-bg", colors.legendHistOnBg);
-  setCssVar("--ui-color-legend-on-text", colors.legendHistOnText);
-  setCssVar("--ui-color-legend-off-bg", colors.legendHistOffBg);
-  setCssVar("--ui-color-legend-off-text", colors.legendHistOffText);
+  setCssVar("--ui-signal-peak-sample", colors.peakSamplePeak);
+  setCssVar("--ui-signal-peak-true", colors.peakTruePeak);
+  setCssVar("--ui-signal-tp-max", colors.tpMaxText);
+  setCssVar("--ui-signal-corr-bad", colors.correlation.bad);
+  setCssVar("--ui-signal-corr-mid", colors.correlation.mid);
+  setCssVar("--ui-signal-corr-good", colors.correlation.good);
+  setCssVar("--ui-color-loudness-target-line", colors.loudnessTargetLine);
+  setCssVar("--ui-color-target-value", colors.targetValue);
   setCssVar("--ui-color-metric-row-bg", colors.metricRowBg);
-  setCssVar("--ui-color-metric-row-border", colors.metricRowBorder);
   setCssVar("--ui-color-metric-row-hover-bg", colors.metricRowHoverBg);
   setCssVar("--ui-color-metric-row-toggle-on-bg", colors.metricRowToggleOnBg);
-  setCssVar("--ui-color-metric-row-toggle-on-border", colors.metricRowToggleOnBorder);
   setCssVar("--ui-color-metric-row-toggle-on-glow", colors.metricRowToggleOnGlow);
-  setCssVar("--ui-color-metric-label", colors.metricLabelText);
-  setCssVar("--ui-color-metric-value", colors.metricValueText);
-  setCssVar("--ui-color-metric-unit", colors.metricUnitText);
   setCssVar("--ui-color-metric-toggle-on-label", colors.metricToggleOnLabelText);
   setCssVar("--ui-color-metric-toggle-on-unit", colors.metricToggleOnUnitText);
-  setCssVar("--ui-color-target-label", colors.targetLabel);
-  setCssVar("--ui-color-target-value", colors.targetValue);
-  setCssVar("--ui-color-control-hover-bg", colors.controlHoverBg);
-  setCssVar("--ui-shadow-settings-dialog", colors.settingsDialogShadow);
 
   const charts = theme.charts;
   setCssVar("--ui-chart-momentary", charts.loudnessHistory.momentaryStroke);

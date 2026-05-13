@@ -39,11 +39,11 @@ export function SpectrumPanel({
     <Card
       className={cn(
         PANEL_MIN_SPECTRUM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--ui-radius-card)] border-border/80 bg-card/55 py-[var(--ui-article-pad-y)] pl-[var(--ui-article-pad-x)] pr-[var(--ui-article-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
       )}
     >
       <CardHeader className="flex min-w-0 flex-row items-center justify-between gap-2 space-y-0 p-0 pb-0">
-        <CardTitle className="min-w-0 truncate text-[length:var(--ui-fs-section)] font-semibold text-muted-foreground">
+        <CardTitle className="min-w-0 truncate text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
           Spectrum
         </CardTitle>
         {isSummedMultichannel ? (
@@ -55,20 +55,20 @@ export function SpectrumPanel({
           </span>
         ) : null}
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-section-title-gap)]">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
         <div
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-axis-gap-y)] gap-y-[var(--ui-axis-gap-x)] items-stretch",
+            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch",
             PANEL_MIN_SPECTRUM
           )}
         >
           <div
             className={cn(
               W_SPECTRUM_Y_AXIS,
-              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis-value)] text-muted-foreground"
+              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
             )}
           >
-            <div className="absolute inset-x-0 top-[var(--ui-spectrum-display-top-inset)] bottom-[var(--ui-spectrum-display-bottom-inset)]">
+            <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
               {SPEC_Y_TICKS.map(({ v, lb }) => (
                 <span
                   key={v}
@@ -86,7 +86,7 @@ export function SpectrumPanel({
               onPointerLeave={onSpectrumHoverLeave}
             >
               <div
-                className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-spectrum-svg-pad)] pt-[var(--ui-spectrum-display-top-inset)] pb-[var(--ui-spectrum-display-bottom-inset)]"
+                className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {
                   const r = spectrumSvgRef.current?.getBoundingClientRect();
                   if (r && onSpectrumHoverMove) onSpectrumHoverMove(e.clientX, r);
@@ -200,7 +200,7 @@ export function SpectrumPanel({
                 </svg>
               </div>
               {spectrumHover ? (
-                <div className="pointer-events-none absolute inset-[var(--ui-spectrum-svg-pad)] top-[var(--ui-spectrum-display-top-inset)] bottom-[var(--ui-spectrum-display-bottom-inset)] z-10">
+                <div className="pointer-events-none absolute inset-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
                   <div
                     className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
                     style={{ left: `${spectrumHover.leftPct}%` }}
@@ -220,8 +220,10 @@ export function SpectrumPanel({
                           : "var(--ui-chart-spectrum-live)",
                     }}
                   />
-                  <div className="absolute left-[var(--ui-hud-inset)] top-[var(--ui-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis-value)] text-muted-foreground shadow-sm">
-                    <div>{spectrumHover.freqLabel}</div>
+                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
+                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      {spectrumHover.freqLabel}
+                    </div>
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.dbLabel}
                     </div>
@@ -233,7 +235,7 @@ export function SpectrumPanel({
 
           <div />
           <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}>
-            <div className="absolute inset-x-[var(--ui-spectrum-svg-pad)] top-0 h-full">
+            <div className="absolute inset-x-[var(--ui-chart-pad)] top-0 h-full">
               {FREQ_LABELS.map(([f, lb]) => (
                 <span
                   key={f}

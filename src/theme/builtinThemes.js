@@ -49,7 +49,7 @@ const CHARTS_DARK = {
     shortTermOpacity: 0.95,
     selectionStroke: "#f59e0b",
     selectionStrokeWidth: 1.2,
-    historyGridLineColor: "color-mix(in srgb, var(--ui-color-divider) 10%, transparent)",
+    historyGridLineColor: "color-mix(in srgb, var(--border) 10%, transparent)",
   },
   vectorscope: {
     strokeLive: "#007AFF",
@@ -58,7 +58,7 @@ const CHARTS_DARK = {
     axisOpacity: 0.8,
     gridDiagInsetPct: 1.2,
     plotRadius: 240,
-    gridDiagStroke: "color-mix(in srgb, var(--ui-color-divider) 80%, transparent)",
+    gridDiagStroke: "color-mix(in srgb, var(--border) 80%, transparent)",
     gridDiagDash: "2.6 3.4",
   },
   spectrum: {
