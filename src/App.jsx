@@ -43,6 +43,7 @@ import { MeterHealthBadge } from "./components/MeterHealthBadge";
 import { PeakPanel } from "./components/panels/PeakPanel";
 import { LoudnessPanel } from "./components/panels/LoudnessPanel";
 import { SpectrumPanel } from "./components/panels/SpectrumPanel";
+import { SpectrogramPanel } from "./components/panels/SpectrogramPanel";
 import { VectorscopePanel } from "./components/panels/VectorscopePanel";
 
 const HIST_MAX_SAMPLES = 36000;
@@ -111,6 +112,9 @@ export default function App() {
   const [mainLeft, setMainLeft] = useState(UI_PREFERENCES.layout.mainColumn.initialPx);
   const [leftTopRatio, setLeftTopRatio] = useState(UI_PREFERENCES.layout.leftSplit.initialRatio);
   const [rightTopRatio, setRightTopRatio] = useState(UI_PREFERENCES.layout.rightSplit.initialRatio);
+  const [spectrogramTopRatio, setSpectrogramTopRatio] = useState(
+    UI_PREFERENCES.layout.spectrogramSplit.initialRatio
+  );
   const [loudnessHistWidthRatio, setLoudnessHistWidthRatio] = useState(
     UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
   );
@@ -316,10 +320,12 @@ export default function App() {
     leftTopRatio,
     rightTopRatio,
     loudnessHistWidthRatio,
+    spectrogramTopRatio,
     setMainLeft,
     setLeftTopRatio,
     setRightTopRatio,
     setLoudnessHistWidthRatio,
+    setSpectrogramTopRatio,
   });
 
   const clearAll = async () => {
@@ -406,6 +412,7 @@ export default function App() {
       if (typeof s.rightTopRatio === "number") setRightTopRatio(s.rightTopRatio);
       if (typeof s.loudnessHistWidthRatio === "number")
         setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
+      if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
       if (s.channelLayout === "auto" || s.channelLayout === "stereo" || s.channelLayout === "5.1")
         setChannelLayout(s.channelLayout);
     } catch (_) {}
@@ -425,6 +432,7 @@ export default function App() {
           leftTopRatio,
           rightTopRatio,
           loudnessHistWidthRatio,
+          spectrogramTopRatio,
           referenceProfileId,
           appearance,
           themeId: persistedThemeId,
@@ -439,6 +447,7 @@ export default function App() {
     leftTopRatio,
     rightTopRatio,
     loudnessHistWidthRatio,
+    spectrogramTopRatio,
     referenceProfileId,
     appearance,
     fixedThemeSelectValue,
@@ -551,9 +560,12 @@ export default function App() {
         </header>
 
         <main
-          className="min-h-0 flex-1 gap-[var(--ui-section-gap)] overflow-y-auto lg:grid lg:gap-0 lg:overflow-hidden lg:min-h-0 lg:grid-cols-[var(--left)_var(--ui-splitter-main)_1fr] lg:grid-rows-[minmax(0,1fr)]"
-          style={{ "--left": `${mainLeft}px` }}
+          className="min-h-0 flex-1 gap-[var(--ui-section-gap)] overflow-y-auto lg:flex lg:flex-col lg:gap-0 lg:overflow-hidden lg:min-h-0"
         >
+          <div
+            className="lg:grid lg:min-h-0 lg:gap-0 lg:grid-cols-[var(--left)_var(--ui-splitter-main)_1fr] lg:grid-rows-[minmax(0,1fr)]"
+            style={{ "--left": `${mainLeft}px`, height: `${Math.round(spectrogramTopRatio * 100)}%` }}
+          >
           <section
             className="grid min-h-0 gap-[var(--ui-section-gap)] lg:h-full lg:min-h-0 lg:gap-0 lg:grid-rows-[var(--leftTop)_var(--ui-splitter-row)_minmax(0,1fr)]"
             style={{ "--leftTop": `${Math.round(leftTopRatio * 100)}%` }}
@@ -659,6 +671,24 @@ export default function App() {
               onSpectrumHoverLeave={onSpectrumHoverLeave}
             />
           </section>
+          </div>
+
+          <div
+            className={RESIZE_ROW_CLASS}
+            onPointerDown={(e) => beginLayoutDrag("spectrogram", e)}
+            onPointerMove={onLayoutDragMove}
+            onPointerUp={onLayoutDragUp}
+            onPointerCancel={onLayoutDragUp}
+          />
+
+          <SpectrogramPanel
+            snapRef={spectrumDataSnapRef}
+            effectiveOffsetSamples={effectiveOffsetSamples}
+            visibleSamples={visibleSamples}
+            selectedOffset={selectedOffset}
+            setSelectedOffset={setSelectedOffset}
+            totalSamples={totalSamples}
+          />
         </main>
 
         <footer className={SHELL_FOOTER}>

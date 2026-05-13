@@ -92,6 +92,12 @@ export const UI_PREFERENCES = {
       dragMaxRatio: 0.88,
       dragPixelsPerDelta: 720,
     },
+    spectrogramSplit: {
+      initialRatio: 0.72,
+      dragMinRatio: 0.5,
+      dragMaxRatio: 0.88,
+      dragPixelsPerDelta: 500,
+    },
     heightsRem: {
       peakModuleMin: 12,
       historyModuleMin: 10,

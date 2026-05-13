@@ -179,6 +179,66 @@ export const SPEC_Y_TICKS = [
   { v: -80, lb: "-80" },
 ];
 
+// Inferno colormap anchor points [lutIndex, [r,g,b]] — linear interpolation between stops.
+const _INFERNO_STOPS = [
+  [0,   [0, 0, 4]],
+  [26,  [30, 12, 47]],
+  [51,  [66, 15, 110]],
+  [77,  [113, 12, 140]],
+  [102, [158, 12, 143]],
+  [128, [203, 25, 127]],
+  [153, [231, 65, 82]],
+  [179, [245, 130, 30]],
+  [204, [251, 196, 10]],
+  [230, [252, 235, 100]],
+  [255, [252, 255, 164]],
+];
+const _INFERNO_LUT = (() => {
+  const lut = new Array(256);
+  for (let i = 0; i < 256; i++) {
+    let lo = _INFERNO_STOPS[0];
+    let hi = _INFERNO_STOPS[_INFERNO_STOPS.length - 1];
+    for (let j = 0; j < _INFERNO_STOPS.length - 1; j++) {
+      if (i >= _INFERNO_STOPS[j][0] && i <= _INFERNO_STOPS[j + 1][0]) {
+        lo = _INFERNO_STOPS[j];
+        hi = _INFERNO_STOPS[j + 1];
+        break;
+      }
+    }
+    const span = hi[0] - lo[0];
+    const t = span === 0 ? 0 : (i - lo[0]) / span;
+    lut[i] = [
+      Math.round(lo[1][0] + t * (hi[1][0] - lo[1][0])),
+      Math.round(lo[1][1] + t * (hi[1][1] - lo[1][1])),
+      Math.round(lo[1][2] + t * (hi[1][2] - lo[1][2])),
+    ];
+  }
+  return lut;
+})();
+
+/** Maps a dB value (SPEC_DB_MIN..SPEC_DB_MAX) to an Inferno [r,g,b] triple (each 0–255). */
+export function spectrogramColor(db) {
+  if (!Number.isFinite(db)) return _INFERNO_LUT[0];
+  const t = Math.max(0, Math.min(1, (db - SPEC_DB_MIN) / (SPEC_DB_MAX - SPEC_DB_MIN)));
+  return _INFERNO_LUT[Math.round(t * 255)];
+}
+
+/**
+ * Computes the slice of a history snap array that maps to the visible time window.
+ * @param {number} totalSamples  - total entries in the snap array
+ * @param {number} effectiveOffsetSamples - samples from the newest end that are panned off-screen
+ * @param {number} visibleSamples - number of samples the visible window covers
+ * @returns {{ startIdx: number, count: number }}
+ */
+export function spectrogramVisibleRange(totalSamples, effectiveOffsetSamples, visibleSamples) {
+  if (totalSamples <= 0) return { startIdx: 0, count: 0 };
+  const newestVisible = totalSamples - 1 - effectiveOffsetSamples;
+  const oldestVisible = newestVisible - visibleSamples + 1;
+  const startIdx = Math.max(0, oldestVisible);
+  const endIdx = Math.max(0, Math.min(totalSamples - 1, newestVisible));
+  return { startIdx, count: Math.max(0, endIdx - startIdx + 1) };
+}
+
 /** Spectrum frequency axis labels */
 export const FREQ_LABELS = [
   [20, "20"],

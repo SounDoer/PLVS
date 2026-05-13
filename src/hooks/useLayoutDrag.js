@@ -6,10 +6,12 @@ export function useLayoutDrag({
   leftTopRatio,
   rightTopRatio,
   loudnessHistWidthRatio,
+  spectrogramTopRatio,
   setMainLeft,
   setLeftTopRatio,
   setRightTopRatio,
   setLoudnessHistWidthRatio,
+  setSpectrogramTopRatio,
 }) {
   const layoutDragRef = useRef(null);
 
@@ -23,12 +25,13 @@ export function useLayoutDrag({
         leftTopRatio,
         rightTopRatio,
         loudnessHistWidthRatio,
+        spectrogramTopRatio,
       };
       try {
         ev.currentTarget.setPointerCapture(ev.pointerId);
       } catch (_) {}
     },
-    [mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio]
+    [mainLeft, leftTopRatio, rightTopRatio, loudnessHistWidthRatio, spectrogramTopRatio]
   );
 
   const onLayoutDragMove = useCallback(
@@ -64,9 +67,27 @@ export function useLayoutDrag({
             Math.min(hm.dragMaxRatio, base + (ev.clientX - d.x) / hm.dragPixelsPerDelta)
           )
         );
+      } else if (d.mode === "spectrogram") {
+        const sg = preferences.layout.spectrogramSplit;
+        setSpectrogramTopRatio(
+          Math.max(
+            sg.dragMinRatio,
+            Math.min(
+              sg.dragMaxRatio,
+              d.spectrogramTopRatio + (ev.clientY - d.y) / sg.dragPixelsPerDelta
+            )
+          )
+        );
       }
     },
-    [preferences, setMainLeft, setLeftTopRatio, setRightTopRatio, setLoudnessHistWidthRatio]
+    [
+      preferences,
+      setMainLeft,
+      setLeftTopRatio,
+      setRightTopRatio,
+      setLoudnessHistWidthRatio,
+      setSpectrogramTopRatio,
+    ]
   );
 
   const onLayoutDragUp = useCallback((ev) => {
