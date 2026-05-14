@@ -38,23 +38,50 @@ mod tests {
 
   #[test]
   fn from_str_lossy_known_variants() {
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("stereo"), ChannelLayoutSetting::Stereo);
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("5.1"), ChannelLayoutSetting::Surround51);
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("surround51"), ChannelLayoutSetting::Surround51);
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("surround-5.1"), ChannelLayoutSetting::Surround51);
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("stereo"),
+      ChannelLayoutSetting::Stereo
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("5.1"),
+      ChannelLayoutSetting::Surround51
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("surround51"),
+      ChannelLayoutSetting::Surround51
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("surround-5.1"),
+      ChannelLayoutSetting::Surround51
+    );
   }
 
   #[test]
   fn from_str_lossy_unknown_falls_back_to_auto() {
-    assert_eq!(ChannelLayoutSetting::from_str_lossy(""), ChannelLayoutSetting::Auto);
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("mono"), ChannelLayoutSetting::Auto);
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("7.1"), ChannelLayoutSetting::Auto);
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy(""),
+      ChannelLayoutSetting::Auto
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("mono"),
+      ChannelLayoutSetting::Auto
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("7.1"),
+      ChannelLayoutSetting::Auto
+    );
   }
 
   #[test]
   fn from_str_lossy_is_case_insensitive() {
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("STEREO"), ChannelLayoutSetting::Stereo);
-    assert_eq!(ChannelLayoutSetting::from_str_lossy("AUTO"), ChannelLayoutSetting::Auto);
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("STEREO"),
+      ChannelLayoutSetting::Stereo
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("AUTO"),
+      ChannelLayoutSetting::Auto
+    );
   }
 
   #[test]

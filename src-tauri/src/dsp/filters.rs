@@ -116,7 +116,13 @@ mod tests {
 
   #[test]
   fn biquad_silence_in_silence_out() {
-    let c = BiquadCoeffs { b0: 1.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0 };
+    let c = BiquadCoeffs {
+      b0: 1.0,
+      b1: 0.0,
+      b2: 0.0,
+      a1: 0.0,
+      a2: 0.0,
+    };
     let mut f = Biquad::new(c);
     for _ in 0..100 {
       assert_eq!(f.tick(0.0), 0.0);
@@ -126,7 +132,13 @@ mod tests {
   #[test]
   fn biquad_unity_passthrough() {
     // All-pass: b0=1, rest 0
-    let c = BiquadCoeffs { b0: 1.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0 };
+    let c = BiquadCoeffs {
+      b0: 1.0,
+      b1: 0.0,
+      b2: 0.0,
+      a1: 0.0,
+      a2: 0.0,
+    };
     let mut f = Biquad::new(c);
     assert!((f.tick(0.5) - 0.5).abs() < 1e-12);
     assert!((f.tick(-0.3) - (-0.3)).abs() < 1e-12);

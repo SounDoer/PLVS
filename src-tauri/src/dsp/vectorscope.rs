@@ -172,7 +172,10 @@ mod tests {
     vs.feed_mono(&signal); // mono uses same signal for both channels
     let (corr, path) = vs.get_output();
     assert!((corr - 1.0).abs() < 1e-6, "expected corr≈1.0, got {corr}");
-    assert!(path.starts_with('M'), "expected SVG path starting with M, got: {path}");
+    assert!(
+      path.starts_with('M'),
+      "expected SVG path starting with M, got: {path}"
+    );
   }
 
   #[test]

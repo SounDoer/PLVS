@@ -1,10 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { FrameIntake } from "./lib/FrameIntake.js";
 import { UI_PREFERENCES, readPersistedVectorscopePair } from "./uiPreferences";
-import {
-  HISTORY_MAX_WINDOW_SEC,
-  HISTORY_MIN_WINDOW_SEC,
-} from "./math/historyMath";
+import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
 import { useLayoutDrag } from "./hooks/useLayoutDrag";
@@ -116,7 +113,14 @@ export default function App() {
   const intakeRef = useRef(new FrameIntake());
   // Stable ref-compatible accessor for SpectrogramPanel (reads snapDataSnap from intake).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const spectrogramSnapRef = useMemo(() => ({ get current() { return intakeRef.current.getSpectrumDataSnap(); } }), []);
+  const spectrogramSnapRef = useMemo(
+    () => ({
+      get current() {
+        return intakeRef.current.getSpectrumDataSnap();
+      },
+    }),
+    []
+  );
   const selectedOffsetRef = useRef(-1);
   const vectorscopePairRef = useRef(readPersistedVectorscopePair());
 

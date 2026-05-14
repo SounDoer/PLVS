@@ -32,9 +32,8 @@ export function resolveDevice(devices, captureDeviceId) {
  * @returns {{ statusMain: string, deviceStatusLabel: string }}
  */
 export function buildDeviceStatus(device) {
-  const statusMain =
-    device.isSystemOutputMonitor
-      ? "Monitoring system playback (loopback)"
-      : "Monitoring audio input";
+  const statusMain = device.isSystemOutputMonitor
+    ? "Monitoring system playback (loopback)"
+    : "Monitoring audio input";
   return { statusMain, deviceStatusLabel: device.label ?? "Unknown device" };
 }

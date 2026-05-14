@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { CAPTION_TEXT, SHELL_FOOTER, SHELL_HEADER, APP_TITLE, METRICS_LIST_PAD } from "./shellLayout";
+import {
+  CAPTION_TEXT,
+  SHELL_FOOTER,
+  SHELL_HEADER,
+  APP_TITLE,
+  METRICS_LIST_PAD,
+} from "./shellLayout";
 
 describe("shellLayout token names", () => {
   it("CAPTION_TEXT uses --ui-fs-axis (not the retired --ui-fs-axis-value)", () => {

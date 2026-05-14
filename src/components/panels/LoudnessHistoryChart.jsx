@@ -293,7 +293,9 @@ export function LoudnessHistoryChart({
                 LOUDNESS_HUD_BOX_POPOVER
               )}
             >
-              <div><span className={METRIC_NUMERIC}>{historyHover.offsetLabel}</span></div>
+              <div>
+                <span className={METRIC_NUMERIC}>{historyHover.offsetLabel}</span>
+              </div>
               <div>
                 M{" "}
                 <span className={METRIC_NUMERIC}>

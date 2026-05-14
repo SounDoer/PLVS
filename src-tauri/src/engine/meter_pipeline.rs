@@ -336,14 +336,8 @@ mod tests {
     let mut p = MeterPipeline::new(48_000, 3, dummy_history());
     let _ = p.push_pcm_f32(&pcm, (2, 0), crate::engine::ChannelLayoutSetting::Auto);
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
-    assert_eq!(
-      p.vectorscope.vs_l.back().copied().unwrap_or_default(),
-      1.3
-    );
-    assert_eq!(
-      p.vectorscope.vs_r.back().copied().unwrap_or_default(),
-      1.1
-    );
+    assert_eq!(p.vectorscope.vs_l.back().copied().unwrap_or_default(), 1.3);
+    assert_eq!(p.vectorscope.vs_r.back().copied().unwrap_or_default(), 1.1);
   }
 
   #[test]

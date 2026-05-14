@@ -143,9 +143,12 @@ describe("spectrogramColor", () => {
   it("always returns [0-255, 0-255, 0-255]", () => {
     for (const db of [-100, -75, -50, -25, 0]) {
       const [r, g, b] = spectrogramColor(db);
-      expect(r).toBeGreaterThanOrEqual(0); expect(r).toBeLessThanOrEqual(255);
-      expect(g).toBeGreaterThanOrEqual(0); expect(g).toBeLessThanOrEqual(255);
-      expect(b).toBeGreaterThanOrEqual(0); expect(b).toBeLessThanOrEqual(255);
+      expect(r).toBeGreaterThanOrEqual(0);
+      expect(r).toBeLessThanOrEqual(255);
+      expect(g).toBeGreaterThanOrEqual(0);
+      expect(g).toBeLessThanOrEqual(255);
+      expect(b).toBeGreaterThanOrEqual(0);
+      expect(b).toBeLessThanOrEqual(255);
     }
   });
 });

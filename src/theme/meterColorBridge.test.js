@@ -4,17 +4,34 @@ import { buildMeterColorBridge } from "./meterColorBridge.js";
 
 const A_CLASS_KEYS = [
   // Direct shadcn aliases — never read by components, replaced by Tailwind utilities
-  "pageBg", "textPrimary", "textSecondary", "textMuted", "textSubtle",
-  "panelBg", "panelBgSplitter", "insetBg",
-  "borderDefault", "divider",
-  "brand", "brandLight", "brandHover",
+  "pageBg",
+  "textPrimary",
+  "textSecondary",
+  "textMuted",
+  "textSubtle",
+  "panelBg",
+  "panelBgSplitter",
+  "insetBg",
+  "borderDefault",
+  "divider",
+  "brand",
+  "brandLight",
+  "brandHover",
   "controlBg",
-  "metricRowBorder", "metricRowToggleOnBorder",
-  "metricLabelText", "metricValueText", "metricUnitText",
+  "metricRowBorder",
+  "metricRowToggleOnBorder",
+  "metricLabelText",
+  "metricValueText",
+  "metricUnitText",
   "targetLabel",
-  "legendHistOnBg", "legendHistOnText", "legendHistOffBg", "legendHistOffText",
+  "legendHistOnBg",
+  "legendHistOnText",
+  "legendHistOffBg",
+  "legendHistOffText",
   // Computed but never consumed by any component (dead code)
-  "controlHoverBg", "settingsRowBg", "settingsDialogShadow",
+  "controlHoverBg",
+  "settingsRowBg",
+  "settingsDialogShadow",
 ];
 
 describe("buildMeterColorBridge", () => {

@@ -1,11 +1,7 @@
 import { useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import {
-  CHART_INSET_MIN_H,
-  PANEL_MIN_SPECTROGRAM,
-  W_SPECTRUM_Y_AXIS,
-} from "@/lib/shellLayout";
+import { CHART_INSET_MIN_H, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 

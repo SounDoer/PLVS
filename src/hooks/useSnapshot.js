@@ -45,7 +45,9 @@ export function useSnapshot({
     snapIdx >= 0 && snapSpecList[snapIdx] ? snapSpecList[snapIdx] : spectrumPath;
   const displaySpectrumPeakPath = selectedOffset >= 0 ? "" : spectrumPeakPath;
   const displaySpectrumData =
-    snapIdx >= 0 && snapSpecDataList[snapIdx] ? snapSpecDataList[snapIdx] : intake.getSpectrumData();
+    snapIdx >= 0 && snapSpecDataList[snapIdx]
+      ? snapSpecDataList[snapIdx]
+      : intake.getSpectrumData();
   const displayVectorPath =
     snapIdx >= 0 && snapVecList[snapIdx] ? snapVecList[snapIdx] : vectorPath;
   const hasHistoryData = histSourceList.length > 0;

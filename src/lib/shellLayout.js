@@ -34,8 +34,7 @@ export const W_SPECTRUM_Y_AXIS = "w-[var(--ui-w-spectrum-y-axis)]";
 
 export const CHART_INSET_MIN_H = "min-h-[var(--ui-min-h-history-chart)]";
 
-export const METRICS_LIST_PAD =
-  "px-[var(--ui-panel-pad-metrics)] pb-[var(--ui-panel-pad-metrics)]";
+export const METRICS_LIST_PAD = "px-[var(--ui-panel-pad-metrics)] pb-[var(--ui-panel-pad-metrics)]";
 
 /** Horizontal layout rails (column resize) */
 export const RESIZE_COL_CLASS =

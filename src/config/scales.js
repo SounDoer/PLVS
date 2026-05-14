@@ -181,10 +181,10 @@ export const SPEC_Y_TICKS = [
 
 // Inferno colormap anchor points [lutIndex, [r,g,b]] — linear interpolation between stops.
 const _INFERNO_STOPS = [
-  [0,   [0, 0, 4]],
-  [26,  [30, 12, 47]],
-  [51,  [66, 15, 110]],
-  [77,  [113, 12, 140]],
+  [0, [0, 0, 4]],
+  [26, [30, 12, 47]],
+  [51, [66, 15, 110]],
+  [77, [113, 12, 140]],
   [102, [158, 12, 143]],
   [128, [203, 25, 127]],
   [153, [231, 65, 82]],
