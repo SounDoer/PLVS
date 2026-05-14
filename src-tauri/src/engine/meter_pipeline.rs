@@ -1,6 +1,5 @@
 //! PCM → meters; drives `AudioFramePayload` / slow loudness emit rates.
 
-use std::collections::VecDeque;
 use std::time::Instant;
 
 use crate::dsp::loudness::LoudnessBlock;
@@ -8,13 +7,12 @@ use crate::dsp::paths::spectrum_paths_from_bands;
 use crate::dsp::peak::{
   sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
 };
-use crate::dsp::{LoudnessMeter, SpectrumEngine, VectorscopeState};
+use crate::dsp::{LoudnessMeter, Meter, PcmContext, SpectrumMeter, VectorscopeMeter};
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AudioFramePayload, LoudnessSlowPayload, MeterHistoryBuf, MeterHistoryEntry,
 };
 
-const VS_CAP: usize = 4096;
 const FRAME_EMIT_MS: u128 = 16;
 const SLOW_EMIT_MS: u128 = 500;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
@@ -45,14 +43,8 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
 pub struct MeterPipeline {
   channels: u16,
   loudness: LoudnessMeter,
-  spectrum: SpectrumEngine,
-  vs: VectorscopeState,
-  vs_l: VecDeque<f32>,
-  vs_r: VecDeque<f32>,
-  /// Flattened L/R for [`VectorscopeState::process`] (avoids O(n) `remove(0)` on the live ring).
-  vs_flat_l: Vec<f32>,
-  vs_flat_r: Vec<f32>,
-  mono_scratch: Vec<f32>,
+  spectrum: SpectrumMeter,
+  vectorscope: VectorscopeMeter,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
   st_max: f64,
@@ -63,9 +55,6 @@ pub struct MeterPipeline {
   t0: Instant,
   last_frame_emit: Instant,
   last_slow_emit: Instant,
-  last_spectrum_smooth: Vec<f64>,
-  last_spectrum_peak: Vec<f64>,
-  last_band_centers: Vec<f64>,
   last_hist_emit: Instant,
   pending_loudness_hist: Option<(f64, f64)>,
 }
@@ -76,13 +65,8 @@ impl MeterPipeline {
     Self {
       channels,
       loudness: LoudnessMeter::new(sr),
-      spectrum: SpectrumEngine::new(sr),
-      vs: VectorscopeState::new(),
-      vs_l: VecDeque::with_capacity(VS_CAP),
-      vs_r: VecDeque::with_capacity(VS_CAP),
-      vs_flat_l: Vec::with_capacity(VS_CAP),
-      vs_flat_r: Vec::with_capacity(VS_CAP),
-      mono_scratch: Vec::new(),
+      spectrum: SpectrumMeter::new(sr),
+      vectorscope: VectorscopeMeter::new(),
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
       st_max: f64::NEG_INFINITY,
@@ -93,9 +77,6 @@ impl MeterPipeline {
       t0: Instant::now(),
       last_frame_emit: Instant::now(),
       last_slow_emit: Instant::now(),
-      last_spectrum_smooth: Vec::new(),
-      last_spectrum_peak: Vec::new(),
-      last_band_centers: Vec::new(),
       last_hist_emit: Instant::now() - std::time::Duration::from_millis(200),
       pending_loudness_hist: None,
     }
@@ -115,40 +96,8 @@ impl MeterPipeline {
     self.sample_peak_max_r = f64::NEG_INFINITY;
     self.loudness.reset();
     self.spectrum.reset();
-    self.vs.reset();
-    self.vs_l.clear();
-    self.vs_r.clear();
+    self.vectorscope.reset();
     self.last_loudness = None;
-    self.last_band_centers.clear();
-    self.last_spectrum_smooth.clear();
-    self.last_spectrum_peak.clear();
-  }
-
-  fn feed_vs_mono(&mut self, mono: &[f32]) {
-    for &s in mono {
-      self.push_vs_pair(s, s);
-    }
-  }
-
-  fn feed_vs_interleaved(&mut self, interleaved: &[f32], channels: u16, pair_x: u16, pair_y: u16) {
-    let ch = channels.max(1) as usize;
-    let frames = interleaved.len() / ch;
-    let x = (pair_x as usize).min(ch.saturating_sub(1));
-    let y = (pair_y as usize).min(ch.saturating_sub(1));
-    for i in 0..frames {
-      let l = interleaved[i * ch + x];
-      let r = interleaved[i * ch + y];
-      self.push_vs_pair(l, r);
-    }
-  }
-
-  fn push_vs_pair(&mut self, l: f32, r: f32) {
-    self.vs_l.push_back(l);
-    self.vs_r.push_back(r);
-    while self.vs_l.len() > VS_CAP {
-      self.vs_l.pop_front();
-      self.vs_r.pop_front();
-    }
   }
 
   /// Process one PCM chunk from capture. Returns `(frame, slow)` when ready to send on IPC.
@@ -163,38 +112,24 @@ impl MeterPipeline {
     let (pair_x, pair_y) = vectorscope_pair;
     let (loudness_layout, loudness_layout_known) = loudness_layout_meta(ch, channel_layout);
 
-    if ch == 1 {
-      self.mono_scratch.clear();
-      self.mono_scratch.extend_from_slice(interleaved);
-      let m = self.loudness.push_mono_duplex(&self.mono_scratch);
-      if let Some(ref lb) = m {
-        self.apply_loudness_block(lb);
-      }
-      self.feed_vs_mono(interleaved);
-      if let Some((sm, pk)) = self.spectrum.push_mono_duplex(interleaved, now_sec) {
-        self.last_band_centers = self.spectrum.band_centers();
-        self.last_spectrum_smooth = sm;
-        self.last_spectrum_peak = pk;
-      }
-    } else {
-      if let Some(lb) =
-        self
-          .loudness
-          .push_interleaved_multichannel(interleaved, self.channels, channel_layout)
-      {
-        self.apply_loudness_block(&lb);
-      }
-      self.feed_vs_interleaved(interleaved, self.channels, pair_x, pair_y);
-      if let Some((sm, pk)) = self
-        .spectrum
-        .push_interleaved(interleaved, self.channels, now_sec)
-      {
-        self.last_band_centers = self.spectrum.band_centers();
-        self.last_spectrum_smooth = sm;
-        self.last_spectrum_peak = pk;
-      }
+    // --- PCM intake: uniform push through Meter trait ---
+    let ctx = PcmContext {
+      interleaved,
+      channels: ch,
+      now_sec,
+      channel_layout,
+      vectorscope_pair,
+    };
+    self.loudness.push_pcm(&ctx);
+    self.spectrum.push_pcm(&ctx);
+    self.vectorscope.push_pcm(&ctx);
+
+    // --- Apply loudness block if a new one arrived ---
+    if let Some(lb) = self.loudness.take_block() {
+      self.apply_loudness_block(&lb);
     }
 
+    // --- Sample peak ---
     let (sl, sr) = if ch == 1 {
       sample_peak_db_mono(interleaved)
     } else {
@@ -208,6 +143,7 @@ impl MeterPipeline {
       self.sample_peak_max_r = self.sample_peak_max_r.max(sr);
     }
 
+    // --- Slow loudness emit ---
     let mut slow_out = None;
     if self.last_slow_emit.elapsed().as_millis() >= SLOW_EMIT_MS {
       self.last_slow_emit = Instant::now();
@@ -254,6 +190,7 @@ impl MeterPipeline {
     }
     self.last_frame_emit = Instant::now();
 
+    // --- Assemble frame ---
     let lb = self.last_loudness.clone();
     let (lm, lst, integ, lra, tpl, tpr, _tpg) = match &lb {
       Some(l) => (
@@ -276,29 +213,21 @@ impl MeterPipeline {
       ),
     };
 
-    let (corr, vpath) = if !self.vs_l.is_empty() {
-      self.vs_flat_l.clear();
-      self.vs_flat_r.clear();
-      self.vs_flat_l.extend(self.vs_l.iter().copied());
-      self.vs_flat_r.extend(self.vs_r.iter().copied());
-      self.vs.process(&self.vs_flat_l, &self.vs_flat_r)
-    } else {
-      (0.0, String::new())
-    };
+    let (corr, vpath) = self.vectorscope.get_output();
 
-    let centers = &self.last_band_centers;
-    let smooth = &self.last_spectrum_smooth;
-    let peak = &self.last_spectrum_peak;
+    let (centers, smooth, peak) = self.spectrum.last_output();
     let (spath, spk) = if !centers.is_empty() && smooth.len() == centers.len() {
       let pk = if peak.len() == centers.len() {
-        peak.as_slice()
+        peak
       } else {
-        smooth.as_slice()
+        smooth
       };
       spectrum_paths_from_bands(centers, smooth, pk, false)
     } else {
       (String::new(), String::new())
     };
+    let centers = centers.to_vec();
+    let smooth = smooth.to_vec();
 
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let peak_hold_db = peak_db.clone();
@@ -356,8 +285,8 @@ impl MeterPipeline {
       vectorscope_pair_y: pair_y,
       spectrum_path: spath,
       spectrum_peak_path: spk,
-      spectrum_band_centers_hz: centers.clone(),
-      spectrum_smooth_db: smooth.clone(),
+      spectrum_band_centers_hz: centers,
+      spectrum_smooth_db: smooth,
       loudness_layout,
       loudness_layout_known,
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
@@ -406,9 +335,15 @@ mod tests {
     let pcm = vec![0.1_f32, 0.2, 0.3, 1.1, 1.2, 1.3];
     let mut p = MeterPipeline::new(48_000, 3, dummy_history());
     let _ = p.push_pcm_f32(&pcm, (2, 0), crate::engine::ChannelLayoutSetting::Auto);
-    // Last pushed sample should be from frame1 ch2 (L) and ch0 (R).
-    assert_eq!(p.vs_l.back().copied().unwrap_or_default(), 1.3);
-    assert_eq!(p.vs_r.back().copied().unwrap_or_default(), 1.1);
+    // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
+    assert_eq!(
+      p.vectorscope.vs_l.back().copied().unwrap_or_default(),
+      1.3
+    );
+    assert_eq!(
+      p.vectorscope.vs_r.back().copied().unwrap_or_default(),
+      1.1
+    );
   }
 
   #[test]

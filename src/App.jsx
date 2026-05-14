@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { FrameIntake } from "./lib/FrameIntake.js";
 import { UI_PREFERENCES, readPersistedVectorscopePair } from "./uiPreferences";
 import {
   HISTORY_MAX_WINDOW_SEC,
   HISTORY_MIN_WINDOW_SEC,
-  HISTORY_TIME_TICK_STEPS,
 } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { PanelSet } from "./components/PanelSet";
 import { cn } from "@/lib/utils";
 import {
   APP_TITLE,
@@ -40,11 +41,6 @@ import { Play, Radio, Settings, Square, Trash2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import { clearAudioHistory, setVectorscopePair } from "./ipc/commands.js";
 import { MeterHealthBadge } from "./components/MeterHealthBadge";
-import { PeakPanel } from "./components/panels/PeakPanel";
-import { LoudnessPanel } from "./components/panels/LoudnessPanel";
-import { SpectrumPanel } from "./components/panels/SpectrumPanel";
-import { SpectrogramPanel } from "./components/panels/SpectrogramPanel";
-import { VectorscopePanel } from "./components/panels/VectorscopePanel";
 
 const HIST_MAX_SAMPLES = 36000;
 
@@ -52,13 +48,6 @@ const buildVersionRaw = import.meta.env.VITE_APP_VERSION || "dev";
 const buildVersion = buildVersionRaw === "dev" ? "dev" : buildVersionRaw.slice(0, 7);
 const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
 
-/** Horizontal layout rails (column resize): subtle cyan-tinted hover glow using injected `--ui-*` tokens */
-const RESIZE_COL_CLASS =
-  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-[var(--radius)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
-
-/** Vertical layout rails (row resize) */
-const RESIZE_ROW_CLASS =
-  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--radius)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
 export default function App() {
   const {
     settingsOpen,
@@ -124,14 +113,10 @@ export default function App() {
   const spectrumTimeRef = useRef(0);
   const rafRef = useRef(0);
   const frameRef = useRef(0);
-  const histRef = useRef([]);
-  const loudnessHistRef = useRef([]);
-  const spectrumSnapRef = useRef([]);
-  const spectrumDataRef = useRef(null);
-  const spectrumDataSnapRef = useRef([]);
-  const vectorSnapRef = useRef([]);
-  const corrSnapRef = useRef([]);
-  const audioSnapRef = useRef([]);
+  const intakeRef = useRef(new FrameIntake());
+  // Stable ref-compatible accessor for SpectrogramPanel (reads snapDataSnap from intake).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const spectrogramSnapRef = useMemo(() => ({ get current() { return intakeRef.current.getSpectrumDataSnap(); } }), []);
   const selectedOffsetRef = useRef(-1);
   const vectorscopePairRef = useRef(readPersistedVectorscopePair());
 
@@ -147,13 +132,7 @@ export default function App() {
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
-    loudnessHistRef,
-    spectrumSnapRef,
-    spectrumDataRef,
-    spectrumDataSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
+    intake: intakeRef.current,
     audio,
     spectrumPath,
     spectrumPeakPath,
@@ -217,6 +196,11 @@ export default function App() {
   const meteringFootnotes = useMemo(
     () => buildMeteringFootnoteHints({ running, channelLayout, channelCount }),
     [running, channelLayout, channelCount]
+  );
+
+  const peakLabelContext = useMemo(
+    () => ({ channelLayout, resolvedLayout: layoutResolution.resolved }),
+    [channelLayout, layoutResolution.resolved]
   );
 
   const vectorscopeLabelContext = useMemo(
@@ -339,14 +323,7 @@ export default function App() {
         await clearAudioHistory();
       } catch (_) {}
     }
-    histRef.current = [];
-    loudnessHistRef.current = [];
-    spectrumSnapRef.current = [];
-    spectrumDataRef.current = null;
-    spectrumDataSnapRef.current = [];
-    vectorSnapRef.current = [];
-    corrSnapRef.current = [];
-    audioSnapRef.current = [];
+    intakeRef.current.reset();
     spectrumStateRef.current = { smoothDb: [], peakDb: [], peakHoldUntil: [] };
     spectrumTimeRef.current = 0;
     setSpectrumPath("");
@@ -476,14 +453,7 @@ export default function App() {
     spectrumTimeRef,
     rafRef,
     frameRef,
-    histRef,
-    loudnessHistRef,
-    spectrumSnapRef,
-    spectrumDataRef,
-    spectrumDataSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
+    intake: intakeRef.current,
     selectedOffsetRef,
     vectorscopePairRef,
     setAudio,
@@ -559,137 +529,68 @@ export default function App() {
           </div>
         </header>
 
-        <main
-          className="min-h-0 flex-1 gap-[var(--ui-panel-gap)] overflow-y-auto lg:flex lg:flex-col lg:gap-0 lg:overflow-hidden lg:min-h-0"
-        >
-          <div
-            className="lg:grid lg:min-h-0 lg:gap-0 lg:grid-cols-[var(--left)_var(--ui-panel-gap)_1fr] lg:grid-rows-[minmax(0,1fr)]"
-            style={{ "--left": `${mainLeft}px`, height: `${Math.round(spectrogramTopRatio * 100)}%` }}
-          >
-          <section
-            className="grid min-h-0 gap-[var(--ui-panel-gap)] lg:h-full lg:min-h-0 lg:gap-0 lg:grid-rows-[var(--leftTop)_var(--ui-panel-gap)_minmax(0,1fr)]"
-            style={{ "--leftTop": `${Math.round(leftTopRatio * 100)}%` }}
-          >
-            <PeakPanel
-              displayAudio={displayAudio}
-              peakLabelContext={{
-                channelLayout,
-                resolvedLayout: layoutResolution.resolved,
-              }}
-              getSamplePeakLineColor={getSamplePeakLineColor}
-              fmt={fmt}
-              hasTpMaxValue={hasTpMaxValue}
-              tpMaxText={tpMaxText}
-            />
-
-            <div
-              className={RESIZE_ROW_CLASS}
-              onPointerDown={(e) => beginLayoutDrag("left", e)}
-              onPointerMove={onLayoutDragMove}
-              onPointerUp={onLayoutDragUp}
-              onPointerCancel={onLayoutDragUp}
-            />
-
-            <VectorscopePanel
-              vsGridDiagInset={vsGridDiagInset}
-              vsGridDiagFar={vsGridDiagFar}
-              displayVectorPath={displayVectorPath}
-              selectedOffset={selectedOffset}
-              correlation={correlation}
-              channelCount={channelCount}
-              peakLabelContext={{
-                channelLayout,
-                resolvedLayout: layoutResolution.resolved,
-              }}
-              pairX={vectorscopePairUi.x}
-              pairY={vectorscopePairUi.y}
-            />
-          </section>
-
-          <div
-            className={RESIZE_COL_CLASS}
-            onPointerDown={(e) => beginLayoutDrag("main", e)}
-            onPointerMove={onLayoutDragMove}
-            onPointerUp={onLayoutDragUp}
-            onPointerCancel={onLayoutDragUp}
-          />
-
-          <section
-            className="grid min-h-0 gap-[var(--ui-panel-gap)] lg:h-full lg:min-h-0 lg:gap-0 lg:grid-rows-[var(--rightTop)_var(--ui-panel-gap)_minmax(0,1fr)]"
-            style={{ "--rightTop": `${Math.round(rightTopRatio * 100)}%` }}
-          >
-            <LoudnessPanel
-              loudnessHistWidthRatio={loudnessHistWidthRatio}
-              historyYAxisTicks={historyYAxisTicks}
-              targetLufs={targetLufs}
-              referenceProfile={referenceProfile}
-              hasHistoryData={hasHistoryData}
-              historyChartInteractive={historyChartInteractive}
-              running={running}
-              setSelectedOffset={setSelectedOffset}
-              setStatus={setStatus}
-              holdHistoryHud={holdHistoryHud}
-              showHistoryHud={showHistoryHud}
-              onHistoryWheel={onHistoryWheel}
-              onHistoryPointerDown={onHistoryPointerDown}
-              onHistoryPointerMove={onHistoryPointerMove}
-              onHistoryPointerUp={onHistoryPointerUp}
-              histCurves={histCurves}
-              displayHistoryPathM={displayHistoryPathM}
-              displayHistoryPathST={displayHistoryPathST}
-              selectedOffset={selectedOffset}
-              showSelLine={showSelLine}
-              selLineX={selLineX}
-              isHistoryHudVisible={isHistoryHudVisible}
-              clampedWindowSec={clampedWindowSec}
-              effectiveOffsetSec={effectiveOffsetSec}
-              historyHover={historyHover}
-              historyTimeTicks={historyTimeTicks}
-              historyTickSteps={HISTORY_TIME_TICK_STEPS}
-              primaryMetrics={primaryMetrics}
-              secondaryMetrics={secondaryMetrics}
-              toggleCurve={toggleCurve}
-              onHistoryHoverMove={onHistoryHoverMove}
-              onHistoryHoverLeave={onHistoryHoverLeave}
-            />
-
-            <div
-              className={RESIZE_ROW_CLASS}
-              onPointerDown={(e) => beginLayoutDrag("right", e)}
-              onPointerMove={onLayoutDragMove}
-              onPointerUp={onLayoutDragUp}
-              onPointerCancel={onLayoutDragUp}
-            />
-
-            <SpectrumPanel
-              displaySpectrumPath={displaySpectrumPath}
-              displaySpectrumPeakPath={displaySpectrumPeakPath}
-              channelCount={Array.isArray(displayAudio?.peakDb) ? displayAudio.peakDb.length : 0}
-              selectedOffset={selectedOffset}
-              spectrumHover={spectrumHover}
-              onSpectrumHoverMove={onSpectrumHoverMove}
-              onSpectrumHoverLeave={onSpectrumHoverLeave}
-            />
-          </section>
-          </div>
-
-          <div
-            className={RESIZE_ROW_CLASS}
-            onPointerDown={(e) => beginLayoutDrag("spectrogram", e)}
-            onPointerMove={onLayoutDragMove}
-            onPointerUp={onLayoutDragUp}
-            onPointerCancel={onLayoutDragUp}
-          />
-
-          <SpectrogramPanel
-            snapRef={spectrumDataSnapRef}
-            effectiveOffsetSamples={effectiveOffsetSamples}
-            visibleSamples={visibleSamples}
-            selectedOffset={selectedOffset}
-            setSelectedOffset={setSelectedOffset}
-            totalSamples={totalSamples}
-          />
-        </main>
+        <PanelSet
+          mainLeft={mainLeft}
+          leftTopRatio={leftTopRatio}
+          rightTopRatio={rightTopRatio}
+          spectrogramTopRatio={spectrogramTopRatio}
+          beginLayoutDrag={beginLayoutDrag}
+          onLayoutDragMove={onLayoutDragMove}
+          onLayoutDragUp={onLayoutDragUp}
+          selectedOffset={selectedOffset}
+          setSelectedOffset={setSelectedOffset}
+          channelCount={channelCount}
+          peakLabelContext={peakLabelContext}
+          displayAudio={displayAudio}
+          getSamplePeakLineColor={getSamplePeakLineColor}
+          fmt={fmt}
+          hasTpMaxValue={hasTpMaxValue}
+          tpMaxText={tpMaxText}
+          vsGridDiagInset={vsGridDiagInset}
+          vsGridDiagFar={vsGridDiagFar}
+          displayVectorPath={displayVectorPath}
+          correlation={correlation}
+          vectorscopePairX={vectorscopePairUi.x}
+          vectorscopePairY={vectorscopePairUi.y}
+          loudnessHistWidthRatio={loudnessHistWidthRatio}
+          historyYAxisTicks={historyYAxisTicks}
+          targetLufs={targetLufs}
+          referenceProfile={referenceProfile}
+          hasHistoryData={hasHistoryData}
+          historyChartInteractive={historyChartInteractive}
+          running={running}
+          setStatus={setStatus}
+          holdHistoryHud={holdHistoryHud}
+          showHistoryHud={showHistoryHud}
+          onHistoryWheel={onHistoryWheel}
+          onHistoryPointerDown={onHistoryPointerDown}
+          onHistoryPointerMove={onHistoryPointerMove}
+          onHistoryPointerUp={onHistoryPointerUp}
+          histCurves={histCurves}
+          displayHistoryPathM={displayHistoryPathM}
+          displayHistoryPathST={displayHistoryPathST}
+          showSelLine={showSelLine}
+          selLineX={selLineX}
+          isHistoryHudVisible={isHistoryHudVisible}
+          clampedWindowSec={clampedWindowSec}
+          effectiveOffsetSec={effectiveOffsetSec}
+          historyHover={historyHover}
+          historyTimeTicks={historyTimeTicks}
+          primaryMetrics={primaryMetrics}
+          secondaryMetrics={secondaryMetrics}
+          toggleCurve={toggleCurve}
+          onHistoryHoverMove={onHistoryHoverMove}
+          onHistoryHoverLeave={onHistoryHoverLeave}
+          displaySpectrumPath={displaySpectrumPath}
+          displaySpectrumPeakPath={displaySpectrumPeakPath}
+          spectrumHover={spectrumHover}
+          onSpectrumHoverMove={onSpectrumHoverMove}
+          onSpectrumHoverLeave={onSpectrumHoverLeave}
+          spectrogramSnapRef={spectrogramSnapRef}
+          effectiveOffsetSamples={effectiveOffsetSamples}
+          visibleSamples={visibleSamples}
+          totalSamples={totalSamples}
+        />
 
         <footer className={SHELL_FOOTER}>
           <span>{status}</span>

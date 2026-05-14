@@ -1,8 +1,7 @@
-import { buildSpectrumDataSnapshot } from "./tauriFrameApply.js";
+import { buildSpectrumDataSnapshot } from "./FrameIntake.js";
 
 /**
- * Normalize `get_meter_history` / serde row field names to the shape used by `useSnapshot` ref arrays.
- * @param {object} row
+ * @param {import("../ipc/types.js").MeterHistoryEntry} row
  * @returns {import("../ipc/types.js").MeterHistoryEntry}
  */
 function normalizeHistoryRow(row) {
@@ -51,59 +50,6 @@ function raf() {
 }
 
 /**
- * @param {import("../ipc/types.js").MeterHistoryEntry} row
- * @param {object} pick
- * @param {object} ctx
- * @param {number} histMax
- */
-function appendSeededRow(row, pick, ctx, histMax) {
-  const {
-    loudnessHistRef,
-    spectrumDataSnapRef,
-    spectrumSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
-  } = ctx;
-  const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
-  const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
-  loudnessHistRef.current.push({ m: hm, st: hst });
-  if (loudnessHistRef.current.length > histMax) loudnessHistRef.current.shift();
-
-  const snap = {
-    momentary: hm,
-    shortTerm: hst,
-    integrated: Number.isFinite(row.integrated) ? row.integrated : -Infinity,
-    lra: Number.isFinite(row.lra) ? row.lra : -Infinity,
-    truePeakL: Number.isFinite(row.truePeakL) ? row.truePeakL : -Infinity,
-    truePeakR: Number.isFinite(row.truePeakR) ? row.truePeakR : -Infinity,
-    tpMax: Number.isFinite(row.truePeakMaxDbtp) ? row.truePeakMaxDbtp : -Infinity,
-    samplePeak: Number.isFinite(row.truePeakMaxDbtp) ? row.truePeakMaxDbtp : -Infinity,
-    tpL: Number.isFinite(row.sampleLDb) ? row.sampleLDb : -Infinity,
-    tpR: Number.isFinite(row.sampleRDb) ? row.sampleRDb : -Infinity,
-    sampleL: Number.isFinite(row.sampleLDb) ? row.sampleLDb : -Infinity,
-    sampleR: Number.isFinite(row.sampleRDb) ? row.sampleRDb : -Infinity,
-    samplePeakMaxL: Number.isFinite(row.samplePeakMaxL) ? row.samplePeakMaxL : -Infinity,
-    samplePeakMaxR: Number.isFinite(row.samplePeakMaxR) ? row.samplePeakMaxR : -Infinity,
-    correlation: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
-    vectorscopePairX: Number.isFinite(row.vectorscopePairX) ? row.vectorscopePairX : 0,
-    vectorscopePairY: Number.isFinite(row.vectorscopePairY) ? row.vectorscopePairY : 1,
-  };
-  audioSnapRef.current.push(snap);
-  if (audioSnapRef.current.length > histMax) audioSnapRef.current.shift();
-
-  const c = Number.isFinite(row.correlation) ? row.correlation : -Infinity;
-  corrSnapRef.current.push(c);
-  if (corrSnapRef.current.length > histMax) corrSnapRef.current.shift();
-  vectorSnapRef.current.push(row.vectorscopePath || "");
-  if (vectorSnapRef.current.length > histMax) vectorSnapRef.current.shift();
-  spectrumSnapRef.current.push(row.spectrumPath || "");
-  if (spectrumSnapRef.current.length > histMax) spectrumSnapRef.current.shift();
-  spectrumDataSnapRef.current.push(buildSpectrumDataSnapshot(row, pick));
-  if (spectrumDataSnapRef.current.length > histMax) spectrumDataSnapRef.current.shift();
-}
-
-/**
  * @param {object} row
  * @param {object} pick
  * @param {object} ctx
@@ -111,19 +57,11 @@ function appendSeededRow(row, pick, ctx, histMax) {
  * @param {(s: string) => void} ctx.setSpectrumPath
  * @param {(s: string) => void} ctx.setSpectrumPeakPath
  * @param {(s: string) => void} ctx.setVectorPath
+ * @param {import("./FrameIntake.js").FrameIntake} ctx.intake
  */
 function finalizeSeededState(row, pick, ctx) {
-  const {
-    histRef,
-    loudnessHistRef,
-    spectrumDataRef,
-    setAudio,
-    setSpectrumPath,
-    setSpectrumPeakPath,
-    setVectorPath,
-  } = ctx;
-  histRef.current = loudnessHistRef.current;
-  spectrumDataRef.current = buildSpectrumDataSnapshot(row, pick);
+  const { intake, setAudio, setSpectrumPath, setSpectrumPeakPath, setVectorPath } = ctx;
+  intake.finalizeFromRow(row, pick.defaultSampleRate);
   setSpectrumPath(row.spectrumPath || "");
   setSpectrumPeakPath(row.spectrumPeakPath || "");
   setVectorPath(row.vectorscopePath || "");
@@ -155,14 +93,7 @@ function finalizeSeededState(row, pick, ctx) {
  * @param {object} ctx
  * @param {number} ctx.histMaxSamples
  * @param {number} ctx.defaultSampleRate
- * @param {import("react").MutableRefObject<{ m: number; st: number }[]>} ctx.loudnessHistRef
- * @param {import("react").MutableRefObject} ctx.spectrumDataRef
- * @param {import("react").MutableRefObject} ctx.spectrumDataSnapRef
- * @param {import("react").MutableRefObject} ctx.spectrumSnapRef
- * @param {import("react").MutableRefObject} ctx.vectorSnapRef
- * @param {import("react").MutableRefObject} ctx.corrSnapRef
- * @param {import("react").MutableRefObject} ctx.audioSnapRef
- * @param {import("react").MutableRefObject} ctx.histRef
+ * @param {import("./FrameIntake.js").FrameIntake} ctx.intake
  * @param {(updater: (prev: object) => object) => void} ctx.setAudio
  * @param {(s: string) => void} ctx.setSpectrumPath
  * @param {(s: string) => void} ctx.setSpectrumPeakPath
@@ -171,17 +102,7 @@ function finalizeSeededState(row, pick, ctx) {
  * @returns {Promise<void>}
  */
 export async function seedFloatHistoryFromRows(rawRows, ctx) {
-  const {
-    histMaxSamples,
-    defaultSampleRate,
-    loudnessHistRef,
-    spectrumDataSnapRef,
-    spectrumSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
-    isCancelled,
-  } = ctx;
+  const { histMaxSamples, defaultSampleRate, intake, isCancelled } = ctx;
   const pick = { defaultSampleRate: defaultSampleRate || 48000 };
   if (!rawRows || !rawRows.length) {
     return;
@@ -191,12 +112,7 @@ export async function seedFloatHistoryFromRows(rawRows, ctx) {
     rawRows.length > histMaxSamples ? rawRows.slice(rawRows.length - histMaxSamples) : rawRows;
   const n = capped.length;
 
-  loudnessHistRef.current = [];
-  spectrumDataSnapRef.current = [];
-  spectrumSnapRef.current = [];
-  vectorSnapRef.current = [];
-  corrSnapRef.current = [];
-  audioSnapRef.current = [];
+  intake.reset();
 
   const histMax = histMaxSamples;
   for (let start = 0; start < n; start += SEED_ROW_BATCH) {
@@ -206,7 +122,7 @@ export async function seedFloatHistoryFromRows(rawRows, ctx) {
     const end = Math.min(start + SEED_ROW_BATCH, n);
     for (let i = start; i < end; i += 1) {
       const row = normalizeHistoryRow(capped[i]);
-      appendSeededRow(row, pick, ctx, histMax);
+      intake.pushHistRow(row, histMax, pick.defaultSampleRate);
     }
     if (end < n) {
       await raf();
@@ -219,3 +135,6 @@ export async function seedFloatHistoryFromRows(rawRows, ctx) {
   const last = normalizeHistoryRow(capped[n - 1]);
   finalizeSeededState(last, pick, ctx);
 }
+
+// Re-export for callers that construct spectrum data outside of FrameIntake (e.g. snapshot tests).
+export { buildSpectrumDataSnapshot };

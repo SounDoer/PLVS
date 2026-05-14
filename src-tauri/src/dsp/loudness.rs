@@ -1,6 +1,7 @@
 //! ITU-R BS.1770 / EBU R128 style loudness (ported from `loudness-meter.js`).
 
 use super::filters::{KWeightMono, KWeightStereo};
+use super::meter::{Meter, PcmContext};
 use crate::engine::ChannelLayoutSetting;
 
 const IBL_CAP: usize = 36_000;
@@ -71,6 +72,7 @@ pub struct LoudnessMeter {
   tp_ph: Vec<Vec<f64>>,
   tp_h: [Vec<f64>; 2],
   tp_wp: [usize; 2],
+  pending_block: Option<LoudnessBlock>,
 }
 
 impl LoudnessMeter {
@@ -100,7 +102,13 @@ impl LoudnessMeter {
       tp_ph,
       tp_h,
       tp_wp: [0, 0],
+      pending_block: None,
     }
+  }
+
+  /// Takes and returns the most recent [`LoudnessBlock`] produced since the last call.
+  pub fn take_block(&mut self) -> Option<LoudnessBlock> {
+    self.pending_block.take()
   }
 
   /// Full meter state reset (UI Clear): K-weighting blocks, gating buffers, true-peak accumulators.
@@ -455,6 +463,24 @@ pub struct LoudnessBlock {
   pub true_peak: f64,
   pub true_peak_l: f64,
   pub true_peak_r: f64,
+}
+
+impl Meter for LoudnessMeter {
+  fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
+    let block = if ctx.channels == 1 {
+      self.push_mono_duplex(ctx.interleaved)
+    } else {
+      self.push_interleaved_multichannel(ctx.interleaved, ctx.channels, ctx.channel_layout)
+    };
+    if let Some(b) = block {
+      self.pending_block = Some(b);
+    }
+  }
+
+  fn reset(&mut self) {
+    let sr = self.sample_rate;
+    *self = LoudnessMeter::new(sr);
+  }
 }
 
 #[cfg(test)]

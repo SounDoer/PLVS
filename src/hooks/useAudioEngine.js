@@ -10,6 +10,7 @@ import {
 import { onLoudnessSlow } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
+import { resolveDevice, buildDeviceStatus } from "../lib/audioEngineCommands.js";
 
 export function useAudioEngine({
   running,
@@ -23,14 +24,7 @@ export function useAudioEngine({
   spectrumTimeRef,
   rafRef,
   frameRef,
-  histRef,
-  loudnessHistRef,
-  spectrumSnapRef,
-  spectrumDataRef,
-  spectrumDataSnapRef,
-  vectorSnapRef,
-  corrSnapRef,
-  audioSnapRef,
+  intake,
   selectedOffsetRef,
   vectorscopePairRef,
   setAudio,
@@ -90,18 +84,7 @@ export function useAudioEngine({
           if (!devices?.length) {
             throw new Error("No input devices reported by the native engine");
           }
-          const isAutomatic = !captureDeviceId || captureDeviceId === "default";
-          const resolvePick = () => {
-            if (!isAutomatic) {
-              const d = devices.find((x) => x.id === captureDeviceId);
-              if (d) return d;
-            }
-            return (
-              devices.find((d) => d.isSystemOutputMonitor) ||
-              devices.find((d) => d.isLoopback) ||
-              devices[0]
-            );
-          };
+          const { device: resolvedDevice, isAutomatic } = resolveDevice(devices, captureDeviceId);
 
           let engineDeviceId;
           let statusMain;
@@ -115,13 +98,9 @@ export function useAudioEngine({
             statusMain = "Monitoring system playback (loopback)";
             deviceStatusLabel = preview.label;
           } else {
-            const pick = resolvePick();
-            defaultSampleRateRef.current = pick.defaultSampleRate || 48000;
-            engineDeviceId = pick.id;
-            statusMain = pick.isSystemOutputMonitor
-              ? "Monitoring system playback (loopback)"
-              : "Monitoring audio input";
-            deviceStatusLabel = pick.label;
+            defaultSampleRateRef.current = resolvedDevice.defaultSampleRate || 48000;
+            engineDeviceId = resolvedDevice.id;
+            ({ statusMain, deviceStatusLabel } = buildDeviceStatus(resolvedDevice));
           }
 
           const unsubs = [];
@@ -142,16 +121,9 @@ export function useAudioEngine({
 
           const { applyFrame: baseApply } = buildTauriFrameApply({
             histMaxSamples,
-            loudnessHistRef,
-            spectrumDataRef,
-            spectrumDataSnapRef,
-            spectrumSnapRef,
-            vectorSnapRef,
-            corrSnapRef,
-            audioSnapRef,
+            intake,
             frameRef,
             selectedOffsetRef,
-            histRef: histRef,
             defaultSampleRateRef,
             setAudio,
             setSpectrumPath,

@@ -13,16 +13,9 @@ export function useTauriFrameSubscription(
   engineRunning,
   {
     histMaxSamples,
-    loudnessHistRef,
-    spectrumDataRef,
-    spectrumDataSnapRef,
-    spectrumSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
+    intake,
     frameRef,
     selectedOffsetRef,
-    histRef,
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,
@@ -48,16 +41,9 @@ export function useTauriFrameSubscription(
     const run = async () => {
       const { applyFrame } = buildTauriFrameApply({
         histMaxSamples,
-        loudnessHistRef,
-        spectrumDataRef,
-        spectrumDataSnapRef,
-        spectrumSnapRef,
-        vectorSnapRef,
-        corrSnapRef,
-        audioSnapRef,
+        intake,
         frameRef,
         selectedOffsetRef,
-        histRef,
         defaultSampleRateRef,
         setAudio,
         setSpectrumPath,
@@ -106,7 +92,7 @@ export function useTauriFrameSubscription(
       unlistenSr();
       void meterRemoveFrameSubscriber(subscriptionId);
     };
-    // subscriptionId is stable for the instance; refs are stable.
+    // subscriptionId is stable for the instance; refs and intake are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     engineRunning,

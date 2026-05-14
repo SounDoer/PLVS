@@ -1,7 +1,6 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef } from "react";
 import { isTauri } from "../ipc/env.js";
-import { saveFloatWindowBounds } from "../ipc/floatWindowPrefs.js";
+import { saveFloatWindowBounds, getCurrentFloatWindow } from "../ipc/floatWindowPrefs.js";
 
 /**
  * Debounced save of outer size/position on resize and move, plus a best-effort flush on
@@ -24,7 +23,7 @@ export function useFloatWindowPersistence(kind) {
 
   useEffect(() => {
     if (!isTauri()) return undefined;
-    const w = getCurrentWindow();
+    const w = getCurrentFloatWindow();
     let debounceT = 0;
     const save = () => {
       void (async () => {

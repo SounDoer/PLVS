@@ -12,6 +12,8 @@ use realfft::RealFftPlanner;
 use rustfft::num_complex::Complex;
 use std::collections::VecDeque;
 
+use super::meter::{Meter, PcmContext};
+
 const FFT_LEN: usize = 4096;
 const STFT_HOP: usize = FFT_LEN / 4;
 const POWER_AVG_FRAMES: usize = 4;
@@ -115,7 +117,7 @@ fn smooth_by_kernel(values: &[f64], kernel: &[f64]) -> Vec<f64> {
   out
 }
 
-pub struct SpectrumEngine {
+pub struct SpectrumMeter {
   r2c: std::sync::Arc<dyn realfft::RealToComplex<f32>>,
   scratch_in: Vec<f32>,
   scratch_spec: Vec<Complex<f32>>,
@@ -147,9 +149,13 @@ pub struct SpectrumEngine {
   band_power_hist: VecDeque<Vec<f64>>,
   /// Last frequency-kernel-smoothed dB curve (input to attack/release).
   last_freq_smoothed_db: Vec<f64>,
+  /// Cached output from the most recent FFT frame — centers, smooth dB, peak dB.
+  cached_centers: Vec<f64>,
+  cached_smooth: Vec<f64>,
+  cached_peak: Vec<f64>,
 }
 
-impl SpectrumEngine {
+impl SpectrumMeter {
   pub fn new(sample_rate: f64) -> Self {
     let mut planner = RealFftPlanner::<f32>::new();
     let r2c = planner.plan_fft_forward(FFT_LEN);
@@ -192,7 +198,15 @@ impl SpectrumEngine {
       ingested_frames: 0,
       band_power_hist: VecDeque::new(),
       last_freq_smoothed_db: Vec::new(),
+      cached_centers: Vec::new(),
+      cached_smooth: Vec::new(),
+      cached_peak: Vec::new(),
     }
+  }
+
+  /// Returns the most recently computed `(centers_hz, smooth_db, peak_db)` slices.
+  pub fn last_output(&self) -> (&[f64], &[f64], &[f64]) {
+    (&self.cached_centers, &self.cached_smooth, &self.cached_peak)
   }
 
   fn push_sample_pair(&mut self, l: f32, r: f32) {
@@ -406,7 +420,27 @@ impl SpectrumEngine {
   /// Reset FFT ring, band energies, and peak-hold (UI Clear).
   pub fn reset(&mut self) {
     let sr = self.sample_rate;
-    *self = SpectrumEngine::new(sr);
+    *self = SpectrumMeter::new(sr);
+  }
+}
+
+impl Meter for SpectrumMeter {
+  fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
+    let result = if ctx.channels == 1 {
+      self.push_mono_duplex(ctx.interleaved, ctx.now_sec)
+    } else {
+      self.push_interleaved(ctx.interleaved, ctx.channels, ctx.now_sec)
+    };
+    if let Some((sm, pk)) = result {
+      self.cached_centers = self.band_centers();
+      self.cached_smooth = sm;
+      self.cached_peak = pk;
+    }
+  }
+
+  fn reset(&mut self) {
+    let sr = self.sample_rate;
+    *self = SpectrumMeter::new(sr);
   }
 }
 
@@ -480,7 +514,7 @@ mod tests {
     let hz = 1000.0;
     let frames = FFT_LEN;
 
-    let mut eng2 = SpectrumEngine::new(sr);
+    let mut eng2 = SpectrumMeter::new(sr);
     let in2 = tone_interleaved(frames, 2, sr, hz);
     let (db2, _) = eng2.push_interleaved(&in2, 2, 1.0).expect("spectrum");
     let peak2 = db2
@@ -488,7 +522,7 @@ mod tests {
       .copied()
       .fold(f64::NEG_INFINITY, |a, b| if b > a { b } else { a });
 
-    let mut eng4 = SpectrumEngine::new(sr);
+    let mut eng4 = SpectrumMeter::new(sr);
     let in4 = tone_interleaved(frames, 4, sr, hz);
     let (db4, _) = eng4.push_interleaved(&in4, 4, 1.0).expect("spectrum");
     let peak4 = db4

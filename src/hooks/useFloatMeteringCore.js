@@ -6,6 +6,7 @@ import { useSettings } from "./useSettings";
 import { useSnapshot } from "./useSnapshot";
 import { useTauriFrameSubscription } from "./useTauriFrameSubscription";
 import { useFloatEngineState } from "./useFloatEngineState";
+import { FrameIntake } from "../lib/FrameIntake.js";
 import { seedFloatHistoryFromRows } from "../lib/floatHistorySeed.js";
 import { resetFloatMeteringState } from "../lib/resetFloatMeteringState.js";
 
@@ -51,28 +52,14 @@ export function useFloatMeteringCore(floatKind) {
 
   const defaultSampleRateRef = useRef(48000);
   const frameRef = useRef(0);
-  const histRef = useRef([]);
-  const loudnessHistRef = useRef([]);
-  const spectrumSnapRef = useRef([]);
-  const spectrumDataRef = useRef(null);
-  const spectrumDataSnapRef = useRef([]);
-  const vectorSnapRef = useRef([]);
-  const corrSnapRef = useRef([]);
-  const audioSnapRef = useRef([]);
+  const intakeRef = useRef(new FrameIntake());
   const selectedOffsetRef = useRef(-1);
 
   useTauriFrameSubscription(engineRunning, {
     histMaxSamples: HIST_MAX_SAMPLES,
-    loudnessHistRef,
-    spectrumDataRef,
-    spectrumDataSnapRef,
-    spectrumSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
+    intake: intakeRef.current,
     frameRef,
     selectedOffsetRef,
-    histRef,
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,
@@ -99,14 +86,7 @@ export function useFloatMeteringCore(floatKind) {
         await seedFloatHistoryFromRows(rows, {
           histMaxSamples: HIST_MAX_SAMPLES,
           defaultSampleRate: defaultSampleRateRef.current,
-          loudnessHistRef,
-          spectrumDataRef,
-          spectrumDataSnapRef,
-          spectrumSnapRef,
-          vectorSnapRef,
-          corrSnapRef,
-          audioSnapRef,
-          histRef,
+          intake: intakeRef.current,
           setAudio,
           setSpectrumPath,
           setSpectrumPeakPath,
@@ -129,14 +109,7 @@ export function useFloatMeteringCore(floatKind) {
       resetFloatMeteringState({
         frameRef,
         selectedOffsetRef,
-        histRef,
-        loudnessHistRef,
-        spectrumDataRef,
-        spectrumDataSnapRef,
-        spectrumSnapRef,
-        vectorSnapRef,
-        corrSnapRef,
-        audioSnapRef,
+        intake: intakeRef.current,
         setAudio,
         setSpectrumPath,
         setSpectrumPeakPath,
@@ -164,13 +137,7 @@ export function useFloatMeteringCore(floatKind) {
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
-    loudnessHistRef,
-    spectrumSnapRef,
-    spectrumDataRef,
-    spectrumDataSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
+    intake: intakeRef.current,
     audio,
     spectrumPath,
     spectrumPeakPath,

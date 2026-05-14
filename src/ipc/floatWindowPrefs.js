@@ -138,3 +138,8 @@ export async function saveFloatWindowBounds(kind, size) {
 }
 
 export { DEFAULTS as FLOAT_DEFAULT_BOUNDS };
+
+/** Returns the current Tauri window handle. Use this instead of importing directly from \`@tauri-apps/api/window\`. */
+export function getCurrentFloatWindow() {
+  return getCurrentWindow();
+}

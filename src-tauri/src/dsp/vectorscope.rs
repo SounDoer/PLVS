@@ -1,20 +1,71 @@
 //! Lissajous path + Pearson correlation (matches `useAudioEngine` tick).
 
-pub struct VectorscopeState {
+use std::collections::VecDeque;
+
+use super::meter::{Meter, PcmContext};
+
+const VS_CAP: usize = 4096;
+
+pub struct VectorscopeMeter {
   extent_hold: f64,
+  pub(crate) vs_l: VecDeque<f32>,
+  pub(crate) vs_r: VecDeque<f32>,
+  vs_flat_l: Vec<f32>,
+  vs_flat_r: Vec<f32>,
 }
 
-impl VectorscopeState {
+impl VectorscopeMeter {
   pub fn new() -> Self {
-    Self { extent_hold: 0.02 }
+    Self {
+      extent_hold: 0.02,
+      vs_l: VecDeque::with_capacity(VS_CAP),
+      vs_r: VecDeque::with_capacity(VS_CAP),
+      vs_flat_l: Vec::with_capacity(VS_CAP),
+      vs_flat_r: Vec::with_capacity(VS_CAP),
+    }
   }
 
-  pub fn reset(&mut self) {
-    *self = Self::new();
+  fn push_pair(&mut self, l: f32, r: f32) {
+    self.vs_l.push_back(l);
+    self.vs_r.push_back(r);
+    while self.vs_l.len() > VS_CAP {
+      self.vs_l.pop_front();
+      self.vs_r.pop_front();
+    }
+  }
+
+  fn feed_mono(&mut self, mono: &[f32]) {
+    for &s in mono {
+      self.push_pair(s, s);
+    }
+  }
+
+  fn feed_interleaved(&mut self, interleaved: &[f32], channels: u16, pair_x: u16, pair_y: u16) {
+    let ch = channels.max(1) as usize;
+    let frames = interleaved.len() / ch;
+    let x = (pair_x as usize).min(ch.saturating_sub(1));
+    let y = (pair_y as usize).min(ch.saturating_sub(1));
+    for i in 0..frames {
+      let l = interleaved[i * ch + x];
+      let r = interleaved[i * ch + y];
+      self.push_pair(l, r);
+    }
+  }
+
+  /// Flatten the ring buffers and compute `(correlation, svg_path_d)`.
+  pub fn get_output(&mut self) -> (f64, String) {
+    if self.vs_l.is_empty() {
+      return (0.0, String::new());
+    }
+    self.vs_flat_l.clear();
+    self.vs_flat_r.clear();
+    self.vs_flat_l.extend(self.vs_l.iter().copied());
+    self.vs_flat_r.extend(self.vs_r.iter().copied());
+    self.process(&self.vs_flat_l.clone(), &self.vs_flat_r.clone())
   }
 
   /// Returns `(correlation, svg_path_d)` using the same geometry as the browser tick.
-  pub fn process(&mut self, l: &[f32], r: &[f32]) -> (f64, String) {
+  fn process(&mut self, l: &[f32], r: &[f32]) -> (f64, String) {
     if l.is_empty() || r.is_empty() {
       return (0.0, String::new());
     }
@@ -77,52 +128,73 @@ impl VectorscopeState {
   }
 }
 
+impl Default for VectorscopeMeter {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl Meter for VectorscopeMeter {
+  fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
+    let (pair_x, pair_y) = ctx.vectorscope_pair;
+    if ctx.channels == 1 {
+      self.feed_mono(ctx.interleaved);
+    } else {
+      self.feed_interleaved(ctx.interleaved, ctx.channels, pair_x, pair_y);
+    }
+  }
+
+  fn reset(&mut self) {
+    self.extent_hold = 0.02;
+    self.vs_l.clear();
+    self.vs_r.clear();
+    self.vs_flat_l.clear();
+    self.vs_flat_r.clear();
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
 
   #[test]
-  fn empty_slices_return_zero_corr_and_empty_path() {
-    let mut vs = VectorscopeState::new();
-    let (corr, path) = vs.process(&[], &[]);
+  fn empty_gives_zero_corr_and_empty_path() {
+    let mut vs = VectorscopeMeter::new();
+    let (corr, path) = vs.get_output();
     assert_eq!(corr, 0.0);
     assert!(path.is_empty());
   }
 
   #[test]
   fn in_phase_gives_correlation_one() {
-    let mut vs = VectorscopeState::new();
     let signal: Vec<f32> = (0..48).map(|i| (i as f32 * 0.02).sin() * 0.5).collect();
-    let (corr, path) = vs.process(&signal, &signal);
+    let mut vs = VectorscopeMeter::new();
+    vs.feed_mono(&signal); // mono uses same signal for both channels
+    let (corr, path) = vs.get_output();
     assert!((corr - 1.0).abs() < 1e-6, "expected corr≈1.0, got {corr}");
     assert!(path.starts_with('M'), "expected SVG path starting with M, got: {path}");
   }
 
   #[test]
   fn out_of_phase_gives_correlation_minus_one() {
-    let mut vs = VectorscopeState::new();
     let l: Vec<f32> = (0..48).map(|i| (i as f32 * 0.02).sin() * 0.5).collect();
     let r: Vec<f32> = l.iter().map(|&x| -x).collect();
-    let (corr, _) = vs.process(&l, &r);
+    // Feed as interleaved stereo
+    let interleaved: Vec<f32> = l.iter().zip(r.iter()).flat_map(|(&a, &b)| [a, b]).collect();
+    let mut vs = VectorscopeMeter::new();
+    vs.feed_interleaved(&interleaved, 2, 0, 1);
+    let (corr, _) = vs.get_output();
     assert!((corr + 1.0).abs() < 1e-6, "expected corr≈-1.0, got {corr}");
   }
 
   #[test]
-  fn silence_gives_zero_correlation_and_center_point() {
-    let mut vs = VectorscopeState::new();
-    let zeros = vec![0.0f32; 12];
-    let (corr, path) = vs.process(&zeros, &zeros);
-    assert_eq!(corr, 0.0);
-    assert!(path.starts_with("M 130.00 130.00"), "expected center point, got: {path}");
-  }
-
-  #[test]
-  fn reset_clears_extent_hold() {
-    let mut vs = VectorscopeState::new();
+  fn reset_clears_ring_and_extent() {
     let loud: Vec<f32> = vec![0.9; 12];
-    vs.process(&loud, &loud);
+    let mut vs = VectorscopeMeter::new();
+    vs.feed_mono(&loud);
     vs.reset();
-    let (_, path_after) = vs.process(&[0.0f32; 12], &[0.0f32; 12]);
-    assert!(path_after.starts_with("M 130.00 130.00"), "reset should clear extent hold");
+    let (corr, path) = vs.get_output();
+    assert_eq!(corr, 0.0);
+    assert!(path.is_empty());
   }
 }

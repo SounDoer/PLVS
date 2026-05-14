@@ -1,16 +1,9 @@
 /**
- * Reset in-memory metering buffers for the float webview (mirrors main `clearAll` Tauri path).
+ * Reset in-memory metering buffers (mirrors main `clearAll` Tauri path).
  * @param {object} ctx
  * @param {import("react").MutableRefObject<number>} ctx.frameRef
  * @param {import("react").MutableRefObject<number>} ctx.selectedOffsetRef
- * @param {import("react").MutableRefObject} ctx.histRef
- * @param {import("react").MutableRefObject} ctx.loudnessHistRef
- * @param {import("react").MutableRefObject} ctx.spectrumDataRef
- * @param {import("react").MutableRefObject} ctx.spectrumDataSnapRef
- * @param {import("react").MutableRefObject} ctx.spectrumSnapRef
- * @param {import("react").MutableRefObject} ctx.vectorSnapRef
- * @param {import("react").MutableRefObject} ctx.corrSnapRef
- * @param {import("react").MutableRefObject} ctx.audioSnapRef
+ * @param {import("./FrameIntake.js").FrameIntake} ctx.intake
  * @param {(v: object) => void} ctx.setAudio
  * @param {(s: string) => void} ctx.setSpectrumPath
  * @param {(s: string) => void} ctx.setSpectrumPeakPath
@@ -21,14 +14,7 @@ export function resetFloatMeteringState(ctx) {
   const {
     frameRef,
     selectedOffsetRef,
-    histRef,
-    loudnessHistRef,
-    spectrumDataRef,
-    spectrumDataSnapRef,
-    spectrumSnapRef,
-    vectorSnapRef,
-    corrSnapRef,
-    audioSnapRef,
+    intake,
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,
@@ -37,14 +23,7 @@ export function resetFloatMeteringState(ctx) {
   } = ctx;
   frameRef.current = 0;
   selectedOffsetRef.current = -1;
-  histRef.current = [];
-  loudnessHistRef.current = [];
-  spectrumDataRef.current = null;
-  spectrumDataSnapRef.current = [];
-  spectrumSnapRef.current = [];
-  vectorSnapRef.current = [];
-  corrSnapRef.current = [];
-  audioSnapRef.current = [];
+  intake.reset();
   setSpectrumPath("");
   setSpectrumPeakPath("");
   setVectorPath("");
