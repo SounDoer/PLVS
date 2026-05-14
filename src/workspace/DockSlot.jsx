@@ -26,6 +26,7 @@ function TabPill({ tabId, isActive, regionKey, slotIndex, tabCount, slotTabIndex
       onMouseDown={(e) => onTabMouseDown(e, tabId)}
       onClick={() => !dragState && setActiveTab(regionKey, slotIndex, tabId)}
     >
+      <span className="flex shrink-0"><def.Icon /></span>
       <span className="truncate max-w-[8rem]">{def.title}</span>
       {tabCount > 1 && (
         <button
