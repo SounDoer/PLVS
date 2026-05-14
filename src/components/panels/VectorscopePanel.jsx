@@ -1,22 +1,20 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 
-export function VectorscopePanel({
-  vsGridDiagInset,
-  vsGridDiagFar,
-  displayVectorPath,
-  selectedOffset,
-  correlation,
-  channelCount = 0,
-  /** @type {import("../../math/peakMeterChannelLabels.js").PeakMeterChannelLabelsContext | undefined} */
-  peakLabelContext,
-  pairX = 0,
-  pairY = 1,
-}) {
-  // Before metering (0 ch) or waiting for a multichannel layout, show standard L/R for the default 0–1 pair
-  // instead of generic Ch 1 / Ch 2.
+export function VectorscopePanel({ compact = false }) {
+  const {
+    vsGridDiagInset,
+    vsGridDiagFar,
+    displayVectorPath,
+    selectedOffset,
+    correlation,
+    channelCount = 0,
+    peakLabelContext,
+    vectorscopePairX: pairX = 0,
+    vectorscopePairY: pairY = 1,
+  } = useAudioData();
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
@@ -25,18 +23,13 @@ export function VectorscopePanel({
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
   return (
-    <Card
+    <div
       className={cn(
         PANEL_MIN_SPECTRUM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
-        <CardTitle className="min-w-0 text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
-          Vectorscope
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div className="relative min-h-0 flex-1 rounded-lg bg-muted">
           <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             <svg
@@ -139,7 +132,7 @@ export function VectorscopePanel({
             </span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

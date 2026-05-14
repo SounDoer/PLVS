@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { WorkspaceProvider } from "./workspace/WorkspaceContext.jsx";
+import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
 import { UI_PREFERENCES, readPersistedVectorscopePair } from "./uiPreferences";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
@@ -24,7 +26,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { PanelSet } from "./components/PanelSet";
+import { DockLayout } from "./workspace/DockLayout.jsx";
+import { PresetDropdown, VisibilityPopover } from "./workspace/WorkspaceToolbar.jsx";
 import { cn } from "@/lib/utils";
 import {
   APP_TITLE,
@@ -472,14 +475,77 @@ export default function App() {
     setSelectedOffset,
   });
 
+  const audioData = {
+    // Peak
+    displayAudio,
+    getSamplePeakLineColor,
+    fmt,
+    hasTpMaxValue,
+    tpMaxText,
+    // Vectorscope
+    vsGridDiagInset,
+    vsGridDiagFar,
+    displayVectorPath,
+    correlation,
+    vectorscopePairX: vectorscopePairUi.x,
+    vectorscopePairY: vectorscopePairUi.y,
+    // Shared
+    selectedOffset,
+    setSelectedOffset,
+    channelCount,
+    peakLabelContext,
+    running,
+    setStatus,
+    // Loudness history
+    historyYAxisTicks,
+    targetLufs,
+    referenceProfile,
+    hasHistoryData,
+    historyChartInteractive,
+    histCurves,
+    toggleCurve,
+    displayHistoryPathM,
+    displayHistoryPathST,
+    showSelLine,
+    selLineX,
+    isHistoryHudVisible,
+    clampedWindowSec,
+    effectiveOffsetSec,
+    historyHover,
+    historyTimeTicks,
+    primaryMetrics,
+    secondaryMetrics,
+    holdHistoryHud,
+    showHistoryHud,
+    onHistoryWheel,
+    onHistoryPointerDown,
+    onHistoryPointerMove,
+    onHistoryPointerUp,
+    onHistoryHoverMove,
+    onHistoryHoverLeave,
+    // Spectrum
+    displaySpectrumPath,
+    displaySpectrumPeakPath,
+    spectrumHover,
+    onSpectrumHoverMove,
+    onSpectrumHoverLeave,
+    // Spectrogram
+    spectrogramSnapRef,
+    effectiveOffsetSamples,
+    visibleSamples,
+    totalSamples,
+  };
+
   return (
+    <WorkspaceProvider>
+    <AudioDataContext.Provider value={audioData}>
     <div className={SHELL_PAGE}>
       <div className={SHELL_INNER}>
         <header className={SHELL_HEADER}>
           <div className={APP_TITLE}>
             Audio<span className={APP_TITLE_BRAND}>Meter</span>
           </div>
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-3 pr-2">
+          <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
             {isTauri() && (
               <CaptureDeviceSelect
                 audioDevices={audioDevices}
@@ -488,6 +554,8 @@ export default function App() {
                 onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
               />
             )}
+            <PresetDropdown />
+            <VisibilityPopover />
           </div>
           <div className="flex items-center gap-[var(--ui-header-action-gap)]">
             <Button
@@ -533,68 +601,7 @@ export default function App() {
           </div>
         </header>
 
-        <PanelSet
-          mainLeft={mainLeft}
-          leftTopRatio={leftTopRatio}
-          rightTopRatio={rightTopRatio}
-          spectrogramTopRatio={spectrogramTopRatio}
-          beginLayoutDrag={beginLayoutDrag}
-          onLayoutDragMove={onLayoutDragMove}
-          onLayoutDragUp={onLayoutDragUp}
-          selectedOffset={selectedOffset}
-          setSelectedOffset={setSelectedOffset}
-          channelCount={channelCount}
-          peakLabelContext={peakLabelContext}
-          displayAudio={displayAudio}
-          getSamplePeakLineColor={getSamplePeakLineColor}
-          fmt={fmt}
-          hasTpMaxValue={hasTpMaxValue}
-          tpMaxText={tpMaxText}
-          vsGridDiagInset={vsGridDiagInset}
-          vsGridDiagFar={vsGridDiagFar}
-          displayVectorPath={displayVectorPath}
-          correlation={correlation}
-          vectorscopePairX={vectorscopePairUi.x}
-          vectorscopePairY={vectorscopePairUi.y}
-          loudnessHistWidthRatio={loudnessHistWidthRatio}
-          historyYAxisTicks={historyYAxisTicks}
-          targetLufs={targetLufs}
-          referenceProfile={referenceProfile}
-          hasHistoryData={hasHistoryData}
-          historyChartInteractive={historyChartInteractive}
-          running={running}
-          setStatus={setStatus}
-          holdHistoryHud={holdHistoryHud}
-          showHistoryHud={showHistoryHud}
-          onHistoryWheel={onHistoryWheel}
-          onHistoryPointerDown={onHistoryPointerDown}
-          onHistoryPointerMove={onHistoryPointerMove}
-          onHistoryPointerUp={onHistoryPointerUp}
-          histCurves={histCurves}
-          displayHistoryPathM={displayHistoryPathM}
-          displayHistoryPathST={displayHistoryPathST}
-          showSelLine={showSelLine}
-          selLineX={selLineX}
-          isHistoryHudVisible={isHistoryHudVisible}
-          clampedWindowSec={clampedWindowSec}
-          effectiveOffsetSec={effectiveOffsetSec}
-          historyHover={historyHover}
-          historyTimeTicks={historyTimeTicks}
-          primaryMetrics={primaryMetrics}
-          secondaryMetrics={secondaryMetrics}
-          toggleCurve={toggleCurve}
-          onHistoryHoverMove={onHistoryHoverMove}
-          onHistoryHoverLeave={onHistoryHoverLeave}
-          displaySpectrumPath={displaySpectrumPath}
-          displaySpectrumPeakPath={displaySpectrumPeakPath}
-          spectrumHover={spectrumHover}
-          onSpectrumHoverMove={onSpectrumHoverMove}
-          onSpectrumHoverLeave={onSpectrumHoverLeave}
-          spectrogramSnapRef={spectrogramSnapRef}
-          effectiveOffsetSamples={effectiveOffsetSamples}
-          visibleSamples={visibleSamples}
-          totalSamples={totalSamples}
-        />
+        <DockLayout />
 
         <footer className={SHELL_FOOTER}>
           <span>{status}</span>
@@ -637,5 +644,7 @@ export default function App() {
         resetLayout={resetLayout}
       />
     </div>
+    </AudioDataContext.Provider>
+    </WorkspaceProvider>
   );
 }

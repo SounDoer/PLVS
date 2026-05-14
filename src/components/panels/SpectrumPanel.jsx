@@ -1,6 +1,6 @@
 import { useRef } from "react";
+import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   CAPTION_TEXT,
@@ -15,20 +15,22 @@ import {
   spectrumDbToTopFrac,
   spectrumDbToYViewBox,
 } from "../../config/scales";
+
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
   return `${path} L 1000 260 L 0 260 Z`;
 }
 
-export function SpectrumPanel({
-  displaySpectrumPath,
-  displaySpectrumPeakPath,
-  channelCount = 0,
-  selectedOffset,
-  spectrumHover,
-  onSpectrumHoverMove,
-  onSpectrumHoverLeave,
-}) {
+export function SpectrumPanel({ compact = false }) {
+  const {
+    displaySpectrumPath,
+    displaySpectrumPeakPath,
+    channelCount = 0,
+    selectedOffset,
+    spectrumHover,
+    onSpectrumHoverMove,
+    onSpectrumHoverLeave,
+  } = useAudioData();
   const spectrumSvgRef = useRef(null);
   const reduceMotion = useReducedMotion();
   const displaySpectrumAreaPath = buildSpectrumAreaPath(displaySpectrumPath);
@@ -36,26 +38,13 @@ export function SpectrumPanel({
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
 
   return (
-    <Card
+    <div
       className={cn(
         PANEL_MIN_SPECTRUM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      <CardHeader className="flex min-w-0 flex-row items-center justify-between gap-2 space-y-0 p-0 pb-0">
-        <CardTitle className="min-w-0 truncate text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
-          Spectrum
-        </CardTitle>
-        {isSummedMultichannel ? (
-          <span
-            className={cn(CAPTION_TEXT, "shrink-0")}
-            title="All channels (summed): per-band linear power/energy is summed across channels, then converted to dB."
-          >
-            All channels (summed)
-          </span>
-        ) : null}
-      </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
             "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch",
@@ -85,6 +74,17 @@ export function SpectrumPanel({
               className={cn("relative min-h-0 h-full rounded-lg bg-muted", CHART_INSET_MIN_H)}
               onPointerLeave={onSpectrumHoverLeave}
             >
+              {isSummedMultichannel && (
+                <span
+                  className={cn(
+                    CAPTION_TEXT,
+                    "pointer-events-none absolute right-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] z-10 shrink-0"
+                  )}
+                  title="All channels (summed): per-band linear power/energy is summed across channels, then converted to dB."
+                >
+                  All channels (summed)
+                </span>
+              )}
               <div
                 className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {
@@ -251,7 +251,7 @@ export function SpectrumPanel({
           <div />
           <div />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

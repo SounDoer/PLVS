@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CHART_INSET_MIN_H, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
@@ -20,14 +20,9 @@ function useCanvasSize(canvasRef, containerRef) {
   }, [canvasRef, containerRef]);
 }
 
-export function SpectrogramPanel({
-  snapRef,
-  effectiveOffsetSamples,
-  visibleSamples,
-  selectedOffset,
-  setSelectedOffset,
-  totalSamples,
-}) {
+export function SpectrogramPanel({ compact = false }) {
+  const { spectrogramSnapRef: snapRef, effectiveOffsetSamples, visibleSamples, selectedOffset, setSelectedOffset, totalSamples } =
+    useAudioData();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   useCanvasSize(canvasRef, containerRef);
@@ -43,18 +38,13 @@ export function SpectrogramPanel({
   });
 
   return (
-    <Card
+    <div
       className={cn(
         PANEL_MIN_SPECTROGRAM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      <CardHeader className="flex min-w-0 flex-row items-center justify-between gap-2 space-y-0 p-0 pb-0">
-        <CardTitle className="min-w-0 truncate text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
-          Spectrogram
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
             "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] gap-x-[var(--ui-chart-axis-gap)] items-stretch",
@@ -93,7 +83,7 @@ export function SpectrogramPanel({
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

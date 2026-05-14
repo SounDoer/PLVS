@@ -67,6 +67,24 @@
 
 ---
 
+## 2.5 实施前确认的技术决定
+
+> 本节记录实施前与开发者讨论后确认的决定，补充设计文档未明确的部分。
+
+| 决定点 | 结论 | 理由 |
+|---|---|---|
+| 语言 | 继续用 **JavaScript + JSDoc**，不迁移 TypeScript | 项目全部为 `.jsx`，保持一致 |
+| LoudnessStats | **从 LoudnessPanel 拆出**，成为独立第 6 个模块组件 | 当前嵌在 LoudnessPanel 内；拆出后才能作为独立 tab 自由编排 |
+| 音频数据流 | **Audio Context**：App.jsx 创建 context，各模块组件直接消费 | Dock / Region / Slot 中间层不经手音频数据；零新依赖；模块接口干净 |
+| CSS 变量 | **映射到项目现有 shadcn token**（`--background`、`--border`、`--primary` 等），不新增变量 | 项目已有完整主题系统；shadcn token 已覆盖所需语义 |
+| 顶栏布局 | `Logo \| 设备选择 \| 预设下拉 \| 可见性图标 \| → \| Clear \| Start \| Settings` | 新控件插在设备选择右侧，保持现有右侧操作区不变 |
+| 状态管理 | **React Context + useReducer**（WorkspaceState），零新依赖 | 项目无现有状态管理库；与 AudioData context 风格一致 |
+| 持久化 | **localStorage**（key: `audiometer:workspace:v1`），schema 版本不匹配时 fallback 到 DEFAULT | 与现有布局持久化方式一致；Tauri Store 已安装，未来可平滑迁移 |
+| 图标 | 使用项目已有的 **lucide-react**，为每个模块选择合适图标 | 项目已使用 lucide-react，无需引入新图标库 |
+| 拖拽 | **原生 mouse 事件** + `elementsFromPoint`，不引入 react-dnd / dnd-kit | 项目未用拖拽库；原型验证此方案可行 |
+
+---
+
 ## 3. 数据模型
 
 ### 3.1 TypeScript 类型定义
@@ -177,30 +195,45 @@ export const DEFAULT_DOCK_STATE: DockState = {
 
 每个音频模块组件应该：
 - 占满父容器（`width: 100%; height: 100%`）
-- 通过 props 接收一个 `compact: boolean`，用于在小尺寸下切换紧凑显示（例如 Loudness Stats 的标签缩短为 5 字符）
+- 通过 props 接收一个 `compact` boolean，用于在小尺寸下切换紧凑显示（例如 Loudness Stats 的标签缩短为 5 字符）
+- **从 AudioDataContext 消费音频数据**，不通过 props 接收（见 §2.5 音频数据流决定）
 - 内部自己管理 ResizeObserver / rAF，**不依赖**布局系统传入精确尺寸
 
-```ts
-interface ModuleProps {
-  compact: boolean;
-}
+```js
+// JSDoc（项目为 JavaScript，不迁移 TypeScript）
 
-type ModuleComponent = React.FC<ModuleProps>;
+/**
+ * @typedef {{ compact: boolean }} ModuleProps
+ */
 
-interface ModuleDef {
-  id: ModuleId;
-  title: string;
-  minWidth: number;
-  minHeight: number;
-  Component: ModuleComponent;
-  /** 在 Activity Bar 中显示的 16×16 icon */
-  Icon: React.FC;
-}
+/**
+ * @typedef {{
+ *   id: ModuleId,
+ *   title: string,
+ *   minWidth: number,
+ *   minHeight: number,
+ *   Component: React.FC<ModuleProps>,
+ *   Icon: React.FC,  // 16×16，来自 lucide-react
+ * }} ModuleDef
+ */
 
-export const MODULE_REGISTRY: Record<ModuleId, ModuleDef> = { /* ... */ };
+/** @type {Record<ModuleId, ModuleDef>} */
+export const MODULE_REGISTRY = { /* ... */ };
 ```
 
-> **CC 注意**：项目里现有的 Peak/Loudness/Spectrum 等模块组件已经实现，本次改动应**只重写包裹层**，不改音频可视化组件本身。
+**AudioDataContext** 提供的数据形状（从 App.jsx 当前 state 抽取）：
+
+```js
+// AudioDataContext 包含现有 App.jsx 中所有音频相关 state：
+// displayAudio, displaySpectrumPath, displaySpectrumPeakPath,
+// displayVectorPath, spectrogramSnapRef, correlation,
+// getSamplePeakLineColor, fmt, hasTpMaxValue, tpMaxText,
+// vsGridDiagInset, vsGridDiagFar, vectorscopePairX/Y,
+// loudness history 相关（histCurves, primaryMetrics 等）,
+// selectedOffset, running, ...
+```
+
+> **注意**：项目里现有的 Peak/Loudness/Spectrum 等模块组件已经实现，本次改动**不重写音频可视化核心逻辑**，只需：(1) 将数据来源从 props 改为从 AudioDataContext 消费；(2) 新增 `compact` prop 支持；(3) 拆出 LoudnessStats 为独立组件。
 
 ---
 

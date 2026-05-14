@@ -1,6 +1,6 @@
 import { useEffect } from "react";
+import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
 import { PEAK_TICKS, peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../../config/scales";
@@ -49,29 +49,18 @@ function AnimatedHoldLine({ holdDb, lineColor }) {
   );
 }
 
-export function PeakPanel({
-  displayAudio,
-  /** @type {import("../../math/peakMeterChannelLabels.js").PeakMeterChannelLabelsContext | undefined} */
-  peakLabelContext,
-  getSamplePeakLineColor,
-  fmt,
-  hasTpMaxValue,
-  tpMaxText,
-}) {
+export function PeakPanel({ compact = false }) {
+  const { displayAudio, peakLabelContext, getSamplePeakLineColor, fmt, hasTpMaxValue, tpMaxText } =
+    useAudioData();
   const channels = getPeakChannels(displayAudio, peakLabelContext);
   return (
-    <Card
+    <div
       className={cn(
         PANEL_MIN_PEAK,
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius)] border-border/80 bg-card/55 py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)] text-card-foreground shadow-sm backdrop-blur-md"
+        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      <CardHeader className="shrink-0 space-y-0 p-0 pb-0">
-        <CardTitle className="text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
-          Peak
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-0 p-0 pt-[var(--ui-panel-title-gap)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
             "grid min-h-0 flex-1 grid-cols-[auto_1fr] gap-[var(--ui-peak-axis-chart-gap)]",
@@ -136,7 +125,7 @@ export function PeakPanel({
             </span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
