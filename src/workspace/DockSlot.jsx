@@ -53,7 +53,7 @@ function getZoneHint(hoverDrop, regionKey, slotIndex) {
   return hoverDrop.zone; // 'tabs' | 'above' | 'below'
 }
 
-export function DockSlot({ slot, regionKey, slotIndex }) {
+export function DockSlot({ slot, regionKey, slotIndex, isLast = false }) {
   const { state, toggleSlotCollapsed, toggleModuleVisible, setFullscreen } = useWorkspaceStore();
   const { visibleModules, focusId } = state;
   const { dragState, hoverDrop } = useDrag();
@@ -79,7 +79,7 @@ export function DockSlot({ slot, regionKey, slotIndex }) {
         isDragging && zoneHint === 'above' && 'ring-2 ring-primary ring-offset-0',
         isDragging && zoneHint === 'below' && 'ring-2 ring-primary ring-offset-0'
       )}
-      style={slot.size && !slot.collapsed ? { flexBasis: slot.size, flexGrow: 0, flexShrink: 1 } : undefined}
+      style={slot.size && !slot.collapsed ? { flexBasis: slot.size, flexGrow: isLast ? 1 : 0, flexShrink: 1 } : undefined}
     >
       {/* Zone hint: above */}
       {isDragging && zoneHint === 'above' && (

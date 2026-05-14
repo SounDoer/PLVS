@@ -169,6 +169,7 @@ function DockRegion({ regionKey, forceVisible = false }) {
       {visibleSlots.map(({ slot, originalIndex }, i) => {
         const prev = i > 0 ? visibleSlots[i - 1] : null;
         const showDivider = prev && !prev.slot.collapsed && !slot.collapsed;
+        const isLast = i === visibleSlots.length - 1;
         return (
           <Fragment key={originalIndex}>
             {showDivider && (
@@ -179,7 +180,7 @@ function DockRegion({ regionKey, forceVisible = false }) {
                 regionIsHorizontal={isHorizontal}
               />
             )}
-            <DockSlot slot={slot} regionKey={regionKey} slotIndex={originalIndex} />
+            <DockSlot slot={slot} regionKey={regionKey} slotIndex={originalIndex} isLast={isLast} />
           </Fragment>
         );
       })}
@@ -278,7 +279,7 @@ function DockContent() {
   return (
     <DragProvider onDrop={onDrop}>
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-h-0 flex-1 flex-col p-[var(--ui-panel-gap,6px)]">
+        <div className="flex min-h-0 flex-1 flex-col">
           {/* Main row: left | divider | center | divider | right */}
           <div className="flex min-h-0 flex-1">
             {/* Left region — always mount during drag so it can receive drops */}
