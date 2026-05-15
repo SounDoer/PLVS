@@ -76,7 +76,7 @@ export function SpectrogramPanel({ compact = false }) {
             >
               <canvas
                 ref={canvasRef}
-                className="absolute inset-0 h-full w-full cursor-crosshair rounded-lg"
+                className="absolute inset-0 h-full w-full cursor-crosshair rounded-lg bg-muted"
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
               />

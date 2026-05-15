@@ -54,9 +54,7 @@ function buildYToBand(bands, canvasH) {
 function paintImageData(imageData, snaps, startIdx, count, yToBand) {
   const { data, width: W, height: H } = imageData;
   const rng = SPEC_DB_MAX - SPEC_DB_MIN;
-  // Fill background (black = -100 dB)
   data.fill(0);
-  for (let i = 0; i < W * H * 4; i += 4) data[i + 3] = 255;
 
   for (let col = 0; col < count; col++) {
     const snap = snaps[startIdx + col];
@@ -78,6 +76,7 @@ function paintImageData(imageData, snaps, startIdx, count, yToBand) {
         data[idx] = r;
         data[idx + 1] = g;
         data[idx + 2] = b;
+        data[idx + 3] = Math.round(t * 255);
       }
     }
   }
@@ -143,8 +142,7 @@ export function useSpectrogramCanvas({
       const firstSnap = snaps && snaps.length > 0 ? snaps[snaps.length - 1] : null;
       const bands = firstSnap?.bands;
       if (!bands || bands.length === 0 || len === 0) {
-        ctx.fillStyle = "rgb(0,0,4)";
-        ctx.fillRect(0, 0, W, H);
+        ctx.clearRect(0, 0, W, H);
         return;
       }
       if (cache.W !== W || cache.H !== H || !cache.yToBand) {
@@ -160,8 +158,7 @@ export function useSpectrogramCanvas({
         visibleSamples
       );
       if (count === 0) {
-        ctx.fillStyle = "rgb(0,0,4)";
-        ctx.fillRect(0, 0, W, H);
+        ctx.clearRect(0, 0, W, H);
         return;
       }
 
