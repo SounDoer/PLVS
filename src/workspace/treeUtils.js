@@ -168,7 +168,7 @@ export function insertLeaf(root, targetPath, zone, newLeaf, tabIndex = 0) {
   // Target is root — always wrap in a new split
   if (targetPath.length === 0) {
     const children = before ? [newLeaf, root] : [root, newLeaf];
-    return { type: 'split', direction: dir, children, sizes: [200, 200] };
+    return { type: 'split', direction: dir, children, sizes: [0, 0] };
   }
 
   const parentPath = targetPath.slice(0, -1);
@@ -182,7 +182,7 @@ export function insertLeaf(root, targetPath, zone, newLeaf, tabIndex = 0) {
       const newChildren = [...p.children];
       const newSizes = [...p.sizes];
       newChildren.splice(insertAt, 0, newLeaf);
-      newSizes.splice(insertAt, 0, 200);
+      newSizes.splice(insertAt, 0, 0);
       return { ...p, children: newChildren, sizes: newSizes };
     });
   }
@@ -190,6 +190,6 @@ export function insertLeaf(root, targetPath, zone, newLeaf, tabIndex = 0) {
   // No promotion — wrap target leaf in a new split
   return updateNode(root, targetPath, (target) => {
     const children = before ? [newLeaf, target] : [target, newLeaf];
-    return { type: 'split', direction: dir, children, sizes: [200, 200] };
+    return { type: 'split', direction: dir, children, sizes: [0, 0] };
   });
 }
