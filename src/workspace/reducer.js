@@ -1,74 +1,24 @@
-/** @import { WorkspaceState, DockState, ModuleId, RegionKey, DropTarget, Slot } from './types.js' */
-import { BUILTIN_PRESETS, DEFAULT_REGION_SIZES, DEFAULT_WORKSPACE_STATE } from './constants.js';
+/** @import { WorkspaceState, ModuleId, DropTarget, TreeNode } from './types.js' */
+import { BUILTIN_PRESETS, DEFAULT_WORKSPACE_STATE } from './constants.js';
+import { findLeafWithTab, insertLeaf, pruneTree, removeTab, updateNode } from './treeUtils.js';
 
 // ---------------------------------------------------------------------------
-// Pure dock helpers
+// MOVE_TAB helpers
 // ---------------------------------------------------------------------------
 
-/** Returns { regionKey, slotIndex } or null. */
-function findTabLocation(dock, tabId) {
-  for (const [regionKey, region] of Object.entries(dock.regions)) {
-    const slotIndex = region.slots.findIndex((s) => s.tabs.includes(tabId));
-    if (slotIndex !== -1) return { regionKey, slotIndex };
-  }
-  return null;
-}
-
 /**
- * Remove tabId from wherever it lives in dock.
- * Empty slots are automatically pruned.
- * @returns {DockState}
+ * After removeTab changes the tree, the original targetPath from the drop
+ * event may be stale. We re-anchor by finding a known tab in the target leaf.
+ *
+ * @param {TreeNode} tree  Tree after removeTab
+ * @param {string} anchorTab  A tab we know was in the target leaf
+ * @param {number[]} fallbackPath  Original path (used if anchor not found)
+ * @returns {number[]}
  */
-export function removeTabFromDock(dock, tabId) {
-  const regions = {};
-  for (const [key, region] of Object.entries(dock.regions)) {
-    const slots = region.slots
-      .map((slot) => {
-        if (!slot.tabs.includes(tabId)) return slot;
-        const tabs = slot.tabs.filter((t) => t !== tabId);
-        if (!tabs.length) return null;
-        const activeTab = tabs.includes(slot.activeTab) ? slot.activeTab : tabs[0];
-        return { ...slot, tabs, activeTab };
-      })
-      .filter(Boolean);
-    regions[key] = { ...region, slots };
-  }
-  return { regions };
-}
-
-/**
- * Insert tabId into dock according to drop target.
- * @param {DockState} dock
- * @param {ModuleId} tabId
- * @param {DropTarget & { adjustedSlotIndex: number }} drop
- * @returns {DockState}
- */
-function insertTabAt(dock, tabId, drop) {
-  const { targetRegion, adjustedSlotIndex, zone, tabIndex = 0 } = drop;
-  const regions = { ...dock.regions };
-  const region = { ...regions[targetRegion], slots: [...regions[targetRegion].slots] };
-
-  if (zone === 'tabs') {
-    const slot = { ...region.slots[adjustedSlotIndex] };
-    const tabs = [...slot.tabs];
-    tabs.splice(tabIndex, 0, tabId);
-    region.slots[adjustedSlotIndex] = { ...slot, tabs, activeTab: tabId };
-  } else if (zone === 'above') {
-    const newSlot = { tabs: [tabId], activeTab: tabId, collapsed: false };
-    region.slots.splice(adjustedSlotIndex, 0, newSlot);
-  } else if (zone === 'below') {
-    const newSlot = { tabs: [tabId], activeTab: tabId, collapsed: false };
-    region.slots.splice(adjustedSlotIndex + 1, 0, newSlot);
-  } else if (zone === 'empty-region') {
-    const newSlot = { tabs: [tabId], activeTab: tabId, collapsed: false };
-    region.slots = [...region.slots, newSlot];
-    if (!region.size || region.size === 0) {
-      region.size = DEFAULT_REGION_SIZES[targetRegion] ?? 200;
-    }
-  }
-
-  regions[targetRegion] = region;
-  return { regions };
+function resolveTargetPath(tree, anchorTab, fallbackPath) {
+  if (!anchorTab) return fallbackPath;
+  const found = findLeafWithTab(tree, anchorTab);
+  return found ?? fallbackPath;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,65 +32,24 @@ function insertTabAt(dock, tabId, drop) {
  */
 export function workspaceReducer(state, action) {
   switch (action.type) {
-    case 'SET_DOCK_STATE':
-      return { ...state, dock: action.payload, activePresetId: null };
+    case 'SET_TREE':
+      return { ...state, tree: action.payload.tree, activePresetId: null };
 
-    case 'MOVE_TAB': {
-      const { sourceId, drop } = action.payload;
-      const sourceLocation = findTabLocation(state.dock, sourceId);
-
-      // Track whether the source slot will be entirely removed (was a single-tab slot)
-      const sourceSlotTabCount = sourceLocation
-        ? state.dock.regions[sourceLocation.regionKey].slots[sourceLocation.slotIndex].tabs.length
-        : 0;
-      const sourceSlotRemoved = sourceSlotTabCount === 1;
-
-      const dockAfterRemove = removeTabFromDock(state.dock, sourceId);
-
-      // Adjust slotIndex: if source slot was removed from the same region and was before target
-      let adjustedSlotIndex = drop.slotIndex;
-      if (
-        drop.zone !== 'empty-region' &&
-        sourceLocation &&
-        sourceSlotRemoved &&
-        sourceLocation.regionKey === drop.targetRegion &&
-        sourceLocation.slotIndex < drop.slotIndex
-      ) {
-        adjustedSlotIndex -= 1;
-      }
-
-      const newDock = insertTabAt(dockAfterRemove, sourceId, { ...drop, adjustedSlotIndex });
-      return { ...state, dock: newDock, activePresetId: null };
+    case 'RESIZE_CHILDREN': {
+      const { path, aboveIdx, aboveSize, belowSize } = action.payload;
+      const newTree = updateNode(state.tree, path, (node) => {
+        const sizes = [...node.sizes];
+        sizes[aboveIdx] = aboveSize;
+        sizes[aboveIdx + 1] = belowSize;
+        return { ...node, sizes };
+      });
+      return { ...state, tree: newTree };
     }
 
     case 'SET_ACTIVE_TAB': {
-      const { region, slotIndex, tabId } = action.payload;
-      const slots = [...state.dock.regions[region].slots];
-      slots[slotIndex] = { ...slots[slotIndex], activeTab: tabId };
-      return {
-        ...state,
-        dock: {
-          regions: {
-            ...state.dock.regions,
-            [region]: { ...state.dock.regions[region], slots },
-          },
-        },
-      };
-    }
-
-    case 'TOGGLE_SLOT_COLLAPSED': {
-      const { region, slotIndex } = action.payload;
-      const slots = [...state.dock.regions[region].slots];
-      slots[slotIndex] = { ...slots[slotIndex], collapsed: !slots[slotIndex].collapsed };
-      return {
-        ...state,
-        dock: {
-          regions: {
-            ...state.dock.regions,
-            [region]: { ...state.dock.regions[region], slots },
-          },
-        },
-      };
+      const { path, tabId } = action.payload;
+      const newTree = updateNode(state.tree, path, (node) => ({ ...node, activeTab: tabId }));
+      return { ...state, tree: newTree };
     }
 
     case 'TOGGLE_MODULE_VISIBLE': {
@@ -149,79 +58,50 @@ export function workspaceReducer(state, action) {
       const visibleModules = isVisible
         ? state.visibleModules.filter((m) => m !== id)
         : [...state.visibleModules, id];
-      // When re-showing, auto-expand its slot if collapsed
-      let dock = state.dock;
-      if (!isVisible) {
-        const loc = findTabLocation(dock, id);
-        if (loc) {
-          const slot = dock.regions[loc.regionKey].slots[loc.slotIndex];
-          if (slot.collapsed) {
-            const slots = [...dock.regions[loc.regionKey].slots];
-            slots[loc.slotIndex] = { ...slot, collapsed: false };
-            dock = {
-              regions: {
-                ...dock.regions,
-                [loc.regionKey]: { ...dock.regions[loc.regionKey], slots },
-              },
-            };
-          }
-        }
-      }
-      const focusId = !isVisible ? id : state.focusId === id ? null : state.focusId;
-      return { ...state, dock, visibleModules, focusId };
+      const focusId = isVisible && state.focusId === id ? null : state.focusId;
+      // Tree structure is unchanged — visibleModules controls rendering only
+      return { ...state, visibleModules, focusId };
     }
 
     case 'SET_FOCUS': {
       const { id } = action.payload;
-      // When focusing, ensure module's tab is active in its slot
-      const loc = findTabLocation(state.dock, id);
-      let dock = state.dock;
-      if (loc) {
-        const slot = state.dock.regions[loc.regionKey].slots[loc.slotIndex];
-        if (slot.activeTab !== id || slot.collapsed) {
-          const slots = [...state.dock.regions[loc.regionKey].slots];
-          slots[loc.slotIndex] = { ...slot, activeTab: id, collapsed: false };
-          dock = {
-            regions: {
-              ...state.dock.regions,
-              [loc.regionKey]: { ...state.dock.regions[loc.regionKey], slots },
-            },
-          };
-        }
-      }
-      return { ...state, dock, focusId: id };
+      const path = findLeafWithTab(state.tree, id);
+      if (!path) return { ...state, focusId: id };
+      const newTree = updateNode(state.tree, path, (node) => ({ ...node, activeTab: id }));
+      return { ...state, tree: newTree, focusId: id };
     }
 
     case 'SET_FULLSCREEN':
       return { ...state, fullscreenId: action.payload };
 
-    case 'SET_SLOT_SIZE': {
-      const { region, slotIndex, size } = action.payload;
-      const slots = [...state.dock.regions[region].slots];
-      slots[slotIndex] = { ...slots[slotIndex], size };
-      return {
-        ...state,
-        dock: {
-          regions: {
-            ...state.dock.regions,
-            [region]: { ...state.dock.regions[region], slots },
-          },
-        },
-      };
-    }
+    case 'MOVE_TAB': {
+      const { sourceId, drop } = action.payload;
+      const { targetPath, zone, tabIndex = 0 } = drop;
 
-    case 'SET_REGION_SIZE': {
-      const { region, size } = action.payload;
-      return {
-        ...state,
-        dock: {
-          regions: {
-            ...state.dock.regions,
-            [region]: { ...state.dock.regions[region], size },
-          },
-        },
-        activePresetId: null,
-      };
+      // Identify an anchor tab in the target leaf so we can re-find it after removal
+      const targetLeaf = (() => {
+        try {
+          let node = state.tree;
+          for (const idx of targetPath) node = node.children[idx];
+          return node.type === 'leaf' ? node : null;
+        } catch (_) {
+          return null;
+        }
+      })();
+      const anchorTab = targetLeaf?.tabs.find((t) => t !== sourceId) ?? null;
+
+      // Remove source tab (may change tree structure)
+      const treeAfterRemove = removeTab(state.tree, sourceId);
+      if (!treeAfterRemove) return { ...state, activePresetId: null };
+
+      // Re-resolve target path using anchor
+      const resolvedPath = resolveTargetPath(treeAfterRemove, anchorTab, targetPath);
+
+      // Insert new leaf at resolved target
+      const newLeaf = { type: 'leaf', tabs: [sourceId], activeTab: sourceId };
+      const newTree = insertLeaf(treeAfterRemove, resolvedPath, zone, newLeaf, tabIndex);
+
+      return { ...state, tree: newTree, activePresetId: null };
     }
 
     case 'APPLY_PRESET': {
@@ -232,7 +112,7 @@ export function workspaceReducer(state, action) {
       if (!preset) return state;
       return {
         ...state,
-        dock: preset.dock,
+        tree: preset.tree,
         visibleModules: preset.visibleModules,
         activePresetId: presetId,
         fullscreenId: null,
@@ -246,7 +126,7 @@ export function workspaceReducer(state, action) {
         id,
         name,
         builtin: false,
-        dock: state.dock,
+        tree: state.tree,
         visibleModules: state.visibleModules,
       };
       return {
@@ -262,25 +142,20 @@ export function workspaceReducer(state, action) {
 }
 
 // ---------------------------------------------------------------------------
-// Bound action creators (dispatch-bound)
+// Bound action creators
 // ---------------------------------------------------------------------------
 
 /** @param {React.Dispatch} dispatch */
 export function bindWorkspaceActions(dispatch) {
   return {
-    setDockState: (dock) => dispatch({ type: 'SET_DOCK_STATE', payload: dock }),
+    setTree: (tree) => dispatch({ type: 'SET_TREE', payload: { tree } }),
     moveTab: (sourceId, drop) => dispatch({ type: 'MOVE_TAB', payload: { sourceId, drop } }),
-    setActiveTab: (region, slotIndex, tabId) =>
-      dispatch({ type: 'SET_ACTIVE_TAB', payload: { region, slotIndex, tabId } }),
-    toggleSlotCollapsed: (region, slotIndex) =>
-      dispatch({ type: 'TOGGLE_SLOT_COLLAPSED', payload: { region, slotIndex } }),
+    setActiveTab: (path, tabId) => dispatch({ type: 'SET_ACTIVE_TAB', payload: { path, tabId } }),
     toggleModuleVisible: (id) => dispatch({ type: 'TOGGLE_MODULE_VISIBLE', payload: { id } }),
     setFocus: (id) => dispatch({ type: 'SET_FOCUS', payload: { id } }),
     setFullscreen: (id) => dispatch({ type: 'SET_FULLSCREEN', payload: id }),
-    setRegionSize: (region, size) =>
-      dispatch({ type: 'SET_REGION_SIZE', payload: { region, size } }),
-    setSlotSize: (region, slotIndex, size) =>
-      dispatch({ type: 'SET_SLOT_SIZE', payload: { region, slotIndex, size } }),
+    resizeChildren: (path, aboveIdx, aboveSize, belowSize) =>
+      dispatch({ type: 'RESIZE_CHILDREN', payload: { path, aboveIdx, aboveSize, belowSize } }),
     applyPreset: (presetId) => dispatch({ type: 'APPLY_PRESET', payload: { presetId } }),
     saveCurrentAsPreset: (name) => dispatch({ type: 'SAVE_PRESET', payload: { name } }),
   };

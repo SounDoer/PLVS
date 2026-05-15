@@ -9,8 +9,7 @@ function initState() {
     const raw = localStorage.getItem(WORKSPACE_STORAGE_KEY);
     if (!raw) return DEFAULT_WORKSPACE_STATE;
     const parsed = JSON.parse(raw);
-    if (!parsed.dock || !Array.isArray(parsed.visibleModules)) return DEFAULT_WORKSPACE_STATE;
-    // Merge missing top-level fields (forward-compat)
+    if (!parsed.tree || !Array.isArray(parsed.visibleModules)) return DEFAULT_WORKSPACE_STATE;
     return {
       ...DEFAULT_WORKSPACE_STATE,
       ...parsed,

@@ -1,18 +1,14 @@
 /**
  * @typedef {'peak' | 'loudness' | 'loudnessStats' | 'vectorscope' | 'spectrum' | 'spectrogram'} ModuleId
- * @typedef {'left' | 'center' | 'right' | 'bottom'} RegionKey
  *
- * @typedef {{ tabs: ModuleId[], activeTab: ModuleId, collapsed: boolean }} Slot
+ * @typedef {{ type: 'leaf', tabs: ModuleId[], activeTab: ModuleId }} LeafNode
  *
- * @typedef {{
- *   size?: number,
- *   slots: Slot[],
- * }} Region
+ * @typedef {{ type: 'split', direction: 'h' | 'v', children: TreeNode[], sizes: number[] }} SplitNode
  *
- * @typedef {{ regions: Record<RegionKey, Region> }} DockState
+ * @typedef {SplitNode | LeafNode} TreeNode
  *
  * @typedef {{
- *   dock: DockState,
+ *   tree: TreeNode,
  *   visibleModules: ModuleId[],
  *   focusId: ModuleId | null,
  *   activePresetId: string | null,
@@ -24,14 +20,13 @@
  *   id: string,
  *   name: string,
  *   builtin: boolean,
- *   dock: DockState,
+ *   tree: TreeNode,
  *   visibleModules: ModuleId[],
  * }} Preset
  *
  * @typedef {{
- *   targetRegion: RegionKey,
- *   slotIndex: number,
- *   zone: 'tabs' | 'above' | 'below' | 'empty-region',
+ *   targetPath: number[],
+ *   zone: 'tabs' | 'above' | 'below' | 'left' | 'right',
  *   tabIndex?: number,
  * }} DropTarget
  */
