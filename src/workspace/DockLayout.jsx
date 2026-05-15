@@ -7,6 +7,26 @@ import { MODULE_REGISTRY } from './registry.jsx';
 import { ALL_MODULE_IDS } from './constants.js';
 
 // ---------------------------------------------------------------------------
+// Min-size helpers — read from MODULE_REGISTRY
+// ---------------------------------------------------------------------------
+
+function getRegionMinSize(region, visibleModules, dimension) {
+  const mins = (region?.slots ?? []).flatMap((slot) =>
+    slot.tabs.filter((id) => visibleModules.includes(id)).map((id) => MODULE_REGISTRY[id]?.[dimension] ?? 80)
+  );
+  return mins.length > 0 ? Math.max(80, ...mins) : 80;
+}
+
+function getSlotMinSize(slots, slotIdx, visibleModules, dimension) {
+  const slot = slots?.[slotIdx];
+  if (!slot) return 80;
+  const mins = slot.tabs
+    .filter((id) => visibleModules.includes(id))
+    .map((id) => MODULE_REGISTRY[id]?.[dimension] ?? 80);
+  return mins.length > 0 ? Math.max(80, ...mins) : 80;
+}
+
+// ---------------------------------------------------------------------------
 // Resizable divider between regions
 // ---------------------------------------------------------------------------
 
@@ -21,24 +41,27 @@ function DockDivider({ regionKey, orientation }) {
     e.preventDefault();
     const startX = e.clientX;
     const startY = e.clientY;
-    const startSize = state.dock.regions[regionKey].size ?? 0;
+    const region = state.dock.regions[regionKey];
+    const startSize = region.size ?? 0;
+    const { visibleModules } = state;
+    const min = orientation === 'vertical'
+      ? getRegionMinSize(region, visibleModules, 'minWidth')
+      : getRegionMinSize(region, visibleModules, 'minHeight');
 
     function onMove(ev) {
       const main = mainRef.current?.closest('main');
       const containerW = main?.clientWidth ?? 800;
       const containerH = main?.clientHeight ?? 600;
 
-      let delta, min, max;
+      let delta, max;
       if (orientation === 'vertical') {
         delta = ev.clientX - startX;
         // right divider: moving right → shrinks right region → sign = -1
         if (regionKey === 'right') delta = -delta;
-        min = 160;
         max = containerW * 0.45;
       } else {
         // bottom divider: moving down → shrinks bottom → sign = -1
         delta = -(ev.clientY - startY);
-        min = 100;
         max = containerH * 0.65;
       }
       setRegionSize(regionKey, Math.max(min, Math.min(max, startSize + delta)));
@@ -70,7 +93,7 @@ function DockDivider({ regionKey, orientation }) {
 // ---------------------------------------------------------------------------
 
 function SlotDivider({ regionKey, aboveIdx, belowIdx, regionIsHorizontal }) {
-  const { setSlotSize } = useWorkspaceStore();
+  const { state, setSlotSize } = useWorkspaceStore();
   const ref = useRef(null);
 
   function handleMouseDown(e) {
@@ -82,12 +105,21 @@ function SlotDivider({ regionKey, aboveIdx, belowIdx, regionIsHorizontal }) {
     const startAbove = regionIsHorizontal ? aboveEl.clientWidth : aboveEl.clientHeight;
     const startBelow = regionIsHorizontal ? belowEl.clientWidth : belowEl.clientHeight;
     const startPos = regionIsHorizontal ? e.clientX : e.clientY;
-    const MIN = 80;
+    const { slots } = state.dock.regions[regionKey];
+    const { visibleModules } = state;
+    const dimension = regionIsHorizontal ? 'minWidth' : 'minHeight';
+    const minAbove = getSlotMinSize(slots, aboveIdx, visibleModules, dimension);
+    const minBelow = getSlotMinSize(slots, belowIdx, visibleModules, dimension);
 
     function onMove(ev) {
       const delta = (regionIsHorizontal ? ev.clientX : ev.clientY) - startPos;
-      setSlotSize(regionKey, aboveIdx, Math.max(MIN, startAbove + delta));
-      setSlotSize(regionKey, belowIdx, Math.max(MIN, startBelow - delta));
+      // Clamp delta symmetrically so above+below stays constant — third slots unaffected
+      const clampedDelta = Math.min(
+        Math.max(delta, -(startAbove - minAbove)),
+        startBelow - minBelow
+      );
+      setSlotSize(regionKey, aboveIdx, startAbove + clampedDelta);
+      setSlotSize(regionKey, belowIdx, startBelow - clampedDelta);
     }
     function onUp() {
       window.removeEventListener('mousemove', onMove);
