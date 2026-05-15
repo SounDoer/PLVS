@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import { createContext, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import { bindWorkspaceActions, workspaceReducer } from './reducer.js';
 import { DEFAULT_WORKSPACE_STATE, WORKSPACE_STORAGE_KEY } from './constants.js';
 
@@ -23,6 +23,7 @@ function initState() {
 
 export function WorkspaceProvider({ children }) {
   const [state, dispatch] = useReducer(workspaceReducer, null, initState);
+  const [hoveredModuleId, setHoveredModuleId] = useState(null);
 
   useEffect(() => {
     try {
@@ -31,8 +32,8 @@ export function WorkspaceProvider({ children }) {
   }, [state]);
 
   const value = useMemo(
-    () => ({ state, ...bindWorkspaceActions(dispatch) }),
-    [state]
+    () => ({ state, ...bindWorkspaceActions(dispatch), hoveredModuleId, setHoveredModuleId }),
+    [state, hoveredModuleId]
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

@@ -54,14 +54,14 @@ function getZoneHint(hoverDrop, regionKey, slotIndex) {
 }
 
 export function DockSlot({ slot, regionKey, slotIndex, isLast = false }) {
-  const { state, toggleSlotCollapsed, toggleModuleVisible, setFullscreen } = useWorkspaceStore();
-  const { visibleModules, focusId } = state;
+  const { state, toggleSlotCollapsed, toggleModuleVisible, setFullscreen, hoveredModuleId } = useWorkspaceStore();
+  const { visibleModules } = state;
   const { dragState, hoverDrop } = useDrag();
 
   const visibleTabs = slot.tabs.filter((id) => visibleModules.includes(id));
   const activeTab = visibleTabs.includes(slot.activeTab) ? slot.activeTab : visibleTabs[0];
   const ActiveComponent = activeTab ? MODULE_REGISTRY[activeTab]?.Component : null;
-  const isFocused = activeTab && focusId === activeTab;
+  const isFocused = activeTab && hoveredModuleId === activeTab;
   const zoneHint = getZoneHint(hoverDrop, regionKey, slotIndex);
   const isDragging = !!dragState;
 

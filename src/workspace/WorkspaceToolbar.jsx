@@ -11,11 +11,11 @@ import { cn } from '@/lib/utils';
 // ---------------------------------------------------------------------------
 
 export function VisibilityPopover() {
-  const { state, toggleModuleVisible, setFocus } = useWorkspaceStore();
+  const { state, toggleModuleVisible, setFocus, setHoveredModuleId } = useWorkspaceStore();
   const { visibleModules } = state;
 
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => { if (!open) setHoveredModuleId(null); }}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -39,6 +39,8 @@ export function VisibilityPopover() {
                 'flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50',
                 isVisible ? 'text-foreground' : 'text-muted-foreground'
               )}
+              onMouseEnter={() => setHoveredModuleId(id)}
+              onMouseLeave={() => setHoveredModuleId(null)}
               onClick={() => {
                 toggleModuleVisible(id);
                 if (!isVisible) setFocus(id);
