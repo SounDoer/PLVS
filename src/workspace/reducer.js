@@ -21,6 +21,15 @@ function resolveTargetPath(tree, anchorTab, fallbackPath) {
   return found ?? fallbackPath;
 }
 
+function isPathValid(root, path) {
+  let node = root;
+  for (const idx of path) {
+    if (!node?.children) return false;
+    node = node.children[idx];
+  }
+  return node != null;
+}
+
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
@@ -94,12 +103,13 @@ export function workspaceReducer(state, action) {
       const treeAfterRemove = removeTab(state.tree, sourceId);
       if (!treeAfterRemove) return { ...state, activePresetId: null };
 
-      // Re-resolve target path using anchor
+      // Re-resolve target path using anchor; fall back to root if path is now stale
       const resolvedPath = resolveTargetPath(treeAfterRemove, anchorTab, targetPath);
+      const safeTargetPath = isPathValid(treeAfterRemove, resolvedPath) ? resolvedPath : [];
 
       // Insert new leaf at resolved target
       const newLeaf = { type: 'leaf', tabs: [sourceId], activeTab: sourceId };
-      const newTree = insertLeaf(treeAfterRemove, resolvedPath, zone, newLeaf, tabIndex);
+      const newTree = insertLeaf(treeAfterRemove, safeTargetPath, zone, newLeaf, tabIndex);
 
       return { ...state, tree: newTree, activePresetId: null };
     }

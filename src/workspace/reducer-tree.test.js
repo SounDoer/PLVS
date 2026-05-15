@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { workspaceReducer } from './reducer.js';
 import { DEFAULT_WORKSPACE_STATE } from './constants.js';
+import { findLeafWithTab } from './treeUtils.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -254,6 +255,46 @@ describe('MOVE_TAB: clears activePresetId', () => {
       payload: { sourceId: 'peak', drop: { targetPath: [1], zone: 'tabs', tabIndex: 0 } },
     });
     expect(next.activePresetId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MOVE_TAB: drag single-tab leaf back onto itself (stale path crash)
+// ---------------------------------------------------------------------------
+
+describe('MOVE_TAB: drag to same single-tab leaf edge (regression)', () => {
+  // Bug: dragging the only tab in a leaf back onto that leaf's edge zone
+  // causes anchorTab=null → stale fallbackPath → insertLeaf throws on LeafNode
+
+  it('zone=above on same single-tab leaf does not throw and preserves both tabs', () => {
+    const root = split('h', [leaf(['peak']), leaf(['loudness'])]);
+    const s = state(root, { visibleModules: ['peak', 'loudness'] });
+    // sourceId 'peak' is in leaf at [0]; targetPath=[0] is same leaf
+    expect(() =>
+      workspaceReducer(s, {
+        type: 'MOVE_TAB',
+        payload: { sourceId: 'peak', drop: { targetPath: [0], zone: 'above' } },
+      })
+    ).not.toThrow();
+    const next = workspaceReducer(s, {
+      type: 'MOVE_TAB',
+      payload: { sourceId: 'peak', drop: { targetPath: [0], zone: 'above' } },
+    });
+    expect(next.tree).toBeDefined();
+    // Both modules must still be in the tree
+    expect(findLeafWithTab(next.tree, 'peak')).not.toBeNull();
+    expect(findLeafWithTab(next.tree, 'loudness')).not.toBeNull();
+  });
+
+  it('zone=right on same single-tab leaf does not throw', () => {
+    const root = split('v', [leaf(['peak']), leaf(['loudness'])]);
+    const s = state(root, { visibleModules: ['peak', 'loudness'] });
+    expect(() =>
+      workspaceReducer(s, {
+        type: 'MOVE_TAB',
+        payload: { sourceId: 'peak', drop: { targetPath: [0], zone: 'right' } },
+      })
+    ).not.toThrow();
   });
 });
 
