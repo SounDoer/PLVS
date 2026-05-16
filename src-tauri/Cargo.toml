@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.0.14"
+version = "0.0.15"
 description = "AudioMeter — real-time audio metering (Tauri desktop shell)"
 authors = ["SounDoer"]
 license = "MIT"

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.15] - 2026-05-16
+
+### Changed
+
+- Header/footer minimal chrome redesign: replaced brand name, device dropdown, preset dropdown, and visibility popover with a compact `StatusPill` (READY / LIVE / SNAP) + `TransportButton` (START / STOP / LIVE) + four icon buttons (Clear, Audio Device, Layout & Modules, Settings) (#110–#118).
+- Footer simplified to two context fields only: **DEVICE** and **REF**; removed status text, meter health badge, footnotes, and build version string (#113).
+- Audio device selector and module visibility + preset controls now accessed through icon button popovers in the header (#116–#117).
+- Session timer tracks elapsed time with a rAF loop (~10 Hz) decoupled from React state; clock displayed inside the status pill, survives window blur/focus (#114).
+- Keyboard shortcuts: `Space` start/stop, `Cmd/Ctrl+K` clear, `Cmd/Ctrl+,` open settings (#118).
+
 ## [0.0.14] - 2026-05-15
 
 ### Added
