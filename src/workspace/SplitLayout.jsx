@@ -171,7 +171,8 @@ function FullscreenOverlay() {
 // ---------------------------------------------------------------------------
 
 function SplitContent() {
-  const { state, moveTab, toggleModuleVisible, setFocus, setFullscreen } = useWorkspaceStore();
+  const { state, moveTab, toggleModuleVisible, setFocus, setFullscreen, scaleSizes } =
+    useWorkspaceStore();
   const { tree } = state;
 
   const onDrop = useCallback((sourceId, drop) => moveTab(sourceId, drop), [moveTab]);
@@ -217,9 +218,36 @@ function SplitContent() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // Scale stored pixel sizes proportionally when the layout container is resized
+  const mainRef = useRef(null);
+  const prevContainerSizeRef = useRef(null);
+  const scaleSizesRef = useRef(scaleSizes);
+  scaleSizesRef.current = scaleSizes;
+
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        const prev = prevContainerSizeRef.current;
+        if (prev && prev.width > 0 && prev.height > 0) {
+          const scaleX = width / prev.width;
+          const scaleY = height / prev.height;
+          if (Math.abs(scaleX - 1) > 0.001 || Math.abs(scaleY - 1) > 0.001) {
+            scaleSizesRef.current(scaleX, scaleY);
+          }
+        }
+        prevContainerSizeRef.current = { width, height };
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <DragProvider onDrop={onDrop}>
-      <main className="relative flex min-h-0 flex-1 overflow-hidden">
+      <main ref={mainRef} className="relative flex min-h-0 flex-1 overflow-hidden">
         {tree ? (
           <SplitView node={tree} path={[]} style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }} />
         ) : (

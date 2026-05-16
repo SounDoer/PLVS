@@ -3,6 +3,24 @@ import { BUILTIN_PRESETS } from "./constants.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 
 // ---------------------------------------------------------------------------
+// scaleTreeSizes — proportionally rescale non-zero sizes on window resize
+// ---------------------------------------------------------------------------
+
+function scaleTreeSizes(node, scaleX, scaleY) {
+  if (node.type === "leaf") return node;
+  const scale = node.direction === "h" ? scaleX : scaleY;
+  const newSizes = node.sizes.map((s) => (s > 0 ? Math.max(80, Math.round(s * scale)) : 0));
+  const newChildren = node.children.map((c) => scaleTreeSizes(c, scaleX, scaleY));
+  if (
+    newSizes.every((s, i) => s === node.sizes[i]) &&
+    newChildren.every((c, i) => c === node.children[i])
+  ) {
+    return node;
+  }
+  return { ...node, sizes: newSizes, children: newChildren };
+}
+
+// ---------------------------------------------------------------------------
 // MOVE_TAB helpers
 // ---------------------------------------------------------------------------
 
@@ -53,6 +71,12 @@ export function workspaceReducer(state, action) {
         return { ...node, sizes };
       });
       return { ...state, tree: newTree };
+    }
+
+    case "SCALE_TREE_SIZES": {
+      const { scaleX, scaleY } = action.payload;
+      const newTree = scaleTreeSizes(state.tree, scaleX, scaleY);
+      return newTree === state.tree ? state : { ...state, tree: newTree };
     }
 
     case "SET_ACTIVE_TAB": {
@@ -166,6 +190,8 @@ export function bindWorkspaceActions(dispatch) {
     setFullscreen: (id) => dispatch({ type: "SET_FULLSCREEN", payload: id }),
     resizeChildren: (path, aboveIdx, aboveSize, belowSize) =>
       dispatch({ type: "RESIZE_CHILDREN", payload: { path, aboveIdx, aboveSize, belowSize } }),
+    scaleSizes: (scaleX, scaleY) =>
+      dispatch({ type: "SCALE_TREE_SIZES", payload: { scaleX, scaleY } }),
     applyPreset: (presetId) => dispatch({ type: "APPLY_PRESET", payload: { presetId } }),
     saveCurrentAsPreset: (name) => dispatch({ type: "SAVE_PRESET", payload: { name } }),
   };
