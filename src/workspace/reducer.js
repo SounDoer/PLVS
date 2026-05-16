@@ -1,6 +1,6 @@
 /** @import { WorkspaceState, ModuleId, DropTarget, TreeNode } from './types.js' */
-import { BUILTIN_PRESETS, DEFAULT_WORKSPACE_STATE } from "./constants.js";
-import { findLeafWithTab, insertLeaf, pruneTree, removeTab, updateNode } from "./treeUtils.js";
+import { BUILTIN_PRESETS } from "./constants.js";
+import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 
 // ---------------------------------------------------------------------------
 // MOVE_TAB helpers
