@@ -1,11 +1,11 @@
-import { applyShadcnSemanticTokensToDocument } from "../theme/shadcnSemanticPreset.js";
+import { applyShadcnSemanticTokensToDocument, oklchSafe } from "../theme/shadcnSemanticPreset.js";
 import { buildMeterColorBridge } from "../theme/meterColorBridge.js";
 import { getBuiltinTheme } from "../theme/builtinThemes.js";
 import { UI_PREFERENCES } from "./data.js";
 
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
-  document.documentElement.style.setProperty(name, String(value));
+  document.documentElement.style.setProperty(name, String(oklchSafe(value)));
 }
 
 /**

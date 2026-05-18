@@ -86,15 +86,28 @@ body {
 }
 
 /* LIVE (history snapshot) pulse on header primary control — see App.jsx */
+/* Fallback: opacity-only pulse for engines that don't support color-mix() */
 @keyframes live-snap-pulse-blink {
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-chart-vectorscope-snap) 45%, transparent);
   }
   50% {
     opacity: 0.88;
-    box-shadow: 0 0 14px 2px color-mix(in srgb, var(--ui-chart-vectorscope-snap) 50%, transparent);
+  }
+}
+
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  @keyframes live-snap-pulse-blink {
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-chart-vectorscope-snap) 45%, transparent);
+    }
+    50% {
+      opacity: 0.88;
+      box-shadow: 0 0 14px 2px color-mix(in srgb, var(--ui-chart-vectorscope-snap) 50%, transparent);
+    }
   }
 }
 
