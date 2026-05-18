@@ -10,7 +10,7 @@ export const SHELL_INNER =
   "flex min-h-0 w-full flex-1 flex-col gap-[var(--ui-shell-gap)] p-[var(--ui-shell-pad)] lg:gap-[var(--ui-shell-gap-lg)] lg:p-[var(--ui-shell-pad-lg)]";
 
 export const SHELL_HEADER =
-  "flex shrink-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-white/[0.08] bg-card/60 px-[var(--ui-header-pad-x)] py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_rgba(255,255,255,0.026)] backdrop-blur-[14px] backdrop-saturate-[140%]";
+  "flex shrink-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-white/[0.08] bg-card/60 px-[var(--ui-header-pad-x)] py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_rgba(255,255,255,0.026)] backdrop-blur-[14px] backdrop-saturate-[140%] z-10";
 
 export const SHELL_FOOTER =
   "flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius)] border border-white/[0.08] bg-card/60 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]";
