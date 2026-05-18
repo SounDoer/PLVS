@@ -19,6 +19,5 @@ describe("typography size scale", () => {
 describe("spacing data", () => {
   it("sectionGapRem is 0.55 (unified with shell-gap)", () =>
     expect(splitters.sectionGapRem).toBe(0.55));
-  it("sectionGapPx is removed", () =>
-    expect(splitters).not.toHaveProperty("sectionGapPx"));
+  it("sectionGapPx is removed", () => expect(splitters).not.toHaveProperty("sectionGapPx"));
 });

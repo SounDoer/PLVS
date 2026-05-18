@@ -236,8 +236,7 @@ export function LoudnessHistoryChart({
                 style={{
                   top: `${loudnessFromTopFrac(referenceLufs + referenceBandLu) * 100}%`,
                   bottom: `${(1 - loudnessFromTopFrac(referenceLufs - referenceBandLu)) * 100}%`,
-                  background:
-                    "color-mix(in srgb, var(--ui-chart-target-line) 12%, transparent)",
+                  background: "color-mix(in srgb, var(--ui-chart-target-line) 12%, transparent)",
                 }}
               />
               <motion.div
