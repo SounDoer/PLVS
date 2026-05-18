@@ -57,10 +57,10 @@ export function readPersistedShellThemeFields(prefs) {
  * @param {boolean} systemPrefersDark
  * @returns {import("../theme/builtinThemes.js").ThemeId}
  */
-export function resolveThemeId(shell, _systemPrefersDark) {
+export function resolveThemeId(shell, systemPrefersDark) {
   const appearance = shell?.appearance === "fixed" ? "fixed" : "system";
   if (appearance === "system") {
-    return DEFAULT_THEME_ID;
+    return systemPrefersDark ? DEFAULT_THEME_ID : "plvs-light";
   }
   const rawId = shell?.themeId;
   const id = rawId == null || rawId === "" ? null : String(rawId);

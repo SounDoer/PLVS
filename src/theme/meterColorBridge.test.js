@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLVS_SEMANTIC_DARK } from "./shadcnSemanticPreset.js";
+import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.js";
 import { buildMeterColorBridge } from "./meterColorBridge.js";
 
 describe("buildMeterColorBridge", () => {
@@ -45,5 +45,24 @@ describe("buildMeterColorBridge", () => {
   it("loudnessTargetLine is semi-transparent orange", () => {
     const b = buildMeterColorBridge(PLVS_SEMANTIC_DARK, "dark");
     expect(b.loudnessTargetLine).toBe("rgba(251,146,60,0.4)");
+  });
+});
+
+describe("buildMeterColorBridge — light scheme", () => {
+  it("uses black tints for metric row backgrounds", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_LIGHT, "light");
+    expect(b.metricRowBg).toMatch(/rgba\(0,0,0/);
+    expect(b.metricRowHoverBg).toMatch(/rgba\(0,0,0/);
+  });
+
+  it("uses deeper orange for toggle label", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_LIGHT, "light");
+    expect(b.metricToggleOnLabel).toBe("#e07020");
+  });
+
+  it("uses deeper red for true peak and corr bad", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_LIGHT, "light");
+    expect(b.peakTruePeak).toBe("#d03535");
+    expect(b.correlation.bad).toBe("#d03535");
   });
 });

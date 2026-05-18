@@ -2,10 +2,29 @@
  * Computes PLVS-specific component color values that have no shadcn equivalent.
  * Returns plain CSS color strings consumed by applyDocumentTheme.
  *
- * @param {import("./shadcnSemanticPreset.js").ShadcnSemantic} _s  Reserved for future light theme.
- * @param {"light"|"dark"} _colorScheme  Reserved for future light theme.
+ * @param {import("./shadcnSemanticPreset.js").ShadcnSemantic} _s  Unused — reserved for future derivation.
+ * @param {"light"|"dark"} colorScheme
  */
-export function buildMeterColorBridge(_s, _colorScheme) {
+export function buildMeterColorBridge(_s, colorScheme) {
+  if (colorScheme === "light") {
+    return {
+      peakSamplePeak: "#e07020",
+      peakTruePeak: "#d03535",
+      tpMaxText: "#d03535",
+      correlation: {
+        bad: "#d03535",
+        mid: "#7a6e5e",
+        good: "#18976a",
+      },
+      metricRowBg: "rgba(0,0,0,0.04)",
+      metricRowHoverBg: "rgba(0,0,0,0.08)",
+      metricRowToggleOnBorder: "rgba(224,112,32,0.5)",
+      metricRowToggleOnBg: "rgba(224,112,32,0.12)",
+      metricRowToggleOnGlow: "rgba(224,112,32,0.22)",
+      metricToggleOnLabel: "#e07020",
+      loudnessTargetLine: "rgba(224,112,32,0.45)",
+    };
+  }
   return {
     peakSamplePeak: "#fb923c",
     peakTruePeak: "#f97373",

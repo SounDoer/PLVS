@@ -11,8 +11,8 @@ describe("resolveThemeId", () => {
     expect(resolveThemeId({ appearance: "system", themeId: null }, true)).toBe("plvs-dark");
   });
 
-  it("resolves to plvs-dark for system light preference (no light theme yet)", () => {
-    expect(resolveThemeId({ appearance: "system", themeId: null }, false)).toBe("plvs-dark");
+  it("resolves to plvs-light for system light preference", () => {
+    expect(resolveThemeId({ appearance: "system", themeId: null }, false)).toBe("plvs-light");
   });
 
   it("ignores stored themeId when appearance is system", () => {
@@ -21,6 +21,9 @@ describe("resolveThemeId", () => {
 
   it("uses stored themeId when appearance is fixed and valid", () => {
     expect(resolveThemeId({ appearance: "fixed", themeId: "plvs-dark" }, true)).toBe("plvs-dark");
+    expect(resolveThemeId({ appearance: "fixed", themeId: "plvs-light" }, false)).toBe(
+      "plvs-light"
+    );
   });
 
   it("falls back to plvs-dark for fixed appearance with missing or invalid themeId", () => {
@@ -36,7 +39,7 @@ describe("resolveThemeId", () => {
 
   it("defaults appearance to system when fields missing", () => {
     expect(resolveThemeId({}, true)).toBe("plvs-dark");
-    expect(resolveThemeId({}, false)).toBe("plvs-dark");
+    expect(resolveThemeId({}, false)).toBe("plvs-light");
   });
 });
 
@@ -82,8 +85,9 @@ describe("resolveThemeId DEV warnings", () => {
 });
 
 describe("THEME_IDS", () => {
-  it("contains only plvs-dark", () => {
+  it("contains plvs-dark and plvs-light", () => {
     expect(THEME_IDS).toContain("plvs-dark");
+    expect(THEME_IDS).toContain("plvs-light");
     expect(THEME_IDS).not.toContain("audiometer-dark");
     expect(THEME_IDS).not.toContain("audiometer-light");
     expect(THEME_IDS).not.toContain("audiometer-ember");

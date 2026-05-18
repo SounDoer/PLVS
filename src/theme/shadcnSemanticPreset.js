@@ -83,6 +83,34 @@ export const AUDIOMETER_SEMANTIC_DARK = {
   ring: "#22d3ee",
 };
 
+/** PLVS Light — warm cream shell + orange brand. Mirrors PLVS Dark's warmth on a light surface. */
+export const PLVS_SEMANTIC_LIGHT = {
+  background: "oklch(0.98 0.005 70)",
+  foreground: "oklch(0.17 0.012 55)",
+  card: "oklch(0.96 0.006 60)",
+  cardForeground: "oklch(0.17 0.012 55)",
+  popover: "oklch(0.96 0.006 60)",
+  popoverForeground: "oklch(0.17 0.012 55)",
+  primary: "#fb923c",
+  primaryForeground: "oklch(0.17 0.012 55)",
+  secondary: "oklch(0.91 0.008 60)",
+  secondaryForeground: "oklch(0.17 0.012 55)",
+  muted: "oklch(0.91 0.008 60)",
+  mutedForeground: "oklch(0.50 0.015 55)",
+  accent: "oklch(0.91 0.008 60)",
+  accentForeground: "oklch(0.17 0.012 55)",
+  destructive: "oklch(0.58 0.22 25)",
+  destructiveForeground: "oklch(0.985 0 0)",
+  border: "oklch(0 0 0 / 10%)",
+  input: "oklch(0 0 0 / 14%)",
+  ring: "#fb923c",
+  chart1: "oklch(0.646 0.222 41.116)",
+  chart2: "oklch(0.6 0.118 184.704)",
+  chart3: "oklch(0.398 0.07 227.392)",
+  chart4: "oklch(0.828 0.189 84.429)",
+  chart5: "oklch(0.769 0.188 70.08)",
+};
+
 /** PLVS Dark — warm gray shell + orange brand. */
 export const PLVS_SEMANTIC_DARK = {
   background: "oklch(0.13 0.01 55)",

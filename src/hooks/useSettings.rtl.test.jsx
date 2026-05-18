@@ -31,16 +31,16 @@ describe("useSettings", () => {
     expect(result.current.themeId).toBe("plvs-dark");
   });
 
-  it("seeds plvs-dark when system prefers light (no light theme yet)", async () => {
+  it("seeds plvs-light when system prefers light", async () => {
     window.matchMedia = mockMatchMedia(false);
     localStorage.clear();
     const { result } = renderHook(() => useSettings());
     await waitFor(() => {
-      expect(result.current.resolvedThemeId).toBe("plvs-dark");
+      expect(result.current.resolvedThemeId).toBe("plvs-light");
     });
     act(() => {
       result.current.setAppearanceMode("fixed");
     });
-    expect(result.current.themeId).toBe("plvs-dark");
+    expect(result.current.themeId).toBe("plvs-light");
   });
 });

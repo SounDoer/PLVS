@@ -1,9 +1,9 @@
 /**
  * Builtin colour themes.
- * @typedef {"plvs-dark"} ThemeId
+ * @typedef {"plvs-dark" | "plvs-light"} ThemeId
  */
 
-import { PLVS_SEMANTIC_DARK } from "./shadcnSemanticPreset.js";
+import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.js";
 
 /** @typedef {import("./shadcnSemanticPreset.js").ShadcnSemantic} ShadcnSemantic */
 
@@ -76,6 +76,38 @@ const METER_GRADIENT_PLVS = {
   bottom: "#34d399",
 };
 
+const CHARTS_PLVS_LIGHT = {
+  loudnessHistory: {
+    momentaryStroke: "#e07020",
+    momentaryStrokeSnap: "#c07820",
+    momentaryStrokeWidth: 1.2,
+    shortTermStroke: "#c86030",
+    shortTermStrokeSnap: "#b08050",
+    shortTermStrokeWidth: 1.2,
+    shortTermOpacity: 0.95,
+    selectionStroke: "#c07820",
+    selectionStrokeWidth: 1.2,
+    historyGridLineColor: "color-mix(in srgb, var(--border) 20%, transparent)",
+  },
+  vectorscope: {
+    strokeLive: "#e07020",
+    strokeSnap: "#c07820",
+    strokeWidth: 1,
+    axisOpacity: 0.6,
+    gridDiagInsetPct: 1.2,
+    plotRadius: 240,
+    gridDiagStroke: "color-mix(in srgb, var(--border) 80%, transparent)",
+    gridDiagDash: "2.6 3.4",
+  },
+  spectrum: {
+    strokeLive: "#e07020",
+    strokeSnap: "#c07820",
+    strokeWidth: 1.5,
+    fillOpacityTop: 0.18,
+    fillOpacityBottom: 0.03,
+  },
+};
+
 /** @type {Record<ThemeId, BuiltinTheme>} */
 export const BUILTIN_THEMES = {
   "plvs-dark": {
@@ -86,10 +118,18 @@ export const BUILTIN_THEMES = {
     meterGradient: METER_GRADIENT_PLVS,
     colorScheme: "dark",
   },
+  "plvs-light": {
+    id: "plvs-light",
+    label: "Light",
+    semantic: PLVS_SEMANTIC_LIGHT,
+    charts: CHARTS_PLVS_LIGHT,
+    meterGradient: METER_GRADIENT_PLVS,
+    colorScheme: "light",
+  },
 };
 
 /** @type {readonly ThemeId[]} */
-export const THEME_IDS = Object.freeze(/** @type {ThemeId[]} */ (["plvs-dark"]));
+export const THEME_IDS = Object.freeze(/** @type {ThemeId[]} */ (["plvs-dark", "plvs-light"]));
 
 /**
  * @param {unknown} id
