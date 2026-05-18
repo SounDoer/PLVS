@@ -35,4 +35,14 @@ describe("shellLayout token names", () => {
     expect(SHELL_FOOTER).toContain("--radius");
     expect(SHELL_FOOTER).not.toContain("--ui-radius-card");
   });
+
+  it("SHELL_HEADER border uses border-border (not a hardcoded white tint)", () => {
+    expect(SHELL_HEADER).toContain("border-border");
+    expect(SHELL_HEADER).not.toContain("border-white/");
+  });
+
+  it("SHELL_FOOTER border uses border-border (not a hardcoded white tint)", () => {
+    expect(SHELL_FOOTER).toContain("border-border");
+    expect(SHELL_FOOTER).not.toContain("border-white/");
+  });
 });
