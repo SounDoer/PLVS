@@ -7,40 +7,36 @@ import {
 } from "./themeResolve.js";
 
 describe("resolveThemeId", () => {
-  it("uses OS mapping when appearance is system (dark)", () => {
-    expect(resolveThemeId({ appearance: "system", themeId: null }, true)).toBe("audiometer-dark");
+  it("resolves to plvs-dark for system dark preference", () => {
+    expect(resolveThemeId({ appearance: "system", themeId: null }, true)).toBe("plvs-dark");
   });
 
-  it("uses OS mapping when appearance is system (light)", () => {
-    expect(resolveThemeId({ appearance: "system", themeId: null }, false)).toBe("audiometer-light");
+  it("resolves to plvs-dark for system light preference (no light theme yet)", () => {
+    expect(resolveThemeId({ appearance: "system", themeId: null }, false)).toBe("plvs-dark");
   });
 
   it("ignores stored themeId when appearance is system", () => {
-    expect(resolveThemeId({ appearance: "system", themeId: "audiometer-light" }, true)).toBe(
-      "audiometer-dark"
-    );
+    expect(resolveThemeId({ appearance: "system", themeId: "plvs-dark" }, true)).toBe("plvs-dark");
   });
 
   it("uses stored themeId when appearance is fixed and valid", () => {
-    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-light" }, true)).toBe(
-      "audiometer-light"
-    );
-    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-ember" }, false)).toBe(
-      "audiometer-ember"
-    );
+    expect(resolveThemeId({ appearance: "fixed", themeId: "plvs-dark" }, true)).toBe("plvs-dark");
   });
 
-  it("falls back to audiometer-dark for fixed appearance with missing or invalid themeId", () => {
+  it("falls back to plvs-dark for fixed appearance with missing or invalid themeId", () => {
     expect(resolveThemeId({ appearance: "fixed", themeId: null }, false)).toBe(DEFAULT_THEME_ID);
     expect(resolveThemeId({ appearance: "fixed", themeId: "" }, false)).toBe(DEFAULT_THEME_ID);
+    expect(resolveThemeId({ appearance: "fixed", themeId: "audiometer-dark" }, false)).toBe(
+      DEFAULT_THEME_ID
+    );
     expect(resolveThemeId({ appearance: "fixed", themeId: "unknown-theme" }, false)).toBe(
       DEFAULT_THEME_ID
     );
   });
 
-  it("defaults appearance to system and themeId to null when fields missing", () => {
-    expect(resolveThemeId({}, true)).toBe("audiometer-dark");
-    expect(resolveThemeId({}, false)).toBe("audiometer-light");
+  it("defaults appearance to system when fields missing", () => {
+    expect(resolveThemeId({}, true)).toBe("plvs-dark");
+    expect(resolveThemeId({}, false)).toBe("plvs-dark");
   });
 });
 
@@ -53,16 +49,11 @@ describe("parsePersistedUiStateJson", () => {
 
   it("reads appearance and themeId when present", () => {
     expect(
-      parsePersistedUiStateJson(
-        JSON.stringify({ appearance: "fixed", themeId: "audiometer-light" })
-      )
-    ).toEqual({
-      appearance: "fixed",
-      themeId: "audiometer-light",
-    });
+      parsePersistedUiStateJson(JSON.stringify({ appearance: "fixed", themeId: "plvs-dark" }))
+    ).toEqual({ appearance: "fixed", themeId: "plvs-dark" });
   });
 
-  it("legacy uiMode-only blobs are ignored (no migration)", () => {
+  it("legacy uiMode-only blobs are ignored", () => {
     expect(parsePersistedUiStateJson(JSON.stringify({ uiMode: "dark" }))).toEqual({
       appearance: "system",
       themeId: null,
@@ -71,10 +62,10 @@ describe("parsePersistedUiStateJson", () => {
 });
 
 describe("resolveThemeId DEV warnings", () => {
-  it("warns only in DEV for unknown fixed themeId", () => {
+  it("warns in DEV for unknown fixed themeId", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubEnv("DEV", true);
-    resolveThemeId({ appearance: "fixed", themeId: "not-a-real-theme" }, false);
+    resolveThemeId({ appearance: "fixed", themeId: "audiometer-dark" }, false);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
     vi.unstubAllEnvs();
@@ -83,7 +74,7 @@ describe("resolveThemeId DEV warnings", () => {
   it("does not warn in production for unknown fixed themeId", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubEnv("DEV", false);
-    resolveThemeId({ appearance: "fixed", themeId: "not-a-real-theme" }, false);
+    resolveThemeId({ appearance: "fixed", themeId: "audiometer-dark" }, false);
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
     vi.unstubAllEnvs();
@@ -91,9 +82,10 @@ describe("resolveThemeId DEV warnings", () => {
 });
 
 describe("THEME_IDS", () => {
-  it("lists known builtin ids", () => {
-    expect(THEME_IDS).toContain("audiometer-dark");
-    expect(THEME_IDS).toContain("audiometer-light");
-    expect(THEME_IDS).toContain("audiometer-ember");
+  it("contains only plvs-dark", () => {
+    expect(THEME_IDS).toContain("plvs-dark");
+    expect(THEME_IDS).not.toContain("audiometer-dark");
+    expect(THEME_IDS).not.toContain("audiometer-light");
+    expect(THEME_IDS).not.toContain("audiometer-ember");
   });
 });

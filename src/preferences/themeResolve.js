@@ -60,13 +60,13 @@ export function readPersistedShellThemeFields(prefs) {
 export function resolveThemeId(shell, systemPrefersDark) {
   const appearance = shell?.appearance === "fixed" ? "fixed" : "system";
   if (appearance === "system") {
-    return systemPrefersDark ? DEFAULT_THEME_ID : "audiometer-light";
+    return DEFAULT_THEME_ID;
   }
   const rawId = shell?.themeId;
   const id = rawId == null || rawId === "" ? null : String(rawId);
   if (!isThemeId(id)) {
     if (import.meta.env.DEV && id != null && id !== "") {
-      console.warn(`[AudioMeter] Unknown themeId "${id}"; falling back to ${DEFAULT_THEME_ID}.`);
+      console.warn(`[PLVS] Unknown themeId "${id}"; falling back to ${DEFAULT_THEME_ID}.`);
     }
     return DEFAULT_THEME_ID;
   }

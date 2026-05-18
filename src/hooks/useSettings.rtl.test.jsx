@@ -21,26 +21,26 @@ describe("useSettings", () => {
   it("seeds themeId to resolved dark builtin when switching system to fixed (ADR 0002 §6)", async () => {
     const { result } = renderHook(() => useSettings());
     await waitFor(() => {
-      expect(result.current.resolvedThemeId).toBe("audiometer-dark");
+      expect(result.current.resolvedThemeId).toBe("plvs-dark");
     });
     expect(result.current.appearance).toBe("system");
     act(() => {
       result.current.setAppearanceMode("fixed");
     });
     expect(result.current.appearance).toBe("fixed");
-    expect(result.current.themeId).toBe("audiometer-dark");
+    expect(result.current.themeId).toBe("plvs-dark");
   });
 
-  it("seeds audiometer-light when system prefers light", async () => {
+  it("seeds plvs-dark when system prefers light (no light theme yet)", async () => {
     window.matchMedia = mockMatchMedia(false);
     localStorage.clear();
     const { result } = renderHook(() => useSettings());
     await waitFor(() => {
-      expect(result.current.resolvedThemeId).toBe("audiometer-light");
+      expect(result.current.resolvedThemeId).toBe("plvs-dark");
     });
     act(() => {
       result.current.setAppearanceMode("fixed");
     });
-    expect(result.current.themeId).toBe("audiometer-light");
+    expect(result.current.themeId).toBe("plvs-dark");
   });
 });
