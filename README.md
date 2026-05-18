@@ -1,6 +1,6 @@
 # PLVS
 
-Real-time audio metering desktop app — Peak, Loudness (LUFS), Vectorscope, and Spectrum.
+Real-time audio metering desktop app — Peak, Loudness (LUFS), Vectorscope, Spectrum, and Spectrogram.
 
 ## Download
 
