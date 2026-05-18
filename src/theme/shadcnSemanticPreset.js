@@ -118,15 +118,14 @@ export const SHADCN_SEMANTIC_CSS_VAR_BINDINGS = [
  * @returns {string} e.g. `#1a1a1a` or `rgba(255, 255, 255, 0.1)`
  */
 export function oklchToHex(value) {
-  const m = value.match(
-    /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)/i
-  );
+  const m = value.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)/i);
   if (!m) return value;
 
   const L = parseFloat(m[1]);
   const C = parseFloat(m[2]);
   const H = parseFloat(m[3]);
-  const alpha = m[4] != null ? (m[4].endsWith("%") ? parseFloat(m[4]) / 100 : parseFloat(m[4])) : null;
+  const alpha =
+    m[4] != null ? (m[4].endsWith("%") ? parseFloat(m[4]) / 100 : parseFloat(m[4])) : null;
 
   // OKLCH → OKLab
   const hRad = (H * Math.PI) / 180;
