@@ -171,43 +171,27 @@ function FullscreenOverlay() {
 // ---------------------------------------------------------------------------
 
 function SplitContent() {
-  const { state, moveTab, toggleModuleVisible, setFocus, setFullscreen, scaleSizes } =
-    useWorkspaceStore();
+  const { state, moveTab, setFullscreen, scaleSizes } = useWorkspaceStore();
   const { tree } = state;
 
   const onDrop = useCallback((sourceId, drop) => moveTab(sourceId, drop), [moveTab]);
 
   // Stable ref for keyboard shortcuts (registered once)
   const shortcutRef = useRef(null);
-  shortcutRef.current = { state, toggleModuleVisible, setFocus, setFullscreen };
+  shortcutRef.current = { state, setFullscreen };
 
   useEffect(() => {
     function onKeyDown(e) {
       if (e.target.matches('input, textarea, select, [contenteditable="true"]')) return;
-      const {
-        state: s,
-        toggleModuleVisible: toggle,
-        setFocus: focus,
-        setFullscreen: full,
-      } = shortcutRef.current;
+      const { state: s, setFullscreen: full } = shortcutRef.current;
 
       const digit = parseInt(e.key, 10);
       const isDigit = digit >= 1 && digit <= 6;
-      const moduleId = isDigit ? ALL_MODULE_IDS[digit - 1] : null;
 
-      if (isDigit && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        focus(moduleId);
-        return;
-      }
       if (isDigit && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
-        toggle(moduleId);
-        return;
-      }
-      if ((e.key === "f" || e.key === "F") && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        if (s.focusId) full(s.focusId);
+        const moduleId = ALL_MODULE_IDS[digit - 1];
+        full(s.fullscreenId === moduleId ? null : moduleId);
         return;
       }
       if (e.key === "Escape" && s.fullscreenId) {
