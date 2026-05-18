@@ -27,7 +27,7 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
     data-slot="sheet-overlay"
     className={cn(
       "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:fade-in",
-      "bg-[color:var(--ui-color-settings-overlay)]",
+      "bg-black/55 backdrop-blur-sm",
       className
     )}
     {...props}

@@ -12,7 +12,7 @@ function MetricRow({ label, value, unit, isActive = false, onToggle }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.loudness.metrics;
   const labelClass = cn(
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium uppercase tracking-wide leading-none text-muted-foreground",
-    onToggle && isActive && "text-[color:var(--ui-color-metric-toggle-on-label)]"
+    onToggle && isActive && "text-[color:var(--ui-metric-toggle-on-label)]"
   );
   const valueClass = cn(
     METRIC_NUMERIC,
@@ -20,7 +20,7 @@ function MetricRow({ label, value, unit, isActive = false, onToggle }) {
   );
   const unitClass = cn(
     "shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium uppercase leading-none text-muted-foreground",
-    onToggle && isActive && "text-[color:var(--ui-color-metric-toggle-on-unit)]"
+    onToggle && isActive && "text-[color:var(--ui-metric-toggle-on-label)]"
   );
   const content = (
     <>
@@ -43,13 +43,13 @@ function MetricRow({ label, value, unit, isActive = false, onToggle }) {
         className={cn(
           METRIC_ROW_LAYOUT,
           "w-full cursor-pointer text-left appearance-none [-webkit-appearance:none]",
-          "rounded-[var(--ui-radius-pill)] border border-border bg-[color:var(--ui-color-metric-row-bg)]",
+          "rounded-[var(--ui-radius-pill)] border border-border bg-[color:var(--ui-metric-row-bg)]",
           "transition-[border-color,box-shadow,background-color] duration-150 ease-out",
-          "hover:bg-[color:var(--ui-color-metric-row-hover-bg)]",
+          "hover:bg-[color:var(--ui-metric-row-hover-bg)]",
           "hover:border-[color:color-mix(in_srgb,var(--border)_72%,var(--primary)_28%)]",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)]",
           isActive &&
-            "border-[color:var(--ui-color-metric-row-toggle-on-border)] bg-[color:var(--ui-color-metric-row-toggle-on-bg)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-color-metric-row-toggle-on-border)_28%,transparent),0_0_12px_var(--ui-color-metric-row-toggle-on-glow)]"
+            "border-[color:var(--ui-metric-row-toggle-on-border)] bg-[color:var(--ui-metric-row-toggle-on-bg)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--ui-metric-row-toggle-on-border)_28%,transparent),0_0_12px_var(--ui-metric-row-toggle-on-glow)]"
         )}
       >
         {content}

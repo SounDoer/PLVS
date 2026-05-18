@@ -237,7 +237,7 @@ export function LoudnessHistoryChart({
                   top: `${loudnessFromTopFrac(referenceLufs + referenceBandLu) * 100}%`,
                   bottom: `${(1 - loudnessFromTopFrac(referenceLufs - referenceBandLu)) * 100}%`,
                   background:
-                    "color-mix(in srgb, var(--ui-color-loudness-target-line) 12%, transparent)",
+                    "color-mix(in srgb, var(--ui-chart-target-line) 12%, transparent)",
                 }}
               />
               <motion.div
@@ -248,7 +248,7 @@ export function LoudnessHistoryChart({
                   reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 32 }
                 }
                 style={{
-                  borderTopColor: "var(--ui-color-loudness-target-line)",
+                  borderTopColor: "var(--ui-chart-target-line)",
                   borderTopWidth: 2,
                 }}
               />
