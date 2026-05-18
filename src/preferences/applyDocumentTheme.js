@@ -135,24 +135,20 @@ export function applyThemeToDocument(themeId) {
   applyShadcnSemanticTokensToDocument(theme.semantic);
 
   const bridge = buildMeterColorBridge(theme.semantic, theme.colorScheme);
-  const colors = { ...bridge, ...(theme.meterColorOverrides ?? {}) };
 
-  setCssVar("--ui-color-inset-dark", colors.insetDark);
-  setCssVar("--ui-color-settings-overlay", colors.settingsOverlay);
-  setCssVar("--ui-signal-peak-sample", colors.peakSamplePeak);
-  setCssVar("--ui-signal-peak-true", colors.peakTruePeak);
-  setCssVar("--ui-signal-tp-max", colors.tpMaxText);
-  setCssVar("--ui-signal-corr-bad", colors.correlation.bad);
-  setCssVar("--ui-signal-corr-mid", colors.correlation.mid);
-  setCssVar("--ui-signal-corr-good", colors.correlation.good);
-  setCssVar("--ui-color-loudness-target-line", colors.loudnessTargetLine);
-  setCssVar("--ui-color-target-value", colors.targetValue);
-  setCssVar("--ui-color-metric-row-bg", colors.metricRowBg);
-  setCssVar("--ui-color-metric-row-hover-bg", colors.metricRowHoverBg);
-  setCssVar("--ui-color-metric-row-toggle-on-bg", colors.metricRowToggleOnBg);
-  setCssVar("--ui-color-metric-row-toggle-on-glow", colors.metricRowToggleOnGlow);
-  setCssVar("--ui-color-metric-toggle-on-label", colors.metricToggleOnLabelText);
-  setCssVar("--ui-color-metric-toggle-on-unit", colors.metricToggleOnUnitText);
+  setCssVar("--ui-signal-peak-sample", bridge.peakSamplePeak);
+  setCssVar("--ui-signal-peak-true", bridge.peakTruePeak);
+  setCssVar("--ui-signal-tp-max", bridge.tpMaxText);
+  setCssVar("--ui-signal-corr-bad", bridge.correlation.bad);
+  setCssVar("--ui-signal-corr-mid", bridge.correlation.mid);
+  setCssVar("--ui-signal-corr-good", bridge.correlation.good);
+  setCssVar("--ui-metric-row-bg", bridge.metricRowBg);
+  setCssVar("--ui-metric-row-hover-bg", bridge.metricRowHoverBg);
+  setCssVar("--ui-metric-row-toggle-on-border", bridge.metricRowToggleOnBorder);
+  setCssVar("--ui-metric-row-toggle-on-bg", bridge.metricRowToggleOnBg);
+  setCssVar("--ui-metric-row-toggle-on-glow", bridge.metricRowToggleOnGlow);
+  setCssVar("--ui-metric-toggle-on-label", bridge.metricToggleOnLabel);
+  setCssVar("--ui-chart-target-line", bridge.loudnessTargetLine);
 
   const charts = theme.charts;
   setCssVar("--ui-chart-momentary", charts.loudnessHistory.momentaryStroke);

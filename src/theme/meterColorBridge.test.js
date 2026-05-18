@@ -1,66 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { AUDIOMETER_SEMANTIC_DARK, AUDIOMETER_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.js";
+import { PLVS_SEMANTIC_DARK } from "./shadcnSemanticPreset.js";
 import { buildMeterColorBridge } from "./meterColorBridge.js";
 
-const A_CLASS_KEYS = [
-  // Direct shadcn aliases — never read by components, replaced by Tailwind utilities
-  "pageBg",
-  "textPrimary",
-  "textSecondary",
-  "textMuted",
-  "textSubtle",
-  "panelBg",
-  "panelBgSplitter",
-  "insetBg",
-  "borderDefault",
-  "divider",
-  "brand",
-  "brandLight",
-  "brandHover",
-  "controlBg",
-  "metricRowBorder",
-  "metricRowToggleOnBorder",
-  "metricLabelText",
-  "metricValueText",
-  "metricUnitText",
-  "targetLabel",
-  "legendHistOnBg",
-  "legendHistOnText",
-  "legendHistOffBg",
-  "legendHistOffText",
-  // Computed but never consumed by any component (dead code)
-  "controlHoverBg",
-  "settingsRowBg",
-  "settingsDialogShadow",
-];
-
 describe("buildMeterColorBridge", () => {
-  it("does not return shadcn-equivalent (A-class) keys", () => {
-    const dark = buildMeterColorBridge(AUDIOMETER_SEMANTIC_DARK, "dark");
-    const light = buildMeterColorBridge(AUDIOMETER_SEMANTIC_LIGHT, "light");
-    for (const key of A_CLASS_KEYS) {
-      expect(dark, `dark bridge should not contain "${key}"`).not.toHaveProperty(key);
-      expect(light, `light bridge should not contain "${key}"`).not.toHaveProperty(key);
-    }
+  it("returns orange-based signal colors", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_DARK, "dark");
+    expect(b.peakSamplePeak).toBe("#fb923c");
+    expect(b.peakTruePeak).toBe("#f97373");
+    expect(b.tpMaxText).toBe("#f97373");
   });
 
-  it("retains B-class signal keys (no shadcn equivalent)", () => {
-    const b = buildMeterColorBridge(AUDIOMETER_SEMANTIC_DARK, "dark");
-    expect(b.peakSamplePeak).toBeDefined();
-    expect(b.peakTruePeak).toBeDefined();
-    expect(b.tpMaxText).toBeDefined();
-    expect(b.correlation.bad).toBe(AUDIOMETER_SEMANTIC_DARK.destructive);
-    expect(b.correlation.mid).toBeDefined();
-    expect(b.correlation.good).toBeDefined();
-    expect(b.loudnessTargetLine).toBeDefined();
+  it("returns orange-based correlation colors", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_DARK, "dark");
+    expect(b.correlation.good).toBe("#34d399");
+    expect(b.correlation.mid).toBe("#9e9488");
+    expect(b.correlation.bad).toBe("#f97373");
   });
 
-  it("retains computed keys that differ between light and dark", () => {
-    const dark = buildMeterColorBridge(AUDIOMETER_SEMANTIC_DARK, "dark");
-    const light = buildMeterColorBridge(AUDIOMETER_SEMANTIC_LIGHT, "light");
-    expect(dark.insetDark).not.toBe(light.insetDark);
-    expect(dark.metricRowBg).not.toBe(light.metricRowBg);
-    expect(dark.metricRowToggleOnBg).not.toBe(light.metricRowToggleOnBg);
-    expect(dark.metricToggleOnLabelText).not.toBe(light.metricToggleOnLabelText);
+  it("returns new metric row token keys", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_DARK, "dark");
+    expect(b).toHaveProperty("metricRowBg");
+    expect(b).toHaveProperty("metricRowHoverBg");
+    expect(b).toHaveProperty("metricRowToggleOnBorder");
+    expect(b).toHaveProperty("metricRowToggleOnBg");
+    expect(b).toHaveProperty("metricRowToggleOnGlow");
+    expect(b).toHaveProperty("metricToggleOnLabel");
+    expect(b).toHaveProperty("loudnessTargetLine");
+  });
+
+  it("does not return retired keys", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_DARK, "dark");
+    expect(b).not.toHaveProperty("insetDark");
+    expect(b).not.toHaveProperty("settingsOverlay");
+    expect(b).not.toHaveProperty("targetValue");
+    expect(b).not.toHaveProperty("metricToggleOnUnitText");
+    expect(b).not.toHaveProperty("metricToggleOnLabelText");
+  });
+
+  it("metricToggleOnLabel is orange brand color", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_DARK, "dark");
+    expect(b.metricToggleOnLabel).toBe("#fb923c");
+  });
+
+  it("loudnessTargetLine is semi-transparent orange", () => {
+    const b = buildMeterColorBridge(PLVS_SEMANTIC_DARK, "dark");
+    expect(b.loudnessTargetLine).toBe("rgba(251,146,60,0.4)");
   });
 });
