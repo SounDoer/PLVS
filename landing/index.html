@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PLVS — Real-time Audio Metering</title>
+  <meta name="description" content="Free, open-source real-time audio metering for Windows & macOS. Peak, Loudness, Vectorscope, Spectrum, Spectrogram.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens (docs/design-tokens.md) ── */
+    :root {
+      --background:        #131110;
+      --foreground:        #f5f0ea;
+      --card:              #1e1b17;
+      --muted-foreground:  #9e9488;
+      --primary:           #fb923c;
+      --primary-fg:        #131110;
+      --border:            rgba(255, 255, 255, 0.09);
+      --radius:            0.625rem;
+      --font-sans:         "Inter", system-ui, sans-serif;
+      --font-mono:         "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--background);
+      color: var(--foreground);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Grain overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.032;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 220px 220px;
+    }
+
+    .page {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 88px 0 72px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero > * {
+      opacity: 0;
+      transform: translateY(14px);
+      animation: reveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .hero-logo    { animation-delay: 0.0s; }
+    .hero-tagline { animation-delay: 0.08s; }
+    .hero-modules { animation-delay: 0.15s; }
+    .hero-btns    { animation-delay: 0.22s; }
+
+    @keyframes reveal {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-logo {
+      font-family: var(--font-mono);
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      color: var(--foreground);
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .hero-logo-note {
+      font-size: 12px;
+      font-weight: 400;
+      font-style: italic;
+      color: rgba(158, 148, 136, 0.38);
+      letter-spacing: 0.06em;
+    }
+
+    .hero-tagline {
+      font-size: 17px;
+      color: var(--muted-foreground);
+      margin-bottom: 8px;
+    }
+
+    .hero-modules {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--primary);
+      letter-spacing: 0.06em;
+      margin-bottom: 40px;
+    }
+    .hero-modules .sep {
+      color: rgba(251, 146, 60, 0.28);
+      margin: 0 8px;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 11px 26px;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: opacity 0.15s ease, transform 0.12s ease;
+      white-space: nowrap;
+    }
+    .btn:hover  { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { opacity: 1;    transform: translateY(0); }
+
+    .btn-primary   { background: var(--primary); color: var(--primary-fg); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--foreground);
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
+    .btn-secondary:hover { border-color: rgba(255, 255, 255, 0.2); }
+
+    .portable-link {
+      display: block;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(158, 148, 136, 0.28);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .portable-link:hover { color: var(--foreground); border-color: rgba(255,255,255,0.35); }
+
+    .version-chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: rgba(251, 146, 60, 0.48);
+      letter-spacing: 0.06em;
+      align-self: center;
+    }
+
+    /* ── SCREENSHOT ── */
+    .screenshot-section {
+      padding: 52px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .screenshot-frame {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .screenshot-chrome {
+      background: rgba(255, 255, 255, 0.025);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chrome-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.07);
+    }
+    .chrome-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: rgba(158, 148, 136, 0.28);
+      letter-spacing: 0.08em;
+      margin-left: 8px;
+    }
+    .screenshot-body {
+      height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .screenshot-hint {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(158, 148, 136, 0.16);
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--primary);
+      margin-bottom: 52px;
+    }
+
+    /* ── FEATURES ── */
+    .features-section {
+      padding: 80px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feature-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 52px;
+      align-items: center;
+      margin-bottom: 80px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .feature-row:last-child { margin-bottom: 0; }
+    .feature-row.in-view   { opacity: 1; transform: translateY(0); }
+
+    .feature-row.reverse .feature-visual { order: 2; }
+    .feature-row.reverse .feature-text   { order: 1; }
+
+    .feature-visual {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      aspect-ratio: 16 / 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .feature-visual-hint {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(158, 148, 136, 0.15);
+    }
+
+    .feature-kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .feature-title {
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--foreground);
+      line-height: 1.25;
+      letter-spacing: -0.012em;
+      margin-bottom: 14px;
+    }
+    .feature-desc {
+      font-size: 14px;
+      color: var(--muted-foreground);
+      line-height: 1.75;
+    }
+
+    /* ── SYSTEM REQUIREMENTS ── */
+    .sysreq-section {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+    .info-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--foreground);
+      margin-bottom: 14px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-key { color: rgba(158, 148, 136, 0.5); }
+    .info-val {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted-foreground);
+    }
+
+    /* ── INSTALLATION ── */
+    .install-section {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .install-desc {
+      font-size: 12px;
+      color: var(--muted-foreground);
+      line-height: 1.65;
+    }
+    .install-code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--primary);
+      background: rgba(251, 146, 60, 0.08);
+      border: 1px solid rgba(251, 146, 60, 0.15);
+      border-radius: 4px;
+      padding: 7px 12px;
+      margin-top: 10px;
+      display: block;
+      word-break: break-all;
+    }
+    .install-em { color: var(--foreground); font-weight: 600; }
+
+    /* ── FOOTER ── */
+    .footer {
+      padding: 28px 0;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .footer-text {
+      font-size: 12px;
+      color: rgba(158, 148, 136, 0.36);
+    }
+    .footer-link {
+      font-size: 12px;
+      color: var(--muted-foreground);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(158, 148, 136, 0.28);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .footer-link:hover { color: var(--foreground); border-color: rgba(255,255,255,0.35); }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-logo">
+      PLVS
+      <span class="hero-logo-note">reads as "plus"</span>
+    </div>
+    <p class="hero-tagline">Free, open-source real-time audio metering for Windows &amp; macOS</p>
+    <p class="hero-modules">
+      Peak<span class="sep">·</span>Loudness<span class="sep">·</span>Vectorscope<span class="sep">·</span>Spectrum<span class="sep">·</span>Spectrogram
+    </p>
+    <div class="hero-btns" id="hero-btns">
+      <!-- Populated by JS after GitHub API fetch -->
+    </div>
+  </section>
+
+  <!-- SCREENSHOT -->
+  <section class="screenshot-section">
+    <div class="screenshot-frame">
+      <div class="screenshot-chrome">
+        <div class="chrome-dot"></div>
+        <div class="chrome-dot"></div>
+        <div class="chrome-dot"></div>
+        <span class="chrome-title">PLVS</span>
+      </div>
+      <div class="screenshot-body">
+        <span class="screenshot-hint">App Screenshot</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features-section">
+    <div class="section-label">Features</div>
+
+    <div class="feature-row">
+      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-text">
+        <div class="feature-kicker">System Audio</div>
+        <h3 class="feature-title">Native system audio capture</h3>
+        <p class="feature-desc">Monitor any audio playing on your machine — no virtual audio cable required. Windows uses WASAPI loopback, macOS uses the native audio tap.</p>
+      </div>
+    </div>
+
+    <div class="feature-row reverse">
+      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-text">
+        <div class="feature-kicker">Workspace</div>
+        <h3 class="feature-title">Fully flexible layout</h3>
+        <p class="feature-desc">Drag any divider to resize panels. Rearrange your workspace with split-tree layout. Pop out individual meters to float on a second screen.</p>
+      </div>
+    </div>
+
+    <div class="feature-row">
+      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-text">
+        <div class="feature-kicker">History</div>
+        <h3 class="feature-title">Session history &amp; snapshots</h3>
+        <p class="feature-desc">Scroll back through the loudness history timeline. Click any moment to freeze all meters at that snapshot — then return to live with one click.</p>
+      </div>
+    </div>
+
+    <div class="feature-row reverse">
+      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-text">
+        <div class="feature-kicker">Multichannel</div>
+        <h3 class="feature-title">Multichannel support</h3>
+        <p class="feature-desc">Works with stereo and surround formats. Automatic channel layout detection with proper per-channel metering and ITU-R BS.1770 loudness for multichannel sources.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SYSTEM REQUIREMENTS -->
+  <section class="sysreq-section">
+    <div class="section-label">System Requirements</div>
+    <div class="two-col">
+      <div class="info-card">
+        <div class="info-card-title">Windows</div>
+        <div class="info-row"><span class="info-key">OS</span><span class="info-val">Windows 10 / 11</span></div>
+        <div class="info-row"><span class="info-key">Installer</span><span class="info-val">NSIS .exe</span></div>
+        <div class="info-row"><span class="info-key">System audio</span><span class="info-val">WASAPI loopback</span></div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">macOS</div>
+        <div class="info-row"><span class="info-key">Architecture</span><span class="info-val">Apple Silicon</span></div>
+        <div class="info-row"><span class="info-key">Installer</span><span class="info-val">DMG (aarch64)</span></div>
+        <div class="info-row"><span class="info-key">System audio</span><span class="info-val">macOS 14.2+</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALLATION -->
+  <section class="install-section">
+    <div class="section-label">Installation</div>
+    <div class="two-col">
+      <div class="info-card">
+        <div class="info-card-title">macOS — Gatekeeper</div>
+        <p class="install-desc">PLVS is not notarized by Apple. If macOS blocks the app on first launch, run:</p>
+        <code class="install-code">xattr -cr /Applications/PLVS.app</code>
+      </div>
+      <div class="info-card">
+        <div class="info-card-title">Windows — SmartScreen</div>
+        <p class="install-desc">If Windows SmartScreen blocks the installer, click <span class="install-em">More info</span> → <span class="install-em">Run anyway</span>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <a class="footer-link" href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
+    <span class="footer-text">MIT License</span>
+    <span class="footer-text" id="footer-version">v0.1.0</span>
+  </footer>
+
+</div>
+
+<script>
+  // ── GitHub Releases: auto-fetch latest version + download URLs ──
+  const REPO = 'SounDoer/PLVS';
+  const FALLBACK = 'v0.1.0';
+
+  async function loadRelease() {
+    let version = FALLBACK, urls = {};
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+      if (res.ok) {
+        const { tag_name, assets } = await res.json();
+        version = tag_name;
+        urls = {
+          mac:         assets.find(a => a.name.endsWith('.dmg') && a.name.includes('aarch64'))?.browser_download_url,
+          winInstall:  assets.find(a => a.name.endsWith('.exe') && !a.name.toLowerCase().includes('portable'))?.browser_download_url,
+          winPortable: assets.find(a => a.name.endsWith('.exe') &&  a.name.toLowerCase().includes('portable'))?.browser_download_url,
+        };
+      }
+    } catch (_) { /* use fallback */ }
+
+    document.getElementById('footer-version').textContent = version;
+    renderButtons(version, urls);
+  }
+
+  function renderButtons(version, urls) {
+    const isMac = /Mac/.test(navigator.platform) || /Mac/.test(navigator.userAgent);
+
+    const winGroup = `
+      <div class="btn-group">
+        <a class="btn ${isMac ? 'btn-secondary' : 'btn-primary'}" href="${urls.winInstall || '#'}">Windows Installer</a>
+        <a class="portable-link" href="${urls.winPortable || '#'}">Portable version</a>
+      </div>`;
+
+    const macGroup = `
+      <div class="btn-group">
+        <a class="btn ${isMac ? 'btn-primary' : 'btn-secondary'}" href="${urls.mac || '#'}">macOS Apple Silicon</a>
+      </div>`;
+
+    const chip = `<span class="version-chip">${version}</span>`;
+
+    document.getElementById('hero-btns').innerHTML = isMac
+      ? macGroup + winGroup + chip
+      : winGroup + macGroup + chip;
+  }
+
+  loadRelease();
+
+  // ── Scroll-triggered feature rows ──
+  const io = new IntersectionObserver(
+    entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); }
+    }),
+    { threshold: 0.12 }
+  );
+  document.querySelectorAll('.feature-row').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
