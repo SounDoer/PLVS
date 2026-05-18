@@ -65,8 +65,6 @@ describe("applyShadcnSemanticTokensToDocument", () => {
   });
 });
 
-// Minimal semantic used across tests
-const BASE = { primary: "#22d3ee", primaryForeground: "oklch(0.145 0 0)" };
 
 describe("buildThemeFallbackCss", () => {
   it("emits non-oklch value unchanged in base :root block", () => {
