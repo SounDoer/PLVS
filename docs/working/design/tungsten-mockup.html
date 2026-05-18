@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PLVS · Tungsten Theme Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ─── Tungsten Palette ───────────────────────────────────── */
+:root {
+  --bg:           #090500;
+  --bg2:          #120900;
+  --card:         #1a0e00;
+  --card2:        #221400;
+  --fg:           #c08828;
+  --fg-hi:        #e0a840;
+  --fg-bright:    #f0c860;
+  --fg-muted:     #5e3e14;
+  --fg-ghost:     #3a2608;
+  --accent:       #ffaa00;
+  --accent-hi:    #ffd060;
+  --accent-cold:  #b87800;
+  --signal-clip:  #ff2200;
+  --signal-hot:   #ff6010;
+  --signal-warn:  #ffa000;
+  --signal-good:  #c8a020;
+  --signal-corr:  #80a030;
+  --border:       rgba(255,155,0,0.08);
+  --border-hi:    rgba(255,155,0,0.20);
+  --border-glow:  rgba(255,180,0,0.40);
+  --font-head:    'Oswald', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+/* ─── Reset ─────────────────────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── Ambient glow — warm lamp from top ─────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% -10%,
+      rgba(255,130,0,0.07) 0%,
+      transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 100%,
+      rgba(255,100,0,0.04) 0%,
+      transparent 55%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Film grain ─────────────────────────────────────────── */
+@keyframes grain {
+  0%,100% { transform: translate(0,0) }
+  10%  { transform: translate(-1%,-2%) }
+  20%  { transform: translate(2%, 1%) }
+  30%  { transform: translate(-2%, 3%) }
+  40%  { transform: translate(3%,-1%) }
+  50%  { transform: translate(-1%, 2%) }
+  60%  { transform: translate(2%,-3%) }
+  70%  { transform: translate(-3%, 2%) }
+  80%  { transform: translate(1%,-1%) }
+  90%  { transform: translate(-2%, 3%) }
+}
+
+.grain-layer {
+  position: fixed; inset: -100%;
+  width: 300%; height: 300%;
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='256' height='256' filter='url(%23n)' opacity='1'/></svg>");
+  opacity: 0.028;
+  pointer-events: none;
+  z-index: 900;
+  animation: grain 0.4s steps(1) infinite;
+}
+
+/* ─── Shell ──────────────────────────────────────────────── */
+.shell {
+  position: relative;
+  z-index: 2;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 38px 1fr 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+/* ─── Header ─────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border-hi);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hot wire at bottom of header */
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255,180,0,0.5) 20%,
+    rgba(255,220,80,0.8) 50%,
+    rgba(255,180,0,0.5) 80%,
+    transparent);
+}
+
+.logo {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  text-shadow:
+    0 0 8px rgba(255,160,0,0.5),
+    0 0 20px rgba(255,120,0,0.3);
+  flex-shrink: 0;
+}
+
+.header-div {
+  width: 1px; height: 16px;
+  background: var(--border-hi);
+  flex-shrink: 0;
+}
+
+.device-info {
+  display: flex; flex-direction: column; gap: 1px;
+}
+
+.device-name {
+  font-size: 9px; font-weight: 500;
+  color: var(--fg);
+  letter-spacing: 0.06em;
+}
+
+.device-sub {
+  font-size: 8px;
+  color: var(--fg-muted);
+  letter-spacing: 0.08em;
+}
+
+.header-spacer { flex: 1; }
+
+@keyframes pulse-amber {
+  0%,100% { opacity: 1;   box-shadow: 0 0 6px rgba(255,170,0,0.6); }
+  50%      { opacity: 0.4; box-shadow: 0 0 2px rgba(255,170,0,0.2); }
+}
+
+.status-indicator {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 8px; color: var(--fg-muted); letter-spacing: 0.1em;
+}
+
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(255,170,0,0.6);
+  animation: pulse-amber 2.2s ease-in-out infinite;
+}
+
+.theme-pill {
+  font-family: var(--font-head);
+  font-size: 8px; font-weight: 500;
+  letter-spacing: 0.22em;
+  color: var(--fg-muted);
+  border: 1px solid var(--border-hi);
+  padding: 2px 7px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+/* ─── Main grid ──────────────────────────────────────────── */
+.main {
+  display: grid;
+  grid-template-columns: 96px 1fr 190px;
+  gap: 1px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+/* ─── Panel base ─────────────────────────────────────────── */
+.panel {
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Subtle inner warmth on each panel */
+.panel::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%,
+    rgba(255,100,0,0.025) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.panel-title {
+  font-family: var(--font-head);
+  font-size: 8px; font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  padding: 7px 10px 5px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* ─── Peak Meters ────────────────────────────────────────── */
+.meters-panel { }
+
+.meters-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 20px 1fr 1fr;
+  gap: 3px;
+  padding: 6px 8px 6px;
+  overflow: hidden;
+}
+
+.scale-col {
+  display: flex; flex-direction: column;
+  justify-content: space-between;
+  padding-top: 2px; padding-bottom: 18px;
+}
+
+.scale-tick {
+  font-size: 7px;
+  color: var(--fg-ghost);
+  text-align: right;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.scale-tick.bright { color: var(--fg-muted); }
+
+.meter-col {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+}
+
+.meter-track {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(255,120,0,0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+
+/* Segment tick marks on the meter track */
+.meter-track::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 5px,
+    rgba(255,120,0,0.04) 5px,
+    rgba(255,120,0,0.04) 6px
+  );
+  pointer-events: none;
+}
+
+.meter-fill {
+  width: 100%;
+  border-radius: 1px;
+  transition: height 0.06s linear;
+  position: relative;
+  will-change: height;
+}
+
+.meter-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 1px;
+  background: rgba(255,255,180,0.5);
+  box-shadow: 0 0 4px rgba(255,200,50,0.6);
+}
+
+/* Gradient: calm amber-gold → amber → orange → red */
+.meter-fill {
+  background: linear-gradient(to top,
+    #b88010  0%,
+    #d09820  18%,
+    #f0a800  38%,
+    #ffa000  55%,
+    #ff7010  74%,
+    #ff4010  88%,
+    #ff1800  96%,
+    #ff0000 100%
+  );
+  filter: saturate(1.1);
+}
+
+.peak-line {
+  position: absolute;
+  width: calc(100% - 2px);
+  left: 1px;
+  height: 2px;
+  background: var(--accent-hi);
+  box-shadow:
+    0 0 4px rgba(255,210,60,0.9),
+    0 0 10px rgba(255,180,0,0.5);
+  border-radius: 1px;
+  transition: bottom 0.12s;
+  will-change: bottom;
+}
+
+.meter-readout {
+  font-size: 8px; font-weight: 400;
+  color: var(--fg);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  height: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.meter-ch-label {
+  font-family: var(--font-head);
+  font-size: 8px; font-weight: 500;
+  letter-spacing: 0.15em;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+/* ─── Center column ──────────────────────────────────────── */
+.center-col {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 1px;
+  background: var(--border);
+}
+
+/* ─── History chart ──────────────────────────────────────── */
+.history-panel { min-height: 0; }
+
+.history-body {
+  flex: 1;
+  padding: 6px 10px;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.history-svg {
+  width: 100%; height: 100%;
+  overflow: visible;
+}
+
+/* Target line */
+.target-line {
+  stroke: rgba(255,140,0,0.28);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+/* ─── Metrics grid ───────────────────────────────────────── */
+.metrics-panel {
+  background: var(--card);
+  padding: 6px 10px;
+  display: grid;
+  grid-template-columns: repeat(3,1fr) auto;
+  gap: 5px;
+  align-items: start;
+  flex-shrink: 0;
+}
+
+.metric-card {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 5px 7px;
+  background: rgba(255,120,0,0.025);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.metric-card.lit {
+  background: rgba(255,140,0,0.05);
+  border-color: rgba(255,160,0,0.22);
+  box-shadow: inset 0 0 16px rgba(255,110,0,0.04);
+}
+
+.metric-name {
+  font-size: 7px; letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.metric-val {
+  font-size: 22px; font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--fg-hi);
+  text-shadow: 0 0 14px rgba(255,150,0,0.28);
+}
+
+.metric-val.lit {
+  color: var(--accent-hi);
+  text-shadow:
+    0 0 10px rgba(255,190,40,0.45),
+    0 0 24px rgba(255,140,0,0.22);
+}
+
+.metric-unit {
+  font-size: 7px; letter-spacing: 0.1em;
+  color: var(--fg-ghost);
+  text-transform: uppercase;
+}
+
+/* Correlation column */
+.corr-col {
+  display: flex; flex-direction: column;
+  justify-content: center; gap: 4px;
+  padding: 4px 6px;
+}
+
+.corr-label {
+  font-size: 7px; letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.corr-bar-wrap {
+  position: relative;
+  height: 32px;
+  width: 14px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+
+.corr-track {
+  width: 3px; height: 100%;
+  background: var(--border);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.corr-fill {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, var(--signal-good), var(--accent));
+  border-radius: 2px;
+}
+
+.corr-val {
+  font-size: 9px; font-weight: 500;
+  color: var(--accent);
+  text-align: center;
+}
+
+/* ─── Right column ───────────────────────────────────────── */
+.right-col {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+
+/* ─── Footer ─────────────────────────────────────────────── */
+.footer {
+  display: flex; align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border-hi);
+  position: relative;
+  overflow: hidden;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255,160,0,0.35) 20%,
+    rgba(255,200,60,0.55) 50%,
+    rgba(255,160,0,0.35) 80%,
+    transparent);
+}
+
+.footer-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 8px; letter-spacing: 0.08em;
+  color: var(--fg-muted);
+}
+
+.footer-item-val {
+  color: var(--fg);
+}
+
+.footer-spacer { flex: 1; }
+
+.footer-target-bar {
+  width: 80px; height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-target-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--signal-good), var(--accent));
+  border-radius: 1px;
+  width: 62%;
+}
+
+/* ─── Canvas panels ──────────────────────────────────────── */
+.canvas-wrap {
+  flex: 1; min-height: 0;
+  padding: 6px;
+  display: flex;
+}
+
+.render-canvas {
+  width: 100%; height: 100%;
+  display: block;
+}
+
+</style>
+</head>
+<body>
+
+<div class="grain-layer"></div>
+
+<div class="shell">
+
+  <!-- ─── Header ─────────────────────────────────────────── -->
+  <header class="header">
+    <div class="logo">PLVS</div>
+    <div class="header-div"></div>
+    <div class="device-info">
+      <div class="device-name">BlackHole 2ch</div>
+      <div class="device-sub">48 kHz · 32-bit float</div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span>MONITORING</span>
+    </div>
+    <div class="header-div"></div>
+    <div class="theme-pill">Tungsten</div>
+  </header>
+
+  <!-- ─── Main ───────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Peak meters -->
+    <div class="panel meters-panel">
+      <div class="panel-title">Peak · True Peak</div>
+      <div class="meters-body">
+
+        <div class="scale-col">
+          <div class="scale-tick bright">0</div>
+          <div class="scale-tick">−3</div>
+          <div class="scale-tick bright">−6</div>
+          <div class="scale-tick">−9</div>
+          <div class="scale-tick bright">−12</div>
+          <div class="scale-tick">−18</div>
+          <div class="scale-tick bright">−24</div>
+          <div class="scale-tick">−36</div>
+        </div>
+
+        <div class="meter-col">
+          <div class="meter-track" id="track-l">
+            <div class="meter-fill" id="fill-l" style="height:70%"></div>
+            <div class="peak-line" id="peak-l" style="bottom:72%"></div>
+          </div>
+          <div class="meter-readout" id="read-l">−8.3</div>
+          <div class="meter-ch-label">L</div>
+        </div>
+
+        <div class="meter-col">
+          <div class="meter-track" id="track-r">
+            <div class="meter-fill" id="fill-r" style="height:62%"></div>
+            <div class="peak-line" id="peak-r" style="bottom:64%"></div>
+          </div>
+          <div class="meter-readout" id="read-r">−9.8</div>
+          <div class="meter-ch-label">R</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Center column -->
+    <div class="center-col">
+
+      <!-- Loudness History -->
+      <div class="panel history-panel">
+        <div class="panel-title">Loudness History — EBU R128</div>
+        <div class="history-body">
+          <svg class="history-svg" id="history-svg" viewBox="0 0 640 180" preserveAspectRatio="none">
+            <!-- Grid lines -->
+            <line x1="0" y1="36"  x2="640" y2="36"  class="target-line" opacity="0.5"/>
+            <line x1="0" y1="60"  x2="640" y2="60"  stroke="rgba(255,130,0,0.05)" stroke-width="1"/>
+            <line x1="0" y1="90"  x2="640" y2="90"  stroke="rgba(255,130,0,0.07)" stroke-width="1"/>
+            <line x1="0" y1="120" x2="640" y2="120" stroke="rgba(255,130,0,0.05)" stroke-width="1"/>
+            <line x1="0" y1="150" x2="640" y2="150" stroke="rgba(255,130,0,0.05)" stroke-width="1"/>
+            <!-- Target label -->
+            <text x="4" y="33" font-family="JetBrains Mono" font-size="7" fill="rgba(255,160,0,0.4)" letter-spacing="0.05em">−23 LUFS</text>
+            <!-- Short-term fill -->
+            <path id="st-fill" fill="rgba(180,110,20,0.07)"/>
+            <!-- Short-term line -->
+            <path id="st-line" fill="none" stroke="#b87820" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.75"/>
+            <!-- Momentary fill -->
+            <path id="m-fill" fill="rgba(255,150,0,0.10)"/>
+            <!-- Momentary line -->
+            <path id="m-line" fill="none" stroke="#ffa000" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+            <!-- Snap marker -->
+            <circle id="snap-dot" r="3" fill="none" stroke="#ffd060" stroke-width="1.5" opacity="0.8"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="panel metrics-panel">
+
+        <div class="metric-card">
+          <div class="metric-name">Momentary</div>
+          <div class="metric-val" id="m-val">−14.2</div>
+          <div class="metric-unit">LUFS</div>
+        </div>
+
+        <div class="metric-card lit">
+          <div class="metric-name">Short-term</div>
+          <div class="metric-val lit" id="s-val">−16.8</div>
+          <div class="metric-unit">LUFS</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-name">Integrated</div>
+          <div class="metric-val" id="i-val">−18.1</div>
+          <div class="metric-unit">LUFS</div>
+        </div>
+
+        <div class="corr-col">
+          <div class="corr-label">Corr</div>
+          <div class="corr-bar-wrap">
+            <div class="corr-track">
+              <div class="corr-fill" id="corr-fill" style="height:84%"></div>
+            </div>
+          </div>
+          <div class="corr-val" id="corr-val">+.84</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right column -->
+    <div class="right-col">
+
+      <div class="panel">
+        <div class="panel-title">Vectorscope</div>
+        <div class="canvas-wrap">
+          <canvas class="render-canvas" id="vec-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Spectrum</div>
+        <div class="canvas-wrap">
+          <canvas class="render-canvas" id="sp-canvas"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ─── Footer ─────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer-item">
+      <span>Duration</span>
+      <span class="footer-item-val" id="duration">0:42</span>
+    </div>
+    <div class="footer-item">
+      <span>Target</span>
+      <span class="footer-item-val">−23 LUFS</span>
+      <div class="footer-target-bar">
+        <div class="footer-target-fill"></div>
+      </div>
+    </div>
+    <div class="footer-item">
+      <span>True Peak</span>
+      <span class="footer-item-val">−1.2 dBTP</span>
+    </div>
+    <div class="footer-spacer"></div>
+    <div class="footer-item">
+      <span>LRA</span>
+      <span class="footer-item-val">8.4 LU</span>
+    </div>
+    <div class="footer-item">
+      <span>PLVS</span>
+      <span class="footer-item-val">0.1.0</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────────────────────── */
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function gauss() {
+  let u = 0, v = 0;
+  while (!u) u = Math.random();
+  while (!v) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Duration counter
+───────────────────────────────────────────────────────────── */
+let secs = 42;
+setInterval(() => {
+  secs++;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  document.getElementById('duration').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+}, 1000);
+
+/* ─────────────────────────────────────────────────────────────
+   Peak Meters
+───────────────────────────────────────────────────────────── */
+const fillL  = document.getElementById('fill-l');
+const fillR  = document.getElementById('fill-r');
+const peakL  = document.getElementById('peak-l');
+const peakR  = document.getElementById('peak-r');
+const readL  = document.getElementById('read-l');
+const readR  = document.getElementById('read-r');
+
+let meterL = 0.70, meterR = 0.62;
+let holdL  = 0.72, holdR  = 0.64;
+let holdTL = 0,    holdTR = 0;
+
+// dBFS from normalised 0..1
+function normToDb(n) {
+  if (n <= 0.001) return -Infinity;
+  return 20 * Math.log10(n) * (60 / 20);  // scale so 1.0 → 0 dBFS
+}
+
+function meterTick(t) {
+  // Brownian walk
+  meterL = clamp(meterL + gauss() * 0.02, 0.35, 0.90);
+  meterR = clamp(meterR + gauss() * 0.02, 0.28, 0.85);
+  // Peak hold: reset if higher, decay after 1.5s
+  if (meterL > holdL) { holdL = meterL; holdTL = t; }
+  if (meterR > holdR) { holdR = meterR; holdTR = t; }
+  if (t - holdTL > 1500) holdL = Math.max(holdL - 0.002, meterL);
+  if (t - holdTR > 1500) holdR = Math.max(holdR - 0.002, meterR);
+
+  fillL.style.height = (meterL * 100).toFixed(1) + '%';
+  fillR.style.height = (meterR * 100).toFixed(1) + '%';
+  peakL.style.bottom = (holdL  * 100).toFixed(1) + '%';
+  peakR.style.bottom = (holdR  * 100).toFixed(1) + '%';
+
+  // Map to dBFS (0..1 → 0..-60)
+  const dbL = (-60 * (1 - meterL)).toFixed(1);
+  const dbR = (-60 * (1 - meterR)).toFixed(1);
+  readL.textContent = dbL > 0 ? '+' + dbL : dbL;
+  readR.textContent = dbR > 0 ? '+' + dbR : dbR;
+
+  requestAnimationFrame(meterTick);
+}
+requestAnimationFrame(meterTick);
+
+/* ─────────────────────────────────────────────────────────────
+   Loudness History
+───────────────────────────────────────────────────────────── */
+const N = 90;
+const W_SVG = 640, H_SVG = 180;
+const LUFS_MIN = -35, LUFS_MAX = -5;
+
+function lufsToY(l) {
+  const t = (l - LUFS_MAX) / (LUFS_MIN - LUFS_MAX);
+  return t * H_SVG;
+}
+
+// Seed history
+let mHistory = Array.from({length: N}, (_, i) => {
+  return lerp(-22, -14, i / N) + gauss() * 2;
+});
+let stHistory = Array.from({length: N}, (_, i) => {
+  return lerp(-24, -17, i / N) + gauss() * 1.2;
+});
+
+let curM  = mHistory[N-1];
+let curST = stHistory[N-1];
+let integ = -18.1;
+let integ_secs = 42;
+
+const mLine   = document.getElementById('m-line');
+const mFill   = document.getElementById('m-fill');
+const stLine  = document.getElementById('st-line');
+const stFill  = document.getElementById('st-fill');
+const snapDot = document.getElementById('snap-dot');
+const mVal    = document.getElementById('m-val');
+const sVal    = document.getElementById('s-val');
+const iVal    = document.getElementById('i-val');
+const corrFill= document.getElementById('corr-fill');
+const corrVal = document.getElementById('corr-val');
+
+function pathFromHistory(arr) {
+  return arr.map((v, i) => {
+    const x = (i / (N - 1)) * W_SVG;
+    const y = lufsToY(v);
+    return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+}
+
+function fillFromHistory(arr) {
+  const line = pathFromHistory(arr);
+  return line + ' L ' + W_SVG + ' ' + H_SVG + ' L 0 ' + H_SVG + ' Z';
+}
+
+function historyTick() {
+  // Drift momentary
+  curM  = clamp(curM  + gauss() * 0.6, -28, -10);
+  curST = clamp(curST + gauss() * 0.3, -26, -12);
+  mHistory.shift(); mHistory.push(curM);
+  stHistory.shift(); stHistory.push(curST);
+
+  // Slowly update integrated
+  integ_secs++;
+  // Approximate: integrated drifts very slowly
+  integ = lerp(integ, curM - 3, 0.005);
+
+  mLine.setAttribute('d',  pathFromHistory(mHistory));
+  mFill.setAttribute('d',  fillFromHistory(mHistory));
+  stLine.setAttribute('d', pathFromHistory(stHistory));
+  stFill.setAttribute('d', fillFromHistory(stHistory));
+
+  // Snap dot at current position
+  const snapX = W_SVG;
+  const snapY = lufsToY(curM);
+  snapDot.setAttribute('cx', snapX);
+  snapDot.setAttribute('cy', snapY);
+
+  mVal.textContent = curM.toFixed(1);
+  sVal.textContent = curST.toFixed(1);
+  iVal.textContent = integ.toFixed(1);
+
+  // Correlation (fake)
+  const corr = clamp(0.82 + gauss() * 0.04, 0.6, 0.99);
+  corrFill.style.height = (corr * 100).toFixed(0) + '%';
+  corrVal.textContent  = '+.' + String(Math.round(corr * 100)).padStart(2, '0');
+}
+
+setInterval(historyTick, 120);
+
+/* ─────────────────────────────────────────────────────────────
+   Vectorscope
+───────────────────────────────────────────────────────────── */
+(function(){
+  const canvas = document.getElementById('vec-canvas');
+  const dpr = window.devicePixelRatio || 1;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width  = rect.width  * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width  = rect.width  + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+  resize();
+  new ResizeObserver(resize).observe(canvas.parentElement);
+
+  const ctx = canvas.getContext('2d');
+
+  // Particle cloud — biased toward upper-right (stereo in-phase)
+  const PARTS = 280;
+  const particles = Array.from({length: PARTS}, () => {
+    const angle = Math.PI / 4 + (Math.random() - 0.5) * 0.7;
+    const mag = 0.25 + Math.random() * 0.55;
+    return { angle, mag,
+             vAngle: (Math.random() - 0.5) * 0.005,
+             vMag:   (Math.random() - 0.5) * 0.003 };
+  });
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    const R  = Math.min(cx, cy) * 0.82;
+
+    ctx.scale(1,1); // identity each frame
+
+    // Fade trail
+    ctx.fillStyle = 'rgba(26,14,0,0.18)';
+    ctx.fillRect(0,0,W,H);
+
+    // Grid
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,140,0,0.08)';
+    ctx.lineWidth = 0.5 * dpr;
+    ctx.setLineDash([3*dpr, 4*dpr]);
+
+    // Axes
+    ctx.beginPath();
+    ctx.moveTo(cx - R*1.1, cy); ctx.lineTo(cx + R*1.1, cy);
+    ctx.moveTo(cx, cy - R*1.1); ctx.lineTo(cx, cy + R*1.1);
+    ctx.stroke();
+
+    // Diagonals
+    ctx.strokeStyle = 'rgba(255,140,0,0.12)';
+    const d = R * 0.78;
+    ctx.beginPath();
+    ctx.moveTo(cx-d,cy-d); ctx.lineTo(cx+d,cy+d);
+    ctx.moveTo(cx+d,cy-d); ctx.lineTo(cx-d,cy+d);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,140,0,0.09)';
+    ctx.lineWidth = 0.5 * dpr;
+    ctx.stroke();
+    ctx.restore();
+
+    // Particles
+    for (const p of particles) {
+      p.angle += p.vAngle + (Math.random() - 0.5) * 0.003;
+      p.mag   += p.vMag   + (Math.random() - 0.5) * 0.004;
+      p.angle  = clamp(p.angle, -0.1, Math.PI * 0.6);
+      p.mag    = clamp(p.mag,    0.05, 0.92);
+
+      const px = cx + Math.cos(p.angle) * p.mag * R;
+      const py = cy - Math.sin(p.angle) * p.mag * R;
+      const alpha = 0.35 + Math.random() * 0.5;
+
+      ctx.beginPath();
+      ctx.arc(px, py, 0.7 * dpr, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,165,0,${alpha})`;
+      ctx.fill();
+
+      // Occasional glow dot
+      if (Math.random() < 0.03) {
+        ctx.beginPath();
+        ctx.arc(px, py, 1.4 * dpr, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(255,220,80,0.6)`;
+        ctx.fill();
+      }
+    }
+
+    // Corner labels
+    ctx.fillStyle = 'rgba(255,140,0,0.25)';
+    ctx.font = `${8 * dpr}px 'JetBrains Mono'`;
+    ctx.fillText('L', (cx - R * 1.05) - 2*dpr, cy - 4*dpr);
+    ctx.fillText('R', (cx + R * 1.0)  + 2*dpr, cy - 4*dpr);
+    ctx.fillText('M', cx - 5*dpr, cy - R * 1.02);
+    ctx.fillText('S', cx - 5*dpr, cy + R * 1.1);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ─────────────────────────────────────────────────────────────
+   Spectrum Analyzer
+───────────────────────────────────────────────────────────── */
+(function(){
+  const canvas = document.getElementById('sp-canvas');
+  const dpr = window.devicePixelRatio || 1;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width  = rect.width  * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width  = rect.width  + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+  resize();
+  new ResizeObserver(resize).observe(canvas.parentElement);
+
+  const ctx = canvas.getContext('2d');
+  const BINS = 72;
+
+  // Spectrum shape — shaped like music (pink noise + peaks)
+  let vals = Array.from({length: BINS}, (_, i) => {
+    const f = i / BINS;
+    const base =
+        0.80 * Math.exp(-Math.pow((f - 0.08) * 5, 2))   // sub/bass peak
+      + 0.60 * Math.exp(-Math.pow((f - 0.22) * 6, 2))   // bass
+      + 0.45 * Math.exp(-Math.pow((f - 0.42) * 5, 2))   // mid
+      + 0.30 * (1 - f) * 0.7;                             // 1/f roll
+    return clamp(base + gauss() * 0.06, 0.02, 0.96);
+  });
+
+  let snapVals = vals.slice();
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,130,0,0.06)';
+    ctx.lineWidth = 0.5 * dpr;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, H * i / 4);
+      ctx.lineTo(W, H * i / 4);
+      ctx.stroke();
+    }
+
+    // Animate
+    for (let i = 0; i < BINS; i++) {
+      const target = clamp(
+        0.80 * Math.exp(-Math.pow((i/BINS - 0.08) * 5, 2))
+      + 0.60 * Math.exp(-Math.pow((i/BINS - 0.22) * 6, 2))
+      + 0.45 * Math.exp(-Math.pow((i/BINS - 0.42) * 5, 2))
+      + 0.30 * (1 - i/BINS) * 0.7
+      + gauss() * 0.08,
+        0.02, 0.96
+      );
+      vals[i] = lerp(vals[i], target, 0.22);
+      snapVals[i] = Math.max(snapVals[i] * 0.992, vals[i]);
+    }
+
+    const bw = W / BINS;
+
+    // Snap line
+    ctx.beginPath();
+    for (let i = 0; i < BINS; i++) {
+      const x = i * bw + bw * 0.5;
+      const y = H - snapVals[i] * H * 0.92;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(180,115,20,0.5)';
+    ctx.lineWidth = 1 * dpr;
+    ctx.stroke();
+
+    // Fill under live curve
+    ctx.beginPath();
+    for (let i = 0; i < BINS; i++) {
+      const x = i * bw + bw * 0.5;
+      const y = H - vals[i] * H * 0.92;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(255,155,0,0.18)');
+    grad.addColorStop(0.5, 'rgba(255,120,0,0.08)');
+    grad.addColorStop(1, 'rgba(255,80,0,0.01)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Live line
+    ctx.beginPath();
+    for (let i = 0; i < BINS; i++) {
+      const x = i * bw + bw * 0.5;
+      const y = H - vals[i] * H * 0.92;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#ffa000';
+    ctx.lineWidth = 1.4 * dpr;
+    ctx.stroke();
+
+    // Glow on live line top
+    ctx.beginPath();
+    for (let i = 0; i < BINS; i++) {
+      const x = i * bw + bw * 0.5;
+      const y = H - vals[i] * H * 0.92;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(255,215,70,0.25)';
+    ctx.lineWidth = 3 * dpr;
+    ctx.stroke();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

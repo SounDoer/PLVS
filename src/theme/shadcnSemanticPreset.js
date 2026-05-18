@@ -83,6 +83,34 @@ export const AUDIOMETER_SEMANTIC_DARK = {
   ring: "#22d3ee",
 };
 
+/** PLVS Tungsten — incandescent amber on warm near-black. */
+export const PLVS_SEMANTIC_TUNGSTEN = {
+  background: "#0c0700",
+  foreground: "#c08828",
+  card: "#1a0e00",
+  cardForeground: "#c08828",
+  popover: "#1a0e00",
+  popoverForeground: "#c08828",
+  primary: "#ffaa00",
+  primaryForeground: "#0c0700",
+  secondary: "#221400",
+  secondaryForeground: "#c08828",
+  muted: "#221400",
+  mutedForeground: "#5e3e14",
+  accent: "#221400",
+  accentForeground: "#c08828",
+  destructive: "#ff2200",
+  destructiveForeground: "#c08828",
+  border: "rgba(255,155,0,0.08)",
+  input: "rgba(255,155,0,0.14)",
+  ring: "#ffaa00",
+  chart1: "#ffaa00",
+  chart2: "#c07820",
+  chart3: "#7a4a08",
+  chart4: "#e0a840",
+  chart5: "#5e3e14",
+};
+
 /** PLVS Phosphor — CRT phosphor green on near-black. */
 export const PLVS_SEMANTIC_PHOSPHOR = {
   background: "#020a04",

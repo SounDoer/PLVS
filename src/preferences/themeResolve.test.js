@@ -85,10 +85,11 @@ describe("resolveThemeId DEV warnings", () => {
 });
 
 describe("THEME_IDS", () => {
-  it("contains plvs-dark, plvs-light, and plvs-phosphor", () => {
+  it("contains plvs-dark, plvs-light, plvs-phosphor, and plvs-tungsten", () => {
     expect(THEME_IDS).toContain("plvs-dark");
     expect(THEME_IDS).toContain("plvs-light");
     expect(THEME_IDS).toContain("plvs-phosphor");
+    expect(THEME_IDS).toContain("plvs-tungsten");
     expect(THEME_IDS).not.toContain("audiometer-dark");
     expect(THEME_IDS).not.toContain("audiometer-light");
     expect(THEME_IDS).not.toContain("audiometer-ember");
