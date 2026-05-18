@@ -55,7 +55,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |
-          $src = "src-tauri/target/release/app.exe"
+          $src = "src-tauri/target/release/plvs.exe"
           if (!(Test-Path $src)) { throw "Missing $src" }
           Copy-Item $src "PLVS-${{ github.ref_name }}-x64-portable.exe"
 
