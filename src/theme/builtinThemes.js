@@ -1,9 +1,13 @@
 /**
  * Builtin colour themes.
- * @typedef {"plvs-dark" | "plvs-light"} ThemeId
+ * @typedef {"plvs-dark" | "plvs-light" | "plvs-phosphor"} ThemeId
  */
 
-import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.js";
+import {
+  PLVS_SEMANTIC_DARK,
+  PLVS_SEMANTIC_LIGHT,
+  PLVS_SEMANTIC_PHOSPHOR,
+} from "./shadcnSemanticPreset.js";
 
 /** @typedef {import("./shadcnSemanticPreset.js").ShadcnSemantic} ShadcnSemantic */
 
@@ -32,6 +36,7 @@ import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.
  *   charts: ChartsBundle;
  *   meterGradient: MeterGradient;
  *   colorScheme: "light" | "dark";
+ *   meterColorOverrides?: Record<string, unknown>;
  * }} BuiltinTheme
  */
 
@@ -108,6 +113,59 @@ const CHARTS_PLVS_LIGHT = {
   },
 };
 
+const CHARTS_PLVS_PHOSPHOR = {
+  loudnessHistory: {
+    momentaryStroke: "#2cff65",
+    momentaryStrokeSnap: "#9ed4aa",
+    momentaryStrokeWidth: 1.5,
+    shortTermStroke: "#1bcc4e",
+    shortTermStrokeSnap: "#6db87e",
+    shortTermStrokeWidth: 1.2,
+    shortTermOpacity: 0.85,
+    selectionStroke: "#9ed4aa",
+    selectionStrokeWidth: 1.2,
+    historyGridLineColor: "color-mix(in srgb, var(--border) 15%, transparent)",
+  },
+  vectorscope: {
+    strokeLive: "#2cff65",
+    strokeSnap: "#9ed4aa",
+    strokeWidth: 1,
+    axisOpacity: 0.7,
+    gridDiagInsetPct: 1.2,
+    plotRadius: 240,
+    gridDiagStroke: "color-mix(in srgb, var(--border) 80%, transparent)",
+    gridDiagDash: "2.6 3.4",
+  },
+  spectrum: {
+    strokeLive: "#2cff65",
+    strokeSnap: "#9ed4aa",
+    strokeWidth: 1.5,
+    fillOpacityTop: 0.2,
+    fillOpacityBottom: 0.02,
+  },
+};
+
+const METER_GRADIENT_PHOSPHOR = {
+  top: "#ff3030",
+  mid: "#ffaa00",
+  midStopPercent: 46,
+  bottom: "#2cff65",
+};
+
+const METER_COLOR_OVERRIDES_PHOSPHOR = {
+  peakSamplePeak: "#2cff65",
+  peakTruePeak: "#ff3030",
+  tpMaxText: "#ff3030",
+  correlation: { bad: "#ff3030", mid: "#4d8a5c", good: "#2cff65" },
+  metricRowBg: "rgba(44,255,101,0.03)",
+  metricRowHoverBg: "rgba(44,255,101,0.07)",
+  metricRowToggleOnBorder: "rgba(44,255,101,0.30)",
+  metricRowToggleOnBg: "rgba(44,255,101,0.09)",
+  metricRowToggleOnGlow: "rgba(44,255,101,0.20)",
+  metricToggleOnLabel: "#2cff65",
+  loudnessTargetLine: "rgba(44,255,101,0.35)",
+};
+
 /** @type {Record<ThemeId, BuiltinTheme>} */
 export const BUILTIN_THEMES = {
   "plvs-dark": {
@@ -126,10 +184,21 @@ export const BUILTIN_THEMES = {
     meterGradient: METER_GRADIENT_PLVS,
     colorScheme: "light",
   },
+  "plvs-phosphor": {
+    id: "plvs-phosphor",
+    label: "Phosphor",
+    semantic: PLVS_SEMANTIC_PHOSPHOR,
+    charts: CHARTS_PLVS_PHOSPHOR,
+    meterGradient: METER_GRADIENT_PHOSPHOR,
+    colorScheme: "dark",
+    meterColorOverrides: METER_COLOR_OVERRIDES_PHOSPHOR,
+  },
 };
 
 /** @type {readonly ThemeId[]} */
-export const THEME_IDS = Object.freeze(/** @type {ThemeId[]} */ (["plvs-dark", "plvs-light"]));
+export const THEME_IDS = Object.freeze(
+  /** @type {ThemeId[]} */ (["plvs-dark", "plvs-light", "plvs-phosphor"])
+);
 
 /**
  * @param {unknown} id

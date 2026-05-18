@@ -83,6 +83,34 @@ export const AUDIOMETER_SEMANTIC_DARK = {
   ring: "#22d3ee",
 };
 
+/** PLVS Phosphor — CRT phosphor green on near-black. */
+export const PLVS_SEMANTIC_PHOSPHOR = {
+  background: "#020a04",
+  foreground: "#9ed4aa",
+  card: "#07120a",
+  cardForeground: "#9ed4aa",
+  popover: "#07120a",
+  popoverForeground: "#9ed4aa",
+  primary: "#2cff65",
+  primaryForeground: "#020a04",
+  secondary: "#0b1a0d",
+  secondaryForeground: "#9ed4aa",
+  muted: "#0b1a0d",
+  mutedForeground: "#4d8a5c",
+  accent: "#0b1a0d",
+  accentForeground: "#9ed4aa",
+  destructive: "#ff3030",
+  destructiveForeground: "#9ed4aa",
+  border: "rgba(44,255,101,0.07)",
+  input: "rgba(44,255,101,0.14)",
+  ring: "#2cff65",
+  chart1: "#2cff65",
+  chart2: "#1bcc4e",
+  chart3: "#0d7a2e",
+  chart4: "#9ed4aa",
+  chart5: "#4d8a5c",
+};
+
 /** PLVS Light — warm cream shell + orange brand. Mirrors PLVS Dark's warmth on a light surface. */
 export const PLVS_SEMANTIC_LIGHT = {
   background: "oklch(0.98 0.005 70)",
