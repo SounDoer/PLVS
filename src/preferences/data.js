@@ -45,7 +45,6 @@ export const UI_PREFERENCES = {
       peakDisplayTopInset: 0.5,
       peakDisplayBottomInset: 0.5,
       meterChartInsetX: 0.6,
-      meterLabelLeftInset: 1.6,
       meterLabelTopInset: 0.5,
       chartOuterInset: 0,
       vectorCornerInset: 0.4,

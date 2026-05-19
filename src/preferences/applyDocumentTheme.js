@@ -103,7 +103,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES, ctx = { colorSchem
   setCssVar("--ui-chart-inset-top", `${spacingRem.spectrumDisplayTopInset}rem`);
   setCssVar("--ui-chart-inset-bottom", `${spacingRem.spectrumDisplayBottomInset}rem`);
   setCssVar("--ui-meter-chart-inset-x", `${spacingRem.meterChartInsetX}rem`);
-  setCssVar("--ui-meter-label-left-inset", `${spacingRem.meterLabelLeftInset}rem`);
   setCssVar("--ui-meter-label-top-inset", `${spacingRem.meterLabelTopInset}rem`);
   setCssVar("--ui-chart-outer-inset", `${spacingRem.chartOuterInset}rem`);
   setCssVar("--ui-vector-corner-inset", `${spacingRem.vectorCornerInset}rem`);
