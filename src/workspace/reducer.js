@@ -9,7 +9,16 @@ import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.
 function scaleTreeSizes(node, scaleX, scaleY) {
   if (node.type === "leaf") return node;
   const scale = node.direction === "h" ? scaleX : scaleY;
-  const newSizes = node.sizes.map((s) => (s > 0 ? Math.max(80, Math.round(s * scale)) : 0));
+
+  // All-fixed splits: converting the last child to flex-fill (0) prevents the
+  // 1-2 px rounding gap that accumulates when Math.round() is applied per-child.
+  const allFixed = node.sizes.every((s) => s > 0);
+  const newSizes = node.sizes.map((s, i) => {
+    if (s === 0) return 0;
+    if (allFixed && i === node.sizes.length - 1) return 0;
+    return Math.max(80, Math.round(s * scale));
+  });
+
   const newChildren = node.children.map((c) => scaleTreeSizes(c, scaleX, scaleY));
   if (
     newSizes.every((s, i) => s === node.sizes[i]) &&
