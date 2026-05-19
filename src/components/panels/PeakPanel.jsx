@@ -100,7 +100,7 @@ export function PeakPanel() {
                     />
                   )}
                 </div>
-                <div className="@max-[220px]:hidden absolute left-[var(--ui-meter-label-left-inset)] right-0 top-[var(--ui-meter-label-top-inset)] text-left text-[length:var(--ui-fs-display)] text-muted-foreground">
+                <div className="@max-[220px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground">
                   {c.label}{" "}
                   <span className="font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
                     {fmt(c.valueDb)}
