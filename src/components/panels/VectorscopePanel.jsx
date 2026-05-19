@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 
-export function VectorscopePanel({ compact = false }) {
+export function VectorscopePanel() {
   const {
     vsGridDiagInset,
     vsGridDiagFar,
@@ -26,7 +26,7 @@ export function VectorscopePanel({ compact = false }) {
     <div
       className={cn(
         PANEL_MIN_SPECTRUM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
@@ -117,8 +117,7 @@ export function VectorscopePanel({ compact = false }) {
             {axisYLabel}
           </span>
         </div>
-        <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-display)]">
-          <div className="shrink-0" style={{ width: "var(--ui-corr-info-left-blank)" }} />
+        <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-display)]">
           <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
             <span className="text-muted-foreground">CORRELATION</span>
             <span
