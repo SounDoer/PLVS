@@ -49,7 +49,7 @@ function AnimatedHoldLine({ holdDb, lineColor }) {
   );
 }
 
-export function PeakPanel({ compact = false }) {
+export function PeakPanel() {
   const { displayAudio, peakLabelContext, getSamplePeakLineColor, fmt, hasTpMaxValue, tpMaxText } =
     useAudioData();
   const channels = getPeakChannels(displayAudio, peakLabelContext);
@@ -57,7 +57,7 @@ export function PeakPanel({ compact = false }) {
     <div
       className={cn(
         PANEL_MIN_PEAK,
-        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
@@ -100,7 +100,7 @@ export function PeakPanel({ compact = false }) {
                     />
                   )}
                 </div>
-                <div className="absolute left-[var(--ui-meter-label-left-inset)] right-0 top-[var(--ui-meter-label-top-inset)] text-left text-[length:var(--ui-fs-display)] text-muted-foreground">
+                <div className="@max-[220px]:hidden absolute left-[var(--ui-meter-label-left-inset)] right-0 top-[var(--ui-meter-label-top-inset)] text-left text-[length:var(--ui-fs-display)] text-muted-foreground">
                   {c.label}{" "}
                   <span className="font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
                     {fmt(c.valueDb)}
@@ -110,8 +110,11 @@ export function PeakPanel({ compact = false }) {
             ))}
           </div>
         </div>
-        <div className="mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-display)]">
-          <div className="shrink-0" style={{ width: "var(--ui-tp-info-left-blank)" }} />
+        <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-display)]">
+          <div
+            className="shrink-0"
+            style={{ width: "calc(var(--ui-w-peak-ticks) + var(--ui-peak-axis-chart-gap))" }}
+          />
           <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
             <span className="text-muted-foreground">TP MAX</span>
             <span
