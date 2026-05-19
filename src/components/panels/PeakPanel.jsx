@@ -110,11 +110,7 @@ export function PeakPanel() {
             ))}
           </div>
         </div>
-        <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-start text-[length:var(--ui-fs-display)]">
-          <div
-            className="shrink-0"
-            style={{ width: "calc(var(--ui-w-peak-ticks) + var(--ui-peak-axis-chart-gap))" }}
-          />
+        <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
           <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
             <span className="text-muted-foreground">TP MAX</span>
             <span
