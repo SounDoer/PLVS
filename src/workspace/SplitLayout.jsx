@@ -160,7 +160,7 @@ function FullscreenOverlay() {
         </button>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Component compact={false} />
+        <Component />
       </div>
     </div>
   );
