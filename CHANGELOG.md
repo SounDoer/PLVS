@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.16] - 2026-05-19
+
+### Added
+
+- Four new built-in themes: **plvs-light** (warm cream / deep orange), **Phosphor** (CRT phosphor-green on near-black), **Tungsten** (incandescent amber on warm near-black), **Abyss** (bioluminescent cyan × volcanic coral).
+- Keyboard shortcut change: pressing 1–6 now toggles fullscreen for that module; pressing the same key again or `Escape` restores the previous layout.
+
+### Changed
+
+- Peak panel: channel labels (name + dB) and **TP MAX** footer now centered within their respective columns; labels auto-hide when the panel is narrower than 220 px (container query).
+- Vectorscope panel: **CORRELATION** footer now centered and auto-hides below 220 px.
+- Peak panel footer alignment derived from layout structure via CSS `calc()` instead of a hardcoded 5.4 rem magic number.
+
+### Fixed
+
+- Bottom-edge gap appearing after panel resize or window scale.
+- Header and footer border colour now uses `border-border` semantic token instead of hardcoded `border-white`.
+
+### Removed
+
+- Float mini-window feature.
+
 ## [0.0.15] - 2026-05-16
 
 ### Changed
