@@ -21,7 +21,7 @@ export const ALL_MODULE_IDS = [
 export const DEFAULT_TREE = {
   type: "split",
   direction: "h",
-  sizes: [220, 0, 260],
+  sizes: [220, 0, 360],
   children: [
     { type: "leaf", tabs: ["peak"], activeTab: "peak" },
     {
@@ -86,7 +86,7 @@ export const BUILTIN_PRESETS = [
     tree: {
       type: "split",
       direction: "h",
-      sizes: [200, 0, 260],
+      sizes: [200, 0, 360],
       children: [
         {
           type: "split",

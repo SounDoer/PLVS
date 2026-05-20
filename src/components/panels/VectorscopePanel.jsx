@@ -30,7 +30,7 @@ export function VectorscopePanel() {
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
-        <div className="relative min-h-0 flex-1 rounded-lg bg-muted">
+        <div className="relative min-h-0 w-full aspect-square max-h-full rounded-lg bg-muted">
           <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             <svg
               className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
