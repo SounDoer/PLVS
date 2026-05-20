@@ -306,9 +306,9 @@ describe("APPLY_PRESET", () => {
   it("applies a builtin preset, replacing tree and visibleModules", () => {
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "APPLY_PRESET",
-      payload: { presetId: "broadcast" },
+      payload: { presetId: "lls" },
     });
-    expect(next.activePresetId).toBe("broadcast");
+    expect(next.activePresetId).toBe("lls");
     expect(next.tree).toBeDefined();
     expect(next.tree.type).toMatch(/leaf|split/);
   });
@@ -325,6 +325,36 @@ describe("APPLY_PRESET", () => {
       payload: { presetId: "nonexistent" },
     });
     expect(next).toBe(DEFAULT_WORKSPACE_STATE);
+  });
+
+  it("PLVS Full exposes all 6 modules", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "APPLY_PRESET",
+      payload: { presetId: "default" },
+    });
+    expect(next.visibleModules).toHaveLength(6);
+  });
+
+  it("LLS exposes exactly 3 modules", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "APPLY_PRESET",
+      payload: { presetId: "lls" },
+    });
+    expect(next.visibleModules).toHaveLength(3);
+    expect(next.visibleModules).toEqual(
+      expect.arrayContaining(["loudness", "loudnessStats", "spectrum"])
+    );
+  });
+
+  it("PLLV exposes exactly 4 modules", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "APPLY_PRESET",
+      payload: { presetId: "pllv" },
+    });
+    expect(next.visibleModules).toHaveLength(4);
+    expect(next.visibleModules).toEqual(
+      expect.arrayContaining(["peak", "loudness", "loudnessStats", "vectorscope"])
+    );
   });
 });
 

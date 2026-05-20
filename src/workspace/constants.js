@@ -13,8 +13,8 @@ export const ALL_MODULE_IDS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Default tree — replicates the former "Default" preset layout:
-//   H[ leaf(peak, vectorscope) | V[ leaf(loudness) | leaf(spectrum, spectrogram) ] | leaf(loudnessStats) ]
+// Default tree — PLVS Full:
+//   H[ leaf(peak) | V[ leaf(loudness) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(loudnessStats) | leaf(vectorscope) ] ]
 // ---------------------------------------------------------------------------
 
 /** @type {TreeNode} */
@@ -23,17 +23,26 @@ export const DEFAULT_TREE = {
   direction: "h",
   sizes: [220, 0, 260],
   children: [
-    { type: "leaf", tabs: ["peak", "vectorscope"], activeTab: "peak" },
+    { type: "leaf", tabs: ["peak"], activeTab: "peak" },
+    {
+      type: "split",
+      direction: "v",
+      sizes: [0, 0, 0],
+      children: [
+        { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
+        { type: "leaf", tabs: ["spectrogram"], activeTab: "spectrogram" },
+        { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+      ],
+    },
     {
       type: "split",
       direction: "v",
       sizes: [0, 0],
       children: [
-        { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
-        { type: "leaf", tabs: ["spectrum", "spectrogram"], activeTab: "spectrum" },
+        { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
+        { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },
       ],
     },
-    { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
   ],
 };
 
@@ -41,55 +50,16 @@ export const DEFAULT_TREE = {
 export const BUILTIN_PRESETS = [
   {
     id: "default",
-    name: "Default",
+    name: "PLVS Full",
     builtin: true,
     visibleModules: [...ALL_MODULE_IDS],
     tree: DEFAULT_TREE,
   },
   {
-    id: "broadcast",
-    name: "Broadcast",
+    id: "lls",
+    name: "LLS",
     builtin: true,
-    visibleModules: ["peak", "loudness", "loudnessStats"],
-    tree: {
-      type: "split",
-      direction: "h",
-      sizes: [200, 0, 260],
-      children: [
-        { type: "leaf", tabs: ["peak"], activeTab: "peak" },
-        { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
-        { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
-      ],
-    },
-  },
-  {
-    id: "compact",
-    name: "Compact (Tabs)",
-    builtin: true,
-    visibleModules: [...ALL_MODULE_IDS],
-    tree: {
-      type: "split",
-      direction: "h",
-      sizes: [200, 0],
-      children: [
-        { type: "leaf", tabs: ["peak", "vectorscope"], activeTab: "peak" },
-        {
-          type: "split",
-          direction: "v",
-          sizes: [0, 0],
-          children: [
-            { type: "leaf", tabs: ["loudness", "loudnessStats"], activeTab: "loudness" },
-            { type: "leaf", tabs: ["spectrum", "spectrogram"], activeTab: "spectrum" },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    id: "spectrum-focus",
-    name: "Spectrum Focus",
-    builtin: true,
-    visibleModules: ["loudness", "loudnessStats", "spectrum", "spectrogram"],
+    visibleModules: ["loudness", "loudnessStats", "spectrum"],
     tree: {
       type: "split",
       direction: "h",
@@ -104,15 +74,31 @@ export const BUILTIN_PRESETS = [
             { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
           ],
         },
+        { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
+      ],
+    },
+  },
+  {
+    id: "pllv",
+    name: "PLLV",
+    builtin: true,
+    visibleModules: ["peak", "loudness", "loudnessStats", "vectorscope"],
+    tree: {
+      type: "split",
+      direction: "h",
+      sizes: [200, 0, 260],
+      children: [
         {
           type: "split",
           direction: "v",
           sizes: [0, 0],
           children: [
-            { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
-            { type: "leaf", tabs: ["spectrogram"], activeTab: "spectrogram" },
+            { type: "leaf", tabs: ["peak"], activeTab: "peak" },
+            { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },
           ],
         },
+        { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
+        { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
       ],
     },
   },
