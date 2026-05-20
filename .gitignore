@@ -28,3 +28,6 @@ dist/
 
 # Claude Code local settings
 .claude/
+
+# Superpowers brainstorming artifacts
+.superpowers/
