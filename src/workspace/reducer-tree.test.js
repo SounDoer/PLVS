@@ -15,7 +15,7 @@ function leaf(tabs, activeTab = tabs[0]) {
 }
 
 function split(direction, children, sizes) {
-  return { type: "split", direction, children, sizes: sizes ?? children.map(() => 200) };
+  return { type: "split", direction, children, sizes: sizes ?? children.map(() => null) };
 }
 
 function state(tree, extra = {}) {
@@ -51,27 +51,27 @@ describe("SET_TREE", () => {
 
 describe("RESIZE_CHILDREN", () => {
   it("updates sizes of adjacent children in a SplitNode at root", () => {
-    const root = split("v", [leaf(["peak"]), leaf(["loudness"])], [200, 200]);
+    const root = split("v", [leaf(["peak"]), leaf(["loudness"])], [0.5, 0.5]);
     const s = state(root);
     const next = workspaceReducer(s, {
       type: "RESIZE_CHILDREN",
-      payload: { path: [], aboveIdx: 0, aboveSize: 300, belowSize: 100 },
+      payload: { path: [], aboveIdx: 0, aboveSize: 0.7, belowSize: 0.3 },
     });
-    expect(next.tree.sizes[0]).toBe(300);
-    expect(next.tree.sizes[1]).toBe(100);
+    expect(next.tree.sizes[0]).toBe(0.7);
+    expect(next.tree.sizes[1]).toBe(0.3);
   });
 
   it("updates sizes in a nested SplitNode", () => {
-    const inner = split("h", [leaf(["peak"]), leaf(["loudness"])], [150, 150]);
+    const inner = split("h", [leaf(["peak"]), leaf(["loudness"])], [0.4, 0.4]);
     const root = split("v", [inner, leaf(["spectrum"])]);
     const s = state(root);
     const next = workspaceReducer(s, {
       type: "RESIZE_CHILDREN",
-      payload: { path: [0], aboveIdx: 0, aboveSize: 250, belowSize: 50 },
+      payload: { path: [0], aboveIdx: 0, aboveSize: 0.6, belowSize: 0.25 },
     });
-    expect(next.tree.children[0].sizes[0]).toBe(250);
-    expect(next.tree.children[0].sizes[1]).toBe(50);
-    expect(next.tree.children[1]).toBe(root.children[1]); // sibling unchanged
+    expect(next.tree.children[0].sizes[0]).toBe(0.6);
+    expect(next.tree.children[0].sizes[1]).toBe(0.25);
+    expect(next.tree.children[1]).toBe(root.children[1]);
   });
 });
 
