@@ -22,7 +22,7 @@ export const ALL_MODULE_IDS = [
 export const DEFAULT_TREE = {
   type: "split",
   direction: "h",
-  sizes: [0.2, null, 0.33],
+  sizes: [0.14, null, 0.18],
   children: [
     { type: "leaf", tabs: ["peak"], activeTab: "peak" },
     {
@@ -38,7 +38,7 @@ export const DEFAULT_TREE = {
     {
       type: "split",
       direction: "v",
-      sizes: [null, null],
+      sizes: [0.54, null],
       children: [
         { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
         { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },
@@ -63,19 +63,19 @@ export const BUILTIN_PRESETS = [
     visibleModules: ["loudness", "loudnessStats", "spectrum"],
     tree: {
       type: "split",
-      direction: "h",
-      sizes: [null, 0.26],
+      direction: "v",
+      sizes: [null, null],
       children: [
         {
           type: "split",
-          direction: "v",
-          sizes: [null, null],
+          direction: "h",
+          sizes: [0.8, null],
           children: [
             { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
-            { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+            { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
           ],
         },
-        { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
+        { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
       ],
     },
   },
@@ -87,12 +87,12 @@ export const BUILTIN_PRESETS = [
     tree: {
       type: "split",
       direction: "h",
-      sizes: [0.18, null, 0.33],
+      sizes: [0.14, null, 0.18],
       children: [
         {
           type: "split",
           direction: "v",
-          sizes: [null, null],
+          sizes: [0.62, null],
           children: [
             { type: "leaf", tabs: ["peak"], activeTab: "peak" },
             { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },
