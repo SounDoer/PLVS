@@ -94,7 +94,7 @@ impl CaptureSession {
     let dropped_chunks = Arc::new(AtomicU64::new(0));
 
     let join = std::thread::Builder::new()
-      .name("audiometer-capture".into())
+      .name("plvs-capture".into())
       .spawn(move || {
         run_capture_worker(RunCaptureArgs {
           device,

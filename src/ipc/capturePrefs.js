@@ -4,7 +4,7 @@
  */
 import { isTauri } from "./env.js";
 
-const STORE_FILE = "audiometer-settings.json";
+const STORE_FILE = "plvs-settings.json";
 const STORE_KEY = "captureDeviceId";
 
 /** Legacy key (pre–plugin-store); still read once for migration. */

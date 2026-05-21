@@ -1,5 +1,5 @@
 /**
- * Writes `src/generated/theme-fallbacks.css` from builtin **`audiometer-dark`** semantic and `UI_PREFERENCES.radii.card`.
+ * Writes `src/generated/theme-fallbacks.css` from builtin **`plvs-dark`** semantic and `UI_PREFERENCES.radii.card`.
  * Run via `npm run theme:generate` (also `prebuild`).
  */
 import { mkdirSync, writeFileSync } from "node:fs";

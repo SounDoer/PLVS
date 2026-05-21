@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* First-paint shadcn semantic tokens — generated from builtin `audiometer-dark` (`npm run theme:generate`). */
+/* First-paint shadcn semantic tokens — generated from builtin `plvs-dark` (`npm run theme:generate`). */
 @import "./generated/theme-fallbacks.css";
 
 /* Runtime: `applyLayoutToDocument` / `applyThemeToDocument` inject `--ui-*`; Tailwind `chart-*` maps to `--chart-*`
