@@ -33,7 +33,7 @@
     "desktop:release-dmg": "tauri build --bundles dmg"
   },
   "simple-git-hooks": {
-    "pre-commit": "npx lint-staged"
+    "pre-commit": "cargo fmt --manifest-path src-tauri/Cargo.toml --all && npx lint-staged"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,css,json}": "prettier --write"
