@@ -44,8 +44,10 @@ function SplitDivider({ parentPath, aboveIdx, direction, aboveNode, belowNode })
     const belowEl = ref.current?.nextElementSibling;
     if (!aboveEl || !belowEl) return;
 
-    const startAbove = isH ? aboveEl.clientWidth : aboveEl.clientHeight;
-    const startBelow = isH ? belowEl.clientWidth : belowEl.clientHeight;
+    const containerEl = ref.current.parentElement;
+    const startAbovePx = isH ? aboveEl.clientWidth : aboveEl.clientHeight;
+    const startBelowPx = isH ? belowEl.clientWidth : belowEl.clientHeight;
+    const containerPx = isH ? containerEl.clientWidth : containerEl.clientHeight;
     const startPos = isH ? e.clientX : e.clientY;
     const dimension = isH ? "minWidth" : "minHeight";
     const { visibleModules } = state;
@@ -56,10 +58,15 @@ function SplitDivider({ parentPath, aboveIdx, direction, aboveNode, belowNode })
     function onMove(ev) {
       const delta = (isH ? ev.clientX : ev.clientY) - startPos;
       const clampedDelta = Math.min(
-        Math.max(delta, -(startAbove - minAbove)),
-        startBelow - minBelow
+        Math.max(delta, -(startAbovePx - minAbove)),
+        startBelowPx - minBelow
       );
-      resizeChildren(parentPath, aboveIdx, startAbove + clampedDelta, startBelow - clampedDelta);
+      resizeChildren(
+        parentPath,
+        aboveIdx,
+        (startAbovePx + clampedDelta) / containerPx,
+        (startBelowPx - clampedDelta) / containerPx
+      );
     }
     function onUp() {
       window.removeEventListener("mousemove", onMove);
@@ -97,8 +104,8 @@ function SplitView({ node, path, style }) {
       {node.children.map((child, i) => {
         const size = node.sizes[i];
         const childStyle =
-          size > 0
-            ? { flex: `0 0 ${size}px`, minWidth: 0, minHeight: 0 }
+          size !== null
+            ? { flex: `0 0 ${size * 100}%`, minWidth: 0, minHeight: 0 }
             : { flex: "1 1 0", minWidth: 0, minHeight: 0 };
 
         return (
@@ -171,7 +178,7 @@ function FullscreenOverlay() {
 // ---------------------------------------------------------------------------
 
 function SplitContent() {
-  const { state, moveTab, setFullscreen, scaleSizes } = useWorkspaceStore();
+  const { state, moveTab, setFullscreen } = useWorkspaceStore();
   const { tree } = state;
 
   const onDrop = useCallback((sourceId, drop) => moveTab(sourceId, drop), [moveTab]);
@@ -202,36 +209,9 @@ function SplitContent() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Scale stored pixel sizes proportionally when the layout container is resized
-  const mainRef = useRef(null);
-  const prevContainerSizeRef = useRef(null);
-  const scaleSizesRef = useRef(scaleSizes);
-  scaleSizesRef.current = scaleSizes;
-
-  useEffect(() => {
-    const el = mainRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        const prev = prevContainerSizeRef.current;
-        if (prev && prev.width > 0 && prev.height > 0) {
-          const scaleX = width / prev.width;
-          const scaleY = height / prev.height;
-          if (Math.abs(scaleX - 1) > 0.001 || Math.abs(scaleY - 1) > 0.001) {
-            scaleSizesRef.current(scaleX, scaleY);
-          }
-        }
-        prevContainerSizeRef.current = { width, height };
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   return (
     <DragProvider onDrop={onDrop}>
-      <main ref={mainRef} className="relative flex min-h-0 flex-1 overflow-hidden">
+      <main className="relative flex min-h-0 flex-1 overflow-hidden">
         {tree ? (
           <SplitView node={tree} path={[]} style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }} />
         ) : (
