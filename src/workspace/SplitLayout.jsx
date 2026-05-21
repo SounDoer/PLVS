@@ -48,6 +48,7 @@ function SplitDivider({ parentPath, aboveIdx, direction, aboveNode, belowNode })
     const startAbovePx = isH ? aboveEl.clientWidth : aboveEl.clientHeight;
     const startBelowPx = isH ? belowEl.clientWidth : belowEl.clientHeight;
     const containerPx = isH ? containerEl.clientWidth : containerEl.clientHeight;
+    if (containerPx === 0) return;
     const startPos = isH ? e.clientX : e.clientY;
     const dimension = isH ? "minWidth" : "minHeight";
     const { visibleModules } = state;
