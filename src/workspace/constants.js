@@ -1,6 +1,6 @@
 /** @import { TreeNode, ModuleId, WorkspaceState, Preset } from './types.js' */
 
-export const WORKSPACE_STORAGE_KEY = "plvs:workspace:v2";
+export const WORKSPACE_STORAGE_KEY = "plvs:workspace:v3";
 
 /** @type {ModuleId[]} */
 export const ALL_MODULE_IDS = [
@@ -15,19 +15,20 @@ export const ALL_MODULE_IDS = [
 // ---------------------------------------------------------------------------
 // Default tree — PLVS Full:
 //   H[ leaf(peak) | V[ leaf(loudness) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(loudnessStats) | leaf(vectorscope) ] ]
+// Ratios: peak=20% of container width, right column=33%, middle fills remainder.
 // ---------------------------------------------------------------------------
 
 /** @type {TreeNode} */
 export const DEFAULT_TREE = {
   type: "split",
   direction: "h",
-  sizes: [220, 0, 360],
+  sizes: [0.2, null, 0.33],
   children: [
     { type: "leaf", tabs: ["peak"], activeTab: "peak" },
     {
       type: "split",
       direction: "v",
-      sizes: [0, 0, 0],
+      sizes: [null, null, null],
       children: [
         { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
         { type: "leaf", tabs: ["spectrogram"], activeTab: "spectrogram" },
@@ -37,7 +38,7 @@ export const DEFAULT_TREE = {
     {
       type: "split",
       direction: "v",
-      sizes: [0, 0],
+      sizes: [null, null],
       children: [
         { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
         { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },
@@ -63,12 +64,12 @@ export const BUILTIN_PRESETS = [
     tree: {
       type: "split",
       direction: "h",
-      sizes: [0, 260],
+      sizes: [null, 0.26],
       children: [
         {
           type: "split",
           direction: "v",
-          sizes: [0, 0],
+          sizes: [null, null],
           children: [
             { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
             { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
@@ -86,12 +87,12 @@ export const BUILTIN_PRESETS = [
     tree: {
       type: "split",
       direction: "h",
-      sizes: [200, 0, 360],
+      sizes: [0.18, null, 0.33],
       children: [
         {
           type: "split",
           direction: "v",
-          sizes: [0, 0],
+          sizes: [null, null],
           children: [
             { type: "leaf", tabs: ["peak"], activeTab: "peak" },
             { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },

@@ -3,7 +3,7 @@
  *
  * @typedef {{ type: 'leaf', tabs: ModuleId[], activeTab: ModuleId }} LeafNode
  *
- * @typedef {{ type: 'split', direction: 'h' | 'v', children: TreeNode[], sizes: number[] }} SplitNode
+ * @typedef {{ type: 'split', direction: 'h' | 'v', children: TreeNode[], sizes: (number | null)[] }} SplitNode
  *
  * @typedef {SplitNode | LeafNode} TreeNode
  *
