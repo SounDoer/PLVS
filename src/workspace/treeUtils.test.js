@@ -316,23 +316,23 @@ describe("insertLeaf: zone=right no promotion in V-split parent", () => {
 // insertLeaf — sizes must be 0 (flex-fill) not fixed px
 // ---------------------------------------------------------------------------
 
-describe("insertLeaf: new splits use flex-fill sizes (0), not fixed 200px", () => {
-  it("wrapping root leaf in a new split uses sizes [0, 0]", () => {
+describe("insertLeaf: new splits use flex-fill sizes (null), not fixed px", () => {
+  it("wrapping root leaf in a new split uses sizes [null, null]", () => {
     const result = insertLeaf(leaf(["loudness"]), [], "right", leaf(["peak"]));
-    expect(result?.sizes).toEqual([0, 0]);
+    expect(result?.sizes).toEqual([null, null]);
   });
 
-  it("wrapping a nested leaf in a new split uses sizes [0, 0]", () => {
-    // H[A, B] — drop above B — B gets wrapped in V[new, B]; inner split sizes [0,0]
+  it("wrapping a nested leaf in a new split uses sizes [null, null]", () => {
+    // H[A, B] — drop above B — B gets wrapped in V[new, B]; inner split sizes [null, null]
     const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])]);
     const result = insertLeaf(root, [1], "above", leaf(["peak"]));
-    expect(result?.children[1].sizes).toEqual([0, 0]);
+    expect(result?.children[1].sizes).toEqual([null, null]);
   });
 
-  it("promotion into existing split inserts new sibling with size 0", () => {
-    // H[A, B] — drop right of A — promotes to H[A, new, B]; new size is 0
-    const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])], [0, 0]);
+  it("promotion into existing split inserts new sibling with size null", () => {
+    // H[A, B] — drop right of A — promotes to H[A, new, B]; new size is null
+    const root = split("h", [leaf(["loudness"]), leaf(["spectrum"])], [null, null]);
     const result = insertLeaf(root, [0], "right", leaf(["peak"]));
-    expect(result?.sizes[1]).toBe(0); // newly inserted leaf
+    expect(result?.sizes[1]).toBeNull();
   });
 });
