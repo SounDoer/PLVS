@@ -14,7 +14,7 @@ function split(direction, children, sizes) {
     type: "split",
     direction,
     children,
-    sizes: sizes ?? children.map(() => 200),
+    sizes: sizes ?? children.map(() => null),
   };
 }
 
