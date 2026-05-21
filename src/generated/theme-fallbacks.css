@@ -3,20 +3,20 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #0a0604;
-  --foreground: #f4f1ed;
-  --card: #1a1310;
-  --card-foreground: #f4f1ed;
-  --popover: #1a1310;
-  --popover-foreground: #f4f1ed;
+  --background: #070707;
+  --foreground: #f2f2f2;
+  --card: #151515;
+  --card-foreground: #f2f2f2;
+  --popover: #151515;
+  --popover-foreground: #f2f2f2;
   --primary: #fb923c;
-  --primary-foreground: #0a0604;
-  --secondary: #29221e;
-  --secondary-foreground: #f4f1ed;
-  --muted: #29221e;
-  --muted-foreground: #918781;
-  --accent: #29221e;
-  --accent-foreground: #f4f1ed;
+  --primary-foreground: #070707;
+  --secondary: #232323;
+  --secondary-foreground: #f2f2f2;
+  --muted: #232323;
+  --muted-foreground: #898989;
+  --accent: #232323;
+  --accent-foreground: #f2f2f2;
   --destructive: #f94144;
   --destructive-foreground: #fafafa;
   --border: rgba(255, 255, 255, 0.09);
@@ -31,19 +31,19 @@
 
 @supports (color: oklch(0 0 0)) {
   :root {
-    --background: oklch(0.13 0.01 55);
-    --foreground: oklch(0.96 0.006 70);
-    --card: oklch(0.195 0.012 50);
-    --card-foreground: oklch(0.96 0.006 70);
-    --popover: oklch(0.195 0.012 50);
-    --popover-foreground: oklch(0.96 0.006 70);
-    --primary-foreground: oklch(0.13 0.01 55);
-    --secondary: oklch(0.258 0.012 50);
-    --secondary-foreground: oklch(0.96 0.006 70);
-    --muted: oklch(0.258 0.012 50);
-    --muted-foreground: oklch(0.63 0.015 55);
-    --accent: oklch(0.258 0.012 50);
-    --accent-foreground: oklch(0.96 0.006 70);
+    --background: oklch(0.13 0 0);
+    --foreground: oklch(0.96 0 0);
+    --card: oklch(0.195 0 0);
+    --card-foreground: oklch(0.96 0 0);
+    --popover: oklch(0.195 0 0);
+    --popover-foreground: oklch(0.96 0 0);
+    --primary-foreground: oklch(0.13 0 0);
+    --secondary: oklch(0.258 0 0);
+    --secondary-foreground: oklch(0.96 0 0);
+    --muted: oklch(0.258 0 0);
+    --muted-foreground: oklch(0.63 0 0);
+    --accent: oklch(0.258 0 0);
+    --accent-foreground: oklch(0.96 0 0);
     --destructive: oklch(0.65 0.22 25);
     --destructive-foreground: oklch(0.985 0 0);
     --border: oklch(1 0 0 / 9%);
