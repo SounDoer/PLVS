@@ -40,7 +40,7 @@ pub fn run() {
       )?;
       let handle = app.handle().clone();
       std::thread::Builder::new()
-        .name("plvs-device-watch".into())
+        .name("device-watch".into())
         .spawn(move || {
           let mut prev: Option<Vec<crate::audio::DeviceInfo>> = None;
           loop {

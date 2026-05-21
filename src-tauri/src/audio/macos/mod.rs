@@ -255,7 +255,7 @@ impl MacosTapCaptureSession {
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
     let join = std::thread::Builder::new()
-      .name("plvs-capture".into())
+      .name("capture".into())
       .spawn(move || {
         run_macos_tap_worker(
           device_id,
