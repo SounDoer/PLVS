@@ -10,7 +10,7 @@ fn main() {
       .flag("-fobjc-arc")
       .flag("-fmodules")
       .flag("-mmacosx-version-min=14.2")
-      .compile("plvs_tap_bridge");
+      .compile("tap_bridge");
     println!("cargo:rustc-link-lib=framework=CoreAudio");
     println!("cargo:rustc-link-lib=framework=Foundation");
     println!("cargo:rustc-link-lib=framework=AudioToolbox");

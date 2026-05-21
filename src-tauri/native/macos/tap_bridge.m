@@ -1,5 +1,5 @@
 // Core Audio process tap + private aggregate + IOProc (macOS 14.2+).
-// PCM is forwarded to Rust via plvs_pcm_bridge (same crate, #[no_mangle]).
+// PCM is forwarded to Rust via pcm_bridge (same crate, #[no_mangle]).
 //
 // Requires Xcode / macOS SDK with Core Audio tap APIs (CATapDescription, AudioHardwareCreateProcessTap).
 
@@ -19,7 +19,7 @@
 #import <string.h>
 
 // Implemented in Rust (src/audio/macos/pcm_shim.rs).
-extern void plvs_pcm_bridge(void *userdata, const float *samples, uint32_t frame_count,
+extern void pcm_bridge(void *userdata, const float *samples, uint32_t frame_count,
                                   uint32_t channels);
 
 #pragma mark - UID lookup
@@ -76,7 +76,7 @@ static int copy_cfstring_utf8(CFStringRef cf, char *out, size_t out_cap) {
   return 0;
 }
 
-int plvs_macos_uid_for_output_name(const char *name_utf8, char *out_uid, size_t out_cap) {
+int macos_uid_for_output_name(const char *name_utf8, char *out_uid, size_t out_cap) {
   if (!name_utf8 || !out_uid || out_cap < 2) {
     return -1;
   }
@@ -140,7 +140,7 @@ int plvs_macos_uid_for_output_name(const char *name_utf8, char *out_uid, size_t 
   return found;
 }
 
-int plvs_macos_default_output_uid(char *out_uid, size_t out_cap) {
+int macos_default_output_uid(char *out_uid, size_t out_cap) {
   if (!out_uid || out_cap < 2) {
     return -1;
   }
@@ -171,9 +171,9 @@ typedef struct {
   AudioObjectID aggregate_id;
   AudioDeviceIOProcID io_proc_id;
   void *pcm_userdata;
-} PlvsTapHandle;
+} TapHandle;
 
-static OSStatus plvs_tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *inNow,
+static OSStatus tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *inNow,
                                        const AudioBufferList *inInputData,
                                        const AudioTimeStamp *inInputTime, AudioBufferList *outOutputData,
                                        const AudioTimeStamp *inOutputTime, void *inClientData) {
@@ -181,7 +181,7 @@ static OSStatus plvs_tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *i
   (void)inNow;
   (void)outOutputData;
   (void)inOutputTime;
-  PlvsTapHandle *tap = (PlvsTapHandle *)inClientData;
+  TapHandle *tap = (TapHandle *)inClientData;
   if (!tap || !inInputData || !tap->pcm_userdata) {
     return noErr;
   }
@@ -193,13 +193,13 @@ static OSStatus plvs_tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *i
     const float *samples = (const float *)buf->mData;
     UInt32 channels = buf->mNumberChannels;
     UInt32 frame_count = (UInt32)(buf->mDataByteSize / (channels * sizeof(float)));
-    plvs_pcm_bridge(tap->pcm_userdata, samples, frame_count, channels);
+    pcm_bridge(tap->pcm_userdata, samples, frame_count, channels);
   }
   (void)inInputTime;
   return noErr;
 }
 
-void *plvs_macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, void *pcm_userdata,
+void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, void *pcm_userdata,
                                   char *err_out, size_t err_cap) {
   if (!device_uid_utf8 || !pcm_userdata) {
     if (err_out && err_cap > 0) {
@@ -340,7 +340,7 @@ void *plvs_macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, 
       return NULL;
     }
 
-    PlvsTapHandle *h = (PlvsTapHandle *)calloc(1, sizeof(PlvsTapHandle));
+    TapHandle *h = (TapHandle *)calloc(1, sizeof(TapHandle));
     if (!h) {
       AudioHardwareDestroyAggregateDevice(aggregate_id);
       AudioHardwareDestroyProcessTap(tap_id);
@@ -353,7 +353,7 @@ void *plvs_macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, 
     h->aggregate_id = aggregate_id;
     h->pcm_userdata = pcm_userdata;
 
-    status = AudioDeviceCreateIOProcID(aggregate_id, plvs_tap_io_proc, h, &h->io_proc_id);
+    status = AudioDeviceCreateIOProcID(aggregate_id, tap_io_proc, h, &h->io_proc_id);
     if (status != noErr) {
       AudioHardwareDestroyAggregateDevice(aggregate_id);
       AudioHardwareDestroyProcessTap(tap_id);
@@ -380,8 +380,8 @@ void *plvs_macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, 
   }
 }
 
-void plvs_macos_tap_destroy(void *opaque, void **out_pcm_userdata) {
-  PlvsTapHandle *h = (PlvsTapHandle *)opaque;
+void macos_tap_destroy(void *opaque, void **out_pcm_userdata) {
+  TapHandle *h = (TapHandle *)opaque;
   if (!h) {
     if (out_pcm_userdata) {
       *out_pcm_userdata = NULL;

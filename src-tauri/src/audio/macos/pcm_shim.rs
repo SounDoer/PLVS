@@ -4,14 +4,14 @@ use std::ffi::c_void;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::SyncSender;
 
-/// Shared with Core Audio callback via raw pointer (`plvs_macos_tap_create`).
+/// Shared with Core Audio callback via raw pointer (`macos_tap_create`).
 pub struct PcmBridgeCtx {
   pub tx: SyncSender<Vec<f32>>,
   pub dropped: std::sync::Arc<AtomicU64>,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn plvs_pcm_bridge(
+pub unsafe extern "C" fn pcm_bridge(
   userdata: *mut c_void,
   samples: *const f32,
   frame_count: u32,

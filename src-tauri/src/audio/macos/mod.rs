@@ -23,29 +23,29 @@ use crate::ipc::types::{FrameSubscribers, MeterHistoryBuf};
 
 use pcm_shim::PcmBridgeCtx;
 
-#[link(name = "plvs_tap_bridge", kind = "static")]
+#[link(name = "tap_bridge", kind = "static")]
 unsafe extern "C" {
-  fn plvs_macos_uid_for_output_name(
+  fn macos_uid_for_output_name(
     name_utf8: *const c_char,
     out_uid: *mut c_char,
     out_cap: usize,
   ) -> c_int;
-  fn plvs_macos_default_output_uid(out_uid: *mut c_char, out_cap: usize) -> c_int;
-  fn plvs_macos_tap_create(
+  fn macos_default_output_uid(out_uid: *mut c_char, out_cap: usize) -> c_int;
+  fn macos_tap_create(
     device_uid_utf8: *const c_char,
     stream_index: isize,
     pcm_userdata: *mut c_void,
     err_out: *mut c_char,
     err_cap: usize,
   ) -> *mut c_void;
-  fn plvs_macos_tap_destroy(opaque: *mut c_void, out_pcm_userdata: *mut *mut c_void);
+  fn macos_tap_destroy(opaque: *mut c_void, out_pcm_userdata: *mut *mut c_void);
 }
 
 fn uid_for_output_name(label: &str) -> Option<String> {
   let cname = CString::new(label).ok()?;
   let mut buf = vec![0u8; 512];
   let st = unsafe {
-    plvs_macos_uid_for_output_name(cname.as_ptr(), buf.as_mut_ptr().cast(), buf.len())
+    macos_uid_for_output_name(cname.as_ptr(), buf.as_mut_ptr().cast(), buf.len())
   };
   if st != 0 {
     return None;
@@ -56,7 +56,7 @@ fn uid_for_output_name(label: &str) -> Option<String> {
 
 fn uid_for_default_output() -> Result<String, String> {
   let mut buf = vec![0u8; 512];
-  let st = unsafe { plvs_macos_default_output_uid(buf.as_mut_ptr().cast(), buf.len()) };
+  let st = unsafe { macos_default_output_uid(buf.as_mut_ptr().cast(), buf.len()) };
   if st != 0 {
     return Err(
       "failed to resolve default output device UID (is an audio output device available?)".into(),
@@ -182,7 +182,7 @@ fn run_macos_tap_worker(
   let uid_c = CString::new(uid).map_err(|_| "device UID contains NUL".to_string())?;
   let mut err = vec![0u8; 512];
   let tap = unsafe {
-    plvs_macos_tap_create(
+    macos_tap_create(
       uid_c.as_ptr(),
       0isize,
       ctx_ptr.cast(),
@@ -201,7 +201,7 @@ fn run_macos_tap_worker(
       .position(|&b| b == 0)
       .map(|n| String::from_utf8_lossy(&err[..n]).into_owned())
       .filter(|s| !s.is_empty())
-      .unwrap_or_else(|| "plvs_macos_tap_create failed".into());
+      .unwrap_or_else(|| "macos_tap_create failed".into());
     return Err(msg);
   }
 
@@ -209,7 +209,7 @@ fn run_macos_tap_worker(
 
   let mut userdata_out: *mut c_void = std::ptr::null_mut();
   unsafe {
-    plvs_macos_tap_destroy(tap, &mut userdata_out);
+    macos_tap_destroy(tap, &mut userdata_out);
     if !userdata_out.is_null() {
       drop(Box::from_raw(userdata_out.cast::<PcmBridgeCtx>()));
     }
