@@ -58,7 +58,6 @@ export function useSpectrogramCanvas({
   effectiveOffsetSamples,
   visibleSamples,
   selectedOffset,
-  setSelectedOffset,
   totalSamples,
 }) {
   const rafRef = useRef(null);
@@ -134,53 +133,9 @@ export function useSpectrogramCanvas({
 
       paintImageData(cache.imageData, snaps, startIdx, count, cache.yToBand);
       ctx.putImageData(cache.imageData, 0, 0);
-
-      if (selectedOffset >= 0) {
-        const fromEnd = selectedOffset / HIST_SAMPLE_SEC;
-        const fromRight = fromEnd - effectiveOffsetSamples;
-        const normFromRight = Math.max(0, Math.min(1, fromRight / Math.max(1, count - 1)));
-        const cx = Math.round((1 - normFromRight) * W);
-        ctx.strokeStyle = "rgba(255,255,255,0.85)";
-        ctx.lineWidth = window.devicePixelRatio || 1;
-        ctx.beginPath();
-        ctx.moveTo(cx, 0);
-        ctx.lineTo(cx, H);
-        ctx.stroke();
-      }
     }
 
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
   }, [canvasRef, snapRef]);
-
-  function handlePointerDown(ev) {
-    if (ev.button !== 0) return;
-    const snaps = snapRef.current;
-    if (!snaps || snaps.length === 0) return;
-    try {
-      ev.currentTarget.setPointerCapture(ev.pointerId);
-    } catch (_) {}
-    updateFromPointer(ev);
-  }
-
-  function handlePointerMove(ev) {
-    if ((ev.buttons & 1) === 0) return;
-    updateFromPointer(ev);
-  }
-
-  function updateFromPointer(ev) {
-    const rect = ev.currentTarget.getBoundingClientRect();
-    const { effectiveOffsetSamples, visibleSamples } = paramsRef.current;
-    const snaps = snapRef.current;
-    if (!snaps || snaps.length === 0 || visibleSamples <= 0) return;
-    const { count } = spectrogramVisibleRange(snaps.length, effectiveOffsetSamples, visibleSamples);
-    if (count === 0) return;
-    const width = Math.max(1, rect.width);
-    const x = Math.max(0, Math.min(width, ev.clientX - rect.left));
-    const normFromRight = 1 - x / width;
-    const fromEnd = effectiveOffsetSamples + normFromRight * Math.max(0, count - 1);
-    setSelectedOffset(Math.round(fromEnd) * HIST_SAMPLE_SEC);
-  }
-
-  return { handlePointerDown, handlePointerMove };
 }

@@ -1,4 +1,5 @@
-import { useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo } from "react";
+import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import {
@@ -21,18 +22,46 @@ export function SpectrogramPanel({ compact = false }) {
     selectedOffset,
     setSelectedOffset,
     totalSamples,
+    historyChartInteractive,
+    onHistoryPointerDown,
+    onHistoryPointerMove,
+    onHistoryPointerUp,
+    onHistoryWheel,
   } = useAudioData();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   useCanvasSize(canvasRef, containerRef);
 
-  const { handlePointerDown, handlePointerMove } = useSpectrogramCanvas({
+  const selectedHistSteps =
+    selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / HIST_SAMPLE_SEC)) : -1;
+  const showSelLine =
+    selectedOffset >= 0 &&
+    totalSamples > 0 &&
+    selectedHistSteps >= 0 &&
+    selectedHistSteps < totalSamples;
+
+  const reduceMotion = useReducedMotion();
+  const selLineSvgX = useMemo(() => {
+    if (selectedOffset < 0 || visibleSamples <= 0) return 0;
+    const norm =
+      (selectedOffset / HIST_SAMPLE_SEC - effectiveOffsetSamples) / Math.max(1, visibleSamples - 1);
+    return (1 - Math.max(0, Math.min(1, norm))) * 1000;
+  }, [selectedOffset, effectiveOffsetSamples, visibleSamples]);
+  const selSpring = useSpring(selLineSvgX, {
+    stiffness: reduceMotion ? 20000 : 540,
+    damping: reduceMotion ? 200 : 46,
+    mass: reduceMotion ? 0.06 : 0.28,
+  });
+  useEffect(() => {
+    selSpring.set(selLineSvgX);
+  }, [selLineSvgX, selSpring]);
+
+  useSpectrogramCanvas({
     canvasRef,
     snapRef,
     effectiveOffsetSamples,
     visibleSamples,
     selectedOffset,
-    setSelectedOffset,
     totalSamples,
   });
 
@@ -87,10 +116,39 @@ export function SpectrogramPanel({ compact = false }) {
             >
               <canvas
                 ref={canvasRef}
-                className="absolute inset-0 h-full w-full cursor-crosshair rounded-lg bg-muted"
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
+                className={cn(
+                  "absolute inset-0 h-full w-full rounded-lg bg-muted",
+                  historyChartInteractive ? "cursor-crosshair" : "pointer-events-none"
+                )}
+                onContextMenu={(e) => e.preventDefault()}
+                onPointerDown={onHistoryPointerDown}
+                onPointerMove={onHistoryPointerMove}
+                onPointerUp={onHistoryPointerUp}
+                onPointerCancel={onHistoryPointerUp}
+                onWheel={onHistoryWheel}
+                onDoubleClick={() => {
+                  if (!historyChartInteractive) return;
+                  setSelectedOffset(-1);
+                }}
               />
+              {selectedOffset >= 0 && showSelLine ? (
+                <svg
+                  viewBox="0 0 1000 1000"
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                >
+                  <motion.line
+                    x1={selSpring}
+                    x2={selSpring}
+                    y1={0}
+                    y2={1000}
+                    stroke="var(--ui-chart-selection)"
+                    strokeWidth="var(--ui-lh-stroke-sel-w)"
+                    strokeDasharray="5 4"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+              ) : null}
             </div>
           </div>
 

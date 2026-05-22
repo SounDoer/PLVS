@@ -144,7 +144,7 @@ export function LoudnessHistoryChart({
         className={cn(
           "relative flex min-h-0 min-w-0 flex-1 rounded-lg bg-muted",
           CHART_INSET_MIN_H,
-          !historyChartInteractive && "pointer-events-none"
+          historyChartInteractive ? "cursor-crosshair" : "pointer-events-none"
         )}
         onContextMenu={(e) => e.preventDefault()}
         onDoubleClick={() => {
