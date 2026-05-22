@@ -7,17 +7,27 @@ import { MODULE_REGISTRY } from "./registry.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
 
 // ---------------------------------------------------------------------------
-// Min-size helper for a subtree
+// Empty-node helper and min-size helper for a subtree
 // ---------------------------------------------------------------------------
+
+function isNodeEmpty(node, visibleModules) {
+  if (node.type === "leaf") {
+    return !node.tabs.some((id) => visibleModules.includes(id));
+  }
+  return node.children.every((c) => isNodeEmpty(c, visibleModules));
+}
 
 function getSubtreeMinSize(node, visibleModules, dimension) {
   if (node.type === "leaf") {
     const mins = node.tabs
       .filter((id) => visibleModules.includes(id))
       .map((id) => MODULE_REGISTRY[id]?.[dimension] ?? 80);
-    return mins.length > 0 ? Math.max(80, ...mins) : 80;
+    return mins.length > 0 ? Math.max(80, ...mins) : 0;
   }
-  const childMins = node.children.map((c) => getSubtreeMinSize(c, visibleModules, dimension));
+  const childMins = node.children
+    .filter((c) => !isNodeEmpty(c, visibleModules))
+    .map((c) => getSubtreeMinSize(c, visibleModules, dimension));
+  if (childMins.length === 0) return 0;
   const isAdditive =
     (dimension === "minWidth" && node.direction === "h") ||
     (dimension === "minHeight" && node.direction === "v");
@@ -33,7 +43,7 @@ function getSubtreeMinSize(node, visibleModules, dimension) {
 // SplitDivider — unified resize handle between any two adjacent children
 // ---------------------------------------------------------------------------
 
-function SplitDivider({ parentPath, aboveIdx, direction, aboveNode, belowNode }) {
+function SplitDivider({ parentPath, aboveIdx, belowIdx, direction, aboveNode, belowNode }) {
   const { state, resizeChildren } = useWorkspaceStore();
   const ref = useRef(null);
   const isH = direction === "h";
@@ -65,6 +75,7 @@ function SplitDivider({ parentPath, aboveIdx, direction, aboveNode, belowNode })
       resizeChildren(
         parentPath,
         aboveIdx,
+        belowIdx,
         (startAbovePx + clampedDelta) / containerPx,
         (startBelowPx - clampedDelta) / containerPx
       );
@@ -94,33 +105,46 @@ function SplitDivider({ parentPath, aboveIdx, direction, aboveNode, belowNode })
 // ---------------------------------------------------------------------------
 
 function SplitView({ node, path, style }) {
+  const { state } = useWorkspaceStore();
+  const { visibleModules } = state;
+
   if (node.type === "leaf") {
+    if (isNodeEmpty(node, visibleModules)) return null;
     return <LeafView node={node} path={path} style={style} />;
   }
 
   const isH = node.direction === "h";
 
+  // Collect indices of non-empty children to drive correct divider placement and resize indices.
+  const visibleChildIndices = node.children
+    .map((child, i) => (isNodeEmpty(child, visibleModules) ? null : i))
+    .filter((i) => i !== null);
+
   return (
     <div style={style} className={cn("flex min-h-0 min-w-0", isH ? "flex-row" : "flex-col")}>
-      {node.children.map((child, i) => {
-        const size = node.sizes[i];
+      {visibleChildIndices.map((childIdx, renderIdx) => {
+        const child = node.children[childIdx];
+        const size = node.sizes[childIdx];
         const childStyle =
           size !== null
             ? { flex: `0 0 ${size * 100}%`, minWidth: 0, minHeight: 0 }
             : { flex: "1 1 0", minWidth: 0, minHeight: 0 };
 
+        const aboveChildIdx = renderIdx > 0 ? visibleChildIndices[renderIdx - 1] : -1;
+
         return (
-          <Fragment key={i}>
-            {i > 0 && (
+          <Fragment key={childIdx}>
+            {renderIdx > 0 && (
               <SplitDivider
                 parentPath={path}
-                aboveIdx={i - 1}
+                aboveIdx={aboveChildIdx}
+                belowIdx={childIdx}
                 direction={node.direction}
-                aboveNode={node.children[i - 1]}
+                aboveNode={node.children[aboveChildIdx]}
                 belowNode={child}
               />
             )}
-            <SplitView node={child} path={[...path, i]} style={childStyle} />
+            <SplitView node={child} path={[...path, childIdx]} style={childStyle} />
           </Fragment>
         );
       })}

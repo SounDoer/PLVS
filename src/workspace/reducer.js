@@ -45,11 +45,12 @@ export function workspaceReducer(state, action) {
       return { ...state, tree: action.payload.tree, activePresetId: null };
 
     case "RESIZE_CHILDREN": {
-      const { path, aboveIdx, aboveSize, belowSize } = action.payload;
+      const { path, aboveIdx, belowIdx, aboveSize, belowSize } = action.payload;
+      const actualBelowIdx = belowIdx ?? aboveIdx + 1;
       const newTree = updateNode(state.tree, path, (node) => {
         const sizes = [...node.sizes];
         sizes[aboveIdx] = aboveSize;
-        sizes[aboveIdx + 1] = belowSize;
+        sizes[actualBelowIdx] = belowSize;
         return { ...node, sizes };
       });
       return { ...state, tree: newTree };
@@ -164,8 +165,11 @@ export function bindWorkspaceActions(dispatch) {
     toggleModuleVisible: (id) => dispatch({ type: "TOGGLE_MODULE_VISIBLE", payload: { id } }),
     setFocus: (id) => dispatch({ type: "SET_FOCUS", payload: { id } }),
     setFullscreen: (id) => dispatch({ type: "SET_FULLSCREEN", payload: id }),
-    resizeChildren: (path, aboveIdx, aboveSize, belowSize) =>
-      dispatch({ type: "RESIZE_CHILDREN", payload: { path, aboveIdx, aboveSize, belowSize } }),
+    resizeChildren: (path, aboveIdx, belowIdx, aboveSize, belowSize) =>
+      dispatch({
+        type: "RESIZE_CHILDREN",
+        payload: { path, aboveIdx, belowIdx, aboveSize, belowSize },
+      }),
     applyPreset: (presetId) => dispatch({ type: "APPLY_PRESET", payload: { presetId } }),
     saveCurrentAsPreset: (name) => dispatch({ type: "SAVE_PRESET", payload: { name } }),
   };
