@@ -1,5 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
-import { motion, useReducedMotion, useSpring } from "framer-motion";
+import { useRef, useMemo } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import {
@@ -40,21 +39,12 @@ export function SpectrogramPanel({ compact = false }) {
     selectedHistSteps >= 0 &&
     selectedHistSteps < totalSamples;
 
-  const reduceMotion = useReducedMotion();
   const selLineSvgX = useMemo(() => {
-    if (selectedOffset < 0 || visibleSamples <= 0) return 0;
+    if (selectedOffset < 0 || visibleSamples <= 0) return 1000;
     const norm =
       (selectedOffset / HIST_SAMPLE_SEC - effectiveOffsetSamples) / Math.max(1, visibleSamples - 1);
     return (1 - Math.max(0, Math.min(1, norm))) * 1000;
   }, [selectedOffset, effectiveOffsetSamples, visibleSamples]);
-  const selSpring = useSpring(selLineSvgX, {
-    stiffness: reduceMotion ? 20000 : 540,
-    damping: reduceMotion ? 200 : 46,
-    mass: reduceMotion ? 0.06 : 0.28,
-  });
-  useEffect(() => {
-    selSpring.set(selLineSvgX);
-  }, [selLineSvgX, selSpring]);
 
   useSpectrogramCanvas({
     canvasRef,
@@ -137,9 +127,9 @@ export function SpectrogramPanel({ compact = false }) {
                   preserveAspectRatio="none"
                   className="pointer-events-none absolute inset-0 h-full w-full"
                 >
-                  <motion.line
-                    x1={selSpring}
-                    x2={selSpring}
+                  <line
+                    x1={selLineSvgX}
+                    x2={selLineSvgX}
                     y1={0}
                     y2={1000}
                     stroke="var(--ui-chart-selection)"

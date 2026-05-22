@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion, useSpring } from "framer-motion";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   CAPTION_TEXT,
@@ -59,14 +59,6 @@ export function LoudnessHistoryChart({
   const referenceBandLu = 1;
 
   const reduceMotion = useReducedMotion();
-  const selSpring = useSpring(selLineX, {
-    stiffness: reduceMotion ? 20000 : 540,
-    damping: reduceMotion ? 200 : 46,
-    mass: reduceMotion ? 0.06 : 0.28,
-  });
-  useEffect(() => {
-    selSpring.set(selLineX);
-  }, [selLineX, selSpring]);
 
   const historyGridRef = useRef(null);
   const [historyGridTopPx, setHistoryGridTopPx] = useState(() => ({}));
@@ -214,9 +206,9 @@ export function LoudnessHistoryChart({
             />
           )}
           {selectedOffset >= 0 && showSelLine ? (
-            <motion.line
-              x1={selSpring}
-              x2={selSpring}
+            <line
+              x1={selLineX}
+              x2={selLineX}
               y1={0}
               y2={220}
               stroke="var(--ui-chart-selection)"
