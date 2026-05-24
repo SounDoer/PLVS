@@ -161,6 +161,13 @@
     }
     .portable-link:hover { color: var(--foreground); border-color: rgba(255,255,255,0.35); }
 
+    .install-note {
+      font-size: 11px;
+      color: rgba(158, 148, 136, 0.5);
+      line-height: 1.5;
+      margin-top: 6px;
+    }
+
     .version-chip {
       font-family: var(--font-mono);
       font-size: 11px;
@@ -330,31 +337,6 @@
       color: var(--muted-foreground);
     }
 
-    /* ── INSTALLATION ── */
-    .install-section {
-      padding: 64px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .install-desc {
-      font-size: 12px;
-      color: var(--muted-foreground);
-      line-height: 1.65;
-    }
-    .install-code {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--primary);
-      background: rgba(251, 146, 60, 0.08);
-      border: 1px solid rgba(251, 146, 60, 0.15);
-      border-radius: 4px;
-      padding: 7px 12px;
-      margin-top: 10px;
-      display: block;
-      word-break: break-all;
-    }
-    .install-em { color: var(--foreground); font-weight: 600; }
-
     /* ── FOOTER ── */
     .footer {
       padding: 28px 0;
@@ -427,27 +409,27 @@
     <div class="feature-row reverse">
       <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
       <div class="feature-text">
-        <div class="feature-kicker">Workspace</div>
-        <h3 class="feature-title">Fully flexible layout</h3>
-        <p class="feature-desc">Drag any divider to resize panels. Rearrange your workspace with split-tree layout. Pop out individual meters to float on a second screen.</p>
-      </div>
-    </div>
-
-    <div class="feature-row">
-      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
-      <div class="feature-text">
         <div class="feature-kicker">History</div>
         <h3 class="feature-title">Session history &amp; snapshots</h3>
         <p class="feature-desc">Scroll back through the loudness history timeline. Click any moment to freeze all meters at that snapshot — then return to live with one click.</p>
       </div>
     </div>
 
-    <div class="feature-row reverse">
+    <div class="feature-row">
       <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
       <div class="feature-text">
         <div class="feature-kicker">Multichannel</div>
         <h3 class="feature-title">Multichannel support</h3>
         <p class="feature-desc">Works with stereo and surround formats. Automatic channel layout detection with proper per-channel metering and ITU-R BS.1770 loudness for multichannel sources.</p>
+      </div>
+    </div>
+
+    <div class="feature-row reverse">
+      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-text">
+        <div class="feature-kicker">Appearance</div>
+        <h3 class="feature-title">Fully flexible layout</h3>
+        <p class="feature-desc">Drag any divider to resize panels and rearrange your workspace with split-tree layout. Pop out individual meters to float on a second screen. Switch between dark and light themes to match your environment.</p>
       </div>
     </div>
   </section>
@@ -467,22 +449,6 @@
         <div class="info-row"><span class="info-key">Architecture</span><span class="info-val">Apple Silicon</span></div>
         <div class="info-row"><span class="info-key">Installer</span><span class="info-val">DMG (aarch64)</span></div>
         <div class="info-row"><span class="info-key">System audio</span><span class="info-val">macOS 14.2+</span></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- INSTALLATION -->
-  <section class="install-section">
-    <div class="section-label">Installation</div>
-    <div class="two-col">
-      <div class="info-card">
-        <div class="info-card-title">macOS — Gatekeeper</div>
-        <p class="install-desc">PLVS is not notarized by Apple. If macOS blocks the app on first launch, run:</p>
-        <code class="install-code">xattr -cr /Applications/PLVS.app</code>
-      </div>
-      <div class="info-card">
-        <div class="info-card-title">Windows — SmartScreen</div>
-        <p class="install-desc">If Windows SmartScreen blocks the installer, click <span class="install-em">More info</span> → <span class="install-em">Run anyway</span>.</p>
       </div>
     </div>
   </section>
@@ -527,11 +493,13 @@
       <div class="btn-group">
         <a class="btn ${isMac ? 'btn-secondary' : 'btn-primary'}" href="${urls.winInstall || '#'}">Windows Installer</a>
         <a class="portable-link" href="${urls.winPortable || '#'}">Portable version</a>
+        <span class="install-note">If SmartScreen blocks the installer — More info → Run anyway</span>
       </div>`;
 
     const macGroup = `
       <div class="btn-group">
         <a class="btn ${isMac ? 'btn-primary' : 'btn-secondary'}" href="${urls.mac || '#'}">macOS Apple Silicon</a>
+        <span class="install-note">First launch: if macOS blocks the app, run&nbsp;<code style="font-family:var(--font-mono);font-size:10px">xattr -cr /Applications/PLVS.app</code></span>
       </div>`;
 
     const chip = `<span class="version-chip">${version}</span>`;
