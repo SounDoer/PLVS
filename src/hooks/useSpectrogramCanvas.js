@@ -5,7 +5,6 @@ import {
   SPEC_DB_MIN,
   SPEC_DB_MAX,
 } from "../config/scales.js";
-import { HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 
 // Flat RGB byte lookup (256 entries × 3 bytes) for zero-allocation hot path.
