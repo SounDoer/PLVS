@@ -9,6 +9,11 @@ import {
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 
+function normalizeReferenceLufs(raw) {
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= -70 && n <= 0 ? n : -23;
+}
+
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appearance, setAppearance] = useState(
@@ -18,15 +23,14 @@ export function useSettings() {
     () => readPersistedShellThemeFields(UI_PREFERENCES).themeId
   );
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
-  const [referenceProfileId, setReferenceProfileId] = useState(() => {
+  const [referenceLufs, setReferenceLufs] = useState(() => {
     try {
       const raw = localStorage.getItem(UI_PREFERENCES.layoutPersistKey);
-      if (!raw) return "ebu-r128--23";
+      if (!raw) return -23;
       const s = JSON.parse(raw);
-      // For now, accept any persisted value; future tasks will replace this with LUFS number handling
-      return s.referenceProfileId ?? "ebu-r128--23";
+      return normalizeReferenceLufs(s.referenceLufs);
     } catch (_) {}
-    return "ebu-r128--23";
+    return -23;
   });
 
   const resolvedThemeId = useMemo(
@@ -97,7 +101,7 @@ export function useSettings() {
     setAppearanceMode,
     setFixedThemeIdFromPicker,
     fixedThemeSelectValue,
-    referenceProfileId,
-    setReferenceProfileId,
+    referenceLufs,
+    setReferenceLufs,
   };
 }

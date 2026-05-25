@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useSettings } from "./useSettings.js";
+import { UI_PREFERENCES } from "../uiPreferences";
 
 function mockMatchMedia(matches) {
   return vi.fn().mockImplementation((query) => ({
@@ -42,5 +43,23 @@ describe("useSettings", () => {
       result.current.setAppearanceMode("fixed");
     });
     expect(result.current.themeId).toBe("plvs-light");
+  });
+
+  it("defaults referenceLufs to -23 when localStorage is empty", () => {
+    localStorage.clear();
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.referenceLufs).toBe(-23);
+  });
+
+  it("reads referenceLufs from localStorage", () => {
+    localStorage.setItem(UI_PREFERENCES.layoutPersistKey, JSON.stringify({ referenceLufs: -14 }));
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.referenceLufs).toBe(-14);
+  });
+
+  it("resets referenceLufs to -23 when stored value is out of range", () => {
+    localStorage.setItem(UI_PREFERENCES.layoutPersistKey, JSON.stringify({ referenceLufs: 5 }));
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.referenceLufs).toBe(-23);
   });
 });
