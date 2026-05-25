@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 
@@ -52,5 +52,15 @@ describe("SettingsPanel", () => {
     );
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
     expect(screen.getByLabelText("Colour theme")).toBeTruthy();
+  });
+
+  it("does not call setReferenceLufs when input is cleared (empty string → 0 guard)", () => {
+    const setReferenceLufs = vi.fn();
+    render(
+      <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
+    );
+    const input = screen.getByLabelText("Loudness reference");
+    fireEvent.change(input, { target: { value: "" } });
+    expect(setReferenceLufs).not.toHaveBeenCalled();
   });
 });

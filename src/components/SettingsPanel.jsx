@@ -138,6 +138,7 @@ export function SettingsPanel({
                       step={1}
                       value={referenceLufs}
                       onChange={(e) => {
+                        if (e.target.value === "") return;
                         const n = Number(e.target.value);
                         if (Number.isFinite(n) && n >= -70 && n <= 0) setReferenceLufs(n);
                       }}
