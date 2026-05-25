@@ -16,14 +16,14 @@ const CHART_HEIGHT_PX = 220;
 /**
  * History viewport state, derived display data, and loudness metrics for LoudnessPanel.
  *
- * @param {{ histSourceList, hasHistoryData, running, displayAudio, referenceProfileId, selectedOffset }} params
+ * @param {{ histSourceList, hasHistoryData, running, displayAudio, referenceLufs, selectedOffset }} params
  */
 export function useLoudnessHistory({
   histSourceList,
   hasHistoryData,
   running,
   displayAudio,
-  referenceProfileId,
+  referenceLufs,
   selectedOffset,
 }) {
   const [historyWindowSec, setHistoryWindowSec] = useState(
@@ -105,19 +105,7 @@ export function useLoudnessHistory({
 
   // --- Loudness metrics for LoudnessPanel ---
 
-  // Interim: inline lookup until Task 2 migrates this hook to referenceLufs
-  const INLINE_PROFILES = {
-    "ebu-r128--23": { id: "ebu-r128--23", label: "EBU R128 (-23 LUFS)", targetLufs: -23 },
-    "youtube--14": { id: "youtube--14", label: "YouTube (observed -14 LUFS)", targetLufs: -14 },
-    "spotify--14": { id: "spotify--14", label: "Spotify (-14 LUFS)", targetLufs: -14 },
-  };
-  const referenceProfile = useMemo(
-    () => INLINE_PROFILES[referenceProfileId] ?? INLINE_PROFILES["ebu-r128--23"],
-    [referenceProfileId]
-  );
-  const targetLufs = Number.isFinite(referenceProfile?.targetLufs)
-    ? referenceProfile.targetLufs
-    : -23;
+  const targetLufs = Number.isFinite(referenceLufs) ? referenceLufs : -23;
 
   const historyYAxisTicks = useMemo(
     () => buildLoudnessYAxisTicks(targetLufs, LOUDNESS_TICKS),
@@ -183,7 +171,7 @@ export function useLoudnessHistory({
     isHistoryHudVisible,
     historyTimeTicks,
     // Metrics
-    referenceProfile,
+    referenceLufs,
     targetLufs,
     historyYAxisTicks,
     primaryMetrics,
