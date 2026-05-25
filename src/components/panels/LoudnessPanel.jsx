@@ -20,7 +20,7 @@ export function LoudnessPanel({ compact = false }) {
   const {
     historyYAxisTicks,
     targetLufs,
-    referenceProfile,
+    referenceLufs,
     hasHistoryData,
     historyChartInteractive,
     running,
@@ -85,7 +85,7 @@ export function LoudnessPanel({ compact = false }) {
           historyHover={historyHover}
           historyTimeTicks={historyTimeTicks}
           historyTickSteps={historyTickSteps}
-          referenceProfile={referenceProfile}
+          referenceLufs={referenceLufs}
           onHistoryHoverMove={onHistoryHoverMove}
           onHistoryHoverLeave={onHistoryHoverLeave}
         />

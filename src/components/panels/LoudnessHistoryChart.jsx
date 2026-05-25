@@ -44,7 +44,7 @@ export function LoudnessHistoryChart({
   historyHover,
   historyTimeTicks,
   historyTickSteps,
-  referenceProfile,
+  referenceLufs,
   onHistoryHoverMove,
   onHistoryHoverLeave,
 }) {
@@ -53,9 +53,6 @@ export function LoudnessHistoryChart({
     [historyYAxisTicks, targetLufs, hasHistoryData]
   );
 
-  const referenceLufs = Number.isFinite(referenceProfile?.targetLufs)
-    ? referenceProfile.targetLufs
-    : null;
   const referenceBandLu = 1;
 
   const reduceMotion = useReducedMotion();
@@ -221,7 +218,7 @@ export function LoudnessHistoryChart({
 
         {/* Overlays: reference line, hover crosshair, HUD boxes */}
         <div className="pointer-events-none absolute inset-x-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
-          {referenceLufs != null ? (
+          {Number.isFinite(referenceLufs) ? (
             <>
               <div
                 className="absolute left-0 right-0"
@@ -249,7 +246,7 @@ export function LoudnessHistoryChart({
                   LOUDNESS_HUD_BOX
                 )}
               >
-                Ref {referenceProfile?.label ?? `${referenceLufs} LUFS`}
+                Ref {referenceLufs} LUFS
               </div>
             </>
           ) : null}
