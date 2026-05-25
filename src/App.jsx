@@ -20,7 +20,6 @@ import {
   clampVectorscopePairToAvailable,
 } from "./math/vectorscopePairMath.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
-import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatusPill } from "./components/StatusPill.jsx";
 import { TransportButton } from "./components/TransportButton.jsx";
@@ -28,6 +27,14 @@ import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { VisibilityPopoverContent, PresetDropdownContent } from "./workspace/WorkspaceToolbar.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
 import { LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
@@ -59,6 +66,19 @@ export default function App() {
     defaultOutputFormatSig,
     defaultOutputLabel,
   } = useAudioDevices();
+
+  const audioOutputs = useMemo(
+    () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
+    [audioDevices]
+  );
+  const audioInputs = useMemo(
+    () => (audioDevices || []).filter((d) => !d.isSystemOutputMonitor),
+    [audioDevices]
+  );
+  const safeAudioDeviceId = useMemo(() => {
+    const allowed = new Set(["default", ...(audioDevices || []).map((d) => d.id)]);
+    return allowed.has(captureDeviceId) ? captureDeviceId : "default";
+  }, [audioDevices, captureDeviceId]);
 
   const { clockRef, canClearRef, startTimer, stopTimer, resetTimer } = useSessionTimer();
   const [showClock, setShowClock] = useState(false);
@@ -179,13 +199,6 @@ export default function App() {
     referenceLufs,
     selectedOffset,
   });
-
-  // Compute reference label for footer display
-  const referenceProfileLabel = useMemo(() => {
-    if (!Number.isFinite(targetLufs)) return "Invalid";
-    if (targetLufs === -23) return "EBU R128";
-    return `${targetLufs} LUFS`;
-  }, [targetLufs]);
 
   const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(
     resolvedThemeId,
@@ -460,6 +473,7 @@ export default function App() {
           rightTopRatio,
           loudnessHistWidthRatio,
           spectrogramTopRatio,
+          referenceLufs,
           appearance,
           themeId: persistedThemeId,
           channelLayout,
@@ -474,6 +488,7 @@ export default function App() {
     rightTopRatio,
     loudnessHistWidthRatio,
     spectrogramTopRatio,
+    referenceLufs,
     appearance,
     fixedThemeSelectValue,
     channelLayout,
@@ -540,6 +555,7 @@ export default function App() {
     // Loudness history
     historyYAxisTicks,
     targetLufs,
+    referenceLufs,
     hasHistoryData,
     historyChartInteractive,
     histCurves,
@@ -594,24 +610,46 @@ export default function App() {
                   onClick={clearAll}
                 />
                 {isTauri() && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <span>
-                        <IconButton icon={<Volume2 className="size-3.5" />} tip="Audio device" />
-                      </span>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" sideOffset={6} className="w-72 p-2">
-                      <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Audio Device
-                      </p>
-                      <CaptureDeviceSelect
-                        audioDevices={audioDevices}
-                        value={captureDeviceId}
-                        disabled={!audioDevices.length}
-                        onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <div className="relative group">
+                    <Select
+                      value={safeAudioDeviceId}
+                      onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
+                      disabled={!audioDevices.length}
+                    >
+                      <SelectTrigger
+                        className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
+                        aria-label="Audio device"
+                      >
+                        <Volume2 className="size-3.5" />
+                      </SelectTrigger>
+                      <SelectContent align="end" sideOffset={6} className="max-w-[min(22rem,90vw)]">
+                        <SelectItem value="default">Automatic (default system output)</SelectItem>
+                        {audioOutputs.length ? (
+                          <SelectGroup>
+                            <SelectLabel>Output</SelectLabel>
+                            {audioOutputs.map((d) => (
+                              <SelectItem key={d.id} value={d.id} className="min-w-0">
+                                <span className="truncate">{d.label}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ) : null}
+                        {audioInputs.length ? (
+                          <SelectGroup>
+                            <SelectLabel>Input</SelectLabel>
+                            {audioInputs.map((d) => (
+                              <SelectItem key={d.id} value={d.id} className="min-w-0">
+                                <span className="truncate">{d.label}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ) : null}
+                      </SelectContent>
+                    </Select>
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
+                      Audio device
+                    </span>
+                  </div>
                 )}
                 <Popover>
                   <PopoverTrigger asChild>
@@ -661,7 +699,7 @@ export default function App() {
                 Ref
               </span>
               <span className="min-w-0 truncate tabular-nums text-foreground">
-                {referenceProfileLabel}
+                {referenceLufs} LUFS
               </span>
             </footer>
           </div>
