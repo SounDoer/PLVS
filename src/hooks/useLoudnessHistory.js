@@ -7,7 +7,6 @@ import {
   getHistoryViewport,
 } from "../math/historyMath";
 import { fmtMetric } from "../math/formatMath";
-import { getLoudnessReferenceProfileById } from "../config/loudnessReferenceProfiles.js";
 import { UI_PREFERENCES } from "../uiPreferences";
 
 export const HIST_SAMPLE_SEC = 0.1;
@@ -106,8 +105,14 @@ export function useLoudnessHistory({
 
   // --- Loudness metrics for LoudnessPanel ---
 
+  // Interim: inline lookup until Task 2 migrates this hook to referenceLufs
+  const INLINE_PROFILES = {
+    "ebu-r128--23": { id: "ebu-r128--23", label: "EBU R128 (-23 LUFS)", targetLufs: -23 },
+    "youtube--14": { id: "youtube--14", label: "YouTube (observed -14 LUFS)", targetLufs: -14 },
+    "spotify--14": { id: "spotify--14", label: "Spotify (-14 LUFS)", targetLufs: -14 },
+  };
   const referenceProfile = useMemo(
-    () => getLoudnessReferenceProfileById(referenceProfileId),
+    () => INLINE_PROFILES[referenceProfileId] ?? INLINE_PROFILES["ebu-r128--23"],
     [referenceProfileId]
   );
   const targetLufs = Number.isFinite(referenceProfile?.targetLufs)

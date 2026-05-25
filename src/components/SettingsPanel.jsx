@@ -13,6 +13,12 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
+const LOUDNESS_PROFILES = [
+  { id: "ebu-r128--23", label: "EBU R128 (-23 LUFS)" },
+  { id: "youtube--14", label: "YouTube (observed -14 LUFS)" },
+  { id: "spotify--14", label: "Spotify (-14 LUFS)" },
+];
+
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,
@@ -23,7 +29,6 @@ export function SettingsPanel({
   themeSelectOptions,
   referenceProfileId,
   setReferenceProfileId,
-  loudnessReferenceProfiles,
   channelLayout,
   setChannelLayout,
   /** @type {{ key: string; label: string; x: number; y: number }[]} */
@@ -103,7 +108,7 @@ export function SettingsPanel({
                       <SelectValue placeholder="Profile" />
                     </SelectTrigger>
                     <SelectContent position="popper">
-                      {(loudnessReferenceProfiles || []).map((p) => (
+                      {LOUDNESS_PROFILES.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.label}
                         </SelectItem>
