@@ -20,7 +20,6 @@ import {
   clampVectorscopePairToAvailable,
 } from "./math/vectorscopePairMath.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
-import { LOUDNESS_REFERENCE_PROFILES } from "./config/loudnessReferenceProfiles.js";
 import { CaptureDeviceSelect } from "./components/CaptureDeviceSelect";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatusPill } from "./components/StatusPill.jsx";
@@ -681,7 +680,6 @@ export default function App() {
             themeSelectOptions={themeSelectOptions}
             referenceProfileId={referenceProfileId}
             setReferenceProfileId={setReferenceProfileId}
-            loudnessReferenceProfiles={LOUDNESS_REFERENCE_PROFILES}
             channelLayout={channelLayout}
             setChannelLayout={setChannelLayout}
             vectorscopePairOptions={vectorscopePairOptions}

@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
-import { LOUDNESS_REFERENCE_PROFILES } from "../config/loudnessReferenceProfiles.js";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 
 beforeEach(() => {
@@ -23,7 +22,6 @@ const BASE_PROPS = {
   themeSelectOptions: THEME_SELECT_OPTIONS,
   referenceProfileId: "ebu-r128--23",
   setReferenceProfileId: vi.fn(),
-  loudnessReferenceProfiles: LOUDNESS_REFERENCE_PROFILES,
   channelLayout: "auto",
   setChannelLayout: vi.fn(),
   vectorscopePairOptions: [],

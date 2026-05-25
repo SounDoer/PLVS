@@ -8,10 +8,6 @@ import {
   resolveThemeId,
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
-import {
-  getDefaultLoudnessReferenceProfileId,
-  normalizeLoudnessReferenceProfileId,
-} from "../config/loudnessReferenceProfiles";
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -25,11 +21,12 @@ export function useSettings() {
   const [referenceProfileId, setReferenceProfileId] = useState(() => {
     try {
       const raw = localStorage.getItem(UI_PREFERENCES.layoutPersistKey);
-      if (!raw) return getDefaultLoudnessReferenceProfileId();
+      if (!raw) return "ebu-r128--23";
       const s = JSON.parse(raw);
-      return normalizeLoudnessReferenceProfileId(s.referenceProfileId);
+      // For now, accept any persisted value; future tasks will replace this with LUFS number handling
+      return s.referenceProfileId ?? "ebu-r128--23";
     } catch (_) {}
-    return getDefaultLoudnessReferenceProfileId();
+    return "ebu-r128--23";
   });
 
   const resolvedThemeId = useMemo(
