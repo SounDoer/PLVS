@@ -48,8 +48,8 @@ export default function App() {
     setFixedThemeIdFromPicker,
     themeSelectOptions,
     resolvedThemeId,
-    referenceProfileId,
-    setReferenceProfileId,
+    referenceLufs,
+    setReferenceLufs,
   } = useSettings();
 
   const {
@@ -167,7 +167,6 @@ export default function App() {
     selLineX,
     isHistoryHudVisible,
     historyTimeTicks,
-    referenceProfile,
     targetLufs,
     historyYAxisTicks,
     primaryMetrics,
@@ -177,9 +176,16 @@ export default function App() {
     hasHistoryData,
     running,
     displayAudio,
-    referenceProfileId,
+    referenceLufs,
     selectedOffset,
   });
+
+  // Compute reference label for footer display
+  const referenceProfileLabel = useMemo(() => {
+    if (!Number.isFinite(targetLufs)) return "Invalid";
+    if (targetLufs === -23) return "EBU R128";
+    return `${targetLufs} LUFS`;
+  }, [targetLufs]);
 
   const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(
     resolvedThemeId,
@@ -374,13 +380,6 @@ export default function App() {
     }
   };
 
-  const resetLayout = () => {
-    setMainLeft(UI_PREFERENCES.layout.mainColumn.initialPx);
-    setLeftTopRatio(UI_PREFERENCES.layout.leftSplit.initialRatio);
-    setRightTopRatio(UI_PREFERENCES.layout.rightSplit.initialRatio);
-    setLoudnessHistWidthRatio(UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio);
-  };
-
   const onStartClick = () => {
     if (selectedOffset >= 0)
       return void (setSelectedOffset(-1), setStatus("Monitoring live input"));
@@ -461,7 +460,6 @@ export default function App() {
           rightTopRatio,
           loudnessHistWidthRatio,
           spectrogramTopRatio,
-          referenceProfileId,
           appearance,
           themeId: persistedThemeId,
           channelLayout,
@@ -476,7 +474,6 @@ export default function App() {
     rightTopRatio,
     loudnessHistWidthRatio,
     spectrogramTopRatio,
-    referenceProfileId,
     appearance,
     fixedThemeSelectValue,
     channelLayout,
@@ -543,7 +540,6 @@ export default function App() {
     // Loudness history
     historyYAxisTicks,
     targetLufs,
-    referenceProfile,
     hasHistoryData,
     historyChartInteractive,
     histCurves,
@@ -665,7 +661,7 @@ export default function App() {
                 Ref
               </span>
               <span className="min-w-0 truncate tabular-nums text-foreground">
-                {referenceProfile.label}
+                {referenceProfileLabel}
               </span>
             </footer>
           </div>
@@ -678,15 +674,14 @@ export default function App() {
             fixedThemeSelectValue={fixedThemeSelectValue}
             setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
             themeSelectOptions={themeSelectOptions}
-            referenceProfileId={referenceProfileId}
-            setReferenceProfileId={setReferenceProfileId}
+            referenceLufs={referenceLufs}
+            setReferenceLufs={setReferenceLufs}
             channelLayout={channelLayout}
             setChannelLayout={setChannelLayout}
             vectorscopePairOptions={vectorscopePairOptions}
             vectorscopePairX={vectorscopePairUi.x}
             vectorscopePairY={vectorscopePairUi.y}
             onVectorscopePairChange={onVectorscopePairChange}
-            resetLayout={resetLayout}
           />
         </div>
       </AudioDataContext.Provider>

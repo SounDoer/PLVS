@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -13,12 +12,6 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const LOUDNESS_PROFILES = [
-  { id: "ebu-r128--23", label: "EBU R128 (-23 LUFS)" },
-  { id: "youtube--14", label: "YouTube (observed -14 LUFS)" },
-  { id: "spotify--14", label: "Spotify (-14 LUFS)" },
-];
-
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,
@@ -27,8 +20,8 @@ export function SettingsPanel({
   fixedThemeSelectValue,
   setFixedThemeIdFromPicker,
   themeSelectOptions,
-  referenceProfileId,
-  setReferenceProfileId,
+  referenceLufs,
+  setReferenceLufs,
   channelLayout,
   setChannelLayout,
   /** @type {{ key: string; label: string; x: number; y: number }[]} */
@@ -36,7 +29,6 @@ export function SettingsPanel({
   vectorscopePairX = 0,
   vectorscopePairY = 1,
   onVectorscopePairChange,
-  resetLayout,
 }) {
   const vsKey = `${vectorscopePairX}-${vectorscopePairY}`;
   const reduceMotion = useReducedMotion();
@@ -88,7 +80,11 @@ export function SettingsPanel({
               key="settings-inner"
               initial={reduceMotion ? false : { opacity: 0, x: 18 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={reduceMotion ? { opacity: 1 } : { opacity: 0, x: 14 }}
+              exit={
+                reduceMotion
+                  ? { opacity: 1 }
+                  : { opacity: 0, x: 14, transition: { duration: 0.12, ease: "easeIn" } }
+              }
               transition={
                 reduceMotion
                   ? { duration: 0 }
@@ -101,22 +97,6 @@ export function SettingsPanel({
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]">
-                <div className="grid gap-2">
-                  <Label htmlFor="settings-ref-profile">Loudness reference</Label>
-                  <Select value={referenceProfileId} onValueChange={setReferenceProfileId}>
-                    <SelectTrigger id="settings-ref-profile">
-                      <SelectValue placeholder="Profile" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {LOUDNESS_PROFILES.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
                 <div className="grid gap-2">
                   <Label htmlFor="settings-appearance">Appearance</Label>
                   <Select value={appearance} onValueChange={setAppearanceMode}>
@@ -147,17 +127,24 @@ export function SettingsPanel({
                   </div>
                 ) : null}
                 <Separator />
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label className="shrink-0">Layout</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={resetLayout}
-                    className="h-auto shrink-0 py-1 text-[length:var(--ui-fs-metric-meta)]"
-                  >
-                    Reset Layout
-                  </Button>
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-ref-lufs">Loudness reference</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="settings-ref-lufs"
+                      type="number"
+                      min={-70}
+                      max={0}
+                      step={1}
+                      value={referenceLufs}
+                      onChange={(e) => {
+                        const n = Number(e.target.value);
+                        if (Number.isFinite(n) && n >= -70 && n <= 0) setReferenceLufs(n);
+                      }}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <span className="text-muted-foreground shrink-0">LUFS</span>
+                  </div>
                 </div>
                 <Separator />
                 <div className="grid gap-2">

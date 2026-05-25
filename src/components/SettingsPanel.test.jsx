@@ -16,19 +16,19 @@ beforeEach(() => {
 const BASE_PROPS = {
   settingsOpen: true,
   setSettingsOpen: vi.fn(),
+  appearance: "system",
   setAppearanceMode: vi.fn(),
   fixedThemeSelectValue: "",
   setFixedThemeIdFromPicker: vi.fn(),
   themeSelectOptions: THEME_SELECT_OPTIONS,
-  referenceProfileId: "ebu-r128--23",
-  setReferenceProfileId: vi.fn(),
+  referenceLufs: -23,
+  setReferenceLufs: vi.fn(),
   channelLayout: "auto",
   setChannelLayout: vi.fn(),
   vectorscopePairOptions: [],
   vectorscopePairX: 0,
   vectorscopePairY: 1,
   onVectorscopePairChange: vi.fn(),
-  resetLayout: vi.fn(),
 };
 
 describe("SettingsPanel", () => {
