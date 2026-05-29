@@ -33,6 +33,34 @@ describe("landing page responsive layout", () => {
   });
 });
 
+describe("landing page hero copy", () => {
+  test("shows the module list above the platform tagline", () => {
+    expect(html.indexOf('class="hero-modules"')).toBeLessThan(
+      html.indexOf('class="hero-tagline"'),
+    );
+  });
+});
+
+describe("landing page screenshots", () => {
+  test("replaces screenshot placeholders with packaged product images", () => {
+    expect(html).toContain('src="assets/screenshot-hero.png"');
+    expect(html.match(/class="feature-image"/g)).toHaveLength(4);
+    expect(html).not.toContain("App Screenshot");
+    expect(html).not.toContain("feature-visual-hint");
+  });
+
+  test("does not add a fake window chrome around the real hero screenshot", () => {
+    expect(html).not.toContain("screenshot-chrome");
+    expect(html).not.toContain("chrome-dot");
+    expect(html).not.toContain("chrome-title");
+  });
+
+  test("preserves the full hero screenshot instead of cropping it into a fixed-height frame", () => {
+    expect(html).not.toMatch(/\.screenshot-body\s*\{[^}]*[\s;]height:/s);
+    expect(html).not.toMatch(/\.screenshot-image\s*\{[^}]*object-fit:\s*cover/s);
+  });
+});
+
 describe("landing page release updates", () => {
   test("does not present a fake email signup", () => {
     expect(html).not.toContain("subscribe-form");

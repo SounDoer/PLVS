@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PLVS — Real-time Audio Metering</title>
+  <title>PLVS</title>
   <meta name="description" content="Free, open-source real-time audio metering for Windows & macOS. Peak, Loudness, Vectorscope, Spectrum, Spectrogram.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -304,38 +304,13 @@
       border-radius: 10px;
       overflow: hidden;
     }
-    .screenshot-chrome {
-      background: rgba(255, 255, 255, 0.025);
-      border-bottom: none;
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .chrome-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.07);
-    }
-    .chrome-title {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: rgba(158, 148, 136, 0.28);
-      letter-spacing: 0.08em;
-      margin-left: 8px;
-    }
     .screenshot-body {
-      height: 360px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      line-height: 0;
     }
-    .screenshot-hint {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: rgba(158, 148, 136, 0.16);
+    .screenshot-image {
+      display: block;
+      width: 100%;
+      height: auto;
     }
 
     /* ── SECTION LABEL ── */
@@ -382,12 +357,13 @@
       justify-content: center;
       overflow: hidden;
     }
-    .feature-visual-hint {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: rgba(158, 148, 136, 0.15);
+    .feature-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      padding: 10px;
+      object-fit: contain;
+      object-position: center;
     }
 
     .feature-kicker {
@@ -482,10 +458,6 @@
         order: initial;
       }
 
-      .screenshot-body {
-        height: 260px;
-      }
-
       .features-section {
         padding: 32px 0;
       }
@@ -513,20 +485,14 @@
       PLVS
       <span class="hero-logo-note">reads as "plus"</span>
     </div>
-    <p class="hero-tagline">Free, open-source real-time audio metering for Windows &amp; macOS</p>
     <p class="hero-modules">
       Peak<span class="sep">·</span>Loudness<span class="sep">·</span>Vectorscope<span class="sep">·</span>Spectrum<span class="sep">·</span>Spectrogram
     </p>
+    <p class="hero-tagline">Free, open-source real-time audio metering for Windows &amp; macOS</p>
     <div class="screenshot-section">
       <div class="screenshot-frame">
-        <div class="screenshot-chrome">
-          <div class="chrome-dot"></div>
-          <div class="chrome-dot"></div>
-          <div class="chrome-dot"></div>
-          <span class="chrome-title">PLVS</span>
-        </div>
         <div class="screenshot-body">
-          <span class="screenshot-hint">App Screenshot</span>
+          <img class="screenshot-image" src="assets/screenshot-hero.png" alt="PLVS dashboard showing peak, loudness, spectrogram, spectrum, and vectorscope meters">
         </div>
       </div>
     </div>
@@ -538,7 +504,9 @@
   <!-- FEATURES -->
   <section class="features-section">
     <div class="feature-row">
-      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-visual">
+        <img class="feature-image" src="assets/screenshot-system-audio.png" alt="PLVS audio device selector with system output and input capture devices">
+      </div>
       <div class="feature-text">
         <div class="feature-kicker">System Audio</div>
         <h3 class="feature-title">Native system audio capture</h3>
@@ -547,7 +515,9 @@
     </div>
 
     <div class="feature-row reverse">
-      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-visual">
+        <img class="feature-image" src="assets/screenshot-history.png" alt="PLVS loudness history chart with a selected snapshot point">
+      </div>
       <div class="feature-text">
         <div class="feature-kicker">History</div>
         <h3 class="feature-title">Session history &amp; snapshots</h3>
@@ -556,7 +526,9 @@
     </div>
 
     <div class="feature-row">
-      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-visual">
+        <img class="feature-image" src="assets/screenshot-multichannel.png" alt="PLVS multichannel peak meters for surround audio channels">
+      </div>
       <div class="feature-text">
         <div class="feature-kicker">Multichannel</div>
         <h3 class="feature-title">Multichannel support</h3>
@@ -565,7 +537,9 @@
     </div>
 
     <div class="feature-row reverse">
-      <div class="feature-visual"><span class="feature-visual-hint">Image</span></div>
+      <div class="feature-visual">
+        <img class="feature-image" src="assets/screenshot-appearance.png" alt="PLVS modules and presets menu for arranging the workspace">
+      </div>
       <div class="feature-text">
         <div class="feature-kicker">Appearance</div>
         <h3 class="feature-title">Fully flexible layout</h3>
