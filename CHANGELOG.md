@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.18] - 2026-05-29
+
+### Added
+
+- Settings panel now shows the current app version.
+- Landing page regression coverage for download fallbacks, mobile layout, release links, and system requirements.
+
+### Changed
+
+- Audio device picker now formats long device labels into a concise two-line display and uses the same formatter for the footer device summary.
+- Settings panel now uses a direct LUFS reference value instead of loudness reference profile objects.
+- Landing page download links now fall back to GitHub Releases, mobile layout stacks cleanly, and release notification points to GitHub Releases instead of a fake email form.
+
+### Fixed
+
+- Device toolbar icon visual size now matches neighboring toolbar glyphs.
+- Clearing the LUFS reference input no longer writes `0`.
+
 ## [0.0.16] - 2026-05-19
 
 ### Added

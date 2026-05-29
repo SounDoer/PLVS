@@ -24,9 +24,9 @@ const idx = changelog.indexOf(headerNeedle);
 let body;
 if (idx === -1) {
   body = [
-    `## AudioMeter v${semver}`,
+    `## PLVS v${semver}`,
     "",
-    `See [CHANGELOG.md](https://github.com/SounDoer/AudioMeter/blob/main/CHANGELOG.md) on \`main\` for the full history.`,
+    `See [CHANGELOG.md](https://github.com/SounDoer/PLVS/blob/main/CHANGELOG.md) on \`main\` for the full history.`,
     "",
     "_No dedicated section found for this tag in CHANGELOG.md — add \`## [${semver}]\` before tagging._",
   ].join("\n");
