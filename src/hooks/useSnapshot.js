@@ -1,4 +1,15 @@
-import { useRef } from "react";
+import { useMemo } from "react";
+
+function freezeSnapshot(intake) {
+  return {
+    loudness: [...intake.getLoudnessHistory()],
+    spectrum: [...intake.getSpectrumSnap()],
+    spectrumData: [...intake.getSpectrumDataSnap()],
+    vector: [...intake.getVectorSnap()],
+    corr: [...intake.getCorrSnap()],
+    audio: [...intake.getAudioSnap()],
+  };
+}
 
 export function useSnapshot({
   selectedOffset,
@@ -9,22 +20,11 @@ export function useSnapshot({
   spectrumPeakPath,
   vectorPath,
 }) {
-  const frozenSnapRef = useRef(null);
-
-  if (selectedOffset < 0) {
-    frozenSnapRef.current = null;
-  } else if (!frozenSnapRef.current) {
-    frozenSnapRef.current = {
-      loudness: [...intake.getLoudnessHistory()],
-      spectrum: [...intake.getSpectrumSnap()],
-      spectrumData: [...intake.getSpectrumDataSnap()],
-      vector: [...intake.getVectorSnap()],
-      corr: [...intake.getCorrSnap()],
-      audio: [...intake.getAudioSnap()],
-    };
-  }
-
-  const snapSource = selectedOffset >= 0 && frozenSnapRef.current ? frozenSnapRef.current : null;
+  const isSnapshotSelected = selectedOffset >= 0;
+  const snapSource = useMemo(
+    () => (isSnapshotSelected ? freezeSnapshot(intake) : null),
+    [intake, isSnapshotSelected]
+  );
   const histSourceList = snapSource ? snapSource.loudness : intake.getLoudnessHistory();
   const snapCorrList = snapSource ? snapSource.corr : intake.getCorrSnap();
   const snapSpecList = snapSource ? snapSource.spectrum : intake.getSpectrumSnap();
