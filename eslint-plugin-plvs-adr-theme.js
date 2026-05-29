@@ -45,7 +45,7 @@ const noTailwindDarkPaletteVariant = {
 
 /** @type {import("eslint").ESLint.Plugin} */
 const plugin = {
-  meta: { name: "audiometer-adr-theme", version: "0.0.0" },
+  meta: { name: "plvs-adr-theme", version: "0.0.0" },
   rules: {
     "no-tailwind-dark-palette-variant": noTailwindDarkPaletteVariant,
   },

@@ -1,7 +1,7 @@
 import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
-import audiometerAdrTheme from "./eslint-plugin-audiometer-adr-theme.js";
+import plvsAdrTheme from "./eslint-plugin-plvs-adr-theme.js";
 
 export default [
   js.configs.recommended,
@@ -11,7 +11,7 @@ export default [
       sourceType: "module",
       globals: { ...globals.browser },
     },
-    plugins: { "react-hooks": reactHooks, "audiometer-adr": audiometerAdrTheme },
+    plugins: { "react-hooks": reactHooks, "plvs-adr": plvsAdrTheme },
     rules: {
       ...reactHooks.configs.recommended.rules,
       // Audio engine intentionally reads refs during render for snapshot logic
@@ -20,7 +20,7 @@ export default [
       "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
       // Empty catch blocks are intentional in audio teardown paths
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "audiometer-adr/no-tailwind-dark-palette-variant": "error",
+      "plvs-adr/no-tailwind-dark-palette-variant": "error",
     },
   },
   { ignores: ["dist/", "public/"] },

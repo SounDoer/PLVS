@@ -47,9 +47,7 @@ describe("SettingsPanel", () => {
   });
 
   it("shows theme picker in fixed mode", () => {
-    render(
-      <SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="audiometer-dark" />
-    );
+    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
     expect(screen.getByLabelText("Colour theme")).toBeTruthy();
   });
