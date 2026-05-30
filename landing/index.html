@@ -305,12 +305,58 @@
       overflow: hidden;
     }
     .screenshot-body {
+      position: relative;
       line-height: 0;
     }
     .screenshot-image {
-      display: block;
+      display: none;
       width: 100%;
       height: auto;
+    }
+    .screenshot-image.is-active {
+      display: block;
+    }
+    .carousel-control {
+      position: absolute;
+      top: 50%;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      background: rgba(19, 17, 16, 0.72);
+      color: rgba(245, 240, 234, 0.82);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 17px;
+      line-height: 1;
+      transform: translateY(-50%);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .carousel-control:hover {
+      background: rgba(30, 27, 23, 0.9);
+      border-color: rgba(251, 146, 60, 0.32);
+      color: var(--foreground);
+    }
+    .carousel-control.prev { left: 12px; }
+    .carousel-control.next { right: 12px; }
+    .carousel-dots {
+      position: absolute;
+      left: 50%;
+      bottom: 12px;
+      display: flex;
+      gap: 7px;
+      transform: translateX(-50%);
+    }
+    .carousel-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(245, 240, 234, 0.28);
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .carousel-dot.is-active {
+      background: var(--primary);
+      transform: scale(1.18);
     }
 
     /* ── SECTION LABEL ── */
@@ -489,10 +535,19 @@
       Peak<span class="sep">·</span>Loudness<span class="sep">·</span>Vectorscope<span class="sep">·</span>Spectrum<span class="sep">·</span>Spectrogram
     </p>
     <p class="hero-tagline">Free, open-source real-time audio metering for Windows &amp; macOS</p>
-    <div class="screenshot-section">
+    <div class="screenshot-section" data-carousel-interval="5000">
       <div class="screenshot-frame">
         <div class="screenshot-body">
-          <img class="screenshot-image" src="assets/screenshot-hero.png" alt="PLVS dashboard showing peak, loudness, spectrogram, spectrum, and vectorscope meters">
+          <img class="screenshot-image is-active" src="assets/screenshot-hero.webp" alt="PLVS dashboard showing peak, loudness, spectrogram, spectrum, and vectorscope meters">
+          <img class="screenshot-image" src="assets/screenshot-hero-01.webp" alt="PLVS dashboard with warm orange meters and spectrum view">
+          <img class="screenshot-image" src="assets/screenshot-hero-02.webp" alt="PLVS spectrogram dashboard in warm orange and magenta colors">
+          <button class="carousel-control prev" type="button" data-carousel-prev aria-label="Previous screenshot">‹</button>
+          <button class="carousel-control next" type="button" data-carousel-next aria-label="Next screenshot">›</button>
+          <div class="carousel-dots" aria-hidden="true">
+            <span class="carousel-dot is-active"></span>
+            <span class="carousel-dot"></span>
+            <span class="carousel-dot"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -505,7 +560,7 @@
   <section class="features-section">
     <div class="feature-row">
       <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-system-audio.png" alt="PLVS audio device selector with system output and input capture devices">
+        <img class="feature-image" src="assets/screenshot-system-audio.webp" alt="PLVS audio device selector with system output and input capture devices">
       </div>
       <div class="feature-text">
         <div class="feature-kicker">System Audio</div>
@@ -516,7 +571,7 @@
 
     <div class="feature-row reverse">
       <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-history.png" alt="PLVS loudness history chart with a selected snapshot point">
+        <img class="feature-image" src="assets/screenshot-history.webp" alt="PLVS loudness history chart with a selected snapshot point">
       </div>
       <div class="feature-text">
         <div class="feature-kicker">History</div>
@@ -527,7 +582,7 @@
 
     <div class="feature-row">
       <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-multichannel.png" alt="PLVS multichannel peak meters for surround audio channels">
+        <img class="feature-image" src="assets/screenshot-multichannel.webp" alt="PLVS multichannel peak meters for surround audio channels">
       </div>
       <div class="feature-text">
         <div class="feature-kicker">Multichannel</div>
@@ -538,7 +593,7 @@
 
     <div class="feature-row reverse">
       <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-appearance.png" alt="PLVS modules and presets menu for arranging the workspace">
+        <img class="feature-image" src="assets/screenshot-appearance.webp" alt="PLVS modules and presets menu for arranging the workspace">
       </div>
       <div class="feature-text">
         <div class="feature-kicker">Appearance</div>
@@ -647,6 +702,41 @@
   }
 
   loadRelease();
+
+  // ── Hero screenshot carousel ──
+  const carousel = document.querySelector('[data-carousel-interval]');
+  if (carousel) {
+    const intervalMs = Number(carousel.dataset.carouselInterval);
+    const slides = Array.from(carousel.querySelectorAll('.screenshot-image'));
+    const dots = Array.from(carousel.querySelectorAll('.carousel-dot'));
+    let activeIndex = 0;
+    let timerId;
+
+    function showSlide(index) {
+      activeIndex = (index + slides.length) % slides.length;
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle('is-active', slideIndex === activeIndex);
+      });
+      dots.forEach((dot, dotIndex) => {
+        dot.classList.toggle('is-active', dotIndex === activeIndex);
+      });
+    }
+
+    function startCarousel() {
+      window.clearInterval(timerId);
+      timerId = window.setInterval(() => showSlide(activeIndex + 1), intervalMs);
+    }
+
+    carousel.querySelector('[data-carousel-prev]').addEventListener('click', () => {
+      showSlide(activeIndex - 1);
+      startCarousel();
+    });
+    carousel.querySelector('[data-carousel-next]').addEventListener('click', () => {
+      showSlide(activeIndex + 1);
+      startCarousel();
+    });
+    startCarousel();
+  }
 
   // ── Scroll-triggered feature rows ──
   const io = new IntersectionObserver(

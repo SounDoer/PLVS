@@ -43,10 +43,11 @@ describe("landing page hero copy", () => {
 
 describe("landing page screenshots", () => {
   test("replaces screenshot placeholders with packaged product images", () => {
-    expect(html).toContain('src="assets/screenshot-hero.png"');
+    expect(html).toContain('src="assets/screenshot-hero.webp"');
     expect(html.match(/class="feature-image"/g)).toHaveLength(4);
     expect(html).not.toContain("App Screenshot");
     expect(html).not.toContain("feature-visual-hint");
+    expect(html).not.toMatch(/src="assets\/[^"]+\.png"/);
   });
 
   test("does not add a fake window chrome around the real hero screenshot", () => {
@@ -58,6 +59,22 @@ describe("landing page screenshots", () => {
   test("preserves the full hero screenshot instead of cropping it into a fixed-height frame", () => {
     expect(html).not.toMatch(/\.screenshot-body\s*\{[^}]*[\s;]height:/s);
     expect(html).not.toMatch(/\.screenshot-image\s*\{[^}]*object-fit:\s*cover/s);
+  });
+
+  test("hero screenshot carousel starts on the original image with automatic and manual controls", () => {
+    expect(html).toContain('data-carousel-interval="5000"');
+    expect(html).toMatch(
+      /<img class="screenshot-image is-active" src="assets\/screenshot-hero\.webp"/,
+    );
+    expect(html).toMatch(
+      /src="assets\/screenshot-hero\.webp"[\s\S]*src="assets\/screenshot-hero-01\.webp"[\s\S]*src="assets\/screenshot-hero-02\.webp"/,
+    );
+    expect(html).not.toContain("screenshot-hero-03.webp");
+    expect(html).not.toContain("hero-meter-modern.png");
+    expect(html).not.toContain("hero-meter-orange.png");
+    expect(html).not.toContain("hero-meter-overlay.png");
+    expect(html).toContain('data-carousel-prev');
+    expect(html).toContain('data-carousel-next');
   });
 });
 
