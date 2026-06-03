@@ -13,6 +13,7 @@ use rustfft::num_complex::Complex;
 use std::collections::VecDeque;
 
 use super::meter::{Meter, PcmContext};
+use crate::dsp::SpectrumChannelSel;
 
 const FFT_LEN: usize = 4096;
 const STFT_HOP: usize = FFT_LEN / 4;
@@ -413,6 +414,39 @@ impl SpectrumMeter {
     self.push_interleaved(&tmp, 2, now_sec)
   }
 
+  /// Spectrum analysis on a specific channel pair or single channel.
+  /// Synthesizes a 2-ch stereo buffer and delegates to `push_interleaved`.
+  /// Returns `Option<(smooth_db, peak_db)>` — same shape as `push_interleaved`.
+  pub fn push_selected(
+    &mut self,
+    interleaved: &[f32],
+    channels: u16,
+    now_sec: f64,
+    sel: SpectrumChannelSel,
+  ) -> Option<(Vec<f64>, Vec<f64>)> {
+    let ch = channels.max(1) as usize;
+    let frames = interleaved.len() / ch;
+    let mut stereo = Vec::with_capacity(frames * 2);
+    for i in 0..frames {
+      let base = i * ch;
+      let (l, r) = match sel {
+        SpectrumChannelSel::Pair(x, y) => {
+          let xi = (x as usize).min(ch - 1);
+          let yi = (y as usize).min(ch - 1);
+          (interleaved[base + xi], interleaved[base + yi])
+        }
+        SpectrumChannelSel::Single(c) => {
+          let ci = (c as usize).min(ch - 1);
+          let s = interleaved[base + ci];
+          (s, s)
+        }
+      };
+      stereo.push(l);
+      stereo.push(r);
+    }
+    self.push_interleaved(&stereo, 2, now_sec)
+  }
+
   pub fn band_centers(&self) -> Vec<f64> {
     self.bands.iter().map(|(_, _, c)| *c).collect()
   }
@@ -428,6 +462,8 @@ impl Meter for SpectrumMeter {
   fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
     let result = if ctx.channels == 1 {
       self.push_mono_duplex(ctx.interleaved, ctx.now_sec)
+    } else if ctx.channels > 2 {
+      self.push_selected(ctx.interleaved, ctx.channels, ctx.now_sec, ctx.spectrum_channel)
     } else {
       self.push_interleaved(ctx.interleaved, ctx.channels, ctx.now_sec)
     };
@@ -536,5 +572,57 @@ mod tests {
       diff > 5.0 && diff < 7.5,
       "expected ~+6 dB for 4ch summed power, got diff={diff} dB (peak2={peak2}, peak4={peak4})"
     );
+  }
+
+  #[test]
+  fn push_selected_pair_produces_output() {
+    use crate::dsp::SpectrumChannelSel;
+    let sr = 48000.0;
+    let mut m = SpectrumMeter::new(sr);
+    // 6-ch interleaved: 1kHz on ch0+ch1 only
+    let frames = FFT_LEN * 4;
+    let channels = 6_usize;
+    let mut pcm = vec![0.0_f32; frames * channels];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32;
+      pcm[i * channels + 0] = s;
+      pcm[i * channels + 1] = s;
+    }
+    // Feed repeatedly until output arrives
+    let mut result = None;
+    for _ in 0..8 {
+      result = m.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Pair(0, 1));
+      if result.is_some() { break; }
+    }
+    assert!(result.is_some(), "push_selected should produce output after filling ring");
+  }
+
+  #[test]
+  fn push_selected_single_channel_differs_from_silent_pair() {
+    use crate::dsp::SpectrumChannelSel;
+    let sr = 48000.0;
+    // 6-ch: tone only on ch2 (C channel), ch0+ch1 are silent
+    let frames = FFT_LEN * 12;
+    let channels = 6_usize;
+    let mut pcm = vec![0.0_f32; frames * channels];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 500.0 * i as f64 / sr).sin() as f32;
+      pcm[i * channels + 2] = s;
+    }
+    // Pair(0,1) → L+R are silent → very low/negative peak
+    let mut m_lr = SpectrumMeter::new(sr);
+    let mut res_lr = None;
+    for _ in 0..12 { res_lr = m_lr.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Pair(0, 1)); }
+    // Single(2) → C channel has signal → higher peak
+    let mut m_c = SpectrumMeter::new(sr);
+    let mut res_c = None;
+    for _ in 0..12 { res_c = m_c.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Single(2)); }
+    let (smooth_lr, _) = res_lr.expect("lr should produce output");
+    let (smooth_c, _) = res_c.expect("c should produce output");
+    let peak_lr = smooth_lr.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let peak_c = smooth_c.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    assert!(peak_c > peak_lr + 10.0,
+      "C channel spectrum should be significantly louder than silent L/R: peak_c={:.1} peak_lr={:.1}",
+      peak_c, peak_lr);
   }
 }
