@@ -479,7 +479,12 @@ export default function App() {
       if (typeof s.loudnessHistWidthRatio === "number")
         setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
       if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
-      if (s.channelLayout === "auto" || s.channelLayout === "stereo" || s.channelLayout === "5.1")
+      if (
+        s.channelLayout === "auto" ||
+        s.channelLayout === "stereo" ||
+        s.channelLayout === "5.1" ||
+        s.channelLayout === "7.1"
+      )
         setChannelLayout(s.channelLayout);
     } catch (_) {}
   }, []);
@@ -723,6 +728,14 @@ export default function App() {
               <span className="min-w-0 truncate tabular-nums text-foreground">
                 {referenceLufs} LUFS
               </span>
+              {layoutResolution.resolved === "unknown" && channelCount > 2 && (
+                <>
+                  <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    Multichannel detected ({channelCount} ch) · Select layout in Settings
+                  </span>
+                </>
+              )}
             </footer>
           </div>
 

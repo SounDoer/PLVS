@@ -159,6 +159,7 @@ export function SettingsPanel({
                       <SelectItem value="auto">Auto</SelectItem>
                       <SelectItem value="stereo">Stereo</SelectItem>
                       <SelectItem value="5.1">5.1</SelectItem>
+                      <SelectItem value="7.1">7.1</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
