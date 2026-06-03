@@ -463,7 +463,12 @@ impl Meter for SpectrumMeter {
     let result = if ctx.channels == 1 {
       self.push_mono_duplex(ctx.interleaved, ctx.now_sec)
     } else if ctx.channels > 2 {
-      self.push_selected(ctx.interleaved, ctx.channels, ctx.now_sec, ctx.spectrum_channel)
+      self.push_selected(
+        ctx.interleaved,
+        ctx.channels,
+        ctx.now_sec,
+        ctx.spectrum_channel,
+      )
     } else {
       self.push_interleaved(ctx.interleaved, ctx.channels, ctx.now_sec)
     };
@@ -585,16 +590,21 @@ mod tests {
     let mut pcm = vec![0.0_f32; frames * channels];
     for i in 0..frames {
       let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32;
-      pcm[i * channels + 0] = s;
+      pcm[i * channels] = s;
       pcm[i * channels + 1] = s;
     }
     // Feed repeatedly until output arrives
     let mut result = None;
     for _ in 0..8 {
       result = m.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Pair(0, 1));
-      if result.is_some() { break; }
+      if result.is_some() {
+        break;
+      }
     }
-    assert!(result.is_some(), "push_selected should produce output after filling ring");
+    assert!(
+      result.is_some(),
+      "push_selected should produce output after filling ring"
+    );
   }
 
   #[test]
@@ -612,11 +622,15 @@ mod tests {
     // Pair(0,1) → L+R are silent → very low/negative peak
     let mut m_lr = SpectrumMeter::new(sr);
     let mut res_lr = None;
-    for _ in 0..12 { res_lr = m_lr.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Pair(0, 1)); }
+    for _ in 0..12 {
+      res_lr = m_lr.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Pair(0, 1));
+    }
     // Single(2) → C channel has signal → higher peak
     let mut m_c = SpectrumMeter::new(sr);
     let mut res_c = None;
-    for _ in 0..12 { res_c = m_c.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Single(2)); }
+    for _ in 0..12 {
+      res_c = m_c.push_selected(&pcm, channels as u16, 0.0, SpectrumChannelSel::Single(2));
+    }
     let (smooth_lr, _) = res_lr.expect("lr should produce output");
     let (smooth_c, _) = res_c.expect("c should produce output");
     let peak_lr = smooth_lr.iter().cloned().fold(f64::NEG_INFINITY, f64::max);

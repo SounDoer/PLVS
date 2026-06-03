@@ -115,6 +115,7 @@ impl MeterPipeline {
     interleaved: &[f32],
     vectorscope_pair: (u16, u16),
     channel_layout: ChannelLayoutSetting,
+    spectrum_channel: SpectrumChannelSel,
   ) -> (Option<AudioFramePayload>, Option<LoudnessSlowPayload>) {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
@@ -139,7 +140,7 @@ impl MeterPipeline {
       now_sec,
       channel_layout: effective_layout,
       vectorscope_pair,
-      spectrum_channel: SpectrumChannelSel::default(),
+      spectrum_channel,
     };
     self.loudness.push_pcm(&ctx);
     self.spectrum.push_pcm(&ctx);
@@ -355,7 +356,12 @@ mod tests {
     // frame1: [1.1, 1.2, 1.3]
     let pcm = vec![0.1_f32, 0.2, 0.3, 1.1, 1.2, 1.3];
     let mut p = MeterPipeline::new(48_000, 3, dummy_history());
-    let _ = p.push_pcm_f32(&pcm, (2, 0), crate::engine::ChannelLayoutSetting::Auto);
+    let _ = p.push_pcm_f32(
+      &pcm,
+      (2, 0),
+      crate::engine::ChannelLayoutSetting::Auto,
+      crate::dsp::SpectrumChannelSel::default(),
+    );
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
     assert_eq!(p.vectorscope.vs_l.back().copied().unwrap_or_default(), 1.3);
     assert_eq!(p.vectorscope.vs_r.back().copied().unwrap_or_default(), 1.1);
@@ -471,7 +477,12 @@ mod tests {
 
     let mut loudness_layout_seen = None;
     for _ in 0..5 {
-      if let (Some(f), _) = pipeline.push_pcm_f32(&pcm, (0, 1), ChannelLayoutSetting::Auto) {
+      if let (Some(f), _) = pipeline.push_pcm_f32(
+        &pcm,
+        (0, 1),
+        ChannelLayoutSetting::Auto,
+        crate::dsp::SpectrumChannelSel::default(),
+      ) {
         loudness_layout_seen = Some(f.loudness_layout.clone());
         break;
       }

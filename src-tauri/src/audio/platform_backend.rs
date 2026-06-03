@@ -8,6 +8,7 @@ use super::cpal_backend::CpalBackend;
 use super::device::DeviceInfo;
 #[cfg(target_os = "macos")]
 use super::macos;
+use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{FrameSubscribers, MeterHistoryBuf};
 
@@ -34,6 +35,7 @@ impl AudioCapture for AppAudioBackend {
     meter_history: MeterHistoryBuf,
     vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
+    spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     #[cfg(target_os = "macos")]
     {
@@ -44,6 +46,7 @@ impl AudioCapture for AppAudioBackend {
         meter_history,
         vectorscope_pair,
         channel_layout,
+        spectrum_channel,
       )
     }
     #[cfg(not(target_os = "macos"))]
@@ -55,6 +58,7 @@ impl AudioCapture for AppAudioBackend {
         meter_history,
         vectorscope_pair,
         channel_layout,
+        spectrum_channel,
       )
     }
   }

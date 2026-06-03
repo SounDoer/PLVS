@@ -103,6 +103,7 @@ pub fn audio_start(
   let mh = state.inner().meter_history.clone();
   let pair = state.inner().vectorscope_pair.clone();
   let layout = state.inner().channel_layout.clone();
+  let spectrum = state.inner().spectrum_channel.clone();
   let session = AudioCapture::start_session(
     &AppAudioBackend,
     &device_id,
@@ -111,6 +112,7 @@ pub fn audio_start(
     mh,
     pair,
     layout,
+    spectrum,
   )?;
   {
     let mut g = state
@@ -155,6 +157,29 @@ pub fn set_channel_layout(layout: String, state: State<'_, AppState>) -> Result<
     .lock()
     .map_err(|_| "channel layout lock poisoned".to_string())?;
   *g = v;
+  Ok(())
+}
+
+/// Update spectrum channel selection. Applied on the capture thread for subsequent frames.
+#[tauri::command]
+pub fn set_spectrum_channel(
+  sel_type: String,
+  ch_x: u16,
+  ch_y: u16,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  use crate::dsp::SpectrumChannelSel;
+  let sel = match sel_type.as_str() {
+    "pair" => SpectrumChannelSel::Pair(ch_x, ch_y),
+    "single" => SpectrumChannelSel::Single(ch_x),
+    _ => return Err(format!("unknown spectrum_channel sel_type: {sel_type}")),
+  };
+  let mut g = state
+    .inner()
+    .spectrum_channel
+    .lock()
+    .map_err(|_| "spectrum channel lock poisoned".to_string())?;
+  *g = sel;
   Ok(())
 }
 

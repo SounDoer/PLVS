@@ -19,6 +19,7 @@ use super::cpal_backend::{
 };
 use super::device::DeviceInfo;
 use super::device_id;
+use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{FrameSubscribers, MeterHistoryBuf};
 
@@ -151,6 +152,7 @@ fn run_macos_tap_worker(
   clear_peak_history: Arc<AtomicBool>,
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
+  spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
   meter_history: MeterHistoryBuf,
   dropped_chunks: Arc<AtomicU64>,
 ) -> Result<(), String> {
@@ -170,6 +172,7 @@ fn run_macos_tap_worker(
       clear_for_thread,
       vectorscope_pair,
       channel_layout,
+      spectrum_channel,
       meter_history,
       dropped_for_thread,
       bridge_pool,
@@ -251,6 +254,7 @@ impl MacosTapCaptureSession {
     meter_history: MeterHistoryBuf,
     vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
+    spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
   ) -> Result<Self, String> {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let clear_peak_history = Arc::new(AtomicBool::new(false));
@@ -268,6 +272,7 @@ impl MacosTapCaptureSession {
           clear_worker,
           vectorscope_pair,
           channel_layout,
+          spectrum_channel,
           meter_history,
           dropped_chunks,
         )
@@ -295,6 +300,7 @@ pub fn start_session(
   meter_history: MeterHistoryBuf,
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
+  spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
 ) -> Result<Box<dyn AudioCaptureSession>, String> {
   if is_macos_loopback_selection(device_id) {
     Ok(Box::new(MacosTapCaptureSession::start(
@@ -304,6 +310,7 @@ pub fn start_session(
       meter_history,
       vectorscope_pair,
       channel_layout,
+      spectrum_channel,
     )?))
   } else {
     CpalBackend.start_session(
@@ -313,6 +320,7 @@ pub fn start_session(
       meter_history,
       vectorscope_pair,
       channel_layout,
+      spectrum_channel,
     )
   }
 }

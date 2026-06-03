@@ -5,6 +5,7 @@
 use tauri::AppHandle;
 
 use super::device::DeviceInfo;
+use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 use crate::ipc::types::MeterHistoryBuf;
@@ -27,6 +28,7 @@ pub trait AudioCaptureSession: Send {
 pub trait AudioCapture: Send + Sync {
   fn list_devices(&self) -> Result<Vec<DeviceInfo>, String>;
 
+  #[allow(clippy::too_many_arguments)]
   fn start_session(
     &self,
     device_id: &str,
@@ -35,5 +37,6 @@ pub trait AudioCapture: Send + Sync {
     meter_history: MeterHistoryBuf,
     vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
+    spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String>;
 }

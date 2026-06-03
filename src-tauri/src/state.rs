@@ -19,7 +19,6 @@ pub struct AppState {
   /// User-selected channel layout preset. Updated by UI; applied on the capture thread.
   pub channel_layout: Arc<Mutex<ChannelLayoutSetting>>,
   /// Selected channel(s) for spectrum analysis. Updated by UI; applied on the capture thread.
-  #[allow(dead_code)]
   pub spectrum_channel: Arc<Mutex<SpectrumChannelSel>>,
 }
 

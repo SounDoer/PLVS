@@ -10,7 +10,6 @@ pub struct PcmContext<'a> {
   pub now_sec: f64,
   pub channel_layout: ChannelLayoutSetting,
   pub vectorscope_pair: (u16, u16),
-  #[allow(dead_code)]
   pub spectrum_channel: SpectrumChannelSel,
 }
 

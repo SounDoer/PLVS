@@ -24,6 +24,7 @@ pub fn run() {
       ipc::commands::audio_start,
       ipc::commands::set_vectorscope_pair,
       ipc::commands::set_channel_layout,
+      ipc::commands::set_spectrum_channel,
       ipc::commands::audio_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_meter_history,
