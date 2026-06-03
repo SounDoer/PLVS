@@ -30,6 +30,13 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
         ("stereo".to_string(), false)
       }
     }
+    ChannelLayoutSetting::Surround71 => {
+      if ch >= 8 {
+        ("7.1".to_string(), true)
+      } else {
+        ("stereo".to_string(), false)
+      }
+    }
     ChannelLayoutSetting::Auto => {
       if ch <= 2 {
         ("stereo".to_string(), true)
@@ -357,6 +364,20 @@ mod tests {
   #[test]
   fn loudness_layout_meta_downgrades_manual_51_when_channels_too_low() {
     let (s, known) = loudness_layout_meta(2, ChannelLayoutSetting::Surround51);
+    assert_eq!(s, "stereo");
+    assert!(!known);
+  }
+
+  #[test]
+  fn loudness_layout_meta_marks_71_for_manual_71() {
+    let (s, known) = loudness_layout_meta(8, ChannelLayoutSetting::Surround71);
+    assert_eq!(s, "7.1");
+    assert!(known);
+  }
+
+  #[test]
+  fn loudness_layout_meta_downgrades_manual_71_when_channels_too_low() {
+    let (s, known) = loudness_layout_meta(6, ChannelLayoutSetting::Surround71);
     assert_eq!(s, "stereo");
     assert!(!known);
   }

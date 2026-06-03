@@ -12,6 +12,9 @@ pub enum ChannelLayoutSetting {
   /// 5.1 (FL, FR, C, LFE, SL, SR).
   #[serde(rename = "5.1")]
   Surround51,
+  /// 7.1 (FL, FR, C, LFE, BL, BR, SL, SR).
+  #[serde(rename = "7.1")]
+  Surround71,
 }
 
 impl ChannelLayoutSetting {
@@ -19,6 +22,7 @@ impl ChannelLayoutSetting {
     match s.trim().to_ascii_lowercase().as_str() {
       "stereo" => Self::Stereo,
       "5.1" | "5_1" | "surround51" | "surround-5.1" | "surround_5.1" => Self::Surround51,
+      "7.1" | "7_1" | "surround71" | "surround-7.1" | "surround_7.1" => Self::Surround71,
       _ => Self::Auto,
     }
   }
@@ -28,6 +32,7 @@ impl ChannelLayoutSetting {
       Self::Auto => "auto",
       Self::Stereo => "stereo",
       Self::Surround51 => "5.1",
+      Self::Surround71 => "7.1",
     }
   }
 }
@@ -66,10 +71,6 @@ mod tests {
       ChannelLayoutSetting::from_str_lossy("mono"),
       ChannelLayoutSetting::Auto
     );
-    assert_eq!(
-      ChannelLayoutSetting::from_str_lossy("7.1"),
-      ChannelLayoutSetting::Auto
-    );
   }
 
   #[test]
@@ -94,5 +95,30 @@ mod tests {
   #[test]
   fn default_is_auto() {
     assert_eq!(ChannelLayoutSetting::default(), ChannelLayoutSetting::Auto);
+  }
+
+  #[test]
+  fn from_str_lossy_surround71_variants() {
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("7.1"),
+      ChannelLayoutSetting::Surround71
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("7_1"),
+      ChannelLayoutSetting::Surround71
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("surround71"),
+      ChannelLayoutSetting::Surround71
+    );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("surround-7.1"),
+      ChannelLayoutSetting::Surround71
+    );
+  }
+
+  #[test]
+  fn as_str_round_trips_surround71() {
+    assert_eq!(ChannelLayoutSetting::Surround71.as_str(), "7.1");
   }
 }
