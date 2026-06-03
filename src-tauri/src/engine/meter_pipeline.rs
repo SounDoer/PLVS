@@ -129,7 +129,7 @@ impl MeterPipeline {
       self.apply_loudness_block(&lb);
     }
 
-    // --- Sample peak ---
+    // --- Sample peak (stereo L/R for history + slow payload) ---
     let (sl, sr) = if ch == 1 {
       sample_peak_db_mono(interleaved)
     } else {
@@ -360,4 +360,5 @@ mod tests {
     assert_eq!(s, "stereo");
     assert!(!known);
   }
+
 }

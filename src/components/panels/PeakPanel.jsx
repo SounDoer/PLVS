@@ -35,23 +35,8 @@ function AnimatedPeakFill({ dbValue }) {
   );
 }
 
-function AnimatedHoldLine({ holdDb, lineColor }) {
-  const reduceMotion = useReducedMotion();
-  const topPct = peakFromTopFrac(Math.max(PEAK_DB_MIN, Math.min(PEAK_DB_MAX, holdDb))) * 100;
-  return (
-    <motion.div
-      className="pointer-events-none absolute inset-x-0 z-[5] border-t"
-      initial={false}
-      animate={{ top: `${topPct}%` }}
-      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 38 }}
-      style={{ borderTopColor: lineColor }}
-    />
-  );
-}
-
 export function PeakPanel() {
-  const { displayAudio, peakLabelContext, getSamplePeakLineColor, fmt, hasTpMaxValue, tpMaxText } =
-    useAudioData();
+  const { displayAudio, peakLabelContext, fmt, hasTpMaxValue, tpMaxText } = useAudioData();
   const channels = getPeakChannels(displayAudio, peakLabelContext);
   return (
     <div
@@ -93,12 +78,6 @@ export function PeakPanel() {
               >
                 <div className="absolute inset-x-[var(--ui-meter-chart-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
                   <AnimatedPeakFill dbValue={c.valueDb} />
-                  {Number.isFinite(c.holdDb) && (
-                    <AnimatedHoldLine
-                      holdDb={c.holdDb}
-                      lineColor={getSamplePeakLineColor(c.holdDb)}
-                    />
-                  )}
                 </div>
                 <div className="@max-[220px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground">
                   {c.label}{" "}

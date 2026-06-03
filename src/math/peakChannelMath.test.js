@@ -3,11 +3,11 @@ import { getPeakChannels } from "./peakChannelMath";
 
 describe("getPeakChannels", () => {
   it("uses peakDb when present (multichannel) with layout labels", () => {
-    const ch = getPeakChannels({ peakDb: [-1, -2, -3], peakHoldDb: [-10, -20, -30] }, {});
+    const ch = getPeakChannels({ peakDb: [-1, -2, -3] }, {});
     expect(ch).toEqual([
-      { label: "L", valueDb: -1, holdDb: -10 },
-      { label: "R", valueDb: -2, holdDb: -20 },
-      { label: "C", valueDb: -3, holdDb: -30 },
+      { label: "L", valueDb: -1 },
+      { label: "R", valueDb: -2 },
+      { label: "C", valueDb: -3 },
     ]);
   });
 
@@ -25,15 +25,10 @@ describe("getPeakChannels", () => {
   });
 
   it("falls back to L/R when peakDb missing", () => {
-    const ch = getPeakChannels({
-      sampleL: -6,
-      sampleR: -7,
-      samplePeakMaxL: -1,
-      samplePeakMaxR: -2,
-    });
+    const ch = getPeakChannels({ sampleL: -6, sampleR: -7 });
     expect(ch).toEqual([
-      { label: "L", valueDb: -6, holdDb: -1 },
-      { label: "R", valueDb: -7, holdDb: -2 },
+      { label: "L", valueDb: -6 },
+      { label: "R", valueDb: -7 },
     ]);
   });
 });
