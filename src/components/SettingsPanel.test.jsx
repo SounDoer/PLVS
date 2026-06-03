@@ -53,7 +53,13 @@ describe("SettingsPanel", () => {
       <SettingsPanel
         {...BASE_PROPS}
         vectorscopePairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
-        spectrumChannelOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        onVectorscopePairChange={vi.fn()}
+        spectrumChannelOptions={[
+          { key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } },
+          { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+        ]}
+        spectrumChannelSel={{ type: "single", ch: 2 }}
+        onSpectrumChannelChange={vi.fn()}
       />
     );
 
