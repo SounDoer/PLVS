@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
+import { useAudioData } from "./AudioDataContext.jsx";
+import { PanelChannelSelector } from "../components/PanelChannelSelector.jsx";
 
 // ---------------------------------------------------------------------------
 // TabPill
@@ -79,6 +81,7 @@ export function LeafView({ node, path, style }) {
   const { visibleModules } = state;
   const { dragState, hoverDrop } = useDrag();
   const { hoveredModuleId } = useWorkspaceStore();
+  const audioData = useAudioData();
 
   const visibleTabs = node.tabs.filter((id) => visibleModules.includes(id));
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
@@ -162,6 +165,18 @@ export function LeafView({ node, path, style }) {
         ))}
 
         <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
+          <PanelChannelSelector
+            activeTab={activeTab}
+            channelCount={audioData?.channelCount ?? 0}
+            vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
+            vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
+            vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
+            onVectorscopeChange={audioData?.onVectorscopePairChange}
+            spectrumOptions={audioData?.spectrumChannelOptions ?? []}
+            spectrumValueKey={audioData?.spectrumValueKey ?? ""}
+            spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
+            onSpectrumChange={audioData?.onSpectrumChannelChange}
+          />
           <button
             type="button"
             aria-label="Fullscreen"

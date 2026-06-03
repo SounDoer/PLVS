@@ -45,6 +45,21 @@ describe("PanelChannelSelector", () => {
     }
   });
 
+  it("uses snapshot display label when provided by the caller", () => {
+    render(
+      <PanelChannelSelector
+        activeTab="spectrum"
+        channelCount={6}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumDisplayLabel="Historical L/R"
+        onSpectrumChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Historical L/R")).toBeTruthy();
+  });
+
   it("calls vectorscope change with the selected pair", () => {
     const onVectorscopeChange = vi.fn();
     render(

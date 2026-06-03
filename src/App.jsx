@@ -22,6 +22,7 @@ import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
   buildVectorscopePairOptions,
   clampVectorscopePairToAvailable,
+  formatVectorscopePairLabel,
 } from "./math/vectorscopePairMath.js";
 import {
   buildSpectrumChannelOptions,
@@ -183,6 +184,7 @@ export default function App() {
     displayVectorPath,
     hasHistoryData,
     correlation,
+    channelMetadata,
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
@@ -267,6 +269,26 @@ export default function App() {
     const labels = getPeakMeterChannelLabels(n, peakLabelContext);
     return buildSpectrumChannelOptions(n, labels);
   }, [channelCount, peakLabelContext]);
+  const spectrumValueKey =
+    spectrumChannelUi.type === "pair"
+      ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
+      : `s-${spectrumChannelUi.ch}`;
+  const spectrumLiveLabel =
+    spectrumChannelOptions.find((o) => o.key === spectrumValueKey)?.label ??
+    spectrumChannelOptions[0]?.label ??
+    "L/R";
+  const vectorscopeValueKey = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
+  const vectorscopeChannelLabels = getPeakMeterChannelLabels(
+    channelCount >= 2 ? channelCount : 2,
+    vectorscopeLabelContext
+  );
+  const vectorscopeLiveLabel = formatVectorscopePairLabel({
+    x: vectorscopePairUi.x,
+    y: vectorscopePairUi.y,
+    channelLabels: vectorscopeChannelLabels,
+  });
+  const spectrumDisplayLabel = channelMetadata?.frequencyLabel ?? spectrumLiveLabel;
+  const vectorscopeDisplayLabel = channelMetadata?.vectorscopePairLabel ?? vectorscopeLiveLabel;
 
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
@@ -327,6 +349,7 @@ export default function App() {
   }, [channelCount, spectrumChannelOptions, running]);
 
   const onVectorscopePairChange = async (pair) => {
+    if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     setVectorscopePairUi(pair);
     if (!isTauri()) return;
     try {
@@ -335,8 +358,15 @@ export default function App() {
   };
 
   const onSpectrumChannelChange = async (sel) => {
+    const prevLabel = spectrumLiveLabel;
+    const nextKey = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
+    const nextLabel = spectrumChannelOptions.find((o) => o.key === nextKey)?.label ?? prevLabel;
+    if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     setSpectrumChannelUi(sel);
     spectrumChannelRef.current = sel;
+    if (running && prevLabel !== nextLabel) {
+      intakeRef.current.setPendingFrequencyMarker({ from: prevLabel, to: nextLabel });
+    }
     if (!isTauri()) return;
     try {
       await setSpectrumChannel(sel);
@@ -592,6 +622,13 @@ export default function App() {
     setStatus("History snapshot (not live input)");
   }, [running, selectedOffset]);
 
+  useEffect(() => {
+    intakeRef.current.setCurrentChannelMetadata({
+      frequencyLabel: spectrumLiveLabel,
+      vectorscopePairLabel: vectorscopeLiveLabel,
+    });
+  }, [spectrumLiveLabel, vectorscopeLiveLabel]);
+
   useAudioEngine({
     running,
     captureDeviceId,
@@ -631,6 +668,10 @@ export default function App() {
     vsGridDiagFar,
     displayVectorPath,
     correlation,
+    vectorscopePairOptions,
+    vectorscopeValueKey,
+    vectorscopeDisplayLabel,
+    onVectorscopePairChange,
     vectorscopePairX: vectorscopePairUi.x,
     vectorscopePairY: vectorscopePairUi.y,
     // Shared
@@ -670,6 +711,10 @@ export default function App() {
     // Spectrum
     displaySpectrumPath,
     displaySpectrumPeakPath,
+    spectrumChannelOptions,
+    spectrumValueKey,
+    spectrumDisplayLabel,
+    onSpectrumChannelChange,
     spectrumHover,
     onSpectrumHoverMove,
     onSpectrumHoverLeave,
