@@ -412,6 +412,7 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, void 
     if (status != noErr) {
       AudioHardwareDestroyAggregateDevice(aggregate_id);
       AudioHardwareDestroyProcessTap(tap_id);
+      free(h->interleave_buf);
       free(h);
       if (err_out && err_cap > 0) {
         snprintf(err_out, err_cap, "AudioDeviceCreateIOProcID failed: %d", (int)status);
@@ -424,6 +425,7 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, void 
       AudioDeviceDestroyIOProcID(aggregate_id, h->io_proc_id);
       AudioHardwareDestroyAggregateDevice(aggregate_id);
       AudioHardwareDestroyProcessTap(tap_id);
+      free(h->interleave_buf);
       free(h);
       if (err_out && err_cap > 0) {
         snprintf(err_out, err_cap, "AudioDeviceStart failed: %d", (int)status);
