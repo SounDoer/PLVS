@@ -81,7 +81,7 @@ mod tests {
     let history = Arc::new(Mutex::new(VecDeque::new()));
     let mut pipeline = MeterPipeline::new(sr, channels, history.clone());
     let pcm_lr = tone_on_channel(4096 * 8, channels as usize, sr as f64, 1000.0, 0);
-    let pcm_c = tone_on_channel(4096 * 8, channels as usize, sr as f64, 500.0, 2);
+    let pcm_c_short = tone_on_channel(256, channels as usize, sr as f64, 500.0, 2);
 
     let _ = pipeline.push_pcm_f32(
       &pcm_lr,
@@ -105,7 +105,7 @@ mod tests {
     );
 
     let _ = pipeline.push_pcm_f32(
-      &pcm_c,
+      &pcm_c_short,
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Single(2),
