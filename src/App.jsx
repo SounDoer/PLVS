@@ -728,14 +728,37 @@ export default function App() {
               <span className="min-w-0 truncate tabular-nums text-foreground">
                 {referenceLufs} LUFS
               </span>
-              {layoutResolution.resolved === "unknown" && channelCount > 2 && (
-                <>
-                  <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                  <span className="min-w-0 truncate text-muted-foreground">
-                    Multichannel detected ({channelCount} ch) · Select layout in Settings
-                  </span>
-                </>
-              )}
+              {(() => {
+                // Auto mode: unknown channel count — user needs to pick a layout manually.
+                if (
+                  channelLayout === "auto" &&
+                  layoutResolution.resolved === "unknown" &&
+                  channelCount > 0
+                ) {
+                  return (
+                    <>
+                      <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                      <span className="min-w-0 truncate text-muted-foreground">
+                        {channelCount}-channel detected · Select layout in Settings
+                      </span>
+                    </>
+                  );
+                }
+                // Manual mode: selection doesn't match what auto would detect.
+                const autoResolved = resolveChannelLayout("auto", { channelCount }).resolved;
+                if (channelLayout !== "auto" && channelLayout !== autoResolved) {
+                  return (
+                    <>
+                      <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                      <span className="min-w-0 truncate text-muted-foreground">
+                        Device is {autoResolved === "unknown" ? `${channelCount}-ch` : autoResolved}{" "}
+                        · selected {channelLayout}
+                      </span>
+                    </>
+                  );
+                }
+                return null;
+              })()}
             </footer>
           </div>
 
