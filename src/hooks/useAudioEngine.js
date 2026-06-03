@@ -6,6 +6,7 @@ import {
   stopAudioCapture,
   setChannelLayout,
   setVectorscopePair,
+  setSpectrumChannel,
 } from "../ipc/commands.js";
 import { onLoudnessSlow } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
@@ -27,6 +28,7 @@ export function useAudioEngine({
   intake,
   selectedOffsetRef,
   vectorscopePairRef,
+  spectrumChannelRef,
   setAudio,
   setSpectrumPath,
   setSpectrumPeakPath,
@@ -144,6 +146,11 @@ export function useAudioEngine({
           try {
             const p = vectorscopePairRef?.current ?? { x: 0, y: 1 };
             await setVectorscopePair({ x: p.x, y: p.y });
+          } catch (_) {}
+
+          try {
+            const sc = spectrumChannelRef?.current ?? { type: "pair", x: 0, y: 1 };
+            await setSpectrumChannel(sc);
           } catch (_) {}
 
           await startAudioCapture({

@@ -14,6 +14,7 @@
 export { UI_PREFERENCES } from "./preferences/data.js";
 export {
   readPersistedVectorscopePair,
+  readPersistedSpectrumChannel,
   readSystemPrefersDark,
 } from "./preferences/layoutPersistence.js";
 export {

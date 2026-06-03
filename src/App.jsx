@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider } from "./workspace/WorkspaceContext.jsx";
 import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
-import { UI_PREFERENCES, readPersistedVectorscopePair } from "./uiPreferences";
+import {
+  UI_PREFERENCES,
+  readPersistedVectorscopePair,
+  readPersistedSpectrumChannel,
+} from "./uiPreferences";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
@@ -19,6 +23,11 @@ import {
   buildVectorscopePairOptions,
   clampVectorscopePairToAvailable,
 } from "./math/vectorscopePairMath.js";
+import {
+  buildSpectrumChannelOptions,
+  clampSpectrumChannelToAvailable,
+} from "./math/spectrumChannelOptions.js";
+import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StatusPill } from "./components/StatusPill.jsx";
@@ -40,7 +49,7 @@ import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shell
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
-import { clearAudioHistory, setVectorscopePair } from "./ipc/commands.js";
+import { clearAudioHistory, setVectorscopePair, setSpectrumChannel } from "./ipc/commands.js";
 import packageInfo from "../package.json";
 
 const HIST_MAX_SAMPLES = 36000;
@@ -108,6 +117,7 @@ export default function App() {
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
   const [vectorscopePairUi, setVectorscopePairUi] = useState(() => readPersistedVectorscopePair());
+  const [spectrumChannelUi, setSpectrumChannelUi] = useState(() => readPersistedSpectrumChannel());
   const [audio, setAudio] = useState({
     peakDb: [],
     peakHoldDb: [],
@@ -162,6 +172,7 @@ export default function App() {
   );
   const selectedOffsetRef = useRef(-1);
   const vectorscopePairRef = useRef(readPersistedVectorscopePair());
+  const spectrumChannelRef = useRef(readPersistedSpectrumChannel());
 
   const {
     histSourceList,
@@ -251,6 +262,12 @@ export default function App() {
     return buildVectorscopePairOptions(n, vectorscopeLabelContext);
   }, [channelCount, vectorscopeLabelContext]);
 
+  const spectrumChannelOptions = useMemo(() => {
+    const n = channelCount >= 2 ? channelCount : 2;
+    const labels = getPeakMeterChannelLabels(n, peakLabelContext);
+    return buildSpectrumChannelOptions(n, labels);
+  }, [channelCount, peakLabelContext]);
+
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
     if (captureDeviceId === "default") {
@@ -297,6 +314,18 @@ export default function App() {
     if (isTauri() && running) void setVectorscopePair({ x: next.x, y: next.y });
   }, [channelCount, vectorscopeLabelContext, vectorscopePairUi.x, vectorscopePairUi.y, running]);
 
+  useEffect(() => {
+    const next = clampSpectrumChannelToAvailable(spectrumChannelUi, spectrumChannelOptions);
+    const curKey =
+      spectrumChannelUi.type === "pair"
+        ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
+        : `s-${spectrumChannelUi.ch}`;
+    const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
+    if (curKey === nxtKey) return;
+    setSpectrumChannelUi(next);
+    if (isTauri() && running) void setSpectrumChannel(next);
+  }, [channelCount, spectrumChannelOptions, running]);
+
   const onVectorscopePairChange = async (pair) => {
     setVectorscopePairUi(pair);
     if (!isTauri()) return;
@@ -305,9 +334,22 @@ export default function App() {
     } catch (_) {}
   };
 
+  const onSpectrumChannelChange = async (sel) => {
+    setSpectrumChannelUi(sel);
+    spectrumChannelRef.current = sel;
+    if (!isTauri()) return;
+    try {
+      await setSpectrumChannel(sel);
+    } catch (_) {}
+  };
+
   useEffect(() => {
     vectorscopePairRef.current = vectorscopePairUi;
   }, [vectorscopePairUi]);
+
+  useEffect(() => {
+    spectrumChannelRef.current = spectrumChannelUi;
+  }, [spectrumChannelUi]);
 
   const {
     historyHover,
@@ -486,6 +528,15 @@ export default function App() {
         s.channelLayout === "7.1"
       )
         setChannelLayout(s.channelLayout);
+      if (
+        s.spectrumChannelType === "pair" &&
+        typeof s.spectrumChannelX === "number" &&
+        typeof s.spectrumChannelY === "number"
+      ) {
+        setSpectrumChannelUi({ type: "pair", x: s.spectrumChannelX, y: s.spectrumChannelY });
+      } else if (s.spectrumChannelType === "single" && typeof s.spectrumChannelCh === "number") {
+        setSpectrumChannelUi({ type: "single", ch: s.spectrumChannelCh });
+      }
     } catch (_) {}
   }, []);
 
@@ -510,6 +561,10 @@ export default function App() {
           channelLayout,
           vectorscopePairX: vectorscopePairUi.x,
           vectorscopePairY: vectorscopePairUi.y,
+          spectrumChannelType: spectrumChannelUi.type,
+          spectrumChannelX: spectrumChannelUi.type === "pair" ? spectrumChannelUi.x : 0,
+          spectrumChannelY: spectrumChannelUi.type === "pair" ? spectrumChannelUi.y : 0,
+          spectrumChannelCh: spectrumChannelUi.type === "single" ? spectrumChannelUi.ch : 0,
         })
       );
     } catch (_) {}
@@ -524,6 +579,7 @@ export default function App() {
     fixedThemeSelectValue,
     channelLayout,
     vectorscopePairUi,
+    spectrumChannelUi,
   ]);
 
   useEffect(() => {
@@ -550,6 +606,7 @@ export default function App() {
     intake: intakeRef.current,
     selectedOffsetRef,
     vectorscopePairRef,
+    spectrumChannelRef,
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,
@@ -778,6 +835,9 @@ export default function App() {
             vectorscopePairX={vectorscopePairUi.x}
             vectorscopePairY={vectorscopePairUi.y}
             onVectorscopePairChange={onVectorscopePairChange}
+            spectrumChannelOptions={spectrumChannelOptions}
+            spectrumChannelSel={spectrumChannelUi}
+            onSpectrumChannelChange={onSpectrumChannelChange}
             appVersion={APP_VERSION}
           />
         </div>
