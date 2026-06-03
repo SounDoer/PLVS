@@ -381,4 +381,11 @@ mod tests {
     assert_eq!(s, "stereo");
     assert!(!known);
   }
+
+  #[test]
+  fn loudness_layout_meta_downgrades_manual_71_at_boundary() {
+    let (s, known) = loudness_layout_meta(7, ChannelLayoutSetting::Surround71);
+    assert_eq!(s, "stereo");
+    assert!(!known);
+  }
 }

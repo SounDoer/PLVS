@@ -115,6 +115,10 @@ mod tests {
       ChannelLayoutSetting::from_str_lossy("surround-7.1"),
       ChannelLayoutSetting::Surround71
     );
+    assert_eq!(
+      ChannelLayoutSetting::from_str_lossy("surround_7.1"),
+      ChannelLayoutSetting::Surround71
+    );
   }
 
   #[test]
