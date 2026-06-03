@@ -12,6 +12,16 @@ import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { buildHistoryTimeAxisLabels, HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory";
+import { HelpPopover } from "../HelpPopover";
+
+const SPECTROGRAM_HELP = [
+  "Left click - Select snapshot",
+  "Left drag - Scrub timeline",
+  "Left double-click - Return to live",
+  "Right drag - Pan timeline",
+  "Right double-click - Reset window and offset",
+  "Mouse wheel - Wheel up/down to zoom in/out",
+];
 
 export function SpectrogramPanel({ compact = false }) {
   const {
@@ -68,9 +78,14 @@ export function SpectrogramPanel({ compact = false }) {
     <div
       className={cn(
         PANEL_MIN_SPECTROGRAM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
+      <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
+        <div className="pointer-events-auto">
+          <HelpPopover items={SPECTROGRAM_HELP} />
+        </div>
+      </div>
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(

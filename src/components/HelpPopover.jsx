@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -77,15 +78,28 @@ function iconForHint(item) {
 }
 
 export function HelpPopover({ items }) {
+  const [open, setOpen] = useState(false);
+  const closeTimer = useRef(null);
+
+  const scheduleClose = () => {
+    closeTimer.current = setTimeout(() => setOpen(false), 100);
+  };
+  const cancelClose = () => clearTimeout(closeTimer.current);
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-7 shrink-0 rounded-full border border-border text-muted-foreground hover:text-foreground"
+          className="size-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
           aria-label="Shortcuts and gestures"
+          onMouseEnter={() => {
+            cancelClose();
+            setOpen(true);
+          }}
+          onMouseLeave={scheduleClose}
         >
           <CircleHelp className="size-4" aria-hidden />
         </Button>
@@ -94,6 +108,8 @@ export function HelpPopover({ items }) {
         side="bottom"
         align="start"
         sideOffset={6}
+        onMouseEnter={cancelClose}
+        onMouseLeave={scheduleClose}
         className={cn(
           "flex w-max max-w-[min(100vw-1rem,24rem)] flex-col gap-1 p-3 text-[length:var(--ui-fs-metric-meta)]"
         )}
