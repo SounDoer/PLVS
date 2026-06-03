@@ -244,7 +244,9 @@ export default function App() {
   const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
   // Maps old startMode values to new 3-state chrome vocabulary
   const chromeState = startMode === "stop" ? "live" : startMode === "live" ? "snapshot" : "ready";
-  const channelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
+  const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
+  const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
+  const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
   const layoutResolution = useMemo(
     () => resolveChannelLayout(channelLayout, { channelCount }),
     [channelLayout, channelCount]
@@ -349,6 +351,15 @@ export default function App() {
   }, [channelCount, spectrumChannelOptions, running]);
 
   const onVectorscopePairChange = async (pair) => {
+    const nextVectorscopeLabel = formatVectorscopePairLabel({
+      x: pair.x,
+      y: pair.y,
+      channelLabels: vectorscopeChannelLabels,
+    });
+    intakeRef.current.setCurrentChannelMetadata({
+      frequencyLabel: spectrumLiveLabel,
+      vectorscopePairLabel: nextVectorscopeLabel,
+    });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     setVectorscopePairUi(pair);
     if (!isTauri()) return;
@@ -361,6 +372,10 @@ export default function App() {
     const prevLabel = spectrumLiveLabel;
     const nextKey = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
     const nextLabel = spectrumChannelOptions.find((o) => o.key === nextKey)?.label ?? prevLabel;
+    intakeRef.current.setCurrentChannelMetadata({
+      frequencyLabel: nextLabel,
+      vectorscopePairLabel: vectorscopeLiveLabel,
+    });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     setSpectrumChannelUi(sel);
     spectrumChannelRef.current = sel;
