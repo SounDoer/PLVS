@@ -85,6 +85,11 @@ export function getPeakMeterChannelLabels(channelCount, ctx = {}) {
     }
   }
 
+  // Auto mode with unknown layout: skip name matching to avoid mislabelling channels.
+  if (ctx.resolvedLayout === "unknown") {
+    return Array.from({ length: n }, (_, i) => `Ch ${i + 1}`);
+  }
+
   const exact = labelsForExactChannelCount(n);
   if (exact) {
     return exact;

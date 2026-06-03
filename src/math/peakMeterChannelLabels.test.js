@@ -42,4 +42,47 @@ describe("getPeakMeterChannelLabels", () => {
       PEAK_METER_CHANNEL_FORMATS.surround51.labels
     );
   });
+
+  it("shows numbered labels when resolvedLayout is unknown, regardless of channel count", () => {
+    expect(getPeakMeterChannelLabels(6, { resolvedLayout: "unknown" })).toEqual([
+      "Ch 1",
+      "Ch 2",
+      "Ch 3",
+      "Ch 4",
+      "Ch 5",
+      "Ch 6",
+    ]);
+    expect(getPeakMeterChannelLabels(8, { resolvedLayout: "unknown" })).toEqual([
+      "Ch 1",
+      "Ch 2",
+      "Ch 3",
+      "Ch 4",
+      "Ch 5",
+      "Ch 6",
+      "Ch 7",
+      "Ch 8",
+    ]);
+    expect(getPeakMeterChannelLabels(2, { resolvedLayout: "unknown" })).toEqual(["Ch 1", "Ch 2"]);
+  });
+
+  it("shows ITU labels when resolvedLayout is a known format", () => {
+    expect(getPeakMeterChannelLabels(8, { resolvedLayout: "7.1" })).toEqual([
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Ls",
+      "Rs",
+      "Lb",
+      "Rb",
+    ]);
+    expect(getPeakMeterChannelLabels(6, { resolvedLayout: "5.1" })).toEqual([
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Ls",
+      "Rs",
+    ]);
+  });
 });
