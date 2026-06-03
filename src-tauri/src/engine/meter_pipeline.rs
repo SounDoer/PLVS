@@ -52,7 +52,7 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
 pub struct MeterPipeline {
   channels: u16,
   loudness: LoudnessMeter,
-  pub(crate) spectrum: SpectrumMeter,
+  spectrum: SpectrumMeter,
   vectorscope: VectorscopeMeter,
   last_spectrum_channel: SpectrumChannelSel,
   last_loudness: Option<LoudnessBlock>,
@@ -350,11 +350,38 @@ impl MeterPipeline {
 mod tests {
   use super::*;
   use crate::dsp::SpectrumChannelSel;
+  use crate::ipc::types::MeterHistoryEntry;
   use std::collections::VecDeque;
   use std::sync::{Arc, Mutex};
 
   fn dummy_history() -> MeterHistoryBuf {
     Arc::new(Mutex::new(VecDeque::new()))
+  }
+
+  fn dummy_history_entry() -> MeterHistoryEntry {
+    MeterHistoryEntry {
+      lufs_momentary: -20.0,
+      lufs_short_term: -18.0,
+      integrated: -19.0,
+      lra: 3.0,
+      true_peak_l: -1.0,
+      true_peak_r: -1.5,
+      true_peak_max_dbtp: -1.0,
+      sample_l_db: -2.0,
+      sample_r_db: -2.5,
+      sample_peak_max_l: -2.0,
+      sample_peak_max_r: -2.5,
+      correlation: 0.5,
+      vectorscope_path: "M 0 0".to_string(),
+      vectorscope_pair_x: 0,
+      vectorscope_pair_y: 1,
+      spectrum_path: "M 0 100".to_string(),
+      spectrum_peak_path: "".to_string(),
+      spectrum_band_centers_hz: vec![100.0, 1000.0],
+      spectrum_smooth_db: vec![-30.0, -20.0],
+      loudness_layout: "5.1".to_string(),
+      loudness_layout_known: true,
+    }
   }
 
   fn tone_on_channel(frames: usize, channels: usize, sr: f64, hz: f64, ch: usize) -> Vec<f32> {
@@ -386,7 +413,12 @@ mod tests {
       !before_change.is_empty(),
       "spectrum should produce output before the channel change"
     );
-    let history_len_before_change = history.lock().unwrap().len();
+    {
+      let mut g = history.lock().unwrap();
+      g.push_back(dummy_history_entry());
+    }
+    let history_before_change: Vec<_> = history.lock().unwrap().iter().cloned().collect();
+    assert!(!history_before_change.is_empty());
 
     let _ = pipeline.push_pcm_f32(
       &pcm_c_short,
@@ -399,10 +431,21 @@ mod tests {
       immediately_after_change.is_empty(),
       "spectrum output should be reset immediately after selecting a new channel"
     );
+    let history_after_change: Vec<_> = history.lock().unwrap().iter().cloned().collect();
     assert_eq!(
-      history.lock().unwrap().len(),
-      history_len_before_change,
-      "frequency reset must not repopulate or clear global meter history"
+      history_after_change.len(),
+      history_before_change.len(),
+      "frequency reset must not add or remove global meter history entries"
+    );
+    assert_eq!(
+      history_after_change[0].spectrum_path,
+      history_before_change[0].spectrum_path,
+      "frequency reset must not mutate existing global meter history entries"
+    );
+    assert_eq!(
+      history_after_change[0].lufs_momentary,
+      history_before_change[0].lufs_momentary,
+      "frequency reset must not mutate existing global meter history entries"
     );
   }
 
