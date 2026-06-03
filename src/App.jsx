@@ -171,6 +171,14 @@ export default function App() {
     }),
     []
   );
+  const frequencyMarkerRef = useMemo(
+    () => ({
+      get current() {
+        return intakeRef.current.getFrequencyChannelMarkers();
+      },
+    }),
+    []
+  );
   const selectedOffsetRef = useRef(-1);
   const vectorscopePairRef = useRef(readPersistedVectorscopePair());
   const spectrumChannelRef = useRef(readPersistedSpectrumChannel());
@@ -735,6 +743,7 @@ export default function App() {
     onSpectrumHoverLeave,
     // Spectrogram
     spectrogramSnapRef,
+    frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,

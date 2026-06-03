@@ -26,6 +26,7 @@ const SPECTROGRAM_HELP = [
 export function SpectrogramPanel({ compact = false }) {
   const {
     spectrogramSnapRef: snapRef,
+    frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
     selectedOffset,
@@ -55,6 +56,20 @@ export function SpectrogramPanel({ compact = false }) {
       (selectedOffset / HIST_SAMPLE_SEC - effectiveOffsetSamples) / Math.max(1, visibleSamples - 1);
     return (1 - Math.max(0, Math.min(1, norm))) * 1000;
   }, [selectedOffset, effectiveOffsetSamples, visibleSamples]);
+
+  const visibleFrequencyMarkers = useMemo(() => {
+    const markers = frequencyMarkerRef?.current ?? [];
+    if (!markers.length || visibleSamples <= 0 || totalSamples <= 0) return [];
+    const newestVisible = totalSamples - 1 - effectiveOffsetSamples;
+    const oldestVisible = newestVisible - visibleSamples + 1;
+    return markers
+      .map((marker, idx) => ({ marker, idx }))
+      .filter(({ marker, idx }) => marker && idx >= oldestVisible && idx <= newestVisible)
+      .map(({ marker, idx }) => ({
+        marker,
+        x: ((idx - oldestVisible) / Math.max(1, visibleSamples - 1)) * 1000,
+      }));
+  }, [frequencyMarkerRef, effectiveOffsetSamples, visibleSamples, totalSamples]);
 
   useSpectrogramCanvas({
     canvasRef,
@@ -136,22 +151,40 @@ export function SpectrogramPanel({ compact = false }) {
                   setSelectedOffset(-1);
                 }}
               />
-              {selectedOffset >= 0 && showSelLine ? (
+              {(selectedOffset >= 0 && showSelLine) || visibleFrequencyMarkers.length > 0 ? (
                 <svg
                   viewBox="0 0 1000 1000"
                   preserveAspectRatio="none"
                   className="pointer-events-none absolute inset-0 h-full w-full"
                 >
-                  <line
-                    x1={selLineSvgX}
-                    x2={selLineSvgX}
-                    y1={0}
-                    y2={1000}
-                    stroke="var(--ui-chart-selection)"
-                    strokeWidth="var(--ui-lh-stroke-sel-w)"
-                    strokeDasharray="5 4"
-                    vectorEffect="non-scaling-stroke"
-                  />
+                  {visibleFrequencyMarkers.map(({ marker, x }) => (
+                    <line
+                      key={`${x}-${marker.from}-${marker.to}`}
+                      x1={x}
+                      x2={x}
+                      y1={0}
+                      y2={1000}
+                      stroke="var(--muted-foreground)"
+                      strokeWidth="1"
+                      strokeDasharray="2 4"
+                      opacity="0.55"
+                      vectorEffect="non-scaling-stroke"
+                    >
+                      <title>{`Frequency channel changed: ${marker.from} -> ${marker.to}`}</title>
+                    </line>
+                  ))}
+                  {selectedOffset >= 0 && showSelLine ? (
+                    <line
+                      x1={selLineSvgX}
+                      x2={selLineSvgX}
+                      y1={0}
+                      y2={1000}
+                      stroke="var(--ui-chart-selection)"
+                      strokeWidth="var(--ui-lh-stroke-sel-w)"
+                      strokeDasharray="5 4"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ) : null}
                 </svg>
               ) : null}
             </div>
