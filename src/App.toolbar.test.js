@@ -22,4 +22,11 @@ describe("App toolbar", () => {
     expect(appSource).not.toContain("title={deviceDisplay?.full}");
     expect(appSource).toContain("w-[min(28rem,92vw)]");
   });
+
+  it("does not sync live vectorscope selection from snapshot display audio", () => {
+    expect(appSource).toContain("if (!running || selectedOffset >= 0) return;");
+    expect(appSource).toContain(
+      "[running, selectedOffset, displayAudio?.vectorscopePairX, displayAudio?.vectorscopePairY]"
+    );
+  });
 });

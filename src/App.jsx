@@ -325,7 +325,7 @@ export default function App() {
     : "Not connected";
 
   useEffect(() => {
-    if (!running) return;
+    if (!running || selectedOffset >= 0) return;
     const x = Number.isFinite(displayAudio?.vectorscopePairX)
       ? Number(displayAudio.vectorscopePairX)
       : 0;
@@ -333,7 +333,7 @@ export default function App() {
       ? Number(displayAudio.vectorscopePairY)
       : 1;
     setVectorscopePairUi({ x, y });
-  }, [running, displayAudio?.vectorscopePairX, displayAudio?.vectorscopePairY]);
+  }, [running, selectedOffset, displayAudio?.vectorscopePairX, displayAudio?.vectorscopePairY]);
 
   useEffect(() => {
     const next = clampVectorscopePairToAvailable(
