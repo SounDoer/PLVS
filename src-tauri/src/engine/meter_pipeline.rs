@@ -37,13 +37,13 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
         ("stereo".to_string(), false)
       }
     }
-    ChannelLayoutSetting::Auto => {
-      if ch <= 2 {
-        ("stereo".to_string(), true)
-      } else {
-        ("unknown".to_string(), false)
-      }
-    }
+    ChannelLayoutSetting::Auto => match ch {
+      1 => ("mono".to_string(),    true),
+      2 => ("stereo".to_string(),  true),
+      6 => ("5.1".to_string(),     true),
+      8 => ("7.1".to_string(),     true),
+      _ => ("unknown".to_string(), false),
+    },
   }
 }
 
@@ -348,10 +348,10 @@ mod tests {
   }
 
   #[test]
-  fn loudness_layout_meta_marks_unknown_for_auto_multichannel() {
+  fn loudness_layout_meta_detects_51_for_auto_multichannel() {
     let (s, known) = loudness_layout_meta(6, ChannelLayoutSetting::Auto);
-    assert_eq!(s, "unknown");
-    assert!(!known);
+    assert_eq!(s, "5.1");
+    assert!(known);
   }
 
   #[test]
@@ -387,5 +387,35 @@ mod tests {
     let (s, known) = loudness_layout_meta(7, ChannelLayoutSetting::Surround71);
     assert_eq!(s, "stereo");
     assert!(!known);
+  }
+
+  #[test]
+  fn auto_layout_meta_1ch_is_mono() {
+    assert_eq!(loudness_layout_meta(1, ChannelLayoutSetting::Auto), ("mono".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_2ch_is_stereo() {
+    assert_eq!(loudness_layout_meta(2, ChannelLayoutSetting::Auto), ("stereo".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_6ch_is_51() {
+    assert_eq!(loudness_layout_meta(6, ChannelLayoutSetting::Auto), ("5.1".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_8ch_is_71() {
+    assert_eq!(loudness_layout_meta(8, ChannelLayoutSetting::Auto), ("7.1".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_3ch_is_unknown() {
+    assert_eq!(loudness_layout_meta(3, ChannelLayoutSetting::Auto), ("unknown".to_string(), false));
+  }
+
+  #[test]
+  fn manual_71_on_6ch_falls_back() {
+    assert_eq!(loudness_layout_meta(6, ChannelLayoutSetting::Surround71), ("stereo".to_string(), false));
   }
 }
