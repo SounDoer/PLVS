@@ -8,6 +8,7 @@ function freezeSnapshot(intake) {
     vector: [...intake.getVectorSnap()],
     corr: [...intake.getCorrSnap()],
     audio: [...intake.getAudioSnap()],
+    channelMetadata: [...(intake.getChannelMetadataSnap?.() ?? [])],
   };
 }
 
@@ -31,6 +32,9 @@ export function useSnapshot({
   const snapSpecDataList = snapSource ? snapSource.spectrumData : intake.getSpectrumDataSnap();
   const snapVecList = snapSource ? snapSource.vector : intake.getVectorSnap();
   const snapAudioList = snapSource ? snapSource.audio : intake.getAudioSnap();
+  const snapChannelMetadataList = snapSource
+    ? snapSource.channelMetadata
+    : (intake.getChannelMetadataSnap?.() ?? []);
 
   const selectedHistSteps =
     selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / sampleSec)) : -1;
@@ -55,6 +59,8 @@ export function useSnapshot({
     snapIdx >= 0 && Number.isFinite(snapCorrList[snapIdx])
       ? snapCorrList[snapIdx]
       : displayAudio.correlation;
+  const channelMetadata =
+    snapIdx >= 0 && snapChannelMetadataList[snapIdx] ? snapChannelMetadataList[snapIdx] : null;
 
   return {
     histSourceList,
@@ -65,5 +71,6 @@ export function useSnapshot({
     displayVectorPath,
     hasHistoryData,
     correlation,
+    channelMetadata,
   };
 }

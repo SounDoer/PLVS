@@ -64,4 +64,40 @@ describe("useSnapshot", () => {
     expect(result.current.displaySpectrumPath).toBe("live-spectrum");
     expect(result.current.displaySpectrumPeakPath).toBe("live-peak");
   });
+
+  it("returns channel metadata for the selected snapshot tick", () => {
+    const intake = {
+      getLoudnessHistory: () => [
+        { m: -20, st: -18 },
+        { m: -21, st: -19 },
+      ],
+      getSpectrumSnap: () => ["old-spectrum", "new-spectrum"],
+      getSpectrumDataSnap: () => [{ dbList: [-20] }, { dbList: [-30] }],
+      getVectorSnap: () => ["old-vector", "new-vector"],
+      getCorrSnap: () => [0.1, 0.2],
+      getAudioSnap: () => [{ correlation: 0.1 }, { correlation: 0.2 }],
+      getSpectrumData: () => ({ dbList: [-1] }),
+      getChannelMetadataSnap: () => [
+        { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
+        { frequencyLabel: "C", vectorscopePairLabel: "L/C" },
+      ],
+    };
+
+    const { result } = renderHook(() =>
+      useSnapshot({
+        selectedOffset: 0,
+        sampleSec: 0.1,
+        intake,
+        audio: { correlation: 0 },
+        spectrumPath: "live-spectrum",
+        spectrumPeakPath: "live-peak",
+        vectorPath: "live-vector",
+      })
+    );
+
+    expect(result.current.channelMetadata).toEqual({
+      frequencyLabel: "C",
+      vectorscopePairLabel: "L/C",
+    });
+  });
 });
