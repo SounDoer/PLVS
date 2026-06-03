@@ -438,13 +438,11 @@ mod tests {
       "frequency reset must not add or remove global meter history entries"
     );
     assert_eq!(
-      history_after_change[0].spectrum_path,
-      history_before_change[0].spectrum_path,
+      history_after_change[0].spectrum_path, history_before_change[0].spectrum_path,
       "frequency reset must not mutate existing global meter history entries"
     );
     assert_eq!(
-      history_after_change[0].lufs_momentary,
-      history_before_change[0].lufs_momentary,
+      history_after_change[0].lufs_momentary, history_before_change[0].lufs_momentary,
       "frequency reset must not mutate existing global meter history entries"
     );
   }
