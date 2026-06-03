@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-03
+
+### Added
+
+- 7.1 surround channel layout preset (FL, FR, C, LFE, BL, BR, SL, SR); selectable in Settings alongside the existing 5.1 preset.
+- Peak meter now displays ITU channel labels (L, R, C, LFE, Ls, Rs, Lb, Rb) when a layout is explicitly selected in Settings.
+- Peak meter shows numbered labels (Ch 1, Ch 2 …) in Auto mode when the channel layout cannot be determined.
+- Footer prompt "Multichannel detected (N ch) · Select layout in Settings" appears when a multichannel device is active in Auto mode.
+- Peak meter capped at 16 channels; devices beyond that display the first 16 channels.
+
+### Fixed
+
+- macOS: Peak meter now correctly meters multichannel audio (5.1, 7.1) delivered as non-interleaved Core Audio buffers — previously all channel bars showed −∞ due to each channel being forwarded as a separate mono call.
+
 ## [0.1.0] - 2026-05-29
 
 ### Added
