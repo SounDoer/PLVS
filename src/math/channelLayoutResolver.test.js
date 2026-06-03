@@ -27,6 +27,14 @@ describe("resolveChannelLayout", () => {
     });
   });
 
+  it("resolves manual 7.1 preset", () => {
+    expect(resolveChannelLayout("7.1")).toEqual({
+      mode: "manual",
+      setting: "7.1",
+      resolved: "7.1",
+    });
+  });
+
   it("treats invalid setting as auto", () => {
     // @ts-expect-error - runtime safety test
     expect(resolveChannelLayout("quad")).toEqual({
