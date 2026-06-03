@@ -93,7 +93,7 @@ export function HelpPopover({ items }) {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+          className="size-7 shrink-0 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
           aria-label="Shortcuts and gestures"
           onMouseEnter={() => {
             cancelClose();
