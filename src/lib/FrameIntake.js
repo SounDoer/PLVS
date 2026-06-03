@@ -62,6 +62,13 @@ export class FrameIntake {
     this._spectrumSnap = [];
     this._spectrumDataSnap = [];
     this._spectrumData = null;
+    this._frequencyChannelMarkers = [];
+    this._channelMetadataSnap = [];
+    this._pendingFrequencyMarker = null;
+    this._currentChannelMetadata = {
+      frequencyLabel: "L/R",
+      vectorscopePairLabel: "L/R",
+    };
   }
 
   /**
@@ -104,11 +111,28 @@ export class FrameIntake {
       buildSpectrumDataSnapshot(row, { defaultSampleRate }),
       histMaxSamples
     );
+    ringPush(this._frequencyChannelMarkers, this._pendingFrequencyMarker, histMaxSamples);
+    ringPush(this._channelMetadataSnap, { ...this._currentChannelMetadata }, histMaxSamples);
+    this._pendingFrequencyMarker = null;
   }
 
   /** Set live spectrum data to the last seeded row (used by seed finalize). */
   finalizeFromRow(row, defaultSampleRate) {
     this._spectrumData = buildSpectrumDataSnapshot(row, { defaultSampleRate });
+  }
+
+  setPendingFrequencyMarker(marker) {
+    this._pendingFrequencyMarker = marker
+      ? { type: "frequencyChannelChange", from: marker.from, to: marker.to }
+      : null;
+  }
+
+  setCurrentChannelMetadata(metadata) {
+    this._currentChannelMetadata = {
+      frequencyLabel: metadata?.frequencyLabel || this._currentChannelMetadata.frequencyLabel,
+      vectorscopePairLabel:
+        metadata?.vectorscopePairLabel || this._currentChannelMetadata.vectorscopePairLabel,
+    };
   }
 
   getLoudnessHistory() {
@@ -132,6 +156,12 @@ export class FrameIntake {
   getVectorSnap() {
     return this._vectorSnap;
   }
+  getFrequencyChannelMarkers() {
+    return this._frequencyChannelMarkers;
+  }
+  getChannelMetadataSnap() {
+    return this._channelMetadataSnap;
+  }
 
   reset() {
     this._loudnessHist = [];
@@ -141,5 +171,8 @@ export class FrameIntake {
     this._spectrumSnap = [];
     this._spectrumDataSnap = [];
     this._spectrumData = null;
+    this._frequencyChannelMarkers = [];
+    this._channelMetadataSnap = [];
+    this._pendingFrequencyMarker = null;
   }
 }

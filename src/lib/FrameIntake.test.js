@@ -77,6 +77,42 @@ describe("FrameIntake", () => {
     expect(intake.getSpectrumDataSnap()).toHaveLength(1);
   });
 
+  it("writes a pending frequency marker on the next history row", () => {
+    const intake = new FrameIntake();
+    intake.setCurrentChannelMetadata({
+      frequencyLabel: "C",
+      vectorscopePairLabel: "L/R",
+    });
+    intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
+
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+
+    expect(intake.getFrequencyChannelMarkers()).toEqual([
+      { type: "frequencyChannelChange", from: "L/R", to: "C" },
+    ]);
+    expect(intake.getChannelMetadataSnap()).toEqual([
+      { frequencyLabel: "C", vectorscopePairLabel: "L/R" },
+    ]);
+  });
+
+  it("keeps frequency markers and metadata aligned with loudness history", () => {
+    const intake = new FrameIntake();
+    intake.setCurrentChannelMetadata({
+      frequencyLabel: "L/R",
+      vectorscopePairLabel: "L/R",
+    });
+
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+
+    expect(intake.getLoudnessHistory()).toHaveLength(2);
+    expect(intake.getFrequencyChannelMarkers()).toEqual([null, null]);
+    expect(intake.getChannelMetadataSnap()).toEqual([
+      { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
+      { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
+    ]);
+  });
+
   it("pushHistRow records loudness values correctly", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(makeRow({ lufsMomentary: -18, lufsShortTerm: -20 }), HIST_MAX, SR);
