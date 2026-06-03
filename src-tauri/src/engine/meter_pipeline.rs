@@ -7,7 +7,9 @@ use crate::dsp::paths::spectrum_paths_from_bands;
 use crate::dsp::peak::{
   sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
 };
-use crate::dsp::{LoudnessMeter, Meter, PcmContext, SpectrumMeter, VectorscopeMeter};
+use crate::dsp::{
+  LoudnessMeter, Meter, PcmContext, SpectrumChannelSel, SpectrumMeter, VectorscopeMeter,
+};
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AudioFramePayload, LoudnessSlowPayload, MeterHistoryBuf, MeterHistoryEntry,
@@ -137,6 +139,7 @@ impl MeterPipeline {
       now_sec,
       channel_layout: effective_layout,
       vectorscope_pair,
+      spectrum_channel: SpectrumChannelSel::default(),
     };
     self.loudness.push_pcm(&ctx);
     self.spectrum.push_pcm(&ctx);

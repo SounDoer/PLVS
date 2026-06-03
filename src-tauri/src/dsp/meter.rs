@@ -1,5 +1,6 @@
 //! Shared `Meter` trait and `PcmContext` for all DSP metering modules.
 
+use crate::dsp::channel_sel::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
 
 /// Context passed to every meter's [`Meter::push_pcm`] call.
@@ -9,6 +10,8 @@ pub struct PcmContext<'a> {
   pub now_sec: f64,
   pub channel_layout: ChannelLayoutSetting,
   pub vectorscope_pair: (u16, u16),
+  #[allow(dead_code)]
+  pub spectrum_channel: SpectrumChannelSel,
 }
 
 /// Uniform contract for DSP meters: ingest PCM and reset state.
