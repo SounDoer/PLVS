@@ -38,10 +38,10 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
       }
     }
     ChannelLayoutSetting::Auto => match ch {
-      1 => ("mono".to_string(),    true),
-      2 => ("stereo".to_string(),  true),
-      6 => ("5.1".to_string(),     true),
-      8 => ("7.1".to_string(),     true),
+      1 => ("mono".to_string(), true),
+      2 => ("stereo".to_string(), true),
+      6 => ("5.1".to_string(), true),
+      8 => ("7.1".to_string(), true),
       _ => ("unknown".to_string(), false),
     },
   }
@@ -117,14 +117,25 @@ impl MeterPipeline {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
     let (pair_x, pair_y) = vectorscope_pair;
-    let (loudness_layout, loudness_layout_known) = loudness_layout_meta(ch, channel_layout);
+
+    // Resolve effective layout for auto mode before passing to DSP.
+    let effective_layout = match channel_layout {
+      ChannelLayoutSetting::Auto => match ch {
+        6 => ChannelLayoutSetting::Surround51,
+        8 => ChannelLayoutSetting::Surround71,
+        _ => channel_layout,
+      },
+      other => other,
+    };
+
+    let (loudness_layout, loudness_layout_known) = loudness_layout_meta(ch, effective_layout);
 
     // --- PCM intake: uniform push through Meter trait ---
     let ctx = PcmContext {
       interleaved,
       channels: ch,
       now_sec,
-      channel_layout,
+      channel_layout: effective_layout,
       vectorscope_pair,
     };
     self.loudness.push_pcm(&ctx);
@@ -391,31 +402,82 @@ mod tests {
 
   #[test]
   fn auto_layout_meta_1ch_is_mono() {
-    assert_eq!(loudness_layout_meta(1, ChannelLayoutSetting::Auto), ("mono".to_string(), true));
+    assert_eq!(
+      loudness_layout_meta(1, ChannelLayoutSetting::Auto),
+      ("mono".to_string(), true)
+    );
   }
 
   #[test]
   fn auto_layout_meta_2ch_is_stereo() {
-    assert_eq!(loudness_layout_meta(2, ChannelLayoutSetting::Auto), ("stereo".to_string(), true));
+    assert_eq!(
+      loudness_layout_meta(2, ChannelLayoutSetting::Auto),
+      ("stereo".to_string(), true)
+    );
   }
 
   #[test]
   fn auto_layout_meta_6ch_is_51() {
-    assert_eq!(loudness_layout_meta(6, ChannelLayoutSetting::Auto), ("5.1".to_string(), true));
+    assert_eq!(
+      loudness_layout_meta(6, ChannelLayoutSetting::Auto),
+      ("5.1".to_string(), true)
+    );
   }
 
   #[test]
   fn auto_layout_meta_8ch_is_71() {
-    assert_eq!(loudness_layout_meta(8, ChannelLayoutSetting::Auto), ("7.1".to_string(), true));
+    assert_eq!(
+      loudness_layout_meta(8, ChannelLayoutSetting::Auto),
+      ("7.1".to_string(), true)
+    );
   }
 
   #[test]
   fn auto_layout_meta_3ch_is_unknown() {
-    assert_eq!(loudness_layout_meta(3, ChannelLayoutSetting::Auto), ("unknown".to_string(), false));
+    assert_eq!(
+      loudness_layout_meta(3, ChannelLayoutSetting::Auto),
+      ("unknown".to_string(), false)
+    );
   }
 
   #[test]
   fn manual_71_on_6ch_falls_back() {
-    assert_eq!(loudness_layout_meta(6, ChannelLayoutSetting::Surround71), ("stereo".to_string(), false));
+    assert_eq!(
+      loudness_layout_meta(6, ChannelLayoutSetting::Surround71),
+      ("stereo".to_string(), false)
+    );
+  }
+
+  #[test]
+  fn auto_mode_6ch_uses_51_loudness_layout() {
+    let sr = 48000_u32;
+    let channels = 6_u16;
+    let hist: MeterHistoryBuf = Arc::new(Mutex::new(VecDeque::new()));
+    let mut pipeline = MeterPipeline::new(sr, channels, hist);
+
+    // Feed enough PCM to guarantee a frame is emitted (~400ms at 16ms per frame = ~25 frames)
+    let frames_per_chunk = sr as usize / 10; // 100ms chunks
+    let channels_usize = channels as usize;
+    let mut pcm = vec![0.0_f32; frames_per_chunk * channels_usize];
+    for i in 0..frames_per_chunk {
+      let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr as f64).sin() as f32;
+      for c in 0..channels_usize {
+        pcm[i * channels_usize + c] = s;
+      }
+    }
+
+    let mut loudness_layout_seen = None;
+    for _ in 0..5 {
+      if let (Some(f), _) = pipeline.push_pcm_f32(&pcm, (0, 1), ChannelLayoutSetting::Auto) {
+        loudness_layout_seen = Some(f.loudness_layout.clone());
+        break;
+      }
+    }
+
+    assert_eq!(
+      loudness_layout_seen.as_deref(),
+      Some("5.1"),
+      "auto mode with 6ch should report 5.1 loudness layout"
+    );
   }
 }
