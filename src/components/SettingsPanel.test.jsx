@@ -29,6 +29,9 @@ const BASE_PROPS = {
   vectorscopePairX: 0,
   vectorscopePairY: 1,
   onVectorscopePairChange: vi.fn(),
+  spectrumChannelOptions: [],
+  spectrumChannelSel: null,
+  onSpectrumChannelChange: vi.fn(),
 };
 
 describe("SettingsPanel", () => {
