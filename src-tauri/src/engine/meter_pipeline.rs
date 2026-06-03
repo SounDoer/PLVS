@@ -52,8 +52,9 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
 pub struct MeterPipeline {
   channels: u16,
   loudness: LoudnessMeter,
-  spectrum: SpectrumMeter,
+  pub(crate) spectrum: SpectrumMeter,
   vectorscope: VectorscopeMeter,
+  last_spectrum_channel: SpectrumChannelSel,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
   st_max: f64,
@@ -76,6 +77,7 @@ impl MeterPipeline {
       loudness: LoudnessMeter::new(sr),
       spectrum: SpectrumMeter::new(sr),
       vectorscope: VectorscopeMeter::new(),
+      last_spectrum_channel: SpectrumChannelSel::default(),
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
       st_max: f64::NEG_INFINITY,
@@ -97,7 +99,7 @@ impl MeterPipeline {
       g.clear();
     }
     self.pending_loudness_hist = None;
-    self.last_hist_emit = Instant::now() - std::time::Duration::from_millis(200);
+    self.last_hist_emit = Instant::now();
     self.m_max = f64::NEG_INFINITY;
     self.st_max = f64::NEG_INFINITY;
     self.tp_max_db = f64::NEG_INFINITY;
@@ -132,6 +134,11 @@ impl MeterPipeline {
     };
 
     let (loudness_layout, loudness_layout_known) = loudness_layout_meta(ch, effective_layout);
+
+    if spectrum_channel != self.last_spectrum_channel {
+      self.spectrum.reset();
+      self.last_spectrum_channel = spectrum_channel;
+    }
 
     // --- PCM intake: uniform push through Meter trait ---
     let ctx = PcmContext {
@@ -342,11 +349,69 @@ impl MeterPipeline {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::dsp::SpectrumChannelSel;
   use std::collections::VecDeque;
   use std::sync::{Arc, Mutex};
 
   fn dummy_history() -> MeterHistoryBuf {
     Arc::new(Mutex::new(VecDeque::new()))
+  }
+
+  fn tone_on_channel(frames: usize, channels: usize, sr: f64, hz: f64, ch: usize) -> Vec<f32> {
+    let mut pcm = vec![0.0_f32; frames * channels];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * hz * i as f64 / sr).sin() as f32;
+      pcm[i * channels + ch] = s;
+    }
+    pcm
+  }
+
+  #[test]
+  fn changing_spectrum_channel_resets_frequency_meter_without_clearing_history() {
+    let sr = 48_000_u32;
+    let channels = 6_u16;
+    let history = Arc::new(Mutex::new(VecDeque::new()));
+    let mut pipeline = MeterPipeline::new(sr, channels, history.clone());
+    let pcm_lr = tone_on_channel(4096 * 8, channels as usize, sr as f64, 1000.0, 0);
+    let pcm_c_short = tone_on_channel(256, channels as usize, sr as f64, 500.0, 2);
+
+    let _ = pipeline.push_pcm_f32(
+      &pcm_lr,
+      (0, 1),
+      ChannelLayoutSetting::Auto,
+      SpectrumChannelSel::Pair(0, 1),
+    );
+    pipeline.clear_peak_and_history();
+    assert_eq!(history.lock().unwrap().len(), 0);
+
+    let _ = pipeline.push_pcm_f32(
+      &pcm_lr,
+      (0, 1),
+      ChannelLayoutSetting::Auto,
+      SpectrumChannelSel::Pair(0, 1),
+    );
+    let (_, before_change, _) = pipeline.spectrum.last_output();
+    assert!(
+      !before_change.is_empty(),
+      "spectrum should produce output before the channel change"
+    );
+
+    let _ = pipeline.push_pcm_f32(
+      &pcm_c_short,
+      (0, 1),
+      ChannelLayoutSetting::Auto,
+      SpectrumChannelSel::Single(2),
+    );
+    let (_, immediately_after_change, _) = pipeline.spectrum.last_output();
+    assert!(
+      immediately_after_change.is_empty(),
+      "spectrum output should be reset immediately after selecting a new channel"
+    );
+    assert_eq!(
+      history.lock().unwrap().len(),
+      0,
+      "frequency reset must not repopulate or clear global meter history"
+    );
   }
 
   #[test]
