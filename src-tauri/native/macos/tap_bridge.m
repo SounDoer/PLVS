@@ -171,31 +171,75 @@ typedef struct {
   AudioObjectID aggregate_id;
   AudioDeviceIOProcID io_proc_id;
   void *pcm_userdata;
+  float *interleave_buf;
+  size_t interleave_buf_capacity;
 } TapHandle;
 
 static OSStatus tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *inNow,
-                                       const AudioBufferList *inInputData,
-                                       const AudioTimeStamp *inInputTime, AudioBufferList *outOutputData,
-                                       const AudioTimeStamp *inOutputTime, void *inClientData) {
+                             const AudioBufferList *inInputData,
+                             const AudioTimeStamp *inInputTime, AudioBufferList *outOutputData,
+                             const AudioTimeStamp *inOutputTime, void *inClientData) {
   (void)inDevice;
   (void)inNow;
   (void)outOutputData;
   (void)inOutputTime;
+  (void)inInputTime;
   TapHandle *tap = (TapHandle *)inClientData;
   if (!tap || !inInputData || !tap->pcm_userdata) {
     return noErr;
   }
-  for (UInt32 i = 0; i < inInputData->mNumberBuffers; i++) {
-    const AudioBuffer *buf = &inInputData->mBuffers[i];
+
+  if (inInputData->mNumberBuffers == 1) {
+    const AudioBuffer *buf = &inInputData->mBuffers[0];
     if (!buf->mData || buf->mDataByteSize == 0) {
-      continue;
+      return noErr;
     }
-    const float *samples = (const float *)buf->mData;
     UInt32 channels = buf->mNumberChannels;
     UInt32 frame_count = (UInt32)(buf->mDataByteSize / (channels * sizeof(float)));
-    pcm_bridge(tap->pcm_userdata, samples, frame_count, channels);
+    pcm_bridge(tap->pcm_userdata, (const float *)buf->mData, frame_count, channels);
+    return noErr;
   }
-  (void)inInputTime;
+
+  // Non-interleaved: verify consistency across buffers, then interleave into scratch buffer.
+  UInt32 nbufs = inInputData->mNumberBuffers;
+  UInt32 total_ch = 0;
+  UInt32 frame_count = 0;
+  for (UInt32 i = 0; i < nbufs; i++) {
+    const AudioBuffer *buf = &inInputData->mBuffers[i];
+    if (!buf->mData || buf->mDataByteSize == 0) {
+      return noErr;
+    }
+    UInt32 ch = buf->mNumberChannels;
+    UInt32 fc = (UInt32)(buf->mDataByteSize / (ch * sizeof(float)));
+    if (i == 0) {
+      frame_count = fc;
+    } else if (fc != frame_count) {
+      return noErr;
+    }
+    total_ch += ch;
+  }
+  if (frame_count == 0 || total_ch == 0) {
+    return noErr;
+  }
+  if ((size_t)frame_count * total_ch > tap->interleave_buf_capacity) {
+    return noErr;
+  }
+
+  float *dst = tap->interleave_buf;
+  UInt32 ch_offset = 0;
+  for (UInt32 i = 0; i < nbufs; i++) {
+    const AudioBuffer *buf = &inInputData->mBuffers[i];
+    UInt32 buf_ch = buf->mNumberChannels;
+    const float *src = (const float *)buf->mData;
+    for (UInt32 f = 0; f < frame_count; f++) {
+      for (UInt32 c = 0; c < buf_ch; c++) {
+        dst[f * total_ch + ch_offset + c] = src[f * buf_ch + c];
+      }
+    }
+    ch_offset += buf_ch;
+  }
+
+  pcm_bridge(tap->pcm_userdata, tap->interleave_buf, frame_count, total_ch);
   return noErr;
 }
 
@@ -352,6 +396,17 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, void 
     h->tap_id = tap_id;
     h->aggregate_id = aggregate_id;
     h->pcm_userdata = pcm_userdata;
+    h->interleave_buf_capacity = 2048 * 16;
+    h->interleave_buf = (float *)malloc(h->interleave_buf_capacity * sizeof(float));
+    if (!h->interleave_buf) {
+      AudioHardwareDestroyAggregateDevice(aggregate_id);
+      AudioHardwareDestroyProcessTap(tap_id);
+      free(h);
+      if (err_out && err_cap > 0) {
+        snprintf(err_out, err_cap, "failed to allocate interleave scratch buffer");
+      }
+      return NULL;
+    }
 
     status = AudioDeviceCreateIOProcID(aggregate_id, tap_io_proc, h, &h->io_proc_id);
     if (status != noErr) {
@@ -403,6 +458,10 @@ void macos_tap_destroy(void *opaque, void **out_pcm_userdata) {
   }
   if (out_pcm_userdata) {
     *out_pcm_userdata = h->pcm_userdata;
+  }
+  if (h->interleave_buf) {
+    free(h->interleave_buf);
+    h->interleave_buf = NULL;
   }
   free(h);
 }
