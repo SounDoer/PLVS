@@ -32,9 +32,18 @@ export function PanelChannelSelector({
   if (!Number.isFinite(channelCount) || channelCount <= 2) return null;
 
   if (activeTab === "vectorscope" && vectorscopeOptions.length > 0) {
+    const matchedVectorscopeOption = vectorscopeOptions.find(
+      (opt) => opt.key === vectorscopeValueKey
+    );
+    const selectedVectorscopeOption = matchedVectorscopeOption ?? vectorscopeOptions[0];
+    const selectedVectorscopeLabel =
+      matchedVectorscopeOption && vectorscopeDisplayLabel
+        ? vectorscopeDisplayLabel
+        : selectedVectorscopeOption.label;
+
     return (
       <Select
-        value={vectorscopeValueKey}
+        value={selectedVectorscopeOption.key}
         onValueChange={(key) => {
           const opt = vectorscopeOptions.find((o) => o.key === key);
           if (opt && typeof onVectorscopeChange === "function") {
@@ -42,7 +51,7 @@ export function PanelChannelSelector({
           }
         }}
       >
-        <ChannelTrigger label={vectorscopeDisplayLabel} ariaLabel="vectorscope channel" />
+        <ChannelTrigger label={selectedVectorscopeLabel} ariaLabel="vectorscope channel" />
         <SelectContent align="end" sideOffset={6}>
           {vectorscopeOptions.map((opt) => (
             <SelectItem key={opt.key} value={opt.key}>
@@ -55,9 +64,16 @@ export function PanelChannelSelector({
   }
 
   if ((activeTab === "spectrum" || activeTab === "spectrogram") && spectrumOptions.length > 0) {
+    const matchedSpectrumOption = spectrumOptions.find((opt) => opt.key === spectrumValueKey);
+    const selectedSpectrumOption = matchedSpectrumOption ?? spectrumOptions[0];
+    const selectedSpectrumLabel =
+      matchedSpectrumOption && spectrumDisplayLabel
+        ? spectrumDisplayLabel
+        : selectedSpectrumOption.label;
+
     return (
       <Select
-        value={spectrumValueKey}
+        value={selectedSpectrumOption.key}
         onValueChange={(key) => {
           const opt = spectrumOptions.find((o) => o.key === key);
           if (opt && typeof onSpectrumChange === "function") {
@@ -65,7 +81,7 @@ export function PanelChannelSelector({
           }
         }}
       >
-        <ChannelTrigger label={spectrumDisplayLabel} ariaLabel={`${activeTab} channel`} />
+        <ChannelTrigger label={selectedSpectrumLabel} ariaLabel={`${activeTab} channel`} />
         <SelectContent align="end" sideOffset={6}>
           {spectrumOptions.map((opt) => (
             <SelectItem key={opt.key} value={opt.key}>

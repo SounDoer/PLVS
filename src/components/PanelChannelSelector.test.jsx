@@ -62,8 +62,43 @@ describe("PanelChannelSelector", () => {
     );
 
     fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
-    fireEvent.click(screen.getByText("L/C"));
+    fireEvent.click(screen.getByRole("option", { name: "L/C" }));
 
     expect(onVectorscopeChange).toHaveBeenCalledWith({ x: 0, y: 2 });
+  });
+
+  it("falls back to the first spectrum option when the value key is stale", () => {
+    render(
+      <PanelChannelSelector
+        activeTab="spectrum"
+        channelCount={6}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="s-99"
+        spectrumDisplayLabel="Stale"
+        onSpectrumChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("L/R")).toBeTruthy();
+    expect(screen.queryByText("Stale")).toBeNull();
+  });
+
+  it("falls back to the first vectorscope option when the value key is stale", () => {
+    render(
+      <PanelChannelSelector
+        activeTab="vectorscope"
+        channelCount={6}
+        vectorscopeOptions={[
+          { key: "0-1", label: "L/R", x: 0, y: 1 },
+          { key: "0-2", label: "L/C", x: 0, y: 2 },
+        ]}
+        vectorscopeValueKey="9-10"
+        vectorscopeDisplayLabel="Stale"
+        onVectorscopeChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("L/R")).toBeTruthy();
+    expect(screen.queryByText("Stale")).toBeNull();
   });
 });
