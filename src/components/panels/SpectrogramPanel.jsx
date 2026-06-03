@@ -57,19 +57,19 @@ export function SpectrogramPanel({ compact = false }) {
     return (1 - Math.max(0, Math.min(1, norm))) * 1000;
   }, [selectedOffset, effectiveOffsetSamples, visibleSamples]);
 
-  const visibleFrequencyMarkers = useMemo(() => {
-    const markers = frequencyMarkerRef?.current ?? [];
-    if (!markers.length || visibleSamples <= 0 || totalSamples <= 0) return [];
+  const markers = frequencyMarkerRef?.current ?? [];
+  let visibleFrequencyMarkers = [];
+  if (markers.length && visibleSamples > 0 && totalSamples > 0) {
     const newestVisible = totalSamples - 1 - effectiveOffsetSamples;
     const oldestVisible = newestVisible - visibleSamples + 1;
-    return markers
+    visibleFrequencyMarkers = markers
       .map((marker, idx) => ({ marker, idx }))
       .filter(({ marker, idx }) => marker && idx >= oldestVisible && idx <= newestVisible)
       .map(({ marker, idx }) => ({
         marker,
         x: ((idx - oldestVisible) / Math.max(1, visibleSamples - 1)) * 1000,
       }));
-  }, [frequencyMarkerRef, effectiveOffsetSamples, visibleSamples, totalSamples]);
+  }
 
   useSpectrogramCanvas({
     canvasRef,
