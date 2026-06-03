@@ -31,4 +31,18 @@ describe("getPeakChannels", () => {
       { label: "R", valueDb: -7 },
     ]);
   });
+
+  it("caps peakDb at 16 channels", () => {
+    const peakDb = Array.from({ length: 20 }, (_, i) => -(i + 1));
+    const ch = getPeakChannels({ peakDb });
+    expect(ch).toHaveLength(16);
+    expect(ch[15].valueDb).toBe(-16);
+  });
+
+  it("shows numbered labels in auto/unknown layout for multichannel peakDb", () => {
+    const ch = getPeakChannels({ peakDb: [-1, -2, -3, -4, -5, -6] }, { resolvedLayout: "unknown" });
+    expect(ch.map((c) => c.label)).toEqual(["Ch 1", "Ch 2", "Ch 3", "Ch 4", "Ch 5", "Ch 6"]);
+    expect(ch[0].valueDb).toBe(-1);
+    expect(ch[5].valueDb).toBe(-6);
+  });
 });

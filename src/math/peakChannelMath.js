@@ -9,7 +9,7 @@ import { getPeakMeterChannelLabels } from "./peakMeterChannelLabels.js";
  * @returns {{ label: string, valueDb: number }[]}
  */
 export function getPeakChannels(displayAudio, labelCtx) {
-  const peakDb = Array.isArray(displayAudio?.peakDb) ? displayAudio.peakDb : null;
+  const peakDb = Array.isArray(displayAudio?.peakDb) ? displayAudio.peakDb.slice(0, 16) : null;
   if (peakDb && peakDb.length > 0) {
     const labels = getPeakMeterChannelLabels(peakDb.length, labelCtx || {});
     return peakDb.map((v, i) => ({
