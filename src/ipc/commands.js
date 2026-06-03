@@ -71,6 +71,16 @@ export function setVectorscopePair({ x, y }) {
   return invoke("set_vectorscope_pair", { x, y });
 }
 
+/**
+ * @param {{ type: "pair"; x: number; y: number } | { type: "single"; ch: number }} sel
+ */
+export function setSpectrumChannel(sel) {
+  const selType = sel.type;
+  const chX = sel.type === "pair" ? sel.x : sel.ch;
+  const chY = sel.type === "pair" ? sel.y : 0;
+  return invoke("set_spectrum_channel", { selType, chX, chY });
+}
+
 /** @param {{ layout: "auto" | "stereo" | "5.1" | string }} opts */
 export function setChannelLayout({ layout }) {
   return invoke("set_channel_layout", { layout });
