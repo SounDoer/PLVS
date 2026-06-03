@@ -442,7 +442,10 @@ impl LoudnessMeter {
       for i in 0..frames {
         let base = i * ch;
         let mut sum_ms = 0.0_f64;
-        for (ci, w) in [1.0_f64, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0].into_iter().enumerate() {
+        for (ci, w) in [1.0_f64, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0]
+          .into_iter()
+          .enumerate()
+        {
           let x = interleaved[base + ci] as f64;
           let kw = self.kf_mc[ci].tick(x);
           if w != 0.0 {
@@ -674,7 +677,8 @@ mod tests {
       }
     }
     let mut m71 = LoudnessMeter::new(sr);
-    let b71 = m71.push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
+    let b71 = m71
+      .push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
       .expect("should produce a block in 0.4s");
     let mut mst = LoudnessMeter::new(sr);
     let stereo_pcm: Vec<f32> = (0..frames)
@@ -704,7 +708,8 @@ mod tests {
       pcm[i * channels + 3] = s;
     }
     let mut m = LoudnessMeter::new(sr);
-    let b = m.push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
+    let b = m
+      .push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
       .expect("should produce a block");
     assert!(
       !b.momentary.is_finite() || b.momentary < -70.0,
