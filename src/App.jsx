@@ -891,13 +891,6 @@ export default function App() {
             setReferenceLufs={setReferenceLufs}
             channelLayout={channelLayout}
             setChannelLayout={setChannelLayout}
-            vectorscopePairOptions={vectorscopePairOptions}
-            vectorscopePairX={vectorscopePairUi.x}
-            vectorscopePairY={vectorscopePairUi.y}
-            onVectorscopePairChange={onVectorscopePairChange}
-            spectrumChannelOptions={spectrumChannelOptions}
-            spectrumChannelSel={spectrumChannelUi}
-            onSpectrumChannelChange={onSpectrumChannelChange}
             appVersion={APP_VERSION}
           />
         </div>

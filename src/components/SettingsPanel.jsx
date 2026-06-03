@@ -24,18 +24,8 @@ export function SettingsPanel({
   setReferenceLufs,
   channelLayout,
   setChannelLayout,
-  /** @type {{ key: string; label: string; x: number; y: number }[]} */
-  vectorscopePairOptions = [],
-  vectorscopePairX = 0,
-  vectorscopePairY = 1,
-  onVectorscopePairChange,
-  /** @type {import("../math/spectrumChannelOptions.js").SpectrumChannelOption[]} */
-  spectrumChannelOptions = [],
-  spectrumChannelSel = null,
-  onSpectrumChannelChange,
   appVersion,
 }) {
-  const vsKey = `${vectorscopePairX}-${vectorscopePairY}`;
   const reduceMotion = useReducedMotion();
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
   const closingIntentRef = useRef(false);
@@ -167,80 +157,6 @@ export function SettingsPanel({
                     </SelectContent>
                   </Select>
                 </div>
-                <Separator />
-                <div className="grid gap-2">
-                  <Label htmlFor="settings-vs-pair">Vectorscope channels</Label>
-                  {vectorscopePairOptions.length > 0 &&
-                  typeof onVectorscopePairChange === "function" ? (
-                    <Select
-                      value={
-                        vectorscopePairOptions.some((o) => o.key === vsKey)
-                          ? vsKey
-                          : vectorscopePairOptions[0]?.key
-                      }
-                      onValueChange={(key) => {
-                        const [xRaw, yRaw] = String(key).split("-");
-                        const x = Number.parseInt(xRaw || "0", 10);
-                        const y = Number.parseInt(yRaw || "1", 10);
-                        onVectorscopePairChange({
-                          x: Number.isFinite(x) ? x : 0,
-                          y: Number.isFinite(y) ? y : 1,
-                        });
-                      }}
-                    >
-                      <SelectTrigger id="settings-vs-pair">
-                        <SelectValue placeholder="Pair" />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {vectorscopePairOptions.map((o) => (
-                          <SelectItem key={o.key} value={o.key}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-muted-foreground text-sm">
-                      At least 2 channels (start monitoring)
-                    </p>
-                  )}
-                </div>
-                {spectrumChannelOptions.length > 1 &&
-                  typeof onSpectrumChannelChange === "function" && (
-                    <>
-                      <Separator />
-                      <div className="grid gap-2">
-                        <Label htmlFor="settings-spectrum-channel">Spectrum channel</Label>
-                        <Select
-                          value={(() => {
-                            if (!spectrumChannelSel) return spectrumChannelOptions[0]?.key ?? "";
-                            const key =
-                              spectrumChannelSel.type === "pair"
-                                ? `p-${spectrumChannelSel.x}-${spectrumChannelSel.y}`
-                                : `s-${spectrumChannelSel.ch}`;
-                            return spectrumChannelOptions.some((o) => o.key === key)
-                              ? key
-                              : (spectrumChannelOptions[0]?.key ?? "");
-                          })()}
-                          onValueChange={(key) => {
-                            const opt = spectrumChannelOptions.find((o) => o.key === key);
-                            if (opt) onSpectrumChannelChange(opt.sel);
-                          }}
-                        >
-                          <SelectTrigger id="settings-spectrum-channel">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {spectrumChannelOptions.map((o) => (
-                              <SelectItem key={o.key} value={o.key}>
-                                {o.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
                 {appVersion ? (
                   <>
                     <Separator />

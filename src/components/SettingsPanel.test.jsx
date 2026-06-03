@@ -25,13 +25,6 @@ const BASE_PROPS = {
   setReferenceLufs: vi.fn(),
   channelLayout: "auto",
   setChannelLayout: vi.fn(),
-  vectorscopePairOptions: [],
-  vectorscopePairX: 0,
-  vectorscopePairY: 1,
-  onVectorscopePairChange: vi.fn(),
-  spectrumChannelOptions: [],
-  spectrumChannelSel: null,
-  onSpectrumChannelChange: vi.fn(),
 };
 
 describe("SettingsPanel", () => {
@@ -53,6 +46,19 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
     expect(screen.getByLabelText("Colour theme")).toBeTruthy();
+  });
+
+  it("does not render panel-specific channel selectors", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        vectorscopePairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        spectrumChannelOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+      />
+    );
+
+    expect(screen.queryByText("Vectorscope channels")).toBeNull();
+    expect(screen.queryByText("Spectrum channel")).toBeNull();
   });
 
   it("does not call setReferenceLufs when input is cleared (empty string → 0 guard)", () => {

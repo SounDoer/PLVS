@@ -25,7 +25,6 @@ export function SpectrumPanel({ compact = false }) {
   const {
     displaySpectrumPath,
     displaySpectrumPeakPath,
-    channelCount = 0,
     selectedOffset,
     spectrumHover,
     onSpectrumHoverMove,
@@ -34,7 +33,6 @@ export function SpectrumPanel({ compact = false }) {
   const spectrumSvgRef = useRef(null);
   const reduceMotion = useReducedMotion();
   const displaySpectrumAreaPath = buildSpectrumAreaPath(displaySpectrumPath);
-  const isSummedMultichannel = Number.isFinite(channelCount) && channelCount > 2;
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
 
   return (
@@ -74,17 +72,6 @@ export function SpectrumPanel({ compact = false }) {
               className={cn("relative min-h-0 h-full rounded-lg bg-muted", CHART_INSET_MIN_H)}
               onPointerLeave={onSpectrumHoverLeave}
             >
-              {isSummedMultichannel && (
-                <span
-                  className={cn(
-                    CAPTION_TEXT,
-                    "pointer-events-none absolute right-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] z-10 shrink-0"
-                  )}
-                  title="All channels (summed): per-band linear power/energy is summed across channels, then converted to dB."
-                >
-                  All channels (summed)
-                </span>
-              )}
               <div
                 className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {
