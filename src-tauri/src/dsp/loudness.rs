@@ -431,6 +431,125 @@ impl LoudnessMeter {
       return out;
     }
 
+    // Manual 7.1 preset: Ch1..Ch8 => FL FR C LFE SL SR BL BR.
+    // LFE (index 3) has 0 weight per BS.1770-4.
+    if channel_layout == ChannelLayoutSetting::Surround71 && ch >= 8 {
+      if self.kf_mc.len() != 8 {
+        self.kf_mc = (0..8).map(|_| KWeightMono::new(self.sample_rate)).collect();
+      }
+      let mut out = None;
+      let frames = interleaved.len() / ch;
+      for i in 0..frames {
+        let base = i * ch;
+        let mut sum_ms = 0.0_f64;
+        for (ci, w) in [1.0_f64, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0].into_iter().enumerate() {
+          let x = interleaved[base + ci] as f64;
+          let kw = self.kf_mc[ci].tick(x);
+          if w != 0.0 {
+            sum_ms += w * kw * kw;
+          }
+        }
+        self.ba[0] += sum_ms;
+        self.ba[1] += 0.0;
+
+        // Keep true-peak semantics consistent with the existing UI: report L/R from channels 1/2.
+        let xl = interleaved[base] as f64;
+        let xr = interleaved[base + 1] as f64;
+        let tp0 = self.tp_sample(xl, 0);
+        let tp1 = self.tp_sample(xr, 1);
+        if tp0 > self.tp_block {
+          self.tp_block = tp0;
+        }
+        if tp1 > self.tp_block {
+          self.tp_block = tp1;
+        }
+        if tp0 > self.tp_block_ch[0] {
+          self.tp_block_ch[0] = tp0;
+        }
+        if tp1 > self.tp_block_ch[1] {
+          self.tp_block_ch[1] = tp1;
+        }
+
+        self.bn += 1;
+        if self.bn >= self.bsz {
+          let m0 = self.ba[0] / self.bn as f64;
+          let m1 = 0.0_f64;
+          let idx = self.rh * 2;
+          self.ring[idx] = m0;
+          self.ring[idx + 1] = m1;
+          self.rh = (self.rh + 1) % self.rn;
+          self.rc = (self.rc + 1).min(self.rn);
+          self.ibl.push([m0, m1]);
+          if self.ibl.len() > IBL_CAP {
+            self.ibl.remove(0);
+          }
+          let mut a0 = 0.0;
+          let mut a1 = 0.0;
+          let mut an = 0_usize;
+          for b in 0..4.min(self.rc) {
+            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
+            a0 += self.ring[idx];
+            a1 += self.ring[idx + 1];
+            an += 1;
+          }
+          let momentary = if an > 0 {
+            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
+          } else {
+            f64::NEG_INFINITY
+          };
+          a0 = 0.0;
+          a1 = 0.0;
+          an = 0;
+          for b in 0..30.min(self.rc) {
+            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
+            a0 += self.ring[idx];
+            a1 += self.ring[idx + 1];
+            an += 1;
+          }
+          let short_term = if an > 0 {
+            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
+          } else {
+            f64::NEG_INFINITY
+          };
+          if short_term.is_finite() {
+            self.sth.push(short_term);
+            if self.sth.len() > STH_CAP {
+              self.sth.remove(0);
+            }
+          }
+          let tp_now = if self.tp_block > 0.0 {
+            20.0 * self.tp_block.log10()
+          } else {
+            f64::NEG_INFINITY
+          };
+          let tp_now_l = if self.tp_block_ch[0] > 0.0 {
+            20.0 * self.tp_block_ch[0].log10()
+          } else {
+            f64::NEG_INFINITY
+          };
+          let tp_now_r = if self.tp_block_ch[1] > 0.0 {
+            20.0 * self.tp_block_ch[1].log10()
+          } else {
+            f64::NEG_INFINITY
+          };
+          out = Some(LoudnessBlock {
+            momentary,
+            short_term,
+            integrated: self.integrated(),
+            lra: self.lra(),
+            true_peak: tp_now,
+            true_peak_l: tp_now_l,
+            true_peak_r: tp_now_r,
+          });
+          self.ba = [0.0, 0.0];
+          self.bn = 0;
+          self.tp_block = 0.0;
+          self.tp_block_ch = [0.0, 0.0];
+        }
+      }
+      return out;
+    }
+
     let frames = interleaved.len() / ch;
     if frames == 0 {
       return None;
@@ -537,6 +656,60 @@ mod tests {
       "LFE must not change 5.1 loudness: {} vs {}",
       b0.momentary,
       b1.momentary
+    );
+  }
+
+  #[test]
+  fn surround71_lufs_uses_all_channels_except_lfe() {
+    // 7.1: FL FR C LFE SL SR BL BR. LFE (ch index 3) should have 0 weight.
+    let sr = 48000.0_f64;
+    let frames = (sr * 0.4) as usize;
+    let channels = 8_usize;
+    let hz = 1000.0_f64;
+    let mut pcm = vec![0.0_f32; frames * channels];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * hz * i as f64 / sr).sin() as f32;
+      for ch in 0..channels {
+        pcm[i * channels + ch] = s;
+      }
+    }
+    let mut m71 = LoudnessMeter::new(sr);
+    let b71 = m71.push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
+      .expect("should produce a block in 0.4s");
+    let mut mst = LoudnessMeter::new(sr);
+    let stereo_pcm: Vec<f32> = (0..frames)
+      .flat_map(|i| {
+        let s = (2.0 * std::f64::consts::PI * hz * i as f64 / sr).sin() as f32;
+        [s, s]
+      })
+      .collect();
+    let bst = mst.push_interleaved(&stereo_pcm).expect("stereo block");
+    assert!(b71.momentary.is_finite(), "7.1 momentary should be finite");
+    assert!(
+      b71.momentary > bst.momentary,
+      "7.1 with 7 active channels should be louder than stereo: {} vs {}",
+      b71.momentary,
+      bst.momentary
+    );
+  }
+
+  #[test]
+  fn surround71_lfe_has_zero_weight() {
+    let sr = 48000.0_f64;
+    let frames = (sr * 0.4) as usize;
+    let channels = 8_usize;
+    let mut pcm = vec![0.0_f32; frames * channels];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 60.0 * i as f64 / sr).sin() as f32;
+      pcm[i * channels + 3] = s;
+    }
+    let mut m = LoudnessMeter::new(sr);
+    let b = m.push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
+      .expect("should produce a block");
+    assert!(
+      !b.momentary.is_finite() || b.momentary < -70.0,
+      "LFE-only 7.1 should be near silence: {}",
+      b.momentary
     );
   }
 
