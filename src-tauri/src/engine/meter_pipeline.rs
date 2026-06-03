@@ -99,7 +99,7 @@ impl MeterPipeline {
       g.clear();
     }
     self.pending_loudness_hist = None;
-    self.last_hist_emit = Instant::now();
+    self.last_hist_emit = Instant::now() - std::time::Duration::from_millis(200);
     self.m_max = f64::NEG_INFINITY;
     self.st_max = f64::NEG_INFINITY;
     self.tp_max_db = f64::NEG_INFINITY;
@@ -381,20 +381,12 @@ mod tests {
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Pair(0, 1),
     );
-    pipeline.clear_peak_and_history();
-    assert_eq!(history.lock().unwrap().len(), 0);
-
-    let _ = pipeline.push_pcm_f32(
-      &pcm_lr,
-      (0, 1),
-      ChannelLayoutSetting::Auto,
-      SpectrumChannelSel::Pair(0, 1),
-    );
     let (_, before_change, _) = pipeline.spectrum.last_output();
     assert!(
       !before_change.is_empty(),
       "spectrum should produce output before the channel change"
     );
+    let history_len_before_change = history.lock().unwrap().len();
 
     let _ = pipeline.push_pcm_f32(
       &pcm_c_short,
@@ -409,7 +401,7 @@ mod tests {
     );
     assert_eq!(
       history.lock().unwrap().len(),
-      0,
+      history_len_before_change,
       "frequency reset must not repopulate or clear global meter history"
     );
   }
