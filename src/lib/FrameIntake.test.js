@@ -113,6 +113,53 @@ describe("FrameIntake", () => {
     ]);
   });
 
+  it("preserves existing channel metadata on partial updates", () => {
+    const intake = new FrameIntake();
+    intake.setCurrentChannelMetadata({ frequencyLabel: "C", vectorscopePairLabel: "L/R" });
+    intake.setCurrentChannelMetadata({ frequencyLabel: "LFE" });
+
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+
+    expect(intake.getChannelMetadataSnap()).toEqual([
+      { frequencyLabel: "LFE", vectorscopePairLabel: "L/R" },
+    ]);
+  });
+
+  it("keeps defined empty channel metadata labels", () => {
+    const intake = new FrameIntake();
+    intake.setCurrentChannelMetadata({ frequencyLabel: "", vectorscopePairLabel: "" });
+
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+
+    expect(intake.getChannelMetadataSnap()).toEqual([
+      { frequencyLabel: "", vectorscopePairLabel: "" },
+    ]);
+  });
+
+  it("writes a pending frequency marker once", () => {
+    const intake = new FrameIntake();
+    intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
+
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+
+    expect(intake.getFrequencyChannelMarkers()).toEqual([
+      { type: "frequencyChannelChange", from: "L/R", to: "C" },
+      null,
+    ]);
+  });
+
+  it("reset clears frequency markers and channel metadata history", () => {
+    const intake = new FrameIntake();
+    intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+
+    intake.reset();
+
+    expect(intake.getFrequencyChannelMarkers()).toEqual([]);
+    expect(intake.getChannelMetadataSnap()).toEqual([]);
+  });
+
   it("pushHistRow records loudness values correctly", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(makeRow({ lufsMomentary: -18, lufsShortTerm: -20 }), HIST_MAX, SR);

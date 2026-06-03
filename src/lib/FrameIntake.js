@@ -129,9 +129,9 @@ export class FrameIntake {
 
   setCurrentChannelMetadata(metadata) {
     this._currentChannelMetadata = {
-      frequencyLabel: metadata?.frequencyLabel || this._currentChannelMetadata.frequencyLabel,
+      frequencyLabel: metadata?.frequencyLabel ?? this._currentChannelMetadata.frequencyLabel,
       vectorscopePairLabel:
-        metadata?.vectorscopePairLabel || this._currentChannelMetadata.vectorscopePairLabel,
+        metadata?.vectorscopePairLabel ?? this._currentChannelMetadata.vectorscopePairLabel,
     };
   }
 
