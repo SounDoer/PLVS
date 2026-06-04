@@ -118,17 +118,25 @@ export function workspaceReducer(state, action) {
 
     case "APPLY_PRESET": {
       const { presetId } = action.payload;
-      const preset =
-        BUILTIN_PRESETS.find((p) => p.id === presetId) ||
-        state.customPresets.find((p) => p.id === presetId);
-      if (!preset) return state;
+      const builtinPreset = BUILTIN_PRESETS.find((p) => p.id === presetId);
+      if (builtinPreset) {
+        return {
+          ...state,
+          tree: builtinPreset.tree,
+          visibleModules: builtinPreset.visibleModules,
+          panelControls: state.panelControls,
+          activePresetId: presetId,
+          fullscreenId: null,
+        };
+      }
+
+      const customPreset = state.customPresets.find((p) => p.id === presetId);
+      if (!customPreset) return state;
       return {
         ...state,
-        tree: preset.tree,
-        visibleModules: preset.visibleModules,
-        panelControls: preset.builtin
-          ? state.panelControls
-          : normalizePanelControls(preset.panelControls),
+        tree: customPreset.tree,
+        visibleModules: customPreset.visibleModules,
+        panelControls: normalizePanelControls(customPreset.panelControls),
         activePresetId: presetId,
         fullscreenId: null,
       };

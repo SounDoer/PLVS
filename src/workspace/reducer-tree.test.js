@@ -22,6 +22,15 @@ function state(tree, extra = {}) {
   return { ...DEFAULT_WORKSPACE_STATE, tree, ...extra };
 }
 
+function expectPanelControlsIsolated(actual, source) {
+  expect(actual).toEqual(source);
+  expect(actual).not.toBe(source);
+  expect(actual.vectorscopePair).not.toBe(source.vectorscopePair);
+  expect(actual.spectrumChannel).not.toBe(source.spectrumChannel);
+  expect(actual.loudnessStatsVisibleIds).not.toBe(source.loudnessStatsVisibleIds);
+  expect(actual.loudnessHistoryVisibleLayerIds).not.toBe(source.loudnessHistoryVisibleLayerIds);
+}
+
 // ---------------------------------------------------------------------------
 // SET_TREE
 // ---------------------------------------------------------------------------
@@ -396,7 +405,7 @@ describe("APPLY_PRESET", () => {
       payload: { presetId: "custom-test" },
     });
 
-    expect(next.panelControls).toEqual(presetControls);
+    expectPanelControlsIsolated(next.panelControls, presetControls);
   });
 });
 
@@ -438,7 +447,7 @@ describe("SAVE_PRESET", () => {
 
     const next = workspaceReducer(s, { type: "SAVE_PRESET", payload: { name: "My Layout" } });
 
-    expect(next.customPresets[0].panelControls).toEqual(panelControls);
+    expectPanelControlsIsolated(next.customPresets[0].panelControls, panelControls);
   });
 
   it("updates panelControls without changing activePresetId", () => {
@@ -455,7 +464,7 @@ describe("SAVE_PRESET", () => {
       payload: { panelControls: nextControls },
     });
 
-    expect(next.panelControls).toEqual(nextControls);
+    expectPanelControlsIsolated(next.panelControls, nextControls);
     expect(next.activePresetId).toBe("lls");
   });
 });
