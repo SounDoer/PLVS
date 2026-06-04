@@ -46,8 +46,24 @@ describe("App toolbar", () => {
     expect(appSource).toContain("const pendingVectorscopePairSyncRef = useRef(null);");
     expect(appSource).toContain("pendingVectorscopePairSyncRef.current = null;");
     expect(appSource).toContain(
+      "pendingVectorscopePairSyncRef.current = { x: pair.x, y: pair.y };"
+    );
+    expect(appSource).toContain(
       "if (pendingPair && (pendingPair.x !== x || pendingPair.y !== y)) return;"
     );
+  });
+
+  it("sets the vectorscope backend pending guard before reading live frame pairs", () => {
+    const backendSyncIndex = appSource.indexOf(
+      "if (!running || !isTauri()) return;\n    const next = clampVectorscopePairToAvailable("
+    );
+    const liveSyncIndex = appSource.indexOf(
+      "if (!running || selectedOffset >= 0) return;\n    const x = Number.isFinite(displayAudio?.vectorscopePairX)"
+    );
+
+    expect(backendSyncIndex).toBeGreaterThan(-1);
+    expect(liveSyncIndex).toBeGreaterThan(-1);
+    expect(backendSyncIndex).toBeLessThan(liveSyncIndex);
   });
 
   it("removes legacy channel persistence fields before writing ui state", () => {

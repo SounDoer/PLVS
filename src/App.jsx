@@ -404,6 +404,27 @@ function AppContent() {
     : "Not connected";
 
   useEffect(() => {
+    if (!running || !isTauri()) return;
+    const next = clampVectorscopePairToAvailable(
+      vectorscopePairUi,
+      channelCount,
+      vectorscopeLabelContext
+    );
+    if (next.x !== vectorscopePairUi.x || next.y !== vectorscopePairUi.y) return;
+    const key = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
+    if (lastSentVectorscopePairKeyRef.current === key) return;
+    void sendTrackedVectorscopePair(vectorscopePairUi);
+  }, [
+    channelCount,
+    running,
+    sendTrackedVectorscopePair,
+    vectorscopeLabelContext,
+    vectorscopePairUi,
+    vectorscopePairUi.x,
+    vectorscopePairUi.y,
+  ]);
+
+  useEffect(() => {
     if (!running || selectedOffset >= 0) return;
     const x = Number.isFinite(displayAudio?.vectorscopePairX)
       ? Number(displayAudio.vectorscopePairX)
@@ -461,27 +482,6 @@ function AppContent() {
     running,
     sendTrackedSpectrumChannel,
     updatePanelControls,
-  ]);
-
-  useEffect(() => {
-    if (!running || !isTauri()) return;
-    const next = clampVectorscopePairToAvailable(
-      vectorscopePairUi,
-      channelCount,
-      vectorscopeLabelContext
-    );
-    if (next.x !== vectorscopePairUi.x || next.y !== vectorscopePairUi.y) return;
-    const key = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
-    if (lastSentVectorscopePairKeyRef.current === key) return;
-    void sendTrackedVectorscopePair(vectorscopePairUi);
-  }, [
-    channelCount,
-    running,
-    sendTrackedVectorscopePair,
-    vectorscopeLabelContext,
-    vectorscopePairUi,
-    vectorscopePairUi.x,
-    vectorscopePairUi.y,
   ]);
 
   useEffect(() => {
