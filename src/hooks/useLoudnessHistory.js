@@ -123,20 +123,45 @@ export function useLoudnessHistory({
 
   const primaryMetrics = useMemo(
     () => [
-      { label: "Momentary", value: fmtMetric(displayAudio.momentary), unit: "LUFS" },
-      { label: "Short-term", value: fmtMetric(displayAudio.shortTerm), unit: "LUFS" },
-      { label: "Integrated", value: fmtMetric(displayAudio.integrated), unit: "LUFS" },
-      { label: "Momentary Max", value: fmtMetric(displayAudio.mMax), unit: "LUFS" },
-      { label: "Short-term Max", value: fmtMetric(displayAudio.stMax), unit: "LUFS" },
-      { label: "Loudness Range (LRA)", value: fmtMetric(displayAudio.lra), unit: "LU" },
+      {
+        id: "momentary",
+        label: "Momentary",
+        value: fmtMetric(displayAudio.momentary),
+        unit: "LUFS",
+      },
+      {
+        id: "shortTerm",
+        label: "Short-term",
+        value: fmtMetric(displayAudio.shortTerm),
+        unit: "LUFS",
+      },
+      {
+        id: "integrated",
+        label: "Integrated",
+        value: fmtMetric(displayAudio.integrated),
+        unit: "LUFS",
+      },
+      {
+        id: "momentaryMax",
+        label: "Momentary Max",
+        value: fmtMetric(displayAudio.mMax),
+        unit: "LUFS",
+      },
+      {
+        id: "shortTermMax",
+        label: "Short-term Max",
+        value: fmtMetric(displayAudio.stMax),
+        unit: "LUFS",
+      },
+      { id: "lra", label: "Loudness Range (LRA)", value: fmtMetric(displayAudio.lra), unit: "LU" },
     ],
     [displayAudio]
   );
 
   const secondaryMetrics = useMemo(
     () => [
-      { label: "Dynamics (PSR)", value: fmtMetric(psr), unit: "dB" },
-      { label: "Avg. Dynamics (PLR)", value: fmtMetric(plr), unit: "dB" },
+      { id: "psr", label: "Dynamics (PSR)", value: fmtMetric(psr), unit: "dB" },
+      { id: "plr", label: "Avg. Dynamics (PLR)", value: fmtMetric(plr), unit: "dB" },
     ],
     [psr, plr]
   );
