@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-04
+
+### Added
+
+- Auto channel layout detection now recognizes mono, stereo, 5.1, and 7.1 streams for loudness routing.
+- 7.1 loudness metering now follows the BS.1770 channel weighting path in the backend.
+- Spectrum and spectrogram panels now support explicit channel selection from panel header controls, with persisted selections and snapshot metadata.
+- Spectrogram history now marks channel changes so captured spectrum views can be interpreted in context.
+- Panel header controls now centralize channel selectors and display toggles, including loudness stats visibility and loudness history layer controls.
+
+### Changed
+
+- Panel control state is now captured in workspace presets and restored through the app state path.
+- Channel layout settings copy is simplified, and legacy channel preference keys are no longer used.
+
+### Fixed
+
+- Spectrum state now resets when the selected channel changes, avoiding stale spectral history.
+- Restored vectorscope and spectrum channel selections are guarded against stale or invalid channel metadata.
+- Snapshot mode no longer rewrites live vectorscope selections.
+- Peak meters keep multichannel fill bars visible in narrow panels by scaling channel spacing with channel count.
+- Peak channel labels are separated from fixed-width live values so changing dB text does not trigger wrapping jitter.
+- Help icon and panel control hover states no longer add unintended visual backgrounds.
+
 ## [0.1.1] - 2026-06-03
 
 ### Added
