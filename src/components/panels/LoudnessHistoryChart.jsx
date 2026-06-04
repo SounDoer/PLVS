@@ -32,7 +32,7 @@ export function LoudnessHistoryChart({
   onHistoryPointerDown,
   onHistoryPointerMove,
   onHistoryPointerUp,
-  histCurves,
+  loudnessHistoryVisibleLayerIds = [],
   displayHistoryPathM,
   displayHistoryPathST,
   selectedOffset,
@@ -48,6 +48,15 @@ export function LoudnessHistoryChart({
   onHistoryHoverMove,
   onHistoryHoverLeave,
 }) {
+  const visibleLayerIds = Array.isArray(loudnessHistoryVisibleLayerIds)
+    ? loudnessHistoryVisibleLayerIds
+    : [];
+  const showMomentary = visibleLayerIds.includes("momentary");
+  const showShortTerm = visibleLayerIds.includes("shortTerm");
+  const showReference = visibleLayerIds.includes("ref");
+  const showReferenceLayer = showReference && Number.isFinite(referenceLufs);
+  const hasSelectedLayer = showMomentary || showShortTerm || showReference;
+
   const historyYAxisTicksLabeled = useMemo(
     () => historyYAxisTicks.filter((t) => !(t.v === targetLufs && !hasHistoryData)),
     [historyYAxisTicks, targetLufs, hasHistoryData]
@@ -181,7 +190,7 @@ export function LoudnessHistoryChart({
           preserveAspectRatio="none"
           className="relative z-[1] h-full w-full px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
         >
-          {histCurves.m && displayHistoryPathM && (
+          {showMomentary && displayHistoryPathM && (
             <path
               d={displayHistoryPathM}
               fill="none"
@@ -191,7 +200,7 @@ export function LoudnessHistoryChart({
               strokeWidth="var(--ui-lh-stroke-m-w)"
             />
           )}
-          {histCurves.st && displayHistoryPathST && (
+          {showShortTerm && displayHistoryPathST && (
             <path
               d={displayHistoryPathST}
               fill="none"
@@ -218,7 +227,7 @@ export function LoudnessHistoryChart({
 
         {/* Overlays: reference line, hover crosshair, HUD boxes */}
         <div className="pointer-events-none absolute inset-x-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
-          {Number.isFinite(referenceLufs) ? (
+          {showReferenceLayer ? (
             <>
               <div
                 className="absolute left-0 right-0"
@@ -249,6 +258,11 @@ export function LoudnessHistoryChart({
                 Ref {referenceLufs} LUFS
               </div>
             </>
+          ) : null}
+          {!hasSelectedLayer ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              No layers selected
+            </div>
           ) : null}
           {historyHover?.leftPct != null ? (
             <div

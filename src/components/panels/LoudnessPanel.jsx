@@ -12,7 +12,6 @@ const LOUDNESS_HELP = [
   "Right drag - Pan timeline",
   "Right double-click - Reset window and offset",
   "Mouse wheel - Wheel up/down to zoom in/out",
-  "Click M / ST labels - Toggle curves",
 ];
 
 export function LoudnessPanel({ compact = false }) {
@@ -32,7 +31,7 @@ export function LoudnessPanel({ compact = false }) {
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
-    histCurves,
+    loudnessHistoryVisibleLayerIds,
     displayHistoryPathM,
     displayHistoryPathST,
     selectedOffset,
@@ -43,7 +42,6 @@ export function LoudnessPanel({ compact = false }) {
     effectiveOffsetSec,
     historyHover,
     historyTimeTicks,
-    toggleCurve,
     onHistoryHoverMove,
     onHistoryHoverLeave,
   } = useAudioData();
@@ -75,7 +73,7 @@ export function LoudnessPanel({ compact = false }) {
           onHistoryPointerDown={onHistoryPointerDown}
           onHistoryPointerMove={onHistoryPointerMove}
           onHistoryPointerUp={onHistoryPointerUp}
-          histCurves={histCurves}
+          loudnessHistoryVisibleLayerIds={loudnessHistoryVisibleLayerIds}
           displayHistoryPathM={displayHistoryPathM}
           displayHistoryPathST={displayHistoryPathST}
           selectedOffset={selectedOffset}

@@ -33,7 +33,6 @@ export function useLoudnessHistory({
   const [historyHudHold, setHistoryHudHold] = useState(false);
   const [isHudTimerActive, setIsHudTimerActive] = useState(false);
   const hudUntilTsRef = useRef(0);
-  const [histCurves, setHistCurves] = useState({ m: false, st: true });
 
   const historyChartInteractive = running || hasHistoryData;
 
@@ -166,8 +165,6 @@ export function useLoudnessHistory({
     [psr, plr]
   );
 
-  const toggleCurve = (key) => setHistCurves((prev) => ({ ...prev, [key]: !prev[key] }));
-
   return {
     // State & setters (consumed by useHistoryInteraction and clearAll / reset flows)
     historyWindowSec,
@@ -177,8 +174,6 @@ export function useLoudnessHistory({
     setHistoryHudUntilTs,
     historyHudHold,
     setHistoryHudHold,
-    histCurves,
-    toggleCurve,
     // Viewport
     historyChartInteractive,
     totalSamples,

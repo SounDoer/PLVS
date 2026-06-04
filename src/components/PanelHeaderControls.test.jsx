@@ -184,8 +184,6 @@ describe("PanelHeaderControls", () => {
               onPanelControlsChange,
               primaryMetrics: [],
               secondaryMetrics: [],
-              histCurves: {},
-              toggleCurve: vi.fn(),
             }}
           >
             <LeafView
