@@ -47,6 +47,13 @@ describe("LoudnessStatsPanel", () => {
     expect(screen.queryByText("Momentary")).toBeNull();
   });
 
+  it("renders an empty state when visible stats are null", () => {
+    renderPanel(null);
+
+    expect(screen.getByText("No stats selected")).toBeTruthy();
+    expect(screen.queryByText("Momentary")).toBeNull();
+  });
+
   it("does not render metric rows as buttons", () => {
     renderPanel(["momentary"]);
 
