@@ -91,6 +91,18 @@ export function readPersistedPanelControls(prefs = UI_PREFERENCES) {
   }
 }
 
+export function stripLegacyChannelPreferenceKeys(persisted) {
+  const nextPersisted =
+    persisted && typeof persisted === "object" && !Array.isArray(persisted) ? { ...persisted } : {};
+  delete nextPersisted.vectorscopePairX;
+  delete nextPersisted.vectorscopePairY;
+  delete nextPersisted.spectrumChannelType;
+  delete nextPersisted.spectrumChannelX;
+  delete nextPersisted.spectrumChannelY;
+  delete nextPersisted.spectrumChannelCh;
+  return nextPersisted;
+}
+
 export function writePersistedPanelControls(panelControls, prefs = UI_PREFERENCES) {
   let persisted = {};
 
@@ -107,7 +119,7 @@ export function writePersistedPanelControls(panelControls, prefs = UI_PREFERENCE
   localStorage.setItem(
     prefs.layoutPersistKey,
     JSON.stringify({
-      ...persisted,
+      ...stripLegacyChannelPreferenceKeys(persisted),
       panelControls: normalizePanelControls(panelControls),
     })
   );

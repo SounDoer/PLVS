@@ -93,4 +93,26 @@ describe("panelControls", () => {
       },
     });
   });
+
+  it("removes legacy top-level channel keys when writing panelControls", () => {
+    localStorage.setItem(
+      UI_PREFERENCES.layoutPersistKey,
+      JSON.stringify({
+        appearance: "fixed",
+        vectorscopePairX: 2,
+        vectorscopePairY: 3,
+        spectrumChannelType: "single",
+        spectrumChannelX: 0,
+        spectrumChannelY: 1,
+        spectrumChannelCh: 2,
+      })
+    );
+
+    writePersistedPanelControls(DEFAULT_PANEL_CONTROLS);
+
+    expect(JSON.parse(localStorage.getItem(UI_PREFERENCES.layoutPersistKey))).toEqual({
+      appearance: "fixed",
+      panelControls: DEFAULT_PANEL_CONTROLS,
+    });
+  });
 });

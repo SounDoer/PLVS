@@ -6,6 +6,7 @@ import { UI_PREFERENCES } from "./uiPreferences";
 import {
   normalizePanelControls,
   readPersistedPanelControls,
+  stripLegacyChannelPreferenceKeys,
   writePersistedPanelControls,
 } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
@@ -667,13 +668,7 @@ function AppContent() {
       let prev = {};
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) prev = JSON.parse(raw);
-      const nextPersisted = { ...prev };
-      delete nextPersisted.vectorscopePairX;
-      delete nextPersisted.vectorscopePairY;
-      delete nextPersisted.spectrumChannelType;
-      delete nextPersisted.spectrumChannelX;
-      delete nextPersisted.spectrumChannelY;
-      delete nextPersisted.spectrumChannelCh;
+      const nextPersisted = stripLegacyChannelPreferenceKeys(prev);
       const persistedThemeId = appearance === "system" ? null : fixedThemeSelectValue;
       localStorage.setItem(
         STORE_KEY,

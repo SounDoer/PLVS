@@ -36,11 +36,7 @@ describe("App toolbar", () => {
   });
 
   it("removes legacy channel persistence fields before writing ui state", () => {
-    expect(appSource).toContain("delete nextPersisted.vectorscopePairX;");
-    expect(appSource).toContain("delete nextPersisted.vectorscopePairY;");
-    expect(appSource).toContain("delete nextPersisted.spectrumChannelType;");
-    expect(appSource).toContain("delete nextPersisted.spectrumChannelX;");
-    expect(appSource).toContain("delete nextPersisted.spectrumChannelY;");
-    expect(appSource).toContain("delete nextPersisted.spectrumChannelCh;");
+    expect(appSource).toContain("stripLegacyChannelPreferenceKeys");
+    expect(appSource).toContain("const nextPersisted = stripLegacyChannelPreferenceKeys(prev);");
   });
 });
