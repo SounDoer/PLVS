@@ -4,7 +4,7 @@ import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
 import { PEAK_TICKS, peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../../config/scales";
-import { getPeakChannels } from "../../math/peakChannelMath";
+import { getPeakChannels, getPeakChannelSpacingScale } from "../../math/peakChannelMath";
 
 function AnimatedPeakFill({ dbValue }) {
   const reduceMotion = useReducedMotion();
@@ -38,6 +38,7 @@ function AnimatedPeakFill({ dbValue }) {
 export function PeakPanel() {
   const { displayAudio, peakLabelContext, fmt, hasTpMaxValue, tpMaxText } = useAudioData();
   const channels = getPeakChannels(displayAudio, peakLabelContext);
+  const channelSpacingScale = getPeakChannelSpacingScale(channels.length);
   return (
     <div
       className={cn(
@@ -70,13 +71,16 @@ export function PeakPanel() {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-[var(--ui-peak-channel-gap)]">
+          <div
+            className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-[calc(var(--ui-peak-channel-gap)*var(--ui-peak-channel-spacing-scale))]"
+            style={{ "--ui-peak-channel-spacing-scale": channelSpacingScale }}
+          >
             {channels.map((c, idx) => (
               <div
                 key={`${idx}-${c.label}`}
                 className="relative h-full min-h-0 rounded-lg bg-muted p-0"
               >
-                <div className="absolute inset-x-[var(--ui-meter-chart-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
+                <div className="absolute inset-x-[calc(var(--ui-meter-chart-inset-x)*var(--ui-peak-channel-spacing-scale))] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
                   <AnimatedPeakFill dbValue={c.valueDb} />
                 </div>
                 <div className="@max-[220px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground">

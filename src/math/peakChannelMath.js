@@ -1,6 +1,19 @@
 import { getPeakMeterChannelLabels } from "./peakMeterChannelLabels.js";
 
 /**
+ * Scale horizontal peak-meter spacing so multichannel strips keep visible fill bars
+ * in narrow panels while mono/stereo retain the tuned default spacing.
+ *
+ * @param {number} channelCount
+ * @returns {number}
+ */
+export function getPeakChannelSpacingScale(channelCount) {
+  const count = Number.isFinite(channelCount) ? Math.max(0, Math.floor(channelCount)) : 0;
+  if (count <= 2) return 1;
+  return 2 / count;
+}
+
+/**
  * Peak channels view-model for the Peak panel.
  * Uses `peakDb` when available; otherwise falls back to stereo sample L/R.
  *
