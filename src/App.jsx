@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { WorkspaceProvider } from "./workspace/WorkspaceContext.jsx";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
+import { UI_PREFERENCES } from "./uiPreferences";
 import {
-  UI_PREFERENCES,
-  readPersistedVectorscopePair,
-  readPersistedSpectrumChannel,
-} from "./uiPreferences";
+  normalizePanelControls,
+  readPersistedPanelControls,
+  writePersistedPanelControls,
+} from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
@@ -75,6 +76,16 @@ function AudioDeviceOption({ device }) {
 }
 
 export default function App() {
+  return (
+    <WorkspaceProvider>
+      <AppContent />
+    </WorkspaceProvider>
+  );
+}
+
+function AppContent() {
+  const { state: workspaceState, setPanelControls: setWorkspacePanelControls } =
+    useWorkspaceStore();
   const {
     settingsOpen,
     setSettingsOpen,
@@ -117,8 +128,13 @@ export default function App() {
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
-  const [vectorscopePairUi, setVectorscopePairUi] = useState(() => readPersistedVectorscopePair());
-  const [spectrumChannelUi, setSpectrumChannelUi] = useState(() => readPersistedSpectrumChannel());
+  const [panelControls, setPanelControlsState] = useState(() => readPersistedPanelControls());
+  const normalizedPanelControls = useMemo(
+    () => normalizePanelControls(panelControls),
+    [panelControls]
+  );
+  const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
+  const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const [audio, setAudio] = useState({
     peakDb: [],
     peakHoldDb: [],
@@ -180,8 +196,54 @@ export default function App() {
     []
   );
   const selectedOffsetRef = useRef(-1);
-  const vectorscopePairRef = useRef(readPersistedVectorscopePair());
-  const spectrumChannelRef = useRef(readPersistedSpectrumChannel());
+  const vectorscopePairRef = useRef(vectorscopePairUi);
+  const spectrumChannelRef = useRef(spectrumChannelUi);
+  const workspacePanelControls = useMemo(
+    () => normalizePanelControls(workspaceState.panelControls),
+    [workspaceState.panelControls]
+  );
+  const panelControlsKey = useMemo(
+    () => JSON.stringify(normalizedPanelControls),
+    [normalizedPanelControls]
+  );
+  const workspacePanelControlsKey = useMemo(
+    () => JSON.stringify(workspacePanelControls),
+    [workspacePanelControls]
+  );
+  const lastSyncedPanelControlsKeyRef = useRef(workspacePanelControlsKey);
+
+  const updatePanelControls = useCallback((nextPanelControls) => {
+    setPanelControlsState((current) =>
+      normalizePanelControls(
+        typeof nextPanelControls === "function" ? nextPanelControls(current) : nextPanelControls
+      )
+    );
+  }, []);
+
+  useEffect(() => {
+    writePersistedPanelControls(normalizedPanelControls);
+  }, [normalizedPanelControls]);
+
+  useEffect(() => {
+    if (workspacePanelControlsKey !== lastSyncedPanelControlsKeyRef.current) {
+      lastSyncedPanelControlsKeyRef.current = workspacePanelControlsKey;
+      if (workspacePanelControlsKey !== panelControlsKey) {
+        setPanelControlsState(workspacePanelControls);
+      }
+      return;
+    }
+
+    if (panelControlsKey !== lastSyncedPanelControlsKeyRef.current) {
+      lastSyncedPanelControlsKeyRef.current = panelControlsKey;
+      setWorkspacePanelControls(normalizedPanelControls);
+    }
+  }, [
+    normalizedPanelControls,
+    panelControlsKey,
+    setWorkspacePanelControls,
+    workspacePanelControls,
+    workspacePanelControlsKey,
+  ]);
 
   const {
     histSourceList,
@@ -332,8 +394,17 @@ export default function App() {
     const y = Number.isFinite(displayAudio?.vectorscopePairY)
       ? Number(displayAudio.vectorscopePairY)
       : 1;
-    setVectorscopePairUi({ x, y });
-  }, [running, selectedOffset, displayAudio?.vectorscopePairX, displayAudio?.vectorscopePairY]);
+    if (vectorscopePairUi.x === x && vectorscopePairUi.y === y) return;
+    updatePanelControls((current) => ({ ...current, vectorscopePair: { x, y } }));
+  }, [
+    running,
+    selectedOffset,
+    displayAudio?.vectorscopePairX,
+    displayAudio?.vectorscopePairY,
+    vectorscopePairUi.x,
+    vectorscopePairUi.y,
+    updatePanelControls,
+  ]);
 
   useEffect(() => {
     const next = clampVectorscopePairToAvailable(
@@ -342,9 +413,16 @@ export default function App() {
       vectorscopeLabelContext
     );
     if (next.x === vectorscopePairUi.x && next.y === vectorscopePairUi.y) return;
-    setVectorscopePairUi(next);
+    updatePanelControls((current) => ({ ...current, vectorscopePair: next }));
     if (isTauri() && running) void setVectorscopePair({ x: next.x, y: next.y });
-  }, [channelCount, vectorscopeLabelContext, vectorscopePairUi.x, vectorscopePairUi.y, running]);
+  }, [
+    channelCount,
+    vectorscopeLabelContext,
+    vectorscopePairUi.x,
+    vectorscopePairUi.y,
+    running,
+    updatePanelControls,
+  ]);
 
   useEffect(() => {
     const next = clampSpectrumChannelToAvailable(spectrumChannelUi, spectrumChannelOptions);
@@ -354,9 +432,9 @@ export default function App() {
         : `s-${spectrumChannelUi.ch}`;
     const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
     if (curKey === nxtKey) return;
-    setSpectrumChannelUi(next);
+    updatePanelControls((current) => ({ ...current, spectrumChannel: next }));
     if (isTauri() && running) void setSpectrumChannel(next);
-  }, [channelCount, spectrumChannelOptions, running]);
+  }, [spectrumChannelUi, spectrumChannelOptions, running, updatePanelControls]);
 
   const onVectorscopePairChange = async (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({
@@ -369,7 +447,7 @@ export default function App() {
       vectorscopePairLabel: nextVectorscopeLabel,
     });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
-    setVectorscopePairUi(pair);
+    updatePanelControls((current) => ({ ...current, vectorscopePair: pair }));
     if (!isTauri()) return;
     try {
       await setVectorscopePair({ x: pair.x, y: pair.y });
@@ -385,7 +463,7 @@ export default function App() {
       vectorscopePairLabel: vectorscopeLiveLabel,
     });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
-    setSpectrumChannelUi(sel);
+    updatePanelControls((current) => ({ ...current, spectrumChannel: sel }));
     spectrumChannelRef.current = sel;
     if (running && prevLabel !== nextLabel) {
       intakeRef.current.setPendingFrequencyMarker({ from: prevLabel, to: nextLabel });
@@ -581,15 +659,6 @@ export default function App() {
         s.channelLayout === "7.1"
       )
         setChannelLayout(s.channelLayout);
-      if (
-        s.spectrumChannelType === "pair" &&
-        typeof s.spectrumChannelX === "number" &&
-        typeof s.spectrumChannelY === "number"
-      ) {
-        setSpectrumChannelUi({ type: "pair", x: s.spectrumChannelX, y: s.spectrumChannelY });
-      } else if (s.spectrumChannelType === "single" && typeof s.spectrumChannelCh === "number") {
-        setSpectrumChannelUi({ type: "single", ch: s.spectrumChannelCh });
-      }
     } catch (_) {}
   }, []);
 
@@ -612,12 +681,6 @@ export default function App() {
           appearance,
           themeId: persistedThemeId,
           channelLayout,
-          vectorscopePairX: vectorscopePairUi.x,
-          vectorscopePairY: vectorscopePairUi.y,
-          spectrumChannelType: spectrumChannelUi.type,
-          spectrumChannelX: spectrumChannelUi.type === "pair" ? spectrumChannelUi.x : 0,
-          spectrumChannelY: spectrumChannelUi.type === "pair" ? spectrumChannelUi.y : 0,
-          spectrumChannelCh: spectrumChannelUi.type === "single" ? spectrumChannelUi.ch : 0,
         })
       );
     } catch (_) {}
@@ -631,8 +694,6 @@ export default function App() {
     appearance,
     fixedThemeSelectValue,
     channelLayout,
-    vectorscopePairUi,
-    spectrumChannelUi,
   ]);
 
   useEffect(() => {
@@ -697,6 +758,8 @@ export default function App() {
     onVectorscopePairChange,
     vectorscopePairX: vectorscopePairUi.x,
     vectorscopePairY: vectorscopePairUi.y,
+    panelControls: normalizedPanelControls,
+    onPanelControlsChange: updatePanelControls,
     // Shared
     selectedOffset,
     setSelectedOffset,
@@ -747,163 +810,160 @@ export default function App() {
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,
+    loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
+    loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
   };
 
   return (
-    <WorkspaceProvider>
-      <AudioDataContext.Provider value={audioData}>
-        <div className={SHELL_PAGE}>
-          <div className={SHELL_INNER}>
-            <header className={SHELL_HEADER}>
-              <StatusPill state={chromeState} showClock={showClock} clockRef={clockRef} />
-              <div className="flex-1" />
-              <div className="flex items-center gap-1">
-                <TransportButton state={chromeState} onClick={onStartClick} />
-                <div className="mx-1 h-[18px] w-px shrink-0 bg-border" />
-                <IconButton
-                  icon={<Trash2 className="size-3.5" />}
-                  tip="Clear"
-                  disabled={!running && !showClock}
-                  onClick={clearAll}
-                />
-                {isTauri() && (
-                  <div className="relative group">
-                    <Select
-                      value={safeAudioDeviceId}
-                      onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
-                      disabled={!audioDevices.length}
+    <AudioDataContext.Provider value={audioData}>
+      <div className={SHELL_PAGE}>
+        <div className={SHELL_INNER}>
+          <header className={SHELL_HEADER}>
+            <StatusPill state={chromeState} showClock={showClock} clockRef={clockRef} />
+            <div className="flex-1" />
+            <div className="flex items-center gap-1">
+              <TransportButton state={chromeState} onClick={onStartClick} />
+              <div className="mx-1 h-[18px] w-px shrink-0 bg-border" />
+              <IconButton
+                icon={<Trash2 className="size-3.5" />}
+                tip="Clear"
+                disabled={!running && !showClock}
+                onClick={clearAll}
+              />
+              {isTauri() && (
+                <div className="relative group">
+                  <Select
+                    value={safeAudioDeviceId}
+                    onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
+                    disabled={!audioDevices.length}
+                  >
+                    <SelectTrigger
+                      className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
+                      aria-label="Audio device"
                     >
-                      <SelectTrigger
-                        className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
-                        aria-label="Audio device"
-                      >
-                        <Volume2 className="size-4 shrink-0" />
-                      </SelectTrigger>
-                      <SelectContent align="end" sideOffset={6} className="w-[min(28rem,92vw)]">
-                        <SelectItem value="default">Automatic (default system output)</SelectItem>
-                        {audioOutputs.length ? (
-                          <SelectGroup>
-                            <SelectLabel>Output</SelectLabel>
-                            {audioOutputs.map((d) => (
-                              <AudioDeviceOption key={d.id} device={d} />
-                            ))}
-                          </SelectGroup>
-                        ) : null}
-                        {audioInputs.length ? (
-                          <SelectGroup>
-                            <SelectLabel>Input</SelectLabel>
-                            {audioInputs.map((d) => (
-                              <AudioDeviceOption key={d.id} device={d} />
-                            ))}
-                          </SelectGroup>
-                        ) : null}
-                      </SelectContent>
-                    </Select>
-                    <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
-                      Audio device
+                      <Volume2 className="size-4 shrink-0" />
+                    </SelectTrigger>
+                    <SelectContent align="end" sideOffset={6} className="w-[min(28rem,92vw)]">
+                      <SelectItem value="default">Automatic (default system output)</SelectItem>
+                      {audioOutputs.length ? (
+                        <SelectGroup>
+                          <SelectLabel>Output</SelectLabel>
+                          {audioOutputs.map((d) => (
+                            <AudioDeviceOption key={d.id} device={d} />
+                          ))}
+                        </SelectGroup>
+                      ) : null}
+                      {audioInputs.length ? (
+                        <SelectGroup>
+                          <SelectLabel>Input</SelectLabel>
+                          {audioInputs.map((d) => (
+                            <AudioDeviceOption key={d.id} device={d} />
+                          ))}
+                        </SelectGroup>
+                      ) : null}
+                    </SelectContent>
+                  </Select>
+                  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
+                    Audio device
+                  </span>
+                </div>
+              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <span>
+                    <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Layout & modules" />
+                  </span>
+                </PopoverTrigger>
+                <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Modules
+                  </p>
+                  <VisibilityPopoverContent />
+                  <div className="my-1 h-px bg-border/50" />
+                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Presets
+                  </p>
+                  <PresetDropdownContent />
+                </PopoverContent>
+              </Popover>
+              <IconButton
+                icon={<Settings className="size-3.5" />}
+                tip="Settings"
+                onClick={() => setSettingsOpen(true)}
+              />
+            </div>
+          </header>
+
+          <SplitLayout />
+
+          <footer className={SHELL_FOOTER}>
+            <span className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground/60">
+              Device
+            </span>
+            <span
+              className={cn(
+                "min-w-0 truncate tabular-nums",
+                deviceDisplay ? "text-foreground" : "text-muted-foreground"
+              )}
+            >
+              {footerDeviceLabel}
+            </span>
+            <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+            <span className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground/60">
+              Ref
+            </span>
+            <span className="min-w-0 truncate tabular-nums text-foreground">
+              {referenceLufs} LUFS
+            </span>
+            {(() => {
+              // Auto mode: unknown channel count — user needs to pick a layout manually.
+              if (
+                channelLayout === "auto" &&
+                layoutResolution.resolved === "unknown" &&
+                channelCount > 0
+              ) {
+                return (
+                  <>
+                    <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      {channelCount}-channel detected · Select layout in Settings
                     </span>
-                  </div>
-                )}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <span>
-                      <IconButton
-                        icon={<LayoutGrid className="size-3.5" />}
-                        tip="Layout & modules"
-                      />
+                  </>
+                );
+              }
+              // Manual mode: selection doesn't match what auto would detect.
+              const autoResolved = resolveChannelLayout("auto", { channelCount }).resolved;
+              if (channelLayout !== "auto" && channelLayout !== autoResolved) {
+                return (
+                  <>
+                    <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      Device is {autoResolved === "unknown" ? `${channelCount}-ch` : autoResolved} ·
+                      selected {channelLayout}
                     </span>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
-                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Modules
-                    </p>
-                    <VisibilityPopoverContent />
-                    <div className="my-1 h-px bg-border/50" />
-                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Presets
-                    </p>
-                    <PresetDropdownContent />
-                  </PopoverContent>
-                </Popover>
-                <IconButton
-                  icon={<Settings className="size-3.5" />}
-                  tip="Settings"
-                  onClick={() => setSettingsOpen(true)}
-                />
-              </div>
-            </header>
-
-            <SplitLayout />
-
-            <footer className={SHELL_FOOTER}>
-              <span className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground/60">
-                Device
-              </span>
-              <span
-                className={cn(
-                  "min-w-0 truncate tabular-nums",
-                  deviceDisplay ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
-                {footerDeviceLabel}
-              </span>
-              <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-              <span className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground/60">
-                Ref
-              </span>
-              <span className="min-w-0 truncate tabular-nums text-foreground">
-                {referenceLufs} LUFS
-              </span>
-              {(() => {
-                // Auto mode: unknown channel count — user needs to pick a layout manually.
-                if (
-                  channelLayout === "auto" &&
-                  layoutResolution.resolved === "unknown" &&
-                  channelCount > 0
-                ) {
-                  return (
-                    <>
-                      <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                      <span className="min-w-0 truncate text-muted-foreground">
-                        {channelCount}-channel detected · Select layout in Settings
-                      </span>
-                    </>
-                  );
-                }
-                // Manual mode: selection doesn't match what auto would detect.
-                const autoResolved = resolveChannelLayout("auto", { channelCount }).resolved;
-                if (channelLayout !== "auto" && channelLayout !== autoResolved) {
-                  return (
-                    <>
-                      <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                      <span className="min-w-0 truncate text-muted-foreground">
-                        Device is {autoResolved === "unknown" ? `${channelCount}-ch` : autoResolved}{" "}
-                        · selected {channelLayout}
-                      </span>
-                    </>
-                  );
-                }
-                return null;
-              })()}
-            </footer>
-          </div>
-
-          <SettingsPanel
-            settingsOpen={settingsOpen}
-            setSettingsOpen={setSettingsOpen}
-            appearance={appearance}
-            setAppearanceMode={setAppearanceMode}
-            fixedThemeSelectValue={fixedThemeSelectValue}
-            setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
-            themeSelectOptions={themeSelectOptions}
-            referenceLufs={referenceLufs}
-            setReferenceLufs={setReferenceLufs}
-            channelLayout={channelLayout}
-            setChannelLayout={setChannelLayout}
-            appVersion={APP_VERSION}
-          />
+                  </>
+                );
+              }
+              return null;
+            })()}
+          </footer>
         </div>
-      </AudioDataContext.Provider>
-    </WorkspaceProvider>
+
+        <SettingsPanel
+          settingsOpen={settingsOpen}
+          setSettingsOpen={setSettingsOpen}
+          appearance={appearance}
+          setAppearanceMode={setAppearanceMode}
+          fixedThemeSelectValue={fixedThemeSelectValue}
+          setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
+          themeSelectOptions={themeSelectOptions}
+          referenceLufs={referenceLufs}
+          setReferenceLufs={setReferenceLufs}
+          channelLayout={channelLayout}
+          setChannelLayout={setChannelLayout}
+          appVersion={APP_VERSION}
+        />
+      </div>
+    </AudioDataContext.Provider>
   );
 }

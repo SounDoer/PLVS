@@ -176,6 +176,8 @@ export function LeafView({ node, path, style }) {
             spectrumValueKey={audioData?.spectrumValueKey ?? ""}
             spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
             onSpectrumChange={audioData?.onSpectrumChannelChange}
+            panelControls={audioData?.panelControls}
+            onPanelControlsChange={audioData?.onPanelControlsChange}
           />
           <button
             type="button"
