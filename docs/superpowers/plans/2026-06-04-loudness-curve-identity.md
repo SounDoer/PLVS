@@ -8,6 +8,8 @@
 
 **Tech Stack:** React JSX, Tailwind v4 utility classes, CSS custom properties, Vitest + Testing Library.
 
+**Revision Note (2026-06-04):** Visual review rejected hover HUD and Layers swatches as unnecessary chrome. Current implementation should keep the hover HUD compact, avoid new swatches, keep reference text on semantic text color, and distinguish `M` / `ST` with theme sibling colors plus line width: `M` thin, `ST` thicker. The design spec and token docs are the source of truth for this revised direction.
+
 ---
 
 ## File Structure

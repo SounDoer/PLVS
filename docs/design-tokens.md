@@ -70,26 +70,24 @@ Controls the three-stop gradient fill on Peak panel channel bars.
 ### Component: Chart (data trace colors)
 
 All chart traces use a **live / snap** dual-rail pattern.  
-Primary measured data series use **solid sibling traces** inside the active theme's signal family. Auxiliary layers use separate visual semantics: dashed lines for references / thresholds / markers, bands for ranges or tolerances, and swatches for legends or hover readouts.
+Primary measured data series use **solid sibling traces** inside the active theme's signal family. Auxiliary layers use separate visual semantics: dashed lines for references / thresholds / markers and bands for ranges or tolerances.
 
-For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from `Reference` or future marker layers. Theme authors may tune their lightness, saturation, slight hue shift, opacity, or stroke width per theme, but the pair should still feel related to Spectrum / Vectorscope accent colors rather than introducing a Loudness-only palette.
+For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from `Reference` or future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune their lightness, saturation, slight hue shift, opacity, or stroke width per theme, but the pair should still feel related to Spectrum / Vectorscope accent colors rather than introducing a Loudness-only palette.
 
-Reference layers should remain lower priority than primary data traces. Use `--ui-chart-target-line` for the dashed line, low-opacity band, and optional reference swatch. Reference label text should use existing semantic text color such as muted foreground; do not add a dedicated reference text token unless semantic text fails in implementation.
-
-Hover HUDs, layer menus, and other trace legends should reuse these same chart tokens for swatches. Do not introduce raw swatch colors in component code.
+Reference layers should remain lower priority than primary data traces. Use `--ui-chart-target-line` for the dashed line and low-opacity band. Reference label text and reference axis text should use existing semantic text color such as muted foreground; do not add a dedicated reference text token unless semantic text fails in implementation.
 
 | Token | Value | Role |
 |-------|-------|------|
 | `--ui-chart-momentary` | `#fb923c` | Loudness M · live primary data trace |
 | `--ui-chart-momentary-snap` | `#fcd34d` | Loudness M · snapshot trace |
-| `--ui-chart-shortterm` | `#e8824a` | Loudness ST · live sibling data trace |
-| `--ui-chart-shortterm-snap` | `#fed7aa` | Loudness ST · snapshot sibling trace |
+| `--ui-chart-shortterm` | `#c66a2a` | Loudness ST · live sibling data trace |
+| `--ui-chart-shortterm-snap` | `#f2b27a` | Loudness ST · snapshot sibling trace |
 | `--ui-chart-selection` | `#fcd34d` | Selected-offset baseline (light gold) |
 | `--ui-chart-vectorscope-live` | `#fb923c` | Vectorscope path (live) |
 | `--ui-chart-vectorscope-snap` | `#fcd34d` | Vectorscope path (snap) |
 | `--ui-chart-spectrum-live` | `#fb923c` | Spectrum path + fill (live) |
 | `--ui-chart-spectrum-snap` | `#fcd34d` | Spectrum path + fill (snap) |
-| `--ui-chart-target-line` | `rgba(251,146,60,0.4)` | Loudness target / reference auxiliary line, band source, and optional swatch |
+| `--ui-chart-target-line` | `rgba(251,146,60,0.4)` | Loudness target / reference auxiliary line and band source |
 
 ### Component: Signal (semantic state colors)
 

@@ -81,6 +81,23 @@ describe("LoudnessHistoryChart", () => {
     expect(screen.getByText("Ref -23 LUFS")).toBeTruthy();
   });
 
+  it("keeps data trace stroke widths independent from SVG scaling", () => {
+    const { container } = renderChart(["momentary", "shortTerm"]);
+    const paths = container.querySelectorAll("svg path");
+
+    expect(paths).toHaveLength(2);
+    expect(paths[0]?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    expect(paths[1]?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
+  it("does not color the reference tick as a primary chart trace", () => {
+    renderChart(["ref"]);
+
+    const referenceTick = screen.getAllByText("-23").find((element) => element.tagName === "SPAN");
+    expect(referenceTick?.className).toContain("font-semibold");
+    expect(referenceTick?.className).not.toContain("text-chart-3");
+  });
+
   it("hides reference layer when ref is not selected", () => {
     renderChart(["shortTerm"]);
 
@@ -91,5 +108,26 @@ describe("LoudnessHistoryChart", () => {
     renderChart([]);
 
     expect(screen.getByText("No layers selected")).toBeTruthy();
+  });
+
+  it("keeps the hover HUD compact without trace swatches", () => {
+    render(
+      <LoudnessHistoryChart
+        {...baseProps}
+        loudnessHistoryVisibleLayerIds={["momentary", "shortTerm", "ref"]}
+        historyHover={{
+          leftPct: 30,
+          topPct: 40,
+          offsetLabel: "12s",
+          momentary: -18.2,
+          shortTerm: -20.1,
+        }}
+      />
+    );
+
+    expect(screen.getByText("M")).toBeTruthy();
+    expect(screen.getByText("ST")).toBeTruthy();
+    expect(screen.queryByLabelText("Momentary trace")).toBeNull();
+    expect(screen.queryByLabelText("Short-term trace")).toBeNull();
   });
 });

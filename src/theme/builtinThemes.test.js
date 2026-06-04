@@ -1,6 +1,26 @@
 import { describe, it, expect } from "vitest";
 import { BUILTIN_THEMES, THEME_IDS, getBuiltinTheme } from "./builtinThemes.js";
 
+function hexToRgb(hex) {
+  const matched = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!matched) return null;
+
+  const value = Number.parseInt(matched[1], 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+}
+
+function colorDistance(a, b) {
+  const rgbA = hexToRgb(a);
+  const rgbB = hexToRgb(b);
+  if (!rgbA || !rgbB) return 0;
+
+  return Math.hypot(rgbA.r - rgbB.r, rgbA.g - rgbB.g, rgbA.b - rgbB.b);
+}
+
 describe("BUILTIN_THEMES", () => {
   it("contains plvs-dark, plvs-light, plvs-phosphor, and plvs-tungsten", () => {
     expect(THEME_IDS).toContain("plvs-dark");
@@ -8,6 +28,31 @@ describe("BUILTIN_THEMES", () => {
     expect(THEME_IDS).toContain("plvs-phosphor");
     expect(THEME_IDS).toContain("plvs-tungsten");
     expect(THEME_IDS).toContain("plvs-abyss");
+  });
+
+  it("defines distinct loudness history trace tokens for every theme", () => {
+    for (const themeId of THEME_IDS) {
+      const loudnessHistory = BUILTIN_THEMES[themeId].charts.loudnessHistory;
+
+      expect(loudnessHistory.momentaryStroke).toBeTruthy();
+      expect(loudnessHistory.momentaryStrokeSnap).toBeTruthy();
+      expect(loudnessHistory.shortTermStroke).toBeTruthy();
+      expect(loudnessHistory.shortTermStrokeSnap).toBeTruthy();
+      expect(loudnessHistory.selectionStroke).toBeTruthy();
+      expect(loudnessHistory.historyGridLineColor).toBeTruthy();
+
+      expect(loudnessHistory.momentaryStroke).not.toBe(loudnessHistory.shortTermStroke);
+      expect(Number(loudnessHistory.momentaryStrokeWidth)).toBeGreaterThan(0);
+      expect(Number(loudnessHistory.shortTermStrokeWidth)).toBeGreaterThan(0);
+      expect(
+        Number(loudnessHistory.shortTermStrokeWidth) / Number(loudnessHistory.momentaryStrokeWidth)
+      ).toBeGreaterThanOrEqual(1.75);
+      expect(
+        colorDistance(loudnessHistory.momentaryStroke, loudnessHistory.shortTermStroke)
+      ).toBeGreaterThanOrEqual(45);
+      expect(Number(loudnessHistory.shortTermOpacity)).toBeGreaterThan(0);
+      expect(Number(loudnessHistory.shortTermOpacity)).toBeLessThanOrEqual(1);
+    }
   });
 
   it("plvs-abyss has colorScheme dark", () => {

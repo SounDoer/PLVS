@@ -12,7 +12,6 @@ Improve how the Loudness history chart distinguishes `Momentary` (`M`) and `Shor
 - Preserve equal visual importance between `M` and `ST`.
 - Keep Loudness aligned with the same theme accent family used by Spectrum and Vectorscope.
 - Reserve dashed and marker styles for auxiliary chart layers such as `Reference`, thresholds, markers, and future events.
-- Use hover and layer-control swatches to clarify the mapping between labels and curve colors.
 - Update the design token guidance so future chart layers follow the same visual language.
 
 ## Non-Goals
@@ -22,6 +21,7 @@ Improve how the Loudness history chart distinguishes `Momentary` (`M`) and `Shor
 - Do not use dashed lines for `M` or `ST`.
 - Do not change the meaning of `Reference`; it remains an auxiliary reference layer.
 - Do not add a dedicated reference text color token unless existing semantic text tokens fail in implementation.
+- Do not add hover HUD or layer menu swatches unless the curve styling alone proves insufficient.
 - Do not add user customization for trace colors or line styles.
 
 ## Current Behavior
@@ -43,7 +43,6 @@ Chart layer style should carry semantic meaning:
 - Solid colored curves are primary data series.
 - Dashed lines are references, targets, thresholds, or future marker-like auxiliary layers.
 - Bands are ranges or tolerances around an auxiliary layer.
-- Swatches explain the mapping between a trace token and its label.
 
 Under this model, `M` and `ST` stay solid because both are primary loudness history series. `Reference` keeps the dashed style because it is not a measured data series.
 
@@ -67,28 +66,18 @@ They should not differ by unrelated high-contrast palette jumps. For example, a 
 
 `M` and `ST` both render as solid curves.
 
-Their visual weight should remain close. A small width or opacity difference is acceptable when it improves legibility, but neither trace should read as a background or secondary layer by default.
+`M` should use a thinner stroke. `ST` should use a thicker stroke. This gives users a stable shape cue without borrowing dashed-line semantics from reference or marker layers.
+
+The data curve paths should use screen-space stroke widths. In SVG, that means using non-scaling strokes so the `M` / `ST` width difference remains visible when the chart viewBox is stretched or compressed by the panel size.
 
 ### Hover HUD
 
-The hover HUD should include a small trace swatch for each loudness value row:
+The hover HUD should stay compact:
 
-- `M` row: swatch uses the same visual token as the `M` curve.
-- `ST` row: swatch uses the same visual token as the `ST` curve.
+- `M` row uses the `M` label and value.
+- `ST` row uses the `ST` label and value.
 
-The swatch should be a compact solid line segment, not a filled square, so it matches the chart trace language.
-
-### Layers Menu
-
-The `Layers` menu may also show swatches next to `Momentary`, `Short-term`, and `Reference`.
-
-If added:
-
-- `Momentary` uses the `M` curve swatch.
-- `Short-term` uses the `ST` curve swatch.
-- `Reference` uses a dashed or reference-style swatch.
-
-This lets the menu double as a lightweight legend without adding permanent chart chrome.
+Do not add trace swatches here unless visual review shows the chart still needs disambiguation after line-width and color tuning.
 
 ### Reference Layer
 
@@ -96,7 +85,7 @@ This lets the menu double as a lightweight legend without adding permanent chart
 
 The reference line uses `--ui-chart-target-line` and keeps its dashed style. The tolerance band may derive from the same token at low opacity. The reference label text should use existing semantic text color, such as muted foreground, instead of a dedicated chart text color.
 
-If the label needs a stronger mapping to the line, add a small dashed swatch that reuses `--ui-chart-target-line`. Do not color the whole label as a third primary trace.
+Reference axis text should also use semantic text color rather than decorative `text-chart-*` palette slots. Do not color reference text as a third primary trace.
 
 ## Design Token Guidance
 
@@ -104,16 +93,17 @@ If the label needs a stronger mapping to the line, add a small dashed swatch tha
 
 - `--ui-chart-momentary` and `--ui-chart-shortterm` are sibling primary data trace tokens.
 - `--ui-chart-target-line` is an auxiliary reference token with lower visual priority than primary traces.
-- Reference labels should use semantic text color; reference identity should come from a small `--ui-chart-target-line` swatch when needed.
-- Components should not invent raw colors for chart legends or hover swatches; they should reuse the same chart tokens as the rendered traces.
+- Reference labels and reference axis text should use semantic text color.
 - Theme authors may tune sibling trace colors per theme, but must keep them within the theme's signal family.
 
 ## Testing
 
 Implementation should include focused tests for:
 
-- `LoudnessHistoryChart` renders hover HUD swatches for `M` and `ST` when hover data is present.
-- Any `Layers` menu swatches render with the expected labels if that optional step is implemented.
+- `LoudnessHistoryChart` keeps the hover HUD compact without trace swatches.
+- `LoudnessHistoryChart` does not color reference axis text with decorative `text-chart-*` palette slots.
+- `LoudnessHistoryChart` renders `M` and `ST` paths with non-scaling strokes so token width changes are visible at runtime.
+- Theme token tests assert `M` uses a thinner stroke than `ST` for every built-in theme.
 - Theme token tests continue to assert stable token presence for all built-in themes.
 
 Visual review should check every built-in theme:
@@ -126,4 +116,4 @@ Visual review should check every built-in theme:
 
 ## Open Decision
 
-Implement the hover HUD swatches first. Add `Layers` menu swatches only if the hover HUD plus refined theme colors are not enough for quick recognition.
+Do not implement HUD or Layers swatches for now. Revisit only if visual review shows line width and sibling theme colors are not enough.

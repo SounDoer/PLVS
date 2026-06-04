@@ -108,7 +108,7 @@ export function LoudnessHistoryChart({
           {historyYAxisTicksLabeled.map(({ v, lb }) => {
             const isTargetTick = v === targetLufs;
             const tickClass = isTargetTick
-              ? "absolute right-0 leading-none font-semibold text-chart-3"
+              ? "absolute right-0 leading-none font-semibold"
               : "absolute right-0 leading-none";
             if (v === LOUDNESS_DB_MAX) {
               return (
@@ -198,6 +198,7 @@ export function LoudnessHistoryChart({
                 selectedOffset >= 0 ? "var(--ui-chart-momentary-snap)" : "var(--ui-chart-momentary)"
               }
               strokeWidth="var(--ui-lh-stroke-m-w)"
+              vectorEffect="non-scaling-stroke"
             />
           )}
           {showShortTerm && displayHistoryPathST && (
@@ -209,6 +210,7 @@ export function LoudnessHistoryChart({
               }
               strokeWidth="var(--ui-lh-stroke-st-w)"
               opacity="var(--ui-lh-stroke-st-op)"
+              vectorEffect="non-scaling-stroke"
             />
           )}
           {selectedOffset >= 0 && showSelLine ? (
