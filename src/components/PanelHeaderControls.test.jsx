@@ -140,7 +140,15 @@ describe("PanelHeaderControls", () => {
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
-      loudnessStatsVisibleIds: ["shortTerm", "integrated", "lra"],
+      loudnessStatsVisibleIds: [
+        "shortTerm",
+        "integrated",
+        "momentaryMax",
+        "shortTermMax",
+        "lra",
+        "psr",
+        "plr",
+      ],
     });
   });
 
@@ -159,7 +167,7 @@ describe("PanelHeaderControls", () => {
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
-      loudnessHistoryVisibleLayerIds: ["shortTerm", "ref", "momentary"],
+      loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
     });
   });
 
@@ -200,7 +208,15 @@ describe("PanelHeaderControls", () => {
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
-      loudnessStatsVisibleIds: ["shortTerm", "integrated", "lra"],
+      loudnessStatsVisibleIds: [
+        "shortTerm",
+        "integrated",
+        "momentaryMax",
+        "shortTermMax",
+        "lra",
+        "psr",
+        "plr",
+      ],
     });
   });
 });

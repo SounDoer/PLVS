@@ -36,8 +36,17 @@ describe("panelControls", () => {
     expect(DEFAULT_PANEL_CONTROLS).toEqual({
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
-      loudnessStatsVisibleIds: ["momentary", "shortTerm", "integrated", "lra"],
-      loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
+      loudnessStatsVisibleIds: [
+        "momentary",
+        "shortTerm",
+        "integrated",
+        "momentaryMax",
+        "shortTermMax",
+        "lra",
+        "psr",
+        "plr",
+      ],
+      loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
     });
   });
 

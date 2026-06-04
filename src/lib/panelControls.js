@@ -20,8 +20,17 @@ export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
 export const DEFAULT_PANEL_CONTROLS = {
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
-  loudnessStatsVisibleIds: ["momentary", "shortTerm", "integrated", "lra"],
-  loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
+  loudnessStatsVisibleIds: [
+    "momentary",
+    "shortTerm",
+    "integrated",
+    "momentaryMax",
+    "shortTermMax",
+    "lra",
+    "psr",
+    "plr",
+  ],
+  loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
 };
 
 const LOUDNESS_STATS_IDS = new Set(LOUDNESS_STATS_OPTIONS.map((option) => option.id));
