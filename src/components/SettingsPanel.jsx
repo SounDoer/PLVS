@@ -144,7 +144,7 @@ export function SettingsPanel({
                 </div>
                 <Separator />
                 <div className="grid gap-2">
-                  <Label htmlFor="settings-channel-layout">Channel layout (Advanced)</Label>
+                  <Label htmlFor="settings-channel-layout">Channel layout</Label>
                   <Select value={channelLayout} onValueChange={setChannelLayout}>
                     <SelectTrigger id="settings-channel-layout">
                       <SelectValue />

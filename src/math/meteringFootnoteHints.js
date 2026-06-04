@@ -33,7 +33,7 @@ export function buildMeteringFootnoteHints({ running, channelLayout, channelCoun
       message:
         "Multi-channel (Auto): loudness uses Ch 1–2 until you pick a layout preset in Settings.",
       title:
-        "Automatic channel layout detection is not implemented yet. Loudness (L1) uses the first two channels until you select Stereo or 5.1 under Settings → Channel layout (Advanced).",
+        "Automatic channel layout detection is not implemented yet. Loudness (L1) uses the first two channels until you select Stereo or 5.1 under Settings → Channel layout.",
     });
   }
 
