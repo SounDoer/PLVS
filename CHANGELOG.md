@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-06-04
+
+### Changed
+
+- Loudness history chart traces now distinguish Momentary and Short-term as sibling primary curves using theme-owned color and stroke-width tokens.
+- Chart snapshot traces now use a consistent theme-owned snapshot color family across Loudness, Vectorscope, and Spectrum.
+- Spectrum live peak overlays now use the live spectrum token instead of consuming snapshot state colors.
+
+### Fixed
+
+- Panel header controls remain visible in all panel sizes so channel, stats, and layer controls are not hidden by narrow panel layouts.
+- Snapshot color tests now guard built-in themes against barely distinguishable or inconsistent chart snapshot traces.
+
 ## [0.1.2] - 2026-06-04
 
 ### Added
