@@ -35,6 +35,21 @@ describe("App toolbar", () => {
     );
   });
 
+  it("syncs restored channel controls to the backend while running", () => {
+    expect(appSource).toContain('const lastSentVectorscopePairKeyRef = useRef("");');
+    expect(appSource).toContain('const lastSentSpectrumChannelKeyRef = useRef("");');
+    expect(appSource).toContain("void sendTrackedVectorscopePair(vectorscopePairUi);");
+    expect(appSource).toContain("void sendTrackedSpectrumChannel(spectrumChannelUi);");
+  });
+
+  it("does not let stale live vectorscope frames overwrite pending app changes", () => {
+    expect(appSource).toContain("const pendingVectorscopePairSyncRef = useRef(null);");
+    expect(appSource).toContain("pendingVectorscopePairSyncRef.current = null;");
+    expect(appSource).toContain(
+      "if (pendingPair && (pendingPair.x !== x || pendingPair.y !== y)) return;"
+    );
+  });
+
   it("removes legacy channel persistence fields before writing ui state", () => {
     expect(appSource).toContain("stripLegacyChannelPreferenceKeys");
     expect(appSource).toContain("const nextPersisted = stripLegacyChannelPreferenceKeys(prev);");

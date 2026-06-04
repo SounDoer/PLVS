@@ -199,6 +199,9 @@ function AppContent() {
   const selectedOffsetRef = useRef(-1);
   const vectorscopePairRef = useRef(vectorscopePairUi);
   const spectrumChannelRef = useRef(spectrumChannelUi);
+  const pendingVectorscopePairSyncRef = useRef(null);
+  const lastSentVectorscopePairKeyRef = useRef("");
+  const lastSentSpectrumChannelKeyRef = useRef("");
   const workspacePanelControls = useMemo(
     () => normalizePanelControls(workspaceState.panelControls),
     [workspaceState.panelControls]
@@ -219,6 +222,21 @@ function AppContent() {
         typeof nextPanelControls === "function" ? nextPanelControls(current) : nextPanelControls
       )
     );
+  }, []);
+  const sendTrackedVectorscopePair = useCallback((pair) => {
+    const key = `${pair.x}-${pair.y}`;
+    lastSentVectorscopePairKeyRef.current = key;
+    pendingVectorscopePairSyncRef.current = { x: pair.x, y: pair.y };
+    return setVectorscopePair({ x: pair.x, y: pair.y }).catch(() => {
+      if (lastSentVectorscopePairKeyRef.current === key) lastSentVectorscopePairKeyRef.current = "";
+    });
+  }, []);
+  const sendTrackedSpectrumChannel = useCallback((sel) => {
+    const key = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
+    lastSentSpectrumChannelKeyRef.current = key;
+    return setSpectrumChannel(sel).catch(() => {
+      if (lastSentSpectrumChannelKeyRef.current === key) lastSentSpectrumChannelKeyRef.current = "";
+    });
   }, []);
 
   useEffect(() => {
@@ -393,6 +411,9 @@ function AppContent() {
     const y = Number.isFinite(displayAudio?.vectorscopePairY)
       ? Number(displayAudio.vectorscopePairY)
       : 1;
+    const pendingPair = pendingVectorscopePairSyncRef.current;
+    if (pendingPair && (pendingPair.x !== x || pendingPair.y !== y)) return;
+    if (pendingPair) pendingVectorscopePairSyncRef.current = null;
     updatePanelControls((current) => {
       if (current.vectorscopePair.x === x && current.vectorscopePair.y === y) return current;
       return { ...current, vectorscopePair: { x, y } };
@@ -413,9 +434,10 @@ function AppContent() {
     );
     if (next.x === vectorscopePairUi.x && next.y === vectorscopePairUi.y) return;
     updatePanelControls((current) => ({ ...current, vectorscopePair: next }));
-    if (isTauri() && running) void setVectorscopePair({ x: next.x, y: next.y });
+    if (isTauri() && running) void sendTrackedVectorscopePair(next);
   }, [
     channelCount,
+    sendTrackedVectorscopePair,
     vectorscopeLabelContext,
     vectorscopePairUi.x,
     vectorscopePairUi.y,
@@ -432,8 +454,47 @@ function AppContent() {
     const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
     if (curKey === nxtKey) return;
     updatePanelControls((current) => ({ ...current, spectrumChannel: next }));
-    if (isTauri() && running) void setSpectrumChannel(next);
-  }, [spectrumChannelUi, spectrumChannelOptions, running, updatePanelControls]);
+    if (isTauri() && running) void sendTrackedSpectrumChannel(next);
+  }, [
+    spectrumChannelUi,
+    spectrumChannelOptions,
+    running,
+    sendTrackedSpectrumChannel,
+    updatePanelControls,
+  ]);
+
+  useEffect(() => {
+    if (!running || !isTauri()) return;
+    const next = clampVectorscopePairToAvailable(
+      vectorscopePairUi,
+      channelCount,
+      vectorscopeLabelContext
+    );
+    if (next.x !== vectorscopePairUi.x || next.y !== vectorscopePairUi.y) return;
+    const key = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
+    if (lastSentVectorscopePairKeyRef.current === key) return;
+    void sendTrackedVectorscopePair(vectorscopePairUi);
+  }, [
+    channelCount,
+    running,
+    sendTrackedVectorscopePair,
+    vectorscopeLabelContext,
+    vectorscopePairUi,
+    vectorscopePairUi.x,
+    vectorscopePairUi.y,
+  ]);
+
+  useEffect(() => {
+    if (!running || !isTauri()) return;
+    const next = clampSpectrumChannelToAvailable(spectrumChannelUi, spectrumChannelOptions);
+    const curKey =
+      spectrumChannelUi.type === "pair"
+        ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
+        : `s-${spectrumChannelUi.ch}`;
+    const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
+    if (curKey !== nxtKey || lastSentSpectrumChannelKeyRef.current === curKey) return;
+    void sendTrackedSpectrumChannel(spectrumChannelUi);
+  }, [running, sendTrackedSpectrumChannel, spectrumChannelOptions, spectrumChannelUi]);
 
   const onVectorscopePairChange = async (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({
@@ -449,7 +510,11 @@ function AppContent() {
     updatePanelControls((current) => ({ ...current, vectorscopePair: pair }));
     if (!isTauri()) return;
     try {
-      await setVectorscopePair({ x: pair.x, y: pair.y });
+      if (running) {
+        await sendTrackedVectorscopePair(pair);
+      } else {
+        await setVectorscopePair({ x: pair.x, y: pair.y });
+      }
     } catch (_) {}
   };
 
@@ -469,7 +534,11 @@ function AppContent() {
     }
     if (!isTauri()) return;
     try {
-      await setSpectrumChannel(sel);
+      if (running) {
+        await sendTrackedSpectrumChannel(sel);
+      } else {
+        await setSpectrumChannel(sel);
+      }
     } catch (_) {}
   };
 
