@@ -25,8 +25,22 @@ describe("App toolbar", () => {
 
   it("does not sync live vectorscope selection from snapshot display audio", () => {
     expect(appSource).toContain("if (!running || selectedOffset >= 0) return;");
+    expect(appSource).toContain("updatePanelControls((current) => {");
     expect(appSource).toContain(
-      "[running, selectedOffset, displayAudio?.vectorscopePairX, displayAudio?.vectorscopePairY]"
+      "if (current.vectorscopePair.x === x && current.vectorscopePair.y === y) return current;"
     );
+    expect(appSource).toContain("displayAudio?.vectorscopePairY,");
+    expect(appSource).not.toContain(
+      "vectorscopePairUi.x,\n    vectorscopePairUi.y,\n    updatePanelControls,"
+    );
+  });
+
+  it("removes legacy channel persistence fields before writing ui state", () => {
+    expect(appSource).toContain("delete nextPersisted.vectorscopePairX;");
+    expect(appSource).toContain("delete nextPersisted.vectorscopePairY;");
+    expect(appSource).toContain("delete nextPersisted.spectrumChannelType;");
+    expect(appSource).toContain("delete nextPersisted.spectrumChannelX;");
+    expect(appSource).toContain("delete nextPersisted.spectrumChannelY;");
+    expect(appSource).toContain("delete nextPersisted.spectrumChannelCh;");
   });
 });

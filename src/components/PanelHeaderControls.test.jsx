@@ -172,14 +172,16 @@ describe("PanelHeaderControls", () => {
     expect(layers.container.firstChild).toBeNull();
   });
 
-  it("passes audio panel controls through LeafView to the header controls", () => {
+  it("passes audio panel control changes through LeafView to the header controls", () => {
+    const onPanelControlsChange = vi.fn();
+
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
           <AudioDataContext.Provider
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
-              onPanelControlsChange: vi.fn(),
+              onPanelControlsChange,
               primaryMetrics: [],
               secondaryMetrics: [],
               histCurves: {},
@@ -195,6 +197,12 @@ describe("PanelHeaderControls", () => {
       </WorkspaceProvider>
     );
 
-    expect(screen.getByRole("button", { name: "Stats" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      loudnessStatsVisibleIds: ["shortTerm", "integrated", "lra"],
+    });
   });
 });

@@ -394,15 +394,15 @@ function AppContent() {
     const y = Number.isFinite(displayAudio?.vectorscopePairY)
       ? Number(displayAudio.vectorscopePairY)
       : 1;
-    if (vectorscopePairUi.x === x && vectorscopePairUi.y === y) return;
-    updatePanelControls((current) => ({ ...current, vectorscopePair: { x, y } }));
+    updatePanelControls((current) => {
+      if (current.vectorscopePair.x === x && current.vectorscopePair.y === y) return current;
+      return { ...current, vectorscopePair: { x, y } };
+    });
   }, [
     running,
     selectedOffset,
     displayAudio?.vectorscopePairX,
     displayAudio?.vectorscopePairY,
-    vectorscopePairUi.x,
-    vectorscopePairUi.y,
     updatePanelControls,
   ]);
 
@@ -667,11 +667,18 @@ function AppContent() {
       let prev = {};
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) prev = JSON.parse(raw);
+      const nextPersisted = { ...prev };
+      delete nextPersisted.vectorscopePairX;
+      delete nextPersisted.vectorscopePairY;
+      delete nextPersisted.spectrumChannelType;
+      delete nextPersisted.spectrumChannelX;
+      delete nextPersisted.spectrumChannelY;
+      delete nextPersisted.spectrumChannelCh;
       const persistedThemeId = appearance === "system" ? null : fixedThemeSelectValue;
       localStorage.setItem(
         STORE_KEY,
         JSON.stringify({
-          ...prev,
+          ...nextPersisted,
           mainLeft,
           leftTopRatio,
           rightTopRatio,
