@@ -86,10 +86,10 @@ const METER_GRADIENT_PLVS = {
 const CHARTS_PLVS_LIGHT = {
   loudnessHistory: {
     momentaryStroke: "#e07020",
-    momentaryStrokeSnap: "#c07820",
+    momentaryStrokeSnap: "#b76b00",
     momentaryStrokeWidth: 1.1,
     shortTermStroke: "#a85224",
-    shortTermStrokeSnap: "#9a6a3a",
+    shortTermStrokeSnap: "#7a5a18",
     shortTermStrokeWidth: 2.1,
     shortTermOpacity: 0.95,
     selectionStroke: "#c07820",
@@ -98,7 +98,7 @@ const CHARTS_PLVS_LIGHT = {
   },
   vectorscope: {
     strokeLive: "#e07020",
-    strokeSnap: "#c07820",
+    strokeSnap: "#b76b00",
     strokeWidth: 1,
     axisOpacity: 0.6,
     gridDiagInsetPct: 1.2,
@@ -108,7 +108,7 @@ const CHARTS_PLVS_LIGHT = {
   },
   spectrum: {
     strokeLive: "#e07020",
-    strokeSnap: "#c07820",
+    strokeSnap: "#b76b00",
     strokeWidth: 1.5,
     fillOpacityTop: 0.18,
     fillOpacityBottom: 0.03,
@@ -227,7 +227,7 @@ const CHARTS_PLVS_TUNGSTEN = {
     momentaryStrokeSnap: "#ffd060",
     momentaryStrokeWidth: 1.1,
     shortTermStroke: "#c07820",
-    shortTermStrokeSnap: "#a06010",
+    shortTermStrokeSnap: "#f4b84a",
     shortTermStrokeWidth: 2.1,
     shortTermOpacity: 0.85,
     selectionStroke: "#ffd060",

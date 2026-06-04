@@ -175,7 +175,7 @@ export function SpectrumPanel({ compact = false }) {
                           <path
                             d={displaySpectrumPeakPath}
                             fill="none"
-                            stroke="var(--ui-chart-spectrum-snap)"
+                            stroke="var(--ui-chart-spectrum-live)"
                             strokeWidth="var(--ui-sp-stroke-w-inner)"
                             strokeDasharray="8 6"
                             opacity="0.8"

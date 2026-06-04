@@ -21,6 +21,24 @@ function colorDistance(a, b) {
   return Math.hypot(rgbA.r - rgbB.r, rgbA.g - rgbB.g, rgbA.b - rgbB.b);
 }
 
+function expectHexColor(value) {
+  expect(value).toMatch(/^#[0-9a-f]{6}$/i);
+}
+
+function getSnapshotTokens(themeId) {
+  const charts = BUILTIN_THEMES[themeId].charts;
+  return {
+    momentaryLive: charts.loudnessHistory.momentaryStroke,
+    momentarySnap: charts.loudnessHistory.momentaryStrokeSnap,
+    shortTermLive: charts.loudnessHistory.shortTermStroke,
+    shortTermSnap: charts.loudnessHistory.shortTermStrokeSnap,
+    vectorscopeLive: charts.vectorscope.strokeLive,
+    vectorscopeSnap: charts.vectorscope.strokeSnap,
+    spectrumLive: charts.spectrum.strokeLive,
+    spectrumSnap: charts.spectrum.strokeSnap,
+  };
+}
+
 describe("BUILTIN_THEMES", () => {
   it("contains plvs-dark, plvs-light, plvs-phosphor, and plvs-tungsten", () => {
     expect(THEME_IDS).toContain("plvs-dark");
@@ -52,6 +70,30 @@ describe("BUILTIN_THEMES", () => {
       ).toBeGreaterThanOrEqual(45);
       expect(Number(loudnessHistory.shortTermOpacity)).toBeGreaterThan(0);
       expect(Number(loudnessHistory.shortTermOpacity)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("defines one visually distinct chart snapshot family for every theme", () => {
+    for (const themeId of THEME_IDS) {
+      const tokens = getSnapshotTokens(themeId);
+
+      for (const value of Object.values(tokens)) {
+        expectHexColor(value);
+      }
+
+      expect(tokens.momentarySnap).toBe(tokens.vectorscopeSnap);
+      expect(tokens.momentarySnap).toBe(tokens.spectrumSnap);
+
+      expect(colorDistance(tokens.momentaryLive, tokens.momentarySnap)).toBeGreaterThanOrEqual(45);
+      expect(colorDistance(tokens.shortTermLive, tokens.shortTermSnap)).toBeGreaterThanOrEqual(45);
+      expect(colorDistance(tokens.vectorscopeLive, tokens.vectorscopeSnap)).toBeGreaterThanOrEqual(
+        45
+      );
+      expect(colorDistance(tokens.spectrumLive, tokens.spectrumSnap)).toBeGreaterThanOrEqual(45);
+
+      expect(tokens.shortTermSnap).not.toBe(tokens.momentarySnap);
+      expect(colorDistance(tokens.shortTermSnap, tokens.momentarySnap)).toBeGreaterThanOrEqual(25);
+      expect(colorDistance(tokens.shortTermSnap, tokens.momentarySnap)).toBeLessThanOrEqual(120);
     }
   });
 

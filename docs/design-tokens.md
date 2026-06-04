@@ -74,6 +74,8 @@ Primary measured data series use **solid sibling traces** inside the active them
 
 For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from `Reference` or future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune their lightness, saturation, slight hue shift, opacity, or stroke width per theme, but the pair should still feel related to Spectrum / Vectorscope accent colors rather than introducing a Loudness-only palette.
 
+Snapshot chart colors are state colors for selected historical data. Within a theme, `--ui-chart-momentary-snap`, `--ui-chart-shortterm-snap`, `--ui-chart-vectorscope-snap`, and `--ui-chart-spectrum-snap` should belong to one snapshot family. That family must be clearly distinguishable from live trace colors while still matching the theme. Do not treat snapshot colors as new data categories, hover colors, or warning colors.
+
 Reference layers should remain lower priority than primary data traces. Use `--ui-chart-target-line` for the dashed line and low-opacity band. Reference label text and reference axis text should use existing semantic text color such as muted foreground; do not add a dedicated reference text token unless semantic text fails in implementation.
 
 | Token | Value | Role |
