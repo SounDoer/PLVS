@@ -4,7 +4,7 @@ import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { useAudioData } from "./AudioDataContext.jsx";
-import { PanelChannelSelector } from "../components/PanelChannelSelector.jsx";
+import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
 
 // ---------------------------------------------------------------------------
 // TabPill
@@ -165,7 +165,7 @@ export function LeafView({ node, path, style }) {
         ))}
 
         <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
-          <PanelChannelSelector
+          <PanelHeaderControls
             activeTab={activeTab}
             channelCount={audioData?.channelCount ?? 0}
             vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}

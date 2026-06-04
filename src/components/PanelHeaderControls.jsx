@@ -9,7 +9,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DEFAULT_PANEL_CONTROLS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   LOUDNESS_STATS_OPTIONS,
   normalizePanelControls,
@@ -50,7 +49,7 @@ function MultiSelectChip({ label, options, selectedIds, onToggle }) {
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-44 p-1">
-        <div role="menu" aria-label={label}>
+        <div role="group" aria-label={label}>
           {options.map((option) => {
             const checked = selectedIds.includes(option.id);
 
@@ -58,7 +57,7 @@ function MultiSelectChip({ label, options, selectedIds, onToggle }) {
               <button
                 key={option.id}
                 type="button"
-                role="menuitemcheckbox"
+                role="checkbox"
                 aria-checked={checked}
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
                 onClick={() => onToggle(option.id)}
@@ -102,20 +101,20 @@ export function PanelHeaderControls({
   spectrumValueKey = "",
   spectrumDisplayLabel = "",
   onSpectrumChange,
-  panelControls = DEFAULT_PANEL_CONTROLS,
+  panelControls,
   onPanelControlsChange,
 }) {
-  const normalizedPanelControls = normalizePanelControls(panelControls);
-
   if (activeTab === "loudnessStats") {
+    if (!panelControls || typeof onPanelControlsChange !== "function") return null;
+
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+
     return (
       <MultiSelectChip
         label="Stats"
         options={LOUDNESS_STATS_OPTIONS}
         selectedIds={normalizedPanelControls.loudnessStatsVisibleIds}
         onToggle={(id) => {
-          if (typeof onPanelControlsChange !== "function") return;
-
           onPanelControlsChange(
             normalizePanelControls({
               ...normalizedPanelControls,
@@ -131,14 +130,16 @@ export function PanelHeaderControls({
   }
 
   if (activeTab === "loudness") {
+    if (!panelControls || typeof onPanelControlsChange !== "function") return null;
+
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+
     return (
       <MultiSelectChip
         label="Layers"
         options={LOUDNESS_HISTORY_LAYER_OPTIONS}
         selectedIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
         onToggle={(id) => {
-          if (typeof onPanelControlsChange !== "function") return;
-
           onPanelControlsChange(
             normalizePanelControls({
               ...normalizedPanelControls,

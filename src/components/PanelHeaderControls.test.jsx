@@ -132,7 +132,7 @@ describe("PanelHeaderControls", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Momentary" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
@@ -151,11 +151,20 @@ describe("PanelHeaderControls", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Layers" }));
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Momentary" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
       loudnessHistoryVisibleLayerIds: ["shortTerm", "ref", "momentary"],
     });
+  });
+
+  it("does not render loudness controls before panel controls are wired", () => {
+    const stats = render(<PanelHeaderControls activeTab="loudnessStats" />);
+    expect(stats.container.firstChild).toBeNull();
+    stats.unmount();
+
+    const layers = render(<PanelHeaderControls activeTab="loudness" />);
+    expect(layers.container.firstChild).toBeNull();
   });
 });
