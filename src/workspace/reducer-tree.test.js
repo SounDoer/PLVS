@@ -356,6 +356,48 @@ describe("APPLY_PRESET", () => {
       expect.arrayContaining(["peak", "loudness", "loudnessStats", "vectorscope"])
     );
   });
+
+  it("keeps current panelControls when applying a builtin preset", () => {
+    const panelControls = {
+      vectorscopePair: { x: 2, y: 3 },
+      spectrumChannel: { type: "single", ch: 2 },
+      loudnessStatsVisibleIds: ["integrated"],
+      loudnessHistoryVisibleLayerIds: ["momentary"],
+    };
+    const s = { ...DEFAULT_WORKSPACE_STATE, panelControls };
+    const next = workspaceReducer(s, { type: "APPLY_PRESET", payload: { presetId: "lls" } });
+
+    expect(next.panelControls).toEqual(panelControls);
+  });
+
+  it("restores panelControls when applying a custom preset", () => {
+    const presetControls = {
+      vectorscopePair: { x: 2, y: 3 },
+      spectrumChannel: { type: "single", ch: 2 },
+      loudnessStatsVisibleIds: ["integrated"],
+      loudnessHistoryVisibleLayerIds: ["momentary"],
+    };
+    const s = {
+      ...DEFAULT_WORKSPACE_STATE,
+      customPresets: [
+        {
+          id: "custom-test",
+          name: "Custom Test",
+          builtin: false,
+          tree: DEFAULT_WORKSPACE_STATE.tree,
+          visibleModules: ["loudness"],
+          panelControls: presetControls,
+        },
+      ],
+    };
+
+    const next = workspaceReducer(s, {
+      type: "APPLY_PRESET",
+      payload: { presetId: "custom-test" },
+    });
+
+    expect(next.panelControls).toEqual(presetControls);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -383,5 +425,37 @@ describe("SAVE_PRESET", () => {
     const s = { ...DEFAULT_WORKSPACE_STATE, customPresets: existing };
     const next = workspaceReducer(s, { type: "SAVE_PRESET", payload: { name: "New" } });
     expect(next.customPresets).toHaveLength(2);
+  });
+
+  it("saves current panelControls as part of a custom preset", () => {
+    const panelControls = {
+      vectorscopePair: { x: 2, y: 3 },
+      spectrumChannel: { type: "single", ch: 2 },
+      loudnessStatsVisibleIds: ["integrated"],
+      loudnessHistoryVisibleLayerIds: ["momentary"],
+    };
+    const s = { ...DEFAULT_WORKSPACE_STATE, customPresets: [], panelControls };
+
+    const next = workspaceReducer(s, { type: "SAVE_PRESET", payload: { name: "My Layout" } });
+
+    expect(next.customPresets[0].panelControls).toEqual(panelControls);
+  });
+
+  it("updates panelControls without changing activePresetId", () => {
+    const nextControls = {
+      vectorscopePair: { x: 0, y: 1 },
+      spectrumChannel: { type: "pair", x: 0, y: 1 },
+      loudnessStatsVisibleIds: [],
+      loudnessHistoryVisibleLayerIds: [],
+    };
+    const s = { ...DEFAULT_WORKSPACE_STATE, activePresetId: "lls" };
+
+    const next = workspaceReducer(s, {
+      type: "SET_PANEL_CONTROLS",
+      payload: { panelControls: nextControls },
+    });
+
+    expect(next.panelControls).toEqual(nextControls);
+    expect(next.activePresetId).toBe("lls");
   });
 });

@@ -1,4 +1,5 @@
 /** @import { TreeNode, ModuleId, WorkspaceState, Preset } from './types.js' */
+import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 
 export const WORKSPACE_STORAGE_KEY = "plvs:workspace:v3";
 
@@ -112,5 +113,6 @@ export const DEFAULT_WORKSPACE_STATE = {
   focusId: null,
   activePresetId: "default",
   fullscreenId: null,
+  panelControls: DEFAULT_PANEL_CONTROLS,
   customPresets: [],
 };

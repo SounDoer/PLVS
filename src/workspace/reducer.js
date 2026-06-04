@@ -1,4 +1,5 @@
 /** @import { WorkspaceState, ModuleId, DropTarget, TreeNode } from './types.js' */
+import { normalizePanelControls } from "../lib/panelControls.js";
 import { BUILTIN_PRESETS } from "./constants.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 
@@ -125,6 +126,9 @@ export function workspaceReducer(state, action) {
         ...state,
         tree: preset.tree,
         visibleModules: preset.visibleModules,
+        panelControls: preset.builtin
+          ? state.panelControls
+          : normalizePanelControls(preset.panelControls),
         activePresetId: presetId,
         fullscreenId: null,
       };
@@ -139,6 +143,7 @@ export function workspaceReducer(state, action) {
         builtin: false,
         tree: state.tree,
         visibleModules: state.visibleModules,
+        panelControls: normalizePanelControls(state.panelControls),
       };
       return {
         ...state,
@@ -146,6 +151,12 @@ export function workspaceReducer(state, action) {
         activePresetId: id,
       };
     }
+
+    case "SET_PANEL_CONTROLS":
+      return {
+        ...state,
+        panelControls: normalizePanelControls(action.payload.panelControls),
+      };
 
     default:
       return state;
@@ -172,5 +183,7 @@ export function bindWorkspaceActions(dispatch) {
       }),
     applyPreset: (presetId) => dispatch({ type: "APPLY_PRESET", payload: { presetId } }),
     saveCurrentAsPreset: (name) => dispatch({ type: "SAVE_PRESET", payload: { name } }),
+    setPanelControls: (panelControls) =>
+      dispatch({ type: "SET_PANEL_CONTROLS", payload: { panelControls } }),
   };
 }
