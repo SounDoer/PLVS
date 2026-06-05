@@ -1,17 +1,63 @@
 # PLVS
 
-Real-time audio metering desktop app — Peak, Loudness, Vectorscope, Spectrum, and Spectrogram.
+**Real-time audio metering for Windows & macOS — free and open source.**
+
+[![Latest Release](https://img.shields.io/github/v/release/SounDoer/PLVS?label=latest&style=flat-square)](https://github.com/SounDoer/PLVS/releases)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/SounDoer/PLVS/ci.yml?label=ci&style=flat-square)](https://github.com/SounDoer/PLVS/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/github/downloads/SounDoer/PLVS/total?style=flat-square)](https://github.com/SounDoer/PLVS/releases)
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/SounDoer/PLVS/main/landing/assets/screenshot-hero.webp" alt="PLVS dashboard showing peak, loudness, spectrogram, spectrum, and vectorscope meters" width="100%"/>
+</p>
+
+---
+
+## What is PLVS?
+
+PLVS (reads as *"plus"*) is a **read-only, real-time audio meter** built for **sound designers and mix engineers**. It watches audio playing on your machine — no DAW routing, no virtual cables, no plugin slots required.
+
+It combines five meter types in a single desktop app:
+
+| Meter | What it shows |
+|-------|---------------|
+| **Peak** | Per-channel sample-peak meters (dBFS) |
+| **Loudness** | LUFS — Momentary, Short-term, Integrated (ITU-R BS.1770, EBU R128) |
+| **Spectrum** | FFT-based real-time analyzer with per-band dBFS |
+| **Spectrogram** | Scrolling time-frequency waterfall |
+| **Vectorscope** | Stereo phase / correlation with configurable channel pairs |
+
+PLVS **does not process, route, or modify audio**. It's a monitor — it watches your signal and gets out of the way.
+
+---
+
+## Features
+
+- **Native system audio capture** — monitor any audio playing on your machine. Windows uses WASAPI loopback, macOS uses the native audio tap. No virtual audio cable needed.
+- **Multichannel support** — auto-detects mono, stereo, 5.1, and 7.1 layouts with proper per-channel metering and BS.1770 multichannel weighting.
+- **Session history & snapshots** — scroll back through the loudness history timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
+- **Flexible split-tree layout** — drag dividers, resize panels, rearrange the workspace. Dark and light themes, with configurable color presets.
+- **Loudness reference profiles** — overlay platform delivery targets (YouTube, Spotify, Apple Music, etc.) directly on the loudness chart.
+- **Version-aware** — checks GitHub Releases at startup and surfaces available updates.
+- **Privacy-first** — audio data stays on device. No telemetry, no accounts, no network calls except manual update checks.
+
+---
 
 ## Download
 
-Get the latest installer from [GitHub Releases](https://github.com/SounDoer/PLVS/releases):
+> [!TIP]
+> Visit [**GitHub Releases**](https://github.com/SounDoer/PLVS/releases) for the latest version.
 
-- **Windows** — NSIS installer (`.exe`)
-- **macOS** — DMG disk image (`-aarch64.dmg` for Apple Silicon)
+| Platform | Package | Notes |
+|----------|---------|-------|
+| **Windows 10/11 (x64)** | `PLVS_x64-setup.exe` | NSIS installer |
+| **Windows 10/11 (x64)** | `PLVS_portable_x64.exe` | Portable — no install required |
+| **macOS (Apple Silicon)** | `PLVS_aarch64.dmg` | Requires macOS 14.2+ for system audio capture |
 
-## Installation
+### Installation notes
 
-### macOS — Gatekeeper warning
+<details>
+<summary><b>macOS — first launch warning</b></summary>
 
 PLVS is not notarized by Apple. If macOS blocks the app on first launch, run:
 
@@ -19,13 +65,32 @@ PLVS is not notarized by Apple. If macOS blocks the app on first launch, run:
 xattr -cr /Applications/PLVS.app
 ```
 
-Alternatively: move PLVS.app to the Trash, then immediately move it back — this also clears the quarantine flag.
+Alternatively, move PLVS.app to the Trash and immediately move it back — this also clears the quarantine flag.
 
-### Windows — SmartScreen warning
+</details>
 
-If Windows SmartScreen blocks the installer, click **More info** → **Run anyway**.
+<details>
+<summary><b>Windows — SmartScreen warning</b></summary>
 
-## Local Development
+The installer is not code-signed. If SmartScreen blocks it, click **More info** → **Run anyway**.
+
+</details>
+
+---
+
+## Quick Start
+
+1. **Download** the installer for your platform from [Releases](https://github.com/SounDoer/PLVS/releases).
+2. **Launch** PLVS and select your audio source from the toolbar dropdown:
+   - *System Output* (default) — monitors whatever is playing on your machine.
+   - *Input device* — monitors a physical microphone or line input.
+3. **Press Start** to begin monitoring.
+4. **Arrange panels** by dragging dividers and choosing a layout preset from the toolbar.
+5. **Click any point** on the loudness history chart to freeze a snapshot across all meters.
+
+---
+
+## Development
 
 Requires [Node.js ≥ 20.19.0](https://nodejs.org/) and [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) (Rust, platform build tools).
 
@@ -36,20 +101,53 @@ npm install
 npm run desktop        # start dev build with hot reload
 ```
 
-Other useful commands:
+### Common commands
 
 ```bash
 npm test               # unit tests (Vitest)
+npm run lint           # ESLint
 npm run build          # build frontend to dist/
-npm run desktop:build  # Tauri full release build
-npm run desktop:release-nsis  # Windows NSIS installer only
-npm run desktop:release-dmg   # macOS DMG only
+npm run desktop:build  # full Tauri release build
+npm run desktop:release-nsis  # Windows NSIS installer
+npm run desktop:release-dmg   # macOS DMG
 npm run check          # full pre-merge check (format + lint + test + build)
+npm run rust:check     # Rust: fmt + clippy + test
 ```
 
-## Support
+### Tech Stack
 
-If you find PLVS useful, consider buying me a coffee — link coming soon.
+| Layer | Technology |
+|-------|------------|
+| Desktop shell | [Tauri v2](https://v2.tauri.app/) (Rust) |
+| Frontend | React 19 + Vite |
+| Styling | Tailwind CSS v4 |
+| UI primitives | Radix UI + shadcn/ui patterns |
+| Charts & canvas | Custom Canvas 2D rendering pipeline |
+| Audio capture | WASAPI loopback (Windows) / native audio tap (macOS) |
+| DSP | Custom Rust pipeline — FFT, LUFS, peak, correlation |
+| Testing | Vitest (frontend), `cargo test` (Rust) |
+
+---
+
+## Documentation
+
+- [**Product Requirements (PRD)**](docs/prd.md) — what PLVS is, who it's for, product boundaries.
+- [**Architecture**](docs/architecture.md) — tech stack, directory map, audio pipeline, IPC, theme system.
+- [**Design Tokens**](docs/design-tokens.md) — CSS variable system and theme structure.
+- [**Loudness References**](docs/loudness-references.md) — platform delivery targets for loudness overlays.
+- [**ADR**](docs/adr/) — architecture decision records.
+
+---
+
+## Contributing
+
+Contributions are welcome. Before submitting a PR, please read [CONTRIBUTING.md](CONTRIBUTING.md) for environment setup, code conventions, and CI expectations.
+
+- All code comments and docstrings should be in **English**.
+- The full pre-merge check is `npm run check`.
+- See [`docs/README.md`](docs/README.md) for a documentation map.
+
+---
 
 ## License
 
