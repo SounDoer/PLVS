@@ -94,13 +94,13 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     //   bottom edge traces waveformMin (negative troughs → below center)
     ctx.beginPath();
     for (let i = 0; i < entryCount; i++) {
-      const x = (i / entryCount) * W;
+      const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
       const y = cy - maxes[i] * cy; // cy maps amplitude 1.0 to the top
-      if (i === 0) ctx.moveTo(x, y);
+      if (i === 0) ctx.moveTo(entryCount === 1 ? 0 : x, y);
       else ctx.lineTo(x, y);
     }
     for (let i = entryCount - 1; i >= 0; i--) {
-      const x = (i / entryCount) * W;
+      const x = entryCount === 1 ? 0 : (i / (entryCount - 1)) * W;
       const y = cy - mins[i] * cy;
       ctx.lineTo(x, y);
     }
