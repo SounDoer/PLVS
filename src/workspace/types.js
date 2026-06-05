@@ -1,5 +1,5 @@
 /**
- * @typedef {'peak' | 'loudness' | 'loudnessStats' | 'vectorscope' | 'spectrum' | 'spectrogram'} ModuleId
+ * @typedef {'peak' | 'loudness' | 'loudnessStats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform'} ModuleId
  *
  * @typedef {{ type: 'leaf', tabs: ModuleId[], activeTab: ModuleId }} LeafNode
  *

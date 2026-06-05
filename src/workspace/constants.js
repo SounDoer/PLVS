@@ -11,12 +11,13 @@ export const ALL_MODULE_IDS = [
   "vectorscope",
   "spectrum",
   "spectrogram",
+  "waveform",
 ];
 
 // ---------------------------------------------------------------------------
 // Default tree — PLVS Full:
-//   H[ leaf(peak) | V[ leaf(loudness) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(loudnessStats) | leaf(vectorscope) ] ]
-// Ratios: peak=20% of container width, right column=33%, middle fills remainder.
+//   H[ leaf(peak) | V[ leaf(loudness) | leaf(waveform) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(loudnessStats) | leaf(vectorscope) ] ]
+// Ratios: peak=14% of container width, right column=18%, middle fills remainder.
 // ---------------------------------------------------------------------------
 
 /** @type {TreeNode} */
@@ -29,9 +30,10 @@ export const DEFAULT_TREE = {
     {
       type: "split",
       direction: "v",
-      sizes: [null, null, null],
+      sizes: [null, null, null, null],
       children: [
         { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
+        { type: "leaf", tabs: ["waveform"], activeTab: "waveform" },
         { type: "leaf", tabs: ["spectrogram"], activeTab: "spectrogram" },
         { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
       ],
