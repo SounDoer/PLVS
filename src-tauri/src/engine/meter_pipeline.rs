@@ -67,6 +67,10 @@ pub struct MeterPipeline {
   last_slow_emit: Instant,
   last_hist_emit: Instant,
   pending_loudness_hist: Option<(f64, f64)>,
+  /// Running per-channel min since last history tick. Sentinel INFINITY = no samples seen yet.
+  waveform_min_acc: Vec<f32>,
+  /// Running per-channel max since last history tick. Sentinel NEG_INFINITY = no samples seen yet.
+  waveform_max_acc: Vec<f32>,
 }
 
 impl MeterPipeline {
@@ -90,6 +94,8 @@ impl MeterPipeline {
       last_slow_emit: Instant::now(),
       last_hist_emit: Instant::now() - std::time::Duration::from_millis(200),
       pending_loudness_hist: None,
+      waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
+      waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
     }
   }
 
@@ -109,6 +115,8 @@ impl MeterPipeline {
     self.spectrum.reset();
     self.vectorscope.reset();
     self.last_loudness = None;
+    self.waveform_min_acc.fill(f32::INFINITY);
+    self.waveform_max_acc.fill(f32::NEG_INFINITY);
   }
 
   /// Process one PCM chunk from capture. Returns `(frame, slow)` when ready to send on IPC.
@@ -261,7 +269,37 @@ impl MeterPipeline {
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let peak_hold_db = peak_db.clone();
 
+    // Accumulate per-channel waveform min/max for the next history tick.
+    let ch_usize = ch as usize;
+    let frames_count = interleaved.len() / ch_usize;
+    for f in 0..frames_count {
+      let base = f * ch_usize;
+      for c in 0..ch_usize {
+        if c < self.waveform_min_acc.len() {
+          let s = interleaved[base + c];
+          if s < self.waveform_min_acc[c] {
+            self.waveform_min_acc[c] = s;
+          }
+          if s > self.waveform_max_acc[c] {
+            self.waveform_max_acc[c] = s;
+          }
+        }
+      }
+    }
+
     let loudness_hist_tick = if let Some((m, st)) = self.pending_loudness_hist.take() {
+      let waveform_min: Vec<f32> = self
+        .waveform_min_acc
+        .iter()
+        .map(|&v| if v == f32::INFINITY { 0.0 } else { v })
+        .collect();
+      let waveform_max: Vec<f32> = self
+        .waveform_max_acc
+        .iter()
+        .map(|&v| if v == f32::NEG_INFINITY { 0.0 } else { v })
+        .collect();
+      self.waveform_min_acc.fill(f32::INFINITY);
+      self.waveform_max_acc.fill(f32::NEG_INFINITY);
       let entry = MeterHistoryEntry {
         lufs_momentary: m,
         lufs_short_term: st,
@@ -284,6 +322,8 @@ impl MeterPipeline {
         spectrum_smooth_db: smooth.clone(),
         loudness_layout: loudness_layout.clone(),
         loudness_layout_known,
+        waveform_min,
+        waveform_max,
       };
       if let Ok(mut g) = self.meter_history.lock() {
         while g.len() >= HIST_RING_CAP {
@@ -381,6 +421,8 @@ mod tests {
       spectrum_smooth_db: vec![-30.0, -20.0],
       loudness_layout: "5.1".to_string(),
       loudness_layout_known: true,
+      waveform_min: vec![0.0, 0.0],
+      waveform_max: vec![0.0, 0.0],
     }
   }
 
@@ -553,6 +595,51 @@ mod tests {
       loudness_layout_meta(6, ChannelLayoutSetting::Surround71),
       ("stereo".to_string(), false)
     );
+  }
+
+  #[test]
+  fn history_entry_captures_waveform_min_max_per_channel() {
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let hist: MeterHistoryBuf = Arc::new(Mutex::new(VecDeque::new()));
+    let mut pipeline = MeterPipeline::new(sr, channels, hist.clone());
+
+    // 200ms of a 100Hz sine on L, inverted on R, amplitude 0.7
+    let frames = sr as usize / 5;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 100.0 * i as f64 / sr as f64).sin() as f32 * 0.7;
+      pcm[i * 2] = s;
+      pcm[i * 2 + 1] = -s;
+    }
+
+    // Feed 5 × 200ms = 1s to guarantee history entries are emitted
+    for _ in 0..5 {
+      let _ = pipeline.push_pcm_f32(
+        &pcm,
+        (0, 1),
+        ChannelLayoutSetting::Auto,
+        SpectrumChannelSel::default(),
+      );
+    }
+
+    let entries: Vec<_> = hist.lock().unwrap().iter().cloned().collect();
+    assert!(!entries.is_empty(), "must emit at least one history entry");
+    let e = &entries[0];
+    assert_eq!(e.waveform_min.len(), 2, "waveform_min length == channel count");
+    assert_eq!(e.waveform_max.len(), 2, "waveform_max length == channel count");
+    assert!(
+      e.waveform_max[0] > 0.5,
+      "L max should capture positive peaks, got {}",
+      e.waveform_max[0]
+    );
+    assert!(
+      e.waveform_min[0] < -0.5,
+      "L min should capture negative troughs, got {}",
+      e.waveform_min[0]
+    );
+    assert!(e.waveform_max[1] > 0.5, "R max, got {}", e.waveform_max[1]);
+    assert!(e.waveform_min[1] < -0.5, "R min, got {}", e.waveform_min[1]);
   }
 
   #[test]

@@ -58,6 +58,10 @@ pub struct MeterHistoryEntry {
   pub loudness_layout: String,
   /// Whether the loudness layout is known/correct for the input stream.
   pub loudness_layout_known: bool,
+  /// Per-channel linear amplitude minimum over this ~100ms history window. Length == channel count.
+  pub waveform_min: Vec<f32>,
+  /// Per-channel linear amplitude maximum over this ~100ms history window. Length == channel count.
+  pub waveform_max: Vec<f32>,
 }
 
 pub type MeterHistoryBuf = Arc<Mutex<VecDeque<MeterHistoryEntry>>>;
