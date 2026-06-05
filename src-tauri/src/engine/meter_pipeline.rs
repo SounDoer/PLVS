@@ -180,6 +180,24 @@ impl MeterPipeline {
       self.sample_peak_max_r = self.sample_peak_max_r.max(sr);
     }
 
+    // --- Accumulate per-channel waveform min/max for the next history tick ---
+    let ch_usize = ch as usize;
+    let frames_count = interleaved.len() / ch_usize;
+    for f in 0..frames_count {
+      let base = f * ch_usize;
+      for c in 0..ch_usize {
+        if c < self.waveform_min_acc.len() {
+          let s = interleaved[base + c];
+          if s < self.waveform_min_acc[c] {
+            self.waveform_min_acc[c] = s;
+          }
+          if s > self.waveform_max_acc[c] {
+            self.waveform_max_acc[c] = s;
+          }
+        }
+      }
+    }
+
     // --- Slow loudness emit ---
     let mut slow_out = None;
     if self.last_slow_emit.elapsed().as_millis() >= SLOW_EMIT_MS {
@@ -268,24 +286,6 @@ impl MeterPipeline {
 
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let peak_hold_db = peak_db.clone();
-
-    // Accumulate per-channel waveform min/max for the next history tick.
-    let ch_usize = ch as usize;
-    let frames_count = interleaved.len() / ch_usize;
-    for f in 0..frames_count {
-      let base = f * ch_usize;
-      for c in 0..ch_usize {
-        if c < self.waveform_min_acc.len() {
-          let s = interleaved[base + c];
-          if s < self.waveform_min_acc[c] {
-            self.waveform_min_acc[c] = s;
-          }
-          if s > self.waveform_max_acc[c] {
-            self.waveform_max_acc[c] = s;
-          }
-        }
-      }
-    }
 
     let loudness_hist_tick = if let Some((m, st)) = self.pending_loudness_hist.take() {
       let waveform_min: Vec<f32> = self
@@ -626,8 +626,16 @@ mod tests {
     let entries: Vec<_> = hist.lock().unwrap().iter().cloned().collect();
     assert!(!entries.is_empty(), "must emit at least one history entry");
     let e = &entries[0];
-    assert_eq!(e.waveform_min.len(), 2, "waveform_min length == channel count");
-    assert_eq!(e.waveform_max.len(), 2, "waveform_max length == channel count");
+    assert_eq!(
+      e.waveform_min.len(),
+      2,
+      "waveform_min length == channel count"
+    );
+    assert_eq!(
+      e.waveform_max.len(),
+      2,
+      "waveform_max length == channel count"
+    );
     assert!(
       e.waveform_max[0] > 0.5,
       "L max should capture positive peaks, got {}",
