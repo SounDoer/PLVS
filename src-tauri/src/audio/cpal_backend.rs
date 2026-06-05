@@ -356,10 +356,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
 /// On Windows, WASAPI loopback stops sending callbacks when there's no audio playing.
 /// Playing silence keeps the audio engine active so callbacks continue.
 #[cfg(target_os = "windows")]
-fn create_silence_stream(
-  device: &cpal::Device,
-  config: &StreamConfig,
-) -> Option<cpal::Stream> {
+fn create_silence_stream(device: &cpal::Device, config: &StreamConfig) -> Option<cpal::Stream> {
   let stream = device
     .build_output_stream(
       config,
