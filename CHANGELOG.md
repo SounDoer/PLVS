@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-06-05
+
+### Added
+
+- App startup now checks GitHub Releases for newer PLVS versions and surfaces available updates in the footer and Settings.
+- Settings now links to the current release notes from the version row.
+
+### Changed
+
+- Settings version information is shown as a compact single-line status: current version, update state, and release link.
+
+### Fixed
+
+- Release links now open through Tauri's system-browser opener instead of relying on WebView link navigation.
+
 ## [0.1.3] - 2026-06-04
 
 ### Changed
