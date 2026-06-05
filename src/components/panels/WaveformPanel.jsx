@@ -96,8 +96,12 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     for (let i = 0; i < entryCount; i++) {
       const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
       const y = cy - maxes[i] * cy; // cy maps amplitude 1.0 to the top
-      if (i === 0) ctx.moveTo(entryCount === 1 ? 0 : x, y);
-      else ctx.lineTo(x, y);
+      if (i === 0) {
+        ctx.moveTo(0, y);
+        if (entryCount === 1) ctx.lineTo(W, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
     }
     for (let i = entryCount - 1; i >= 0; i--) {
       const x = entryCount === 1 ? 0 : (i / (entryCount - 1)) * W;
