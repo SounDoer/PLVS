@@ -53,6 +53,8 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import { clearAudioHistory, setVectorscopePair, setSpectrumChannel } from "./ipc/commands.js";
+import { openExternalUrl } from "./ipc/openExternal.js";
+import { checkForUpdate } from "./lib/updateCheck.js";
 import packageInfo from "../package.json";
 
 const HIST_MAX_SAMPLES = 36000;
@@ -171,6 +173,7 @@ function AppContent() {
   const [loudnessHistWidthRatio, setLoudnessHistWidthRatio] = useState(
     UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
   );
+  const [updateInfo, setUpdateInfo] = useState(null);
 
   const audioRef = useRef(null);
   const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
@@ -782,6 +785,17 @@ function AppContent() {
     });
   }, [spectrumLiveLabel, vectorscopeLiveLabel]);
 
+  // Silent update check on startup
+  useEffect(() => {
+    let cancelled = false;
+    checkForUpdate(APP_VERSION).then((info) => {
+      if (!cancelled && info) setUpdateInfo(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useAudioEngine({
     running,
     captureDeviceId,
@@ -1013,6 +1027,18 @@ function AppContent() {
               }
               return null;
             })()}
+            {updateInfo?.hasUpdate ? (
+              <>
+                <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="min-w-0 truncate text-xs text-primary hover:underline"
+                >
+                  Update available · Check in Settings
+                </button>
+              </>
+            ) : null}
           </footer>
         </div>
 
@@ -1029,6 +1055,10 @@ function AppContent() {
           channelLayout={channelLayout}
           setChannelLayout={setChannelLayout}
           appVersion={APP_VERSION}
+          latestVersion={updateInfo?.latestVersion}
+          releaseUrl={updateInfo?.releaseUrl}
+          hasUpdate={updateInfo?.hasUpdate}
+          openReleaseUrl={openExternalUrl}
         />
       </div>
     </AudioDataContext.Provider>

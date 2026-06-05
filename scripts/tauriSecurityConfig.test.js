@@ -19,6 +19,19 @@ describe("Tauri security configuration", () => {
     expect(tauriConfig.app.security.devCsp).toEqual(expect.stringContaining("ws://localhost:1421"));
   });
 
+  it("allows production update checks to GitHub releases", () => {
+    expect(tauriConfig.app.security.csp).toEqual(
+      expect.stringContaining("connect-src ipc: http://ipc.localhost https://api.github.com")
+    );
+  });
+
+  it("allows opening PLVS release links in the system browser", () => {
+    expect(defaultCapability.permissions).toContainEqual({
+      identifier: "opener:allow-open-url",
+      allow: [{ url: "https://github.com/SounDoer/PLVS/releases/*" }],
+    });
+  });
+
   it("scopes default capabilities to known app windows", () => {
     expect(defaultCapability.windows).toContain("main");
     expect(defaultCapability.windows).not.toContain("*");

@@ -1,7 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -25,6 +27,10 @@ export function SettingsPanel({
   channelLayout,
   setChannelLayout,
   appVersion,
+  latestVersion,
+  releaseUrl,
+  hasUpdate = false,
+  openReleaseUrl = () => {},
 }) {
   const reduceMotion = useReducedMotion();
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
@@ -160,9 +166,36 @@ export function SettingsPanel({
                 {appVersion ? (
                   <>
                     <Separator />
-                    <div className="flex items-center justify-between text-muted-foreground">
-                      <span>Version</span>
-                      <span className="font-mono tabular-nums">{appVersion}</span>
+                    <div className="flex items-center justify-end text-muted-foreground">
+                      {latestVersion && releaseUrl ? (
+                        <div className="flex min-w-0 items-center justify-end gap-1.5 text-xs">
+                          <span className="font-mono tabular-nums text-muted-foreground">
+                            v{appVersion}
+                          </span>
+                          <span className="text-muted-foreground/50">·</span>
+                          <span className={hasUpdate ? "text-primary" : "text-muted-foreground"}>
+                            {hasUpdate ? `Update available: v${latestVersion}` : "Up to date"}
+                          </span>
+                          <span className="text-muted-foreground/50">·</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "h-auto gap-1 px-0 py-0 text-xs hover:bg-transparent",
+                              hasUpdate
+                                ? "text-primary hover:text-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                            onClick={() => openReleaseUrl(releaseUrl)}
+                          >
+                            {hasUpdate ? "View release" : "View releases"}
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="font-mono tabular-nums">v{appVersion}</span>
+                      )}
                     </div>
                   </>
                 ) : null}

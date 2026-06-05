@@ -81,7 +81,43 @@ describe("SettingsPanel", () => {
 
   it("shows the current app version in settings", () => {
     render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" />);
-    expect(screen.getByText("Version")).toBeTruthy();
-    expect(screen.getByText("0.0.17")).toBeTruthy();
+    expect(screen.queryByText("Version")).toBeNull();
+    expect(screen.getByText("v0.0.17")).toBeTruthy();
+  });
+
+  it("shows up to date when the latest release is not newer", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.1.10"
+        latestVersion="0.1.9"
+        releaseUrl="https://github.com/SounDoer/PLVS/releases/tag/v0.1.9"
+        hasUpdate={false}
+      />
+    );
+
+    expect(screen.getByText("Up to date")).toBeTruthy();
+    expect(screen.queryByText(/New version available/)).toBeNull();
+    expect(screen.getByText("View releases")).toBeTruthy();
+  });
+
+  it("opens the release URL through the provided handler", () => {
+    const openReleaseUrl = vi.fn();
+    const releaseUrl = "https://github.com/SounDoer/PLVS/releases/tag/v0.1.10";
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.1.9"
+        latestVersion="0.1.10"
+        releaseUrl={releaseUrl}
+        hasUpdate={true}
+        openReleaseUrl={openReleaseUrl}
+      />
+    );
+
+    expect(screen.getByText("Update available: v0.1.10")).toBeTruthy();
+    fireEvent.click(screen.getByText("View release"));
+
+    expect(openReleaseUrl).toHaveBeenCalledWith(releaseUrl);
   });
 });
