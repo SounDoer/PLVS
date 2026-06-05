@@ -9,7 +9,9 @@ use std::thread::JoinHandle;
 
 use super::capture::{AudioCapture, AudioCaptureSession};
 use super::device::DeviceInfo;
-use super::device_enum::{build_device_list, is_loopback_capture, resolve_device};
+#[cfg(target_os = "windows")]
+use super::device_enum::is_loopback_capture;
+use super::device_enum::{build_device_list, resolve_device};
 
 use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
@@ -383,7 +385,7 @@ fn create_silence_stream(device: &cpal::Device, config: &StreamConfig) -> Option
 
 fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
   let RunCaptureArgs {
-    device_id,
+    device_id: _device_id,
     device,
     supported,
     sample_rate,
@@ -407,6 +409,8 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
 
   // On Windows, create a silence output stream for loopback devices to keep
   // the audio engine active when no other audio is playing.
+  #[cfg(target_os = "windows")]
+  let device_id = _device_id;
   #[cfg(target_os = "windows")]
   let _silence_stream = if is_loopback_capture(&device_id) {
     create_silence_stream(&device, &stream_config)
