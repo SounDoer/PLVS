@@ -654,13 +654,8 @@ function AppContent() {
         ? "Running - cleared history and peak hold"
         : "Ready - click Start to begin monitoring"
     );
-    stopTimer();
-    resetTimer();
-    setShowClock(false);
-    if (running) {
-      setRunning(false);
-      setSelectedOffset(-1);
-    }
+    resetTimer({ restart: running });
+    setShowClock(running);
   };
 
   const onStartClick = () => {

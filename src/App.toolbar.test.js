@@ -7,6 +7,19 @@ import { describe, expect, it } from "vitest";
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(join(currentDir, "App.jsx"), "utf8");
 
+function functionBodyAfter(marker) {
+  const start = appSource.indexOf(marker);
+  expect(start).toBeGreaterThan(-1);
+  const bodyStart = appSource.indexOf("{", start);
+  let depth = 0;
+  for (let i = bodyStart; i < appSource.length; i += 1) {
+    if (appSource[i] === "{") depth += 1;
+    if (appSource[i] === "}") depth -= 1;
+    if (depth === 0) return appSource.slice(bodyStart, i + 1);
+  }
+  throw new Error(`Could not parse function body for ${marker}`);
+}
+
 describe("App toolbar", () => {
   it("uses a slightly larger device icon to match neighboring toolbar glyphs visually", () => {
     expect(appSource).toContain('<Volume2 className="size-4 shrink-0" />');
@@ -69,5 +82,12 @@ describe("App toolbar", () => {
   it("removes legacy channel persistence fields before writing ui state", () => {
     expect(appSource).toContain("stripLegacyChannelPreferenceKeys");
     expect(appSource).toContain("const nextPersisted = stripLegacyChannelPreferenceKeys(prev);");
+  });
+
+  it("keeps capture running when Clear resets the measurement window", () => {
+    const clearAllBody = functionBodyAfter("const clearAll = async () =>");
+
+    expect(clearAllBody).toContain("resetTimer({ restart: running });");
+    expect(clearAllBody).not.toContain("setRunning(false)");
   });
 });

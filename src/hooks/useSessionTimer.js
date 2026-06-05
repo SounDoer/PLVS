@@ -62,13 +62,15 @@ export function useSessionTimer() {
     updateClockDom();
   }, [updateClockDom]);
 
-  const resetTimer = useCallback(() => {
+  const resetTimer = useCallback(({ restart = false } = {}) => {
     cancelAnimationFrame(rafIdRef.current);
-    runStartedAtRef.current = null;
     accumulatedMsRef.current = 0;
     elapsedMsRef.current = 0;
     canClearRef.current = false;
-    if (clockRef.current) clockRef.current.textContent = "";
+    runStartedAtRef.current = restart ? Date.now() : null;
+    lastTickMsRef.current = 0;
+    if (clockRef.current) clockRef.current.textContent = restart ? formatClock(0) : "";
+    if (restart) rafIdRef.current = requestAnimationFrame(loopRef.current);
   }, []);
 
   useEffect(() => {
