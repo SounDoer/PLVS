@@ -17,6 +17,7 @@ pub(crate) fn is_name_heuristic_loopback(name: &str) -> bool {
 
 /// Check if a device id refers to a loopback capture (system output monitor).
 /// Loopback devices need a silence stream on Windows to keep the audio engine active.
+#[cfg(target_os = "windows")]
 pub(crate) fn is_loopback_capture(device_id: &str) -> bool {
   device_id.is_empty()
     || device_id == "default"
