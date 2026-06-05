@@ -9,7 +9,7 @@ use std::thread::JoinHandle;
 
 use super::capture::{AudioCapture, AudioCaptureSession};
 use super::device::DeviceInfo;
-use super::device_enum::{build_device_list, resolve_device};
+use super::device_enum::{build_device_list, is_loopback_capture, resolve_device};
 
 use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
@@ -105,6 +105,7 @@ impl CaptureSession {
       .name("capture".into())
       .spawn(move || {
         run_capture_worker(RunCaptureArgs {
+          device_id: device_id.to_string(),
           device,
           supported,
           sample_rate,
@@ -131,6 +132,7 @@ impl CaptureSession {
 }
 
 struct RunCaptureArgs {
+  device_id: String,
   device: cpal::Device,
   supported: cpal::SupportedStreamConfig,
   sample_rate: u32,
@@ -350,8 +352,40 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   }
 }
 
+/// Create a silence output stream on the same device to keep WASAPI loopback active.
+/// On Windows, WASAPI loopback stops sending callbacks when there's no audio playing.
+/// Playing silence keeps the audio engine active so callbacks continue.
+#[cfg(target_os = "windows")]
+fn create_silence_stream(
+  device: &cpal::Device,
+  config: &StreamConfig,
+) -> Option<cpal::Stream> {
+  let stream = device
+    .build_output_stream(
+      config,
+      move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+        // Write silence (all zeros)
+        for sample in data.iter_mut() {
+          *sample = 0.0;
+        }
+      },
+      |e| log::error!("silence stream error: {e}"),
+      None,
+    )
+    .ok()?;
+
+  if stream.play().is_ok() {
+    log::info!("Silence stream started for WASAPI loopback capture");
+    Some(stream)
+  } else {
+    log::warn!("Failed to start silence stream");
+    None
+  }
+}
+
 fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
   let RunCaptureArgs {
+    device_id,
     device,
     supported,
     sample_rate,
@@ -371,6 +405,15 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     channels,
     sample_rate: supported.sample_rate(),
     buffer_size: cpal::BufferSize::Default,
+  };
+
+  // On Windows, create a silence output stream for loopback devices to keep
+  // the audio engine active when no other audio is playing.
+  #[cfg(target_os = "windows")]
+  let _silence_stream = if is_loopback_capture(&device_id) {
+    create_silence_stream(&device, &stream_config)
+  } else {
+    None
   };
 
   let pcm_pool = PcmBufferPool::new(

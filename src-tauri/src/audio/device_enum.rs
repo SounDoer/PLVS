@@ -15,6 +15,15 @@ pub(crate) fn is_name_heuristic_loopback(name: &str) -> bool {
     || n.contains("立体声混音")
 }
 
+/// Check if a device id refers to a loopback capture (system output monitor).
+/// Loopback devices need a silence stream on Windows to keep the audio engine active.
+pub(crate) fn is_loopback_capture(device_id: &str) -> bool {
+  device_id.is_empty()
+    || device_id == "default"
+    || device_id::is_stable_loopback_id(device_id)
+    || device_id::parse_legacy_output_index(device_id).is_some()
+}
+
 /// Short name from cpal / WASAPI (`DeviceDesc` on Windows). Used for **stable device ids**
 /// (`lb-*` / `cap-*`) so ids do not change when we only enrich the UI label.
 pub(crate) fn device_id_key(device: &cpal::Device) -> Result<String, String> {
