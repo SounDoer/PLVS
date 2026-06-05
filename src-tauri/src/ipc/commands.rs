@@ -209,54 +209,8 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
   Ok(())
 }
 
-/// Extra float webview: receive the same `AudioFramePayload` stream as the main window.
-#[tauri::command]
-pub fn meter_add_frame_subscriber(
-  id: String,
-  on_frame: tauri::ipc::Channel<AudioFramePayload>,
-  state: State<'_, AppState>,
-) -> Result<(), String> {
-  let pool = {
-    let s = state
-      .inner()
-      .frame_subscribers
-      .lock()
-      .map_err(|_| "frame subscribers lock poisoned".to_string())?;
-    s.as_ref()
-      .cloned()
-      .ok_or_else(|| "meter engine is not running".to_string())?
-  };
-  {
-    let mut m = pool
-      .lock()
-      .map_err(|_| "frame subscriber map poisoned".to_string())?;
-    m.insert(id, on_frame);
-  }
-  Ok(())
-}
-
-#[tauri::command]
-pub fn meter_remove_frame_subscriber(id: String, state: State<'_, AppState>) -> Result<(), String> {
-  let opt = {
-    let s = state
-      .inner()
-      .frame_subscribers
-      .lock()
-      .map_err(|_| "frame subscribers lock poisoned".to_string())?;
-    s.as_ref().cloned()
-  };
-  if let Some(pool) = opt {
-    let mut m = pool
-      .lock()
-      .map_err(|_| "frame subscriber map poisoned".to_string())?;
-    m.remove(&id);
-  }
-  Ok(())
-}
-
 /// Clear meter history deque + DSP state on the capture thread (matches UI Clear for native path).
-/// Also empties the shared `meter_history` buffer immediately and emits `meter-history-cleared` so
-/// pop-out webviews can reset local rings without waiting for the next audio chunk.
+/// Also empties the shared `meter_history` buffer immediately and emits `meter-history-cleared`.
 #[tauri::command]
 pub fn clear_audio_history(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
   {
@@ -292,7 +246,7 @@ pub fn get_meter_history(state: State<'_, AppState>) -> Result<Vec<MeterHistoryE
   Ok(g.iter().cloned().collect())
 }
 
-/// `running` or `stopped` (float panes: no Tauri event replay; query on load).
+/// `running` or `stopped`.
 #[tauri::command]
 pub fn get_engine_state(state: State<'_, AppState>) -> Result<String, String> {
   let g = state

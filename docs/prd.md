@@ -2,7 +2,7 @@
 
 ## Abstract (English)
 
-PLVS is a **local, read-only real-time audio meter** for **sound designers and mix engineers**: **Peak**, **LUFS loudness**, **FFT spectrum (RTA-style)**, and **vectorscope/correlation**, delivered as a **Tauri desktop app** for **Windows and macOS** with **equal product intent** (implementation constraints are documented separately). The app **does not process**, **route**, or **modify** audio; it **does not** ship as a plug-in, **does not** target Linux, and **does not** pursue storefront distribution in the near term. **Loudness** is based on **ITU-R BS.1770** measurement practice with **EBU R128** production/gating usage; **spectrum** is an **FFT-based RTA aligned with common DAW practice** (per-band power integrates FFT bins using **fractional Hz overlap** between band edges and each bin’s frequency tile; vertical scale is **in-band level in the dBFS domain**—same digital full-scale reference as peak meters but a different detector definition; see `docs/architecture.md` §6), not IEC 61260 filter-bank metrology. This PRD is intentionally **dual-track**: **product intent** plus an **implementation mapping / gap** section grounded in the current repository. **English is the default UI language**; **i18n** is a future option. **Privacy**: audio stays on device; **no default telemetry**; **no silent failure** for user-visible metering health. **Legacy browser builds** are **not maintained** and **may be removed**. **Distribution today** is **GitHub Releases** without code signing / Apple notarization / in-app auto-update; **signing, notarization, and updater** are **optional future milestones**.
+PLVS is a **local, read-only real-time audio meter** for **sound designers and mix engineers**: **Peak**, **LUFS loudness**, **FFT spectrum (RTA-style)**, and **vectorscope/correlation**, delivered as a **Tauri desktop app** for **Windows and macOS** with **equal product intent** (implementation constraints are documented separately). The app **does not process**, **route**, or **modify** audio; it **does not** ship as a plug-in, **does not** target Linux, and **does not** pursue storefront distribution in the near term. **Loudness** is based on **ITU-R BS.1770** measurement practice with **EBU R128** production/gating usage; **spectrum** is an **FFT-based RTA aligned with common DAW practice** (per-band power integrates FFT bins using **fractional Hz overlap** between band edges and each bin’s frequency tile; vertical scale is **in-band level in the dBFS domain**—same digital full-scale reference as peak meters but a different detector definition; see `docs/architecture.md`), not IEC 61260 filter-bank metrology. This PRD is intentionally **dual-track**: **product intent** plus an **implementation mapping / gap** section grounded in the current repository. **English is the default UI language**; **i18n** is a future option. **Privacy**: audio stays on device; **no default telemetry**; **no silent failure** for user-visible metering health. **Legacy browser builds** are **not maintained** and **may be removed**. **Distribution today** is **GitHub Releases** without code signing / Apple notarization / in-app auto-update; **signing, notarization, and updater** are **optional future milestones**.
 
 ---
 
@@ -27,7 +27,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 
 ## 3. 解决方案概述（用户视角）
 
-提供一个 **独立桌面应用**：用户选择 **输入源（含 Automatic）** 后开始监测；在同一界面中同时查看 **四块表头**；可将部分表头 **Pop out 为浮窗**（进阶用法，不阻塞主界面成熟度）。  
+提供一个 **独立桌面应用**：用户选择 **输入源（含 Automatic）** 后开始监测；在同一界面中同时查看 **五块表头**。  
 数据 **`默认不上传`**；历史数据以 **会话级**为主；导出（若出现）只服务 **当前会话**，**重开应用不自动恢复**历史监测数据。
 
 ---
@@ -49,7 +49,6 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **平台**：**Windows 与 macOS 平等叙事**；OS 差异与最低版本写入下半对照表。  
 - **信号源**：**统一信号源下拉（A）** —— 同一选择器覆盖 **系统输出（loopback / tap）** 与 **物理输入**；包含 **Automatic / 默认输出**语义（用户选的是 **信号**，不是底层 API 名）。  
 - **表头**：**Peak / Loudness / Spectrum / Spectrogram / Vectorscope** 同屏；默认 **英文 UI**；**主题**默认 **跟随系统**，保留 **Light/Dark**，未来可扩展更多主题样式。  
-- **浮窗**：**进阶能力（B）** —— 优先保证 **主界面四表 + 基础体验**；浮窗在 **不拖累主路径**前提下持续完善。  
 - **隐私**：音频与计量数据 **默认不外传**；**默认无遥测**；未来若增加导出/诊断，必须 **明示、可选、可本地化**。  
 - **伦理底线**：**不得静默失败**（见 5.4）；并避免用户误以为已退出却仍在采集（与 5.7 一致）。  
 - **过载**：当系统可能 **丢数据/背压**时，必须 **用户可见降级提示**（例如 **状态栏**），不得假装仍然精确。  
@@ -60,20 +59,14 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 
 - **响度**：测量内核遵循 **ITU-R BS.1770**；制作实践与门控等遵循 **EBU R128** 体系表述（版本与实现细节见下半）。本产品 **不声称**法定/认证计量或第三方平台「背书」。  
 - **交付参考**：可在 **同一套测量结果**上叠加 **参考目标/虚线/区间**（含流媒体/平台公开指南）；**持续扩充**参考集合属于产品演进方向。  
-- **频谱**：采用 **FFT 型 RTA 的常见工程实践**（带内能量按 **Hz 连续边界** 与各 FFT bin 的**分数重叠**聚合，而非整档扣整数 bin；**STFT** 固定 **hop=N/4**、**4 帧**带内线性功率非相干平均后再转 dB）；纵轴为 **dBFS 域**带内谱功率（与 Peak 的采样峰值 dBFS **同参考域、不同定义**）；**不声称** IEC 61260 滤波器组计量路径；与响度 **不可横向等同**。第一版对外承诺 **Spectrum 为固定口径的参考视图（B）**，在下半记录具体口径与可调项边界；**单位与参考的完整表述**见 **`docs/architecture.md`** §6 小节 **「纵轴单位与参考（dBFS）」**。  
-- **多声道（目标演进）**  
-  - **Loudness**：目标为 **正统多声道积分（L1）**；**v1 范围先覆盖 Stereo + 5.1（A）**，更高阶布局进 backlog。  
+- **频谱**：采用 **FFT 型 RTA 的常见工程实践**（带内能量按 **Hz 连续边界** 与各 FFT bin 的**分数重叠**聚合，而非整档扣整数 bin；**STFT** 固定 **hop=N/4**、**4 帧**带内线性功率非相干平均后再转 dB）；纵轴为 **dBFS 域**带内谱功率（与 Peak 的采样峰值 dBFS **同参考域、不同定义**）；**不声称** IEC 61260 滤波器组计量路径；与响度 **不可横向等同**。第一版对外承诺 **Spectrum 为固定口径的参考视图（B）**，实现口径见 **`docs/architecture.md`** 的 DSP 层说明。  
+- **多声道**  
+  - **Loudness**：标准布局走 **正统多声道积分（L1）**；当前范围覆盖 **Stereo + 5.1 + 7.1（A）**。  
   - **布局策略**：**Z + Y** —— 能可靠识别标准布局则走 L1；识别失败则 **降级**并 **明确提示**；退化下 **Ch1/Ch2** 等策略必须可读、不可装成「环绕正统读数」。  
-  - **布局交互**：默认自动；失败时提示；在 **高级设置**提供 **手动布局预设（C）**（与 v1 布局范围一致，至少 Stereo/5.1）。  
-  - **Peak**：多通道时应能 **逐通道呈现**（实现顺序见 6.2）。  
-  - **Spectrum（>2ch）**：采用 **能量/功率合并为单条总曲线**（方向信息弱化，作为显式取舍）。  
-  - **Vectorscope**：始终 **一对通道**；默认 **Front L/R**（在映射成立时）。  
-  - **里程碑顺序（A，固定）**：  
-    1. Peak 多通道显示  
-    2. 布局识别 + 高级手动（C）  
-    3. Loudness L1（Stereo + 5.1）  
-    4. Spectrum 多声道总能量曲线  
-    5. Vectorscope 一对通道（默认 Front L/R）  
+  - **布局交互**：默认自动识别 mono / stereo / 5.1 / 7.1；设置中提供手动 **Stereo / 5.1 / 7.1** 预设。  
+  - **Peak**：多通道时 **逐通道呈现**。  
+  - **Spectrum（>2ch）**：用户可在面板控制中选择标准声道对或单声道查看。  
+  - **Vectorscope**：始终 **一对通道**；默认 **Front L/R**（在映射成立时），可在面板控制中切换声道对。  
 
 ### 5.3 分发与更新（诚实叙事 + 路线图）
 
@@ -146,14 +139,12 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 10. 作为 **混音师**，我希望 **我的音频默认不被上传**，以便 **安心用于未发布作品**。  
 11. 作为 **Windows 用户**，我希望 **无需虚拟声卡即可听系统播放并测量**。  
 12. 作为 **macOS 用户**，我希望 **在支持的系统版本上使用原生 tap 路径**，以便 **避免旧网页版那套路由**。  
-13. 作为 **双屏用户**，我希望 **把单表 Pop out**，以便 **副屏长期盯一条指标**。  
-14. 作为 **混音师**，我希望 **浮窗不拖累主界面优先级**，以便 **核心体验先稳**。  
-15. 作为 **下载用户**，我希望 **知道 SmartScreen/Gatekeeper 的处理方式**，以便 **顺利首次运行**。  
-16. 作为 **未来平台交付用户**，我希望 **在同一 LUFS 读数上看到参考目标/虚线**，以便 **对照平台指南**。  
-17. 作为 **环绕内容用户**，我希望 **在识别布局时看到正统多声道响度**，以便 **不与立体声糊弄语义**。  
-18. 作为 **环绕内容用户**，我希望 **在布局未知时被明确提示并降级**，以便 **知道此刻不是“认证环绕读数”**。  
-19. 作为 **贡献者**，我希望 **许可证与第三方归属清晰**，以便 **合规分发与再分发**。  
-20. 作为 **开发者**，我希望 **PRD 与架构文档分工明确**：产品意图在这里、协议与分层在架构文档。
+13. 作为 **下载用户**，我希望 **知道 SmartScreen/Gatekeeper 的处理方式**，以便 **顺利首次运行**。  
+14. 作为 **未来平台交付用户**，我希望 **在同一 LUFS 读数上看到参考目标/虚线**，以便 **对照平台指南**。  
+15. 作为 **环绕内容用户**，我希望 **在识别布局时看到正统多声道响度**，以便 **不与立体声糊弄语义**。  
+16. 作为 **环绕内容用户**，我希望 **在布局未知时被明确提示并降级**，以便 **知道此刻不是“认证环绕读数”**。  
+17. 作为 **贡献者**，我希望 **许可证与第三方归属清晰**，以便 **合规分发与再分发**。  
+18. 作为 **开发者**，我希望 **PRD 与架构文档分工明确**：产品意图在这里、协议与分层在架构文档。
 
 ---
 
@@ -162,8 +153,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **产品形态**：桌面 **Tauri**；前端 **Web 技术 UI**，后端 **Rust** 采集与 DSP；DSP 与指标计算 **不下放到前端**。  
 - **通信**：控制走 **command**；高频帧走 **Channel**；低频走 **Event**；细节以架构文档为准。  
 - **历史 ring**：以 **Rust 侧会话内缓冲**为主叙事（与架构一致）；前端为展示与交互消费端。  
-- **浮窗**：与主窗共享同一路引擎订阅；约束见架构文档与实现对照表。  
-- **多声道演进**：遵循第 5.2 节固定顺序与 L1 范围；需要 **声道布局识别/预设/映射**的工程化模块。  
+- **多声道**：自动识别 mono / stereo / 5.1 / 7.1；手动布局预设与 L1 loudness 路径覆盖 Stereo / 5.1 / 7.1。  
 - **频谱固定口径**：先锁定「参考视图」参数集合，再考虑暴露调参（PRD 外未来项）。  
 
 ---
@@ -213,9 +203,9 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 
 - **桌面壳**：Tauri；Windows **WebView2**；macOS **系统 WebView**。  
 - **采集**：Windows **WASAPI Loopback + 物理输入**；macOS **系统音频（较新版本上的 tap 路径）**，物理输入 **cpal**；设备列表与默认源语义以架构文档为准。  
-- **四表头**：Peak、Loudness、Spectrum、Vectorscope；Rust 侧 DSP 与推送指标为主叙事。  
+- **五表头**：Peak、Loudness、Spectrum、Spectrogram、Vectorscope；Rust 侧 DSP 与推送指标为主叙事。  
+- **多声道**：Peak 逐通道显示；自动识别 mono / stereo / 5.1 / 7.1；手动 Stereo / 5.1 / 7.1；Loudness 按 Stereo / 5.1 / 7.1 L1 路径计算；Spectrum 与 Vectorscope 支持声道/声道对选择。  
 - **历史**：Rust 侧 ring / 会话内历史与快照交互（详情见架构文档）。  
-- **浮窗**：辅窗口、Pop out、与主窗共享帧订阅；边界持久化与高 DPI 相关策略已实现部分能力。  
 - **CI/分发**：GitHub Actions 构建 **Windows + macOS** 产物；Release 附着策略以工作流与 README 为准。  
 
 ### A.2 平台条件与差异（摘要）
@@ -225,7 +215,6 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 
 ### A.3 缺口与路线图（与第 5 节对齐）
 
-- **多声道 L1 / 布局预设 / Peak 多通道 / 合并频谱 / VS 通道对**：按第 **5.2** 节顺序推进。  
 - **PCM tap（录音/内录）**、**数据导出（CSV/截图等）**、**自动更新/签名/公证**：架构层已有候选，但 **不作为当前 PRD 交付承诺**，除非单独开里程碑修订本文。  
 - **系统托盘极简模式**：不作为 v1 承诺（见 5.7）。  
 - **无障碍增强**：非短期主线（见 5.11）。  

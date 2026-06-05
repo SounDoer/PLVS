@@ -51,7 +51,7 @@
 - **专业工具的成熟范式**：VS Code、Figma、Logic Pro、Final Cut 都用类似的 Dock 系统，专业用户认知成本最低
 - **空间利用率高**：Tabs 能让 Spectrum + Spectrogram 这样关联性强的模块共用区域
 - **状态可序列化**：树形结构容易保存/加载，便于做命名预设
-- **不需要解决重叠**：相比 Free Float 自由摆放，区域+槽位的约束更符合数据密集型工具的使用习惯
+- **不需要解决重叠**：区域+槽位的约束更符合数据密集型工具的使用习惯
 
 ### 2.2 备选方案（不采纳，仅做记录）
 
@@ -59,11 +59,7 @@
 - 优点：视觉规整，每个模块都有最佳尺寸
 - 缺点：用户需要心算栅格单位，碰撞处理逻辑复杂，不支持 Tabs 合并
 
-**Free Float（自由浮动窗口）**
-- 优点：最大自由度，类似 Pro Tools
-- 缺点：容易重叠，需要 z-order 管理，对桌面端音频工具来说过于松散
-
-> 原型 `AudioMeter Layouts.html` 中三种布局都做了完整实现，可以切换体验对比。**最终只实现 Dock + Tabs 即可**。
+> 原型 `AudioMeter Layouts.html` 保留 Bento Grid 与 Dock + Tabs 的切换体验对比。**最终只实现 Dock + Tabs 即可**。
 
 ---
 
@@ -497,10 +493,9 @@ CC 可以按这个顺序拆 PR：
 |---|---|
 | `AudioMeter Layouts.html` | 主入口，包含完整 CSS |
 | `js/modules.jsx` | 6 个音频模块的可视化组件（占位实现） |
-| `js/chrome.jsx` | Module 通用包裹组件（仅用于 Bento/Float） |
+| `js/chrome.jsx` | Module 通用包裹组件（仅用于 Bento） |
 | `js/bento.jsx` | Bento Grid 实现（参考用，不需要在生产中实现） |
 | `js/dock.jsx` | **Dock + Tabs 实现，本次改动的核心参考** |
-| `js/float.jsx` | Free Float 实现（参考用） |
 | `js/app.jsx` | App shell：顶栏 / Activity Bar / 状态栏 / 布局切换 |
 
 重点阅读：

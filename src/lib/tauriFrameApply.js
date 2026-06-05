@@ -1,7 +1,7 @@
 import { SPECTRUM_SETTINGS } from "../config/scales.js";
 
 /**
- * Shared Tauri `AudioFramePayload` handler (main webview and float panes).
+ * Shared Tauri `AudioFramePayload` handler.
  * @param {object} opts
  * @param {number} opts.histMaxSamples
  * @param {import("./FrameIntake.js").FrameIntake} opts.intake

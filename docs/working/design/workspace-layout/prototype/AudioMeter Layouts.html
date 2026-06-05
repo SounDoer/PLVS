@@ -37,7 +37,7 @@
     --r-lg: 10px;
     --shadow-1: 0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 2px rgba(0,0,0,0.4);
     --shadow-2: 0 8px 24px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
-    --shadow-float: 0 12px 32px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+    --shadow-drag: 0 12px 32px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
 
     --hdr-h: 36px;
     --topbar-h: 48px;
@@ -195,7 +195,7 @@
   }
   .module:hover { border-color: var(--border-strong); }
   .module.focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow-1); }
-  .module.dragging { opacity: 0.85; box-shadow: var(--shadow-float); z-index: 1000; }
+  .module.dragging { opacity: 0.85; box-shadow: var(--shadow-drag); z-index: 1000; }
   .module.collapsed { }
   .module.collapsed .module-body { display: none; }
 
@@ -998,30 +998,6 @@
     margin: 6px 0;
   }
 
-  /* ===== Free Float Layout ===== */
-  .float {
-    width: 100%; height: 100%;
-    position: relative;
-    overflow: hidden;
-  }
-  .float-grid {
-    position: absolute; inset: 0;
-    background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
-    background-size: 16px 16px;
-    pointer-events: none;
-  }
-  .float-help {
-    position: absolute;
-    top: 14px; left: 50%; transform: translateX(-50%);
-    display: flex; gap: 8px;
-    font-size: 11px;
-    color: var(--text-mute);
-    pointer-events: none;
-  }
-  .float .module {
-    box-shadow: var(--shadow-2);
-  }
-
   /* ===== Module fullscreen variant ===== */
   .module-fullscreen {
     box-shadow: none;
@@ -1046,7 +1022,6 @@
 <script type="text/babel" src="js/chrome.jsx"></script>
 <script type="text/babel" src="js/bento.jsx"></script>
 <script type="text/babel" src="js/dock.jsx"></script>
-<script type="text/babel" src="js/float.jsx"></script>
 <script type="text/babel" src="js/app.jsx"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 
 ## 环境
 
-- **Node.js**：20 LTS（与 `package.json` 的 `engines` 一致）
+- **Node.js**：>= 20.19.0（与 `package.json` 的 `engines` 一致）
 - **Rust**：stable（与 `src-tauri/Cargo.toml` 的 `rust-version` 一致）
 
 ## 常用命令

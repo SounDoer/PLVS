@@ -3,7 +3,7 @@ import { samplePeakLineColor } from "../math/colorMath.js";
 import { getBuiltinTheme } from "../theme/builtinThemes.js";
 
 /**
- * Peak meter line colour (sample-accurate) and True-peak HUD strings for the main and float shells.
+ * Peak meter line colour (sample-accurate) and True-peak HUD strings.
  * @param {string} resolvedThemeId
  * @param {{ tpMax?: number }} displayAudio
  */

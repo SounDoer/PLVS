@@ -1,5 +1,5 @@
 /**
- * Shared layout class strings for the main app shell and Tauri float window.
+ * Shared layout class strings for the main app shell.
  * Uses Tailwind semantic tokens plus existing `--ui-*` layout variables from `uiPreferences`.
  */
 

@@ -12,7 +12,7 @@ use crate::ipc::types::MeterHistoryBuf;
 pub struct AppState {
   pub capture: Mutex<Option<Box<dyn AudioCaptureSession>>>,
   pub meter_history: MeterHistoryBuf,
-  /// `Some` while the native engine is running; used by `meter_add_frame_subscriber` / `meter_remove_frame_subscriber`.
+  /// `Some` while the native engine is running; stores the primary UI frame channel.
   pub frame_subscribers: Mutex<Option<FrameSubscribers>>,
   /// Selected vectorscope XY channel pair (0-based). Updated by UI.
   pub vectorscope_pair: Arc<Mutex<(u16, u16)>>,

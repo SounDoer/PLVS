@@ -314,7 +314,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     if let Some(f) = frame {
       if let Ok(mut m) = frame_subscribers.lock() {
         {
-          // Primary webview: stop capture if the main stream drops; float panes are best-effort.
+          // Stop capture if the main stream drops.
           let main_ok = match m.get_mut("main") {
             Some(tx) => tx.send(f.clone()).is_ok(),
             None => false,
@@ -323,7 +323,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
             should_stop = true;
           }
         }
-        // Avoid per-key remove/insert on every frame; drop dead float subscribers lazily.
+        // Avoid per-key remove/insert on every frame; drop dead subscribers lazily.
         let mut to_remove: Vec<String> = Vec::new();
         for (id, tx) in m.iter_mut() {
           if id == "main" {

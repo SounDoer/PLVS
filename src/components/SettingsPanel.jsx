@@ -14,6 +14,8 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
+const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
+
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,
@@ -30,11 +32,20 @@ export function SettingsPanel({
   latestVersion,
   releaseUrl,
   hasUpdate = false,
+  updateStatus = latestVersion ? "ok" : "checking",
   openReleaseUrl = () => {},
 }) {
   const reduceMotion = useReducedMotion();
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
   const closingIntentRef = useRef(false);
+  const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
+  const updateStatusText = latestVersion
+    ? hasUpdate
+      ? `Update available: v${latestVersion}`
+      : "Up to date"
+    : updateStatus === "unavailable"
+      ? "Update check unavailable"
+      : "Checking updates";
 
   useLayoutEffect(() => {
     if (settingsOpen) {
@@ -167,35 +178,31 @@ export function SettingsPanel({
                   <>
                     <Separator />
                     <div className="flex items-center justify-end text-muted-foreground">
-                      {latestVersion && releaseUrl ? (
-                        <div className="flex min-w-0 items-center justify-end gap-1.5 text-xs">
-                          <span className="font-mono tabular-nums text-muted-foreground">
-                            v{appVersion}
-                          </span>
-                          <span className="text-muted-foreground/50">·</span>
-                          <span className={hasUpdate ? "text-primary" : "text-muted-foreground"}>
-                            {hasUpdate ? `Update available: v${latestVersion}` : "Up to date"}
-                          </span>
-                          <span className="text-muted-foreground/50">·</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              "h-auto gap-1 px-0 py-0 text-xs hover:bg-transparent",
-                              hasUpdate
-                                ? "text-primary hover:text-primary"
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                            onClick={() => openReleaseUrl(releaseUrl)}
-                          >
-                            {hasUpdate ? "View release" : "View releases"}
-                            <ExternalLink className="size-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="font-mono tabular-nums">v{appVersion}</span>
-                      )}
+                      <div className="flex min-w-0 items-center justify-end gap-1.5 text-xs">
+                        <span className="font-mono tabular-nums text-muted-foreground">
+                          v{appVersion}
+                        </span>
+                        <span className="text-muted-foreground/50">·</span>
+                        <span className={hasUpdate ? "text-primary" : "text-muted-foreground"}>
+                          {updateStatusText}
+                        </span>
+                        <span className="text-muted-foreground/50">·</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-auto gap-1 px-0 py-0 text-xs hover:bg-transparent",
+                            hasUpdate
+                              ? "text-primary hover:text-primary"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                          onClick={() => openReleaseUrl(effectiveReleaseUrl)}
+                        >
+                          {hasUpdate ? "View release" : "View releases"}
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
                     </div>
                   </>
                 ) : null}

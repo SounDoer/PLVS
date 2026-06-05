@@ -157,7 +157,7 @@ START (idle)                STOP (live)
 |---|---|---|
 | Clear | 删除/重置 session | 垃圾桶 |
 | Device | 打开音频设备选择 popover | 喇叭 + 声波 |
-| Layout & modules | 打开布局 / 模块可见性 popover（含 layout 切换、modules 勾选、auto-tile） | 2×2 田字格 |
+| Layout & modules | 打开布局 / 模块可见性 popover（含 layout 切换、modules 勾选） | 2×2 田字格 |
 | Settings | 打开应用设置 popover | 齿轮 |
 
 SVG path 直接参考原型 `Refined A - Interactive.html`。
@@ -310,7 +310,7 @@ function onClearClick() {
 | 按钮 | popover 内容 |
 |---|---|
 | Device | 当前默认设备 + 所有可用输入/输出设备列表，单选 |
-| Layout & modules | Layout 切换段控（Bento/Dock/Float）+ 6 个模块的可见性勾选 + Auto-tile（仅 Float 布局） + Preset 下拉 |
+| Layout & modules | Layout 切换段控（Bento/Dock）+ 6 个模块的可见性勾选 + Preset 下拉 |
 | Settings | 应用设置（采样率/缓冲区/响度标准/主题等）。设计另起一份文档 |
 
 **Popover 通用规格**：

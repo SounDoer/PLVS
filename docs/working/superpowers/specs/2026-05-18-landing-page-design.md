@@ -66,7 +66,7 @@ Four rows, alternating image-left / image-right layout (1:1 grid, 48px gap):
 
 **Native system audio capture** — Monitor any audio playing on your machine — no virtual audio cable required. Windows uses WASAPI loopback, macOS uses the native audio tap.
 
-**Fully flexible layout** — Drag any divider to resize panels. Rearrange your workspace with split-tree layout. Pop out individual meters to float on a second screen.
+**Fully flexible layout** — Drag any divider to resize panels. Rearrange your workspace with split-tree layout.
 
 **Session history & snapshots** — Scroll back through the loudness history timeline. Click any moment to freeze all meters at that snapshot — then return to live with one click.
 

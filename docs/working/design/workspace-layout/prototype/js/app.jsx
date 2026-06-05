@@ -8,7 +8,6 @@ const ALL_MODULE_IDS = ["peak", "loudness", "loudnessStats", "vectorscope", "spe
 const LAYOUT_KINDS = [
   { id: "bento",  label: "Bento Grid",   hint: "Modules snap to a 12-col grid" },
   { id: "dock",   label: "Dock + Tabs",  hint: "Region-based stacking (IDE-style)" },
-  { id: "float",  label: "Free Float",   hint: "Free-floating windows" },
 ];
 
 const PRESETS = {
@@ -53,10 +52,6 @@ const PRESETS = {
         bottom: { size: 320, slots: [{ tabs: ["spectrogram"], activeTab: "spectrogram", collapsed: false }] },
       },
     }},
-  ],
-  float: [
-    { id: "default", label: "Default" },
-    { id: "tiled", label: "Tiled" },
   ],
 };
 
@@ -160,17 +155,6 @@ function TopBar({
               </button>
             );
           })}
-          {layoutSupportsArrange && (
-            <>
-              <hr />
-              <button className="popover-item" onClick={(e) => { e.stopPropagation(); onArrange(); setAddPopoverOpen(false); }}>
-                <span className="check">
-                  <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2h4v4H2zM7 2h3v3H7zM7 6h3v4H7zM2 7h4v3H2z" stroke="currentColor" strokeWidth="1" fill="none"/></svg>
-                </span>
-                Auto-tile windows
-              </button>
-            </>
-          )}
         </Popover>
       </button>
 
@@ -316,18 +300,15 @@ function App() {
   const [visibleByLayout, setVisibleByLayout] = React.useState({
     bento: new Set(ALL_MODULE_IDS),
     dock: new Set(ALL_MODULE_IDS),
-    float: new Set(ALL_MODULE_IDS),
   });
 
   // Bento state
   const [bentoPositions, setBentoPositions] = React.useState(() => ({ ...BENTO_DEFAULT }));
   // Dock state
   const [dockState, setDockState] = React.useState(() => structuredClone(DOCK_DEFAULT));
-  // Float state
-  const [floatState, setFloatState] = React.useState(() => structuredClone(FLOAT_DEFAULT));
 
   // Preset selection per layout
-  const [presetByLayout, setPresetByLayout] = React.useState({ bento: "default", dock: "default", float: "default" });
+  const [presetByLayout, setPresetByLayout] = React.useState({ bento: "default", dock: "default" });
 
   const visibleSet = visibleByLayout[layoutKind];
   const visibleIds = ALL_MODULE_IDS.filter((id) => visibleSet.has(id));
@@ -370,7 +351,6 @@ function App() {
       setVisibleSet(new Set(ALL_MODULE_IDS));
       if (layoutKind === "bento") setBentoPositions({ ...BENTO_DEFAULT });
       if (layoutKind === "dock") setDockState(structuredClone(DOCK_DEFAULT));
-      if (layoutKind === "float") setFloatState(structuredClone(FLOAT_DEFAULT));
       return;
     }
     const p = PRESETS[layoutKind].find((x) => x.id === presetId);
@@ -381,33 +361,6 @@ function App() {
     }
     if (layoutKind === "dock" && p.dock) {
       setDockState(structuredClone(p.dock));
-    }
-    if (layoutKind === "float" && p.id === "tiled") {
-      // Apply tiled layout after a tick when sizes are known
-      requestAnimationFrame(() => {
-        const ws = document.querySelector(".float");
-        if (ws) {
-          const tiled = tileFloat(p.visible || ALL_MODULE_IDS,
-            ws.clientWidth, ws.clientHeight);
-          setFloatState((prev) => {
-            const next = { ...prev };
-            for (const k of Object.keys(tiled)) next[k] = { ...next[k], ...tiled[k] };
-            return next;
-          });
-        }
-      });
-    }
-  };
-
-  const handleArrange = () => {
-    const ws = document.querySelector(".float");
-    if (ws) {
-      const tiled = tileFloat(visibleIds, ws.clientWidth, ws.clientHeight);
-      setFloatState((prev) => {
-        const next = { ...prev };
-        for (const k of Object.keys(tiled)) next[k] = { ...next[k], ...tiled[k] };
-        return next;
-      });
     }
   };
 
@@ -435,8 +388,7 @@ function App() {
         preset={presetByLayout[layoutKind]}
         setPreset={applyPreset}
         presets={PRESETS[layoutKind]}
-        onArrange={handleArrange}
-        layoutSupportsArrange={layoutKind === "float"}
+        layoutSupportsArrange={false}
         onClear={() => {}}
       />
 
@@ -461,14 +413,6 @@ function App() {
               {...layoutProps}
               dockState={dockState}
               setDockState={setDockState}
-            />
-          )}
-          {layoutKind === "float" && (
-            <FloatLayout
-              {...layoutProps}
-              floatState={floatState}
-              setFloatState={setFloatState}
-              onTile={handleArrange}
             />
           )}
         </div>

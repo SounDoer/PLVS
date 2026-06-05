@@ -67,7 +67,6 @@ PLVS/
 ├── src/                          # React frontend
 │   ├── main.jsx                  # React mount + first-paint theme apply
 │   ├── App.jsx                   # Shell: workspace layout + panel routing
-│   ├── FloatApp.jsx              # Float window entry (?float= route)
 │   ├── index.css                 # Global styles + first-paint token fallbacks
 │   ├── meterHealth.js            # Metering health state
 │   ├── uiPreferences.js          # Re-export of UI_PREFERENCES
@@ -88,8 +87,6 @@ PLVS/
 │   │   ├── commands.js           # all invoke() calls
 │   │   ├── events.js             # listen + Channel subscriptions
 │   │   ├── capturePrefs.js       # device preference (Tauri store + localStorage)
-│   │   ├── floatWindow.js        # float WebviewWindow management
-│   │   ├── floatWindowPrefs.js   # float window geometry persistence
 │   │   ├── env.js                # isTauri() helper
 │   │   └── types.js              # shared IPC type definitions
 │   │
@@ -98,7 +95,7 @@ PLVS/
 │   │   ├── audioEngineCommands.js # start/stop/device abstraction over IPC
 │   │   ├── shellLayout.js        # layout computation helpers
 │   │   ├── tauriFrameApply.js    # frame → React state bridge
-│   │   └── …                     # floatHistorySeed, resetFloatMeteringState, utils
+│   │   └── …                     # updateCheck, audioDeviceLabels, utils
 │   │
 │   ├── math/                     # pure functions: history paths, format, spectrum math
 │   │
@@ -191,7 +188,7 @@ Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `
 |---|---|---|
 | shadcn 语义（表面色） | `--background`, `--foreground`, `--primary`… | `builtinThemes.js` → `applyThemeToDocument` |
 | UI 布局 | `--ui-*` | `data.js` → `applyLayoutToDocument` |
-| 图表色 | `--ui-chart-*`, `--ui-color-*` | `builtinThemes.js` → `applyThemeToDocument` |
+| 图表色 | `--ui-chart-*` | `builtinThemes.js` → `applyThemeToDocument` |
 
 首屏占位变量由 `npm run theme:generate` 写入 `src/generated/theme-fallbacks.css`（与默认暗色语义同源）。
 

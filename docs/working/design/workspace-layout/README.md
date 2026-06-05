@@ -41,7 +41,7 @@
 ## 如何浏览原型
 
 1. 直接在浏览器中打开 `prototype/AudioMeter Layouts.html`
-2. 顶栏切换 **Bento Grid / Dock + Tabs / Free Float** 三种布局
+2. 顶栏切换 **Bento Grid / Dock + Tabs** 两种布局
 3. **重点看 Dock + Tabs 这一种** —— 这是要实现的方案
 4. 试着拖动 Tab 到不同位置感受落点提示
 5. 切换右上角的 preset 下拉看不同预设
@@ -89,7 +89,7 @@
 
 | 决策 | 选项 | 选择 | 理由 |
 |---|---|---|---|
-| 布局范式 | Bento Grid / **Dock + Tabs** / Free Float | Dock + Tabs | 专业工具的成熟范式，VS Code/Figma/Logic Pro 都用类似系统；Tab 合并能节省空间；树形结构易序列化 |
+| 布局范式 | Bento Grid / **Dock + Tabs** | Dock + Tabs | 专业工具的成熟范式，VS Code/Figma/Logic Pro 都用类似系统；Tab 合并能节省空间；树形结构易序列化 |
 | 持久化 | localStorage / Tauri Store / Rust 端文件 | localStorage（默认） | 简单可靠；后续可平滑迁移到 Tauri Store |
 | 拖拽实现 | react-dnd / dnd-kit / **原生 mouse 事件** | 原生 | 避免引入大型依赖；交互定制度高 |
 | 折叠侧栏 | VS Code 风格全收起 / 不做 | 不做 | 用户明确表示不需要 |

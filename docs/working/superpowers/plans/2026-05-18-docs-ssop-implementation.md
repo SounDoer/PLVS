@@ -253,7 +253,6 @@ PLVS/
 ├── src/                          # React frontend
 │   ├── main.jsx                  # React mount + first-paint theme apply
 │   ├── App.jsx                   # Shell: workspace layout + panel routing
-│   ├── FloatApp.jsx              # Float window entry (?float= route)
 │   ├── index.css                 # Global styles + first-paint token fallbacks
 │   ├── meterHealth.js            # Metering health state
 │   ├── uiPreferences.js          # Re-export of UI_PREFERENCES
@@ -274,8 +273,6 @@ PLVS/
 │   │   ├── commands.js           # all invoke() calls
 │   │   ├── events.js             # listen + Channel subscriptions
 │   │   ├── capturePrefs.js       # device preference (Tauri store + localStorage)
-│   │   ├── floatWindow.js        # float WebviewWindow management
-│   │   ├── floatWindowPrefs.js   # float window geometry persistence
 │   │   └── env.js                # isTauri() helper
 │   │
 │   ├── lib/                      # engine integration helpers

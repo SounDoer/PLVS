@@ -12,6 +12,9 @@
       "identifier": "opener:allow-open-url",
       "allow": [
         {
+          "url": "https://github.com/SounDoer/PLVS/releases"
+        },
+        {
           "url": "https://github.com/SounDoer/PLVS/releases/*"
         }
       ]

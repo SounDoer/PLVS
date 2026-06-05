@@ -44,7 +44,7 @@ The alternating `reverse` class follows position, not content — rows 1 & 3 are
 |-------|-------|
 | kicker | `Appearance` |
 | title | `Fully flexible layout` |
-| desc | Drag any divider to resize panels and rearrange your workspace with split-tree layout. Pop out individual meters to float on a second screen. Switch between dark and light themes to match your environment. |
+| desc | Drag any divider to resize panels and rearrange your workspace with split-tree layout. Switch between dark and light themes to match your environment. |
 
 ---
 

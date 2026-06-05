@@ -134,8 +134,8 @@ Two font families:
 
 | # | Role | Token | Size | Weight | Notes |
 |---|------|-------|------|--------|-------|
-| 1 | **App Title** | `--ui-fs-app-title` | 16px | 800 | "PLVS" in header. Settings panel title also uses this. |
-| 2 | **Panel Title** | `--ui-fs-panel-title` | 12px | 600 | CardTitle in each panel. Muted foreground color. |
+| 1 | **App Title** | `--ui-fs-app-title` | 16px | 800 | "PLVS" in header. |
+| 2 | **Panel Title** | `--ui-fs-panel-title` | 12px | 600 | CardTitle in each panel and the Settings panel title. Muted foreground color. |
 | 3 | **Axis Annotation** | `--ui-fs-axis` | 11px | 400 | Static chart scale labels: dB ticks, freq labels, time axis. Muted. |
 | 4 | **Dynamic Display** | `--ui-fs-display` | 13px | — | Live values overlaid on charts: channel labels, TP MAX, correlation. |
 | 5a | **Metric Annotation** | `--ui-fs-metric-meta` | 12px | 500 | Loudness metric row label + unit. Uppercase + tracking. |

@@ -29,8 +29,6 @@ pub fn run() {
       ipc::commands::audio_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_meter_history,
-      ipc::commands::meter_add_frame_subscriber,
-      ipc::commands::meter_remove_frame_subscriber,
       ipc::commands::get_engine_state,
     ])
     .setup(|app| {

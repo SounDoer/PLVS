@@ -94,7 +94,7 @@ pub struct AudioFramePayload {
   pub loudness_hist_tick: Option<MeterHistoryEntry>,
 }
 
-/// One fan-out for ~60Hz [`AudioFramePayload`]: key `"main"` = primary webview, extra float panes get unique keys.
+/// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.
 pub type FrameSubscribers = Arc<Mutex<HashMap<String, Channel<AudioFramePayload>>>>;
 
 /// ~2 Hz broadcast on Event `loudness-slow`.

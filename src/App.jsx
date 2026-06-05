@@ -173,7 +173,7 @@ function AppContent() {
   const [loudnessHistWidthRatio, setLoudnessHistWidthRatio] = useState(
     UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
   );
-  const [updateInfo, setUpdateInfo] = useState(null);
+  const [updateInfo, setUpdateInfo] = useState({ status: "checking" });
 
   const audioRef = useRef(null);
   const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
@@ -789,7 +789,8 @@ function AppContent() {
   useEffect(() => {
     let cancelled = false;
     checkForUpdate(APP_VERSION).then((info) => {
-      if (!cancelled && info) setUpdateInfo(info);
+      if (cancelled) return;
+      setUpdateInfo(info ? { ...info, status: "ok" } : { status: "unavailable" });
     });
     return () => {
       cancelled = true;
@@ -1058,6 +1059,7 @@ function AppContent() {
           latestVersion={updateInfo?.latestVersion}
           releaseUrl={updateInfo?.releaseUrl}
           hasUpdate={updateInfo?.hasUpdate}
+          updateStatus={updateInfo?.status}
           openReleaseUrl={openExternalUrl}
         />
       </div>

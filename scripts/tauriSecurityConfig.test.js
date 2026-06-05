@@ -25,10 +25,19 @@ describe("Tauri security configuration", () => {
     );
   });
 
+  it("allows dev update checks to GitHub releases", () => {
+    expect(tauriConfig.app.security.devCsp).toEqual(
+      expect.stringContaining("https://api.github.com")
+    );
+  });
+
   it("allows opening PLVS release links in the system browser", () => {
     expect(defaultCapability.permissions).toContainEqual({
       identifier: "opener:allow-open-url",
-      allow: [{ url: "https://github.com/SounDoer/PLVS/releases/*" }],
+      allow: [
+        { url: "https://github.com/SounDoer/PLVS/releases" },
+        { url: "https://github.com/SounDoer/PLVS/releases/*" },
+      ],
     });
   });
 
