@@ -19,6 +19,8 @@
  * @property {string} spectrumPeakPath
  * @property {number[]} spectrumBandCentersHz
  * @property {number[]} spectrumSmoothDb
+ * @property {number[]} waveformMin
+ * @property {number[]} waveformMax
  */
 
 /**
