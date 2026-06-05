@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-06-05
+
+### Fixed
+
+- Clear now resets the current measurement window and timer without stopping active capture.
+- Release links continue to open in the system browser, and obsolete float-metering remnants were removed from the release path.
+
 ## [0.1.4] - 2026-06-05
 
 ### Added
