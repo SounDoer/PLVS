@@ -68,6 +68,8 @@ pub struct MeterPipeline {
   last_hist_emit: Instant,
   pending_loudness_hist: Option<(f64, f64)>,
   /// Running per-channel min since last history tick. Sentinel INFINITY = no samples seen yet.
+  /// Reset is coupled to `pending_loudness_hist`: the span may exceed `HIST_EMIT_MS` at stream
+  /// start if no loudness block has been produced yet.
   waveform_min_acc: Vec<f32>,
   /// Running per-channel max since last history tick. Sentinel NEG_INFINITY = no samples seen yet.
   waveform_max_acc: Vec<f32>,
@@ -76,7 +78,7 @@ pub struct MeterPipeline {
 impl MeterPipeline {
   pub fn new(sample_rate: u32, channels: u16, meter_history: MeterHistoryBuf) -> Self {
     let sr = sample_rate as f64;
-    Self {
+    let pipeline = Self {
       channels,
       loudness: LoudnessMeter::new(sr),
       spectrum: SpectrumMeter::new(sr),
@@ -96,7 +98,13 @@ impl MeterPipeline {
       pending_loudness_hist: None,
       waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
       waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
-    }
+    };
+    debug_assert_eq!(
+      pipeline.waveform_min_acc.len(),
+      pipeline.waveform_max_acc.len(),
+      "waveform accumulators must be same length"
+    );
+    pipeline
   }
 
   /// Clears shared history deque, peak maxima, loudness/spectrum/vectorscope DSP state (UI Clear).
