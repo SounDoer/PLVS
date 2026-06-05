@@ -97,7 +97,11 @@ export class FrameIntake {
   pushHistRow(row, histMaxSamples, defaultSampleRate) {
     const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
-    ringPush(this._loudnessHist, { m: hm, st: hst }, histMaxSamples);
+    ringPush(
+      this._loudnessHist,
+      { m: hm, st: hst, waveformMin: row.waveformMin ?? [], waveformMax: row.waveformMax ?? [] },
+      histMaxSamples
+    );
     ringPush(this._audioSnap, buildAudioSnap(row), histMaxSamples);
     ringPush(
       this._corrSnap,
