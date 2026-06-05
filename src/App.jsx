@@ -887,6 +887,7 @@ function AppContent() {
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,
+    histSourceList,
     loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
   };

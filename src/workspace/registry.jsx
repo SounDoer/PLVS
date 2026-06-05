@@ -1,10 +1,19 @@
-import { Activity, AudioLines, BarChart2, Crosshair, Layers, List } from "lucide-react";
+import {
+  Activity,
+  AudioLines,
+  AudioWaveform,
+  BarChart2,
+  Crosshair,
+  Layers,
+  List,
+} from "lucide-react";
 import { PeakPanel } from "../components/panels/PeakPanel";
 import { LoudnessPanel } from "../components/panels/LoudnessPanel";
 import { LoudnessStatsPanel } from "../components/panels/LoudnessStatsPanel";
 import { VectorscopePanel } from "../components/panels/VectorscopePanel";
 import { SpectrumPanel } from "../components/panels/SpectrumPanel";
 import { SpectrogramPanel } from "../components/panels/SpectrogramPanel";
+import { WaveformPanel } from "../components/panels/WaveformPanel";
 
 /** @type {Record<import('./types.js').ModuleId, { id: string, title: string, minWidth: number, minHeight: number, Component: React.FC<{compact?: boolean}>, Icon: React.FC }>} */
 export const MODULE_REGISTRY = {
@@ -55,5 +64,13 @@ export const MODULE_REGISTRY = {
     minHeight: 160,
     Component: SpectrogramPanel,
     Icon: () => <Layers size={16} />,
+  },
+  waveform: {
+    id: "waveform",
+    title: "Waveform",
+    minWidth: 200,
+    minHeight: 80,
+    Component: WaveformPanel,
+    Icon: () => <AudioWaveform size={16} />,
   },
 };
