@@ -21,6 +21,8 @@
  * @property {number[]} spectrumSmoothDb
  * @property {number[]} waveformMin
  * @property {number[]} waveformMax
+ * @property {string} loudnessLayout
+ * @property {boolean} loudnessLayoutKnown
  */
 
 /**
