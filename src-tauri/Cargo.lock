@@ -2851,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "plvs"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "cc",
  "cpal",

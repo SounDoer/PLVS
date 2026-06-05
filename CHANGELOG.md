@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-06-05
+
+### Fixed
+
+- WASAPI loopback capture now stays active when no audio is playing by playing a silence stream on Windows. This keeps the loudness history and spectrogram time axis scrolling consistently with the session timer.
+- CI builds now correctly gate Windows-specific loopback code behind platform cfg attributes.
+
+### Changed
+
+- README revamped with badges, features overview, quick start guide, and development instructions.
+
 ## [0.1.5] - 2026-06-05
 
 ### Fixed
