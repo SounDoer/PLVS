@@ -160,6 +160,8 @@ export function applyThemeToDocument(themeId) {
   setCssVar("--ui-chart-spectrum-snap", charts.spectrum.strokeSnap);
   setCssVar("--ui-chart-spectrum-fill-top", String(charts.spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-chart-spectrum-fill-bottom", String(charts.spectrum.fillOpacityBottom ?? 0.02));
+  setCssVar("--ui-chart-waveform-live", charts.waveform.stroke);
+  setCssVar("--ui-chart-waveform-fill-opacity", String(charts.waveform.fillOpacity ?? 0.22));
 
   const meterGradient = theme.meterGradient;
   setCssVar("--ui-meter-grad-top", meterGradient.top);

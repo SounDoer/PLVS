@@ -183,6 +183,12 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
 
     if (!entryCount || !mins?.length) return;
 
+    const style = getComputedStyle(document.documentElement);
+    const strokeColor = style.getPropertyValue("--ui-chart-waveform-live").trim() || "#fb923c";
+    const fillOpacity =
+      parseFloat(style.getPropertyValue("--ui-chart-waveform-fill-opacity").trim()) || 0.22;
+
+    // Build envelope path
     ctx.beginPath();
     for (let i = 0; i < entryCount; i++) {
       const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
@@ -201,11 +207,38 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     }
     ctx.closePath();
 
-    const primaryHsl = getComputedStyle(document.documentElement)
-      .getPropertyValue("--primary")
-      .trim();
-    ctx.fillStyle = primaryHsl ? `hsl(${primaryHsl} / 0.6)` : "rgba(99,179,237,0.6)";
+    // Fill
+    const r = parseInt(strokeColor.slice(1, 3), 16);
+    const g = parseInt(strokeColor.slice(3, 5), 16);
+    const b = parseInt(strokeColor.slice(5, 7), 16);
+    ctx.fillStyle = `rgba(${r},${g},${b},${fillOpacity})`;
     ctx.fill();
+
+    // Top edge stroke (max envelope)
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = window.devicePixelRatio || 1;
+    ctx.beginPath();
+    for (let i = 0; i < entryCount; i++) {
+      const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
+      const y = cy - maxes[i] * cy;
+      if (i === 0) {
+        ctx.moveTo(0, y);
+        if (entryCount === 1) ctx.lineTo(W, y);
+      } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Bottom edge stroke (min envelope)
+    ctx.beginPath();
+    for (let i = 0; i < entryCount; i++) {
+      const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
+      const y = cy - mins[i] * cy;
+      if (i === 0) {
+        ctx.moveTo(0, y);
+        if (entryCount === 1) ctx.lineTo(W, y);
+      } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }, [mins, maxes, entryCount, canvasSize]);
 
   return (

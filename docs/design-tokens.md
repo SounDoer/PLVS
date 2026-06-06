@@ -76,6 +76,8 @@ For Loudness history, `Momentary` and `Short-term` are equally important primary
 
 Snapshot chart colors are state colors for selected historical data. Within a theme, `--ui-chart-momentary-snap`, `--ui-chart-shortterm-snap`, `--ui-chart-vectorscope-snap`, and `--ui-chart-spectrum-snap` should belong to one snapshot family. That family must be clearly distinguishable from live trace colors while still matching the theme. Do not treat snapshot colors as new data categories, hover colors, or warning colors.
 
+Waveform lanes use a **stroke + fill** pattern: 1px strokes on both the max (top) and min (bottom) envelope edges, plus a semi-transparent fill at `--ui-chart-waveform-fill-opacity` (0.22). The stroke color tracks the theme accent (`--ui-chart-waveform-live`); there is no snap variant because the waveform always displays the currently visible time window without overlaying a second frozen trace.
+
 Reference layers should remain lower priority than primary data traces. Use `--ui-chart-target-line` for the dashed line and low-opacity band. Reference label text and reference axis text should use existing semantic text color such as muted foreground; do not add a dedicated reference text token unless semantic text fails in implementation.
 
 | Token | Value | Role |
@@ -89,6 +91,8 @@ Reference layers should remain lower priority than primary data traces. Use `--u
 | `--ui-chart-vectorscope-snap` | `#fcd34d` | Vectorscope path (snap) |
 | `--ui-chart-spectrum-live` | `#fb923c` | Spectrum path + fill (live) |
 | `--ui-chart-spectrum-snap` | `#fcd34d` | Spectrum path + fill (snap) |
+| `--ui-chart-waveform-live` | `#fb923c` | Waveform envelope stroke + fill (live) |
+| `--ui-chart-waveform-fill-opacity` | `0.22` | Waveform fill transparency — same value across all themes |
 | `--ui-chart-target-line` | `rgba(251,146,60,0.4)` | Loudness target / reference auxiliary line and band source |
 
 ### Component: Signal (semantic state colors)

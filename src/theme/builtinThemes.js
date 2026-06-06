@@ -74,6 +74,11 @@ const CHARTS_PLVS_DARK = {
     fillOpacityTop: 0.22,
     fillOpacityBottom: 0.03,
   },
+  waveform: {
+    stroke: "#fb923c",
+    fillOpacity: 0.22,
+    strokeWidth: 1,
+  },
 };
 
 const METER_GRADIENT_PLVS = {
@@ -113,6 +118,11 @@ const CHARTS_PLVS_LIGHT = {
     fillOpacityTop: 0.18,
     fillOpacityBottom: 0.03,
   },
+  waveform: {
+    stroke: "#e07020",
+    fillOpacity: 0.22,
+    strokeWidth: 1,
+  },
 };
 
 const CHARTS_PLVS_PHOSPHOR = {
@@ -144,6 +154,11 @@ const CHARTS_PLVS_PHOSPHOR = {
     strokeWidth: 1.5,
     fillOpacityTop: 0.2,
     fillOpacityBottom: 0.02,
+  },
+  waveform: {
+    stroke: "#2cff65",
+    fillOpacity: 0.22,
+    strokeWidth: 1,
   },
 };
 
@@ -198,6 +213,11 @@ const CHARTS_PLVS_ABYSS = {
     fillOpacityTop: 0.18,
     fillOpacityBottom: 0.02,
   },
+  waveform: {
+    stroke: "#ff5040",
+    fillOpacity: 0.22,
+    strokeWidth: 1,
+  },
 };
 
 const METER_GRADIENT_ABYSS = {
@@ -250,6 +270,11 @@ const CHARTS_PLVS_TUNGSTEN = {
     strokeWidth: 1.5,
     fillOpacityTop: 0.18,
     fillOpacityBottom: 0.02,
+  },
+  waveform: {
+    stroke: "#ffaa00",
+    fillOpacity: 0.22,
+    strokeWidth: 1,
   },
 };
 
