@@ -336,12 +336,12 @@ describe("APPLY_PRESET", () => {
     expect(next).toBe(DEFAULT_WORKSPACE_STATE);
   });
 
-  it("PLVS Full exposes all 6 modules", () => {
+  it("PLVS Full exposes all 7 modules", () => {
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "APPLY_PRESET",
       payload: { presetId: "default" },
     });
-    expect(next.visibleModules).toHaveLength(6);
+    expect(next.visibleModules).toHaveLength(7);
   });
 
   it("LLS exposes exactly 3 modules", () => {
