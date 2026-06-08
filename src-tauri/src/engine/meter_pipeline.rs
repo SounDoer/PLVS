@@ -19,7 +19,7 @@ const FRAME_EMIT_MS: u128 = 16;
 const SLOW_EMIT_MS: u128 = 500;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
 const HIST_EMIT_MS: u128 = 95;
-const HIST_RING_CAP: usize = 36_000;
+const HIST_RING_CAP: usize = 72_000;
 
 fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> (String, bool) {
   let ch = channels.max(1);

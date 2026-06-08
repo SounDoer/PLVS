@@ -62,7 +62,7 @@ import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
-const HIST_MAX_SAMPLES = 36000;
+const HIST_MAX_SAMPLES = 72000;
 
 const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
 const APP_VERSION = packageInfo.version;

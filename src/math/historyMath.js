@@ -1,5 +1,5 @@
 export const HISTORY_MIN_WINDOW_SEC = 5;
-export const HISTORY_MAX_WINDOW_SEC = 1800;
+export const HISTORY_MAX_WINDOW_SEC = 7200;
 
 /** Number of segments for the horizontal time-axis tick labels on the loudness history chart. */
 export const HISTORY_TIME_TICK_STEPS = 4;
