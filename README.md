@@ -17,12 +17,13 @@
 
 PLVS (reads as *"plus"*) is a **read-only, real-time audio meter** built for **sound designers and mix engineers**. It watches audio playing on your machine — no DAW routing, no virtual cables, no plugin slots required.
 
-It combines five meter types in a single desktop app:
+It combines six meter types in a single desktop app:
 
 | Meter | What it shows |
 |-------|---------------|
 | **Peak** | Per-channel sample-peak meters (dBFS) |
 | **Loudness** | LUFS — Momentary, Short-term, Integrated (ITU-R BS.1770, EBU R128) |
+| **Waveform** | Per-channel DAW-style amplitude envelope over the session history |
 | **Spectrum** | FFT-based real-time analyzer with per-band dBFS |
 | **Spectrogram** | Scrolling time-frequency waterfall |
 | **Vectorscope** | Stereo phase / correlation with configurable channel pairs |
@@ -38,6 +39,8 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 - **Session history & snapshots** — scroll back through the loudness history timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
 - **Flexible split-tree layout** — drag dividers, resize panels, rearrange the workspace. Dark and light themes, with configurable color presets.
 - **Loudness reference profiles** — overlay platform delivery targets (YouTube, Spotify, Apple Music, etc.) directly on the loudness chart.
+- **System tray** — close to tray instead of quitting; toggle window visibility from the tray icon or right-click menu. Remembers your preference.
+- **Window pin** — keep PLVS always on top of other windows with a single toolbar button.
 - **Version-aware** — checks GitHub Releases at startup and surfaces available updates.
 - **Privacy-first** — audio data stays on device. No telemetry, no accounts, no network calls except manual update checks.
 
