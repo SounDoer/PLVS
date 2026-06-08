@@ -1,43 +1,37 @@
-import { freqToXFrac, spectrumDbToYViewBox } from "../config/scales";
+const SPECTRUM_VIEW_W = 1000.0;
+const SPEC_VIEW_H = 260.0;
+const SPEC_VIEW_TOP_PAD = 10.0;
+const SPEC_VIEW_BOTTOM_PAD = 4.0;
+const SPEC_DB_MIN = -100.0;
+const SPEC_DB_MAX = 0.0;
 
-const SPECTRUM_VIEW_W = 1000;
-
-export function smoothingPreset(mode) {
-  if (mode === "fast") return { attackMs: 30, releaseMs: 150 };
-  if (mode === "slow") return { attackMs: 120, releaseMs: 700 };
-  return { attackMs: 60, releaseMs: 300 };
+function freqToXFrac(f) {
+  const ff = Math.max(20, Math.min(20000, f));
+  const log20 = Math.log10(20);
+  const log20k = Math.log10(20000);
+  return (Math.log10(ff) - log20) / (log20k - log20);
 }
 
-export function smoothByKernel(values, kernel) {
-  if (!Array.isArray(values) || values.length < 3) return values;
-  if (!Array.isArray(kernel) || kernel.length < 3) return values;
-  const out = values.slice();
-  const radius = Math.floor(kernel.length / 2);
-  const sum = kernel.reduce((a, b) => a + b, 0) || 1;
-  for (let i = 0; i < values.length; i++) {
-    let acc = 0;
-    for (let k = 0; k < kernel.length; k++) {
-      const idx = Math.max(0, Math.min(values.length - 1, i + k - radius));
-      acc += values[idx] * kernel[k];
-    }
-    out[i] = acc / sum;
-  }
-  return out;
+function dbToY(d) {
+  const dd = Math.max(SPEC_DB_MIN, Math.min(SPEC_DB_MAX, d));
+  const plotH = SPEC_VIEW_H - SPEC_VIEW_TOP_PAD - SPEC_VIEW_BOTTOM_PAD;
+  return (
+    SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD - ((dd - SPEC_DB_MIN) / (SPEC_DB_MAX - SPEC_DB_MIN)) * plotH
+  );
 }
 
-export function dbPathFromBands(bands, dbList) {
-  if (
-    !Array.isArray(bands) ||
-    !Array.isArray(dbList) ||
-    !bands.length ||
-    bands.length !== dbList.length
-  )
-    return "";
-  const pts = [];
-  for (let i = 0; i < bands.length; i++) {
-    const x = freqToXFrac(bands[i].fCenter) * SPECTRUM_VIEW_W;
-    const y = spectrumDbToYViewBox(dbList[i]);
-    pts.push(`${x.toFixed(2)} ${y.toFixed(2)}`);
-  }
-  return pts.length ? `M ${pts.join(" L ")}` : "";
+/**
+ * Reconstruct spectrum SVG path from band centers and dB values.
+ * @param {number[]} centers - band center frequencies in Hz
+ * @param {number[]} db - smoothed dB per band
+ * @returns {string} SVG path d attribute
+ */
+export function buildSpectrumSvgFromBandsAndDb(centers, db) {
+  if (!centers.length || centers.length !== db.length) return "";
+  const pts = centers.map((fc, i) => {
+    const x = freqToXFrac(fc) * SPECTRUM_VIEW_W;
+    const y = dbToY(db[i]);
+    return `${x.toFixed(2)} ${y.toFixed(2)}`;
+  });
+  return `M ${pts.join(" L ")}`;
 }
