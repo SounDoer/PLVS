@@ -153,8 +153,10 @@ export class FrameIntake {
       waveformMax: row.waveformMax ?? [],
     });
 
+    const minF = Math.max(20, SPECTRUM_SETTINGS.minHz || 20);
+    const maxF = Math.max(minF * 1.2, Math.min(SPECTRUM_SETTINGS.maxHz || 20000, 24000));
     this._visualSpectrumHist.push({
-      bands: getBandsFromCenters([]),
+      bands: buildRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6"),
       dbList: [...(row.spectrumSmoothDb ?? [])],
     });
 
