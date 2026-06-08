@@ -66,6 +66,22 @@ pub struct MeterHistoryEntry {
 
 pub type MeterHistoryBuf = Arc<Mutex<VecDeque<MeterHistoryEntry>>>;
 
+/// Visual history snapshot at ~25 Hz, independent of loudness tick.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VisualHistEntry {
+    /// Per-channel linear amplitude minimum over this ~40ms window.
+    pub waveform_min: Vec<f32>,
+    /// Per-channel linear amplitude maximum over this ~40ms window.
+    pub waveform_max: Vec<f32>,
+    /// Smoothed per-band dB values for Spectrum/Spectrogram display.
+    pub spectrum_smooth_db: Vec<f64>,
+    /// Vectorscope Lissajous: interleaved [L0,R0, L1,R1, …] for 200 subsampled points.
+    pub vectorscope_pairs: Vec<f32>,
+    /// Pearson correlation coefficient [-1, 1].
+    pub correlation: f64,
+}
+
 /// High-rate meter frame (~60 Hz) on Tauri Channel `audio-frame`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -96,6 +112,8 @@ pub struct AudioFramePayload {
   pub timestamp_ms: u64,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub loudness_hist_tick: Option<MeterHistoryEntry>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub visual_hist_tick: Option<VisualHistEntry>,
 }
 
 /// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.

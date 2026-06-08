@@ -368,6 +368,7 @@ impl MeterPipeline {
       loudness_layout_known,
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
       loudness_hist_tick,
+      visual_hist_tick: None,
     };
     (Some(frame), slow_out)
   }
