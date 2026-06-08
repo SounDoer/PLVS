@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { WORKSPACE_STORAGE_KEY, BUILTIN_PRESETS, ALL_MODULE_IDS } from "./constants.js";
+import { MODULE_REGISTRY } from "./registry.jsx";
 
 describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
   it("covers all modules: one digit key per module", () => {
@@ -14,6 +15,15 @@ describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
 describe("workspace localStorage keys", () => {
   it("uses plvs:workspace:v3 as WORKSPACE_STORAGE_KEY", () => {
     expect(WORKSPACE_STORAGE_KEY).toBe("plvs:workspace:v3");
+  });
+});
+
+describe("visual history panel minimum heights", () => {
+  it("uses a shared 160px minimum for stacked chart panels", () => {
+    expect(MODULE_REGISTRY.loudness.minHeight).toBe(160);
+    expect(MODULE_REGISTRY.spectrum.minHeight).toBe(160);
+    expect(MODULE_REGISTRY.spectrogram.minHeight).toBe(160);
+    expect(MODULE_REGISTRY.waveform.minHeight).toBe(160);
   });
 });
 
