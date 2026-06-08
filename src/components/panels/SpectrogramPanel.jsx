@@ -11,7 +11,7 @@ import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { buildHistoryTimeAxisLabels, HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
-import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory";
+import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory";
 import { HelpPopover } from "../HelpPopover";
 
 const SPECTROGRAM_HELP = [
@@ -80,14 +80,13 @@ export function SpectrogramPanel({ compact = false }) {
     totalSamples,
   });
 
-  const spectrogramTimeTicks = useMemo(
-    () =>
-      buildHistoryTimeAxisLabels(
-        effectiveOffsetSamples * HIST_SAMPLE_SEC,
-        visibleSamples * HIST_SAMPLE_SEC
-      ),
-    [effectiveOffsetSamples, visibleSamples]
-  );
+  const spectrogramTimeTicks = useMemo(() => {
+    const SCALE = HIST_SAMPLE_SEC / VISUAL_HIST_SAMPLE_SEC; // 2.5
+    return buildHistoryTimeAxisLabels(
+      Math.round(effectiveOffsetSamples * SCALE) * VISUAL_HIST_SAMPLE_SEC,
+      Math.round(visibleSamples * SCALE) * VISUAL_HIST_SAMPLE_SEC
+    );
+  }, [effectiveOffsetSamples, visibleSamples]);
 
   return (
     <div

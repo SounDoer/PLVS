@@ -5,6 +5,7 @@ import { CAPTION_TEXT, PANEL_MIN_WAVEFORM } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { sliceWaveformHistory } from "../../math/waveformMath.js";
+import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory";
 
 const LABEL_WIDTH_PX = 28;
 
@@ -29,14 +30,28 @@ export function WaveformPanel({ compact = false }) {
     setStatus,
     holdHistoryHud,
     showHistoryHud,
+    visualWaveformSnap,
   } = useAudioData();
 
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
   const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
+  const VISUAL_SCALE = HIST_SAMPLE_SEC / VISUAL_HIST_SAMPLE_SEC; // 2.5
+  const waveformSource =
+    selectedOffset >= 0 && visualWaveformSnap && visualWaveformSnap.length > 0
+      ? visualWaveformSnap
+      : (histSourceList ?? []);
+  const waveformVisibleSamples =
+    selectedOffset >= 0 && visualWaveformSnap && visualWaveformSnap.length > 0
+      ? Math.round((visibleSamples ?? 0) * VISUAL_SCALE)
+      : (visibleSamples ?? 0);
+  const waveformOffsetSamples =
+    selectedOffset >= 0 && visualWaveformSnap && visualWaveformSnap.length > 0
+      ? Math.round((effectiveOffsetSamples ?? 0) * VISUAL_SCALE)
+      : (effectiveOffsetSamples ?? 0);
   const { mins, maxes, entryCount } = sliceWaveformHistory(
-    histSourceList ?? [],
-    visibleSamples ?? 0,
-    effectiveOffsetSamples ?? 0,
+    waveformSource,
+    waveformVisibleSamples,
+    waveformOffsetSamples,
     effectiveChannels
   );
 

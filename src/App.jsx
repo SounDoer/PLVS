@@ -222,7 +222,7 @@ function AppContent() {
   const spectrogramSnapRef = useMemo(
     () => ({
       get current() {
-        return intakeRef.current.getSpectrumDataSnap();
+        return intakeRef.current.getSpectrogramSnapArray();
       },
     }),
     []
@@ -313,6 +313,8 @@ function AppContent() {
     hasHistoryData,
     correlation,
     channelMetadata,
+    visualWaveformSnap,
+    visualSnapIdx,
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
@@ -934,6 +936,8 @@ function AppContent() {
     visibleSamples,
     totalSamples,
     histSourceList,
+    visualWaveformSnap,
+    visualSnapIdx,
     loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
   };
