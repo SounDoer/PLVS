@@ -98,8 +98,8 @@ export function useLoudnessHistory({
   );
 
   const historyTimeTicks = useMemo(
-    () => buildHistoryTimeAxisLabels(historyOffsetSec, clampedWindowSec),
-    [historyOffsetSec, clampedWindowSec]
+    () => buildHistoryTimeAxisLabels(effectiveOffsetSec, visibleSamples * HIST_SAMPLE_SEC),
+    [effectiveOffsetSec, visibleSamples]
   );
 
   // --- Loudness metrics for LoudnessPanel ---
