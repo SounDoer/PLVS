@@ -336,7 +336,7 @@ describe("APPLY_PRESET", () => {
     expect(next).toBe(DEFAULT_WORKSPACE_STATE);
   });
 
-  it("PLVS Full exposes all 7 modules", () => {
+  it("PLVSSW exposes all 7 modules", () => {
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "APPLY_PRESET",
       payload: { presetId: "default" },

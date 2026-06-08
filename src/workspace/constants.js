@@ -15,7 +15,7 @@ export const ALL_MODULE_IDS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Default tree — PLVS Full:
+// Default tree — PLVSSW:
 //   H[ leaf(peak) | V[ leaf(loudness) | leaf(waveform) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(loudnessStats) | leaf(vectorscope) ] ]
 // Ratios: peak=14% of container width, right column=18%, middle fills remainder.
 // ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ export const DEFAULT_TREE = {
 export const BUILTIN_PRESETS = [
   {
     id: "default",
-    name: "PLVS Full",
+    name: "PLVSSW",
     builtin: true,
     visibleModules: [...ALL_MODULE_IDS],
     tree: DEFAULT_TREE,
