@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Image } from "@tauri-apps/api/image";
+import { resolveResource } from "@tauri-apps/api/path";
 import { exit } from "@tauri-apps/plugin-process";
 import { isTauri } from "../ipc/env.js";
 
@@ -87,7 +89,12 @@ export function useTray({ running, pinned, togglePin, onStartClick, deviceName, 
         onToggleWindow: stableToggleWindow,
       });
 
+      const iconPath = await resolveResource("icons/tray.png");
+      const icon = await Image.fromPath(iconPath);
+
       const tray = await TrayIcon.new({
+        icon,
+        iconAsTemplate: true,
         tooltip: "PLVS",
         menu,
         menuOnLeftClick: false,
