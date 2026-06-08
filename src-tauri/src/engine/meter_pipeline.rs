@@ -12,7 +12,7 @@ use crate::dsp::{
 };
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AudioFramePayload, LoudnessSlowPayload, MeterHistoryBuf, MeterHistoryEntry,
+  AudioFramePayload, LoudnessSlowPayload, MeterHistoryBuf, MeterHistoryEntry, VisualHistEntry,
 };
 
 const FRAME_EMIT_MS: u128 = 16;
@@ -20,6 +20,8 @@ const SLOW_EMIT_MS: u128 = 500;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
 const HIST_EMIT_MS: u128 = 95;
 const HIST_RING_CAP: usize = 72_000;
+const VISUAL_EMIT_MS: u128 = 40;
+const VS_HISTORY_POINTS: usize = 200;
 
 fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> (String, bool) {
   let ch = channels.max(1);
@@ -73,6 +75,11 @@ pub struct MeterPipeline {
   waveform_min_acc: Vec<f32>,
   /// Running per-channel max since last history tick. Sentinel NEG_INFINITY = no samples seen yet.
   waveform_max_acc: Vec<f32>,
+  last_visual_emit: Instant,
+  /// Running per-channel min since last visual tick. Sentinel INFINITY = no samples seen yet.
+  visual_waveform_min_acc: Vec<f32>,
+  /// Running per-channel max since last visual tick.
+  visual_waveform_max_acc: Vec<f32>,
 }
 
 impl MeterPipeline {
@@ -98,6 +105,9 @@ impl MeterPipeline {
       pending_loudness_hist: None,
       waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
       waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
+      last_visual_emit: Instant::now() - std::time::Duration::from_millis(200),
+      visual_waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
+      visual_waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
     };
     debug_assert_eq!(
       pipeline.waveform_min_acc.len(),
@@ -125,6 +135,9 @@ impl MeterPipeline {
     self.last_loudness = None;
     self.waveform_min_acc.fill(f32::INFINITY);
     self.waveform_max_acc.fill(f32::NEG_INFINITY);
+    self.visual_waveform_min_acc.fill(f32::INFINITY);
+    self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
+    self.last_visual_emit = Instant::now() - std::time::Duration::from_millis(200);
   }
 
   /// Process one PCM chunk from capture. Returns `(frame, slow)` when ready to send on IPC.
@@ -201,6 +214,15 @@ impl MeterPipeline {
           }
           if s > self.waveform_max_acc[c] {
             self.waveform_max_acc[c] = s;
+          }
+        }
+        if c < self.visual_waveform_min_acc.len() {
+          let s = interleaved[base + c];
+          if s < self.visual_waveform_min_acc[c] {
+            self.visual_waveform_min_acc[c] = s;
+          }
+          if s > self.visual_waveform_max_acc[c] {
+            self.visual_waveform_max_acc[c] = s;
           }
         }
       }
@@ -344,6 +366,36 @@ impl MeterPipeline {
       None
     };
 
+    let visual_hist_tick = {
+      let now = Instant::now();
+      if now.duration_since(self.last_visual_emit).as_millis() >= VISUAL_EMIT_MS {
+        self.last_visual_emit = now;
+
+        let visual_waveform_min: Vec<f32> = self.visual_waveform_min_acc
+          .iter()
+          .map(|&v| if v.is_finite() { v } else { 0.0 })
+          .collect();
+        let visual_waveform_max: Vec<f32> = self.visual_waveform_max_acc
+          .iter()
+          .map(|&v| if v.is_finite() { v } else { 0.0 })
+          .collect();
+        self.visual_waveform_min_acc.fill(f32::INFINITY);
+        self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
+
+        let (visual_corr, vs_pairs) = self.vectorscope.get_history_pairs(VS_HISTORY_POINTS);
+
+        Some(VisualHistEntry {
+          waveform_min: visual_waveform_min,
+          waveform_max: visual_waveform_max,
+          spectrum_smooth_db: smooth.clone(),
+          vectorscope_pairs: vs_pairs,
+          correlation: visual_corr,
+        })
+      } else {
+        None
+      }
+    };
+
     let frame = AudioFramePayload {
       peak_db,
       peak_hold_db,
@@ -368,7 +420,7 @@ impl MeterPipeline {
       loudness_layout_known,
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
       loudness_hist_tick,
-      visual_hist_tick: None,
+      visual_hist_tick,
     };
     (Some(frame), slow_out)
   }
