@@ -43,4 +43,21 @@ describe("RingBuffer", () => {
     rb.clear();
     expect(rb.length).toBe(0);
   });
+
+  it("at() returns undefined for out-of-bounds index", () => {
+    const rb = new RingBuffer(3);
+    rb.push(1);
+    expect(rb.at(1)).toBeUndefined();
+    expect(rb.at(-1)).toBeUndefined();
+  });
+
+  it("constructor throws for capacity <= 0", () => {
+    expect(() => new RingBuffer(0)).toThrow(RangeError);
+    expect(() => new RingBuffer(-1)).toThrow(RangeError);
+  });
+
+  it("capacity getter returns the configured capacity", () => {
+    const rb = new RingBuffer(5);
+    expect(rb.capacity).toBe(5);
+  });
 });

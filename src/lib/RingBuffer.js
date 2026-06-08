@@ -1,5 +1,6 @@
 export class RingBuffer {
   constructor(capacity) {
+    if (capacity <= 0) throw new RangeError("RingBuffer capacity must be > 0");
     this._cap = capacity;
     this._buf = new Array(capacity);
     this._head = 0;
@@ -18,11 +19,16 @@ export class RingBuffer {
 
   // 0 = oldest, length-1 = newest
   at(i) {
+    if (i < 0 || i >= this._size) return undefined;
     return this._buf[(this._head + i) % this._cap];
   }
 
   get length() {
     return this._size;
+  }
+
+  get capacity() {
+    return this._cap;
   }
 
   toArray() {
