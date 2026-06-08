@@ -71,13 +71,16 @@ export function SpectrogramPanel({ compact = false }) {
       }));
   }
 
+  // snap array is 25 Hz (visual history); viewport params arrive in 10 Hz loudness units.
+  // Scale by 2.5 so spectrogramVisibleRange indexes the correct slice of the visual array.
+  const VISUAL_SCALE = HIST_SAMPLE_SEC / VISUAL_HIST_SAMPLE_SEC;
   useSpectrogramCanvas({
     canvasRef,
     snapRef,
-    effectiveOffsetSamples,
-    visibleSamples,
+    effectiveOffsetSamples: Math.round(effectiveOffsetSamples * VISUAL_SCALE),
+    visibleSamples: Math.round(visibleSamples * VISUAL_SCALE),
     selectedOffset,
-    totalSamples,
+    totalSamples: Math.round(totalSamples * VISUAL_SCALE),
   });
 
   const spectrogramTimeTicks = useMemo(() => {
