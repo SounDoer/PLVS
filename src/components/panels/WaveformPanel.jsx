@@ -5,6 +5,16 @@ import { CAPTION_TEXT, PANEL_MIN_WAVEFORM } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { sliceWaveformHistory } from "../../math/waveformMath.js";
+import { HelpPopover } from "../HelpPopover";
+
+const WAVEFORM_HELP = [
+  "Left click - Select snapshot",
+  "Left drag - Scrub timeline",
+  "Left double-click - Return to live",
+  "Right drag - Pan timeline",
+  "Right double-click - Reset window and offset",
+  "Mouse wheel - Wheel up/down to zoom in/out",
+];
 
 const LABEL_WIDTH_PX = 28;
 
@@ -48,10 +58,15 @@ export function WaveformPanel({ compact = false }) {
     <div
       className={cn(
         PANEL_MIN_WAVEFORM,
-        "@container flex min-h-0 flex-1 flex-col overflow-hidden",
+        "@container relative flex min-h-0 flex-1 flex-col overflow-hidden",
         "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
+      <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
+        <div className="pointer-events-auto">
+          <HelpPopover items={WAVEFORM_HELP} />
+        </div>
+      </div>
       {/* Channel lanes + interaction overlay */}
       <div className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
         {Array.from({ length: effectiveChannels }, (_, ch) => (
