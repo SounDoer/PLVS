@@ -19,6 +19,7 @@
         }
       ]
     },
-    "store:default"
+    "store:default",
+    "core:window:allow-set-always-on-top"
   ]
 }

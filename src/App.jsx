@@ -20,6 +20,7 @@ import { useHoverState } from "./hooks/useHoverState";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useSessionTimer } from "./hooks/useSessionTimer.js";
+import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
   buildVectorscopePairOptions,
@@ -50,7 +51,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
-import { LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
+import { LayoutGrid, Pin, PinOff, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import { clearAudioHistory, setVectorscopePair, setSpectrumChannel } from "./ipc/commands.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
@@ -109,6 +110,8 @@ function AppContent() {
     defaultOutputFormatSig,
     defaultOutputLabel,
   } = useAudioDevices();
+
+  const { pinned, togglePin } = useAlwaysOnTop();
 
   const audioOutputs = useMemo(
     () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
@@ -945,6 +948,14 @@ function AppContent() {
                     Audio device
                   </span>
                 </div>
+              )}
+              {isTauri() && (
+                <IconButton
+                  icon={pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+                  tip={pinned ? "Unpin window" : "Pin window on top"}
+                  onClick={togglePin}
+                  className={pinned ? "text-foreground" : undefined}
+                />
               )}
               <Popover>
                 <PopoverTrigger asChild>
