@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useSnapshot } from "./useSnapshot.js";
 
+const emptyHist = { toArray: () => [] };
+
 function createIntake(samples) {
   return {
     getLoudnessHistory: () => samples.loudness,
@@ -12,6 +14,10 @@ function createIntake(samples) {
     getCorrSnap: () => samples.corr,
     getAudioSnap: () => samples.audio,
     getSpectrumData: () => samples.liveSpectrumData,
+    getVisualWaveformHist: () => emptyHist,
+    getVisualSpectrumHist: () => emptyHist,
+    getVisualVectorscopeHist: () => emptyHist,
+    getVisualCorrHist: () => emptyHist,
   };
 }
 
@@ -81,6 +87,10 @@ describe("useSnapshot", () => {
         { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
         { frequencyLabel: "C", vectorscopePairLabel: "L/C" },
       ],
+      getVisualWaveformHist: () => emptyHist,
+      getVisualSpectrumHist: () => emptyHist,
+      getVisualVectorscopeHist: () => emptyHist,
+      getVisualCorrHist: () => emptyHist,
     };
 
     const { result } = renderHook(() =>

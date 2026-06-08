@@ -1,4 +1,7 @@
 import { useMemo } from "react";
+import { VISUAL_HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
+import { buildVectorscopeSvgFromPairs } from "../math/vectorscopeMath.js";
+import { buildSpectrumSvgFromBandsAndDb } from "../math/spectrumMath.js";
 
 function freezeSnapshot(intake) {
   return {
@@ -9,6 +12,10 @@ function freezeSnapshot(intake) {
     corr: [...intake.getCorrSnap()],
     audio: [...intake.getAudioSnap()],
     channelMetadata: [...(intake.getChannelMetadataSnap?.() ?? [])],
+    visualWaveform: intake.getVisualWaveformHist().toArray(),
+    visualSpectrum: intake.getVisualSpectrumHist().toArray(),
+    visualVectorscope: intake.getVisualVectorscopeHist().toArray(),
+    visualCorr: intake.getVisualCorrHist().toArray(),
   };
 }
 
@@ -32,6 +39,9 @@ export function useSnapshot({
   const snapSpecDataList = snapSource ? snapSource.spectrumData : intake.getSpectrumDataSnap();
   const snapVecList = snapSource ? snapSource.vector : intake.getVectorSnap();
   const snapAudioList = snapSource ? snapSource.audio : intake.getAudioSnap();
+  const visualSpecSnap = snapSource?.visualSpectrum ?? [];
+  const visualVsSnap = snapSource?.visualVectorscope ?? [];
+  const visualWaveformSnap = snapSource?.visualWaveform ?? null;
   const snapChannelMetadataList = snapSource
     ? snapSource.channelMetadata
     : (intake.getChannelMetadataSnap?.() ?? []);
@@ -42,18 +52,37 @@ export function useSnapshot({
     selectedHistSteps >= 0 ? Math.max(0, snapSpecList.length - 1 - selectedHistSteps) : -1;
   const audioSnapIdx =
     selectedHistSteps >= 0 ? Math.max(0, snapAudioList.length - 1 - selectedHistSteps) : -1;
+  const visualSnapIdx =
+    selectedOffset >= 0
+      ? Math.max(0, visualSpecSnap.length - 1 - Math.round(selectedOffset / VISUAL_HIST_SAMPLE_SEC))
+      : -1;
 
   const displayAudio =
     audioSnapIdx >= 0 && snapAudioList[audioSnapIdx] ? snapAudioList[audioSnapIdx] : audio;
-  const displaySpectrumPath =
-    snapIdx >= 0 && snapSpecList[snapIdx] ? snapSpecList[snapIdx] : spectrumPath;
+  const displaySpectrumPath = (() => {
+    if (visualSnapIdx >= 0 && visualSpecSnap[visualSnapIdx]) {
+      const snap = visualSpecSnap[visualSnapIdx];
+      // Band centers come from the current spectrum data (fixed per session).
+      const snapData =
+        snapIdx >= 0 && snapSpecDataList[snapIdx]
+          ? snapSpecDataList[snapIdx]
+          : intake.getSpectrumData();
+      const centers = (snapData?.bands ?? []).map((b) => b.fCenter);
+      return buildSpectrumSvgFromBandsAndDb(centers, snap.dbList ?? []);
+    }
+    return snapIdx >= 0 && snapSpecList[snapIdx] ? snapSpecList[snapIdx] : spectrumPath;
+  })();
   const displaySpectrumPeakPath = selectedOffset >= 0 ? "" : spectrumPeakPath;
   const displaySpectrumData =
     snapIdx >= 0 && snapSpecDataList[snapIdx]
       ? snapSpecDataList[snapIdx]
       : intake.getSpectrumData();
-  const displayVectorPath =
-    snapIdx >= 0 && snapVecList[snapIdx] ? snapVecList[snapIdx] : vectorPath;
+  const displayVectorPath = (() => {
+    if (visualSnapIdx >= 0 && visualVsSnap[visualSnapIdx]) {
+      return buildVectorscopeSvgFromPairs(visualVsSnap[visualSnapIdx]);
+    }
+    return snapIdx >= 0 && snapVecList[snapIdx] ? snapVecList[snapIdx] : vectorPath;
+  })();
   const hasHistoryData = histSourceList.length > 0;
   const correlation =
     snapIdx >= 0 && Number.isFinite(snapCorrList[snapIdx])
@@ -72,5 +101,7 @@ export function useSnapshot({
     hasHistoryData,
     correlation,
     channelMetadata,
+    visualWaveformSnap,
+    visualSnapIdx,
   };
 }
