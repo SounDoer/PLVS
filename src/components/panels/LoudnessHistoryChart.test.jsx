@@ -90,6 +90,26 @@ describe("LoudnessHistoryChart", () => {
     expect(paths[1]?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
   });
 
+  it("does not inset the time axis from the chart edges", () => {
+    renderChart(["momentary"]);
+
+    expect(screen.getByText("0s").parentElement?.className).toContain("inset-0");
+  });
+
+  it("keeps the time axis in a dedicated layout row", () => {
+    const { container } = renderChart(["momentary"]);
+
+    const axisRow = screen.getByText("15s").parentElement?.parentElement;
+    const grid = axisRow?.parentElement;
+    const chartArea = container.querySelector("svg")?.parentElement;
+
+    expect(grid?.className).toContain("grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)]");
+    expect(axisRow?.className).toContain("relative");
+    expect(axisRow?.className).not.toContain("absolute");
+    expect(axisRow?.className).not.toContain("bottom-0");
+    expect(chartArea?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
+  });
+
   it("does not color the reference tick as a primary chart trace", () => {
     renderChart(["ref"]);
 

@@ -314,6 +314,7 @@ function AppContent() {
     channelMetadata,
     visualWaveformSnap,
     visualSnapIdx,
+    visualSpectrogramSnap,
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
@@ -937,6 +938,7 @@ function AppContent() {
     histSourceList,
     visualWaveformSnap,
     visualSnapIdx,
+    visualSpectrogramSnap,
     loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
   };

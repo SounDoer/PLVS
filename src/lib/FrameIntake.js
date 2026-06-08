@@ -119,7 +119,13 @@ export class FrameIntake {
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
     ringPush(
       this._loudnessHist,
-      { m: hm, st: hst, waveformMin: row.waveformMin ?? [], waveformMax: row.waveformMax ?? [] },
+      {
+        m: hm,
+        st: hst,
+        waveformMin: row.waveformMin ?? [],
+        waveformMax: row.waveformMax ?? [],
+        timestampMs: row.timestampMs,
+      },
       histMaxSamples
     );
     ringPush(this._audioSnap, buildAudioSnap(row), histMaxSamples);
@@ -151,6 +157,7 @@ export class FrameIntake {
     this._visualWaveformHist.push({
       waveformMin: row.waveformMin ?? [],
       waveformMax: row.waveformMax ?? [],
+      timestampMs: row.timestampMs,
     });
 
     const minF = Math.max(20, SPECTRUM_SETTINGS.minHz || 20);
@@ -158,10 +165,17 @@ export class FrameIntake {
     this._visualSpectrumHist.push({
       bands: buildRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6"),
       dbList: [...(row.spectrumSmoothDb ?? [])],
+      timestampMs: row.timestampMs,
     });
 
-    this._visualVectorscopeHist.push(row.vectorscopePairs ?? []);
-    this._visualCorrHist.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
+    this._visualVectorscopeHist.push({
+      pairs: row.vectorscopePairs ?? [],
+      timestampMs: row.timestampMs,
+    });
+    this._visualCorrHist.push({
+      value: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
+      timestampMs: row.timestampMs,
+    });
 
     this._spectrogramSnapArray = this._visualSpectrumHist.toArray();
   }

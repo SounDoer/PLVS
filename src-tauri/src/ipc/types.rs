@@ -35,6 +35,7 @@ pub struct AudioDevicePreview {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeterHistoryEntry {
+  pub timestamp_ms: u64,
   pub lufs_momentary: f64,
   pub lufs_short_term: f64,
   pub integrated: f64,
@@ -70,6 +71,7 @@ pub type MeterHistoryBuf = Arc<Mutex<VecDeque<MeterHistoryEntry>>>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualHistEntry {
+  pub timestamp_ms: u64,
   /// Per-channel linear amplitude minimum over this ~40ms window.
   pub waveform_min: Vec<f32>,
   /// Per-channel linear amplitude maximum over this ~40ms window.

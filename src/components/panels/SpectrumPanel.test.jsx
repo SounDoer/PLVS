@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { SpectrumPanel } from "./SpectrumPanel.jsx";
@@ -43,5 +43,26 @@ describe("SpectrumPanel", () => {
 
     expect(peakOverlay).toBeTruthy();
     expect(peakOverlay?.getAttribute("stroke")).toBe("var(--ui-chart-spectrum-live)");
+  });
+
+  it("keeps the frequency axis in a dedicated layout row", () => {
+    const { container } = renderPanel({
+      displaySpectrumPath: "",
+      displaySpectrumPeakPath: "",
+      selectedOffset: -1,
+      spectrumHover: null,
+      onSpectrumHoverMove: vi.fn(),
+      onSpectrumHoverLeave: vi.fn(),
+    });
+
+    const axisRow = screen.getByText("1k").parentElement?.parentElement;
+    const grid = axisRow?.parentElement;
+    const chartInset = container.querySelector("svg")?.parentElement?.parentElement;
+
+    expect(grid?.className).toContain("grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)]");
+    expect(axisRow?.className).toContain("relative");
+    expect(axisRow?.className).not.toContain("absolute");
+    expect(axisRow?.className).not.toContain("bottom-0");
+    expect(chartInset?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
   });
 });

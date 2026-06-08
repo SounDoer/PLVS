@@ -19,6 +19,24 @@ function freezeSnapshot(intake) {
   };
 }
 
+function hasTimestampEntries(entries) {
+  return Array.isArray(entries) && entries.length > 0 && Number.isFinite(entries[0]?.timestampMs);
+}
+
+function nearestTimestampIndex(entries, targetMs) {
+  if (!hasTimestampEntries(entries) || !Number.isFinite(targetMs)) return -1;
+  let bestIdx = 0;
+  let bestDistance = Math.abs(entries[0].timestampMs - targetMs);
+  for (let i = 1; i < entries.length; i++) {
+    const distance = Math.abs(entries[i].timestampMs - targetMs);
+    if (distance <= bestDistance) {
+      bestDistance = distance;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
 export function useSnapshot({
   selectedOffset,
   sampleSec,
@@ -46,16 +64,28 @@ export function useSnapshot({
     ? snapSource.channelMetadata
     : (intake.getChannelMetadataSnap?.() ?? []);
 
+  const targetTimestampMs =
+    selectedOffset >= 0 && hasTimestampEntries(histSourceList)
+      ? histSourceList[histSourceList.length - 1].timestampMs - selectedOffset * 1000
+      : null;
   const selectedHistSteps =
     selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / sampleSec)) : -1;
-  const snapIdx =
+  const fallbackSnapIdx =
     selectedHistSteps >= 0 ? Math.max(0, snapSpecList.length - 1 - selectedHistSteps) : -1;
-  const audioSnapIdx =
-    selectedHistSteps >= 0 ? Math.max(0, snapAudioList.length - 1 - selectedHistSteps) : -1;
+  const snapIdx =
+    targetTimestampMs != null
+      ? nearestTimestampIndex(histSourceList, targetTimestampMs)
+      : fallbackSnapIdx;
+  const audioSnapIdx = snapIdx >= 0 ? Math.min(snapAudioList.length - 1, snapIdx) : -1;
   const visualSnapIdx =
-    selectedOffset >= 0
-      ? Math.max(0, visualSpecSnap.length - 1 - Math.round(selectedOffset / VISUAL_HIST_SAMPLE_SEC))
-      : -1;
+    targetTimestampMs != null
+      ? nearestTimestampIndex(visualSpecSnap, targetTimestampMs)
+      : selectedOffset >= 0
+        ? Math.max(
+            0,
+            visualSpecSnap.length - 1 - Math.round(selectedOffset / VISUAL_HIST_SAMPLE_SEC)
+          )
+        : -1;
 
   const displayAudio =
     audioSnapIdx >= 0 && snapAudioList[audioSnapIdx] ? snapAudioList[audioSnapIdx] : audio;
@@ -79,7 +109,8 @@ export function useSnapshot({
       : intake.getSpectrumData();
   const displayVectorPath = (() => {
     if (visualSnapIdx >= 0 && visualVsSnap[visualSnapIdx]) {
-      return buildVectorscopeSvgFromPairs(visualVsSnap[visualSnapIdx]);
+      const snap = visualVsSnap[visualSnapIdx];
+      return buildVectorscopeSvgFromPairs(snap.pairs ?? snap);
     }
     return snapIdx >= 0 && snapVecList[snapIdx] ? snapVecList[snapIdx] : vectorPath;
   })();
@@ -103,5 +134,6 @@ export function useSnapshot({
     channelMetadata,
     visualWaveformSnap,
     visualSnapIdx,
+    visualSpectrogramSnap: snapSource?.visualSpectrum ?? null,
   };
 }

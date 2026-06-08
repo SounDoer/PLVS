@@ -5,7 +5,6 @@ import { CAPTION_TEXT, PANEL_MIN_WAVEFORM } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { sliceWaveformHistory } from "../../math/waveformMath.js";
-import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory";
 
 const LABEL_WIDTH_PX = 28;
 
@@ -30,28 +29,18 @@ export function WaveformPanel({ compact = false }) {
     setStatus,
     holdHistoryHud,
     showHistoryHud,
-    visualWaveformSnap,
   } = useAudioData();
 
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
-  const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
-  const VISUAL_SCALE = HIST_SAMPLE_SEC / VISUAL_HIST_SAMPLE_SEC; // 2.5
-  const waveformSource =
-    selectedOffset >= 0 && visualWaveformSnap && visualWaveformSnap.length > 0
-      ? visualWaveformSnap
-      : (histSourceList ?? []);
-  const waveformVisibleSamples =
-    selectedOffset >= 0 && visualWaveformSnap && visualWaveformSnap.length > 0
-      ? Math.round((visibleSamples ?? 0) * VISUAL_SCALE)
-      : (visibleSamples ?? 0);
-  const waveformOffsetSamples =
-    selectedOffset >= 0 && visualWaveformSnap && visualWaveformSnap.length > 0
-      ? Math.round((effectiveOffsetSamples ?? 0) * VISUAL_SCALE)
-      : (effectiveOffsetSamples ?? 0);
+  const labelContext =
+    channelCount > 0
+      ? (peakLabelContext ?? {})
+      : { ...(peakLabelContext ?? {}), resolvedLayout: "stereo" };
+  const labels = getPeakMeterChannelLabels(effectiveChannels, labelContext);
   const { mins, maxes, entryCount } = sliceWaveformHistory(
-    waveformSource,
-    waveformVisibleSamples,
-    waveformOffsetSamples,
+    histSourceList ?? [],
+    visibleSamples ?? 0,
+    effectiveOffsetSamples ?? 0,
     effectiveChannels
   );
 
@@ -121,10 +110,9 @@ export function WaveformPanel({ compact = false }) {
         />
       </div>
 
-      {/* Time axis — label-width spacer keeps it aligned with the canvas area */}
-      <div className="flex shrink-0 items-start h-[var(--ui-chart-x-axis-row-h)]">
+      <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start">
         <div className="shrink-0" style={{ width: LABEL_WIDTH_PX }} />
-        <div className={cn(CAPTION_TEXT, "relative flex-1 h-full")}>
+        <div className={cn(CAPTION_TEXT, "relative h-full flex-1")}>
           {(historyTimeTicks ?? []).map((tick, i) => {
             if (i === 0) {
               return (

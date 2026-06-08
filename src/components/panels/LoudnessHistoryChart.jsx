@@ -1,12 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import {
-  CAPTION_TEXT,
-  CHART_INSET_MIN_H,
-  PANEL_MIN_HISTORY,
-  W_LOUDNESS_Y_AXIS,
-} from "@/lib/shellLayout";
+import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, loudnessFromTopFrac } from "../../config/scales";
 import { fmtSec } from "../../math/formatMath";
 
@@ -91,12 +86,7 @@ export function LoudnessHistoryChart({
   }, [historyYAxisTicksLabeled, hasHistoryData, targetLufs]);
 
   return (
-    <div
-      className={cn(
-        "grid min-h-0 h-full grid-cols-[var(--ui-w-loudness-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch",
-        PANEL_MIN_HISTORY
-      )}
-    >
+    <div className="grid min-h-0 h-full grid-cols-[var(--ui-w-loudness-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
       {/* Y-axis labels */}
       <div
         className={cn(
@@ -141,7 +131,6 @@ export function LoudnessHistoryChart({
       <div
         className={cn(
           "relative flex min-h-0 min-w-0 flex-1 rounded-lg bg-muted",
-          CHART_INSET_MIN_H,
           historyChartInteractive ? "cursor-crosshair" : "pointer-events-none"
         )}
         onContextMenu={(e) => e.preventDefault()}
@@ -165,7 +154,7 @@ export function LoudnessHistoryChart({
         {/* Horizontal grid lines */}
         <div
           ref={historyGridRef}
-          className="pointer-events-none absolute inset-x-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-0"
+          className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-0"
         >
           {historyYAxisTicksLabeled.map(({ v }) => {
             if (v === targetLufs && hasHistoryData) return null;
@@ -188,7 +177,7 @@ export function LoudnessHistoryChart({
         <svg
           viewBox="0 0 600 220"
           preserveAspectRatio="none"
-          className="relative z-[1] h-full w-full px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
+          className="relative z-[1] h-full w-full pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
         >
           {showMomentary && displayHistoryPathM && (
             <path
@@ -228,7 +217,7 @@ export function LoudnessHistoryChart({
         </svg>
 
         {/* Overlays: reference line, hover crosshair, HUD boxes */}
-        <div className="pointer-events-none absolute inset-x-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
+        <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
           {showReferenceLayer ? (
             <>
               <div
@@ -321,10 +310,9 @@ export function LoudnessHistoryChart({
         </div>
       </div>
 
-      {/* X-axis time labels */}
       <div />
       <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)]")}>
-        <div className="absolute inset-x-[var(--ui-chart-pad)] top-0 h-full">
+        <div className="absolute inset-0">
           {historyTimeTicks.map((tick, i) => {
             if (i === 0) {
               return (
@@ -352,9 +340,6 @@ export function LoudnessHistoryChart({
           })}
         </div>
       </div>
-
-      <div className="h-0 shrink-0" />
-      <div />
     </div>
   );
 }

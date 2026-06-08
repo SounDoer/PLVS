@@ -2,12 +2,7 @@ import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import {
-  CAPTION_TEXT,
-  CHART_INSET_MIN_H,
-  PANEL_MIN_SPECTRUM,
-  W_SPECTRUM_Y_AXIS,
-} from "@/lib/shellLayout";
+import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import {
   FREQ_LABELS,
   SPEC_Y_TICKS,
@@ -45,8 +40,7 @@ export function SpectrumPanel({ compact = false }) {
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)_auto] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch",
-            PANEL_MIN_SPECTRUM
+            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
           )}
         >
           <div
@@ -69,7 +63,7 @@ export function SpectrumPanel({ compact = false }) {
           </div>
           <div className="relative min-h-0 min-w-0">
             <div
-              className={cn("relative min-h-0 h-full rounded-lg bg-muted", CHART_INSET_MIN_H)}
+              className="relative min-h-0 h-full rounded-lg bg-muted"
               onPointerLeave={onSpectrumHoverLeave}
             >
               <div
@@ -234,9 +228,6 @@ export function SpectrumPanel({ compact = false }) {
               ))}
             </div>
           </div>
-
-          <div />
-          <div />
         </div>
       </div>
     </div>

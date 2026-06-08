@@ -57,7 +57,7 @@ export function useSpectrogramCanvas({
   effectiveOffsetSamples,
   visibleSamples,
   selectedOffset,
-  totalSamples,
+  frozenSnaps,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
@@ -65,7 +65,7 @@ export function useSpectrogramCanvas({
   const lastPaintRef = useRef({ len: -1, offset: -1, visible: -1, sel: -1, W: 0, H: 0 });
 
   useEffect(() => {
-    paramsRef.current = { effectiveOffsetSamples, visibleSamples, selectedOffset, totalSamples };
+    paramsRef.current = { effectiveOffsetSamples, visibleSamples, selectedOffset, frozenSnaps };
   });
 
   useEffect(() => {
@@ -77,9 +77,9 @@ export function useSpectrogramCanvas({
       const H = canvas.height;
       if (W === 0 || H === 0) return;
 
-      const { effectiveOffsetSamples, visibleSamples, selectedOffset, totalSamples } =
+      const { effectiveOffsetSamples, visibleSamples, selectedOffset, frozenSnaps } =
         paramsRef.current;
-      const snaps = snapRef.current;
+      const snaps = frozenSnaps ?? snapRef.current;
       const len = snaps ? snaps.length : 0;
 
       // Skip repaint when nothing changed.
@@ -121,7 +121,7 @@ export function useSpectrogramCanvas({
       }
 
       const { startIdx, count } = spectrogramVisibleRange(
-        totalSamples,
+        len,
         effectiveOffsetSamples,
         visibleSamples
       );

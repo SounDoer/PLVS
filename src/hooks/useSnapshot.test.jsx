@@ -110,4 +110,48 @@ describe("useSnapshot", () => {
       vectorscopePairLabel: "L/C",
     });
   });
+
+  it("selects visual snapshots by timestamp instead of fixed visual cadence", () => {
+    const intake = createIntake({
+      loudness: [{ timestampMs: 500 }, { timestampMs: 1000 }],
+      spectrum: ["old-spectrum", "new-spectrum"],
+      spectrumData: [
+        { bands: [{ fCenter: 100 }], dbList: [-40] },
+        { bands: [{ fCenter: 100 }], dbList: [-20] },
+      ],
+      vector: ["old-vector", "new-vector"],
+      corr: [0.1, 0.2],
+      audio: [{ correlation: 0.1 }, { correlation: 0.2 }],
+      liveSpectrumData: { bands: [{ fCenter: 100 }], dbList: [-10] },
+    });
+    intake.getVisualSpectrumHist = () => ({
+      toArray: () =>
+        [500, 760, 830, 1000].map((timestampMs, i) => ({
+          timestampMs,
+          bands: [{ fCenter: 100 }],
+          dbList: [-50 + i],
+        })),
+    });
+    intake.getVisualVectorscopeHist = () => ({
+      toArray: () =>
+        [500, 760, 830, 1000].map((timestampMs, i) => ({
+          timestampMs,
+          pairs: [i, i],
+        })),
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({
+        selectedOffset: 0.2,
+        sampleSec: 0.1,
+        intake,
+        audio: { correlation: 0 },
+        spectrumPath: "live-spectrum",
+        spectrumPeakPath: "live-peak",
+        vectorPath: "live-vector",
+      })
+    );
+
+    expect(result.current.visualSnapIdx).toBe(2);
+  });
 });

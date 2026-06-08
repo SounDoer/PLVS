@@ -331,6 +331,7 @@ impl MeterPipeline {
       self.waveform_min_acc.fill(f32::INFINITY);
       self.waveform_max_acc.fill(f32::NEG_INFINITY);
       let entry = MeterHistoryEntry {
+        timestamp_ms: self.t0.elapsed().as_millis() as u64,
         lufs_momentary: m,
         lufs_short_term: st,
         integrated: integ,
@@ -387,6 +388,7 @@ impl MeterPipeline {
         let (visual_corr, vs_pairs) = self.vectorscope.get_history_pairs(VS_HISTORY_POINTS);
 
         Some(VisualHistEntry {
+          timestamp_ms: self.t0.elapsed().as_millis() as u64,
           waveform_min: visual_waveform_min,
           waveform_max: visual_waveform_max,
           spectrum_smooth_db: smooth.clone(),
@@ -463,6 +465,7 @@ mod tests {
 
   fn dummy_history_entry() -> MeterHistoryEntry {
     MeterHistoryEntry {
+      timestamp_ms: 0,
       lufs_momentary: -20.0,
       lufs_short_term: -18.0,
       integrated: -19.0,

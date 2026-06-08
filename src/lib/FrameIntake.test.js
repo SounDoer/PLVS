@@ -77,6 +77,26 @@ describe("FrameIntake", () => {
     expect(intake.getSpectrumDataSnap()).toHaveLength(1);
   });
 
+  it("preserves history and visual timestamps for cross-rate alignment", () => {
+    const intake = new FrameIntake();
+    intake.pushHistRow(makeRow({ timestampMs: 1200 }), HIST_MAX, SR);
+    intake.pushVisualHistRow(
+      {
+        timestampMs: 1240,
+        waveformMin: [-0.5, -0.3],
+        waveformMax: [0.5, 0.3],
+        spectrumSmoothDb: [-20, -30, -40],
+        vectorscopePairs: [],
+        correlation: 0.8,
+      },
+      10
+    );
+
+    expect(intake.getLoudnessHistory()[0].timestampMs).toBe(1200);
+    expect(intake.getVisualWaveformHist().at(0).timestampMs).toBe(1240);
+    expect(intake.getVisualSpectrumHist().at(0).timestampMs).toBe(1240);
+  });
+
   it("writes a pending frequency marker on the next history row", () => {
     const intake = new FrameIntake();
     intake.setCurrentChannelMetadata({

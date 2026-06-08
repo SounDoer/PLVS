@@ -1,17 +1,12 @@
 import { useRef, useMemo } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
-import {
-  CAPTION_TEXT,
-  CHART_INSET_MIN_H,
-  PANEL_MIN_SPECTROGRAM,
-  W_SPECTRUM_Y_AXIS,
-} from "@/lib/shellLayout";
+import { CAPTION_TEXT, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
-import { buildHistoryTimeAxisLabels, HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
-import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory";
+import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
+import { mapHistoryViewportToVisual } from "../../math/spectrogramViewportMath";
 import { HelpPopover } from "../HelpPopover";
 
 const SPECTROGRAM_HELP = [
@@ -31,31 +26,23 @@ export function SpectrogramPanel({ compact = false }) {
     visibleSamples,
     selectedOffset,
     setSelectedOffset,
+    showSelLine,
+    selLineX,
     totalSamples,
+    histSourceList,
     historyChartInteractive,
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
     onHistoryWheel,
+    visualSpectrogramSnap,
+    historyTimeTicks,
   } = useAudioData();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   useCanvasSize(canvasRef, containerRef);
 
-  const selectedHistSteps =
-    selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / HIST_SAMPLE_SEC)) : -1;
-  const showSelLine =
-    selectedOffset >= 0 &&
-    totalSamples > 0 &&
-    selectedHistSteps >= 0 &&
-    selectedHistSteps < totalSamples;
-
-  const selLineSvgX = useMemo(() => {
-    if (selectedOffset < 0 || visibleSamples <= 0) return 1000;
-    const norm =
-      (selectedOffset / HIST_SAMPLE_SEC - effectiveOffsetSamples) / Math.max(1, visibleSamples - 1);
-    return (1 - Math.max(0, Math.min(1, norm))) * 1000;
-  }, [selectedOffset, effectiveOffsetSamples, visibleSamples]);
+  const selLineSvgX = (selLineX / 600) * 1000;
 
   const markers = frequencyMarkerRef?.current ?? [];
   let visibleFrequencyMarkers = [];
@@ -71,25 +58,28 @@ export function SpectrogramPanel({ compact = false }) {
       }));
   }
 
-  // snap array is 25 Hz (visual history); viewport params arrive in 10 Hz loudness units.
-  // Scale by 2.5 so spectrogramVisibleRange indexes the correct slice of the visual array.
-  const VISUAL_SCALE = HIST_SAMPLE_SEC / VISUAL_HIST_SAMPLE_SEC;
+  const spectrogramSnaps =
+    selectedOffset >= 0 ? (visualSpectrogramSnap ?? []) : (snapRef.current ?? []);
+  const visualViewport = useMemo(
+    () =>
+      mapHistoryViewportToVisual({
+        historyEntries: histSourceList ?? [],
+        visualEntries: spectrogramSnaps,
+        totalHistorySamples: totalSamples,
+        totalVisualSamples: spectrogramSnaps.length,
+        effectiveOffsetSamples,
+        visibleSamples,
+      }),
+    [effectiveOffsetSamples, histSourceList, spectrogramSnaps, totalSamples, visibleSamples]
+  );
   useSpectrogramCanvas({
     canvasRef,
     snapRef,
-    effectiveOffsetSamples: Math.round(effectiveOffsetSamples * VISUAL_SCALE),
-    visibleSamples: Math.round(visibleSamples * VISUAL_SCALE),
+    effectiveOffsetSamples: visualViewport.effectiveOffsetSamples,
+    visibleSamples: visualViewport.visibleSamples,
     selectedOffset,
-    totalSamples: Math.round(totalSamples * VISUAL_SCALE),
+    frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
   });
-
-  const spectrogramTimeTicks = useMemo(() => {
-    const SCALE = HIST_SAMPLE_SEC / VISUAL_HIST_SAMPLE_SEC; // 2.5
-    return buildHistoryTimeAxisLabels(
-      Math.round(effectiveOffsetSamples * SCALE) * VISUAL_HIST_SAMPLE_SEC,
-      Math.round(visibleSamples * SCALE) * VISUAL_HIST_SAMPLE_SEC
-    );
-  }, [effectiveOffsetSamples, visibleSamples]);
 
   return (
     <div
@@ -106,8 +96,7 @@ export function SpectrogramPanel({ compact = false }) {
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch",
-            PANEL_MIN_SPECTROGRAM
+            "grid min-h-0 flex-1 grid-cols-[var(--ui-w-spectrum-y-axis)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
           )}
         >
           {/* Y-axis frequency labels */}
@@ -132,10 +121,7 @@ export function SpectrogramPanel({ compact = false }) {
 
           {/* Canvas chart */}
           <div className="relative min-h-0 min-w-0">
-            <div
-              ref={containerRef}
-              className={cn("relative min-h-0 h-full rounded-lg bg-muted", CHART_INSET_MIN_H)}
-            >
+            <div ref={containerRef} className="relative min-h-0 h-full rounded-lg bg-muted">
               <canvas
                 ref={canvasRef}
                 className={cn(
@@ -192,13 +178,10 @@ export function SpectrogramPanel({ compact = false }) {
             </div>
           </div>
 
-          {/* X-axis: empty Y-axis column placeholder */}
           <div />
-
-          {/* X-axis: time tick labels */}
           <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}>
-            <div className="absolute inset-x-[var(--ui-chart-pad)] top-0 h-full">
-              {spectrogramTimeTicks.map((tick, i) => {
+            <div className="absolute inset-0">
+              {(historyTimeTicks ?? []).map((tick, i) => {
                 if (i === 0) {
                   return (
                     <span key={`${i}-${tick}`} className="absolute left-0 top-0 text-left">

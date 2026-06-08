@@ -1,5 +1,6 @@
 /**
  * @typedef {object} MeterHistoryEntry
+ * @property {number} timestampMs
  * @property {number} lufsMomentary
  * @property {number} lufsShortTerm
  * @property {number} integrated
@@ -48,6 +49,17 @@
  * @property {number[]} spectrumSmoothDb
  * @property {number} timestampMs
  * @property {MeterHistoryEntry|null|undefined} loudnessHistTick
+ * @property {VisualHistEntry|null|undefined} visualHistTick
+ */
+
+/**
+ * @typedef {object} VisualHistEntry
+ * @property {number} timestampMs
+ * @property {number[]} waveformMin
+ * @property {number[]} waveformMax
+ * @property {number[]} spectrumSmoothDb
+ * @property {number[]} vectorscopePairs
+ * @property {number} correlation
  */
 
 /**
