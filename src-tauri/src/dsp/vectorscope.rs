@@ -64,6 +64,46 @@ impl VectorscopeMeter {
     self.process(&self.vs_flat_l.clone(), &self.vs_flat_r.clone())
   }
 
+  /// Returns interleaved [L0, R0, L1, R1, …] subsampled to `n` points,
+  /// and the Pearson correlation coefficient.
+  /// Used for visual history storage (no SVG allocation).
+  pub fn get_history_pairs(&mut self, n: usize) -> (f64, Vec<f32>) {
+    if self.vs_l.is_empty() || n == 0 {
+      return (0.0, Vec::new());
+    }
+    self.vs_flat_l.clear();
+    self.vs_flat_r.clear();
+    self.vs_flat_l.extend(self.vs_l.iter().copied());
+    self.vs_flat_r.extend(self.vs_r.iter().copied());
+
+    let len = self.vs_flat_l.len().min(self.vs_flat_r.len());
+    let step = (len as f64 / n as f64).max(1.0);
+
+    let mut sum_l = 0.0_f64;
+    let mut sum_r = 0.0_f64;
+    let mut sum_lr = 0.0_f64;
+    let mut pairs = Vec::with_capacity(n * 2);
+
+    for i in 0..n {
+      let idx = ((i as f64 * step) as usize).min(len - 1);
+      let l = self.vs_flat_l[idx] as f64;
+      let r = self.vs_flat_r[idx] as f64;
+      sum_l += l * l;
+      sum_r += r * r;
+      sum_lr += l * r;
+      pairs.push(self.vs_flat_l[idx]);
+      pairs.push(self.vs_flat_r[idx]);
+    }
+
+    let corr_den = (sum_l * sum_r).sqrt();
+    let corr = if corr_den > 1e-9 {
+      (sum_lr / corr_den).clamp(-1.0, 1.0)
+    } else {
+      0.0
+    };
+    (corr, pairs)
+  }
+
   /// Returns `(correlation, svg_path_d)` using the same geometry as the browser tick.
   fn process(&mut self, l: &[f32], r: &[f32]) -> (f64, String) {
     if l.is_empty() || r.is_empty() {
@@ -199,5 +239,17 @@ mod tests {
     let (corr, path) = vs.get_output();
     assert_eq!(corr, 0.0);
     assert!(path.is_empty());
+  }
+
+  #[test]
+  fn get_history_pairs_returns_n_pairs() {
+    let mut vm = VectorscopeMeter::new();
+    // Feed 1000 stereo frames using interleaved samples
+    let l: Vec<f32> = (0..1000).map(|i| (i as f32 * 0.001).sin()).collect();
+    let r: Vec<f32> = (0..1000).map(|i| (i as f32 * 0.001).cos()).collect();
+    let interleaved: Vec<f32> = l.iter().zip(r.iter()).flat_map(|(&a, &b)| [a, b]).collect();
+    vm.feed_interleaved(&interleaved, 2, 0, 1);
+    let (_corr, pairs) = vm.get_history_pairs(200);
+    assert_eq!(pairs.len(), 400, "200 pairs = 400 f32 values");
   }
 }
