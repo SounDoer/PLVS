@@ -56,6 +56,10 @@ import { isTauri } from "./ipc/env.js";
 import { clearAudioHistory, setVectorscopePair, setSpectrumChannel } from "./ipc/commands.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
 import { checkForUpdate } from "./lib/updateCheck.js";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useTray } from "./hooks/useTray.js";
+import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
+import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
 const HIST_MAX_SAMPLES = 36000;
@@ -112,6 +116,33 @@ function AppContent() {
   } = useAudioDevices();
 
   const { pinned, togglePin } = useAlwaysOnTop();
+
+  const onHideWindow = useCallback(async () => {
+    if (!isTauri()) return;
+    const win = getCurrentWindow();
+    await win.hide();
+    await win.setSkipTaskbar(true);
+  }, []);
+
+  const onToggleWindow = useCallback(async () => {
+    if (!isTauri()) return;
+    const win = getCurrentWindow();
+    const visible = await win.isVisible();
+    if (visible) {
+      await win.hide();
+      await win.setSkipTaskbar(true);
+    } else {
+      await win.show();
+      await win.setSkipTaskbar(false);
+      await win.setFocus();
+    }
+  }, []);
+
+  const {
+    dialogOpen: closeDialogOpen,
+    handleConfirm: handleCloseConfirm,
+    handleCancel: handleCloseCancel,
+  } = useCloseConfirm({ onHideWindow });
 
   const audioOutputs = useMemo(
     () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
@@ -677,6 +708,15 @@ function AppContent() {
     setShowClock(true);
   };
 
+  useTray({
+    running,
+    pinned,
+    togglePin,
+    onStartClick,
+    deviceName,
+    onToggleWindow,
+  });
+
   const shortcutHandlerRef = useRef(null);
   shortcutHandlerRef.current = { onStartClick, clearAll, running, showClock, setSettingsOpen };
   useEffect(() => {
@@ -1068,6 +1108,12 @@ function AppContent() {
           hasUpdate={updateInfo?.hasUpdate}
           updateStatus={updateInfo?.status}
           openReleaseUrl={openExternalUrl}
+        />
+
+        <CloseConfirmDialog
+          open={closeDialogOpen}
+          onConfirm={handleCloseConfirm}
+          onCancel={handleCloseCancel}
         />
       </div>
     </AudioDataContext.Provider>

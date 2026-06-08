@@ -20,6 +20,13 @@
       ]
     },
     "store:default",
-    "core:window:allow-set-always-on-top"
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-is-visible",
+    "core:window:allow-set-skip-taskbar",
+    "core:window:allow-set-focus",
+    "process:allow-exit",
+    "process:allow-restart"
   ]
 }
