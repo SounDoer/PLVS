@@ -258,4 +258,37 @@ describe("FrameIntake", () => {
     intake.pushHistRow(makeRow({ spectrumPath: "M 0 100 L 10 90" }), HIST_MAX, SR);
     expect(intake.getSpectrumSnap()[0]).toBe("M 0 100 L 10 90");
   });
+
+  it("pushVisualHistRow stores entry in visual ring buffers", () => {
+    const intake = new FrameIntake();
+    const row = {
+      waveform_min: [-0.5, -0.3],
+      waveform_max: [0.5, 0.3],
+      spectrum_smooth_db: [-20, -30, -40],
+      vectorscope_pairs: new Array(400).fill(0.1),
+      correlation: 0.8,
+    };
+    intake.pushVisualHistRow(row, 10);
+    expect(intake.getVisualWaveformHist().length).toBe(1);
+    expect(intake.getVisualSpectrumHist().length).toBe(1);
+    expect(intake.getVisualVectorscopeHist().length).toBe(1);
+    expect(intake.getVisualCorrHist().length).toBe(1);
+    expect(intake.getVisualWaveformHist().at(0)).toEqual({
+      waveformMin: [-0.5, -0.3],
+      waveformMax: [0.5, 0.3],
+    });
+  });
+
+  it("visual ring evicts oldest when over capacity", () => {
+    const intake = new FrameIntake();
+    const row = {
+      waveform_min: [0],
+      waveform_max: [0],
+      spectrum_smooth_db: [],
+      vectorscope_pairs: [],
+      correlation: 0,
+    };
+    for (let i = 0; i < 5; i++) intake.pushVisualHistRow(row, 3);
+    expect(intake.getVisualWaveformHist().length).toBe(3);
+  });
 });

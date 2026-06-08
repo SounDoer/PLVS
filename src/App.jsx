@@ -63,6 +63,8 @@ import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
 const HIST_MAX_SAMPLES = 72000;
+const VISUAL_HIST_SAMPLE_SEC = 0.04; // 25 Hz
+const VISUAL_MAX_SAMPLES = 180_000; // 25 Hz × 2 h
 
 const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
 const APP_VERSION = packageInfo.version;

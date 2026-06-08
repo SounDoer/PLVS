@@ -1,4 +1,5 @@
 import { buildRtaBands, SPECTRUM_SETTINGS } from "../config/scales.js";
+import { RingBuffer } from "./RingBuffer.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -79,6 +80,11 @@ export class FrameIntake {
     this._frequencyChannelMarkers = [];
     this._channelMetadataSnap = [];
     this._pendingFrequencyMarker = null;
+    this._visualWaveformHist = new RingBuffer(1); // lazily resized on first pushVisualHistRow
+    this._visualSpectrumHist = new RingBuffer(1);
+    this._visualVectorscopeHist = new RingBuffer(1);
+    this._visualCorrHist = new RingBuffer(1);
+    this._spectrogramSnapArray = [];
     this._currentChannelMetadata = {
       frequencyLabel: "L/R",
       vectorscopePairLabel: "L/R",
@@ -134,6 +140,30 @@ export class FrameIntake {
     this._pendingFrequencyMarker = null;
   }
 
+  pushVisualHistRow(row, visualMaxSamples) {
+    if (this._visualWaveformHist.capacity !== visualMaxSamples) {
+      this._visualWaveformHist = new RingBuffer(visualMaxSamples);
+      this._visualSpectrumHist = new RingBuffer(visualMaxSamples);
+      this._visualVectorscopeHist = new RingBuffer(visualMaxSamples);
+      this._visualCorrHist = new RingBuffer(visualMaxSamples);
+    }
+
+    this._visualWaveformHist.push({
+      waveformMin: row.waveform_min ?? [],
+      waveformMax: row.waveform_max ?? [],
+    });
+
+    this._visualSpectrumHist.push({
+      bands: getBandsFromCenters([]),
+      dbList: [...(row.spectrum_smooth_db ?? [])],
+    });
+
+    this._visualVectorscopeHist.push(row.vectorscope_pairs ?? []);
+    this._visualCorrHist.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
+
+    this._spectrogramSnapArray = this._visualSpectrumHist.toArray();
+  }
+
   /** Set live spectrum data to the last seeded row (used by seed finalize). */
   finalizeFromRow(row, defaultSampleRate) {
     this._spectrumData = buildSpectrumDataSnapshot(row, { defaultSampleRate });
@@ -180,6 +210,21 @@ export class FrameIntake {
   getChannelMetadataSnap() {
     return this._channelMetadataSnap;
   }
+  getVisualWaveformHist() {
+    return this._visualWaveformHist;
+  }
+  getVisualSpectrumHist() {
+    return this._visualSpectrumHist;
+  }
+  getVisualVectorscopeHist() {
+    return this._visualVectorscopeHist;
+  }
+  getVisualCorrHist() {
+    return this._visualCorrHist;
+  }
+  getSpectrogramSnapArray() {
+    return this._spectrogramSnapArray;
+  }
 
   reset() {
     this._loudnessHist = [];
@@ -192,5 +237,10 @@ export class FrameIntake {
     this._frequencyChannelMarkers = [];
     this._channelMetadataSnap = [];
     this._pendingFrequencyMarker = null;
+    this._visualWaveformHist.clear();
+    this._visualSpectrumHist.clear();
+    this._visualVectorscopeHist.clear();
+    this._visualCorrHist.clear();
+    this._spectrogramSnapArray = [];
   }
 }

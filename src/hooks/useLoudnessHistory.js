@@ -10,6 +10,7 @@ import { fmtMetric } from "../math/formatMath";
 import { UI_PREFERENCES } from "../uiPreferences";
 
 export const HIST_SAMPLE_SEC = 0.1;
+export const VISUAL_HIST_SAMPLE_SEC = 0.04;
 
 const CHART_HEIGHT_PX = 220;
 
