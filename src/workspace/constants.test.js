@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { WORKSPACE_STORAGE_KEY, BUILTIN_PRESETS } from "./constants.js";
+import { WORKSPACE_STORAGE_KEY, BUILTIN_PRESETS, ALL_MODULE_IDS } from "./constants.js";
+
+describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
+  it("covers all modules: one digit key per module", () => {
+    expect(ALL_MODULE_IDS).toHaveLength(7);
+  });
+
+  it("digit 7 maps to waveform", () => {
+    expect(ALL_MODULE_IDS[6]).toBe("waveform");
+  });
+});
 
 describe("workspace localStorage keys", () => {
   it("uses plvs:workspace:v3 as WORKSPACE_STORAGE_KEY", () => {

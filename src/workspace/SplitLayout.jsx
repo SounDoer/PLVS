@@ -224,7 +224,7 @@ function SplitContent() {
       const { state: s, setFullscreen: full } = shortcutRef.current;
 
       const digit = parseInt(e.key, 10);
-      const isDigit = digit >= 1 && digit <= 6;
+      const isDigit = digit >= 1 && digit <= ALL_MODULE_IDS.length;
 
       if (isDigit && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
