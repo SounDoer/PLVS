@@ -843,6 +843,7 @@ function AppContent() {
     captureFormatSignature,
     channelLayout,
     histMaxSamples: HIST_MAX_SAMPLES,
+    visualMaxSamples: VISUAL_MAX_SAMPLES,
     audioRef,
     spectrumStateRef,
     spectrumTimeRef,

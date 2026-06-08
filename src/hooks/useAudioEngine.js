@@ -20,6 +20,7 @@ export function useAudioEngine({
   captureFormatSignature = "",
   channelLayout = "auto",
   histMaxSamples,
+  visualMaxSamples,
   audioRef,
   spectrumStateRef: _spectrumStateRef,
   spectrumTimeRef,
@@ -123,6 +124,7 @@ export function useAudioEngine({
 
           const { applyFrame: baseApply } = buildTauriFrameApply({
             histMaxSamples,
+            visualMaxSamples,
             intake,
             frameRef,
             selectedOffsetRef,

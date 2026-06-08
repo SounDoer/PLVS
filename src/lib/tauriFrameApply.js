@@ -4,6 +4,7 @@ import { SPECTRUM_SETTINGS } from "../config/scales.js";
  * Shared Tauri `AudioFramePayload` handler.
  * @param {object} opts
  * @param {number} opts.histMaxSamples
+ * @param {number} opts.visualMaxSamples
  * @param {import("./FrameIntake.js").FrameIntake} opts.intake
  * @param {import("react").MutableRefObject<number>} opts.frameRef
  * @param {import("react").MutableRefObject<number>} opts.selectedOffsetRef
@@ -11,6 +12,7 @@ import { SPECTRUM_SETTINGS } from "../config/scales.js";
  */
 export function buildTauriFrameApply({
   histMaxSamples,
+  visualMaxSamples,
   intake,
   frameRef,
   selectedOffsetRef,
@@ -30,6 +32,10 @@ export function buildTauriFrameApply({
     const defaultSampleRate = defaultSampleRateRef.current ?? 48000;
 
     intake.pushFrame(f, histMaxSamples, defaultSampleRate, SPECTRUM_SETTINGS.freeze);
+
+    if (f.visual_hist_tick != null) {
+      intake.pushVisualHistRow(f.visual_hist_tick, visualMaxSamples);
+    }
 
     setAudio((prev) => ({
       ...prev,
