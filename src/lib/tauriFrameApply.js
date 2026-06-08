@@ -33,8 +33,8 @@ export function buildTauriFrameApply({
 
     intake.pushFrame(f, histMaxSamples, defaultSampleRate, SPECTRUM_SETTINGS.freeze);
 
-    if (f.visual_hist_tick != null) {
-      intake.pushVisualHistRow(f.visual_hist_tick, visualMaxSamples);
+    if (f.visualHistTick != null) {
+      intake.pushVisualHistRow(f.visualHistTick, visualMaxSamples);
     }
 
     setAudio((prev) => ({

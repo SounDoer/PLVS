@@ -149,16 +149,16 @@ export class FrameIntake {
     }
 
     this._visualWaveformHist.push({
-      waveformMin: row.waveform_min ?? [],
-      waveformMax: row.waveform_max ?? [],
+      waveformMin: row.waveformMin ?? [],
+      waveformMax: row.waveformMax ?? [],
     });
 
     this._visualSpectrumHist.push({
       bands: getBandsFromCenters([]),
-      dbList: [...(row.spectrum_smooth_db ?? [])],
+      dbList: [...(row.spectrumSmoothDb ?? [])],
     });
 
-    this._visualVectorscopeHist.push(row.vectorscope_pairs ?? []);
+    this._visualVectorscopeHist.push(row.vectorscopePairs ?? []);
     this._visualCorrHist.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
 
     this._spectrogramSnapArray = this._visualSpectrumHist.toArray();

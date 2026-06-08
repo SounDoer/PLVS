@@ -262,10 +262,10 @@ describe("FrameIntake", () => {
   it("pushVisualHistRow stores entry in visual ring buffers", () => {
     const intake = new FrameIntake();
     const row = {
-      waveform_min: [-0.5, -0.3],
-      waveform_max: [0.5, 0.3],
-      spectrum_smooth_db: [-20, -30, -40],
-      vectorscope_pairs: new Array(400).fill(0.1),
+      waveformMin: [-0.5, -0.3],
+      waveformMax: [0.5, 0.3],
+      spectrumSmoothDb: [-20, -30, -40],
+      vectorscopePairs: new Array(400).fill(0.1),
       correlation: 0.8,
     };
     intake.pushVisualHistRow(row, 10);
@@ -282,10 +282,10 @@ describe("FrameIntake", () => {
   it("visual ring evicts oldest when over capacity", () => {
     const intake = new FrameIntake();
     const row = {
-      waveform_min: [0],
-      waveform_max: [0],
-      spectrum_smooth_db: [],
-      vectorscope_pairs: [],
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumSmoothDb: [],
+      vectorscopePairs: [],
       correlation: 0,
     };
     for (let i = 0; i < 5; i++) intake.pushVisualHistRow(row, 3);

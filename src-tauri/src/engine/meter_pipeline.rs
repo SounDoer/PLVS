@@ -371,11 +371,13 @@ impl MeterPipeline {
       if now.duration_since(self.last_visual_emit).as_millis() >= VISUAL_EMIT_MS {
         self.last_visual_emit = now;
 
-        let visual_waveform_min: Vec<f32> = self.visual_waveform_min_acc
+        let visual_waveform_min: Vec<f32> = self
+          .visual_waveform_min_acc
           .iter()
           .map(|&v| if v.is_finite() { v } else { 0.0 })
           .collect();
-        let visual_waveform_max: Vec<f32> = self.visual_waveform_max_acc
+        let visual_waveform_max: Vec<f32> = self
+          .visual_waveform_max_acc
           .iter()
           .map(|&v| if v.is_finite() { v } else { 0.0 })
           .collect();

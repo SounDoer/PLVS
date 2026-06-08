@@ -70,16 +70,16 @@ pub type MeterHistoryBuf = Arc<Mutex<VecDeque<MeterHistoryEntry>>>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualHistEntry {
-    /// Per-channel linear amplitude minimum over this ~40ms window.
-    pub waveform_min: Vec<f32>,
-    /// Per-channel linear amplitude maximum over this ~40ms window.
-    pub waveform_max: Vec<f32>,
-    /// Smoothed per-band dB values for Spectrum/Spectrogram display.
-    pub spectrum_smooth_db: Vec<f64>,
-    /// Vectorscope Lissajous: interleaved [L0,R0, L1,R1, …] for 200 subsampled points.
-    pub vectorscope_pairs: Vec<f32>,
-    /// Pearson correlation coefficient [-1, 1].
-    pub correlation: f64,
+  /// Per-channel linear amplitude minimum over this ~40ms window.
+  pub waveform_min: Vec<f32>,
+  /// Per-channel linear amplitude maximum over this ~40ms window.
+  pub waveform_max: Vec<f32>,
+  /// Smoothed per-band dB values for Spectrum/Spectrogram display.
+  pub spectrum_smooth_db: Vec<f64>,
+  /// Vectorscope Lissajous: interleaved [L0,R0, L1,R1, …] for 200 subsampled points.
+  pub vectorscope_pairs: Vec<f32>,
+  /// Pearson correlation coefficient [-1, 1].
+  pub correlation: f64,
 }
 
 /// High-rate meter frame (~60 Hz) on Tauri Channel `audio-frame`.
