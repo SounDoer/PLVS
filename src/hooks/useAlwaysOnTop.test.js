@@ -6,7 +6,7 @@ import { useAlwaysOnTop } from "./useAlwaysOnTop.js";
 const mockSetAlwaysOnTop = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrent: () => ({ setAlwaysOnTop: mockSetAlwaysOnTop }),
+  getCurrentWindow: () => ({ setAlwaysOnTop: mockSetAlwaysOnTop }),
 }));
 
 vi.mock("../ipc/env.js", () => ({
