@@ -171,10 +171,17 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     const W = canvas.width;
     const H = canvas.height;
 
+    const style = getComputedStyle(document.documentElement);
+    const zeroLineColor =
+      style.getPropertyValue("--ui-loudness-history-grid-line").trim() || "rgba(128,128,128,0.18)";
+    const strokeColor = style.getPropertyValue("--ui-chart-waveform-live").trim() || "#fb923c";
+    const fillOpacity =
+      parseFloat(style.getPropertyValue("--ui-chart-waveform-fill-opacity").trim()) || 0.22;
+
     ctx.clearRect(0, 0, W, H);
 
     const cy = H / 2;
-    ctx.strokeStyle = "rgba(128,128,128,0.18)";
+    ctx.strokeStyle = zeroLineColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, cy);
@@ -182,11 +189,6 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     ctx.stroke();
 
     if (!entryCount || !mins?.length) return;
-
-    const style = getComputedStyle(document.documentElement);
-    const strokeColor = style.getPropertyValue("--ui-chart-waveform-live").trim() || "#fb923c";
-    const fillOpacity =
-      parseFloat(style.getPropertyValue("--ui-chart-waveform-fill-opacity").trim()) || 0.22;
 
     // Build envelope path
     ctx.beginPath();
@@ -208,11 +210,10 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     ctx.closePath();
 
     // Fill
-    const r = parseInt(strokeColor.slice(1, 3), 16);
-    const g = parseInt(strokeColor.slice(3, 5), 16);
-    const b = parseInt(strokeColor.slice(5, 7), 16);
-    ctx.fillStyle = `rgba(${r},${g},${b},${fillOpacity})`;
+    ctx.globalAlpha = fillOpacity;
+    ctx.fillStyle = strokeColor;
     ctx.fill();
+    ctx.globalAlpha = 1;
 
     // Top edge stroke (max envelope)
     ctx.strokeStyle = strokeColor;
