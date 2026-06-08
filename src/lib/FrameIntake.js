@@ -1,5 +1,19 @@
 import { buildRtaBands, SPECTRUM_SETTINGS } from "../config/scales.js";
 
+// Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
+// Cache keyed by "length:first:last" so all history entries share one object array.
+const _bandsFromCentersCache = new Map();
+function getBandsFromCenters(centers) {
+  const key =
+    centers.length > 0 ? `${centers.length}:${centers[0]}:${centers[centers.length - 1]}` : "";
+  let cached = _bandsFromCentersCache.get(key);
+  if (!cached) {
+    cached = centers.map((fc) => ({ fLow: fc, fHigh: fc, fCenter: fc }));
+    _bandsFromCentersCache.set(key, cached);
+  }
+  return cached;
+}
+
 /**
  * Compute spectrum display data from a frame or history row.
  * @param {object} row
@@ -16,7 +30,7 @@ export function buildSpectrumDataSnapshot(row, pick) {
     return { bands, dbList: [...dbList] };
   }
   return {
-    bands: centers.map((fc) => ({ fLow: fc, fHigh: fc, fCenter: fc })),
+    bands: getBandsFromCenters(centers),
     dbList: [...dbList],
   };
 }
