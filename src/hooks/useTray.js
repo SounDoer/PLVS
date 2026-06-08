@@ -105,7 +105,25 @@ export function useTray({ running, pinned, togglePin, onStartClick, deviceName, 
         },
       });
 
-      if (!cancelled) trayRef.current = tray;
+      if (cancelled) {
+        tray.close();
+      } else {
+        trayRef.current = tray;
+        // State (e.g. deviceName) may have changed while the tray was being created.
+        // Rebuild the menu once with whatever is current to avoid showing stale values.
+        const cur = creationStateRef.current;
+        if (cur.running !== r || cur.pinned !== p || cur.deviceName !== d) {
+          const updatedMenu = await buildMenu({
+            running: cur.running,
+            pinned: cur.pinned,
+            onToggleCapture: stableToggleCapture,
+            onTogglePin: stableTogglePin,
+            deviceName: cur.deviceName,
+            onToggleWindow: stableToggleWindow,
+          });
+          await tray.setMenu(updatedMenu);
+        }
+      }
     })();
 
     return () => {

@@ -62,4 +62,30 @@ describe("useTray", () => {
     await act(async () => {});
     expect(TrayIcon.new).toHaveBeenCalledWith(expect.objectContaining({ iconAsTemplate: true }));
   });
+
+  it("closes an orphaned tray if effect is cancelled before TrayIcon.new resolves", async () => {
+    // Simulate the StrictMode race: cleanup fires while TrayIcon.new is still pending.
+    // The orphaned tray instance must be closed even though it was created after cancellation.
+    let resolveTrayNew;
+    const orphanClose = vi.fn();
+    TrayIcon.new.mockImplementation(
+      () =>
+        new Promise((res) => {
+          resolveTrayNew = () => res({ setMenu: vi.fn(), close: orphanClose });
+        })
+    );
+
+    const { unmount } = renderHook(() => useTray(defaultProps));
+    // Flush microtasks until TrayIcon.new is called (buildMenu, resolveResource,
+    // Image.fromPath all resolve immediately; TrayIcon.new stays pending)
+    await act(async () => {});
+    // Unmount before TrayIcon.new resolves — simulates StrictMode cleanup
+    unmount();
+    // Now resolve the pending TrayIcon.new
+    await act(async () => {
+      resolveTrayNew();
+    });
+
+    expect(orphanClose).toHaveBeenCalledTimes(1);
+  });
 });
