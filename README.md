@@ -34,15 +34,12 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 
 ## Features
 
-- **Native system audio capture** — monitor any audio playing on your machine. Windows uses WASAPI loopback, macOS uses the native audio tap. No virtual audio cable needed.
-- **Multichannel support** — auto-detects mono, stereo, 5.1, and 7.1 layouts with proper per-channel metering and BS.1770 multichannel weighting.
-- **Session history & snapshots** — scroll back through the loudness history timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
-- **Flexible split-tree layout** — drag dividers, resize panels, rearrange the workspace. Dark and light themes, with configurable color presets.
-- **Loudness reference profiles** — overlay platform delivery targets (YouTube, Spotify, Apple Music, etc.) directly on the loudness chart.
-- **System tray** — close to tray instead of quitting; toggle window visibility from the tray icon or right-click menu. Remembers your preference.
-- **Window pin** — keep PLVS always on top of other windows with a single toolbar button.
-- **Version-aware** — checks GitHub Releases at startup and surfaces available updates.
-- **Privacy-first** — audio data stays on device. No telemetry, no accounts, no network calls except manual update checks.
+- **No routing required** — monitors any audio playing on your machine. Windows uses WASAPI loopback; macOS uses the native audio tap.
+- **Multichannel** — auto-detects mono, stereo, 5.1, and 7.1 with proper per-channel metering and BS.1770 weighting.
+- **Session history & snapshots** — scroll back through the loudness timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
+- **Configurable loudness reference** — set a target LUFS value overlaid on the loudness chart.
+- **Flexible layout** — drag dividers, resize panels, switch between built-in presets. Multiple themes included.
+- **Privacy-first** — audio stays on device. No telemetry, no accounts, no network calls except update checks.
 
 ---
 
