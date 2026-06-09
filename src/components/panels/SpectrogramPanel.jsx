@@ -8,6 +8,9 @@ import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { mapHistoryViewportToVisual } from "../../math/spectrogramViewportMath";
 import { HelpPopover } from "../HelpPopover";
+import { useChartHover } from "../../hooks/useChartHover";
+import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
+import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 
 const SPECTROGRAM_HELP = [
   "Left click - Select snapshot",
@@ -80,6 +83,22 @@ export function SpectrogramPanel({ compact = false }) {
     selectedOffset,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
   });
+  const {
+    hover: spectrogramHover,
+    onMove: onSpectrogramHoverMove,
+    onLeave: onSpectrogramHoverLeave,
+  } = useChartHover((xFrac, yFrac) =>
+    historyChartInteractive
+      ? computeSpectrogramHoverPoint(
+          xFrac,
+          yFrac,
+          spectrogramSnaps,
+          visualViewport.effectiveOffsetSamples,
+          visualViewport.visibleSamples,
+          VISUAL_HIST_SAMPLE_SEC
+        )
+      : null
+  );
 
   return (
     <div
@@ -130,7 +149,15 @@ export function SpectrogramPanel({ compact = false }) {
                 )}
                 onContextMenu={(e) => e.preventDefault()}
                 onPointerDown={onHistoryPointerDown}
-                onPointerMove={onHistoryPointerMove}
+                onPointerMove={(e) => {
+                  onHistoryPointerMove(e);
+                  onSpectrogramHoverMove(
+                    e.clientX,
+                    e.clientY,
+                    e.currentTarget.getBoundingClientRect()
+                  );
+                }}
+                onPointerLeave={onSpectrogramHoverLeave}
                 onPointerUp={onHistoryPointerUp}
                 onPointerCancel={onHistoryPointerUp}
                 onWheel={onHistoryWheel}
@@ -175,6 +202,32 @@ export function SpectrogramPanel({ compact = false }) {
                   ) : null}
                 </svg>
               ) : null}
+              {spectrogramHover && (
+                <div className="pointer-events-none absolute inset-0">
+                  {/* Vertical crosshair */}
+                  <div
+                    className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
+                    style={{ left: `${spectrogramHover.leftPct}%` }}
+                  />
+                  {/* Horizontal crosshair */}
+                  <div
+                    className="absolute left-0 right-0 border-t border-dashed border-muted-foreground/40"
+                    style={{ top: `${spectrogramHover.topPct}%` }}
+                  />
+                  {/* Popover */}
+                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
+                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      {spectrogramHover.timeLabel}
+                    </div>
+                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      {spectrogramHover.freqLabel}
+                    </div>
+                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      {spectrogramHover.dbLabel}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
