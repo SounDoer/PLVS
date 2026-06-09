@@ -6,8 +6,6 @@ import {
   computeSpectrumHoverIndex,
 } from "./hoverMath";
 
-const rect = (left, width) => ({ left, width, right: left + width, top: 0, bottom: 0, height: 0 });
-
 describe("formatHoverOffset", () => {
   it("formats sub-10s with one decimal", () => {
     expect(formatHoverOffset(3.4)).toBe("3.4s ago");
@@ -84,14 +82,14 @@ describe("computeSpectrumHoverIndex", () => {
   const bands = [{ fCenter: 100 }, { fCenter: 1000 }, { fCenter: 10000 }];
 
   it("returns the nearest band index for a pointer near the left", () => {
-    const idx = computeSpectrumHoverIndex(0, rect(0, 600), bands);
+    const idx = computeSpectrumHoverIndex(0, bands);
     expect(idx).toBeGreaterThanOrEqual(0);
     expect(idx).toBeLessThan(bands.length);
   });
 
-  it("returns an index within bounds for any x position", () => {
-    for (const clientX of [0, 100, 300, 599, 600]) {
-      const idx = computeSpectrumHoverIndex(clientX, rect(0, 600), bands);
+  it("returns an index within bounds for any xFrac", () => {
+    for (const xFrac of [0, 0.5, 1]) {
+      const idx = computeSpectrumHoverIndex(xFrac, bands);
       expect(idx).toBeGreaterThanOrEqual(0);
       expect(idx).toBeLessThan(bands.length);
     }

@@ -67,16 +67,12 @@ export function computeHistoryHoverPoint(
 }
 
 /**
- * Finds the nearest spectrum band index to a pointer X position.
- * @param {number} clientX
- * @param {DOMRect} rect
+ * Finds the nearest spectrum band index to a normalized X position.
+ * @param {number} xFrac - normalized X position (0 = left, 1 = right)
  * @param {{ fCenter: number }[]} bands
  * @returns {number}
  */
-export function computeSpectrumHoverIndex(clientX, rect, bands) {
-  const width = Math.max(1, rect.width);
-  const x = Math.max(0, Math.min(width, clientX - rect.left));
-  const xFrac = x / width;
+export function computeSpectrumHoverIndex(xFrac, bands) {
   let nearestIdx = 0;
   let nearestDist = Infinity;
   for (let i = 0; i < bands.length; i += 1) {
