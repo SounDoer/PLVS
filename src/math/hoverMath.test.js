@@ -5,6 +5,7 @@ import {
   computeHistoryHoverPoint,
   computeSpectrumHoverIndex,
   computeWaveformHoverPoint,
+  computeSpectrogramHoverPoint,
 } from "./hoverMath";
 
 describe("formatHoverOffset", () => {
@@ -186,5 +187,58 @@ describe("computeWaveformHoverPoint", () => {
       labels
     );
     expect(r.channels.map((c) => c.label)).toEqual(["L", "R"]);
+  });
+});
+
+describe("computeSpectrogramHoverPoint", () => {
+  const makeSnap = (bands, dbList) => ({ bands, dbList });
+  const testBands = [{ fCenter: 100 }, { fCenter: 1000 }, { fCenter: 10000 }];
+  const testDbList = [-50, -30, -20];
+  const snaps = [makeSnap(testBands, testDbList)];
+
+  it("returns null for empty snaps array", () => {
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, [], 0, 1, 0.04)).toBeNull();
+  });
+
+  it("leftPct equals xFrac * 100", () => {
+    const r = computeSpectrogramHoverPoint(0.4, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(r.leftPct).toBeCloseTo(40);
+  });
+
+  it("topPct equals yFrac * 100", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.3, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(r.topPct).toBeCloseTo(30);
+  });
+
+  it("timeLabel is a string", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(typeof r.timeLabel).toBe("string");
+    expect(r.timeLabel).toMatch(/ago/);
+  });
+
+  it("freqLabel is a string containing Hz or kHz", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(typeof r.freqLabel).toBe("string");
+    expect(r.freqLabel).toMatch(/Hz/);
+  });
+
+  it("dbLabel is in -XX.X dB format", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(r.dbLabel).toMatch(/^-?\d+\.\d dB$/);
+  });
+
+  it("returns null when snap has no bands", () => {
+    const emptyBandsSnap = [makeSnap([], testDbList)];
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, emptyBandsSnap, 0, 1, 0.04)).toBeNull();
+  });
+
+  it("returns null when snap has no dbList", () => {
+    const emptyDbSnap = [makeSnap(testBands, [])];
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, emptyDbSnap, 0, 1, 0.04)).toBeNull();
   });
 });

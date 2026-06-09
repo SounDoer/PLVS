@@ -1,4 +1,5 @@
 import { loudnessFromTopFrac, freqToXFrac } from "../config/scales";
+import { hzFromFrac } from "./spectrogramMath.js";
 
 /**
  * Formats a history hover age as a human-readable "X ago" string.
@@ -100,6 +101,69 @@ export function computeWaveformHoverPoint(
       label,
       dbFs: 20 * Math.log10(Math.max(1e-9, Math.abs(maxes[ch]?.[sliceIndex] ?? 0))),
     })),
+  };
+}
+
+/**
+ * Resolves hover data for the spectrogram panel from normalized X/Y fractions.
+ *
+ * @param {number} xFrac - normalized X (0=left/oldest, 1=right/newest)
+ * @param {number} yFrac - normalized Y (0=top=20kHz, 1=bottom=20Hz)
+ * @param {{ bands: {fCenter: number}[], dbList: number[] }[]} snaps
+ * @param {number} effectiveOffsetSamples
+ * @param {number} visibleSamples
+ * @param {number} sampleSec
+ * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string } | null}
+ */
+export function computeSpectrogramHoverPoint(
+  xFrac,
+  yFrac,
+  snaps,
+  effectiveOffsetSamples,
+  visibleSamples,
+  sampleSec
+) {
+  if (!snaps.length) return null;
+
+  const normalized = 1 - xFrac;
+  const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
+  const hoverIndex = Math.max(
+    0,
+    Math.min(snaps.length - 1, snaps.length - 1 - Math.round(fromEndSamples))
+  );
+  const snap = snaps[hoverIndex];
+  if (!snap) return null;
+  const offsetSec = Math.max(0, (snaps.length - 1 - hoverIndex) * sampleSec);
+
+  const { bands, dbList } = snap;
+  if (!bands?.length || !dbList?.length) return null;
+
+  // yFrac=0 (top) → 20kHz, yFrac=1 (bottom) → 20Hz; hzFromFrac(0)=20Hz, hzFromFrac(1)=20kHz
+  const hz = hzFromFrac(1 - yFrac);
+
+  // Log-domain binary search for nearest band
+  let lo = 0,
+    hi = bands.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (bands[mid].fCenter < hz) lo = mid + 1;
+    else hi = mid;
+  }
+  if (
+    lo > 0 &&
+    Math.abs(Math.log(bands[lo - 1].fCenter) - Math.log(hz)) <
+      Math.abs(Math.log(bands[lo].fCenter) - Math.log(hz))
+  ) {
+    lo = lo - 1;
+  }
+  const db = dbList[lo];
+
+  return {
+    leftPct: xFrac * 100,
+    topPct: yFrac * 100,
+    timeLabel: formatHoverOffset(offsetSec),
+    freqLabel: formatSpectrumFreq(hz),
+    dbLabel: Number.isFinite(db) ? `${db.toFixed(1)} dB` : "-",
   };
 }
 
