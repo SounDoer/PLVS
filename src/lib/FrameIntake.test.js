@@ -60,20 +60,16 @@ describe("FrameIntake", () => {
     expect(intake.getLoudnessHistory()).toHaveLength(0);
     expect(intake.getAudioSnap()).toHaveLength(0);
     expect(intake.getCorrSnap()).toHaveLength(0);
-    expect(intake.getVectorSnap()).toHaveLength(0);
-    expect(intake.getSpectrumSnap()).toHaveLength(0);
     expect(intake.getSpectrumDataSnap()).toHaveLength(0);
     expect(intake.getSpectrumData()).toBeNull();
   });
 
-  it("pushHistRow adds to all six rings", () => {
+  it("pushHistRow adds to the hist-rate rings", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
     expect(intake.getLoudnessHistory()).toHaveLength(1);
     expect(intake.getAudioSnap()).toHaveLength(1);
     expect(intake.getCorrSnap()).toHaveLength(1);
-    expect(intake.getVectorSnap()).toHaveLength(1);
-    expect(intake.getSpectrumSnap()).toHaveLength(1);
     expect(intake.getSpectrumDataSnap()).toHaveLength(1);
   });
 
@@ -196,8 +192,6 @@ describe("FrameIntake", () => {
     expect(intake.getLoudnessHistory()).toHaveLength(HIST_MAX);
     expect(intake.getAudioSnap()).toHaveLength(HIST_MAX);
     expect(intake.getCorrSnap()).toHaveLength(HIST_MAX);
-    expect(intake.getVectorSnap()).toHaveLength(HIST_MAX);
-    expect(intake.getSpectrumSnap()).toHaveLength(HIST_MAX);
     expect(intake.getSpectrumDataSnap()).toHaveLength(HIST_MAX);
   });
 
@@ -247,8 +241,6 @@ describe("FrameIntake", () => {
     expect(intake.getLoudnessHistory()).toHaveLength(0);
     expect(intake.getAudioSnap()).toHaveLength(0);
     expect(intake.getCorrSnap()).toHaveLength(0);
-    expect(intake.getVectorSnap()).toHaveLength(0);
-    expect(intake.getSpectrumSnap()).toHaveLength(0);
     expect(intake.getSpectrumDataSnap()).toHaveLength(0);
     expect(intake.getSpectrumData()).toBeNull();
   });
@@ -265,18 +257,6 @@ describe("FrameIntake", () => {
     expect(snap.correlation).toBe(0.5);
     expect(snap.vectorscopePairX).toBe(2);
     expect(snap.vectorscopePairY).toBe(3);
-  });
-
-  it("vectorSnap stores vectorscope path strings", () => {
-    const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ vectorscopePath: "M 65 65 L 70 70" }), HIST_MAX, SR);
-    expect(intake.getVectorSnap()[0]).toBe("M 65 65 L 70 70");
-  });
-
-  it("spectrumSnap stores spectrum path strings", () => {
-    const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ spectrumPath: "M 0 100 L 10 90" }), HIST_MAX, SR);
-    expect(intake.getSpectrumSnap()[0]).toBe("M 0 100 L 10 90");
   });
 
   it("pushVisualHistRow stores entry in visual ring buffers", () => {

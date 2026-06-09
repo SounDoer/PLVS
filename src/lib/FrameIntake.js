@@ -87,8 +87,6 @@ export class FrameIntake {
     this._loudnessHist = [];
     this._audioSnap = [];
     this._corrSnap = [];
-    this._vectorSnap = [];
-    this._spectrumSnap = [];
     this._spectrumDataSnap = [];
     this._spectrumData = null;
     this._frequencyChannelMarkers = [];
@@ -122,8 +120,9 @@ export class FrameIntake {
   }
 
   /**
-   * Push one history row into all six snap rings.
-   * Called by pushFrame (live tick) and directly by the seed path.
+   * Push one history row into the hist-rate snap rings.
+   * Spectrum/vectorscope SVG paths are not stored here — they are rebuilt on demand
+   * from the visual rings (see useSnapshot), so only numeric/data snaps are kept.
    * @param {object} row MeterHistoryEntry
    * @param {number} histMaxSamples
    * @param {number} defaultSampleRate
@@ -148,8 +147,6 @@ export class FrameIntake {
       Number.isFinite(row.correlation) ? row.correlation : -Infinity,
       histMaxSamples
     );
-    ringPush(this._vectorSnap, row.vectorscopePath || "", histMaxSamples);
-    ringPush(this._spectrumSnap, row.spectrumPath || "", histMaxSamples);
     ringPush(
       this._spectrumDataSnap,
       buildSpectrumDataSnapshot(row, { defaultSampleRate }),
@@ -219,9 +216,6 @@ export class FrameIntake {
   getSpectrumData() {
     return this._spectrumData;
   }
-  getSpectrumSnap() {
-    return this._spectrumSnap;
-  }
   getSpectrumDataSnap() {
     return this._spectrumDataSnap;
   }
@@ -230,9 +224,6 @@ export class FrameIntake {
   }
   getCorrSnap() {
     return this._corrSnap;
-  }
-  getVectorSnap() {
-    return this._vectorSnap;
   }
   getFrequencyChannelMarkers() {
     return this._frequencyChannelMarkers;
@@ -260,8 +251,6 @@ export class FrameIntake {
     this._loudnessHist = [];
     this._audioSnap = [];
     this._corrSnap = [];
-    this._vectorSnap = [];
-    this._spectrumSnap = [];
     this._spectrumDataSnap = [];
     this._spectrumData = null;
     this._frequencyChannelMarkers = [];

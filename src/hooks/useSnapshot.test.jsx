@@ -8,9 +8,7 @@ const emptyHist = { toArray: () => [] };
 function createIntake(samples) {
   return {
     getLoudnessHistory: () => samples.loudness,
-    getSpectrumSnap: () => samples.spectrum,
     getSpectrumDataSnap: () => samples.spectrumData,
-    getVectorSnap: () => samples.vector,
     getCorrSnap: () => samples.corr,
     getAudioSnap: () => samples.audio,
     getSpectrumData: () => samples.liveSpectrumData,
@@ -25,9 +23,7 @@ describe("useSnapshot", () => {
   it("freezes history data while scrubbing and returns to live data afterward", () => {
     const samples = {
       loudness: [{ lufs: -20 }, { lufs: -18 }],
-      spectrum: ["spectrum-0", "spectrum-1"],
       spectrumData: [{ band: 0 }, { band: 1 }],
-      vector: ["vector-0", "vector-1"],
       corr: [0.1, 0.7],
       audio: [
         { peak: -6, correlation: 0.1 },
@@ -56,14 +52,14 @@ describe("useSnapshot", () => {
 
     rerender({ ...baseProps, selectedOffset: 0 });
     expect(result.current.displayAudio).toEqual({ peak: -3, correlation: 0.7 });
-    expect(result.current.displaySpectrumPath).toBe("spectrum-1");
+    // No visual ring in this mock: spectrum path falls back to the live path.
+    expect(result.current.displaySpectrumPath).toBe("live-spectrum");
     expect(result.current.displaySpectrumPeakPath).toBe("");
 
     samples.audio.push({ peak: -99, correlation: -1 });
-    samples.spectrum.push("new-live-spectrum");
     rerender({ ...baseProps, selectedOffset: 1 });
     expect(result.current.displayAudio).toEqual({ peak: -6, correlation: 0.1 });
-    expect(result.current.displaySpectrumPath).toBe("spectrum-0");
+    expect(result.current.displaySpectrumPath).toBe("live-spectrum");
 
     rerender(baseProps);
     expect(result.current.displayAudio).toBe(liveAudio);
@@ -77,9 +73,7 @@ describe("useSnapshot", () => {
         { m: -20, st: -18 },
         { m: -21, st: -19 },
       ],
-      getSpectrumSnap: () => ["old-spectrum", "new-spectrum"],
       getSpectrumDataSnap: () => [{ dbList: [-20] }, { dbList: [-30] }],
-      getVectorSnap: () => ["old-vector", "new-vector"],
       getCorrSnap: () => [0.1, 0.2],
       getAudioSnap: () => [{ correlation: 0.1 }, { correlation: 0.2 }],
       getSpectrumData: () => ({ dbList: [-1] }),
@@ -114,12 +108,10 @@ describe("useSnapshot", () => {
   it("selects visual snapshots by timestamp instead of fixed visual cadence", () => {
     const intake = createIntake({
       loudness: [{ timestampMs: 500 }, { timestampMs: 1000 }],
-      spectrum: ["old-spectrum", "new-spectrum"],
       spectrumData: [
         { bands: [{ fCenter: 100 }], dbList: [-40] },
         { bands: [{ fCenter: 100 }], dbList: [-20] },
       ],
-      vector: ["old-vector", "new-vector"],
       corr: [0.1, 0.2],
       audio: [{ correlation: 0.1 }, { correlation: 0.2 }],
       liveSpectrumData: { bands: [{ fCenter: 100 }], dbList: [-10] },
