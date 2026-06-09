@@ -15,6 +15,20 @@ function getBandsFromCenters(centers) {
   return cached;
 }
 
+// buildRtaBands output is constant for a given (minHz, maxHz, resolution) and the band
+// objects are read-only in all consumers. Cache one array per parameter set so every
+// history row shares it instead of allocating ~245 identical objects per frame.
+const _rtaBandsCache = new Map();
+function getRtaBands(minHz, maxHz, resolution) {
+  const key = `${minHz}:${maxHz}:${resolution}`;
+  let cached = _rtaBandsCache.get(key);
+  if (!cached) {
+    cached = buildRtaBands(minHz, maxHz, resolution);
+    _rtaBandsCache.set(key, cached);
+  }
+  return cached;
+}
+
 /**
  * Compute spectrum display data from a frame or history row.
  * @param {object} row
@@ -26,7 +40,7 @@ export function buildSpectrumDataSnapshot(row, pick) {
   const nyquist = (pick.defaultSampleRate || 48000) * 0.5;
   const minF = Math.max(20, SPECTRUM_SETTINGS.minHz || 20);
   const maxF = Math.max(minF * 1.2, Math.min(SPECTRUM_SETTINGS.maxHz || 20000, nyquist));
-  const bands = buildRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6");
+  const bands = getRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6");
   if (bands.length === dbList.length && dbList.length > 0) {
     return { bands, dbList: [...dbList] };
   }
@@ -163,7 +177,7 @@ export class FrameIntake {
     const minF = Math.max(20, SPECTRUM_SETTINGS.minHz || 20);
     const maxF = Math.max(minF * 1.2, Math.min(SPECTRUM_SETTINGS.maxHz || 20000, 24000));
     this._visualSpectrumHist.push({
-      bands: buildRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6"),
+      bands: getRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6"),
       dbList: [...(row.spectrumSmoothDb ?? [])],
       timestampMs: row.timestampMs,
     });
