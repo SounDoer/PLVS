@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-09
+
+### Added
+
+- Visual history ring buffers at 25Hz for Spectrum and Vectorscope panels, enabling smooth scrubbing playback
+- O(1) RingBuffer data structure for efficient visual history storage
+- SVG reconstruction helpers for visual history scrubbing
+- Loudness history depth extended to 2 hours
+- System tray icon with P-shape PNG icon
+- HelpPopover tooltip to WaveformPanel
+- Visual history support for Spectrum and Vectorscope scrubbing
+
+### Changed
+
+- Time axis and scrub data now use visual history sample counts for better accuracy
+- Default workspace preset renamed from "PLVS Full" to "PLVSSW"
+- Spectrogram viewport parameters scaled to visual 25Hz units for canvas range
+
+### Fixed
+
+- Spectrogram blank display fixed by using buildRtaBands for visual spectrum bands
+- Visual history and chart axes alignment across all panels
+- RingBuffer bounds check, zero-capacity guard, and capacity getter
+- Loudness/Waveform time axis alignment with Spectrogram
+- Waveform zero line and fill using theme grid-line token
+- Tray icon StrictMode/race bugs
+
+### Performance
+
+- Spectrum history memory reduced by caching band objects in spectrumDataSnap
+
 ## [0.1.6] - 2026-06-05
 
 ### Fixed
