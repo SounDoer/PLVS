@@ -240,14 +240,6 @@ export function LoudnessHistoryChart({
                   borderTopWidth: 2,
                 }}
               />
-              <div
-                className={cn(
-                  "absolute left-[var(--ui-chart-hud-inset)] bottom-[var(--ui-chart-hud-inset)] opacity-90",
-                  LOUDNESS_HUD_BOX
-                )}
-              >
-                Ref {referenceLufs} LUFS
-              </div>
             </>
           ) : null}
           {!hasSelectedLayer ? (

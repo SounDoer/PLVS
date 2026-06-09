@@ -78,7 +78,7 @@ describe("LoudnessHistoryChart", () => {
     expect(container.querySelector("svg path")?.getAttribute("d")).toBe(
       baseProps.displayHistoryPathM
     );
-    expect(screen.getByText("Ref -23 LUFS")).toBeTruthy();
+    expect(screen.queryByText("Ref -23 LUFS")).toBeNull();
   });
 
   it("keeps data trace stroke widths independent from SVG scaling", () => {
