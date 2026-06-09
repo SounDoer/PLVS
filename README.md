@@ -41,6 +41,10 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 - **Flexible layout** — drag dividers, resize panels, switch between built-in presets. Multiple themes included.
 - **Privacy-first** — audio stays on device. No telemetry, no accounts, no network calls except update checks.
 
+## Limitations
+
+- **ASIO is not supported on Windows.** ASIO drivers bypass the Windows audio mixer entirely, so WASAPI loopback capture cannot intercept the signal. If you are using a DAW (e.g. REAPER, Ableton Live), set the DAW's audio system to **WASAPI** to allow PLVS to capture its output. For setups that require ASIO, routing through a virtual audio cable (e.g. VB-Cable) to a WASAPI-visible device is a workable alternative.
+
 ---
 
 ## Download
