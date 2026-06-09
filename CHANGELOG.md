@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-09
+
+### Added
+
+- Unified hover HUD for all chart panels (Spectrum, Vectorscope, Spectrogram, Loudness History, Waveform)
+
+### Changed
+
+- README now documents ASIO limitation and WASAPI workaround for DAW users
+
 ## [0.2.0] - 2026-06-09
 
 ### Added
