@@ -67,6 +67,43 @@ export function computeHistoryHoverPoint(
 }
 
 /**
+ * Resolves the hover data for the waveform panel from a normalized X fraction.
+ *
+ * @param {number} xFrac - normalized X position (0 = left/oldest, 1 = right/newest)
+ * @param {number[][]} mins - mins[ch][i] linear amplitude min
+ * @param {number[][]} maxes - maxes[ch][i] linear amplitude max
+ * @param {number} entryCount - number of entries in the sliced window
+ * @param {number} effectiveOffsetSamples - samples from live edge the window is offset
+ * @param {number} visibleSamples - width of visible window in samples
+ * @param {number} sampleSec - seconds per sample
+ * @param {string[]} labels - channel labels
+ * @returns {{ leftPct: number, timeLabel: string, channels: Array<{ label: string, dbFs: number }> } | null}
+ */
+export function computeWaveformHoverPoint(
+  xFrac,
+  mins,
+  maxes,
+  entryCount,
+  effectiveOffsetSamples,
+  visibleSamples,
+  sampleSec,
+  labels
+) {
+  if (entryCount === 0) return null;
+  const sliceIndex = Math.round(xFrac * Math.max(0, entryCount - 1));
+  const offsetFromEnd = effectiveOffsetSamples + (entryCount - 1 - sliceIndex);
+  const offsetSec = Math.max(0, offsetFromEnd * sampleSec);
+  return {
+    leftPct: xFrac * 100,
+    timeLabel: formatHoverOffset(offsetSec),
+    channels: labels.map((label, ch) => ({
+      label,
+      dbFs: 20 * Math.log10(Math.max(1e-9, Math.abs(maxes[ch]?.[sliceIndex] ?? 0))),
+    })),
+  };
+}
+
+/**
  * Finds the nearest spectrum band index to a normalized X position.
  * @param {number} xFrac - normalized X position (0 = left, 1 = right)
  * @param {{ fCenter: number }[]} bands
