@@ -4,6 +4,9 @@ import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
 import { HelpPopover } from "../HelpPopover";
 import { LoudnessHistoryChart } from "./LoudnessHistoryChart";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
+import { useChartHover } from "../../hooks/useChartHover";
+import { computeHistoryHoverPoint } from "../../math/hoverMath";
+import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 
 const LOUDNESS_HELP = [
   "Left click - Select snapshot",
@@ -40,11 +43,27 @@ export function LoudnessPanel({ compact = false }) {
     isHistoryHudVisible,
     clampedWindowSec,
     effectiveOffsetSec,
-    historyHover,
     historyTimeTicks,
-    onHistoryHoverMove,
-    onHistoryHoverLeave,
+    histSourceList,
+    effectiveOffsetSamples,
+    visibleSamples,
   } = useAudioData();
+
+  const {
+    hover: historyHover,
+    onMove: onHistoryHoverMove,
+    onLeave: onHistoryHoverLeave,
+  } = useChartHover((xFrac) =>
+    historyChartInteractive
+      ? computeHistoryHoverPoint(
+          xFrac,
+          histSourceList,
+          effectiveOffsetSamples,
+          visibleSamples,
+          HIST_SAMPLE_SEC
+        )
+      : null
+  );
 
   return (
     <div

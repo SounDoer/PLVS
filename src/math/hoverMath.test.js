@@ -4,9 +4,9 @@ import {
   formatSpectrumFreq,
   computeHistoryHoverPoint,
   computeSpectrumHoverIndex,
+  computeWaveformHoverPoint,
+  computeSpectrogramHoverPoint,
 } from "./hoverMath";
-
-const rect = (left, width) => ({ left, width, right: left + width, top: 0, bottom: 0, height: 0 });
 
 describe("formatHoverOffset", () => {
   it("formats sub-10s with one decimal", () => {
@@ -57,24 +57,24 @@ describe("computeHistoryHoverPoint", () => {
   ];
 
   it("returns null for empty list", () => {
-    expect(computeHistoryHoverPoint(0, rect(0, 600), [], 0, 10, 0.1)).toBeNull();
+    expect(computeHistoryHoverPoint(0, [], 0, 10, 0.1)).toBeNull();
   });
 
   it("returns a hover object at a valid position", () => {
-    const result = computeHistoryHoverPoint(300, rect(0, 600), samples, 0, 3, 0.1);
+    const result = computeHistoryHoverPoint(0.5, samples, 0, 3, 0.1);
     expect(result).not.toBeNull();
     expect(result).toHaveProperty("leftPct");
     expect(result).toHaveProperty("offsetLabel");
   });
 
   it("leftPct is between 0 and 100", () => {
-    const r = computeHistoryHoverPoint(300, rect(0, 600), samples, 0, 3, 0.1);
+    const r = computeHistoryHoverPoint(0.5, samples, 0, 3, 0.1);
     expect(r.leftPct).toBeGreaterThanOrEqual(0);
     expect(r.leftPct).toBeLessThanOrEqual(100);
   });
 
   it("exposes momentary and shortTerm values", () => {
-    const r = computeHistoryHoverPoint(0, rect(0, 600), samples, 0, 3, 0.1);
+    const r = computeHistoryHoverPoint(0, samples, 0, 3, 0.1);
     expect(typeof r.momentary).toBe("number");
     expect(typeof r.shortTerm).toBe("number");
   });
@@ -84,16 +84,161 @@ describe("computeSpectrumHoverIndex", () => {
   const bands = [{ fCenter: 100 }, { fCenter: 1000 }, { fCenter: 10000 }];
 
   it("returns the nearest band index for a pointer near the left", () => {
-    const idx = computeSpectrumHoverIndex(0, rect(0, 600), bands);
+    const idx = computeSpectrumHoverIndex(0, bands);
     expect(idx).toBeGreaterThanOrEqual(0);
     expect(idx).toBeLessThan(bands.length);
   });
 
-  it("returns an index within bounds for any x position", () => {
-    for (const clientX of [0, 100, 300, 599, 600]) {
-      const idx = computeSpectrumHoverIndex(clientX, rect(0, 600), bands);
+  it("returns an index within bounds for any xFrac", () => {
+    for (const xFrac of [0, 0.5, 1]) {
+      const idx = computeSpectrumHoverIndex(xFrac, bands);
       expect(idx).toBeGreaterThanOrEqual(0);
       expect(idx).toBeLessThan(bands.length);
     }
+  });
+});
+
+describe("computeWaveformHoverPoint", () => {
+  const mins = [
+    [-0.5, -0.3, -0.1],
+    [-0.4, -0.2, -0.05],
+  ];
+  const maxes = [
+    [0.5, 0.3, 0.1],
+    [0.4, 0.2, 0.05],
+  ];
+  const labels = ["L", "R"];
+  const entryCount = 3;
+  const effectiveOffsetSamples = 2;
+  const visibleSamples = 3;
+  const sampleSec = 0.1;
+
+  it("returns null when entryCount is 0", () => {
+    expect(computeWaveformHoverPoint(0.5, [], [], 0, 0, 0, 0.1, ["L"])).toBeNull();
+  });
+
+  it("leftPct equals xFrac * 100", () => {
+    const r = computeWaveformHoverPoint(
+      0.6,
+      mins,
+      maxes,
+      entryCount,
+      effectiveOffsetSamples,
+      visibleSamples,
+      sampleSec,
+      labels
+    );
+    expect(r.leftPct).toBeCloseTo(60);
+  });
+
+  it("at xFrac=1 (rightmost), offsetSec = effectiveOffsetSamples * sampleSec", () => {
+    const r = computeWaveformHoverPoint(
+      1,
+      mins,
+      maxes,
+      entryCount,
+      effectiveOffsetSamples,
+      visibleSamples,
+      sampleSec,
+      labels
+    );
+    // sliceIndex = round(1 * (3-1)) = 2 (newest)
+    // offsetFromEnd = effectiveOffsetSamples + (entryCount - 1 - 2) = 2 + 0 = 2
+    // offsetSec = 2 * 0.1 = 0.2s
+    expect(r.timeLabel).toBe("0.2s ago");
+  });
+
+  it("at xFrac=0 (leftmost), offsetSec = (effectiveOffsetSamples + entryCount - 1) * sampleSec", () => {
+    const r = computeWaveformHoverPoint(
+      0,
+      mins,
+      maxes,
+      entryCount,
+      effectiveOffsetSamples,
+      visibleSamples,
+      sampleSec,
+      labels
+    );
+    // sliceIndex = round(0 * 2) = 0 (oldest)
+    // offsetFromEnd = effectiveOffsetSamples + (entryCount - 1 - 0) = 2 + 2 = 4
+    // offsetSec = 4 * 0.1 = 0.4s
+    expect(r.timeLabel).toBe("0.4s ago");
+  });
+
+  it("dbFs is 0 for maxAmp=1.0", () => {
+    const r = computeWaveformHoverPoint(1, [[1.0]], [[1.0]], 1, 0, 1, 0.1, ["L"]);
+    expect(r.channels[0].dbFs).toBeCloseTo(0);
+  });
+
+  it("dbFs is approximately -6.02 for maxAmp=0.5", () => {
+    const r = computeWaveformHoverPoint(1, [[0.5]], [[0.5]], 1, 0, 1, 0.1, ["L"]);
+    expect(r.channels[0].dbFs).toBeCloseTo(-6.02, 1);
+  });
+
+  it("channels array has correct labels", () => {
+    const r = computeWaveformHoverPoint(
+      0.5,
+      mins,
+      maxes,
+      entryCount,
+      effectiveOffsetSamples,
+      visibleSamples,
+      sampleSec,
+      labels
+    );
+    expect(r.channels.map((c) => c.label)).toEqual(["L", "R"]);
+  });
+});
+
+describe("computeSpectrogramHoverPoint", () => {
+  const makeSnap = (bands, dbList) => ({ bands, dbList });
+  const testBands = [{ fCenter: 100 }, { fCenter: 1000 }, { fCenter: 10000 }];
+  const testDbList = [-50, -30, -20];
+  const snaps = [makeSnap(testBands, testDbList)];
+
+  it("returns null for empty snaps array", () => {
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, [], 0, 1, 0.04)).toBeNull();
+  });
+
+  it("leftPct equals xFrac * 100", () => {
+    const r = computeSpectrogramHoverPoint(0.4, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(r.leftPct).toBeCloseTo(40);
+  });
+
+  it("topPct equals yFrac * 100", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.3, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(r.topPct).toBeCloseTo(30);
+  });
+
+  it("timeLabel is a string", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(typeof r.timeLabel).toBe("string");
+    expect(r.timeLabel).toMatch(/ago/);
+  });
+
+  it("freqLabel is a string containing Hz or kHz", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(typeof r.freqLabel).toBe("string");
+    expect(r.freqLabel).toMatch(/Hz/);
+  });
+
+  it("dbLabel is in -XX.X dB format", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    expect(r).not.toBeNull();
+    expect(r.dbLabel).toMatch(/^-?\d+\.\d dB$/);
+  });
+
+  it("returns null when snap has no bands", () => {
+    const emptyBandsSnap = [makeSnap([], testDbList)];
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, emptyBandsSnap, 0, 1, 0.04)).toBeNull();
+  });
+
+  it("returns null when snap has no dbList", () => {
+    const emptyDbSnap = [makeSnap(testBands, [])];
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, emptyDbSnap, 0, 1, 0.04)).toBeNull();
   });
 });

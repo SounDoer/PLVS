@@ -5,6 +5,9 @@ import { CAPTION_TEXT, PANEL_MIN_WAVEFORM } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { sliceWaveformHistory } from "../../math/waveformMath.js";
+import { useChartHover } from "../../hooks/useChartHover";
+import { computeWaveformHoverPoint } from "../../math/hoverMath";
+import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { HelpPopover } from "../HelpPopover";
 
 const WAVEFORM_HELP = [
@@ -54,6 +57,25 @@ export function WaveformPanel({ compact = false }) {
     effectiveChannels
   );
 
+  const {
+    hover: waveformHover,
+    onMove: onWaveformHoverMove,
+    onLeave: onWaveformHoverLeave,
+  } = useChartHover((xFrac) =>
+    historyChartInteractive
+      ? computeWaveformHoverPoint(
+          xFrac,
+          mins,
+          maxes,
+          entryCount,
+          effectiveOffsetSamples ?? 0,
+          visibleSamples ?? 0,
+          HIST_SAMPLE_SEC,
+          labels
+        )
+      : null
+  );
+
   return (
     <div
       className={cn(
@@ -79,6 +101,34 @@ export function WaveformPanel({ compact = false }) {
             compact={compact}
           />
         ))}
+
+        {/* Hover crosshair + popover — pointer-events-none so interaction overlay stays active */}
+        {waveformHover && (
+          <div
+            className="pointer-events-none absolute inset-0 z-[25]"
+            style={{ left: LABEL_WIDTH_PX }}
+          >
+            {/* Vertical crosshair line */}
+            <div
+              className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
+              style={{ left: `${waveformHover.leftPct}%` }}
+            />
+            {/* Popover */}
+            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
+              <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                {waveformHover.timeLabel}
+              </div>
+              {waveformHover.channels.map(({ label, dbFs }) => (
+                <div key={label}>
+                  {label}{" "}
+                  <span className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                    {dbFs.toFixed(1)} dBFS
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Selection line — aligned with canvas area, not the label column */}
         {selectedOffset >= 0 && showSelLine && (
@@ -119,7 +169,11 @@ export function WaveformPanel({ compact = false }) {
           }}
           onWheel={onHistoryWheel}
           onPointerDown={onHistoryPointerDown}
-          onPointerMove={onHistoryPointerMove}
+          onPointerMove={(e) => {
+            onHistoryPointerMove(e);
+            onWaveformHoverMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
+          }}
+          onPointerLeave={onWaveformHoverLeave}
           onPointerUp={onHistoryPointerUp}
           onPointerCancel={onHistoryPointerUp}
         />

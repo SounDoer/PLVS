@@ -145,7 +145,7 @@ export function LoudnessHistoryChart({
         onPointerDown={onHistoryPointerDown}
         onPointerMove={(e) => {
           onHistoryPointerMove(e);
-          onHistoryHoverMove?.(e.clientX, e.currentTarget.getBoundingClientRect());
+          onHistoryHoverMove?.(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
         }}
         onPointerUp={onHistoryPointerUp}
         onPointerCancel={onHistoryPointerUp}
@@ -240,14 +240,6 @@ export function LoudnessHistoryChart({
                   borderTopWidth: 2,
                 }}
               />
-              <div
-                className={cn(
-                  "absolute left-[var(--ui-chart-hud-inset)] bottom-[var(--ui-chart-hud-inset)] opacity-90",
-                  LOUDNESS_HUD_BOX
-                )}
-              >
-                Ref {referenceLufs} LUFS
-              </div>
             </>
           ) : null}
           {!hasSelectedLayer ? (
