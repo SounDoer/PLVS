@@ -37,11 +37,6 @@ export function clearAudioHistory() {
   return invoke("clear_audio_history");
 }
 
-/** @returns {Promise<import("./types.js").MeterHistoryEntry[]>} */
-export function getMeterHistory() {
-  return invoke("get_meter_history");
-}
-
 /** @returns {Promise<"running" | "stopped">} */
 export function getEngineState() {
   return invoke("get_engine_state");

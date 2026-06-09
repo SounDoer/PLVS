@@ -11,7 +11,7 @@ use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AudioDevicePreview, AudioFramePayload, EngineStateChanged, FrameSubscribers, MeterHistoryEntry,
+  AudioDevicePreview, AudioFramePayload, EngineStateChanged, FrameSubscribers,
 };
 use crate::state::AppState;
 
@@ -77,14 +77,6 @@ pub fn audio_start(
       .map_err(|_| "frame subscribers lock poisoned".to_string())?;
     *s = None;
   }
-  {
-    let mut h = state
-      .inner()
-      .meter_history
-      .lock()
-      .map_err(|_| "meter history lock poisoned".to_string())?;
-    h.clear();
-  }
   let pool: FrameSubscribers = Arc::new(std::sync::Mutex::new(HashMap::new()));
   {
     let mut p = pool
@@ -100,7 +92,6 @@ pub fn audio_start(
       .map_err(|_| "frame subscribers lock poisoned".to_string())?;
     *slot = Some(pool.clone());
   }
-  let mh = state.inner().meter_history.clone();
   let pair = state.inner().vectorscope_pair.clone();
   let layout = state.inner().channel_layout.clone();
   let spectrum = state.inner().spectrum_channel.clone();
@@ -109,7 +100,6 @@ pub fn audio_start(
     &device_id,
     pool,
     app.clone(),
-    mh,
     pair,
     layout,
     spectrum,
@@ -209,18 +199,10 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
   Ok(())
 }
 
-/// Clear meter history deque + DSP state on the capture thread (matches UI Clear for native path).
-/// Also empties the shared `meter_history` buffer immediately and emits `meter-history-cleared`.
+/// Reset DSP state (peak maxima + history accumulators) on the capture thread to match UI Clear
+/// for the native path, then emit `meter-history-cleared`.
 #[tauri::command]
 pub fn clear_audio_history(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-  {
-    let mut h = state
-      .inner()
-      .meter_history
-      .lock()
-      .map_err(|_| "state lock poisoned".to_string())?;
-    h.clear();
-  }
   {
     let g = state
       .inner()
@@ -233,17 +215,6 @@ pub fn clear_audio_history(app: AppHandle, state: State<'_, AppState>) -> Result
   }
   let _ = app.emit("meter-history-cleared", ());
   Ok(())
-}
-
-/// Full meter history ring (export / reconnect); same rows as `loudness_hist_tick` stream.
-#[tauri::command]
-pub fn get_meter_history(state: State<'_, AppState>) -> Result<Vec<MeterHistoryEntry>, String> {
-  let g = state
-    .inner()
-    .meter_history
-    .lock()
-    .map_err(|_| "meter history lock poisoned".to_string())?;
-  Ok(g.iter().cloned().collect())
 }
 
 /// `running` or `stopped`.

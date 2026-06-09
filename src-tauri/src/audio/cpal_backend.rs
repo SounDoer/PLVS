@@ -16,7 +16,7 @@ use super::device_enum::{build_device_list, resolve_device};
 use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
 use crate::engine::MeterPipeline;
-use crate::ipc::types::{EngineBackpressurePayload, MeterHistoryBuf};
+use crate::ipc::types::EngineBackpressurePayload;
 use tauri::{AppHandle, Emitter};
 
 const PCM_QUEUE_CAP: usize = 64;
@@ -47,7 +47,6 @@ impl AudioCapture for CpalBackend {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    meter_history: MeterHistoryBuf,
     vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
@@ -56,7 +55,6 @@ impl AudioCapture for CpalBackend {
       device_id,
       frame_subscribers,
       app,
-      meter_history,
       vectorscope_pair,
       channel_layout,
       spectrum_channel,
@@ -90,7 +88,6 @@ impl CaptureSession {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    meter_history: MeterHistoryBuf,
     vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
@@ -120,7 +117,6 @@ impl CaptureSession {
           vectorscope_pair,
           channel_layout,
           spectrum_channel,
-          meter_history,
           dropped_chunks,
         })
       })
@@ -147,7 +143,6 @@ struct RunCaptureArgs {
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  meter_history: MeterHistoryBuf,
   dropped_chunks: Arc<AtomicU64>,
 }
 
@@ -283,12 +278,11 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  meter_history: MeterHistoryBuf,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
 ) {
   let dropped_worker = dropped_chunks.clone();
-  let mut pipeline = MeterPipeline::new(sample_rate, channels, meter_history);
+  let mut pipeline = MeterPipeline::new(sample_rate, channels);
   let mut recv_tick: u32 = 0;
   while let Ok(floats) = audio_rx.recv() {
     recv_tick = recv_tick.wrapping_add(1);
@@ -397,7 +391,6 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     vectorscope_pair,
     channel_layout,
     spectrum_channel,
-    meter_history,
     dropped_chunks,
   } = args;
   let dropped_for_callbacks = dropped_chunks.clone();
@@ -436,7 +429,6 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       vectorscope_pair,
       channel_layout,
       spectrum_channel,
-      meter_history,
       dropped_chunks,
       bridge_pool,
     );

@@ -13,11 +13,8 @@
  * @property {number} samplePeakMaxL
  * @property {number} samplePeakMaxR
  * @property {number} correlation
- * @property {string} vectorscopePath
  * @property {number} vectorscopePairX
  * @property {number} vectorscopePairY
- * @property {string} spectrumPath
- * @property {string} spectrumPeakPath
  * @property {number[]} spectrumBandCentersHz
  * @property {number[]} spectrumSmoothDb
  * @property {number[]} waveformMin

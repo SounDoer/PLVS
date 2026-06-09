@@ -29,7 +29,6 @@ pub fn run() {
       ipc::commands::set_spectrum_channel,
       ipc::commands::audio_stop,
       ipc::commands::clear_audio_history,
-      ipc::commands::get_meter_history,
       ipc::commands::get_engine_state,
     ])
     .setup(|app| {

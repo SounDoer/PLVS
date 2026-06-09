@@ -12,14 +12,13 @@ use crate::dsp::{
 };
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AudioFramePayload, LoudnessSlowPayload, MeterHistoryBuf, MeterHistoryEntry, VisualHistEntry,
+  AudioFramePayload, LoudnessSlowPayload, MeterHistoryEntry, VisualHistEntry,
 };
 
 const FRAME_EMIT_MS: u128 = 16;
 const SLOW_EMIT_MS: u128 = 500;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
 const HIST_EMIT_MS: u128 = 95;
-const HIST_RING_CAP: usize = 72_000;
 const VISUAL_EMIT_MS: u128 = 40;
 const VS_HISTORY_POINTS: usize = 200;
 
@@ -63,7 +62,6 @@ pub struct MeterPipeline {
   tp_max_db: f64,
   sample_peak_max_l: f64,
   sample_peak_max_r: f64,
-  meter_history: MeterHistoryBuf,
   t0: Instant,
   last_frame_emit: Instant,
   last_slow_emit: Instant,
@@ -83,7 +81,7 @@ pub struct MeterPipeline {
 }
 
 impl MeterPipeline {
-  pub fn new(sample_rate: u32, channels: u16, meter_history: MeterHistoryBuf) -> Self {
+  pub fn new(sample_rate: u32, channels: u16) -> Self {
     let sr = sample_rate as f64;
     let pipeline = Self {
       channels,
@@ -97,7 +95,6 @@ impl MeterPipeline {
       tp_max_db: f64::NEG_INFINITY,
       sample_peak_max_l: f64::NEG_INFINITY,
       sample_peak_max_r: f64::NEG_INFINITY,
-      meter_history,
       t0: Instant::now(),
       last_frame_emit: Instant::now(),
       last_slow_emit: Instant::now(),
@@ -117,11 +114,8 @@ impl MeterPipeline {
     pipeline
   }
 
-  /// Clears shared history deque, peak maxima, loudness/spectrum/vectorscope DSP state (UI Clear).
+  /// Clears peak maxima, loudness/spectrum/vectorscope DSP state, and history accumulators (UI Clear).
   pub fn clear_peak_and_history(&mut self) {
-    if let Ok(mut g) = self.meter_history.lock() {
-      g.clear();
-    }
     self.pending_loudness_hist = None;
     self.last_hist_emit = Instant::now() - std::time::Duration::from_millis(200);
     self.m_max = f64::NEG_INFINITY;
@@ -344,11 +338,8 @@ impl MeterPipeline {
         sample_peak_max_l: self.sample_peak_max_l,
         sample_peak_max_r: self.sample_peak_max_r,
         correlation: corr,
-        vectorscope_path: vpath.clone(),
         vectorscope_pair_x: pair_x,
         vectorscope_pair_y: pair_y,
-        spectrum_path: spath.clone(),
-        spectrum_peak_path: spk.clone(),
         spectrum_band_centers_hz: centers.clone(),
         spectrum_smooth_db: smooth.clone(),
         loudness_layout: loudness_layout.clone(),
@@ -356,12 +347,6 @@ impl MeterPipeline {
         waveform_min,
         waveform_max,
       };
-      if let Ok(mut g) = self.meter_history.lock() {
-        while g.len() >= HIST_RING_CAP {
-          g.pop_front();
-        }
-        g.push_back(entry.clone());
-      }
       Some(entry)
     } else {
       None
@@ -455,42 +440,6 @@ impl MeterPipeline {
 mod tests {
   use super::*;
   use crate::dsp::SpectrumChannelSel;
-  use crate::ipc::types::MeterHistoryEntry;
-  use std::collections::VecDeque;
-  use std::sync::{Arc, Mutex};
-
-  fn dummy_history() -> MeterHistoryBuf {
-    Arc::new(Mutex::new(VecDeque::new()))
-  }
-
-  fn dummy_history_entry() -> MeterHistoryEntry {
-    MeterHistoryEntry {
-      timestamp_ms: 0,
-      lufs_momentary: -20.0,
-      lufs_short_term: -18.0,
-      integrated: -19.0,
-      lra: 3.0,
-      true_peak_l: -1.0,
-      true_peak_r: -1.5,
-      true_peak_max_dbtp: -1.0,
-      sample_l_db: -2.0,
-      sample_r_db: -2.5,
-      sample_peak_max_l: -2.0,
-      sample_peak_max_r: -2.5,
-      correlation: 0.5,
-      vectorscope_path: "M 0 0".to_string(),
-      vectorscope_pair_x: 0,
-      vectorscope_pair_y: 1,
-      spectrum_path: "M 0 100".to_string(),
-      spectrum_peak_path: "".to_string(),
-      spectrum_band_centers_hz: vec![100.0, 1000.0],
-      spectrum_smooth_db: vec![-30.0, -20.0],
-      loudness_layout: "5.1".to_string(),
-      loudness_layout_known: true,
-      waveform_min: vec![0.0, 0.0],
-      waveform_max: vec![0.0, 0.0],
-    }
-  }
 
   fn tone_on_channel(frames: usize, channels: usize, sr: f64, hz: f64, ch: usize) -> Vec<f32> {
     let mut pcm = vec![0.0_f32; frames * channels];
@@ -502,11 +451,10 @@ mod tests {
   }
 
   #[test]
-  fn changing_spectrum_channel_resets_frequency_meter_without_clearing_history() {
+  fn changing_spectrum_channel_resets_frequency_meter() {
     let sr = 48_000_u32;
     let channels = 6_u16;
-    let history = Arc::new(Mutex::new(VecDeque::new()));
-    let mut pipeline = MeterPipeline::new(sr, channels, history.clone());
+    let mut pipeline = MeterPipeline::new(sr, channels);
     let pcm_lr = tone_on_channel(4096 * 8, channels as usize, sr as f64, 1000.0, 0);
     let pcm_c_short = tone_on_channel(256, channels as usize, sr as f64, 500.0, 2);
 
@@ -521,12 +469,6 @@ mod tests {
       !before_change.is_empty(),
       "spectrum should produce output before the channel change"
     );
-    {
-      let mut g = history.lock().unwrap();
-      g.push_back(dummy_history_entry());
-    }
-    let history_before_change: Vec<_> = history.lock().unwrap().iter().cloned().collect();
-    assert!(!history_before_change.is_empty());
 
     let _ = pipeline.push_pcm_f32(
       &pcm_c_short,
@@ -539,20 +481,6 @@ mod tests {
       immediately_after_change.is_empty(),
       "spectrum output should be reset immediately after selecting a new channel"
     );
-    let history_after_change: Vec<_> = history.lock().unwrap().iter().cloned().collect();
-    assert_eq!(
-      history_after_change.len(),
-      history_before_change.len(),
-      "frequency reset must not add or remove global meter history entries"
-    );
-    assert_eq!(
-      history_after_change[0].spectrum_path, history_before_change[0].spectrum_path,
-      "frequency reset must not mutate existing global meter history entries"
-    );
-    assert_eq!(
-      history_after_change[0].lufs_momentary, history_before_change[0].lufs_momentary,
-      "frequency reset must not mutate existing global meter history entries"
-    );
   }
 
   #[test]
@@ -561,7 +489,7 @@ mod tests {
     // frame0: [0.1, 0.2, 0.3]
     // frame1: [1.1, 1.2, 1.3]
     let pcm = vec![0.1_f32, 0.2, 0.3, 1.1, 1.2, 1.3];
-    let mut p = MeterPipeline::new(48_000, 3, dummy_history());
+    let mut p = MeterPipeline::new(48_000, 3);
     let _ = p.push_pcm_f32(
       &pcm,
       (2, 0),
@@ -667,8 +595,7 @@ mod tests {
   fn history_entry_captures_waveform_min_max_per_channel() {
     let sr = 48_000_u32;
     let channels = 2_u16;
-    let hist: MeterHistoryBuf = Arc::new(Mutex::new(VecDeque::new()));
-    let mut pipeline = MeterPipeline::new(sr, channels, hist.clone());
+    let mut pipeline = MeterPipeline::new(sr, channels);
 
     // 200ms of a 100Hz sine on L, inverted on R, amplitude 0.7
     let frames = sr as usize / 5;
@@ -679,17 +606,20 @@ mod tests {
       pcm[i * 2 + 1] = -s;
     }
 
-    // Feed 5 × 200ms = 1s to guarantee history entries are emitted
+    // Feed 5 × 200ms = 1s to guarantee history ticks are emitted on the frame stream
+    let mut entries = Vec::new();
     for _ in 0..5 {
-      let _ = pipeline.push_pcm_f32(
+      let (frame, _) = pipeline.push_pcm_f32(
         &pcm,
         (0, 1),
         ChannelLayoutSetting::Auto,
         SpectrumChannelSel::default(),
       );
+      if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
+        entries.push(tick);
+      }
     }
 
-    let entries: Vec<_> = hist.lock().unwrap().iter().cloned().collect();
     assert!(!entries.is_empty(), "must emit at least one history entry");
     let e = &entries[0];
     assert_eq!(
@@ -720,8 +650,7 @@ mod tests {
   fn auto_mode_6ch_uses_51_loudness_layout() {
     let sr = 48000_u32;
     let channels = 6_u16;
-    let hist: MeterHistoryBuf = Arc::new(Mutex::new(VecDeque::new()));
-    let mut pipeline = MeterPipeline::new(sr, channels, hist);
+    let mut pipeline = MeterPipeline::new(sr, channels);
 
     // Feed enough PCM to guarantee a frame is emitted (~400ms at 16ms per frame = ~25 frames)
     let frames_per_chunk = sr as usize / 10; // 100ms chunks

@@ -21,7 +21,7 @@ use super::device::DeviceInfo;
 use super::device_id;
 use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
-use crate::ipc::types::{FrameSubscribers, MeterHistoryBuf};
+use crate::ipc::types::FrameSubscribers;
 
 use pcm_shim::PcmBridgeCtx;
 
@@ -153,7 +153,6 @@ fn run_macos_tap_worker(
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  meter_history: MeterHistoryBuf,
   dropped_chunks: Arc<AtomicU64>,
 ) -> Result<(), String> {
   let (uid, sample_rate, channels) = resolve_tap_uid_channels_rate(&device_id)?;
@@ -173,7 +172,6 @@ fn run_macos_tap_worker(
       vectorscope_pair,
       channel_layout,
       spectrum_channel,
-      meter_history,
       dropped_for_thread,
       bridge_pool,
     );
@@ -251,7 +249,6 @@ impl MacosTapCaptureSession {
     device_id: &str,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
-    meter_history: MeterHistoryBuf,
     vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
@@ -273,7 +270,6 @@ impl MacosTapCaptureSession {
           vectorscope_pair,
           channel_layout,
           spectrum_channel,
-          meter_history,
           dropped_chunks,
         )
       })
@@ -297,7 +293,6 @@ pub fn start_session(
   device_id: &str,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
-  meter_history: MeterHistoryBuf,
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
@@ -307,7 +302,6 @@ pub fn start_session(
       device_id,
       frame_subscribers,
       app,
-      meter_history,
       vectorscope_pair,
       channel_layout,
       spectrum_channel,
@@ -317,7 +311,6 @@ pub fn start_session(
       device_id,
       frame_subscribers,
       app,
-      meter_history,
       vectorscope_pair,
       channel_layout,
       spectrum_channel,

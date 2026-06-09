@@ -2,7 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 use tauri::ipc::Channel;
@@ -48,11 +47,8 @@ pub struct MeterHistoryEntry {
   pub sample_peak_max_l: f64,
   pub sample_peak_max_r: f64,
   pub correlation: f64,
-  pub vectorscope_path: String,
   pub vectorscope_pair_x: u16,
   pub vectorscope_pair_y: u16,
-  pub spectrum_path: String,
-  pub spectrum_peak_path: String,
   pub spectrum_band_centers_hz: Vec<f64>,
   pub spectrum_smooth_db: Vec<f64>,
   /// Loudness layout semantics for this entry (e.g. `stereo`, `5.1`, `unknown`).
@@ -64,8 +60,6 @@ pub struct MeterHistoryEntry {
   /// Per-channel linear amplitude maximum over this ~100ms history window. Length == channel count.
   pub waveform_max: Vec<f32>,
 }
-
-pub type MeterHistoryBuf = Arc<Mutex<VecDeque<MeterHistoryEntry>>>;
 
 /// Visual history snapshot at ~25 Hz, independent of loudness tick.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -10,7 +10,7 @@ use super::device::DeviceInfo;
 use super::macos;
 use crate::dsp::SpectrumChannelSel;
 use crate::engine::ChannelLayoutSetting;
-use crate::ipc::types::{FrameSubscribers, MeterHistoryBuf};
+use crate::ipc::types::FrameSubscribers;
 
 /// Single type used by IPC and the device-watch thread.
 pub struct AppAudioBackend;
@@ -32,7 +32,6 @@ impl AudioCapture for AppAudioBackend {
     device_id: &str,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
-    meter_history: MeterHistoryBuf,
     vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
@@ -43,7 +42,6 @@ impl AudioCapture for AppAudioBackend {
         device_id,
         frame_subscribers,
         app,
-        meter_history,
         vectorscope_pair,
         channel_layout,
         spectrum_channel,
@@ -55,7 +53,6 @@ impl AudioCapture for AppAudioBackend {
         device_id,
         frame_subscribers,
         app,
-        meter_history,
         vectorscope_pair,
         channel_layout,
         spectrum_channel,
