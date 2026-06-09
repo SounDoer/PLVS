@@ -30,10 +30,9 @@ export function formatSpectrumFreq(freq) {
 }
 
 /**
- * Resolves the hover data for the loudness history chart from a pointer position.
+ * Resolves the hover data for the loudness history chart from a normalized X fraction.
  *
- * @param {number} clientX
- * @param {DOMRect} rect
+ * @param {number} xFrac - normalized X position (0 = left, 1 = right)
  * @param {{ m: number, st: number }[]} histSourceList
  * @param {number} effectiveOffsetSamples
  * @param {number} visibleSamples
@@ -41,17 +40,14 @@ export function formatSpectrumFreq(freq) {
  * @returns {{ leftPct: number, topPct: number|null, momentary: number|null, shortTerm: number|null, offsetLabel: string } | null}
  */
 export function computeHistoryHoverPoint(
-  clientX,
-  rect,
+  xFrac,
   histSourceList,
   effectiveOffsetSamples,
   visibleSamples,
   sampleSec
 ) {
   if (!histSourceList.length) return null;
-  const width = Math.max(1, rect.width);
-  const x = Math.max(0, Math.min(width, clientX - rect.left));
-  const normalized = 1 - x / width;
+  const normalized = 1 - xFrac;
   const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
   const hoverIndex = Math.max(
     0,
@@ -62,7 +58,7 @@ export function computeHistoryHoverPoint(
   const offsetSec = Math.max(0, (histSourceList.length - 1 - hoverIndex) * sampleSec);
   const yValue = Number.isFinite(point.st) ? point.st : point.m;
   return {
-    leftPct: (x / width) * 100,
+    leftPct: xFrac * 100,
     topPct: Number.isFinite(yValue) ? loudnessFromTopFrac(yValue) * 100 : null,
     momentary: Number.isFinite(point.m) ? point.m : null,
     shortTerm: Number.isFinite(point.st) ? point.st : null,

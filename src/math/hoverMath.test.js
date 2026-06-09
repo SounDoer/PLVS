@@ -57,24 +57,24 @@ describe("computeHistoryHoverPoint", () => {
   ];
 
   it("returns null for empty list", () => {
-    expect(computeHistoryHoverPoint(0, rect(0, 600), [], 0, 10, 0.1)).toBeNull();
+    expect(computeHistoryHoverPoint(0, [], 0, 10, 0.1)).toBeNull();
   });
 
   it("returns a hover object at a valid position", () => {
-    const result = computeHistoryHoverPoint(300, rect(0, 600), samples, 0, 3, 0.1);
+    const result = computeHistoryHoverPoint(0.5, samples, 0, 3, 0.1);
     expect(result).not.toBeNull();
     expect(result).toHaveProperty("leftPct");
     expect(result).toHaveProperty("offsetLabel");
   });
 
   it("leftPct is between 0 and 100", () => {
-    const r = computeHistoryHoverPoint(300, rect(0, 600), samples, 0, 3, 0.1);
+    const r = computeHistoryHoverPoint(0.5, samples, 0, 3, 0.1);
     expect(r.leftPct).toBeGreaterThanOrEqual(0);
     expect(r.leftPct).toBeLessThanOrEqual(100);
   });
 
   it("exposes momentary and shortTerm values", () => {
-    const r = computeHistoryHoverPoint(0, rect(0, 600), samples, 0, 3, 0.1);
+    const r = computeHistoryHoverPoint(0, samples, 0, 3, 0.1);
     expect(typeof r.momentary).toBe("number");
     expect(typeof r.shortTerm).toBe("number");
   });
