@@ -907,7 +907,6 @@ function AppContent() {
     isHistoryHudVisible,
     clampedWindowSec,
     effectiveOffsetSec,
-    historyHover,
     historyTimeTicks,
     primaryMetrics,
     secondaryMetrics,
@@ -917,8 +916,6 @@ function AppContent() {
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
-    onHistoryHoverMove,
-    onHistoryHoverLeave,
     // Spectrum
     displaySpectrumPath,
     displaySpectrumPeakPath,

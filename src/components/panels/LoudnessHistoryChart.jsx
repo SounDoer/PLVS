@@ -145,7 +145,7 @@ export function LoudnessHistoryChart({
         onPointerDown={onHistoryPointerDown}
         onPointerMove={(e) => {
           onHistoryPointerMove(e);
-          onHistoryHoverMove?.(e.clientX, e.currentTarget.getBoundingClientRect());
+          onHistoryHoverMove?.(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
         }}
         onPointerUp={onHistoryPointerUp}
         onPointerCancel={onHistoryPointerUp}
