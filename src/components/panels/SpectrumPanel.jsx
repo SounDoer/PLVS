@@ -1,5 +1,7 @@
 import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { useChartHover } from "../../hooks/useChartHover";
+import { computeSpectrumHoverIndex, formatSpectrumFreq } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
@@ -17,15 +19,27 @@ function buildSpectrumAreaPath(path) {
 }
 
 export function SpectrumPanel({ compact = false }) {
-  const {
-    displaySpectrumPath,
-    displaySpectrumPeakPath,
-    selectedOffset,
-    spectrumHover,
-    onSpectrumHoverMove,
-    onSpectrumHoverLeave,
-  } = useAudioData();
+  const { displaySpectrumPath, displaySpectrumPeakPath, selectedOffset, displaySpectrumData } =
+    useAudioData();
   const spectrumSvgRef = useRef(null);
+  const {
+    hover: spectrumHover,
+    onMove,
+    onLeave: onSpectrumHoverLeave,
+  } = useChartHover((xFrac) => {
+    const data = displaySpectrumData;
+    if (!data?.bands?.length || !data?.dbList?.length) return null;
+    const nearestIdx = computeSpectrumHoverIndex(xFrac, data.bands);
+    const band = data.bands[nearestIdx];
+    const db = data.dbList[nearestIdx];
+    if (!band || !Number.isFinite(db)) return null;
+    return {
+      leftPct: freqToXFrac(band.fCenter) * 100,
+      topPct: spectrumDbToTopFrac(db) * 100,
+      freqLabel: formatSpectrumFreq(band.fCenter),
+      dbLabel: `${db.toFixed(1)} dB`,
+    };
+  });
   const reduceMotion = useReducedMotion();
   const displaySpectrumAreaPath = buildSpectrumAreaPath(displaySpectrumPath);
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
@@ -70,7 +84,7 @@ export function SpectrumPanel({ compact = false }) {
                 className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {
                   const r = spectrumSvgRef.current?.getBoundingClientRect();
-                  if (r && onSpectrumHoverMove) onSpectrumHoverMove(e.clientX, r);
+                  if (r) onMove(e.clientX, e.clientY, r);
                 }}
               >
                 <svg

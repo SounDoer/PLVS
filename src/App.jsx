@@ -16,7 +16,6 @@ import { useLayoutDrag } from "./hooks/useLayoutDrag";
 import { useAudioEngine } from "./hooks/useAudioEngine";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
-import { useHoverState } from "./hooks/useHoverState";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useSessionTimer } from "./hooks/useSessionTimer.js";
@@ -592,23 +591,6 @@ function AppContent() {
   }, [spectrumChannelUi]);
 
   const {
-    historyHover,
-    spectrumHover,
-    onHistoryHoverMove,
-    onHistoryHoverLeave,
-    onSpectrumHoverMove,
-    onSpectrumHoverLeave,
-    clearHoverState,
-  } = useHoverState({
-    historyChartInteractive,
-    histSourceList,
-    effectiveOffsetSamples,
-    visibleSamples,
-    sampleSec: HIST_SAMPLE_SEC,
-    displaySpectrumData,
-  });
-
-  const {
     showHistoryHud,
     holdHistoryHud,
     onHistoryPointerDown,
@@ -664,7 +646,6 @@ function AppContent() {
     setSpectrumPath("");
     setSpectrumPeakPath("");
     setVectorPath("");
-    clearHoverState();
     setAudio({
       momentary: -Infinity,
       shortTerm: -Infinity,
@@ -919,13 +900,11 @@ function AppContent() {
     // Spectrum
     displaySpectrumPath,
     displaySpectrumPeakPath,
+    displaySpectrumData,
     spectrumChannelOptions,
     spectrumValueKey,
     spectrumDisplayLabel,
     onSpectrumChannelChange,
-    spectrumHover,
-    onSpectrumHoverMove,
-    onSpectrumHoverLeave,
     // Spectrogram
     spectrogramSnapRef,
     frequencyMarkerRef,
