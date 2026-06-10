@@ -1,6 +1,6 @@
 # PLVS
 
-**Real-time audio metering for Windows & macOS — free and open source.**
+**Real-time audio metering for any sound playing on your machine — no routing, no plugin slots required. Free & open source.**
 
 [![Latest Release](https://img.shields.io/github/v/release/SounDoer/PLVS?label=latest&style=flat-square)](https://github.com/SounDoer/PLVS/releases)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
