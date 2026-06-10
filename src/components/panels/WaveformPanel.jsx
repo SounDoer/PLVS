@@ -287,30 +287,9 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Top edge stroke (max envelope)
+    // Stroke the envelope outline once (same closed path)
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = window.devicePixelRatio || 1;
-    ctx.beginPath();
-    for (let i = 0; i < entryCount; i++) {
-      const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
-      const y = cy - maxes[i] * cy;
-      if (i === 0) {
-        ctx.moveTo(0, y);
-        if (entryCount === 1) ctx.lineTo(W, y);
-      } else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    // Bottom edge stroke (min envelope)
-    ctx.beginPath();
-    for (let i = 0; i < entryCount; i++) {
-      const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
-      const y = cy - mins[i] * cy;
-      if (i === 0) {
-        ctx.moveTo(0, y);
-        if (entryCount === 1) ctx.lineTo(W, y);
-      } else ctx.lineTo(x, y);
-    }
     ctx.stroke();
   }, [mins, maxes, entryCount, canvasSize]);
 
