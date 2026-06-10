@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-06-10
+
+### Added
+
+- System behavior settings (Open at login and Close behavior)
+- Automatic theme-aware tray icon switching
+- PLVS P lettermark icons replacing placeholder icons
+
+### Changed
+
+- Waveform envelope outline now strokes once to match line weight of other panels
+- Landing page hero screenshots updated with new app captures
+
+### Fixed
+
+- Prettier formatting for CI
+
 ## [0.2.2] - 2026-06-09
 
 ### Performance
