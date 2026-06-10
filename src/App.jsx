@@ -105,6 +105,11 @@ function AppContent() {
     resolvedThemeId,
     referenceLufs,
     setReferenceLufs,
+    closeAction,
+    setCloseAction,
+    autostartEnabled,
+    setAutostartEnabled,
+    autostartReady,
   } = useSettings();
 
   const {
@@ -1092,6 +1097,11 @@ function AppContent() {
           hasUpdate={updateInfo?.hasUpdate}
           updateStatus={updateInfo?.status}
           openReleaseUrl={openExternalUrl}
+          autostartEnabled={autostartEnabled}
+          setAutostartEnabled={setAutostartEnabled}
+          autostartReady={autostartReady}
+          closeAction={closeAction}
+          setCloseAction={setCloseAction}
         />
 
         <CloseConfirmDialog

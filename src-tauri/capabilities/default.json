@@ -27,6 +27,9 @@
     "core:window:allow-set-skip-taskbar",
     "core:window:allow-set-focus",
     "process:allow-exit",
-    "process:allow-restart"
+    "process:allow-restart",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ]
 }

@@ -8,6 +8,9 @@ import {
   resolveThemeId,
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
+import { useAutostart } from "./useAutostart.js";
+
+const CLOSE_ACTION_KEY = "plvs:closeAction";
 
 function normalizeReferenceLufs(raw) {
   const n = Number(raw);
@@ -32,6 +35,11 @@ export function useSettings() {
     } catch (_) {}
     return -23;
   });
+  const [closeAction, setCloseActionState] = useState(
+    () => localStorage.getItem(CLOSE_ACTION_KEY) ?? "ask"
+  );
+
+  const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
 
   const resolvedThemeId = useMemo(
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark),
@@ -62,6 +70,15 @@ export function useSettings() {
     if (appearance !== "fixed") return "";
     return isThemeId(themeId) ? themeId : resolvedThemeId;
   }, [appearance, themeId, resolvedThemeId]);
+
+  function setCloseAction(value) {
+    if (value === "ask") {
+      localStorage.removeItem(CLOSE_ACTION_KEY);
+    } else {
+      localStorage.setItem(CLOSE_ACTION_KEY, value);
+    }
+    setCloseActionState(value);
+  }
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -95,7 +112,6 @@ export function useSettings() {
     setAppearance,
     themeId,
     setThemeId,
-    /** Resolved builtin theme id (follows OS when `appearance === "system"`). */
     resolvedThemeId,
     themeSelectOptions: THEME_SELECT_OPTIONS,
     setAppearanceMode,
@@ -103,5 +119,10 @@ export function useSettings() {
     fixedThemeSelectValue,
     referenceLufs,
     setReferenceLufs,
+    closeAction,
+    setCloseAction,
+    autostartEnabled,
+    setAutostartEnabled,
+    autostartReady,
   };
 }

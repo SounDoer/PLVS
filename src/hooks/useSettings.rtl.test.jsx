@@ -62,4 +62,32 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
     expect(result.current.referenceLufs).toBe(-23);
   });
+
+  it("defaults closeAction to 'ask' when localStorage key is absent", () => {
+    localStorage.clear();
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.closeAction).toBe("ask");
+  });
+
+  it("reads closeAction from localStorage on mount", () => {
+    localStorage.setItem("plvs:closeAction", "tray");
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.closeAction).toBe("tray");
+  });
+
+  it("setCloseAction to 'tray' writes to localStorage and updates state", () => {
+    localStorage.clear();
+    const { result } = renderHook(() => useSettings());
+    act(() => { result.current.setCloseAction("tray"); });
+    expect(localStorage.getItem("plvs:closeAction")).toBe("tray");
+    expect(result.current.closeAction).toBe("tray");
+  });
+
+  it("setCloseAction to 'ask' removes the key from localStorage", () => {
+    localStorage.setItem("plvs:closeAction", "quit");
+    const { result } = renderHook(() => useSettings());
+    act(() => { result.current.setCloseAction("ask"); });
+    expect(localStorage.getItem("plvs:closeAction")).toBeNull();
+    expect(result.current.closeAction).toBe("ask");
+  });
 });

@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 
@@ -137,5 +138,45 @@ describe("SettingsPanel", () => {
     fireEvent.click(screen.getByText("View release"));
 
     expect(openReleaseUrl).toHaveBeenCalledWith(releaseUrl);
+  });
+
+  const SYSTEM_PROPS = {
+    autostartEnabled: false,
+    setAutostartEnabled: vi.fn(),
+    autostartReady: false,
+    closeAction: "ask",
+    setCloseAction: vi.fn(),
+  };
+
+  it("renders Open at login switch disabled when autostartReady is false", () => {
+    render(<SettingsPanel {...BASE_PROPS} {...SYSTEM_PROPS} />);
+    const toggle = screen.getByRole("switch", { name: /open at login/i });
+    expect(toggle).toBeTruthy();
+    expect(toggle.disabled).toBe(true);
+  });
+
+  it("renders Open at login switch checked when autostartEnabled is true", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        {...SYSTEM_PROPS}
+        autostartEnabled={true}
+        autostartReady={true}
+      />
+    );
+    const toggle = screen.getByRole("switch", { name: /open at login/i });
+    expect(toggle.getAttribute("data-state")).toBe("checked");
+    expect(toggle.disabled).toBe(false);
+  });
+
+  it("renders Close behavior select with current value", () => {
+    render(<SettingsPanel {...BASE_PROPS} {...SYSTEM_PROPS} closeAction="tray" />);
+    expect(screen.getByLabelText("Close behavior")).toBeTruthy();
+  });
+
+  it("existing controls still render with new props absent (backwards compat)", () => {
+    render(<SettingsPanel {...BASE_PROPS} />);
+    expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
+    expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
 });

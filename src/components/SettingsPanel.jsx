@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,11 @@ export function SettingsPanel({
   hasUpdate = false,
   updateStatus = latestVersion ? "ok" : "checking",
   openReleaseUrl = () => {},
+  autostartEnabled = false,
+  setAutostartEnabled = () => {},
+  autostartReady = false,
+  closeAction = "ask",
+  setCloseAction = () => {},
 }) {
   const reduceMotion = useReducedMotion();
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
@@ -109,6 +115,31 @@ export function SettingsPanel({
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]">
+                <div className="grid gap-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="settings-open-at-login">Open at login</Label>
+                    <Switch
+                      id="settings-open-at-login"
+                      checked={autostartEnabled}
+                      onCheckedChange={setAutostartEnabled}
+                      disabled={!autostartReady}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="settings-close-action">Close behavior</Label>
+                    <Select value={closeAction} onValueChange={setCloseAction}>
+                      <SelectTrigger id="settings-close-action">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value="ask">Ask each time</SelectItem>
+                        <SelectItem value="tray">Minimize to tray</SelectItem>
+                        <SelectItem value="quit">Quit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Separator />
                 <div className="grid gap-2">
                   <Label htmlFor="settings-appearance">Appearance</Label>
                   <Select value={appearance} onValueChange={setAppearanceMode}>
