@@ -37,7 +37,9 @@ describe("useAutostart", () => {
     invoke.mockResolvedValue(undefined);
     const { result } = renderHook(() => useAutostart());
     await waitFor(() => expect(result.current.autostartReady).toBe(true));
-    await act(async () => { await result.current.setAutostartEnabled(true); });
+    await act(async () => {
+      await result.current.setAutostartEnabled(true);
+    });
     expect(invoke).toHaveBeenCalledWith("plugin:autostart|enable");
     expect(result.current.autostartEnabled).toBe(true);
   });
@@ -48,7 +50,9 @@ describe("useAutostart", () => {
     invoke.mockResolvedValue(undefined);
     const { result } = renderHook(() => useAutostart());
     await waitFor(() => expect(result.current.autostartReady).toBe(true));
-    await act(async () => { await result.current.setAutostartEnabled(false); });
+    await act(async () => {
+      await result.current.setAutostartEnabled(false);
+    });
     expect(invoke).toHaveBeenCalledWith("plugin:autostart|disable");
     expect(result.current.autostartEnabled).toBe(false);
   });
@@ -57,7 +61,9 @@ describe("useAutostart", () => {
     isTauri.mockReturnValue(true);
     invoke.mockRejectedValue(new Error("unavailable"));
     const { result } = renderHook(() => useAutostart());
-    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
     expect(result.current.autostartReady).toBe(false);
   });
 });

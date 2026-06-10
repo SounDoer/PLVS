@@ -46,7 +46,15 @@ async function buildMenu({
   });
 }
 
-export function useTray({ running, pinned, togglePin, onStartClick, deviceName, onToggleWindow, colorScheme }) {
+export function useTray({
+  running,
+  pinned,
+  togglePin,
+  onStartClick,
+  deviceName,
+  onToggleWindow,
+  colorScheme,
+}) {
   const trayRef = useRef(null);
   const togglePinRef = useRef(togglePin);
   const onStartClickRef = useRef(onStartClick);

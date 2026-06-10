@@ -78,7 +78,9 @@ describe("useSettings", () => {
   it("setCloseAction to 'tray' writes to localStorage and updates state", () => {
     localStorage.clear();
     const { result } = renderHook(() => useSettings());
-    act(() => { result.current.setCloseAction("tray"); });
+    act(() => {
+      result.current.setCloseAction("tray");
+    });
     expect(localStorage.getItem("plvs:closeAction")).toBe("tray");
     expect(result.current.closeAction).toBe("tray");
   });
@@ -86,7 +88,9 @@ describe("useSettings", () => {
   it("setCloseAction to 'ask' removes the key from localStorage", () => {
     localStorage.setItem("plvs:closeAction", "quit");
     const { result } = renderHook(() => useSettings());
-    act(() => { result.current.setCloseAction("ask"); });
+    act(() => {
+      result.current.setCloseAction("ask");
+    });
     expect(localStorage.getItem("plvs:closeAction")).toBeNull();
     expect(result.current.closeAction).toBe("ask");
   });
