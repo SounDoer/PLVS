@@ -46,7 +46,7 @@ async function buildMenu({
   });
 }
 
-export function useTray({ running, pinned, togglePin, onStartClick, deviceName, onToggleWindow }) {
+export function useTray({ running, pinned, togglePin, onStartClick, deviceName, onToggleWindow, colorScheme }) {
   const trayRef = useRef(null);
   const togglePinRef = useRef(togglePin);
   const onStartClickRef = useRef(onStartClick);
@@ -68,10 +68,10 @@ export function useTray({ running, pinned, togglePin, onStartClick, deviceName, 
   const stableToggleWindow = useRef(() => onToggleWindowRef.current()).current;
 
   // Snapshot of state for the creation effect (refs keep it current after creation)
-  const creationStateRef = useRef({ running, pinned, deviceName });
+  const creationStateRef = useRef({ running, pinned, deviceName, colorScheme });
   useEffect(() => {
-    creationStateRef.current = { running, pinned, deviceName };
-  }, [running, pinned, deviceName]);
+    creationStateRef.current = { running, pinned, deviceName, colorScheme };
+  }, [running, pinned, deviceName, colorScheme]);
 
   // Create tray once on mount
   useEffect(() => {
@@ -79,7 +79,7 @@ export function useTray({ running, pinned, togglePin, onStartClick, deviceName, 
     let cancelled = false;
 
     (async () => {
-      const { running: r, pinned: p, deviceName: d } = creationStateRef.current;
+      const { running: r, pinned: p, deviceName: d, colorScheme: cs } = creationStateRef.current;
       const menu = await buildMenu({
         running: r,
         pinned: p,
@@ -89,7 +89,8 @@ export function useTray({ running, pinned, togglePin, onStartClick, deviceName, 
         onToggleWindow: stableToggleWindow,
       });
 
-      const iconPath = await resolveResource("icons/tray.png");
+      const iconName = cs === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
+      const iconPath = await resolveResource(iconName);
       const icon = await Image.fromPath(iconPath);
 
       const tray = await TrayIcon.new({
@@ -149,4 +150,16 @@ export function useTray({ running, pinned, togglePin, onStartClick, deviceName, 
       await trayRef.current.setMenu(menu);
     })();
   }, [running, pinned, deviceName, stableToggleCapture, stableTogglePin, stableToggleWindow]);
+
+  // Update tray icon when color scheme changes
+  useEffect(() => {
+    if (!isTauri() || !trayRef.current) return;
+
+    (async () => {
+      const iconName = colorScheme === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
+      const iconPath = await resolveResource(iconName);
+      const icon = await Image.fromPath(iconPath);
+      await trayRef.current.setIcon(icon);
+    })();
+  }, [colorScheme]);
 }

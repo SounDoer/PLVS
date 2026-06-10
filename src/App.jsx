@@ -162,6 +162,8 @@ function AppContent() {
     return allowed.has(captureDeviceId) ? captureDeviceId : "default";
   }, [audioDevices, captureDeviceId]);
 
+  const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
+
   const { clockRef, canClearRef, startTimer, stopTimer, resetTimer } = useSessionTimer();
   const [showClock, setShowClock] = useState(false);
 
@@ -705,6 +707,7 @@ function AppContent() {
     onStartClick,
     deviceName,
     onToggleWindow,
+    colorScheme: resolvedTheme.colorScheme,
   });
 
   const shortcutHandlerRef = useRef(null);

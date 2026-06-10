@@ -37,6 +37,7 @@ const defaultProps = {
   onStartClick: vi.fn(),
   deviceName: "Test Device",
   onToggleWindow: vi.fn(),
+  colorScheme: "dark",
 };
 
 describe("useTray", () => {
@@ -47,10 +48,20 @@ describe("useTray", () => {
 
   afterEach(() => vi.clearAllMocks());
 
-  it("creates TrayIcon with the loaded icon", async () => {
+  it("creates TrayIcon with the loaded icon (dark theme)", async () => {
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
-    expect(resolveResource).toHaveBeenCalledWith("icons/tray.png");
+    expect(resolveResource).toHaveBeenCalledWith("icons/tray-dark.png");
+    expect(Image.fromPath).toHaveBeenCalledWith("/fake/tray.png");
+    expect(TrayIcon.new).toHaveBeenCalledWith(
+      expect.objectContaining({ icon: { __type: "MockImage" } })
+    );
+  });
+
+  it("creates TrayIcon with the light theme icon", async () => {
+    renderHook(() => useTray({ ...defaultProps, colorScheme: "light" }));
+    await act(async () => {});
+    expect(resolveResource).toHaveBeenCalledWith("icons/tray-light.png");
     expect(Image.fromPath).toHaveBeenCalledWith("/fake/tray.png");
     expect(TrayIcon.new).toHaveBeenCalledWith(
       expect.objectContaining({ icon: { __type: "MockImage" } })
