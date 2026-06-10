@@ -23,10 +23,10 @@ It combines six meter types in a single desktop app:
 |-------|---------------|
 | **Peak** | Per-channel sample-peak meters (dBFS) |
 | **Loudness** | LUFS — Momentary, Short-term, Integrated (ITU-R BS.1770, EBU R128) |
-| **Waveform** | Per-channel DAW-style amplitude envelope over the session history |
 | **Spectrum** | FFT-based real-time analyzer with per-band dBFS |
 | **Spectrogram** | Scrolling time-frequency waterfall |
 | **Vectorscope** | Stereo phase / correlation with configurable channel pairs |
+| **Waveform** | Per-channel DAW-style amplitude envelope over the session history |
 
 PLVS **does not process, route, or modify audio**. It's a monitor — it watches your signal and gets out of the way.
 
