@@ -133,10 +133,12 @@ export function SettingsPanel({
                       disabled={!autostartReady}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="settings-close-action">Close behavior</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="settings-close-action" className="shrink-0">
+                      Close behavior
+                    </Label>
                     <Select value={closeAction} onValueChange={setCloseAction}>
-                      <SelectTrigger id="settings-close-action">
+                      <SelectTrigger id="settings-close-action" className="w-auto shrink-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper">
@@ -160,7 +162,6 @@ export function SettingsPanel({
                       </div>
                     ))}
                   </div>
-                  <Separator className="my-1" />
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="settings-global-clear">Global clear</Label>
@@ -194,10 +195,12 @@ export function SettingsPanel({
                   ) : null}
                 </div>
                 <Separator />
-                <div className="grid gap-2">
-                  <Label htmlFor="settings-appearance">Appearance</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="settings-appearance" className="shrink-0">
+                    Appearance
+                  </Label>
                   <Select value={appearance} onValueChange={setAppearanceMode}>
-                    <SelectTrigger id="settings-appearance">
+                    <SelectTrigger id="settings-appearance" className="w-auto shrink-0">
                       <SelectValue placeholder="Appearance" />
                     </SelectTrigger>
                     <SelectContent position="popper">
@@ -207,10 +210,12 @@ export function SettingsPanel({
                   </Select>
                 </div>
                 {appearance === "fixed" ? (
-                  <div className="grid gap-2">
-                    <Label htmlFor="settings-theme-id">Colour theme</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="settings-theme-id" className="shrink-0">
+                      Colour theme
+                    </Label>
                     <Select value={fixedThemeSelectValue} onValueChange={setFixedThemeIdFromPicker}>
-                      <SelectTrigger id="settings-theme-id">
+                      <SelectTrigger id="settings-theme-id" className="w-auto shrink-0">
                         <SelectValue placeholder="Theme" />
                       </SelectTrigger>
                       <SelectContent position="popper">
@@ -224,9 +229,11 @@ export function SettingsPanel({
                   </div>
                 ) : null}
                 <Separator />
-                <div className="grid gap-2">
-                  <Label htmlFor="settings-ref-lufs">Loudness reference</Label>
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="settings-ref-lufs" className="shrink-0">
+                    Loudness reference
+                  </Label>
+                  <div className="flex items-center gap-2 shrink-0">
                     <input
                       id="settings-ref-lufs"
                       type="number"
@@ -239,16 +246,18 @@ export function SettingsPanel({
                         const n = Number(e.target.value);
                         if (Number.isFinite(n) && n >= -70 && n <= 0) setReferenceLufs(n);
                       }}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex h-9 w-16 rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                     <span className="text-muted-foreground shrink-0">LUFS</span>
                   </div>
                 </div>
                 <Separator />
-                <div className="grid gap-2">
-                  <Label htmlFor="settings-channel-layout">Channel layout</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="settings-channel-layout" className="shrink-0">
+                    Channel layout
+                  </Label>
                   <Select value={channelLayout} onValueChange={setChannelLayout}>
-                    <SelectTrigger id="settings-channel-layout">
+                    <SelectTrigger id="settings-channel-layout" className="w-auto shrink-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
