@@ -27,4 +27,14 @@ describe("ShortcutCapture", () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByText(/needs a modifier/i)).toBeTruthy();
   });
+
+  it("rejects a combo reserved by an in-app shortcut and names it", () => {
+    const onChange = vi.fn();
+    render(<ShortcutCapture value="CmdOrCtrl+Alt+K" onChange={onChange} isMac={false} />);
+    const btn = screen.getByLabelText("Clear shortcut");
+    fireEvent.click(btn);
+    fireEvent.keyDown(btn, { key: ",", ctrlKey: true });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByText(/used by open settings/i)).toBeTruthy();
+  });
 });

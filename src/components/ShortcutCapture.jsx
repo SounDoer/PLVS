@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { keyEventToAccelerator, formatAcceleratorForDisplay } from "@/lib/accelerator.js";
+import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 
 export function ShortcutCapture({ value, onChange, isMac = false, disabled = false }) {
   const [recording, setRecording] = useState(false);
@@ -12,6 +13,11 @@ export function ShortcutCapture({ value, onChange, isMac = false, disabled = fal
     const accel = keyEventToAccelerator(e);
     if (!accel) {
       setHint("Needs a modifier (Ctrl/Alt/Shift)");
+      return;
+    }
+    const conflict = reservedComboConflict(accel);
+    if (conflict) {
+      setHint(`Used by ${conflict}`);
       return;
     }
     onChange(accel);
