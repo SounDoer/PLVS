@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
 import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
@@ -122,11 +122,6 @@ export function SettingsPanel({
                   : { type: "spring", stiffness: 420, damping: 36, mass: 0.35 }
               }
             >
-              <SheetHeader className="mb-[var(--ui-modal-header-gap)] space-y-0 p-0 pr-10 text-left">
-                <SheetTitle className="text-[length:var(--ui-fs-panel-title)] font-semibold text-muted-foreground">
-                  Settings
-                </SheetTitle>
-              </SheetHeader>
               <div className="flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]">
                 <div className="grid gap-5">
                   <div className="flex items-center justify-between gap-2">
