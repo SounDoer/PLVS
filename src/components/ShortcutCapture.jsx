@@ -27,7 +27,7 @@ export function ShortcutCapture({ value, onChange, isMac = false, disabled = fal
         variant="outline"
         size="sm"
         disabled={disabled}
-        aria-label="Global clear shortcut"
+        aria-label="Clear shortcut"
         className="font-mono"
         onClick={() => {
           setRecording(true);

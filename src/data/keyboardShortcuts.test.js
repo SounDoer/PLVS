@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 import { KEYBOARD_SHORTCUTS } from "./keyboardShortcuts.js";
 
 describe("KEYBOARD_SHORTCUTS", () => {
-  it("lists the five existing shortcuts in order", () => {
+  it("lists the read-only shortcuts with startStop last and no clear row", () => {
     expect(KEYBOARD_SHORTCUTS.map((s) => s.id)).toEqual([
-      "startStop",
-      "clear",
       "settings",
       "fullscreen",
       "exitFullscreen",
+      "startStop",
     ]);
   });
   it("each row has a label and keys", () => {
