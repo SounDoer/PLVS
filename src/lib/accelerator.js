@@ -38,3 +38,8 @@ export function formatAcceleratorForDisplay(str, { isMac = false } = {}) {
     })
     .join(isMac ? "" : "+");
 }
+
+/** True when a KeyboardEvent-like object produces exactly `accel`. */
+export function eventMatchesAccelerator(e, accel) {
+  return keyEventToAccelerator(e) === accel;
+}
