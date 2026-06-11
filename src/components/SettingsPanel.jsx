@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
 import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
+import { DEFAULT_GLOBAL_CLEAR_SHORTCUT } from "@/lib/globalClearPrefs.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
@@ -167,20 +168,31 @@ export function SettingsPanel({
                   <Separator className="my-1" />
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
+                      <Label htmlFor="settings-global-clear">Global clear</Label>
+                      <ShortcutCapture
+                        value={globalClearShortcut}
+                        onChange={setGlobalClearShortcut}
+                        isMac={isMac}
+                        disabled={!globalClearEnabled || !globalClearReady}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!globalClearEnabled || !globalClearReady}
+                        onClick={() => setGlobalClearShortcut(DEFAULT_GLOBAL_CLEAR_SHORTCUT)}
+                      >
+                        Reset
+                      </Button>
                       <Switch
                         id="settings-global-clear"
                         checked={globalClearEnabled}
                         onCheckedChange={setGlobalClearEnabled}
                         disabled={!globalClearReady}
                       />
-                      <Label htmlFor="settings-global-clear">Global clear</Label>
                     </div>
-                    <ShortcutCapture
-                      value={globalClearShortcut}
-                      onChange={setGlobalClearShortcut}
-                      isMac={isMac}
-                      disabled={!globalClearEnabled || !globalClearReady}
-                    />
                   </div>
                   {registrationError ? (
                     <span className="text-xs text-destructive">Combo unavailable, try another</span>

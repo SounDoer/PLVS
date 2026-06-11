@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { keyEventToAccelerator, formatAcceleratorForDisplay } from "@/lib/accelerator.js";
-import { DEFAULT_GLOBAL_CLEAR_SHORTCUT } from "@/lib/globalClearPrefs.js";
 
 export function ShortcutCapture({ value, onChange, isMac = false, disabled = false }) {
   const [recording, setRecording] = useState(false);
@@ -41,15 +40,6 @@ export function ShortcutCapture({ value, onChange, isMac = false, disabled = fal
         }}
       >
         {recording ? "Press a combo…" : formatAcceleratorForDisplay(value, { isMac })}
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={disabled}
-        onClick={() => onChange(DEFAULT_GLOBAL_CLEAR_SHORTCUT)}
-      >
-        Reset
       </Button>
       {hint ? <span className="text-xs text-destructive">{hint}</span> : null}
     </div>
