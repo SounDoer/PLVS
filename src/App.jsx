@@ -94,6 +94,7 @@ export default function App() {
 function AppContent() {
   const { state: workspaceState, setPanelControls: setWorkspacePanelControls } =
     useWorkspaceStore();
+  const onClearRef = useRef(null);
   const {
     settingsOpen,
     setSettingsOpen,
@@ -110,7 +111,13 @@ function AppContent() {
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
-  } = useSettings();
+    globalClearEnabled,
+    setGlobalClearEnabled,
+    globalClearShortcut,
+    setGlobalClearShortcut,
+    globalClearReady,
+    registrationError,
+  } = useSettings({ onClearRef });
 
   const {
     audioDevices,
@@ -683,6 +690,7 @@ function AppContent() {
     resetTimer({ restart: running });
     setShowClock(running);
   };
+  onClearRef.current = clearAll;
 
   const onStartClick = () => {
     if (selectedOffset >= 0)
@@ -1105,6 +1113,12 @@ function AppContent() {
           autostartReady={autostartReady}
           closeAction={closeAction}
           setCloseAction={setCloseAction}
+          globalClearEnabled={globalClearEnabled}
+          setGlobalClearEnabled={setGlobalClearEnabled}
+          globalClearShortcut={globalClearShortcut}
+          setGlobalClearShortcut={setGlobalClearShortcut}
+          globalClearReady={globalClearReady}
+          registrationError={registrationError}
         />
 
         <CloseConfirmDialog

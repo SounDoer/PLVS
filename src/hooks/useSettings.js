@@ -9,6 +9,7 @@ import {
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { useAutostart } from "./useAutostart.js";
+import { useGlobalClearShortcut } from "./useGlobalClearShortcut.js";
 
 const CLOSE_ACTION_KEY = "plvs:closeAction";
 
@@ -17,7 +18,7 @@ function normalizeReferenceLufs(raw) {
   return Number.isFinite(n) && n >= -70 && n <= 0 ? n : -23;
 }
 
-export function useSettings() {
+export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appearance, setAppearance] = useState(
     () => readPersistedShellThemeFields(UI_PREFERENCES).appearance
@@ -40,6 +41,7 @@ export function useSettings() {
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
+  const globalClear = useGlobalClearShortcut(onClearRef);
 
   const resolvedThemeId = useMemo(
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark),
@@ -124,5 +126,6 @@ export function useSettings() {
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
+    ...globalClear,
   };
 }
