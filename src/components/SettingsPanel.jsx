@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { ShortcutCapture } from "./ShortcutCapture.jsx";
+import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
+import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
@@ -40,8 +43,17 @@ export function SettingsPanel({
   autostartReady = false,
   closeAction = "ask",
   setCloseAction = () => {},
+  globalClearEnabled = false,
+  setGlobalClearEnabled = () => {},
+  globalClearShortcut = "CmdOrCtrl+Alt+K",
+  setGlobalClearShortcut = () => {},
+  globalClearReady = false,
+  registrationError = null,
 }) {
   const reduceMotion = useReducedMotion();
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
   const closingIntentRef = useRef(false);
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
@@ -138,6 +150,41 @@ export function SettingsPanel({
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <Separator />
+                <div className="grid gap-2">
+                  <Label>Keyboard shortcuts</Label>
+                  <div className="grid gap-1.5 text-muted-foreground">
+                    {KEYBOARD_SHORTCUTS.map((s) => (
+                      <div key={s.id} className="flex items-center justify-between gap-2">
+                        <span>{s.label}</span>
+                        <span className="font-mono tabular-nums">
+                          {formatAcceleratorForDisplay(s.keys, { isMac })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator className="my-1" />
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="settings-global-clear"
+                        checked={globalClearEnabled}
+                        onCheckedChange={setGlobalClearEnabled}
+                        disabled={!globalClearReady}
+                      />
+                      <Label htmlFor="settings-global-clear">Global clear</Label>
+                    </div>
+                    <ShortcutCapture
+                      value={globalClearShortcut}
+                      onChange={setGlobalClearShortcut}
+                      isMac={isMac}
+                      disabled={!globalClearEnabled || !globalClearReady}
+                    />
+                  </div>
+                  {registrationError ? (
+                    <span className="text-xs text-destructive">Combo unavailable, try another</span>
+                  ) : null}
                 </div>
                 <Separator />
                 <div className="grid gap-2">

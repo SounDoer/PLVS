@@ -179,4 +179,24 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
+
+  it("renders the keyboard shortcuts reference rows", () => {
+    render(<SettingsPanel {...BASE_PROPS} />);
+    expect(screen.getByText("Keyboard shortcuts")).toBeTruthy();
+    expect(screen.getByText("Start / Stop")).toBeTruthy();
+    expect(screen.getByText("Exit fullscreen")).toBeTruthy();
+  });
+
+  it("renders the global-clear toggle and capture control", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        globalClearEnabled={true}
+        globalClearReady={true}
+        globalClearShortcut="CmdOrCtrl+Alt+K"
+      />
+    );
+    expect(screen.getByLabelText("Global clear")).toBeTruthy();
+    expect(screen.getByLabelText("Global clear shortcut")).toBeTruthy();
+  });
 });
