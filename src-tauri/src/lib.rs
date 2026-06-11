@@ -22,6 +22,7 @@ pub fn run() {
       None,
     ))
     .plugin(tauri_plugin_store::Builder::default().build())
+    .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .manage(AppState::default())
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
