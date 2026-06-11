@@ -39,9 +39,16 @@ Keyboard shortcuts
 
 ## Error handling
 
-No proactive "this combo may clash" warning. The only surfaced error is a **real** registration failure: when `clearGlobal` is on and the OS rejects the combo (already held by another app), show the inline message "Combo unavailable, try another" under the row. (Per user decision: warn only when something actually goes wrong.)
+No proactive "this combo may clash" warning. The only surfaced error is a **real** registration failure: when `clearGlobal` is on and `register()` throws because the OS rejects the combo (already held — on Windows `RegisterHotKey` reports cross-app conflicts; on macOS cross-app detection is less reliable). On failure:
 
-Accepted consequence: enabling global with a common combo like `Ctrl+K` will usually register successfully and silently capture `Ctrl+K` system-wide. This is the user's explicit choice; no warning is shown.
+- The toggle **stays on** (the user's action is not reverted) but takes an **error state**: a destructive-colored ring on the `Switch` (`ring-2 ring-destructive`).
+- An inline message "Combo unavailable, try another" (`text-destructive`) shows under the row.
+- The error clears when the user changes the combo and the new one registers successfully (the registration effect re-runs and resets `registrationError`).
+- In-app Clear keeps working throughout (window keydown is independent of registration).
+
+**Theming (ADR 0002):** the error styling MUST use semantic tokens (`destructive`), never hardcoded colors or Tailwind `dark:` variants — the `eslint-plugin-plvs-adr-theme` rule enforces this. The `destructive` token is resolved per active theme via `data-theme` / `applyThemeToDocument`, so the error affordance follows the theme automatically (plvs-dark, plvs-light, and any future theme).
+
+Accepted consequence: enabling global with a common combo like `Ctrl+K` will usually register successfully (no throw) and silently capture `Ctrl+K` system-wide — no error is shown. This is the user's explicit choice. Likewise, a "registered but not actually received" outcome (possible on macOS) produces no error; the only symptom is the key not clearing from another app.
 
 ## Data / persistence (plugin-store)
 
@@ -92,6 +99,7 @@ export const KEYBOARD_SHORTCUTS = [
 - Rename props: `globalClearEnabled/globalClearShortcut/...` → `clearShortcut`, `setClearShortcut`, `clearGlobal`, `setClearGlobal`, `clearReady`, `registrationError`.
 - Remove the `<Separator className="my-1" />` between the read-only list and the editable row.
 - Row label "Global clear" → "Clear". Toggle controls `clearGlobal`; capture `disabled={!clearReady}`; Reset uses `DEFAULT_CLEAR_SHORTCUT`.
+- When `registrationError` is set, the toggle `Switch` gets a conditional `ring-2 ring-destructive` (error state; stays on, not reverted). Use `cn(...)` to apply it conditionally.
 - The read-only `.map` now renders the reordered list (Start/Stop last); the editable Clear row follows immediately, no divider.
 
 **`src/hooks/useSettings.js`**
@@ -131,6 +139,6 @@ change combo → re-register if global on; in-app keydown picks up new combo imm
 - **`accelerator.test.js`** — add `eventMatchesAccelerator`: matches a correct event, rejects a wrong key/modifier, rejects a bare key (no modifier).
 - **`clearShortcutPrefs.test.js`** (renamed) — defaults `{ shortcut: "CmdOrCtrl+K", global: false }` outside Tauri; save no-op outside Tauri; `DEFAULT_CLEAR_SHORTCUT` constant.
 - **`useClearShortcut.test.jsx`** (renamed) — with mocks: registers when `global` true; routes handler to `onClearRef`; does NOT register when `global` false.
-- **`SettingsPanel.test.jsx`** — list renders reordered (Start/Stop present, no "Clear" read-only row), editable Clear row present (`getByLabelText("Clear")` switch + `getByLabelText("Clear shortcut")` capture); no divider element between list and row.
+- **`SettingsPanel.test.jsx`** — list renders reordered (Start/Stop present, no "Clear" read-only row), editable Clear row present (`getByLabelText("Clear")` switch + `getByLabelText("Clear shortcut")` capture); no divider element between list and row; when `registrationError` is set, the switch carries the `ring-destructive` error class and the inline message renders.
 - **`App.toolbar.test.js`** / keydown — pressing the configured combo triggers clear; pressing the old hardcoded behavior still works when combo is the default `Ctrl+K`.
 - Full suite green; `npm run lint` clean.
