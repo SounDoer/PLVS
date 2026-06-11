@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
 import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
-import { DEFAULT_GLOBAL_CLEAR_SHORTCUT } from "@/lib/globalClearPrefs.js";
+import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
@@ -44,11 +44,11 @@ export function SettingsPanel({
   autostartReady = false,
   closeAction = "ask",
   setCloseAction = () => {},
-  globalClearEnabled = false,
-  setGlobalClearEnabled = () => {},
-  globalClearShortcut = "CmdOrCtrl+Alt+K",
-  setGlobalClearShortcut = () => {},
-  globalClearReady = false,
+  clearShortcut = "CmdOrCtrl+K",
+  setClearShortcut = () => {},
+  clearGlobal = false,
+  setClearGlobal = () => {},
+  clearReady = false,
   registrationError = null,
 }) {
   const reduceMotion = useReducedMotion();
@@ -164,12 +164,12 @@ export function SettingsPanel({
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-global-clear">Global clear</Label>
+                      <Label htmlFor="settings-clear">Clear</Label>
                       <ShortcutCapture
-                        value={globalClearShortcut}
-                        onChange={setGlobalClearShortcut}
+                        value={clearShortcut}
+                        onChange={setClearShortcut}
                         isMac={isMac}
-                        disabled={!globalClearEnabled || !globalClearReady}
+                        disabled={!clearReady}
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -177,16 +177,17 @@ export function SettingsPanel({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        disabled={!globalClearEnabled || !globalClearReady}
-                        onClick={() => setGlobalClearShortcut(DEFAULT_GLOBAL_CLEAR_SHORTCUT)}
+                        disabled={!clearReady}
+                        onClick={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
                       >
                         Reset
                       </Button>
                       <Switch
-                        id="settings-global-clear"
-                        checked={globalClearEnabled}
-                        onCheckedChange={setGlobalClearEnabled}
-                        disabled={!globalClearReady}
+                        id="settings-clear"
+                        checked={clearGlobal}
+                        onCheckedChange={setClearGlobal}
+                        disabled={!clearReady}
+                        className={cn(registrationError && "ring-2 ring-destructive")}
                       />
                     </div>
                   </div>
