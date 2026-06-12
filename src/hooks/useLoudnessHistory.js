@@ -160,6 +160,14 @@ export function useLoudnessHistory({
         unit: "LUFS",
       },
       { id: "lra", label: "Loudness Range (LRA)", value: fmtMetric(displayAudio.lra), unit: "LU" },
+    ],
+    [displayAudio]
+  );
+
+  const secondaryMetrics = useMemo(
+    () => [
+      { id: "psr", label: "Dynamics (PSR)", value: fmtMetric(psr), unit: "dB" },
+      { id: "plr", label: "Avg. Dynamics (PLR)", value: fmtMetric(plr), unit: "dB" },
       {
         id: "dialogueCoverage",
         label: "Dialogue Coverage",
@@ -187,15 +195,7 @@ export function useLoudnessHistory({
         unit: "LU",
       },
     ],
-    [displayAudio]
-  );
-
-  const secondaryMetrics = useMemo(
-    () => [
-      { id: "psr", label: "Dynamics (PSR)", value: fmtMetric(psr), unit: "dB" },
-      { id: "plr", label: "Avg. Dynamics (PLR)", value: fmtMetric(plr), unit: "dB" },
-    ],
-    [psr, plr]
+    [psr, plr, displayAudio]
   );
 
   return {
