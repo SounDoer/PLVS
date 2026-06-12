@@ -173,23 +173,36 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
 
-  it("renders the keyboard shortcuts reference rows", () => {
+  it("renders the keyboard shortcuts reference rows without a Clear read-only row", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
     expect(screen.getByText("Keyboard shortcuts")).toBeTruthy();
     expect(screen.getByText("Start / Stop")).toBeTruthy();
     expect(screen.getByText("Exit fullscreen")).toBeTruthy();
   });
 
-  it("renders the global-clear toggle and capture control", () => {
+  it("renders the editable Clear row with toggle and capture", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        globalClearEnabled={true}
-        globalClearReady={true}
-        globalClearShortcut="CmdOrCtrl+Alt+K"
+        clearGlobal={true}
+        clearReady={true}
+        clearShortcut="CmdOrCtrl+K"
       />
     );
-    expect(screen.getByLabelText("Global clear")).toBeTruthy();
-    expect(screen.getByLabelText("Global clear shortcut")).toBeTruthy();
+    expect(screen.getByLabelText("Clear")).toBeTruthy();
+    expect(screen.getByLabelText("Clear shortcut")).toBeTruthy();
+  });
+
+  it("shows the error state on the Clear toggle when registration failed", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        clearGlobal={true}
+        clearReady={true}
+        registrationError="HotKey already registered"
+      />
+    );
+    expect(screen.getByText(/combo unavailable/i)).toBeTruthy();
+    expect(screen.getByLabelText("Clear").className).toContain("ring-destructive");
   });
 });

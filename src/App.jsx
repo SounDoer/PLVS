@@ -48,6 +48,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { eventMatchesAccelerator } from "./lib/accelerator.js";
 import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { LayoutGrid, Pin, PinOff, Settings, Trash2, Volume2 } from "lucide-react";
@@ -111,11 +112,12 @@ function AppContent() {
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
-    globalClearEnabled,
-    setGlobalClearEnabled,
-    globalClearShortcut,
-    setGlobalClearShortcut,
-    globalClearReady,
+    clearShortcut,
+    setClearShortcut,
+    clearGlobal,
+    setClearGlobal,
+    setClearCapturing,
+    clearReady,
     registrationError,
   } = useSettings({ onClearRef });
 
@@ -719,7 +721,14 @@ function AppContent() {
   });
 
   const shortcutHandlerRef = useRef(null);
-  shortcutHandlerRef.current = { onStartClick, clearAll, running, showClock, setSettingsOpen };
+  shortcutHandlerRef.current = {
+    onStartClick,
+    clearAll,
+    running,
+    showClock,
+    setSettingsOpen,
+    clearShortcut,
+  };
   useEffect(() => {
     const onKeyDown = (e) => {
       const {
@@ -728,6 +737,7 @@ function AppContent() {
         running: isRunning,
         showClock: hasClock,
         setSettingsOpen: openSettings,
+        clearShortcut: clearCombo,
       } = shortcutHandlerRef.current;
       const tag = document.activeElement?.tagName ?? "";
       const editable =
@@ -737,7 +747,7 @@ function AppContent() {
         start();
         return;
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if (eventMatchesAccelerator(e, clearCombo)) {
         e.preventDefault();
         if (isRunning || hasClock) clear();
         return;
@@ -1113,11 +1123,12 @@ function AppContent() {
           autostartReady={autostartReady}
           closeAction={closeAction}
           setCloseAction={setCloseAction}
-          globalClearEnabled={globalClearEnabled}
-          setGlobalClearEnabled={setGlobalClearEnabled}
-          globalClearShortcut={globalClearShortcut}
-          setGlobalClearShortcut={setGlobalClearShortcut}
-          globalClearReady={globalClearReady}
+          clearShortcut={clearShortcut}
+          setClearShortcut={setClearShortcut}
+          clearGlobal={clearGlobal}
+          setClearGlobal={setClearGlobal}
+          setClearCapturing={setClearCapturing}
+          clearReady={clearReady}
           registrationError={registrationError}
         />
 

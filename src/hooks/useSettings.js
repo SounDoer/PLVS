@@ -9,7 +9,7 @@ import {
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { useAutostart } from "./useAutostart.js";
-import { useGlobalClearShortcut } from "./useGlobalClearShortcut.js";
+import { useClearShortcut } from "./useClearShortcut.js";
 
 const CLOSE_ACTION_KEY = "plvs:closeAction";
 
@@ -41,7 +41,7 @@ export function useSettings({ onClearRef } = {}) {
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
-  const globalClear = useGlobalClearShortcut(onClearRef);
+  const clearShortcutState = useClearShortcut(onClearRef);
 
   const resolvedThemeId = useMemo(
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark),
@@ -126,6 +126,6 @@ export function useSettings({ onClearRef } = {}) {
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
-    ...globalClear,
+    ...clearShortcutState,
   };
 }

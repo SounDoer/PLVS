@@ -1,28 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { isTauri } from "../ipc/env.js";
 import {
-  loadGlobalClearPrefs,
-  saveGlobalClearPrefs,
-  DEFAULT_GLOBAL_CLEAR_SHORTCUT,
-} from "../lib/globalClearPrefs.js";
+  loadClearShortcutPrefs,
+  saveClearShortcutPrefs,
+  DEFAULT_CLEAR_SHORTCUT,
+} from "../lib/clearShortcutPrefs.js";
 
 /**
- * Owns the system-wide clear shortcut lifecycle.
+ * Owns the Clear shortcut: the combo (always used in-app) and whether it is
+ * additionally registered system-wide.
  * @param {{ current: (() => void) | null }} onClearRef - ref whose `.current` is the latest clearAll.
  */
-export function useGlobalClearShortcut(onClearRef) {
-  const [enabled, setEnabledState] = useState(false);
-  const [shortcut, setShortcutState] = useState(DEFAULT_GLOBAL_CLEAR_SHORTCUT);
+export function useClearShortcut(onClearRef) {
+  const [shortcut, setShortcutState] = useState(DEFAULT_CLEAR_SHORTCUT);
+  const [global, setGlobalState] = useState(false);
   const [ready, setReady] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
   const registeredRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
-    loadGlobalClearPrefs().then((prefs) => {
+    loadClearShortcutPrefs().then((prefs) => {
       if (!mounted) return;
-      setEnabledState(prefs.enabled);
       setShortcutState(prefs.shortcut);
+      setGlobalState(prefs.global);
       setReady(true);
     });
     return () => {
@@ -41,7 +43,7 @@ export function useGlobalClearShortcut(onClearRef) {
         } catch (_) {}
         registeredRef.current = null;
       }
-      if (!enabled) {
+      if (!global || capturing) {
         if (registeredRef.current) {
           try {
             await unregister(registeredRef.current);
@@ -68,7 +70,7 @@ export function useGlobalClearShortcut(onClearRef) {
     return () => {
       cancelled = true;
     };
-  }, [ready, enabled, shortcut, onClearRef]);
+  }, [ready, global, capturing, shortcut, onClearRef]);
 
   useEffect(
     () => () => {
@@ -83,22 +85,23 @@ export function useGlobalClearShortcut(onClearRef) {
     []
   );
 
-  function setGlobalClearEnabled(next) {
-    setEnabledState(next);
-    void saveGlobalClearPrefs({ enabled: next, shortcut });
+  function setClearGlobal(next) {
+    setGlobalState(next);
+    void saveClearShortcutPrefs({ shortcut, global: next });
   }
 
-  function setGlobalClearShortcut(next) {
+  function setClearShortcut(next) {
     setShortcutState(next);
-    void saveGlobalClearPrefs({ enabled, shortcut: next });
+    void saveClearShortcutPrefs({ shortcut: next, global });
   }
 
   return {
-    globalClearEnabled: enabled,
-    globalClearShortcut: shortcut,
-    globalClearReady: ready,
+    clearShortcut: shortcut,
+    clearGlobal: global,
+    clearReady: ready,
     registrationError,
-    setGlobalClearEnabled,
-    setGlobalClearShortcut,
+    setClearGlobal,
+    setClearShortcut,
+    setClearCapturing: setCapturing,
   };
 }

@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { KEYBOARD_SHORTCUTS } from "./keyboardShortcuts.js";
+import { KEYBOARD_SHORTCUTS, reservedComboConflict } from "./keyboardShortcuts.js";
 
 describe("KEYBOARD_SHORTCUTS", () => {
-  it("lists the five existing shortcuts in order", () => {
+  it("lists the read-only shortcuts with startStop last and no clear row", () => {
     expect(KEYBOARD_SHORTCUTS.map((s) => s.id)).toEqual([
-      "startStop",
-      "clear",
       "settings",
       "fullscreen",
       "exitFullscreen",
+      "startStop",
     ]);
   });
   it("each row has a label and keys", () => {
@@ -16,5 +15,15 @@ describe("KEYBOARD_SHORTCUTS", () => {
       expect(typeof s.label).toBe("string");
       expect(typeof s.keys).toBe("string");
     }
+  });
+});
+
+describe("reservedComboConflict", () => {
+  it("flags a combo that equals an in-app modifier shortcut", () => {
+    expect(reservedComboConflict("CmdOrCtrl+,")).toBe("Open settings");
+  });
+  it("returns null for non-reserved combos", () => {
+    expect(reservedComboConflict("CmdOrCtrl+K")).toBeNull();
+    expect(reservedComboConflict("CmdOrCtrl+Alt+J")).toBeNull();
   });
 });

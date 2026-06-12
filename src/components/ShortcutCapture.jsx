@@ -1,23 +1,44 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { keyEventToAccelerator, formatAcceleratorForDisplay } from "@/lib/accelerator.js";
+import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 
-export function ShortcutCapture({ value, onChange, isMac = false, disabled = false }) {
+export function ShortcutCapture({
+  value,
+  onChange,
+  isMac = false,
+  disabled = false,
+  onRecordingChange = () => {},
+}) {
   const [recording, setRecording] = useState(false);
   const [hint, setHint] = useState("");
+
+  const stopRecording = (el) => {
+    setRecording(false);
+    setHint("");
+    onRecordingChange(false);
+    el?.blur();
+  };
 
   const onKeyDown = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.key === "Escape") {
+      stopRecording(e.currentTarget);
+      return;
+    }
     const accel = keyEventToAccelerator(e);
     if (!accel) {
       setHint("Needs a modifier (Ctrl/Alt/Shift)");
       return;
     }
+    const conflict = reservedComboConflict(accel);
+    if (conflict) {
+      setHint(`Used by ${conflict}`);
+      return;
+    }
     onChange(accel);
-    setHint("");
-    setRecording(false);
-    e.currentTarget.blur();
+    stopRecording(e.currentTarget);
   };
 
   return (
@@ -27,17 +48,15 @@ export function ShortcutCapture({ value, onChange, isMac = false, disabled = fal
         variant="outline"
         size="sm"
         disabled={disabled}
-        aria-label="Global clear shortcut"
+        aria-label="Clear shortcut"
         className="font-mono"
         onClick={() => {
           setRecording(true);
           setHint("");
+          onRecordingChange(true);
         }}
         onKeyDown={recording ? onKeyDown : undefined}
-        onBlur={() => {
-          setRecording(false);
-          setHint("");
-        }}
+        onBlur={(e) => stopRecording(e.currentTarget)}
       >
         {recording ? "Press a combo…" : formatAcceleratorForDisplay(value, { isMac })}
       </Button>

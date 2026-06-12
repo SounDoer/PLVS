@@ -3,6 +3,7 @@ import {
   keyEventToAccelerator,
   isValidAccelerator,
   formatAcceleratorForDisplay,
+  eventMatchesAccelerator,
 } from "./accelerator.js";
 
 describe("keyEventToAccelerator", () => {
@@ -45,5 +46,16 @@ describe("formatAcceleratorForDisplay", () => {
     expect(formatAcceleratorForDisplay("Escape", { isMac: false })).toBe("Esc");
     expect(formatAcceleratorForDisplay("Space", { isMac: true })).toBe("Space");
     expect(formatAcceleratorForDisplay("CmdOrCtrl+,", { isMac: false })).toBe("Ctrl+,");
+  });
+});
+
+describe("eventMatchesAccelerator", () => {
+  it("matches an event that produces the accelerator", () => {
+    expect(eventMatchesAccelerator({ key: "k", ctrlKey: true }, "CmdOrCtrl+K")).toBe(true);
+    expect(eventMatchesAccelerator({ key: "k", metaKey: true }, "CmdOrCtrl+K")).toBe(true);
+  });
+  it("does not match a different key or missing modifier", () => {
+    expect(eventMatchesAccelerator({ key: "j", ctrlKey: true }, "CmdOrCtrl+K")).toBe(false);
+    expect(eventMatchesAccelerator({ key: "k" }, "CmdOrCtrl+K")).toBe(false);
   });
 });

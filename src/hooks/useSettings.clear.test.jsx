@@ -12,12 +12,12 @@ beforeEach(() => {
   }));
 });
 
-describe("useSettings global-clear wiring", () => {
-  it("exposes global-clear state with safe defaults outside Tauri", () => {
+describe("useSettings clear-shortcut wiring", () => {
+  it("exposes clear-shortcut state with safe defaults outside Tauri", () => {
     const { result } = renderHook(() => useSettings());
-    expect(result.current.globalClearEnabled).toBe(false);
-    expect(result.current.globalClearShortcut).toBe("CmdOrCtrl+Alt+K");
-    expect(typeof result.current.setGlobalClearEnabled).toBe("function");
-    expect(typeof result.current.setGlobalClearShortcut).toBe("function");
+    expect(result.current.clearGlobal).toBe(false);
+    expect(result.current.clearShortcut).toBe("CmdOrCtrl+K");
+    expect(typeof result.current.setClearGlobal).toBe("function");
+    expect(typeof result.current.setClearShortcut).toBe("function");
   });
 });
