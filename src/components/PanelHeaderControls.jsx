@@ -48,7 +48,7 @@ function MultiSelectChip({ label, options, selectedIds, onToggle }) {
           {label}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-44 p-1">
+      <PopoverContent align="end" sideOffset={6} className="w-auto min-w-[8rem] p-1">
         <div role="group" aria-label={label}>
           {options.map((option) => {
             const checked = selectedIds.includes(option.id);
@@ -59,7 +59,7 @@ function MultiSelectChip({ label, options, selectedIds, onToggle }) {
                 type="button"
                 role="checkbox"
                 aria-checked={checked}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+                className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-sm text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
                 onClick={() => onToggle(option.id)}
               >
                 <span className="flex size-4 items-center justify-center">
