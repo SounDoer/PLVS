@@ -61,6 +61,7 @@ import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
   setLoudnessWeights,
+  setDialogueGating,
   setVectorscopePair,
   setSpectrumChannel,
 } from "./ipc/commands.js";
@@ -74,6 +75,12 @@ import packageInfo from "../package.json";
 
 const HIST_MAX_SAMPLES = 72000;
 const VISUAL_MAX_SAMPLES = 180_000; // 25 Hz × 2 h
+const DIALOGUE_STAT_IDS = [
+  "dialogueCoverage",
+  "dialogueIntegrated",
+  "dialogueRange",
+  "dialogueOffset",
+];
 
 const APP_VERSION = packageInfo.version;
 
@@ -417,6 +424,12 @@ function AppContent() {
     [channelLabelOverride]
   );
   const loudnessWeightsRef = useRef(loudnessWeights);
+  const dialogueGating = useMemo(
+    () =>
+      normalizedPanelControls.loudnessStatsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id)),
+    [normalizedPanelControls.loudnessStatsVisibleIds]
+  );
+  const dialogueGatingRef = useRef(dialogueGating);
   const channelAutoLabels = useMemo(
     () =>
       channelCount > 0
@@ -437,6 +450,12 @@ function AppContent() {
     if (!isTauri() || !running) return;
     void sendTrackedLoudnessWeights(loudnessWeights);
   }, [loudnessWeights, running, sendTrackedLoudnessWeights]);
+
+  useEffect(() => {
+    dialogueGatingRef.current = dialogueGating;
+    if (!isTauri() || !running) return;
+    void setDialogueGating(dialogueGating);
+  }, [dialogueGating, running]);
 
   const peakLabelContext = useMemo(
     () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
@@ -883,6 +902,7 @@ function AppContent() {
     vectorscopePairRef,
     spectrumChannelRef,
     loudnessWeightsRef,
+    dialogueGatingRef,
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,

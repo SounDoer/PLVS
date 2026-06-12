@@ -7,6 +7,7 @@ import {
   setVectorscopePair,
   setSpectrumChannel,
   setLoudnessWeights,
+  setDialogueGating,
 } from "../ipc/commands.js";
 import { onLoudnessSlow } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
@@ -30,6 +31,7 @@ export function useAudioEngine({
   vectorscopePairRef,
   spectrumChannelRef,
   loudnessWeightsRef,
+  dialogueGatingRef,
   setAudio,
   setSpectrumPath,
   setSpectrumPeakPath,
@@ -153,6 +155,10 @@ export function useAudioEngine({
 
           try {
             await setLoudnessWeights(loudnessWeightsRef?.current ?? null);
+          } catch (_) {}
+
+          try {
+            await setDialogueGating(dialogueGatingRef?.current ?? false);
           } catch (_) {}
 
           await startAudioCapture({

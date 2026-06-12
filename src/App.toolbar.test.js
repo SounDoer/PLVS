@@ -123,6 +123,11 @@ describe("App toolbar", () => {
     expect(appSource).toContain("loudnessWeightsRef,");
   });
 
+  it("derives dialogue gating from visible dialogue stats ids and sends it", () => {
+    expect(appSource).toContain("const DIALOGUE_STAT_IDS");
+    expect(appSource).toContain("setDialogueGating(dialogueGating)");
+  });
+
   it("keeps capture running when Clear resets the measurement window", () => {
     const clearAllBody = functionBodyAfter("const clearAll = async () =>");
 
