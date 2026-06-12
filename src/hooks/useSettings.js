@@ -5,7 +5,9 @@ import {
   applyThemeToDocument,
   readPersistedShellThemeFields,
   readSystemPrefersDark,
+  readUiState,
   resolveThemeId,
+  subscribeUiState,
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { useAutostart } from "./useAutostart.js";
@@ -27,15 +29,9 @@ export function useSettings({ onClearRef } = {}) {
     () => readPersistedShellThemeFields(UI_PREFERENCES).themeId
   );
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
-  const [referenceLufs, setReferenceLufs] = useState(() => {
-    try {
-      const raw = localStorage.getItem(UI_PREFERENCES.layoutPersistKey);
-      if (!raw) return -23;
-      const s = JSON.parse(raw);
-      return normalizeReferenceLufs(s.referenceLufs);
-    } catch (_) {}
-    return -23;
-  });
+  const [referenceLufs, setReferenceLufs] = useState(() =>
+    normalizeReferenceLufs(readUiState().referenceLufs)
+  );
   const [closeAction, setCloseActionState] = useState(
     () => localStorage.getItem(CLOSE_ACTION_KEY) ?? "ask"
   );
@@ -95,17 +91,15 @@ export function useSettings({ onClearRef } = {}) {
     applyThemeToDocument(resolvedThemeId);
   }, [resolvedThemeId, resolvedTheme.colorScheme]);
 
-  useEffect(() => {
-    const key = UI_PREFERENCES.layoutPersistKey;
-    const onStorage = (e) => {
-      if (e.key !== key && e.key !== null) return;
-      const next = readPersistedShellThemeFields(UI_PREFERENCES);
-      setAppearance(next.appearance);
-      setThemeId(next.themeId);
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  useEffect(
+    () =>
+      subscribeUiState(() => {
+        const next = readPersistedShellThemeFields(UI_PREFERENCES);
+        setAppearance(next.appearance);
+        setThemeId(next.themeId);
+      }),
+    []
+  );
 
   return {
     settingsOpen,

@@ -4,6 +4,7 @@
  */
 
 import { DEFAULT_THEME_ID, isThemeId, THEME_IDS } from "../theme/builtinThemes.js";
+import { readUiState } from "./uiStore.js";
 
 export { DEFAULT_THEME_ID, isThemeId, THEME_IDS };
 
@@ -39,17 +40,7 @@ export function parsePersistedUiStateJson(raw) {
  * @returns {{ appearance: "system"|"fixed"; themeId: string|null }}
  */
 export function readPersistedShellThemeFields(prefs) {
-  if (typeof localStorage === "undefined") {
-    return { appearance: "system", themeId: null };
-  }
-  const key = prefs?.layoutPersistKey ?? "plvs.ui";
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return { appearance: "system", themeId: null };
-    return parsePersistedUiStateJson(raw);
-  } catch {
-    return { appearance: "system", themeId: null };
-  }
+  return parsePersistedUiStateJson(readUiState(prefs));
 }
 
 /**
