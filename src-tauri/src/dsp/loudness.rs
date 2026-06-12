@@ -1,7 +1,9 @@
 //! ITU-R BS.1770 / EBU R128 style loudness (ported from `loudness-meter.js`).
 
+use super::dialogue::DialogueIntegrator;
 use super::filters::{KWeightMono, KWeightStereo};
 use super::meter::{Meter, PcmContext};
+use super::speech::{downmix_to_mono, SpeechDetector};
 use crate::engine::ChannelLayoutSetting;
 
 const IBL_CAP: usize = 36_000;
@@ -137,6 +139,11 @@ pub struct LoudnessMeter {
   tp_h: [Vec<f64>; 2],
   tp_wp: [usize; 2],
   pending_block: Option<LoudnessBlock>,
+  /// Speech detector for dialogue gating; lazily built on first gated push (`None` until then,
+  /// or if model init fails).
+  speech: Option<SpeechDetector>,
+  /// Dialogue-gated loudness accumulator.
+  dialogue: DialogueIntegrator,
 }
 
 impl LoudnessMeter {
@@ -167,6 +174,8 @@ impl LoudnessMeter {
       tp_h,
       tp_wp: [0, 0],
       pending_block: None,
+      speech: None,
+      dialogue: DialogueIntegrator::new(),
     }
   }
 
@@ -304,6 +313,9 @@ impl LoudnessMeter {
           true_peak: tp_now,
           true_peak_l: tp_now_l,
           true_peak_r: tp_now_r,
+          dialogue_integrated: LoudnessBlock::DIALOGUE_OFF.0,
+          dialogue_lra: LoudnessBlock::DIALOGUE_OFF.1,
+          dialogue_percent: LoudnessBlock::DIALOGUE_OFF.2,
         });
         self.ba = [0.0, 0.0];
         self.bn = 0;
@@ -443,6 +455,9 @@ impl LoudnessMeter {
           true_peak: tp_now,
           true_peak_l: tp_now_l,
           true_peak_r: tp_now_r,
+          dialogue_integrated: LoudnessBlock::DIALOGUE_OFF.0,
+          dialogue_lra: LoudnessBlock::DIALOGUE_OFF.1,
+          dialogue_percent: LoudnessBlock::DIALOGUE_OFF.2,
         });
         self.ba = [0.0, 0.0];
         self.bn = 0;
@@ -616,6 +631,9 @@ impl LoudnessMeter {
             true_peak: tp_now,
             true_peak_l: tp_now_l,
             true_peak_r: tp_now_r,
+            dialogue_integrated: LoudnessBlock::DIALOGUE_OFF.0,
+            dialogue_lra: LoudnessBlock::DIALOGUE_OFF.1,
+            dialogue_percent: LoudnessBlock::DIALOGUE_OFF.2,
           });
           self.ba = [0.0, 0.0];
           self.bn = 0;
@@ -747,6 +765,9 @@ impl LoudnessMeter {
             true_peak: tp_now,
             true_peak_l: tp_now_l,
             true_peak_r: tp_now_r,
+            dialogue_integrated: LoudnessBlock::DIALOGUE_OFF.0,
+            dialogue_lra: LoudnessBlock::DIALOGUE_OFF.1,
+            dialogue_percent: LoudnessBlock::DIALOGUE_OFF.2,
           });
           self.ba = [0.0, 0.0];
           self.bn = 0;
@@ -789,10 +810,33 @@ pub struct LoudnessBlock {
   pub true_peak: f64,
   pub true_peak_l: f64,
   pub true_peak_r: f64,
+  /// Dialogue-gated integrated loudness (LUFS); `NEG_INFINITY` when gating off or no speech.
+  pub dialogue_integrated: f64,
+  /// Dialogue-gated loudness range (LU); `0.0` when gating off or insufficient speech.
+  pub dialogue_lra: f64,
+  /// Percentage of audible program classified as dialogue; `0.0` when gating off.
+  pub dialogue_percent: f64,
+}
+
+impl LoudnessBlock {
+  /// Default dialogue fields for blocks produced with gating off.
+  const DIALOGUE_OFF: (f64, f64, f64) = (f64::NEG_INFINITY, 0.0, 0.0);
 }
 
 impl Meter for LoudnessMeter {
   fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
+    // Feed the speech sidechain continuously (downmixed mono) so its 16 kHz chunks keep
+    // flowing regardless of which loudness path runs below.
+    if ctx.dialogue_gating {
+      if self.speech.is_none() {
+        self.speech = SpeechDetector::new(self.sample_rate);
+      }
+      if let Some(det) = self.speech.as_mut() {
+        let mono = downmix_to_mono(ctx.interleaved, ctx.channels);
+        det.push_mono(&mono);
+      }
+    }
+
     let block = if let Some(weights) = ctx.loudness_weights.as_ref() {
       if weights.len() == ctx.channels.max(1) as usize {
         self.push_interleaved_weighted(ctx.interleaved, ctx.channels, weights)
@@ -806,7 +850,20 @@ impl Meter for LoudnessMeter {
     } else {
       self.push_interleaved_multichannel(ctx.interleaved, ctx.channels, ctx.channel_layout)
     };
-    if let Some(b) = block {
+    if let Some(mut b) = block {
+      // A block just closed: settle its speech verdict and fold it into the dialogue readouts.
+      if ctx.dialogue_gating {
+        let ms = self.ibl.last().copied().unwrap_or([0.0, 0.0]);
+        let is_speech = self
+          .speech
+          .as_mut()
+          .map(|det| det.take_block_decision())
+          .unwrap_or(false);
+        self.dialogue.push_block(ms, b.short_term, is_speech);
+        b.dialogue_integrated = self.dialogue.integrated();
+        b.dialogue_lra = self.dialogue.lra();
+        b.dialogue_percent = self.dialogue.percent();
+      }
       self.pending_block = Some(b);
     }
   }
@@ -820,6 +877,50 @@ impl Meter for LoudnessMeter {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::dsp::channel_sel::SpectrumChannelSel;
+
+  fn dialogue_ctx<'a>(interleaved: &'a [f32], channels: u16) -> PcmContext<'a> {
+    PcmContext {
+      interleaved,
+      channels,
+      now_sec: 0.0,
+      channel_layout: ChannelLayoutSetting::Auto,
+      loudness_weights: None,
+      vectorscope_pair: (0, 1),
+      spectrum_channel: SpectrumChannelSel::default(),
+      dialogue_gating: true,
+    }
+  }
+
+  // End-to-end wiring smoke test: with gating on, a non-speech tone flows through
+  // downmix→resample→Silero→vote→dialogue integrator without panicking and is not counted
+  // as dialogue (a pure tone is not speech). The speech-positive path is verified manually.
+  #[test]
+  fn gated_push_pcm_runs_and_tone_is_not_dialogue() {
+    let sr = 48_000.0;
+    let frames = 4_800usize; // one 100ms block
+    let stereo: Vec<f32> = (0..frames)
+      .flat_map(|i| {
+        let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32 * 0.5;
+        [s, s]
+      })
+      .collect();
+
+    let mut m = LoudnessMeter::new(sr);
+    m.push_pcm(&dialogue_ctx(&stereo, 2));
+    let block = m.take_block().expect("a 100ms block should close");
+
+    assert!(block.momentary.is_finite(), "tone should yield finite momentary");
+    assert_eq!(
+      block.dialogue_percent, 0.0,
+      "a pure tone must not register as dialogue"
+    );
+    assert!(
+      !block.dialogue_integrated.is_finite(),
+      "no speech blocks → dialogue integrated stays -inf, got {}",
+      block.dialogue_integrated
+    );
+  }
 
   fn run_once_100ms(
     m: &mut LoudnessMeter,

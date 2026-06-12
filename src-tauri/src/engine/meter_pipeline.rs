@@ -194,6 +194,7 @@ impl MeterPipeline {
       loudness_weights,
       vectorscope_pair,
       spectrum_channel,
+      dialogue_gating: false,
     };
     self.loudness.push_pcm(&ctx);
     self.spectrum.push_pcm(&ctx);

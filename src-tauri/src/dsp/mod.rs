@@ -7,6 +7,7 @@ pub mod loudness;
 pub mod meter;
 pub mod paths;
 pub mod peak;
+pub mod speech;
 pub mod spectrum;
 pub mod vectorscope;
 

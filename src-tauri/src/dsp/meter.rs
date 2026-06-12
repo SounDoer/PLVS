@@ -12,6 +12,8 @@ pub struct PcmContext<'a> {
   pub loudness_weights: Option<Vec<f64>>,
   pub vectorscope_pair: (u16, u16),
   pub spectrum_channel: SpectrumChannelSel,
+  /// When true, run the speech-activity sidechain and populate the dialogue-gated readouts.
+  pub dialogue_gating: bool,
 }
 
 /// Uniform contract for DSP meters: ingest PCM and reset state.

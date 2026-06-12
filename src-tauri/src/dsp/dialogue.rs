@@ -64,10 +64,6 @@ impl DialogueIntegrator {
   pub fn lra(&self) -> f64 {
     gated_lra(&self.speech_short_terms)
   }
-
-  pub fn reset(&mut self) {
-    *self = Self::new();
-  }
 }
 
 #[cfg(test)]
