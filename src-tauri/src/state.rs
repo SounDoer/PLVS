@@ -16,6 +16,8 @@ pub struct AppState {
   pub spectrum_channel: Arc<Mutex<SpectrumChannelSel>>,
   /// Dynamic loudness energy weights from user channel-role overrides.
   pub loudness_weights: Arc<Mutex<Option<Vec<f64>>>>,
+  /// Dialogue gating enabled flag. Updated by UI.
+  pub dialogue_gating_enabled: Arc<Mutex<bool>>,
 }
 
 impl Default for AppState {
@@ -26,6 +28,7 @@ impl Default for AppState {
       vectorscope_pair: Arc::new(Mutex::new((0, 1))),
       spectrum_channel: Arc::new(Mutex::new(SpectrumChannelSel::default())),
       loudness_weights: Arc::new(Mutex::new(None)),
+      dialogue_gating_enabled: Arc::new(Mutex::new(false)),
     }
   }
 }

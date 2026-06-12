@@ -176,6 +176,12 @@ fn validate_loudness_weights(weights: &[f64]) -> Result<(), String> {
   Ok(())
 }
 
+pub(crate) fn apply_dialogue_gating(flag: &std::sync::Arc<std::sync::Mutex<bool>>, enabled: bool) {
+  if let Ok(mut g) = flag.lock() {
+    *g = enabled;
+  }
+}
+
 #[tauri::command]
 pub fn set_loudness_weights(
   weights: Option<Vec<f64>>,
@@ -190,6 +196,12 @@ pub fn set_loudness_weights(
     .lock()
     .map_err(|_| "loudness weights lock poisoned".to_string())?;
   *g = weights;
+  Ok(())
+}
+
+#[tauri::command]
+pub fn set_dialogue_gating(enabled: bool, state: State<'_, AppState>) -> Result<(), String> {
+  apply_dialogue_gating(&state.inner().dialogue_gating_enabled, enabled);
   Ok(())
 }
 
@@ -280,5 +292,14 @@ mod tests {
   fn loudness_weights_validation_rejects_overlong_vectors() {
     let weights = vec![1.0; 65];
     assert!(validate_loudness_weights(&weights).is_err());
+  }
+
+  #[test]
+  fn set_dialogue_gating_updates_shared_flag() {
+    let flag = std::sync::Arc::new(std::sync::Mutex::new(false));
+    super::apply_dialogue_gating(&flag, true);
+    assert!(*flag.lock().unwrap());
+    super::apply_dialogue_gating(&flag, false);
+    assert!(!*flag.lock().unwrap());
   }
 }
