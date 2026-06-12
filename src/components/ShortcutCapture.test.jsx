@@ -37,4 +37,40 @@ describe("ShortcutCapture", () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByText(/used by open settings/i)).toBeTruthy();
   });
+
+  it("signals recording start, and Escape cancels without changing", () => {
+    const onChange = vi.fn();
+    const onRecordingChange = vi.fn();
+    render(
+      <ShortcutCapture
+        value="CmdOrCtrl+K"
+        onChange={onChange}
+        onRecordingChange={onRecordingChange}
+        isMac={false}
+      />
+    );
+    const btn = screen.getByLabelText("Clear shortcut");
+    fireEvent.click(btn);
+    expect(onRecordingChange).toHaveBeenLastCalledWith(true);
+    fireEvent.keyDown(btn, { key: "Escape" });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onRecordingChange).toHaveBeenLastCalledWith(false);
+    expect(btn.textContent).toBe("Ctrl+K");
+  });
+
+  it("signals recording end after a successful capture", () => {
+    const onRecordingChange = vi.fn();
+    render(
+      <ShortcutCapture
+        value="CmdOrCtrl+K"
+        onChange={vi.fn()}
+        onRecordingChange={onRecordingChange}
+        isMac={false}
+      />
+    );
+    const btn = screen.getByLabelText("Clear shortcut");
+    fireEvent.click(btn);
+    fireEvent.keyDown(btn, { key: "m", ctrlKey: true, altKey: true });
+    expect(onRecordingChange).toHaveBeenLastCalledWith(false);
+  });
 });

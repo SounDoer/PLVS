@@ -48,6 +48,7 @@ export function SettingsPanel({
   setClearShortcut = () => {},
   clearGlobal = false,
   setClearGlobal = () => {},
+  setClearCapturing = () => {},
   clearReady = false,
   registrationError = null,
 }) {
@@ -168,6 +169,7 @@ export function SettingsPanel({
                       <ShortcutCapture
                         value={clearShortcut}
                         onChange={setClearShortcut}
+                        onRecordingChange={setClearCapturing}
                         isMac={isMac}
                         disabled={!clearReady}
                       />

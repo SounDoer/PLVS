@@ -15,6 +15,7 @@ export function useClearShortcut(onClearRef) {
   const [shortcut, setShortcutState] = useState(DEFAULT_CLEAR_SHORTCUT);
   const [global, setGlobalState] = useState(false);
   const [ready, setReady] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
   const registeredRef = useRef(null);
 
@@ -42,7 +43,7 @@ export function useClearShortcut(onClearRef) {
         } catch (_) {}
         registeredRef.current = null;
       }
-      if (!global) {
+      if (!global || capturing) {
         if (registeredRef.current) {
           try {
             await unregister(registeredRef.current);
@@ -69,7 +70,7 @@ export function useClearShortcut(onClearRef) {
     return () => {
       cancelled = true;
     };
-  }, [ready, global, shortcut, onClearRef]);
+  }, [ready, global, capturing, shortcut, onClearRef]);
 
   useEffect(
     () => () => {
@@ -101,5 +102,6 @@ export function useClearShortcut(onClearRef) {
     registrationError,
     setClearGlobal,
     setClearShortcut,
+    setClearCapturing: setCapturing,
   };
 }

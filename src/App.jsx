@@ -116,6 +116,7 @@ function AppContent() {
     setClearShortcut,
     clearGlobal,
     setClearGlobal,
+    setClearCapturing,
     clearReady,
     registrationError,
   } = useSettings({ onClearRef });
@@ -1126,6 +1127,7 @@ function AppContent() {
           setClearShortcut={setClearShortcut}
           clearGlobal={clearGlobal}
           setClearGlobal={setClearGlobal}
+          setClearCapturing={setClearCapturing}
           clearReady={clearReady}
           registrationError={registrationError}
         />
