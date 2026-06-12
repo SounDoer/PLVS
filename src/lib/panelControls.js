@@ -10,6 +10,10 @@ export const LOUDNESS_STATS_OPTIONS = [
   { id: "lra", label: "LRA" },
   { id: "psr", label: "PSR" },
   { id: "plr", label: "PLR" },
+  { id: "dialogueCoverage", label: "Dialogue Coverage" },
+  { id: "dialogueIntegrated", label: "Dialogue Integrated" },
+  { id: "dialogueRange", label: "Dialogue LRA" },
+  { id: "dialogueOffset", label: "Dialogue Offset" },
 ];
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [

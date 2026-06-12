@@ -14,6 +14,19 @@ describe("panelControls", () => {
     localStorage.clear();
   });
 
+  it("offers the four dialogue stats options but excludes them from defaults", () => {
+    const ids = LOUDNESS_STATS_OPTIONS.map((o) => o.id);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "dialogueCoverage",
+        "dialogueIntegrated",
+        "dialogueRange",
+        "dialogueOffset",
+      ])
+    );
+    expect(DEFAULT_PANEL_CONTROLS.loudnessStatsVisibleIds).not.toContain("dialogueCoverage");
+  });
+
   it("defines stable stats and layer option ids", () => {
     expect(LOUDNESS_STATS_OPTIONS.map((o) => o.id)).toEqual([
       "momentary",
@@ -24,6 +37,10 @@ describe("panelControls", () => {
       "lra",
       "psr",
       "plr",
+      "dialogueCoverage",
+      "dialogueIntegrated",
+      "dialogueRange",
+      "dialogueOffset",
     ]);
     expect(LOUDNESS_HISTORY_LAYER_OPTIONS.map((o) => o.id)).toEqual([
       "momentary",

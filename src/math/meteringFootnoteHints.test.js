@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMeteringFootnoteHints } from "./meteringFootnoteHints.js";
+import { buildMeteringFootnoteHints, STAT_ROW_HINTS } from "./meteringFootnoteHints.js";
 
 describe("buildMeteringFootnoteHints", () => {
   it("returns nothing when not running", () => {
@@ -66,5 +66,16 @@ describe("buildMeteringFootnoteHints", () => {
     expect(
       buildMeteringFootnoteHints({ running: true, channelLayout: "7.1", channelCount: 8 })
     ).toEqual([]);
+  });
+
+  it("includes a hint for each dialogue stat id that mentions singing", () => {
+    for (const id of [
+      "dialogueCoverage",
+      "dialogueIntegrated",
+      "dialogueRange",
+      "dialogueOffset",
+    ]) {
+      expect(STAT_ROW_HINTS[id]).toContain("singing");
+    }
   });
 });

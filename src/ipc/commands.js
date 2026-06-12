@@ -61,3 +61,7 @@ export function setSpectrumChannel(sel) {
 export function setLoudnessWeights(weights) {
   return invoke("set_loudness_weights", { weights });
 }
+
+export function setDialogueGating(enabled) {
+  return invoke("set_dialogue_gating", { enabled: !!enabled });
+}

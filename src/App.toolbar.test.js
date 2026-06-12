@@ -27,6 +27,11 @@ describe("App toolbar", () => {
     expect(commandsSource).toContain('return invoke("set_loudness_weights", { weights });');
   });
 
+  it("exposes a setDialogueGating IPC wrapper", () => {
+    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
+    expect(commandsSource).toContain("export function setDialogueGating(enabled)");
+  });
+
   it("uses a slightly larger device icon to match neighboring toolbar glyphs visually", () => {
     expect(appSource).toContain('<Volume2 className="size-4 shrink-0" />');
   });
