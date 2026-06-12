@@ -86,9 +86,22 @@ This skill guides the complete release workflow for PLVS, a Tauri-based desktop 
 
 ### Get Commits Since Last Tag
 
+**Bash (Linux/macOS):**
 ```bash
-git log --pretty=format:"%s" <last-tag>..HEAD
+git log --pretty=format:"%s" $(git describe --tags --abbrev=0)..HEAD
 ```
+
+**PowerShell (Windows):**
+```powershell
+# Two-step approach (recommended for PowerShell)
+$tag = git describe --tags --abbrev=0
+git --no-pager log --pretty=format:"%s" "$tag..HEAD"
+
+# Or use explicit tag name
+git --no-pager log --pretty=format:"%s" v0.2.3..HEAD
+```
+
+**Important:** PowerShell's `$(...)` subexpression syntax does not work correctly inside git command arguments. Always use a two-step approach or explicit tag names.
 
 ### Version Bump Recommendation
 
@@ -314,8 +327,10 @@ Running build…
   ✅ Build succeeded
 
 ✅ Ready to release v0.2.0:
-   git push && git tag v0.2.0 && git push origin v0.2.0
+   git push; git tag v0.2.0; git push origin v0.2.0
 ```
+
+> **Note:** In PowerShell 5, use `;` instead of `&&` for command chaining.
 
 ### If Preflight Fails
 
@@ -444,7 +459,7 @@ git push origin :refs/tags/vX.Y.Z
 | Test failures | `npm test` and fix |
 | Build errors | `npm run build` and fix |
 | Not on main | `git checkout main` |
-| Uncommitted changes | `git add -A && git commit` |
+| Uncommitted changes | `git add -A; git commit` |
 
 ### CI Build Fails
 
