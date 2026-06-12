@@ -138,6 +138,13 @@ impl SpeechDetector {
     self.vote.reset();
     decision
   }
+
+  pub fn reset(&mut self) {
+    self.in_buf.clear();
+    self.chunk_buf.clear();
+    self.vote.reset();
+    let _ = self.resampler.reset();
+  }
 }
 
 #[cfg(test)]

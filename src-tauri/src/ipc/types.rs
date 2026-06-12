@@ -110,6 +110,10 @@ pub struct AudioFramePayload {
   pub loudness_hist_tick: Option<MeterHistoryEntry>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub visual_hist_tick: Option<VisualHistEntry>,
+  /// Dialogue-gated integrated loudness (LUFS); `NEG_INFINITY` when gating off or no speech.
+  pub dialogue_integrated: f64,
+  /// Percentage of audible program classified as dialogue; `0.0` when gating off.
+  pub dialogue_percent: f64,
 }
 
 /// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.

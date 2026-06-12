@@ -81,6 +81,7 @@ pub struct MeterPipeline {
   visual_waveform_min_acc: Vec<f32>,
   /// Running per-channel max since last visual tick.
   visual_waveform_max_acc: Vec<f32>,
+  last_dialogue_gating: bool,
 }
 
 impl MeterPipeline {
@@ -109,6 +110,7 @@ impl MeterPipeline {
       last_visual_emit: Instant::now() - std::time::Duration::from_millis(200),
       visual_waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
       visual_waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
+      last_dialogue_gating: false,
     };
     debug_assert_eq!(
       pipeline.waveform_min_acc.len(),
@@ -151,6 +153,11 @@ impl MeterPipeline {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
     let (pair_x, pair_y) = vectorscope_pair;
+
+    if dialogue_gating != self.last_dialogue_gating {
+      self.loudness.reset_dialogue();
+      self.last_dialogue_gating = dialogue_gating;
+    }
 
     // Resolve effective layout for auto mode before passing to DSP.
     let effective_layout = match channel_layout {
@@ -410,6 +417,15 @@ impl MeterPipeline {
       }
     };
 
+    let dialogue_integrated = lb
+      .as_ref()
+      .map(|l| l.dialogue_integrated)
+      .unwrap_or(f64::NEG_INFINITY);
+    let dialogue_percent = lb
+      .as_ref()
+      .map(|l| l.dialogue_percent)
+      .unwrap_or(0.0);
+
     let frame = AudioFramePayload {
       peak_db,
       peak_hold_db,
@@ -435,6 +451,8 @@ impl MeterPipeline {
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
       loudness_hist_tick,
       visual_hist_tick,
+      dialogue_integrated,
+      dialogue_percent,
     };
     (Some(frame), slow_out)
   }
@@ -713,6 +731,25 @@ mod tests {
     );
     assert!(e.waveform_max[1] > 0.5, "R max, got {}", e.waveform_max[1]);
     assert!(e.waveform_min[1] < -0.5, "R min, got {}", e.waveform_min[1]);
+  }
+
+  #[test]
+  fn dialogue_percent_resets_when_gating_toggles_off_then_on() {
+    let sr = 48_000_u32;
+    let mut p = MeterPipeline::new(sr, 2);
+    let frames = sr as usize / 10;
+    let tone: Vec<f32> = (0..frames)
+      .flat_map(|i| {
+        let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr as f64).sin() as f32 * 0.5;
+        [s, s]
+      })
+      .collect();
+    let _ = p.push_pcm_f32(&tone, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, true);
+    let _ = p.push_pcm_f32(&tone, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, false);
+    let (frame, _) = p.push_pcm_f32(&tone, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, true);
+    let block = frame.expect("frame");
+    assert_eq!(block.dialogue_percent, 0.0);
+    assert!(!block.dialogue_integrated.is_finite());
   }
 
   #[test]

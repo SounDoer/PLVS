@@ -190,6 +190,14 @@ impl LoudnessMeter {
     *self = LoudnessMeter::new(sr);
   }
 
+  /// Reset only the dialogue accumulators + speech detector buffers (gating toggle), not main loudness.
+  pub fn reset_dialogue(&mut self) {
+    self.dialogue.reset();
+    if let Some(det) = self.speech.as_mut() {
+      det.reset();
+    }
+  }
+
   fn tp_sample(&mut self, x: f64, ch: usize) -> f64 {
     let t = self.tp_t;
     let wp = self.tp_wp[ch];
