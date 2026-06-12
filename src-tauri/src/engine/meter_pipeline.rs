@@ -781,7 +781,14 @@ mod tests {
     let silence = vec![0.0_f32; frames * 2];
     let mut seen = false;
     for _ in 0..3 {
-      if let (Some(f), _) = p.push_pcm_f32(&silence, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, true) {
+      if let (Some(f), _) = p.push_pcm_f32(
+        &silence,
+        (0, 1),
+        ChannelLayoutSetting::Auto,
+        SpectrumChannelSel::default(),
+        None,
+        true,
+      ) {
         assert!(!f.dialogue_active_now, "silence must not be active speech");
         assert_eq!(f.dialogue_lra, 0.0, "no speech yet → dialogue lra 0.0");
         seen = true;

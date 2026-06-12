@@ -322,8 +322,14 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     let spectrum_sel = spectrum_channel.lock().map(|g| *g).unwrap_or_default();
     let loudness_weights = loudness_weights.lock().map(|g| g.clone()).unwrap_or(None);
     let dialogue_gating = dialogue_gating.lock().map(|g| *g).unwrap_or(false);
-    let (frame, slow) =
-      pipeline.push_pcm_f32(&floats, pair, layout, spectrum_sel, loudness_weights, dialogue_gating);
+    let (frame, slow) = pipeline.push_pcm_f32(
+      &floats,
+      pair,
+      layout,
+      spectrum_sel,
+      loudness_weights,
+      dialogue_gating,
+    );
     let mut should_stop = false;
     if let Some(f) = frame {
       if let Ok(mut m) = frame_subscribers.lock() {
