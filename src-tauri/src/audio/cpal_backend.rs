@@ -88,6 +88,7 @@ impl AudioCaptureSession for CaptureSession {
 }
 
 impl CaptureSession {
+  #[allow(clippy::too_many_arguments)]
   pub(crate) fn start(
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
