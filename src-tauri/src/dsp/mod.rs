@@ -1,6 +1,7 @@
 //! DSP: PCM → meters (Peak, LUFS, FFT, correlation).
 
 pub mod channel_sel;
+pub mod dialogue;
 pub mod filters;
 pub mod loudness;
 pub mod meter;
