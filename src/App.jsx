@@ -443,11 +443,6 @@ function AppContent() {
     [layoutResolution.resolved, overrideLabels]
   );
 
-  const vectorscopeLabelContext = useMemo(
-    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
-    [layoutResolution.resolved, overrideLabels]
-  );
-
   const setChannelLabelToken = useCallback(
     (index, token) => {
       if (channelCount <= 0) return;
@@ -473,8 +468,8 @@ function AppContent() {
   /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
   const vectorscopePairOptions = useMemo(() => {
     const n = channelCount >= 2 ? channelCount : channelCount === 0 ? 2 : 1;
-    return buildVectorscopePairOptions(n, vectorscopeLabelContext);
-  }, [channelCount, vectorscopeLabelContext]);
+    return buildVectorscopePairOptions(n, peakLabelContext);
+  }, [channelCount, peakLabelContext]);
 
   const spectrumChannelOptions = useMemo(() => {
     const n = channelCount >= 2 ? channelCount : 2;
@@ -492,7 +487,7 @@ function AppContent() {
   const vectorscopeValueKey = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
   const vectorscopeChannelLabels = getPeakMeterChannelLabels(
     channelCount >= 2 ? channelCount : 2,
-    vectorscopeLabelContext
+    peakLabelContext
   );
   const vectorscopeLiveLabel = formatVectorscopePairLabel({
     x: vectorscopePairUi.x,
@@ -528,11 +523,7 @@ function AppContent() {
 
   useEffect(() => {
     if (!running || !isTauri()) return;
-    const next = clampVectorscopePairToAvailable(
-      vectorscopePairUi,
-      channelCount,
-      vectorscopeLabelContext
-    );
+    const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, peakLabelContext);
     if (next.x !== vectorscopePairUi.x || next.y !== vectorscopePairUi.y) return;
     const key = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
     if (lastSentVectorscopePairKeyRef.current === key) return;
@@ -541,7 +532,7 @@ function AppContent() {
     channelCount,
     running,
     sendTrackedVectorscopePair,
-    vectorscopeLabelContext,
+    peakLabelContext,
     vectorscopePairUi,
     vectorscopePairUi.x,
     vectorscopePairUi.y,
@@ -571,18 +562,14 @@ function AppContent() {
   ]);
 
   useEffect(() => {
-    const next = clampVectorscopePairToAvailable(
-      vectorscopePairUi,
-      channelCount,
-      vectorscopeLabelContext
-    );
+    const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, peakLabelContext);
     if (next.x === vectorscopePairUi.x && next.y === vectorscopePairUi.y) return;
     updatePanelControls((current) => ({ ...current, vectorscopePair: next }));
     if (isTauri() && running) void sendTrackedVectorscopePair(next);
   }, [
     channelCount,
     sendTrackedVectorscopePair,
-    vectorscopeLabelContext,
+    peakLabelContext,
     vectorscopePairUi.x,
     vectorscopePairUi.y,
     running,
