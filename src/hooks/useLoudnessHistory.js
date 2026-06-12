@@ -9,6 +9,12 @@ import {
 import { fmtMetric } from "../math/formatMath";
 import { UI_PREFERENCES } from "../uiPreferences";
 
+export function dialogueOffsetText(dialogueIntegrated, integrated) {
+  if (!Number.isFinite(dialogueIntegrated) || !Number.isFinite(integrated)) return "—";
+  const d = dialogueIntegrated - integrated;
+  return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
+}
+
 export const HIST_SAMPLE_SEC = 0.1;
 export const VISUAL_HIST_SAMPLE_SEC = 0.04;
 
@@ -154,6 +160,32 @@ export function useLoudnessHistory({
         unit: "LUFS",
       },
       { id: "lra", label: "Loudness Range (LRA)", value: fmtMetric(displayAudio.lra), unit: "LU" },
+      {
+        id: "dialogueCoverage",
+        label: "Dialogue Coverage",
+        value: Number.isFinite(displayAudio.dialoguePercent)
+          ? `${displayAudio.dialoguePercent.toFixed(0)}`
+          : "—",
+        unit: "%",
+      },
+      {
+        id: "dialogueIntegrated",
+        label: "Dialogue Integrated",
+        value: fmtMetric(displayAudio.dialogueIntegrated),
+        unit: "LUFS",
+      },
+      {
+        id: "dialogueRange",
+        label: "Dialogue Range (LRA)",
+        value: fmtMetric(displayAudio.dialogueLra),
+        unit: "LU",
+      },
+      {
+        id: "dialogueOffset",
+        label: "Dialogue Offset",
+        value: dialogueOffsetText(displayAudio.dialogueIntegrated, displayAudio.integrated),
+        unit: "LU",
+      },
     ],
     [displayAudio]
   );
