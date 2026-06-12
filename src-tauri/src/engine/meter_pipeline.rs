@@ -421,10 +421,8 @@ impl MeterPipeline {
       .as_ref()
       .map(|l| l.dialogue_integrated)
       .unwrap_or(f64::NEG_INFINITY);
-    let dialogue_percent = lb
-      .as_ref()
-      .map(|l| l.dialogue_percent)
-      .unwrap_or(0.0);
+    let dialogue_percent = lb.as_ref().map(|l| l.dialogue_percent).unwrap_or(0.0);
+    let dialogue_lra = lb.as_ref().map(|l| l.dialogue_lra).unwrap_or(0.0);
 
     let frame = AudioFramePayload {
       peak_db,
@@ -453,6 +451,8 @@ impl MeterPipeline {
       visual_hist_tick,
       dialogue_integrated,
       dialogue_percent,
+      dialogue_lra,
+      dialogue_active_now: self.last_dialogue_gating && self.loudness.speech_now(),
     };
     (Some(frame), slow_out)
   }
@@ -744,12 +744,50 @@ mod tests {
         [s, s]
       })
       .collect();
-    let _ = p.push_pcm_f32(&tone, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, true);
-    let _ = p.push_pcm_f32(&tone, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, false);
-    let (frame, _) = p.push_pcm_f32(&tone, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, true);
+    let _ = p.push_pcm_f32(
+      &tone,
+      (0, 1),
+      ChannelLayoutSetting::Auto,
+      SpectrumChannelSel::default(),
+      None,
+      true,
+    );
+    let _ = p.push_pcm_f32(
+      &tone,
+      (0, 1),
+      ChannelLayoutSetting::Auto,
+      SpectrumChannelSel::default(),
+      None,
+      false,
+    );
+    let (frame, _) = p.push_pcm_f32(
+      &tone,
+      (0, 1),
+      ChannelLayoutSetting::Auto,
+      SpectrumChannelSel::default(),
+      None,
+      true,
+    );
     let block = frame.expect("frame");
     assert_eq!(block.dialogue_percent, 0.0);
     assert!(!block.dialogue_integrated.is_finite());
+  }
+
+  #[test]
+  fn frame_payload_has_dialogue_active_now_default_false_on_silence() {
+    let sr = 48_000_u32;
+    let mut p = MeterPipeline::new(sr, 2);
+    let frames = sr as usize / 10;
+    let silence = vec![0.0_f32; frames * 2];
+    let mut seen = false;
+    for _ in 0..3 {
+      if let (Some(f), _) = p.push_pcm_f32(&silence, (0, 1), ChannelLayoutSetting::Auto, SpectrumChannelSel::default(), None, true) {
+        assert!(!f.dialogue_active_now, "silence must not be active speech");
+        assert_eq!(f.dialogue_lra, 0.0, "no speech yet → dialogue lra 0.0");
+        seen = true;
+      }
+    }
+    assert!(seen, "a frame should be emitted");
   }
 
   #[test]

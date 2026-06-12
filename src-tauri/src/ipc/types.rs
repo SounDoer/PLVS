@@ -114,6 +114,10 @@ pub struct AudioFramePayload {
   pub dialogue_integrated: f64,
   /// Percentage of audible program classified as dialogue; `0.0` when gating off.
   pub dialogue_percent: f64,
+  /// Dialogue-gated loudness range (LU); `0.0` when gating off or insufficient speech.
+  pub dialogue_lra: f64,
+  /// Whether the current 100ms block was classified as active speech.
+  pub dialogue_active_now: bool,
 }
 
 /// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.

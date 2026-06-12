@@ -144,6 +144,8 @@ pub struct LoudnessMeter {
   speech: Option<SpeechDetector>,
   /// Dialogue-gated loudness accumulator.
   dialogue: DialogueIntegrator,
+  /// Whether the most recent 100ms block was classified as speech.
+  speech_now: bool,
 }
 
 impl LoudnessMeter {
@@ -176,6 +178,7 @@ impl LoudnessMeter {
       pending_block: None,
       speech: None,
       dialogue: DialogueIntegrator::new(),
+      speech_now: false,
     }
   }
 
@@ -867,10 +870,13 @@ impl Meter for LoudnessMeter {
           .as_mut()
           .map(|det| det.take_block_decision())
           .unwrap_or(false);
+        self.speech_now = is_speech;
         self.dialogue.push_block(ms, b.short_term, is_speech);
         b.dialogue_integrated = self.dialogue.integrated();
         b.dialogue_lra = self.dialogue.lra();
         b.dialogue_percent = self.dialogue.percent();
+      } else {
+        self.speech_now = false;
       }
       self.pending_block = Some(b);
     }
@@ -879,6 +885,12 @@ impl Meter for LoudnessMeter {
   fn reset(&mut self) {
     let sr = self.sample_rate;
     *self = LoudnessMeter::new(sr);
+  }
+}
+
+impl LoudnessMeter {
+  pub fn speech_now(&self) -> bool {
+    self.speech_now
   }
 }
 
