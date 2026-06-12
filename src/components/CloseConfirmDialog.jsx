@@ -43,7 +43,7 @@ export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
                 onChange={() => setAction("tray")}
                 className="accent-primary"
               />
-              <span className="text-sm text-foreground">Minimize to tray</span>
+              <span className="text-sm text-foreground">Minimize to Tray</span>
             </label>
             <label className="flex cursor-pointer items-center gap-2.5">
               <input

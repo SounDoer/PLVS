@@ -103,7 +103,7 @@ export function PeakPanel() {
         </div>
         <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
           <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
-            <span className="text-muted-foreground">TP MAX</span>
+            <span className="text-muted-foreground">TP Max</span>
             <span
               className={
                 hasTpMaxValue

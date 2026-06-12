@@ -20,7 +20,7 @@ describe("KEYBOARD_SHORTCUTS", () => {
 
 describe("reservedComboConflict", () => {
   it("flags a combo that equals an in-app modifier shortcut", () => {
-    expect(reservedComboConflict("CmdOrCtrl+,")).toBe("Open settings");
+    expect(reservedComboConflict("CmdOrCtrl+,")).toBe("Open Settings");
   });
   it("returns null for non-reserved combos", () => {
     expect(reservedComboConflict("CmdOrCtrl+K")).toBeNull();

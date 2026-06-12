@@ -34,7 +34,7 @@ const BASE_PROPS = {
 describe("SettingsPanel", () => {
   it("renders core controls when open in system mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
-    expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
+    expect(screen.getByLabelText("Loudness Reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
     expect(screen.queryByLabelText("Colour theme")).toBeNull();
   });
@@ -42,7 +42,7 @@ describe("SettingsPanel", () => {
   it("shows theme picker in fixed mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
-    expect(screen.getByLabelText("Colour theme")).toBeTruthy();
+    expect(screen.getByLabelText("Colour Theme")).toBeTruthy();
   });
 
   it("does not render panel-specific channel selectors", () => {
@@ -69,7 +69,7 @@ describe("SettingsPanel", () => {
     render(
       <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
     );
-    const input = screen.getByLabelText("Loudness reference");
+    const input = screen.getByLabelText("Loudness Reference");
     fireEvent.change(input, { target: { value: "" } });
     expect(setReferenceLufs).not.toHaveBeenCalled();
   });
@@ -79,8 +79,8 @@ describe("SettingsPanel", () => {
     expect(screen.queryByText("Version")).toBeNull();
     expect(screen.getByText("v0.0.17")).toBeTruthy();
     expect(screen.getByText("Checking updates")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Check again" }).disabled).toBe(true);
-    expect(screen.getByText("View releases")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Check Again" }).disabled).toBe(true);
+    expect(screen.getByText("View Releases")).toBeTruthy();
   });
 
   it("keeps release link visible when update check fails", () => {
@@ -95,7 +95,7 @@ describe("SettingsPanel", () => {
     );
 
     expect(screen.getByText("Update check unavailable")).toBeTruthy();
-    fireEvent.click(screen.getByText("View releases"));
+    fireEvent.click(screen.getByText("View Releases"));
     expect(openReleaseUrl).toHaveBeenCalledWith("https://github.com/SounDoer/PLVS/releases");
   });
 
@@ -111,7 +111,7 @@ describe("SettingsPanel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check Again" }));
     expect(onCheckForUpdate).toHaveBeenCalledTimes(1);
   });
 
@@ -128,7 +128,7 @@ describe("SettingsPanel", () => {
 
     expect(screen.getByText("Up to date")).toBeTruthy();
     expect(screen.queryByText(/New version available/)).toBeNull();
-    expect(screen.getByText("View releases")).toBeTruthy();
+    expect(screen.getByText("View Releases")).toBeTruthy();
   });
 
   it("opens the release URL through the provided handler", () => {
@@ -146,7 +146,7 @@ describe("SettingsPanel", () => {
     );
 
     expect(screen.getByText("Update available: v0.1.10")).toBeTruthy();
-    fireEvent.click(screen.getByText("View release"));
+    fireEvent.click(screen.getByText("View Release"));
 
     expect(openReleaseUrl).toHaveBeenCalledWith(releaseUrl);
   });
@@ -182,20 +182,20 @@ describe("SettingsPanel", () => {
 
   it("renders Close behavior select with current value", () => {
     render(<SettingsPanel {...BASE_PROPS} {...SYSTEM_PROPS} closeAction="tray" />);
-    expect(screen.getByLabelText("Close behavior")).toBeTruthy();
+    expect(screen.getByLabelText("Close Behavior")).toBeTruthy();
   });
 
   it("existing controls still render with new props absent (backwards compat)", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
+    expect(screen.getByLabelText("Loudness Reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
 
   it("renders the keyboard shortcuts reference rows without a Clear read-only row", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.getByText("Keyboard shortcuts")).toBeTruthy();
+    expect(screen.getByText("Keyboard Shortcuts")).toBeTruthy();
     expect(screen.getByText("Start / Stop")).toBeTruthy();
-    expect(screen.getByText("Exit fullscreen")).toBeTruthy();
+    expect(screen.getByText("Exit Fullscreen")).toBeTruthy();
   });
 
   it("renders the editable Clear row with toggle and capture", () => {

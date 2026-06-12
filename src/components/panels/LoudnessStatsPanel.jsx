@@ -11,13 +11,13 @@ const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 function MetricRow({ id, label, value, unit, active }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.loudness.metrics;
   const labelClass =
-    "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium uppercase tracking-wide leading-none text-muted-foreground";
+    "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-none text-muted-foreground";
   const valueClass = cn(
     METRIC_NUMERIC,
     "shrink-0 text-right text-[length:var(--ui-fs-metric-value)] font-semibold leading-none text-foreground"
   );
   const unitClass =
-    "shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium uppercase leading-none text-muted-foreground";
+    "shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
   const content = (
     <>
       {id === "dialogueCoverage" && (

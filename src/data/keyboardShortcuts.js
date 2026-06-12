@@ -2,9 +2,9 @@ import { isValidAccelerator } from "../lib/accelerator.js";
 
 /** Read-only reference list of the app's existing keyboard shortcuts. */
 export const KEYBOARD_SHORTCUTS = [
-  { id: "settings", label: "Open settings", keys: "CmdOrCtrl+," },
-  { id: "fullscreen", label: "Fullscreen panel", keys: "1 – 6" },
-  { id: "exitFullscreen", label: "Exit fullscreen", keys: "Escape" },
+  { id: "settings", label: "Open Settings", keys: "CmdOrCtrl+," },
+  { id: "fullscreen", label: "Fullscreen Panel", keys: "1 – 6" },
+  { id: "exitFullscreen", label: "Exit Fullscreen", keys: "Escape" },
   { id: "startStop", label: "Start / Stop", keys: "Space" },
 ];
 

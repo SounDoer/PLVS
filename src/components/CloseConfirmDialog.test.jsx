@@ -16,7 +16,7 @@ describe("CloseConfirmDialog", () => {
 
   it("shows both options", () => {
     render(<CloseConfirmDialog open={true} onConfirm={vi.fn()} onCancel={vi.fn()} />);
-    expect(screen.getByText("Minimize to tray")).toBeTruthy();
+    expect(screen.getByText("Minimize to Tray")).toBeTruthy();
     expect(screen.getByText("Quit")).toBeTruthy();
   });
 

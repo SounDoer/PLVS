@@ -123,7 +123,7 @@ export function VectorscopePanel() {
       </div>
       <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
         <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
-          <span className="text-muted-foreground">CORRELATION</span>
+          <span className="text-muted-foreground">Correlation</span>
           <span
             className={
               Number.isFinite(correlation)

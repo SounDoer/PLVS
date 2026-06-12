@@ -1012,7 +1012,7 @@ function AppContent() {
                   >
                     <SelectTrigger
                       className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
-                      aria-label="Audio device"
+                      aria-label="Audio Device"
                     >
                       <Volume2 className="size-4 shrink-0" />
                     </SelectTrigger>
@@ -1037,14 +1037,14 @@ function AppContent() {
                     </SelectContent>
                   </Select>
                   <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
-                    Audio device
+                    Audio Device
                   </span>
                 </div>
               )}
               {isTauri() && (
                 <IconButton
                   icon={pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                  tip={pinned ? "Unpin window" : "Pin window on top"}
+                  tip={pinned ? "Unpin Window" : "Pin Window on Top"}
                   onClick={togglePin}
                   className={pinned ? "text-foreground" : undefined}
                 />
@@ -1052,16 +1052,16 @@ function AppContent() {
               <Popover>
                 <PopoverTrigger asChild>
                   <span>
-                    <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Layout & modules" />
+                    <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Layout & Modules" />
                   </span>
                 </PopoverTrigger>
                 <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
-                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
                     Modules
                   </p>
                   <VisibilityPopoverContent />
                   <div className="my-1 h-px bg-border/50" />
-                  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
                     Presets
                   </p>
                   <PresetDropdownContent />
@@ -1078,9 +1078,7 @@ function AppContent() {
           <SplitLayout />
 
           <footer className={SHELL_FOOTER}>
-            <span className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground/60">
-              Device
-            </span>
+            <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Device</span>
             <span
               className={cn(
                 "min-w-0 truncate tabular-nums",
@@ -1090,9 +1088,7 @@ function AppContent() {
               {footerDeviceLabel}
             </span>
             <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-            <span className="text-[10px] uppercase tracking-[0.06em] text-muted-foreground/60">
-              Ref
-            </span>
+            <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Ref</span>
             <span className="min-w-0 truncate tabular-nums text-foreground">
               {referenceLufs} LUFS
             </span>

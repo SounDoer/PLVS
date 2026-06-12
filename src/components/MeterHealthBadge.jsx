@@ -17,7 +17,10 @@ export function MeterHealthBadge({ health = "ok", onToggle }) {
   return (
     <button
       type="button"
-      className={cn(badgeVariants({ variant }), "h-auto cursor-pointer border-transparent")}
+      className={cn(
+        badgeVariants({ variant }),
+        "h-auto cursor-pointer border-transparent normal-case"
+      )}
       onClick={onToggle}
       aria-label={m.label}
       title={m.label}

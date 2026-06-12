@@ -131,7 +131,7 @@ export function SettingsPanel({
               <div className="flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]">
                 <div className="grid gap-5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="settings-open-at-login">Open at login</Label>
+                    <Label htmlFor="settings-open-at-login">Open at Login</Label>
                     <Switch
                       id="settings-open-at-login"
                       checked={autostartEnabled}
@@ -141,15 +141,15 @@ export function SettingsPanel({
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <Label htmlFor="settings-close-action" className="shrink-0">
-                      Close behavior
+                      Close Behavior
                     </Label>
                     <Select value={closeAction} onValueChange={setCloseAction}>
                       <SelectTrigger id="settings-close-action" className="w-auto shrink-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper">
-                        <SelectItem value="ask">Ask each time</SelectItem>
-                        <SelectItem value="tray">Minimize to tray</SelectItem>
+                        <SelectItem value="ask">Ask Each Time</SelectItem>
+                        <SelectItem value="tray">Minimize to Tray</SelectItem>
                         <SelectItem value="quit">Quit</SelectItem>
                       </SelectContent>
                     </Select>
@@ -157,7 +157,7 @@ export function SettingsPanel({
                 </div>
                 <Separator />
                 <div className="grid gap-2">
-                  <Label>Keyboard shortcuts</Label>
+                  <Label>Keyboard Shortcuts</Label>
                   <div className="grid gap-1.5 text-muted-foreground">
                     {KEYBOARD_SHORTCUTS.map((s) => (
                       <div key={s.id} className="flex items-center justify-between gap-2">
@@ -212,15 +212,15 @@ export function SettingsPanel({
                       <SelectValue placeholder="Appearance" />
                     </SelectTrigger>
                     <SelectContent position="popper">
-                      <SelectItem value="system">Follow system</SelectItem>
-                      <SelectItem value="fixed">Fixed theme</SelectItem>
+                      <SelectItem value="system">Follow System</SelectItem>
+                      <SelectItem value="fixed">Fixed Theme</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {appearance === "fixed" ? (
                   <div className="flex items-center justify-between gap-2">
                     <Label htmlFor="settings-theme-id" className="shrink-0">
-                      Colour theme
+                      Colour Theme
                     </Label>
                     <Select value={fixedThemeSelectValue} onValueChange={setFixedThemeIdFromPicker}>
                       <SelectTrigger id="settings-theme-id" className="w-auto shrink-0">
@@ -239,7 +239,7 @@ export function SettingsPanel({
                 <Separator />
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="settings-ref-lufs" className="shrink-0">
-                    Loudness reference
+                    Loudness Reference
                   </Label>
                   <div className="flex items-center gap-2 shrink-0">
                     <input
@@ -263,7 +263,7 @@ export function SettingsPanel({
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="shrink-0">
-                      Channel labels{channelCount > 0 ? ` · ${channelCount}-channel` : ""}
+                      Channel Labels{channelCount > 0 ? ` · ${channelCount}-channel` : ""}
                     </Label>
                     {channelCount > 0 ? (
                       <Button
@@ -330,7 +330,7 @@ export function SettingsPanel({
                           disabled={updateCheckDisabled}
                           onClick={onCheckForUpdate}
                         >
-                          Check again
+                          Check Again
                         </Button>
                         <span className="text-muted-foreground/50">·</span>
                         <Button
@@ -345,7 +345,7 @@ export function SettingsPanel({
                           )}
                           onClick={() => openReleaseUrl(effectiveReleaseUrl)}
                         >
-                          {hasUpdate ? "View release" : "View releases"}
+                          {hasUpdate ? "View Release" : "View Releases"}
                           <ExternalLink className="size-3" />
                         </Button>
                       </div>

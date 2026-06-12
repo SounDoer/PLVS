@@ -72,7 +72,7 @@ export function VisibilityPopover() {
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-44 p-1">
-        <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
           Modules
         </p>
         <VisibilityPopoverContent />
@@ -110,7 +110,7 @@ function SavePresetForm({ onSave, onCancel }) {
           if (e.key === "Enter") commit();
           if (e.key === "Escape") onCancel();
         }}
-        placeholder="Preset name…"
+        placeholder="Preset Name…"
         className="h-7 w-24 rounded border border-primary bg-background px-2 text-xs outline-none"
       />
       <button
@@ -202,7 +202,7 @@ export function PresetDropdownContent({ onClose } = {}) {
         onClick={() => setSaving(true)}
       >
         <span className="w-[10px] shrink-0" />
-        Save as preset…
+        Save as Preset…
       </button>
     </>
   );
@@ -241,7 +241,7 @@ export function PresetDropdown() {
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-44 p-1">
-        <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
           Presets
         </p>
         <PresetDropdownContent onClose={() => setOpen(false)} />
