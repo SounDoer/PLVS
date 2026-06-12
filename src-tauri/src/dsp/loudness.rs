@@ -451,6 +451,20 @@ impl LoudnessMeter {
       return self.push_mono_duplex(interleaved);
     }
 
+    // Auto 5.0: Ch1..Ch5 => FL FR C SL SR. Same order as 5.1 without the LFE slot.
+    if channel_layout == ChannelLayoutSetting::Auto && ch == 5 {
+      return self.push_interleaved_weighted(interleaved, channels, &[1.0, 1.0, 1.0, 1.0, 1.0]);
+    }
+
+    // Auto 7.0: Ch1..Ch7 => FL FR C SL SR BL BR. Same order as 7.1 without the LFE slot.
+    if channel_layout == ChannelLayoutSetting::Auto && ch == 7 {
+      return self.push_interleaved_weighted(
+        interleaved,
+        channels,
+        &[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+      );
+    }
+
     // Manual 5.1 preset: Ch1..Ch6 => FL FR C LFE SL SR.
     // Loudness aggregation per BS.1770 sums K-weighted mean-squares across channels; LFE has 0 weight.
     if channel_layout == ChannelLayoutSetting::Surround51 && ch >= 6 {
@@ -821,6 +835,54 @@ mod tests {
       "surround gain should be about +1.5 dB: {} vs {}",
       block_surround.momentary,
       block_unity.momentary
+    );
+  }
+
+  #[test]
+  fn auto_50_uses_surround_channels_for_loudness() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 5usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 3] = 0.1;
+      pcm[base + 4] = 0.1;
+    }
+
+    let mut meter = LoudnessMeter::new(sr);
+    let block = meter
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .expect("5.0 block");
+
+    assert!(
+      block.momentary.is_finite() && block.momentary > -70.0,
+      "5.0 auto loudness should include surround channels, got {}",
+      block.momentary
+    );
+  }
+
+  #[test]
+  fn auto_70_uses_back_channels_for_loudness() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 7usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 5] = 0.1;
+      pcm[base + 6] = 0.1;
+    }
+
+    let mut meter = LoudnessMeter::new(sr);
+    let block = meter
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .expect("7.0 block");
+
+    assert!(
+      block.momentary.is_finite() && block.momentary > -70.0,
+      "7.0 auto loudness should include back channels, got {}",
+      block.momentary
     );
   }
 

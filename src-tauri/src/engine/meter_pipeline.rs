@@ -43,7 +43,9 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
     ChannelLayoutSetting::Auto => match ch {
       1 => ("mono".to_string(), true),
       2 => ("stereo".to_string(), true),
+      5 => ("5.0".to_string(), true),
       6 => ("5.1".to_string(), true),
+      7 => ("7.0".to_string(), true),
       8 => ("7.1".to_string(), true),
       _ => ("unknown".to_string(), false),
     },
@@ -607,6 +609,22 @@ mod tests {
     assert_eq!(
       loudness_layout_meta(6, ChannelLayoutSetting::Auto),
       ("5.1".to_string(), true)
+    );
+  }
+
+  #[test]
+  fn auto_layout_meta_5ch_is_50() {
+    assert_eq!(
+      loudness_layout_meta(5, ChannelLayoutSetting::Auto),
+      ("5.0".to_string(), true)
+    );
+  }
+
+  #[test]
+  fn auto_layout_meta_7ch_is_70() {
+    assert_eq!(
+      loudness_layout_meta(7, ChannelLayoutSetting::Auto),
+      ("7.0".to_string(), true)
     );
   }
 
