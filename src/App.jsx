@@ -2,11 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
-import { UI_PREFERENCES } from "./uiPreferences";
+import { UI_PREFERENCES, patchUiState, readUiState } from "./uiPreferences";
 import {
   normalizePanelControls,
   readPersistedPanelControls,
-  stripLegacyChannelPreferenceKeys,
   writePersistedPanelControls,
 } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
@@ -76,7 +75,6 @@ import packageInfo from "../package.json";
 const HIST_MAX_SAMPLES = 72000;
 const VISUAL_MAX_SAMPLES = 180_000; // 25 Hz × 2 h
 
-const STORE_KEY = UI_PREFERENCES.layoutPersistKey;
 const APP_VERSION = packageInfo.version;
 
 function AudioDeviceOption({ device }) {
@@ -831,43 +829,28 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return;
-      const s = JSON.parse(raw);
-      if (typeof s.mainLeft === "number") setMainLeft(s.mainLeft);
-      if (typeof s.leftTopRatio === "number") setLeftTopRatio(s.leftTopRatio);
-      if (typeof s.rightTopRatio === "number") setRightTopRatio(s.rightTopRatio);
-      if (typeof s.loudnessHistWidthRatio === "number")
-        setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
-      if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
-      setChannelLabelOverrides(sanitizeChannelLabelOverrides(s.channelLabelOverrides));
-    } catch (_) {}
+    const s = readUiState();
+    if (typeof s.mainLeft === "number") setMainLeft(s.mainLeft);
+    if (typeof s.leftTopRatio === "number") setLeftTopRatio(s.leftTopRatio);
+    if (typeof s.rightTopRatio === "number") setRightTopRatio(s.rightTopRatio);
+    if (typeof s.loudnessHistWidthRatio === "number")
+      setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
+    if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
+    setChannelLabelOverrides(sanitizeChannelLabelOverrides(s.channelLabelOverrides));
   }, []);
 
   useEffect(() => {
-    try {
-      let prev = {};
-      const raw = localStorage.getItem(STORE_KEY);
-      if (raw) prev = JSON.parse(raw);
-      const nextPersisted = stripLegacyChannelPreferenceKeys(prev);
-      const persistedThemeId = appearance === "system" ? null : fixedThemeSelectValue;
-      localStorage.setItem(
-        STORE_KEY,
-        JSON.stringify({
-          ...nextPersisted,
-          mainLeft,
-          leftTopRatio,
-          rightTopRatio,
-          loudnessHistWidthRatio,
-          spectrogramTopRatio,
-          referenceLufs,
-          appearance,
-          themeId: persistedThemeId,
-          channelLabelOverrides,
-        })
-      );
-    } catch (_) {}
+    patchUiState({
+      mainLeft,
+      leftTopRatio,
+      rightTopRatio,
+      loudnessHistWidthRatio,
+      spectrogramTopRatio,
+      referenceLufs,
+      appearance,
+      themeId: appearance === "system" ? null : fixedThemeSelectValue,
+      channelLabelOverrides,
+    });
   }, [
     mainLeft,
     leftTopRatio,

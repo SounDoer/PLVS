@@ -2,7 +2,7 @@
  * Public entry for UI preferences: tunable layout/typography + chart geometry.
  *
  * - **Data** — `src/preferences/data.js` (`UI_PREFERENCES`)
- * - **Persistence** — `src/preferences/layoutPersistence.js` + `src/preferences/themeResolve.js`
+ * - **Persistence** — `src/preferences/uiStore.js` (`plvs.ui` blob adapter) + `src/preferences/themeResolve.js`
  * - **Apply** — `src/preferences/applyDocumentTheme.js` (`applyLayoutToDocument`, `applyThemeToDocument`)
  *
  * `applyLayoutToDocument` writes spatial/typographic `--ui-*` variables; `applyThemeToDocument` sets
@@ -12,11 +12,8 @@
  */
 
 export { UI_PREFERENCES } from "./preferences/data.js";
-export {
-  readPersistedVectorscopePair,
-  readPersistedSpectrumChannel,
-  readSystemPrefersDark,
-} from "./preferences/layoutPersistence.js";
+export { readSystemPrefersDark } from "./preferences/layoutPersistence.js";
+export { patchUiState, readUiState, subscribeUiState } from "./preferences/uiStore.js";
 export {
   DEFAULT_THEME_ID,
   isThemeId,

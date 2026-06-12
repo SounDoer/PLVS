@@ -1,4 +1,5 @@
 import { UI_PREFERENCES } from "../uiPreferences.js";
+import { patchUiState, readUiState } from "../preferences/uiStore.js";
 
 export const LOUDNESS_STATS_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -89,48 +90,9 @@ export function normalizePanelControls(raw) {
 }
 
 export function readPersistedPanelControls(prefs = UI_PREFERENCES) {
-  try {
-    const raw = localStorage.getItem(prefs.layoutPersistKey);
-    if (!raw) return normalizePanelControls();
-
-    const parsed = JSON.parse(raw);
-    return normalizePanelControls(parsed?.panelControls);
-  } catch (_) {
-    return normalizePanelControls();
-  }
-}
-
-export function stripLegacyChannelPreferenceKeys(persisted) {
-  const nextPersisted =
-    persisted && typeof persisted === "object" && !Array.isArray(persisted) ? { ...persisted } : {};
-  delete nextPersisted.vectorscopePairX;
-  delete nextPersisted.vectorscopePairY;
-  delete nextPersisted.spectrumChannelType;
-  delete nextPersisted.spectrumChannelX;
-  delete nextPersisted.spectrumChannelY;
-  delete nextPersisted.spectrumChannelCh;
-  delete nextPersisted.channelLayout;
-  return nextPersisted;
+  return normalizePanelControls(readUiState(prefs)?.panelControls);
 }
 
 export function writePersistedPanelControls(panelControls, prefs = UI_PREFERENCES) {
-  let persisted = {};
-
-  try {
-    const raw = localStorage.getItem(prefs.layoutPersistKey);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        persisted = parsed;
-      }
-    }
-  } catch (_) {}
-
-  localStorage.setItem(
-    prefs.layoutPersistKey,
-    JSON.stringify({
-      ...stripLegacyChannelPreferenceKeys(persisted),
-      panelControls: normalizePanelControls(panelControls),
-    })
-  );
+  patchUiState({ panelControls: normalizePanelControls(panelControls) }, prefs);
 }
