@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-12
+
+### Added
+
+- Auto channel layout detection with loudness weights for 5.0, 5.1, 7.0, 7.1 surround formats
+- Channel label overrides in Settings for custom channel naming
+- Refreshable update checks with manual refresh button
+- Global keyboard shortcut for Clear action with customizable combo
+- Keyboard shortcuts section in Settings
+- ShortcutCapture key-recording control for recording custom shortcuts
+
+### Changed
+
+- Removed manual Channel layout setting (now auto-detected from audio stream)
+- Settings panel layout improvements (labels and controls on same line for dropdowns)
+- Removed Settings title from panel header for cleaner UI
+
+### Fixed
+
+- Channel labels for quad/LCR/5.0 layouts in auto mode
+- Global hotkey now freed while recording a new combo
+- Clear combos now reject collisions with in-app shortcuts
+
 ## [0.2.3] - 2026-06-10
 
 ### Added
