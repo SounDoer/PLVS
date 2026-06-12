@@ -36,6 +36,11 @@ export const PEAK_METER_CHANNEL_FORMATS = Object.freeze({
     channels: 6,
     labels: ["L", "R", "C", "LFE", "Ls", "Rs"],
   },
+  surround70: {
+    id: "surround70",
+    channels: 7,
+    labels: ["L", "R", "C", "Ls", "Rs", "Lb", "Rb"],
+  },
   surround71: {
     id: "surround71",
     channels: 8,
@@ -50,6 +55,7 @@ const ORDERED_FORMAT_IDS = [
   "quad",
   "surround50",
   "surround51",
+  "surround70",
   "surround71",
 ];
 

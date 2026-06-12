@@ -90,11 +90,11 @@ describe("resolveChannelLayout", () => {
       resolved: "surround50",
     });
   });
-  it("auto: 7ch → unknown", () => {
+  it("auto: 7ch → 7.0", () => {
     expect(resolveChannelLayout("auto", { channelCount: 7 })).toEqual({
       mode: "auto",
       setting: "auto",
-      resolved: "unknown",
+      resolved: "7.0",
     });
   });
   it("auto: no ctx → unknown", () => {

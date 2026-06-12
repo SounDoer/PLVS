@@ -18,16 +18,8 @@ describe("getPeakMeterChannelLabels", () => {
     expect(getPeakMeterChannelLabels(8)).toEqual(["L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb"]);
   });
 
-  it("falls back to Ch n for unknown counts (e.g. 7)", () => {
-    expect(getPeakMeterChannelLabels(7)).toEqual([
-      "Ch 1",
-      "Ch 2",
-      "Ch 3",
-      "Ch 4",
-      "Ch 5",
-      "Ch 6",
-      "Ch 7",
-    ]);
+  it("maps 7.0 seven-channel strip", () => {
+    expect(getPeakMeterChannelLabels(7)).toEqual(["L", "R", "C", "Ls", "Rs", "Lb", "Rb"]);
   });
 
   it("honours formatId when channel count matches that format", () => {
@@ -114,5 +106,14 @@ describe("getPeakMeterChannelLabels", () => {
     expect(
       getPeakMeterChannelLabels(5, { channelLayout: "auto", resolvedLayout: "surround50" })
     ).toEqual(["L", "R", "C", "Ls", "Rs"]);
+    expect(getPeakMeterChannelLabels(7, { channelLayout: "auto", resolvedLayout: "7.0" })).toEqual([
+      "L",
+      "R",
+      "C",
+      "Ls",
+      "Rs",
+      "Lb",
+      "Rb",
+    ]);
   });
 });
