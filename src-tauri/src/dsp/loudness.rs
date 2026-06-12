@@ -910,7 +910,10 @@ mod tests {
     m.push_pcm(&dialogue_ctx(&stereo, 2));
     let block = m.take_block().expect("a 100ms block should close");
 
-    assert!(block.momentary.is_finite(), "tone should yield finite momentary");
+    assert!(
+      block.momentary.is_finite(),
+      "tone should yield finite momentary"
+    );
     assert_eq!(
       block.dialogue_percent, 0.0,
       "a pure tone must not register as dialogue"

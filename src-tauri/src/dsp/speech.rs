@@ -158,7 +158,10 @@ mod tests {
     v.record(true);
     v.record(true);
     v.record(false);
-    assert!(v.is_speech_majority(), "2 of 3 speech chunks should be a majority");
+    assert!(
+      v.is_speech_majority(),
+      "2 of 3 speech chunks should be a majority"
+    );
   }
 
   #[test]
@@ -167,7 +170,10 @@ mod tests {
     v.record(true);
     v.record(false);
     v.record(false);
-    assert!(!v.is_speech_majority(), "1 of 3 speech chunks should not be a majority");
+    assert!(
+      !v.is_speech_majority(),
+      "1 of 3 speech chunks should not be a majority"
+    );
   }
 
   #[test]
