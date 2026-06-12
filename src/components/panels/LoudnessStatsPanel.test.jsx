@@ -60,4 +60,23 @@ describe("LoudnessStatsPanel", () => {
     expect(screen.queryByRole("button", { name: /Momentary/ })).toBeNull();
     expect(screen.getByText("Momentary")).toBeTruthy();
   });
+
+  it("shows an active speaking-now dot when dialogueCoverage is visible and dialogueActiveNow is true", () => {
+    render(
+      <AudioDataContext.Provider
+        value={{
+          primaryMetrics: [
+            { id: "dialogueCoverage", label: "Dialogue Coverage", value: "62", unit: "%" },
+          ],
+          secondaryMetrics: [],
+          loudnessStatsVisibleIds: ["dialogueCoverage"],
+          dialogueActiveNow: true,
+        }}
+      >
+        <LoudnessStatsPanel />
+      </AudioDataContext.Provider>
+    );
+
+    expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
+  });
 });

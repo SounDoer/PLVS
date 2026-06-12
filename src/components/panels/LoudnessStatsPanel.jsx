@@ -8,7 +8,7 @@ const METRIC_ROW_LAYOUT =
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
-function MetricRow({ label, value, unit }) {
+function MetricRow({ id, label, value, unit, active }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.loudness.metrics;
   const labelClass =
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium uppercase tracking-wide leading-none text-muted-foreground";
@@ -20,6 +20,16 @@ function MetricRow({ label, value, unit }) {
     "shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium uppercase leading-none text-muted-foreground";
   const content = (
     <>
+      {id === "dialogueCoverage" && (
+        <span
+          data-testid="dialogue-active-dot"
+          data-active={active ? "true" : "false"}
+          className={cn(
+            "mr-1 inline-block h-2 w-2 shrink-0 rounded-full",
+            active ? "bg-foreground" : "bg-muted-foreground/30"
+          )}
+        />
+      )}
       <span className={labelClass}>{label}</span>
       <span className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
         {value}
@@ -34,7 +44,8 @@ function MetricRow({ label, value, unit }) {
 }
 
 export function LoudnessStatsPanel({ compact = false }) {
-  const { primaryMetrics, secondaryMetrics, loudnessStatsVisibleIds } = useAudioData();
+  const { primaryMetrics, secondaryMetrics, loudnessStatsVisibleIds, dialogueActiveNow } =
+    useAudioData();
   const visibleIds = Array.isArray(loudnessStatsVisibleIds) ? loudnessStatsVisibleIds : [];
   const allMetrics = [...primaryMetrics, ...secondaryMetrics];
   const visibleMetrics = allMetrics.filter((metric) => visibleIds.includes(metric.id));
@@ -49,7 +60,13 @@ export function LoudnessStatsPanel({ compact = false }) {
           )}
         >
           {visibleMetrics.length > 0 ? (
-            visibleMetrics.map((metric) => <MetricRow key={metric.id} {...metric} />)
+            visibleMetrics.map((metric) => (
+              <MetricRow
+                key={metric.id}
+                {...metric}
+                active={metric.id === "dialogueCoverage" && dialogueActiveNow}
+              />
+            ))
           ) : (
             <div className="text-[length:var(--ui-fs-metric-meta)] font-medium text-muted-foreground">
               No stats selected
