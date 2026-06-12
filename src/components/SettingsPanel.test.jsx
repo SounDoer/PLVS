@@ -24,8 +24,11 @@ const BASE_PROPS = {
   themeSelectOptions: THEME_SELECT_OPTIONS,
   referenceLufs: -23,
   setReferenceLufs: vi.fn(),
-  channelLayout: "auto",
-  setChannelLayout: vi.fn(),
+  channelCount: 0,
+  channelLabelTokens: [],
+  channelLabelHasOverride: false,
+  setChannelLabelToken: vi.fn(),
+  resetChannelLabels: vi.fn(),
 };
 
 describe("SettingsPanel", () => {
@@ -33,8 +36,6 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
     expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
-    expect(screen.getByLabelText("Channel layout")).toBeTruthy();
-    expect(screen.queryByLabelText("Channel layout (Advanced)")).toBeNull();
     expect(screen.queryByLabelText("Colour theme")).toBeNull();
   });
 
@@ -221,5 +222,45 @@ describe("SettingsPanel", () => {
     );
     expect(screen.getByText(/combo unavailable/i)).toBeTruthy();
     expect(screen.getByLabelText("Clear").className).toContain("ring-destructive");
+  });
+});
+
+describe("SettingsPanel — Channel labels", () => {
+  it("shows the idle hint when no input is connected", () => {
+    render(<SettingsPanel {...BASE_PROPS} channelCount={0} />);
+    expect(screen.getByText("Connect an input to label its channels.")).toBeTruthy();
+  });
+
+  it("renders one role select per channel when an input is active", () => {
+    render(<SettingsPanel {...BASE_PROPS} channelCount={2} channelLabelTokens={["L", "R"]} />);
+    expect(screen.getByLabelText("Channel 1 role")).toBeTruthy();
+    expect(screen.getByLabelText("Channel 2 role")).toBeTruthy();
+  });
+
+  it("disables Reset to Auto when there is no override", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        channelCount={2}
+        channelLabelTokens={["L", "R"]}
+        channelLabelHasOverride={false}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Reset to Auto" }).disabled).toBe(true);
+  });
+
+  it("calls resetChannelLabels when Reset to Auto is clicked", () => {
+    const resetChannelLabels = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        channelCount={2}
+        channelLabelTokens={["L", "R"]}
+        channelLabelHasOverride={true}
+        resetChannelLabels={resetChannelLabels}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Reset to Auto" }));
+    expect(resetChannelLabels).toHaveBeenCalledTimes(1);
   });
 });

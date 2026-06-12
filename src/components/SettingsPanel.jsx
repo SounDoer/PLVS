@@ -18,6 +18,7 @@ import { ShortcutCapture } from "./ShortcutCapture.jsx";
 import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
+import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
@@ -31,8 +32,6 @@ export function SettingsPanel({
   themeSelectOptions,
   referenceLufs,
   setReferenceLufs,
-  channelLayout,
-  setChannelLayout,
   appVersion,
   latestVersion,
   releaseUrl,
@@ -52,6 +51,11 @@ export function SettingsPanel({
   setClearCapturing = () => {},
   clearReady = false,
   registrationError = null,
+  channelCount = 0,
+  channelLabelTokens = [],
+  channelLabelHasOverride = false,
+  setChannelLabelToken = () => {},
+  resetChannelLabels = () => {},
 }) {
   const reduceMotion = useReducedMotion();
   const isMac =
@@ -256,21 +260,54 @@ export function SettingsPanel({
                   </div>
                 </div>
                 <Separator />
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="settings-channel-layout" className="shrink-0">
-                    Channel layout
-                  </Label>
-                  <Select value={channelLayout} onValueChange={setChannelLayout}>
-                    <SelectTrigger id="settings-channel-layout" className="w-auto shrink-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem value="auto">Auto</SelectItem>
-                      <SelectItem value="stereo">Stereo</SelectItem>
-                      <SelectItem value="5.1">5.1</SelectItem>
-                      <SelectItem value="7.1">7.1</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="shrink-0">
+                      Channel labels{channelCount > 0 ? ` · ${channelCount}-channel` : ""}
+                    </Label>
+                    {channelCount > 0 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={resetChannelLabels}
+                        disabled={!channelLabelHasOverride}
+                        className="h-auto px-2 py-1 text-xs"
+                      >
+                        Reset to Auto
+                      </Button>
+                    ) : null}
+                  </div>
+                  {channelCount > 0 ? (
+                    <div className="flex flex-col gap-1.5">
+                      {channelLabelTokens.map((token, i) => (
+                        <div key={i} className="flex items-center justify-between gap-2">
+                          <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                            {i + 1}
+                          </span>
+                          <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
+                            <SelectTrigger
+                              className="w-auto shrink-0"
+                              aria-label={`Channel ${i + 1} role`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {CHANNEL_ROLE_VOCABULARY.map((role) => (
+                                <SelectItem key={role.id} value={role.id}>
+                                  {role.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Connect an input to label its channels.
+                    </span>
+                  )}
                 </div>
                 {appVersion ? (
                   <>

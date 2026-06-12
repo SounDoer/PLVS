@@ -14,6 +14,7 @@
  * @property {ChannelLayoutSetting} [channelLayout]
  * @property {ResolvedChannelLayout} [resolvedLayout]
  * @property {string} [formatId] Optional key in {@link PEAK_METER_CHANNEL_FORMATS} when detection supplies it.
+ * @property {string[]} [overrideLabels] User per-channel labels; used verbatim when length === channelCount.
  */
 
 /**
@@ -35,6 +36,11 @@ export const PEAK_METER_CHANNEL_FORMATS = Object.freeze({
     channels: 6,
     labels: ["L", "R", "C", "LFE", "Ls", "Rs"],
   },
+  surround70: {
+    id: "surround70",
+    channels: 7,
+    labels: ["L", "R", "C", "Ls", "Rs", "Lb", "Rb"],
+  },
   surround71: {
     id: "surround71",
     channels: 8,
@@ -49,6 +55,7 @@ const ORDERED_FORMAT_IDS = [
   "quad",
   "surround50",
   "surround51",
+  "surround70",
   "surround71",
 ];
 
@@ -76,6 +83,10 @@ export function getPeakMeterChannelLabels(channelCount, ctx = {}) {
   const n = Math.max(0, Math.floor(Number(channelCount)));
   if (n === 0) {
     return [];
+  }
+
+  if (Array.isArray(ctx.overrideLabels) && ctx.overrideLabels.length === n) {
+    return [...ctx.overrideLabels];
   }
 
   if (ctx.formatId) {

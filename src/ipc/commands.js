@@ -57,7 +57,7 @@ export function setSpectrumChannel(sel) {
   return invoke("set_spectrum_channel", { selType, chX, chY });
 }
 
-/** @param {{ layout: "auto" | "stereo" | "5.1" | "7.1" | string }} opts */
-export function setChannelLayout({ layout }) {
-  return invoke("set_channel_layout", { layout });
+/** @param {number[] | null} weights */
+export function setLoudnessWeights(weights) {
+  return invoke("set_loudness_weights", { weights });
 }

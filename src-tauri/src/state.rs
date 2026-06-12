@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 
 use crate::audio::capture::AudioCaptureSession;
 use crate::dsp::SpectrumChannelSel;
-use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
 pub struct AppState {
@@ -13,10 +12,10 @@ pub struct AppState {
   pub frame_subscribers: Mutex<Option<FrameSubscribers>>,
   /// Selected vectorscope XY channel pair (0-based). Updated by UI.
   pub vectorscope_pair: Arc<Mutex<(u16, u16)>>,
-  /// User-selected channel layout preset. Updated by UI; applied on the capture thread.
-  pub channel_layout: Arc<Mutex<ChannelLayoutSetting>>,
   /// Selected channel(s) for spectrum analysis. Updated by UI; applied on the capture thread.
   pub spectrum_channel: Arc<Mutex<SpectrumChannelSel>>,
+  /// Dynamic loudness energy weights from user channel-role overrides.
+  pub loudness_weights: Arc<Mutex<Option<Vec<f64>>>>,
 }
 
 impl Default for AppState {
@@ -25,8 +24,8 @@ impl Default for AppState {
       capture: Mutex::new(None),
       frame_subscribers: Mutex::new(None),
       vectorscope_pair: Arc::new(Mutex::new((0, 1))),
-      channel_layout: Arc::new(Mutex::new(ChannelLayoutSetting::default())),
       spectrum_channel: Arc::new(Mutex::new(SpectrumChannelSel::default())),
+      loudness_weights: Arc::new(Mutex::new(None)),
     }
   }
 }

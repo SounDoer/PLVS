@@ -18,16 +18,8 @@ describe("getPeakMeterChannelLabels", () => {
     expect(getPeakMeterChannelLabels(8)).toEqual(["L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb"]);
   });
 
-  it("falls back to Ch n for unknown counts (e.g. 7)", () => {
-    expect(getPeakMeterChannelLabels(7)).toEqual([
-      "Ch 1",
-      "Ch 2",
-      "Ch 3",
-      "Ch 4",
-      "Ch 5",
-      "Ch 6",
-      "Ch 7",
-    ]);
+  it("maps 7.0 seven-channel strip", () => {
+    expect(getPeakMeterChannelLabels(7)).toEqual(["L", "R", "C", "Ls", "Rs", "Lb", "Rb"]);
   });
 
   it("honours formatId when channel count matches that format", () => {
@@ -41,6 +33,25 @@ describe("getPeakMeterChannelLabels", () => {
     expect(getPeakMeterChannelLabels(6, { formatId: "stereo" })).toEqual(
       PEAK_METER_CHANNEL_FORMATS.surround51.labels
     );
+  });
+
+  it("honours overrideLabels at highest priority when length matches", () => {
+    expect(
+      getPeakMeterChannelLabels(7, {
+        channelLayout: "auto",
+        resolvedLayout: "unknown",
+        overrideLabels: ["L", "R", "C", "LFE", "Ls", "Rs", "Cs"],
+      })
+    ).toEqual(["L", "R", "C", "LFE", "Ls", "Rs", "Cs"]);
+  });
+
+  it("ignores overrideLabels when its length does not match the channel count", () => {
+    expect(
+      getPeakMeterChannelLabels(6, {
+        resolvedLayout: "5.1",
+        overrideLabels: ["L", "R"],
+      })
+    ).toEqual(["L", "R", "C", "LFE", "Ls", "Rs"]);
   });
 
   it("shows numbered labels when resolvedLayout is unknown, regardless of channel count", () => {
@@ -83,6 +94,26 @@ describe("getPeakMeterChannelLabels", () => {
       "LFE",
       "Ls",
       "Rs",
+    ]);
+    expect(getPeakMeterChannelLabels(4, { channelLayout: "auto", resolvedLayout: "quad" })).toEqual(
+      ["L", "R", "Ls", "Rs"]
+    );
+    expect(getPeakMeterChannelLabels(3, { channelLayout: "auto", resolvedLayout: "lcr" })).toEqual([
+      "L",
+      "R",
+      "C",
+    ]);
+    expect(
+      getPeakMeterChannelLabels(5, { channelLayout: "auto", resolvedLayout: "surround50" })
+    ).toEqual(["L", "R", "C", "Ls", "Rs"]);
+    expect(getPeakMeterChannelLabels(7, { channelLayout: "auto", resolvedLayout: "7.0" })).toEqual([
+      "L",
+      "R",
+      "C",
+      "Ls",
+      "Rs",
+      "Lb",
+      "Rb",
     ]);
   });
 });

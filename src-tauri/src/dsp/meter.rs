@@ -9,6 +9,7 @@ pub struct PcmContext<'a> {
   pub channels: u16,
   pub now_sec: f64,
   pub channel_layout: ChannelLayoutSetting,
+  pub loudness_weights: Option<Vec<f64>>,
   pub vectorscope_pair: (u16, u16),
   pub spectrum_channel: SpectrumChannelSel,
 }

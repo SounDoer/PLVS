@@ -4,9 +4,9 @@ import {
   previewAudioDevice,
   startAudioCapture,
   stopAudioCapture,
-  setChannelLayout,
   setVectorscopePair,
   setSpectrumChannel,
+  setLoudnessWeights,
 } from "../ipc/commands.js";
 import { onLoudnessSlow } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
@@ -18,7 +18,6 @@ export function useAudioEngine({
   captureDeviceId = "default",
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
   captureFormatSignature = "",
-  channelLayout = "auto",
   histMaxSamples,
   visualMaxSamples,
   audioRef,
@@ -30,6 +29,7 @@ export function useAudioEngine({
   selectedOffsetRef,
   vectorscopePairRef,
   spectrumChannelRef,
+  loudnessWeightsRef,
   setAudio,
   setSpectrumPath,
   setSpectrumPeakPath,
@@ -45,7 +45,7 @@ export function useAudioEngine({
 
   /**
    * Start/stop native or browser audio capture. Dependency list is intentionally narrow:
-   * - `running`, `captureDeviceId`, `captureFormatSignature`, `channelLayout` are the only
+   * - `running`, `captureDeviceId`, `captureFormatSignature` are the only
    *   inputs that should restart the engine when they change.
    * - All `*Ref` arguments are mutable boxes read inside the effect; their **identities** are
    *   stable (useRef), and the effect reads `.current` on each run — listing them would
@@ -142,10 +142,6 @@ export function useAudioEngine({
           };
 
           try {
-            await setChannelLayout({ layout: channelLayout });
-          } catch (_) {}
-
-          try {
             const p = vectorscopePairRef?.current ?? { x: 0, y: 1 };
             await setVectorscopePair({ x: p.x, y: p.y });
           } catch (_) {}
@@ -153,6 +149,10 @@ export function useAudioEngine({
           try {
             const sc = spectrumChannelRef?.current ?? { type: "pair", x: 0, y: 1 };
             await setSpectrumChannel(sc);
+          } catch (_) {}
+
+          try {
+            await setLoudnessWeights(loudnessWeightsRef?.current ?? null);
           } catch (_) {}
 
           await startAudioCapture({
@@ -202,6 +202,6 @@ export function useAudioEngine({
         } catch (_) {}
       }
     };
-  }, [running, captureDeviceId, captureFormatSignature, channelLayout]);
+  }, [running, captureDeviceId, captureFormatSignature]);
   /* eslint-enable react-hooks/exhaustive-deps */
 }

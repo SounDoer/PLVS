@@ -109,6 +109,7 @@ export function stripLegacyChannelPreferenceKeys(persisted) {
   delete nextPersisted.spectrumChannelX;
   delete nextPersisted.spectrumChannelY;
   delete nextPersisted.spectrumChannelCh;
+  delete nextPersisted.channelLayout;
   return nextPersisted;
 }
 

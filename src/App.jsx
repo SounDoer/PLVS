@@ -30,6 +30,12 @@ import {
   buildSpectrumChannelOptions,
   clampSpectrumChannelToAvailable,
 } from "./math/spectrumChannelOptions.js";
+import {
+  roleTokensToLabels,
+  roleTokensToLoudnessWeights,
+  sanitizeChannelLabelOverrides,
+  seedTokensFromLabels,
+} from "./math/channelRoles.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -53,7 +59,12 @@ import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shell
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { LayoutGrid, Pin, PinOff, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
-import { clearAudioHistory, setVectorscopePair, setSpectrumChannel } from "./ipc/commands.js";
+import {
+  clearAudioHistory,
+  setLoudnessWeights,
+  setVectorscopePair,
+  setSpectrumChannel,
+} from "./ipc/commands.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
@@ -177,7 +188,6 @@ function AppContent() {
   const [showClock, setShowClock] = useState(false);
 
   const [running, setRunning] = useState(false);
-  const [channelLayout, setChannelLayout] = useState("auto");
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
@@ -224,6 +234,7 @@ function AppContent() {
     UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
   );
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
+  const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
 
   const audioRef = useRef(null);
   const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
@@ -290,6 +301,9 @@ function AppContent() {
     return setSpectrumChannel(sel).catch(() => {
       if (lastSentSpectrumChannelKeyRef.current === key) lastSentSpectrumChannelKeyRef.current = "";
     });
+  }, []);
+  const sendTrackedLoudnessWeights = useCallback((weights) => {
+    return setLoudnessWeights(weights).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -391,18 +405,73 @@ function AppContent() {
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
   const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
   const layoutResolution = useMemo(
-    () => resolveChannelLayout(channelLayout, { channelCount }),
-    [channelLayout, channelCount]
+    () => resolveChannelLayout("auto", { channelCount }),
+    [channelCount]
   );
+  const channelLabelOverride =
+    channelCount > 0 ? (channelLabelOverrides[channelCount] ?? null) : null;
+  const overrideLabels = useMemo(
+    () => (channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null),
+    [channelLabelOverride]
+  );
+  const loudnessWeights = useMemo(
+    () => (channelLabelOverride ? roleTokensToLoudnessWeights(channelLabelOverride) : null),
+    [channelLabelOverride]
+  );
+  const loudnessWeightsRef = useRef(loudnessWeights);
+  const channelAutoLabels = useMemo(
+    () =>
+      channelCount > 0
+        ? getPeakMeterChannelLabels(channelCount, {
+            channelLayout: "auto",
+            resolvedLayout: layoutResolution.resolved,
+          })
+        : [],
+    [channelCount, layoutResolution.resolved]
+  );
+  const channelLabelTokens = useMemo(
+    () => channelLabelOverride ?? seedTokensFromLabels(channelAutoLabels),
+    [channelLabelOverride, channelAutoLabels]
+  );
+
+  useEffect(() => {
+    loudnessWeightsRef.current = loudnessWeights;
+    if (!isTauri() || !running) return;
+    void sendTrackedLoudnessWeights(loudnessWeights);
+  }, [loudnessWeights, running, sendTrackedLoudnessWeights]);
+
   const peakLabelContext = useMemo(
-    () => ({ channelLayout, resolvedLayout: layoutResolution.resolved }),
-    [channelLayout, layoutResolution.resolved]
+    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
+    [layoutResolution.resolved, overrideLabels]
   );
 
   const vectorscopeLabelContext = useMemo(
-    () => ({ channelLayout, resolvedLayout: layoutResolution.resolved }),
-    [channelLayout, layoutResolution.resolved]
+    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
+    [layoutResolution.resolved, overrideLabels]
   );
+
+  const setChannelLabelToken = useCallback(
+    (index, token) => {
+      if (channelCount <= 0) return;
+      setChannelLabelOverrides((prev) => {
+        const base = prev[channelCount] ?? seedTokensFromLabels(channelAutoLabels);
+        const next = base.slice();
+        next[index] = token;
+        return { ...prev, [channelCount]: next };
+      });
+    },
+    [channelCount, channelAutoLabels]
+  );
+
+  const resetChannelLabels = useCallback(() => {
+    setChannelLabelOverrides((prev) => {
+      if (!(channelCount in prev)) return prev;
+      const next = { ...prev };
+      delete next[channelCount];
+      return next;
+    });
+  }, [channelCount]);
+
   /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
   const vectorscopePairOptions = useMemo(() => {
     const n = channelCount >= 2 ? channelCount : channelCount === 0 ? 2 : 1;
@@ -772,13 +841,7 @@ function AppContent() {
       if (typeof s.loudnessHistWidthRatio === "number")
         setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
       if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
-      if (
-        s.channelLayout === "auto" ||
-        s.channelLayout === "stereo" ||
-        s.channelLayout === "5.1" ||
-        s.channelLayout === "7.1"
-      )
-        setChannelLayout(s.channelLayout);
+      setChannelLabelOverrides(sanitizeChannelLabelOverrides(s.channelLabelOverrides));
     } catch (_) {}
   }, []);
 
@@ -801,7 +864,7 @@ function AppContent() {
           referenceLufs,
           appearance,
           themeId: persistedThemeId,
-          channelLayout,
+          channelLabelOverrides,
         })
       );
     } catch (_) {}
@@ -814,7 +877,7 @@ function AppContent() {
     referenceLufs,
     appearance,
     fixedThemeSelectValue,
-    channelLayout,
+    channelLabelOverrides,
   ]);
 
   useEffect(() => {
@@ -838,7 +901,6 @@ function AppContent() {
     running,
     captureDeviceId,
     captureFormatSignature,
-    channelLayout,
     histMaxSamples: HIST_MAX_SAMPLES,
     visualMaxSamples: VISUAL_MAX_SAMPLES,
     audioRef,
@@ -850,6 +912,7 @@ function AppContent() {
     selectedOffsetRef,
     vectorscopePairRef,
     spectrumChannelRef,
+    loudnessWeightsRef,
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,
@@ -1042,37 +1105,6 @@ function AppContent() {
             <span className="min-w-0 truncate tabular-nums text-foreground">
               {referenceLufs} LUFS
             </span>
-            {(() => {
-              // Auto mode: unknown channel count — user needs to pick a layout manually.
-              if (
-                channelLayout === "auto" &&
-                layoutResolution.resolved === "unknown" &&
-                channelCount > 0
-              ) {
-                return (
-                  <>
-                    <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                    <span className="min-w-0 truncate text-muted-foreground">
-                      {channelCount}-channel detected · Select layout in Settings
-                    </span>
-                  </>
-                );
-              }
-              // Manual mode: selection doesn't match what auto would detect.
-              const autoResolved = resolveChannelLayout("auto", { channelCount }).resolved;
-              if (channelLayout !== "auto" && channelLayout !== autoResolved) {
-                return (
-                  <>
-                    <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                    <span className="min-w-0 truncate text-muted-foreground">
-                      Device is {autoResolved === "unknown" ? `${channelCount}-ch` : autoResolved} ·
-                      selected {channelLayout}
-                    </span>
-                  </>
-                );
-              }
-              return null;
-            })()}
             {updateInfo?.hasUpdate ? (
               <>
                 <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
@@ -1098,8 +1130,11 @@ function AppContent() {
           themeSelectOptions={themeSelectOptions}
           referenceLufs={referenceLufs}
           setReferenceLufs={setReferenceLufs}
-          channelLayout={channelLayout}
-          setChannelLayout={setChannelLayout}
+          channelCount={channelCount}
+          channelLabelTokens={channelLabelTokens}
+          channelLabelHasOverride={!!channelLabelOverride}
+          setChannelLabelToken={setChannelLabelToken}
+          resetChannelLabels={resetChannelLabels}
           appVersion={APP_VERSION}
           latestVersion={updateInfo?.latestVersion}
           releaseUrl={updateInfo?.releaseUrl}

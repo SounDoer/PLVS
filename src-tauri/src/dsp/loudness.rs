@@ -6,6 +6,7 @@ use crate::engine::ChannelLayoutSetting;
 
 const IBL_CAP: usize = 36_000;
 const STH_CAP: usize = 36_000;
+const SURROUND_LOUDNESS_WEIGHT: f64 = 1.412_537_544_622_754_4;
 
 fn lufs_from_mean_squares(m0: f64, m1: f64) -> f64 {
   let s = m0 + m1;
@@ -300,6 +301,145 @@ impl LoudnessMeter {
     out
   }
 
+  pub fn push_interleaved_weighted(
+    &mut self,
+    interleaved: &[f32],
+    channels: u16,
+    weights: &[f64],
+  ) -> Option<LoudnessBlock> {
+    let ch = channels.max(1) as usize;
+    if weights.len() != ch {
+      return self.push_interleaved_multichannel(interleaved, channels, ChannelLayoutSetting::Auto);
+    }
+    if ch == 1 {
+      let scaled: Vec<f32> = interleaved
+        .iter()
+        .map(|s| (*s as f64 * weights[0].sqrt()) as f32)
+        .collect();
+      return self.push_mono_duplex(&scaled);
+    }
+    if self.kf_mc.len() != ch {
+      self.kf_mc = (0..ch)
+        .map(|_| KWeightMono::new(self.sample_rate))
+        .collect();
+    }
+    let mut out = None;
+    let frames = interleaved.len() / ch;
+    for i in 0..frames {
+      let base = i * ch;
+      let mut sum_ms = 0.0_f64;
+      for (ci, weight) in weights.iter().copied().enumerate() {
+        if weight == 0.0 {
+          continue;
+        }
+        let x = interleaved[base + ci] as f64;
+        let kw = self.kf_mc[ci].tick(x);
+        sum_ms += weight * kw * kw;
+      }
+      self.ba[0] += sum_ms;
+      self.ba[1] += 0.0;
+
+      // Keep true-peak semantics consistent with the existing UI: report L/R from channels 1/2.
+      let xl = interleaved[base] as f64;
+      let xr = if ch > 1 {
+        interleaved[base + 1] as f64
+      } else {
+        xl
+      };
+      let tp0 = self.tp_sample(xl, 0);
+      let tp1 = self.tp_sample(xr, 1);
+      if tp0 > self.tp_block {
+        self.tp_block = tp0;
+      }
+      if tp1 > self.tp_block {
+        self.tp_block = tp1;
+      }
+      if tp0 > self.tp_block_ch[0] {
+        self.tp_block_ch[0] = tp0;
+      }
+      if tp1 > self.tp_block_ch[1] {
+        self.tp_block_ch[1] = tp1;
+      }
+      self.bn += 1;
+      if self.bn >= self.bsz {
+        let m0 = self.ba[0] / self.bn as f64;
+        let m1 = 0.0_f64;
+        let idx = self.rh * 2;
+        self.ring[idx] = m0;
+        self.ring[idx + 1] = m1;
+        self.rh = (self.rh + 1) % self.rn;
+        self.rc = (self.rc + 1).min(self.rn);
+        self.ibl.push([m0, m1]);
+        if self.ibl.len() > IBL_CAP {
+          self.ibl.remove(0);
+        }
+        let mut a0 = 0.0;
+        let mut a1 = 0.0;
+        let mut an = 0_usize;
+        for b in 0..4.min(self.rc) {
+          let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
+          a0 += self.ring[idx];
+          a1 += self.ring[idx + 1];
+          an += 1;
+        }
+        let momentary = if an > 0 {
+          lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
+        } else {
+          f64::NEG_INFINITY
+        };
+        a0 = 0.0;
+        a1 = 0.0;
+        an = 0;
+        for b in 0..30.min(self.rc) {
+          let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
+          a0 += self.ring[idx];
+          a1 += self.ring[idx + 1];
+          an += 1;
+        }
+        let short_term = if an > 0 {
+          lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
+        } else {
+          f64::NEG_INFINITY
+        };
+        if short_term.is_finite() {
+          self.sth.push(short_term);
+          if self.sth.len() > STH_CAP {
+            self.sth.remove(0);
+          }
+        }
+        let tp_now = if self.tp_block > 0.0 {
+          20.0 * self.tp_block.log10()
+        } else {
+          f64::NEG_INFINITY
+        };
+        let tp_now_l = if self.tp_block_ch[0] > 0.0 {
+          20.0 * self.tp_block_ch[0].log10()
+        } else {
+          f64::NEG_INFINITY
+        };
+        let tp_now_r = if self.tp_block_ch[1] > 0.0 {
+          20.0 * self.tp_block_ch[1].log10()
+        } else {
+          f64::NEG_INFINITY
+        };
+        out = Some(LoudnessBlock {
+          momentary,
+          short_term,
+          integrated: self.integrated(),
+          lra: self.lra(),
+          true_peak: tp_now,
+          true_peak_l: tp_now_l,
+          true_peak_r: tp_now_r,
+        });
+        self.ba = [0.0, 0.0];
+        self.bn = 0;
+        self.tp_block = 0.0;
+        self.tp_block_ch = [0.0, 0.0];
+      }
+    }
+    out
+  }
+
   /// BS.1770 stereo path: from **N-channel interleaved** PCM, take the first two samples per frame then `push_interleaved` (v1.0; N>2 see architecture §5).
   pub fn push_interleaved_multichannel(
     &mut self,
@@ -310,6 +450,38 @@ impl LoudnessMeter {
     let ch = channels.max(1) as usize;
     if ch == 1 {
       return self.push_mono_duplex(interleaved);
+    }
+
+    // Auto 5.0: Ch1..Ch5 => FL FR C SL SR. Same order as 5.1 without the LFE slot.
+    if channel_layout == ChannelLayoutSetting::Auto && ch == 5 {
+      return self.push_interleaved_weighted(
+        interleaved,
+        channels,
+        &[
+          1.0,
+          1.0,
+          1.0,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+        ],
+      );
+    }
+
+    // Auto 7.0: Ch1..Ch7 => FL FR C SL SR BL BR. Same order as 7.1 without the LFE slot.
+    if channel_layout == ChannelLayoutSetting::Auto && ch == 7 {
+      return self.push_interleaved_weighted(
+        interleaved,
+        channels,
+        &[
+          1.0,
+          1.0,
+          1.0,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+        ],
+      );
     }
 
     // Manual 5.1 preset: Ch1..Ch6 => FL FR C LFE SL SR.
@@ -323,7 +495,17 @@ impl LoudnessMeter {
       for i in 0..frames {
         let base = i * ch;
         let mut sum_ms = 0.0_f64;
-        for (ci, w) in [1.0_f64, 1.0, 1.0, 0.0, 1.0, 1.0].into_iter().enumerate() {
+        for (ci, w) in [
+          1.0_f64,
+          1.0,
+          1.0,
+          0.0,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+        ]
+        .into_iter()
+        .enumerate()
+        {
           let x = interleaved[base + ci] as f64;
           let kw = self.kf_mc[ci].tick(x);
           if w != 0.0 {
@@ -442,9 +624,18 @@ impl LoudnessMeter {
       for i in 0..frames {
         let base = i * ch;
         let mut sum_ms = 0.0_f64;
-        for (ci, w) in [1.0_f64, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0]
-          .into_iter()
-          .enumerate()
+        for (ci, w) in [
+          1.0_f64,
+          1.0,
+          1.0,
+          0.0,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+          SURROUND_LOUDNESS_WEIGHT,
+        ]
+        .into_iter()
+        .enumerate()
         {
           let x = interleaved[base + ci] as f64;
           let kw = self.kf_mc[ci].tick(x);
@@ -589,7 +780,15 @@ pub struct LoudnessBlock {
 
 impl Meter for LoudnessMeter {
   fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
-    let block = if ctx.channels == 1 {
+    let block = if let Some(weights) = ctx.loudness_weights.as_ref() {
+      if weights.len() == ctx.channels.max(1) as usize {
+        self.push_interleaved_weighted(ctx.interleaved, ctx.channels, weights)
+      } else if ctx.channels == 1 {
+        self.push_mono_duplex(ctx.interleaved)
+      } else {
+        self.push_interleaved_multichannel(ctx.interleaved, ctx.channels, ctx.channel_layout)
+      }
+    } else if ctx.channels == 1 {
       self.push_mono_duplex(ctx.interleaved)
     } else {
       self.push_interleaved_multichannel(ctx.interleaved, ctx.channels, ctx.channel_layout)
@@ -617,6 +816,269 @@ mod tests {
   ) -> LoudnessBlock {
     m.push_interleaved_multichannel(interleaved, channels, layout)
       .expect("expected a 100ms loudness block")
+  }
+
+  #[test]
+  fn dynamic_weights_ignore_lfe_channel() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 3usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base] = 0.1;
+      pcm[base + 1] = 0.1;
+      pcm[base + 2] = 0.8;
+    }
+
+    let weights_without_lfe = vec![1.0, 1.0, 0.0];
+    let weights_with_lfe = vec![1.0, 1.0, 1.0];
+
+    let mut a = LoudnessMeter::new(sr);
+    let mut b = LoudnessMeter::new(sr);
+    let block_a = a
+      .push_interleaved_weighted(&pcm, ch as u16, &weights_without_lfe)
+      .expect("weighted block");
+    let block_b = b
+      .push_interleaved_weighted(&pcm, ch as u16, &weights_with_lfe)
+      .expect("weighted block");
+
+    assert!(
+      block_b.momentary > block_a.momentary + 3.0,
+      "including LFE channel should be much louder than zero-weighting it: {} vs {}",
+      block_b.momentary,
+      block_a.momentary
+    );
+  }
+
+  #[test]
+  fn dynamic_surround_weight_increases_loudness_against_unity() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 1usize;
+    let pcm = vec![0.1_f32; frames * ch];
+    let surround_weight = 10_f64.powf(1.5 / 10.0);
+
+    let mut unity = LoudnessMeter::new(sr);
+    let mut surround = LoudnessMeter::new(sr);
+    let block_unity = unity
+      .push_interleaved_weighted(&pcm, ch as u16, &[1.0])
+      .expect("unity weighted block");
+    let block_surround = surround
+      .push_interleaved_weighted(&pcm, ch as u16, &[surround_weight])
+      .expect("surround weighted block");
+
+    assert!(
+      (block_surround.momentary - block_unity.momentary - 1.5).abs() < 0.2,
+      "surround gain should be about +1.5 dB: {} vs {}",
+      block_surround.momentary,
+      block_unity.momentary
+    );
+  }
+
+  #[test]
+  fn auto_50_matches_standard_surround_weights() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 5usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 3] = 0.1;
+      pcm[base + 4] = 0.1;
+    }
+    let surround_weight = 10_f64.powf(1.5 / 10.0);
+
+    let mut auto = LoudnessMeter::new(sr);
+    let mut standard = LoudnessMeter::new(sr);
+    let auto_block = auto
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .expect("5.0 auto block");
+    let standard_block = standard
+      .push_interleaved_weighted(
+        &pcm,
+        ch as u16,
+        &[1.0, 1.0, 1.0, surround_weight, surround_weight],
+      )
+      .expect("5.0 standard block");
+
+    assert!(
+      (auto_block.momentary - standard_block.momentary).abs() < 0.15,
+      "5.0 auto should use standard surround weights: {} vs {}",
+      auto_block.momentary,
+      standard_block.momentary
+    );
+  }
+
+  #[test]
+  fn hardcoded_51_matches_standard_surround_weights() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 6usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 4] = 0.1;
+      pcm[base + 5] = 0.1;
+    }
+    let surround_weight = 10_f64.powf(1.5 / 10.0);
+
+    let mut hardcoded = LoudnessMeter::new(sr);
+    let mut standard = LoudnessMeter::new(sr);
+    let hardcoded_block = hardcoded
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Surround51)
+      .expect("5.1 hardcoded block");
+    let standard_block = standard
+      .push_interleaved_weighted(
+        &pcm,
+        ch as u16,
+        &[1.0, 1.0, 1.0, 0.0, surround_weight, surround_weight],
+      )
+      .expect("5.1 standard block");
+
+    assert!(
+      (hardcoded_block.momentary - standard_block.momentary).abs() < 0.15,
+      "5.1 hardcoded should use standard surround weights: {} vs {}",
+      hardcoded_block.momentary,
+      standard_block.momentary
+    );
+  }
+
+  #[test]
+  fn auto_70_matches_standard_surround_weights() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 7usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 3] = 0.1;
+      pcm[base + 4] = 0.1;
+      pcm[base + 5] = 0.1;
+      pcm[base + 6] = 0.1;
+    }
+    let surround_weight = 10_f64.powf(1.5 / 10.0);
+
+    let mut auto = LoudnessMeter::new(sr);
+    let mut standard = LoudnessMeter::new(sr);
+    let auto_block = auto
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .expect("7.0 auto block");
+    let standard_block = standard
+      .push_interleaved_weighted(
+        &pcm,
+        ch as u16,
+        &[
+          1.0,
+          1.0,
+          1.0,
+          surround_weight,
+          surround_weight,
+          surround_weight,
+          surround_weight,
+        ],
+      )
+      .expect("7.0 standard block");
+
+    assert!(
+      (auto_block.momentary - standard_block.momentary).abs() < 0.15,
+      "7.0 auto should use standard surround weights: {} vs {}",
+      auto_block.momentary,
+      standard_block.momentary
+    );
+  }
+
+  #[test]
+  fn hardcoded_71_matches_standard_surround_weights() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 8usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 4] = 0.1;
+      pcm[base + 5] = 0.1;
+      pcm[base + 6] = 0.1;
+      pcm[base + 7] = 0.1;
+    }
+    let surround_weight = 10_f64.powf(1.5 / 10.0);
+
+    let mut hardcoded = LoudnessMeter::new(sr);
+    let mut standard = LoudnessMeter::new(sr);
+    let hardcoded_block = hardcoded
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Surround71)
+      .expect("7.1 hardcoded block");
+    let standard_block = standard
+      .push_interleaved_weighted(
+        &pcm,
+        ch as u16,
+        &[
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          surround_weight,
+          surround_weight,
+          surround_weight,
+          surround_weight,
+        ],
+      )
+      .expect("7.1 standard block");
+
+    assert!(
+      (hardcoded_block.momentary - standard_block.momentary).abs() < 0.15,
+      "7.1 hardcoded should use standard surround weights: {} vs {}",
+      hardcoded_block.momentary,
+      standard_block.momentary
+    );
+  }
+
+  #[test]
+  fn auto_50_uses_surround_channels_for_loudness() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 5usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 3] = 0.1;
+      pcm[base + 4] = 0.1;
+    }
+
+    let mut meter = LoudnessMeter::new(sr);
+    let block = meter
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .expect("5.0 block");
+
+    assert!(
+      block.momentary.is_finite() && block.momentary > -70.0,
+      "5.0 auto loudness should include surround channels, got {}",
+      block.momentary
+    );
+  }
+
+  #[test]
+  fn auto_70_uses_back_channels_for_loudness() {
+    let sr = 48_000.0;
+    let frames = 4_800usize;
+    let ch = 7usize;
+    let mut pcm = vec![0.0_f32; frames * ch];
+    for f in 0..frames {
+      let base = f * ch;
+      pcm[base + 5] = 0.1;
+      pcm[base + 6] = 0.1;
+    }
+
+    let mut meter = LoudnessMeter::new(sr);
+    let block = meter
+      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .expect("7.0 block");
+
+    assert!(
+      block.momentary.is_finite() && block.momentary > -70.0,
+      "7.0 auto loudness should include back channels, got {}",
+      block.momentary
+    );
   }
 
   #[test]

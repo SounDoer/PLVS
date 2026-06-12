@@ -1,7 +1,7 @@
 //! `#[tauri::command]` handlers (Phase 2: capture + DSP → Channel / Events).
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Emitter, State};
 
@@ -93,8 +93,10 @@ pub fn audio_start(
     *slot = Some(pool.clone());
   }
   let pair = state.inner().vectorscope_pair.clone();
-  let layout = state.inner().channel_layout.clone();
+  // Channel layout is auto-resolved from channel count on the capture thread; no user override.
+  let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
   let spectrum = state.inner().spectrum_channel.clone();
+  let loudness_weights = state.inner().loudness_weights.clone();
   let session = AudioCapture::start_session(
     &AppAudioBackend,
     &device_id,
@@ -103,6 +105,7 @@ pub fn audio_start(
     pair,
     layout,
     spectrum,
+    loudness_weights,
   )?;
   {
     let mut g = state
@@ -137,19 +140,6 @@ pub fn set_vectorscope_pair(x: u16, y: u16, state: State<'_, AppState>) -> Resul
   Ok(())
 }
 
-/// Update channel layout preset. Applied on the capture thread for subsequent frames.
-#[tauri::command]
-pub fn set_channel_layout(layout: String, state: State<'_, AppState>) -> Result<(), String> {
-  let v = ChannelLayoutSetting::from_str_lossy(&layout);
-  let mut g = state
-    .inner()
-    .channel_layout
-    .lock()
-    .map_err(|_| "channel layout lock poisoned".to_string())?;
-  *g = v;
-  Ok(())
-}
-
 /// Update spectrum channel selection. Applied on the capture thread for subsequent frames.
 #[tauri::command]
 pub fn set_spectrum_channel(
@@ -170,6 +160,36 @@ pub fn set_spectrum_channel(
     .lock()
     .map_err(|_| "spectrum channel lock poisoned".to_string())?;
   *g = sel;
+  Ok(())
+}
+
+fn validate_loudness_weights(weights: &[f64]) -> Result<(), String> {
+  if weights.is_empty() {
+    return Err("loudness weights cannot be empty".to_string());
+  }
+  if weights.len() > 64 {
+    return Err("loudness weights cannot exceed 64 channels".to_string());
+  }
+  if weights.iter().any(|w| !w.is_finite() || *w < 0.0) {
+    return Err("loudness weights must be finite non-negative numbers".to_string());
+  }
+  Ok(())
+}
+
+#[tauri::command]
+pub fn set_loudness_weights(
+  weights: Option<Vec<f64>>,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  if let Some(ref ws) = weights {
+    validate_loudness_weights(ws)?;
+  }
+  let mut g = state
+    .inner()
+    .loudness_weights
+    .lock()
+    .map_err(|_| "loudness weights lock poisoned".to_string())?;
+  *g = weights;
   Ok(())
 }
 
@@ -230,4 +250,35 @@ pub fn get_engine_state(state: State<'_, AppState>) -> Result<String, String> {
   } else {
     "stopped".into()
   })
+}
+
+#[cfg(test)]
+mod tests {
+  use super::validate_loudness_weights;
+
+  #[test]
+  fn loudness_weights_validation_accepts_finite_non_negative_vectors() {
+    assert!(validate_loudness_weights(&[1.0, 0.0, 1.4125375446]).is_ok());
+  }
+
+  #[test]
+  fn loudness_weights_validation_rejects_empty_vectors() {
+    assert!(validate_loudness_weights(&[]).is_err());
+  }
+
+  #[test]
+  fn loudness_weights_validation_rejects_negative_values() {
+    assert!(validate_loudness_weights(&[1.0, -1.0]).is_err());
+  }
+
+  #[test]
+  fn loudness_weights_validation_rejects_nan_values() {
+    assert!(validate_loudness_weights(&[1.0, f64::NAN]).is_err());
+  }
+
+  #[test]
+  fn loudness_weights_validation_rejects_overlong_vectors() {
+    let weights = vec![1.0; 65];
+    assert!(validate_loudness_weights(&weights).is_err());
+  }
 }
