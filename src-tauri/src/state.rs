@@ -14,6 +14,8 @@ pub struct AppState {
   pub vectorscope_pair: Arc<Mutex<(u16, u16)>>,
   /// Selected channel(s) for spectrum analysis. Updated by UI; applied on the capture thread.
   pub spectrum_channel: Arc<Mutex<SpectrumChannelSel>>,
+  /// Dynamic loudness energy weights from user channel-role overrides.
+  pub loudness_weights: Arc<Mutex<Option<Vec<f64>>>>,
 }
 
 impl Default for AppState {
@@ -23,6 +25,7 @@ impl Default for AppState {
       frame_subscribers: Mutex::new(None),
       vectorscope_pair: Arc::new(Mutex::new((0, 1))),
       spectrum_channel: Arc::new(Mutex::new(SpectrumChannelSel::default())),
+      loudness_weights: Arc::new(Mutex::new(None)),
     }
   }
 }

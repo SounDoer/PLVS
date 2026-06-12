@@ -56,3 +56,8 @@ export function setSpectrumChannel(sel) {
   const chY = sel.type === "pair" ? sel.y : 0;
   return invoke("set_spectrum_channel", { selType, chX, chY });
 }
+
+/** @param {number[] | null} weights */
+export function setLoudnessWeights(weights) {
+  return invoke("set_loudness_weights", { weights });
+}

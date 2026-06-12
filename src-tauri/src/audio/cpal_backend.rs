@@ -50,6 +50,7 @@ impl AudioCapture for CpalBackend {
     vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
+    loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     Ok(Box::new(CaptureSession::start(
       device_id,
@@ -58,6 +59,7 @@ impl AudioCapture for CpalBackend {
       vectorscope_pair,
       channel_layout,
       spectrum_channel,
+      loudness_weights,
     )?))
   }
 }
@@ -91,6 +93,7 @@ impl CaptureSession {
     vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
+    loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   ) -> Result<Self, String> {
     let (device, supported) = resolve_device(device_id)?;
     let sample_rate = supported.sample_rate();
@@ -117,6 +120,7 @@ impl CaptureSession {
           vectorscope_pair,
           channel_layout,
           spectrum_channel,
+          loudness_weights,
           dropped_chunks,
         })
       })
@@ -143,6 +147,7 @@ struct RunCaptureArgs {
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
+  loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dropped_chunks: Arc<AtomicU64>,
 }
 
@@ -278,6 +283,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
+  loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
 ) {
@@ -308,7 +314,9 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       .map(|g| *g)
       .unwrap_or(ChannelLayoutSetting::Auto);
     let spectrum_sel = spectrum_channel.lock().map(|g| *g).unwrap_or_default();
-    let (frame, slow) = pipeline.push_pcm_f32(&floats, pair, layout, spectrum_sel);
+    let loudness_weights = loudness_weights.lock().map(|g| g.clone()).unwrap_or(None);
+    let (frame, slow) =
+      pipeline.push_pcm_f32(&floats, pair, layout, spectrum_sel, loudness_weights);
     let mut should_stop = false;
     if let Some(f) = frame {
       if let Ok(mut m) = frame_subscribers.lock() {
@@ -391,6 +399,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     vectorscope_pair,
     channel_layout,
     spectrum_channel,
+    loudness_weights,
     dropped_chunks,
   } = args;
   let dropped_for_callbacks = dropped_chunks.clone();
@@ -429,6 +438,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       vectorscope_pair,
       channel_layout,
       spectrum_channel,
+      loudness_weights,
       dropped_chunks,
       bridge_pool,
     );

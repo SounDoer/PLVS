@@ -32,6 +32,7 @@ import {
 } from "./math/spectrumChannelOptions.js";
 import {
   roleTokensToLabels,
+  roleTokensToLoudnessWeights,
   sanitizeChannelLabelOverrides,
   seedTokensFromLabels,
 } from "./math/channelRoles.js";
@@ -58,7 +59,12 @@ import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shell
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { LayoutGrid, Pin, PinOff, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
-import { clearAudioHistory, setVectorscopePair, setSpectrumChannel } from "./ipc/commands.js";
+import {
+  clearAudioHistory,
+  setLoudnessWeights,
+  setVectorscopePair,
+  setSpectrumChannel,
+} from "./ipc/commands.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
 import { checkForUpdate } from "./lib/updateCheck.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -296,6 +302,9 @@ function AppContent() {
       if (lastSentSpectrumChannelKeyRef.current === key) lastSentSpectrumChannelKeyRef.current = "";
     });
   }, []);
+  const sendTrackedLoudnessWeights = useCallback((weights) => {
+    return setLoudnessWeights(weights).catch(() => {});
+  }, []);
 
   useEffect(() => {
     writePersistedPanelControls(normalizedPanelControls);
@@ -405,6 +414,11 @@ function AppContent() {
     () => (channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null),
     [channelLabelOverride]
   );
+  const loudnessWeights = useMemo(
+    () => (channelLabelOverride ? roleTokensToLoudnessWeights(channelLabelOverride) : null),
+    [channelLabelOverride]
+  );
+  const loudnessWeightsRef = useRef(loudnessWeights);
   const channelAutoLabels = useMemo(
     () =>
       channelCount > 0
@@ -419,6 +433,12 @@ function AppContent() {
     () => channelLabelOverride ?? seedTokensFromLabels(channelAutoLabels),
     [channelLabelOverride, channelAutoLabels]
   );
+
+  useEffect(() => {
+    loudnessWeightsRef.current = loudnessWeights;
+    if (!isTauri() || !running) return;
+    void sendTrackedLoudnessWeights(loudnessWeights);
+  }, [loudnessWeights, running, sendTrackedLoudnessWeights]);
 
   const peakLabelContext = useMemo(
     () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
@@ -904,6 +924,7 @@ function AppContent() {
     selectedOffsetRef,
     vectorscopePairRef,
     spectrumChannelRef,
+    loudnessWeightsRef,
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,

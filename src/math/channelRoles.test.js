@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHANNEL_ROLE_VOCABULARY,
   roleTokensToLabels,
+  roleTokensToLoudnessWeights,
   seedTokensFromLabels,
   sanitizeChannelLabelOverrides,
 } from "./channelRoles.js";
@@ -34,6 +35,46 @@ describe("roleTokensToLabels", () => {
       "Cs",
     ]);
     expect(roleTokensToLabels(["L", "generic", "zzz"])).toEqual(["L", "Ch 2", "Ch 3"]);
+  });
+});
+
+describe("roleTokensToLoudnessWeights", () => {
+  it("maps full-band front, mono, height, and generic roles to unity", () => {
+    expect(roleTokensToLoudnessWeights(["M", "L", "R", "C", "Ltf", "Rtr", "generic"])).toEqual([
+      1, 1, 1, 1, 1, 1, 1,
+    ]);
+  });
+
+  it("maps LFE to zero", () => {
+    expect(roleTokensToLoudnessWeights(["L", "LFE", "R"])).toEqual([1, 0, 1]);
+  });
+
+  it("maps surround and back roles to the BS.1770 +1.5 dB energy multiplier", () => {
+    const surroundWeight = 10 ** (1.5 / 10);
+    expect(roleTokensToLoudnessWeights(["Ls", "Rs", "Lb", "Rb", "Cs"])).toEqual([
+      surroundWeight,
+      surroundWeight,
+      surroundWeight,
+      surroundWeight,
+      surroundWeight,
+    ]);
+  });
+
+  it("maps the default 7.0 role order to front + surround/back weights", () => {
+    const surroundWeight = 10 ** (1.5 / 10);
+    expect(roleTokensToLoudnessWeights(["L", "R", "C", "Ls", "Rs", "Lb", "Rb"])).toEqual([
+      1,
+      1,
+      1,
+      surroundWeight,
+      surroundWeight,
+      surroundWeight,
+      surroundWeight,
+    ]);
+  });
+
+  it("maps unknown defensive tokens to unity", () => {
+    expect(roleTokensToLoudnessWeights(["zzz"])).toEqual([1]);
   });
 });
 

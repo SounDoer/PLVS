@@ -11,17 +11,9 @@ describe("getPeakChannels", () => {
     ]);
   });
 
-  it("uses peakDb with generic Ch when count has no format row", () => {
+  it("uses peakDb with 7.0 layout labels for seven channels", () => {
     const ch = getPeakChannels({ peakDb: [-1, -2, -3, -4, -5, -6, -7] }, {});
-    expect(ch.map((c) => c.label)).toEqual([
-      "Ch 1",
-      "Ch 2",
-      "Ch 3",
-      "Ch 4",
-      "Ch 5",
-      "Ch 6",
-      "Ch 7",
-    ]);
+    expect(ch.map((c) => c.label)).toEqual(["L", "R", "C", "Ls", "Rs", "Lb", "Rb"]);
   });
 
   it("falls back to L/R when peakDb missing", () => {

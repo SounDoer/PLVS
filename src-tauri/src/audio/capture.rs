@@ -36,5 +36,6 @@ pub trait AudioCapture: Send + Sync {
     vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
+    loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String>;
 }

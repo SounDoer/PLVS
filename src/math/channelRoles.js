@@ -50,6 +50,33 @@ export function seedTokensFromLabels(labels) {
   return labels.map((label) => NAMED_LABEL_TO_ID.get(label) ?? "generic");
 }
 
+const SURROUND_LOUDNESS_WEIGHT = 10 ** (1.5 / 10);
+const LOUDNESS_WEIGHT_BY_ROLE_ID = new Map([
+  ["M", 1],
+  ["L", 1],
+  ["R", 1],
+  ["C", 1],
+  ["LFE", 0],
+  ["Ls", SURROUND_LOUDNESS_WEIGHT],
+  ["Rs", SURROUND_LOUDNESS_WEIGHT],
+  ["Lb", SURROUND_LOUDNESS_WEIGHT],
+  ["Rb", SURROUND_LOUDNESS_WEIGHT],
+  ["Cs", SURROUND_LOUDNESS_WEIGHT],
+  ["Ltf", 1],
+  ["Rtf", 1],
+  ["Ltr", 1],
+  ["Rtr", 1],
+  ["generic", 1],
+]);
+
+/**
+ * @param {string[]} tokens
+ * @returns {number[]} Linear BS.1770 energy multipliers, one per channel.
+ */
+export function roleTokensToLoudnessWeights(tokens) {
+  return tokens.map((token) => LOUDNESS_WEIGHT_BY_ROLE_ID.get(token) ?? 1);
+}
+
 const VALID_IDS = new Set(CHANNEL_ROLE_VOCABULARY.map((r) => r.id));
 
 /**

@@ -56,6 +56,7 @@ pub struct MeterPipeline {
   spectrum: SpectrumMeter,
   vectorscope: VectorscopeMeter,
   last_spectrum_channel: SpectrumChannelSel,
+  last_loudness_weights: Option<Vec<f64>>,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
   st_max: f64,
@@ -89,6 +90,7 @@ impl MeterPipeline {
       spectrum: SpectrumMeter::new(sr),
       vectorscope: VectorscopeMeter::new(),
       last_spectrum_channel: SpectrumChannelSel::default(),
+      last_loudness_weights: None,
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
       st_max: f64::NEG_INFINITY,
@@ -141,6 +143,7 @@ impl MeterPipeline {
     vectorscope_pair: (u16, u16),
     channel_layout: ChannelLayoutSetting,
     spectrum_channel: SpectrumChannelSel,
+    loudness_weights: Option<Vec<f64>>,
   ) -> (Option<AudioFramePayload>, Option<LoudnessSlowPayload>) {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
@@ -156,7 +159,24 @@ impl MeterPipeline {
       other => other,
     };
 
-    let (loudness_layout, loudness_layout_known) = loudness_layout_meta(ch, effective_layout);
+    let dynamic_loudness_active = loudness_weights
+      .as_ref()
+      .is_some_and(|weights| weights.len() == ch as usize);
+
+    if loudness_weights != self.last_loudness_weights {
+      self.loudness.reset();
+      self.last_loudness = None;
+      self.pending_loudness_hist = None;
+      self.m_max = f64::NEG_INFINITY;
+      self.st_max = f64::NEG_INFINITY;
+      self.last_loudness_weights = loudness_weights.clone();
+    }
+
+    let (loudness_layout, loudness_layout_known) = if dynamic_loudness_active {
+      ("custom".to_string(), true)
+    } else {
+      loudness_layout_meta(ch, effective_layout)
+    };
 
     if spectrum_channel != self.last_spectrum_channel {
       self.spectrum.reset();
@@ -169,6 +189,7 @@ impl MeterPipeline {
       channels: ch,
       now_sec,
       channel_layout: effective_layout,
+      loudness_weights,
       vectorscope_pair,
       spectrum_channel,
     };
@@ -463,6 +484,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Pair(0, 1),
+      None,
     );
     let (_, before_change, _) = pipeline.spectrum.last_output();
     assert!(
@@ -475,6 +497,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Single(2),
+      None,
     );
     let (_, immediately_after_change, _) = pipeline.spectrum.last_output();
     assert!(
@@ -495,10 +518,30 @@ mod tests {
       (2, 0),
       crate::engine::ChannelLayoutSetting::Auto,
       crate::dsp::SpectrumChannelSel::default(),
+      None,
     );
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
     assert_eq!(p.vectorscope.vs_l.back().copied().unwrap_or_default(), 1.3);
     assert_eq!(p.vectorscope.vs_r.back().copied().unwrap_or_default(), 1.1);
+  }
+
+  #[test]
+  fn dynamic_loudness_weights_report_custom_layout() {
+    let sr = 48_000_u32;
+    let channels = 3_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let frames = 4_800usize;
+    let pcm = vec![0.1_f32; frames * channels as usize];
+    let (frame, _) = pipeline.push_pcm_f32(
+      &pcm,
+      (0, 1),
+      ChannelLayoutSetting::Auto,
+      SpectrumChannelSel::default(),
+      Some(vec![1.0, 1.0, 0.0]),
+    );
+    let frame = frame.expect("100ms chunk should emit a frame");
+    assert_eq!(frame.loudness_layout, "custom");
+    assert!(frame.loudness_layout_known);
   }
 
   #[test]
@@ -614,6 +657,7 @@ mod tests {
         (0, 1),
         ChannelLayoutSetting::Auto,
         SpectrumChannelSel::default(),
+        None,
       );
       if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
         entries.push(tick);
@@ -670,6 +714,7 @@ mod tests {
         (0, 1),
         ChannelLayoutSetting::Auto,
         crate::dsp::SpectrumChannelSel::default(),
+        None,
       ) {
         loudness_layout_seen = Some(f.loudness_layout.clone());
         break;

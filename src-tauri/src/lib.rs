@@ -31,6 +31,7 @@ pub fn run() {
       ipc::commands::audio_start,
       ipc::commands::set_vectorscope_pair,
       ipc::commands::set_spectrum_channel,
+      ipc::commands::set_loudness_weights,
       ipc::commands::audio_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_engine_state,

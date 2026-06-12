@@ -21,6 +21,12 @@ function functionBodyAfter(marker) {
 }
 
 describe("App toolbar", () => {
+  it("has a frontend IPC wrapper for dynamic loudness weights", () => {
+    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
+    expect(commandsSource).toContain("export function setLoudnessWeights(weights)");
+    expect(commandsSource).toContain('return invoke("set_loudness_weights", { weights });');
+  });
+
   it("uses a slightly larger device icon to match neighboring toolbar glyphs visually", () => {
     expect(appSource).toContain('<Volume2 className="size-4 shrink-0" />');
   });
@@ -100,6 +106,14 @@ describe("App toolbar", () => {
     expect(appSource).toContain("channelLabelTokens={channelLabelTokens}");
     expect(appSource).toContain("setChannelLabelToken={setChannelLabelToken}");
     expect(appSource).toContain("resetChannelLabels={resetChannelLabels}");
+  });
+
+  it("wires channel label overrides to loudness weights IPC", () => {
+    expect(appSource).toContain("roleTokensToLoudnessWeights");
+    expect(appSource).toContain("const loudnessWeights = useMemo(");
+    expect(appSource).toContain("sendTrackedLoudnessWeights");
+    expect(appSource).toContain("loudnessWeightsRef");
+    expect(appSource).toContain("loudnessWeightsRef,");
   });
 
   it("keeps capture running when Clear resets the measurement window", () => {
