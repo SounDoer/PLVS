@@ -51,6 +51,7 @@ impl AudioCapture for CpalBackend {
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    dialogue_gating: Arc<std::sync::Mutex<bool>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     Ok(Box::new(CaptureSession::start(
       device_id,
@@ -60,6 +61,7 @@ impl AudioCapture for CpalBackend {
       channel_layout,
       spectrum_channel,
       loudness_weights,
+      dialogue_gating,
     )?))
   }
 }
@@ -94,6 +96,7 @@ impl CaptureSession {
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    dialogue_gating: Arc<std::sync::Mutex<bool>>,
   ) -> Result<Self, String> {
     let (device, supported) = resolve_device(device_id)?;
     let sample_rate = supported.sample_rate();
@@ -121,6 +124,7 @@ impl CaptureSession {
           channel_layout,
           spectrum_channel,
           loudness_weights,
+          dialogue_gating,
           dropped_chunks,
         })
       })
@@ -148,6 +152,7 @@ struct RunCaptureArgs {
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+  dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dropped_chunks: Arc<AtomicU64>,
 }
 
@@ -284,6 +289,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+  dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
 ) {
@@ -315,8 +321,9 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       .unwrap_or(ChannelLayoutSetting::Auto);
     let spectrum_sel = spectrum_channel.lock().map(|g| *g).unwrap_or_default();
     let loudness_weights = loudness_weights.lock().map(|g| g.clone()).unwrap_or(None);
+    let dialogue_gating = dialogue_gating.lock().map(|g| *g).unwrap_or(false);
     let (frame, slow) =
-      pipeline.push_pcm_f32(&floats, pair, layout, spectrum_sel, loudness_weights);
+      pipeline.push_pcm_f32(&floats, pair, layout, spectrum_sel, loudness_weights, dialogue_gating);
     let mut should_stop = false;
     if let Some(f) = frame {
       if let Ok(mut m) = frame_subscribers.lock() {
@@ -400,6 +407,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     channel_layout,
     spectrum_channel,
     loudness_weights,
+    dialogue_gating,
     dropped_chunks,
   } = args;
   let dropped_for_callbacks = dropped_chunks.clone();
@@ -439,6 +447,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       channel_layout,
       spectrum_channel,
       loudness_weights,
+      dialogue_gating,
       dropped_chunks,
       bridge_pool,
     );

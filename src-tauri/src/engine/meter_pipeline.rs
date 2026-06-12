@@ -146,6 +146,7 @@ impl MeterPipeline {
     channel_layout: ChannelLayoutSetting,
     spectrum_channel: SpectrumChannelSel,
     loudness_weights: Option<Vec<f64>>,
+    dialogue_gating: bool,
   ) -> (Option<AudioFramePayload>, Option<LoudnessSlowPayload>) {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
@@ -194,7 +195,7 @@ impl MeterPipeline {
       loudness_weights,
       vectorscope_pair,
       spectrum_channel,
-      dialogue_gating: false,
+      dialogue_gating,
     };
     self.loudness.push_pcm(&ctx);
     self.spectrum.push_pcm(&ctx);
@@ -488,6 +489,7 @@ mod tests {
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Pair(0, 1),
       None,
+      false,
     );
     let (_, before_change, _) = pipeline.spectrum.last_output();
     assert!(
@@ -501,6 +503,7 @@ mod tests {
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Single(2),
       None,
+      false,
     );
     let (_, immediately_after_change, _) = pipeline.spectrum.last_output();
     assert!(
@@ -522,6 +525,7 @@ mod tests {
       crate::engine::ChannelLayoutSetting::Auto,
       crate::dsp::SpectrumChannelSel::default(),
       None,
+      false,
     );
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
     assert_eq!(p.vectorscope.vs_l.back().copied().unwrap_or_default(), 1.3);
@@ -541,6 +545,7 @@ mod tests {
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::default(),
       Some(vec![1.0, 1.0, 0.0]),
+      false,
     );
     let frame = frame.expect("100ms chunk should emit a frame");
     assert_eq!(frame.loudness_layout, "custom");
@@ -677,6 +682,7 @@ mod tests {
         ChannelLayoutSetting::Auto,
         SpectrumChannelSel::default(),
         None,
+        false,
       );
       if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
         entries.push(tick);
@@ -734,6 +740,7 @@ mod tests {
         ChannelLayoutSetting::Auto,
         crate::dsp::SpectrumChannelSel::default(),
         None,
+        false,
       ) {
         loudness_layout_seen = Some(f.loudness_layout.clone());
         break;

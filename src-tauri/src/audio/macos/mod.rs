@@ -154,6 +154,7 @@ fn run_macos_tap_worker(
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+  dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dropped_chunks: Arc<AtomicU64>,
 ) -> Result<(), String> {
   let (uid, sample_rate, channels) = resolve_tap_uid_channels_rate(&device_id)?;
@@ -174,6 +175,7 @@ fn run_macos_tap_worker(
       channel_layout,
       spectrum_channel,
       loudness_weights,
+      dialogue_gating,
       dropped_for_thread,
       bridge_pool,
     );
@@ -255,6 +257,7 @@ impl MacosTapCaptureSession {
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    dialogue_gating: Arc<std::sync::Mutex<bool>>,
   ) -> Result<Self, String> {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let clear_peak_history = Arc::new(AtomicBool::new(false));
@@ -274,6 +277,7 @@ impl MacosTapCaptureSession {
           channel_layout,
           spectrum_channel,
           loudness_weights,
+          dialogue_gating,
           dropped_chunks,
         )
       })
@@ -301,6 +305,7 @@ pub fn start_session(
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+  dialogue_gating: Arc<std::sync::Mutex<bool>>,
 ) -> Result<Box<dyn AudioCaptureSession>, String> {
   if is_macos_loopback_selection(device_id) {
     Ok(Box::new(MacosTapCaptureSession::start(
@@ -311,6 +316,7 @@ pub fn start_session(
       channel_layout,
       spectrum_channel,
       loudness_weights,
+      dialogue_gating,
     )?))
   } else {
     CpalBackend.start_session(
@@ -321,6 +327,7 @@ pub fn start_session(
       channel_layout,
       spectrum_channel,
       loudness_weights,
+      dialogue_gating,
     )
   }
 }

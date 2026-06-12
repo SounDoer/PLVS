@@ -97,6 +97,7 @@ pub fn audio_start(
   let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
   let spectrum = state.inner().spectrum_channel.clone();
   let loudness_weights = state.inner().loudness_weights.clone();
+  let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let session = AudioCapture::start_session(
     &AppAudioBackend,
     &device_id,
@@ -106,6 +107,7 @@ pub fn audio_start(
     layout,
     spectrum,
     loudness_weights,
+    dialogue_gating,
   )?;
   {
     let mut g = state

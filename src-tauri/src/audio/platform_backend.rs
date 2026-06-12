@@ -36,6 +36,7 @@ impl AudioCapture for AppAudioBackend {
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
     loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     #[cfg(target_os = "macos")]
     {
@@ -47,6 +48,7 @@ impl AudioCapture for AppAudioBackend {
         channel_layout,
         spectrum_channel,
         loudness_weights,
+        dialogue_gating,
       )
     }
     #[cfg(not(target_os = "macos"))]
@@ -59,6 +61,7 @@ impl AudioCapture for AppAudioBackend {
         channel_layout,
         spectrum_channel,
         loudness_weights,
+        dialogue_gating,
       )
     }
   }

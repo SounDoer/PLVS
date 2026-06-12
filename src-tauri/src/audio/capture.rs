@@ -37,5 +37,6 @@ pub trait AudioCapture: Send + Sync {
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
     loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String>;
 }
