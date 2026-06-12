@@ -458,8 +458,14 @@ function AppContent() {
   }, [dialogueGating, running]);
 
   const peakLabelContext = useMemo(
-    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
-    [layoutResolution.resolved, overrideLabels]
+    () => ({
+      channelLayout: "auto",
+      // Idle (no signal yet): treat the default 2ch as stereo so every panel shows L/R
+      // instead of numbered Ch labels. Once a real layout resolves this falls through.
+      resolvedLayout: channelCount === 0 ? "stereo" : layoutResolution.resolved,
+      overrideLabels,
+    }),
+    [channelCount, layoutResolution.resolved, overrideLabels]
   );
 
   const setChannelLabelToken = useCallback(

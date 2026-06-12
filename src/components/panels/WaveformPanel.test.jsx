@@ -9,7 +9,8 @@ const baseAudioData = {
   visibleSamples: 0,
   effectiveOffsetSamples: 0,
   channelCount: 0,
-  peakLabelContext: { channelLayout: "auto", resolvedLayout: "unknown" },
+  // Idle context as App provides it: channelCount 0 resolves to stereo (single source of truth).
+  peakLabelContext: { channelLayout: "auto", resolvedLayout: "stereo" },
   historyTimeTicks: ["0s", "0s", "0s", "0s", "0s"],
   historyChartInteractive: false,
   selectedOffset: -1,

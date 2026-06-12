@@ -106,8 +106,9 @@ describe("App toolbar", () => {
       "const overrideLabels = useMemo(\n    () => (channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null),"
     );
     expect(appSource).toContain(
-      '() => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels })'
+      'resolvedLayout: channelCount === 0 ? "stereo" : layoutResolution.resolved,'
     );
+    expect(appSource).toContain("overrideLabels,");
     expect(appSource).toContain("setChannelLabelOverrides(sanitizeChannelLabelOverrides");
     expect(appSource).toContain("channelLabelOverrides,");
     expect(appSource).toContain("channelLabelTokens={channelLabelTokens}");

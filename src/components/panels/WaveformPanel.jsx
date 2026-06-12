@@ -45,11 +45,7 @@ export function WaveformPanel({ compact = false }) {
   } = useAudioData();
 
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
-  const labelContext =
-    channelCount > 0
-      ? (peakLabelContext ?? {})
-      : { ...(peakLabelContext ?? {}), resolvedLayout: "stereo" };
-  const labels = getPeakMeterChannelLabels(effectiveChannels, labelContext);
+  const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
   const { mins, maxes, entryCount } = sliceWaveformHistory(
     histSourceList ?? [],
     visibleSamples ?? 0,
