@@ -18,6 +18,7 @@ Standard reference docs live directly in `docs/`. Working and process docs live 
 |------|---------|
 | [adr/0001-ui-layout-vs-shadcn-theme.md](adr/0001-ui-layout-vs-shadcn-theme.md) | `--ui-*` layout tokens vs shadcn/Tailwind surface tokens — boundary definition |
 | [adr/0002-theme-id-and-appearance.md](adr/0002-theme-id-and-appearance.md) | `themeId`, `appearance`, `data-theme`, first-paint placeholder, chart token naming |
+| [adr/0003-device-identity-layering.md](adr/0003-device-identity-layering.md) | Keep device DTO / pure id algebra / cpal enumeration split — do not merge |
 
 ADRs are historical records — do not edit them. Add a new ADR to record a new decision.
 
