@@ -9,21 +9,6 @@
  */
 
 /**
- * Static per-stat-row hints, keyed by stat id.
- * @type {Record<string, string>}
- */
-export const STAT_ROW_HINTS = {
-  dialogueCoverage:
-    "Dialogue detection is a Silero-VAD estimate (singing counts as speech); not a certified dialogue measurement.",
-  dialogueIntegrated:
-    "Dialogue detection is a Silero-VAD estimate (singing counts as speech); not a certified dialogue measurement.",
-  dialogueRange:
-    "Dialogue detection is a Silero-VAD estimate (singing counts as speech); not a certified dialogue measurement.",
-  dialogueOffset:
-    "Dialogue detection is a Silero-VAD estimate (singing counts as speech); not a certified dialogue measurement.",
-};
-
-/**
  * @param {object} ctx
  * @param {boolean} ctx.running
  * @param {string} ctx.channelLayout UI setting: `auto` | `stereo` | `5.1` | `7.1`
