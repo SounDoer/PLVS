@@ -208,7 +208,7 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 --ui-metric-row-gap     0.5rem    Gap between sibling metric rows
 --ui-metric-row-min-h   2.5rem    Minimum row height
 --ui-metric-title-gap   0.4rem    Gap between metrics section title and first row
---ui-metric-list-gap    0.45rem   Gap managed by the scroll container
+--ui-metric-list-gap    0.2rem    Gap managed by the scroll container
 --ui-metric-inline-gap  0.4rem    Gap between inline label + value pairs
 ```
 
@@ -232,3 +232,22 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 --ui-radius-pill          9999px    Full-round pill (Badge, etc.)
 --ui-radius-metric-row    0.375rem  Metric row inner radius
 ```
+
+---
+
+## Text Casing Conventions
+
+Displayed UI text follows four casing rules (standardized 2026-06-13). Casing lives in the
+source strings, **not** in CSS `text-transform` — avoid `uppercase`/`capitalize` utility classes,
+which fight the source strings and don't change DOM `textContent`.
+
+| Casing | Used for | Examples |
+|--------|----------|----------|
+| **ALL CAPS** | Live state / transport chips only — read as indicator lights | `StatusPill` (READY/LIVE/SNAP), `TransportButton` (START/STOP/LIVE) |
+| **Title Case** (minor words lowercased) | Everything else informational: panel titles, metric names, meter captions, menu section headers, footer labels, settings rows + options, shortcut descriptions, tooltips, placeholders | `TP Max`, `Correlation`, `Open at Login`, `Save as Preset…` |
+| **Sentence case** | Full sentences / messages: status text, empty states, error & help text, gesture hints | `Up to date`, `No stats selected`, `Combo unavailable, try another` |
+| **Canonical** | Acronyms & units keep their standard form | LUFS, LU, dB, %, LRA, PSR, PLR, TP, L/R/C/LFE |
+
+Minor words (a, an, the, and, or, at, to, of, on, for, in, by, vs, via…) stay lowercase in Title
+Case unless they are the first or last word. Screen-reader-only `aria-label`s are not "displayed
+text" and are exempt.

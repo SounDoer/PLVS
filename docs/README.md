@@ -9,7 +9,7 @@ Standard reference docs live directly in `docs/`. Working and process docs live 
 |------|---------|-----------|
 | [prd.md](prd.md) | Product intent: what PLVS is, target users, features, non-goals | Understanding product scope and decisions |
 | [architecture.md](architecture.md) | Technical map: tech stack, directory structure, audio pipeline, IPC, theme system | Writing code, navigating the codebase |
-| [design-tokens.md](design-tokens.md) | UI token system: CSS variables, semantic tokens, theme structure | Working on visual appearance or theming |
+| [design-tokens.md](design-tokens.md) | UI token system: CSS variables, semantic tokens, theme structure, text casing conventions | Working on visual appearance, theming, or label text casing |
 | [loudness-references.md](loudness-references.md) | Loudness reference profile data for UI overlays | Adding or editing loudness reference targets |
 
 ## Decision records
