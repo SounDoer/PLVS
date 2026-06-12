@@ -84,6 +84,24 @@ describe("App toolbar", () => {
     expect(appSource).toContain("const nextPersisted = stripLegacyChannelPreferenceKeys(prev);");
   });
 
+  it("wires per-count channel label overrides into live label contexts", () => {
+    expect(appSource).toContain("sanitizeChannelLabelOverrides");
+    expect(appSource).toContain(
+      "const [channelLabelOverrides, setChannelLabelOverrides] = useState({});"
+    );
+    expect(appSource).toContain(
+      "const overrideLabels = useMemo(\n    () => (channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null),"
+    );
+    expect(appSource).toContain(
+      '() => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels })'
+    );
+    expect(appSource).toContain("setChannelLabelOverrides(sanitizeChannelLabelOverrides");
+    expect(appSource).toContain("channelLabelOverrides,");
+    expect(appSource).toContain("channelLabelTokens={channelLabelTokens}");
+    expect(appSource).toContain("setChannelLabelToken={setChannelLabelToken}");
+    expect(appSource).toContain("resetChannelLabels={resetChannelLabels}");
+  });
+
   it("keeps capture running when Clear resets the measurement window", () => {
     const clearAllBody = functionBodyAfter("const clearAll = async () =>");
 

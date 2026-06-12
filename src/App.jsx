@@ -30,6 +30,11 @@ import {
   buildSpectrumChannelOptions,
   clampSpectrumChannelToAvailable,
 } from "./math/spectrumChannelOptions.js";
+import {
+  roleTokensToLabels,
+  sanitizeChannelLabelOverrides,
+  seedTokensFromLabels,
+} from "./math/channelRoles.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -223,6 +228,7 @@ function AppContent() {
     UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
   );
   const [updateInfo, setUpdateInfo] = useState({ status: "checking" });
+  const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
 
   const audioRef = useRef(null);
   const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
@@ -393,15 +399,59 @@ function AppContent() {
     () => resolveChannelLayout("auto", { channelCount }),
     [channelCount]
   );
+  const channelLabelOverride =
+    channelCount > 0 ? (channelLabelOverrides[channelCount] ?? null) : null;
+  const overrideLabels = useMemo(
+    () => (channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null),
+    [channelLabelOverride]
+  );
+  const channelAutoLabels = useMemo(
+    () =>
+      channelCount > 0
+        ? getPeakMeterChannelLabels(channelCount, {
+            channelLayout: "auto",
+            resolvedLayout: layoutResolution.resolved,
+          })
+        : [],
+    [channelCount, layoutResolution.resolved]
+  );
+  const channelLabelTokens = useMemo(
+    () => channelLabelOverride ?? seedTokensFromLabels(channelAutoLabels),
+    [channelLabelOverride, channelAutoLabels]
+  );
+
   const peakLabelContext = useMemo(
-    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved }),
-    [layoutResolution.resolved]
+    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
+    [layoutResolution.resolved, overrideLabels]
   );
 
   const vectorscopeLabelContext = useMemo(
-    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved }),
-    [layoutResolution.resolved]
+    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved, overrideLabels }),
+    [layoutResolution.resolved, overrideLabels]
   );
+
+  const setChannelLabelToken = useCallback(
+    (index, token) => {
+      if (channelCount <= 0) return;
+      setChannelLabelOverrides((prev) => {
+        const base = prev[channelCount] ?? seedTokensFromLabels(channelAutoLabels);
+        const next = base.slice();
+        next[index] = token;
+        return { ...prev, [channelCount]: next };
+      });
+    },
+    [channelCount, channelAutoLabels]
+  );
+
+  const resetChannelLabels = useCallback(() => {
+    setChannelLabelOverrides((prev) => {
+      if (!(channelCount in prev)) return prev;
+      const next = { ...prev };
+      delete next[channelCount];
+      return next;
+    });
+  }, [channelCount]);
+
   /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
   const vectorscopePairOptions = useMemo(() => {
     const n = channelCount >= 2 ? channelCount : channelCount === 0 ? 2 : 1;
@@ -771,6 +821,7 @@ function AppContent() {
       if (typeof s.loudnessHistWidthRatio === "number")
         setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
       if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
+      setChannelLabelOverrides(sanitizeChannelLabelOverrides(s.channelLabelOverrides));
     } catch (_) {}
   }, []);
 
@@ -793,6 +844,7 @@ function AppContent() {
           referenceLufs,
           appearance,
           themeId: persistedThemeId,
+          channelLabelOverrides,
         })
       );
     } catch (_) {}
@@ -805,6 +857,7 @@ function AppContent() {
     referenceLufs,
     appearance,
     fixedThemeSelectValue,
+    channelLabelOverrides,
   ]);
 
   useEffect(() => {
@@ -1068,6 +1121,11 @@ function AppContent() {
           themeSelectOptions={themeSelectOptions}
           referenceLufs={referenceLufs}
           setReferenceLufs={setReferenceLufs}
+          channelCount={channelCount}
+          channelLabelTokens={channelLabelTokens}
+          channelLabelHasOverride={!!channelLabelOverride}
+          setChannelLabelToken={setChannelLabelToken}
+          resetChannelLabels={resetChannelLabels}
           appVersion={APP_VERSION}
           latestVersion={updateInfo?.latestVersion}
           releaseUrl={updateInfo?.releaseUrl}

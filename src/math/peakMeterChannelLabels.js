@@ -14,6 +14,7 @@
  * @property {ChannelLayoutSetting} [channelLayout]
  * @property {ResolvedChannelLayout} [resolvedLayout]
  * @property {string} [formatId] Optional key in {@link PEAK_METER_CHANNEL_FORMATS} when detection supplies it.
+ * @property {string[]} [overrideLabels] User per-channel labels; used verbatim when length === channelCount.
  */
 
 /**
@@ -76,6 +77,10 @@ export function getPeakMeterChannelLabels(channelCount, ctx = {}) {
   const n = Math.max(0, Math.floor(Number(channelCount)));
   if (n === 0) {
     return [];
+  }
+
+  if (Array.isArray(ctx.overrideLabels) && ctx.overrideLabels.length === n) {
+    return [...ctx.overrideLabels];
   }
 
   if (ctx.formatId) {

@@ -43,6 +43,25 @@ describe("getPeakMeterChannelLabels", () => {
     );
   });
 
+  it("honours overrideLabels at highest priority when length matches", () => {
+    expect(
+      getPeakMeterChannelLabels(7, {
+        channelLayout: "auto",
+        resolvedLayout: "unknown",
+        overrideLabels: ["L", "R", "C", "LFE", "Ls", "Rs", "Cs"],
+      })
+    ).toEqual(["L", "R", "C", "LFE", "Ls", "Rs", "Cs"]);
+  });
+
+  it("ignores overrideLabels when its length does not match the channel count", () => {
+    expect(
+      getPeakMeterChannelLabels(6, {
+        resolvedLayout: "5.1",
+        overrideLabels: ["L", "R"],
+      })
+    ).toEqual(["L", "R", "C", "LFE", "Ls", "Rs"]);
+  });
+
   it("shows numbered labels when resolvedLayout is unknown, regardless of channel count", () => {
     expect(getPeakMeterChannelLabels(6, { resolvedLayout: "unknown" })).toEqual([
       "Ch 1",
