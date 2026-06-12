@@ -37,6 +37,7 @@ export function SettingsPanel({
   releaseUrl,
   hasUpdate = false,
   updateStatus = latestVersion ? "ok" : "checking",
+  onCheckForUpdate = () => {},
   openReleaseUrl = () => {},
   autostartEnabled = false,
   setAutostartEnabled = () => {},
@@ -63,13 +64,13 @@ export function SettingsPanel({
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
   const closingIntentRef = useRef(false);
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
-  const updateStatusText = latestVersion
-    ? hasUpdate
-      ? `Update available: v${latestVersion}`
-      : "Up to date"
-    : updateStatus === "unavailable"
-      ? "Update check unavailable"
-      : "Checking updates";
+  const updateCheckDisabled = updateStatus === "checking";
+  let updateStatusText = "Checking updates";
+  if (updateStatus === "unavailable") {
+    updateStatusText = "Update check unavailable";
+  } else if (!updateCheckDisabled && latestVersion) {
+    updateStatusText = hasUpdate ? `Update available: v${latestVersion}` : "Up to date";
+  }
 
   useLayoutEffect(() => {
     if (settingsOpen) {
@@ -320,6 +321,17 @@ export function SettingsPanel({
                         <span className={hasUpdate ? "text-primary" : "text-muted-foreground"}>
                           {updateStatusText}
                         </span>
+                        <span className="text-muted-foreground/50">·</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground disabled:opacity-60"
+                          disabled={updateCheckDisabled}
+                          onClick={onCheckForUpdate}
+                        >
+                          Check again
+                        </Button>
                         <span className="text-muted-foreground/50">·</span>
                         <Button
                           type="button"

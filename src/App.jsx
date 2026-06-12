@@ -66,10 +66,10 @@ import {
   setSpectrumChannel,
 } from "./ipc/commands.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
-import { checkForUpdate } from "./lib/updateCheck.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
+import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
@@ -233,7 +233,7 @@ function AppContent() {
   const [loudnessHistWidthRatio, setLoudnessHistWidthRatio] = useState(
     UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
   );
-  const [updateInfo, setUpdateInfo] = useState({ status: "checking" });
+  const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
   const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
 
   const audioRef = useRef(null);
@@ -897,18 +897,6 @@ function AppContent() {
     });
   }, [spectrumLiveLabel, vectorscopeLiveLabel]);
 
-  // Silent update check on startup
-  useEffect(() => {
-    let cancelled = false;
-    checkForUpdate(APP_VERSION).then((info) => {
-      if (cancelled) return;
-      setUpdateInfo(info ? { ...info, status: "ok" } : { status: "unavailable" });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   useAudioEngine({
     running,
     captureDeviceId,
@@ -1152,6 +1140,7 @@ function AppContent() {
           releaseUrl={updateInfo?.releaseUrl}
           hasUpdate={updateInfo?.hasUpdate}
           updateStatus={updateInfo?.status}
+          onCheckForUpdate={refreshUpdateCheck}
           openReleaseUrl={openExternalUrl}
           autostartEnabled={autostartEnabled}
           setAutostartEnabled={setAutostartEnabled}
