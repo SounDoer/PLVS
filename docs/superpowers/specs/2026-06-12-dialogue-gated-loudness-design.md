@@ -9,11 +9,13 @@
 Add a **dialogue-gated** loudness measurement mode, modelled on Youlean Loudness Meter's
 "Dialog" readouts. On top of the existing BS.1770 energy gate, a voice-activity detector (VAD)
 classifies which audio is speech, and a parallel integrator measures loudness **only over the
-speech portions** of the program. This produces three new real-time readouts:
+speech portions** of the program. This produces four new real-time readouts (UI labels):
 
+- **Dialogue Coverage** — fraction of audible program time classified as speech.
 - **Dialogue Integrated** — integrated loudness computed over speech-only blocks.
-- **Dialogue LRA** — loudness range computed over speech-only blocks.
-- **Dialogue %** — fraction of measured program time classified as speech.
+- **Dialogue Range (LRA)** — loudness range computed over speech-only blocks.
+- **Dialogue Offset** — `Dialogue Integrated − Integrated`; how far dialogue sits above (+) or below
+  (−) the overall program loudness. Derived on the frontend, not a backend value.
 
 The detector is [Silero VAD](https://github.com/snakers4/silero-vad) (MIT), run via the
 `voice_activity_detector` Rust crate on top of the `ort` ONNX Runtime bindings.
@@ -50,8 +52,10 @@ IPC + UI, and ONNX Runtime packaging.
 
 ## Goals
 
-- A user-toggleable dialogue-gated mode produces Dialogue Integrated, Dialogue LRA, and Dialogue %
-  in real time, alongside (not replacing) the existing integrated/LRA values.
+- Four real-time dialogue readouts — Dialogue Coverage, Dialogue Integrated, Dialogue Range (LRA),
+  and Dialogue Offset — available as selectable rows in the loudness stats list, alongside (not
+  replacing) the existing readouts. There is no separate on/off toggle; showing any dialogue readout
+  drives the sidechain (see Gating control).
 - Speech detection uses Silero VAD on a mono, 16 kHz downmix of the input.
 - Speech gating is layered on top of the existing −70/−10 BS.1770 gates: a block must be both
   speech-classified **and** pass the energy gates to count toward dialogue loudness.
@@ -87,41 +91,51 @@ IPC + UI, and ONNX Runtime packaging.
 4. **Dialogue % denominator:** speech blocks divided by **energy-gated blocks** (blocks that pass the
    −70 LUFS absolute gate). Leading/trailing/idle silence does not dilute the percentage, so the
    readout reflects current content rather than wall-clock idle time.
+5. **No separate toggle — visibility-driven gating:** there is no dedicated on/off control. The VAD
+   runs only while at least one dialogue readout is shown in the stats list (off by default). The
+   existing stats-visibility selector is the control.
+6. **Four readouts:** Dialogue Coverage (`%`), Dialogue Integrated (`LUFS`), Dialogue Range (LRA)
+   (`LU`), Dialogue Offset (`LU`), in that order, as plain selectable rows (no section header).
+   Dialogue Offset = `Dialogue Integrated − Integrated`, frontend-derived, shown with an explicit
+   sign (+ = dialogue louder/more prominent than the program). A live "speaking now" dot sits on the
+   Dialogue Coverage row.
 
 ## Architecture
 
-A VAD sidechain runs in parallel to the existing loudness path, producing a per-100ms-block speech
-flag that gates a second integrator inside `LoudnessMeter`.
+A VAD sidechain runs in parallel to the existing loudness path. `LoudnessMeter::push_pcm` feeds it
+continuously and, at each 100 ms block close, folds the block's speech verdict into a dialogue
+accumulator.
 
 ```
-push_pcm_f32(interleaved, channels, sample_rate, ...)
-  ├─ loudness.push_pcm(ctx)          // existing, unchanged
-  │     └─ every 100ms: push [m0,m1] to ibl  (energy-gated integrated)
-  │                     push speech-block?    → ibl_dialogue  (NEW)
-  ├─ dialogue VAD sidechain (NEW)
-  │     downmix→mono → resample 48k→16k (rubato) → buffer into 512-sample
-  │     chunks → Silero → per-chunk speech prob → per-100ms majority vote
-  └─ feed the block's speech flag into LoudnessMeter's dialogue integrator
+LoudnessMeter::push_pcm(ctx)
+  ├─ if dialogue_gating: SpeechDetector.push_mono(downmix(interleaved))   // continuous feed
+  │     downmix→mono → resample to 16 kHz (rubato) → buffer 512-sample chunks
+  │     → Silero per chunk → threshold 0.5 → BlockVote.record(is_speech)
+  ├─ existing loudness path → every 100 ms closes a block: push [m0,m1] to ibl, compute short_term
+  └─ on block close, if dialogue_gating:
+        ms = ibl.last();  is_speech = SpeechDetector.take_block_decision()  // majority vote
+        DialogueIntegrator.push_block(ms, short_term, is_speech)
+        block.{dialogue_integrated, dialogue_lra, dialogue_percent} = DialogueIntegrator.{...}
 ```
 
-### Component ownership
+### Component ownership (as built in Slice 1)
 
-The VAD sidechain is **owned by `LoudnessMeter`** (not a separate `Meter`), because the speech flag
-and the loudness block share the exact same 100 ms boundary and accumulation lifecycle. Keeping them
-in one struct avoids re-deriving block boundaries and avoids a second copy of the gating logic.
+Three focused, independently-testable units rather than one merged struct:
 
-Concretely, `LoudnessMeter` gains:
+- **`dsp::speech`** — `downmix_to_mono` (pure), `BlockVote` (per-block majority, pure), and
+  `SpeechDetector` (owns the Silero session + `rubato` resampler + sample buffers + the current
+  block's `BlockVote`). Exposes `push_mono(&[f32])` and `take_block_decision() -> bool`.
+- **`dsp::dialogue`** — `DialogueIntegrator`: holds speech-only mean-square blocks, speech-time
+  short-term values, and audible/speech block counts. Exposes `push_block(ms, short_term, is_speech)`
+  plus `integrated()` / `lra()` / `percent()`.
+- **`LoudnessMeter`** owns `Option<SpeechDetector>` (lazily built on first gated push) and a
+  `DialogueIntegrator`, and wires them together in `push_pcm` as above.
 
-- a downmix + `rubato` resampler (48 kHz → 16 kHz), stateful, reset with the meter;
-- a 16 kHz sample buffer that emits fixed 512-sample chunks to Silero;
-- a Silero VAD session (shared/loaded once; see Packaging);
-- per-100ms-block chunk vote counters;
-- `ibl_dialogue: Vec<[f64; 2]>` — speech-only mean-square blocks;
-- a speech-block counter and total-block counter for Dialogue %.
-
-`integrated_dialogue()` and `lra_dialogue()` reuse the existing −70/−10 gate math over
-`ibl_dialogue`. Dialogue % = `speech_blocks / total_blocks` (both counted only over blocks that
-pass the −70 LUFS absolute gate, so silence at head/tail does not dilute the ratio).
+The dialogue readouts reuse the main path's BS.1770 gate math via the shared free functions
+`gated_integrated_lufs(&[[f64;2]])` and `gated_lra(&[f64])` (extracted from `LoudnessMeter` in
+Slice 1; the existing `integrated()` / `lra()` now delegate to them). Dialogue % =
+`speech_gated / gated_total` (both counted only over blocks above the −70 LUFS gate, so head/tail
+silence does not dilute it).
 
 ### Resampler / chunking detail
 
@@ -134,34 +148,47 @@ pass the −70 LUFS absolute gate, so silence at head/tail does not dilute the r
 - Each 100 ms loudness block tallies how many of its chunks were speech and applies the majority vote
   at block close.
 
-## Mode toggle & state
+## Gating control (visibility-driven, no separate toggle)
 
-Dialogue gating is opt-in (it costs CPU and loads a model). Follow the existing live-config pattern:
+There is **no dedicated on/off toggle**. The existing stats-visibility selector is the control: the
+VAD sidechain runs only while at least one dialogue readout is shown in the loudness stats list.
+Dialogue rows are off by default, so the model neither loads nor runs until the user opts in by
+adding a dialogue readout.
 
+Rationale: the VAD cost is small (~1–4 % of one CPU core plus a one-time ~tens-of-ms model load,
+based on Slice 0 numbers — Silero ≈ 0.6 % of a core, the `rubato` sinc resample is the larger share),
+but loading a multi-MB model and holding it resident for users who never look at dialogue is still
+waste. Tying it to visibility keeps it free when unused and costs nothing extra to wire (the flag was
+going to be plumbed anyway).
+
+Mechanics (reuses the `set_loudness_weights` live-config pattern):
+
+- Frontend derives `dialogueGating = loudnessStatsVisibleIds` contains any dialogue metric id.
 - `AppState` gains `dialogue_gating_enabled: Arc<Mutex<bool>>` (default `false`).
-- New IPC command `set_dialogue_gating(enabled: bool)` mirrors `set_loudness_weights`.
-- Frontend wrapper `setDialogueGating(enabled)` invokes it; the setting persists via the existing
-  settings store and is sent on engine start, like other engine config.
-- The capture worker reads a cloned snapshot per chunk and passes it into `PcmContext`
-  (`pub dialogue_gating: bool`).
-- When enabled flips, `MeterPipeline` resets only the dialogue accumulators (not the main loudness
-  state), so the two integrators stay independent.
+- IPC command `set_dialogue_gating(enabled: bool)` mirrors `set_loudness_weights`; the frontend
+  sends it on engine start and whenever the derived value changes.
+- The capture worker passes it into `PcmContext.dialogue_gating` (already added in Slice 1).
+- When the flag flips, `MeterPipeline` resets **only** the dialogue accumulators and the speech
+  detector's buffers/votes — not the main loudness state — so re-enabling starts clean and the two
+  integrators stay independent. (This re-introduces `DialogueIntegrator::reset` and a
+  `SpeechDetector` buffer reset, removed in Slice 1 as unused; Slice 2 adds them back with a test.)
 
-When disabled, the VAD sidechain does not run and the three dialogue fields report `None`.
+When the flag is false the sidechain does not run and the dialogue fields report `None`.
 
 ## IPC contract
 
 Extend the existing payloads rather than adding a new event stream.
 
-`LoudnessBlock` (`src-tauri/src/dsp/loudness.rs`) gains:
+`LoudnessBlock` (`src-tauri/src/dsp/loudness.rs`) — **already added in Slice 1**:
 
 ```rust
-pub dialogue_integrated: f64,   // NEG_INFINITY when no speech blocks yet
-pub dialogue_lra: f64,          // 0.0 when insufficient speech blocks
+pub dialogue_integrated: f64,   // NEG_INFINITY when gating off or no speech yet
+pub dialogue_lra: f64,          // 0.0 when gating off or insufficient speech
 pub dialogue_percent: f64,      // 0.0..=100.0
 ```
 
-`LoudnessSlowPayload` gains (camelCase, `Option`, skipped when `None`/disabled):
+`LoudnessSlowPayload` (~2 Hz `loudness-slow`) gains the three cumulative stats (camelCase, `Option`,
+skipped when gating off):
 
 ```rust
 pub dialogue_integrated: Option<f64>,
@@ -169,20 +196,44 @@ pub dialogue_lra: Option<f64>,
 pub dialogue_percent: Option<f64>,
 ```
 
-These three are emitted on the existing ~2 Hz `loudness-slow` channel — dialogue values are slow
-statistics, so they do not need the 60 Hz frame payload. (If the UI wants a live "speech now"
-indicator later, that can be added to `AudioFramePayload` separately; out of scope here.)
+`AudioFramePayload` (~60 Hz frame stream) gains one field for the live speech indicator:
+
+```rust
+pub dialogue_active_now: bool,  // current 100ms block's speech verdict; false when gating off
+```
+
+**Dialogue Offset is not a payload field** — it is derived on the frontend as
+`dialogue_integrated − integrated` (zero backend cost).
 
 ## Frontend
 
-- A toggle in Settings: **"Dialogue-gated loudness"** (off by default), with a one-line caveat that
-  it is a monitoring estimate (Silero VAD), not a certified dialogue measurement.
-- `LoudnessStatsPanel` (`src/components/panels/LoudnessStatsPanel.jsx`) shows the three readouts when
-  the mode is on:
-  - `Dialog Integrated` in LUFS (em-dash when no speech detected yet),
-  - `Dialog LRA` in LU,
-  - `Dialog %` as a percentage.
-- When the mode is off, the rows are hidden (not shown as zeros).
+Four selectable readouts, defined alongside the existing metrics in
+`src/hooks/useLoudnessHistory.js` and rendered by `LoudnessStatsPanel`
+(`src/components/panels/LoudnessStatsPanel.jsx`). They are ordinary rows in the configurable stats
+list (no section header/divider), **off by default**, in this order:
+
+| order | id | label | unit | source |
+| --- | --- | --- | --- | --- |
+| 1 | `dialogueCoverage` | `Dialogue Coverage` | `%` | `dialogue_percent` |
+| 2 | `dialogueIntegrated` | `Dialogue Integrated` | `LUFS` | `dialogue_integrated` |
+| 3 | `dialogueRange` | `Dialogue Range (LRA)` | `LU` | `dialogue_lra` |
+| 4 | `dialogueOffset` | `Dialogue Offset` | `LU` | `dialogue_integrated − integrated` |
+
+- **Dialogue Coverage** is the cumulative speech share; em-dash until any audible block is seen.
+- **Dialogue Integrated** is the dialogue-gated integrated loudness; em-dash until speech is detected.
+- **Dialogue Range (LRA)** parallels the existing `Loudness Range (LRA)` row.
+- **Dialogue Offset** = `Dialogue Integrated − Integrated`, shown **with an explicit sign**
+  (`+2.3` / `−4.0`). Positive ⇒ dialogue stands out above the mix; negative ⇒ dialogue sits below it.
+  Em-dash when either operand is not finite.
+- **Live speech indicator:** a small dot on the **Dialogue Coverage** row, lit when
+  `dialogue_active_now` is true (speaking right now), dim otherwise. Cumulative `%` and the live dot
+  form a static/live pair. The dot only exists while the Coverage row is shown.
+- **Caveat surfacing:** the known "singing counts as speech" limitation is conveyed via the existing
+  metering footnote/hint mechanism (`src/math/meteringFootnoteHints.js`) on the dialogue rows, not a
+  Settings notice.
+
+Because the rows are off by default and drive `dialogueGating`, a fresh install runs no VAD until the
+user adds a dialogue readout.
 
 ## Packaging (Slice 0 — DONE on Windows)
 
@@ -214,49 +265,61 @@ available right now, so:
 
 ## Failure / degradation behavior
 
-- If the runtime library or model fails to load: log once, leave `dialogue_*` as `None`, and run the
-  meter normally. The toggle may show a disabled/"unavailable" state.
+- If the model fails to load (`SpeechDetector::new` returns `None`): log once, leave the dialogue
+  fields at their defaults, and run the meter normally. Dialogue rows show em-dash.
 - Resampler or VAD errors on a chunk: skip that chunk's contribution; never panic the capture thread.
 - `reset()` / Clear: dialogue accumulators, resampler state, chunk buffer, and vote counters all
-  reset together with the rest of `LoudnessMeter`.
+  reset together with the rest of `LoudnessMeter` (`reset` recreates it via `new`).
 
 ## Testing
 
-Rust:
+Rust — Slice 1 (DONE):
 
-- Downmix + resample produces 16 kHz mono of expected length from N-channel 48 kHz input.
-- A speech-like signal (or a recorded clip fixture) yields majority-speech blocks; a pure tone /
-  music-like signal yields low Dialogue %.
-- `integrated_dialogue()` over a buffer of known speech blocks matches `integrated()` computed over
-  the same blocks in isolation (gating math reuse is correct).
-- Dialogue % counts speech blocks / energy-gated total blocks correctly, including the empty case
-  (0 blocks → 0%, no divide-by-zero).
-- Toggling `dialogue_gating` off stops populating dialogue fields and does not affect main loudness.
-- Model-unavailable path: meter still produces normal blocks; dialogue fields are `None`.
+- `downmix_to_mono` averages channels per frame.
+- `BlockVote` majority logic (≥ half speech → speech; empty → not speech).
+- `DialogueIntegrator`: percent = speech / audible blocks, silent blocks excluded from the
+  denominator; integrated measures only speech blocks (a louder non-speech block does not pull it up);
+  LRA reflects only the speech short-term spread.
+- End-to-end smoke: silence and a pure tone flow through downmix→resample→Silero→vote without
+  panicking and are not classified as dialogue.
 
-Frontend:
+Rust — Slice 2 (to add):
 
-- `setDialogueGating` invokes the Tauri command and persists the setting.
-- `LoudnessStatsPanel` renders the three rows only when enabled; em-dash when no speech yet.
+- Flipping `dialogue_gating` off then on resets the dialogue accumulators and the speech detector's
+  buffers/votes, without disturbing the main loudness state.
+- `LoudnessSlowPayload` / `AudioFramePayload` carry the dialogue fields only when gating is on.
+- IPC `set_dialogue_gating` accepts the bool and updates shared state.
+
+Frontend — Slice 2:
+
+- `dialogueGating` is derived true iff `loudnessStatsVisibleIds` contains a dialogue metric id, and
+  `setDialogueGating` is invoked on start and on change.
+- The four dialogue rows render with correct labels/units/order; values show em-dash before data.
+- `Dialogue Offset` computes `dialogueIntegrated − integrated` with an explicit sign and em-dashes
+  when either operand is non-finite.
+- The live dot on the Coverage row reflects `dialogue_active_now`.
 
 ## Manual verification
 
-1. Enable the toggle; play a dialogue-heavy clip → Dialogue Integrated converges near the program's
-   speech loudness; Dialogue % is high.
-2. Play music-only → Dialogue % drops; Dialogue Integrated reflects little/no speech (note the known
+1. Add a dialogue readout in the stats selector → the VAD starts; play a dialogue-heavy clip →
+   Dialogue Integrated converges near the speech loudness and Dialogue Coverage is high.
+2. Play music-only → Coverage drops; Dialogue Integrated reflects little/no speech (note the known
    singing-counts-as-speech caveat if vocals are present).
-3. Silence → no divide-by-zero; readouts stay at em-dash / 0%.
-4. Toggle off → dialogue rows disappear; integrated/LRA unchanged.
-5. Clear → dialogue accumulators reset alongside the main meter.
+3. Confirm the Coverage live dot lights during speech and dims during silence/music.
+4. Silence → no divide-by-zero; readouts stay at em-dash / 0 %.
+5. Remove all dialogue readouts → the VAD stops (CPU returns to baseline); other readouts unchanged.
+6. Clear → dialogue accumulators reset alongside the main meter.
 
 ## Slices
 
 - **Slice 0 — packaging spike (DONE, Windows):** added `voice_activity_detector`, ran one inference,
   confirmed static linking with zero bundled resources. De-risked. See Packaging.
-- **Slice 1 — DSP sidechain:** downmix + `rubato` + Silero + dialogue integrators in `LoudnessMeter`,
-  behind the `dialogue_gating` flag, with Rust tests.
-- **Slice 2 — IPC + UI:** extend payloads, add the toggle and the three readouts to
-  `LoudnessStatsPanel`.
+- **Slice 1 — DSP sidechain (DONE):** `downmix_to_mono`, `BlockVote`, `SpeechDetector`
+  (rubato + Silero), and `DialogueIntegrator` wired into `LoudnessMeter` behind
+  `PcmContext.dialogue_gating`; `LoudnessBlock` carries the three dialogue fields. Unit + smoke tests.
+- **Slice 2 — IPC + UI:** visibility-driven `set_dialogue_gating`; extend `LoudnessSlowPayload`
+  (3 stats) and `AudioFramePayload` (`dialogue_active_now`); add the four readouts + Coverage live dot
+  to `LoudnessStatsPanel`; reset dialogue state on gating flip.
 
 ## Implementation-time tuning (not design blockers)
 
