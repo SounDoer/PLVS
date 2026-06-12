@@ -24,8 +24,6 @@ const BASE_PROPS = {
   themeSelectOptions: THEME_SELECT_OPTIONS,
   referenceLufs: -23,
   setReferenceLufs: vi.fn(),
-  channelLayout: "auto",
-  setChannelLayout: vi.fn(),
 };
 
 describe("SettingsPanel", () => {
@@ -33,8 +31,6 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
     expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
-    expect(screen.getByLabelText("Channel layout")).toBeTruthy();
-    expect(screen.queryByLabelText("Channel layout (Advanced)")).toBeNull();
     expect(screen.queryByLabelText("Colour theme")).toBeNull();
   });
 

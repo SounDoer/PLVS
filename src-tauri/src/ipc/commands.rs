@@ -1,7 +1,7 @@
 //! `#[tauri::command]` handlers (Phase 2: capture + DSP → Channel / Events).
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Emitter, State};
 
@@ -93,7 +93,8 @@ pub fn audio_start(
     *slot = Some(pool.clone());
   }
   let pair = state.inner().vectorscope_pair.clone();
-  let layout = state.inner().channel_layout.clone();
+  // Channel layout is auto-resolved from channel count on the capture thread; no user override.
+  let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
   let spectrum = state.inner().spectrum_channel.clone();
   let session = AudioCapture::start_session(
     &AppAudioBackend,
@@ -134,19 +135,6 @@ pub fn set_vectorscope_pair(x: u16, y: u16, state: State<'_, AppState>) -> Resul
     .lock()
     .map_err(|_| "vectorscope pair lock poisoned".to_string())?;
   *g = (x, y);
-  Ok(())
-}
-
-/// Update channel layout preset. Applied on the capture thread for subsequent frames.
-#[tauri::command]
-pub fn set_channel_layout(layout: String, state: State<'_, AppState>) -> Result<(), String> {
-  let v = ChannelLayoutSetting::from_str_lossy(&layout);
-  let mut g = state
-    .inner()
-    .channel_layout
-    .lock()
-    .map_err(|_| "channel layout lock poisoned".to_string())?;
-  *g = v;
   Ok(())
 }
 

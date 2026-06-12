@@ -31,8 +31,6 @@ export function SettingsPanel({
   themeSelectOptions,
   referenceLufs,
   setReferenceLufs,
-  channelLayout,
-  setChannelLayout,
   appVersion,
   latestVersion,
   releaseUrl,
@@ -253,23 +251,6 @@ export function SettingsPanel({
                     />
                     <span className="text-muted-foreground shrink-0">LUFS</span>
                   </div>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="settings-channel-layout" className="shrink-0">
-                    Channel layout
-                  </Label>
-                  <Select value={channelLayout} onValueChange={setChannelLayout}>
-                    <SelectTrigger id="settings-channel-layout" className="w-auto shrink-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem value="auto">Auto</SelectItem>
-                      <SelectItem value="stereo">Stereo</SelectItem>
-                      <SelectItem value="5.1">5.1</SelectItem>
-                      <SelectItem value="7.1">7.1</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 {appVersion ? (
                   <>

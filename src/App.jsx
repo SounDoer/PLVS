@@ -177,7 +177,6 @@ function AppContent() {
   const [showClock, setShowClock] = useState(false);
 
   const [running, setRunning] = useState(false);
-  const [channelLayout, setChannelLayout] = useState("auto");
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
@@ -391,17 +390,17 @@ function AppContent() {
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
   const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
   const layoutResolution = useMemo(
-    () => resolveChannelLayout(channelLayout, { channelCount }),
-    [channelLayout, channelCount]
+    () => resolveChannelLayout("auto", { channelCount }),
+    [channelCount]
   );
   const peakLabelContext = useMemo(
-    () => ({ channelLayout, resolvedLayout: layoutResolution.resolved }),
-    [channelLayout, layoutResolution.resolved]
+    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved }),
+    [layoutResolution.resolved]
   );
 
   const vectorscopeLabelContext = useMemo(
-    () => ({ channelLayout, resolvedLayout: layoutResolution.resolved }),
-    [channelLayout, layoutResolution.resolved]
+    () => ({ channelLayout: "auto", resolvedLayout: layoutResolution.resolved }),
+    [layoutResolution.resolved]
   );
   /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
   const vectorscopePairOptions = useMemo(() => {
@@ -772,13 +771,6 @@ function AppContent() {
       if (typeof s.loudnessHistWidthRatio === "number")
         setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
       if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
-      if (
-        s.channelLayout === "auto" ||
-        s.channelLayout === "stereo" ||
-        s.channelLayout === "5.1" ||
-        s.channelLayout === "7.1"
-      )
-        setChannelLayout(s.channelLayout);
     } catch (_) {}
   }, []);
 
@@ -801,7 +793,6 @@ function AppContent() {
           referenceLufs,
           appearance,
           themeId: persistedThemeId,
-          channelLayout,
         })
       );
     } catch (_) {}
@@ -814,7 +805,6 @@ function AppContent() {
     referenceLufs,
     appearance,
     fixedThemeSelectValue,
-    channelLayout,
   ]);
 
   useEffect(() => {
@@ -850,7 +840,6 @@ function AppContent() {
     running,
     captureDeviceId,
     captureFormatSignature,
-    channelLayout,
     histMaxSamples: HIST_MAX_SAMPLES,
     visualMaxSamples: VISUAL_MAX_SAMPLES,
     audioRef,
@@ -1054,37 +1043,6 @@ function AppContent() {
             <span className="min-w-0 truncate tabular-nums text-foreground">
               {referenceLufs} LUFS
             </span>
-            {(() => {
-              // Auto mode: unknown channel count — user needs to pick a layout manually.
-              if (
-                channelLayout === "auto" &&
-                layoutResolution.resolved === "unknown" &&
-                channelCount > 0
-              ) {
-                return (
-                  <>
-                    <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                    <span className="min-w-0 truncate text-muted-foreground">
-                      {channelCount}-channel detected · Select layout in Settings
-                    </span>
-                  </>
-                );
-              }
-              // Manual mode: selection doesn't match what auto would detect.
-              const autoResolved = resolveChannelLayout("auto", { channelCount }).resolved;
-              if (channelLayout !== "auto" && channelLayout !== autoResolved) {
-                return (
-                  <>
-                    <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                    <span className="min-w-0 truncate text-muted-foreground">
-                      Device is {autoResolved === "unknown" ? `${channelCount}-ch` : autoResolved} ·
-                      selected {channelLayout}
-                    </span>
-                  </>
-                );
-              }
-              return null;
-            })()}
             {updateInfo?.hasUpdate ? (
               <>
                 <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
@@ -1110,8 +1068,6 @@ function AppContent() {
           themeSelectOptions={themeSelectOptions}
           referenceLufs={referenceLufs}
           setReferenceLufs={setReferenceLufs}
-          channelLayout={channelLayout}
-          setChannelLayout={setChannelLayout}
           appVersion={APP_VERSION}
           latestVersion={updateInfo?.latestVersion}
           releaseUrl={updateInfo?.releaseUrl}

@@ -56,8 +56,3 @@ export function setSpectrumChannel(sel) {
   const chY = sel.type === "pair" ? sel.y : 0;
   return invoke("set_spectrum_channel", { selType, chX, chY });
 }
-
-/** @param {{ layout: "auto" | "stereo" | "5.1" | "7.1" | string }} opts */
-export function setChannelLayout({ layout }) {
-  return invoke("set_channel_layout", { layout });
-}
