@@ -84,5 +84,16 @@ describe("getPeakMeterChannelLabels", () => {
       "Ls",
       "Rs",
     ]);
+    expect(getPeakMeterChannelLabels(4, { channelLayout: "auto", resolvedLayout: "quad" })).toEqual(
+      ["L", "R", "Ls", "Rs"]
+    );
+    expect(getPeakMeterChannelLabels(3, { channelLayout: "auto", resolvedLayout: "lcr" })).toEqual([
+      "L",
+      "R",
+      "C",
+    ]);
+    expect(
+      getPeakMeterChannelLabels(5, { channelLayout: "auto", resolvedLayout: "surround50" })
+    ).toEqual(["L", "R", "C", "Ls", "Rs"]);
   });
 });

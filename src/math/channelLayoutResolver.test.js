@@ -69,18 +69,25 @@ describe("resolveChannelLayout", () => {
       resolved: "unknown",
     });
   });
-  it("auto: 3ch → unknown", () => {
+  it("auto: 3ch → lcr", () => {
     expect(resolveChannelLayout("auto", { channelCount: 3 })).toEqual({
       mode: "auto",
       setting: "auto",
-      resolved: "unknown",
+      resolved: "lcr",
     });
   });
-  it("auto: 5ch → unknown", () => {
+  it("auto: 4ch → quad", () => {
+    expect(resolveChannelLayout("auto", { channelCount: 4 })).toEqual({
+      mode: "auto",
+      setting: "auto",
+      resolved: "quad",
+    });
+  });
+  it("auto: 5ch → surround50", () => {
     expect(resolveChannelLayout("auto", { channelCount: 5 })).toEqual({
       mode: "auto",
       setting: "auto",
-      resolved: "unknown",
+      resolved: "surround50",
     });
   });
   it("auto: 7ch → unknown", () => {
