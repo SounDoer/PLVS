@@ -18,7 +18,7 @@ function MetricRow({ id, label, value, unit, active, hint }) {
     "shrink-0 text-right text-[length:var(--ui-fs-metric-value)] font-semibold leading-none text-foreground"
   );
   const unitClass =
-    "shrink-0 text-left text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
+    "shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
   const content = (
     <>
       {id === "dialogueCoverage" && (
