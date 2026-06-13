@@ -362,11 +362,37 @@ git push origin vX.Y.Z
 - Tag points to the correct commit
 - CI can access the commit
 
+### ⚠️ Do NOT force-move a released tag
+
+Never `git tag -f` / force-push a tag that already shipped a GitHub
+Release. It silently bypasses this whole skill (preflight never runs) and
+re-publishes a *different* build under an *unchanged* version number —
+exactly the kind of accident the release gate exists to catch. To ship a
+fix on top of a released version, run the normal flow with a **new**
+version number (e.g. 0.3.2 → 0.3.3).
+
 ---
 
 ## Step 8: Automated Release
 
 GitHub Actions workflow (`.github/workflows/release.yml`) handles:
+
+### Release Gate (runs first, blocks builds on failure)
+
+Before any installer is built, two `verify` jobs run the **same checks as CI**:
+
+| Gate Job | Mirrors | Checks |
+|----------|---------|--------|
+| `verify` | CI `frontend` | `version:check`, `format:check`, `lint`, `test`, `build` |
+| `verify-rust` | CI `rust` | `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test` |
+
+`build-windows` and `build-macos` declare `needs: [verify, verify-rust]`.
+**If either gate fails, both build jobs are skipped — no installers are
+produced and no GitHub Release is created or overwritten.** This is a
+server-side, unskippable backstop: even a manual `git tag -f` cannot
+bypass it. The Step 6 preflight is the *fast local* layer; this gate is
+the *enforced* layer. Both are intentional (defense in depth) — do not
+remove the preflight just because the gate exists.
 
 ### Build Matrix
 
@@ -460,6 +486,14 @@ git push origin :refs/tags/vX.Y.Z
 | Build errors | `npm run build` and fix |
 | Not on main | `git checkout main` |
 | Uncommitted changes | `git add -A; git commit` |
+
+### No Installers Were Produced
+
+If a release tag ran but no `.exe`/`.dmg` appeared, the `verify` or
+`verify-rust` **gate** likely failed and skipped the build jobs. Open the
+Release run, find the red gate job, fix the reported check locally
+(it mirrors CI exactly), then ship a **new** version (do not re-move the
+tag — see the Step 7 warning).
 
 ### CI Build Fails
 
