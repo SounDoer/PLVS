@@ -22,7 +22,7 @@ It combines six meter types in a single desktop app:
 | Meter | What it shows |
 |-------|---------------|
 | **Peak** | Per-channel sample-peak meters (dBFS) |
-| **Loudness** | LUFS — Momentary, Short-term, Integrated (ITU-R BS.1770, EBU R128) |
+| **Loudness** | LUFS — Momentary, Short-term, Integrated, LRA (ITU-R BS.1770, EBU R128), plus optional dialogue-gated readouts |
 | **Spectrum** | FFT-based real-time analyzer with per-band dBFS |
 | **Spectrogram** | Scrolling time-frequency waterfall |
 | **Vectorscope** | Stereo phase / correlation with configurable channel pairs |
@@ -38,12 +38,14 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 - **Multichannel** — auto-detects mono, stereo, 5.1, and 7.1 with proper per-channel metering and BS.1770 weighting.
 - **Session history & snapshots** — scroll back through the loudness timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
 - **Configurable loudness reference** — set a target LUFS value overlaid on the loudness chart.
+- **Dialogue-gated loudness** *(optional)* — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by an on-device [Silero VAD](https://github.com/snakers4/silero-vad); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
 - **Flexible layout** — drag dividers, resize panels, switch between built-in presets. Multiple themes included.
 - **Privacy-first** — audio stays on device. No telemetry, no accounts, no network calls except update checks.
 
 ## Limitations
 
 - **ASIO is not supported on Windows.** ASIO drivers bypass the Windows audio mixer entirely, so WASAPI loopback capture cannot intercept the signal. If you are using a DAW (e.g. REAPER, Ableton Live), set the DAW's audio system to **WASAPI** to allow PLVS to capture its output. For setups that require ASIO, routing through a virtual audio cable (e.g. VB-Cable) to a WASAPI-visible device is a workable alternative.
+- **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses the open-source [Silero VAD](https://github.com/snakers4/silero-vad) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
 
 ---
 
