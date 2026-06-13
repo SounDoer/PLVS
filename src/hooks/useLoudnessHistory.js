@@ -11,7 +11,7 @@ import { UI_PREFERENCES } from "../uiPreferences";
 import { LOUDNESS_STATS_META } from "@/lib/panelControls.js";
 
 export function dialogueOffsetText(dialogueIntegrated, integrated) {
-  if (!Number.isFinite(dialogueIntegrated) || !Number.isFinite(integrated)) return "—";
+  if (!Number.isFinite(dialogueIntegrated) || !Number.isFinite(integrated)) return "-";
   const d = dialogueIntegrated - integrated;
   return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
 }
@@ -169,7 +169,7 @@ export function useLoudnessHistory({
         ...LOUDNESS_STATS_META.dialogueCoverage,
         value: Number.isFinite(displayAudio.dialoguePercent)
           ? `${displayAudio.dialoguePercent.toFixed(0)}`
-          : "—",
+          : "-",
       },
       {
         id: "dialogueIntegrated",

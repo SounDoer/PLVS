@@ -6,8 +6,8 @@ describe("dialogueOffsetText", () => {
     expect(dialogueOffsetText(-22, -20)).toBe("-2.0");
     expect(dialogueOffsetText(-18, -20)).toBe("+2.0");
   });
-  it("shows em-dash when an operand is not finite", () => {
-    expect(dialogueOffsetText(-Infinity, -20)).toBe("—");
-    expect(dialogueOffsetText(-20, Infinity)).toBe("—");
+  it("shows the dash placeholder when an operand is not finite", () => {
+    expect(dialogueOffsetText(-Infinity, -20)).toBe("-");
+    expect(dialogueOffsetText(-20, Infinity)).toBe("-");
   });
 });
