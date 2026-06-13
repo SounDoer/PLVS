@@ -49,6 +49,21 @@ describe("panelControls", () => {
     ]);
   });
 
+  it("uses plain-language labels for the derived metrics", () => {
+    const byId = Object.fromEntries(LOUDNESS_STATS_OPTIONS.map((o) => [o.id, o.label]));
+    expect(byId.lra).toBe("Loudness Range");
+    expect(byId.psr).toBe("Short-term Dynamics");
+    expect(byId.plr).toBe("Integrated Dynamics");
+    expect(byId.dialogueRange).toBe("Dialogue Range");
+  });
+
+  it("gives every stats option a non-empty hint", () => {
+    for (const opt of LOUDNESS_STATS_OPTIONS) {
+      expect(typeof opt.hint).toBe("string");
+      expect(opt.hint.length).toBeGreaterThan(0);
+    }
+  });
+
   it("uses the agreed defaults", () => {
     expect(DEFAULT_PANEL_CONTROLS).toEqual({
       vectorscopePair: { x: 0, y: 1 },
