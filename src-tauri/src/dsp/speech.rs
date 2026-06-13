@@ -144,6 +144,7 @@ impl SpeechDetector {
     self.chunk_buf.clear();
     self.vote.reset();
     self.resampler.reset();
+    self.vad.reset();
   }
 }
 
