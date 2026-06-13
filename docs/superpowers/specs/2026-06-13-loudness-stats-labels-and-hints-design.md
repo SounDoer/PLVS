@@ -29,12 +29,18 @@ Issues raised:
 - **Inline label = plain-language words**, consistent with the other metrics.
   Same label in panel and picker.
 - **Every metric carries a hover tip** (a short plain-language explanation),
-  rendered with a **shadcn/Radix `Tooltip`** so it follows the app theme, supports
-  keyboard focus, and has a controllable delay. Adds a new `ui/tooltip.jsx`
-  component and the `@radix-ui/react-tooltip` dependency (consistent with the
-  existing Popover/Select primitives already in use).
+  rendered by **reusing the app's existing custom CSS tooltip** (the `group-hover`
+  span currently inlined in `IconButton`). No new dependency, and it already themes
+  via CSS variables (`bg-popover` / `text-foreground`) and has a delayed fade. We
+  extract that markup into a small reusable component so `IconButton`, the panel
+  rows, and the picker items all share one implementation.
 - **Single source of truth** for label/unit/hint, so panel and picker can never
   drift again.
+
+Rejected: shadcn/Radix `Tooltip`. It is more capable (portals out of overflow
+containers, keyboard-focusable), but introduces a third tooltip implementation
+alongside the existing custom one. Reusing the custom tooltip keeps the app to a
+single style and adds no dependency.
 
 ### New labels + hints (panel + picker)
 
@@ -90,15 +96,22 @@ export const LOUDNESS_STATS_META = {
 - `DEFAULT_PANEL_CONTROLS` and `LOUDNESS_STATS_IDS` continue to work off the same
   id list.
 
-### Tooltip component
+### Reusable hover-tip component
 
-- Add via `npx shadcn@latest add tooltip` → generates `src/components/ui/tooltip.jsx`
-  (`Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider`) and installs
-  `@radix-ui/react-tooltip`.
-- Mount a single `TooltipProvider` at the app root with a shared `delayDuration`
-  (~300ms) so every tip behaves consistently.
-- `TooltipContent` already themes via the shadcn CSS variables, so plvs-dark /
-  plvs-light are picked up automatically.
+Extract the tooltip markup currently inlined in `IconButton` into
+`src/components/HoverTip.jsx`:
+
+```jsx
+<HoverTip tip={text} side="bottom">{children}</HoverTip>
+// renders: <div className="relative group">{children}<span className={posClasses}>{tip}</span></div>
+```
+
+- `side` selects the position classes (e.g. `bottom` = the existing
+  `top-full left-1/2 -translate-x-1/2`); add the side(s) we actually need.
+- Carries over the existing classes (themed `bg-popover` / `text-foreground`,
+  `group-hover:opacity-100`, delayed fade).
+- `IconButton` is refactored to render through `HoverTip` (behavior unchanged) so
+  there is exactly one implementation.
 
 ### Consumers
 
@@ -106,26 +119,39 @@ export const LOUDNESS_STATS_META = {
   `...LOUDNESS_STATS_META[id]` (label + unit + hint) and supplies only the live
   `value`. The hook keeps its per-id value logic (each value has a distinct source).
 - **Panel row** — `LoudnessStatsPanel` `MetricRow`: wrap the row in
-  `<Tooltip><TooltipTrigger asChild>…row…</TooltipTrigger><TooltipContent>{hint}</TooltipContent></Tooltip>`.
-- **Picker** — `PanelHeaderControls` `MultiSelectChip`: wrap each option button the
-  same way. The picker lives inside a Radix `Popover`; `TooltipContent` portals out,
-  and is placed `side="left"` to avoid overlapping the open popover.
+  `<HoverTip tip={hint}>…row…</HoverTip>`.
+- **Picker** — `PanelHeaderControls` `MultiSelectChip`: wrap each option button in
+  `<HoverTip tip={option.hint} side="…">`.
+
+### Risk — overflow clipping (verify on real app)
+
+The custom tooltip is an absolutely-positioned child, not a portal, so an ancestor
+with `overflow` clips it. The panel metric list is `overflow-y-auto`
+(`LoudnessStatsPanel.jsx`), and the picker lives inside a `Popover`. The tip's
+position (`side`) and any container padding must be chosen so tips are not clipped
+by these containers. This is the one interaction to eyeball when running the app; if
+clipping can't be avoided in-flow, fall back to the Radix approach for these two
+surfaces.
 
 ## Testing
 
-Radix tooltips only mount their content on hover/focus and are unreliable to assert
-in jsdom, so coverage targets the wiring rather than the rendered bubble:
+The custom tooltip only reveals on `:hover` (CSS), which jsdom does not exercise, so
+coverage targets the wiring rather than the rendered bubble:
 
 - `panelControls.test.js` — assert registry shape and derived `LOUDNESS_STATS_OPTIONS`
   (order, labels, every entry carries a non-empty `hint`). This is the real
   single-source-of-truth guard.
-- `LoudnessStatsPanel.test.jsx` — update the three changed labels; assert all visible
-  rows still render their label (tooltip trigger wrapping doesn't break rendering).
+- `HoverTip.test.jsx` — the tip text is present in the DOM (the span renders eagerly,
+  hidden via opacity), and children render.
+- `LoudnessStatsPanel.test.jsx` — update the three changed labels; assert visible
+  rows still render their label and expose the hint text.
 - `PanelHeaderControls.test.jsx` — update the three changed picker labels; assert the
-  picker still lists every option.
+  picker still lists every option and exposes a hint.
+- `IconButton` existing tests still pass after the refactor.
 
 ## Out of scope
 
-- Replacing the existing native-`title` tooltips elsewhere (`MeterHealthBadge`,
-  metering footnotes) — leave as-is.
+- The unused native-`title` code (`MeterHealthBadge`, `meteringFootnoteHints`) —
+  both are dead (defined + tested but never mounted/consumed). Cleanup tracked
+  separately as its own CL.
 - Any change to value computation, units math, or the loudness DSP.
