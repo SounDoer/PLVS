@@ -118,7 +118,7 @@ export const UI_PREFERENCES = {
       axisUnit: 11,
       extraValue: 13,
       metricMeta: 12,
-      metricValue: 20,
+      metricValue: 18,
       action: 14,
       status: 11,
     },
