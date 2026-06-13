@@ -28,9 +28,11 @@ Issues raised:
 
 - **Inline label = plain-language words**, consistent with the other metrics.
   Same label in panel and picker.
-- **Every metric carries a hover tip** (a short plain-language explanation), via the
-  native `title` attribute (the established tooltip pattern in this codebase —
-  `MeterHealthBadge`, `meteringFootnoteHints`). No new component or dependency.
+- **Every metric carries a hover tip** (a short plain-language explanation),
+  rendered with a **shadcn/Radix `Tooltip`** so it follows the app theme, supports
+  keyboard focus, and has a controllable delay. Adds a new `ui/tooltip.jsx`
+  component and the `@radix-ui/react-tooltip` dependency (consistent with the
+  existing Popover/Select primitives already in use).
 - **Single source of truth** for label/unit/hint, so panel and picker can never
   drift again.
 
@@ -88,25 +90,42 @@ export const LOUDNESS_STATS_META = {
 - `DEFAULT_PANEL_CONTROLS` and `LOUDNESS_STATS_IDS` continue to work off the same
   id list.
 
+### Tooltip component
+
+- Add via `npx shadcn@latest add tooltip` → generates `src/components/ui/tooltip.jsx`
+  (`Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider`) and installs
+  `@radix-ui/react-tooltip`.
+- Mount a single `TooltipProvider` at the app root with a shared `delayDuration`
+  (~300ms) so every tip behaves consistently.
+- `TooltipContent` already themes via the shadcn CSS variables, so plvs-dark /
+  plvs-light are picked up automatically.
+
 ### Consumers
 
-- **Picker** — `PanelHeaderControls` `MultiSelectChip`: each option button gets
-  `title={option.hint}`.
 - **Panel** — `useLoudnessHistory`: each metric object spreads
   `...LOUDNESS_STATS_META[id]` (label + unit + hint) and supplies only the live
   `value`. The hook keeps its per-id value logic (each value has a distinct source).
-- **Panel row** — `LoudnessStatsPanel` `MetricRow`: render `title={hint}` on the
-  row container.
+- **Panel row** — `LoudnessStatsPanel` `MetricRow`: wrap the row in
+  `<Tooltip><TooltipTrigger asChild>…row…</TooltipTrigger><TooltipContent>{hint}</TooltipContent></Tooltip>`.
+- **Picker** — `PanelHeaderControls` `MultiSelectChip`: wrap each option button the
+  same way. The picker lives inside a Radix `Popover`; `TooltipContent` portals out,
+  and is placed `side="left"` to avoid overlapping the open popover.
 
 ## Testing
 
+Radix tooltips only mount their content on hover/focus and are unreliable to assert
+in jsdom, so coverage targets the wiring rather than the rendered bubble:
+
 - `panelControls.test.js` — assert registry shape and derived `LOUDNESS_STATS_OPTIONS`
-  (order, labels, every entry carries a non-empty `hint`).
-- `LoudnessStatsPanel.test.jsx` — update the three changed labels; assert a row
-  exposes the `title` hint.
-- `PanelHeaderControls.test.jsx` — update the three changed picker labels; assert a
-  picker item exposes the `title` hint.
+  (order, labels, every entry carries a non-empty `hint`). This is the real
+  single-source-of-truth guard.
+- `LoudnessStatsPanel.test.jsx` — update the three changed labels; assert all visible
+  rows still render their label (tooltip trigger wrapping doesn't break rendering).
+- `PanelHeaderControls.test.jsx` — update the three changed picker labels; assert the
+  picker still lists every option.
 
 ## Out of scope
 
+- Replacing the existing native-`title` tooltips elsewhere (`MeterHealthBadge`,
+  metering footnotes) — leave as-is.
 - Any change to value computation, units math, or the loudness DSP.
