@@ -60,7 +60,7 @@ impl DialogueIntegrator {
     gated_integrated_lufs(&self.speech_blocks)
   }
 
-  /// Dialogue LRA: loudness range over the short-term values seen during speech.
+  /// Dialogue Range: loudness range over the short-term values seen during speech.
   pub fn lra(&self) -> f64 {
     gated_lra(&self.speech_short_terms)
   }
