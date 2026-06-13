@@ -43,6 +43,8 @@ export function buildTauriFrameApply({
       peakHoldDb: Array.isArray(f.peakHoldDb) ? f.peakHoldDb : prev.peakHoldDb,
       momentary: m,
       shortTerm: st,
+      mMax: Number.isFinite(f.lufsMMax) ? f.lufsMMax : -Infinity,
+      stMax: Number.isFinite(f.lufsStMax) ? f.lufsStMax : -Infinity,
       integrated: Number.isFinite(f.integrated) ? f.integrated : -Infinity,
       lra: Number.isFinite(f.lra) ? f.lra : -Infinity,
       truePeakL: Number.isFinite(f.truePeakL) ? f.truePeakL : -Infinity,

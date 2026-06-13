@@ -323,7 +323,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     let spectrum_sel = spectrum_channel.lock().map(|g| *g).unwrap_or_default();
     let loudness_weights = loudness_weights.lock().map(|g| g.clone()).unwrap_or(None);
     let dialogue_gating = dialogue_gating.lock().map(|g| *g).unwrap_or(false);
-    let (frame, slow) = pipeline.push_pcm_f32(
+    let frame = pipeline.push_pcm_f32(
       &floats,
       pair,
       layout,
@@ -360,9 +360,6 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       } else {
         should_stop = true;
       }
-    }
-    if let Some(s) = slow {
-      let _ = app.emit("loudness-slow", &s);
     }
     pcm_pool.recycle(floats);
     if should_stop {

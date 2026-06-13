@@ -9,7 +9,6 @@ import {
   setLoudnessWeights,
   setDialogueGating,
 } from "../ipc/commands.js";
-import { onLoudnessSlow } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 import { resolveDevice, buildDeviceStatus } from "../lib/audioEngineCommands.js";
@@ -109,21 +108,6 @@ export function useAudioEngine({
           }
 
           const unsubs = [];
-          const uSlow = await onLoudnessSlow((p) => {
-            if (!mounted) return;
-            setAudio((prev) => ({
-              ...prev,
-              integrated:
-                p.lufsIntegrated != null && Number.isFinite(p.lufsIntegrated)
-                  ? p.lufsIntegrated
-                  : -Infinity,
-              mMax: Number.isFinite(p.lufsMMax) ? p.lufsMMax : -Infinity,
-              stMax: Number.isFinite(p.lufsStMax) ? p.lufsStMax : -Infinity,
-              lra: Number.isFinite(p.lra) ? p.lra : -Infinity,
-            }));
-          });
-          unsubs.push(uSlow);
-
           const { applyFrame: baseApply } = buildTauriFrameApply({
             histMaxSamples,
             visualMaxSamples,

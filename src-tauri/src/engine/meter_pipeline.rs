@@ -1,4 +1,4 @@
-//! PCM → meters; drives `AudioFramePayload` / slow loudness emit rates.
+//! PCM → meters; drives the `AudioFramePayload` emit rate.
 
 use std::time::Instant;
 
@@ -11,12 +11,9 @@ use crate::dsp::{
   LoudnessMeter, Meter, PcmContext, SpectrumChannelSel, SpectrumMeter, VectorscopeMeter,
 };
 use crate::engine::ChannelLayoutSetting;
-use crate::ipc::types::{
-  AudioFramePayload, LoudnessSlowPayload, MeterHistoryEntry, VisualHistEntry,
-};
+use crate::ipc::types::{AudioFramePayload, MeterHistoryEntry, VisualHistEntry};
 
 const FRAME_EMIT_MS: u128 = 16;
-const SLOW_EMIT_MS: u128 = 500;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
 const HIST_EMIT_MS: u128 = 95;
 const VISUAL_EMIT_MS: u128 = 40;
@@ -67,7 +64,6 @@ pub struct MeterPipeline {
   sample_peak_max_r: f64,
   t0: Instant,
   last_frame_emit: Instant,
-  last_slow_emit: Instant,
   last_hist_emit: Instant,
   pending_loudness_hist: Option<(f64, f64)>,
   /// Running per-channel min since last history tick. Sentinel INFINITY = no samples seen yet.
@@ -102,7 +98,6 @@ impl MeterPipeline {
       sample_peak_max_r: f64::NEG_INFINITY,
       t0: Instant::now(),
       last_frame_emit: Instant::now(),
-      last_slow_emit: Instant::now(),
       last_hist_emit: Instant::now() - std::time::Duration::from_millis(200),
       pending_loudness_hist: None,
       waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
@@ -140,7 +135,7 @@ impl MeterPipeline {
     self.last_visual_emit = Instant::now() - std::time::Duration::from_millis(200);
   }
 
-  /// Process one PCM chunk from capture. Returns `(frame, slow)` when ready to send on IPC.
+  /// Process one PCM chunk from capture. Returns the frame payload when ready to send on IPC.
   pub fn push_pcm_f32(
     &mut self,
     interleaved: &[f32],
@@ -149,7 +144,7 @@ impl MeterPipeline {
     spectrum_channel: SpectrumChannelSel,
     loudness_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
-  ) -> (Option<AudioFramePayload>, Option<LoudnessSlowPayload>) {
+  ) -> Option<AudioFramePayload> {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
     let (pair_x, pair_y) = vectorscope_pair;
@@ -213,7 +208,7 @@ impl MeterPipeline {
       self.apply_loudness_block(&lb);
     }
 
-    // --- Sample peak (stereo L/R for history + slow payload) ---
+    // --- Sample peak (stereo L/R for history) ---
     let (sl, sr) = if ch == 1 {
       sample_peak_db_mono(interleaved)
     } else {
@@ -254,50 +249,9 @@ impl MeterPipeline {
       }
     }
 
-    // --- Slow loudness emit ---
-    let mut slow_out = None;
-    if self.last_slow_emit.elapsed().as_millis() >= SLOW_EMIT_MS {
-      self.last_slow_emit = Instant::now();
-      let integ = self
-        .last_loudness
-        .as_ref()
-        .map(|l| l.integrated)
-        .filter(|v| v.is_finite());
-      let integrated = integ.filter(|&v| v > -120.0);
-      let st = self
-        .last_loudness
-        .as_ref()
-        .map(|l| l.short_term)
-        .unwrap_or(f64::NEG_INFINITY);
-      let tp = self
-        .last_loudness
-        .as_ref()
-        .map(|l| l.true_peak)
-        .unwrap_or(f64::NEG_INFINITY);
-      let psr = if tp.is_finite() && st.is_finite() {
-        Some(tp - st)
-      } else {
-        None
-      };
-      let integ_plr = integrated.unwrap_or(f64::NEG_INFINITY);
-      let plr = if tp.is_finite() && integ_plr.is_finite() {
-        Some(tp - integ_plr)
-      } else {
-        None
-      };
-      slow_out = Some(LoudnessSlowPayload {
-        lufs_integrated: integrated,
-        lufs_m_max: self.m_max,
-        lufs_st_max: self.st_max,
-        lra: self.last_loudness.as_ref().map(|l| l.lra).unwrap_or(0.0),
-        psr,
-        plr,
-      });
-    }
-
     let force_frame = self.pending_loudness_hist.is_some();
     if !force_frame && self.last_frame_emit.elapsed().as_millis() < FRAME_EMIT_MS {
-      return (None, slow_out);
+      return None;
     }
     self.last_frame_emit = Instant::now();
 
@@ -430,6 +384,8 @@ impl MeterPipeline {
       true_peak_max_dbtp: self.tp_max_db,
       lufs_momentary: lm,
       lufs_short_term: lst,
+      lufs_m_max: self.m_max,
+      lufs_st_max: self.st_max,
       integrated: integ,
       lra,
       true_peak_l: tpl,
@@ -454,7 +410,7 @@ impl MeterPipeline {
       dialogue_lra,
       dialogue_active_now: self.last_dialogue_gating && self.loudness.speech_now(),
     };
-    (Some(frame), slow_out)
+    Some(frame)
   }
 
   fn apply_loudness_block(&mut self, lb: &LoudnessBlock) {
@@ -557,7 +513,7 @@ mod tests {
     let mut pipeline = MeterPipeline::new(sr, channels);
     let frames = 4_800usize;
     let pcm = vec![0.1_f32; frames * channels as usize];
-    let (frame, _) = pipeline.push_pcm_f32(
+    let frame = pipeline.push_pcm_f32(
       &pcm,
       (0, 1),
       ChannelLayoutSetting::Auto,
@@ -568,6 +524,73 @@ mod tests {
     let frame = frame.expect("100ms chunk should emit a frame");
     assert_eq!(frame.loudness_layout, "custom");
     assert!(frame.loudness_layout_known);
+  }
+
+  #[test]
+  fn frame_payload_carries_loudness_maxima() {
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let frames = 4_800usize;
+    let sine = |amp: f32| -> Vec<f32> {
+      (0..frames)
+        .flat_map(|i| {
+          let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr as f64).sin() as f32 * amp;
+          [s, s]
+        })
+        .collect()
+    };
+    let quiet = sine(0.05);
+    let louder = sine(0.2);
+
+    let mut quiet_frame = None;
+    for _ in 0..40 {
+      pipeline.last_frame_emit =
+        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      if let Some(frame) = pipeline.push_pcm_f32(
+        &quiet,
+        (0, 1),
+        ChannelLayoutSetting::Auto,
+        SpectrumChannelSel::default(),
+        None,
+        false,
+      ) {
+        quiet_frame = Some(frame);
+      }
+    }
+    let quiet_frame = quiet_frame.expect("quiet frame");
+    assert!(quiet_frame.lufs_m_max.is_finite());
+    assert!(quiet_frame.lufs_st_max.is_finite());
+
+    let mut louder_frame = None;
+    for _ in 0..40 {
+      pipeline.last_frame_emit =
+        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      if let Some(frame) = pipeline.push_pcm_f32(
+        &louder,
+        (0, 1),
+        ChannelLayoutSetting::Auto,
+        SpectrumChannelSel::default(),
+        None,
+        false,
+      ) {
+        louder_frame = Some(frame);
+      }
+    }
+
+    let frame = louder_frame.expect("louder frame");
+    assert!(
+      frame.lufs_m_max.is_finite(),
+      "momentary max should be present on frame"
+    );
+    assert!(
+      frame.lufs_st_max.is_finite(),
+      "short-term max should be present on frame"
+    );
+    assert_eq!(frame.lufs_m_max, pipeline.m_max);
+    assert_eq!(frame.lufs_st_max, pipeline.st_max);
+    assert!(frame.lufs_m_max > quiet_frame.lufs_m_max);
+    assert!(frame.lufs_st_max > quiet_frame.lufs_st_max);
   }
 
   #[test]
@@ -694,7 +717,7 @@ mod tests {
     // Feed 5 × 200ms = 1s to guarantee history ticks are emitted on the frame stream
     let mut entries = Vec::new();
     for _ in 0..5 {
-      let (frame, _) = pipeline.push_pcm_f32(
+      let frame = pipeline.push_pcm_f32(
         &pcm,
         (0, 1),
         ChannelLayoutSetting::Auto,
@@ -760,7 +783,7 @@ mod tests {
       None,
       false,
     );
-    let (frame, _) = p.push_pcm_f32(
+    let frame = p.push_pcm_f32(
       &tone,
       (0, 1),
       ChannelLayoutSetting::Auto,
@@ -781,7 +804,7 @@ mod tests {
     let silence = vec![0.0_f32; frames * 2];
     let mut seen = false;
     for _ in 0..3 {
-      if let (Some(f), _) = p.push_pcm_f32(
+      if let Some(f) = p.push_pcm_f32(
         &silence,
         (0, 1),
         ChannelLayoutSetting::Auto,
@@ -816,7 +839,7 @@ mod tests {
 
     let mut loudness_layout_seen = None;
     for _ in 0..5 {
-      if let (Some(f), _) = pipeline.push_pcm_f32(
+      if let Some(f) = pipeline.push_pcm_f32(
         &pcm,
         (0, 1),
         ChannelLayoutSetting::Auto,

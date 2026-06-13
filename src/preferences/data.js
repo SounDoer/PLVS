@@ -142,7 +142,7 @@ export const UI_PREFERENCES = {
         defaultWindowSec: 120,
       },
       metrics: {
-        valueColumnCh: 6.5,
+        valueColumnCh: 5.5,
         unitColumnRem: 3.1,
         rowMinHeightRem: 2.5,
         rowPaddingXRem: 0.5,

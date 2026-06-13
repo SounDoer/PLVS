@@ -21,6 +21,11 @@ describe("fmtMetric", () => {
     expect(fmtMetric(METRIC_NEGATIVE_INFINITY_FLOOR)).toBe("-");
     expect(fmtMetric(METRIC_NEGATIVE_INFINITY_FLOOR - 1)).toBe("-");
   });
+  it("shows the widest 5-char value but floors anything rounding to -100.0", () => {
+    expect(fmtMetric(-99.9)).toBe("-99.9");
+    expect(fmtMetric(-99.96)).toBe("-"); // would render "-100.0" (6 chars)
+    expect(fmtMetric(-120)).toBe("-");
+  });
   it("returns '-' at or above the positive ceiling", () => {
     expect(fmtMetric(METRIC_POSITIVE_INFINITY_CEIL)).toBe("-");
     expect(fmtMetric(METRIC_POSITIVE_INFINITY_CEIL + 1)).toBe("-");

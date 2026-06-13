@@ -30,6 +30,8 @@
  * @property {number} truePeakMaxDbtp
  * @property {number} lufsMomentary
  * @property {number} lufsShortTerm
+ * @property {number} lufsMMax
+ * @property {number} lufsStMax
  * @property {number} integrated
  * @property {number} lra
  * @property {number} truePeakL
@@ -57,16 +59,6 @@
  * @property {number[]} spectrumSmoothDb
  * @property {number[]} vectorscopePairs
  * @property {number} correlation
- */
-
-/**
- * @typedef {object} LoudnessSlowPayload
- * @property {number|null|undefined} lufsIntegrated
- * @property {number} lufsMMax
- * @property {number} lufsStMax
- * @property {number} lra
- * @property {number|undefined} psr
- * @property {number|undefined} plr
  */
 
 /**

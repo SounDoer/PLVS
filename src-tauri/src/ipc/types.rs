@@ -87,6 +87,8 @@ pub struct AudioFramePayload {
   pub true_peak_max_dbtp: f64,
   pub lufs_momentary: f64,
   pub lufs_short_term: f64,
+  pub lufs_m_max: f64,
+  pub lufs_st_max: f64,
   pub integrated: f64,
   pub lra: f64,
   pub true_peak_l: f64,
@@ -122,17 +124,3 @@ pub struct AudioFramePayload {
 
 /// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.
 pub type FrameSubscribers = Arc<Mutex<HashMap<String, Channel<AudioFramePayload>>>>;
-
-/// ~2 Hz broadcast on Event `loudness-slow`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LoudnessSlowPayload {
-  pub lufs_integrated: Option<f64>,
-  pub lufs_m_max: f64,
-  pub lufs_st_max: f64,
-  pub lra: f64,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub psr: Option<f64>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub plr: Option<f64>,
-}
