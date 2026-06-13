@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { HoverTip } from "@/components/HoverTip";
 
 /**
  * A small icon-only button with an optional tooltip.
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils";
  */
 export function IconButton({ icon, tip, disabled = false, onClick, className }) {
   return (
-    <div className="relative group">
+    <HoverTip tip={tip} side="bottom">
       <button
         type="button"
         disabled={disabled}
@@ -28,22 +29,6 @@ export function IconButton({ icon, tip, disabled = false, onClick, className }) 
       >
         {icon}
       </button>
-
-      {tip && (
-        <span
-          className={cn(
-            "absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50",
-            "opacity-0 pointer-events-none",
-            "group-hover:opacity-100",
-            "transition-opacity duration-100 delay-100",
-            "text-[11px] text-foreground bg-popover",
-            "border border-white/10 rounded px-2 py-1",
-            "whitespace-nowrap shadow-md"
-          )}
-        >
-          {tip}
-        </span>
-      )}
-    </div>
+    </HoverTip>
   );
 }
