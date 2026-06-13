@@ -925,13 +925,7 @@ mod tests {
   #[test]
   fn gating_blocks_are_400ms_running_mean_of_four() {
     // 100ms sub-blocks → 400ms gating blocks = mean of 4 consecutive, one per step.
-    let sub = [
-      [1.0, 1.0],
-      [1.0, 1.0],
-      [1.0, 1.0],
-      [5.0, 5.0],
-      [9.0, 9.0],
-    ];
+    let sub = [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [5.0, 5.0], [9.0, 9.0]];
     let g = gating_blocks_400ms(&sub);
     // j=3: mean([1,1,1,5])=2 ; j=4: mean([1,1,5,9])=4
     assert_eq!(g, vec![[2.0, 2.0], [4.0, 4.0]]);
