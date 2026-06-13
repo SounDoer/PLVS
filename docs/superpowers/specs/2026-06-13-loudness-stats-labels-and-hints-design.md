@@ -28,26 +28,38 @@ Issues raised:
 
 - **Inline label = plain-language words**, consistent with the other metrics.
   Same label in panel and picker.
-- **Hover tip carries the abbreviation + a one-line explanation**, via the native
-  `title` attribute (the established tooltip pattern in this codebase —
+- **Every metric carries a hover tip** (a short plain-language explanation), via the
+  native `title` attribute (the established tooltip pattern in this codebase —
   `MeterHealthBadge`, `meteringFootnoteHints`). No new component or dependency.
 - **Single source of truth** for label/unit/hint, so panel and picker can never
   drift again.
 
-### New labels (panel + picker)
+### New labels + hints (panel + picker)
 
 | id | Label | unit | hint (`title`) |
 |----|-------|------|----------------|
-| `lra` | Loudness Range | LU | `LRA · Loudness Range — spread between the quietest and loudest sustained passages (EBU R128). Unit: LU.` |
-| `psr` | Short-term Dynamics | dB | `PSR · Peak to Short-term loudness Ratio — headroom between true peak and short-term loudness; higher = more dynamic. Unit: dB.` |
-| `plr` | Integrated Dynamics | dB | `PLR · Peak to Loudness Ratio — headroom between true peak and integrated (whole-program) loudness. Unit: dB.` |
+| `momentary` | Momentary | LUFS | Loudness over a 400ms window |
+| `shortTerm` | Short-term | LUFS | Loudness over a 3s window |
+| `integrated` | Integrated | LUFS | Loudness over the whole program, gated below −70 LUFS |
+| `momentaryMax` | Momentary Max | LUFS | Highest Momentary (400ms) loudness reached so far |
+| `shortTermMax` | Short-term Max | LUFS | Highest Short-term (3s) loudness reached so far |
+| `lra` | Loudness Range | LU | LRA, loudness range over the whole program |
+| `psr` | Short-term Dynamics | dB | PSR, Peak to Short-term loudness Ratio |
+| `plr` | Integrated Dynamics | dB | PLR, Peak to Loudness Ratio |
+| `dialogueCoverage` | Dialogue Coverage | % | Share of time dialogue is detected |
+| `dialogueIntegrated` | Dialogue Integrated | LUFS | Loudness over dialogue only |
+| `dialogueRange` | Dialogue Range | LU | Loudness range over dialogue only |
+| `dialogueOffset` | Dialogue Offset | LU | Dialogue loudness relative to the overall mix |
 
-`Short-term Dynamics` / `Integrated Dynamics` mirror the existing
-`Short-term` / `Integrated` LUFS rows, and are technically accurate (PSR uses
-short-term loudness; PLR uses integrated loudness).
+Naming notes:
 
-Only these three carry a hint. The other nine metrics have no `hint` and render no
-tooltip (dialogue hints can be added later by filling the same field).
+- `Short-term Dynamics` / `Integrated Dynamics` mirror the existing
+  `Short-term` / `Integrated` LUFS rows, and are technically accurate (PSR uses
+  short-term loudness; PLR uses integrated loudness).
+- `lra` / `psr` / `plr` hints lead with the abbreviation (`LRA,` / `PSR,` / `PLR,`)
+  since the label no longer shows it.
+- Dialogue hints say "dialogue" (product framing) for consistency with the labels,
+  though the detector is a generic speech/voice VAD.
 
 ## Design
 
@@ -55,18 +67,18 @@ tooltip (dialogue hints can be added later by filling the same field).
 
 ```js
 export const LOUDNESS_STATS_META = {
-  momentary:    { label: "Momentary",           unit: "LUFS" },
-  shortTerm:    { label: "Short-term",          unit: "LUFS" },
-  integrated:   { label: "Integrated",          unit: "LUFS" },
-  momentaryMax: { label: "Momentary Max",       unit: "LUFS" },
-  shortTermMax: { label: "Short-term Max",      unit: "LUFS" },
-  lra:          { label: "Loudness Range",      unit: "LU",   hint: "LRA · …" },
-  psr:          { label: "Short-term Dynamics", unit: "dB",   hint: "PSR · …" },
-  plr:          { label: "Integrated Dynamics", unit: "dB",   hint: "PLR · …" },
-  dialogueCoverage:   { label: "Dialogue Coverage",   unit: "%"    },
-  dialogueIntegrated: { label: "Dialogue Integrated", unit: "LUFS" },
-  dialogueRange:      { label: "Dialogue Range",      unit: "LU"   },
-  dialogueOffset:     { label: "Dialogue Offset",     unit: "LU"   },
+  momentary:    { label: "Momentary",           unit: "LUFS", hint: "Loudness over a 400ms window" },
+  shortTerm:    { label: "Short-term",          unit: "LUFS", hint: "Loudness over a 3s window" },
+  integrated:   { label: "Integrated",          unit: "LUFS", hint: "Loudness over the whole program, gated below −70 LUFS" },
+  momentaryMax: { label: "Momentary Max",       unit: "LUFS", hint: "Highest Momentary (400ms) loudness reached so far" },
+  shortTermMax: { label: "Short-term Max",      unit: "LUFS", hint: "Highest Short-term (3s) loudness reached so far" },
+  lra:          { label: "Loudness Range",      unit: "LU",   hint: "LRA, loudness range over the whole program" },
+  psr:          { label: "Short-term Dynamics", unit: "dB",   hint: "PSR, Peak to Short-term loudness Ratio" },
+  plr:          { label: "Integrated Dynamics", unit: "dB",   hint: "PLR, Peak to Loudness Ratio" },
+  dialogueCoverage:   { label: "Dialogue Coverage",   unit: "%",    hint: "Share of time dialogue is detected" },
+  dialogueIntegrated: { label: "Dialogue Integrated", unit: "LUFS", hint: "Loudness over dialogue only" },
+  dialogueRange:      { label: "Dialogue Range",      unit: "LU",   hint: "Loudness range over dialogue only" },
+  dialogueOffset:     { label: "Dialogue Offset",     unit: "LU",   hint: "Dialogue loudness relative to the overall mix" },
 };
 ```
 
@@ -84,18 +96,17 @@ export const LOUDNESS_STATS_META = {
   `...LOUDNESS_STATS_META[id]` (label + unit + hint) and supplies only the live
   `value`. The hook keeps its per-id value logic (each value has a distinct source).
 - **Panel row** — `LoudnessStatsPanel` `MetricRow`: render `title={hint}` on the
-  row container. `title={undefined}` for metrics without a hint is a no-op.
+  row container.
 
 ## Testing
 
 - `panelControls.test.js` — assert registry shape and derived `LOUDNESS_STATS_OPTIONS`
-  (order, labels, presence of hints on `lra`/`psr`/`plr` only).
-- `LoudnessStatsPanel.test.jsx` — update the three changed labels; assert the row
-  exposes the `title` for a hinted metric.
+  (order, labels, every entry carries a non-empty `hint`).
+- `LoudnessStatsPanel.test.jsx` — update the three changed labels; assert a row
+  exposes the `title` hint.
 - `PanelHeaderControls.test.jsx` — update the three changed picker labels; assert a
-  picker item exposes the `title`.
+  picker item exposes the `title` hint.
 
 ## Out of scope
 
-- Hints for the dialogue metrics (field is ready; fill later if wanted).
 - Any change to value computation, units math, or the loudness DSP.
