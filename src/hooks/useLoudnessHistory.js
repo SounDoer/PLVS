@@ -8,6 +8,7 @@ import {
 } from "../math/historyMath";
 import { fmtMetric } from "../math/formatMath";
 import { UI_PREFERENCES } from "../uiPreferences";
+import { LOUDNESS_STATS_META } from "@/lib/panelControls.js";
 
 export function dialogueOffsetText(dialogueIntegrated, integrated) {
   if (!Number.isFinite(dialogueIntegrated) || !Number.isFinite(integrated)) return "—";
@@ -131,68 +132,59 @@ export function useLoudnessHistory({
     () => [
       {
         id: "momentary",
-        label: "Momentary",
+        ...LOUDNESS_STATS_META.momentary,
         value: fmtMetric(displayAudio.momentary),
-        unit: "LUFS",
       },
       {
         id: "shortTerm",
-        label: "Short-term",
+        ...LOUDNESS_STATS_META.shortTerm,
         value: fmtMetric(displayAudio.shortTerm),
-        unit: "LUFS",
       },
       {
         id: "integrated",
-        label: "Integrated",
+        ...LOUDNESS_STATS_META.integrated,
         value: fmtMetric(displayAudio.integrated),
-        unit: "LUFS",
       },
       {
         id: "momentaryMax",
-        label: "Momentary Max",
+        ...LOUDNESS_STATS_META.momentaryMax,
         value: fmtMetric(displayAudio.mMax),
-        unit: "LUFS",
       },
       {
         id: "shortTermMax",
-        label: "Short-term Max",
+        ...LOUDNESS_STATS_META.shortTermMax,
         value: fmtMetric(displayAudio.stMax),
-        unit: "LUFS",
       },
-      { id: "lra", label: "Loudness Range (LRA)", value: fmtMetric(displayAudio.lra), unit: "LU" },
+      { id: "lra", ...LOUDNESS_STATS_META.lra, value: fmtMetric(displayAudio.lra) },
     ],
     [displayAudio]
   );
 
   const secondaryMetrics = useMemo(
     () => [
-      { id: "psr", label: "Dynamics (PSR)", value: fmtMetric(psr), unit: "dB" },
-      { id: "plr", label: "Avg. Dynamics (PLR)", value: fmtMetric(plr), unit: "dB" },
+      { id: "psr", ...LOUDNESS_STATS_META.psr, value: fmtMetric(psr) },
+      { id: "plr", ...LOUDNESS_STATS_META.plr, value: fmtMetric(plr) },
       {
         id: "dialogueCoverage",
-        label: "Dialogue Coverage",
+        ...LOUDNESS_STATS_META.dialogueCoverage,
         value: Number.isFinite(displayAudio.dialoguePercent)
           ? `${displayAudio.dialoguePercent.toFixed(0)}`
           : "—",
-        unit: "%",
       },
       {
         id: "dialogueIntegrated",
-        label: "Dialogue Integrated",
+        ...LOUDNESS_STATS_META.dialogueIntegrated,
         value: fmtMetric(displayAudio.dialogueIntegrated),
-        unit: "LUFS",
       },
       {
         id: "dialogueRange",
-        label: "Dialogue Range (LRA)",
+        ...LOUDNESS_STATS_META.dialogueRange,
         value: fmtMetric(displayAudio.dialogueLra),
-        unit: "LU",
       },
       {
         id: "dialogueOffset",
-        label: "Dialogue Offset",
+        ...LOUDNESS_STATS_META.dialogueOffset,
         value: dialogueOffsetText(displayAudio.dialogueIntegrated, displayAudio.integrated),
-        unit: "LU",
       },
     ],
     [psr, plr, displayAudio]
