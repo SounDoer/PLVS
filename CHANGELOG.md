@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-13
+
+### Added
+
+- Dialogue-gated loudness metering with VAD speech sidechain
+- Four dialogue metric rows: Coverage, Range, Avg. Offset, Active Now (with live speaking indicator)
+- Hover hints on loudness stats panel rows and picker options
+- Unified stats label/unit/hint registry as single source
+- HoverTip component for consistent tooltips across the app
+
+### Changed
+
+- Consolidated plvs.ui persistence into one adapter
+- Extracted two-timeline reconciliation into resolveSnapshot
+- Unified displayed text casing across the app
+
+### Fixed
+
+- Clipped descenders and tight row gap in loudness stats
+- Idle channel labels unified to L/R across all panels
+- Stats/Layers popover sized to content so labels don't wrap
+- Dialogue rows placed after Avg. Dynamics, not mid-list
+- Empty placeholder unified to '-' for dialogue coverage/offset
+- Build compatibility with tauri-utils (pinned time crate)
+
+### Removed
+
+- Dialogue singing-counts-as-speech footnote hint
+- Unwired meter-health and footnote dead code
+
 ## [0.3.0] - 2026-06-12
 
 ### Added
