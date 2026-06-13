@@ -1,6 +1,5 @@
 import { Check } from "lucide-react";
 
-import { HoverTip } from "@/components/HoverTip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -55,20 +54,19 @@ function MultiSelectChip({ label, options, selectedIds, onToggle }) {
             const checked = selectedIds.includes(option.id);
 
             return (
-              <HoverTip key={option.id} tip={option.hint} side="right">
-                <button
-                  type="button"
-                  role="checkbox"
-                  aria-checked={checked}
-                  className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-sm text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => onToggle(option.id)}
-                >
-                  <span className="flex size-4 items-center justify-center">
-                    {checked ? <Check aria-hidden="true" className="size-4" /> : null}
-                  </span>
-                  {option.label}
-                </button>
-              </HoverTip>
+              <button
+                key={option.id}
+                type="button"
+                role="checkbox"
+                aria-checked={checked}
+                className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-sm text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+                onClick={() => onToggle(option.id)}
+              >
+                <span className="flex size-4 items-center justify-center">
+                  {checked ? <Check aria-hidden="true" className="size-4" /> : null}
+                </span>
+                {option.label}
+              </button>
             );
           })}
         </div>
