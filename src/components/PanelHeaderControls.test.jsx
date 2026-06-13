@@ -152,6 +152,21 @@ describe("PanelHeaderControls", () => {
     });
   });
 
+  it("shows a hover hint for each stat option", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="loudnessStats"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+
+    expect(screen.getByText("Loudness over a 400ms window")).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Momentary" })).toBeTruthy();
+  });
+
   it("renders Layers chip and toggles layer ids", () => {
     const onPanelControlsChange = vi.fn();
     render(
