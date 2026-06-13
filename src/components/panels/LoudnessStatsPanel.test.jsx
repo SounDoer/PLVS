@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { LoudnessStatsPanel } from "./LoudnessStatsPanel.jsx";
 
@@ -78,6 +78,8 @@ describe("LoudnessStatsPanel", () => {
 
   it("exposes the hover hint for a visible metric", () => {
     renderPanel(["integrated"]);
+
+    fireEvent.mouseEnter(screen.getByText("Integrated"));
 
     expect(screen.getByText("Loudness over the whole program, gated below −70 LUFS")).toBeTruthy();
   });

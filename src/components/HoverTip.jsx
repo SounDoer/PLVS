@@ -1,15 +1,30 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 const SIDE_CLASSES = {
-  bottom: "top-full left-1/2 -translate-x-1/2 mt-1.5",
-  right: "left-full top-1/2 -translate-y-1/2 ml-1.5",
+  bottom: "-translate-x-1/2 mt-1.5",
+  right: "-translate-y-1/2 ml-1.5",
 };
+
+function getTipPosition(anchor, side) {
+  const rect = anchor.getBoundingClientRect();
+  if (side === "right") {
+    return {
+      left: rect.right,
+      top: rect.top + rect.height / 2,
+    };
+  }
+  return {
+    left: rect.left + rect.width / 2,
+    top: rect.bottom,
+  };
+}
 
 /**
  * Wraps children with a hover-reveal text tip (custom CSS, themed via tokens).
- * The tip is an absolutely-positioned sibling of the children, so it does NOT
- * affect the children's accessible name. It is not portaled, so an ancestor with
- * `overflow` will clip it — choose `side`/`tipClassName` accordingly.
+ * The tip is portaled to the document body and fixed-positioned so it does not
+ * affect scrollable ancestors or the children's accessible name.
  *
  * @param {{
  *   tip?: string,
@@ -20,26 +35,70 @@ const SIDE_CLASSES = {
  * }} props
  */
 export function HoverTip({ tip, side = "bottom", children, className, tipClassName }) {
+  const anchorRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState(null);
+
+  const updatePosition = useCallback(() => {
+    if (!anchorRef.current) return;
+    setPosition(getTipPosition(anchorRef.current, side));
+  }, [side]);
+
+  const showTip = useCallback(() => {
+    updatePosition();
+    setOpen(true);
+  }, [updatePosition]);
+
+  const hideTip = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  const tipNode =
+    tip && open && position
+      ? createPortal(
+          <span
+            role="tooltip"
+            className={cn(
+              "fixed z-50 opacity-100 pointer-events-none",
+              SIDE_CLASSES[side],
+              "transition-opacity duration-100 delay-100",
+              "text-[11px] text-foreground bg-popover",
+              "border border-white/10 rounded px-2 py-1",
+              "whitespace-nowrap shadow-md",
+              tipClassName
+            )}
+            style={{ left: position.left, top: position.top }}
+          >
+            {tip}
+          </span>,
+          document.body
+        )
+      : null;
+
   return (
-    <div className={cn("relative group", className)}>
+    <div
+      ref={anchorRef}
+      className={cn("relative", className)}
+      onMouseEnter={tip ? showTip : undefined}
+      onMouseLeave={tip ? hideTip : undefined}
+      onFocus={tip ? showTip : undefined}
+      onBlur={tip ? hideTip : undefined}
+    >
       {children}
-      {tip && (
-        <span
-          role="tooltip"
-          className={cn(
-            "absolute z-50",
-            SIDE_CLASSES[side],
-            "opacity-0 pointer-events-none group-hover:opacity-100",
-            "transition-opacity duration-100 delay-100",
-            "text-[11px] text-foreground bg-popover",
-            "border border-white/10 rounded px-2 py-1",
-            "whitespace-nowrap shadow-md",
-            tipClassName
-          )}
-        >
-          {tip}
-        </span>
-      )}
+      {tipNode}
     </div>
   );
 }
