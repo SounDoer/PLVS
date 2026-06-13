@@ -43,10 +43,33 @@ pub(crate) fn gated_lra(short_terms: &[f64]) -> f64 {
   (p95 - p10).max(0.0)
 }
 
-/// BS.1770 two-pass gated integrated loudness over a set of mean-square blocks.
-/// First pass: −70 LUFS absolute gate to compute a relative threshold (mean − 10 LU).
-/// Second pass: keep blocks above both gates and average. `NEG_INFINITY` if none qualify.
-pub(crate) fn gated_integrated_lufs(blocks: &[[f64; 2]]) -> f64 {
+/// Form BS.1770 gating blocks (400 ms, 75% overlap → one per 100 ms step) from a series of
+/// 100 ms sub-block mean-squares: each gating block is the mean of 4 consecutive sub-blocks.
+/// Inputs shorter than 400 ms are returned as-is (too short for a full gating block).
+fn gating_blocks_400ms(sub: &[[f64; 2]]) -> Vec<[f64; 2]> {
+  if sub.len() < 4 {
+    return sub.to_vec();
+  }
+  let mut out = Vec::with_capacity(sub.len() - 3);
+  for j in 3..sub.len() {
+    let mut s0 = 0.0;
+    let mut s1 = 0.0;
+    for b in &sub[j - 3..=j] {
+      s0 += b[0];
+      s1 += b[1];
+    }
+    out.push([s0 / 4.0, s1 / 4.0]);
+  }
+  out
+}
+
+/// BS.1770 two-pass gated integrated loudness from a series of 100 ms sub-block mean-squares.
+/// Sub-blocks are first combined into 400 ms gating blocks (75% overlap) per the standard, then:
+/// first pass: −70 LUFS absolute gate to compute a relative threshold (mean − 10 LU);
+/// second pass: keep blocks above both gates and average. `NEG_INFINITY` if none qualify.
+pub(crate) fn gated_integrated_lufs(sub_blocks: &[[f64; 2]]) -> f64 {
+  let blocks = gating_blocks_400ms(sub_blocks);
+  let blocks = blocks.as_slice();
   if blocks.is_empty() {
     return f64::NEG_INFINITY;
   }
@@ -898,6 +921,70 @@ impl LoudnessMeter {
 mod tests {
   use super::*;
   use crate::dsp::channel_sel::SpectrumChannelSel;
+
+  #[test]
+  fn gating_blocks_are_400ms_running_mean_of_four() {
+    // 100ms sub-blocks → 400ms gating blocks = mean of 4 consecutive, one per step.
+    let sub = [
+      [1.0, 1.0],
+      [1.0, 1.0],
+      [1.0, 1.0],
+      [5.0, 5.0],
+      [9.0, 9.0],
+    ];
+    let g = gating_blocks_400ms(&sub);
+    // j=3: mean([1,1,1,5])=2 ; j=4: mean([1,1,5,9])=4
+    assert_eq!(g, vec![[2.0, 2.0], [4.0, 4.0]]);
+  }
+
+  #[test]
+  fn gating_blocks_passthrough_when_shorter_than_400ms() {
+    let sub = [[1.0, 1.0], [2.0, 2.0]];
+    assert_eq!(gating_blocks_400ms(&sub), sub.to_vec());
+  }
+
+  #[test]
+  fn integrated_unchanged_for_steady_signal_after_400ms_windowing() {
+    // A uniform sub-block series: 400ms windowing must not change the integrated value.
+    let steady = vec![[0.01_f64, 0.01]; 50];
+    let direct = lufs_from_mean_squares(0.01, 0.01);
+    assert!((gated_integrated_lufs(&steady) - direct).abs() < 1e-9);
+  }
+
+  /// Diagnostic (run with `--ignored --nocapture`): measure integrated/LRA of the bit-perfect
+  /// reference PCM in `dialogue-test-audio/*.f32` (48k stereo f32le), bypassing the capture path.
+  /// Compares the meter math directly against ffmpeg's EBU R128 values.
+  #[test]
+  #[ignore]
+  fn measure_reference_files() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../dialogue-test-audio/");
+    for name in ["speech_pure", "noise_pure", "mix_5050", "mix_2080"] {
+      let path = format!("{dir}{name}.f32");
+      let bytes = match std::fs::read(&path) {
+        Ok(b) => b,
+        Err(e) => {
+          println!("{name}: SKIP ({e})");
+          continue;
+        }
+      };
+      let samples: Vec<f32> = bytes
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect();
+      let mut m = LoudnessMeter::new(48_000.0);
+      let mut last = None;
+      for chunk in samples.chunks(9600) {
+        if let Some(b) = m.push_interleaved(chunk) {
+          last = Some(b);
+        }
+      }
+      let b = last.expect("at least one block");
+      println!(
+        "{name}: integrated={:.2} LUFS, lra={:.2} LU",
+        b.integrated, b.lra
+      );
+    }
+  }
 
   fn dialogue_ctx<'a>(interleaved: &'a [f32], channels: u16) -> PcmContext<'a> {
     PcmContext {
