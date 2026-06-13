@@ -2,13 +2,14 @@ import { cn } from "@/lib/utils";
 import { METRICS_LIST_PAD } from "@/lib/shellLayout";
 import { UI_PREFERENCES } from "../../uiPreferences";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { HoverTip } from "@/components/HoverTip";
 
 const METRIC_ROW_LAYOUT =
   "flex min-h-[var(--ui-metric-row-min-h)] items-center gap-[var(--ui-metric-row-gap)] rounded-[var(--ui-radius-metric-row)] px-[var(--ui-metric-row-pad-x)] py-[var(--ui-metric-row-pad-y)]";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
-function MetricRow({ id, label, value, unit, active }) {
+function MetricRow({ id, label, value, unit, active, hint }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.loudness.metrics;
   const labelClass =
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-tight text-muted-foreground";
@@ -40,7 +41,11 @@ function MetricRow({ id, label, value, unit, active }) {
     </>
   );
 
-  return <div className={METRIC_ROW_LAYOUT}>{content}</div>;
+  return (
+    <HoverTip tip={hint} tipClassName="whitespace-normal w-max max-w-[15rem]">
+      <div className={METRIC_ROW_LAYOUT}>{content}</div>
+    </HoverTip>
+  );
 }
 
 export function LoudnessStatsPanel({ compact = false }) {

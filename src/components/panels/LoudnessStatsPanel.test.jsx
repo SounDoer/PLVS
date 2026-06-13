@@ -5,15 +5,51 @@ import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { LoudnessStatsPanel } from "./LoudnessStatsPanel.jsx";
 
 const primaryMetrics = [
-  { id: "momentary", label: "Momentary", value: "-20.0", unit: "LUFS" },
-  { id: "shortTerm", label: "Short-term", value: "-18.0", unit: "LUFS" },
-  { id: "integrated", label: "Integrated", value: "-19.0", unit: "LUFS" },
-  { id: "lra", label: "Loudness Range (LRA)", value: "3.0", unit: "LU" },
+  {
+    id: "momentary",
+    label: "Momentary",
+    value: "-20.0",
+    unit: "LUFS",
+    hint: "Loudness over a 400ms window",
+  },
+  {
+    id: "shortTerm",
+    label: "Short-term",
+    value: "-18.0",
+    unit: "LUFS",
+    hint: "Loudness over a 3s window",
+  },
+  {
+    id: "integrated",
+    label: "Integrated",
+    value: "-19.0",
+    unit: "LUFS",
+    hint: "Loudness over the whole program, gated below −70 LUFS",
+  },
+  {
+    id: "lra",
+    label: "Loudness Range",
+    value: "3.0",
+    unit: "LU",
+    hint: "LRA, loudness range over the whole program",
+  },
 ];
 
 const secondaryMetrics = [
-  { id: "psr", label: "Dynamics (PSR)", value: "7.0", unit: "dB" },
-  { id: "plr", label: "Avg. Dynamics (PLR)", value: "8.0", unit: "dB" },
+  {
+    id: "psr",
+    label: "Short-term Dynamics",
+    value: "7.0",
+    unit: "dB",
+    hint: "PSR, Peak to Short-term loudness Ratio",
+  },
+  {
+    id: "plr",
+    label: "Integrated Dynamics",
+    value: "8.0",
+    unit: "dB",
+    hint: "PLR, Peak to Loudness Ratio",
+  },
 ];
 
 function renderPanel(visibleIds) {
@@ -35,9 +71,15 @@ describe("LoudnessStatsPanel", () => {
     renderPanel(["integrated", "psr"]);
 
     expect(screen.getByText("Integrated")).toBeTruthy();
-    expect(screen.getByText("Dynamics (PSR)")).toBeTruthy();
+    expect(screen.getByText("Short-term Dynamics")).toBeTruthy();
     expect(screen.queryByText("Momentary")).toBeNull();
     expect(screen.queryByText("Short-term")).toBeNull();
+  });
+
+  it("exposes the hover hint for a visible metric", () => {
+    renderPanel(["integrated"]);
+
+    expect(screen.getByText("Loudness over the whole program, gated below −70 LUFS")).toBeTruthy();
   });
 
   it("renders an empty state when no stats are selected", () => {
