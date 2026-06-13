@@ -43,13 +43,13 @@ export function PeakPanel() {
     <div
       className={cn(
         PANEL_MIN_PEAK,
-        "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        "@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-[auto_1fr] gap-[var(--ui-peak-axis-chart-gap)]",
+            "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-[var(--ui-peak-axis-chart-gap)]",
             PANEL_MIN_PEAK
           )}
         >

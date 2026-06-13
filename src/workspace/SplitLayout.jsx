@@ -6,6 +6,8 @@ import { LeafView } from "./LeafView.jsx";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
 
+const SPLIT_DIVIDER_SIZE_REM = 0.375;
+
 // ---------------------------------------------------------------------------
 // Empty-node helper and min-size helper for a subtree
 // ---------------------------------------------------------------------------
@@ -39,11 +41,43 @@ function getSubtreeMinSize(node, visibleModules, dimension) {
     : Math.max(80, ...childMins);
 }
 
+function formatFlexFactor(value) {
+  return Number(value.toFixed(6)).toString();
+}
+
+export function getSplitSizingContext(visibleSizes, dividerCount) {
+  const fixedSizes = visibleSizes.filter((s) => s !== null);
+  const fixedTotal = fixedSizes.reduce((sum, s) => sum + s, 0);
+  return {
+    dividerTotalRem: dividerCount * SPLIT_DIVIDER_SIZE_REM,
+    fixedTotal,
+    normalizeFixed: fixedSizes.length === visibleSizes.length || fixedTotal >= 1,
+  };
+}
+
+export function getSplitChildStyle(size, sizingContext) {
+  const baseStyle = { minWidth: 0, minHeight: 0 };
+  if (size === null) return { flex: "1 1 0", ...baseStyle };
+
+  const divisor = sizingContext.normalizeFixed ? sizingContext.fixedTotal : 1;
+  const factor = formatFlexFactor(size / divisor);
+  const dividerTotalRem = formatFlexFactor(sizingContext.dividerTotalRem);
+  return { flex: `0 0 calc((100% - ${dividerTotalRem}rem) * ${factor})`, ...baseStyle };
+}
+
 // ---------------------------------------------------------------------------
 // SplitDivider — unified resize handle between any two adjacent children
 // ---------------------------------------------------------------------------
 
-function SplitDivider({ parentPath, aboveIdx, belowIdx, direction, aboveNode, belowNode }) {
+function SplitDivider({
+  parentPath,
+  aboveIdx,
+  belowIdx,
+  direction,
+  aboveNode,
+  belowNode,
+  dividerCount,
+}) {
   const { state, resizeChildren } = useWorkspaceStore();
   const ref = useRef(null);
   const isH = direction === "h";
@@ -58,7 +92,9 @@ function SplitDivider({ parentPath, aboveIdx, belowIdx, direction, aboveNode, be
     const startAbovePx = isH ? aboveEl.offsetWidth : aboveEl.offsetHeight;
     const startBelowPx = isH ? belowEl.offsetWidth : belowEl.offsetHeight;
     const containerPx = isH ? containerEl.clientWidth : containerEl.clientHeight;
-    if (containerPx === 0) return;
+    const dividerPx = isH ? ref.current.offsetWidth : ref.current.offsetHeight;
+    const contentPx = containerPx - dividerCount * dividerPx;
+    if (contentPx <= 0) return;
     const startPos = isH ? e.clientX : e.clientY;
     const dimension = isH ? "minWidth" : "minHeight";
     const { visibleModules } = state;
@@ -76,8 +112,8 @@ function SplitDivider({ parentPath, aboveIdx, belowIdx, direction, aboveNode, be
         parentPath,
         aboveIdx,
         belowIdx,
-        (startAbovePx + clampedDelta) / containerPx,
-        (startBelowPx - clampedDelta) / containerPx
+        (startAbovePx + clampedDelta) / contentPx,
+        (startBelowPx - clampedDelta) / contentPx
       );
     }
     function onUp() {
@@ -120,21 +156,16 @@ function SplitView({ node, path, style }) {
     .map((child, i) => (isNodeEmpty(child, visibleModules) ? null : i))
     .filter((i) => i !== null);
 
-  // When all visible children have fixed sizes (no null), normalize so they fill the container.
   const visibleSizes = visibleChildIndices.map((i) => node.sizes[i]);
-  const hasNullSize = visibleSizes.some((s) => s === null);
-  const fixedTotal = hasNullSize ? 1 : visibleSizes.reduce((sum, s) => sum + (s ?? 0), 0);
-  const normFactor = !hasNullSize && fixedTotal > 0 ? 1 / fixedTotal : 1;
+  const dividerCount = Math.max(0, visibleChildIndices.length - 1);
+  const sizingContext = getSplitSizingContext(visibleSizes, dividerCount);
 
   return (
     <div style={style} className={cn("flex min-h-0 min-w-0", isH ? "flex-row" : "flex-col")}>
       {visibleChildIndices.map((childIdx, renderIdx) => {
         const child = node.children[childIdx];
         const size = node.sizes[childIdx];
-        const childStyle =
-          size !== null
-            ? { flex: `0 0 ${size * normFactor * 100}%`, minWidth: 0, minHeight: 0 }
-            : { flex: "1 1 0", minWidth: 0, minHeight: 0 };
+        const childStyle = getSplitChildStyle(size, sizingContext);
 
         const aboveChildIdx = renderIdx > 0 ? visibleChildIndices[renderIdx - 1] : -1;
 
@@ -148,6 +179,7 @@ function SplitView({ node, path, style }) {
                 direction={node.direction}
                 aboveNode={node.children[aboveChildIdx]}
                 belowNode={child}
+                dividerCount={dividerCount}
               />
             )}
             <SplitView node={child} path={[...path, childIdx]} style={childStyle} />

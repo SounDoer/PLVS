@@ -33,4 +33,13 @@ describe("PeakPanel", () => {
     expect(leftLabel.closest("[data-peak-channel-label]")).toBeTruthy();
     expect(leftValue.parentElement).not.toBe(leftLabel.parentElement);
   });
+
+  it("allows the chart column to shrink inside narrow split panes", () => {
+    const { container } = renderPanel();
+
+    const layoutGrid = container.querySelector(".grid-cols-\\[auto_minmax\\(0\\2c 1fr\\)\\]");
+
+    expect(container.firstElementChild?.className).toContain("min-w-0");
+    expect(layoutGrid).toBeTruthy();
+  });
 });
