@@ -1,8 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 export function useChartHover(computeFn) {
   const computeRef = useRef(computeFn);
-  computeRef.current = computeFn;
+  useLayoutEffect(() => {
+    computeRef.current = computeFn;
+  }, [computeFn]);
   const [hover, setHover] = useState(null);
   const onMove = useCallback((clientX, clientY, rect) => {
     const w = Math.max(1, rect.width);

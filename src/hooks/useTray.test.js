@@ -74,6 +74,27 @@ describe("useTray", () => {
     expect(TrayIcon.new).toHaveBeenCalledWith(expect.objectContaining({ iconAsTemplate: true }));
   });
 
+  it("keeps the tray click action wired to the latest window toggle callback", async () => {
+    const firstToggleWindow = vi.fn();
+    const secondToggleWindow = vi.fn();
+    const { rerender } = renderHook(
+      ({ onToggleWindow }) => useTray({ ...defaultProps, onToggleWindow }),
+      {
+        initialProps: { onToggleWindow: firstToggleWindow },
+      }
+    );
+    await act(async () => {});
+
+    const trayAction = TrayIcon.new.mock.calls[0][0].action;
+    rerender({ onToggleWindow: secondToggleWindow });
+    await act(async () => {});
+
+    trayAction({ type: "Click", button: "Left" });
+
+    expect(firstToggleWindow).not.toHaveBeenCalled();
+    expect(secondToggleWindow).toHaveBeenCalledTimes(1);
+  });
+
   it("closes an orphaned tray if effect is cancelled before TrayIcon.new resolves", async () => {
     // Simulate the StrictMode race: cleanup fires while TrayIcon.new is still pending.
     // The orphaned tray instance must be closed even though it was created after cancellation.

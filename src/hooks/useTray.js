@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -71,9 +71,9 @@ export function useTray({
   }, [onToggleWindow]);
 
   // Stable callbacks that always call the latest ref
-  const stableTogglePin = useRef(() => togglePinRef.current()).current;
-  const stableToggleCapture = useRef(() => onStartClickRef.current()).current;
-  const stableToggleWindow = useRef(() => onToggleWindowRef.current()).current;
+  const stableTogglePin = useCallback(() => togglePinRef.current(), []);
+  const stableToggleCapture = useCallback(() => onStartClickRef.current(), []);
+  const stableToggleWindow = useCallback(() => onToggleWindowRef.current(), []);
 
   // Snapshot of state for the creation effect (refs keep it current after creation)
   const creationStateRef = useRef({ running, pinned, deviceName, colorScheme });
