@@ -153,6 +153,20 @@ Contributions are welcome. Before submitting a PR, please read [CONTRIBUTING.md]
 
 ---
 
+## Acknowledgements
+
+PLVS stands on the shoulders of excellent open-source work. In particular:
+
+- [**Silero VAD**](https://github.com/snakers4/silero-vad) — the voice activity detection model used for dialogue-gated loudness. The model is bundled via the [`voice_activity_detector`](https://github.com/nkeenan38/voice_activity_detector) crate (MIT).
+- [**CPAL**](https://github.com/RustAudio/cpal) — cross-platform audio capture (Apache-2.0).
+- [**RustFFT**](https://github.com/ejmahler/RustFFT) & [**RealFFT**](https://github.com/HEnquist/realfft) — the FFT engine behind the spectrum and spectrogram (MIT / Apache-2.0).
+- [**Rubato**](https://github.com/HEnquist/rubato) — sample-rate conversion (MIT).
+- [**Tauri**](https://v2.tauri.app/) — the desktop application framework (MIT / Apache-2.0).
+
+Thanks to all the maintainers and contributors of these projects.
+
+---
+
 ## License
 
 [MIT](LICENSE)
