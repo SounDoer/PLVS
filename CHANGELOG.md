@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-13
+
+### Fixed
+
+- Prevent split resize overflow in layout
+- Remove refs lint warnings in hooks
+- Unify max stats on frame payload in loudness panel
+- Reset Silero VAD state on dialogue gating toggle
+- Portal hover tips outside scroll containers for better UX
+- Reduce stats value size in loudness panel
+
+### Changed
+
+- Documentation updates for dialogue-gated loudness feature and acknowledgements
+
 ## [0.3.1] - 2026-06-13
 
 ### Added
