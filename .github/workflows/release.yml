@@ -14,7 +14,40 @@ permissions:
   contents: write
 
 jobs:
+  # 发布门禁：跑与 CI 一致的前端检查，红灯则不构建任何安装包。
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify package / Cargo versions match
+        run: npm run version:check
+
+      - name: Format (Prettier)
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build frontend (Vite)
+        run: npm run build
+
   build-windows:
+    needs: verify
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -75,6 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-macos:
+    needs: verify
     runs-on: macos-latest
     steps:
       - name: Checkout
