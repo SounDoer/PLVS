@@ -101,13 +101,20 @@ impl StftAnalyzer {
       let idx = (self.write.wrapping_sub(self.size) + i) % self.size;
       *slot = self.ring[idx] * self.window[i];
     }
-    self.r2c.process(&mut self.scratch_in, &mut self.scratch_spec).expect("fft");
+    self
+      .r2c
+      .process(&mut self.scratch_in, &mut self.scratch_spec)
+      .expect("fft");
     let bin_count = self.scratch_spec.len();
     let bw = self.bin_width_hz();
     let mut psd = vec![0.0_f64; bin_count];
     for (k, c) in self.scratch_spec.iter().enumerate() {
       let m = (c.re * c.re + c.im * c.im).sqrt() as f64;
-      let m_norm = if k == 0 || k + 1 == bin_count { m / n } else { m * 2.0 / n };
+      let m_norm = if k == 0 || k + 1 == bin_count {
+        m / n
+      } else {
+        m * 2.0 / n
+      };
       let power = m_norm.max(1e-12).powi(2);
       psd[k] = power / bw; // power per Hz
     }
@@ -140,6 +147,70 @@ impl StftAnalyzer {
   }
 }
 
+pub struct MultiResBank {
+  big: StftAnalyzer,
+  mid: StftAnalyzer,
+  small: StftAnalyzer,
+  grid: LogGrid,
+}
+
+impl MultiResBank {
+  pub fn new(sample_rate: f64, min_hz: f64, max_hz: f64) -> Self {
+    Self {
+      big: StftAnalyzer::new(FFT_BIG, sample_rate),
+      mid: StftAnalyzer::new(FFT_MID, sample_rate),
+      small: StftAnalyzer::new(FFT_SMALL, sample_rate),
+      grid: LogGrid::new(min_hz, max_hz),
+    }
+  }
+
+  pub fn grid_freqs(&self) -> &[f64] {
+    &self.grid.freqs
+  }
+
+  pub fn ready(&self) -> bool {
+    // Largest FFT gates readiness; it fills last.
+    self.big.ready()
+  }
+
+  pub fn push_sample(&mut self, s: f32) {
+    self.big.push_sample(s);
+    self.mid.push_sample(s);
+    self.small.push_sample(s);
+  }
+
+  /// Blend weight in [0,1] for the *upper* analyzer of a crossover at `xover_hz`.
+  /// 0 below the fade band (use lower analyzer), 1 above it (use upper analyzer).
+  fn blend(hz: f64, xover_hz: f64) -> f64 {
+    let lo = xover_hz * 2_f64.powf(-XFADE_HALF_OCT);
+    let hi = xover_hz * 2_f64.powf(XFADE_HALF_OCT);
+    if hz <= lo {
+      0.0
+    } else if hz >= hi {
+      1.0
+    } else {
+      (hz.log2() - lo.log2()) / (hi.log2() - lo.log2())
+    }
+  }
+
+  /// PSD-dB per grid point, combining the three analyzers. `cal_offset_db` is added here.
+  pub fn psd_db_row(&self, cal_offset_db: f64) -> Vec<f64> {
+    self
+      .grid
+      .freqs
+      .iter()
+      .map(|&f| {
+        // Low/mid blend then mid/high blend, all in linear PSD.
+        let b_lo = Self::blend(f, XOVER_LO_HZ); // 0=big, 1=mid
+        let lowmid = self.big.psd_at(f) * (1.0 - b_lo) + self.mid.psd_at(f) * b_lo;
+        let b_hi = Self::blend(f, XOVER_HI_HZ); // 0=lowmid(mid), 1=small
+        let psd = lowmid * (1.0 - b_hi) + self.small.psd_at(f) * b_hi;
+        10.0 * psd.max(1e-20).log10() + cal_offset_db
+      })
+      .collect()
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -159,7 +230,10 @@ mod tests {
     assert!(an.ready());
     let on = an.psd_at(1000.0);
     let off = an.psd_at(300.0);
-    assert!(on > off * 100.0, "tone PSD {on} should dominate off-tone {off}");
+    assert!(
+      on > off * 100.0,
+      "tone PSD {on} should dominate off-tone {off}"
+    );
   }
 
   #[test]
@@ -173,5 +247,66 @@ mod tests {
     let r0 = g.freqs[1] / g.freqs[0];
     let r1 = g.freqs[100] / g.freqs[99];
     assert!((r0 - r1).abs() < 1e-9);
+  }
+
+  fn feed_bank_tone(bank: &mut MultiResBank, sr: f64, hz: f64, samples: usize) {
+    for i in 0..samples {
+      bank.push_sample((2.0 * std::f64::consts::PI * hz * i as f64 / sr).sin() as f32);
+    }
+  }
+
+  #[test]
+  fn bank_resolves_close_low_tones() {
+    let sr = 48000.0;
+    let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    // 60 Hz + 70 Hz simultaneously — a 4096 FFT (11.7 Hz bins) blurs these together.
+    for i in 0..FFT_BIG * 4 {
+      let t = i as f64 / sr;
+      let s = ((2.0 * std::f64::consts::PI * 60.0 * t).sin()
+        + (2.0 * std::f64::consts::PI * 70.0 * t).sin()) as f32;
+      bank.push_sample(s);
+    }
+    assert!(bank.ready());
+    let row = bank.psd_db_row(0.0);
+    let freqs = bank.grid_freqs();
+    let val_at = |target: f64| {
+      let (idx, _) = freqs
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| (**a - target).abs().partial_cmp(&(**b - target).abs()).unwrap())
+        .unwrap();
+      row[idx]
+    };
+    // Both tones present; the 65 Hz midpoint is a dip between two resolved peaks.
+    assert!(val_at(60.0) > val_at(65.0) + 3.0, "60 Hz peak not resolved");
+    assert!(val_at(70.0) > val_at(65.0) + 3.0, "70 Hz peak not resolved");
+  }
+
+  #[test]
+  fn bank_broadband_continuous_across_crossovers() {
+    let sr = 48000.0;
+    let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    // Deterministic pseudo-white noise.
+    let mut x: u32 = 0x12345678;
+    for _ in 0..FFT_BIG * 8 {
+      x = x.wrapping_mul(1664525).wrapping_add(1013904223);
+      let s = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
+      bank.push_sample(s);
+    }
+    assert!(bank.ready());
+    let row = bank.psd_db_row(0.0);
+    let freqs = bank.grid_freqs();
+    let near = |t: f64| {
+      freqs
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| (**a - t).abs().partial_cmp(&(**b - t).abs()).unwrap())
+        .map(|(i, _)| row[i])
+        .unwrap()
+    };
+    // White-noise PSD is ~flat; no large step across either crossover.
+    // Tolerance accounts for window/edge variance in pseudo-noise; tighten later if desired.
+    assert!((near(180.0) - near(220.0)).abs() < 4.0, "seam at 200 Hz");
+    assert!((near(1800.0) - near(2200.0)).abs() < 4.0, "seam at 2 kHz");
   }
 }
