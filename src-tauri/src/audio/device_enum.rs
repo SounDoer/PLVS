@@ -45,7 +45,6 @@ pub(crate) fn device_list_label(device: &cpal::Device) -> Result<String, String>
   let primary = d.name().trim();
   let parts: Vec<&str> = d
     .extended()
-    .iter()
     .map(|s| s.trim())
     .filter(|s| !s.is_empty())
     .collect();

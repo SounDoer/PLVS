@@ -375,7 +375,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
 fn create_silence_stream(device: &cpal::Device, config: &StreamConfig) -> Option<cpal::Stream> {
   let stream = device
     .build_output_stream(
-      config,
+      *config,
       move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
         // Write silence (all zeros)
         for sample in data.iter_mut() {
@@ -464,7 +464,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       let pool = pcm_pool.clone();
       device
         .build_input_stream(
-          &stream_config,
+          stream_config,
           move |data: &[f32], _: &cpal::InputCallbackInfo| {
             if let Some(buffer) = copy_f32_pcm_to_pooled_buffer(&pool, data, &dropped) {
               send_pcm_buffer_or_count_drop(&tx, &pool, buffer, &dropped);
@@ -481,7 +481,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       let pool = pcm_pool.clone();
       device
         .build_input_stream(
-          &stream_config,
+          stream_config,
           move |data: &[i16], _: &cpal::InputCallbackInfo| {
             if let Some(buffer) = copy_i16_pcm_to_pooled_buffer(&pool, data, &dropped) {
               send_pcm_buffer_or_count_drop(&tx, &pool, buffer, &dropped);
@@ -498,7 +498,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       let pool = pcm_pool.clone();
       device
         .build_input_stream(
-          &stream_config,
+          stream_config,
           move |data: &[u16], _: &cpal::InputCallbackInfo| {
             if let Some(buffer) = copy_u16_pcm_to_pooled_buffer(&pool, data, &dropped) {
               send_pcm_buffer_or_count_drop(&tx, &pool, buffer, &dropped);
