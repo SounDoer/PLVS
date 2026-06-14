@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FrameIntake } from "./FrameIntake.js";
+import { FrameIntake, buildSpectrumDataSnapshot } from "./FrameIntake.js";
 
 const HIST_MAX = 5;
 const SR = 48000;
@@ -277,6 +277,21 @@ describe("FrameIntake", () => {
       waveformMin: [-0.5, -0.3],
       waveformMax: [0.5, 0.3],
     });
+  });
+
+  it("uses payload grid frequencies, not recomputed RTA bands", () => {
+    const centers = Array.from(
+      { length: 958 },
+      (_, i) => 20 * Math.pow(2, (i / 957) * Math.log2(1000))
+    );
+    const dbList = centers.map(() => -50);
+    const out = buildSpectrumDataSnapshot(
+      { spectrumBandCentersHz: centers, spectrumSmoothDb: dbList },
+      { defaultSampleRate: 48000 }
+    );
+    expect(out.bands.length).toBe(centers.length);
+    expect(out.bands[0].fCenter).toBeCloseTo(centers[0]);
+    expect(out.dbList.length).toBe(dbList.length);
   });
 
   it("visual ring evicts oldest when over capacity", () => {
