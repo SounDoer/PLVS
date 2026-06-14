@@ -11,6 +11,9 @@ pub const XFADE_HALF_OCT: f64 = 1.0 / 6.0; // crossfade half-width, octaves
 pub const GRID_POINTS_PER_OCT: f64 = 96.0;
 pub const POWER_AVG_FRAMES: usize = 4;
 pub const OVERLAP: usize = 4; // 75% overlap → hop = size / OVERLAP
+/// Display calibration: added to PSD-dB so a 0 dBFS sine peak reads ~0 dB.
+/// Empirically tuned; pinned by `calibration_full_scale_sine_near_zero`.
+pub const CAL_OFFSET_DB: f64 = 16.5;
 
 /// Fixed log-frequency render grid spanning [min_hz, max_hz] at GRID_POINTS_PER_OCT points/octave.
 pub struct LogGrid {
@@ -273,13 +276,34 @@ mod tests {
       let (idx, _) = freqs
         .iter()
         .enumerate()
-        .min_by(|(_, a), (_, b)| (**a - target).abs().partial_cmp(&(**b - target).abs()).unwrap())
+        .min_by(|(_, a), (_, b)| {
+          (**a - target)
+            .abs()
+            .partial_cmp(&(**b - target).abs())
+            .unwrap()
+        })
         .unwrap();
       row[idx]
     };
     // Both tones present; the 65 Hz midpoint is a dip between two resolved peaks.
     assert!(val_at(60.0) > val_at(65.0) + 3.0, "60 Hz peak not resolved");
     assert!(val_at(70.0) > val_at(65.0) + 3.0, "70 Hz peak not resolved");
+  }
+
+  #[test]
+  fn calibration_full_scale_sine_near_zero() {
+    let sr = 48000.0;
+    let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    feed_bank_tone(&mut bank, sr, 1000.0, FFT_BIG * 6); // amplitude 1.0 = 0 dBFS
+    assert!(bank.ready());
+    let row = bank.psd_db_row(CAL_OFFSET_DB);
+    let peak = row.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    // Tone peak varies a few dB with bin alignment (1 kHz is not bin-centered); a loose
+    // tolerance is fine for a display-referenced analyzer.
+    assert!(
+      (peak - 0.0).abs() < 2.5,
+      "0 dBFS sine peak should read ~0 dB, got {peak} (adjust CAL_OFFSET_DB)"
+    );
   }
 
   #[test]
