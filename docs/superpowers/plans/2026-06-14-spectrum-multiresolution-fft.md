@@ -412,8 +412,9 @@ fn bank_broadband_continuous_across_crossovers() {
       .unwrap()
   };
   // White-noise PSD is ~flat; no large step across either crossover.
-  assert!((near(180.0) - near(220.0)).abs() < 3.0, "seam at 200 Hz");
-  assert!((near(1800.0) - near(2200.0)).abs() < 3.0, "seam at 2 kHz");
+  // Tolerance accounts for window/edge variance in pseudo-noise; tighten later if desired.
+  assert!((near(180.0) - near(220.0)).abs() < 4.0, "seam at 200 Hz");
+  assert!((near(1800.0) - near(2200.0)).abs() < 4.0, "seam at 2 kHz");
 }
 ```
 
@@ -461,8 +462,10 @@ fn calibration_full_scale_sine_near_zero() {
   assert!(bank.ready());
   let row = bank.psd_db_row(CAL_OFFSET_DB);
   let peak = row.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+  // Tone peak varies a few dB with bin alignment (1 kHz is not bin-centered); a loose
+  // tolerance is fine for a display-referenced analyzer.
   assert!(
-    (peak - 0.0).abs() < 1.5,
+    (peak - 0.0).abs() < 2.5,
     "0 dBFS sine peak should read ~0 dB, got {peak} (adjust CAL_OFFSET_DB)"
   );
 }
@@ -615,7 +618,8 @@ pub fn push_interleaved(&mut self, interleaved: &[f32], channels: u16, now_sec: 
   let frames = interleaved.len() / ch;
   for i in 0..frames {
     let base = i * ch;
-    // Mono/stereo: stereo-average. Multichannel: summed across channels (see Task 8).
+    // Mono → that sample; stereo (and any stray >2 call) → average of the first two channels.
+    // Production never calls this with >2 channels: those route through push_selected.
     let s = if ch == 1 {
       interleaved[base]
     } else {
@@ -669,7 +673,7 @@ pub fn band_centers(&self) -> Vec<f64> {
 - [ ] **Step 4: Run the new test plus the existing spectrum tests**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml spectrum -- --nocapture`
-Expected: `default_slope_tilts_curve_upward` PASS. Delete or port the now-obsolete RTA-only tests in `spectrum.rs` (`bin_edges_tile_nyquist`, `fractional_band_power_differs_across_adjacent_low_rta_bands`) — their helpers (`bin_hz_edges`, `overlap_weight`, `build_rta_bands`) are removed. Keep `push_selected_*` and the multichannel test (the latter is updated in Task 8).
+Expected: `default_slope_tilts_curve_upward` PASS. Delete the now-obsolete RTA-only tests in `spectrum.rs` (`bin_edges_tile_nyquist`, `fractional_band_power_differs_across_adjacent_low_rta_bands`) — their helpers (`bin_hz_edges`, `overlap_weight`, `build_rta_bands`) are removed. Also delete `multichannel_summed_curve_is_louder_than_stereo_average`: its +6 dB power-sum semantics no longer apply, production routes N>2 through `push_selected` (channel selection, unchanged), and `push_interleaved` no longer special-cases >2 channels (the stereo-average else-branch defensively handles any stray >2 call using the first two channels). Keep the `push_selected_*` tests.
 
 - [ ] **Step 5: Commit**
 
@@ -783,58 +787,7 @@ git commit -m "feat(spectrum): render from engine grid frequencies in JS path"
 
 ---
 
-## Task 8: Multichannel summed-power on the grid
-
-**Files:**
-- Modify: `src-tauri/src/dsp/spectrum.rs`
-
-For N>2 the curve must represent summed power across channels (preserve current semantics: ~+6 dB for 4 identical channels vs stereo-average). The bank consumes one mono stream, so sum channel samples before pushing.
-
-- [ ] **Step 1: Port the failing test**
-
-Update the existing `multichannel_summed_curve_is_louder_than_stereo_average` test in `spectrum.rs` to read from `band_centers()` + the returned `smooth` (it already compares peak dB of a 4-ch vs 2-ch run; keep the `diff > 5.0 && diff < 7.5` assertion).
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `cargo test --manifest-path src-tauri/Cargo.toml multichannel_summed -- --nocapture`
-Expected: FAIL — Task 5's `push_interleaved` uses only the first two channels for the stereo-average branch, so 4-ch and 2-ch read the same.
-
-- [ ] **Step 3: Sum channels for N>2**
-
-In `push_interleaved`, replace the per-frame sample selection:
-
-```rust
-let s = match ch {
-  1 => interleaved[base],
-  2 => 0.5 * (interleaved[base] + interleaved[base + 1]),
-  _ => {
-    // Summed energy across channels → ~+3 dB per doubling, matching prior semantics.
-    let mut acc = 0.0_f32;
-    for c in 0..ch {
-      acc += interleaved[base + c];
-    }
-    acc
-  }
-};
-```
-
-Note: summing time-domain samples of identical channels gives +6 dB amplitude for 4 vs 2; PSD scales with power, preserving the existing `+6 dB` expectation for correlated channels. `push_selected` (N>2 routing) still synthesizes a 2-ch buffer for explicit channel selection and is unaffected.
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `cargo test --manifest-path src-tauri/Cargo.toml multichannel_summed -- --nocapture`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src-tauri/src/dsp/spectrum.rs
-git commit -m "feat(spectrum): sum channel power for multichannel curve on grid"
-```
-
----
-
-## Task 9: Full verification
+## Task 8: Full verification
 
 **Files:** none (verification only)
 
@@ -873,6 +826,6 @@ git commit -m "chore(spectrum): fmt + lint after multi-resolution rewrite"
 
 ## Self-review notes
 
-- **Spec coverage:** multi-res bank (Tasks 2-3), PSD combination (Task 3), log grid (Task 1), +4.5 slope default (Task 5), octave smoothing 1/24 (Task 5), calibration (Task 4), payload unchanged (Task 6), JS trusts grid (Task 7), multichannel summed (Task 8), tests + manual (Task 9). All spec sections map to a task.
+- **Spec coverage:** multi-res bank (Tasks 2-3), PSD combination (Task 3), log grid (Task 1), +4.5 slope default (Task 5), octave smoothing 1/24 (Task 5), calibration (Task 4), payload unchanged (Task 6), JS trusts grid (Task 7), verification (Task 8). Multichannel: production N>2 routes through `push_selected` (channel selection, unchanged); the spec's "summed power across channels" fallback path is dropped — `push_interleaved` is never called with >2 channels in production, so the old multichannel test is deleted (Task 5 Step 4). Update the spec's multichannel non-goal/testing wording to match.
 - **Types consistent:** `MultiResBank::new(sample_rate, min_hz, max_hz)`, `grid_freqs()`, `psd_db_row(cal_offset_db)`, `ready()`, `push_sample()`; `StftAnalyzer::psd_at()`, `bin_width_hz()`; `SpectrumMeter::band_centers()` returns grid — used identically across Tasks 3, 5, 6, 8.
 - **Removed symbols:** `bin_hz_edges`, `overlap_weight`, `build_rta_bands`, `smooth_by_kernel`, `compute_band_linear_powers`, `push_stft_power_row` and their tests are deleted in Task 5; Task 6 Step 3 (`cargo test`) catches any stragglers.

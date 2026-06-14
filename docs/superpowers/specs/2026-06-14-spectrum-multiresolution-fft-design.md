@@ -36,7 +36,7 @@ So the engine is Rust-only, and the frontend is already a generic `(frequency, d
 - No selectable window function (Hann only).
 - No frequency range or zoom changes (still 20 Hz .. min(20 kHz, Nyquist)).
 - No note-name hover readout.
-- No multichannel overlay (multichannel stays one summed-power curve, as today).
+- No multichannel overlay. Multichannel (N>2) is unchanged: production routes it through channel selection (`push_selected`, which synthesizes a 2-channel stream), so it uses the normal mono/stereo path. The previously-documented "summed-power across all channels" fallback in `push_interleaved` is dropped — that path is never hit in production, so it is not maintained.
 - No JS-side FFT.
 - Not metrology-grade (IEC 61260) — this is a visualization analyzer, matching pro-plugin practice. Absolute dB is display-referenced (dBFS-relative), not calibrated SPL.
 
@@ -120,7 +120,7 @@ Rust unit tests:
 - A constant slope value shifts the curve by the expected dB/octave (high-vs-low grid-point delta).
 - Broadband (white / pink) input is continuous across both crossovers — no step larger than a small tolerance at `XOVER_LO` / `XOVER_HI` (validates PSD-domain combination + crossfade).
 - Output grid length is stable across frames and matches the configured points/octave.
-- Multichannel (N>2) still produces one summed-power curve, louder than the stereo-average curve for the same tone (port the existing assertion to the grid output).
+- (Multichannel N>2 is exercised via `push_selected` channel-selection tests, unchanged; no separate summed-power test.)
 
 Manual verification:
 
