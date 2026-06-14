@@ -8,6 +8,7 @@ pub mod meter;
 pub mod paths;
 pub mod peak;
 pub mod spectrum;
+pub mod spectrum_bank;
 pub mod speech;
 pub mod vectorscope;
 
