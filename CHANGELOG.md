@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-06-15
+
+### Added
+
+- Spectrum: multi-resolution PSD bank with crossfaded crossovers
+- Spectrum: single-size STFT analyzer producing per-bin PSD
+- Spectrum: log-frequency render grid
+- Spectrum: drive display from multi-resolution bank with 4.5 dB/oct slope
+- Spectrum: calibrate display offset to 0 dBFS reference
+- Spectrum: timed peak-hold default (1.5s hold, 8 dB/s fall)
+- Spectrum: show note name in spectrum and spectrogram hover
+
+### Fixed
+
+- Audio: reset meters on format restart
+- Loudness: tighten value-to-unit gap in stats rows
+- Spectrogram: reuse live-frame grid centers for visual ticks
+- Spectrum: remove octave smoothing + level fudge for honest, consistent dB
+- Spectrum: reference display so full-scale sine reads ~0 dBFS
+- Spectrum: pivot display slope at 1 kHz to avoid inflating the curve
+
 ## [0.3.2] - 2026-06-13
 
 ### Fixed
