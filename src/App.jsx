@@ -691,8 +691,9 @@ function AppContent() {
   const onSpectrumViewChange = async (view) => {
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     updatePanelControls((current) => ({ ...current, spectrumView: view }));
+    if (!isTauri()) return;
     try {
-      if (running || !isTauri()) await setSpectrumView(view);
+      if (running) await setSpectrumView(view);
     } catch (_) {}
   };
 
