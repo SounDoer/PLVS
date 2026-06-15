@@ -1,6 +1,7 @@
 //! **Multi-resolution spectrum display** driven by `MultiResBank` (three windowed FFTs blended
-//! at crossover frequencies). Per grid-point: weighting, 4.5 dB/oct slope tilt, 1/24-oct Gaussian
-//! smoothing, attack/release envelope, and peak-hold.
+//! at crossover frequencies). Per grid-point: weighting, 4.5 dB/oct slope tilt (pivoted at 1 kHz),
+//! attack/release envelope, and peak-hold. No octave smoothing — peaks stay sharp and tone levels
+//! read at their true dBFS (SPAN-style); time stability comes from the bank's power averaging.
 //!
 //! Product wording: **`docs/architecture.md` §6 Spectrum / RTA**.
 
@@ -35,37 +36,7 @@ fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
   }
 }
 
-const OCTAVE_SMOOTH: f64 = 1.0 / 24.0;
 const SLOPE_PIVOT_HZ: f64 = 1000.0;
-/// Display headroom compensation. Octave smoothing spreads a pure tone's concentrated energy,
-/// lowering its displayed peak (~18 dB for a 1/24-oct smooth). This offset re-references the
-/// display so a full-scale sine peaks at ~0 dB — the standard analyzer convention (Pro-Q/SPAN),
-/// with music/noise sitting below. Verified by `full_scale_sine_reads_near_zero_dbfs`.
-const DISPLAY_CAL_DB: f64 = 19.8;
-
-/// Gaussian smoothing in the log-frequency domain; `frac_oct` ~ stddev in octaves.
-fn smooth_octave(db: &[f64], freqs: &[f64], frac_oct: f64) -> Vec<f64> {
-  if db.len() < 3 {
-    return db.to_vec();
-  }
-  // Grid is uniform in log2(f); convert the octave width to a point radius.
-  let pts_per_oct = 1.0 / (freqs[1].log2() - freqs[0].log2());
-  let sigma = (frac_oct * pts_per_oct).max(0.5);
-  let radius = (sigma * 3.0).ceil() as isize;
-  let mut out = vec![0.0_f64; db.len()];
-  for i in 0..db.len() {
-    let mut acc = 0.0;
-    let mut wsum = 0.0;
-    for d in -radius..=radius {
-      let j = (i as isize + d).clamp(0, db.len() as isize - 1) as usize;
-      let w = (-0.5 * (d as f64 / sigma).powi(2)).exp();
-      acc += db[j] * w;
-      wsum += w;
-    }
-    out[i] = acc / wsum;
-  }
-  out
-}
 
 pub struct SpectrumMeter {
   bank: MultiResBank,
@@ -129,9 +100,9 @@ impl SpectrumMeter {
     for (i, &db) in raw.iter().enumerate() {
       let f = centers[i];
       let oct = f.log2() - log_pivot;
-      shaped.push(db + DISPLAY_CAL_DB + weighting_db(f, &self.weighting) + self.tilt_db_per_octave * oct);
+      shaped.push(db + weighting_db(f, &self.weighting) + self.tilt_db_per_octave * oct);
     }
-    smooth_octave(&shaped, centers, OCTAVE_SMOOTH)
+    shaped
   }
 
   /// Returns `(smooth_db, peak_db)` for SVG paths on the frontend, or `None` until the bank is ready.
@@ -406,7 +377,10 @@ mod tests {
     // With the slope pivoting at 1 kHz, a 0 dBFS 1 kHz tone sits near 0 dB — NOT inflated to
     // ~+25 dB the way a 20 Hz-anchored slope does. Lower bound is loose because 1/24-octave
     // smoothing spreads a pure tone's energy and lowers its displayed peak.
-    assert!(peak1k < 5.0, "1 kHz peak inflated by slope: {peak1k} (pivot not at 1 kHz?)");
+    assert!(
+      peak1k < 5.0,
+      "1 kHz peak inflated by slope: {peak1k} (pivot not at 1 kHz?)"
+    );
     assert!(peak1k > -25.0, "1 kHz peak unexpectedly low: {peak1k}");
   }
 
