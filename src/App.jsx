@@ -919,6 +919,8 @@ function AppContent() {
     setStatus2,
     setRunning,
     setSelectedOffset,
+    resetTimer,
+    setShowClock,
   });
 
   const audioData = {

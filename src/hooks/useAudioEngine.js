@@ -13,6 +13,34 @@ import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 import { resolveDevice, buildDeviceStatus } from "../lib/audioEngineCommands.js";
 
+const CLEARED_AUDIO_STATE = {
+  peakDb: [],
+  peakHoldDb: [],
+  momentary: -Infinity,
+  shortTerm: -Infinity,
+  integrated: -Infinity,
+  mMax: -Infinity,
+  stMax: -Infinity,
+  lra: -Infinity,
+  tpL: -Infinity,
+  tpR: -Infinity,
+  truePeakL: -Infinity,
+  truePeakR: -Infinity,
+  tpMax: -Infinity,
+  samplePeakMaxL: -Infinity,
+  samplePeakMaxR: -Infinity,
+  sampleL: -Infinity,
+  sampleR: -Infinity,
+  samplePeak: -Infinity,
+  correlation: -Infinity,
+  vectorscopePairX: 0,
+  vectorscopePairY: 1,
+  dialogueIntegrated: -Infinity,
+  dialogueLra: 0,
+  dialoguePercent: null,
+  dialogueActiveNow: false,
+};
+
 export function useAudioEngine({
   running,
   captureDeviceId = "default",
@@ -21,7 +49,7 @@ export function useAudioEngine({
   histMaxSamples,
   visualMaxSamples,
   audioRef,
-  spectrumStateRef: _spectrumStateRef,
+  spectrumStateRef,
   spectrumTimeRef,
   rafRef,
   frameRef,
@@ -41,8 +69,29 @@ export function useAudioEngine({
   setStatus2,
   setRunning,
   setSelectedOffset,
+  resetTimer,
+  setShowClock,
 }) {
   const defaultSampleRateRef = useRef(48000);
+
+  const clearLocalMeterStateForRestart = () => {
+    intake.reset();
+    if (spectrumStateRef) {
+      spectrumStateRef.current = { smoothDb: [], peakDb: [], peakHoldUntil: [] };
+    }
+    spectrumTimeRef.current = 0;
+    frameRef.current = 0;
+    selectedOffsetRef.current = -1;
+    setSelectedOffset(-1);
+    setSpectrumPath("");
+    setSpectrumPeakPath("");
+    setVectorPath("");
+    setHistoryPathM("");
+    setHistoryPathST("");
+    setAudio({ ...CLEARED_AUDIO_STATE });
+    resetTimer?.({ restart: true });
+    setShowClock?.(true);
+  };
 
   /**
    * Start/stop native or browser audio capture. Dependency list is intentionally narrow:
@@ -77,6 +126,9 @@ export function useAudioEngine({
       audioRef.current = null;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       return;
+    }
+    if (isTauri() && audioRef.current?.mode === "tauri") {
+      clearLocalMeterStateForRestart();
     }
     let mounted = true;
     const init = async () => {
