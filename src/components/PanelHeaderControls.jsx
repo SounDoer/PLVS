@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -18,18 +19,18 @@ import {
 const CHIP_CLASS =
   "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none hover:bg-secondary hover:text-foreground focus:ring-0 focus:ring-offset-0";
 
-function ChannelTrigger({ label, ariaLabel }) {
+function ChannelTrigger({ label, ariaLabel, triggerClassName }) {
   return (
-    <SelectTrigger aria-label={ariaLabel} className={CHIP_CLASS}>
+    <SelectTrigger aria-label={ariaLabel} className={cn(CHIP_CLASS, triggerClassName)}>
       <SelectValue>{label}</SelectValue>
     </SelectTrigger>
   );
 }
 
-function SingleSelectChip({ label, ariaLabel, options, value, onChange }) {
+function SingleSelectChip({ label, ariaLabel, options, value, onChange, triggerClassName }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <ChannelTrigger label={label} ariaLabel={ariaLabel} />
+      <ChannelTrigger label={label} ariaLabel={ariaLabel} triggerClassName={triggerClassName} />
       <SelectContent align="end" sideOffset={6}>
         {options.map((opt) => (
           <SelectItem key={opt.key} value={opt.key}>
@@ -183,6 +184,7 @@ export function PanelHeaderControls({
               const opt = spectrumOptions.find((o) => o.key === key);
               if (opt && typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
             }}
+            triggerClassName="w-auto"
           />
         ) : null}
         {showView ? (
@@ -192,6 +194,7 @@ export function PanelHeaderControls({
             options={SPECTRUM_VIEW_OPTIONS}
             value={spectrumView}
             onChange={(key) => onSpectrumViewChange(key)}
+            triggerClassName="w-auto max-w-none"
           />
         ) : null}
       </div>
