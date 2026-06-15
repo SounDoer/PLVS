@@ -199,6 +199,22 @@ describe("PanelHeaderControls", () => {
     expect(screen.queryByLabelText("spectrum view")).toBeNull();
   });
 
+  it("hides the view toggle on the spectrogram tab (single heatmap can't overlay)", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrogram"
+        channelCount={6}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="ms"
+        onSpectrumViewChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("spectrum view")).toBeNull();
+    // channel dropdown still available on the spectrogram tab
+    expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
+  });
+
   it("does not render loudness controls before panel controls are wired", () => {
     const stats = render(<PanelHeaderControls activeTab="loudnessStats" />);
     expect(stats.container.firstChild).toBeNull();

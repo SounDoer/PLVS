@@ -160,7 +160,12 @@ export function PanelHeaderControls({
   if (activeTab === "spectrum" || activeTab === "spectrogram") {
     const { matchedOption, selectedOption } = getSelectedOption(spectrumOptions, spectrumValueKey);
     const sel = selectedOption?.sel ?? null;
-    const showView = spectrumViewApplies(sel) && typeof onSpectrumViewChange === "function";
+    // The view toggle (M/S, L/R) only makes sense for the overlaid spectrum curve; a spectrogram is
+    // a single heatmap and can't overlay, so it stays on the channel selection only.
+    const showView =
+      activeTab === "spectrum" &&
+      spectrumViewApplies(sel) &&
+      typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
     if (!showView && !showChannel) return null;
 
