@@ -260,11 +260,31 @@ export function SpectrumPanel({ compact = false }) {
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.freqLabel}
                     </div>
-                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                    <div
+                      className="font-[family-name:var(--ui-font-mono)] tabular-nums"
+                      style={
+                        spectrumHover.dbLabelB
+                          ? {
+                              color:
+                                selectedOffset >= 0
+                                  ? "var(--ui-chart-spectrum-snap)"
+                                  : "var(--ui-chart-spectrum-live)",
+                            }
+                          : undefined
+                      }
+                    >
                       {spectrumHover.dbLabel}
                     </div>
                     {spectrumHover.dbLabelB ? (
-                      <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      <div
+                        className="font-[family-name:var(--ui-font-mono)] tabular-nums"
+                        style={{
+                          color:
+                            selectedOffset >= 0
+                              ? "var(--ui-chart-spectrum-snap-b)"
+                              : "var(--ui-chart-spectrum-live-b)",
+                        }}
+                      >
                         {spectrumHover.dbLabelB}
                       </div>
                     ) : null}
