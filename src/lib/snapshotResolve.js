@@ -95,11 +95,13 @@ export function resolveSnapshot(view) {
 
   let spectrumSnapCenters = null;
   let spectrumSnapDbList = null;
+  let spectrumSnapDbListB = null;
   if (visualSnapIdx >= 0 && visualSpectrum[visualSnapIdx]) {
     const snap = visualSpectrum[visualSnapIdx];
     const centerSource = displaySpectrumData;
     spectrumSnapCenters = (centerSource?.bands ?? []).map((b) => b.fCenter);
     spectrumSnapDbList = snap.dbList ?? [];
+    spectrumSnapDbListB = snap.dbListB ?? [];
   }
 
   const vectorSnapPairs =
@@ -117,6 +119,7 @@ export function resolveSnapshot(view) {
     hasHistoryData: histSourceList.length > 0,
     spectrumSnapCenters,
     spectrumSnapDbList,
+    spectrumSnapDbListB,
     vectorSnapPairs,
   };
 }
