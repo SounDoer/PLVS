@@ -14,20 +14,15 @@ impl Default for SpectrumChannelSel {
 }
 
 /// How a selected channel pair is rendered in the spectrum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SpectrumView {
   /// Two channels averaged into one curve (default; identical to the historical behaviour).
+  #[default]
   Combined,
   /// The two raw channels overlaid as two curves.
   Lr,
   /// Mid = (x+y)/2 and Side = (x−y)/2 overlaid as two curves.
   Ms,
-}
-
-impl Default for SpectrumView {
-  fn default() -> Self {
-    Self::Combined
-  }
 }
 
 #[cfg(test)]

@@ -137,6 +137,7 @@ impl MeterPipeline {
   }
 
   /// Process one PCM chunk from capture. Returns the frame payload when ready to send on IPC.
+  #[allow(clippy::too_many_arguments)]
   pub fn push_pcm_f32(
     &mut self,
     interleaved: &[f32],
