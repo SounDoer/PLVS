@@ -139,7 +139,7 @@ export const UI_PREFERENCES = {
   modules: {
     loudness: {
       history: {
-        defaultWindowSec: 120,
+        defaultWindowSec: 60,
       },
       metrics: {
         valueColumnCh: 5.5,

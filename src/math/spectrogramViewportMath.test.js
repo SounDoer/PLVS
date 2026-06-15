@@ -51,4 +51,23 @@ describe("mapHistoryViewportToVisual", () => {
       visibleSamples: 250,
     });
   });
+
+  it("preserves a full visual window while live data is still filling", () => {
+    const historyEntries = Array.from({ length: 3 }, (_, i) => ({ timestampMs: i * 100 }));
+    const visualEntries = Array.from({ length: 6 }, (_, i) => ({ timestampMs: i * 40 }));
+
+    expect(
+      mapHistoryViewportToVisual({
+        historyEntries,
+        visualEntries,
+        totalHistorySamples: historyEntries.length,
+        totalVisualSamples: visualEntries.length,
+        effectiveOffsetSamples: 0,
+        visibleSamples: 50,
+      })
+    ).toEqual({
+      effectiveOffsetSamples: 0,
+      visibleSamples: 100,
+    });
+  });
 });

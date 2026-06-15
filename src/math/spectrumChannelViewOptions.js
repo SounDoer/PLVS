@@ -24,8 +24,8 @@ export function spectrumViewLegend(view, sel, labels) {
   if (!spectrumViewApplies(sel)) return null;
   if (view === "ms") {
     return [
-      { token: "primary", label: "Mid" },
-      { token: "secondary", label: "Side" },
+      { token: "primary", label: "M" },
+      { token: "secondary", label: "S" },
     ];
   }
   if (view === "lr") {

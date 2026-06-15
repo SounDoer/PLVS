@@ -42,6 +42,29 @@ function SingleSelectChip({ label, ariaLabel, options, value, onChange, triggerC
   );
 }
 
+function SpectrumViewChipLabel({ fallbackLabel, legend }) {
+  if (!legend?.length) return fallbackLabel;
+
+  return (
+    <span className="flex items-center gap-1.5">
+      {legend.map((entry) => (
+        <span key={entry.token} className="flex items-center gap-1">
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{
+              backgroundColor:
+                entry.token === "primary"
+                  ? "var(--ui-chart-spectrum-live)"
+                  : "var(--ui-chart-spectrum-live-b)",
+            }}
+          />
+          {entry.label}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function MultiSelectChip({ label, options, selectedIds, onToggle }) {
   return (
     <Popover>
@@ -118,6 +141,7 @@ export function PanelHeaderControls({
   spectrumDisplayLabel = "",
   onSpectrumChange,
   spectrumView = "combined",
+  spectrumViewLegend = null,
   onSpectrumViewChange,
   spectrumPeakHold = false,
   onSpectrumPeakHoldToggle,
@@ -206,7 +230,15 @@ export function PanelHeaderControls({
         ) : null}
         {showView ? (
           <SingleSelectChip
-            label={SPECTRUM_VIEW_OPTIONS.find((o) => o.key === spectrumView)?.label ?? "Combined"}
+            label={
+              <SpectrumViewChipLabel
+                fallbackLabel={
+                  SPECTRUM_VIEW_OPTIONS.find((option) => option.key === spectrumView)?.label ??
+                  "Combined"
+                }
+                legend={spectrumViewLegend}
+              />
+            }
             ariaLabel="spectrum view"
             options={SPECTRUM_VIEW_OPTIONS}
             value={spectrumView}

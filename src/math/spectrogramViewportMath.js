@@ -22,9 +22,12 @@ export function mapHistoryViewportToVisual({
   }
 
   const scale = visualTotal / historyTotal;
+  const requestedVisibleSamples = Math.round(Math.max(1, visibleSamples || 0) * scale);
   const visualVisibleSamples = Math.max(
     1,
-    Math.min(visualTotal, Math.round(Math.max(1, visibleSamples || 0) * scale))
+    historyTotal < Math.max(1, visibleSamples || 0)
+      ? requestedVisibleSamples
+      : Math.min(visualTotal, requestedVisibleSamples)
   );
   const maxOffsetSamples = Math.max(0, visualTotal - visualVisibleSamples);
   const visualOffsetSamples = Math.max(
@@ -49,7 +52,8 @@ function mapByTimestamp({ historyEntries, visualEntries, effectiveOffsetSamples,
     0,
     Math.min(historyTotal - 1, historyTotal - 1 - Math.max(0, effectiveOffsetSamples || 0))
   );
-  const oldestHistoryIdx = Math.max(0, newestHistoryIdx - Math.max(1, visibleSamples || 0) + 1);
+  const requestedHistorySamples = Math.max(1, visibleSamples || 0);
+  const oldestHistoryIdx = Math.max(0, newestHistoryIdx - requestedHistorySamples + 1);
   const oldestMs = historyEntries[oldestHistoryIdx].timestampMs;
   const newestMs = historyEntries[newestHistoryIdx].timestampMs;
 
@@ -67,8 +71,17 @@ function mapByTimestamp({ historyEntries, visualEntries, effectiveOffsetSamples,
     return { effectiveOffsetSamples: 0, visibleSamples: 0 };
   }
 
+  const mappedVisibleSamples = endIdx - startIdx + 1;
+  const visualVisibleSamples =
+    historyTotal < requestedHistorySamples
+      ? Math.max(
+          mappedVisibleSamples,
+          Math.round(requestedHistorySamples * (visualTotal / historyTotal))
+        )
+      : mappedVisibleSamples;
+
   return {
     effectiveOffsetSamples: Math.max(0, visualTotal - 1 - endIdx),
-    visibleSamples: endIdx - startIdx + 1,
+    visibleSamples: visualVisibleSamples,
   };
 }

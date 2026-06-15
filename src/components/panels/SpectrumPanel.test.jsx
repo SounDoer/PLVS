@@ -86,6 +86,23 @@ describe("SpectrumPanel", () => {
     expect(secondary).toBeTruthy();
   });
 
+  it("does not render the curve legend inside the chart area", () => {
+    renderPanel({
+      displaySpectrumPath: "M 0 120 L 1000 80",
+      displaySpectrumPathB: "M 0 130 L 1000 90",
+      displaySpectrumPeakPath: "",
+      selectedOffset: -1,
+      displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
+      spectrumViewLegend: [
+        { token: "primary", label: "M" },
+        { token: "secondary", label: "S" },
+      ],
+    });
+
+    expect(screen.queryByText("M")).toBeNull();
+    expect(screen.queryByText("S")).toBeNull();
+  });
+
   it("keeps the frequency axis in a dedicated layout row", () => {
     const { container } = renderPanel({
       displaySpectrumPath: "",

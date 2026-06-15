@@ -20,7 +20,15 @@ const _INFERNO_FLAT = (() => {
   return flat;
 })();
 
-function paintImageData(imageData, snaps, startIdx, count, yToBand) {
+function paintImageData(
+  imageData,
+  snaps,
+  startIdx,
+  count,
+  leadingEmptySamples,
+  windowSamples,
+  yToBand
+) {
   const { data, width: W, height: H } = imageData;
   const rng = SPEC_DB_MAX - SPEC_DB_MIN;
   data.fill(0);
@@ -28,8 +36,9 @@ function paintImageData(imageData, snaps, startIdx, count, yToBand) {
   for (let col = 0; col < count; col++) {
     const snap = snaps[startIdx + col];
     if (!snap || !snap.dbList) continue;
-    const xStart = Math.round((col * W) / count);
-    const xEnd = Math.round(((col + 1) * W) / count);
+    const slot = leadingEmptySamples + col;
+    const xStart = Math.round((slot * W) / windowSamples);
+    const xEnd = Math.round(((slot + 1) * W) / windowSamples);
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
     for (let y = 0; y < H; y++) {
@@ -120,7 +129,7 @@ export function useSpectrogramCanvas({
         cache.H = H;
       }
 
-      const { startIdx, count } = spectrogramVisibleRange(
+      const { startIdx, count, leadingEmptySamples, windowSamples } = spectrogramVisibleRange(
         len,
         effectiveOffsetSamples,
         visibleSamples
@@ -130,7 +139,15 @@ export function useSpectrogramCanvas({
         return;
       }
 
-      paintImageData(cache.imageData, snaps, startIdx, count, cache.yToBand);
+      paintImageData(
+        cache.imageData,
+        snaps,
+        startIdx,
+        count,
+        leadingEmptySamples,
+        windowSamples,
+        cache.yToBand
+      );
       ctx.putImageData(cache.imageData, 0, 0);
     }
 

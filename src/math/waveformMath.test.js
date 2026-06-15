@@ -24,6 +24,17 @@ describe("sliceWaveformHistory", () => {
     expect(result.maxes[1]).toEqual([0.3, 0.2]);
   });
 
+  it("reports the leading empty samples for right-aligned partial live data", () => {
+    const entries = [
+      { waveformMin: [-0.5], waveformMax: [0.5] },
+      { waveformMin: [-0.8], waveformMax: [0.8] },
+    ];
+    const result = sliceWaveformHistory(entries, 5, 0, 1);
+    expect(result.entryCount).toBe(2);
+    expect(result.leadingEmptySamples).toBe(3);
+    expect(result.windowSamples).toBe(5);
+  });
+
   it("respects effectiveOffsetSamples — skips the most-recent N entries", () => {
     const entries = [
       { waveformMin: [-0.1, 0], waveformMax: [0.1, 0] }, // oldest

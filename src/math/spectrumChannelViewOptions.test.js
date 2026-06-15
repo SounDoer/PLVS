@@ -20,8 +20,8 @@ describe("spectrum view options", () => {
     const labels = ["L", "R", "C", "LFE", "Ls", "Rs"];
     expect(spectrumViewLegend("combined", { type: "pair", x: 0, y: 1 }, labels)).toBeNull();
     expect(spectrumViewLegend("ms", { type: "pair", x: 0, y: 1 }, labels)).toEqual([
-      { token: "primary", label: "Mid" },
-      { token: "secondary", label: "Side" },
+      { token: "primary", label: "M" },
+      { token: "secondary", label: "S" },
     ]);
     expect(spectrumViewLegend("lr", { type: "pair", x: 4, y: 5 }, labels)).toEqual([
       { token: "primary", label: "Ls" },

@@ -6,3 +6,9 @@ describe("UI_PREFERENCES localStorage keys", () => {
     expect(UI_PREFERENCES.layoutPersistKey).toBe("plvs.ui");
   });
 });
+
+describe("UI_PREFERENCES loudness history", () => {
+  it("defaults the shared history window to 1 minute", () => {
+    expect(UI_PREFERENCES.modules.loudness.history.defaultWindowSec).toBe(60);
+  });
+});

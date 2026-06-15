@@ -18,9 +18,9 @@ describe("getHistoryViewport", () => {
     const { clampedWindowSec } = getHistoryViewport(100, 99999, 0, 0.1);
     expect(clampedWindowSec).toBe(HISTORY_MAX_WINDOW_SEC);
   });
-  it("visible samples cannot exceed total samples", () => {
+  it("keeps the full visible window when fewer samples exist", () => {
     const { visibleSamples } = getHistoryViewport(10, 120, 0, 0.1);
-    expect(visibleSamples).toBeLessThanOrEqual(10);
+    expect(visibleSamples).toBe(1200);
   });
   it("offset is clamped within available range", () => {
     const { effectiveOffsetSamples, maxOffsetSamples } = getHistoryViewport(100, 5, 9999, 0.1);
@@ -74,6 +74,11 @@ describe("buildHistoryPath", () => {
     const list = [{ m: 0 }, { m: 0 }, { m: 0 }];
     const path = buildHistoryPath(list, "m", 10, 0, () => 42);
     expect(path).toContain("42");
+  });
+  it("right-aligns partial live data inside the full visible window", () => {
+    const list = [{ m: -23 }, { m: -20 }, { m: -18 }];
+    const path = buildHistoryPath(list, "m", 5, 0, (v) => v, 400);
+    expect(path).toBe("M 200 -23 L 300 -20 L 400 -18");
   });
 });
 

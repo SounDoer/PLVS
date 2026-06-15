@@ -185,6 +185,27 @@ describe("PanelHeaderControls", () => {
     expect(screen.getByLabelText("spectrum view")).toBeTruthy();
   });
 
+  it("renders spectrum curve legend inside the view chip", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="ms"
+        spectrumViewLegend={[
+          { token: "primary", label: "M" },
+          { token: "secondary", label: "S" },
+        ]}
+        onSpectrumViewChange={vi.fn()}
+      />
+    );
+
+    const viewChip = screen.getByLabelText("spectrum view");
+    expect(viewChip.contains(screen.getByText("M"))).toBe(true);
+    expect(viewChip.contains(screen.getByText("S"))).toBe(true);
+  });
+
   it("hides the view toggle when a single channel is selected", () => {
     render(
       <PanelHeaderControls

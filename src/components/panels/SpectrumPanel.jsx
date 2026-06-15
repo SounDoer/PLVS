@@ -27,7 +27,6 @@ export function SpectrumPanel({ compact = false }) {
     spectrumPeakHold,
     selectedOffset,
     displaySpectrumData,
-    spectrumViewLegend,
   } = useAudioData();
   const spectrumSvgRef = useRef(null);
   const {
@@ -100,24 +99,6 @@ export function SpectrumPanel({ compact = false }) {
               className="relative min-h-0 h-full rounded-lg bg-muted"
               onPointerLeave={onSpectrumHoverLeave}
             >
-              {spectrumViewLegend ? (
-                <div className="pointer-events-none absolute right-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] z-10 flex gap-2 rounded border border-border bg-secondary px-2 py-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
-                  {spectrumViewLegend.map((e) => (
-                    <span key={e.token} className="flex items-center gap-1">
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{
-                          backgroundColor:
-                            e.token === "primary"
-                              ? "var(--ui-chart-spectrum-live)"
-                              : "var(--ui-chart-spectrum-live-b)",
-                        }}
-                      />
-                      {e.label}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
               <div
                 className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {

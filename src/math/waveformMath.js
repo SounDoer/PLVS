@@ -5,7 +5,7 @@
  * @param {number} visibleSamples          how many entries to show
  * @param {number} effectiveOffsetSamples  how many recent entries to skip (0 = live edge)
  * @param {number} channelCount
- * @returns {{ mins: number[][], maxes: number[][], entryCount: number }}
+ * @returns {{ mins: number[][], maxes: number[][], entryCount: number, leadingEmptySamples: number, windowSamples: number }}
  *   mins[ch][i] and maxes[ch][i] are the linear amplitude bounds for the i-th visible entry.
  */
 export function sliceWaveformHistory(
@@ -15,10 +15,15 @@ export function sliceWaveformHistory(
   channelCount
 ) {
   const total = histSourceList.length;
-  const end = Math.max(0, total - effectiveOffsetSamples);
-  const start = Math.max(0, end - visibleSamples);
-  const visible = histSourceList.slice(start, end);
+  const windowSamples = Math.max(1, visibleSamples);
+  const offSamples = Math.max(0, Math.min(Math.max(0, total - 1), effectiveOffsetSamples));
+  const newestVisible = total - 1 - offSamples;
+  const oldestVisible = newestVisible - windowSamples + 1;
+  const start = Math.max(0, oldestVisible);
+  const end = Math.min(total - 1, newestVisible);
+  const visible = end >= start ? histSourceList.slice(start, end + 1) : [];
   const n = visible.length;
+  const leadingEmptySamples = n > 0 ? Math.max(0, start - oldestVisible) : windowSamples;
 
   const mins = Array.from({ length: channelCount }, () => new Array(n).fill(0));
   const maxes = Array.from({ length: channelCount }, () => new Array(n).fill(0));
@@ -32,5 +37,5 @@ export function sliceWaveformHistory(
     }
   }
 
-  return { mins, maxes, entryCount: n };
+  return { mins, maxes, entryCount: n, leadingEmptySamples, windowSamples };
 }

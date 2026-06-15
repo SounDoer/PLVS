@@ -228,12 +228,22 @@ export function spectrogramColor(db) {
  * @returns {{ startIdx: number, count: number }}
  */
 export function spectrogramVisibleRange(totalSamples, effectiveOffsetSamples, visibleSamples) {
-  if (totalSamples <= 0) return { startIdx: 0, count: 0 };
-  const newestVisible = totalSamples - 1 - effectiveOffsetSamples;
-  const oldestVisible = newestVisible - visibleSamples + 1;
+  const windowSamples = Math.max(1, visibleSamples);
+  if (totalSamples <= 0) {
+    return { startIdx: 0, count: 0, leadingEmptySamples: windowSamples, windowSamples };
+  }
+  const offSamples = Math.max(0, Math.min(Math.max(0, totalSamples - 1), effectiveOffsetSamples));
+  const newestVisible = totalSamples - 1 - offSamples;
+  const oldestVisible = newestVisible - windowSamples + 1;
   const startIdx = Math.max(0, oldestVisible);
   const endIdx = Math.max(0, Math.min(totalSamples - 1, newestVisible));
-  return { startIdx, count: Math.max(0, endIdx - startIdx + 1) };
+  const count = Math.max(0, endIdx - startIdx + 1);
+  return {
+    startIdx,
+    count,
+    leadingEmptySamples: count > 0 ? Math.max(0, startIdx - oldestVisible) : windowSamples,
+    windowSamples,
+  };
 }
 
 /** Spectrum frequency axis labels */

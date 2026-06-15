@@ -46,7 +46,7 @@ export function WaveformPanel({ compact = false }) {
 
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
   const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
-  const { mins, maxes, entryCount } = sliceWaveformHistory(
+  const { mins, maxes, entryCount, leadingEmptySamples, windowSamples } = sliceWaveformHistory(
     histSourceList ?? [],
     visibleSamples ?? 0,
     effectiveOffsetSamples ?? 0,
@@ -94,6 +94,8 @@ export function WaveformPanel({ compact = false }) {
             mins={mins[ch]}
             maxes={maxes[ch]}
             entryCount={entryCount}
+            leadingEmptySamples={leadingEmptySamples}
+            windowSamples={windowSamples}
             compact={compact}
           />
         ))}
@@ -209,7 +211,15 @@ export function WaveformPanel({ compact = false }) {
   );
 }
 
-function WaveformLane({ label, mins, maxes, entryCount, compact }) {
+function WaveformLane({
+  label,
+  mins,
+  maxes,
+  entryCount,
+  leadingEmptySamples,
+  windowSamples,
+  compact,
+}) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
@@ -259,19 +269,21 @@ function WaveformLane({ label, mins, maxes, entryCount, compact }) {
     if (!entryCount || !mins?.length) return;
 
     // Build envelope path
+    const denom = Math.max(1, (windowSamples || entryCount) - 1);
+    const xForEntry = (i) => ((leadingEmptySamples + i) / denom) * W;
     ctx.beginPath();
     for (let i = 0; i < entryCount; i++) {
-      const x = entryCount === 1 ? W : (i / (entryCount - 1)) * W;
+      const x = xForEntry(i);
       const y = cy - maxes[i] * cy;
       if (i === 0) {
-        ctx.moveTo(0, y);
+        ctx.moveTo(x, y);
         if (entryCount === 1) ctx.lineTo(W, y);
       } else {
         ctx.lineTo(x, y);
       }
     }
     for (let i = entryCount - 1; i >= 0; i--) {
-      const x = entryCount === 1 ? 0 : (i / (entryCount - 1)) * W;
+      const x = xForEntry(i);
       const y = cy - mins[i] * cy;
       ctx.lineTo(x, y);
     }

@@ -33,7 +33,7 @@ export function getHistoryViewport(totalSamples, historyWindowSec, historyOffset
     Math.min(HISTORY_MAX_WINDOW_SEC, historyWindowSec)
   );
   const windowSamples = Math.max(1, Math.round(clampedWindowSec / sampleSec));
-  const visibleSamples = Math.max(1, Math.min(Math.max(1, safeTotal), windowSamples));
+  const visibleSamples = windowSamples;
   const maxOffsetSamples = Math.max(0, safeTotal - visibleSamples);
   const effectiveOffsetSamples = Math.max(
     0,
@@ -73,15 +73,18 @@ export function buildHistoryPath(
   if (!histSourceList.length) return "";
   const total = histSourceList.length;
   const winSamples = Math.max(2, visibleSamples);
-  const offSamples = Math.max(0, Math.min(Math.max(0, total - 2), effectiveOffsetSamples));
-  const end = Math.max(1, total - offSamples);
-  const start = Math.max(0, end - winSamples);
-  const view = histSourceList.slice(start, end);
+  const offSamples = Math.max(0, Math.min(Math.max(0, total - 1), effectiveOffsetSamples));
+  const newestVisible = total - 1 - offSamples;
+  const oldestVisible = newestVisible - winSamples + 1;
+  const start = Math.max(0, oldestVisible);
+  const end = Math.min(total - 1, newestVisible);
+  if (end < start) return "";
+  const view = histSourceList.slice(start, end + 1);
   if (view.length < 2) return "";
   return view
     .map(
       (p, i) =>
-        `${i === 0 ? "M" : "L"} ${(i / Math.max(1, view.length - 1)) * viewWidth} ${toY(p[key])}`
+        `${i === 0 ? "M" : "L"} ${((start + i - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth} ${toY(p[key])}`
     )
     .join(" ");
 }
