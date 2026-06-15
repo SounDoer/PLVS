@@ -36,6 +36,7 @@ fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
 }
 
 const OCTAVE_SMOOTH: f64 = 1.0 / 24.0;
+const SLOPE_PIVOT_HZ: f64 = 1000.0;
 
 /// Gaussian smoothing in the log-frequency domain; `frac_oct` ~ stddev in octaves.
 fn smooth_octave(db: &[f64], freqs: &[f64], frac_oct: f64) -> Vec<f64> {
@@ -117,13 +118,12 @@ impl SpectrumMeter {
   fn post_process(&self) -> Vec<f64> {
     let centers = self.bank.grid_freqs();
     let raw = self.bank.psd_db_row(CAL_OFFSET_DB);
-    let min_f = self.min_hz.max(20.0);
-    let log_min_f = min_f.log2();
+    let log_pivot = SLOPE_PIVOT_HZ.log2();
     // weighting + slope
     let mut shaped = Vec::with_capacity(raw.len());
     for (i, &db) in raw.iter().enumerate() {
       let f = centers[i];
-      let oct = f.max(min_f).log2() - log_min_f;
+      let oct = f.log2() - log_pivot;
       shaped.push(db + weighting_db(f, &self.weighting) + self.tilt_db_per_octave * oct);
     }
     smooth_octave(&shaped, centers, OCTAVE_SMOOTH)
@@ -336,12 +336,50 @@ mod tests {
   fn peak_hold_default_holds_then_decays() {
     let sr = 48000.0;
     let m = SpectrumMeter::new(sr);
-    assert!(m.peak_hold_sec >= 1.0, "peak hold should be enabled by default, got {}", m.peak_hold_sec);
+    assert!(
+      m.peak_hold_sec >= 1.0,
+      "peak hold should be enabled by default, got {}",
+      m.peak_hold_sec
+    );
     assert!(
       m.peak_decay_db_per_sec > 0.0 && m.peak_decay_db_per_sec <= 10.0,
       "decay should be gentle, got {}",
       m.peak_decay_db_per_sec
     );
+  }
+
+  #[test]
+  fn slope_pivots_at_1khz_not_inflated() {
+    let sr = 48000.0;
+    let mut m = SpectrumMeter::new(sr);
+    // full-scale (0 dBFS) 1 kHz sine on both channels
+    let frames = 16384 * 6;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32;
+      pcm[i * 2] = s;
+      pcm[i * 2 + 1] = s;
+    }
+    let mut out = None;
+    for _ in 0..2 {
+      out = m.push_interleaved(&pcm, 2, 1.0);
+    }
+    let (smooth, _) = out.expect("output");
+    let centers = m.band_centers();
+    let val_near = |t: f64| {
+      let (i, _) = centers
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| (**a - t).abs().partial_cmp(&(**b - t).abs()).unwrap())
+        .unwrap();
+      smooth[i]
+    };
+    let peak1k = val_near(1000.0);
+    // With the slope pivoting at 1 kHz, a 0 dBFS 1 kHz tone sits near 0 dB — NOT inflated to
+    // ~+25 dB the way a 20 Hz-anchored slope does. Lower bound is loose because 1/24-octave
+    // smoothing spreads a pure tone's energy and lowers its displayed peak.
+    assert!(peak1k < 5.0, "1 kHz peak inflated by slope: {peak1k} (pivot not at 1 kHz?)");
+    assert!(peak1k > -25.0, "1 kHz peak unexpectedly low: {peak1k}");
   }
 
   #[test]
