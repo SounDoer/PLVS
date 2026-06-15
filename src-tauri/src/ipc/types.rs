@@ -109,6 +109,8 @@ pub struct AudioFramePayload {
   pub spectrum_smooth_db: Vec<f64>,
   /// Secondary spectrum SVG path (empty unless view is lr/ms).
   pub spectrum_path_b: String,
+  /// Secondary peak-hold SVG path (empty unless view is lr/ms). Live-only; not stored in history.
+  pub spectrum_peak_path_b: String,
   /// Secondary smoothed per-band dB (empty unless view is lr/ms).
   pub spectrum_smooth_db_b: Vec<f64>,
   /// Loudness layout semantics for this frame (e.g. `stereo`, `5.1`, `unknown`).

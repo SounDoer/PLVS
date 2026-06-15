@@ -290,17 +290,19 @@ impl MeterPipeline {
       } else {
         smooth
       };
-      spectrum_paths_from_bands(centers, smooth, pk, false)
+      spectrum_paths_from_bands(centers, smooth, pk, true)
     } else {
       (String::new(), String::new())
     };
-    let (spath_b, smooth_b_vec): (String, Vec<f64>) = match self.spectrum.last_output_secondary() {
-      Some((sb, _)) if sb.len() == centers.len() && !centers.is_empty() => {
-        let (p, _) = spectrum_paths_from_bands(centers, sb, sb, false);
-        (p, sb.to_vec())
-      }
-      _ => (String::new(), Vec::new()),
-    };
+    let (spath_b, spk_b, smooth_b_vec): (String, String, Vec<f64>) =
+      match self.spectrum.last_output_secondary() {
+        Some((sb, pb)) if sb.len() == centers.len() && !centers.is_empty() => {
+          let pkb = if pb.len() == centers.len() { pb } else { sb };
+          let (lp, pp) = spectrum_paths_from_bands(centers, sb, pkb, true);
+          (lp, pp, sb.to_vec())
+        }
+        _ => (String::new(), String::new(), Vec::new()),
+      };
     let centers = centers.to_vec();
     let smooth = smooth.to_vec();
 
@@ -413,6 +415,7 @@ impl MeterPipeline {
       spectrum_band_centers_hz: centers,
       spectrum_smooth_db: smooth,
       spectrum_path_b: spath_b,
+      spectrum_peak_path_b: spk_b,
       spectrum_smooth_db_b: smooth_b_vec,
       loudness_layout,
       loudness_layout_known,
