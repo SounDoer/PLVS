@@ -171,6 +171,34 @@ describe("PanelHeaderControls", () => {
     });
   });
 
+  it("shows the view toggle for a stereo spectrum panel", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("spectrum view")).toBeTruthy();
+  });
+
+  it("hides the view toggle when a single channel is selected", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrum"
+        channelCount={6}
+        spectrumOptions={[{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }]}
+        spectrumValueKey="s-2"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("spectrum view")).toBeNull();
+  });
+
   it("does not render loudness controls before panel controls are wired", () => {
     const stats = render(<PanelHeaderControls activeTab="loudnessStats" />);
     expect(stats.container.firstChild).toBeNull();

@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 
+import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -101,6 +102,8 @@ export function PanelHeaderControls({
   spectrumValueKey = "",
   spectrumDisplayLabel = "",
   onSpectrumChange,
+  spectrumView = "combined",
+  onSpectrumViewChange,
   panelControls,
   onPanelControlsChange,
 }) {
@@ -154,6 +157,42 @@ export function PanelHeaderControls({
     );
   }
 
+  if (activeTab === "spectrum" || activeTab === "spectrogram") {
+    const { matchedOption, selectedOption } = getSelectedOption(spectrumOptions, spectrumValueKey);
+    const sel = selectedOption?.sel ?? null;
+    const showView = spectrumViewApplies(sel) && typeof onSpectrumViewChange === "function";
+    const showChannel = channelCount > 2 && spectrumOptions.length > 0;
+    if (!showView && !showChannel) return null;
+
+    return (
+      <div className="flex items-center gap-0.5">
+        {showChannel ? (
+          <SingleSelectChip
+            label={
+              matchedOption && spectrumDisplayLabel ? spectrumDisplayLabel : selectedOption.label
+            }
+            ariaLabel={`${activeTab} channel`}
+            options={spectrumOptions}
+            value={selectedOption.key}
+            onChange={(key) => {
+              const opt = spectrumOptions.find((o) => o.key === key);
+              if (opt && typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
+            }}
+          />
+        ) : null}
+        {showView ? (
+          <SingleSelectChip
+            label={SPECTRUM_VIEW_OPTIONS.find((o) => o.key === spectrumView)?.label ?? "Combined"}
+            ariaLabel="spectrum view"
+            options={SPECTRUM_VIEW_OPTIONS}
+            value={spectrumView}
+            onChange={(key) => onSpectrumViewChange(key)}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   if (!Number.isFinite(channelCount) || channelCount <= 2) return null;
 
   if (activeTab === "vectorscope" && vectorscopeOptions.length > 0) {
@@ -174,27 +213,6 @@ export function PanelHeaderControls({
           const opt = vectorscopeOptions.find((o) => o.key === key);
           if (opt && typeof onVectorscopeChange === "function") {
             onVectorscopeChange({ x: opt.x, y: opt.y });
-          }
-        }}
-      />
-    );
-  }
-
-  if ((activeTab === "spectrum" || activeTab === "spectrogram") && spectrumOptions.length > 0) {
-    const { matchedOption, selectedOption } = getSelectedOption(spectrumOptions, spectrumValueKey);
-    const selectedLabel =
-      matchedOption && spectrumDisplayLabel ? spectrumDisplayLabel : selectedOption.label;
-
-    return (
-      <SingleSelectChip
-        label={selectedLabel}
-        ariaLabel={`${activeTab} channel`}
-        options={spectrumOptions}
-        value={selectedOption.key}
-        onChange={(key) => {
-          const opt = spectrumOptions.find((o) => o.key === key);
-          if (opt && typeof onSpectrumChange === "function") {
-            onSpectrumChange(opt.sel);
           }
         }}
       />
