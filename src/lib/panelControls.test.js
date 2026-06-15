@@ -68,6 +68,7 @@ describe("panelControls", () => {
     expect(DEFAULT_PANEL_CONTROLS).toEqual({
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
+      spectrumView: "combined",
       loudnessStatsVisibleIds: [
         "momentary",
         "shortTerm",
@@ -93,6 +94,7 @@ describe("panelControls", () => {
     ).toEqual({
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "single", ch: 3 },
+      spectrumView: "combined",
       loudnessStatsVisibleIds: ["momentary"],
       loudnessHistoryVisibleLayerIds: ["ref"],
     });
@@ -155,5 +157,19 @@ describe("panelControls", () => {
       appearance: "fixed",
       panelControls: DEFAULT_PANEL_CONTROLS,
     });
+  });
+});
+
+describe("spectrumView normalization", () => {
+  it("defaults to combined", () => {
+    expect(normalizePanelControls({}).spectrumView).toBe("combined");
+    expect(DEFAULT_PANEL_CONTROLS.spectrumView).toBe("combined");
+  });
+  it("keeps valid values", () => {
+    expect(normalizePanelControls({ spectrumView: "ms" }).spectrumView).toBe("ms");
+    expect(normalizePanelControls({ spectrumView: "lr" }).spectrumView).toBe("lr");
+  });
+  it("falls back on garbage", () => {
+    expect(normalizePanelControls({ spectrumView: "xyz" }).spectrumView).toBe("combined");
   });
 });

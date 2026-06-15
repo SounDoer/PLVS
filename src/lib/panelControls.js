@@ -70,6 +70,7 @@ export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
 export const DEFAULT_PANEL_CONTROLS = {
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
+  spectrumView: "combined",
   loudnessStatsVisibleIds: [
     "momentary",
     "shortTerm",
@@ -109,6 +110,11 @@ function normalizeSpectrumChannel(raw) {
   return { ...DEFAULT_PANEL_CONTROLS.spectrumChannel };
 }
 
+const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
+function normalizeSpectrumView(raw) {
+  return SPECTRUM_VIEWS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.spectrumView;
+}
+
 function normalizeKnownIds(raw, knownIds, fallback) {
   if (!Array.isArray(raw)) return [...fallback];
 
@@ -125,6 +131,7 @@ export function normalizePanelControls(raw) {
   return {
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
+    spectrumView: normalizeSpectrumView(raw?.spectrumView),
     loudnessStatsVisibleIds: normalizeKnownIds(
       raw?.loudnessStatsVisibleIds,
       LOUDNESS_STATS_IDS,

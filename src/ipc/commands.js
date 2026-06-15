@@ -57,6 +57,11 @@ export function setSpectrumChannel(sel) {
   return invoke("set_spectrum_channel", { selType, chX, chY });
 }
 
+/** @param {"combined" | "lr" | "ms"} view */
+export function setSpectrumView(view) {
+  return invoke("set_spectrum_view", { view });
+}
+
 /** @param {number[] | null} weights */
 export function setLoudnessWeights(weights) {
   return invoke("set_loudness_weights", { weights });
