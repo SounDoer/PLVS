@@ -371,6 +371,7 @@ describe("APPLY_PRESET", () => {
       vectorscopePair: { x: 2, y: 3 },
       spectrumChannel: { type: "single", ch: 2 },
       spectrumView: "combined",
+      spectrumPeakHold: false,
       loudnessStatsVisibleIds: ["integrated"],
       loudnessHistoryVisibleLayerIds: ["momentary"],
     };
@@ -385,6 +386,7 @@ describe("APPLY_PRESET", () => {
       vectorscopePair: { x: 2, y: 3 },
       spectrumChannel: { type: "single", ch: 2 },
       spectrumView: "combined",
+      spectrumPeakHold: false,
       loudnessStatsVisibleIds: ["integrated"],
       loudnessHistoryVisibleLayerIds: ["momentary"],
     };
@@ -443,6 +445,7 @@ describe("SAVE_PRESET", () => {
       vectorscopePair: { x: 2, y: 3 },
       spectrumChannel: { type: "single", ch: 2 },
       spectrumView: "combined",
+      spectrumPeakHold: false,
       loudnessStatsVisibleIds: ["integrated"],
       loudnessHistoryVisibleLayerIds: ["momentary"],
     };
@@ -458,6 +461,7 @@ describe("SAVE_PRESET", () => {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
+      spectrumPeakHold: false,
       loudnessStatsVisibleIds: [],
       loudnessHistoryVisibleLayerIds: [],
     };

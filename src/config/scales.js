@@ -57,9 +57,6 @@ export const SPECTRUM_SETTINGS = {
   resolution: "1/24", // 1/3 | 1/6 | 1/12 | 1/24 | 1/48
   weighting: "z", // z | a | c
   smoothing: "fast", // fast | normal | slow
-  showPeakHold: false,
-  peakHoldMs: 1000,
-  peakDecayDbPerSec: 12,
   freqSmoothingKernel: [0.12, 0.76, 0.12],
   tiltDbPerOctave: 0,
   freeze: false,

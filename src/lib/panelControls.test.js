@@ -69,6 +69,7 @@ describe("panelControls", () => {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
+      spectrumPeakHold: false,
       loudnessStatsVisibleIds: [
         "momentary",
         "shortTerm",
@@ -95,6 +96,7 @@ describe("panelControls", () => {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
+      spectrumPeakHold: false,
       loudnessStatsVisibleIds: ["momentary"],
       loudnessHistoryVisibleLayerIds: ["ref"],
     });
@@ -171,5 +173,19 @@ describe("spectrumView normalization", () => {
   });
   it("falls back on garbage", () => {
     expect(normalizePanelControls({ spectrumView: "xyz" }).spectrumView).toBe("combined");
+  });
+});
+
+describe("spectrumPeakHold normalization", () => {
+  it("defaults to false", () => {
+    expect(normalizePanelControls({}).spectrumPeakHold).toBe(false);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumPeakHold).toBe(false);
+  });
+  it("keeps booleans", () => {
+    expect(normalizePanelControls({ spectrumPeakHold: true }).spectrumPeakHold).toBe(true);
+    expect(normalizePanelControls({ spectrumPeakHold: false }).spectrumPeakHold).toBe(false);
+  });
+  it("falls back on non-boolean", () => {
+    expect(normalizePanelControls({ spectrumPeakHold: "yes" }).spectrumPeakHold).toBe(false);
   });
 });
