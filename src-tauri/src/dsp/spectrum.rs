@@ -393,23 +393,13 @@ impl SpectrumMeter {
 
 impl Meter for SpectrumMeter {
   fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
-    let result = if ctx.channels == 1 {
-      self.push_mono_duplex(ctx.interleaved, ctx.now_sec)
-    } else if ctx.channels > 2 {
-      self.push_selected(
-        ctx.interleaved,
-        ctx.channels,
-        ctx.now_sec,
-        ctx.spectrum_channel,
-      )
-    } else {
-      self.push_interleaved(ctx.interleaved, ctx.channels, ctx.now_sec)
-    };
-    if let Some((sm, pk)) = result {
-      self.cached_centers = self.band_centers();
-      self.cached_smooth = sm;
-      self.cached_peak = pk;
-    }
+    self.push_pair(
+      ctx.interleaved,
+      ctx.channels,
+      ctx.now_sec,
+      ctx.spectrum_channel,
+      ctx.spectrum_view,
+    );
   }
 
   fn reset(&mut self) {
@@ -688,5 +678,34 @@ mod tests {
       delta > 4.5 * octaves * 0.6,
       "slope not applied: delta={delta}"
     );
+  }
+
+  #[test]
+  fn push_pcm_ms_populates_secondary() {
+    use crate::dsp::meter::{Meter, PcmContext};
+    use crate::engine::ChannelLayoutSetting;
+    let sr = 48000.0;
+    let mut m = SpectrumMeter::new(sr);
+    let frames = 16384 * 6;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      // hard-panned to L so S has energy
+      pcm[i * 2] = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32;
+    }
+    for _ in 0..2 {
+      let ctx = PcmContext {
+        interleaved: &pcm,
+        channels: 2,
+        now_sec: 1.0,
+        channel_layout: ChannelLayoutSetting::Auto,
+        loudness_weights: None,
+        vectorscope_pair: (0, 1),
+        spectrum_channel: SpectrumChannelSel::Pair(0, 1),
+        spectrum_view: SpectrumView::Ms,
+        dialogue_gating: false,
+      };
+      m.push_pcm(&ctx);
+    }
+    assert!(m.last_output_secondary().is_some());
   }
 }
