@@ -19,8 +19,14 @@ function buildSpectrumAreaPath(path) {
 }
 
 export function SpectrumPanel({ compact = false }) {
-  const { displaySpectrumPath, displaySpectrumPeakPath, selectedOffset, displaySpectrumData } =
-    useAudioData();
+  const {
+    displaySpectrumPath,
+    displaySpectrumPeakPath,
+    displaySpectrumPathB,
+    selectedOffset,
+    displaySpectrumData,
+    spectrumViewLegend,
+  } = useAudioData();
   const spectrumSvgRef = useRef(null);
   const {
     hover: spectrumHover,
@@ -33,11 +39,13 @@ export function SpectrumPanel({ compact = false }) {
     const band = data.bands[nearestIdx];
     const db = data.dbList[nearestIdx];
     if (!band || !Number.isFinite(db)) return null;
+    const dbB = data.dbListB?.[nearestIdx];
     return {
       leftPct: freqToXFrac(band.fCenter) * 100,
       topPct: spectrumDbToTopFrac(db) * 100,
       freqLabel: formatSpectrumFreq(band.fCenter),
       dbLabel: `${db.toFixed(1)} dB`,
+      dbLabelB: Number.isFinite(dbB) ? `${dbB.toFixed(1)} dB` : null,
       noteLabel: freqToNote(band.fCenter),
     };
   });
@@ -81,6 +89,24 @@ export function SpectrumPanel({ compact = false }) {
               className="relative min-h-0 h-full rounded-lg bg-muted"
               onPointerLeave={onSpectrumHoverLeave}
             >
+              {spectrumViewLegend ? (
+                <div className="pointer-events-none absolute right-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] z-10 flex gap-2 rounded border border-border bg-secondary px-2 py-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                  {spectrumViewLegend.map((e) => (
+                    <span key={e.token} className="flex items-center gap-1">
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            e.token === "primary"
+                              ? "var(--ui-chart-spectrum-live)"
+                              : "var(--ui-chart-spectrum-live-b)",
+                        }}
+                      />
+                      {e.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <div
                 className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {
@@ -190,6 +216,20 @@ export function SpectrumPanel({ compact = false }) {
                             opacity="0.8"
                           />
                         ) : null}
+                        {displaySpectrumPathB ? (
+                          <path
+                            d={displaySpectrumPathB}
+                            fill="none"
+                            stroke={
+                              selectedOffset >= 0
+                                ? "var(--ui-chart-spectrum-snap-b)"
+                                : "var(--ui-chart-spectrum-live-b)"
+                            }
+                            strokeWidth="var(--ui-sp-stroke-w)"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        ) : null}
                       </motion.g>
                     </AnimatePresence>
                   ) : null}
@@ -223,6 +263,11 @@ export function SpectrumPanel({ compact = false }) {
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.dbLabel}
                     </div>
+                    {spectrumHover.dbLabelB ? (
+                      <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                        {spectrumHover.dbLabelB}
+                      </div>
+                    ) : null}
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.noteLabel}
                     </div>

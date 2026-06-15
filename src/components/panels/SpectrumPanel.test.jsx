@@ -45,6 +45,20 @@ describe("SpectrumPanel", () => {
     expect(peakOverlay?.getAttribute("stroke")).toBe("var(--ui-chart-spectrum-live)");
   });
 
+  it("renders the secondary curve path with the live-b token when displaySpectrumPathB is non-empty", () => {
+    const { container } = renderPanel({
+      displaySpectrumPath: "M 0 120 L 1000 80",
+      displaySpectrumPathB: "M 0 130 L 1000 90",
+      displaySpectrumPeakPath: "",
+      selectedOffset: -1,
+      displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
+      spectrumViewLegend: null,
+    });
+
+    const secondary = container.querySelector('path[stroke="var(--ui-chart-spectrum-live-b)"]');
+    expect(secondary).toBeTruthy();
+  });
+
   it("keeps the frequency axis in a dedicated layout row", () => {
     const { container } = renderPanel({
       displaySpectrumPath: "",
