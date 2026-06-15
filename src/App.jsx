@@ -206,6 +206,7 @@ function AppContent() {
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
+  const spectrumPeakHoldUi = normalizedPanelControls.spectrumPeakHold;
   const [audio, setAudio] = useState({
     peakDb: [],
     peakHoldDb: [],
@@ -232,6 +233,7 @@ function AppContent() {
   const [spectrumPath, setSpectrumPath] = useState("");
   const [spectrumPeakPath, setSpectrumPeakPath] = useState("");
   const [spectrumPathB, setSpectrumPathB] = useState("");
+  const [spectrumPeakPathB, setSpectrumPeakPathB] = useState("");
   const [vectorPath, setVectorPath] = useState("");
   const [mainLeft, setMainLeft] = useState(UI_PREFERENCES.layout.mainColumn.initialPx);
   const [leftTopRatio, setLeftTopRatio] = useState(UI_PREFERENCES.layout.leftSplit.initialRatio);
@@ -346,6 +348,7 @@ function AppContent() {
     displaySpectrumPath,
     displaySpectrumPeakPath,
     displaySpectrumPathB,
+    displaySpectrumPeakPathB,
     displaySpectrumData,
     displayVectorPath,
     hasHistoryData,
@@ -362,6 +365,7 @@ function AppContent() {
     spectrumPath,
     spectrumPeakPath,
     spectrumPathB,
+    spectrumPeakPathB,
     vectorPath,
   });
 
@@ -697,6 +701,10 @@ function AppContent() {
     } catch (_) {}
   };
 
+  const onSpectrumPeakHoldToggle = () => {
+    updatePanelControls((current) => ({ ...current, spectrumPeakHold: !spectrumPeakHoldUi }));
+  };
+
   useEffect(() => {
     vectorscopePairRef.current = vectorscopePairUi;
   }, [vectorscopePairUi]);
@@ -761,6 +769,7 @@ function AppContent() {
     setSpectrumPath("");
     setSpectrumPeakPath("");
     setSpectrumPathB("");
+    setSpectrumPeakPathB("");
     setVectorPath("");
     setAudio({
       momentary: -Infinity,
@@ -934,6 +943,7 @@ function AppContent() {
     setSpectrumPath,
     setSpectrumPeakPath,
     setSpectrumPathB,
+    setSpectrumPeakPathB,
     setVectorPath,
     setHistoryPathM: () => {},
     setHistoryPathST: () => {},
@@ -1010,6 +1020,9 @@ function AppContent() {
       spectrumChannelUi,
       vectorscopeChannelLabels
     ),
+    displaySpectrumPeakPathB,
+    spectrumPeakHold: spectrumPeakHoldUi,
+    onSpectrumPeakHoldToggle,
     // Spectrogram
     spectrogramSnapRef,
     frequencyMarkerRef,

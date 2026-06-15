@@ -63,6 +63,7 @@ export function useAudioEngine({
   setSpectrumPath,
   setSpectrumPeakPath,
   setSpectrumPathB,
+  setSpectrumPeakPathB,
   setVectorPath,
   setHistoryPathM,
   setHistoryPathST,
@@ -87,6 +88,7 @@ export function useAudioEngine({
     setSpectrumPath("");
     setSpectrumPeakPath("");
     setSpectrumPathB("");
+    setSpectrumPeakPathB("");
     setVectorPath("");
     setHistoryPathM("");
     setHistoryPathST("");
@@ -173,6 +175,7 @@ export function useAudioEngine({
             setSpectrumPath,
             setSpectrumPeakPath,
             setSpectrumPathB,
+            setSpectrumPeakPathB,
             setVectorPath,
             setHistoryPathM,
             setHistoryPathST,

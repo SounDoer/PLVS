@@ -21,6 +21,7 @@ export function buildTauriFrameApply({
   setSpectrumPath,
   setSpectrumPeakPath,
   setSpectrumPathB,
+  setSpectrumPeakPathB,
   setVectorPath,
   setHistoryPathM,
   setHistoryPathST,
@@ -80,6 +81,7 @@ export function buildTauriFrameApply({
         setSpectrumPath(f.spectrumPath || "");
         setSpectrumPeakPath(f.spectrumPeakPath || "");
         setSpectrumPathB(f.spectrumPathB || "");
+        setSpectrumPeakPathB(f.spectrumPeakPathB || "");
         setVectorPath(f.vectorscopePath || "");
       }
     }

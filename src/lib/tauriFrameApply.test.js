@@ -16,6 +16,7 @@ function makeOptions(overrides = {}) {
     setSpectrumPath() {},
     setSpectrumPeakPath() {},
     setSpectrumPathB() {},
+    setSpectrumPeakPathB() {},
     setVectorPath() {},
     setHistoryPathM() {},
     setHistoryPathST() {},

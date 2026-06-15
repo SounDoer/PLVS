@@ -26,6 +26,7 @@ export function useSnapshot({
   spectrumPath,
   spectrumPeakPath,
   spectrumPathB,
+  spectrumPeakPathB,
   vectorPath,
 }) {
   const isSnapshotSelected = selectedOffset >= 0;
@@ -71,6 +72,7 @@ export function useSnapshot({
       ? buildVectorscopeSvgFromPairs(resolved.vectorSnapPairs)
       : vectorPath;
   const displaySpectrumPeakPath = selectedOffset >= 0 ? "" : spectrumPeakPath;
+  const displaySpectrumPeakPathB = selectedOffset >= 0 ? "" : spectrumPeakPathB;
 
   return {
     histSourceList,
@@ -78,6 +80,7 @@ export function useSnapshot({
     displaySpectrumPath,
     displaySpectrumPathB,
     displaySpectrumPeakPath,
+    displaySpectrumPeakPathB,
     displaySpectrumData: resolved.displaySpectrumData,
     displayVectorPath,
     hasHistoryData: resolved.hasHistoryData,
