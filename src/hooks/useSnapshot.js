@@ -25,6 +25,7 @@ export function useSnapshot({
   audio,
   spectrumPath,
   spectrumPeakPath,
+  spectrumPathB,
   vectorPath,
 }) {
   const isSnapshotSelected = selectedOffset >= 0;
@@ -59,6 +60,12 @@ export function useSnapshot({
     resolved.spectrumSnapDbList != null
       ? buildSpectrumSvgFromBandsAndDb(resolved.spectrumSnapCenters, resolved.spectrumSnapDbList)
       : spectrumPath;
+  const displaySpectrumPathB =
+    resolved.spectrumSnapDbListB != null && resolved.spectrumSnapDbListB.length > 0
+      ? buildSpectrumSvgFromBandsAndDb(resolved.spectrumSnapCenters, resolved.spectrumSnapDbListB)
+      : selectedOffset >= 0
+        ? ""
+        : spectrumPathB;
   const displayVectorPath =
     resolved.vectorSnapPairs != null
       ? buildVectorscopeSvgFromPairs(resolved.vectorSnapPairs)
@@ -69,6 +76,7 @@ export function useSnapshot({
     histSourceList,
     displayAudio: resolved.displayAudio,
     displaySpectrumPath,
+    displaySpectrumPathB,
     displaySpectrumPeakPath,
     displaySpectrumData: resolved.displaySpectrumData,
     displayVectorPath,

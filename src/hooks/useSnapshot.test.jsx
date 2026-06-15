@@ -146,4 +146,31 @@ describe("useSnapshot", () => {
 
     expect(result.current.visualSnapIdx).toBe(2);
   });
+
+  it("passes through spectrumPathB in live mode (live-passthrough)", () => {
+    const samples = {
+      loudness: [{ lufs: -20 }],
+      spectrumData: [{ band: 0 }],
+      corr: [0.1],
+      audio: [{ peak: -6, correlation: 0.1 }],
+      liveSpectrumData: { band: "live" },
+    };
+    const intake = createIntake(samples);
+    const liveAudio = { peak: -1, correlation: 0.9 };
+
+    const { result } = renderHook(() =>
+      useSnapshot({
+        selectedOffset: -1,
+        sampleSec: 1,
+        intake,
+        audio: liveAudio,
+        spectrumPath: "live-spectrum",
+        spectrumPeakPath: "live-peak",
+        spectrumPathB: "live-b",
+        vectorPath: "live-vector",
+      })
+    );
+
+    expect(result.current.displaySpectrumPathB).toBe("live-b");
+  });
 });
