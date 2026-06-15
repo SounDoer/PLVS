@@ -1,5 +1,27 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildTauriFrameApply } from "./tauriFrameApply.js";
+
+function makeOptions(overrides = {}) {
+  return {
+    histMaxSamples: 10,
+    visualMaxSamples: 10,
+    intake: {
+      pushFrame() {},
+      pushVisualHistRow() {},
+    },
+    frameRef: { current: 0 },
+    selectedOffsetRef: { current: -1 },
+    defaultSampleRateRef: { current: 48000 },
+    setAudio() {},
+    setSpectrumPath() {},
+    setSpectrumPeakPath() {},
+    setSpectrumPathB() {},
+    setVectorPath() {},
+    setHistoryPathM() {},
+    setHistoryPathST() {},
+    ...overrides,
+  };
+}
 
 describe("buildTauriFrameApply", () => {
   it("updates loudness maxima from the frame payload", () => {
@@ -14,23 +36,7 @@ describe("buildTauriFrameApply", () => {
     const setAudio = (updater) => {
       audioState = updater(audioState);
     };
-    const { applyFrame } = buildTauriFrameApply({
-      histMaxSamples: 10,
-      visualMaxSamples: 10,
-      intake: {
-        pushFrame() {},
-        pushVisualHistRow() {},
-      },
-      frameRef: { current: 0 },
-      selectedOffsetRef: { current: -1 },
-      defaultSampleRateRef: { current: 48000 },
-      setAudio,
-      setSpectrumPath() {},
-      setSpectrumPeakPath() {},
-      setVectorPath() {},
-      setHistoryPathM() {},
-      setHistoryPathST() {},
-    });
+    const { applyFrame } = buildTauriFrameApply(makeOptions({ setAudio }));
 
     applyFrame({
       peakDb: [],
@@ -51,5 +57,15 @@ describe("buildTauriFrameApply", () => {
 
     expect(audioState.mMax).toBe(-12.3);
     expect(audioState.stMax).toBe(-14.5);
+  });
+
+  it("calls setSpectrumPathB with the B path from the frame", () => {
+    const setSpectrumPathB = vi.fn();
+    // frameRef starts at 1 so first applyFrame increments to 2 (even → shouldPaintUi = true)
+    const { applyFrame } = buildTauriFrameApply(
+      makeOptions({ setSpectrumPathB, frameRef: { current: 1 } })
+    );
+    applyFrame({ spectrumPathB: "abc" });
+    expect(setSpectrumPathB).toHaveBeenCalledWith("abc");
   });
 });

@@ -20,6 +20,7 @@ export function buildTauriFrameApply({
   setAudio,
   setSpectrumPath,
   setSpectrumPeakPath,
+  setSpectrumPathB,
   setVectorPath,
   setHistoryPathM,
   setHistoryPathST,
@@ -78,6 +79,7 @@ export function buildTauriFrameApply({
       if (selectedOffsetRef.current < 0 && shouldPaintUi) {
         setSpectrumPath(f.spectrumPath || "");
         setSpectrumPeakPath(f.spectrumPeakPath || "");
+        setSpectrumPathB(f.spectrumPathB || "");
         setVectorPath(f.vectorscopePath || "");
       }
     }

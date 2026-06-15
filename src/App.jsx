@@ -64,7 +64,9 @@ import {
   setDialogueGating,
   setVectorscopePair,
   setSpectrumChannel,
+  setSpectrumView,
 } from "./ipc/commands.js";
+import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
@@ -203,6 +205,7 @@ function AppContent() {
   );
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
+  const spectrumViewUi = normalizedPanelControls.spectrumView;
   const [audio, setAudio] = useState({
     peakDb: [],
     peakHoldDb: [],
@@ -228,6 +231,7 @@ function AppContent() {
   });
   const [spectrumPath, setSpectrumPath] = useState("");
   const [spectrumPeakPath, setSpectrumPeakPath] = useState("");
+  const [spectrumPathB, setSpectrumPathB] = useState("");
   const [vectorPath, setVectorPath] = useState("");
   const [mainLeft, setMainLeft] = useState(UI_PREFERENCES.layout.mainColumn.initialPx);
   const [leftTopRatio, setLeftTopRatio] = useState(UI_PREFERENCES.layout.leftSplit.initialRatio);
@@ -341,6 +345,7 @@ function AppContent() {
     displayAudio,
     displaySpectrumPath,
     displaySpectrumPeakPath,
+    displaySpectrumPathB,
     displaySpectrumData,
     displayVectorPath,
     hasHistoryData,
@@ -356,6 +361,7 @@ function AppContent() {
     audio,
     spectrumPath,
     spectrumPeakPath,
+    spectrumPathB,
     vectorPath,
   });
 
@@ -631,6 +637,11 @@ function AppContent() {
     void sendTrackedSpectrumChannel(spectrumChannelUi);
   }, [running, sendTrackedSpectrumChannel, spectrumChannelOptions, spectrumChannelUi]);
 
+  useEffect(() => {
+    if (!running || !isTauri()) return;
+    void setSpectrumView(spectrumViewUi);
+  }, [running, spectrumViewUi]);
+
   const onVectorscopePairChange = async (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({
       x: pair.x,
@@ -674,6 +685,14 @@ function AppContent() {
       } else {
         await setSpectrumChannel(sel);
       }
+    } catch (_) {}
+  };
+
+  const onSpectrumViewChange = async (view) => {
+    if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
+    updatePanelControls((current) => ({ ...current, spectrumView: view }));
+    try {
+      if (running || !isTauri()) await setSpectrumView(view);
     } catch (_) {}
   };
 
@@ -740,6 +759,7 @@ function AppContent() {
     spectrumTimeRef.current = 0;
     setSpectrumPath("");
     setSpectrumPeakPath("");
+    setSpectrumPathB("");
     setVectorPath("");
     setAudio({
       momentary: -Infinity,
@@ -912,6 +932,7 @@ function AppContent() {
     setAudio,
     setSpectrumPath,
     setSpectrumPeakPath,
+    setSpectrumPathB,
     setVectorPath,
     setHistoryPathM: () => {},
     setHistoryPathST: () => {},
@@ -980,6 +1001,14 @@ function AppContent() {
     spectrumValueKey,
     spectrumDisplayLabel,
     onSpectrumChannelChange,
+    displaySpectrumPathB,
+    spectrumView: spectrumViewUi,
+    onSpectrumViewChange,
+    spectrumViewLegend: spectrumViewLegend(
+      spectrumViewUi,
+      spectrumChannelUi,
+      vectorscopeChannelLabels
+    ),
     // Spectrogram
     spectrogramSnapRef,
     frequencyMarkerRef,
