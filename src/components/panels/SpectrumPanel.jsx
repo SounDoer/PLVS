@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
-import { computeSpectrumHoverIndex, formatSpectrumFreq } from "../../math/hoverMath";
+import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
@@ -38,6 +38,7 @@ export function SpectrumPanel({ compact = false }) {
       topPct: spectrumDbToTopFrac(db) * 100,
       freqLabel: formatSpectrumFreq(band.fCenter),
       dbLabel: `${db.toFixed(1)} dB`,
+      noteLabel: freqToNote(band.fCenter),
     };
   });
   const reduceMotion = useReducedMotion();
@@ -221,6 +222,9 @@ export function SpectrumPanel({ compact = false }) {
                     </div>
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.dbLabel}
+                    </div>
+                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      {spectrumHover.noteLabel}
                     </div>
                   </div>
                 </div>

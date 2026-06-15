@@ -6,6 +6,7 @@ import {
   computeSpectrumHoverIndex,
   computeWaveformHoverPoint,
   computeSpectrogramHoverPoint,
+  freqToNote,
 } from "./hoverMath";
 
 describe("formatHoverOffset", () => {
@@ -240,5 +241,29 @@ describe("computeSpectrogramHoverPoint", () => {
   it("returns null when snap has no dbList", () => {
     const emptyDbSnap = [makeSnap(testBands, [])];
     expect(computeSpectrogramHoverPoint(0.5, 0.5, emptyDbSnap, 0, 1, 0.04)).toBeNull();
+  });
+
+  it("includes a note label in spectrogram hover", () => {
+    const snaps = [{ bands: [{ fCenter: 440 }], dbList: [-20] }];
+    const out = computeSpectrogramHoverPoint(1, 0.5, snaps, 0, 1, 0.1);
+    expect(out).not.toBeNull();
+    expect(typeof out.noteLabel).toBe("string");
+    expect(out.noteLabel).not.toBe("");
+  });
+});
+
+describe("freqToNote", () => {
+  it("maps standard pitches at A4=440", () => {
+    expect(freqToNote(440)).toBe("A4");
+    expect(freqToNote(880)).toBe("A5");
+    expect(freqToNote(261.6256)).toBe("C4"); // middle C
+  });
+  it("shows cents offset when off-pitch", () => {
+    expect(freqToNote(445)).toMatch(/^A4 \+\d+¢$/);
+    expect(freqToNote(437)).toMatch(/^A4 -\d+¢$/);
+  });
+  it("handles invalid input", () => {
+    expect(freqToNote(0)).toBe("-");
+    expect(freqToNote(NaN)).toBe("-");
   });
 });
