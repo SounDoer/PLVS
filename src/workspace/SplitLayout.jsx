@@ -5,6 +5,8 @@ import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
+import { useAudioData } from "./AudioDataContext.jsx";
+import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
 
 const SPLIT_DIVIDER_SIZE_REM = 0.375;
 
@@ -197,6 +199,7 @@ function SplitView({ node, path, style }) {
 function FullscreenOverlay() {
   const { state, setFullscreen } = useWorkspaceStore();
   const { fullscreenId } = state;
+  const audioData = useAudioData();
   if (!fullscreenId) return null;
 
   const def = MODULE_REGISTRY[fullscreenId];
@@ -211,23 +214,43 @@ function FullscreenOverlay() {
     >
       <div className="flex h-9 shrink-0 items-center border-b border-border/60 bg-card px-3 text-sm font-medium">
         {def.title}
-        <button
-          type="button"
-          className="ml-auto rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none"
-          onClick={() => setFullscreen(null)}
-          aria-label="Exit fullscreen"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
+          <PanelHeaderControls
+            activeTab={fullscreenId}
+            channelCount={audioData?.channelCount ?? 0}
+            vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
+            vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
+            vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
+            onVectorscopeChange={audioData?.onVectorscopePairChange}
+            spectrumOptions={audioData?.spectrumChannelOptions ?? []}
+            spectrumValueKey={audioData?.spectrumValueKey ?? ""}
+            spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
+            onSpectrumChange={audioData?.onSpectrumChannelChange}
+            spectrumView={audioData?.spectrumView ?? "combined"}
+            onSpectrumViewChange={audioData?.onSpectrumViewChange}
+            spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
+            onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
+            panelControls={audioData?.panelControls}
+            onPanelControlsChange={audioData?.onPanelControlsChange}
+          />
+          <button
+            type="button"
+            className="rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none"
+            onClick={() => setFullscreen(null)}
+            aria-label="Exit fullscreen"
           >
-            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-          </svg>
-        </button>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+            </svg>
+          </button>
+        </div>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <Component />
