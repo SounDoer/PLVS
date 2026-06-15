@@ -293,6 +293,13 @@ impl MeterPipeline {
     } else {
       (String::new(), String::new())
     };
+    let (spath_b, smooth_b_vec): (String, Vec<f64>) = match self.spectrum.last_output_secondary() {
+      Some((sb, _)) if sb.len() == centers.len() && !centers.is_empty() => {
+        let (p, _) = spectrum_paths_from_bands(centers, sb, sb, false);
+        (p, sb.to_vec())
+      }
+      _ => (String::new(), Vec::new()),
+    };
     let centers = centers.to_vec();
     let smooth = smooth.to_vec();
 
@@ -330,6 +337,7 @@ impl MeterPipeline {
         vectorscope_pair_y: pair_y,
         spectrum_band_centers_hz: centers.clone(),
         spectrum_smooth_db: smooth.clone(),
+        spectrum_smooth_db_b: smooth_b_vec.clone(),
         loudness_layout: loudness_layout.clone(),
         loudness_layout_known,
         waveform_min,
@@ -365,6 +373,7 @@ impl MeterPipeline {
           waveform_min: visual_waveform_min,
           waveform_max: visual_waveform_max,
           spectrum_smooth_db: smooth.clone(),
+          spectrum_smooth_db_b: smooth_b_vec.clone(),
           vectorscope_pairs: vs_pairs,
           correlation: visual_corr,
         })
@@ -402,6 +411,8 @@ impl MeterPipeline {
       spectrum_peak_path: spk,
       spectrum_band_centers_hz: centers,
       spectrum_smooth_db: smooth,
+      spectrum_path_b: spath_b,
+      spectrum_smooth_db_b: smooth_b_vec,
       loudness_layout,
       loudness_layout_known,
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
