@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-06-15
+
+### Added
+
+- Spectrum: M/S + L/R channel overlay with dual-curve display
+- Spectrum: peak-hold filled-area rendering (replaces dashed line)
+- Spectrum: peak-hold toggle chip in panel header
+- Spectrum: combined / L/R / M/S view toggle in panel header
+- Spectrum: color-coded hover dB rows in overlay mode
+- Spectrum: secondary curve legend and 2-row hover tooltip
+
+### Fixed
+
+- Timeline: stabilize initial history viewport
+- Workspace: show panel header chip in fullscreen overlay
+- CI: resolve clippy errors on Windows
+
 ## [0.3.3] - 2026-06-15
 
 ### Added
