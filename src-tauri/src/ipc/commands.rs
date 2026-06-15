@@ -165,6 +165,29 @@ pub fn set_spectrum_channel(
   Ok(())
 }
 
+pub fn parse_spectrum_view(s: &str) -> Result<crate::dsp::SpectrumView, String> {
+  use crate::dsp::SpectrumView;
+  match s {
+    "combined" => Ok(SpectrumView::Combined),
+    "lr" => Ok(SpectrumView::Lr),
+    "ms" => Ok(SpectrumView::Ms),
+    other => Err(format!("unknown spectrum_view: {other}")),
+  }
+}
+
+/// Update spectrum view mode. Applied on the capture thread for subsequent frames.
+#[tauri::command]
+pub fn set_spectrum_view(view: String, state: State<'_, AppState>) -> Result<(), String> {
+  let parsed = parse_spectrum_view(&view)?;
+  let mut g = state
+    .inner()
+    .spectrum_view
+    .lock()
+    .map_err(|_| "spectrum view lock poisoned".to_string())?;
+  *g = parsed;
+  Ok(())
+}
+
 fn validate_loudness_weights(weights: &[f64]) -> Result<(), String> {
   if weights.is_empty() {
     return Err("loudness weights cannot be empty".to_string());
@@ -303,5 +326,18 @@ mod tests {
     assert!(*flag.lock().unwrap());
     super::apply_dialogue_gating(&flag, false);
     assert!(!*flag.lock().unwrap());
+  }
+
+  #[test]
+  fn parse_spectrum_view_maps_strings() {
+    use crate::dsp::SpectrumView;
+    use crate::ipc::commands::parse_spectrum_view;
+    assert_eq!(
+      parse_spectrum_view("combined").unwrap(),
+      SpectrumView::Combined
+    );
+    assert_eq!(parse_spectrum_view("lr").unwrap(), SpectrumView::Lr);
+    assert_eq!(parse_spectrum_view("ms").unwrap(), SpectrumView::Ms);
+    assert!(parse_spectrum_view("bogus").is_err());
   }
 }
