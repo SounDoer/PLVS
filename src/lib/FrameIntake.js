@@ -21,9 +21,11 @@ function getBandsFromCenters(centers) {
 export function buildSpectrumDataSnapshot(row) {
   const centers = row.spectrumBandCentersHz || [];
   const dbList = row.spectrumSmoothDb || [];
+  const dbListB = row.spectrumSmoothDbB || [];
   return {
     bands: getBandsFromCenters(centers),
     dbList: [...dbList],
+    dbListB: [...dbListB],
   };
 }
 
@@ -156,6 +158,7 @@ export class FrameIntake {
     this._visualSpectrumHist.push({
       bands: getBandsFromCenters(row.spectrumBandCentersHz ?? this._lastSpectrumCenters),
       dbList: [...(row.spectrumSmoothDb ?? [])],
+      dbListB: [...(row.spectrumSmoothDbB ?? [])],
       timestampMs: row.timestampMs,
     });
 

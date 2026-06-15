@@ -5,7 +5,7 @@
 use tauri::AppHandle;
 
 use super::device::DeviceInfo;
-use crate::dsp::SpectrumChannelSel;
+use crate::dsp::{SpectrumChannelSel, SpectrumView};
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
@@ -36,6 +36,7 @@ pub trait AudioCapture: Send + Sync {
     vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
+    spectrum_view: std::sync::Arc<std::sync::Mutex<SpectrumView>>,
     loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String>;

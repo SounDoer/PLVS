@@ -14,6 +14,8 @@ pub struct AppState {
   pub vectorscope_pair: Arc<Mutex<(u16, u16)>>,
   /// Selected channel(s) for spectrum analysis. Updated by UI; applied on the capture thread.
   pub spectrum_channel: Arc<Mutex<SpectrumChannelSel>>,
+  /// Selected spectrum view mode (Combined/Lr/Ms). Updated by UI; applied on the capture thread.
+  pub spectrum_view: Arc<Mutex<crate::dsp::SpectrumView>>,
   /// Dynamic loudness energy weights from user channel-role overrides.
   pub loudness_weights: Arc<Mutex<Option<Vec<f64>>>>,
   /// Dialogue gating enabled flag. Updated by UI.
@@ -27,6 +29,7 @@ impl Default for AppState {
       frame_subscribers: Mutex::new(None),
       vectorscope_pair: Arc::new(Mutex::new((0, 1))),
       spectrum_channel: Arc::new(Mutex::new(SpectrumChannelSel::default())),
+      spectrum_view: Arc::new(Mutex::new(crate::dsp::SpectrumView::default())),
       loudness_weights: Arc::new(Mutex::new(None)),
       dialogue_gating_enabled: Arc::new(Mutex::new(false)),
     }

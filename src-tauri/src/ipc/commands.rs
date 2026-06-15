@@ -96,6 +96,7 @@ pub fn audio_start(
   // Channel layout is auto-resolved from channel count on the capture thread; no user override.
   let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
   let spectrum = state.inner().spectrum_channel.clone();
+  let spectrum_view = state.inner().spectrum_view.clone();
   let loudness_weights = state.inner().loudness_weights.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let session = AudioCapture::start_session(
@@ -106,6 +107,7 @@ pub fn audio_start(
     pair,
     layout,
     spectrum,
+    spectrum_view,
     loudness_weights,
     dialogue_gating,
   )?;
@@ -162,6 +164,29 @@ pub fn set_spectrum_channel(
     .lock()
     .map_err(|_| "spectrum channel lock poisoned".to_string())?;
   *g = sel;
+  Ok(())
+}
+
+pub fn parse_spectrum_view(s: &str) -> Result<crate::dsp::SpectrumView, String> {
+  use crate::dsp::SpectrumView;
+  match s {
+    "combined" => Ok(SpectrumView::Combined),
+    "lr" => Ok(SpectrumView::Lr),
+    "ms" => Ok(SpectrumView::Ms),
+    other => Err(format!("unknown spectrum_view: {other}")),
+  }
+}
+
+/// Update spectrum view mode. Applied on the capture thread for subsequent frames.
+#[tauri::command]
+pub fn set_spectrum_view(view: String, state: State<'_, AppState>) -> Result<(), String> {
+  let parsed = parse_spectrum_view(&view)?;
+  let mut g = state
+    .inner()
+    .spectrum_view
+    .lock()
+    .map_err(|_| "spectrum view lock poisoned".to_string())?;
+  *g = parsed;
   Ok(())
 }
 
@@ -303,5 +328,18 @@ mod tests {
     assert!(*flag.lock().unwrap());
     super::apply_dialogue_gating(&flag, false);
     assert!(!*flag.lock().unwrap());
+  }
+
+  #[test]
+  fn parse_spectrum_view_maps_strings() {
+    use crate::dsp::SpectrumView;
+    use crate::ipc::commands::parse_spectrum_view;
+    assert_eq!(
+      parse_spectrum_view("combined").unwrap(),
+      SpectrumView::Combined
+    );
+    assert_eq!(parse_spectrum_view("lr").unwrap(), SpectrumView::Lr);
+    assert_eq!(parse_spectrum_view("ms").unwrap(), SpectrumView::Ms);
+    assert!(parse_spectrum_view("bogus").is_err());
   }
 }

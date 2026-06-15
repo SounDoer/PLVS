@@ -1,5 +1,7 @@
 import { Check } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -17,18 +19,18 @@ import {
 const CHIP_CLASS =
   "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none hover:bg-secondary hover:text-foreground focus:ring-0 focus:ring-offset-0";
 
-function ChannelTrigger({ label, ariaLabel }) {
+function ChannelTrigger({ label, ariaLabel, triggerClassName }) {
   return (
-    <SelectTrigger aria-label={ariaLabel} className={CHIP_CLASS}>
+    <SelectTrigger aria-label={ariaLabel} className={cn(CHIP_CLASS, triggerClassName)}>
       <SelectValue>{label}</SelectValue>
     </SelectTrigger>
   );
 }
 
-function SingleSelectChip({ label, ariaLabel, options, value, onChange }) {
+function SingleSelectChip({ label, ariaLabel, options, value, onChange, triggerClassName }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <ChannelTrigger label={label} ariaLabel={ariaLabel} />
+      <ChannelTrigger label={label} ariaLabel={ariaLabel} triggerClassName={triggerClassName} />
       <SelectContent align="end" sideOffset={6}>
         {options.map((opt) => (
           <SelectItem key={opt.key} value={opt.key}>
@@ -75,6 +77,20 @@ function MultiSelectChip({ label, options, selectedIds, onToggle }) {
   );
 }
 
+function ToggleChip({ label, ariaLabel, pressed, onToggle }) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-pressed={pressed}
+      onClick={onToggle}
+      className={cn(CHIP_CLASS, "w-auto", pressed && "bg-secondary text-foreground")}
+    >
+      {label}
+    </button>
+  );
+}
+
 function getSelectedOption(options, valueKey) {
   const matchedOption = options.find((opt) => opt.key === valueKey);
   return {
@@ -101,6 +117,10 @@ export function PanelHeaderControls({
   spectrumValueKey = "",
   spectrumDisplayLabel = "",
   onSpectrumChange,
+  spectrumView = "combined",
+  onSpectrumViewChange,
+  spectrumPeakHold = false,
+  onSpectrumPeakHoldToggle,
   panelControls,
   onPanelControlsChange,
 }) {
@@ -154,6 +174,58 @@ export function PanelHeaderControls({
     );
   }
 
+  if (activeTab === "spectrum" || activeTab === "spectrogram") {
+    const { matchedOption, selectedOption } = getSelectedOption(spectrumOptions, spectrumValueKey);
+    const sel = selectedOption?.sel ?? null;
+    // The view toggle (M/S, L/R) only makes sense for the overlaid spectrum curve; a spectrogram is
+    // a single heatmap and can't overlay, so it stays on the channel selection only.
+    const showView =
+      activeTab === "spectrum" &&
+      spectrumViewApplies(sel) &&
+      typeof onSpectrumViewChange === "function";
+    const showChannel = channelCount > 2 && spectrumOptions.length > 0;
+    const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
+    if (!showView && !showChannel && !showPeak) return null;
+
+    return (
+      <div className="flex items-center gap-0.5">
+        {showChannel ? (
+          <SingleSelectChip
+            label={
+              matchedOption && spectrumDisplayLabel ? spectrumDisplayLabel : selectedOption.label
+            }
+            ariaLabel={`${activeTab} channel`}
+            options={spectrumOptions}
+            value={selectedOption.key}
+            onChange={(key) => {
+              const opt = spectrumOptions.find((o) => o.key === key);
+              if (opt && typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
+            }}
+            triggerClassName="w-auto"
+          />
+        ) : null}
+        {showView ? (
+          <SingleSelectChip
+            label={SPECTRUM_VIEW_OPTIONS.find((o) => o.key === spectrumView)?.label ?? "Combined"}
+            ariaLabel="spectrum view"
+            options={SPECTRUM_VIEW_OPTIONS}
+            value={spectrumView}
+            onChange={(key) => onSpectrumViewChange(key)}
+            triggerClassName="w-auto max-w-none"
+          />
+        ) : null}
+        {showPeak ? (
+          <ToggleChip
+            label="Peak"
+            ariaLabel="peak hold"
+            pressed={spectrumPeakHold}
+            onToggle={onSpectrumPeakHoldToggle}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   if (!Number.isFinite(channelCount) || channelCount <= 2) return null;
 
   if (activeTab === "vectorscope" && vectorscopeOptions.length > 0) {
@@ -174,27 +246,6 @@ export function PanelHeaderControls({
           const opt = vectorscopeOptions.find((o) => o.key === key);
           if (opt && typeof onVectorscopeChange === "function") {
             onVectorscopeChange({ x: opt.x, y: opt.y });
-          }
-        }}
-      />
-    );
-  }
-
-  if ((activeTab === "spectrum" || activeTab === "spectrogram") && spectrumOptions.length > 0) {
-    const { matchedOption, selectedOption } = getSelectedOption(spectrumOptions, spectrumValueKey);
-    const selectedLabel =
-      matchedOption && spectrumDisplayLabel ? spectrumDisplayLabel : selectedOption.label;
-
-    return (
-      <SingleSelectChip
-        label={selectedLabel}
-        ariaLabel={`${activeTab} channel`}
-        options={spectrumOptions}
-        value={selectedOption.key}
-        onChange={(key) => {
-          const opt = spectrumOptions.find((o) => o.key === key);
-          if (opt && typeof onSpectrumChange === "function") {
-            onSpectrumChange(opt.sel);
           }
         }}
       />

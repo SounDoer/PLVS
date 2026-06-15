@@ -28,21 +28,62 @@ function renderPanel(audioData) {
 }
 
 describe("SpectrumPanel", () => {
-  it("renders the live peak overlay with the live spectrum token", () => {
+  it("fills up to the peak contour when peak hold is on", () => {
     const peakPath = "M 0 20 L 1000 20";
     const { container } = renderPanel({
       displaySpectrumPath: "M 0 120 L 1000 80",
       displaySpectrumPeakPath: peakPath,
+      spectrumPeakHold: true,
       selectedOffset: -1,
-      spectrumHover: null,
-      onSpectrumHoverMove: vi.fn(),
-      onSpectrumHoverLeave: vi.fn(),
     });
 
-    const peakOverlay = container.querySelector(`path[d="${peakPath}"]`);
+    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    expect(fill?.getAttribute("d")).toBe(`${peakPath} L 1000 260 L 0 260 Z`);
+    // peak hold is now a filled area, not a dashed stroke
+    expect(container.querySelector("path[stroke-dasharray]")).toBeNull();
+  });
 
-    expect(peakOverlay).toBeTruthy();
-    expect(peakOverlay?.getAttribute("stroke")).toBe("var(--ui-chart-spectrum-live)");
+  it("fills up to the live contour when peak hold is off", () => {
+    const livePath = "M 0 120 L 1000 80";
+    const { container } = renderPanel({
+      displaySpectrumPath: livePath,
+      displaySpectrumPeakPath: "M 0 20 L 1000 20",
+      spectrumPeakHold: false,
+      selectedOffset: -1,
+    });
+
+    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    expect(fill?.getAttribute("d")).toBe(`${livePath} L 1000 260 L 0 260 Z`);
+  });
+
+  it("fills the secondary peak with the live-b gradient when peak hold is on", () => {
+    const peakB = "M 0 30 L 1000 30";
+    const { container } = renderPanel({
+      displaySpectrumPath: "M 0 120 L 1000 80",
+      displaySpectrumPathB: "M 0 130 L 1000 90",
+      displaySpectrumPeakPathB: peakB,
+      spectrumPeakHold: true,
+      selectedOffset: -1,
+      displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
+      spectrumViewLegend: null,
+    });
+
+    const fillB = container.querySelector('path[fill="url(#spectrumFillLiveB)"]');
+    expect(fillB?.getAttribute("d")).toBe(`${peakB} L 1000 260 L 0 260 Z`);
+  });
+
+  it("renders the secondary curve path with the live-b token when displaySpectrumPathB is non-empty", () => {
+    const { container } = renderPanel({
+      displaySpectrumPath: "M 0 120 L 1000 80",
+      displaySpectrumPathB: "M 0 130 L 1000 90",
+      displaySpectrumPeakPath: "",
+      selectedOffset: -1,
+      displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
+      spectrumViewLegend: null,
+    });
+
+    const secondary = container.querySelector('path[stroke="var(--ui-chart-spectrum-live-b)"]');
+    expect(secondary).toBeTruthy();
   });
 
   it("keeps the frequency axis in a dedicated layout row", () => {

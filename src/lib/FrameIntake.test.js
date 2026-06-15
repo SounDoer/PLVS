@@ -332,3 +332,21 @@ describe("FrameIntake", () => {
     expect(intake.getVisualWaveformHist().length).toBe(3);
   });
 });
+
+describe("secondary curve in spectrum data", () => {
+  it("includes dbListB when present", () => {
+    const data = buildSpectrumDataSnapshot({
+      spectrumBandCentersHz: [100, 1000],
+      spectrumSmoothDb: [-10, -20],
+      spectrumSmoothDbB: [-15, -25],
+    });
+    expect(data.dbListB).toEqual([-15, -25]);
+  });
+  it("defaults dbListB to empty when absent", () => {
+    const data = buildSpectrumDataSnapshot({
+      spectrumBandCentersHz: [100],
+      spectrumSmoothDb: [-10],
+    });
+    expect(data.dbListB).toEqual([]);
+  });
+});

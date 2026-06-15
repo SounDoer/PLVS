@@ -176,6 +176,10 @@ export function LeafView({ node, path, style }) {
             spectrumValueKey={audioData?.spectrumValueKey ?? ""}
             spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
             onSpectrumChange={audioData?.onSpectrumChannelChange}
+            spectrumView={audioData?.spectrumView ?? "combined"}
+            onSpectrumViewChange={audioData?.onSpectrumViewChange}
+            spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
+            onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
             panelControls={audioData?.panelControls}
             onPanelControlsChange={audioData?.onPanelControlsChange}
           />

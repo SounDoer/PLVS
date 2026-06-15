@@ -84,6 +84,8 @@ describe("useAudioEngine", () => {
       setAudio: vi.fn(),
       setSpectrumPath: vi.fn(),
       setSpectrumPeakPath: vi.fn(),
+      setSpectrumPathB: vi.fn(),
+      setSpectrumPeakPathB: vi.fn(),
       setVectorPath: vi.fn(),
       setHistoryPathM: vi.fn(),
       setHistoryPathST: vi.fn(),
@@ -112,6 +114,8 @@ describe("useAudioEngine", () => {
     expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
     expect(props.setSpectrumPath).toHaveBeenCalledWith("");
     expect(props.setSpectrumPeakPath).toHaveBeenCalledWith("");
+    expect(props.setSpectrumPathB).toHaveBeenCalledWith("");
+    expect(props.setSpectrumPeakPathB).toHaveBeenCalledWith("");
     expect(props.setVectorPath).toHaveBeenCalledWith("");
     expect(props.setHistoryPathM).toHaveBeenCalledWith("");
     expect(props.setHistoryPathST).toHaveBeenCalledWith("");

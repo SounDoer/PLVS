@@ -19,8 +19,16 @@ function buildSpectrumAreaPath(path) {
 }
 
 export function SpectrumPanel({ compact = false }) {
-  const { displaySpectrumPath, displaySpectrumPeakPath, selectedOffset, displaySpectrumData } =
-    useAudioData();
+  const {
+    displaySpectrumPath,
+    displaySpectrumPeakPath,
+    displaySpectrumPathB,
+    displaySpectrumPeakPathB,
+    spectrumPeakHold,
+    selectedOffset,
+    displaySpectrumData,
+    spectrumViewLegend,
+  } = useAudioData();
   const spectrumSvgRef = useRef(null);
   const {
     hover: spectrumHover,
@@ -33,16 +41,27 @@ export function SpectrumPanel({ compact = false }) {
     const band = data.bands[nearestIdx];
     const db = data.dbList[nearestIdx];
     if (!band || !Number.isFinite(db)) return null;
+    const dbB = data.dbListB?.[nearestIdx];
     return {
       leftPct: freqToXFrac(band.fCenter) * 100,
       topPct: spectrumDbToTopFrac(db) * 100,
       freqLabel: formatSpectrumFreq(band.fCenter),
       dbLabel: `${db.toFixed(1)} dB`,
+      dbLabelB: Number.isFinite(dbB) ? `${dbB.toFixed(1)} dB` : null,
       noteLabel: freqToNote(band.fCenter),
     };
   });
   const reduceMotion = useReducedMotion();
-  const displaySpectrumAreaPath = buildSpectrumAreaPath(displaySpectrumPath);
+  // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
+  // on top). When peak hold is off, the fill follows the live curve as before.
+  const peakFillActive = spectrumPeakHold && !!displaySpectrumPeakPath;
+  const displaySpectrumAreaPath = buildSpectrumAreaPath(
+    peakFillActive ? displaySpectrumPeakPath : displaySpectrumPath
+  );
+  const displaySpectrumAreaPathB =
+    spectrumPeakHold && displaySpectrumPeakPathB
+      ? buildSpectrumAreaPath(displaySpectrumPeakPathB)
+      : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
 
   return (
@@ -81,6 +100,24 @@ export function SpectrumPanel({ compact = false }) {
               className="relative min-h-0 h-full rounded-lg bg-muted"
               onPointerLeave={onSpectrumHoverLeave}
             >
+              {spectrumViewLegend ? (
+                <div className="pointer-events-none absolute right-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] z-10 flex gap-2 rounded border border-border bg-secondary px-2 py-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                  {spectrumViewLegend.map((e) => (
+                    <span key={e.token} className="flex items-center gap-1">
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            e.token === "primary"
+                              ? "var(--ui-chart-spectrum-live)"
+                              : "var(--ui-chart-spectrum-live-b)",
+                        }}
+                      />
+                      {e.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <div
                 className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {
@@ -116,6 +153,30 @@ export function SpectrumPanel({ compact = false }) {
                       <stop
                         offset="100%"
                         stopColor="var(--ui-chart-spectrum-snap)"
+                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                      />
+                    </linearGradient>
+                    <linearGradient id="spectrumFillLiveB" x1="0" x2="0" y1="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="var(--ui-chart-spectrum-live-b)"
+                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="var(--ui-chart-spectrum-live-b)"
+                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                      />
+                    </linearGradient>
+                    <linearGradient id="spectrumFillSnapB" x1="0" x2="0" y1="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="var(--ui-chart-spectrum-snap-b)"
+                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="var(--ui-chart-spectrum-snap-b)"
                         stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
                       />
                     </linearGradient>
@@ -168,6 +229,16 @@ export function SpectrumPanel({ compact = false }) {
                               : "url(#spectrumFillLive)"
                           }
                         />
+                        {displaySpectrumAreaPathB ? (
+                          <path
+                            d={displaySpectrumAreaPathB}
+                            fill={
+                              selectedOffset >= 0
+                                ? "url(#spectrumFillSnapB)"
+                                : "url(#spectrumFillLiveB)"
+                            }
+                          />
+                        ) : null}
                         <path
                           d={displaySpectrumPath}
                           fill="none"
@@ -180,14 +251,18 @@ export function SpectrumPanel({ compact = false }) {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                        {displaySpectrumPeakPath ? (
+                        {displaySpectrumPathB ? (
                           <path
-                            d={displaySpectrumPeakPath}
+                            d={displaySpectrumPathB}
                             fill="none"
-                            stroke="var(--ui-chart-spectrum-live)"
-                            strokeWidth="var(--ui-sp-stroke-w-inner)"
-                            strokeDasharray="8 6"
-                            opacity="0.8"
+                            stroke={
+                              selectedOffset >= 0
+                                ? "var(--ui-chart-spectrum-snap-b)"
+                                : "var(--ui-chart-spectrum-live-b)"
+                            }
+                            strokeWidth="var(--ui-sp-stroke-w)"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
                         ) : null}
                       </motion.g>
@@ -220,9 +295,34 @@ export function SpectrumPanel({ compact = false }) {
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.freqLabel}
                     </div>
-                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                    <div
+                      className="font-[family-name:var(--ui-font-mono)] tabular-nums"
+                      style={
+                        spectrumHover.dbLabelB
+                          ? {
+                              color:
+                                selectedOffset >= 0
+                                  ? "var(--ui-chart-spectrum-snap)"
+                                  : "var(--ui-chart-spectrum-live)",
+                            }
+                          : undefined
+                      }
+                    >
                       {spectrumHover.dbLabel}
                     </div>
+                    {spectrumHover.dbLabelB ? (
+                      <div
+                        className="font-[family-name:var(--ui-font-mono)] tabular-nums"
+                        style={{
+                          color:
+                            selectedOffset >= 0
+                              ? "var(--ui-chart-spectrum-snap-b)"
+                              : "var(--ui-chart-spectrum-live-b)",
+                        }}
+                      >
+                        {spectrumHover.dbLabelB}
+                      </div>
+                    ) : null}
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.noteLabel}
                     </div>

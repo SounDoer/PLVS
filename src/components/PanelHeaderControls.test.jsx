@@ -171,6 +171,84 @@ describe("PanelHeaderControls", () => {
     });
   });
 
+  it("shows the view toggle for a stereo spectrum panel", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("spectrum view")).toBeTruthy();
+  });
+
+  it("hides the view toggle when a single channel is selected", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrum"
+        channelCount={6}
+        spectrumOptions={[{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }]}
+        spectrumValueKey="s-2"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("spectrum view")).toBeNull();
+  });
+
+  it("hides the view toggle on the spectrogram tab (single heatmap can't overlay)", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrogram"
+        channelCount={6}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="ms"
+        onSpectrumViewChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("spectrum view")).toBeNull();
+    // channel dropdown still available on the spectrogram tab
+    expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
+  });
+
+  it("shows the Peak toggle on spectrum and reflects + flips state", () => {
+    const onSpectrumPeakHoldToggle = vi.fn();
+    render(
+      <PanelHeaderControls
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+        spectrumPeakHold={true}
+        onSpectrumPeakHoldToggle={onSpectrumPeakHoldToggle}
+      />
+    );
+    const btn = screen.getByLabelText("peak hold");
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(btn);
+    expect(onSpectrumPeakHoldToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the Peak toggle on the spectrogram tab", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrogram"
+        channelCount={6}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumPeakHold={false}
+        onSpectrumPeakHoldToggle={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("peak hold")).toBeNull();
+  });
+
   it("does not render loudness controls before panel controls are wired", () => {
     const stats = render(<PanelHeaderControls activeTab="loudnessStats" />);
     expect(stats.container.firstChild).toBeNull();

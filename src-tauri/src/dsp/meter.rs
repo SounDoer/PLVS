@@ -1,6 +1,6 @@
 //! Shared `Meter` trait and `PcmContext` for all DSP metering modules.
 
-use crate::dsp::channel_sel::SpectrumChannelSel;
+use crate::dsp::channel_sel::{SpectrumChannelSel, SpectrumView};
 use crate::engine::ChannelLayoutSetting;
 
 /// Context passed to every meter's [`Meter::push_pcm`] call.
@@ -12,6 +12,7 @@ pub struct PcmContext<'a> {
   pub loudness_weights: Option<Vec<f64>>,
   pub vectorscope_pair: (u16, u16),
   pub spectrum_channel: SpectrumChannelSel,
+  pub spectrum_view: SpectrumView,
   /// When true, run the speech-activity sidechain and populate the dialogue-gated readouts.
   pub dialogue_gating: bool,
 }

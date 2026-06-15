@@ -989,6 +989,7 @@ mod tests {
       loudness_weights: None,
       vectorscope_pair: (0, 1),
       spectrum_channel: SpectrumChannelSel::default(),
+      spectrum_view: crate::dsp::SpectrumView::default(),
       dialogue_gating: true,
     }
   }

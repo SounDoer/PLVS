@@ -158,6 +158,8 @@ export function applyThemeToDocument(themeId) {
   setCssVar("--ui-chart-vectorscope-snap", charts.vectorscope.strokeSnap);
   setCssVar("--ui-chart-spectrum-live", charts.spectrum.strokeLive);
   setCssVar("--ui-chart-spectrum-snap", charts.spectrum.strokeSnap);
+  setCssVar("--ui-chart-spectrum-live-b", charts.spectrum.strokeLiveB);
+  setCssVar("--ui-chart-spectrum-snap-b", charts.spectrum.strokeSnapB);
   setCssVar("--ui-chart-spectrum-fill-top", String(charts.spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-chart-spectrum-fill-bottom", String(charts.spectrum.fillOpacityBottom ?? 0.02));
   setCssVar("--ui-chart-waveform-live", charts.waveform.stroke);
