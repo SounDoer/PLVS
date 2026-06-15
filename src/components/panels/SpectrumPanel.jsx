@@ -52,7 +52,16 @@ export function SpectrumPanel({ compact = false }) {
     };
   });
   const reduceMotion = useReducedMotion();
-  const displaySpectrumAreaPath = buildSpectrumAreaPath(displaySpectrumPath);
+  // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
+  // on top). When peak hold is off, the fill follows the live curve as before.
+  const peakFillActive = spectrumPeakHold && !!displaySpectrumPeakPath;
+  const displaySpectrumAreaPath = buildSpectrumAreaPath(
+    peakFillActive ? displaySpectrumPeakPath : displaySpectrumPath
+  );
+  const displaySpectrumAreaPathB =
+    spectrumPeakHold && displaySpectrumPeakPathB
+      ? buildSpectrumAreaPath(displaySpectrumPeakPathB)
+      : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
 
   return (
@@ -147,6 +156,30 @@ export function SpectrumPanel({ compact = false }) {
                         stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
                       />
                     </linearGradient>
+                    <linearGradient id="spectrumFillLiveB" x1="0" x2="0" y1="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="var(--ui-chart-spectrum-live-b)"
+                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="var(--ui-chart-spectrum-live-b)"
+                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                      />
+                    </linearGradient>
+                    <linearGradient id="spectrumFillSnapB" x1="0" x2="0" y1="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="var(--ui-chart-spectrum-snap-b)"
+                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="var(--ui-chart-spectrum-snap-b)"
+                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                      />
+                    </linearGradient>
                   </defs>
                   <g pointerEvents="none" aria-hidden>
                     {SPEC_Y_TICKS.map(({ v }) => (
@@ -196,6 +229,16 @@ export function SpectrumPanel({ compact = false }) {
                               : "url(#spectrumFillLive)"
                           }
                         />
+                        {displaySpectrumAreaPathB ? (
+                          <path
+                            d={displaySpectrumAreaPathB}
+                            fill={
+                              selectedOffset >= 0
+                                ? "url(#spectrumFillSnapB)"
+                                : "url(#spectrumFillLiveB)"
+                            }
+                          />
+                        ) : null}
                         <path
                           d={displaySpectrumPath}
                           fill="none"
@@ -208,16 +251,6 @@ export function SpectrumPanel({ compact = false }) {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                        {spectrumPeakHold && displaySpectrumPeakPath ? (
-                          <path
-                            d={displaySpectrumPeakPath}
-                            fill="none"
-                            stroke="var(--ui-chart-spectrum-live)"
-                            strokeWidth="var(--ui-sp-stroke-w-inner)"
-                            strokeDasharray="8 6"
-                            opacity="0.8"
-                          />
-                        ) : null}
                         {displaySpectrumPathB ? (
                           <path
                             d={displaySpectrumPathB}
@@ -230,20 +263,6 @@ export function SpectrumPanel({ compact = false }) {
                             strokeWidth="var(--ui-sp-stroke-w)"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                          />
-                        ) : null}
-                        {spectrumPeakHold && displaySpectrumPeakPathB ? (
-                          <path
-                            d={displaySpectrumPeakPathB}
-                            fill="none"
-                            stroke={
-                              selectedOffset >= 0
-                                ? "var(--ui-chart-spectrum-snap-b)"
-                                : "var(--ui-chart-spectrum-live-b)"
-                            }
-                            strokeWidth="var(--ui-sp-stroke-w-inner)"
-                            strokeDasharray="8 6"
-                            opacity="0.8"
                           />
                         ) : null}
                       </motion.g>
