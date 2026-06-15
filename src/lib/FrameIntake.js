@@ -74,6 +74,8 @@ export class FrameIntake {
     this._visualVectorscopeHist = new RingBuffer(1);
     this._visualCorrHist = new RingBuffer(1);
     this._spectrogramSnapArray = [];
+    // Constant grid frequencies from the live frame; the ~25 Hz visual tick omits them.
+    this._lastSpectrumCenters = [];
     this._currentChannelMetadata = {
       frequencyLabel: "L/R",
       vectorscopePairLabel: "L/R",
@@ -88,6 +90,9 @@ export class FrameIntake {
    * @param {boolean} [freezeSpectrum] skip live spectrum update when true
    */
   pushFrame(frame, histMaxSamples, defaultSampleRate, freezeSpectrum = false) {
+    if (frame.spectrumBandCentersHz?.length) {
+      this._lastSpectrumCenters = frame.spectrumBandCentersHz;
+    }
     if (!freezeSpectrum) {
       this._spectrumData = buildSpectrumDataSnapshot(frame, { defaultSampleRate });
     }
@@ -149,7 +154,7 @@ export class FrameIntake {
     });
 
     this._visualSpectrumHist.push({
-      bands: getBandsFromCenters(row.spectrumBandCentersHz ?? []),
+      bands: getBandsFromCenters(row.spectrumBandCentersHz ?? this._lastSpectrumCenters),
       dbList: [...(row.spectrumSmoothDb ?? [])],
       timestampMs: row.timestampMs,
     });

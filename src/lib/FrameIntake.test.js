@@ -279,6 +279,31 @@ describe("FrameIntake", () => {
     });
   });
 
+  it("visual spectrogram bands fall back to live frame centers when the tick omits them", () => {
+    const intake = new FrameIntake();
+    const centers = [100, 200, 400, 800];
+    // The live frame carries the constant grid centers...
+    intake.pushFrame(
+      makeFrame({ spectrumBandCentersHz: centers, spectrumSmoothDb: [-30, -40, -50, -60] }),
+      HIST_MAX,
+      SR
+    );
+    // ...but the ~25 Hz visual tick omits them to save bandwidth.
+    intake.pushVisualHistRow(
+      {
+        waveformMin: [0],
+        waveformMax: [0],
+        spectrumSmoothDb: [-30, -40, -50, -60],
+        vectorscopePairs: [],
+        correlation: 0,
+      },
+      10
+    );
+    const snap = intake.getSpectrogramSnapArray();
+    expect(snap[0].bands.length).toBe(centers.length);
+    expect(snap[0].bands[0].fCenter).toBeCloseTo(centers[0]);
+  });
+
   it("uses payload grid frequencies, not recomputed RTA bands", () => {
     const centers = Array.from(
       { length: 958 },
