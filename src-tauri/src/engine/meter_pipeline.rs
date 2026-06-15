@@ -143,6 +143,7 @@ impl MeterPipeline {
     vectorscope_pair: (u16, u16),
     channel_layout: ChannelLayoutSetting,
     spectrum_channel: SpectrumChannelSel,
+    spectrum_view: SpectrumView,
     loudness_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
   ) -> Option<AudioFramePayload> {
@@ -198,7 +199,7 @@ impl MeterPipeline {
       loudness_weights,
       vectorscope_pair,
       spectrum_channel,
-      spectrum_view: SpectrumView::default(),
+      spectrum_view,
       dialogue_gating,
     };
     self.loudness.push_pcm(&ctx);
@@ -475,6 +476,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Pair(0, 1),
+      SpectrumView::default(),
       None,
       false,
     );
@@ -489,6 +491,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::Single(2),
+      SpectrumView::default(),
       None,
       false,
     );
@@ -511,6 +514,7 @@ mod tests {
       (2, 0),
       crate::engine::ChannelLayoutSetting::Auto,
       crate::dsp::SpectrumChannelSel::default(),
+      crate::dsp::SpectrumView::default(),
       None,
       false,
     );
@@ -531,6 +535,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::default(),
+      SpectrumView::default(),
       Some(vec![1.0, 1.0, 0.0]),
       false,
     );
@@ -565,6 +570,7 @@ mod tests {
         (0, 1),
         ChannelLayoutSetting::Auto,
         SpectrumChannelSel::default(),
+        SpectrumView::default(),
         None,
         false,
       ) {
@@ -584,6 +590,7 @@ mod tests {
         (0, 1),
         ChannelLayoutSetting::Auto,
         SpectrumChannelSel::default(),
+        SpectrumView::default(),
         None,
         false,
       ) {
@@ -735,6 +742,7 @@ mod tests {
         (0, 1),
         ChannelLayoutSetting::Auto,
         SpectrumChannelSel::default(),
+        SpectrumView::default(),
         None,
         false,
       );
@@ -785,6 +793,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::default(),
+      SpectrumView::default(),
       None,
       true,
     );
@@ -793,6 +802,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::default(),
+      SpectrumView::default(),
       None,
       false,
     );
@@ -801,6 +811,7 @@ mod tests {
       (0, 1),
       ChannelLayoutSetting::Auto,
       SpectrumChannelSel::default(),
+      SpectrumView::default(),
       None,
       true,
     );
@@ -822,6 +833,7 @@ mod tests {
         (0, 1),
         ChannelLayoutSetting::Auto,
         SpectrumChannelSel::default(),
+        SpectrumView::default(),
         None,
         true,
       ) {
@@ -857,6 +869,7 @@ mod tests {
         (0, 1),
         ChannelLayoutSetting::Auto,
         crate::dsp::SpectrumChannelSel::default(),
+        crate::dsp::SpectrumView::default(),
         None,
         false,
       ) {

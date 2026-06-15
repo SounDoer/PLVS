@@ -96,6 +96,7 @@ pub fn audio_start(
   // Channel layout is auto-resolved from channel count on the capture thread; no user override.
   let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
   let spectrum = state.inner().spectrum_channel.clone();
+  let spectrum_view = state.inner().spectrum_view.clone();
   let loudness_weights = state.inner().loudness_weights.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let session = AudioCapture::start_session(
@@ -106,6 +107,7 @@ pub fn audio_start(
     pair,
     layout,
     spectrum,
+    spectrum_view,
     loudness_weights,
     dialogue_gating,
   )?;
