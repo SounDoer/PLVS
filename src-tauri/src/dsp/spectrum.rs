@@ -196,8 +196,15 @@ impl SpectrumMeter {
     };
     self.last_time_sec = now_sec;
     apply_envelope(
-      &incoming, &mut self.smooth_db, &mut self.peak_db, &mut self.peak_hold_until,
-      now_sec, delta_sec, self.attack_ms, self.release_ms, self.peak_hold_sec,
+      &incoming,
+      &mut self.smooth_db,
+      &mut self.peak_db,
+      &mut self.peak_hold_until,
+      now_sec,
+      delta_sec,
+      self.attack_ms,
+      self.release_ms,
+      self.peak_hold_sec,
       self.peak_decay_db_per_sec,
     );
     Some((self.smooth_db.clone(), self.peak_db.clone()))
@@ -292,7 +299,11 @@ impl SpectrumMeter {
       self.bank_b = None;
     }
     if self.bank_b.is_none() {
-      self.bank_b = Some(MultiResBank::new(self.sample_rate, self.min_hz, self.max_hz));
+      self.bank_b = Some(MultiResBank::new(
+        self.sample_rate,
+        self.min_hz,
+        self.max_hz,
+      ));
       self.smooth_db_b.clear();
       self.peak_db_b.clear();
     }
@@ -328,13 +339,27 @@ impl SpectrumMeter {
     let inc_a = self.post_process_for(&self.bank);
     let inc_b = self.post_process_for(self.bank_b.as_ref().unwrap());
     apply_envelope(
-      &inc_a, &mut self.smooth_db, &mut self.peak_db, &mut self.peak_hold_until,
-      now_sec, delta_sec, self.attack_ms, self.release_ms, self.peak_hold_sec,
+      &inc_a,
+      &mut self.smooth_db,
+      &mut self.peak_db,
+      &mut self.peak_hold_until,
+      now_sec,
+      delta_sec,
+      self.attack_ms,
+      self.release_ms,
+      self.peak_hold_sec,
       self.peak_decay_db_per_sec,
     );
     apply_envelope(
-      &inc_b, &mut self.smooth_db_b, &mut self.peak_db_b, &mut self.peak_hold_until_b,
-      now_sec, delta_sec, self.attack_ms, self.release_ms, self.peak_hold_sec,
+      &inc_b,
+      &mut self.smooth_db_b,
+      &mut self.peak_db_b,
+      &mut self.peak_hold_until_b,
+      now_sec,
+      delta_sec,
+      self.attack_ms,
+      self.release_ms,
+      self.peak_hold_sec,
       self.peak_decay_db_per_sec,
     );
 
@@ -546,7 +571,13 @@ mod tests {
       pcm[i * 2 + 1] = s;
     }
     for _ in 0..2 {
-      m.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Combined);
+      m.push_pair(
+        &pcm,
+        2,
+        1.0,
+        SpectrumChannelSel::Pair(0, 1),
+        SpectrumView::Combined,
+      );
     }
     assert!(m.last_output_secondary().is_none());
   }
@@ -563,14 +594,23 @@ mod tests {
       pcm[i * 2 + 1] = s;
     }
     for _ in 0..2 {
-      m.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Ms);
+      m.push_pair(
+        &pcm,
+        2,
+        1.0,
+        SpectrumChannelSel::Pair(0, 1),
+        SpectrumView::Ms,
+      );
     }
     let (centers, m_smooth, _) = m.last_output();
     let (s_smooth, _) = m.last_output_secondary().expect("ms has a secondary curve");
     assert_eq!(s_smooth.len(), centers.len());
     let m_peak = m_smooth.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     let s_peak = s_smooth.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    assert!(m_peak > s_peak + 40.0, "M should dominate S for a centered signal: M={m_peak} S={s_peak}");
+    assert!(
+      m_peak > s_peak + 40.0,
+      "M should dominate S for a centered signal: M={m_peak} S={s_peak}"
+    );
   }
 
   #[test]
@@ -590,8 +630,20 @@ mod tests {
     let mut comb = SpectrumMeter::new(sr);
     let mut ms = SpectrumMeter::new(sr);
     for _ in 0..3 {
-      comb.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Combined);
-      ms.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Ms);
+      comb.push_pair(
+        &pcm,
+        2,
+        1.0,
+        SpectrumChannelSel::Pair(0, 1),
+        SpectrumView::Combined,
+      );
+      ms.push_pair(
+        &pcm,
+        2,
+        1.0,
+        SpectrumChannelSel::Pair(0, 1),
+        SpectrumView::Ms,
+      );
     }
     let (_, comb_smooth, _) = comb.last_output();
     let (_, mid_smooth, _) = ms.last_output();
