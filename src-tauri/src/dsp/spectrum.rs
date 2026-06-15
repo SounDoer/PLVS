@@ -7,7 +7,7 @@
 
 use super::meter::{Meter, PcmContext};
 use crate::dsp::spectrum_bank::{MultiResBank, CAL_OFFSET_DB};
-use crate::dsp::SpectrumChannelSel;
+use crate::dsp::{SpectrumChannelSel, SpectrumView};
 
 fn weighting_a(f_hz: f64) -> f64 {
   let f = f_hz;
@@ -38,6 +38,42 @@ fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
 
 const SLOPE_PIVOT_HZ: f64 = 1000.0;
 
+/// Apply attack/release smoothing + peak-hold for one bank's incoming dB row.
+#[allow(clippy::too_many_arguments)]
+fn apply_envelope(
+  incoming: &[f64],
+  smooth: &mut Vec<f64>,
+  peak: &mut Vec<f64>,
+  hold_until: &mut Vec<f64>,
+  now_sec: f64,
+  delta_sec: f64,
+  attack_ms: f64,
+  release_ms: f64,
+  peak_hold_sec: f64,
+  peak_decay_db_per_sec: f64,
+) {
+  if smooth.len() != incoming.len() {
+    *smooth = incoming.to_vec();
+    *peak = incoming.to_vec();
+    *hold_until = vec![now_sec; incoming.len()];
+    return;
+  }
+  let atk = 1.0 - (-delta_sec / (attack_ms / 1000.0).max(0.001)).exp();
+  let rel = 1.0 - (-delta_sec / (release_ms / 1000.0).max(0.001)).exp();
+  for (i, &inc) in incoming.iter().enumerate() {
+    let prev = smooth[i];
+    let alpha = if inc > prev { atk } else { rel };
+    smooth[i] = prev + (inc - prev) * alpha;
+    let sm = smooth[i];
+    if sm >= peak[i] {
+      peak[i] = sm;
+      hold_until[i] = now_sec + peak_hold_sec;
+    } else if now_sec > hold_until[i] {
+      peak[i] = sm.max(peak[i] - peak_decay_db_per_sec * delta_sec);
+    }
+  }
+}
+
 pub struct SpectrumMeter {
   bank: MultiResBank,
   last_input_channels: usize,
@@ -58,6 +94,14 @@ pub struct SpectrumMeter {
   cached_centers: Vec<f64>,
   cached_smooth: Vec<f64>,
   cached_peak: Vec<f64>,
+  /// Secondary curve state (only used for Lr/Ms views).
+  bank_b: Option<MultiResBank>,
+  smooth_db_b: Vec<f64>,
+  peak_db_b: Vec<f64>,
+  peak_hold_until_b: Vec<f64>,
+  cached_smooth_b: Vec<f64>,
+  cached_peak_b: Vec<f64>,
+  has_secondary: bool,
 }
 
 impl SpectrumMeter {
@@ -83,6 +127,13 @@ impl SpectrumMeter {
       cached_centers: Vec::new(),
       cached_smooth: Vec::new(),
       cached_peak: Vec::new(),
+      bank_b: None,
+      smooth_db_b: Vec::new(),
+      peak_db_b: Vec::new(),
+      peak_hold_until_b: Vec::new(),
+      cached_smooth_b: Vec::new(),
+      cached_peak_b: Vec::new(),
+      has_secondary: false,
     }
   }
 
@@ -91,11 +142,10 @@ impl SpectrumMeter {
     (&self.cached_centers, &self.cached_smooth, &self.cached_peak)
   }
 
-  fn post_process(&self) -> Vec<f64> {
-    let centers = self.bank.grid_freqs();
-    let raw = self.bank.psd_db_row(CAL_OFFSET_DB);
+  fn post_process_for(&self, bank: &MultiResBank) -> Vec<f64> {
+    let centers = bank.grid_freqs();
+    let raw = bank.psd_db_row(CAL_OFFSET_DB);
     let log_pivot = SLOPE_PIVOT_HZ.log2();
-    // weighting + slope
     let mut shaped = Vec::with_capacity(raw.len());
     for (i, &db) in raw.iter().enumerate() {
       let f = centers[i];
@@ -103,6 +153,10 @@ impl SpectrumMeter {
       shaped.push(db + weighting_db(f, &self.weighting) + self.tilt_db_per_octave * oct);
     }
     shaped
+  }
+
+  fn post_process(&self) -> Vec<f64> {
+    self.post_process_for(&self.bank)
   }
 
   /// Returns `(smooth_db, peak_db)` for SVG paths on the frontend, or `None` until the bank is ready.
@@ -141,25 +195,11 @@ impl SpectrumMeter {
       1.0 / 60.0
     };
     self.last_time_sec = now_sec;
-    if self.smooth_db.len() != incoming.len() {
-      self.smooth_db = incoming.clone();
-      self.peak_db = incoming.clone();
-      self.peak_hold_until = vec![now_sec; incoming.len()];
-    }
-    let atk = 1.0 - (-delta_sec / (self.attack_ms / 1000.0).max(0.001)).exp();
-    let rel = 1.0 - (-delta_sec / (self.release_ms / 1000.0).max(0.001)).exp();
-    for (i, &inc) in incoming.iter().enumerate() {
-      let prev = self.smooth_db[i];
-      let alpha = if inc > prev { atk } else { rel };
-      self.smooth_db[i] = prev + (inc - prev) * alpha;
-      let sm = self.smooth_db[i];
-      if sm >= self.peak_db[i] {
-        self.peak_db[i] = sm;
-        self.peak_hold_until[i] = now_sec + self.peak_hold_sec;
-      } else if now_sec > self.peak_hold_until[i] {
-        self.peak_db[i] = sm.max(self.peak_db[i] - self.peak_decay_db_per_sec * delta_sec);
-      }
-    }
+    apply_envelope(
+      &incoming, &mut self.smooth_db, &mut self.peak_db, &mut self.peak_hold_until,
+      now_sec, delta_sec, self.attack_ms, self.release_ms, self.peak_hold_sec,
+      self.peak_decay_db_per_sec,
+    );
     Some((self.smooth_db.clone(), self.peak_db.clone()))
   }
 
@@ -203,6 +243,116 @@ impl SpectrumMeter {
       stereo.push(r);
     }
     self.push_interleaved(&stereo, 2, now_sec)
+  }
+
+  /// Drive the spectrum for a selected pair under a given view.
+  /// Combined/Single → one curve. Lr/Ms → primary + secondary curve.
+  pub fn push_pair(
+    &mut self,
+    interleaved: &[f32],
+    channels: u16,
+    now_sec: f64,
+    sel: SpectrumChannelSel,
+    view: SpectrumView,
+  ) {
+    let ch = channels.max(1) as usize;
+    let two_curve = matches!(sel, SpectrumChannelSel::Pair(_, _))
+      && matches!(view, SpectrumView::Lr | SpectrumView::Ms);
+
+    if !two_curve {
+      let out = if ch == 1 {
+        self.push_mono_duplex(interleaved, now_sec)
+      } else {
+        self.push_selected(interleaved, channels, now_sec, sel)
+      };
+      if let Some((sm, pk)) = out {
+        self.cached_centers = self.band_centers();
+        self.cached_smooth = sm;
+        self.cached_peak = pk;
+      }
+      self.has_secondary = false;
+      self.cached_smooth_b.clear();
+      self.cached_peak_b.clear();
+      return;
+    }
+
+    let (xi, yi) = match sel {
+      SpectrumChannelSel::Pair(x, y) => ((x as usize).min(ch - 1), (y as usize).min(ch - 1)),
+      SpectrumChannelSel::Single(c) => {
+        let ci = (c as usize).min(ch - 1);
+        (ci, ci)
+      }
+    };
+
+    if self.last_input_channels != ch {
+      self.bank = MultiResBank::new(self.sample_rate, self.min_hz, self.max_hz);
+      self.last_input_channels = ch;
+      self.smooth_db.clear();
+      self.peak_db.clear();
+      self.bank_b = None;
+    }
+    if self.bank_b.is_none() {
+      self.bank_b = Some(MultiResBank::new(self.sample_rate, self.min_hz, self.max_hz));
+      self.smooth_db_b.clear();
+      self.peak_db_b.clear();
+    }
+
+    let frames = interleaved.len() / ch;
+    for i in 0..frames {
+      let base = i * ch;
+      let x = interleaved[base + xi];
+      let y = interleaved[base + yi];
+      let (a, b) = match view {
+        SpectrumView::Lr => (x, y),
+        SpectrumView::Ms => (0.5 * (x + y), 0.5 * (x - y)),
+        SpectrumView::Combined => unreachable!(),
+      };
+      self.bank.push_sample(a);
+      if let Some(bb) = self.bank_b.as_mut() {
+        bb.push_sample(b);
+      }
+    }
+
+    let bank_b_ready = self.bank_b.as_ref().map(|b| b.ready()).unwrap_or(false);
+    if !self.bank.ready() || !bank_b_ready {
+      return;
+    }
+
+    let delta_sec = if self.last_time_sec > 0.0 {
+      (now_sec - self.last_time_sec).clamp(1.0 / 240.0, 0.25)
+    } else {
+      1.0 / 60.0
+    };
+    self.last_time_sec = now_sec;
+
+    let inc_a = self.post_process_for(&self.bank);
+    let inc_b = self.post_process_for(self.bank_b.as_ref().unwrap());
+    apply_envelope(
+      &inc_a, &mut self.smooth_db, &mut self.peak_db, &mut self.peak_hold_until,
+      now_sec, delta_sec, self.attack_ms, self.release_ms, self.peak_hold_sec,
+      self.peak_decay_db_per_sec,
+    );
+    apply_envelope(
+      &inc_b, &mut self.smooth_db_b, &mut self.peak_db_b, &mut self.peak_hold_until_b,
+      now_sec, delta_sec, self.attack_ms, self.release_ms, self.peak_hold_sec,
+      self.peak_decay_db_per_sec,
+    );
+
+    self.cached_centers = self.band_centers();
+    self.cached_smooth = self.smooth_db.clone();
+    self.cached_peak = self.peak_db.clone();
+    self.cached_smooth_b = self.smooth_db_b.clone();
+    self.cached_peak_b = self.peak_db_b.clone();
+    self.has_secondary = true;
+  }
+
+  /// Secondary `(smooth_db, peak_db)` when the current view emits two curves, else `None`.
+  pub fn last_output_secondary(&self) -> Option<(&[f64], &[f64])> {
+    if self.has_secondary {
+      Some((&self.cached_smooth_b, &self.cached_peak_b))
+    } else {
+      None
+    }
   }
 
   pub fn band_centers(&self) -> Vec<f64> {
@@ -382,6 +532,73 @@ mod tests {
       "1 kHz peak inflated by slope: {peak1k} (pivot not at 1 kHz?)"
     );
     assert!(peak1k > -25.0, "1 kHz peak unexpectedly low: {peak1k}");
+  }
+
+  #[test]
+  fn combined_view_has_no_secondary() {
+    let sr = 48000.0;
+    let mut m = SpectrumMeter::new(sr);
+    let frames = 16384 * 4;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32;
+      pcm[i * 2] = s;
+      pcm[i * 2 + 1] = s;
+    }
+    for _ in 0..2 {
+      m.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Combined);
+    }
+    assert!(m.last_output_secondary().is_none());
+  }
+
+  #[test]
+  fn ms_view_side_is_silent_for_mono_signal() {
+    let sr = 48000.0;
+    let mut m = SpectrumMeter::new(sr);
+    let frames = 16384 * 6;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32;
+      pcm[i * 2] = s;
+      pcm[i * 2 + 1] = s;
+    }
+    for _ in 0..2 {
+      m.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Ms);
+    }
+    let (centers, m_smooth, _) = m.last_output();
+    let (s_smooth, _) = m.last_output_secondary().expect("ms has a secondary curve");
+    assert_eq!(s_smooth.len(), centers.len());
+    let m_peak = m_smooth.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let s_peak = s_smooth.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    assert!(m_peak > s_peak + 40.0, "M should dominate S for a centered signal: M={m_peak} S={s_peak}");
+  }
+
+  #[test]
+  fn ms_mid_matches_combined() {
+    let sr = 48000.0;
+    let frames = 16384 * 6;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    let mut x: u32 = 0x1234_5678;
+    for i in 0..frames {
+      x = x.wrapping_mul(1664525).wrapping_add(1013904223);
+      let l = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
+      x = x.wrapping_mul(1664525).wrapping_add(1013904223);
+      let r = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
+      pcm[i * 2] = l;
+      pcm[i * 2 + 1] = r;
+    }
+    let mut comb = SpectrumMeter::new(sr);
+    let mut ms = SpectrumMeter::new(sr);
+    for _ in 0..3 {
+      comb.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Combined);
+      ms.push_pair(&pcm, 2, 1.0, SpectrumChannelSel::Pair(0, 1), SpectrumView::Ms);
+    }
+    let (_, comb_smooth, _) = comb.last_output();
+    let (_, mid_smooth, _) = ms.last_output();
+    assert_eq!(comb_smooth.len(), mid_smooth.len());
+    for (a, b) in comb_smooth.iter().zip(mid_smooth.iter()) {
+      assert!((a - b).abs() < 1e-6, "M must equal Combined: {a} vs {b}");
+    }
   }
 
   #[test]
