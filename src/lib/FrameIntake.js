@@ -1,4 +1,3 @@
-import { buildRtaBands, SPECTRUM_SETTINGS } from "../config/scales.js";
 import { RingBuffer } from "./RingBuffer.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
@@ -15,35 +14,13 @@ function getBandsFromCenters(centers) {
   return cached;
 }
 
-// buildRtaBands output is constant for a given (minHz, maxHz, resolution) and the band
-// objects are read-only in all consumers. Cache one array per parameter set so every
-// history row shares it instead of allocating ~245 identical objects per frame.
-const _rtaBandsCache = new Map();
-function getRtaBands(minHz, maxHz, resolution) {
-  const key = `${minHz}:${maxHz}:${resolution}`;
-  let cached = _rtaBandsCache.get(key);
-  if (!cached) {
-    cached = buildRtaBands(minHz, maxHz, resolution);
-    _rtaBandsCache.set(key, cached);
-  }
-  return cached;
-}
-
 /**
  * Compute spectrum display data from a frame or history row.
  * @param {object} row
- * @param {{ defaultSampleRate?: number }} pick
  */
-export function buildSpectrumDataSnapshot(row, pick) {
+export function buildSpectrumDataSnapshot(row) {
   const centers = row.spectrumBandCentersHz || [];
   const dbList = row.spectrumSmoothDb || [];
-  const nyquist = (pick.defaultSampleRate || 48000) * 0.5;
-  const minF = Math.max(20, SPECTRUM_SETTINGS.minHz || 20);
-  const maxF = Math.max(minF * 1.2, Math.min(SPECTRUM_SETTINGS.maxHz || 20000, nyquist));
-  const bands = getRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6");
-  if (bands.length === dbList.length && dbList.length > 0) {
-    return { bands, dbList: [...dbList] };
-  }
   return {
     bands: getBandsFromCenters(centers),
     dbList: [...dbList],
@@ -97,6 +74,8 @@ export class FrameIntake {
     this._visualVectorscopeHist = new RingBuffer(1);
     this._visualCorrHist = new RingBuffer(1);
     this._spectrogramSnapArray = [];
+    // Constant grid frequencies from the live frame; the ~25 Hz visual tick omits them.
+    this._lastSpectrumCenters = [];
     this._currentChannelMetadata = {
       frequencyLabel: "L/R",
       vectorscopePairLabel: "L/R",
@@ -111,6 +90,9 @@ export class FrameIntake {
    * @param {boolean} [freezeSpectrum] skip live spectrum update when true
    */
   pushFrame(frame, histMaxSamples, defaultSampleRate, freezeSpectrum = false) {
+    if (frame.spectrumBandCentersHz?.length) {
+      this._lastSpectrumCenters = frame.spectrumBandCentersHz;
+    }
     if (!freezeSpectrum) {
       this._spectrumData = buildSpectrumDataSnapshot(frame, { defaultSampleRate });
     }
@@ -171,10 +153,8 @@ export class FrameIntake {
       timestampMs: row.timestampMs,
     });
 
-    const minF = Math.max(20, SPECTRUM_SETTINGS.minHz || 20);
-    const maxF = Math.max(minF * 1.2, Math.min(SPECTRUM_SETTINGS.maxHz || 20000, 24000));
     this._visualSpectrumHist.push({
-      bands: getRtaBands(minF, maxF, SPECTRUM_SETTINGS.resolution || "1/6"),
+      bands: getBandsFromCenters(row.spectrumBandCentersHz ?? this._lastSpectrumCenters),
       dbList: [...(row.spectrumSmoothDb ?? [])],
       timestampMs: row.timestampMs,
     });

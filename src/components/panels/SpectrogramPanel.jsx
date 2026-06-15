@@ -225,6 +225,9 @@ export function SpectrogramPanel({ compact = false }) {
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrogramHover.dbLabel}
                     </div>
+                    <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                      {spectrogramHover.noteLabel}
+                    </div>
                   </div>
                 </div>
               )}

@@ -30,6 +30,25 @@ export function formatSpectrumFreq(freq) {
   return `${Math.round(freq)} Hz`;
 }
 
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+/**
+ * Maps a frequency in Hz to a musical note name (A4 = 440 Hz reference).
+ * Returns e.g. "A4", "C4", or "A4 +20¢" when off-pitch. "-" for invalid input.
+ * @param {number} freq
+ * @returns {string}
+ */
+export function freqToNote(freq) {
+  if (!Number.isFinite(freq) || freq <= 0) return "-";
+  const midi = 69 + 12 * Math.log2(freq / 440); // A4 = MIDI 69
+  const rounded = Math.round(midi);
+  const cents = Math.round((midi - rounded) * 100);
+  const name = NOTE_NAMES[((rounded % 12) + 12) % 12];
+  const octave = Math.floor(rounded / 12) - 1; // MIDI: C4 = 60 → octave 4
+  const centStr = cents === 0 ? "" : ` ${cents > 0 ? "+" : ""}${cents}¢`;
+  return `${name}${octave}${centStr}`;
+}
+
 /**
  * Resolves the hover data for the loudness history chart from a normalized X fraction.
  *
@@ -164,6 +183,7 @@ export function computeSpectrogramHoverPoint(
     timeLabel: formatHoverOffset(offsetSec),
     freqLabel: formatSpectrumFreq(hz),
     dbLabel: Number.isFinite(db) ? `${db.toFixed(1)} dB` : "-",
+    noteLabel: freqToNote(bands[lo]?.fCenter ?? hz),
   };
 }
 
