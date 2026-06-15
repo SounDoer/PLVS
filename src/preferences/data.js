@@ -143,7 +143,7 @@ export const UI_PREFERENCES = {
       },
       metrics: {
         valueColumnCh: 5.5,
-        unitColumnRem: 3.1,
+        unitColumnRem: 2.1,
         rowMinHeightRem: 2.5,
         rowPaddingXRem: 0.5,
         rowPaddingYRem: 0.375,
