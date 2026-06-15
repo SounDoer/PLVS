@@ -37,6 +37,11 @@ fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
 
 const OCTAVE_SMOOTH: f64 = 1.0 / 24.0;
 const SLOPE_PIVOT_HZ: f64 = 1000.0;
+/// Display headroom compensation. Octave smoothing spreads a pure tone's concentrated energy,
+/// lowering its displayed peak (~18 dB for a 1/24-oct smooth). This offset re-references the
+/// display so a full-scale sine peaks at ~0 dB — the standard analyzer convention (Pro-Q/SPAN),
+/// with music/noise sitting below. Verified by `full_scale_sine_reads_near_zero_dbfs`.
+const DISPLAY_CAL_DB: f64 = 19.8;
 
 /// Gaussian smoothing in the log-frequency domain; `frac_oct` ~ stddev in octaves.
 fn smooth_octave(db: &[f64], freqs: &[f64], frac_oct: f64) -> Vec<f64> {
@@ -124,7 +129,7 @@ impl SpectrumMeter {
     for (i, &db) in raw.iter().enumerate() {
       let f = centers[i];
       let oct = f.log2() - log_pivot;
-      shaped.push(db + weighting_db(f, &self.weighting) + self.tilt_db_per_octave * oct);
+      shaped.push(db + DISPLAY_CAL_DB + weighting_db(f, &self.weighting) + self.tilt_db_per_octave * oct);
     }
     smooth_octave(&shaped, centers, OCTAVE_SMOOTH)
   }
@@ -270,6 +275,29 @@ impl Meter for SpectrumMeter {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn full_scale_sine_reads_near_zero_dbfs() {
+    let sr = 48000.0;
+    let mut m = SpectrumMeter::new(sr);
+    let frames = 16384 * 6;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32;
+      pcm[i * 2] = s;
+      pcm[i * 2 + 1] = s;
+    }
+    let mut out = None;
+    for _ in 0..2 {
+      out = m.push_interleaved(&pcm, 2, 1.0);
+    }
+    let (smooth, _) = out.expect("output");
+    let peak = smooth.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    assert!(
+      (peak - 0.0).abs() < 3.0,
+      "full-scale 1 kHz sine should display near 0 dBFS, got {peak}"
+    );
+  }
 
   #[test]
   fn push_selected_pair_produces_output() {
