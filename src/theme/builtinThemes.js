@@ -70,6 +70,8 @@ const CHARTS_PLVS_DARK = {
   spectrum: {
     strokeLive: "#fb923c",
     strokeSnap: "#fcd34d",
+    strokeLiveB: "#38bdf8",
+    strokeSnapB: "#7dd3fc",
     strokeWidth: 1.5,
     fillOpacityTop: 0.22,
     fillOpacityBottom: 0.03,
@@ -114,6 +116,8 @@ const CHARTS_PLVS_LIGHT = {
   spectrum: {
     strokeLive: "#e07020",
     strokeSnap: "#b76b00",
+    strokeLiveB: "#0e7490",
+    strokeSnapB: "#155e75",
     strokeWidth: 1.5,
     fillOpacityTop: 0.18,
     fillOpacityBottom: 0.03,
@@ -151,6 +155,8 @@ const CHARTS_PLVS_PHOSPHOR = {
   spectrum: {
     strokeLive: "#2cff65",
     strokeSnap: "#9ed4aa",
+    strokeLiveB: "#06b6d4",
+    strokeSnapB: "#22d3ee",
     strokeWidth: 1.5,
     fillOpacityTop: 0.2,
     fillOpacityBottom: 0.02,
@@ -209,6 +215,8 @@ const CHARTS_PLVS_ABYSS = {
   spectrum: {
     strokeLive: "#ff5040",
     strokeSnap: "#28c4cc",
+    strokeLiveB: "#d946ef",
+    strokeSnapB: "#ec4899",
     strokeWidth: 1.5,
     fillOpacityTop: 0.18,
     fillOpacityBottom: 0.02,
@@ -267,6 +275,8 @@ const CHARTS_PLVS_TUNGSTEN = {
   spectrum: {
     strokeLive: "#ffaa00",
     strokeSnap: "#ffd060",
+    strokeLiveB: "#a855f7",
+    strokeSnapB: "#d946ef",
     strokeWidth: 1.5,
     fillOpacityTop: 0.18,
     fillOpacityBottom: 0.02,

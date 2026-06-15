@@ -36,6 +36,8 @@ function getSnapshotTokens(themeId) {
     vectorscopeSnap: charts.vectorscope.strokeSnap,
     spectrumLive: charts.spectrum.strokeLive,
     spectrumSnap: charts.spectrum.strokeSnap,
+    spectrumLiveB: charts.spectrum.strokeLiveB,
+    spectrumSnapB: charts.spectrum.strokeSnapB,
   };
 }
 
@@ -155,5 +157,16 @@ describe("BUILTIN_THEMES", () => {
   it("getBuiltinTheme returns plvs-tungsten correctly", () => {
     expect(getBuiltinTheme("plvs-tungsten").id).toBe("plvs-tungsten");
     expect(getBuiltinTheme("plvs-tungsten").label).toBe("Tungsten");
+  });
+
+  it("defines a distinct secondary spectrum color", () => {
+    for (const themeId of THEME_IDS) {
+      const sp = BUILTIN_THEMES[themeId].charts.spectrum;
+      expect(typeof sp.strokeLiveB).toBe("string");
+      expect(sp.strokeLiveB.length).toBeGreaterThan(0);
+      expect(sp.strokeLiveB).not.toBe(sp.strokeLive);
+      expect(typeof sp.strokeSnapB).toBe("string");
+      expect(sp.strokeSnapB.length).toBeGreaterThan(0);
+    }
   });
 });
