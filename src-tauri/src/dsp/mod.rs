@@ -12,7 +12,7 @@ pub mod spectrum_bank;
 pub mod speech;
 pub mod vectorscope;
 
-pub use channel_sel::SpectrumChannelSel;
+pub use channel_sel::{SpectrumChannelSel, SpectrumView};
 pub use loudness::LoudnessMeter;
 pub use meter::{Meter, PcmContext};
 pub use spectrum::SpectrumMeter;
