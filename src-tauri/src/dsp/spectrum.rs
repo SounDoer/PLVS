@@ -98,8 +98,8 @@ impl SpectrumMeter {
       weighting: "z".to_string(),
       attack_ms: 30.0,
       release_ms: 150.0,
-      peak_hold_sec: 0.0,
-      peak_decay_db_per_sec: 12.0,
+      peak_hold_sec: 1.5,
+      peak_decay_db_per_sec: 8.0,
       tilt_db_per_octave: 4.5,
       min_hz,
       max_hz,
@@ -333,6 +333,18 @@ mod tests {
   }
 
   #[test]
+  fn peak_hold_default_holds_then_decays() {
+    let sr = 48000.0;
+    let m = SpectrumMeter::new(sr);
+    assert!(m.peak_hold_sec >= 1.0, "peak hold should be enabled by default, got {}", m.peak_hold_sec);
+    assert!(
+      m.peak_decay_db_per_sec > 0.0 && m.peak_decay_db_per_sec <= 10.0,
+      "decay should be gentle, got {}",
+      m.peak_decay_db_per_sec
+    );
+  }
+
+  #[test]
   fn default_slope_tilts_curve_upward() {
     let sr = 48000.0;
     let mut m = SpectrumMeter::new(sr);
@@ -363,6 +375,9 @@ mod tests {
     // White noise is flat in PSD; +4.5 dB/oct slope makes 10 kHz read clearly above 100 Hz.
     let octaves = (10000.0_f64 / 100.0).log2();
     let delta = val_near(10000.0) - val_near(100.0);
-    assert!(delta > 4.5 * octaves * 0.6, "slope not applied: delta={delta}");
+    assert!(
+      delta > 4.5 * octaves * 0.6,
+      "slope not applied: delta={delta}"
+    );
   }
 }
