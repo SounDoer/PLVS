@@ -23,6 +23,8 @@ export function SpectrumPanel({ compact = false }) {
     displaySpectrumPath,
     displaySpectrumPeakPath,
     displaySpectrumPathB,
+    displaySpectrumPeakPathB,
+    spectrumPeakHold,
     selectedOffset,
     displaySpectrumData,
     spectrumViewLegend,
@@ -206,7 +208,7 @@ export function SpectrumPanel({ compact = false }) {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                        {displaySpectrumPeakPath ? (
+                        {spectrumPeakHold && displaySpectrumPeakPath ? (
                           <path
                             d={displaySpectrumPeakPath}
                             fill="none"
@@ -228,6 +230,20 @@ export function SpectrumPanel({ compact = false }) {
                             strokeWidth="var(--ui-sp-stroke-w)"
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                          />
+                        ) : null}
+                        {spectrumPeakHold && displaySpectrumPeakPathB ? (
+                          <path
+                            d={displaySpectrumPeakPathB}
+                            fill="none"
+                            stroke={
+                              selectedOffset >= 0
+                                ? "var(--ui-chart-spectrum-snap-b)"
+                                : "var(--ui-chart-spectrum-live-b)"
+                            }
+                            strokeWidth="var(--ui-sp-stroke-w-inner)"
+                            strokeDasharray="8 6"
+                            opacity="0.8"
                           />
                         ) : null}
                       </motion.g>

@@ -215,6 +215,40 @@ describe("PanelHeaderControls", () => {
     expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
   });
 
+  it("shows the Peak toggle on spectrum and reflects + flips state", () => {
+    const onSpectrumPeakHoldToggle = vi.fn();
+    render(
+      <PanelHeaderControls
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+        spectrumPeakHold={true}
+        onSpectrumPeakHoldToggle={onSpectrumPeakHoldToggle}
+      />
+    );
+    const btn = screen.getByLabelText("peak hold");
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(btn);
+    expect(onSpectrumPeakHoldToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the Peak toggle on the spectrogram tab", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="spectrogram"
+        channelCount={6}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumPeakHold={false}
+        onSpectrumPeakHoldToggle={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("peak hold")).toBeNull();
+  });
+
   it("does not render loudness controls before panel controls are wired", () => {
     const stats = render(<PanelHeaderControls activeTab="loudnessStats" />);
     expect(stats.container.firstChild).toBeNull();

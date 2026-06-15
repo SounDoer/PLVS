@@ -77,6 +77,20 @@ function MultiSelectChip({ label, options, selectedIds, onToggle }) {
   );
 }
 
+function ToggleChip({ label, ariaLabel, pressed, onToggle }) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-pressed={pressed}
+      onClick={onToggle}
+      className={cn(CHIP_CLASS, "w-auto", pressed && "bg-secondary text-foreground")}
+    >
+      {label}
+    </button>
+  );
+}
+
 function getSelectedOption(options, valueKey) {
   const matchedOption = options.find((opt) => opt.key === valueKey);
   return {
@@ -105,6 +119,8 @@ export function PanelHeaderControls({
   onSpectrumChange,
   spectrumView = "combined",
   onSpectrumViewChange,
+  spectrumPeakHold = false,
+  onSpectrumPeakHoldToggle,
   panelControls,
   onPanelControlsChange,
 }) {
@@ -168,7 +184,8 @@ export function PanelHeaderControls({
       spectrumViewApplies(sel) &&
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
-    if (!showView && !showChannel) return null;
+    const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
+    if (!showView && !showChannel && !showPeak) return null;
 
     return (
       <div className="flex items-center gap-0.5">
@@ -195,6 +212,14 @@ export function PanelHeaderControls({
             value={spectrumView}
             onChange={(key) => onSpectrumViewChange(key)}
             triggerClassName="w-auto max-w-none"
+          />
+        ) : null}
+        {showPeak ? (
+          <ToggleChip
+            label="Peak"
+            ariaLabel="peak hold"
+            pressed={spectrumPeakHold}
+            onToggle={onSpectrumPeakHoldToggle}
           />
         ) : null}
       </div>

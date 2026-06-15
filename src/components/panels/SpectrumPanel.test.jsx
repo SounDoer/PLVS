@@ -33,6 +33,7 @@ describe("SpectrumPanel", () => {
     const { container } = renderPanel({
       displaySpectrumPath: "M 0 120 L 1000 80",
       displaySpectrumPeakPath: peakPath,
+      spectrumPeakHold: true,
       selectedOffset: -1,
       spectrumHover: null,
       onSpectrumHoverMove: vi.fn(),
@@ -43,6 +44,33 @@ describe("SpectrumPanel", () => {
 
     expect(peakOverlay).toBeTruthy();
     expect(peakOverlay?.getAttribute("stroke")).toBe("var(--ui-chart-spectrum-live)");
+  });
+
+  it("hides the peak overlay when spectrumPeakHold is off", () => {
+    const { container } = renderPanel({
+      displaySpectrumPath: "M 0 120 L 1000 80",
+      displaySpectrumPeakPath: "M 0 20 L 1000 20",
+      spectrumPeakHold: false,
+      selectedOffset: -1,
+    });
+
+    expect(container.querySelector('path[stroke-dasharray="8 6"]')).toBeNull();
+  });
+
+  it("renders the secondary peak overlay with the live-b token when peak hold is on", () => {
+    const { container } = renderPanel({
+      displaySpectrumPath: "M 0 120 L 1000 80",
+      displaySpectrumPathB: "M 0 130 L 1000 90",
+      displaySpectrumPeakPathB: "M 0 30 L 1000 30",
+      spectrumPeakHold: true,
+      selectedOffset: -1,
+      displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
+      spectrumViewLegend: null,
+    });
+
+    const secondaryPeak = container.querySelector('path[d="M 0 30 L 1000 30"]');
+    expect(secondaryPeak).toBeTruthy();
+    expect(secondaryPeak?.getAttribute("stroke")).toBe("var(--ui-chart-spectrum-live-b)");
   });
 
   it("renders the secondary curve path with the live-b token when displaySpectrumPathB is non-empty", () => {
