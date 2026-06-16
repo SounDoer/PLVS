@@ -61,6 +61,11 @@ pub struct MeterHistoryEntry {
   pub waveform_min: Vec<f32>,
   /// Per-channel linear amplitude maximum over this ~100ms history window. Length == channel count.
   pub waveform_max: Vec<f32>,
+  /// Per-channel sub-block (min, max) pairs over this ~100ms window, flat row-major:
+  /// [min_ch0, max_ch0, min_ch1, max_ch1, ...] per sub-block. Stride = 2 * channel_count.
+  pub waveform_sub_pairs: Vec<f32>,
+  /// Number of sub-blocks in this tick. Equals waveform_sub_pairs.len() / (2 * channel_count).
+  pub waveform_sub_count: u32,
 }
 
 /// Visual history snapshot at ~25 Hz, independent of loudness tick.

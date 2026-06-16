@@ -19,6 +19,8 @@ const FRAME_EMIT_MS: u128 = 16;
 const HIST_EMIT_MS: u128 = 95;
 const VISUAL_EMIT_MS: u128 = 40;
 const VS_HISTORY_POINTS: usize = 200;
+/// PCM samples per waveform sub-block. ~19 sub-blocks per ~100ms tick @48kHz.
+const SUBBLOCK_SAMPLES: usize = 256;
 
 fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> (String, bool) {
   let ch = channels.max(1);
@@ -73,6 +75,13 @@ pub struct MeterPipeline {
   waveform_min_acc: Vec<f32>,
   /// Running per-channel max since last history tick. Sentinel NEG_INFINITY = no samples seen yet.
   waveform_max_acc: Vec<f32>,
+  /// Flat row-major sub-block (min, max) pairs accumulated since the last history tick:
+  /// [min_ch0, max_ch0, ...] per completed sub-block. Reused across ticks (taken on emit).
+  waveform_sub_acc: Vec<f32>,
+  /// Sample counter within the in-progress sub-block (0..SUBBLOCK_SAMPLES).
+  waveform_sub_idx: usize,
+  /// Running per-channel (min, max) for the in-progress sub-block, flat, len = 2 * channels.
+  waveform_sub_cur: Vec<f32>,
   last_visual_emit: Instant,
   /// Running per-channel min since last visual tick. Sentinel INFINITY = no samples seen yet.
   visual_waveform_min_acc: Vec<f32>,
@@ -103,6 +112,17 @@ impl MeterPipeline {
       pending_loudness_hist: None,
       waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
       waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
+      waveform_sub_acc: Vec::new(),
+      waveform_sub_idx: 0,
+      waveform_sub_cur: {
+        let ch = channels.max(1) as usize;
+        let mut v = vec![0.0_f32; 2 * ch];
+        for c in 0..ch {
+          v[2 * c] = f32::INFINITY;
+          v[2 * c + 1] = f32::NEG_INFINITY;
+        }
+        v
+      },
       last_visual_emit: Instant::now() - std::time::Duration::from_millis(200),
       visual_waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
       visual_waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
@@ -131,6 +151,12 @@ impl MeterPipeline {
     self.last_loudness = None;
     self.waveform_min_acc.fill(f32::INFINITY);
     self.waveform_max_acc.fill(f32::NEG_INFINITY);
+    self.waveform_sub_acc.clear();
+    self.waveform_sub_idx = 0;
+    for c in 0..(self.channels.max(1) as usize) {
+      self.waveform_sub_cur[2 * c] = f32::INFINITY;
+      self.waveform_sub_cur[2 * c + 1] = f32::NEG_INFINITY;
+    }
     self.visual_waveform_min_acc.fill(f32::INFINITY);
     self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
     self.last_visual_emit = Instant::now() - std::time::Duration::from_millis(200);
@@ -251,6 +277,26 @@ impl MeterPipeline {
           }
         }
       }
+      for c in 0..ch_usize {
+        if 2 * c + 1 < self.waveform_sub_cur.len() {
+          let s = interleaved[base + c];
+          if s < self.waveform_sub_cur[2 * c] {
+            self.waveform_sub_cur[2 * c] = s;
+          }
+          if s > self.waveform_sub_cur[2 * c + 1] {
+            self.waveform_sub_cur[2 * c + 1] = s;
+          }
+        }
+      }
+      self.waveform_sub_idx += 1;
+      if self.waveform_sub_idx >= SUBBLOCK_SAMPLES {
+        self.waveform_sub_acc.extend_from_slice(&self.waveform_sub_cur);
+        for c in 0..ch_usize {
+          self.waveform_sub_cur[2 * c] = f32::INFINITY;
+          self.waveform_sub_cur[2 * c + 1] = f32::NEG_INFINITY;
+        }
+        self.waveform_sub_idx = 0;
+      }
     }
 
     let force_frame = self.pending_loudness_hist.is_some();
@@ -323,6 +369,27 @@ impl MeterPipeline {
         .collect();
       self.waveform_min_acc.fill(f32::INFINITY);
       self.waveform_max_acc.fill(f32::NEG_INFINITY);
+      // Flush the final incomplete sub-block so no samples are lost.
+      if self.waveform_sub_idx > 0 {
+        self.waveform_sub_acc.extend_from_slice(&self.waveform_sub_cur);
+        for c in 0..ch_usize {
+          self.waveform_sub_cur[2 * c] = f32::INFINITY;
+          self.waveform_sub_cur[2 * c + 1] = f32::NEG_INFINITY;
+        }
+        self.waveform_sub_idx = 0;
+      }
+      let stride = 2 * ch_usize;
+      let waveform_sub_count = self
+        .waveform_sub_acc
+        .len()
+        .checked_div(stride)
+        .unwrap_or(0) as u32;
+      let mut waveform_sub_pairs = std::mem::take(&mut self.waveform_sub_acc);
+      for v in waveform_sub_pairs.iter_mut() {
+        if !v.is_finite() {
+          *v = 0.0;
+        }
+      }
       let entry = MeterHistoryEntry {
         timestamp_ms: self.t0.elapsed().as_millis() as u64,
         lufs_momentary: m,
@@ -346,6 +413,8 @@ impl MeterPipeline {
         loudness_layout_known,
         waveform_min,
         waveform_max,
+        waveform_sub_pairs,
+        waveform_sub_count,
       };
       Some(entry)
     } else {
@@ -779,6 +848,57 @@ mod tests {
     );
     assert!(e.waveform_max[1] > 0.5, "R max, got {}", e.waveform_max[1]);
     assert!(e.waveform_min[1] < -0.5, "R min, got {}", e.waveform_min[1]);
+  }
+
+  #[test]
+  fn history_entry_captures_sub_block_pairs() {
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+
+    // 200ms of a 100Hz sine on L, inverted on R, amplitude 0.7
+    let frames = sr as usize / 5;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 100.0 * i as f64 / sr as f64).sin() as f32 * 0.7;
+      pcm[i * 2] = s;
+      pcm[i * 2 + 1] = -s;
+    }
+
+    let mut entries = Vec::new();
+    for _ in 0..5 {
+      let frame = pipeline.push_pcm_f32(
+        &pcm,
+        (0, 1),
+        ChannelLayoutSetting::Auto,
+        SpectrumChannelSel::default(),
+        SpectrumView::default(),
+        None,
+        false,
+      );
+      if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
+        entries.push(tick);
+      }
+    }
+
+    assert!(!entries.is_empty(), "must emit at least one history entry");
+    let e = &entries[0];
+    let stride = 2 * channels as usize;
+    assert!(e.waveform_sub_count >= 10, "expected many sub-blocks, got {}", e.waveform_sub_count);
+    assert_eq!(
+      e.waveform_sub_pairs.len(),
+      e.waveform_sub_count as usize * stride,
+      "flat length == sub_count * 2 * channels"
+    );
+    // Every value must be finite (sentinels mapped to 0.0).
+    assert!(e.waveform_sub_pairs.iter().all(|v| v.is_finite()));
+    // Some sub-block on L must capture a positive peak near 0.7.
+    let l_max = e
+      .waveform_sub_pairs
+      .chunks(stride)
+      .map(|c| c[1])
+      .fold(f32::NEG_INFINITY, f32::max);
+    assert!(l_max > 0.5, "L sub-block max should capture the peak, got {l_max}");
   }
 
   #[test]
