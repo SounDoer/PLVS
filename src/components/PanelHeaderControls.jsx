@@ -123,7 +123,7 @@ function SortableStatsChip({
           onReorder={onReorder}
           role="group"
           aria-label={label}
-          className="flex flex-col gap-0.5"
+          className="flex select-none flex-col gap-0.5"
         >
           {orderedIds.map((id) => (
             <SortableStatRow
