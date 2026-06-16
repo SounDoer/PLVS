@@ -7,7 +7,7 @@ export const SHELL_PAGE =
   "flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-background text-foreground";
 
 export const SHELL_INNER =
-  "flex min-h-0 w-full flex-1 flex-col gap-[var(--ui-shell-gap)] p-[var(--ui-shell-pad)]";
+  "flex min-h-0 w-full flex-1 select-none flex-col gap-[var(--ui-shell-gap)] p-[var(--ui-shell-pad)]";
 
 export const SHELL_HEADER =
   "flex shrink-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-border bg-card/60 px-[var(--ui-header-pad-x)] py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_rgba(255,255,255,0.026)] backdrop-blur-[14px] backdrop-saturate-[140%] z-10";
