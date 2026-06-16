@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_WAVEFORM } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
-import { sliceWaveformHistory } from "../../math/waveformMath.js";
+import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
@@ -46,7 +46,7 @@ export function WaveformPanel({ compact = false }) {
 
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
   const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
-  const { mins, maxes, entryCount, leadingEmptySamples, windowSamples } = sliceWaveformHistory(
+  const { mins, maxes, columns } = sliceWaveformSubHistory(
     histSourceList ?? [],
     visibleSamples ?? 0,
     effectiveOffsetSamples ?? 0,
@@ -63,7 +63,7 @@ export function WaveformPanel({ compact = false }) {
           xFrac,
           mins,
           maxes,
-          entryCount,
+          columns,
           effectiveOffsetSamples ?? 0,
           visibleSamples ?? 0,
           HIST_SAMPLE_SEC,
@@ -93,9 +93,7 @@ export function WaveformPanel({ compact = false }) {
             label={labels[ch] ?? `Ch${ch + 1}`}
             mins={mins[ch]}
             maxes={maxes[ch]}
-            entryCount={entryCount}
-            leadingEmptySamples={leadingEmptySamples}
-            windowSamples={windowSamples}
+            columns={columns}
             compact={compact}
           />
         ))}
@@ -211,15 +209,7 @@ export function WaveformPanel({ compact = false }) {
   );
 }
 
-function WaveformLane({
-  label,
-  mins,
-  maxes,
-  entryCount,
-  leadingEmptySamples,
-  windowSamples,
-  compact,
-}) {
+function WaveformLane({ label, mins, maxes, columns, compact }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
@@ -266,24 +256,19 @@ function WaveformLane({
     ctx.lineTo(W, cy);
     ctx.stroke();
 
-    if (!entryCount || !mins?.length) return;
+    if (!columns || !mins?.length) return;
 
-    // Build envelope path
-    const denom = Math.max(1, (windowSamples || entryCount) - 1);
-    const xForEntry = (i) => ((leadingEmptySamples + i) / denom) * W;
+    const denom = Math.max(1, columns - 1);
+    const xForCol = (i) => (i / denom) * W;
     ctx.beginPath();
-    for (let i = 0; i < entryCount; i++) {
-      const x = xForEntry(i);
+    for (let i = 0; i < columns; i++) {
+      const x = xForCol(i);
       const y = cy - maxes[i] * cy;
-      if (i === 0) {
-        ctx.moveTo(x, y);
-        if (entryCount === 1) ctx.lineTo(W, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     }
-    for (let i = entryCount - 1; i >= 0; i--) {
-      const x = xForEntry(i);
+    for (let i = columns - 1; i >= 0; i--) {
+      const x = xForCol(i);
       const y = cy - mins[i] * cy;
       ctx.lineTo(x, y);
     }
@@ -295,11 +280,11 @@ function WaveformLane({
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Stroke the envelope outline once (same closed path)
+    // Stroke the envelope outline
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = window.devicePixelRatio || 1;
     ctx.stroke();
-  }, [mins, maxes, entryCount, canvasSize]);
+  }, [mins, maxes, columns, canvasSize]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
