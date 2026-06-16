@@ -44,6 +44,16 @@ describe("sliceWaveformSubHistory", () => {
     expect(r.maxes[0]).toHaveLength(r.bucketCount);
     expect(r.maxes[0].every((v) => v === 0)).toBe(true);
     expect(Number.isFinite(r.fracPhase)).toBe(true);
+    expect(r.firstBucket).toBe(-1);
+    expect(r.lastBucket).toBe(-1);
+  });
+
+  it("reports the data-bucket range so the envelope can grow from the right", () => {
+    // Few entries in a wide window: data occupies only the rightmost buckets.
+    const entries = Array.from({ length: 5 }, () => flatEntry(0.5));
+    const r = sliceWaveformSubHistory(entries, 50, 0, 1, 300);
+    expect(r.firstBucket).toBeGreaterThan(r.bucketCount / 2); // leading half stays empty
+    expect(r.lastBucket).toBeGreaterThanOrEqual(r.bucketCount - 2); // data hugs the right edge
   });
 
   it("emits roughly one bucket per device pixel", () => {

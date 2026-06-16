@@ -11,7 +11,7 @@
  * @param {number} effectiveOffsetSamples entries from the live edge (may be fractional)
  * @param {number} channelCount
  * @param {number} pixelWidth             canvas backing-store width in device px (W)
- * @returns {{ mins: number[][], maxes: number[][], bucketCount: number, fracPhase: number }}
+ * @returns {{ mins: number[][], maxes: number[][], bucketCount: number, fracPhase: number, firstBucket: number, lastBucket: number }}
  */
 export function sliceWaveformSubHistory(
   histSourceList,
@@ -37,11 +37,11 @@ export function sliceWaveformSubHistory(
   const mins = Array.from({ length: channelCount }, () => new Array(bucketCount).fill(0));
   const maxes = Array.from({ length: channelCount }, () => new Array(bucketCount).fill(0));
 
-  if (total === 0) return { mins, maxes, bucketCount, fracPhase };
+  if (total === 0) return { mins, maxes, bucketCount, fracPhase, firstBucket: -1, lastBucket: -1 };
 
   const start = Math.max(0, Math.floor(oldestVisible));
   const end = Math.min(total - 1, Math.ceil(newestVisible));
-  if (end < start) return { mins, maxes, bucketCount, fracPhase };
+  if (end < start) return { mins, maxes, bucketCount, fracPhase, firstBucket: -1, lastBucket: -1 };
 
   const hasData = new Array(bucketCount).fill(false);
   const stride = 2 * channelCount;
@@ -99,5 +99,5 @@ export function sliceWaveformSubHistory(
     }
   }
 
-  return { mins, maxes, bucketCount, fracPhase };
+  return { mins, maxes, bucketCount, fracPhase, firstBucket: firstJ, lastBucket: lastJ };
 }

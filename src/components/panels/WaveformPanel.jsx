@@ -60,7 +60,7 @@ export function WaveformPanel({ compact = false }) {
 
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
   const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
-  const { mins, maxes, bucketCount, fracPhase } = sliceWaveformSubHistory(
+  const { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket } = sliceWaveformSubHistory(
     histSourceList ?? [],
     visibleSamples ?? 0,
     effectiveOffsetSamples ?? 0,
@@ -110,6 +110,8 @@ export function WaveformPanel({ compact = false }) {
             maxes={maxes[ch]}
             bucketCount={bucketCount}
             fracPhase={fracPhase}
+            firstBucket={firstBucket}
+            lastBucket={lastBucket}
             compact={compact}
           />
         ))}
@@ -225,7 +227,16 @@ export function WaveformPanel({ compact = false }) {
   );
 }
 
-function WaveformLane({ label, mins, maxes, bucketCount, fracPhase, compact }) {
+function WaveformLane({
+  label,
+  mins,
+  maxes,
+  bucketCount,
+  fracPhase,
+  firstBucket,
+  lastBucket,
+  compact,
+}) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
@@ -272,17 +283,17 @@ function WaveformLane({ label, mins, maxes, bucketCount, fracPhase, compact }) {
     ctx.lineTo(W, cy);
     ctx.stroke();
 
-    if (!bucketCount || !mins?.length) return;
+    if (firstBucket < 0 || !bucketCount || !mins?.length) return;
 
     const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
     ctx.beginPath();
-    for (let j = 0; j < bucketCount; j++) {
+    for (let j = firstBucket; j <= lastBucket; j++) {
       const x = xFor(j);
       const y = cy - maxes[j] * cy;
-      if (j === 0) ctx.moveTo(x, y);
+      if (j === firstBucket) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
-    for (let j = bucketCount - 1; j >= 0; j--) {
+    for (let j = lastBucket; j >= firstBucket; j--) {
       const x = xFor(j);
       const y = cy - mins[j] * cy;
       ctx.lineTo(x, y);
@@ -299,7 +310,7 @@ function WaveformLane({ label, mins, maxes, bucketCount, fracPhase, compact }) {
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = window.devicePixelRatio || 1;
     ctx.stroke();
-  }, [mins, maxes, bucketCount, fracPhase, canvasSize]);
+  }, [mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, canvasSize]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
