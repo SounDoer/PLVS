@@ -65,7 +65,7 @@ export function LoudnessStatsPanel({ compact = false }) {
   const visibleMetrics = orderedMetrics.filter((metric) => visibleIds.includes(metric.id));
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 select-none flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
         <div
           className={cn(

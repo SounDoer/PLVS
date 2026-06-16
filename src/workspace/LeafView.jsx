@@ -204,7 +204,7 @@ export function LeafView({ node, path, style }) {
       </div>
 
       {/* Panel body */}
-      <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
+      <div data-leaf-body className="flex min-h-0 flex-1 select-none overflow-hidden">
         {ActiveComponent && <ActiveComponent />}
       </div>
     </div>
