@@ -68,14 +68,17 @@ export function spectrogramColumnRanges(
   const newestVisible = totalSnaps - 1 - off;
   const oldestVisible = newestVisible - windowSamples + 1; // may be < 0 at startup
 
-  const kStart = Math.floor(oldestVisible / snapsPerBucket);
+  // Exactly W columns (one per device pixel), right-anchored so the newest visible
+  // bucket sits at column W-1. kStart shifts by whole buckets as the offset scrolls,
+  // so columns translate 1:1 with pixels (the painter draws column x at pixel x) —
+  // no round(x*W/bucketCount) rescale to undo the absolute anchoring.
   const kEnd = Math.floor(newestVisible / snapsPerBucket);
-  const bucketCount = Math.max(1, kEnd - kStart + 1);
+  const kStart = kEnd - (W - 1);
 
   const visLo = Math.max(0, oldestVisible);
   const visHiExcl = newestVisible + 1; // exclusive
-  const ranges = new Array(bucketCount);
-  for (let x = 0; x < bucketCount; x++) {
+  const ranges = new Array(W);
+  for (let x = 0; x < W; x++) {
     const k = kStart + x;
     let i0 = Math.ceil(k * snapsPerBucket);
     let i1 = Math.ceil((k + 1) * snapsPerBucket);
@@ -84,5 +87,5 @@ export function spectrogramColumnRanges(
     if (i1 < i0) i1 = i0;
     ranges[x] = [i0, i1];
   }
-  return { ranges, bucketCount };
+  return { ranges, bucketCount: W };
 }
