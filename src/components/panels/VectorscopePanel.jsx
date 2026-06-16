@@ -67,40 +67,44 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
-              <path
-                d={displayVectorPath || "M 130 130 L 130 130"}
-                fill="none"
-                stroke={
-                  selectedOffset >= 0
-                    ? "var(--ui-chart-vectorscope-snap)"
-                    : "var(--ui-chart-vectorscope-live)"
-                }
-                strokeWidth="var(--ui-vs-stroke-w-halo)"
-                opacity="var(--ui-vs-path-glow-opacity)"
-                strokeLinecap="round"
-              />
-              <path
-                d={displayVectorPath || "M 130 130 L 130 130"}
-                fill="none"
-                stroke={
-                  selectedOffset >= 0
-                    ? "var(--ui-chart-vectorscope-snap)"
-                    : "var(--ui-chart-vectorscope-live)"
-                }
-                strokeWidth="var(--ui-vs-stroke-w)"
-                opacity="var(--ui-vs-axis-op)"
-                strokeLinecap="round"
-              />
-              <circle
-                cx="130"
-                cy="130"
-                r="2"
-                fill={
-                  selectedOffset >= 0
-                    ? "var(--ui-chart-vectorscope-snap)"
-                    : "var(--ui-chart-vectorscope-live)"
-                }
-              />
+              {displayVectorPath && (
+                <>
+                  <path
+                    d={displayVectorPath}
+                    fill="none"
+                    stroke={
+                      selectedOffset >= 0
+                        ? "var(--ui-chart-vectorscope-snap)"
+                        : "var(--ui-chart-vectorscope-live)"
+                    }
+                    strokeWidth="var(--ui-vs-stroke-w-halo)"
+                    opacity="var(--ui-vs-path-glow-opacity)"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d={displayVectorPath}
+                    fill="none"
+                    stroke={
+                      selectedOffset >= 0
+                        ? "var(--ui-chart-vectorscope-snap)"
+                        : "var(--ui-chart-vectorscope-live)"
+                    }
+                    strokeWidth="var(--ui-vs-stroke-w)"
+                    opacity="var(--ui-vs-axis-op)"
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    cx="130"
+                    cy="130"
+                    r="2"
+                    fill={
+                      selectedOffset >= 0
+                        ? "var(--ui-chart-vectorscope-snap)"
+                        : "var(--ui-chart-vectorscope-live)"
+                    }
+                  />
+                </>
+              )}
             </svg>
           </div>
           <span
