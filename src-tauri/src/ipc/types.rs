@@ -37,8 +37,16 @@ pub struct MeterHistoryEntry {
   pub timestamp_ms: u64,
   pub lufs_momentary: f64,
   pub lufs_short_term: f64,
+  pub lufs_m_max: f64,
+  pub lufs_st_max: f64,
   pub integrated: f64,
   pub lra: f64,
+  /// Dialogue-gated integrated loudness (LUFS) as of this tick; `NEG_INFINITY` when gating off.
+  pub dialogue_integrated: f64,
+  /// Percentage of audible program classified as dialogue as of this tick; `0.0` when gating off.
+  pub dialogue_percent: f64,
+  /// Dialogue-gated loudness range (LU) as of this tick; `0.0` when gating off.
+  pub dialogue_lra: f64,
   pub true_peak_l: f64,
   pub true_peak_r: f64,
   pub true_peak_max_dbtp: f64,

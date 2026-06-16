@@ -358,6 +358,13 @@ impl MeterPipeline {
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let peak_hold_db = peak_db.clone();
 
+    let dialogue_integrated = lb
+      .as_ref()
+      .map(|l| l.dialogue_integrated)
+      .unwrap_or(f64::NEG_INFINITY);
+    let dialogue_percent = lb.as_ref().map(|l| l.dialogue_percent).unwrap_or(0.0);
+    let dialogue_lra = lb.as_ref().map(|l| l.dialogue_lra).unwrap_or(0.0);
+
     let loudness_hist_tick = if let Some((m, st)) = self.pending_loudness_hist.take() {
       let waveform_min: Vec<f32> = self
         .waveform_min_acc
@@ -394,8 +401,13 @@ impl MeterPipeline {
         timestamp_ms: self.t0.elapsed().as_millis() as u64,
         lufs_momentary: m,
         lufs_short_term: st,
+        lufs_m_max: self.m_max,
+        lufs_st_max: self.st_max,
         integrated: integ,
         lra,
+        dialogue_integrated,
+        dialogue_percent,
+        dialogue_lra,
         true_peak_l: tpl,
         true_peak_r: tpr,
         true_peak_max_dbtp: self.tp_max_db,
@@ -454,13 +466,6 @@ impl MeterPipeline {
         None
       }
     };
-
-    let dialogue_integrated = lb
-      .as_ref()
-      .map(|l| l.dialogue_integrated)
-      .unwrap_or(f64::NEG_INFINITY);
-    let dialogue_percent = lb.as_ref().map(|l| l.dialogue_percent).unwrap_or(0.0);
-    let dialogue_lra = lb.as_ref().map(|l| l.dialogue_lra).unwrap_or(0.0);
 
     let frame = AudioFramePayload {
       peak_db,

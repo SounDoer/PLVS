@@ -33,8 +33,15 @@ function buildAudioSnap(row) {
   return {
     momentary: Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity,
     shortTerm: Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity,
+    mMax: Number.isFinite(row.lufsMMax) ? row.lufsMMax : -Infinity,
+    stMax: Number.isFinite(row.lufsStMax) ? row.lufsStMax : -Infinity,
     integrated: Number.isFinite(row.integrated) ? row.integrated : -Infinity,
     lra: Number.isFinite(row.lra) ? row.lra : -Infinity,
+    dialogueIntegrated: Number.isFinite(row.dialogueIntegrated)
+      ? row.dialogueIntegrated
+      : -Infinity,
+    dialogueLra: Number.isFinite(row.dialogueLra) ? row.dialogueLra : 0,
+    dialoguePercent: Number.isFinite(row.dialoguePercent) ? row.dialoguePercent : null,
     truePeakL: Number.isFinite(row.truePeakL) ? row.truePeakL : -Infinity,
     truePeakR: Number.isFinite(row.truePeakR) ? row.truePeakR : -Infinity,
     tpMax: Number.isFinite(row.truePeakMaxDbtp) ? row.truePeakMaxDbtp : -Infinity,
