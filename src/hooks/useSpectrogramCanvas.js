@@ -23,15 +23,11 @@ function paintImageData(imageData, snaps, ranges, yToBand) {
   const bucketCount = ranges.length;
   if (bucketCount === 0) return;
 
-  // Band count from the first non-empty column's snapshot.
-  let bandCount = 0;
-  for (let x = 0; x < bucketCount; x++) {
-    const [i0, i1] = ranges[x];
-    if (i1 > i0 && snaps[i0] && snaps[i0].dbList) {
-      bandCount = snaps[i0].dbList.length;
-      break;
-    }
-  }
+  // Band count from the newest snapshot (always warm). Older visible snaps may be
+  // cold (empty dbList) at app start; deriving the count from them blanked the
+  // spectrogram at wide time windows.
+  const newest = snaps.length > 0 ? snaps[snaps.length - 1] : null;
+  const bandCount = newest && newest.dbList ? newest.dbList.length : 0;
   if (bandCount === 0) return;
 
   const colDb = new Float32Array(bandCount);
