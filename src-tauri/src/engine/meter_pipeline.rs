@@ -290,7 +290,9 @@ impl MeterPipeline {
       }
       self.waveform_sub_idx += 1;
       if self.waveform_sub_idx >= SUBBLOCK_SAMPLES {
-        self.waveform_sub_acc.extend_from_slice(&self.waveform_sub_cur);
+        self
+          .waveform_sub_acc
+          .extend_from_slice(&self.waveform_sub_cur);
         for c in 0..ch_usize {
           self.waveform_sub_cur[2 * c] = f32::INFINITY;
           self.waveform_sub_cur[2 * c + 1] = f32::NEG_INFINITY;
@@ -371,7 +373,9 @@ impl MeterPipeline {
       self.waveform_max_acc.fill(f32::NEG_INFINITY);
       // Flush the final incomplete sub-block so no samples are lost.
       if self.waveform_sub_idx > 0 {
-        self.waveform_sub_acc.extend_from_slice(&self.waveform_sub_cur);
+        self
+          .waveform_sub_acc
+          .extend_from_slice(&self.waveform_sub_cur);
         for c in 0..ch_usize {
           self.waveform_sub_cur[2 * c] = f32::INFINITY;
           self.waveform_sub_cur[2 * c + 1] = f32::NEG_INFINITY;
@@ -379,11 +383,7 @@ impl MeterPipeline {
         self.waveform_sub_idx = 0;
       }
       let stride = 2 * ch_usize;
-      let waveform_sub_count = self
-        .waveform_sub_acc
-        .len()
-        .checked_div(stride)
-        .unwrap_or(0) as u32;
+      let waveform_sub_count = self.waveform_sub_acc.len().checked_div(stride).unwrap_or(0) as u32;
       let mut waveform_sub_pairs = std::mem::take(&mut self.waveform_sub_acc);
       for v in waveform_sub_pairs.iter_mut() {
         if !v.is_finite() {
@@ -884,7 +884,11 @@ mod tests {
     assert!(!entries.is_empty(), "must emit at least one history entry");
     let e = &entries[0];
     let stride = 2 * channels as usize;
-    assert!(e.waveform_sub_count >= 10, "expected many sub-blocks, got {}", e.waveform_sub_count);
+    assert!(
+      e.waveform_sub_count >= 10,
+      "expected many sub-blocks, got {}",
+      e.waveform_sub_count
+    );
     assert_eq!(
       e.waveform_sub_pairs.len(),
       e.waveform_sub_count as usize * stride,
@@ -898,7 +902,10 @@ mod tests {
       .chunks(stride)
       .map(|c| c[1])
       .fold(f32::NEG_INFINITY, f32::max);
-    assert!(l_max > 0.5, "L sub-block max should capture the peak, got {l_max}");
+    assert!(
+      l_max > 0.5,
+      "L sub-block max should capture the peak, got {l_max}"
+    );
   }
 
   #[test]
