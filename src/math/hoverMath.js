@@ -88,14 +88,16 @@ export function computeHistoryHoverPoint(
 
 /**
  * Resolves the hover data for the waveform panel from a normalized X fraction.
+ * dBFS is read from the decimated column under xFrac; the time label derives from
+ * xFrac across the visible window (decoupled from the column count).
  *
- * @param {number} xFrac - normalized X position (0 = left/oldest, 1 = right/newest)
- * @param {number[][]} mins - mins[ch][i] linear amplitude min
- * @param {number[][]} maxes - maxes[ch][i] linear amplitude max
- * @param {number} entryCount - number of entries in the sliced window
- * @param {number} effectiveOffsetSamples - samples from live edge the window is offset
- * @param {number} visibleSamples - width of visible window in samples
- * @param {number} sampleSec - seconds per sample
+ * @param {number} xFrac - normalized X (0 = left/oldest, 1 = right/newest)
+ * @param {number[][]} mins - mins[ch][col] linear amplitude min
+ * @param {number[][]} maxes - maxes[ch][col] linear amplitude max
+ * @param {number} columns - number of decimated columns (mins[ch].length)
+ * @param {number} effectiveOffsetSamples - entries the window is offset from the live edge
+ * @param {number} visibleSamples - window width in entries
+ * @param {number} sampleSec - seconds per history entry
  * @param {string[]} labels - channel labels
  * @returns {{ leftPct: number, timeLabel: string, channels: Array<{ label: string, dbFs: number }> } | null}
  */
@@ -103,22 +105,22 @@ export function computeWaveformHoverPoint(
   xFrac,
   mins,
   maxes,
-  entryCount,
+  columns,
   effectiveOffsetSamples,
   visibleSamples,
   sampleSec,
   labels
 ) {
-  if (entryCount === 0) return null;
-  const sliceIndex = Math.round(xFrac * Math.max(0, entryCount - 1));
-  const offsetFromEnd = effectiveOffsetSamples + (entryCount - 1 - sliceIndex);
+  if (!columns || columns === 0) return null;
+  const col = Math.round(xFrac * Math.max(0, columns - 1));
+  const offsetFromEnd = effectiveOffsetSamples + (1 - xFrac) * Math.max(0, visibleSamples - 1);
   const offsetSec = Math.max(0, offsetFromEnd * sampleSec);
   return {
     leftPct: xFrac * 100,
     timeLabel: formatHoverOffset(offsetSec),
     channels: labels.map((label, ch) => ({
       label,
-      dbFs: 20 * Math.log10(Math.max(1e-9, Math.abs(maxes[ch]?.[sliceIndex] ?? 0))),
+      dbFs: 20 * Math.log10(Math.max(1e-9, Math.abs(maxes[ch]?.[col] ?? 0))),
     })),
   };
 }

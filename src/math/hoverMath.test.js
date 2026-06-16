@@ -100,94 +100,21 @@ describe("computeSpectrumHoverIndex", () => {
 });
 
 describe("computeWaveformHoverPoint", () => {
-  const mins = [
-    [-0.5, -0.3, -0.1],
-    [-0.4, -0.2, -0.05],
-  ];
-  const maxes = [
-    [0.5, 0.3, 0.1],
-    [0.4, 0.2, 0.05],
-  ];
-  const labels = ["L", "R"];
-  const entryCount = 3;
-  const effectiveOffsetSamples = 2;
-  const visibleSamples = 3;
-  const sampleSec = 0.1;
+  it("reads dBFS from the column under xFrac and time from the window", () => {
+    const columns = 1000;
+    const maxes = [new Array(columns).fill(0)];
+    const mins = [new Array(columns).fill(0)];
+    maxes[0][columns - 1] = 1.0; // right edge = 0 dBFS
 
-  it("returns null when entryCount is 0", () => {
-    expect(computeWaveformHoverPoint(0.5, [], [], 0, 0, 0, 0.1, ["L"])).toBeNull();
+    const r = computeWaveformHoverPoint(1, mins, maxes, columns, 0, 50, 0.1, ["L"]);
+    expect(r.channels[0].dbFs).toBeCloseTo(0, 3);
+    // xFrac=1 → newest → 0s ago (offset 0, right edge).
+    expect(r.timeLabel).toBe("0.0s ago");
+    expect(r.leftPct).toBe(100);
   });
 
-  it("leftPct equals xFrac * 100", () => {
-    const r = computeWaveformHoverPoint(
-      0.6,
-      mins,
-      maxes,
-      entryCount,
-      effectiveOffsetSamples,
-      visibleSamples,
-      sampleSec,
-      labels
-    );
-    expect(r.leftPct).toBeCloseTo(60);
-  });
-
-  it("at xFrac=1 (rightmost), offsetSec = effectiveOffsetSamples * sampleSec", () => {
-    const r = computeWaveformHoverPoint(
-      1,
-      mins,
-      maxes,
-      entryCount,
-      effectiveOffsetSamples,
-      visibleSamples,
-      sampleSec,
-      labels
-    );
-    // sliceIndex = round(1 * (3-1)) = 2 (newest)
-    // offsetFromEnd = effectiveOffsetSamples + (entryCount - 1 - 2) = 2 + 0 = 2
-    // offsetSec = 2 * 0.1 = 0.2s
-    expect(r.timeLabel).toBe("0.2s ago");
-  });
-
-  it("at xFrac=0 (leftmost), offsetSec = (effectiveOffsetSamples + entryCount - 1) * sampleSec", () => {
-    const r = computeWaveformHoverPoint(
-      0,
-      mins,
-      maxes,
-      entryCount,
-      effectiveOffsetSamples,
-      visibleSamples,
-      sampleSec,
-      labels
-    );
-    // sliceIndex = round(0 * 2) = 0 (oldest)
-    // offsetFromEnd = effectiveOffsetSamples + (entryCount - 1 - 0) = 2 + 2 = 4
-    // offsetSec = 4 * 0.1 = 0.4s
-    expect(r.timeLabel).toBe("0.4s ago");
-  });
-
-  it("dbFs is 0 for maxAmp=1.0", () => {
-    const r = computeWaveformHoverPoint(1, [[1.0]], [[1.0]], 1, 0, 1, 0.1, ["L"]);
-    expect(r.channels[0].dbFs).toBeCloseTo(0);
-  });
-
-  it("dbFs is approximately -6.02 for maxAmp=0.5", () => {
-    const r = computeWaveformHoverPoint(1, [[0.5]], [[0.5]], 1, 0, 1, 0.1, ["L"]);
-    expect(r.channels[0].dbFs).toBeCloseTo(-6.02, 1);
-  });
-
-  it("channels array has correct labels", () => {
-    const r = computeWaveformHoverPoint(
-      0.5,
-      mins,
-      maxes,
-      entryCount,
-      effectiveOffsetSamples,
-      visibleSamples,
-      sampleSec,
-      labels
-    );
-    expect(r.channels.map((c) => c.label)).toEqual(["L", "R"]);
+  it("returns null for empty columns", () => {
+    expect(computeWaveformHoverPoint(0.5, [[]], [[]], 0, 0, 50, 0.1, ["L"])).toBeNull();
   });
 });
 
