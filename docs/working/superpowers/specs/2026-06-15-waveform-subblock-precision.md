@@ -1,7 +1,16 @@
 # Waveform Sub-Block Precision Upgrade
 
 **Date:** 2026-06-15
-**Status:** Draft
+**Status:** Draft (v2 — revised after code review on 2026-06-16)
+
+> **v2 changes:** corrected the frontend memory model (the history ring holds
+> ~72 000 entries ≈ 1.9 h, not 60 s, and nested JS arrays carry large overhead);
+> sub-pairs are now retained in a **separate bounded short ring** with **flat
+> `Float32Array`** storage; Rust accumulators use a **flat layout** instead of
+> `Vec<Vec<(f32, f32)>>`; horizontal positioning is **entry-index based**, not
+> wall-clock timestamp; default sub-block size raised to **512** as an explicit
+> cost knob; added an acceptance test and a note on the parallel `VisualHistEntry`
+> path.
 
 ## Motivation
 
@@ -33,168 +42,293 @@ Upgrade the Waveform panel data pipeline so rendering quality is pixel-driven ra
 
 ### Sub-block granularity
 
-Within each ~100ms history tick, the PCM block is divided into **sub-blocks of 256 samples**. At 48 kHz this gives ~5.3 ms per sub-block, producing ~188 sub-blocks per tick. Each sub-block yields one `(min, max)` pair per channel.
+Within each ~100ms history tick, the PCM block is divided into **sub-blocks of 512 samples** (`SUBBLOCK_SAMPLES`). At 48 kHz this gives ~10.7 ms per sub-block, producing ~94 sub-blocks per tick. Each sub-block yields one `(min, max)` pair per channel.
 
 ```
 One ~100ms history tick (4800 samples @48kHz, stereo):
 
-sub-block 0     sub-block 1          sub-block 187
-[256 samples]   [256 samples]  ...   [256 samples]
+sub-block 0     sub-block 1          sub-block 93
+[512 samples]   [512 samples]  ...   [512 samples]
    → (min,max)L    → (min,max)L          → (min,max)L
    → (min,max)R    → (min,max)R          → (min,max)R
 ```
 
+**Sub-block size is the primary cost knob.** It trades fidelity against
+bandwidth and memory linearly. Sizing target: at the 5 s max zoom on a 400 px
+canvas we need ≥ 400 columns / 5 s = 80 sub-pairs/s to fill every pixel; on an
+800 px canvas, 160/s. 512 samples gives ~94/tick = ~940/s — ~11× oversampling at
+400 px, ~6× at 800 px — smooth with comfortable headroom while roughly halving
+the data of a 256-sample block. Drop to 256 only if a future wider panel or
+deeper zoom needs it.
+
 ### Rust: `MeterHistoryEntry` new field
 
+Use a **flat, row-major layout** rather than `Vec<Vec<(f32, f32)>>`. The nested
+form allocates ~94 small inner vecs per tick (×10/s) on the audio-adjacent path
+and serializes as nested arrays; a flat `Vec<f32>` with a known stride avoids the
+allocation churn and is cheaper to (de)serialize and to map onto a frontend
+`Float32Array`.
+
 ```rust
-/// Per-channel sub-block waveform pairs within this ~100ms history window.
-/// Outer vec: one element per sub-block.
-/// Inner vec: one (min, max) per channel, same order as `waveform_min`/`waveform_max`.
-/// At 48 kHz with 256-sample sub-blocks, ~188 sub-blocks per tick.
-pub waveform_sub_pairs: Vec<Vec<(f32, f32)>>,
+/// Per-channel sub-block (min, max) pairs within this ~100ms history window,
+/// flattened row-major. Layout per sub-block: [min_ch0, max_ch0, min_ch1, max_ch1, ...].
+/// Stride = 2 * channel_count. Length = sub_block_count * stride.
+/// At 48 kHz with 512-sample sub-blocks, ~94 sub-blocks per tick.
+pub waveform_sub_pairs: Vec<f32>,
+/// Number of sub-blocks in this tick (so the frontend can recover the stride
+/// without dividing by a possibly-zero channel count). Equals
+/// waveform_sub_pairs.len() / (2 * channel_count).
+pub waveform_sub_count: u32,
 ```
 
-The existing `waveform_min: Vec<f32>` and `waveform_max: Vec<f32>` fields are **retained** as whole-tick aggregates so that:
-- The Loudness History panel can still quickly read amplitude bounds if needed.
-- Backward compatibility during the transition window.
+The existing `waveform_min: Vec<f32>` and `waveform_max: Vec<f32>` fields are
+**retained** as whole-tick aggregates. Their role is now the **downgrade
+representation for old history**: only the most recent window keeps full
+sub-block detail (see *Frontend memory* below), and everything older falls back
+to these per-tick bounds, which the spec's own motivation table shows are already
+smooth at ≥ 60 s windows. They are not kept for IPC version compatibility — Rust
+and JS ship together, so no version skew exists.
 
 ### Rust: `meter_pipeline.rs` accumulator
 
-Replace the scalar accumulators `waveform_min_acc: Vec<f32>` / `waveform_max_acc: Vec<f32>` with a sub-block ring:
+Keep the existing whole-tick scalar accumulators (`waveform_min_acc` /
+`waveform_max_acc`) — they still feed the retained per-tick bounds. Add a flat
+sub-block accumulator alongside them:
 
 ```rust
-/// Per-channel sub-block (min, max) pairs accumulated since the last history tick.
-/// One entry per sub-block; each entry is a per-channel (min, max) vec.
-waveform_sub_acc: Vec<Vec<(f32, f32)>>,
-/// Current sub-block index within the 256-sample window (0..SUBBLOCK_SAMPLES).
+/// Flat row-major sub-block (min, max) pairs accumulated since the last history
+/// tick: [min_ch0, max_ch0, min_ch1, max_ch1, ...] per completed sub-block.
+/// Reused across ticks; cleared (len = 0) on emit, never reallocated steadily.
+waveform_sub_acc: Vec<f32>,
+/// Sample counter within the current in-progress sub-block (0..SUBBLOCK_SAMPLES).
 waveform_sub_idx: usize,
-/// Running per-channel (min, max) for the current in-progress sub-block.
-waveform_sub_cur: Vec<(f32, f32)>,
+/// Running per-channel (min, max) for the current in-progress sub-block,
+/// flat: [min_ch0, max_ch0, ...], len = 2 * channel_count.
+waveform_sub_cur: Vec<f32>,
 ```
 
 Constants:
 ```rust
-const SUBBLOCK_SAMPLES: usize = 256;
+const SUBBLOCK_SAMPLES: usize = 512;
 ```
 
-In `push_pcm_f32`, the per-sample scan loop is modified:
-- For each sample, update `waveform_sub_cur[ch].0` / `.1` for min/max.
-- When `waveform_sub_idx` reaches `SUBBLOCK_SAMPLES`, push `waveform_sub_cur.clone()` into `waveform_sub_acc`, reset `waveform_sub_cur` to `(INFINITY, NEG_INFINITY)`, and reset the index.
-- On history tick emit, drain `waveform_sub_acc` into `MeterHistoryEntry.waveform_sub_pairs` and allocate fresh vectors.
+In `push_pcm_f32`, fold the sub-block update into the existing per-sample scan
+loop (it already visits every sample for the whole-tick min/max):
+- For each sample, update `waveform_sub_cur[2*ch]` (min) / `waveform_sub_cur[2*ch+1]` (max).
+- When `waveform_sub_idx` reaches `SUBBLOCK_SAMPLES`, append `waveform_sub_cur`
+  to `waveform_sub_acc` via `extend_from_slice`, reset each pair to
+  `(INFINITY, NEG_INFINITY)`, and reset the index. No per-sub-block heap
+  allocation occurs.
+- On history tick emit, move `waveform_sub_acc` into
+  `MeterHistoryEntry.waveform_sub_pairs` (`std::mem::take`), set
+  `waveform_sub_count`, and `clear()` the accumulator for reuse.
 
-Edge case: the final incomplete sub-block at tick boundary is included as-is (fewer than 256 samples) so no data is lost.
+Edge case: the final incomplete sub-block at the tick boundary is flushed as-is
+(fewer than `SUBBLOCK_SAMPLES` samples) so no data is lost. Mirror the existing
+INFINITY/NEG_INFINITY → 0.0 sentinel mapping used for the whole-tick bounds.
 
 ### Bandwidth & memory
 
-**IPC bandwidth (stereo, ~188 sub-blocks/tick, 10 ticks/s):**
+**IPC bandwidth (stereo, ~94 sub-blocks/tick @512 samples, 10 ticks/s):**
 
 ```
-188 sub-blocks × 2 channels × 2 values × 4 bytes = 3 008 bytes/tick
-× 10 ticks/s = ~30 kB/s
+94 sub-blocks × 2 channels × 2 values × 4 bytes = 1 504 bytes/tick
+× 10 ticks/s = ~15 kB/s
 ```
 
-For 7.1 (8 channels): `188 × 8 × 2 × 4 × 10 = ~120 kB/s`. Still negligible.
+For 7.1 (8 channels): `94 × 8 × 2 × 4 × 10 = ~60 kB/s`. Still negligible.
 
-**Frontend memory (60 s history, stereo):**
+**Frontend memory — the part v1 got wrong.**
+
+Two facts make the naive estimate off by ~2–3 orders of magnitude:
+
+1. **The history ring is not 60 s.** `HIST_MAX_SAMPLES = 72000` (`App.jsx`), i.e.
+   ~72 000 entries ≈ **1.9 hours** at 10 Hz, not 600 entries.
+2. **Nested JS arrays are not byte-packed.** A `[min, max]` array in V8 costs
+   ~32–64 B, not 8 B. Storing `number[][][]` for every ring entry would mean,
+   stereo: `72 000 × 94 × 2 ch ≈ 13.5 M` small arrays × ~40 B ≈ **~0.5 GB** (×4
+   for 7.1). Unworkable.
+
+**Fix — bounded short ring + `Float32Array`:**
+
+Sub-block precision only matters while zoomed in (≤ ~10 s); the retained
+whole-tick bounds are already smooth at wider windows. So full sub-pairs are kept
+**only for the most recent `SUBPAIR_RING_SEC` of history** in a *separate* ring,
+stored as one flat `Float32Array` per entry (stride `2 * channelCount`). Older
+entries carry only `waveform_min` / `waveform_max`.
+
+With `SUBPAIR_RING_SEC = 120` (2 min — well beyond the 60 s default window and
+the 5 s max zoom):
 
 ```
-60 s × 10 ticks × 188 sub-blocks × 2 ch × 2 × 4 bytes ≈ 1.8 MB
+Per entry @512 samples: 94 × 2 ch × 2 × 4 B ≈ 1.5 kB  (flat Float32Array)
+120 s × 10 ticks × 1.5 kB ≈ 1.8 MB (stereo)
 ```
 
-For 7.1: ~7.2 MB. Acceptable given modern browser memory budgets.
+For 7.1: ~7.2 MB. Bounded and constant regardless of session length — a long
+session no longer grows sub-pair memory. (These numbers match what v1 *claimed*,
+but now they actually hold, because retention is bounded and storage is packed.)
 
 **Compared to alternatives:**
-- Raw PCM (48 kHz × 2 ch × 4 bytes) = 384 kB/s — a full order of magnitude higher.
-- Sub-block min/max is a 12× compression vs raw PCM while preserving visual fidelity.
+- Raw PCM (48 kHz × 2 ch × 4 bytes) = 384 kB/s — far higher, and unbounded.
+- Sub-block min/max is a large compression vs raw PCM while preserving visual fidelity.
 
 ### Frontend: `FrameIntake.js` and `AudioDataContext`
 
-Add `waveformSubPairs` to the stored history row shape in `pushHistRow`:
+**Do not** add `waveformSubPairs` to the main `histMaxSamples`-capped rings — that
+ring is ~72 000 entries (see *Bandwidth & memory*). Instead add a **separate
+bounded sub-pair ring** sized for the recent window only:
 
 ```js
-// FrameIntake.js pushHistRow:
-this._histSourceList.push({
-  // ...existing fields...
-  waveformSubPairs: row.waveformSubPairs ?? [],
-});
+const SUBPAIR_RING_LEN = 1200; // SUBPAIR_RING_SEC(120) × 10 Hz
+
+// In pushHistRow, store the flat Float32Array (zero-copy from the IPC payload
+// where possible) plus the per-entry sub-block count and timestamp for alignment:
+ringPush(
+  this._waveformSubRing,
+  {
+    pairs: row.waveformSubPairs ?? EMPTY_F32,   // Float32Array, stride = 2*ch
+    subCount: row.waveformSubCount ?? 0,
+    timestampMs: row.timestampMs,
+  },
+  SUBPAIR_RING_LEN
+);
 ```
 
-Expose via `getHistSourceList()` — no new context field needed since `histSourceList` already carries `MeterHistoryEntry` objects.
+The whole-tick `waveformMin` / `waveformMax` continue to ride the existing
+`_loudnessHist` ring unchanged, serving as the downgrade representation for
+entries older than the sub-pair ring.
+
+Expose the sub-pair ring via a new `getWaveformSubRing()` accessor and surface it
+on `AudioDataContext` (e.g. `waveformSubList`) so `WaveformPanel` can read it
+alongside `histSourceList`.
 
 ### Frontend: `WaveformPanel.jsx` rendering
 
-The rendering changes from "one data point per history entry" to "per-pixel min/max decimation":
+The rendering changes from "one data point per history entry" to "per-pixel min/max decimation".
 
-1. Flatten all visible sub-pairs into a time-ordered list of `(timestamp_fraction, channel_mins, channel_maxes)`.
+**Horizontal positioning is entry-index based, not wall-clock timestamp.** The
+time axis is shared with Loudness History, which positions purely by entry index
+(`xForEntry = (leadingEmptySamples + i) / denom`, see `WaveformPanel.jsx`).
+History ticks are *not* evenly spaced in wall-clock time — `HIST_EMIT_MS` is gated
+on loudness-block cadence — so decimating by `timestamp` would drift out of
+alignment with the loudness chart. Instead, a sub-pair's x position is:
+
+```
+x_fraction(entryIndex, subIndex) =
+    (leadingEmptySamples + entryIndex + subIndex / subCount) / denom
+```
+
+i.e. **entry index plus the sub-block's fractional position within its tick**.
+This keeps every sub-pair locked to the same axis the loudness history uses, and
+correctly handles the fractional scrub offset and the startup `leadingEmptySamples`.
+
+Decimation:
+
+1. Walk the visible entries. For each entry that exists in the sub-pair ring,
+   emit its sub-pairs at `x_fraction(entryIndex, subIndex)`. For an entry **older
+   than the sub-pair ring** (no sub-pairs), emit a single point per entry from
+   its whole-tick `waveformMin` / `waveformMax` — the downgrade representation.
 2. For each pixel column `px` (0..canvasWidth):
-   - Compute the time range `[px_start, px_end]` that this pixel covers.
-   - Find all sub-pairs whose timestamp falls in this range.
-   - Take the global min of mins and global max of maxes across those sub-pairs.
+   - Take the global min of mins and global max of maxes of every sub-pair whose
+     `x_fraction × W` falls in `[px, px+1)`.
+   - If a column has no sub-pairs (wide zoom, sparse), carry the previous
+     column's bounds so the envelope stays continuous.
    - Draw a vertical line from `cy - max * cy` to `cy - min * cy`.
 3. Fill the region between min and max traces as before (or draw per-pixel vertical lines for the classic DAW look).
 
 This is a **pixel-driven decimation** — data density dynamically matches pixel count. At 400px canvas width and 5s window:
 
 ```
-400 px / 5s = 80 px/s
-Sub-block rate ≈ 188/s → ~2.35 sub-blocks per pixel → smooth
+400 px / 5s = 80 px/s needed
+Sub-block rate ≈ 94/s × 50 entries / 5s = 940/s → ~11.75 sub-blocks per pixel → smooth
 ```
 
-At 60s window:
+At 60s window the visible range mostly exceeds the 120 s sub-pair ring's reach
+only for sessions longer than 2 min of scrollback; within the ring the density is
+~94/s ÷ 6.67 px/s ≈ 14 sub-blocks per pixel — still smooth. Beyond the ring, the
+whole-tick downgrade is already smooth at this width (per the motivation table).
 
-```
-400 px / 60s = 6.67 px/s
-Sub-block rate ≈ 188/s → ~28 sub-blocks per pixel → still smooth
-```
-
-Performance: for stereo at 400px, the per-pixel loop runs 400 iterations × 2 channels, each scanning ~2–28 sub-pairs. Total ~800–22 400 comparisons per frame — trivially fast for `requestAnimationFrame` or the existing ~10 Hz re-render cycle.
+Performance: for stereo at 400px, the per-pixel loop runs 400 iterations × 2 channels, each scanning ~12 sub-pairs at max zoom. Total well under ~10 k comparisons per frame — trivially fast for the existing ~10 Hz re-render cycle.
 
 ### `waveformMath.js` changes
 
-Replace `sliceWaveformHistory` with a new function `sliceWaveformSubHistory` that:
-- Accepts the same parameters but reads `waveformSubPairs` from each entry.
-- Emits three 2D arrays: `mins[ch][px]`, `maxes[ch][px]`, sized to `canvasWidth` instead of `entryCount`.
+Add a new function `sliceWaveformSubHistory` (keep `sliceWaveformHistory` — it
+still serves the whole-tick downgrade path / older entries) that:
+- Reads the bounded sub-pair ring plus the whole-tick `histSourceList` for the
+  downgrade fallback.
+- Decimates by **entry index + intra-tick fraction** (see rendering section),
+  *not* wall-clock timestamp.
+- Emits 2D arrays `mins[ch][px]`, `maxes[ch][px]` sized to `canvasWidth` instead
+  of `entryCount`.
 
 ```js
 export function sliceWaveformSubHistory(
-  histSourceList,
+  histSourceList,        // whole-tick bounds, for entries outside the sub-pair ring
+  waveformSubList,       // bounded ring: { pairs: Float32Array, subCount, timestampMs }
   visibleSamples,
   effectiveOffsetSamples,
   channelCount,
-  canvasWidth  // NEW: pixel count for decimation
+  canvasWidth            // NEW: pixel count for decimation
 ) {
-  // 1. Slice visible entries.
-  // 2. Flatten all sub-pairs with their normalized time position.
-  // 3. For each pixel column, compute min-of-mins and max-of-maxes.
+  // 1. Slice the visible entry range (same index math as sliceWaveformHistory).
+  // 2. For each visible entry: if present in the sub-pair ring, place its
+  //    sub-pairs at x = (leadingEmptySamples + i + sub/subCount) / denom;
+  //    else place one point from waveformMin/waveformMax at the entry index.
+  // 3. For each pixel column, compute min-of-mins and max-of-maxes; carry the
+  //    previous column when empty.
   // 4. Return { mins, maxes, entryCount: canvasWidth }
 }
 ```
 
 ### `ipc/types.js`
 
-Add to `MeterHistoryEntry` typedef:
+Add to the `MeterHistoryEntry` typedef (flat layout matching the Rust side):
 
 ```js
-@property {number[][][]} waveformSubPairs
-// waveformSubPairs[subBlockIdx][channelIdx] = [min, max]
+@property {Float32Array|number[]} waveformSubPairs
+// flat row-major, stride = 2 * channelCount:
+// [min_ch0, max_ch0, min_ch1, max_ch1, ...] per sub-block
+@property {number} waveformSubCount   // sub-blocks in this tick
 ```
 
 ### `hoverMath.js` changes
 
-`computeWaveformHoverPoint` currently maps `xFrac` to an entry index. With sub-blocks it can map to the nearest sub-pair, giving more precise dBFS readings. Update accordingly.
+`computeWaveformHoverPoint` currently maps `xFrac` to an entry index. With
+sub-blocks it can map to the nearest sub-pair (within the ring) for more precise
+dBFS readings, falling back to entry-level bounds outside the ring. Update
+accordingly.
+
+### Acceptance test
+
+The smoothness goal needs a concrete check. In `waveformMath.test.js`: feed a
+swept sine across a 5 s window at `canvasWidth = 400`, call
+`sliceWaveformSubHistory`, and assert the returned `maxes[ch]` has length 400 and
+**no long run of identical adjacent columns** (e.g. no value repeated across more
+than ~3 consecutive pixels), proving the stair-stepping of the whole-tick path is
+gone. Pair with a degenerate test: entries outside the sub-pair ring fall back to
+the whole-tick bounds without throwing.
+
+### Out of band: `VisualHistEntry`
+
+A parallel 25 Hz waveform stream exists on `VisualHistEntry`
+(`waveform_min`/`waveform_max`, `meter_pipeline.rs`). It is **not** consumed by
+`WaveformPanel` (which reads `histSourceList`) and is **not changed** by this
+spec. Noted only to prevent confusion about why two waveform data paths exist.
 
 ## Files to modify
 
 | File | Change |
 |------|--------|
-| `src-tauri/src/ipc/types.rs` | Add `waveform_sub_pairs` field to `MeterHistoryEntry` |
-| `src-tauri/src/engine/meter_pipeline.rs` | Replace scalar accumulators with sub-block ring; emit sub-pairs on history tick |
-| `src/ipc/types.js` | Add `waveformSubPairs` to typedef |
-| `src/lib/FrameIntake.js` | Store `waveformSubPairs` in `pushHistRow` |
-| `src/math/waveformMath.js` | Replace `sliceWaveformHistory` with `sliceWaveformSubHistory` (or add new function) |
-| `src/math/waveformMath.test.js` | Update tests |
-| `src/components/panels/WaveformPanel.jsx` | Use new slice function; pass `canvasWidth`; optionally switch to per-pixel vertical-line rendering |
-| `src/math/hoverMath.js` | Update `computeWaveformHoverPoint` for sub-pair precision |
+| `src-tauri/src/ipc/types.rs` | Add flat `waveform_sub_pairs: Vec<f32>` + `waveform_sub_count: u32` to `MeterHistoryEntry` |
+| `src-tauri/src/engine/meter_pipeline.rs` | Add flat sub-block accumulator (`SUBBLOCK_SAMPLES = 512`) folded into the existing per-sample scan; emit flat sub-pairs + count on history tick; clear/reuse buffer |
+| `src/ipc/types.js` | Add `waveformSubPairs` (flat) + `waveformSubCount` to typedef |
+| `src/lib/FrameIntake.js` | Add a separate bounded `_waveformSubRing` (`SUBPAIR_RING_LEN = 1200`) storing flat `Float32Array` per entry; add `getWaveformSubRing()`; leave the 72k whole-tick rings untouched |
+| `src/App.jsx` / `AudioDataContext` | Surface the sub-pair ring (e.g. `waveformSubList`) on context |
+| `src/math/waveformMath.js` | Add `sliceWaveformSubHistory` (entry-index + intra-tick fraction decimation, with whole-tick downgrade); keep `sliceWaveformHistory` |
+| `src/math/waveformMath.test.js` | Add smoothness + downgrade-fallback tests |
+| `src/components/panels/WaveformPanel.jsx` | Use new slice function; pass `canvasWidth` and `waveformSubList`; optionally per-pixel vertical-line rendering |
+| `src/math/hoverMath.js` | Update `computeWaveformHoverPoint` for sub-pair precision with entry-level fallback |
 | `src/math/hoverMath.test.js` | Update tests |
 
 ## Out of scope
