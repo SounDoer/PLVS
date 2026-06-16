@@ -82,6 +82,7 @@ export const DEFAULT_PANEL_CONTROLS = {
     "psr",
     "plr",
   ],
+  loudnessStatsOrder: [...LOUDNESS_STATS_ORDER],
   loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
 };
 
@@ -132,6 +133,24 @@ function normalizeKnownIds(raw, knownIds, fallback) {
   return normalized;
 }
 
+function normalizeOrder(raw, orderTemplate) {
+  const known = new Set(orderTemplate);
+  const ordered = [];
+  if (Array.isArray(raw)) {
+    for (const id of raw) {
+      if (known.has(id) && !ordered.includes(id)) {
+        ordered.push(id);
+      }
+    }
+  }
+  for (const id of orderTemplate) {
+    if (!ordered.includes(id)) {
+      ordered.push(id);
+    }
+  }
+  return ordered;
+}
+
 export function normalizePanelControls(raw) {
   return {
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
@@ -143,6 +162,7 @@ export function normalizePanelControls(raw) {
       LOUDNESS_STATS_IDS,
       DEFAULT_PANEL_CONTROLS.loudnessStatsVisibleIds
     ),
+    loudnessStatsOrder: normalizeOrder(raw?.loudnessStatsOrder, LOUDNESS_STATS_ORDER),
     loudnessHistoryVisibleLayerIds: normalizeKnownIds(
       raw?.loudnessHistoryVisibleLayerIds,
       LOUDNESS_HISTORY_LAYER_IDS,

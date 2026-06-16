@@ -80,8 +80,65 @@ describe("panelControls", () => {
         "psr",
         "plr",
       ],
+      loudnessStatsOrder: [
+        "momentary",
+        "shortTerm",
+        "integrated",
+        "momentaryMax",
+        "shortTermMax",
+        "lra",
+        "psr",
+        "plr",
+        "dialogueCoverage",
+        "dialogueIntegrated",
+        "dialogueRange",
+        "dialogueOffset",
+      ],
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
     });
+  });
+
+  it("defaults loudnessStatsOrder to the full LOUDNESS_STATS_ORDER", () => {
+    expect(DEFAULT_PANEL_CONTROLS.loudnessStatsOrder).toEqual([
+      "momentary",
+      "shortTerm",
+      "integrated",
+      "momentaryMax",
+      "shortTermMax",
+      "lra",
+      "psr",
+      "plr",
+      "dialogueCoverage",
+      "dialogueIntegrated",
+      "dialogueRange",
+      "dialogueOffset",
+    ]);
+  });
+
+  it("normalizes loudnessStatsOrder: dedupe, drop unknown, backfill missing in default order", () => {
+    const result = normalizePanelControls({
+      loudnessStatsOrder: ["psr", "psr", "bogus", "integrated"],
+    });
+    expect(result.loudnessStatsOrder).toEqual([
+      "psr",
+      "integrated",
+      "momentary",
+      "shortTerm",
+      "momentaryMax",
+      "shortTermMax",
+      "lra",
+      "plr",
+      "dialogueCoverage",
+      "dialogueIntegrated",
+      "dialogueRange",
+      "dialogueOffset",
+    ]);
+  });
+
+  it("falls back to default loudnessStatsOrder when raw is not an array", () => {
+    expect(normalizePanelControls({ loudnessStatsOrder: "nope" }).loudnessStatsOrder).toEqual(
+      DEFAULT_PANEL_CONTROLS.loudnessStatsOrder
+    );
   });
 
   it("normalizes invalid input without preserving unknown ids", () => {
@@ -98,6 +155,7 @@ describe("panelControls", () => {
       spectrumView: "combined",
       spectrumPeakHold: false,
       loudnessStatsVisibleIds: ["momentary"],
+      loudnessStatsOrder: DEFAULT_PANEL_CONTROLS.loudnessStatsOrder,
       loudnessHistoryVisibleLayerIds: ["ref"],
     });
   });
