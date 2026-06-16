@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 import { workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { findLeafWithTab } from "./treeUtils.js";
+import { LOUDNESS_STATS_ORDER } from "../lib/panelControls.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -388,6 +389,7 @@ describe("APPLY_PRESET", () => {
       spectrumView: "combined",
       spectrumPeakHold: false,
       loudnessStatsVisibleIds: ["integrated"],
+      loudnessStatsOrder: LOUDNESS_STATS_ORDER,
       loudnessHistoryVisibleLayerIds: ["momentary"],
     };
     const s = {
@@ -447,6 +449,7 @@ describe("SAVE_PRESET", () => {
       spectrumView: "combined",
       spectrumPeakHold: false,
       loudnessStatsVisibleIds: ["integrated"],
+      loudnessStatsOrder: LOUDNESS_STATS_ORDER,
       loudnessHistoryVisibleLayerIds: ["momentary"],
     };
     const s = { ...DEFAULT_WORKSPACE_STATE, customPresets: [], panelControls };
@@ -463,6 +466,7 @@ describe("SAVE_PRESET", () => {
       spectrumView: "combined",
       spectrumPeakHold: false,
       loudnessStatsVisibleIds: [],
+      loudnessStatsOrder: LOUDNESS_STATS_ORDER,
       loudnessHistoryVisibleLayerIds: [],
     };
     const s = { ...DEFAULT_WORKSPACE_STATE, activePresetId: "lls" };
