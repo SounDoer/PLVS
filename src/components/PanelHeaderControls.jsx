@@ -1,4 +1,5 @@
-import { Check } from "lucide-react";
+import { Check, GripVertical } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
@@ -13,6 +14,7 @@ import {
 import {
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   LOUDNESS_STATS_OPTIONS,
+  LOUDNESS_STATS_ORDER,
   normalizePanelControls,
 } from "@/lib/panelControls.js";
 
@@ -62,6 +64,86 @@ function SpectrumViewChipLabel({ fallbackLabel, legend }) {
         </span>
       ))}
     </span>
+  );
+}
+
+function SortableStatRow({ id, label, checked, onToggle }) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={id}
+      dragListener={false}
+      dragControls={controls}
+      className="flex items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-accent/40"
+    >
+      <span
+        aria-hidden="true"
+        onPointerDown={(event) => controls.start(event)}
+        className="flex cursor-grab touch-none items-center text-muted-foreground"
+      >
+        <GripVertical className="size-3.5" />
+      </span>
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap rounded-sm px-1 py-1 text-left text-sm text-popover-foreground outline-none hover:text-accent-foreground"
+        onClick={() => onToggle(id)}
+      >
+        <span className="flex size-4 items-center justify-center">
+          {checked ? <Check aria-hidden="true" className="size-4" /> : null}
+        </span>
+        {label}
+      </button>
+    </Reorder.Item>
+  );
+}
+
+function SortableStatsChip({
+  label,
+  options,
+  orderedIds,
+  selectedIds,
+  onToggle,
+  onReorder,
+  onResetOrder,
+}) {
+  const labelById = new Map(options.map((option) => [option.id, option.label]));
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className={CHIP_CLASS}>
+          {label}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={6} className="w-auto min-w-[8rem] p-1">
+        <Reorder.Group
+          axis="y"
+          values={orderedIds}
+          onReorder={onReorder}
+          role="group"
+          aria-label={label}
+          className="flex flex-col gap-0.5"
+        >
+          {orderedIds.map((id) => (
+            <SortableStatRow
+              key={id}
+              id={id}
+              label={labelById.get(id) ?? id}
+              checked={selectedIds.includes(id)}
+              onToggle={onToggle}
+            />
+          ))}
+        </Reorder.Group>
+        <button
+          type="button"
+          onClick={onResetOrder}
+          className="mt-1 w-full rounded-sm px-2 py-1 text-left text-xs text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+        >
+          Reset order
+        </button>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -154,9 +236,10 @@ export function PanelHeaderControls({
     const normalizedPanelControls = normalizePanelControls(panelControls);
 
     return (
-      <MultiSelectChip
+      <SortableStatsChip
         label="Stats"
         options={LOUDNESS_STATS_OPTIONS}
+        orderedIds={normalizedPanelControls.loudnessStatsOrder}
         selectedIds={normalizedPanelControls.loudnessStatsVisibleIds}
         onToggle={(id) => {
           onPanelControlsChange(
@@ -166,6 +249,22 @@ export function PanelHeaderControls({
                 normalizedPanelControls.loudnessStatsVisibleIds,
                 id
               ),
+            })
+          );
+        }}
+        onReorder={(nextOrder) => {
+          onPanelControlsChange(
+            normalizePanelControls({
+              ...normalizedPanelControls,
+              loudnessStatsOrder: nextOrder,
+            })
+          );
+        }}
+        onResetOrder={() => {
+          onPanelControlsChange(
+            normalizePanelControls({
+              ...normalizedPanelControls,
+              loudnessStatsOrder: [...LOUDNESS_STATS_ORDER],
             })
           );
         }}

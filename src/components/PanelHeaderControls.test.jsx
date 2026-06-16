@@ -3,11 +3,23 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { PanelHeaderControls } from "./PanelHeaderControls.jsx";
-import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
+import { DEFAULT_PANEL_CONTROLS, LOUDNESS_STATS_ORDER } from "@/lib/panelControls.js";
 import { AudioDataContext } from "@/workspace/AudioDataContext.jsx";
 import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
 import { WorkspaceProvider } from "@/workspace/WorkspaceContext.jsx";
+
+vi.mock("framer-motion", () => ({
+  Reorder: {
+    Group: ({ children, role, "aria-label": ariaLabel, className }) => (
+      <div role={role} aria-label={ariaLabel} className={className}>
+        {children}
+      </div>
+    ),
+    Item: ({ children, className }) => <div className={className}>{children}</div>,
+  },
+  useDragControls: () => ({ start: () => {} }),
+}));
 
 beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
@@ -169,6 +181,48 @@ describe("PanelHeaderControls", () => {
       ...DEFAULT_PANEL_CONTROLS,
       loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
     });
+  });
+
+  it("renders stat rows in loudnessStatsOrder", () => {
+    render(
+      <PanelHeaderControls
+        activeTab="loudnessStats"
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          loudnessStatsOrder: ["psr", "momentary", "integrated"],
+        }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes.slice(0, 3).map((c) => c.textContent)).toEqual([
+      "Short-term Dynamics",
+      "Momentary",
+      "Integrated",
+    ]);
+  });
+
+  it("resets the order to LOUDNESS_STATS_ORDER", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelHeaderControls
+        activeTab="loudnessStats"
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          loudnessStatsOrder: ["psr", "momentary", "integrated"],
+        }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset order" }));
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith(
+      expect.objectContaining({ loudnessStatsOrder: LOUDNESS_STATS_ORDER })
+    );
   });
 
   it("shows the view toggle for a stereo spectrum panel", () => {
