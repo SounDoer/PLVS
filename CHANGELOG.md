@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-06-16
+
+### Added
+- Waveform: sub-block precision with pixel-decimated envelope rendering
+- Waveform: column-indexed hover dBFS with window-based time label
+- Waveform: absolute-anchored pixel-width decimation for scroll stability
+- Spectrogram: absolute-anchored column-range mapping for anti-flicker
+- Loudness: drag-reorder and reset for stats popover
+- Loudness: configurable stats metric ordering via panel controls
+
+### Changed
+- Waveform: grow envelope from the right like loudness history
+- Spectrogram: emit exactly W columns (1:1 pixel) to fully anchor scroll
+- Workspace: make all panel bodies non-selectable at the leaf shell
+
+### Fixed
+- Vectorscope: hide center dot until capture starts
+- Loudness: restore m max / st max / dialogue stats in snapshot mode
+- Loudness: prevent text selection while dragging stat rows
+- Spectrogram: derive bandCount from newest snap, not oldest visible
+- Shell: make app chrome non-selectable at the shell inner container
+
 ## [0.3.4] - 2026-06-15
 
 ### Added
