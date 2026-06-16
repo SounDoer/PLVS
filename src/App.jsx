@@ -1034,6 +1034,7 @@ function AppContent() {
     visualSnapIdx,
     visualSpectrogramSnap,
     loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
+    loudnessStatsOrder: normalizedPanelControls.loudnessStatsOrder,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
     dialogueActiveNow: displayAudio?.dialogueActiveNow ?? false,
   };

@@ -49,11 +49,20 @@ function MetricRow({ id, label, value, unit, active, hint }) {
 }
 
 export function LoudnessStatsPanel({ compact = false }) {
-  const { primaryMetrics, secondaryMetrics, loudnessStatsVisibleIds, dialogueActiveNow } =
-    useAudioData();
+  const {
+    primaryMetrics,
+    secondaryMetrics,
+    loudnessStatsVisibleIds,
+    loudnessStatsOrder,
+    dialogueActiveNow,
+  } = useAudioData();
   const visibleIds = Array.isArray(loudnessStatsVisibleIds) ? loudnessStatsVisibleIds : [];
   const allMetrics = [...primaryMetrics, ...secondaryMetrics];
-  const visibleMetrics = allMetrics.filter((metric) => visibleIds.includes(metric.id));
+  const metricById = new Map(allMetrics.map((metric) => [metric.id, metric]));
+  const orderedMetrics = Array.isArray(loudnessStatsOrder)
+    ? loudnessStatsOrder.map((id) => metricById.get(id)).filter(Boolean)
+    : allMetrics;
+  const visibleMetrics = orderedMetrics.filter((metric) => visibleIds.includes(metric.id));
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">

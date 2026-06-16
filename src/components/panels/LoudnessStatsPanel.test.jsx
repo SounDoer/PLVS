@@ -123,4 +123,24 @@ describe("LoudnessStatsPanel", () => {
 
     expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
   });
+
+  it("renders visible metrics in loudnessStatsOrder, ignoring hidden ids", () => {
+    render(
+      <AudioDataContext.Provider
+        value={{
+          primaryMetrics,
+          secondaryMetrics,
+          loudnessStatsVisibleIds: ["momentary", "integrated", "psr"],
+          loudnessStatsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
+        }}
+      >
+        <LoudnessStatsPanel />
+      </AudioDataContext.Provider>
+    );
+
+    const labels = screen
+      .getAllByText(/Momentary|Integrated|Short-term Dynamics/)
+      .map((el) => el.textContent);
+    expect(labels).toEqual(["Short-term Dynamics", "Integrated", "Momentary"]);
+  });
 });
