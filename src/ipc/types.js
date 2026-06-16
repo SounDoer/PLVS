@@ -19,6 +19,8 @@
  * @property {number[]} spectrumSmoothDb
  * @property {number[]} waveformMin
  * @property {number[]} waveformMax
+ * @property {Float32Array|number[]} waveformSubPairs flat, stride 2*channelCount: [minCh0,maxCh0,...] per sub-block
+ * @property {number} waveformSubCount sub-blocks in this tick
  * @property {string} loudnessLayout
  * @property {boolean} loudnessLayoutKnown
  */

@@ -56,6 +56,8 @@ function ringPush(arr, value, max) {
   if (arr.length > max) arr.shift();
 }
 
+const EMPTY_F32 = new Float32Array(0);
+
 /**
  * Owns all live-data ring buffers (history, snaps, spectrum).
  * Replaces the scattered loudnessHistRef / audioSnapRef / corrSnapRef / vectorSnapRef /
@@ -121,6 +123,10 @@ export class FrameIntake {
         st: hst,
         waveformMin: row.waveformMin ?? [],
         waveformMax: row.waveformMax ?? [],
+        waveformSubPairs: row.waveformSubPairs
+          ? Float32Array.from(row.waveformSubPairs)
+          : EMPTY_F32,
+        waveformSubCount: row.waveformSubCount ?? 0,
         timestampMs: row.timestampMs,
       },
       histMaxSamples

@@ -331,6 +331,25 @@ describe("FrameIntake", () => {
     for (let i = 0; i < 5; i++) intake.pushVisualHistRow(row, 3);
     expect(intake.getVisualWaveformHist().length).toBe(3);
   });
+
+  it("pushHistRow stores waveform sub-pairs as a Float32Array on the row", () => {
+    const intake = new FrameIntake();
+    const pairs = new Float32Array([-0.5, 0.5, -0.3, 0.3]);
+    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
+    const [row] = intake.getLoudnessHistory();
+    expect(row.waveformSubCount).toBe(1);
+    expect(row.waveformSubPairs).toBeInstanceOf(Float32Array);
+    expect(Array.from(row.waveformSubPairs)).toEqual(Array.from(pairs));
+  });
+
+  it("pushHistRow defaults sub-pairs to an empty Float32Array when absent", () => {
+    const intake = new FrameIntake();
+    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    const [row] = intake.getLoudnessHistory();
+    expect(row.waveformSubPairs).toBeInstanceOf(Float32Array);
+    expect(row.waveformSubPairs).toHaveLength(0);
+    expect(row.waveformSubCount).toBe(0);
+  });
 });
 
 describe("secondary curve in spectrum data", () => {
