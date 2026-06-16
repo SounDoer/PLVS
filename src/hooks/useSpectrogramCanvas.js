@@ -1,11 +1,6 @@
 import { useEffect, useRef } from "react";
-import {
-  spectrogramColor,
-  spectrogramVisibleRange,
-  SPEC_DB_MIN,
-  SPEC_DB_MAX,
-} from "../config/scales.js";
-import { buildYToBand } from "../math/spectrogramMath.js";
+import { spectrogramColor, SPEC_DB_MIN, SPEC_DB_MAX } from "../config/scales.js";
+import { buildYToBand, spectrogramColumnRanges } from "../math/spectrogramMath.js";
 
 // Flat RGB byte lookup (256 entries × 3 bytes) for zero-allocation hot path.
 const _INFERNO_FLAT = (() => {
@@ -20,41 +15,70 @@ const _INFERNO_FLAT = (() => {
   return flat;
 })();
 
-function paintImageData(
-  imageData,
-  snaps,
-  startIdx,
-  count,
-  leadingEmptySamples,
-  windowSamples,
-  yToBand
-) {
+function paintImageData(imageData, snaps, ranges, yToBand) {
   const { data, width: W, height: H } = imageData;
   const rng = SPEC_DB_MAX - SPEC_DB_MIN;
   data.fill(0);
 
-  for (let col = 0; col < count; col++) {
-    const snap = snaps[startIdx + col];
-    if (!snap || !snap.dbList) continue;
-    const slot = leadingEmptySamples + col;
-    const xStart = Math.round((slot * W) / windowSamples);
-    const xEnd = Math.round(((slot + 1) * W) / windowSamples);
-    const colW = xEnd - xStart;
-    if (colW <= 0) continue;
+  const bucketCount = ranges.length;
+  if (bucketCount === 0) return;
+
+  // Band count from the first non-empty column's snapshot.
+  let bandCount = 0;
+  for (let x = 0; x < bucketCount; x++) {
+    const [i0, i1] = ranges[x];
+    if (i1 > i0 && snaps[i0] && snaps[i0].dbList) {
+      bandCount = snaps[i0].dbList.length;
+      break;
+    }
+  }
+  if (bandCount === 0) return;
+
+  const colDb = new Float32Array(bandCount);
+  const lastColDb = new Float32Array(bandCount);
+  let hasLast = false;
+
+  for (let x = 0; x < bucketCount; x++) {
+    const [i0, i1] = ranges[x];
+    let colData;
+
+    if (i1 > i0) {
+      colDb.fill(SPEC_DB_MIN);
+      for (let i = i0; i < i1; i++) {
+        const dl = snaps[i] && snaps[i].dbList;
+        if (!dl) continue;
+        for (let b = 0; b < bandCount; b++) {
+          if (dl[b] > colDb[b]) colDb[b] = dl[b];
+        }
+      }
+      colData = colDb;
+      lastColDb.set(colDb);
+      hasLast = true;
+    } else if (hasLast) {
+      colData = lastColDb; // carry forward across an empty (upsampled) column
+    } else {
+      continue; // leading empty → stays black
+    }
+
+    const xStart = Math.round((x * W) / bucketCount);
+    const xEnd = Math.round(((x + 1) * W) / bucketCount);
+    if (xEnd <= xStart) continue;
+
     for (let y = 0; y < H; y++) {
-      const db = snap.dbList[yToBand[y]] ?? SPEC_DB_MIN;
+      const db = colData[yToBand[y]] ?? SPEC_DB_MIN;
       const t = Math.max(0, Math.min(1, (db - SPEC_DB_MIN) / rng));
       const lutIdx = Math.round(t * 255) * 3;
       const r = _INFERNO_FLAT[lutIdx];
       const g = _INFERNO_FLAT[lutIdx + 1];
       const b = _INFERNO_FLAT[lutIdx + 2];
+      const a = Math.round(t * 255);
       const rowBase = y * W;
-      for (let dx = 0; dx < colW; dx++) {
-        const idx = (rowBase + xStart + dx) * 4;
+      for (let dx = xStart; dx < xEnd; dx++) {
+        const idx = (rowBase + dx) * 4;
         data[idx] = r;
         data[idx + 1] = g;
         data[idx + 2] = b;
-        data[idx + 3] = Math.round(t * 255);
+        data[idx + 3] = a;
       }
     }
   }
@@ -129,25 +153,20 @@ export function useSpectrogramCanvas({
         cache.H = H;
       }
 
-      const { startIdx, count, leadingEmptySamples, windowSamples } = spectrogramVisibleRange(
-        len,
-        effectiveOffsetSamples,
-        visibleSamples
-      );
-      if (count === 0) {
+      const { ranges } = spectrogramColumnRanges(len, effectiveOffsetSamples, visibleSamples, W);
+      let anyData = false;
+      for (let x = 0; x < ranges.length; x++) {
+        if (ranges[x][1] > ranges[x][0]) {
+          anyData = true;
+          break;
+        }
+      }
+      if (!anyData) {
         ctx.clearRect(0, 0, W, H);
         return;
       }
 
-      paintImageData(
-        cache.imageData,
-        snaps,
-        startIdx,
-        count,
-        leadingEmptySamples,
-        windowSamples,
-        cache.yToBand
-      );
+      paintImageData(cache.imageData, snaps, ranges, cache.yToBand);
       ctx.putImageData(cache.imageData, 0, 0);
     }
 
