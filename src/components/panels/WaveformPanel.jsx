@@ -44,13 +44,28 @@ export function WaveformPanel({ compact = false }) {
     showHistoryHud,
   } = useAudioData();
 
+  const lanesRef = useRef(null);
+  const [canvasW, setCanvasW] = useState(0);
+  useEffect(() => {
+    const el = lanesRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const dpr = window.devicePixelRatio || 1;
+      const cssW = Math.max(0, el.clientWidth - LABEL_WIDTH_PX);
+      setCanvasW(Math.round(cssW * dpr));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
   const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
-  const { mins, maxes, columns } = sliceWaveformSubHistory(
+  const { mins, maxes, bucketCount, fracPhase } = sliceWaveformSubHistory(
     histSourceList ?? [],
     visibleSamples ?? 0,
     effectiveOffsetSamples ?? 0,
-    effectiveChannels
+    effectiveChannels,
+    canvasW
   );
 
   const {
@@ -63,7 +78,7 @@ export function WaveformPanel({ compact = false }) {
           xFrac,
           mins,
           maxes,
-          columns,
+          bucketCount,
           effectiveOffsetSamples ?? 0,
           visibleSamples ?? 0,
           HIST_SAMPLE_SEC,
@@ -86,14 +101,15 @@ export function WaveformPanel({ compact = false }) {
         </div>
       </div>
       {/* Channel lanes + interaction overlay */}
-      <div className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
+      <div ref={lanesRef} className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
         {Array.from({ length: effectiveChannels }, (_, ch) => (
           <WaveformLane
             key={ch}
             label={labels[ch] ?? `Ch${ch + 1}`}
             mins={mins[ch]}
             maxes={maxes[ch]}
-            columns={columns}
+            bucketCount={bucketCount}
+            fracPhase={fracPhase}
             compact={compact}
           />
         ))}
@@ -209,7 +225,7 @@ export function WaveformPanel({ compact = false }) {
   );
 }
 
-function WaveformLane({ label, mins, maxes, columns, compact }) {
+function WaveformLane({ label, mins, maxes, bucketCount, fracPhase, compact }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
@@ -256,20 +272,19 @@ function WaveformLane({ label, mins, maxes, columns, compact }) {
     ctx.lineTo(W, cy);
     ctx.stroke();
 
-    if (!columns || !mins?.length) return;
+    if (!bucketCount || !mins?.length) return;
 
-    const denom = Math.max(1, columns - 1);
-    const xForCol = (i) => (i / denom) * W;
+    const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
     ctx.beginPath();
-    for (let i = 0; i < columns; i++) {
-      const x = xForCol(i);
-      const y = cy - maxes[i] * cy;
-      if (i === 0) ctx.moveTo(x, y);
+    for (let j = 0; j < bucketCount; j++) {
+      const x = xFor(j);
+      const y = cy - maxes[j] * cy;
+      if (j === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
-    for (let i = columns - 1; i >= 0; i--) {
-      const x = xForCol(i);
-      const y = cy - mins[i] * cy;
+    for (let j = bucketCount - 1; j >= 0; j--) {
+      const x = xFor(j);
+      const y = cy - mins[j] * cy;
       ctx.lineTo(x, y);
     }
     ctx.closePath();
@@ -284,7 +299,7 @@ function WaveformLane({ label, mins, maxes, columns, compact }) {
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = window.devicePixelRatio || 1;
     ctx.stroke();
-  }, [mins, maxes, columns, canvasSize]);
+  }, [mins, maxes, bucketCount, fracPhase, canvasSize]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
