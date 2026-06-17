@@ -135,4 +135,19 @@ describe("App toolbar", () => {
     expect(clearAllBody).toContain("resetTimer({ restart: running });");
     expect(clearAllBody).not.toContain("setRunning(false)");
   });
+
+  it("keeps updatePanelControls identity stable to avoid a render loop on Start", () => {
+    // Regression: when updatePanelControls depended on workspaceState.panelControls, its
+    // identity changed on every dispatch. Effects listing it in their deps (vectorscope/
+    // spectrum clamps, displayAudio sync) then looped into "Maximum update depth exceeded"
+    // on Start, unmounting the tree (black screen) and tearing down the JS-created tray.
+    // It must read latest values via refs and keep empty useCallback deps.
+    expect(appSource).toContain("panelControlsRef.current = normalizedPanelControls;");
+    expect(appSource).toContain(
+      "setWorkspacePanelControlsRef.current = setWorkspacePanelControls;"
+    );
+    expect(appSource).toContain("const current = panelControlsRef.current;");
+    expect(appSource).toContain("setWorkspacePanelControlsRef.current(next);");
+    expect(appSource).not.toContain("[workspaceState.panelControls, setWorkspacePanelControls]");
+  });
 });
