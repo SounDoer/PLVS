@@ -69,23 +69,20 @@ pub fn run() {
         .get("windowBounds")
         .and_then(|v| serde_json::from_value(v).ok());
 
-      let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+      let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title("PLVS")
         .resizable(true)
         .visible(false)
-        .initialization_script(&init_script);
+        .inner_size(1280.0, 860.0)
+        .initialization_script(&init_script)
+        .build()
+        .map_err(|e| format!("window build: {e}"))?;
 
-      if let Some(b) = saved_bounds {
-        builder = builder
-          .inner_size(b.width as f64, b.height as f64)
-          .position(b.x as f64, b.y as f64);
-      } else {
-        builder = builder.inner_size(1280.0, 860.0);
-      }
-
-      let window = builder.build().map_err(|e| format!("window build: {e}"))?;
-
-      // Clamp against the monitors actually present now, then show.
+      // Saved bounds are PHYSICAL pixels (saved from inner_size + outer_position). Restore
+      // them with physical setters: the builder's inner_size/position take LOGICAL pixels,
+      // so on a scaled display (e.g. 150%) restoring through the builder double-scales and
+      // the window grows + drifts on every relaunch. set_size/set_position take physical,
+      // matching the save path and the (physical) monitor rects used for clamping.
       if let Some(b) = saved_bounds {
         let monitors: Vec<MonitorRect> = window
           .available_monitors()
@@ -99,9 +96,8 @@ pub fn run() {
           })
           .collect();
         let clamped = clamp_to_visible(b, &monitors);
-        if clamped != b {
-          let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
-        }
+        let _ = window.set_size(tauri::PhysicalSize::new(b.width, b.height));
+        let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
         if b.is_maximized {
           let _ = window.maximize();
         }
