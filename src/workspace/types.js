@@ -17,7 +17,6 @@
  * @typedef {{
  *   tree: TreeNode,
  *   visibleModules: ModuleId[],
- *   focusId: ModuleId | null,
  *   activePresetId: string | null,
  *   fullscreenId: ModuleId | null,
  *   panelControls: PanelControls,

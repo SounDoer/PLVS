@@ -132,18 +132,6 @@ describe("TOGGLE_MODULE_VISIBLE", () => {
     const next = workspaceReducer(s, { type: "TOGGLE_MODULE_VISIBLE", payload: { id: "peak" } });
     expect(next.tree).toBe(s.tree);
   });
-
-  it("clears focusId when hiding the focused module", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE, focusId: "peak" };
-    const next = workspaceReducer(s, { type: "TOGGLE_MODULE_VISIBLE", payload: { id: "peak" } });
-    expect(next.focusId).toBeNull();
-  });
-
-  it("preserves focusId when hiding a non-focused module", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE, focusId: "loudness" };
-    const next = workspaceReducer(s, { type: "TOGGLE_MODULE_VISIBLE", payload: { id: "peak" } });
-    expect(next.focusId).toBe("loudness");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -151,13 +139,18 @@ describe("TOGGLE_MODULE_VISIBLE", () => {
 // ---------------------------------------------------------------------------
 
 describe("SET_FOCUS", () => {
-  it("sets focusId to the given module id", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE, focusId: null };
-    const next = workspaceReducer(s, { type: "SET_FOCUS", payload: { id: "peak" } });
-    expect(next.focusId).toBe("peak");
+  it("activates the target tab in its leaf", () => {
+    const root = {
+      type: "leaf",
+      tabs: ["peak", "loudness"],
+      activeTab: "peak",
+    };
+    const next = workspaceReducer(state(root), { type: "SET_FOCUS", payload: { id: "loudness" } });
+    expect(next.tree.activeTab).toBe("loudness");
+    expect(next).not.toHaveProperty("focusId");
   });
 
-  it("makes focused tab active in its leaf", () => {
+  it("makes focused tab active in its leaf (split tree)", () => {
     const root = split("h", [leaf(["peak", "loudness"], "peak"), leaf(["spectrum"])]);
     const next = workspaceReducer(state(root), { type: "SET_FOCUS", payload: { id: "loudness" } });
     expect(next.tree.children[0].activeTab).toBe("loudness");

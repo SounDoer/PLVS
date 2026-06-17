@@ -69,17 +69,16 @@ export function workspaceReducer(state, action) {
       const visibleModules = isVisible
         ? state.visibleModules.filter((m) => m !== id)
         : [...state.visibleModules, id];
-      const focusId = isVisible && state.focusId === id ? null : state.focusId;
       // Tree structure is unchanged — visibleModules controls rendering only
-      return { ...state, visibleModules, focusId };
+      return { ...state, visibleModules };
     }
 
     case "SET_FOCUS": {
       const { id } = action.payload;
       const path = findLeafWithTab(state.tree, id);
-      if (!path) return { ...state, focusId: id };
+      if (!path) return state;
       const newTree = updateNode(state.tree, path, (node) => ({ ...node, activeTab: id }));
-      return { ...state, tree: newTree, focusId: id };
+      return { ...state, tree: newTree };
     }
 
     case "SET_FULLSCREEN":
