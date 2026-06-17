@@ -63,6 +63,7 @@ environment**, with `plugin-store` as the sole source of truth in the shipped ap
 | Production backend | `plugin-store` (`plvs-settings.json`) as the **single source of truth** |
 | Dev/browser backend | `localStorage` |
 | First paint | **Rust injection** — read the file before first paint, inject into the first frame |
+| Window geometry | Persisted in `settings` (`windowBounds`); restored Rust-side before the window is shown, with off-screen clamping; **no second storage file** |
 | Versioning | Stable keys (no `vN` suffix); internal integer `version`, baseline `0`, written **lazily**, decoupled from the app/release version |
 | Old-data migration | **None.** Early users reset once |
 
@@ -105,6 +106,8 @@ the single `plvs.ui` key) from "manages one key" to "manages all domains".
 - `referenceLufs`, `appearance`, `themeId`, `channelLabelOverrides`
 - `closeAction`, `windowPinned`
 - `captureDeviceId`, `clearShortcut`, `clearGlobal`
+- `windowBounds`: `{ x, y, width, height, isMaximized }` (window size/position; `isMaximized`
+  records the flag rather than the maximized-out dimensions)
 
 **`workspace`** — layout/workspace state (everything that follows the workspace/preset):
 
@@ -185,6 +188,15 @@ frame, the fix operates at the store/backend level, once, for all fields:
 - Launch-cost impact is negligible: a few-KB JSON read is single-digit milliseconds,
   dwarfed by WebView/JS startup.
 
+**Window geometry restore (same read).** The window is created hidden; the same Rust read
+applies `settings.windowBounds` (size, position, or `isMaximized`) before the window is
+shown, so there is no resize/reposition jump and no second storage file. Before applying,
+the saved rectangle is checked against the currently available monitors
+(`available_monitors`); if it would land mostly off-screen (e.g. a monitor was unplugged),
+it is clamped/re-centered onto a visible monitor. Saving is event-driven: window
+`moved`/`resized` are debounced, then the current outer position/size + maximized flag are
+written to `settings.windowBounds`.
+
 ## Versioning — stable keys, lazy integer `version`
 
 - Keys are permanently stable, with **no `vN` suffix**: `plvs:settings`, `plvs:workspace`.
@@ -228,8 +240,8 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
 ## Out of scope
 
 - `autostart` — OS-managed, not application data.
-- Any change to *what* settings exist or *how* modules validate them — only *where/how*
-  they persist changes.
+- Other than window geometry (the one new persisted capability added here), no change to
+  *what* settings exist or *how* modules validate them — only *where/how* they persist.
 - Loudness-awareness, channel-label phase 2, and other feature work.
 
 ## Testing notes
@@ -242,4 +254,7 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
   persisted home; presets snapshot `panelControls` without a second write path.
 - First-paint injection: frontend reads `window.__PLVS_INITIAL_STATE__` synchronously when
   present and falls back to backend read when absent.
+- Window geometry: saved bounds round-trip through `settings.windowBounds`; off-screen
+  clamping re-centers a rectangle whose monitor is gone onto a visible monitor;
+  `isMaximized` restores to maximized rather than to the maximized-out dimensions.
 - One-shot cleanup removes the listed orphan keys and is idempotent.
