@@ -4,11 +4,7 @@ import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { settingsStore } from "./persistence/index.js";
-import {
-  normalizePanelControls,
-  readPersistedPanelControls,
-  writePersistedPanelControls,
-} from "./lib/panelControls.js";
+import { normalizePanelControls } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
@@ -199,10 +195,9 @@ function AppContent() {
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
-  const [panelControls, setPanelControlsState] = useState(() => readPersistedPanelControls());
   const normalizedPanelControls = useMemo(
-    () => normalizePanelControls(panelControls),
-    [panelControls]
+    () => normalizePanelControls(workspaceState.panelControls),
+    [workspaceState.panelControls]
   );
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
@@ -278,27 +273,17 @@ function AppContent() {
   const pendingVectorscopePairSyncRef = useRef(null);
   const lastSentVectorscopePairKeyRef = useRef("");
   const lastSentSpectrumChannelKeyRef = useRef("");
-  const workspacePanelControls = useMemo(
-    () => normalizePanelControls(workspaceState.panelControls),
-    [workspaceState.panelControls]
-  );
-  const panelControlsKey = useMemo(
-    () => JSON.stringify(normalizedPanelControls),
-    [normalizedPanelControls]
-  );
-  const workspacePanelControlsKey = useMemo(
-    () => JSON.stringify(workspacePanelControls),
-    [workspacePanelControls]
-  );
-  const lastSyncedPanelControlsKeyRef = useRef(workspacePanelControlsKey);
 
-  const updatePanelControls = useCallback((nextPanelControls) => {
-    setPanelControlsState((current) =>
-      normalizePanelControls(
+  const updatePanelControls = useCallback(
+    (nextPanelControls) => {
+      const current = normalizePanelControls(workspaceState.panelControls);
+      const next = normalizePanelControls(
         typeof nextPanelControls === "function" ? nextPanelControls(current) : nextPanelControls
-      )
-    );
-  }, []);
+      );
+      setWorkspacePanelControls(next);
+    },
+    [workspaceState.panelControls, setWorkspacePanelControls]
+  );
   const sendTrackedVectorscopePair = useCallback((pair) => {
     const key = `${pair.x}-${pair.y}`;
     lastSentVectorscopePairKeyRef.current = key;
@@ -317,31 +302,6 @@ function AppContent() {
   const sendTrackedLoudnessWeights = useCallback((weights) => {
     return setLoudnessWeights(weights).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    writePersistedPanelControls(normalizedPanelControls);
-  }, [normalizedPanelControls]);
-
-  useEffect(() => {
-    if (workspacePanelControlsKey !== lastSyncedPanelControlsKeyRef.current) {
-      lastSyncedPanelControlsKeyRef.current = workspacePanelControlsKey;
-      if (workspacePanelControlsKey !== panelControlsKey) {
-        setPanelControlsState(workspacePanelControls);
-      }
-      return;
-    }
-
-    if (panelControlsKey !== lastSyncedPanelControlsKeyRef.current) {
-      lastSyncedPanelControlsKeyRef.current = panelControlsKey;
-      setWorkspacePanelControls(normalizedPanelControls);
-    }
-  }, [
-    normalizedPanelControls,
-    panelControlsKey,
-    setWorkspacePanelControls,
-    workspacePanelControls,
-    workspacePanelControlsKey,
-  ]);
 
   const {
     histSourceList,

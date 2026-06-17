@@ -1,6 +1,3 @@
-import { UI_PREFERENCES } from "../uiPreferences.js";
-import { patchUiState, readUiState } from "../preferences/uiStore.js";
-
 export const LOUDNESS_STATS_META = {
   momentary: { label: "Momentary", unit: "LUFS", hint: "Loudness over a 400ms window" },
   shortTerm: { label: "Short-term", unit: "LUFS", hint: "Loudness over a 3s window" },
@@ -169,12 +166,4 @@ export function normalizePanelControls(raw) {
       DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
     ),
   };
-}
-
-export function readPersistedPanelControls(prefs = UI_PREFERENCES) {
-  return normalizePanelControls(readUiState(prefs)?.panelControls);
-}
-
-export function writePersistedPanelControls(panelControls, prefs = UI_PREFERENCES) {
-  patchUiState({ panelControls: normalizePanelControls(panelControls) }, prefs);
 }

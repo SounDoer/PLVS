@@ -4,10 +4,7 @@ import {
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   LOUDNESS_STATS_OPTIONS,
   normalizePanelControls,
-  readPersistedPanelControls,
-  writePersistedPanelControls,
 } from "./panelControls.js";
-import { UI_PREFERENCES } from "../uiPreferences.js";
 
 describe("panelControls", () => {
   afterEach(() => {
@@ -157,65 +154,6 @@ describe("panelControls", () => {
       loudnessStatsVisibleIds: ["momentary"],
       loudnessStatsOrder: DEFAULT_PANEL_CONTROLS.loudnessStatsOrder,
       loudnessHistoryVisibleLayerIds: ["ref"],
-    });
-  });
-
-  it("reads defaults when plvs.ui has only old channel keys", () => {
-    localStorage.setItem(
-      UI_PREFERENCES.layoutPersistKey,
-      JSON.stringify({
-        vectorscopePairX: 2,
-        vectorscopePairY: 3,
-        spectrumChannelType: "single",
-        spectrumChannelCh: 2,
-      })
-    );
-
-    expect(readPersistedPanelControls()).toEqual(DEFAULT_PANEL_CONTROLS);
-  });
-
-  it("writes panelControls while preserving unrelated persisted settings", () => {
-    localStorage.setItem(
-      UI_PREFERENCES.layoutPersistKey,
-      JSON.stringify({ appearance: "fixed", referenceLufs: -18 })
-    );
-
-    writePersistedPanelControls({
-      ...DEFAULT_PANEL_CONTROLS,
-      loudnessStatsVisibleIds: [],
-      loudnessHistoryVisibleLayerIds: ["momentary"],
-    });
-
-    expect(JSON.parse(localStorage.getItem(UI_PREFERENCES.layoutPersistKey))).toEqual({
-      appearance: "fixed",
-      referenceLufs: -18,
-      panelControls: {
-        ...DEFAULT_PANEL_CONTROLS,
-        loudnessStatsVisibleIds: [],
-        loudnessHistoryVisibleLayerIds: ["momentary"],
-      },
-    });
-  });
-
-  it("removes legacy top-level channel keys when writing panelControls", () => {
-    localStorage.setItem(
-      UI_PREFERENCES.layoutPersistKey,
-      JSON.stringify({
-        appearance: "fixed",
-        vectorscopePairX: 2,
-        vectorscopePairY: 3,
-        spectrumChannelType: "single",
-        spectrumChannelX: 0,
-        spectrumChannelY: 1,
-        spectrumChannelCh: 2,
-      })
-    );
-
-    writePersistedPanelControls(DEFAULT_PANEL_CONTROLS);
-
-    expect(JSON.parse(localStorage.getItem(UI_PREFERENCES.layoutPersistKey))).toEqual({
-      appearance: "fixed",
-      panelControls: DEFAULT_PANEL_CONTROLS,
     });
   });
 });
