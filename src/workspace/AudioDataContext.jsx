@@ -5,7 +5,7 @@ import { createContext, useContext } from "react";
  * eliminating prop-drilling through Dock / Region / Slot layers.
  *
  * Shape matches the values currently computed in App.jsx and passed
- * through PanelSet. Module components consume via useAudioData().
+ * through the split layout. Module components consume via useAudioData().
  */
 export const AudioDataContext = createContext(null);
 

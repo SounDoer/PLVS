@@ -90,10 +90,10 @@ describe("App toolbar", () => {
     expect(backendSyncIndex).toBeLessThan(liveSyncIndex);
   });
 
-  it("writes ui state through the patchUiState adapter", () => {
-    // Legacy-key stripping + read-merge-write now live in the uiStore adapter
-    // (covered by src/preferences/uiStore.test.js); App just routes its fields through it.
-    expect(appSource).toContain("patchUiState({");
+  it("writes settings state through the settingsStore", () => {
+    // Legacy-key stripping + read-merge-write now live in the settingsStore domain
+    // (covered by src/persistence); App just routes its fields through it.
+    expect(appSource).toContain("settingsStore.patch({");
     expect(appSource).toContain('themeId: appearance === "system" ? null : fixedThemeSelectValue,');
   });
 

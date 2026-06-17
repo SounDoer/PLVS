@@ -8,7 +8,6 @@ import { normalizePanelControls } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
-import { useLayoutDrag } from "./hooks/useLayoutDrag";
 import { useAudioEngine } from "./hooks/useAudioEngine";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
@@ -231,15 +230,6 @@ function AppContent() {
   const [spectrumPathB, setSpectrumPathB] = useState("");
   const [spectrumPeakPathB, setSpectrumPeakPathB] = useState("");
   const [vectorPath, setVectorPath] = useState("");
-  const [mainLeft, setMainLeft] = useState(UI_PREFERENCES.layout.mainColumn.initialPx);
-  const [leftTopRatio, setLeftTopRatio] = useState(UI_PREFERENCES.layout.leftSplit.initialRatio);
-  const [rightTopRatio, setRightTopRatio] = useState(UI_PREFERENCES.layout.rightSplit.initialRatio);
-  const [spectrogramTopRatio, setSpectrogramTopRatio] = useState(
-    UI_PREFERENCES.layout.spectrogramSplit.initialRatio
-  );
-  const [loudnessHistWidthRatio, setLoudnessHistWidthRatio] = useState(
-    UI_PREFERENCES.layout.loudnessHistMetrics.initialRatio
-  );
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
   const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
 
@@ -697,20 +687,6 @@ function AppContent() {
     setHistoryWindowSec,
     setHistoryHudUntilTs,
     setHistoryHudHold,
-  });
-
-  const { beginLayoutDrag, onLayoutDragMove, onLayoutDragUp } = useLayoutDrag({
-    preferences: UI_PREFERENCES,
-    mainLeft,
-    leftTopRatio,
-    rightTopRatio,
-    loudnessHistWidthRatio,
-    spectrogramTopRatio,
-    setMainLeft,
-    setLeftTopRatio,
-    setRightTopRatio,
-    setLoudnessHistWidthRatio,
-    setSpectrogramTopRatio,
   });
 
   const clearAll = async () => {
