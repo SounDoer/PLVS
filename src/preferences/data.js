@@ -5,8 +5,6 @@
  */
 
 export const UI_PREFERENCES = {
-  layoutPersistKey: "plvs.ui",
-
   layout: {
     shell: {
       maxWidthPx: 1600,
