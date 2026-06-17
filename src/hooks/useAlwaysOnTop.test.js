@@ -13,6 +13,19 @@ vi.mock("../ipc/env.js", () => ({
   isTauri: () => true,
 }));
 
+// Keep persistence backed by localStorage so tests can seed/check it directly.
+vi.mock("../persistence/index.js", () => {
+  const settingsStore = {
+    read: () => JSON.parse(localStorage.getItem("plvs:settings") ?? "{}"),
+    patch: (partial) => {
+      const prev = JSON.parse(localStorage.getItem("plvs:settings") ?? "{}");
+      localStorage.setItem("plvs:settings", JSON.stringify({ ...prev, ...partial }));
+    },
+    subscribe: () => () => {},
+  };
+  return { settingsStore };
+});
+
 describe("useAlwaysOnTop", () => {
   beforeEach(() => {
     localStorage.clear();
