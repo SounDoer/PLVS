@@ -63,7 +63,7 @@ environment**, with `plugin-store` as the sole source of truth in the shipped ap
 | Production backend | `plugin-store` (`plvs-settings.json`) as the **single source of truth** |
 | Dev/browser backend | `localStorage` |
 | First paint | **Rust injection** — read the file before first paint, inject into the first frame |
-| Versioning | Stable keys (no `vN` suffix); internal `version` field, written **lazily** |
+| Versioning | Stable keys (no `vN` suffix); internal integer `version`, baseline `0`, written **lazily**, decoupled from the app/release version |
 | Old-data migration | **None.** Early users reset once |
 
 ## Architecture
@@ -185,15 +185,18 @@ frame, the fix operates at the store/backend level, once, for all fields:
 - Launch-cost impact is negligible: a few-KB JSON read is single-digit milliseconds,
   dwarfed by WebView/JS startup.
 
-## Versioning — stable keys, lazy `version` field
+## Versioning — stable keys, lazy integer `version`
 
 - Keys are permanently stable, with **no `vN` suffix**: `plvs:settings`, `plvs:workspace`.
-- Version lives **inside** the blob as a `version` field, following the convention
-  **"absent = v1"**. `createDomainStore.read()` resolves `blob.version ?? 1` and runs an
-  (initially empty) migration chain.
+- Version is a **monotonic integer** that means "storage-format generation", **decoupled
+  from the app/release version**. It increments only when the persisted shape changes, so
+  it advances far slower than the app version.
+- It lives **inside** the blob as a `version` field, following the convention
+  **"absent = 0"** (the baseline). `createDomainStore.read()` resolves `blob.version ?? 0`
+  and runs an (initially empty) migration chain.
 - The field is written **lazily**: nothing writes `version` today. The first time a future
-  release makes a breaking format change, it adds a `v1 → v2` migration and only then does
-  `save` start writing `version: 2`. "No field = legacy v1, field present = v2+" stays
+  release makes a breaking format change, it adds a `0 → 1` migration and only then does
+  `save` start writing `version: 1`. "No field = baseline 0, field present = 1+" stays
   unambiguous.
 
 The read convention and the (empty) migration hook ship now so future migrations are an
