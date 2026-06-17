@@ -1,23 +1,19 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
 import { bindWorkspaceActions, workspaceReducer } from "./reducer.js";
-import { DEFAULT_WORKSPACE_STATE, WORKSPACE_STORAGE_KEY } from "./constants.js";
+import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
+import { workspaceStore } from "../persistence/index.js";
 
 const WorkspaceContext = createContext(null);
 
 function initState() {
-  try {
-    const raw = localStorage.getItem(WORKSPACE_STORAGE_KEY);
-    if (!raw) return DEFAULT_WORKSPACE_STATE;
-    const parsed = JSON.parse(raw);
-    if (!parsed.tree || !Array.isArray(parsed.visibleModules)) return DEFAULT_WORKSPACE_STATE;
-    return {
-      ...DEFAULT_WORKSPACE_STATE,
-      ...parsed,
-      customPresets: Array.isArray(parsed.customPresets) ? parsed.customPresets : [],
-    };
-  } catch (_) {
-    return DEFAULT_WORKSPACE_STATE;
-  }
+  const parsed = workspaceStore.read();
+  if (!parsed.tree || !Array.isArray(parsed.visibleModules)) return DEFAULT_WORKSPACE_STATE;
+  return {
+    ...DEFAULT_WORKSPACE_STATE,
+    ...parsed,
+    customPresets: Array.isArray(parsed.customPresets) ? parsed.customPresets : [],
+    fullscreenId: null, // transient view state: never restored across launches
+  };
 }
 
 export function WorkspaceProvider({ children }) {
@@ -25,9 +21,7 @@ export function WorkspaceProvider({ children }) {
   const [hoveredModuleId, setHoveredModuleId] = useState(null);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(state));
-    } catch (_) {}
+    workspaceStore.patch(state);
   }, [state]);
 
   const value = useMemo(

@@ -1,8 +1,6 @@
 /** @import { TreeNode, ModuleId, WorkspaceState, Preset } from './types.js' */
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 
-export const WORKSPACE_STORAGE_KEY = "plvs:workspace:v3";
-
 /** @type {ModuleId[]} */
 export const ALL_MODULE_IDS = [
   "peak",
@@ -112,7 +110,6 @@ export const BUILTIN_PRESETS = [
 export const DEFAULT_WORKSPACE_STATE = {
   tree: DEFAULT_TREE,
   visibleModules: [...ALL_MODULE_IDS],
-  focusId: null,
   activePresetId: "default",
   fullscreenId: null,
   panelControls: DEFAULT_PANEL_CONTROLS,

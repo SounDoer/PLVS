@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { WORKSPACE_STORAGE_KEY, BUILTIN_PRESETS, ALL_MODULE_IDS } from "./constants.js";
+import { DEFAULT_WORKSPACE_STATE, BUILTIN_PRESETS, ALL_MODULE_IDS } from "./constants.js";
 import { MODULE_REGISTRY } from "./registry.jsx";
 
 describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
@@ -12,9 +12,18 @@ describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
   });
 });
 
-describe("workspace localStorage keys", () => {
-  it("uses plvs:workspace:v3 as WORKSPACE_STORAGE_KEY", () => {
-    expect(WORKSPACE_STORAGE_KEY).toBe("plvs:workspace:v3");
+describe("workspace state shape", () => {
+  it("DEFAULT_WORKSPACE_STATE has the lean persisted shape", () => {
+    expect(Object.keys(DEFAULT_WORKSPACE_STATE).sort()).toEqual(
+      [
+        "activePresetId",
+        "customPresets",
+        "fullscreenId",
+        "panelControls",
+        "tree",
+        "visibleModules",
+      ].sort()
+    );
   });
 });
 
