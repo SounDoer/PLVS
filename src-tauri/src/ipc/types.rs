@@ -131,6 +131,9 @@ pub struct AudioFramePayload {
   /// Whether the loudness layout is known/correct for the input stream.
   pub loudness_layout_known: bool,
   pub timestamp_ms: u64,
+  /// Monotonic per-session sequence number, assigned by the capture bridge as each frame is sent.
+  /// The UI echoes the latest value back via `ack_frames` so the bridge can bound its send backlog.
+  pub seq: u64,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub loudness_hist_tick: Option<MeterHistoryEntry>,
   #[serde(skip_serializing_if = "Option::is_none")]

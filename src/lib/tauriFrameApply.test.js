@@ -60,6 +60,25 @@ describe("buildTauriFrameApply", () => {
     expect(audioState.stMax).toBe(-14.5);
   });
 
+  it("acks the latest seq every 6th frame so the bridge can bound its backlog", () => {
+    const ackFrames = vi.fn();
+    const { applyFrame } = buildTauriFrameApply(makeOptions({ ackFrames }));
+    for (let i = 1; i <= 12; i++) {
+      applyFrame({ peakDb: [], peakHoldDb: [], seq: i });
+    }
+    // frameRef hits 6 and 12 → two acks, each carrying that frame's seq.
+    expect(ackFrames.mock.calls).toEqual([[6], [12]]);
+  });
+
+  it("does not ack when the frame carries no seq", () => {
+    const ackFrames = vi.fn();
+    const { applyFrame } = buildTauriFrameApply(makeOptions({ ackFrames }));
+    for (let i = 1; i <= 6; i++) {
+      applyFrame({ peakDb: [], peakHoldDb: [] });
+    }
+    expect(ackFrames).not.toHaveBeenCalled();
+  });
+
   it("calls setSpectrumPathB with the B path from the frame", () => {
     const setSpectrumPathB = vi.fn();
     // frameRef starts at 1 so first applyFrame increments to 2 (even → shouldPaintUi = true)

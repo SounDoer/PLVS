@@ -32,6 +32,15 @@ export function stopAudioCapture() {
   return invoke("audio_stop");
 }
 
+/**
+ * Heartbeat ack: tells the native engine the highest frame `seq` the UI has processed, so the
+ * capture bridge can bound how far ahead it sends and drop frames if the UI stalls. Fire-and-forget.
+ * @param {number} seq
+ */
+export function ackFrames(seq) {
+  return invoke("ack_frames", { seq });
+}
+
 /** Clears native loudness history ring and peak maxima (call with UI Clear when Tauri capture is running). */
 export function clearAudioHistory() {
   return invoke("clear_audio_history");

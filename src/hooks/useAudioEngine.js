@@ -8,6 +8,7 @@ import {
   setSpectrumChannel,
   setLoudnessWeights,
   setDialogueGating,
+  ackFrames,
 } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
@@ -179,6 +180,9 @@ export function useAudioEngine({
             setVectorPath,
             setHistoryPathM,
             setHistoryPathST,
+            ackFrames: (seq) => {
+              void ackFrames(seq);
+            },
           });
           const applyFrame = (f) => {
             if (!mounted) return;

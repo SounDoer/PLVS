@@ -77,6 +77,12 @@ pub fn audio_start(
       .map_err(|_| "frame subscribers lock poisoned".to_string())?;
     *s = None;
   }
+  // Fresh session: frame seq restarts at 0 in the bridge, so the ack counter must too — otherwise
+  // a leftover high ack from the previous session would mask the new backlog.
+  state
+    .inner()
+    .frame_ack_seq
+    .store(0, std::sync::atomic::Ordering::Relaxed);
   let pool: FrameSubscribers = Arc::new(std::sync::Mutex::new(HashMap::new()));
   {
     let mut p = pool
@@ -229,6 +235,18 @@ pub fn set_loudness_weights(
 #[tauri::command]
 pub fn set_dialogue_gating(enabled: bool, state: State<'_, AppState>) -> Result<(), String> {
   apply_dialogue_gating(&state.inner().dialogue_gating_enabled, enabled);
+  Ok(())
+}
+
+/// UI heartbeat: records the highest frame `seq` the webview has finished processing. The capture
+/// bridge reads it to bound how many frames it sends ahead of a possibly-stalled UI. Monotonic:
+/// out-of-order or stale acks are ignored.
+#[tauri::command]
+pub fn ack_frames(seq: u64, state: State<'_, AppState>) -> Result<(), String> {
+  state
+    .inner()
+    .frame_ack_seq
+    .fetch_max(seq, std::sync::atomic::Ordering::Relaxed);
   Ok(())
 }
 

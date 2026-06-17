@@ -25,10 +25,17 @@ export function buildTauriFrameApply({
   setVectorPath,
   setHistoryPathM,
   setHistoryPathST,
+  ackFrames,
 }) {
   const applyFrame = (f) => {
     frameRef.current += 1;
     const shouldPaintUi = frameRef.current % 2 === 0;
+    // Heartbeat the native engine ~10Hz with the latest processed seq so it can bound its send
+    // backlog. Reaching this line proves the UI thread is draining frames; if it stalls, acks stop
+    // and the bridge drops frames instead of letting the host process grow unboundedly.
+    if (ackFrames && frameRef.current % 6 === 0 && Number.isFinite(f.seq)) {
+      ackFrames(f.seq);
+    }
     const m = Number.isFinite(f.lufsMomentary) ? f.lufsMomentary : -Infinity;
     const st = Number.isFinite(f.lufsShortTerm) ? f.lufsShortTerm : -Infinity;
     const defaultSampleRate = defaultSampleRateRef.current ?? 48000;

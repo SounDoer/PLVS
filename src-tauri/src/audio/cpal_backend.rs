@@ -17,11 +17,22 @@ use crate::dsp::{SpectrumChannelSel, SpectrumView};
 use crate::engine::ChannelLayoutSetting;
 use crate::engine::MeterPipeline;
 use crate::ipc::types::EngineBackpressurePayload;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 const PCM_QUEUE_CAP: usize = 64;
 const PCM_POOL_CHUNK_MS: usize = 100;
 const PCM_MIN_BUFFER_SAMPLES: usize = 4096;
+/// Max frames sent to the UI but not yet acked before the bridge starts dropping. The Tauri
+/// `Channel` to the webview has no backpressure: if the UI thread stalls (e.g. a render loop)
+/// while capture keeps producing ~60 Hz, frames queue in the host process unboundedly until OOM.
+/// Capping in-flight frames bounds that backlog to ~2 s (~1 MB) and resumes once the UI catches up.
+const MAX_FRAMES_INFLIGHT: u64 = 120;
+
+/// True when `sent_seq - acked_seq` has reached `max_inflight`, i.e. the next frame must be
+/// dropped rather than sent. `saturating_sub` guards a stale-high ack after an engine restart.
+pub(crate) fn frame_inflight_exceeds(sent_seq: u64, acked_seq: u64, max_inflight: u64) -> bool {
+  sent_seq.saturating_sub(acked_seq) >= max_inflight
+}
 
 // Re-export device helpers for ipc/commands.rs (all platforms).
 pub use super::device_enum::{
@@ -301,6 +312,14 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   pcm_pool: PcmBufferPool,
 ) {
   let dropped_worker = dropped_chunks.clone();
+  // Shared UI ack counter (see AppState::frame_ack_seq). Cloned once so the loop only does an
+  // atomic load per frame. Falls back to a private counter if state is somehow unmanaged.
+  let acked_seq = app
+    .try_state::<crate::state::AppState>()
+    .map(|s| s.frame_ack_seq.clone())
+    .unwrap_or_else(|| Arc::new(AtomicU64::new(0)));
+  let mut sent_seq: u64 = 0;
+  let mut dropped_frames: u64 = 0;
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
   let mut recv_tick: u32 = 0;
   while let Ok(floats) = audio_rx.recv() {
@@ -315,6 +334,12 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
             dropped_chunks: dropped,
           },
         );
+      }
+      if dropped_frames > 0 {
+        log::warn!(
+          "UI frame backlog at cap: dropped {dropped_frames} frames (webview not consuming)"
+        );
+        dropped_frames = 0;
       }
     }
     if clear_peak_history.load(Ordering::Acquire) {
@@ -340,7 +365,21 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       dialogue_gating,
     );
     let mut should_stop = false;
-    if let Some(f) = frame {
+    if let Some(mut f) = frame {
+      // Backpressure: the UI Channel never blocks, so a stalled webview would let frames pile up
+      // in the host process until OOM. Drop frames once too many are sent-but-unacked; sending
+      // resumes automatically once the UI acks and the backlog clears.
+      if frame_inflight_exceeds(
+        sent_seq,
+        acked_seq.load(Ordering::Relaxed),
+        MAX_FRAMES_INFLIGHT,
+      ) {
+        dropped_frames += 1;
+        pcm_pool.recycle(floats);
+        continue;
+      }
+      sent_seq += 1;
+      f.seq = sent_seq;
       if let Ok(mut m) = frame_subscribers.lock() {
         {
           // Stop capture if the main stream drops.
@@ -530,6 +569,51 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
   drop(audio_tx);
   let _ = bridge.join();
   Ok(())
+}
+
+#[cfg(test)]
+mod backpressure_tests {
+  use super::{frame_inflight_exceeds, MAX_FRAMES_INFLIGHT};
+
+  #[test]
+  fn does_not_drop_while_ui_keeps_up() {
+    // UI acked the latest frame: zero in-flight, never drop.
+    assert!(!frame_inflight_exceeds(1000, 1000, MAX_FRAMES_INFLIGHT));
+    // A few unacked frames (normal IPC + ack latency) stay under the cap.
+    assert!(!frame_inflight_exceeds(
+      1000,
+      1000 - (MAX_FRAMES_INFLIGHT - 1),
+      MAX_FRAMES_INFLIGHT
+    ));
+  }
+
+  #[test]
+  fn drops_when_backlog_reaches_cap() {
+    // UI stalled: sent keeps climbing, acked frozen → drop at and beyond the cap.
+    assert!(frame_inflight_exceeds(
+      MAX_FRAMES_INFLIGHT,
+      0,
+      MAX_FRAMES_INFLIGHT
+    ));
+    assert!(frame_inflight_exceeds(
+      MAX_FRAMES_INFLIGHT + 5000,
+      0,
+      MAX_FRAMES_INFLIGHT
+    ));
+  }
+
+  #[test]
+  fn resumes_after_ui_catches_up() {
+    // Backlog was at the cap, then the UI acks everything → drop clears.
+    assert!(frame_inflight_exceeds(120, 0, MAX_FRAMES_INFLIGHT));
+    assert!(!frame_inflight_exceeds(120, 120, MAX_FRAMES_INFLIGHT));
+  }
+
+  #[test]
+  fn stale_high_ack_after_restart_does_not_wrap() {
+    // A leftover ack above the fresh sent counter must not underflow into a huge in-flight.
+    assert!(!frame_inflight_exceeds(3, 1000, MAX_FRAMES_INFLIGHT));
+  }
 }
 
 #[cfg(test)]

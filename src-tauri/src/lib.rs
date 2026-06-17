@@ -37,6 +37,7 @@ pub fn run() {
       ipc::commands::set_spectrum_view,
       ipc::commands::set_loudness_weights,
       ipc::commands::set_dialogue_gating,
+      ipc::commands::ack_frames,
       ipc::commands::audio_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_engine_state,

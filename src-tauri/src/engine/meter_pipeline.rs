@@ -495,6 +495,8 @@ impl MeterPipeline {
       loudness_layout,
       loudness_layout_known,
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
+      // Assigned by the capture bridge when the frame is actually sent (see run_meter_pipeline_bridge_thread).
+      seq: 0,
       loudness_hist_tick,
       visual_hist_tick,
       dialogue_integrated,
