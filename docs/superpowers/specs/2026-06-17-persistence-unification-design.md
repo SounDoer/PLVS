@@ -168,7 +168,7 @@ visible subset" is clearer as two arrays than a merged list.
 // persistence/createDomainStore.js — the single copy of all storage mechanics
 function createDomainStore({ name, backend }) {
   return {
-    read(),            // backend.get(name) → safe-parse → migrate(version ?? 1) → object, or {} on absent/corrupt
+    read(),            // backend.get(name) → safe-parse → migrate(version ?? 0) → object, or {} on absent/corrupt
     patch(partial),    // read-merge-write through backend.set(name, merged)
     subscribe(fn),     // cross-context change notification, filtered to this domain
     reset(),           // backend.remove(name)
@@ -291,7 +291,7 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
 ## Testing notes
 
 - `createDomainStore`: safe parse of corrupt/absent blobs → `{}`; read-merge-write does not
-  clobber sibling fields; `reset`/`export`; `version ?? 1` resolution with an empty chain.
+  clobber sibling fields; `reset`/`export`; `version ?? 0` resolution with an empty chain.
 - Backend adapters: localStorage and plugin-store implementations satisfy the same
   `get`/`set`/`remove` contract.
 - Field assignment: `settings` vs. `workspace` round-trip; `panelControls` has a single
