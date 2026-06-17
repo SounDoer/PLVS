@@ -4,6 +4,7 @@ import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { settingsStore } from "./persistence/index.js";
+import { cleanupLegacyKeys } from "./persistence/cleanupLegacyKeys.js";
 import { normalizePanelControls } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
@@ -810,6 +811,10 @@ function AppContent() {
   useEffect(() => {
     const s = settingsStore.read();
     setChannelLabelOverrides(sanitizeChannelLabelOverrides(s.channelLabelOverrides));
+  }, []);
+
+  useEffect(() => {
+    cleanupLegacyKeys();
   }, []);
 
   useEffect(() => {
