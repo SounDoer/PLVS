@@ -265,16 +265,24 @@ function AppContent() {
   const lastSentVectorscopePairKeyRef = useRef("");
   const lastSentSpectrumChannelKeyRef = useRef("");
 
-  const updatePanelControls = useCallback(
-    (nextPanelControls) => {
-      const current = normalizePanelControls(workspaceState.panelControls);
-      const next = normalizePanelControls(
-        typeof nextPanelControls === "function" ? nextPanelControls(current) : nextPanelControls
-      );
-      setWorkspacePanelControls(next);
-    },
-    [workspaceState.panelControls, setWorkspacePanelControls]
-  );
+  // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
+  // list updatePanelControls in their deps. If its identity changed per dispatch it would
+  // re-run those effects → dispatch → re-run → "Maximum update depth exceeded" on Start.
+  // Read the latest values through refs and keep useCallback deps empty.
+  const panelControlsRef = useRef(normalizedPanelControls);
+  panelControlsRef.current = normalizedPanelControls;
+  const setWorkspacePanelControlsRef = useRef(setWorkspacePanelControls);
+  setWorkspacePanelControlsRef.current = setWorkspacePanelControls;
+  const updatePanelControls = useCallback((nextPanelControls) => {
+    const current = panelControlsRef.current;
+    const next = normalizePanelControls(
+      typeof nextPanelControls === "function" ? nextPanelControls(current) : nextPanelControls
+    );
+    // Skip redundant dispatches: normalize() always returns a new object, so without this
+    // an unchanged value would still churn workspace state (and persist) on every frame.
+    if (JSON.stringify(next) === JSON.stringify(current)) return;
+    setWorkspacePanelControlsRef.current(next);
+  }, []);
   const sendTrackedVectorscopePair = useCallback((pair) => {
     const key = `${pair.x}-${pair.y}`;
     lastSentVectorscopePairKeyRef.current = key;
