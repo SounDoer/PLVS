@@ -70,7 +70,7 @@ describe("useSettings", () => {
   });
 
   it("reads closeAction from localStorage on mount", () => {
-    localStorage.setItem("plvs:closeAction", "tray");
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "tray" }));
     const { result } = renderHook(() => useSettings());
     expect(result.current.closeAction).toBe("tray");
   });
@@ -81,17 +81,17 @@ describe("useSettings", () => {
     act(() => {
       result.current.setCloseAction("tray");
     });
-    expect(localStorage.getItem("plvs:closeAction")).toBe("tray");
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).closeAction).toBe("tray");
     expect(result.current.closeAction).toBe("tray");
   });
 
   it("setCloseAction to 'ask' removes the key from localStorage", () => {
-    localStorage.setItem("plvs:closeAction", "quit");
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "quit" }));
     const { result } = renderHook(() => useSettings());
     act(() => {
       result.current.setCloseAction("ask");
     });
-    expect(localStorage.getItem("plvs:closeAction")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("plvs:settings") ?? "{}").closeAction).toBeUndefined();
     expect(result.current.closeAction).toBe("ask");
   });
 });

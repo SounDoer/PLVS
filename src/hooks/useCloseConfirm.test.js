@@ -51,7 +51,7 @@ describe("useCloseConfirm", () => {
   });
 
   it("hides window without dialog when saved preference is 'tray'", async () => {
-    localStorage.setItem("plvs:closeAction", "tray");
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "tray" }));
     const onHideWindow = vi.fn().mockResolvedValue(undefined);
     renderHook(() => useCloseConfirm({ onHideWindow }));
     await act(async () => {
@@ -61,7 +61,7 @@ describe("useCloseConfirm", () => {
   });
 
   it("does not open dialog when saved preference is 'tray'", async () => {
-    localStorage.setItem("plvs:closeAction", "tray");
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "tray" }));
     const { result } = renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
     await act(async () => {
       await closeRequestedCallback.current({ preventDefault: vi.fn() });
@@ -70,7 +70,7 @@ describe("useCloseConfirm", () => {
   });
 
   it("calls exit(0) without dialog when saved preference is 'quit'", async () => {
-    localStorage.setItem("plvs:closeAction", "quit");
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "quit" }));
     renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
     await act(async () => {
       await closeRequestedCallback.current({ preventDefault: vi.fn() });
@@ -104,7 +104,7 @@ describe("useCloseConfirm", () => {
     await act(async () => {
       await result.current.handleConfirm("tray", true);
     });
-    expect(localStorage.getItem("plvs:closeAction")).toBe("tray");
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).closeAction).toBe("tray");
   });
 
   it("handleConfirm with dontAskAgain=false does not write to localStorage", async () => {
@@ -112,7 +112,7 @@ describe("useCloseConfirm", () => {
     await act(async () => {
       await result.current.handleConfirm("tray", false);
     });
-    expect(localStorage.getItem("plvs:closeAction")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("plvs:settings") ?? "{}").closeAction).toBeUndefined();
   });
 
   it("handleCancel closes dialog without any action", () => {

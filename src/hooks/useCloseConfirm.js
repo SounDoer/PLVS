@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { exit } from "@tauri-apps/plugin-process";
 import { isTauri } from "../ipc/env.js";
-
-const STORAGE_KEY = "plvs:closeAction";
+import { settingsStore } from "../persistence/index.js";
 
 export function useCloseConfirm({ onHideWindow }) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -14,7 +13,7 @@ export function useCloseConfirm({ onHideWindow }) {
     getCurrentWindow()
       .onCloseRequested(async (e) => {
         e.preventDefault();
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = settingsStore.read().closeAction ?? null;
         if (saved === "tray") {
           await onHideWindow();
           return;
@@ -36,7 +35,7 @@ export function useCloseConfirm({ onHideWindow }) {
   async function handleConfirm(action, dontAskAgain) {
     setDialogOpen(false);
     if (dontAskAgain) {
-      localStorage.setItem(STORAGE_KEY, action);
+      settingsStore.patch({ closeAction: action });
     }
     if (action === "tray") {
       await onHideWindow();

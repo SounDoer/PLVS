@@ -12,8 +12,7 @@ import {
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
-
-const CLOSE_ACTION_KEY = "plvs:closeAction";
+import { settingsStore } from "../persistence/index.js";
 
 function normalizeReferenceLufs(raw) {
   const n = Number(raw);
@@ -33,7 +32,7 @@ export function useSettings({ onClearRef } = {}) {
     normalizeReferenceLufs(readUiState().referenceLufs)
   );
   const [closeAction, setCloseActionState] = useState(
-    () => localStorage.getItem(CLOSE_ACTION_KEY) ?? "ask"
+    () => settingsStore.read().closeAction ?? "ask"
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
@@ -71,9 +70,11 @@ export function useSettings({ onClearRef } = {}) {
 
   function setCloseAction(value) {
     if (value === "ask") {
-      localStorage.removeItem(CLOSE_ACTION_KEY);
+      const { closeAction: _drop, ...rest } = settingsStore.read();
+      settingsStore.reset();
+      settingsStore.patch(rest);
     } else {
-      localStorage.setItem(CLOSE_ACTION_KEY, value);
+      settingsStore.patch({ closeAction: value });
     }
     setCloseActionState(value);
   }
