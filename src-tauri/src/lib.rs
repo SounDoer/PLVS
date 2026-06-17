@@ -3,6 +3,7 @@ mod dsp;
 mod engine;
 mod ipc;
 mod state;
+mod window_state;
 
 use std::time::Duration;
 
