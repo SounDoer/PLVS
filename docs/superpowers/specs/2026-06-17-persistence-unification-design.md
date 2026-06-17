@@ -26,6 +26,9 @@ environment**, with `plugin-store` as the sole source of truth in the shipped ap
    name* — bumping the format renames the key and orphans (loses) the old data.
 5. **No granularity for "delete app data".** Uninstall is all-or-nothing because the real
    data hides inside the WebView's localStorage folder.
+6. **Non-lean persisted set.** Some persisted content is vestigial or transient: the drag
+   ratios (a dead layout engine), `focusId` (written but never rendered), and `fullscreenId`
+   (transient view state). They should not be stored.
 
 ## Current-state inventory
 
@@ -65,6 +68,7 @@ environment**, with `plugin-store` as the sole source of truth in the shipped ap
 | First paint | **Rust injection** — read the file before first paint, inject into the first frame |
 | Window geometry | Persisted in `settings` (`windowBounds`); restored Rust-side before the window is shown, with off-screen clamping; **no second storage file** |
 | Versioning | Stable keys (no `vN` suffix); internal integer `version`, baseline `0`, written **lazily**, decoupled from the app/release version |
+| Persisted-set trim | Drop vestigial drag ratios + transient `focusId` / `fullscreenId` (problem #6) |
 | Old-data migration | **None.** Early users reset once |
 
 ## Architecture
@@ -111,19 +115,36 @@ the single `plvs.ui` key) from "manages one key" to "manages all domains".
 
 **`workspace`** — layout/workspace state (everything that follows the workspace/preset):
 
-- `tree`, `visibleModules`, `focusId`, `activePresetId`, `fullscreenId`
+- `tree`, `visibleModules`, `activePresetId`
 - `panelControls`
 - `customPresets`
-- drag ratios: `mainLeft`, `leftTopRatio`, `rightTopRatio`, `loudnessHistWidthRatio`,
-  `spectrogramTopRatio`
 
-This assignment resolves two existing tangles:
+**`panelControls` double-write (problem #2):** its single home is `workspace`. The live
+value lives at `workspace.panelControls`; a preset is a **snapshot** of it stored in
+`customPresets`. One source of truth, read/write through one path.
 
-- **`panelControls` double-write (problem #2):** its single home is `workspace`. The live
-  value lives at `workspace.panelControls`; a preset is a **snapshot** of it stored in
-  `customPresets`. One source of truth, read/write through one path.
-- **Drag ratios** move from `plvs.ui` into `workspace` — they describe layout, so they
-  follow the workspace.
+### Not persisted — runtime-only or vestigial (problem #6: lean the persisted set)
+
+An audit of the existing persisted content found three items that should **not** be stored.
+Trimming them also reverses the earlier "drag ratios move into `workspace`" idea — they
+simply disappear.
+
+- **Drag ratios** `mainLeft` / `leftTopRatio` / `rightTopRatio` / `loudnessHistWidthRatio` /
+  `spectrogramTopRatio` — **vestigial**. The ratio-based layout (`PanelSet` +
+  `useLayoutDrag`) was superseded by the tree-based `SplitLayout`, which carries its own
+  split sizes in `tree.sizes` and has its own splitter drag. `PanelSet` is never rendered
+  and the `useLayoutDrag` handlers are computed in `App.jsx` but never attached to anything.
+  These fields persist dead state → **not persisted**. Removing the dead `PanelSet` /
+  `useLayoutDrag` / `App.jsx` wiring is a separate code-cleanup task.
+- **`focusId`** — written by the reducer but **never read for rendering** (`SplitLayout`
+  does not reference it). → **not persisted**; defaults to `null` on launch.
+- **`fullscreenId`** — live single-module fullscreen view state (used by `SplitLayout`,
+  toggled by `F`, cleared by `Esc`), but **transient view state**. Persisting it would
+  reopen the app inside a single-module fullscreen. → **not persisted**; resets to `null`
+  on launch so a restart opens the normal multi-panel view.
+
+`loudnessStatsVisibleIds` + `loudnessStatsOrder` were reviewed and kept as-is: "full order +
+visible subset" is clearer as two arrays than a merged list.
 
 ## `createDomainStore` API
 
@@ -236,6 +257,7 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
 | #3 Split backend | Hidden behind the adapter; production is plugin-store only |
 | #4 Ad-hoc versioning | Stable keys + internal lazy `version` + migration hook in one place |
 | #5 No delete granularity | Truth is a single owned file; `exportAll`/`resetAll` available |
+| #6 Non-lean persisted set | Drop vestigial drag ratios; `focusId`/`fullscreenId` runtime-only |
 
 ## Out of scope
 
@@ -252,6 +274,9 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
   `get`/`set`/`remove` contract.
 - Field assignment: `settings` vs. `workspace` round-trip; `panelControls` has a single
   persisted home; presets snapshot `panelControls` without a second write path.
+- Persisted-set trim: a persisted `workspace` blob never contains drag ratios, `focusId`,
+  or `fullscreenId`; `focusId`/`fullscreenId` are `null` on launch regardless of prior
+  state.
 - First-paint injection: frontend reads `window.__PLVS_INITIAL_STATE__` synchronously when
   present and falls back to backend read when absent.
 - Window geometry: saved bounds round-trip through `settings.windowBounds`; off-screen
