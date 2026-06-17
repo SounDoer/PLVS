@@ -278,6 +278,12 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
 ## Out of scope
 
 - `autostart` — OS-managed, not application data.
+- **User-facing reset / export-import UI.** `exportAll`/`resetAll` are **internal APIs**
+  here — the foundation for problem #5 (clean enumeration/wipe and "delete app data"
+  semantics), not buttons. A user-facing "Reset to defaults" (must be named distinctly from
+  the existing **Clear**, which resets meter data, not settings) or "Export/Import settings"
+  (import would reuse the domain validation + version migration) are separate follow-up
+  features.
 - Other than window geometry (the one new persisted capability added here), no change to
   *what* settings exist or *how* modules validate them — only *where/how* they persist.
 - Loudness-awareness, channel-label phase 2, and other feature work.
