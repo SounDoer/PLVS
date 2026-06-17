@@ -8,9 +8,11 @@
  * domain stores do not change.
  */
 import { createLocalStorageBackend } from "./localStorageBackend.js";
+import { createPluginStoreBackend } from "./pluginStoreBackend.js";
 import { createDomainStore } from "./createDomainStore.js";
+import { isTauri } from "../ipc/env.js";
 
-const backend = createLocalStorageBackend();
+const backend = isTauri() ? createPluginStoreBackend() : createLocalStorageBackend();
 
 export const settingsStore = createDomainStore({ name: "plvs:settings", backend });
 export const workspaceStore = createDomainStore({ name: "plvs:workspace", backend });
