@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
-
-const STORAGE_KEY = "plvs:windowPinned";
+import { settingsStore } from "../persistence/index.js";
 
 export function useAlwaysOnTop() {
   const [pinned, setPinned] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY) === "true";
+    return settingsStore.read().windowPinned === true;
   });
 
   useEffect(() => {
@@ -16,7 +15,7 @@ export function useAlwaysOnTop() {
 
   function togglePin() {
     const next = !pinned;
-    localStorage.setItem(STORAGE_KEY, String(next));
+    settingsStore.patch({ windowPinned: next });
     setPinned(next);
   }
 

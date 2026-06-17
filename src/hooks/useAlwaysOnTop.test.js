@@ -27,7 +27,7 @@ describe("useAlwaysOnTop", () => {
   });
 
   it("starts pinned when localStorage has 'true'", () => {
-    localStorage.setItem("plvs:windowPinned", "true");
+    localStorage.setItem("plvs:settings", JSON.stringify({ windowPinned: true }));
     const { result } = renderHook(() => useAlwaysOnTop());
     expect(result.current.pinned).toBe(true);
   });
@@ -38,7 +38,7 @@ describe("useAlwaysOnTop", () => {
   });
 
   it("calls setAlwaysOnTop(true) on mount when restored from localStorage", () => {
-    localStorage.setItem("plvs:windowPinned", "true");
+    localStorage.setItem("plvs:settings", JSON.stringify({ windowPinned: true }));
     renderHook(() => useAlwaysOnTop());
     expect(mockSetAlwaysOnTop).toHaveBeenCalledWith(true);
   });
@@ -50,7 +50,7 @@ describe("useAlwaysOnTop", () => {
   });
 
   it("togglePin flips pinned from true to false", () => {
-    localStorage.setItem("plvs:windowPinned", "true");
+    localStorage.setItem("plvs:settings", JSON.stringify({ windowPinned: true }));
     const { result } = renderHook(() => useAlwaysOnTop());
     act(() => result.current.togglePin());
     expect(result.current.pinned).toBe(false);
@@ -59,7 +59,7 @@ describe("useAlwaysOnTop", () => {
   it("togglePin writes new value to localStorage", () => {
     const { result } = renderHook(() => useAlwaysOnTop());
     act(() => result.current.togglePin());
-    expect(localStorage.getItem("plvs:windowPinned")).toBe("true");
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).windowPinned).toBe(true);
   });
 
   it("togglePin calls setAlwaysOnTop with new value", () => {
