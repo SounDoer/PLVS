@@ -27,8 +27,9 @@ environment**, with `plugin-store` as the sole source of truth in the shipped ap
 5. **No granularity for "delete app data".** Uninstall is all-or-nothing because the real
    data hides inside the WebView's localStorage folder.
 6. **Non-lean persisted set.** Some persisted content is vestigial or transient: the drag
-   ratios (a dead layout engine), `focusId` (written but never rendered), and `fullscreenId`
-   (transient view state). They should not be stored.
+   ratios (a dead layout engine), `focusId` (written but never rendered — removed from the
+   state model entirely), and `fullscreenId` (transient view state). They should not be
+   stored.
 
 ## Current-state inventory
 
@@ -68,7 +69,7 @@ environment**, with `plugin-store` as the sole source of truth in the shipped ap
 | First paint | **Rust injection** — read the file before first paint, inject into the first frame |
 | Window geometry | Persisted in `settings` (`windowBounds`); restored Rust-side before the window is shown, with off-screen clamping; **no second storage file** |
 | Versioning | Stable keys (no `vN` suffix); internal integer `version`, baseline `0`, written **lazily**, decoupled from the app/release version |
-| Persisted-set trim | Drop vestigial drag ratios + transient `focusId` / `fullscreenId` (problem #6) |
+| Persisted-set trim | Drop vestigial drag ratios + transient `fullscreenId`; **remove `focusId`** from the state model (problem #6) |
 | Old-data migration | **None.** Early users reset once |
 
 ## Architecture
@@ -125,9 +126,10 @@ value lives at `workspace.panelControls`; a preset is a **snapshot** of it store
 
 ### Not persisted — runtime-only or vestigial (problem #6: lean the persisted set)
 
-An audit of the existing persisted content found three items that should **not** be stored.
-Trimming them also reverses the earlier "drag ratios move into `workspace`" idea — they
-simply disappear.
+An audit of the existing persisted content found three items to trim — two dropped from
+persistence (still runtime state), and one (`focusId`) removed from the state model
+altogether. Trimming them also reverses the earlier "drag ratios move into `workspace`"
+idea — they simply disappear.
 
 - **Drag ratios** `mainLeft` / `leftTopRatio` / `rightTopRatio` / `loudnessHistWidthRatio` /
   `spectrogramTopRatio` — **vestigial**. The ratio-based layout (`PanelSet` +
@@ -137,7 +139,11 @@ simply disappear.
   These fields persist dead state → **not persisted**. Removing the dead `PanelSet` /
   `useLayoutDrag` / `App.jsx` wiring is a separate code-cleanup task.
 - **`focusId`** — written by the reducer but **never read for rendering** (`SplitLayout`
-  does not reference it). → **not persisted**; defaults to `null` on launch.
+  does not reference it); it is a write-only by-product of `SET_FOCUS`, whose only useful
+  effect is activating the target module's tab. → **removed entirely** from the workspace
+  state model: drop it from `DEFAULT_WORKSPACE_STATE` and the `WorkspaceState` type, have
+  `SET_FOCUS` keep only its tab-activation effect, and remove the `focusId`-clearing branch
+  in `TOGGLE_MODULE_VISIBLE`. (Stronger than "not persisted" — the field ceases to exist.)
 - **`fullscreenId`** — live single-module fullscreen view state (used by `SplitLayout`,
   toggled by `F`, cleared by `Esc`), but **transient view state**. Persisting it would
   reopen the app inside a single-module fullscreen. → **not persisted**; resets to `null`
@@ -257,7 +263,7 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
 | #3 Split backend | Hidden behind the adapter; production is plugin-store only |
 | #4 Ad-hoc versioning | Stable keys + internal lazy `version` + migration hook in one place |
 | #5 No delete granularity | Truth is a single owned file; `exportAll`/`resetAll` available |
-| #6 Non-lean persisted set | Drop vestigial drag ratios; `focusId`/`fullscreenId` runtime-only |
+| #6 Non-lean persisted set | Drop vestigial drag ratios; remove `focusId`; `fullscreenId` runtime-only |
 
 ## Out of scope
 
@@ -274,9 +280,9 @@ store file / localStorage stays tidy. This is a few lines, not a translation lay
   `get`/`set`/`remove` contract.
 - Field assignment: `settings` vs. `workspace` round-trip; `panelControls` has a single
   persisted home; presets snapshot `panelControls` without a second write path.
-- Persisted-set trim: a persisted `workspace` blob never contains drag ratios, `focusId`,
-  or `fullscreenId`; `focusId`/`fullscreenId` are `null` on launch regardless of prior
-  state.
+- Persisted-set trim: a persisted `workspace` blob never contains drag ratios or
+  `fullscreenId`; `fullscreenId` is `null` on launch regardless of prior state. `focusId`
+  no longer exists in `WorkspaceState`; `SET_FOCUS` still activates the target tab.
 - First-paint injection: frontend reads `window.__PLVS_INITIAL_STATE__` synchronously when
   present and falls back to backend read when absent.
 - Window geometry: saved bounds round-trip through `settings.windowBounds`; off-screen
