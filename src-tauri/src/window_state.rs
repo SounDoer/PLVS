@@ -56,8 +56,14 @@ pub fn clamp_to_visible(b: WindowBounds, monitors: &[MonitorRect]) -> WindowBoun
   WindowBounds { x, y, ..b }
 }
 
-/// Read the current outer bounds of the window and write them under settings.windowBounds.
-/// Note: uses "plvs:settings" as the store key to match the JS pluginStoreBackend.
+/// Read the current outer bounds of the window and write them to the top-level
+/// `windowBounds` store key.
+///
+/// `windowBounds` is a Rust-owned sibling key — NOT a field inside `plvs:settings`.
+/// The JS pluginStoreBackend holds an in-memory copy of `plvs:settings` seeded at boot;
+/// if window geometry lived inside that object, a JS settings write would re-persist the
+/// stale boot bounds and clobber the geometry Rust just saved. Separate keys = separate
+/// owners, no cross-process clobber. Both keys still live in the one `plvs-settings.json`.
 pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
   let is_maximized = window.is_maximized().unwrap_or(false);
   // When maximized, persist the flag but keep the last normal size/position already on file.
@@ -65,10 +71,9 @@ pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     Ok(s) => s,
     Err(_) => return,
   };
-  let mut settings = store.get("plvs:settings").unwrap_or(serde_json::json!({}));
-  let prev: Option<WindowBounds> = settings
+  let prev: Option<WindowBounds> = store
     .get("windowBounds")
-    .and_then(|v| serde_json::from_value(v.clone()).ok());
+    .and_then(|v| serde_json::from_value(v).ok());
 
   let bounds = if is_maximized {
     match prev {
@@ -93,15 +98,10 @@ pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     }
   };
 
-  if let serde_json::Value::Object(ref mut map) = settings {
-    map.insert(
-      "windowBounds".into(),
-      serde_json::to_value(bounds).unwrap_or_default(),
-    );
-  } else {
-    settings = serde_json::json!({ "windowBounds": bounds });
-  }
-  store.set("plvs:settings", settings);
+  store.set(
+    "windowBounds",
+    serde_json::to_value(bounds).unwrap_or_default(),
+  );
   let _ = store.save();
   let _: Arc<Store<R>> = store; // keep the Arc type explicit for readers
 }

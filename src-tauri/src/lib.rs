@@ -51,7 +51,9 @@ pub fn run() {
 
       // --- Persistence: read store, inject initial state, restore window (pre-paint) ---
       // Note: the JS pluginStoreBackend uses "plvs:settings" / "plvs:workspace" as store keys.
-      let store = app.store("plvs-settings.json").map_err(|e| format!("store load: {e}"))?;
+      let store = app
+        .store("plvs-settings.json")
+        .map_err(|e| format!("store load: {e}"))?;
 
       let settings = store.get("plvs:settings").unwrap_or(serde_json::json!({}));
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
@@ -61,9 +63,11 @@ pub fn run() {
       });
       let init_script = format!("window.__PLVS_INITIAL_STATE__ = {};", initial);
 
-      let saved_bounds: Option<WindowBounds> = settings
+      // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
+      // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
+      let saved_bounds: Option<WindowBounds> = store
         .get("windowBounds")
-        .and_then(|v| serde_json::from_value(v.clone()).ok());
+        .and_then(|v| serde_json::from_value(v).ok());
 
       let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title("PLVS")
@@ -111,7 +115,10 @@ pub fn run() {
       {
         let dirty = dirty.clone();
         window.on_window_event(move |event| {
-          if matches!(event, tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_)) {
+          if matches!(
+            event,
+            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_)
+          ) {
             dirty.store(true, Ordering::Relaxed);
           }
         });
