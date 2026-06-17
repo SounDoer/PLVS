@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
-import { UI_PREFERENCES, patchUiState, readUiState } from "./uiPreferences";
+import { UI_PREFERENCES } from "./uiPreferences";
+import { settingsStore } from "./persistence/index.js";
 import {
   normalizePanelControls,
   readPersistedPanelControls,
@@ -871,39 +872,18 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const s = readUiState();
-    if (typeof s.mainLeft === "number") setMainLeft(s.mainLeft);
-    if (typeof s.leftTopRatio === "number") setLeftTopRatio(s.leftTopRatio);
-    if (typeof s.rightTopRatio === "number") setRightTopRatio(s.rightTopRatio);
-    if (typeof s.loudnessHistWidthRatio === "number")
-      setLoudnessHistWidthRatio(s.loudnessHistWidthRatio);
-    if (typeof s.spectrogramTopRatio === "number") setSpectrogramTopRatio(s.spectrogramTopRatio);
+    const s = settingsStore.read();
     setChannelLabelOverrides(sanitizeChannelLabelOverrides(s.channelLabelOverrides));
   }, []);
 
   useEffect(() => {
-    patchUiState({
-      mainLeft,
-      leftTopRatio,
-      rightTopRatio,
-      loudnessHistWidthRatio,
-      spectrogramTopRatio,
+    settingsStore.patch({
       referenceLufs,
       appearance,
       themeId: appearance === "system" ? null : fixedThemeSelectValue,
       channelLabelOverrides,
     });
-  }, [
-    mainLeft,
-    leftTopRatio,
-    rightTopRatio,
-    loudnessHistWidthRatio,
-    spectrogramTopRatio,
-    referenceLufs,
-    appearance,
-    fixedThemeSelectValue,
-    channelLabelOverrides,
-  ]);
+  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides]);
 
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;

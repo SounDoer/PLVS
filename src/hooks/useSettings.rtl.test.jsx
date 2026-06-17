@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useSettings } from "./useSettings.js";
-import { UI_PREFERENCES } from "../uiPreferences";
 
 function mockMatchMedia(matches) {
   return vi.fn().mockImplementation((query) => ({
@@ -52,13 +51,13 @@ describe("useSettings", () => {
   });
 
   it("reads referenceLufs from localStorage", () => {
-    localStorage.setItem(UI_PREFERENCES.layoutPersistKey, JSON.stringify({ referenceLufs: -14 }));
+    localStorage.setItem("plvs:settings", JSON.stringify({ referenceLufs: -14 }));
     const { result } = renderHook(() => useSettings());
     expect(result.current.referenceLufs).toBe(-14);
   });
 
   it("resets referenceLufs to -23 when stored value is out of range", () => {
-    localStorage.setItem(UI_PREFERENCES.layoutPersistKey, JSON.stringify({ referenceLufs: 5 }));
+    localStorage.setItem("plvs:settings", JSON.stringify({ referenceLufs: 5 }));
     const { result } = renderHook(() => useSettings());
     expect(result.current.referenceLufs).toBe(-23);
   });

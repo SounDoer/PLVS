@@ -4,7 +4,7 @@
  */
 
 import { DEFAULT_THEME_ID, isThemeId, THEME_IDS } from "../theme/builtinThemes.js";
-import { readUiState } from "./uiStore.js";
+import { settingsStore } from "../persistence/index.js";
 
 export { DEFAULT_THEME_ID, isThemeId, THEME_IDS };
 
@@ -35,12 +35,11 @@ export function parsePersistedUiStateJson(raw) {
 }
 
 /**
- * Reads and parses the persisted UI JSON blob for theme fields.
- * @param {{ layoutPersistKey?: string }} [prefs]
+ * Reads and parses the persisted settings for theme fields.
  * @returns {{ appearance: "system"|"fixed"; themeId: string|null }}
  */
-export function readPersistedShellThemeFields(prefs) {
-  return parsePersistedUiStateJson(readUiState(prefs));
+export function readPersistedShellThemeFields() {
+  return parsePersistedUiStateJson(settingsStore.read());
 }
 
 /**

@@ -5,9 +5,7 @@ import {
   applyThemeToDocument,
   readPersistedShellThemeFields,
   readSystemPrefersDark,
-  readUiState,
   resolveThemeId,
-  subscribeUiState,
 } from "../uiPreferences";
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { useAutostart } from "./useAutostart.js";
@@ -21,15 +19,11 @@ function normalizeReferenceLufs(raw) {
 
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [appearance, setAppearance] = useState(
-    () => readPersistedShellThemeFields(UI_PREFERENCES).appearance
-  );
-  const [themeId, setThemeId] = useState(
-    () => readPersistedShellThemeFields(UI_PREFERENCES).themeId
-  );
+  const [appearance, setAppearance] = useState(() => readPersistedShellThemeFields().appearance);
+  const [themeId, setThemeId] = useState(() => readPersistedShellThemeFields().themeId);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
   const [referenceLufs, setReferenceLufs] = useState(() =>
-    normalizeReferenceLufs(readUiState().referenceLufs)
+    normalizeReferenceLufs(settingsStore.read().referenceLufs)
   );
   const [closeAction, setCloseActionState] = useState(
     () => settingsStore.read().closeAction ?? "ask"
@@ -94,8 +88,8 @@ export function useSettings({ onClearRef } = {}) {
 
   useEffect(
     () =>
-      subscribeUiState(() => {
-        const next = readPersistedShellThemeFields(UI_PREFERENCES);
+      settingsStore.subscribe(() => {
+        const next = readPersistedShellThemeFields();
         setAppearance(next.appearance);
         setThemeId(next.themeId);
       }),
