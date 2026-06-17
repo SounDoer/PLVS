@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-06-17
+
+### Added
+- Window: persist window geometry on move/resize
+- Window: inject persisted state pre-paint and restore window bounds
+- Window: add window-bounds clamp helper with tests
+- Persistence: select plugin-store backend under Tauri
+- Persistence: add sync-cache plugin-store backend
+- Persistence: clean up legacy storage keys on boot
+- Persistence: add one-shot legacy-key cleanup helper
+- Persistence: add settings/workspace domain stores and exportAll/resetAll
+- Persistence: add createDomainStore factory
+- Persistence: add localStorage backend
+
+### Changed
+- Persistence: single-source panelControls in workspace state
+- Persistence: move theme/referenceLufs/channelLabelOverrides to settings domain
+- Persistence: move closeAction/windowPinned to settings domain
+- Workspace: remove focusId from the state model
+- Layout: remove vestigial ratio layout (PanelSet, useLayoutDrag)
+
+### Fixed
+- Engine: bound UI frame backlog with ack-based backpressure
+- Panel: stabilize updatePanelControls to stop render loop on Start
+- Window: restore bounds in physical pixels to stop HiDPI growth
+- Window: store windowBounds under its own Rust-owned key
+
 ## [0.3.5] - 2026-06-16
 
 ### Added
