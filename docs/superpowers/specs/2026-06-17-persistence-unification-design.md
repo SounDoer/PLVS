@@ -124,6 +124,16 @@ the single `plvs.ui` key) from "manages one key" to "manages all domains".
 value lives at `workspace.panelControls`; a preset is a **snapshot** of it stored in
 `customPresets`. One source of truth, read/write through one path.
 
+**Preset shape.** A saved preset (`SAVE_PRESET`) is a snapshot of the **restorable-view
+subset** of the `workspace` domain — `{ tree, visibleModules, panelControls }` (plus
+`id` / `name` / `builtin` metadata). `tree` carries the split `sizes`, so a preset also
+restores panel proportions. It deliberately omits the two bookkeeping fields
+(`activePresetId` — the pointer to the active preset; `customPresets` — the preset list
+itself) and the transient `fullscreenId`. Concisely: **preset = `workspace` −
+`{ activePresetId, customPresets }`**, minus transient view state. Applying a preset writes
+those three fields back and resets `fullscreenId` to `null`. This relationship stays
+self-consistent after the persisted-set trim, so `SAVE_PRESET` needs no change.
+
 ### Not persisted — runtime-only or vestigial (problem #6: lean the persisted set)
 
 An audit of the existing persisted content found three items to trim — two dropped from
