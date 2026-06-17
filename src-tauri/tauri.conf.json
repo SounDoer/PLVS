@@ -10,16 +10,7 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
-    "windows": [
-      {
-        "label": "main",
-        "title": "PLVS",
-        "width": 1280,
-        "height": 860,
-        "resizable": true,
-        "fullscreen": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:; connect-src ipc: http://ipc.localhost https://api.github.com",
       "devCsp": "default-src 'self' http://localhost:1420; script-src 'self' 'unsafe-eval' http://localhost:1420; style-src 'self' 'unsafe-inline' http://localhost:1420; img-src 'self' data: asset: http://asset.localhost http://localhost:1420; font-src 'self' data: http://localhost:1420; connect-src ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1421 https://api.github.com"

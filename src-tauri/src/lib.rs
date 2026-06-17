@@ -7,10 +7,12 @@ mod window_state;
 
 use std::time::Duration;
 
-use tauri::Emitter;
+use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_store::StoreExt;
 
 pub use audio::{AppAudioBackend, AudioCapture, AudioCaptureSession, DeviceInfo, PcmFrame};
 
+use crate::window_state::{clamp_to_visible, MonitorRect, WindowBounds};
 use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -46,6 +48,88 @@ pub fn run() {
           .level(log::LevelFilter::Info)
           .build(),
       )?;
+
+      // --- Persistence: read store, inject initial state, restore window (pre-paint) ---
+      // Note: the JS pluginStoreBackend uses "plvs:settings" / "plvs:workspace" as store keys.
+      let store = app.store("plvs-settings.json").map_err(|e| format!("store load: {e}"))?;
+
+      let settings = store.get("plvs:settings").unwrap_or(serde_json::json!({}));
+      let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
+      let initial = serde_json::json!({
+        "plvs:settings": settings,
+        "plvs:workspace": workspace,
+      });
+      let init_script = format!("window.__PLVS_INITIAL_STATE__ = {};", initial);
+
+      let saved_bounds: Option<WindowBounds> = settings
+        .get("windowBounds")
+        .and_then(|v| serde_json::from_value(v.clone()).ok());
+
+      let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+        .title("PLVS")
+        .resizable(true)
+        .visible(false)
+        .initialization_script(&init_script);
+
+      if let Some(b) = saved_bounds {
+        builder = builder
+          .inner_size(b.width as f64, b.height as f64)
+          .position(b.x as f64, b.y as f64);
+      } else {
+        builder = builder.inner_size(1280.0, 860.0);
+      }
+
+      let window = builder.build().map_err(|e| format!("window build: {e}"))?;
+
+      // Clamp against the monitors actually present now, then show.
+      if let Some(b) = saved_bounds {
+        let monitors: Vec<MonitorRect> = window
+          .available_monitors()
+          .unwrap_or_default()
+          .iter()
+          .map(|m| MonitorRect {
+            x: m.position().x,
+            y: m.position().y,
+            width: m.size().width,
+            height: m.size().height,
+          })
+          .collect();
+        let clamped = clamp_to_visible(b, &monitors);
+        if clamped != b {
+          let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
+        }
+        if b.is_maximized {
+          let _ = window.maximize();
+        }
+      }
+      let _ = window.show();
+
+      // Persist geometry on move/resize, debounced via a dirty flag + short flush thread.
+      use std::sync::atomic::{AtomicBool, Ordering};
+      use std::sync::Arc as StdArc;
+      let dirty = StdArc::new(AtomicBool::new(false));
+      {
+        let dirty = dirty.clone();
+        window.on_window_event(move |event| {
+          if matches!(event, tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_)) {
+            dirty.store(true, Ordering::Relaxed);
+          }
+        });
+      }
+      {
+        let dirty = dirty.clone();
+        let win = window.clone();
+        std::thread::Builder::new()
+          .name("window-state-flush".into())
+          .spawn(move || loop {
+            std::thread::sleep(Duration::from_millis(400));
+            if dirty.swap(false, Ordering::Relaxed) {
+              crate::window_state::save_window_bounds(&win);
+            }
+          })
+          .map_err(|e| format!("window-state thread: {e}"))?;
+      }
+
       let handle = app.handle().clone();
       std::thread::Builder::new()
         .name("device-watch".into())
