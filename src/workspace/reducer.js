@@ -1,6 +1,5 @@
 /** @import { WorkspaceState, ModuleId, DropTarget, TreeNode } from './types.js' */
 import { normalizePanelControls } from "../lib/panelControls.js";
-import { BUILTIN_PRESETS } from "./constants.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 
 // ---------------------------------------------------------------------------
@@ -43,7 +42,7 @@ function isPathValid(root, path) {
 export function workspaceReducer(state, action) {
   switch (action.type) {
     case "SET_TREE":
-      return { ...state, tree: action.payload.tree, activePresetId: null };
+      return { ...state, tree: action.payload.tree };
 
     case "RESIZE_CHILDREN": {
       const { path, aboveIdx, belowIdx, aboveSize, belowSize } = action.payload;
@@ -102,7 +101,7 @@ export function workspaceReducer(state, action) {
 
       // Remove source tab (may change tree structure)
       const treeAfterRemove = removeTab(state.tree, sourceId);
-      if (!treeAfterRemove) return { ...state, activePresetId: null };
+      if (!treeAfterRemove) return state;
 
       // Re-resolve target path using anchor; fall back to root if path is now stale
       const resolvedPath = resolveTargetPath(treeAfterRemove, anchorTab, targetPath);
@@ -112,50 +111,17 @@ export function workspaceReducer(state, action) {
       const newLeaf = { type: "leaf", tabs: [sourceId], activeTab: sourceId };
       const newTree = insertLeaf(treeAfterRemove, safeTargetPath, zone, newLeaf, tabIndex);
 
-      return { ...state, tree: newTree, activePresetId: null };
+      return { ...state, tree: newTree };
     }
 
-    case "APPLY_PRESET": {
-      const { presetId } = action.payload;
-      const builtinPreset = BUILTIN_PRESETS.find((p) => p.id === presetId);
-      if (builtinPreset) {
-        return {
-          ...state,
-          tree: builtinPreset.tree,
-          visibleModules: builtinPreset.visibleModules,
-          panelControls: state.panelControls,
-          activePresetId: presetId,
-          fullscreenId: null,
-        };
-      }
-
-      const customPreset = state.customPresets.find((p) => p.id === presetId);
-      if (!customPreset) return state;
+    case "SET_VIEW": {
+      const { tree, visibleModules, panelControls } = action.payload;
       return {
         ...state,
-        tree: customPreset.tree,
-        visibleModules: customPreset.visibleModules,
-        panelControls: normalizePanelControls(customPreset.panelControls),
-        activePresetId: presetId,
+        tree,
+        visibleModules,
+        panelControls: normalizePanelControls(panelControls),
         fullscreenId: null,
-      };
-    }
-
-    case "SAVE_PRESET": {
-      const { name } = action.payload;
-      const id = `custom-${Date.now()}`;
-      const newPreset = {
-        id,
-        name,
-        builtin: false,
-        tree: state.tree,
-        visibleModules: state.visibleModules,
-        panelControls: normalizePanelControls(state.panelControls),
-      };
-      return {
-        ...state,
-        customPresets: [...state.customPresets, newPreset],
-        activePresetId: id,
       };
     }
 
@@ -188,8 +154,7 @@ export function bindWorkspaceActions(dispatch) {
         type: "RESIZE_CHILDREN",
         payload: { path, aboveIdx, belowIdx, aboveSize, belowSize },
       }),
-    applyPreset: (presetId) => dispatch({ type: "APPLY_PRESET", payload: { presetId } }),
-    saveCurrentAsPreset: (name) => dispatch({ type: "SAVE_PRESET", payload: { name } }),
+    setView: (view) => dispatch({ type: "SET_VIEW", payload: view }),
     setPanelControls: (panelControls) =>
       dispatch({ type: "SET_PANEL_CONTROLS", payload: { panelControls } }),
   };

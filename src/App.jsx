@@ -13,6 +13,7 @@ import { useAudioEngine } from "./hooks/useAudioEngine";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
+import { usePresets } from "./hooks/usePresets.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useSessionTimer } from "./hooks/useSessionTimer.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
@@ -39,7 +40,7 @@ import { StatusPill } from "./components/StatusPill.jsx";
 import { TransportButton } from "./components/TransportButton.jsx";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
-import { VisibilityPopoverContent, PresetDropdownContent } from "./workspace/WorkspaceToolbar.jsx";
+import { VisibilityPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -135,6 +136,7 @@ function AppContent() {
     clearReady,
     registrationError,
   } = useSettings({ onClearRef });
+  const presets = usePresets();
 
   const {
     audioDevices,
@@ -515,6 +517,8 @@ function AppContent() {
   const footerDeviceLabel = deviceDisplay
     ? deviceDisplay.secondary || deviceDisplay.primary
     : "Not connected";
+  const activePresetName =
+    presets.list.find((preset) => preset.id === presets.activeId)?.name ?? "-";
 
   useEffect(() => {
     if (!running || !isTauri()) return;
@@ -1041,11 +1045,6 @@ function AppContent() {
                     Modules
                   </p>
                   <VisibilityPopoverContent />
-                  <div className="my-1 h-px bg-border/50" />
-                  <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-                    Presets
-                  </p>
-                  <PresetDropdownContent />
                 </PopoverContent>
               </Popover>
               <IconButton
@@ -1072,6 +1071,11 @@ function AppContent() {
             <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Ref</span>
             <span className="min-w-0 truncate tabular-nums text-foreground">
               {referenceLufs} LUFS
+            </span>
+            <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+            <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Preset</span>
+            <span className="min-w-0 truncate tabular-nums text-foreground">
+              {activePresetName}
             </span>
             {updateInfo?.hasUpdate ? (
               <>
@@ -1110,6 +1114,7 @@ function AppContent() {
           updateStatus={updateInfo?.status}
           onCheckForUpdate={refreshUpdateCheck}
           openReleaseUrl={openExternalUrl}
+          presets={presets}
           autostartEnabled={autostartEnabled}
           setAutostartEnabled={setAutostartEnabled}
           autostartReady={autostartReady}

@@ -17,19 +17,17 @@
  * @typedef {{
  *   tree: TreeNode,
  *   visibleModules: ModuleId[],
- *   activePresetId: string | null,
  *   fullscreenId: ModuleId | null,
  *   panelControls: PanelControls,
- *   customPresets: Preset[],
  * }} WorkspaceState
  *
  * @typedef {{
  *   id: string,
  *   name: string,
- *   builtin: boolean,
+ *   windowBounds?: { x: number, y: number, width: number, height: number, isMaximized: boolean },
  *   tree: TreeNode,
  *   visibleModules: ModuleId[],
- *   panelControls?: PanelControls,
+ *   panelControls: PanelControls,
  * }} Preset
  *
  * @typedef {{

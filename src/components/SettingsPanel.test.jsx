@@ -191,6 +191,98 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
 
+  it("shows an empty presets state", () => {
+    render(<SettingsPanel {...BASE_PROPS} presets={{ list: [], activeId: null }} />);
+    expect(screen.getByLabelText("Presets")).toBeTruthy();
+    expect(screen.getByText("No presets saved yet.")).toBeTruthy();
+  });
+
+  it("saves a new preset and clears the name field", () => {
+    const save = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} presets={{ list: [], activeId: null, save }} />);
+
+    const input = screen.getByLabelText("Presets");
+    fireEvent.change(input, { target: { value: "Mix check" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(save).toHaveBeenCalledWith("Mix check");
+    expect(input.value).toBe("");
+  });
+
+  it("applies a saved preset", () => {
+    const apply = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        presets={{ list: [{ id: "wide", name: "Wide view" }], activeId: null, apply }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(apply).toHaveBeenCalledWith("wide");
+  });
+
+  it("updates a saved preset", () => {
+    const update = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        presets={{ list: [{ id: "meters", name: "Meters" }], activeId: null, update }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    expect(update).toHaveBeenCalledWith("meters");
+  });
+
+  it("renames a saved preset", () => {
+    const rename = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        presets={{ list: [{ id: "focus", name: "Focus" }], activeId: null, rename }}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Preset name Focus"), {
+      target: { value: "Focused meters" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+
+    expect(rename).toHaveBeenCalledWith("focus", "Focused meters");
+  });
+
+  it("deletes a saved preset", () => {
+    const remove = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        presets={{ list: [{ id: "old", name: "Old view" }], activeId: null, remove }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(remove).toHaveBeenCalledWith("old");
+  });
+
+  it("marks the active preset", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        presets={{
+          list: [
+            { id: "edit", name: "Edit" },
+            { id: "mix", name: "Mix" },
+          ],
+          activeId: "mix",
+        }}
+      />
+    );
+
+    expect(screen.getByText("Active")).toBeTruthy();
+    expect(screen.getByLabelText("Preset name Mix")).toBeTruthy();
+  });
+
   it("renders the keyboard shortcuts reference rows without a Clear read-only row", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
     expect(screen.getByText("Keyboard Shortcuts")).toBeTruthy();

@@ -1,6 +1,6 @@
 // src/persistence/index.test.js
 import { afterEach, describe, expect, it } from "vitest";
-import { settingsStore, workspaceStore, exportAll, resetAll } from "./index.js";
+import { settingsStore, workspaceStore, presetsStore, exportAll, resetAll } from "./index.js";
 
 describe("persistence index", () => {
   afterEach(() => {
@@ -13,24 +13,50 @@ describe("persistence index", () => {
   });
 
   it("workspaceStore persists under plvs:workspace", () => {
-    workspaceStore.patch({ activePresetId: "lls" });
-    expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({ activePresetId: "lls" });
-  });
-
-  it("exportAll returns both domains keyed by name", () => {
-    settingsStore.patch({ referenceLufs: -23 });
-    workspaceStore.patch({ activePresetId: "lls" });
-    expect(exportAll()).toEqual({
-      settings: { referenceLufs: -23 },
-      workspace: { activePresetId: "lls" },
+    workspaceStore.patch({ visibleModules: ["peak"] });
+    expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({
+      visibleModules: ["peak"],
     });
   });
 
-  it("resetAll clears both domains", () => {
+  it("presetsStore persists under plvs:presets", () => {
+    presetsStore.patch({ list: [], activeId: null });
+    expect(JSON.parse(localStorage.getItem("plvs:presets"))).toEqual({
+      list: [],
+      activeId: null,
+    });
+  });
+
+  it("workspaceStore strips old preset fields", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        visibleModules: ["peak"],
+        activePresetId: "lls",
+        customPresets: [{ id: "x" }],
+      })
+    );
+    expect(workspaceStore.export()).toEqual({ visibleModules: ["peak"] });
+  });
+
+  it("exportAll returns all domains keyed by name", () => {
     settingsStore.patch({ referenceLufs: -23 });
-    workspaceStore.patch({ activePresetId: "lls" });
+    workspaceStore.patch({ visibleModules: ["peak"] });
+    presetsStore.patch({ list: [], activeId: null });
+    expect(exportAll()).toEqual({
+      settings: { referenceLufs: -23 },
+      workspace: { visibleModules: ["peak"] },
+      presets: { list: [], activeId: null },
+    });
+  });
+
+  it("resetAll clears all domains", () => {
+    settingsStore.patch({ referenceLufs: -23 });
+    workspaceStore.patch({ visibleModules: ["peak"] });
+    presetsStore.patch({ list: [], activeId: null });
     resetAll();
     expect(localStorage.getItem("plvs:settings")).toBeNull();
     expect(localStorage.getItem("plvs:workspace")).toBeNull();
+    expect(localStorage.getItem("plvs:presets")).toBeNull();
   });
 });

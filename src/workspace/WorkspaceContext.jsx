@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
 import { bindWorkspaceActions, workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
-import { workspaceStore } from "../persistence/index.js";
+import { presetsStore, workspaceStore } from "../persistence/index.js";
 
 const WorkspaceContext = createContext(null);
 
@@ -11,7 +11,6 @@ function initState() {
   return {
     ...DEFAULT_WORKSPACE_STATE,
     ...parsed,
-    customPresets: Array.isArray(parsed.customPresets) ? parsed.customPresets : [],
     fullscreenId: null, // transient view state: never restored across launches
   };
 }
@@ -19,14 +18,41 @@ function initState() {
 export function WorkspaceProvider({ children }) {
   const [state, dispatch] = useReducer(workspaceReducer, null, initState);
   const [hoveredModuleId, setHoveredModuleId] = useState(null);
+  const actions = useMemo(() => {
+    const bound = bindWorkspaceActions(dispatch);
+    const clearActivePreset = () => presetsStore.patch({ activeId: null });
+    return {
+      ...bound,
+      setTree: (...args) => {
+        clearActivePreset();
+        bound.setTree(...args);
+      },
+      moveTab: (...args) => {
+        clearActivePreset();
+        bound.moveTab(...args);
+      },
+      resizeChildren: (...args) => {
+        clearActivePreset();
+        bound.resizeChildren(...args);
+      },
+      toggleModuleVisible: (...args) => {
+        clearActivePreset();
+        bound.toggleModuleVisible(...args);
+      },
+      setPanelControls: (...args) => {
+        clearActivePreset();
+        bound.setPanelControls(...args);
+      },
+    };
+  }, []);
 
   useEffect(() => {
     workspaceStore.patch(state);
   }, [state]);
 
   const value = useMemo(
-    () => ({ state, ...bindWorkspaceActions(dispatch), hoveredModuleId, setHoveredModuleId }),
-    [state, hoveredModuleId]
+    () => ({ state, ...actions, hoveredModuleId, setHoveredModuleId }),
+    [state, actions, hoveredModuleId]
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

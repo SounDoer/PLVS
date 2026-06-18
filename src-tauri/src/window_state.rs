@@ -56,6 +56,76 @@ pub fn clamp_to_visible(b: WindowBounds, monitors: &[MonitorRect]) -> WindowBoun
   WindowBounds { x, y, ..b }
 }
 
+fn monitor_rects<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> Vec<MonitorRect> {
+  window
+    .available_monitors()
+    .unwrap_or_default()
+    .iter()
+    .map(|m| MonitorRect {
+      x: m.position().x,
+      y: m.position().y,
+      width: m.size().width,
+      height: m.size().height,
+    })
+    .collect()
+}
+
+#[tauri::command]
+pub fn current_window_bounds<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+) -> Result<WindowBounds, String> {
+  let pos = window
+    .outer_position()
+    .map_err(|e| format!("window position: {e}"))?;
+  let size = window
+    .inner_size()
+    .map_err(|e| format!("window size: {e}"))?;
+  let is_maximized = window
+    .is_maximized()
+    .map_err(|e| format!("window maximized state: {e}"))?;
+
+  Ok(WindowBounds {
+    x: pos.x,
+    y: pos.y,
+    width: size.width,
+    height: size.height,
+    is_maximized,
+  })
+}
+
+#[tauri::command]
+pub fn apply_window_bounds<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  bounds: WindowBounds,
+) -> Result<(), String> {
+  let monitors = monitor_rects(&window);
+  let clamped = clamp_to_visible(bounds, &monitors);
+
+  if window
+    .is_maximized()
+    .map_err(|e| format!("window maximized state: {e}"))?
+  {
+    window
+      .unmaximize()
+      .map_err(|e| format!("window unmaximize: {e}"))?;
+  }
+
+  window
+    .set_size(tauri::PhysicalSize::new(clamped.width, clamped.height))
+    .map_err(|e| format!("window size: {e}"))?;
+  window
+    .set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y))
+    .map_err(|e| format!("window position: {e}"))?;
+
+  if bounds.is_maximized {
+    window
+      .maximize()
+      .map_err(|e| format!("window maximize: {e}"))?;
+  }
+
+  Ok(())
+}
+
 /// Read the current outer bounds of the window and write them to the top-level
 /// `windowBounds` store key.
 ///
@@ -157,5 +227,38 @@ mod tests {
       is_maximized: false,
     };
     assert_eq!(clamp_to_visible(b, &[]), b);
+  }
+
+  #[test]
+  fn clamp_preserves_maximized_flag() {
+    let b = WindowBounds {
+      x: 5000,
+      y: 5000,
+      width: 1280,
+      height: 800,
+      is_maximized: true,
+    };
+    let c = clamp_to_visible(b, &mon());
+    assert!(c.is_maximized);
+    assert_eq!(c.width, 1280);
+    assert_eq!(c.height, 800);
+  }
+
+  #[test]
+  fn serializes_js_window_bounds_shape() {
+    let b = WindowBounds {
+      x: 1,
+      y: 2,
+      width: 3,
+      height: 4,
+      is_maximized: true,
+    };
+    let value = serde_json::to_value(b).unwrap();
+    assert_eq!(value["x"], 1);
+    assert_eq!(value["y"], 2);
+    assert_eq!(value["width"], 3);
+    assert_eq!(value["height"], 4);
+    assert_eq!(value["isMaximized"], true);
+    assert!(value.get("is_maximized").is_none());
   }
 }

@@ -41,6 +41,8 @@ pub fn run() {
       ipc::commands::audio_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_engine_state,
+      window_state::current_window_bounds,
+      window_state::apply_window_bounds,
     ])
     .setup(|app| {
       #[cfg(debug_assertions)]
@@ -58,9 +60,11 @@ pub fn run() {
 
       let settings = store.get("plvs:settings").unwrap_or(serde_json::json!({}));
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
+      let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
       let initial = serde_json::json!({
         "plvs:settings": settings,
         "plvs:workspace": workspace,
+        "plvs:presets": presets,
       });
       let init_script = format!("window.__PLVS_INITIAL_STATE__ = {};", initial);
 

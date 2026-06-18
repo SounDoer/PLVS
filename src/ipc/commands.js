@@ -51,6 +51,14 @@ export function getEngineState() {
   return invoke("get_engine_state");
 }
 
+export function currentWindowBounds() {
+  return invoke("current_window_bounds");
+}
+
+export function applyWindowBounds(bounds) {
+  return invoke("apply_window_bounds", { bounds });
+}
+
 /** @param {{ x: number; y: number }} pair 0-based channel indices. */
 export function setVectorscopePair({ x, y }) {
   return invoke("set_vectorscope_pair", { x, y });

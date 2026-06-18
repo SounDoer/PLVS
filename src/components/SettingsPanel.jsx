@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,15 @@ import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
+const DEFAULT_PRESETS = {
+  list: [],
+  activeId: null,
+  save: () => {},
+  apply: () => {},
+  update: () => {},
+  rename: () => {},
+  remove: () => {},
+};
 
 export function SettingsPanel({
   settingsOpen,
@@ -56,13 +65,20 @@ export function SettingsPanel({
   channelLabelHasOverride = false,
   setChannelLabelToken = () => {},
   resetChannelLabels = () => {},
+  presets = DEFAULT_PRESETS,
 }) {
   const reduceMotion = useReducedMotion();
   const isMac =
     typeof navigator !== "undefined" &&
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
+  const [presetName, setPresetName] = useState("");
+  const [presetRenameDrafts, setPresetRenameDrafts] = useState({});
   const closingIntentRef = useRef(false);
+  const presetControls = { ...DEFAULT_PRESETS, ...presets };
+  const presetList = Array.isArray(presetControls.list)
+    ? presetControls.list
+    : DEFAULT_PRESETS.list;
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
   let updateStatusText = "Checking updates";
@@ -82,6 +98,34 @@ export function SettingsPanel({
       setSheetBodyVisible(false);
     }
   }, [settingsOpen]);
+
+  useEffect(() => {
+    setPresetRenameDrafts((current) => {
+      const next = {};
+      for (const preset of presetList) {
+        next[preset.id] = current[preset.id] ?? preset.name ?? "";
+      }
+      return next;
+    });
+  }, [presetList]);
+
+  const handleSavePreset = () => {
+    const name = presetName.trim();
+    if (!name) return;
+    const result = presetControls.save(name);
+    if (result && typeof result.then === "function") {
+      result.then((value) => {
+        if (value !== false) setPresetName("");
+      });
+      return;
+    }
+    if (result !== false) setPresetName("");
+  };
+
+  const handleRenamePreset = (id) => {
+    const name = (presetRenameDrafts[id] ?? "").trim();
+    if (name) presetControls.rename(id, name);
+  };
 
   const handleOpenChange = (open) => {
     if (open) {
@@ -201,6 +245,105 @@ export function SettingsPanel({
                   {registrationError ? (
                     <span className="text-xs text-destructive">Combo unavailable, try another</span>
                   ) : null}
+                </div>
+                <Separator />
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-preset-name">Presets</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="settings-preset-name"
+                      type="text"
+                      value={presetName}
+                      onChange={(e) => setPresetName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSavePreset();
+                      }}
+                      placeholder="New preset name"
+                      className="flex h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleSavePreset}
+                      disabled={!presetName.trim()}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                  {presetList.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">No presets saved yet.</span>
+                  ) : (
+                    <div className="grid gap-1.5">
+                      {presetList.map((preset) => {
+                        const isActive = preset.id === presetControls.activeId;
+                        return (
+                          <div
+                            key={preset.id}
+                            className="grid gap-1.5 rounded-md border border-border/70 p-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={presetRenameDrafts[preset.id] ?? preset.name ?? ""}
+                                aria-label={`Preset name ${preset.name}`}
+                                onChange={(e) =>
+                                  setPresetRenameDrafts((current) => ({
+                                    ...current,
+                                    [preset.id]: e.target.value,
+                                  }))
+                                }
+                                className="flex h-8 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              />
+                              {isActive ? (
+                                <span className="shrink-0 text-xs font-medium text-primary">
+                                  Active
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-2 py-1 text-xs"
+                                onClick={() => presetControls.apply(preset.id)}
+                              >
+                                Apply
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-2 py-1 text-xs"
+                                onClick={() => presetControls.update(preset.id)}
+                              >
+                                Update
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-2 py-1 text-xs"
+                                onClick={() => handleRenamePreset(preset.id)}
+                              >
+                                Rename
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-2 py-1 text-xs text-destructive hover:text-destructive"
+                                onClick={() => presetControls.remove(preset.id)}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between gap-2">

@@ -14,16 +14,31 @@ import { isTauri } from "../ipc/env.js";
 
 const backend = isTauri() ? createPluginStoreBackend() : createLocalStorageBackend();
 
+function migrateWorkspace(raw) {
+  const { customPresets: _customPresets, activePresetId: _activePresetId, ...rest } = raw;
+  return rest;
+}
+
 export const settingsStore = createDomainStore({ name: "plvs:settings", backend });
-export const workspaceStore = createDomainStore({ name: "plvs:workspace", backend });
+export const workspaceStore = createDomainStore({
+  name: "plvs:workspace",
+  backend,
+  migrate: migrateWorkspace,
+});
+export const presetsStore = createDomainStore({ name: "plvs:presets", backend });
 
 /** Whole-app snapshot of every persisted domain (foundation for problem #5). */
 export function exportAll() {
-  return { settings: settingsStore.export(), workspace: workspaceStore.export() };
+  return {
+    settings: settingsStore.export(),
+    workspace: workspaceStore.export(),
+    presets: presetsStore.export(),
+  };
 }
 
 /** Wipe every persisted domain (foundation for problem #5). */
 export function resetAll() {
   settingsStore.reset();
   workspaceStore.reset();
+  presetsStore.reset();
 }
