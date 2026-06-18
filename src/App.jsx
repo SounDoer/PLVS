@@ -44,14 +44,6 @@ import { VisibilityPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
 import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
 import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { eventMatchesAccelerator } from "./lib/accelerator.js";
 import {
@@ -97,19 +89,41 @@ const DIALOGUE_STAT_IDS = [
 
 const APP_VERSION = packageInfo.version;
 
-function AudioDeviceOption({ device }) {
-  const label = formatAudioDeviceLabel(device.label);
+function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
-    <SelectItem key={device.id} value={device.id} className="min-w-0 py-2">
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate">{label.primary}</span>
-        {label.secondary ? (
-          <span className="mt-0.5 truncate text-xs text-muted-foreground/70">
-            {label.secondary}
-          </span>
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={onSelect}
+      className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          selected ? "bg-primary" : "bg-muted-foreground/20"
+        )}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-foreground">{primary}</span>
+        {secondary ? (
+          <span className="mt-0.5 block truncate text-muted-foreground/70">{secondary}</span>
         ) : null}
       </span>
-    </SelectItem>
+    </button>
+  );
+}
+
+function AudioDeviceOption({ device, selected, onSelect }) {
+  const label = formatAudioDeviceLabel(device.label);
+  return (
+    <DeviceRow
+      ariaLabel={label.full}
+      primary={label.primary}
+      secondary={label.secondary}
+      selected={selected}
+      onSelect={onSelect}
+    />
   );
 }
 
@@ -259,6 +273,11 @@ function AppContent() {
   const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
   const [focusControlsVisible, setFocusControlsVisible] = useState(false);
   const [focusControlsHeld, setFocusControlsHeld] = useState(false);
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const handleDeviceSelect = (id) => {
+    setCaptureDeviceIdAndPersist(id);
+    setDevicesOpen(false);
+  };
   const focusControlsHideTimerRef = useRef(0);
   const focusControlsDragTimerRef = useRef(0);
 
@@ -1108,43 +1127,65 @@ function AppContent() {
                   onClick={clearAll}
                 />
                 {isTauri() && (
-                  <div className="relative group">
-                    <Select
-                      value={safeAudioDeviceId}
-                      onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
-                      onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}
-                      disabled={!audioDevices.length}
-                    >
-                      <SelectTrigger
-                        className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
-                        aria-label="Devices"
-                      >
-                        <Volume2 className="size-4 shrink-0" />
-                      </SelectTrigger>
-                      <SelectContent align="end" sideOffset={6} className="w-[min(28rem,92vw)]">
-                        <SelectItem value="default">Automatic (default system output)</SelectItem>
-                        {audioOutputs.length ? (
-                          <SelectGroup>
-                            <SelectLabel>Output</SelectLabel>
-                            {audioOutputs.map((d) => (
-                              <AudioDeviceOption key={d.id} device={d} />
-                            ))}
-                          </SelectGroup>
-                        ) : null}
-                        {audioInputs.length ? (
-                          <SelectGroup>
-                            <SelectLabel>Input</SelectLabel>
-                            {audioInputs.map((d) => (
-                              <AudioDeviceOption key={d.id} device={d} />
-                            ))}
-                          </SelectGroup>
-                        ) : null}
-                      </SelectContent>
-                    </Select>
-                    <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
-                      Devices
-                    </span>
-                  </div>
+                  <Popover
+                    open={devicesOpen}
+                    onOpenChange={(open) => {
+                      if (open && !audioDevices.length) return;
+                      setDevicesOpen(open);
+                      if (focusView.autoHideControls) holdFocusControls(open);
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <span>
+                        <IconButton
+                          icon={<Volume2 className="size-4 shrink-0" />}
+                          tip="Devices"
+                          disabled={!audioDevices.length}
+                        />
+                      </span>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" sideOffset={6} className="w-auto max-w-[92vw] p-1">
+                      <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                        Devices
+                      </p>
+                      <DeviceRow
+                        ariaLabel="Automatic (default system output)"
+                        primary="Automatic (default system output)"
+                        selected={safeAudioDeviceId === "default"}
+                        onSelect={() => handleDeviceSelect("default")}
+                      />
+                      {audioOutputs.length ? (
+                        <>
+                          <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                            Output
+                          </p>
+                          {audioOutputs.map((d) => (
+                            <AudioDeviceOption
+                              key={d.id}
+                              device={d}
+                              selected={safeAudioDeviceId === d.id}
+                              onSelect={() => handleDeviceSelect(d.id)}
+                            />
+                          ))}
+                        </>
+                      ) : null}
+                      {audioInputs.length ? (
+                        <>
+                          <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                            Input
+                          </p>
+                          {audioInputs.map((d) => (
+                            <AudioDeviceOption
+                              key={d.id}
+                              device={d}
+                              selected={safeAudioDeviceId === d.id}
+                              onSelect={() => handleDeviceSelect(d.id)}
+                            />
+                          ))}
+                        </>
+                      ) : null}
+                    </PopoverContent>
+                  </Popover>
                 )}
                 <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
                   <PopoverTrigger asChild>

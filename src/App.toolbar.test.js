@@ -37,10 +37,10 @@ describe("App toolbar", () => {
   });
 
   it("uses a short toolbar label for devices", () => {
-    expect(appSource).toContain('aria-label="Devices"');
-    expect(appSource).toMatch(/>\s*Devices\s*<\/span>/);
-    expect(appSource).not.toContain('aria-label="Audio Device"');
-    expect(appSource).not.toMatch(/>\s*Audio Device\s*<\/span>/);
+    expect(appSource).toContain('tip="Devices"');
+    expect(appSource).toMatch(/>\s*Devices\s*<\/p>/);
+    expect(appSource).not.toContain('tip="Audio Device"');
+    expect(appSource).not.toMatch(/>\s*Audio Device\s*<\/p>/);
   });
 
   it("uses formatted audio device labels in both the picker and footer", () => {
@@ -51,7 +51,7 @@ describe("App toolbar", () => {
     expect(appSource).toContain("{footerDeviceLabel}");
     expect(appSource).not.toContain("title={label.full}");
     expect(appSource).not.toContain("title={deviceDisplay?.full}");
-    expect(appSource).toContain("w-[min(28rem,92vw)]");
+    expect(appSource).toContain("w-auto max-w-[92vw]");
   });
 
   it("does not sync live vectorscope selection from snapshot display audio", () => {
