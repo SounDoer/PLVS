@@ -38,4 +38,4 @@ rubato = "0.16"
 # Pin: time 0.3.48 breaks a trait-coherence check in tauri-utils/cookie. The pre-commit hook
 # regenerates Cargo.lock (`cargo generate-lockfile`) whenever Cargo.toml changes, which would
 # otherwise keep re-bumping time to the broken release. The `=` constraint makes the pin stick.
-time = "=0.3.47"
+time = "=0.3.49"
