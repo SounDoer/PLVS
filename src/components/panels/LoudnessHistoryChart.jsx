@@ -1,5 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, loudnessFromTopFrac } from "../../config/scales";
@@ -49,7 +48,7 @@ export function LoudnessHistoryChart({
   const showMomentary = visibleLayerIds.includes("momentary");
   const showShortTerm = visibleLayerIds.includes("shortTerm");
   const showReference = visibleLayerIds.includes("ref");
-  const showReferenceLayer = showReference && Number.isFinite(referenceLufs);
+  const useOverGradient = showReference && Number.isFinite(referenceLufs);
   const hasSelectedLayer = showMomentary || showShortTerm || showReference;
 
   const historyYAxisTicksLabeled = useMemo(
@@ -57,9 +56,13 @@ export function LoudnessHistoryChart({
     [historyYAxisTicks, targetLufs, hasHistoryData]
   );
 
-  const referenceBandLu = 1;
+  const isSnap = selectedOffset >= 0;
+  const mStrokeNormal = isSnap ? "var(--ui-chart-momentary-snap)" : "var(--ui-chart-momentary)";
+  const stStrokeNormal = isSnap ? "var(--ui-chart-shortterm-snap)" : "var(--ui-chart-shortterm)";
+  const refTopFrac = Number.isFinite(referenceLufs) ? loudnessFromTopFrac(referenceLufs) : null;
 
-  const reduceMotion = useReducedMotion();
+  const mGradId = useId().replace(/:/g, "");
+  const stGradId = useId().replace(/:/g, "");
 
   const historyGridRef = useRef(null);
   const [historyGridTopPx, setHistoryGridTopPx] = useState(() => ({}));
@@ -179,13 +182,49 @@ export function LoudnessHistoryChart({
           preserveAspectRatio="none"
           className="relative z-[1] h-full w-full pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
         >
+          <defs>
+            {useOverGradient && refTopFrac != null ? (
+              <>
+                <linearGradient
+                  id={mGradId}
+                  gradientUnits="userSpaceOnUse"
+                  x1={0}
+                  y1={0}
+                  x2={0}
+                  y2={220}
+                >
+                  <stop offset={0} style={{ stopColor: "var(--ui-chart-momentary-over)" }} />
+                  <stop
+                    offset={refTopFrac}
+                    style={{ stopColor: "var(--ui-chart-momentary-over)" }}
+                  />
+                  <stop offset={refTopFrac} style={{ stopColor: mStrokeNormal }} />
+                  <stop offset={1} style={{ stopColor: mStrokeNormal }} />
+                </linearGradient>
+                <linearGradient
+                  id={stGradId}
+                  gradientUnits="userSpaceOnUse"
+                  x1={0}
+                  y1={0}
+                  x2={0}
+                  y2={220}
+                >
+                  <stop offset={0} style={{ stopColor: "var(--ui-chart-shortterm-over)" }} />
+                  <stop
+                    offset={refTopFrac}
+                    style={{ stopColor: "var(--ui-chart-shortterm-over)" }}
+                  />
+                  <stop offset={refTopFrac} style={{ stopColor: stStrokeNormal }} />
+                  <stop offset={1} style={{ stopColor: stStrokeNormal }} />
+                </linearGradient>
+              </>
+            ) : null}
+          </defs>
           {showMomentary && displayHistoryPathM && (
             <path
               d={displayHistoryPathM}
               fill="none"
-              stroke={
-                selectedOffset >= 0 ? "var(--ui-chart-momentary-snap)" : "var(--ui-chart-momentary)"
-              }
+              stroke={useOverGradient ? `url(#${mGradId})` : mStrokeNormal}
               strokeWidth="var(--ui-lh-stroke-m-w)"
               vectorEffect="non-scaling-stroke"
             />
@@ -194,9 +233,7 @@ export function LoudnessHistoryChart({
             <path
               d={displayHistoryPathST}
               fill="none"
-              stroke={
-                selectedOffset >= 0 ? "var(--ui-chart-shortterm-snap)" : "var(--ui-chart-shortterm)"
-              }
+              stroke={useOverGradient ? `url(#${stGradId})` : stStrokeNormal}
               strokeWidth="var(--ui-lh-stroke-st-w)"
               opacity="var(--ui-lh-stroke-st-op)"
               vectorEffect="non-scaling-stroke"
@@ -216,32 +253,8 @@ export function LoudnessHistoryChart({
           ) : null}
         </svg>
 
-        {/* Overlays: reference line, hover crosshair, HUD boxes */}
+        {/* Overlays: hover crosshair, HUD boxes */}
         <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
-          {showReferenceLayer ? (
-            <>
-              <div
-                className="absolute left-0 right-0"
-                style={{
-                  top: `${loudnessFromTopFrac(referenceLufs + referenceBandLu) * 100}%`,
-                  bottom: `${(1 - loudnessFromTopFrac(referenceLufs - referenceBandLu)) * 100}%`,
-                  background: "color-mix(in srgb, var(--ui-chart-target-line) 12%, transparent)",
-                }}
-              />
-              <motion.div
-                className="absolute left-0 right-0 h-0 -translate-y-1/2 border-t border-dashed"
-                initial={false}
-                animate={{ top: `${loudnessFromTopFrac(referenceLufs) * 100}%` }}
-                transition={
-                  reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 32 }
-                }
-                style={{
-                  borderTopColor: "var(--ui-chart-target-line)",
-                  borderTopWidth: 2,
-                }}
-              />
-            </>
-          ) : null}
           {!hasSelectedLayer ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[length:var(--ui-fs-axis)] text-muted-foreground">
               No layers selected

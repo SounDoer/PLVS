@@ -61,6 +61,17 @@ describe("BUILTIN_THEMES", () => {
       expect(loudnessHistory.selectionStroke).toBeTruthy();
       expect(loudnessHistory.historyGridLineColor).toBeTruthy();
 
+      expectHexColor(loudnessHistory.momentaryStrokeOver);
+      expectHexColor(loudnessHistory.shortTermStrokeOver);
+      expect(loudnessHistory.momentaryStrokeOver).not.toBe(loudnessHistory.momentaryStroke);
+      expect(loudnessHistory.shortTermStrokeOver).not.toBe(loudnessHistory.shortTermStroke);
+      expect(
+        colorDistance(loudnessHistory.momentaryStroke, loudnessHistory.momentaryStrokeOver)
+      ).toBeGreaterThanOrEqual(45);
+      expect(
+        colorDistance(loudnessHistory.shortTermStroke, loudnessHistory.shortTermStrokeOver)
+      ).toBeGreaterThanOrEqual(45);
+
       expect(loudnessHistory.momentaryStroke).not.toBe(loudnessHistory.shortTermStroke);
       expect(Number(loudnessHistory.momentaryStrokeWidth)).toBeGreaterThan(0);
       expect(Number(loudnessHistory.shortTermStrokeWidth)).toBeGreaterThan(0);

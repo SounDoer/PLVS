@@ -151,8 +151,10 @@ export function applyThemeToDocument(themeId) {
   const charts = theme.charts;
   setCssVar("--ui-chart-momentary", charts.loudnessHistory.momentaryStroke);
   setCssVar("--ui-chart-momentary-snap", charts.loudnessHistory.momentaryStrokeSnap);
+  setCssVar("--ui-chart-momentary-over", charts.loudnessHistory.momentaryStrokeOver);
   setCssVar("--ui-chart-shortterm", charts.loudnessHistory.shortTermStroke);
   setCssVar("--ui-chart-shortterm-snap", charts.loudnessHistory.shortTermStrokeSnap);
+  setCssVar("--ui-chart-shortterm-over", charts.loudnessHistory.shortTermStrokeOver);
   setCssVar("--ui-chart-selection", charts.loudnessHistory.selectionStroke);
   setCssVar("--ui-chart-vectorscope-live", charts.vectorscope.strokeLive);
   setCssVar("--ui-chart-vectorscope-snap", charts.vectorscope.strokeSnap);

@@ -3,7 +3,6 @@ import { loudnessHistY, LOUDNESS_TICKS } from "../config/scales";
 import {
   buildHistoryPath,
   buildHistoryTimeAxisLabels,
-  buildLoudnessYAxisTicks,
   getHistoryViewport,
 } from "../math/historyMath";
 import { fmtMetric } from "../math/formatMath";
@@ -114,10 +113,7 @@ export function useLoudnessHistory({
 
   const targetLufs = Number.isFinite(referenceLufs) ? referenceLufs : -23;
 
-  const historyYAxisTicks = useMemo(
-    () => buildLoudnessYAxisTicks(targetLufs, LOUDNESS_TICKS),
-    [targetLufs]
-  );
+  const historyYAxisTicks = LOUDNESS_TICKS;
 
   const psr =
     Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.shortTerm)

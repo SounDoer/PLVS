@@ -19,7 +19,7 @@ Improve how the Loudness history chart distinguishes `Momentary` (`M`) and `Shor
 - Do not introduce global fixed colors for `M` and `ST`.
 - Do not make Loudness more colorful than the rest of the app by adding unrelated palette colors.
 - Do not use dashed lines for `M` or `ST`.
-- Do not change the meaning of `Reference`; it remains an auxiliary reference layer.
+- Do not introduce a universal warning-red over color; the over-reference shades must stay within each theme's signal family.
 - Do not add a dedicated reference text color token unless existing semantic text tokens fail in implementation.
 - Do not add hover HUD or layer menu swatches unless the curve styling alone proves insufficient.
 - Do not add user customization for trace colors or line styles.
@@ -30,7 +30,7 @@ Improve how the Loudness history chart distinguishes `Momentary` (`M`) and `Shor
 
 - `M` as a solid path using `--ui-chart-momentary`.
 - `ST` as a solid path using `--ui-chart-shortterm`.
-- `Reference` as a dashed line and tolerance band using `--ui-chart-target-line`.
+- `Reference` is not drawn as a line. Instead, the reference LUFS drives an over-reference color gradient on `M` and `ST`: each curve hard-flips from its normal trace color (below the reference) to an over color (`--ui-chart-*-over`, above the reference). The `Reference` layer toggle enables or disables this gradient.
 
 The active theme writes these tokens from `src/theme/builtinThemes.js` through `applyThemeToDocument`.
 
@@ -44,7 +44,7 @@ Chart layer style should carry semantic meaning:
 - Dashed lines are references, targets, thresholds, or future marker-like auxiliary layers.
 - Bands are ranges or tolerances around an auxiliary layer.
 
-Under this model, `M` and `ST` stay solid because both are primary loudness history series. `Reference` keeps the dashed style because it is not a measured data series.
+Under this model, `M` and `ST` stay solid because both are primary loudness history series. `Reference` is not drawn as a line; its threshold is encoded via the over-reference gradient color flip on `M` and `ST`.
 
 ## Theme Color Strategy
 
@@ -81,20 +81,22 @@ Do not add trace swatches here unless visual review shows the chart still needs 
 
 ### Reference Layer
 
-`Reference` should remain visually lower priority than `M` and `ST`.
+`Reference` is no longer rendered as a dashed line or tolerance band. The reference LUFS value is used only as the threshold for the over-reference gradient on `M` and `ST`.
 
-The reference line uses `--ui-chart-target-line` and keeps its dashed style. The tolerance band may derive from the same token at low opacity. The reference label text should use existing semantic text color, such as muted foreground, instead of a dedicated chart text color.
+When the `Reference` layer is visible, `M` and `ST` strokes use a vertical `linearGradient` (hard flip at the reference level) from the normal trace color below the reference to the over color above it. When the `Reference` layer is hidden, `M` and `ST` use their solid normal trace color with no over indication. The over-gradient applies in both live and snapshot views.
 
-Reference axis text should also use semantic text color rather than decorative `text-chart-*` palette slots. Do not color reference text as a third primary trace.
+The over colors `--ui-chart-momentary-over` and `--ui-chart-shortterm-over` are hotter/brighter shades within each theme's signal family, so the over indication stays in family rather than introducing a universal warning red.
+
+The reference value is not shown as a dedicated Y-axis tick.
 
 ## Design Token Guidance
 
 `docs/design-tokens.md` should describe the chart trace semantics:
 
 - `--ui-chart-momentary` and `--ui-chart-shortterm` are sibling primary data trace tokens.
-- `--ui-chart-target-line` is an auxiliary reference token with lower visual priority than primary traces.
-- Reference labels and reference axis text should use semantic text color.
-- Theme authors may tune sibling trace colors per theme, but must keep them within the theme's signal family.
+- `--ui-chart-momentary-over` and `--ui-chart-shortterm-over` are the over-reference shades for `M` and `ST`, hotter/brighter siblings within the same theme family.
+- `--ui-chart-target-line` is retained for non-chart reference UI; the loudness history chart no longer renders a reference line.
+- Theme authors may tune sibling trace colors per theme, including the over shades, but must keep them within the theme's signal family.
 
 ## Testing
 
@@ -103,7 +105,10 @@ Implementation should include focused tests for:
 - `LoudnessHistoryChart` keeps the hover HUD compact without trace swatches.
 - `LoudnessHistoryChart` does not color reference axis text with decorative `text-chart-*` palette slots.
 - `LoudnessHistoryChart` renders `M` and `ST` paths with non-scaling strokes so token width changes are visible at runtime.
+- `LoudnessHistoryChart` applies an over-reference gradient stroke when the `Reference` layer is visible (including snapshot mode), and a solid trace stroke when it is hidden.
+- `LoudnessHistoryChart` does not render a reference line or tolerance band.
 - Theme token tests assert `M` uses a thinner stroke than `ST` for every built-in theme.
+- Theme token tests assert over-reference shades are present and visually distinct from the normal trace for every built-in theme.
 - Theme token tests continue to assert stable token presence for all built-in themes.
 
 Visual review should check every built-in theme:

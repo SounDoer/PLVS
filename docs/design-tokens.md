@@ -72,20 +72,22 @@ Controls the three-stop gradient fill on Peak panel channel bars.
 All chart traces use a **live / snap** dual-rail pattern.  
 Primary measured data series use **solid sibling traces** inside the active theme's signal family. Auxiliary layers use separate visual semantics: dashed lines for references / thresholds / markers and bands for ranges or tolerances.
 
-For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from `Reference` or future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune their lightness, saturation, slight hue shift, opacity, or stroke width per theme, but the pair should still feel related to Spectrum / Vectorscope accent colors rather than introducing a Loudness-only palette.
+For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune their lightness, saturation, slight hue shift, opacity, or stroke width per theme, but the pair should still feel related to Spectrum / Vectorscope accent colors rather than introducing a Loudness-only palette.
 
 Snapshot chart colors are state colors for selected historical data. Within a theme, `--ui-chart-momentary-snap`, `--ui-chart-shortterm-snap`, `--ui-chart-vectorscope-snap`, and `--ui-chart-spectrum-snap` should belong to one snapshot family. That family must be clearly distinguishable from live trace colors while still matching the theme. Do not treat snapshot colors as new data categories, hover colors, or warning colors.
 
 Waveform lanes use a **stroke + fill** pattern: 1px strokes on both the max (top) and min (bottom) envelope edges, plus a semi-transparent fill at `--ui-chart-waveform-fill-opacity` (0.22). The stroke color tracks the theme accent (`--ui-chart-waveform-live`); there is no snap variant because the waveform always displays the currently visible time window without overlaying a second frozen trace.
 
-Reference layers should remain lower priority than primary data traces. Use `--ui-chart-target-line` for the dashed line and low-opacity band. Reference label text and reference axis text should use existing semantic text color such as muted foreground; do not add a dedicated reference text token unless semantic text fails in implementation.
+The Loudness `Reference` layer is not drawn as a line or band. Instead, the reference LUFS drives an **over-reference gradient** on the `M` and `ST` traces: each curve hard-flips from its normal trace color (below the reference) to an over color (above it). The over colors `--ui-chart-momentary-over` and `--ui-chart-shortterm-over` are hotter/brighter shades within the same theme signal family — never a universal warning red. When the `Reference` layer toggle is off, `M` and `ST` render as solid normal-trace strokes with no over indication. The over-gradient applies in both live and snapshot views; in snapshot mode the below-reference segment uses the snap color. The reference value is not shown as a dedicated Y-axis tick. `--ui-chart-target-line` is retained only for non-chart reference UI and is no longer rendered by the loudness history chart.
 
 | Token | Value | Role |
 |-------|-------|------|
 | `--ui-chart-momentary` | `#fb923c` | Loudness M · live primary data trace |
 | `--ui-chart-momentary-snap` | `#fcd34d` | Loudness M · snapshot trace |
+| `--ui-chart-momentary-over` | `#ff5a1f` | Loudness M · over-reference shade (hotter in-family) |
 | `--ui-chart-shortterm` | `#c66a2a` | Loudness ST · live sibling data trace |
 | `--ui-chart-shortterm-snap` | `#f2b27a` | Loudness ST · snapshot sibling trace |
+| `--ui-chart-shortterm-over` | `#ff4a0a` | Loudness ST · over-reference shade (hotter in-family) |
 | `--ui-chart-selection` | `#fcd34d` | Selected-offset baseline (light gold) |
 | `--ui-chart-vectorscope-live` | `#fb923c` | Vectorscope path (live) |
 | `--ui-chart-vectorscope-snap` | `#fcd34d` | Vectorscope path (snap) |
@@ -93,7 +95,7 @@ Reference layers should remain lower priority than primary data traces. Use `--u
 | `--ui-chart-spectrum-snap` | `#fcd34d` | Spectrum path + fill (snap) |
 | `--ui-chart-waveform-live` | `#fb923c` | Waveform envelope stroke + fill (live) |
 | `--ui-chart-waveform-fill-opacity` | `0.22` | Waveform fill transparency — same value across all themes |
-| `--ui-chart-target-line` | `rgba(251,146,60,0.4)` | Loudness target / reference auxiliary line and band source |
+| `--ui-chart-target-line` | `rgba(251,146,60,0.4)` | Reference auxiliary UI (non-chart); no longer rendered as a loudness history line/band |
 
 ### Component: Signal (semantic state colors)
 
