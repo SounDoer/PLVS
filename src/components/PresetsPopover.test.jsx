@@ -21,6 +21,11 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
   });
 
+  it("gives the new preset name input an accessible name", () => {
+    render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
+    expect(screen.getByRole("textbox", { name: "New preset name" })).toBeTruthy();
+  });
+
   it("disables Save when the name input is empty", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
     expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(true);
@@ -90,6 +95,21 @@ describe("PresetsPopoverContent", () => {
     );
     fireEvent.click(screen.getByText("Focus"));
     expect(apply).toHaveBeenCalledWith("a");
+  });
+
+  it("uses a real button for applying a preset without nesting action buttons inside it", () => {
+    render(
+      <PresetsPopoverContent
+        presets={{
+          ...NOOP_PRESETS,
+          list: [{ id: "a", name: "Focus" }],
+        }}
+      />
+    );
+
+    const applyButton = screen.getByRole("button", { name: "Apply preset Focus" });
+    const updateButton = screen.getByLabelText("Update preset Focus");
+    expect(updateButton.closest("button")).not.toBe(applyButton);
   });
 
   it("updates a preset via the Update icon", () => {
@@ -200,6 +220,21 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByText("Focus")).toBeTruthy();
   });
 
+  it("uses visible focus styles on rename action buttons", () => {
+    render(
+      <PresetsPopoverContent
+        presets={{
+          ...NOOP_PRESETS,
+          list: [{ id: "a", name: "Focus" }],
+        }}
+      />
+    );
+    fireEvent.click(screen.getByLabelText("Rename preset Focus"));
+
+    expect(screen.getByLabelText("Save rename").className).toContain("focus-visible:ring-1");
+    expect(screen.getByLabelText("Cancel rename").className).toContain("focus-visible:ring-1");
+  });
+
   it("does not call apply when the Rename icon is clicked (stopPropagation)", () => {
     const apply = vi.fn();
     render(
@@ -261,5 +296,39 @@ describe("PresetsPopoverContent", () => {
     expect(iconsSpan).toBeTruthy();
     expect(iconsSpan.className).toContain("opacity-0");
     expect(iconsSpan.className).toContain("group-hover:opacity-100");
+  });
+
+  it("shows row-tail action icons while keyboard focus is inside the preset row", () => {
+    render(
+      <PresetsPopoverContent
+        presets={{
+          ...NOOP_PRESETS,
+          list: [{ id: "a", name: "Focus" }],
+        }}
+      />
+    );
+    const iconsSpan = screen.getByLabelText("Update preset Focus").closest("span.flex.shrink-0");
+    expect(iconsSpan).toBeTruthy();
+    expect(iconsSpan.className).toContain("group-focus-within:opacity-100");
+  });
+
+  it("uses visible focus styles on row-tail action buttons", () => {
+    render(
+      <PresetsPopoverContent
+        presets={{
+          ...NOOP_PRESETS,
+          list: [{ id: "a", name: "Focus" }],
+        }}
+      />
+    );
+    expect(screen.getByLabelText("Update preset Focus").className).toContain(
+      "focus-visible:ring-1"
+    );
+    expect(screen.getByLabelText("Rename preset Focus").className).toContain(
+      "focus-visible:ring-1"
+    );
+    expect(screen.getByLabelText("Delete preset Focus").className).toContain(
+      "focus-visible:ring-1"
+    );
   });
 });

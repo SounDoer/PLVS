@@ -58,6 +58,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
       <div className="flex items-center gap-2 px-2 py-1.5">
         <input
           type="text"
+          aria-label="New preset name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -106,7 +107,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
                       aria-label="Save rename"
                       onClick={() => commitRename(preset.id)}
                       disabled={!(drafts[preset.id] ?? "").trim()}
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40"
                     >
                       <Check className="size-3.5" />
                     </button>
@@ -114,33 +115,29 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
                       type="button"
                       aria-label="Cancel rename"
                       onClick={cancelRename}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <X className="size-3.5" />
                     </button>
                   </div>
                 ) : (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => presets.apply(preset.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        presets.apply(preset.id);
-                      }
-                    }}
-                    className="flex items-center gap-2 rounded px-1.5 py-1.5 text-xs transition-colors hover:bg-muted/50 cursor-pointer"
-                  >
-                    <span
-                      aria-label={isActive ? `Active preset ${preset.name}` : undefined}
-                      className={cn(
-                        "size-1.5 shrink-0 rounded-full",
-                        isActive ? "bg-primary" : "bg-muted-foreground/20"
-                      )}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-foreground">{preset.name}</span>
-                    <span className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 rounded text-xs transition-colors hover:bg-muted/50 focus-within:bg-muted/50">
+                    <button
+                      type="button"
+                      aria-label={`Apply preset ${preset.name}`}
+                      onClick={() => presets.apply(preset.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <span
+                        aria-label={isActive ? `Active preset ${preset.name}` : undefined}
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          isActive ? "bg-primary" : "bg-muted-foreground/20"
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-foreground">{preset.name}</span>
+                    </button>
+                    <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <button
                         type="button"
                         aria-label={`Update preset ${preset.name}`}
@@ -148,7 +145,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
                           e.stopPropagation();
                           presets.update(preset.id);
                         }}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <RefreshCw className="size-3.5" />
                       </button>
@@ -159,7 +156,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
                           e.stopPropagation();
                           startRename(preset);
                         }}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <Pencil className="size-3.5" />
                       </button>
@@ -170,7 +167,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
                           e.stopPropagation();
                           presets.remove(preset.id);
                         }}
-                        className="text-muted-foreground hover:text-destructive"
+                        className="rounded text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <Trash2 className="size-3.5" />
                       </button>

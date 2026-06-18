@@ -10,13 +10,22 @@ import { HoverTip } from "@/components/HoverTip";
  *   disabled?: boolean,
  *   onClick?: () => void,
  *   className?: string,
+ *   "aria-label"?: string,
  * }} props
  */
-export function IconButton({ icon, tip, disabled = false, onClick, className }) {
+export function IconButton({
+  icon,
+  tip,
+  disabled = false,
+  onClick,
+  className,
+  "aria-label": ariaLabel,
+}) {
   return (
     <HoverTip tip={tip} side="bottom">
       <button
         type="button"
+        aria-label={ariaLabel ?? tip}
         disabled={disabled}
         onClick={onClick}
         className={cn(
