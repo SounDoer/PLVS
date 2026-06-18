@@ -12,6 +12,6 @@ export async function setWindowDecorations(enabled) {
 
 export function useFocusViewWindow(autoHideControls) {
   useEffect(() => {
-    void setWindowDecorations(autoHideControls !== true);
+    void setWindowDecorations(autoHideControls !== true).catch(() => {});
   }, [autoHideControls]);
 }
