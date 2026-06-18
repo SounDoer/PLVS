@@ -403,15 +403,21 @@ remove the preflight just because the gate exists.
 
 ### Release Creation
 
-1. Extract CHANGELOG section for version
-2. Create GitHub Release with notes
-3. Attach all build artifacts
+1. Extract CHANGELOG section for version via `scripts/changelog-release-body.mjs`
+2. **Auto-append installation instructions** (Chinese + English) with
+   version-filled filenames — maintained in the script, not in CHANGELOG.md
+3. Create GitHub Release with the combined notes
+4. Attach all build artifacts
+
+> The installation section (SmartScreen / Gatekeeper bypass, download
+> filenames) is injected by `changelog-release-body.mjs` so it ships with
+> every release automatically. Edit it there, not in CHANGELOG.md.
 
 ### Artifact Naming
 
 | Platform | Artifact Name |
 |----------|---------------|
-| Windows NSIS | `PLVS-vX.Y.Z-x64-setup.exe` |
+| Windows NSIS | `PLVS_X.Y.Z_x64-setup.exe` |
 | Windows Portable | `PLVS-vX.Y.Z-x64-portable.exe` |
 | macOS DMG | `PLVS-vX.Y.Z-aarch64.dmg` |
 
