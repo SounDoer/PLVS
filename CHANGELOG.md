@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-06-18
+
+### Added
+- Presets: settings-managed view snapshots
+- Presets: toolbar popover for preset management (moved out of Settings)
+
+### Changed
+- Presets: remove Presets block from SettingsPanel (moved to toolbar)
+- UI: update icon tooltips
+
+### Fixed
+- Presets: clarify rename and active row layout
+- UI: restore missing PresetsPopoverContent import in App.jsx
+- UI: improve presets popover accessibility
+- Engine: reduce retained history memory
+
 ## [0.3.6] - 2026-06-17
 
 ### Added
