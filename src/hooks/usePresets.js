@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { normalizePanelControls } from "../lib/panelControls.js";
 import { presetsStore } from "../persistence/index.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
@@ -29,7 +30,12 @@ async function readWindowBounds() {
   }
 }
 
-export function usePresets({ windowPinned = false, setWindowPinned = () => {} } = {}) {
+export function usePresets({
+  windowPinned = false,
+  setWindowPinned = () => {},
+  focusView = DEFAULT_FOCUS_VIEW,
+  setFocusView = () => {},
+} = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
 
@@ -53,10 +59,12 @@ export function usePresets({ windowPinned = false, setWindowPinned = () => {} } 
       visibleModules: [...workspaceState.visibleModules],
       panelControls: normalizePanelControls(workspaceState.panelControls),
       windowPinned: windowPinned === true,
+      focusView: normalizeFocusView(focusView),
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
   }, [
     windowPinned,
+    focusView,
     workspaceState.panelControls,
     workspaceState.tree,
     workspaceState.visibleModules,
@@ -100,10 +108,13 @@ export function usePresets({ windowPinned = false, setWindowPinned = () => {} } 
       if (typeof preset.windowPinned === "boolean") {
         setWindowPinned(preset.windowPinned);
       }
+      if (preset.focusView) {
+        setFocusView(normalizeFocusView(preset.focusView));
+      }
       write({ activeId: id });
       return true;
     },
-    [setView, setWindowPinned, write]
+    [setView, setWindowPinned, setFocusView, write]
   );
 
   const update = useCallback(

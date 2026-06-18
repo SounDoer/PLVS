@@ -372,4 +372,31 @@ describe("PanelHeaderControls", () => {
       ],
     });
   });
+
+  it("hides LeafView panel controls in compact panel mode", () => {
+    const { container } = render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              compactPanels: true,
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              primaryMetrics: [],
+              secondaryMetrics: [],
+            }}
+          >
+            <LeafView
+              node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
+              path={[]}
+            />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    expect(container.querySelector("[data-leaf-tabs]")).toBeNull();
+    expect(container.querySelector("[data-leaf-body]")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Fullscreen" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Hide all in panel" })).toBeNull();
+  });
 });

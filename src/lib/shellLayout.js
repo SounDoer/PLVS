@@ -9,11 +9,24 @@ export const SHELL_PAGE =
 export const SHELL_INNER =
   "flex min-h-0 w-full flex-1 select-none flex-col gap-[var(--ui-shell-gap)] p-[var(--ui-shell-pad)]";
 
+export const SHELL_INNER_FOCUS =
+  "relative flex min-h-0 w-full flex-1 select-none flex-col p-[var(--ui-shell-pad)]";
+
 export const SHELL_HEADER =
   "flex shrink-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-border bg-card/60 px-[var(--ui-header-pad-x)] py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_rgba(255,255,255,0.026)] backdrop-blur-[14px] backdrop-saturate-[140%] z-10";
 
+export const SHELL_HEADER_OVERLAY =
+  "absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-border bg-card/75 px-[var(--ui-header-pad-x)] py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur-[14px] backdrop-saturate-[140%] z-30";
+
 export const SHELL_FOOTER =
   "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-card/60 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]";
+
+export const SHELL_FOOTER_OVERLAY =
+  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-card/75 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_-8px_24px_rgba(0,0,0,0.14)] backdrop-blur-[14px] backdrop-saturate-[140%] z-30";
+
+export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3 cursor-move";
+
+export const SHELL_BOTTOM_REVEAL_HOT_ZONE = "absolute bottom-0 left-0 right-0 z-20 h-3";
 
 export const APP_TITLE =
   "text-[length:var(--ui-fs-app-title)] font-[var(--ui-fw-app-title)] tracking-wide text-foreground";

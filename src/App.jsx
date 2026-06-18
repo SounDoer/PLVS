@@ -42,6 +42,7 @@ import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { VisibilityPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
 import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
+import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -53,9 +54,19 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { eventMatchesAccelerator } from "./lib/accelerator.js";
-import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
+import {
+  SHELL_BOTTOM_REVEAL_HOT_ZONE,
+  SHELL_FOOTER,
+  SHELL_FOOTER_OVERLAY,
+  SHELL_HEADER,
+  SHELL_HEADER_OVERLAY,
+  SHELL_INNER,
+  SHELL_INNER_FOCUS,
+  SHELL_PAGE,
+  SHELL_TOP_REVEAL_HOT_ZONE,
+} from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
-import { Bookmark, LayoutGrid, Pin, PinOff, Settings, Trash2, Volume2 } from "lucide-react";
+import { Bookmark, Focus, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
@@ -71,6 +82,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
+import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
@@ -136,9 +148,19 @@ function AppContent() {
     setClearCapturing,
     clearReady,
     registrationError,
+    focusView,
+    setFocusView,
+    setAutoHideControls,
+    setCompactPanels,
   } = useSettings({ onClearRef });
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
-  const presets = usePresets({ windowPinned: pinned, setWindowPinned: setPinned });
+  const presets = usePresets({
+    windowPinned: pinned,
+    setWindowPinned: setPinned,
+    focusView,
+    setFocusView,
+  });
+  useFocusViewWindow(focusView.autoHideControls);
 
   const {
     audioDevices,
@@ -235,6 +257,8 @@ function AppContent() {
   const [vectorPath, setVectorPath] = useState("");
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
   const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
+  const [focusControlsVisible, setFocusControlsVisible] = useState(false);
+  const focusControlsHideTimerRef = useRef(0);
 
   const audioRef = useRef(null);
   const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
@@ -519,6 +543,43 @@ function AppContent() {
     : "Not connected";
   const activePresetName =
     presets.list.find((preset) => preset.id === presets.activeId)?.name ?? "-";
+  const focusViewActive = pinned || focusView.autoHideControls || focusView.compactPanels;
+
+  const showFocusControls = useCallback(() => {
+    window.clearTimeout(focusControlsHideTimerRef.current);
+    setFocusControlsVisible(true);
+  }, []);
+
+  const hideFocusControlsLater = useCallback(() => {
+    window.clearTimeout(focusControlsHideTimerRef.current);
+    focusControlsHideTimerRef.current = window.setTimeout(() => {
+      setFocusControlsVisible(false);
+    }, 900);
+  }, []);
+
+  const handleWindowDrag = useCallback(
+    async (event) => {
+      if (!focusView.autoHideControls || event.button !== 0 || event.target !== event.currentTarget)
+        return;
+      if (!isTauri()) return;
+      try {
+        const win = getCurrentWindow();
+        if (typeof win.startDragging === "function") await win.startDragging();
+      } catch (_) {}
+    },
+    [focusView.autoHideControls]
+  );
+
+  useEffect(() => {
+    if (!focusView.autoHideControls) setFocusControlsVisible(false);
+  }, [focusView.autoHideControls]);
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(focusControlsHideTimerRef.current);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!running || !isTauri()) return;
@@ -787,6 +848,8 @@ function AppContent() {
     showClock,
     setSettingsOpen,
     clearShortcut,
+    autoHideControls: focusView.autoHideControls,
+    showFocusControls,
   };
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -797,6 +860,8 @@ function AppContent() {
         showClock: hasClock,
         setSettingsOpen: openSettings,
         clearShortcut: clearCombo,
+        autoHideControls,
+        showFocusControls: revealFocusControls,
       } = shortcutHandlerRef.current;
       const tag = document.activeElement?.tagName ?? "";
       const editable =
@@ -809,6 +874,11 @@ function AppContent() {
       if (eventMatchesAccelerator(e, clearCombo)) {
         e.preventDefault();
         if (isRunning || hasClock) clear();
+        return;
+      }
+      if (e.key === "Escape" && autoHideControls && !editable) {
+        e.preventDefault();
+        revealFocusControls();
         return;
       }
       if ((e.metaKey || e.ctrlKey) && e.key === ",") {
@@ -970,136 +1040,172 @@ function AppContent() {
     loudnessStatsOrder: normalizedPanelControls.loudnessStatsOrder,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
     dialogueActiveNow: displayAudio?.dialogueActiveNow ?? false,
+    compactPanels: focusView.compactPanels,
   };
 
   return (
     <AudioDataContext.Provider value={audioData}>
       <div className={SHELL_PAGE}>
-        <div className={SHELL_INNER}>
-          <header className={SHELL_HEADER}>
-            <StatusPill state={chromeState} showClock={showClock} clockRef={clockRef} />
-            <div className="flex-1" />
-            <div className="flex items-center gap-1">
-              <TransportButton state={chromeState} onClick={onStartClick} />
-              <div className="mx-1 h-[18px] w-px shrink-0 bg-border" />
-              <IconButton
-                icon={<Trash2 className="size-3.5" />}
-                tip="Clear"
-                disabled={!running && !showClock}
-                onClick={clearAll}
-              />
-              {isTauri() && (
-                <div className="relative group">
-                  <Select
-                    value={safeAudioDeviceId}
-                    onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
-                    disabled={!audioDevices.length}
-                  >
-                    <SelectTrigger
-                      className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
-                      aria-label="Devices"
-                    >
-                      <Volume2 className="size-4 shrink-0" />
-                    </SelectTrigger>
-                    <SelectContent align="end" sideOffset={6} className="w-[min(28rem,92vw)]">
-                      <SelectItem value="default">Automatic (default system output)</SelectItem>
-                      {audioOutputs.length ? (
-                        <SelectGroup>
-                          <SelectLabel>Output</SelectLabel>
-                          {audioOutputs.map((d) => (
-                            <AudioDeviceOption key={d.id} device={d} />
-                          ))}
-                        </SelectGroup>
-                      ) : null}
-                      {audioInputs.length ? (
-                        <SelectGroup>
-                          <SelectLabel>Input</SelectLabel>
-                          {audioInputs.map((d) => (
-                            <AudioDeviceOption key={d.id} device={d} />
-                          ))}
-                        </SelectGroup>
-                      ) : null}
-                    </SelectContent>
-                  </Select>
-                  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
-                    Devices
-                  </span>
-                </div>
-              )}
-              {isTauri() && (
+        <div className={focusView.autoHideControls ? SHELL_INNER_FOCUS : SHELL_INNER}>
+          {focusView.autoHideControls ? (
+            <div
+              className={SHELL_TOP_REVEAL_HOT_ZONE}
+              onPointerEnter={showFocusControls}
+              onPointerDown={handleWindowDrag}
+            />
+          ) : null}
+          {(!focusView.autoHideControls || focusControlsVisible) && (
+            <header
+              className={focusView.autoHideControls ? SHELL_HEADER_OVERLAY : SHELL_HEADER}
+              onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
+              onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
+              onPointerDown={focusView.autoHideControls ? handleWindowDrag : undefined}
+            >
+              <StatusPill state={chromeState} showClock={showClock} clockRef={clockRef} />
+              <div className="flex-1" />
+              <div className="flex items-center gap-1">
+                <TransportButton state={chromeState} onClick={onStartClick} />
+                <div className="mx-1 h-[18px] w-px shrink-0 bg-border" />
                 <IconButton
-                  icon={pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                  tip={pinned ? "Unpin" : "Pin"}
-                  onClick={togglePin}
-                  className={pinned ? "text-foreground" : undefined}
+                  icon={<Trash2 className="size-3.5" />}
+                  tip="Clear"
+                  disabled={!running && !showClock}
+                  onClick={clearAll}
                 />
-              )}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <span>
-                    <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
-                  </span>
-                </PopoverTrigger>
-                <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
-                  <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-                    Modules
-                  </p>
-                  <VisibilityPopoverContent />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <span>
-                    <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" />
-                  </span>
-                </PopoverTrigger>
-                <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
-                  <PresetsPopoverContent presets={presets} />
-                </PopoverContent>
-              </Popover>
-              <IconButton
-                icon={<Settings className="size-3.5" />}
-                tip="Settings"
-                onClick={() => setSettingsOpen(true)}
-              />
-            </div>
-          </header>
+                {isTauri() && (
+                  <div className="relative group">
+                    <Select
+                      value={safeAudioDeviceId}
+                      onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
+                      disabled={!audioDevices.length}
+                    >
+                      <SelectTrigger
+                        className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
+                        aria-label="Devices"
+                      >
+                        <Volume2 className="size-4 shrink-0" />
+                      </SelectTrigger>
+                      <SelectContent align="end" sideOffset={6} className="w-[min(28rem,92vw)]">
+                        <SelectItem value="default">Automatic (default system output)</SelectItem>
+                        {audioOutputs.length ? (
+                          <SelectGroup>
+                            <SelectLabel>Output</SelectLabel>
+                            {audioOutputs.map((d) => (
+                              <AudioDeviceOption key={d.id} device={d} />
+                            ))}
+                          </SelectGroup>
+                        ) : null}
+                        {audioInputs.length ? (
+                          <SelectGroup>
+                            <SelectLabel>Input</SelectLabel>
+                            {audioInputs.map((d) => (
+                              <AudioDeviceOption key={d.id} device={d} />
+                            ))}
+                          </SelectGroup>
+                        ) : null}
+                      </SelectContent>
+                    </Select>
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
+                      Devices
+                    </span>
+                  </div>
+                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <span>
+                      <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
+                    </span>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
+                    <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                      Modules
+                    </p>
+                    <VisibilityPopoverContent />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <span>
+                      <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" />
+                    </span>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
+                    <PresetsPopoverContent presets={presets} />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <span>
+                      <IconButton
+                        icon={<Focus className="size-3.5" />}
+                        tip="Focus View"
+                        className={focusViewActive ? "text-foreground" : undefined}
+                      />
+                    </span>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" sideOffset={6} className="w-56 p-1">
+                    <FocusViewPopoverContent
+                      pinned={pinned}
+                      setPinned={setPinned}
+                      focusView={focusView}
+                      setAutoHideControls={setAutoHideControls}
+                      setCompactPanels={setCompactPanels}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <IconButton
+                  icon={<Settings className="size-3.5" />}
+                  tip="Settings"
+                  onClick={() => setSettingsOpen(true)}
+                />
+              </div>
+            </header>
+          )}
 
           <SplitLayout />
 
-          <footer className={SHELL_FOOTER}>
-            <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Device</span>
-            <span
-              className={cn(
-                "min-w-0 truncate tabular-nums",
-                deviceDisplay ? "text-foreground" : "text-muted-foreground"
-              )}
+          {(!focusView.autoHideControls || focusControlsVisible) && (
+            <footer
+              className={focusView.autoHideControls ? SHELL_FOOTER_OVERLAY : SHELL_FOOTER}
+              onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
+              onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
             >
-              {footerDeviceLabel}
-            </span>
-            <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-            <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Ref</span>
-            <span className="min-w-0 truncate tabular-nums text-foreground">
-              {referenceLufs} LUFS
-            </span>
-            <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-            <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Preset</span>
-            <span className="min-w-0 truncate tabular-nums text-foreground">
-              {activePresetName}
-            </span>
-            {updateInfo?.hasUpdate ? (
-              <>
-                <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-                <button
-                  type="button"
-                  onClick={() => setSettingsOpen(true)}
-                  className="min-w-0 truncate text-xs text-primary hover:underline"
-                >
-                  Update available · Check in Settings
-                </button>
-              </>
-            ) : null}
-          </footer>
+              <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Device</span>
+              <span
+                className={cn(
+                  "min-w-0 truncate tabular-nums",
+                  deviceDisplay ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                {footerDeviceLabel}
+              </span>
+              <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+              <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Ref</span>
+              <span className="min-w-0 truncate tabular-nums text-foreground">
+                {referenceLufs} LUFS
+              </span>
+              <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+              <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Preset</span>
+              <span className="min-w-0 truncate tabular-nums text-foreground">
+                {activePresetName}
+              </span>
+              {updateInfo?.hasUpdate ? (
+                <>
+                  <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                  <button
+                    type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    className="min-w-0 truncate text-xs text-primary hover:underline"
+                  >
+                    Update available · Check in Settings
+                  </button>
+                </>
+              ) : null}
+            </footer>
+          )}
+          {focusView.autoHideControls ? (
+            <div className={SHELL_BOTTOM_REVEAL_HOT_ZONE} onPointerEnter={showFocusControls} />
+          ) : null}
         </div>
 
         <SettingsPanel

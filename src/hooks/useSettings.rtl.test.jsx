@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
+import { presetsStore } from "../persistence/index.js";
 import { useSettings } from "./useSettings.js";
 
 function mockMatchMedia(matches) {
@@ -92,5 +93,80 @@ describe("useSettings", () => {
     });
     expect(JSON.parse(localStorage.getItem("plvs:settings") ?? "{}").closeAction).toBeUndefined();
     expect(result.current.closeAction).toBe("ask");
+  });
+
+  it("defaults Focus View options to off", () => {
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.focusView).toEqual({
+      autoHideControls: false,
+      compactPanels: false,
+    });
+  });
+
+  it("reads persisted Focus View options", () => {
+    localStorage.setItem(
+      "plvs:settings",
+      JSON.stringify({ focusView: { autoHideControls: true, compactPanels: true } })
+    );
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.focusView).toEqual({
+      autoHideControls: true,
+      compactPanels: true,
+    });
+  });
+
+  it("normalizes malformed Focus View options", () => {
+    localStorage.setItem(
+      "plvs:settings",
+      JSON.stringify({ focusView: { autoHideControls: "yes", compactPanels: 1 } })
+    );
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.focusView).toEqual({
+      autoHideControls: false,
+      compactPanels: false,
+    });
+  });
+
+  it("persists Focus View toggles and clears the active preset", () => {
+    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
+    const { result } = renderHook(() => useSettings());
+
+    act(() => {
+      result.current.setAutoHideControls(true);
+    });
+
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).focusView).toEqual({
+      autoHideControls: true,
+      compactPanels: false,
+    });
+    expect(presetsStore.read().activeId).toBeNull();
+
+    act(() => {
+      result.current.setCompactPanels(true);
+    });
+
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).focusView).toEqual({
+      autoHideControls: true,
+      compactPanels: true,
+    });
+  });
+
+  it("updates Focus View state from storage events", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    localStorage.setItem(
+      "plvs:settings",
+      JSON.stringify({ focusView: { autoHideControls: true, compactPanels: false } })
+    );
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "plvs:settings" }));
+    });
+
+    await waitFor(() => {
+      expect(result.current.focusView).toEqual({
+        autoHideControls: true,
+        compactPanels: false,
+      });
+    });
   });
 });

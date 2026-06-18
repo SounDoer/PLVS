@@ -10,7 +10,8 @@ import {
 import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
-import { settingsStore } from "../persistence/index.js";
+import { normalizeFocusView } from "../lib/focusView.js";
+import { presetsStore, settingsStore } from "../persistence/index.js";
 
 function normalizeReferenceLufs(raw) {
   const n = Number(raw);
@@ -27,6 +28,9 @@ export function useSettings({ onClearRef } = {}) {
   );
   const [closeAction, setCloseActionState] = useState(
     () => settingsStore.read().closeAction ?? "ask"
+  );
+  const [focusView, setFocusViewState] = useState(() =>
+    normalizeFocusView(settingsStore.read().focusView)
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
@@ -73,6 +77,21 @@ export function useSettings({ onClearRef } = {}) {
     setCloseActionState(value);
   }
 
+  function setFocusView(nextFocusView) {
+    const next = normalizeFocusView(nextFocusView);
+    settingsStore.patch({ focusView: next });
+    presetsStore.patch({ activeId: null });
+    setFocusViewState(next);
+  }
+
+  function setAutoHideControls(value) {
+    setFocusView({ ...focusView, autoHideControls: value === true });
+  }
+
+  function setCompactPanels(value) {
+    setFocusView({ ...focusView, compactPanels: value === true });
+  }
+
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setSystemPrefersDark(mq.matches);
@@ -92,6 +111,7 @@ export function useSettings({ onClearRef } = {}) {
         const next = readPersistedShellThemeFields();
         setAppearance(next.appearance);
         setThemeId(next.themeId);
+        setFocusViewState(normalizeFocusView(settingsStore.read().focusView));
       }),
     []
   );
@@ -112,6 +132,10 @@ export function useSettings({ onClearRef } = {}) {
     setReferenceLufs,
     closeAction,
     setCloseAction,
+    focusView,
+    setFocusView,
+    setAutoHideControls,
+    setCompactPanels,
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,

@@ -82,6 +82,7 @@ export function LeafView({ node, path, style }) {
   const { dragState, hoverDrop } = useDrag();
   const { hoveredModuleId } = useWorkspaceStore();
   const audioData = useAudioData();
+  const compactPanels = audioData?.compactPanels === true;
 
   const visibleTabs = node.tabs.filter((id) => visibleModules.includes(id));
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
@@ -138,70 +139,72 @@ export function LeafView({ node, path, style }) {
       )}
 
       {/* Slot header: tab bar + action buttons */}
-      <div
-        data-leaf-tabs
-        className={cn(
-          "relative flex h-9 shrink-0 items-center gap-0.5 border-b border-border/60 bg-card px-1",
-          isDragging && zoneHint === "tabs" && "border-t-2 border-t-primary"
-        )}
-      >
-        {/* Tab insertion indicator */}
-        {isDragging && zoneHint === "tabs" && (
-          <div
-            className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-primary"
-            style={{ left: getTabInsertX(hoverDrop?.tabIndex, visibleTabs.length) }}
-          />
-        )}
+      {!compactPanels && (
+        <div
+          data-leaf-tabs
+          className={cn(
+            "relative flex h-9 shrink-0 items-center gap-0.5 border-b border-border/60 bg-card px-1",
+            isDragging && zoneHint === "tabs" && "border-t-2 border-t-primary"
+          )}
+        >
+          {/* Tab insertion indicator */}
+          {isDragging && zoneHint === "tabs" && (
+            <div
+              className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-primary"
+              style={{ left: getTabInsertX(hoverDrop?.tabIndex, visibleTabs.length) }}
+            />
+          )}
 
-        {visibleTabs.map((tabId, i) => (
-          <TabPill
-            key={tabId}
-            tabId={tabId}
-            isActive={tabId === activeTab}
-            path={path}
-            tabCount={visibleTabs.length}
-            slotTabIndex={i}
-          />
-        ))}
+          {visibleTabs.map((tabId, i) => (
+            <TabPill
+              key={tabId}
+              tabId={tabId}
+              isActive={tabId === activeTab}
+              path={path}
+              tabCount={visibleTabs.length}
+              slotTabIndex={i}
+            />
+          ))}
 
-        <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
-          <PanelHeaderControls
-            activeTab={activeTab}
-            channelCount={audioData?.channelCount ?? 0}
-            vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
-            vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
-            vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
-            onVectorscopeChange={audioData?.onVectorscopePairChange}
-            spectrumOptions={audioData?.spectrumChannelOptions ?? []}
-            spectrumValueKey={audioData?.spectrumValueKey ?? ""}
-            spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
-            onSpectrumChange={audioData?.onSpectrumChannelChange}
-            spectrumView={audioData?.spectrumView ?? "combined"}
-            spectrumViewLegend={audioData?.spectrumViewLegend ?? null}
-            onSpectrumViewChange={audioData?.onSpectrumViewChange}
-            spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
-            onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
-            panelControls={audioData?.panelControls}
-            onPanelControlsChange={audioData?.onPanelControlsChange}
-          />
-          <button
-            type="button"
-            aria-label="Fullscreen"
-            className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
-            onClick={() => activeTab && setFullscreen(activeTab)}
-          >
-            <Maximize2 size={12} />
-          </button>
-          <button
-            type="button"
-            aria-label="Hide all in panel"
-            className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
-            onClick={() => visibleTabs.forEach((id) => toggleModuleVisible(id))}
-          >
-            <X size={12} />
-          </button>
+          <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
+            <PanelHeaderControls
+              activeTab={activeTab}
+              channelCount={audioData?.channelCount ?? 0}
+              vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
+              vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
+              vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
+              onVectorscopeChange={audioData?.onVectorscopePairChange}
+              spectrumOptions={audioData?.spectrumChannelOptions ?? []}
+              spectrumValueKey={audioData?.spectrumValueKey ?? ""}
+              spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
+              onSpectrumChange={audioData?.onSpectrumChannelChange}
+              spectrumView={audioData?.spectrumView ?? "combined"}
+              spectrumViewLegend={audioData?.spectrumViewLegend ?? null}
+              onSpectrumViewChange={audioData?.onSpectrumViewChange}
+              spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
+              onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
+              panelControls={audioData?.panelControls}
+              onPanelControlsChange={audioData?.onPanelControlsChange}
+            />
+            <button
+              type="button"
+              aria-label="Fullscreen"
+              className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
+              onClick={() => activeTab && setFullscreen(activeTab)}
+            >
+              <Maximize2 size={12} />
+            </button>
+            <button
+              type="button"
+              aria-label="Hide all in panel"
+              className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
+              onClick={() => visibleTabs.forEach((id) => toggleModuleVisible(id))}
+            >
+              <X size={12} />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Panel body */}
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">

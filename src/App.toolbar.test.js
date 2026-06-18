@@ -36,13 +36,11 @@ describe("App toolbar", () => {
     expect(appSource).toContain('<Volume2 className="size-4 shrink-0" />');
   });
 
-  it("uses short toolbar labels for devices and pin controls", () => {
+  it("uses a short toolbar label for devices", () => {
     expect(appSource).toContain('aria-label="Devices"');
     expect(appSource).toMatch(/>\s*Devices\s*<\/span>/);
-    expect(appSource).toContain('tip={pinned ? "Unpin" : "Pin"}');
     expect(appSource).not.toContain('aria-label="Audio Device"');
     expect(appSource).not.toMatch(/>\s*Audio Device\s*<\/span>/);
-    expect(appSource).not.toContain('tip={pinned ? "Unpin Window" : "Pin Window on Top"}');
   });
 
   it("uses formatted audio device labels in both the picker and footer", () => {
@@ -164,6 +162,34 @@ describe("App toolbar", () => {
     expect(appSource).toMatch(/import\s*\{[^}]*\bBookmark\b[^}]*\}\s*from\s*"lucide-react"/);
     expect(appSource).toContain('tip="Presets"');
     expect(appSource).toContain("<PresetsPopoverContent");
+  });
+
+  it("renders a Focus View toolbar popover with active state", () => {
+    expect(appSource).toMatch(/import\s*\{[^}]*\bFocus\b[^}]*\}\s*from\s*"lucide-react"/);
+    expect(appSource).toContain('tip="Focus View"');
+    expect(appSource).toContain("<FocusViewPopoverContent");
+    expect(appSource).toContain("pinned={pinned}");
+    expect(appSource).toContain("setPinned={setPinned}");
+    expect(appSource).toContain(
+      "const focusViewActive = pinned || focusView.autoHideControls || focusView.compactPanels;"
+    );
+    expect(appSource).toContain('className={focusViewActive ? "text-foreground" : undefined}');
+  });
+
+  it("moves the Pin toolbar control into Focus View", () => {
+    expect(appSource).not.toMatch(/import\s*\{[^}]*\bPin\b[^}]*\}\s*from\s*"lucide-react"/);
+    expect(appSource).not.toMatch(/import\s*\{[^}]*\bPinOff\b[^}]*\}\s*from\s*"lucide-react"/);
+    expect(appSource).not.toContain('tip={pinned ? "Unpin" : "Pin"}');
+  });
+
+  it("wires Focus View shell overlay hot zones and Escape reveal", () => {
+    expect(appSource).toContain("SHELL_INNER_FOCUS");
+    expect(appSource).toContain("SHELL_HEADER_OVERLAY");
+    expect(appSource).toContain("SHELL_FOOTER_OVERLAY");
+    expect(appSource).toContain("SHELL_TOP_REVEAL_HOT_ZONE");
+    expect(appSource).toContain("SHELL_BOTTOM_REVEAL_HOT_ZONE");
+    expect(appSource).toContain('e.key === "Escape" && autoHideControls && !editable');
+    expect(appSource).toContain("showFocusControls");
   });
 
   it("keeps the Presets toolbar icon in the default muted state", () => {

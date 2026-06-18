@@ -68,7 +68,10 @@ describe("usePresets", () => {
 
   it("saves a cloned snapshot and live window bounds in Tauri", async () => {
     mocks.isTauri.mockReturnValue(true);
-    const { result } = renderPresetHook({ windowPinned: true });
+    const { result } = renderPresetHook({
+      windowPinned: true,
+      focusView: { autoHideControls: true, compactPanels: false },
+    });
     await act(async () => {
       await result.current.presets.save("Mixing");
     });
@@ -79,6 +82,7 @@ describe("usePresets", () => {
       name: "Mixing",
       windowBounds: { x: 10, y: 20, width: 800, height: 600, isMaximized: false },
       windowPinned: true,
+      focusView: { autoHideControls: true, compactPanels: false },
     });
     expect(saved.tree).toEqual(DEFAULT_WORKSPACE_STATE.tree);
     expect(saved.tree).not.toBe(DEFAULT_WORKSPACE_STATE.tree);
@@ -100,6 +104,7 @@ describe("usePresets", () => {
   it("applies view, window bounds, and pin state, then marks active", async () => {
     mocks.isTauri.mockReturnValue(true);
     const setWindowPinned = vi.fn();
+    const setFocusView = vi.fn();
     presetsStore.patch({
       list: [
         {
@@ -110,11 +115,12 @@ describe("usePresets", () => {
           panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
           windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
           windowPinned: true,
+          focusView: { autoHideControls: true, compactPanels: true },
         },
       ],
       activeId: null,
     });
-    const { result } = renderPresetHook({ windowPinned: false, setWindowPinned });
+    const { result } = renderPresetHook({ windowPinned: false, setWindowPinned, setFocusView });
     await act(async () => {
       await result.current.presets.apply("p1");
     });
@@ -127,6 +133,32 @@ describe("usePresets", () => {
       isMaximized: false,
     });
     expect(setWindowPinned).toHaveBeenCalledWith(true);
+    expect(setFocusView).toHaveBeenCalledWith({
+      autoHideControls: true,
+      compactPanels: true,
+    });
+    expect(presetsStore.read().activeId).toBe("p1");
+  });
+
+  it("does not change Focus View when applying an older preset", async () => {
+    const setFocusView = vi.fn();
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Preset",
+          tree: leaf(["spectrum"]),
+          visibleModules: ["spectrum"],
+          panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+        },
+      ],
+      activeId: null,
+    });
+    const { result } = renderPresetHook({ setFocusView });
+    await act(async () => {
+      await result.current.presets.apply("p1");
+    });
+    expect(setFocusView).not.toHaveBeenCalled();
     expect(presetsStore.read().activeId).toBe("p1");
   });
 
@@ -175,6 +207,7 @@ describe("usePresets", () => {
       id: "p1",
       name: "Preset",
       tree: leaf(["loudness"]),
+      focusView: { autoHideControls: false, compactPanels: false },
     });
     expect(presetsStore.read().activeId).toBe("p1");
   });
