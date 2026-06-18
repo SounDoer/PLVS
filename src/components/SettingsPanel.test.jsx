@@ -244,12 +244,34 @@ describe("SettingsPanel", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText("Preset name Focus"), {
+    expect(screen.queryByLabelText("Rename preset Focus")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.change(screen.getByLabelText("Rename preset Focus"), {
       target: { value: "Focused meters" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" }).at(-1));
 
     expect(rename).toHaveBeenCalledWith("focus", "Focused meters");
+  });
+
+  it("cancels a preset rename draft without saving", () => {
+    const rename = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        presets={{ list: [{ id: "focus", name: "Focus" }], activeId: null, rename }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.change(screen.getByLabelText("Rename preset Focus"), {
+      target: { value: "Focused meters" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(rename).not.toHaveBeenCalled();
+    expect(screen.getByText("Focus")).toBeTruthy();
+    expect(screen.queryByLabelText("Rename preset Focus")).toBeNull();
   });
 
   it("deletes a saved preset", () => {
@@ -279,8 +301,8 @@ describe("SettingsPanel", () => {
       />
     );
 
-    expect(screen.getByText("Active")).toBeTruthy();
-    expect(screen.getByLabelText("Preset name Mix")).toBeTruthy();
+    expect(screen.getByLabelText("Active preset Mix")).toBeTruthy();
+    expect(screen.getByText("Mix")).toBeTruthy();
   });
 
   it("renders the keyboard shortcuts reference rows without a Clear read-only row", () => {

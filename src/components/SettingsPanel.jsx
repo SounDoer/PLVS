@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -73,6 +73,7 @@ export function SettingsPanel({
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
   const [presetName, setPresetName] = useState("");
+  const [editingPresetId, setEditingPresetId] = useState(null);
   const [presetRenameDrafts, setPresetRenameDrafts] = useState({});
   const closingIntentRef = useRef(false);
   const presetControls = { ...DEFAULT_PRESETS, ...presets };
@@ -99,16 +100,6 @@ export function SettingsPanel({
     }
   }, [settingsOpen]);
 
-  useEffect(() => {
-    setPresetRenameDrafts((current) => {
-      const next = {};
-      for (const preset of presetList) {
-        next[preset.id] = current[preset.id] ?? preset.name ?? "";
-      }
-      return next;
-    });
-  }, [presetList]);
-
   const handleSavePreset = () => {
     const name = presetName.trim();
     if (!name) return;
@@ -122,9 +113,21 @@ export function SettingsPanel({
     if (result !== false) setPresetName("");
   };
 
+  const startRenamePreset = (preset) => {
+    setEditingPresetId(preset.id);
+    setPresetRenameDrafts((current) => ({ ...current, [preset.id]: preset.name ?? "" }));
+  };
+
+  const cancelRenamePreset = (preset) => {
+    setEditingPresetId(null);
+    setPresetRenameDrafts((current) => ({ ...current, [preset.id]: preset.name ?? "" }));
+  };
+
   const handleRenamePreset = (id) => {
     const name = (presetRenameDrafts[id] ?? "").trim();
-    if (name) presetControls.rename(id, name);
+    if (!name) return;
+    const result = presetControls.rename(id, name);
+    if (result !== false) setEditingPresetId(null);
   };
 
   const handleOpenChange = (open) => {
@@ -277,67 +280,107 @@ export function SettingsPanel({
                     <div className="grid gap-1.5">
                       {presetList.map((preset) => {
                         const isActive = preset.id === presetControls.activeId;
+                        const isEditing = preset.id === editingPresetId;
                         return (
                           <div
                             key={preset.id}
-                            className="grid gap-1.5 rounded-md border border-border/70 p-2"
+                            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border/70 px-2 py-2"
                           >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={presetRenameDrafts[preset.id] ?? preset.name ?? ""}
-                                aria-label={`Preset name ${preset.name}`}
-                                onChange={(e) =>
-                                  setPresetRenameDrafts((current) => ({
-                                    ...current,
-                                    [preset.id]: e.target.value,
-                                  }))
-                                }
-                                className="flex h-8 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span
+                                aria-label={isActive ? `Active preset ${preset.name}` : undefined}
+                                title={isActive ? "Active preset" : undefined}
+                                className={cn(
+                                  "size-2 shrink-0 rounded-full",
+                                  isActive ? "bg-primary" : "bg-muted-foreground/20"
+                                )}
                               />
-                              {isActive ? (
-                                <span className="shrink-0 text-xs font-medium text-primary">
-                                  Active
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={presetRenameDrafts[preset.id] ?? preset.name ?? ""}
+                                  aria-label={`Rename preset ${preset.name}`}
+                                  onChange={(e) =>
+                                    setPresetRenameDrafts((current) => ({
+                                      ...current,
+                                      [preset.id]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleRenamePreset(preset.id);
+                                    if (e.key === "Escape") cancelRenamePreset(preset);
+                                  }}
+                                  className="flex h-8 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                />
+                              ) : (
+                                <span className="min-w-0 flex-1 truncate text-foreground">
+                                  {preset.name}
                                 </span>
-                              ) : null}
+                              )}
                             </div>
-                            <div className="flex flex-wrap justify-end gap-1.5">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-auto px-2 py-1 text-xs"
-                                onClick={() => presetControls.apply(preset.id)}
-                              >
-                                Apply
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-auto px-2 py-1 text-xs"
-                                onClick={() => presetControls.update(preset.id)}
-                              >
-                                Update
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-auto px-2 py-1 text-xs"
-                                onClick={() => handleRenamePreset(preset.id)}
-                              >
-                                Rename
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-auto px-2 py-1 text-xs text-destructive hover:text-destructive"
-                                onClick={() => presetControls.remove(preset.id)}
-                              >
-                                Delete
-                              </Button>
+                            <div className="flex shrink-0 items-center justify-end gap-1.5">
+                              {isEditing ? (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-2 py-1 text-xs"
+                                    onClick={() => handleRenamePreset(preset.id)}
+                                    disabled={!(presetRenameDrafts[preset.id] ?? "").trim()}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-2 py-1 text-xs"
+                                    onClick={() => cancelRenamePreset(preset)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-1.5 py-1 text-xs"
+                                    onClick={() => presetControls.apply(preset.id)}
+                                  >
+                                    Apply
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-1.5 py-1 text-xs"
+                                    onClick={() => presetControls.update(preset.id)}
+                                  >
+                                    Update
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-1.5 py-1 text-xs"
+                                    onClick={() => startRenamePreset(preset)}
+                                  >
+                                    Rename
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-1.5 py-1 text-xs text-destructive hover:text-destructive"
+                                    onClick={() => presetControls.remove(preset.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                         );
