@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -63,6 +63,22 @@ export function SettingsPanel({
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
   const closingIntentRef = useRef(false);
+  const [refLufsInput, setRefLufsInput] = useState(String(referenceLufs));
+  useEffect(() => {
+    setRefLufsInput(String(referenceLufs));
+  }, [referenceLufs]);
+  const commitRefLufs = () => {
+    if (refLufsInput.trim() === "") {
+      setRefLufsInput(String(referenceLufs));
+      return;
+    }
+    const n = Number(refLufsInput);
+    if (Number.isFinite(n) && n >= -70 && n <= 0) {
+      setReferenceLufs(n);
+    } else {
+      setRefLufsInput(String(referenceLufs));
+    }
+  };
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
   let updateStatusText = "Checking updates";
@@ -248,11 +264,11 @@ export function SettingsPanel({
                       min={-70}
                       max={0}
                       step={1}
-                      value={referenceLufs}
-                      onChange={(e) => {
-                        if (e.target.value === "") return;
-                        const n = Number(e.target.value);
-                        if (Number.isFinite(n) && n >= -70 && n <= 0) setReferenceLufs(n);
+                      value={refLufsInput}
+                      onChange={(e) => setRefLufsInput(e.target.value)}
+                      onBlur={commitRefLufs}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
                       }}
                       className="flex h-9 w-16 rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
