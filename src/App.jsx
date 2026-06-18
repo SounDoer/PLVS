@@ -258,7 +258,9 @@ function AppContent() {
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
   const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
   const [focusControlsVisible, setFocusControlsVisible] = useState(false);
+  const [focusControlsHeld, setFocusControlsHeld] = useState(false);
   const focusControlsHideTimerRef = useRef(0);
+  const focusControlsDragTimerRef = useRef(0);
 
   const audioRef = useRef(null);
   const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
@@ -551,10 +553,23 @@ function AppContent() {
   }, []);
 
   const hideFocusControlsLater = useCallback(() => {
+    if (focusControlsHeld) return;
     window.clearTimeout(focusControlsHideTimerRef.current);
     focusControlsHideTimerRef.current = window.setTimeout(() => {
       setFocusControlsVisible(false);
     }, 900);
+  }, [focusControlsHeld]);
+
+  const holdFocusControls = useCallback((open) => {
+    setFocusControlsHeld(open);
+    if (open) {
+      window.clearTimeout(focusControlsHideTimerRef.current);
+      setFocusControlsVisible(true);
+    }
+  }, []);
+
+  const releaseFocusControlsHold = useCallback(() => {
+    setFocusControlsHeld(false);
   }, []);
 
   const handleWindowDrag = useCallback(
@@ -562,21 +577,37 @@ function AppContent() {
       if (!focusView.autoHideControls || event.button !== 0 || event.target !== event.currentTarget)
         return;
       if (!isTauri()) return;
+      const releaseAfterDrag = () => {
+        releaseFocusControlsHold();
+        window.clearTimeout(focusControlsDragTimerRef.current);
+      };
       try {
+        holdFocusControls(true);
+        window.addEventListener("pointerup", releaseAfterDrag, { once: true, capture: true });
+        window.addEventListener("pointercancel", releaseAfterDrag, { once: true, capture: true });
+        window.addEventListener("mouseup", releaseAfterDrag, { once: true, capture: true });
+        window.addEventListener("blur", releaseAfterDrag, { once: true });
+        focusControlsDragTimerRef.current = window.setTimeout(releaseAfterDrag, 10000);
         const win = getCurrentWindow();
         if (typeof win.startDragging === "function") await win.startDragging();
-      } catch (_) {}
+      } catch (_) {
+        releaseAfterDrag();
+      }
     },
-    [focusView.autoHideControls]
+    [focusView.autoHideControls, holdFocusControls, releaseFocusControlsHold]
   );
 
   useEffect(() => {
-    if (!focusView.autoHideControls) setFocusControlsVisible(false);
+    if (!focusView.autoHideControls) {
+      setFocusControlsVisible(false);
+      setFocusControlsHeld(false);
+    }
   }, [focusView.autoHideControls]);
 
   useEffect(
     () => () => {
       window.clearTimeout(focusControlsHideTimerRef.current);
+      window.clearTimeout(focusControlsDragTimerRef.current);
     },
     []
   );
@@ -1052,6 +1083,8 @@ function AppContent() {
               className={SHELL_TOP_REVEAL_HOT_ZONE}
               onPointerEnter={showFocusControls}
               onPointerDown={handleWindowDrag}
+              onPointerUp={releaseFocusControlsHold}
+              onPointerCancel={releaseFocusControlsHold}
             />
           ) : null}
           {(!focusView.autoHideControls || focusControlsVisible) && (
@@ -1060,6 +1093,8 @@ function AppContent() {
               onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
               onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
               onPointerDown={focusView.autoHideControls ? handleWindowDrag : undefined}
+              onPointerUp={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
+              onPointerCancel={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
             >
               <StatusPill state={chromeState} showClock={showClock} clockRef={clockRef} />
               <div className="flex-1" />
@@ -1077,6 +1112,7 @@ function AppContent() {
                     <Select
                       value={safeAudioDeviceId}
                       onValueChange={(v) => setCaptureDeviceIdAndPersist(v)}
+                      onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}
                       disabled={!audioDevices.length}
                     >
                       <SelectTrigger
@@ -1110,7 +1146,7 @@ function AppContent() {
                     </span>
                   </div>
                 )}
-                <Popover>
+                <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
                   <PopoverTrigger asChild>
                     <span>
                       <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
@@ -1123,17 +1159,7 @@ function AppContent() {
                     <VisibilityPopoverContent />
                   </PopoverContent>
                 </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <span>
-                      <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" />
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
-                    <PresetsPopoverContent presets={presets} />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
+                <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
                   <PopoverTrigger asChild>
                     <span>
                       <IconButton
@@ -1151,6 +1177,16 @@ function AppContent() {
                       setAutoHideControls={setAutoHideControls}
                       setCompactPanels={setCompactPanels}
                     />
+                  </PopoverContent>
+                </Popover>
+                <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
+                  <PopoverTrigger asChild>
+                    <span>
+                      <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" />
+                    </span>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
+                    <PresetsPopoverContent presets={presets} />
                   </PopoverContent>
                 </Popover>
                 <IconButton

@@ -34,16 +34,16 @@ export function FocusViewPopoverContent({
         onCheckedChange={setPinned}
       />
       <FocusSwitch
-        id="focus-view-auto-hide-controls"
-        label="Auto-hide controls"
-        checked={normalized.autoHideControls}
-        onCheckedChange={setAutoHideControls}
-      />
-      <FocusSwitch
         id="focus-view-compact-panels"
         label="Compact panels"
         checked={normalized.compactPanels}
         onCheckedChange={setCompactPanels}
+      />
+      <FocusSwitch
+        id="focus-view-auto-hide-controls"
+        label="Auto-hide controls"
+        checked={normalized.autoHideControls}
+        onCheckedChange={setAutoHideControls}
       />
     </div>
   );

@@ -14,6 +14,16 @@ describe("FocusViewPopoverContent", () => {
     expect(screen.getByRole("switch", { name: "Compact panels" })).toBeTruthy();
   });
 
+  it("orders Focus View switches from window behaviour to content density", () => {
+    render(<FocusViewPopoverContent />);
+
+    expect(screen.getAllByRole("switch").map((node) => node.id)).toEqual([
+      "focus-view-always-on-top",
+      "focus-view-compact-panels",
+      "focus-view-auto-hide-controls",
+    ]);
+  });
+
   it("reflects current switch state", () => {
     render(
       <FocusViewPopoverContent focusView={{ autoHideControls: true, compactPanels: false }} />

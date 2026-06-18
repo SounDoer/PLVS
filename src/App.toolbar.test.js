@@ -176,6 +176,10 @@ describe("App toolbar", () => {
     expect(appSource).toContain('className={focusViewActive ? "text-foreground" : undefined}');
   });
 
+  it("places Focus View before Presets in the toolbar", () => {
+    expect(appSource.indexOf('tip="Focus View"')).toBeLessThan(appSource.indexOf('tip="Presets"'));
+  });
+
   it("moves the Pin toolbar control into Focus View", () => {
     expect(appSource).not.toMatch(/import\s*\{[^}]*\bPin\b[^}]*\}\s*from\s*"lucide-react"/);
     expect(appSource).not.toMatch(/import\s*\{[^}]*\bPinOff\b[^}]*\}\s*from\s*"lucide-react"/);
@@ -190,6 +194,22 @@ describe("App toolbar", () => {
     expect(appSource).toContain("SHELL_BOTTOM_REVEAL_HOT_ZONE");
     expect(appSource).toContain('e.key === "Escape" && autoHideControls && !editable');
     expect(appSource).toContain("showFocusControls");
+  });
+
+  it("keeps auto-hidden controls mounted while toolbar popovers are open", () => {
+    expect(appSource).toContain(
+      "const [focusControlsHeld, setFocusControlsHeld] = useState(false);"
+    );
+    expect(appSource).toContain("if (focusControlsHeld) return;");
+    expect(appSource).toContain("const holdFocusControls = useCallback((open) => {");
+    expect(appSource).toContain("const releaseFocusControlsHold = useCallback(() => {");
+    expect(appSource).toContain("holdFocusControls(true);");
+    expect(appSource).toContain("onPointerUp={releaseFocusControlsHold}");
+    expect(appSource).toContain('window.addEventListener("pointerup", releaseAfterDrag');
+    expect(appSource).toContain("focusControlsDragTimerRef.current = window.setTimeout");
+    expect(appSource).toContain(
+      "onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}"
+    );
   });
 
   it("keeps the Presets toolbar icon in the default muted state", () => {
