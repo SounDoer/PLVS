@@ -36,6 +36,15 @@ describe("App toolbar", () => {
     expect(appSource).toContain('<Volume2 className="size-4 shrink-0" />');
   });
 
+  it("uses short toolbar labels for devices and pin controls", () => {
+    expect(appSource).toContain('aria-label="Devices"');
+    expect(appSource).toMatch(/>\s*Devices\s*<\/span>/);
+    expect(appSource).toContain('tip={pinned ? "Unpin" : "Pin"}');
+    expect(appSource).not.toContain('aria-label="Audio Device"');
+    expect(appSource).not.toMatch(/>\s*Audio Device\s*<\/span>/);
+    expect(appSource).not.toContain('tip={pinned ? "Unpin Window" : "Pin Window on Top"}');
+  });
+
   it("uses formatted audio device labels in both the picker and footer", () => {
     expect(appSource).toContain("formatAudioDeviceLabel(device.label)");
     expect(appSource).toContain("formatAudioDeviceLabel(deviceName)");
@@ -155,6 +164,10 @@ describe("App toolbar", () => {
     expect(appSource).toMatch(/import\s*\{[^}]*\bBookmark\b[^}]*\}\s*from\s*"lucide-react"/);
     expect(appSource).toContain('tip="Presets"');
     expect(appSource).toContain("<PresetsPopoverContent");
+  });
+
+  it("keeps the Presets toolbar icon in the default muted state", () => {
+    expect(appSource).not.toContain('className={presets.activeId ? "text-foreground" : undefined}');
   });
 
   it("renames the Layout & Modules tooltip to Modules", () => {

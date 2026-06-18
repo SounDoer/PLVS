@@ -997,7 +997,7 @@ function AppContent() {
                   >
                     <SelectTrigger
                       className="flex items-center justify-center size-8 rounded-md text-muted-foreground bg-transparent border-0 shadow-none hover:bg-secondary hover:text-foreground transition-colors duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed [&>svg:last-child]:hidden focus:ring-0 focus:ring-offset-0"
-                      aria-label="Audio Device"
+                      aria-label="Devices"
                     >
                       <Volume2 className="size-4 shrink-0" />
                     </SelectTrigger>
@@ -1022,14 +1022,14 @@ function AppContent() {
                     </SelectContent>
                   </Select>
                   <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-100 delay-100 text-[11px] text-foreground bg-popover border border-white/10 rounded px-2 py-1 whitespace-nowrap shadow-md">
-                    Audio Device
+                    Devices
                   </span>
                 </div>
               )}
               {isTauri() && (
                 <IconButton
                   icon={pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                  tip={pinned ? "Unpin Window" : "Pin Window on Top"}
+                  tip={pinned ? "Unpin" : "Pin"}
                   onClick={togglePin}
                   className={pinned ? "text-foreground" : undefined}
                 />
@@ -1050,11 +1050,7 @@ function AppContent() {
               <Popover>
                 <PopoverTrigger asChild>
                   <span>
-                    <IconButton
-                      icon={<Bookmark className="size-3.5" />}
-                      tip="Presets"
-                      className={presets.activeId ? "text-foreground" : undefined}
-                    />
+                    <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" />
                   </span>
                 </PopoverTrigger>
                 <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
