@@ -54,7 +54,7 @@ import { cn } from "@/lib/utils";
 import { eventMatchesAccelerator } from "./lib/accelerator.js";
 import { SHELL_FOOTER, SHELL_HEADER, SHELL_INNER, SHELL_PAGE } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
-import { LayoutGrid, Pin, PinOff, Settings, Trash2, Volume2 } from "lucide-react";
+import { Bookmark, LayoutGrid, Pin, PinOff, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
@@ -1036,7 +1036,7 @@ function AppContent() {
               <Popover>
                 <PopoverTrigger asChild>
                   <span>
-                    <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Layout & Modules" />
+                    <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
                   </span>
                 </PopoverTrigger>
                 <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
@@ -1044,6 +1044,20 @@ function AppContent() {
                     Modules
                   </p>
                   <VisibilityPopoverContent />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <span>
+                    <IconButton
+                      icon={<Bookmark className="size-3.5" />}
+                      tip="Presets"
+                      className={presets.activeId ? "text-foreground" : undefined}
+                    />
+                  </span>
+                </PopoverTrigger>
+                <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
+                  <PresetsPopoverContent presets={presets} />
                 </PopoverContent>
               </Popover>
               <IconButton
@@ -1113,7 +1127,6 @@ function AppContent() {
           updateStatus={updateInfo?.status}
           onCheckForUpdate={refreshUpdateCheck}
           openReleaseUrl={openExternalUrl}
-          presets={presets}
           autostartEnabled={autostartEnabled}
           setAutostartEnabled={setAutostartEnabled}
           autostartReady={autostartReady}

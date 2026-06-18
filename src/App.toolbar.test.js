@@ -150,4 +150,15 @@ describe("App toolbar", () => {
     expect(appSource).toContain("setWorkspacePanelControlsRef.current(next);");
     expect(appSource).not.toContain("[workspaceState.panelControls, setWorkspacePanelControls]");
   });
+
+  it("renders a Presets toolbar popover with a Bookmark trigger", () => {
+    expect(appSource).toMatch(/import\s*\{[^}]*\bBookmark\b[^}]*\}\s*from\s*"lucide-react"/);
+    expect(appSource).toContain('tip="Presets"');
+    expect(appSource).toContain("<PresetsPopoverContent");
+  });
+
+  it("renames the Layout & Modules tooltip to Modules", () => {
+    expect(appSource).toContain('tip="Modules"');
+    expect(appSource).not.toContain('tip="Layout & Modules"');
+  });
 });
