@@ -41,6 +41,7 @@ import { TransportButton } from "./components/TransportButton.jsx";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { VisibilityPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
+import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
