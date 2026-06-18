@@ -21,15 +21,6 @@ import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
-const DEFAULT_PRESETS = {
-  list: [],
-  activeId: null,
-  save: () => {},
-  apply: () => {},
-  update: () => {},
-  rename: () => {},
-  remove: () => {},
-};
 
 export function SettingsPanel({
   settingsOpen,
@@ -65,21 +56,13 @@ export function SettingsPanel({
   channelLabelHasOverride = false,
   setChannelLabelToken = () => {},
   resetChannelLabels = () => {},
-  presets = DEFAULT_PRESETS,
 }) {
   const reduceMotion = useReducedMotion();
   const isMac =
     typeof navigator !== "undefined" &&
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
-  const [presetName, setPresetName] = useState("");
-  const [editingPresetId, setEditingPresetId] = useState(null);
-  const [presetRenameDrafts, setPresetRenameDrafts] = useState({});
   const closingIntentRef = useRef(false);
-  const presetControls = { ...DEFAULT_PRESETS, ...presets };
-  const presetList = Array.isArray(presetControls.list)
-    ? presetControls.list
-    : DEFAULT_PRESETS.list;
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
   let updateStatusText = "Checking updates";
@@ -99,36 +82,6 @@ export function SettingsPanel({
       setSheetBodyVisible(false);
     }
   }, [settingsOpen]);
-
-  const handleSavePreset = () => {
-    const name = presetName.trim();
-    if (!name) return;
-    const result = presetControls.save(name);
-    if (result && typeof result.then === "function") {
-      result.then((value) => {
-        if (value !== false) setPresetName("");
-      });
-      return;
-    }
-    if (result !== false) setPresetName("");
-  };
-
-  const startRenamePreset = (preset) => {
-    setEditingPresetId(preset.id);
-    setPresetRenameDrafts((current) => ({ ...current, [preset.id]: preset.name ?? "" }));
-  };
-
-  const cancelRenamePreset = (preset) => {
-    setEditingPresetId(null);
-    setPresetRenameDrafts((current) => ({ ...current, [preset.id]: preset.name ?? "" }));
-  };
-
-  const handleRenamePreset = (id) => {
-    const name = (presetRenameDrafts[id] ?? "").trim();
-    if (!name) return;
-    const result = presetControls.rename(id, name);
-    if (result !== false) setEditingPresetId(null);
-  };
 
   const handleOpenChange = (open) => {
     if (open) {
@@ -248,145 +201,6 @@ export function SettingsPanel({
                   {registrationError ? (
                     <span className="text-xs text-destructive">Combo unavailable, try another</span>
                   ) : null}
-                </div>
-                <Separator />
-                <div className="grid gap-2">
-                  <Label htmlFor="settings-preset-name">Presets</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="settings-preset-name"
-                      type="text"
-                      value={presetName}
-                      onChange={(e) => setPresetName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSavePreset();
-                      }}
-                      placeholder="New preset name"
-                      className="flex h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleSavePreset}
-                      disabled={!presetName.trim()}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                  {presetList.length === 0 ? (
-                    <span className="text-xs text-muted-foreground">No presets saved yet.</span>
-                  ) : (
-                    <div className="grid gap-1.5">
-                      {presetList.map((preset) => {
-                        const isActive = preset.id === presetControls.activeId;
-                        const isEditing = preset.id === editingPresetId;
-                        return (
-                          <div
-                            key={preset.id}
-                            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border/70 px-2 py-2"
-                          >
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span
-                                aria-label={isActive ? `Active preset ${preset.name}` : undefined}
-                                title={isActive ? "Active preset" : undefined}
-                                className={cn(
-                                  "size-2 shrink-0 rounded-full",
-                                  isActive ? "bg-primary" : "bg-muted-foreground/20"
-                                )}
-                              />
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={presetRenameDrafts[preset.id] ?? preset.name ?? ""}
-                                  aria-label={`Rename preset ${preset.name}`}
-                                  onChange={(e) =>
-                                    setPresetRenameDrafts((current) => ({
-                                      ...current,
-                                      [preset.id]: e.target.value,
-                                    }))
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleRenamePreset(preset.id);
-                                    if (e.key === "Escape") cancelRenamePreset(preset);
-                                  }}
-                                  className="flex h-8 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                />
-                              ) : (
-                                <span className="min-w-0 flex-1 truncate text-foreground">
-                                  {preset.name}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex shrink-0 items-center justify-end gap-1.5">
-                              {isEditing ? (
-                                <>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto px-2 py-1 text-xs"
-                                    onClick={() => handleRenamePreset(preset.id)}
-                                    disabled={!(presetRenameDrafts[preset.id] ?? "").trim()}
-                                  >
-                                    Save
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto px-2 py-1 text-xs"
-                                    onClick={() => cancelRenamePreset(preset)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto px-1.5 py-1 text-xs"
-                                    onClick={() => presetControls.apply(preset.id)}
-                                  >
-                                    Apply
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto px-1.5 py-1 text-xs"
-                                    onClick={() => presetControls.update(preset.id)}
-                                  >
-                                    Update
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto px-1.5 py-1 text-xs"
-                                    onClick={() => startRenamePreset(preset)}
-                                  >
-                                    Rename
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto px-1.5 py-1 text-xs text-destructive hover:text-destructive"
-                                    onClick={() => presetControls.remove(preset.id)}
-                                  >
-                                    Delete
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between gap-2">
