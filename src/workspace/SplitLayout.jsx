@@ -25,8 +25,8 @@ function getSubtreeMinSize(node, visibleModules, dimension) {
   if (node.type === "leaf") {
     const mins = node.tabs
       .filter((id) => visibleModules.includes(id))
-      .map((id) => MODULE_REGISTRY[id]?.[dimension] ?? 80);
-    return mins.length > 0 ? Math.max(80, ...mins) : 0;
+      .map((id) => MODULE_REGISTRY[id]?.[dimension] ?? 0);
+    return mins.length > 0 ? Math.max(...mins) : 0;
   }
   const childMins = node.children
     .filter((c) => !isNodeEmpty(c, visibleModules))
@@ -35,12 +35,7 @@ function getSubtreeMinSize(node, visibleModules, dimension) {
   const isAdditive =
     (dimension === "minWidth" && node.direction === "h") ||
     (dimension === "minHeight" && node.direction === "v");
-  return isAdditive
-    ? Math.max(
-        80,
-        childMins.reduce((a, b) => a + b, 0)
-      )
-    : Math.max(80, ...childMins);
+  return isAdditive ? childMins.reduce((a, b) => a + b, 0) : Math.max(...childMins);
 }
 
 function formatFlexFactor(value) {

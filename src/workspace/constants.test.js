@@ -20,11 +20,12 @@ describe("workspace state shape", () => {
   });
 });
 
-describe("visual history panel minimum heights", () => {
-  it("uses a shared 160px minimum for stacked chart panels", () => {
-    expect(MODULE_REGISTRY.loudness.minHeight).toBe(160);
-    expect(MODULE_REGISTRY.spectrum.minHeight).toBe(160);
-    expect(MODULE_REGISTRY.spectrogram.minHeight).toBe(160);
-    expect(MODULE_REGISTRY.waveform.minHeight).toBe(160);
+describe("panel minimum sizes (drag clamp floor)", () => {
+  it("every module uses the shared minimum", () => {
+    for (const id of ALL_MODULE_IDS) {
+      const def = MODULE_REGISTRY[id];
+      expect(def.minWidth).toBe(32);
+      expect(def.minHeight).toBe(36);
+    }
   });
 });

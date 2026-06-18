@@ -15,61 +15,65 @@ import { SpectrumPanel } from "../components/panels/SpectrumPanel";
 import { SpectrogramPanel } from "../components/panels/SpectrogramPanel";
 import { WaveformPanel } from "../components/panels/WaveformPanel";
 
+/** 拖动 clamp 用的最小尺寸——保证 tab icon 可见，其余内容允许被裁。 */
+const MIN_PANEL_WIDTH = 32;
+const MIN_PANEL_HEIGHT = 36;
+
 /** @type {Record<import('./types.js').ModuleId, { id: string, title: string, minWidth: number, minHeight: number, Component: React.FC<{compact?: boolean}>, Icon: React.FC }>} */
 export const MODULE_REGISTRY = {
   peak: {
     id: "peak",
     title: "Peak",
-    minWidth: 140,
-    minHeight: 200,
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
     Component: PeakPanel,
     Icon: () => <BarChart2 size={16} />,
   },
   loudness: {
     id: "loudness",
     title: "Loudness",
-    minWidth: 320,
-    minHeight: 160,
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
     Component: LoudnessPanel,
     Icon: () => <Activity size={16} />,
   },
   loudnessStats: {
     id: "loudnessStats",
     title: "Loudness Stats",
-    minWidth: 160,
-    minHeight: 200,
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
     Component: LoudnessStatsPanel,
     Icon: () => <List size={16} />,
   },
   vectorscope: {
     id: "vectorscope",
     title: "Vectorscope",
-    minWidth: 180,
-    minHeight: 200,
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
     Component: VectorscopePanel,
     Icon: () => <Crosshair size={16} />,
   },
   spectrum: {
     id: "spectrum",
     title: "Spectrum",
-    minWidth: 280,
-    minHeight: 160,
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
     Component: SpectrumPanel,
     Icon: () => <AudioLines size={16} />,
   },
   spectrogram: {
     id: "spectrogram",
     title: "Spectrogram",
-    minWidth: 320,
-    minHeight: 160,
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
     Component: SpectrogramPanel,
     Icon: () => <Layers size={16} />,
   },
   waveform: {
     id: "waveform",
     title: "Waveform",
-    minWidth: 200,
-    minHeight: 160,
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
     Component: WaveformPanel,
     Icon: () => <AudioWaveform size={16} />,
   },
