@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-18
+
+### Added
+- Loudness: replace reference line with over-reference gradient on M/ST curves
+- UI: add Focus View controls
+- Layout: lower panel drag-resize minimums to reduce stuck feeling
+- Release: auto-append bilingual install guide to GitHub Release notes
+
+### Changed
+- UI: unify Devices toolbar picker with other popover buttons
+
+### Fixed
+- Settings: allow free editing of the loudness reference input
+- UI: keep Focus View controls visible during popovers
+- UI: allow Focus View frameless window controls
+
 ## [0.3.7] - 2026-06-18
 
 ### Added
