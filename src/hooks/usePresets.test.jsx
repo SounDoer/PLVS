@@ -26,10 +26,10 @@ function wrapper({ children }) {
   return <WorkspaceProvider>{children}</WorkspaceProvider>;
 }
 
-function renderPresetHook() {
+function renderPresetHook(presetOptions = {}) {
   return renderHook(
     () => ({
-      presets: usePresets(),
+      presets: usePresets(presetOptions),
       workspace: useWorkspaceStore(),
     }),
     { wrapper }
@@ -68,7 +68,7 @@ describe("usePresets", () => {
 
   it("saves a cloned snapshot and live window bounds in Tauri", async () => {
     mocks.isTauri.mockReturnValue(true);
-    const { result } = renderPresetHook();
+    const { result } = renderPresetHook({ windowPinned: true });
     await act(async () => {
       await result.current.presets.save("Mixing");
     });
@@ -78,6 +78,7 @@ describe("usePresets", () => {
       id: "preset-123",
       name: "Mixing",
       windowBounds: { x: 10, y: 20, width: 800, height: 600, isMaximized: false },
+      windowPinned: true,
     });
     expect(saved.tree).toEqual(DEFAULT_WORKSPACE_STATE.tree);
     expect(saved.tree).not.toBe(DEFAULT_WORKSPACE_STATE.tree);
@@ -87,16 +88,18 @@ describe("usePresets", () => {
   });
 
   it("omits windowBounds outside Tauri", async () => {
-    const { result } = renderPresetHook();
+    const { result } = renderPresetHook({ windowPinned: false });
     await act(async () => {
       await result.current.presets.save("Browser");
     });
     expect(presetsStore.read().list[0]).not.toHaveProperty("windowBounds");
     expect(mocks.currentWindowBounds).not.toHaveBeenCalled();
+    expect(presetsStore.read().list[0].windowPinned).toBe(false);
   });
 
-  it("applies view and window bounds, then marks active", async () => {
+  it("applies view, window bounds, and pin state, then marks active", async () => {
     mocks.isTauri.mockReturnValue(true);
+    const setWindowPinned = vi.fn();
     presetsStore.patch({
       list: [
         {
@@ -106,11 +109,12 @@ describe("usePresets", () => {
           visibleModules: ["spectrum"],
           panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
           windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
+          windowPinned: true,
         },
       ],
       activeId: null,
     });
-    const { result } = renderPresetHook();
+    const { result } = renderPresetHook({ windowPinned: false, setWindowPinned });
     await act(async () => {
       await result.current.presets.apply("p1");
     });
@@ -122,6 +126,7 @@ describe("usePresets", () => {
       height: 200,
       isMaximized: false,
     });
+    expect(setWindowPinned).toHaveBeenCalledWith(true);
     expect(presetsStore.read().activeId).toBe("p1");
   });
 

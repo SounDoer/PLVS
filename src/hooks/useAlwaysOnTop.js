@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
 import { settingsStore } from "../persistence/index.js";
@@ -13,11 +13,15 @@ export function useAlwaysOnTop() {
     getCurrentWindow().setAlwaysOnTop(pinned);
   }, [pinned]);
 
-  function togglePin() {
-    const next = !pinned;
+  const setWindowPinned = useCallback((nextPinned) => {
+    const next = nextPinned === true;
     settingsStore.patch({ windowPinned: next });
     setPinned(next);
+  }, []);
+
+  function togglePin() {
+    setWindowPinned(!pinned);
   }
 
-  return { pinned, togglePin };
+  return { pinned, setPinned: setWindowPinned, togglePin };
 }

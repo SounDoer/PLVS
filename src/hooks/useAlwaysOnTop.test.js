@@ -81,4 +81,13 @@ describe("useAlwaysOnTop", () => {
     act(() => result.current.togglePin());
     expect(mockSetAlwaysOnTop).toHaveBeenCalledWith(true);
   });
+
+  it("setPinned writes and applies an explicit value", () => {
+    const { result } = renderHook(() => useAlwaysOnTop());
+    mockSetAlwaysOnTop.mockClear();
+    act(() => result.current.setPinned(true));
+    expect(result.current.pinned).toBe(true);
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).windowPinned).toBe(true);
+    expect(mockSetAlwaysOnTop).toHaveBeenCalledWith(true);
+  });
 });

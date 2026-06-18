@@ -136,7 +136,8 @@ function AppContent() {
     clearReady,
     registrationError,
   } = useSettings({ onClearRef });
-  const presets = usePresets();
+  const { pinned, setPinned, togglePin } = useAlwaysOnTop();
+  const presets = usePresets({ windowPinned: pinned, setWindowPinned: setPinned });
 
   const {
     audioDevices,
@@ -145,8 +146,6 @@ function AppContent() {
     defaultOutputFormatSig,
     defaultOutputLabel,
   } = useAudioDevices();
-
-  const { pinned, togglePin } = useAlwaysOnTop();
 
   const onHideWindow = useCallback(async () => {
     if (!isTauri()) return;

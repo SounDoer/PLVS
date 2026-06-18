@@ -29,7 +29,7 @@ async function readWindowBounds() {
   }
 }
 
-export function usePresets() {
+export function usePresets({ windowPinned = false, setWindowPinned = () => {} } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
 
@@ -52,9 +52,15 @@ export function usePresets() {
       tree: clone(workspaceState.tree),
       visibleModules: [...workspaceState.visibleModules],
       panelControls: normalizePanelControls(workspaceState.panelControls),
+      windowPinned: windowPinned === true,
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
-  }, [workspaceState.panelControls, workspaceState.tree, workspaceState.visibleModules]);
+  }, [
+    windowPinned,
+    workspaceState.panelControls,
+    workspaceState.tree,
+    workspaceState.visibleModules,
+  ]);
 
   const save = useCallback(
     async (name) => {
@@ -91,10 +97,13 @@ export function usePresets() {
           return false;
         }
       }
+      if (typeof preset.windowPinned === "boolean") {
+        setWindowPinned(preset.windowPinned);
+      }
       write({ activeId: id });
       return true;
     },
-    [setView, write]
+    [setView, setWindowPinned, write]
   );
 
   const update = useCallback(
