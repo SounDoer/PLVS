@@ -1,0 +1,187 @@
+import { useState } from "react";
+import { Check, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const NOOP_PRESETS = {
+  list: [],
+  activeId: null,
+  save: () => {},
+  apply: () => {},
+  update: () => {},
+  rename: () => {},
+  remove: () => {},
+};
+
+/**
+ * Popover body for preset management. Receives the `presets` controller
+ * from usePresets(). Whole-row click applies; row-tail icons do
+ * Update / Rename / Delete. Rename is inline.
+ */
+export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
+  const [name, setName] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [drafts, setDrafts] = useState({});
+
+  const handleSave = () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const result = presets.save(trimmed);
+    if (result && typeof result.then === "function") {
+      result.then((v) => {
+        if (v !== false) setName("");
+      });
+      return;
+    }
+    if (result !== false) setName("");
+  };
+
+  const startRename = (preset) => {
+    setEditingId(preset.id);
+    setDrafts((c) => ({ ...c, [preset.id]: preset.name ?? "" }));
+  };
+
+  const cancelRename = () => setEditingId(null);
+
+  const commitRename = (id) => {
+    const trimmed = (drafts[id] ?? "").trim();
+    if (!trimmed) return;
+    presets.rename(id, trimmed);
+    setEditingId(null);
+  };
+
+  return (
+    <>
+      <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+        Presets
+      </p>
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSave();
+          }}
+          placeholder="New preset name"
+          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={handleSave}
+          disabled={!name.trim()}
+        >
+          Save
+        </Button>
+      </div>
+      {presets.list.length === 0 ? (
+        <p className="px-2 py-1.5 text-xs text-muted-foreground">
+          No presets yet. Save the current view to start.
+        </p>
+      ) : (
+        <div className="grid gap-0.5 p-1">
+          {presets.list.map((preset) => {
+            const isActive = preset.id === presets.activeId;
+            const isEditing = preset.id === editingId;
+            return (
+              <div key={preset.id} className="group">
+                {isEditing ? (
+                  <div className="flex items-center gap-1.5 rounded px-1.5 py-1">
+                    <input
+                      type="text"
+                      value={drafts[preset.id] ?? preset.name ?? ""}
+                      aria-label={`Rename preset ${preset.name}`}
+                      onChange={(e) => setDrafts((c) => ({ ...c, [preset.id]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename(preset.id);
+                        if (e.key === "Escape") cancelRename();
+                      }}
+                      className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Save rename"
+                      onClick={() => commitRename(preset.id)}
+                      disabled={!(drafts[preset.id] ?? "").trim()}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    >
+                      <Check className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Cancel rename"
+                      onClick={cancelRename}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => presets.apply(preset.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        presets.apply(preset.id);
+                      }
+                    }}
+                    className="flex items-center gap-2 rounded px-1.5 py-1.5 text-xs transition-colors hover:bg-muted/50 cursor-pointer"
+                  >
+                    <span
+                      aria-label={isActive ? `Active preset ${preset.name}` : undefined}
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        isActive ? "bg-primary" : "bg-muted-foreground/20"
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-foreground">{preset.name}</span>
+                    <span className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        aria-label={`Update preset ${preset.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          presets.update(preset.id);
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <RefreshCw className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Rename preset ${preset.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startRename(preset);
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete preset ${preset.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          presets.remove(preset.id);
+                        }}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
