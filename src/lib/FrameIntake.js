@@ -14,6 +14,59 @@ function getBandsFromCenters(centers) {
   return cached;
 }
 
+const EMPTY_ARRAY = Object.freeze([]);
+const EMPTY_F32 = new Float32Array(0);
+const _constantArrayCache = new Map();
+const _constantF32Cache = new Map();
+
+function constantValueOf(values) {
+  if (!values?.length) return { isConstant: false, value: undefined };
+  const first = values[0];
+  for (let i = 1; i < values.length; i++) {
+    if (!Object.is(values[i], first)) return { isConstant: false, value: undefined };
+  }
+  return { isConstant: true, value: first };
+}
+
+function constantCacheKey(length, value) {
+  return `${length}:${Object.is(value, -0) ? 0 : value}`;
+}
+
+function getConstantArray(length, value) {
+  const key = constantCacheKey(length, value);
+  let cached = _constantArrayCache.get(key);
+  if (!cached) {
+    cached = Object.freeze(new Array(length).fill(value));
+    _constantArrayCache.set(key, cached);
+  }
+  return cached;
+}
+
+function getConstantFloat32Array(length, value) {
+  const key = constantCacheKey(length, value);
+  let cached = _constantF32Cache.get(key);
+  if (!cached) {
+    cached = new Float32Array(length);
+    cached.fill(value);
+    _constantF32Cache.set(key, cached);
+  }
+  return cached;
+}
+
+function snapshotNumericArray(values) {
+  if (!values?.length) return EMPTY_ARRAY;
+  const constant = constantValueOf(values);
+  if (constant.isConstant) return getConstantArray(values.length, constant.value);
+  return Array.from(values);
+}
+
+function snapshotFloat32Array(values) {
+  if (!values?.length) return EMPTY_F32;
+  const constant = constantValueOf(values);
+  if (constant.isConstant) return getConstantFloat32Array(values.length, constant.value);
+  return Float32Array.from(values);
+}
+
 /**
  * Compute spectrum display data from a frame or history row.
  * @param {object} row
@@ -24,8 +77,8 @@ export function buildSpectrumDataSnapshot(row) {
   const dbListB = row.spectrumSmoothDbB || [];
   return {
     bands: getBandsFromCenters(centers),
-    dbList: [...dbList],
-    dbListB: [...dbListB],
+    dbList: snapshotNumericArray(dbList),
+    dbListB: snapshotNumericArray(dbListB),
   };
 }
 
@@ -62,8 +115,6 @@ function ringPush(arr, value, max) {
   arr.push(value);
   if (arr.length > max) arr.shift();
 }
-
-const EMPTY_F32 = new Float32Array(0);
 
 /**
  * Owns all live-data ring buffers (history, snaps, spectrum).
@@ -128,11 +179,9 @@ export class FrameIntake {
       {
         m: hm,
         st: hst,
-        waveformMin: row.waveformMin ?? [],
-        waveformMax: row.waveformMax ?? [],
-        waveformSubPairs: row.waveformSubPairs
-          ? Float32Array.from(row.waveformSubPairs)
-          : EMPTY_F32,
+        waveformMin: snapshotNumericArray(row.waveformMin),
+        waveformMax: snapshotNumericArray(row.waveformMax),
+        waveformSubPairs: snapshotFloat32Array(row.waveformSubPairs),
         waveformSubCount: row.waveformSubCount ?? 0,
         timestampMs: row.timestampMs,
       },
@@ -163,20 +212,20 @@ export class FrameIntake {
     }
 
     this._visualWaveformHist.push({
-      waveformMin: row.waveformMin ?? [],
-      waveformMax: row.waveformMax ?? [],
+      waveformMin: snapshotNumericArray(row.waveformMin),
+      waveformMax: snapshotNumericArray(row.waveformMax),
       timestampMs: row.timestampMs,
     });
 
     this._visualSpectrumHist.push({
       bands: getBandsFromCenters(row.spectrumBandCentersHz ?? this._lastSpectrumCenters),
-      dbList: [...(row.spectrumSmoothDb ?? [])],
-      dbListB: [...(row.spectrumSmoothDbB ?? [])],
+      dbList: snapshotNumericArray(row.spectrumSmoothDb),
+      dbListB: snapshotNumericArray(row.spectrumSmoothDbB),
       timestampMs: row.timestampMs,
     });
 
     this._visualVectorscopeHist.push({
-      pairs: row.vectorscopePairs ?? [],
+      pairs: snapshotNumericArray(row.vectorscopePairs),
       timestampMs: row.timestampMs,
     });
     this._visualCorrHist.push({

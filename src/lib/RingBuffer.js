@@ -40,6 +40,7 @@ export class RingBuffer {
   }
 
   clear() {
+    this._buf.fill(undefined);
     this._head = 0;
     this._size = 0;
   }

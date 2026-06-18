@@ -44,6 +44,14 @@ describe("RingBuffer", () => {
     expect(rb.length).toBe(0);
   });
 
+  it("clear releases stored object references", () => {
+    const rb = new RingBuffer(3);
+    const retained = { large: new Array(1000).fill("x") };
+    rb.push(retained);
+    rb.clear();
+    expect(rb._buf.every((entry) => entry === undefined)).toBe(true);
+  });
+
   it("at() returns undefined for out-of-bounds index", () => {
     const rb = new RingBuffer(3);
     rb.push(1);

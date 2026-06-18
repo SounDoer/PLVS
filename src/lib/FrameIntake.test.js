@@ -332,6 +332,46 @@ describe("FrameIntake", () => {
     expect(intake.getVisualWaveformHist().length).toBe(3);
   });
 
+  it("reuses constant visual arrays instead of cloning silent rows", () => {
+    const intake = new FrameIntake();
+    const row = {
+      waveformMin: [0, 0],
+      waveformMax: [0, 0],
+      spectrumSmoothDb: [-100, -100, -100],
+      vectorscopePairs: [0, 0, 0, 0],
+      correlation: 0,
+    };
+
+    intake.pushVisualHistRow(row, 10);
+    intake.pushVisualHistRow(row, 10);
+
+    expect(intake.getVisualWaveformHist().at(0).waveformMin).toBe(
+      intake.getVisualWaveformHist().at(1).waveformMin
+    );
+    expect(intake.getVisualSpectrumHist().at(0).dbList).toBe(
+      intake.getVisualSpectrumHist().at(1).dbList
+    );
+    expect(intake.getVisualVectorscopeHist().at(0).pairs).toBe(
+      intake.getVisualVectorscopeHist().at(1).pairs
+    );
+  });
+
+  it("does not reuse non-constant visual arrays", () => {
+    const intake = new FrameIntake();
+    intake.pushVisualHistRow(
+      { waveformMin: [0, -0.1], waveformMax: [0, 0.1], spectrumSmoothDb: [-90, -80] },
+      10
+    );
+    intake.pushVisualHistRow(
+      { waveformMin: [0, -0.1], waveformMax: [0, 0.1], spectrumSmoothDb: [-90, -80] },
+      10
+    );
+
+    expect(intake.getVisualSpectrumHist().at(0).dbList).not.toBe(
+      intake.getVisualSpectrumHist().at(1).dbList
+    );
+  });
+
   it("pushHistRow stores waveform sub-pairs as a Float32Array on the row", () => {
     const intake = new FrameIntake();
     const pairs = new Float32Array([-0.5, 0.5, -0.3, 0.3]);
@@ -349,6 +389,18 @@ describe("FrameIntake", () => {
     expect(row.waveformSubPairs).toBeInstanceOf(Float32Array);
     expect(row.waveformSubPairs).toHaveLength(0);
     expect(row.waveformSubCount).toBe(0);
+  });
+
+  it("reuses constant waveform sub-pair arrays", () => {
+    const intake = new FrameIntake();
+    const pairs = new Float32Array([0, 0, 0, 0]);
+
+    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
+    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
+
+    expect(intake.getLoudnessHistory()[0].waveformSubPairs).toBe(
+      intake.getLoudnessHistory()[1].waveformSubPairs
+    );
   });
 });
 
