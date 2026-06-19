@@ -15,7 +15,6 @@ import {
   freqToXFrac,
   buildRtaBands,
   getWeightingDb,
-  spectrogramColor,
   spectrogramVisibleRange,
 } from "./scales";
 
@@ -113,43 +112,6 @@ describe("buildRtaBands", () => {
     const bands = buildRtaBands(20, 20000, "1/3");
     expect(bands[0].fLow).toBeGreaterThanOrEqual(20);
     expect(bands[bands.length - 1].fHigh).toBeLessThanOrEqual(20001);
-  });
-});
-
-describe("spectrogramColor", () => {
-  it("-100 dB maps to near-black", () => {
-    const [r, g, b] = spectrogramColor(-100);
-    expect(r).toBeLessThan(5);
-    expect(g).toBeLessThan(5);
-    expect(b).toBeLessThan(15);
-  });
-  it("0 dB maps to bright yellow", () => {
-    const [r, g, b] = spectrogramColor(0);
-    expect(r).toBeGreaterThan(240);
-    expect(g).toBeGreaterThan(240);
-    expect(b).toBeGreaterThan(100);
-  });
-  it("NaN maps to near-black", () => {
-    const [r, g] = spectrogramColor(NaN);
-    expect(r).toBeLessThan(5);
-    expect(g).toBeLessThan(5);
-  });
-  it("clamps above 0 dB to same as 0 dB", () => {
-    expect(spectrogramColor(10)).toEqual(spectrogramColor(0));
-  });
-  it("clamps below -100 dB to same as -100 dB", () => {
-    expect(spectrogramColor(-200)).toEqual(spectrogramColor(-100));
-  });
-  it("always returns [0-255, 0-255, 0-255]", () => {
-    for (const db of [-100, -75, -50, -25, 0]) {
-      const [r, g, b] = spectrogramColor(db);
-      expect(r).toBeGreaterThanOrEqual(0);
-      expect(r).toBeLessThanOrEqual(255);
-      expect(g).toBeGreaterThanOrEqual(0);
-      expect(g).toBeLessThanOrEqual(255);
-      expect(b).toBeGreaterThanOrEqual(0);
-      expect(b).toBeLessThanOrEqual(255);
-    }
   });
 });
 

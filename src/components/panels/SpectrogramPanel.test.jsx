@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
+import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 
 vi.mock("../../hooks/useSpectrogramCanvas", () => ({
   useSpectrogramCanvas: vi.fn(),
@@ -27,6 +28,7 @@ const baseAudioData = {
   onHistoryWheel: vi.fn(),
   visualSpectrogramSnap: [],
   historyTimeTicks: ["0s", "15s", "30s", "45s", "60s"],
+  resolvedThemeId: "plvs-dark",
 };
 
 function renderPanel(value = {}) {
@@ -38,6 +40,8 @@ function renderPanel(value = {}) {
 }
 
 beforeEach(() => {
+  vi.mocked(useSpectrogramCanvas).mockClear();
+
   class ResizeObserverStub {
     observe() {}
     disconnect() {}
@@ -60,5 +64,17 @@ describe("SpectrogramPanel", () => {
     expect(axisRow?.className).not.toContain("bottom-0");
     expect(chartInset?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
     expect(container.querySelector("canvas")).toBeTruthy();
+  });
+
+  it("passes the resolved theme colormap to the canvas hook", () => {
+    renderPanel({ resolvedThemeId: "plvs-dark" });
+    const darkLut = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].colormapLut;
+
+    renderPanel({ resolvedThemeId: "plvs-light" });
+    const lightLut = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].colormapLut;
+
+    expect(darkLut).toBeInstanceOf(Uint8Array);
+    expect(lightLut).toBeInstanceOf(Uint8Array);
+    expect(Array.from(lightLut.slice(0, 3))).not.toEqual(Array.from(darkLut.slice(0, 3)));
   });
 });

@@ -11,6 +11,8 @@ import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
 import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
+import { getBuiltinTheme } from "../../theme/builtinThemes.js";
+import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 
 const SPECTROGRAM_HELP = [
   "Left click - Select snapshot",
@@ -40,6 +42,7 @@ export function SpectrogramPanel({ compact = false }) {
     onHistoryWheel,
     visualSpectrogramSnap,
     historyTimeTicks,
+    resolvedThemeId,
   } = useAudioData();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -63,6 +66,10 @@ export function SpectrogramPanel({ compact = false }) {
 
   const spectrogramSnaps =
     selectedOffset >= 0 ? (visualSpectrogramSnap ?? []) : (snapRef.current ?? []);
+  const colormapLut = useMemo(
+    () => buildSpectrogramLut(getBuiltinTheme(resolvedThemeId).colormap),
+    [resolvedThemeId]
+  );
   const visualViewport = useMemo(
     () =>
       mapHistoryViewportToVisual({
@@ -82,6 +89,7 @@ export function SpectrogramPanel({ compact = false }) {
     visibleSamples: visualViewport.visibleSamples,
     selectedOffset,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
+    colormapLut,
   });
   const {
     hover: spectrogramHover,

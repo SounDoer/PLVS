@@ -1035,6 +1035,7 @@ function AppContent() {
     peakLabelContext,
     running,
     setStatus,
+    resolvedThemeId,
     // Loudness history
     historyYAxisTicks,
     targetLufs,

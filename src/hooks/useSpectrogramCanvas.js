@@ -1,24 +1,6 @@
 import { useEffect, useRef } from "react";
-import {
-  spectrogramColor,
-  spectrogramVisibleRange,
-  SPEC_DB_MIN,
-  SPEC_DB_MAX,
-} from "../config/scales.js";
+import { spectrogramVisibleRange, SPEC_DB_MIN, SPEC_DB_MAX } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
-
-// Flat RGB byte lookup (256 entries × 3 bytes) for zero-allocation hot path.
-const _INFERNO_FLAT = (() => {
-  const flat = new Uint8Array(256 * 3);
-  const rng = SPEC_DB_MAX - SPEC_DB_MIN;
-  for (let i = 0; i < 256; i++) {
-    const [r, g, b] = spectrogramColor(SPEC_DB_MIN + (i / 255) * rng);
-    flat[i * 3] = r;
-    flat[i * 3 + 1] = g;
-    flat[i * 3 + 2] = b;
-  }
-  return flat;
-})();
 
 function paintImageData(
   imageData,
@@ -27,7 +9,8 @@ function paintImageData(
   count,
   leadingEmptySamples,
   windowSamples,
-  yToBand
+  yToBand,
+  colormapLut
 ) {
   const { data, width: W, height: H } = imageData;
   const rng = SPEC_DB_MAX - SPEC_DB_MIN;
@@ -45,9 +28,9 @@ function paintImageData(
       const db = snap.dbList[yToBand[y]] ?? SPEC_DB_MIN;
       const t = Math.max(0, Math.min(1, (db - SPEC_DB_MIN) / rng));
       const lutIdx = Math.round(t * 255) * 3;
-      const r = _INFERNO_FLAT[lutIdx];
-      const g = _INFERNO_FLAT[lutIdx + 1];
-      const b = _INFERNO_FLAT[lutIdx + 2];
+      const r = colormapLut[lutIdx];
+      const g = colormapLut[lutIdx + 1];
+      const b = colormapLut[lutIdx + 2];
       const rowBase = y * W;
       for (let dx = 0; dx < colW; dx++) {
         const idx = (rowBase + xStart + dx) * 4;
@@ -67,14 +50,29 @@ export function useSpectrogramCanvas({
   visibleSamples,
   selectedOffset,
   frozenSnaps,
+  colormapLut,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
   const cacheRef = useRef({ W: 0, H: 0, yToBand: null, imageData: null });
-  const lastPaintRef = useRef({ len: -1, offset: -1, visible: -1, sel: -1, W: 0, H: 0 });
+  const lastPaintRef = useRef({
+    len: -1,
+    offset: -1,
+    visible: -1,
+    sel: -1,
+    W: 0,
+    H: 0,
+    colormapLut: null,
+  });
 
   useEffect(() => {
-    paramsRef.current = { effectiveOffsetSamples, visibleSamples, selectedOffset, frozenSnaps };
+    paramsRef.current = {
+      effectiveOffsetSamples,
+      visibleSamples,
+      selectedOffset,
+      frozenSnaps,
+      colormapLut,
+    };
   });
 
   useEffect(() => {
@@ -86,8 +84,9 @@ export function useSpectrogramCanvas({
       const H = canvas.height;
       if (W === 0 || H === 0) return;
 
-      const { effectiveOffsetSamples, visibleSamples, selectedOffset, frozenSnaps } =
+      const { effectiveOffsetSamples, visibleSamples, selectedOffset, frozenSnaps, colormapLut } =
         paramsRef.current;
+      if (!colormapLut || colormapLut.length < 256 * 3) return;
       const snaps = frozenSnaps ?? snapRef.current;
       const len = snaps ? snaps.length : 0;
 
@@ -99,7 +98,8 @@ export function useSpectrogramCanvas({
         last.visible === visibleSamples &&
         last.sel === selectedOffset &&
         last.W === W &&
-        last.H === H
+        last.H === H &&
+        last.colormapLut === colormapLut
       )
         return;
       lastPaintRef.current = {
@@ -109,6 +109,7 @@ export function useSpectrogramCanvas({
         sel: selectedOffset,
         W,
         H,
+        colormapLut,
       };
 
       const ctx = canvas.getContext("2d");
@@ -146,7 +147,8 @@ export function useSpectrogramCanvas({
         count,
         leadingEmptySamples,
         windowSamples,
-        cache.yToBand
+        cache.yToBand,
+        colormapLut
       );
       ctx.putImageData(cache.imageData, 0, 0);
     }
