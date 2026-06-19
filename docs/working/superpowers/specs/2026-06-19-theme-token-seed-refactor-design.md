@@ -29,7 +29,9 @@ This refactor has three intentions, of which only the first two are in scope her
 - Remove the three colored themes and everything that exists only to serve them.
 - Introduce a **seed → derive** color model for the instrument world (`--ui-*`).
 - Move non-color chart geometry out of per-theme data into global layout data.
-- Delete dead tokens; unify token naming; rewrite `docs/design-tokens.md`.
+- Delete all dead `--ui-*` tokens found by the full sweep (§5.2) — including the 18 dead
+  typography/spacing/radius tokens, not just color ones; unify token naming; rewrite
+  `docs/design-tokens.md`.
 - Make dark/light theme objects symmetric under the new model.
 - Migrate persisted theme ids that point at a deleted theme.
 
@@ -88,9 +90,9 @@ theme = {
 
 | Seed | Derives (instrument world) |
 |------|----------------------------|
-| `accent` | shell `--primary`/`--ring`; all live traces (momentary, vectorscope, spectrum primary, waveform); **snap family** (momentary-snap, vectorscope-snap, spectrum-snap, selection); **over family** (momentary-over, shortterm-over); **ST sibling** (shortterm, shortterm-snap); peak-sample; metric-toggle label/border/bg/glow |
-| `accentSecondary` | spectrum secondary trace live + snap (`--ui-chart-spectrum-live-b` / `-snap-b`); derived with the **same transforms as `accent`** (symmetric) |
-| `signal.good/warn/bad` | meter gradient bottom/mid/top; peak-true; TP-max-exceeded; correlation red/green (reused, not separate) |
+| `accent` | shell `--primary`/`--ring`; all live traces (momentary, vectorscope, spectrum primary, waveform); **snap family** (momentary-snap, vectorscope-snap, spectrum-snap, selection); **over family** (momentary-over, shortterm-over); **ST sibling** (shortterm, shortterm-snap); peak-sample |
+| `accentSecondary` | spectrum secondary trace live + snap (`--ui-spectrum-secondary` / `-snap`); derived with the **same transforms as `accent`** (symmetric) |
+| `signal.good/warn/bad` | meter gradient bottom/mid/top; TP-max-exceeded text (which also colors the correlation readout) |
 
 Neutrals that are **not** seeds: low-identity grays, lines, and tints that should track the mode or
 the chrome instead of being hand-filled per theme. They derive from either **scheme** or **shell** —
@@ -104,9 +106,11 @@ A neutral derives from whichever it actually needs:
 
 | Neutral token | Derives from | Rule |
 |---------------|--------------|------|
-| metric-row bg / hover bg | **scheme** | white-alpha overlay on dark, black-alpha on light — only the mode bit is needed |
 | grid / vector diagonal / history grid lines | **shell** `--border` | `color-mix` dilution of a concrete color |
-| neutral text (and correlation neutral, if ever rendered) | **shell** `--muted-foreground` | direct reference to a concrete color |
+| neutral / muted text | **shell** `--muted-foreground` | direct reference to a concrete color |
+
+(The metric-row tint/toggle color tokens were removed as dead — see §5.2 — so metric rows are colored
+purely by the shell, no scheme-derived overlay remains.)
 
 `colorScheme` is also consumed by the §4.2 derivation transforms (it flips snap/over direction:
 lighter on dark, darker on light).
@@ -151,20 +155,23 @@ block, **not** seed-derived). It does not add to derivation complexity.
 
 Every consumed `--ui-*` color maps cleanly:
 
-- accent + its transforms → spectrum live/snap, vectorscope live/snap, momentary/snap/over,
-  shortterm/over, selection, waveform, peak-sample, metric toggle.
-- accentSecondary → spectrum live-b/snap-b.
-- signal → meter gradient, peak-true, tp-max.
-- shell/scheme-derived neutrals → grid lines, vector diagonal, history grid, metric-row tints.
+- accent + its transforms → spectrum primary live/snap, vectorscope live/snap, momentary/snap/over,
+  shortterm/over, selection, waveform, peak-sample.
+- accentSecondary → spectrum secondary live/snap.
+- signal → meter gradient, tp-max.
+- shell-derived neutrals → grid lines, vector diagonal, history grid, muted text.
 - colormap → spectrogram.
 
-Color model = **3 chromatic seeds + 1 per-theme colormap + scheme/shell-derived neutrals.**
+(peak-true, the correlation triad, the metric-row tint/toggle colors, and the loudness reference
+line are **removed as dead** — see §5.2 — so they are not part of the model.)
+
+Color model = **3 chromatic seeds + 1 per-theme colormap + shell-derived neutrals.**
 
 ## 5. Structure Cleanups
 
-- **Delete dead / removed / merged tokens** — see §5.2 for the full list (dead `corr-*` and
-  `sp-stroke-w-inner`, removed glow + ST-opacity, merged fill/grid pairs). No correlation neutral-gray
-  concept remains.
+- **Delete dead / removed / merged tokens** — a full set-vs-consumed sweep found ~32 dead `--ui-*`
+  tokens (14 color, 18 typography/spacing/radius). All are removed this round; see §5.2 for the
+  itemized list. No correlation neutral-gray concept remains.
 - **Move dark/light meter colors** out of `meterColorBridge.js` into the theme model; delete the
   `meterColorOverrides` mechanism along with the three colored themes. `meterColorBridge.js` is
   removed (its dark/light values become derived from `signal` + scheme).
@@ -212,7 +219,6 @@ Full remap of every currently-written `--ui-*` token, by domain. Kind: 🎨 colo
 | `--ui-chart-shortterm-snap` | `--ui-loudness-shortterm-snap` | 🎨 |
 | `--ui-chart-shortterm-over` | `--ui-loudness-shortterm-over` | 🎨 |
 | `--ui-chart-selection` | `--ui-loudness-selection` | 🎨 |
-| `--ui-chart-target-line` | `--ui-loudness-reference-line` | 🎨 |
 | `--ui-loudness-history-grid-line` | `--ui-loudness-grid` | 🩶 |
 | `--ui-lh-stroke-m-w` | `--ui-loudness-momentary-stroke-width` | 📐 |
 | `--ui-lh-stroke-st-w` | `--ui-loudness-shortterm-stroke-width` | 📐 |
@@ -226,8 +232,8 @@ Full remap of every currently-written `--ui-*` token, by domain. Kind: 🎨 colo
 | `--ui-chart-spectrum-snap` | `--ui-spectrum-primary-snap` | 🎨 |
 | `--ui-chart-spectrum-live-b` | `--ui-spectrum-secondary` | 🎨 |
 | `--ui-chart-spectrum-snap-b` | `--ui-spectrum-secondary-snap` | 🎨 |
-| `--ui-chart-spectrum-fill-top` ＋ `--ui-sp-fill-top` | `--ui-spectrum-fill-top-opacity` | 📐 **merge** |
-| `--ui-chart-spectrum-fill-bottom` ＋ `--ui-sp-fill-bottom` | `--ui-spectrum-fill-bottom-opacity` | 📐 **merge** |
+| `--ui-sp-fill-top` | `--ui-spectrum-fill-top-opacity` | 📐 *(dead dup `--ui-chart-spectrum-fill-top` deleted)* |
+| `--ui-sp-fill-bottom` | `--ui-spectrum-fill-bottom-opacity` | 📐 *(dead dup `--ui-chart-spectrum-fill-bottom` deleted)* |
 | `--ui-sp-stroke-w` | `--ui-spectrum-stroke-width` | 📐 |
 | `--ui-spectrum-grid-v` ＋ `--ui-spectrum-grid-h` | `--ui-spectrum-grid-opacity` | 📐 **merge** |
 
@@ -258,29 +264,51 @@ Full remap of every currently-written `--ui-*` token, by domain. Kind: 🎨 colo
 | `--ui-meter-grad-bottom` | `--ui-meter-gradient-bottom` | 🎨 |
 | `--ui-meter-grad-mid-stop` | `--ui-meter-gradient-mid-stop` | 📐 |
 
-**Signal / Metric row** (mostly already compliant)
+**Signal** (the surviving two are already compliant)
 
 | Before | After | Kind |
 |--------|-------|------|
 | `--ui-signal-peak-sample` | *unchanged* | 🎨 |
-| `--ui-signal-peak-true` | *unchanged* | 🎨 |
 | `--ui-signal-tp-max` | *unchanged* (canonical) | 🎨 |
-| `--ui-metric-toggle-on-label` | `--ui-metric-row-toggle-on-label` | 🎨 |
-| `--ui-metric-row-bg` / `-hover-bg` / `-toggle-on-border` / `-bg` / `-glow` | *unchanged* | 🎨/🩶 |
+
+(All metric-row color tokens and `--ui-signal-peak-true` are dead and deleted — see §5.2.)
 
 ### 5.2 Tokens deleted or merged
 
-- **Deleted (dead — set but never consumed):** `--ui-signal-corr-bad` / `-mid` / `-good`;
-  `--ui-sp-stroke-w-inner`.
-- **Deleted (feature removed):** `--ui-vs-stroke-w-halo` + `--ui-vs-path-glow-opacity` — the
-  vectorscope **glow/halo is removed** (the wider low-opacity backing path in
-  `VectorscopePanel.jsx:72-83` is deleted).
-- **Deleted (no longer used to distinguish):** `--ui-lh-stroke-st-op` (Short-term opacity) — ST now
-  renders fully opaque; M/ST distinction relies on stroke width (and the deferred hue decision), not
-  opacity.
-- **Merged:** the redundant `--ui-chart-spectrum-fill-*` / `--ui-sp-fill-*` pairs (currently set to
-  identical values) collapse to one each; `--ui-spectrum-grid-v` + `-h` collapse to a single
-  `--ui-spectrum-grid-opacity` (light currently differs 0.07/0.05 — negligible, unified).
+Found by a full set-vs-consumed sweep (matching `var()`, JS `getPropertyValue()`, and string
+literals; excluding the `setCssVar` definition lines). The implementation plan must re-grep each token
+by exact name immediately before deleting, to guard against runtime-concatenated names.
+
+**Dead color tokens (set but never consumed):**
+- `--ui-signal-corr-bad` / `-mid` / `-good` — correlation triad (the readout is colored by
+  `--ui-signal-tp-max`, not these).
+- `--ui-signal-peak-true` — true-peak line color; nothing reads it (`peak-sample` is still live).
+- `--ui-chart-target-line` — old loudness reference line, superseded by the over-reference gradient.
+- `--ui-chart-spectrum-fill-top` / `-bottom` — dead duplicates of the live `--ui-sp-fill-*`.
+- `--ui-sp-stroke-w-inner`.
+- `--ui-metric-row-bg` / `-hover-bg` / `-toggle-on-bg` / `-toggle-on-border` / `-toggle-on-glow` /
+  `--ui-metric-toggle-on-label` — the whole "selected metric row turns orange" toggle styling is gone
+  from `LoudnessStatsPanel`; rows are colored purely by the shell now.
+
+**Dead non-color tokens (typography / spacing / radius — folded into this round):**
+- Typography: `--ui-fs-panel-title`, `--ui-fs-controls`, `--ui-fw-section`.
+- Modal: `--ui-modal-pad`, `--ui-modal-gap`, `--ui-modal-header-gap`, `--ui-modal-action-pad-x`,
+  `--ui-modal-action-pad-y`, `--ui-radius-modal` (`SettingsPanel` does not consume any of these).
+- Shell responsive: `--ui-shell-max-w`, `--ui-shell-pad-lg`, `--ui-shell-gap-lg`.
+- Panel / misc: `--ui-panel-gap`, `--ui-panel-title-gap`, `--ui-header-action-gap`,
+  `--ui-loudness-gap`, `--ui-metric-title-gap`, `--ui-radius-pill`.
+
+These are removed from both `applyLayoutToDocument` and the underlying `data.js` config.
+
+**Deleted (feature removed):** `--ui-vs-stroke-w-halo` + `--ui-vs-path-glow-opacity` — the
+vectorscope **glow/halo is removed** (the wider low-opacity backing path in
+`VectorscopePanel.jsx:72-83` is deleted).
+
+**Deleted (no longer used to distinguish):** `--ui-lh-stroke-st-op` (Short-term opacity) — ST now
+renders fully opaque; M/ST distinction relies on stroke width (and the deferred hue decision).
+
+**Merged:** `--ui-spectrum-grid-v` + `-h` collapse to a single `--ui-spectrum-grid-opacity` (light
+currently differs 0.07/0.05 — negligible, unified).
 
 ### 5.3 Rendering / behavior changes (beyond renames)
 
@@ -292,8 +320,9 @@ These three are not pure renames and need a code change + visual recheck:
 **Unchanged:** shell (shadcn `--*`), `--radius`, and generic chart-area spacing tokens
 (`--ui-chart-pad`, `--ui-chart-inset-*`, `--ui-chart-axis-gap`, `--ui-chart-hud-inset`,
 `--ui-chart-x-axis-row-h`) keep their names — `chart` there is a legitimate shared-layout domain.
-Typography/spacing/size tokens (`--ui-fs-*`, `--ui-shell-*`, `--ui-header-*`, `--ui-panel-*`,
-`--ui-modal-*`, `--ui-min-h-*`, `--ui-w-*`) are already consistent and out of scope for renaming.
+Surviving typography/spacing/size tokens (`--ui-fs-*`, `--ui-shell-*`, `--ui-header-*`, `--ui-panel-*`,
+`--ui-min-h-*`, `--ui-w-*`) are already consistent and are **not renamed** — only the dead ones among
+them are deleted (§5.2).
 
 ## 6. Theme Deletion & Migration (step 1)
 
@@ -318,6 +347,9 @@ Dark without an error. Add a test for this.
 - Snapshot/equivalence guard: for the polish phase, a test that dark's derived values match the
   intended anchor set (so a refactor doesn't silently shift colors).
 - Deleted-theme migration test (§6).
+- **Before deleting each §5.2 dead token, re-grep it by exact name** across `src` (covering `var()`,
+  `getPropertyValue`, and string literals) to confirm zero consumers — guards against
+  runtime-concatenated names the sweep can't see.
 - Existing theme tests updated for the two-theme world and the renamed `accentSecondary`.
 - `npm run check` must pass (format + lint + test + build + version + Rust fmt/clippy/test).
 - `npm run theme:generate` regenerates `src/generated/theme-fallbacks.css` from the new dark semantic
