@@ -42,12 +42,13 @@ function getSnapshotTokens(themeId) {
 }
 
 describe("BUILTIN_THEMES", () => {
-  it("contains plvs-dark, plvs-light, plvs-phosphor, and plvs-tungsten", () => {
+  it("contains exactly plvs-dark and plvs-light", () => {
     expect(THEME_IDS).toContain("plvs-dark");
     expect(THEME_IDS).toContain("plvs-light");
-    expect(THEME_IDS).toContain("plvs-phosphor");
-    expect(THEME_IDS).toContain("plvs-tungsten");
-    expect(THEME_IDS).toContain("plvs-abyss");
+    expect(THEME_IDS).not.toContain("plvs-phosphor");
+    expect(THEME_IDS).not.toContain("plvs-tungsten");
+    expect(THEME_IDS).not.toContain("plvs-abyss");
+    expect(THEME_IDS).toHaveLength(2);
   });
 
   it("defines distinct loudness history trace tokens for every theme", () => {
@@ -108,66 +109,6 @@ describe("BUILTIN_THEMES", () => {
       expect(colorDistance(tokens.shortTermSnap, tokens.momentarySnap)).toBeGreaterThanOrEqual(25);
       expect(colorDistance(tokens.shortTermSnap, tokens.momentarySnap)).toBeLessThanOrEqual(120);
     }
-  });
-
-  it("plvs-abyss has colorScheme dark", () => {
-    expect(BUILTIN_THEMES["plvs-abyss"].colorScheme).toBe("dark");
-  });
-
-  it("plvs-abyss meterColorOverrides sets coral as toggle label", () => {
-    const ov = BUILTIN_THEMES["plvs-abyss"].meterColorOverrides;
-    expect(ov).toBeDefined();
-    expect(ov.metricToggleOnLabel).toBe("#ff5040");
-  });
-
-  it("plvs-abyss meterColorOverrides uses cyan-tinted row backgrounds", () => {
-    const ov = BUILTIN_THEMES["plvs-abyss"].meterColorOverrides;
-    expect(ov.metricRowBg).toMatch(/rgba\(0,195,210/);
-  });
-
-  it("getBuiltinTheme returns plvs-abyss correctly", () => {
-    expect(getBuiltinTheme("plvs-abyss").id).toBe("plvs-abyss");
-    expect(getBuiltinTheme("plvs-abyss").label).toBe("Abyss");
-  });
-
-  it("plvs-phosphor has colorScheme dark", () => {
-    expect(BUILTIN_THEMES["plvs-phosphor"].colorScheme).toBe("dark");
-  });
-
-  it("plvs-phosphor meterColorOverrides sets phosphor green as toggle label", () => {
-    const ov = BUILTIN_THEMES["plvs-phosphor"].meterColorOverrides;
-    expect(ov).toBeDefined();
-    expect(ov.metricToggleOnLabel).toBe("#2cff65");
-  });
-
-  it("plvs-phosphor meterColorOverrides uses black-tinted row backgrounds", () => {
-    const ov = BUILTIN_THEMES["plvs-phosphor"].meterColorOverrides;
-    expect(ov.metricRowBg).toMatch(/rgba\(44,255,101/);
-  });
-
-  it("getBuiltinTheme returns plvs-phosphor correctly", () => {
-    expect(getBuiltinTheme("plvs-phosphor").id).toBe("plvs-phosphor");
-    expect(getBuiltinTheme("plvs-phosphor").label).toBe("Phosphor");
-  });
-
-  it("plvs-tungsten has colorScheme dark", () => {
-    expect(BUILTIN_THEMES["plvs-tungsten"].colorScheme).toBe("dark");
-  });
-
-  it("plvs-tungsten meterColorOverrides sets amber as toggle label", () => {
-    const ov = BUILTIN_THEMES["plvs-tungsten"].meterColorOverrides;
-    expect(ov).toBeDefined();
-    expect(ov.metricToggleOnLabel).toBe("#ffaa00");
-  });
-
-  it("plvs-tungsten meterColorOverrides uses amber-tinted row backgrounds", () => {
-    const ov = BUILTIN_THEMES["plvs-tungsten"].meterColorOverrides;
-    expect(ov.metricRowBg).toMatch(/rgba\(255/);
-  });
-
-  it("getBuiltinTheme returns plvs-tungsten correctly", () => {
-    expect(getBuiltinTheme("plvs-tungsten").id).toBe("plvs-tungsten");
-    expect(getBuiltinTheme("plvs-tungsten").label).toBe("Tungsten");
   });
 
   it("defines a distinct secondary spectrum color", () => {

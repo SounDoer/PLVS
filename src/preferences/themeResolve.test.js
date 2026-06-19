@@ -85,14 +85,23 @@ describe("resolveThemeId DEV warnings", () => {
 });
 
 describe("THEME_IDS", () => {
-  it("contains plvs-dark, plvs-light, plvs-phosphor, and plvs-tungsten", () => {
+  it("contains exactly plvs-dark and plvs-light", () => {
     expect(THEME_IDS).toContain("plvs-dark");
     expect(THEME_IDS).toContain("plvs-light");
-    expect(THEME_IDS).toContain("plvs-phosphor");
-    expect(THEME_IDS).toContain("plvs-tungsten");
-    expect(THEME_IDS).toContain("plvs-abyss");
-    expect(THEME_IDS).not.toContain("audiometer-dark");
-    expect(THEME_IDS).not.toContain("audiometer-light");
-    expect(THEME_IDS).not.toContain("audiometer-ember");
+    expect(THEME_IDS).not.toContain("plvs-phosphor");
+    expect(THEME_IDS).not.toContain("plvs-tungsten");
+    expect(THEME_IDS).not.toContain("plvs-abyss");
+    expect(THEME_IDS).toHaveLength(2);
   });
+});
+
+describe("resolveThemeId migration for deleted themes", () => {
+  it.each(["plvs-phosphor", "plvs-tungsten", "plvs-abyss"])(
+    "falls back to plvs-dark for removed fixed theme %s",
+    (removedId) => {
+      expect(resolveThemeId({ appearance: "fixed", themeId: removedId }, false)).toBe(
+        DEFAULT_THEME_ID
+      );
+    }
+  );
 });
