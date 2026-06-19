@@ -1,5 +1,5 @@
 import { applyShadcnSemanticTokensToDocument, oklchSafe } from "../theme/shadcnSemanticPreset.js";
-import { buildMeterColorBridge } from "../theme/meterColorBridge.js";
+import { buildThemeTokens } from "../theme/buildThemeTokens.js";
 import { getBuiltinTheme } from "../theme/builtinThemes.js";
 import { UI_PREFERENCES } from "./data.js";
 
@@ -131,61 +131,31 @@ export function applyThemeToDocument(themeId) {
 
   applyShadcnSemanticTokensToDocument(theme.semantic);
 
-  const bridge = buildMeterColorBridge(theme.semantic, theme.colorScheme);
-  const colors = theme.meterColorOverrides ? { ...bridge, ...theme.meterColorOverrides } : bridge;
-
-  setCssVar("--ui-signal-peak-sample", colors.peakSamplePeak);
-  setCssVar("--ui-signal-peak-true", colors.peakTruePeak);
-  setCssVar("--ui-signal-tp-max", colors.tpMaxText);
-  setCssVar("--ui-signal-corr-bad", colors.correlation.bad);
-  setCssVar("--ui-signal-corr-mid", colors.correlation.mid);
-  setCssVar("--ui-signal-corr-good", colors.correlation.good);
-  setCssVar("--ui-metric-row-bg", colors.metricRowBg);
-  setCssVar("--ui-metric-row-hover-bg", colors.metricRowHoverBg);
-  setCssVar("--ui-metric-row-toggle-on-border", colors.metricRowToggleOnBorder);
-  setCssVar("--ui-metric-row-toggle-on-bg", colors.metricRowToggleOnBg);
-  setCssVar("--ui-metric-row-toggle-on-glow", colors.metricRowToggleOnGlow);
-  setCssVar("--ui-metric-toggle-on-label", colors.metricToggleOnLabel);
-  setCssVar("--ui-chart-target-line", colors.loudnessTargetLine);
+  const tokens = buildThemeTokens(theme);
+  for (const [name, value] of Object.entries(tokens)) {
+    setCssVar(name, value);
+  }
 
   const charts = theme.charts;
-  setCssVar("--ui-chart-momentary", charts.loudnessHistory.momentaryStroke);
-  setCssVar("--ui-chart-momentary-snap", charts.loudnessHistory.momentaryStrokeSnap);
-  setCssVar("--ui-chart-momentary-over", charts.loudnessHistory.momentaryStrokeOver);
-  setCssVar("--ui-chart-shortterm", charts.loudnessHistory.shortTermStroke);
-  setCssVar("--ui-chart-shortterm-snap", charts.loudnessHistory.shortTermStrokeSnap);
-  setCssVar("--ui-chart-shortterm-over", charts.loudnessHistory.shortTermStrokeOver);
-  setCssVar("--ui-chart-selection", charts.loudnessHistory.selectionStroke);
-  setCssVar("--ui-chart-vectorscope-live", charts.vectorscope.strokeLive);
-  setCssVar("--ui-chart-vectorscope-snap", charts.vectorscope.strokeSnap);
-  setCssVar("--ui-chart-spectrum-live", charts.spectrum.strokeLive);
-  setCssVar("--ui-chart-spectrum-snap", charts.spectrum.strokeSnap);
-  setCssVar("--ui-chart-spectrum-live-b", charts.spectrum.strokeLiveB);
-  setCssVar("--ui-chart-spectrum-snap-b", charts.spectrum.strokeSnapB);
+
   setCssVar("--ui-chart-spectrum-fill-top", String(charts.spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-chart-spectrum-fill-bottom", String(charts.spectrum.fillOpacityBottom ?? 0.02));
-  setCssVar("--ui-chart-waveform-live", charts.waveform.stroke);
   setCssVar("--ui-chart-waveform-fill-opacity", String(charts.waveform.fillOpacity ?? 0.22));
 
   const meterGradient = theme.meterGradient;
-  setCssVar("--ui-meter-grad-top", meterGradient.top);
-  setCssVar("--ui-meter-grad-mid", meterGradient.mid);
   setCssVar("--ui-meter-grad-mid-stop", `${meterGradient.midStopPercent}%`);
-  setCssVar("--ui-meter-grad-bottom", meterGradient.bottom);
 
   const lh = charts.loudnessHistory;
   setCssVar("--ui-lh-stroke-m-w", String(lh.momentaryStrokeWidth));
   setCssVar("--ui-lh-stroke-st-w", String(lh.shortTermStrokeWidth));
   setCssVar("--ui-lh-stroke-st-op", String(lh.shortTermOpacity));
   setCssVar("--ui-lh-stroke-sel-w", String(lh.selectionStrokeWidth));
-  setCssVar("--ui-loudness-history-grid-line", lh.historyGridLineColor);
 
   const vs = charts.vectorscope;
   setCssVar("--ui-vs-stroke-w", String(vs.strokeWidth));
   setCssVar("--ui-vs-stroke-w-halo", String(vs.strokeWidth * 3));
   setCssVar("--ui-vs-axis-op", String(vs.axisOpacity));
   setCssVar("--ui-vs-path-glow-opacity", String(vs.axisOpacity * 0.22));
-  setCssVar("--ui-vs-grid-diag-stroke", vs.gridDiagStroke);
   setCssVar("--ui-vs-grid-diag-dash", vs.gridDiagDash);
 
   const spectrum = charts.spectrum;
