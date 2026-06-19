@@ -38,7 +38,6 @@ import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.
  *   meterGradient: MeterGradient;
  *   colorScheme: "light" | "dark";
  *   seeds: ThemeSeeds;
- *   meterColorOverrides?: Record<string, unknown>;
  * }} BuiltinTheme
  */
 
