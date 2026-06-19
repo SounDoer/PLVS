@@ -92,11 +92,24 @@ theme = {
 | `accentSecondary` | spectrum secondary trace live + snap (`--ui-chart-spectrum-live-b` / `-snap-b`); derived with the **same transforms as `accent`** (symmetric) |
 | `signal.good/warn/bad` | meter gradient bottom/mid/top; peak-true; TP-max-exceeded; correlation red/green (reused, not separate) |
 
-Neutrals that are **not** seeds: correlation's neutral, grid lines, and metric-row tints derive from
-the shell / scheme:
-- correlation mid (if ever rendered) and other neutral text → `--muted-foreground`.
-- grid / diagonal / history grid lines → `color-mix` from `--border`.
-- metric-row bg/hover → scheme-derived neutral overlay (white-alpha on dark, black-alpha on light).
+Neutrals that are **not** seeds: low-identity grays, lines, and tints that should track the mode or
+the chrome instead of being hand-filled per theme. They derive from either **scheme** or **shell** —
+two distinct things on a theme:
+
+- **`colorScheme`** is a one-bit flag (`"dark"` | `"light"`) — a *direction*, not a color.
+- **`shell`** is the concrete shadcn color block (~19 values: `--background`, `--border`,
+  `--muted-foreground`, …).
+
+A neutral derives from whichever it actually needs:
+
+| Neutral token | Derives from | Rule |
+|---------------|--------------|------|
+| metric-row bg / hover bg | **scheme** | white-alpha overlay on dark, black-alpha on light — only the mode bit is needed |
+| grid / vector diagonal / history grid lines | **shell** `--border` | `color-mix` dilution of a concrete color |
+| neutral text (and correlation neutral, if ever rendered) | **shell** `--muted-foreground` | direct reference to a concrete color |
+
+`colorScheme` is also consumed by the §4.2 derivation transforms (it flips snap/over direction:
+lighter on dark, darker on light).
 
 ### 4.2 Derivation transforms (approach 甲 — real functions)
 
@@ -159,11 +172,61 @@ Color model = **3 chromatic seeds + 1 per-theme colormap + scheme/shell-derived 
   `shortTermOpacity`, etc. After this, **a theme owns color only** (seeds + colormap + shell +
   scheme). These geometry values are currently near-identical across themes, confirming they are not
   theme concerns.
-- **Unify token naming.** Collapse the abbreviated `--ui-lh-*` / `--ui-vs-*` / `--ui-sp-*` namespaces
-  and the full `--ui-chart-*` namespace into a single consistent convention. (Exact final convention
-  decided in the plan; the principle is one namespace for chart-domain tokens.)
+- **Unify token naming** per the convention in §5.1 — collapse the abbreviated `--ui-lh-*` /
+  `--ui-vs-*` / `--ui-sp-*` namespaces and the `--ui-chart-<panel>-*` color namespace into one rule.
 - **Rewrite `docs/design-tokens.md`** to match the runtime exactly: document the seed model, the
   derivation transforms, the colormap, the explicit shell block, and the complete token inventory.
+
+### 5.1 Token naming convention
+
+All `--ui-*` tokens follow one pattern:
+
+```
+--ui-<domain>-<role>[-<state>]
+```
+
+1. **`<domain>` — full feature/panel name, no abbreviations.** Kill `lh` / `vs` / `sp`.
+   Panel domains: `loudness`, `spectrum`, `spectrogram`, `vectorscope`, `waveform`, `peak`, `meter`,
+   `signal`, `metric-row`. Shared/layout domains: `chart` (generic chart-area spacing shared across
+   panels), `shell`, `header`, `footer`, `panel`, `modal`. Type domains: `fs`/`fw`/`font` (type),
+   `radius`.
+2. **`<role>` — spelled out, no abbreviations.** `width` not `w`, `opacity` not `op`,
+   `gradient` not `grad`. e.g. `momentary`, `shortterm`, `primary`, `secondary`, `grid`, `axis`,
+   `stroke-width`, `fill-opacity`.
+3. **`<state>` — optional suffix.** `live` is the default and carries **no** suffix; only `-snap` and
+   `-over` are explicit.
+4. **Canonical acronyms/units keep their form** (`tp-max`, `lufs`, …).
+
+Representative before → after (the worst offenders; all other tokens follow the same rules — the
+exhaustive remap is enumerated in the implementation plan):
+
+| Before | After |
+|--------|-------|
+| `--ui-chart-momentary` | `--ui-loudness-momentary` |
+| `--ui-chart-momentary-snap` | `--ui-loudness-momentary-snap` |
+| `--ui-chart-momentary-over` | `--ui-loudness-momentary-over` |
+| `--ui-chart-shortterm` | `--ui-loudness-shortterm` |
+| `--ui-chart-selection` | `--ui-loudness-selection` |
+| `--ui-chart-spectrum-live` | `--ui-spectrum-primary` |
+| `--ui-chart-spectrum-live-b` | `--ui-spectrum-secondary` |
+| `--ui-chart-spectrum-snap-b` | `--ui-spectrum-secondary-snap` |
+| `--ui-chart-vectorscope-live` | `--ui-vectorscope-trace` |
+| `--ui-chart-vectorscope-snap` | `--ui-vectorscope-trace-snap` |
+| `--ui-chart-waveform-live` | `--ui-waveform-trace` |
+| `--ui-meter-grad-top` | `--ui-meter-gradient-top` |
+| `--ui-lh-stroke-m-w` | `--ui-loudness-momentary-stroke-width` |
+| `--ui-lh-stroke-st-op` | `--ui-loudness-shortterm-opacity` |
+| `--ui-vs-stroke-w` | `--ui-vectorscope-stroke-width` |
+| `--ui-vs-axis-op` | `--ui-vectorscope-axis-opacity` |
+| `--ui-vs-grid-diag-stroke` | `--ui-vectorscope-grid-stroke` |
+| `--ui-sp-fill-top` | `--ui-spectrum-fill-top-opacity` |
+| `--ui-spectrum-grid-v` | `--ui-spectrum-grid-vertical-opacity` |
+| `--ui-loudness-history-grid-line` | `--ui-loudness-grid` |
+
+Note: many `--ui-lh/vs/sp-*` entries above are geometry that §5 moves to global — they relocate and
+get renamed in one pass, not twice. Shell (shadcn `--*`), `--radius`, and the generic chart-area
+spacing tokens (`--ui-chart-pad`, `--ui-chart-inset-*`, `--ui-chart-axis-gap`, `--ui-chart-hud-inset`,
+`--ui-chart-x-axis-row-h`) keep their names — `chart` there is a legitimate shared-layout domain.
 
 ## 6. Theme Deletion & Migration (step 1)
 
@@ -202,7 +265,7 @@ Dark without an error. Add a test for this.
 
 ## 9. Open Items Folded Into the Plan
 
-- Exact final token naming convention for the unified chart namespace.
+- Exhaustive token remap (every token, applying the §5.1 rules — convention itself is fixed).
 - Exact OKLCH delta magnitudes for snap/over/sibling (tuned in the visual-polish sub-phase to the
   §4.2 anchors).
 - Exact dark/light colormap stop lists (visual-polish sub-phase).
