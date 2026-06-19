@@ -26,12 +26,21 @@ import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.
 
 /**
  * @typedef {{
+ *   accent: string;
+ *   accentSecondary: string;
+ *   signal: { good: string; warn: string; bad: string };
+ * }} ThemeSeeds
+ */
+
+/**
+ * @typedef {{
  *   id: ThemeId;
  *   label: string;
  *   semantic: ShadcnSemantic;
  *   charts: ChartsBundle;
  *   meterGradient: MeterGradient;
  *   colorScheme: "light" | "dark";
+ *   seeds: ThemeSeeds;
  *   meterColorOverrides?: Record<string, unknown>;
  * }} BuiltinTheme
  */
@@ -136,6 +145,11 @@ export const BUILTIN_THEMES = {
     charts: CHARTS_PLVS_DARK,
     meterGradient: METER_GRADIENT_PLVS,
     colorScheme: "dark",
+    seeds: {
+      accent: "#fb923c",
+      accentSecondary: "#38bdf8",
+      signal: { good: "#34d399", warn: "#fbbf24", bad: "#f97373" },
+    },
   },
   "plvs-light": {
     id: "plvs-light",
@@ -144,6 +158,11 @@ export const BUILTIN_THEMES = {
     charts: CHARTS_PLVS_LIGHT,
     meterGradient: METER_GRADIENT_PLVS,
     colorScheme: "light",
+    seeds: {
+      accent: "#e07020",
+      accentSecondary: "#0e7490",
+      signal: { good: "#18976a", warn: "#fbbf24", bad: "#d03535" },
+    },
   },
 };
 
