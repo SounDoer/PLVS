@@ -162,16 +162,17 @@ Color model = **3 chromatic seeds + 1 per-theme colormap + scheme/shell-derived 
 
 ## 5. Structure Cleanups
 
-- **Delete dead tokens** `--ui-signal-corr-bad` / `-mid` / `-good` (set but never consumed). There is
-  no correlation neutral-gray concept after this.
+- **Delete dead / removed / merged tokens** — see §5.2 for the full list (dead `corr-*` and
+  `sp-stroke-w-inner`, removed glow + ST-opacity, merged fill/grid pairs). No correlation neutral-gray
+  concept remains.
 - **Move dark/light meter colors** out of `meterColorBridge.js` into the theme model; delete the
   `meterColorOverrides` mechanism along with the three colored themes. `meterColorBridge.js` is
   removed (its dark/light values become derived from `signal` + scheme).
 - **Move non-color chart geometry to global** layout data (`data.js` / `applyLayoutToDocument`):
-  `strokeWidth`, `fillOpacity`, `axisOpacity`, `plotRadius`, `gridDiagDash`, `gridDiagInsetPct`,
-  `shortTermOpacity`, etc. After this, **a theme owns color only** (seeds + colormap + shell +
-  scheme). These geometry values are currently near-identical across themes, confirming they are not
-  theme concerns.
+  `strokeWidth`, `fillOpacity`, `axisOpacity`, `plotRadius`, `gridDiagDash`, `gridDiagInsetPct`, etc.
+  (`shortTermOpacity` is deleted, not moved — see §5.2.) After this, **a theme owns color only**
+  (seeds + colormap + shell + scheme). These geometry values are currently near-identical across
+  themes, confirming they are not theme concerns.
 - **Unify token naming** per the convention in §5.1 — collapse the abbreviated `--ui-lh-*` /
   `--ui-vs-*` / `--ui-sp-*` namespaces and the `--ui-chart-<panel>-*` color namespace into one rule.
 - **Rewrite `docs/design-tokens.md`** to match the runtime exactly: document the seed model, the
@@ -197,36 +198,102 @@ All `--ui-*` tokens follow one pattern:
    `-over` are explicit.
 4. **Canonical acronyms/units keep their form** (`tp-max`, `lufs`, …).
 
-Representative before → after (the worst offenders; all other tokens follow the same rules — the
-exhaustive remap is enumerated in the implementation plan):
+Full remap of every currently-written `--ui-*` token, by domain. Kind: 🎨 color (per-theme) /
+📐 geometry (→ global, §5) / 🩶 neutral (derived, §4.1).
 
-| Before | After |
-|--------|-------|
-| `--ui-chart-momentary` | `--ui-loudness-momentary` |
-| `--ui-chart-momentary-snap` | `--ui-loudness-momentary-snap` |
-| `--ui-chart-momentary-over` | `--ui-loudness-momentary-over` |
-| `--ui-chart-shortterm` | `--ui-loudness-shortterm` |
-| `--ui-chart-selection` | `--ui-loudness-selection` |
-| `--ui-chart-spectrum-live` | `--ui-spectrum-primary` |
-| `--ui-chart-spectrum-live-b` | `--ui-spectrum-secondary` |
-| `--ui-chart-spectrum-snap-b` | `--ui-spectrum-secondary-snap` |
-| `--ui-chart-vectorscope-live` | `--ui-vectorscope-trace` |
-| `--ui-chart-vectorscope-snap` | `--ui-vectorscope-trace-snap` |
-| `--ui-chart-waveform-live` | `--ui-waveform-trace` |
-| `--ui-meter-grad-top` | `--ui-meter-gradient-top` |
-| `--ui-lh-stroke-m-w` | `--ui-loudness-momentary-stroke-width` |
-| `--ui-lh-stroke-st-op` | `--ui-loudness-shortterm-opacity` |
-| `--ui-vs-stroke-w` | `--ui-vectorscope-stroke-width` |
-| `--ui-vs-axis-op` | `--ui-vectorscope-axis-opacity` |
-| `--ui-vs-grid-diag-stroke` | `--ui-vectorscope-grid-stroke` |
-| `--ui-sp-fill-top` | `--ui-spectrum-fill-top-opacity` |
-| `--ui-spectrum-grid-v` | `--ui-spectrum-grid-vertical-opacity` |
-| `--ui-loudness-history-grid-line` | `--ui-loudness-grid` |
+**Loudness (history chart)**
 
-Note: many `--ui-lh/vs/sp-*` entries above are geometry that §5 moves to global — they relocate and
-get renamed in one pass, not twice. Shell (shadcn `--*`), `--radius`, and the generic chart-area
-spacing tokens (`--ui-chart-pad`, `--ui-chart-inset-*`, `--ui-chart-axis-gap`, `--ui-chart-hud-inset`,
+| Before | After | Kind |
+|--------|-------|------|
+| `--ui-chart-momentary` | `--ui-loudness-momentary` | 🎨 |
+| `--ui-chart-momentary-snap` | `--ui-loudness-momentary-snap` | 🎨 |
+| `--ui-chart-momentary-over` | `--ui-loudness-momentary-over` | 🎨 |
+| `--ui-chart-shortterm` | `--ui-loudness-shortterm` | 🎨 |
+| `--ui-chart-shortterm-snap` | `--ui-loudness-shortterm-snap` | 🎨 |
+| `--ui-chart-shortterm-over` | `--ui-loudness-shortterm-over` | 🎨 |
+| `--ui-chart-selection` | `--ui-loudness-selection` | 🎨 |
+| `--ui-chart-target-line` | `--ui-loudness-reference-line` | 🎨 |
+| `--ui-loudness-history-grid-line` | `--ui-loudness-grid` | 🩶 |
+| `--ui-lh-stroke-m-w` | `--ui-loudness-momentary-stroke-width` | 📐 |
+| `--ui-lh-stroke-st-w` | `--ui-loudness-shortterm-stroke-width` | 📐 |
+| `--ui-lh-stroke-sel-w` | `--ui-loudness-selection-stroke-width` | 📐 |
+
+**Spectrum**
+
+| Before | After | Kind |
+|--------|-------|------|
+| `--ui-chart-spectrum-live` | `--ui-spectrum-primary` | 🎨 |
+| `--ui-chart-spectrum-snap` | `--ui-spectrum-primary-snap` | 🎨 |
+| `--ui-chart-spectrum-live-b` | `--ui-spectrum-secondary` | 🎨 |
+| `--ui-chart-spectrum-snap-b` | `--ui-spectrum-secondary-snap` | 🎨 |
+| `--ui-chart-spectrum-fill-top` ＋ `--ui-sp-fill-top` | `--ui-spectrum-fill-top-opacity` | 📐 **merge** |
+| `--ui-chart-spectrum-fill-bottom` ＋ `--ui-sp-fill-bottom` | `--ui-spectrum-fill-bottom-opacity` | 📐 **merge** |
+| `--ui-sp-stroke-w` | `--ui-spectrum-stroke-width` | 📐 |
+| `--ui-spectrum-grid-v` ＋ `--ui-spectrum-grid-h` | `--ui-spectrum-grid-opacity` | 📐 **merge** |
+
+**Vectorscope**
+
+| Before | After | Kind |
+|--------|-------|------|
+| `--ui-chart-vectorscope-live` | `--ui-vectorscope-trace` | 🎨 |
+| `--ui-chart-vectorscope-snap` | `--ui-vectorscope-trace-snap` | 🎨 |
+| `--ui-vs-stroke-w` | `--ui-vectorscope-stroke-width` | 📐 |
+| `--ui-vs-axis-op` | `--ui-vectorscope-axis-opacity` | 📐 |
+| `--ui-vs-grid-diag-stroke` | `--ui-vectorscope-grid-stroke` | 🩶 |
+| `--ui-vs-grid-diag-dash` | `--ui-vectorscope-grid-dash` | 📐 |
+
+**Waveform**
+
+| Before | After | Kind |
+|--------|-------|------|
+| `--ui-chart-waveform-live` | `--ui-waveform-trace` | 🎨 |
+| `--ui-chart-waveform-fill-opacity` | `--ui-waveform-fill-opacity` | 📐 |
+
+**Meter (peak bar gradient)**
+
+| Before | After | Kind |
+|--------|-------|------|
+| `--ui-meter-grad-top` | `--ui-meter-gradient-top` | 🎨 |
+| `--ui-meter-grad-mid` | `--ui-meter-gradient-mid` | 🎨 |
+| `--ui-meter-grad-bottom` | `--ui-meter-gradient-bottom` | 🎨 |
+| `--ui-meter-grad-mid-stop` | `--ui-meter-gradient-mid-stop` | 📐 |
+
+**Signal / Metric row** (mostly already compliant)
+
+| Before | After | Kind |
+|--------|-------|------|
+| `--ui-signal-peak-sample` | *unchanged* | 🎨 |
+| `--ui-signal-peak-true` | *unchanged* | 🎨 |
+| `--ui-signal-tp-max` | *unchanged* (canonical) | 🎨 |
+| `--ui-metric-toggle-on-label` | `--ui-metric-row-toggle-on-label` | 🎨 |
+| `--ui-metric-row-bg` / `-hover-bg` / `-toggle-on-border` / `-bg` / `-glow` | *unchanged* | 🎨/🩶 |
+
+### 5.2 Tokens deleted or merged
+
+- **Deleted (dead — set but never consumed):** `--ui-signal-corr-bad` / `-mid` / `-good`;
+  `--ui-sp-stroke-w-inner`.
+- **Deleted (feature removed):** `--ui-vs-stroke-w-halo` + `--ui-vs-path-glow-opacity` — the
+  vectorscope **glow/halo is removed** (the wider low-opacity backing path in
+  `VectorscopePanel.jsx:72-83` is deleted).
+- **Deleted (no longer used to distinguish):** `--ui-lh-stroke-st-op` (Short-term opacity) — ST now
+  renders fully opaque; M/ST distinction relies on stroke width (and the deferred hue decision), not
+  opacity.
+- **Merged:** the redundant `--ui-chart-spectrum-fill-*` / `--ui-sp-fill-*` pairs (currently set to
+  identical values) collapse to one each; `--ui-spectrum-grid-v` + `-h` collapse to a single
+  `--ui-spectrum-grid-opacity` (light currently differs 0.07/0.05 — negligible, unified).
+
+### 5.3 Rendering / behavior changes (beyond renames)
+
+These three are not pure renames and need a code change + visual recheck:
+- Vectorscope glow removed (delete the backing halo path).
+- Short-term trace becomes fully opaque (was ~0.95).
+- Spectrum grid vertical/horizontal opacities unified to one value.
+
+**Unchanged:** shell (shadcn `--*`), `--radius`, and generic chart-area spacing tokens
+(`--ui-chart-pad`, `--ui-chart-inset-*`, `--ui-chart-axis-gap`, `--ui-chart-hud-inset`,
 `--ui-chart-x-axis-row-h`) keep their names — `chart` there is a legitimate shared-layout domain.
+Typography/spacing/size tokens (`--ui-fs-*`, `--ui-shell-*`, `--ui-header-*`, `--ui-panel-*`,
+`--ui-modal-*`, `--ui-min-h-*`, `--ui-w-*`) are already consistent and out of scope for renaming.
 
 ## 6. Theme Deletion & Migration (step 1)
 
