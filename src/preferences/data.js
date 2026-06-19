@@ -1,20 +1,16 @@
 /**
  * Default layout, typography, radii, and per-module **non-theme** tuning (`UI_PREFERENCES`).
- * Chart stroke colours, stroke widths, vectorscope geometry, and meter gradients are defined per
- * builtin theme in `src/theme/builtinThemes.js` and applied via `applyThemeToDocument` (CSS vars).
+ * Instrument colours are derived from theme seeds; chart geometry and meter gradient geometry live here.
  */
 
 export const UI_PREFERENCES = {
   layout: {
     shell: {
-      maxWidthPx: 1600,
-      paddingRem: { base: 0.8, lg: 1.2 },
-      gapRem: { base: 0.55, lg: 0.6 },
+      paddingRem: { base: 0.8 },
+      gapRem: { base: 0.55 },
     },
     splitters: {
-      sectionGapRem: 0.55,
       barThicknessPx: 1,
-      loudnessGapPx: 8,
     },
     header: {
       paddingXRem: 0.9,
@@ -28,11 +24,8 @@ export const UI_PREFERENCES = {
       defaultXRem: 0.7,
       defaultYRem: 0.5,
       metricsRem: 0,
-      sectionTitleGapRem: 0.4,
-      metricsTitleGapRem: 0.4,
     },
     spacingRem: {
-      headerActionGap: 0.35,
       panelFooterGap: 0.4,
       inlineValueGap: 0.4,
       metricsListGap: 0.2,
@@ -53,16 +46,6 @@ export const UI_PREFERENCES = {
       spectrumDisplayTopInset: 0.5,
       spectrumDisplayBottomInset: 0,
       spectrumSvgPad: 0.4,
-    },
-    settingsModal: {
-      maxWidthRem: 28,
-      paddingRem: 1.25,
-      overlayPaddingRem: 1,
-      headerGapRem: 1.25,
-      contentGapRem: 1,
-      inlineGapRem: 0.5,
-      actionPadXRem: 0.75,
-      actionPadYRem: 0.25,
     },
     mainColumn: {
       initialPx: 270,
@@ -111,26 +94,21 @@ export const UI_PREFERENCES = {
     fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     sizesPx: {
       title: 16,
-      section: 12,
       axisValue: 13,
       axisUnit: 11,
       extraValue: 13,
       metricMeta: 12,
       metricValue: 18,
-      action: 14,
       status: 11,
     },
     weights: {
       appTitle: 800,
-      section: 600,
     },
   },
 
   /** `card` is used for `--radius` at runtime and for generated first-paint CSS (`scripts/generate-theme-fallbacks.mjs`). */
   radii: {
     card: "0.625rem",
-    modal: "1rem",
-    pill: "9999px",
     metricRow: "0.375rem",
   },
 
@@ -138,6 +116,9 @@ export const UI_PREFERENCES = {
     loudness: {
       history: {
         defaultWindowSec: 60,
+        momentaryStrokeWidth: 1.1,
+        shortTermStrokeWidth: 2.1,
+        selectionStrokeWidth: 1.2,
       },
       metrics: {
         valueColumnCh: 5.5,
@@ -148,25 +129,31 @@ export const UI_PREFERENCES = {
         rowGapRem: 0.5,
       },
     },
-    spectrum: {
-      /**
-       * Spectrum grid line opacities keyed by **browser `color-scheme` hint** from the active theme
-       * (`"light"` | `"dark"`), not Tailwind `.dark` / `dark:`.
-       */
-      spectrumOpacityByColorScheme: {
-        colorSchemeDark: {
-          verticalLineOpacity: 0.08,
-          horizontalLineOpacity: 0.08,
-        },
-        colorSchemeLight: {
-          verticalLineOpacity: 0.07,
-          horizontalLineOpacity: 0.05,
-        },
+    peak: {
+      meterGradient: {
+        midStopPercent: 46,
       },
+    },
+    vectorscope: {
+      strokeWidth: 1,
+      axisOpacity: 0.8,
+      gridDiagInsetPct: 1.2,
+      plotRadius: 240,
+      gridDiagDash: "2.6 3.4",
+    },
+    spectrum: {
+      strokeWidth: 1.5,
+      fillOpacityTop: 0.22,
+      fillOpacityBottom: 0.03,
+      gridOpacity: 0.08,
       spectrumGrid: {
         verticalSpacingPx: 56,
         horizontalSpacingPx: 34,
       },
+    },
+    waveform: {
+      fillOpacity: 0.22,
+      strokeWidth: 1,
     },
   },
 };

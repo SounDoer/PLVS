@@ -156,8 +156,8 @@ export function WaveformPanel({ compact = false }) {
                 x2={selLineX}
                 y1={0}
                 y2={1}
-                stroke="var(--ui-chart-selection)"
-                strokeWidth="var(--ui-lh-stroke-sel-w)"
+                stroke="var(--ui-loudness-selection)"
+                strokeWidth="var(--ui-loudness-selection-stroke-width)"
                 strokeDasharray="5 4"
                 vectorEffect="non-scaling-stroke"
               />
@@ -268,10 +268,10 @@ function WaveformLane({
 
     const style = getComputedStyle(document.documentElement);
     const zeroLineColor =
-      style.getPropertyValue("--ui-loudness-history-grid-line").trim() || "rgba(128,128,128,0.18)";
-    const strokeColor = style.getPropertyValue("--ui-chart-waveform-live").trim() || "#fb923c";
+      style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
+    const strokeColor = style.getPropertyValue("--ui-waveform-trace").trim() || "#fb923c";
     const fillOpacity =
-      parseFloat(style.getPropertyValue("--ui-chart-waveform-fill-opacity").trim()) || 0.22;
+      parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
 
     ctx.clearRect(0, 0, W, H);
 

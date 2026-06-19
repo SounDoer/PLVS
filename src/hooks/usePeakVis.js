@@ -1,5 +1,7 @@
 import { peakFromTopFrac, PEAK_DB_MIN, PEAK_DB_MAX } from "../config/scales.js";
 import { samplePeakLineColor } from "../math/colorMath.js";
+import { UI_PREFERENCES } from "../preferences/data.js";
+import { buildThemeTokens } from "../theme/buildThemeTokens.js";
 import { getBuiltinTheme } from "../theme/builtinThemes.js";
 
 /**
@@ -9,7 +11,14 @@ import { getBuiltinTheme } from "../theme/builtinThemes.js";
  */
 export function usePeakVis(resolvedThemeId, displayAudio) {
   const fmt = (v) => (Number.isFinite(v) ? v.toFixed(1) : "-");
-  const meterGradientCfg = getBuiltinTheme(resolvedThemeId).meterGradient;
+  const theme = getBuiltinTheme(resolvedThemeId);
+  const tokens = buildThemeTokens(theme);
+  const meterGradientCfg = {
+    top: tokens["--ui-meter-gradient-top"],
+    mid: tokens["--ui-meter-gradient-mid"],
+    bottom: tokens["--ui-meter-gradient-bottom"],
+    midStopPercent: UI_PREFERENCES.modules.peak.meterGradient.midStopPercent,
+  };
   const getSamplePeakLineColor = (dbValue) =>
     samplePeakLineColor(
       dbValue,

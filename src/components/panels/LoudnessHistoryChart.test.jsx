@@ -151,8 +151,8 @@ describe("LoudnessHistoryChart", () => {
     const { container } = renderChart(["momentary", "shortTerm"]);
     const paths = container.querySelectorAll("svg path");
 
-    expect(paths[0]?.getAttribute("stroke")).toBe("var(--ui-chart-momentary)");
-    expect(paths[1]?.getAttribute("stroke")).toBe("var(--ui-chart-shortterm)");
+    expect(paths[0]?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
+    expect(paths[1]?.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
   });
 
   it("keeps the over-reference gradient in snapshot mode", () => {

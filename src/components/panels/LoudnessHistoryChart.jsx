@@ -57,8 +57,12 @@ export function LoudnessHistoryChart({
   );
 
   const isSnap = selectedOffset >= 0;
-  const mStrokeNormal = isSnap ? "var(--ui-chart-momentary-snap)" : "var(--ui-chart-momentary)";
-  const stStrokeNormal = isSnap ? "var(--ui-chart-shortterm-snap)" : "var(--ui-chart-shortterm)";
+  const mStrokeNormal = isSnap
+    ? "var(--ui-loudness-momentary-snap)"
+    : "var(--ui-loudness-momentary)";
+  const stStrokeNormal = isSnap
+    ? "var(--ui-loudness-shortterm-snap)"
+    : "var(--ui-loudness-shortterm)";
   const refTopFrac = Number.isFinite(referenceLufs) ? loudnessFromTopFrac(referenceLufs) : null;
 
   const mGradId = useId().replace(/:/g, "");
@@ -165,7 +169,7 @@ export function LoudnessHistoryChart({
             return (
               <div
                 key={`hist-grid-${v}`}
-                className={`absolute left-0 right-0 h-px bg-[var(--ui-loudness-history-grid-line)]${topPx == null ? " -translate-y-1/2" : ""}`}
+                className={`absolute left-0 right-0 h-px bg-[var(--ui-loudness-grid)]${topPx == null ? " -translate-y-1/2" : ""}`}
                 style={
                   topPx == null
                     ? { top: `${loudnessFromTopFrac(v) * 100}%` }
@@ -193,10 +197,10 @@ export function LoudnessHistoryChart({
                   x2={0}
                   y2={220}
                 >
-                  <stop offset={0} style={{ stopColor: "var(--ui-chart-momentary-over)" }} />
+                  <stop offset={0} style={{ stopColor: "var(--ui-loudness-momentary-over)" }} />
                   <stop
                     offset={refTopFrac}
-                    style={{ stopColor: "var(--ui-chart-momentary-over)" }}
+                    style={{ stopColor: "var(--ui-loudness-momentary-over)" }}
                   />
                   <stop offset={refTopFrac} style={{ stopColor: mStrokeNormal }} />
                   <stop offset={1} style={{ stopColor: mStrokeNormal }} />
@@ -209,10 +213,10 @@ export function LoudnessHistoryChart({
                   x2={0}
                   y2={220}
                 >
-                  <stop offset={0} style={{ stopColor: "var(--ui-chart-shortterm-over)" }} />
+                  <stop offset={0} style={{ stopColor: "var(--ui-loudness-shortterm-over)" }} />
                   <stop
                     offset={refTopFrac}
-                    style={{ stopColor: "var(--ui-chart-shortterm-over)" }}
+                    style={{ stopColor: "var(--ui-loudness-shortterm-over)" }}
                   />
                   <stop offset={refTopFrac} style={{ stopColor: stStrokeNormal }} />
                   <stop offset={1} style={{ stopColor: stStrokeNormal }} />
@@ -225,7 +229,7 @@ export function LoudnessHistoryChart({
               d={displayHistoryPathM}
               fill="none"
               stroke={useOverGradient ? `url(#${mGradId})` : mStrokeNormal}
-              strokeWidth="var(--ui-lh-stroke-m-w)"
+              strokeWidth="var(--ui-loudness-momentary-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
           )}
@@ -234,8 +238,7 @@ export function LoudnessHistoryChart({
               d={displayHistoryPathST}
               fill="none"
               stroke={useOverGradient ? `url(#${stGradId})` : stStrokeNormal}
-              strokeWidth="var(--ui-lh-stroke-st-w)"
-              opacity="var(--ui-lh-stroke-st-op)"
+              strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
           )}
@@ -245,8 +248,8 @@ export function LoudnessHistoryChart({
               x2={selLineX}
               y1={0}
               y2={220}
-              stroke="var(--ui-chart-selection)"
-              strokeWidth="var(--ui-lh-stroke-sel-w)"
+              stroke="var(--ui-loudness-selection)"
+              strokeWidth="var(--ui-loudness-selection-stroke-width)"
               strokeDasharray="5 4"
               vectorEffect="non-scaling-stroke"
             />

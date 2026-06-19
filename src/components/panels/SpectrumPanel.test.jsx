@@ -82,7 +82,7 @@ describe("SpectrumPanel", () => {
       spectrumViewLegend: null,
     });
 
-    const secondary = container.querySelector('path[stroke="var(--ui-chart-spectrum-live-b)"]');
+    const secondary = container.querySelector('path[stroke="var(--ui-spectrum-secondary)"]');
     expect(secondary).toBeTruthy();
   });
 

@@ -6,7 +6,7 @@
  * - **Apply** — `src/preferences/applyDocumentTheme.js` (`applyLayoutToDocument`, `applyThemeToDocument`)
  *
  * `applyLayoutToDocument` writes spatial/typographic `--ui-*` variables; `applyThemeToDocument` sets
- * `data-theme`, `color-scheme`, shadcn semantic tokens, `--ui-color-*`, chart strokes, and the peak gradient.
+ * `data-theme`, `color-scheme`, shadcn semantic tokens, and derived instrument colour tokens.
  *
  * Debug: DevTools → `<html>` → Computed → filter `--ui-` or `--background`.
  */

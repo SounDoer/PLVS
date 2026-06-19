@@ -56,8 +56,8 @@ function SpectrumViewChipLabel({ fallbackLabel, legend }) {
             style={{
               backgroundColor:
                 entry.token === "primary"
-                  ? "var(--ui-chart-spectrum-live)"
-                  : "var(--ui-chart-spectrum-live-b)",
+                  ? "var(--ui-spectrum-primary)"
+                  : "var(--ui-spectrum-secondary)",
             }}
           />
           {entry.label}

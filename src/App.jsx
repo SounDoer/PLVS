@@ -416,9 +416,9 @@ function AppContent() {
     displayAudio
   );
   const vsGridDiagInset = useMemo(() => {
-    const pct = getBuiltinTheme(resolvedThemeId).charts.vectorscope.gridDiagInsetPct ?? 0;
+    const pct = UI_PREFERENCES.modules.vectorscope.gridDiagInsetPct ?? 0;
     return Math.max(0, Math.min(20, pct));
-  }, [resolvedThemeId]);
+  }, []);
   const vsGridDiagFar = 100 - vsGridDiagInset;
   const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
   // Maps old startMode values to new 3-state chrome vocabulary

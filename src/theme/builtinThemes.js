@@ -9,20 +9,6 @@ import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.
 
 /**
  * @typedef {{
- *   loudnessHistory: Record<string, unknown>;
- *   vectorscope: Record<string, unknown>;
- *   spectrum: Record<string, unknown>;
- * }} ChartsBundle
- */
-
-/**
- * @typedef {{
- *   midStopPercent: number;
- * }} MeterGradient
- */
-
-/**
- * @typedef {{
  *   accent: string;
  *   accentSecondary: string;
  *   signal: { good: string; warn: string; bad: string };
@@ -34,8 +20,6 @@ import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.
  *   id: ThemeId;
  *   label: string;
  *   semantic: ShadcnSemantic;
- *   charts: ChartsBundle;
- *   meterGradient: MeterGradient;
  *   colorScheme: "light" | "dark";
  *   seeds: ThemeSeeds;
  * }} BuiltinTheme
@@ -43,66 +27,12 @@ import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.
 
 export const DEFAULT_THEME_ID = /** @type {ThemeId} */ ("plvs-dark");
 
-const CHARTS_PLVS_DARK = {
-  loudnessHistory: {
-    momentaryStrokeWidth: 1.1,
-    shortTermStrokeWidth: 2.1,
-    shortTermOpacity: 0.95,
-    selectionStrokeWidth: 1.2,
-  },
-  vectorscope: {
-    strokeWidth: 1,
-    axisOpacity: 0.8,
-    gridDiagInsetPct: 1.2,
-    plotRadius: 240,
-    gridDiagDash: "2.6 3.4",
-  },
-  spectrum: {
-    strokeWidth: 1.5,
-    fillOpacityTop: 0.22,
-    fillOpacityBottom: 0.03,
-  },
-  waveform: {
-    fillOpacity: 0.22,
-    strokeWidth: 1,
-  },
-};
-
-const METER_GRADIENT_PLVS = { midStopPercent: 46 };
-
-const CHARTS_PLVS_LIGHT = {
-  loudnessHistory: {
-    momentaryStrokeWidth: 1.1,
-    shortTermStrokeWidth: 2.1,
-    shortTermOpacity: 0.95,
-    selectionStrokeWidth: 1.2,
-  },
-  vectorscope: {
-    strokeWidth: 1,
-    axisOpacity: 0.6,
-    gridDiagInsetPct: 1.2,
-    plotRadius: 240,
-    gridDiagDash: "2.6 3.4",
-  },
-  spectrum: {
-    strokeWidth: 1.5,
-    fillOpacityTop: 0.18,
-    fillOpacityBottom: 0.03,
-  },
-  waveform: {
-    fillOpacity: 0.22,
-    strokeWidth: 1,
-  },
-};
-
 /** @type {Record<ThemeId, BuiltinTheme>} */
 export const BUILTIN_THEMES = {
   "plvs-dark": {
     id: "plvs-dark",
     label: "Dark",
     semantic: PLVS_SEMANTIC_DARK,
-    charts: CHARTS_PLVS_DARK,
-    meterGradient: METER_GRADIENT_PLVS,
     colorScheme: "dark",
     seeds: {
       accent: "#fb923c",
@@ -114,8 +44,6 @@ export const BUILTIN_THEMES = {
     id: "plvs-light",
     label: "Light",
     semantic: PLVS_SEMANTIC_LIGHT,
-    charts: CHARTS_PLVS_LIGHT,
-    meterGradient: METER_GRADIENT_PLVS,
     colorScheme: "light",
     seeds: {
       accent: "#e07020",

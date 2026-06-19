@@ -7,7 +7,7 @@ import {
   readSystemPrefersDark,
   resolveThemeId,
 } from "../uiPreferences";
-import { getBuiltinTheme, isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
+import { isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { normalizeFocusView } from "../lib/focusView.js";
@@ -40,8 +40,6 @@ export function useSettings({ onClearRef } = {}) {
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark),
     [appearance, themeId, systemPrefersDark]
   );
-  const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
-
   /** ADR 0002 §6: switching system → fixed seeds `themeId` from the resolved builtin at that moment. */
   function setAppearanceMode(mode) {
     if (mode === "system") {
@@ -101,9 +99,9 @@ export function useSettings({ onClearRef } = {}) {
   }, []);
 
   useEffect(() => {
-    applyLayoutToDocument(UI_PREFERENCES, { colorScheme: resolvedTheme.colorScheme });
+    applyLayoutToDocument(UI_PREFERENCES);
     applyThemeToDocument(resolvedThemeId);
-  }, [resolvedThemeId, resolvedTheme.colorScheme]);
+  }, [resolvedThemeId]);
 
   useEffect(
     () =>

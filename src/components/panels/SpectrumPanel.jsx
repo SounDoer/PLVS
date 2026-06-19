@@ -116,49 +116,49 @@ export function SpectrumPanel({ compact = false }) {
                     <linearGradient id="spectrumFillLive" x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
-                        stopColor="var(--ui-chart-spectrum-live)"
-                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                        stopColor="var(--ui-spectrum-primary)"
+                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.18)"
                       />
                       <stop
                         offset="100%"
-                        stopColor="var(--ui-chart-spectrum-live)"
-                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                        stopColor="var(--ui-spectrum-primary)"
+                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
                       />
                     </linearGradient>
                     <linearGradient id="spectrumFillSnap" x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
-                        stopColor="var(--ui-chart-spectrum-snap)"
-                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                        stopColor="var(--ui-spectrum-primary-snap)"
+                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.18)"
                       />
                       <stop
                         offset="100%"
-                        stopColor="var(--ui-chart-spectrum-snap)"
-                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                        stopColor="var(--ui-spectrum-primary-snap)"
+                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
                       />
                     </linearGradient>
                     <linearGradient id="spectrumFillLiveB" x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
-                        stopColor="var(--ui-chart-spectrum-live-b)"
-                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                        stopColor="var(--ui-spectrum-secondary)"
+                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.18)"
                       />
                       <stop
                         offset="100%"
-                        stopColor="var(--ui-chart-spectrum-live-b)"
-                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                        stopColor="var(--ui-spectrum-secondary)"
+                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
                       />
                     </linearGradient>
                     <linearGradient id="spectrumFillSnapB" x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
-                        stopColor="var(--ui-chart-spectrum-snap-b)"
-                        stopOpacity="var(--ui-sp-fill-top, 0.18)"
+                        stopColor="var(--ui-spectrum-secondary-snap)"
+                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.18)"
                       />
                       <stop
                         offset="100%"
-                        stopColor="var(--ui-chart-spectrum-snap-b)"
-                        stopOpacity="var(--ui-sp-fill-bottom, 0.02)"
+                        stopColor="var(--ui-spectrum-secondary-snap)"
+                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
                       />
                     </linearGradient>
                   </defs>
@@ -173,7 +173,7 @@ export function SpectrumPanel({ compact = false }) {
                         stroke="var(--border)"
                         strokeWidth={1}
                         vectorEffect="non-scaling-stroke"
-                        style={{ strokeOpacity: "var(--ui-spectrum-grid-h)" }}
+                        style={{ strokeOpacity: "var(--ui-spectrum-grid-opacity)" }}
                       />
                     ))}
                     {FREQ_LABELS.map(([f]) => {
@@ -188,7 +188,7 @@ export function SpectrumPanel({ compact = false }) {
                           stroke="var(--border)"
                           strokeWidth={1}
                           vectorEffect="non-scaling-stroke"
-                          style={{ strokeOpacity: "var(--ui-spectrum-grid-v)" }}
+                          style={{ strokeOpacity: "var(--ui-spectrum-grid-opacity)" }}
                         />
                       );
                     })}
@@ -225,10 +225,10 @@ export function SpectrumPanel({ compact = false }) {
                           fill="none"
                           stroke={
                             selectedOffset >= 0
-                              ? "var(--ui-chart-spectrum-snap)"
-                              : "var(--ui-chart-spectrum-live)"
+                              ? "var(--ui-spectrum-primary-snap)"
+                              : "var(--ui-spectrum-primary)"
                           }
-                          strokeWidth="var(--ui-sp-stroke-w)"
+                          strokeWidth="var(--ui-spectrum-stroke-width)"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
@@ -238,10 +238,10 @@ export function SpectrumPanel({ compact = false }) {
                             fill="none"
                             stroke={
                               selectedOffset >= 0
-                                ? "var(--ui-chart-spectrum-snap-b)"
-                                : "var(--ui-chart-spectrum-live-b)"
+                                ? "var(--ui-spectrum-secondary-snap)"
+                                : "var(--ui-spectrum-secondary)"
                             }
-                            strokeWidth="var(--ui-sp-stroke-w)"
+                            strokeWidth="var(--ui-spectrum-stroke-width)"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
@@ -262,14 +262,14 @@ export function SpectrumPanel({ compact = false }) {
                     style={{ top: `${spectrumHover.topPct}%` }}
                   />
                   <div
-                    className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-chart-spectrum-live)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-chart-spectrum-live)_22%,transparent)]"
+                    className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-spectrum-primary)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-spectrum-primary)_22%,transparent)]"
                     style={{
                       left: `${spectrumHover.leftPct}%`,
                       top: `${spectrumHover.topPct}%`,
                       backgroundColor:
                         selectedOffset >= 0
-                          ? "var(--ui-chart-spectrum-snap)"
-                          : "var(--ui-chart-spectrum-live)",
+                          ? "var(--ui-spectrum-primary-snap)"
+                          : "var(--ui-spectrum-primary)",
                     }}
                   />
                   <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
@@ -283,8 +283,8 @@ export function SpectrumPanel({ compact = false }) {
                           ? {
                               color:
                                 selectedOffset >= 0
-                                  ? "var(--ui-chart-spectrum-snap)"
-                                  : "var(--ui-chart-spectrum-live)",
+                                  ? "var(--ui-spectrum-primary-snap)"
+                                  : "var(--ui-spectrum-primary)",
                             }
                           : undefined
                       }
@@ -297,8 +297,8 @@ export function SpectrumPanel({ compact = false }) {
                         style={{
                           color:
                             selectedOffset >= 0
-                              ? "var(--ui-chart-spectrum-snap-b)"
-                              : "var(--ui-chart-spectrum-live-b)",
+                              ? "var(--ui-spectrum-secondary-snap)"
+                              : "var(--ui-spectrum-secondary)",
                         }}
                       >
                         {spectrumHover.dbLabelB}

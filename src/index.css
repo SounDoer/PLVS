@@ -79,9 +79,9 @@ body {
 .meter-gradient {
   background: linear-gradient(
     180deg,
-    var(--ui-meter-grad-top, #ef4444) 0%,
-    var(--ui-meter-grad-mid, #f59e0b) var(--ui-meter-grad-mid-stop, 40%),
-    var(--ui-meter-grad-bottom, #22c55e) 100%
+    var(--ui-meter-gradient-top, #ef4444) 0%,
+    var(--ui-meter-gradient-mid, #f59e0b) var(--ui-meter-gradient-mid-stop, 40%),
+    var(--ui-meter-gradient-bottom, #22c55e) 100%
   );
 }
 
@@ -102,11 +102,11 @@ body {
     0%,
     100% {
       opacity: 1;
-      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-chart-vectorscope-snap) 45%, transparent);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-vectorscope-trace-snap) 45%, transparent);
     }
     50% {
       opacity: 0.88;
-      box-shadow: 0 0 14px 2px color-mix(in srgb, var(--ui-chart-vectorscope-snap) 50%, transparent);
+      box-shadow: 0 0 14px 2px color-mix(in srgb, var(--ui-vectorscope-trace-snap) 50%, transparent);
     }
   }
 }

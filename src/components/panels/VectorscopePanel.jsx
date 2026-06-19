@@ -46,9 +46,9 @@ export function VectorscopePanel() {
                 y1={vsGridDiagInset}
                 x2={vsGridDiagFar}
                 y2={vsGridDiagFar}
-                stroke="var(--ui-vs-grid-diag-stroke)"
+                stroke="var(--ui-vectorscope-grid-stroke)"
                 strokeWidth="0.35"
-                strokeDasharray="var(--ui-vs-grid-diag-dash)"
+                strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
               />
               <line
@@ -56,9 +56,9 @@ export function VectorscopePanel() {
                 y1={vsGridDiagInset}
                 x2={vsGridDiagInset}
                 y2={vsGridDiagFar}
-                stroke="var(--ui-vs-grid-diag-stroke)"
+                stroke="var(--ui-vectorscope-grid-stroke)"
                 strokeWidth="0.35"
-                strokeDasharray="var(--ui-vs-grid-diag-dash)"
+                strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
@@ -74,23 +74,11 @@ export function VectorscopePanel() {
                     fill="none"
                     stroke={
                       selectedOffset >= 0
-                        ? "var(--ui-chart-vectorscope-snap)"
-                        : "var(--ui-chart-vectorscope-live)"
+                        ? "var(--ui-vectorscope-trace-snap)"
+                        : "var(--ui-vectorscope-trace)"
                     }
-                    strokeWidth="var(--ui-vs-stroke-w-halo)"
-                    opacity="var(--ui-vs-path-glow-opacity)"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d={displayVectorPath}
-                    fill="none"
-                    stroke={
-                      selectedOffset >= 0
-                        ? "var(--ui-chart-vectorscope-snap)"
-                        : "var(--ui-chart-vectorscope-live)"
-                    }
-                    strokeWidth="var(--ui-vs-stroke-w)"
-                    opacity="var(--ui-vs-axis-op)"
+                    strokeWidth="var(--ui-vectorscope-stroke-width)"
+                    opacity="var(--ui-vectorscope-axis-opacity)"
                     strokeLinecap="round"
                   />
                   <circle
@@ -99,8 +87,8 @@ export function VectorscopePanel() {
                     r="2"
                     fill={
                       selectedOffset >= 0
-                        ? "var(--ui-chart-vectorscope-snap)"
-                        : "var(--ui-chart-vectorscope-live)"
+                        ? "var(--ui-vectorscope-trace-snap)"
+                        : "var(--ui-vectorscope-trace)"
                     }
                   />
                 </>

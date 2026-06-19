@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { UI_PREFERENCES } from "../preferences/data.js";
 import { BUILTIN_THEMES, THEME_IDS } from "./builtinThemes.js";
 import { buildThemeTokens } from "./buildThemeTokens.js";
 
@@ -29,16 +30,16 @@ function expectHexColor(value) {
 function getSnapshotTokens(themeId) {
   const t = buildThemeTokens(BUILTIN_THEMES[themeId]);
   return {
-    momentaryLive: t["--ui-chart-momentary"],
-    momentarySnap: t["--ui-chart-momentary-snap"],
-    shortTermLive: t["--ui-chart-shortterm"],
-    shortTermSnap: t["--ui-chart-shortterm-snap"],
-    vectorscopeLive: t["--ui-chart-vectorscope-live"],
-    vectorscopeSnap: t["--ui-chart-vectorscope-snap"],
-    spectrumLive: t["--ui-chart-spectrum-live"],
-    spectrumSnap: t["--ui-chart-spectrum-snap"],
-    spectrumLiveB: t["--ui-chart-spectrum-live-b"],
-    spectrumSnapB: t["--ui-chart-spectrum-snap-b"],
+    momentaryLive: t["--ui-loudness-momentary"],
+    momentarySnap: t["--ui-loudness-momentary-snap"],
+    shortTermLive: t["--ui-loudness-shortterm"],
+    shortTermSnap: t["--ui-loudness-shortterm-snap"],
+    vectorscopeLive: t["--ui-vectorscope-trace"],
+    vectorscopeSnap: t["--ui-vectorscope-trace-snap"],
+    spectrumLive: t["--ui-spectrum-primary"],
+    spectrumSnap: t["--ui-spectrum-primary-snap"],
+    spectrumLiveB: t["--ui-spectrum-secondary"],
+    spectrumSnapB: t["--ui-spectrum-secondary-snap"],
   };
 }
 
@@ -55,12 +56,12 @@ describe("BUILTIN_THEMES", () => {
   it("defines distinct loudness history trace tokens for every theme", () => {
     for (const themeId of THEME_IDS) {
       const tokens = buildThemeTokens(BUILTIN_THEMES[themeId]);
-      const loudnessHistory = BUILTIN_THEMES[themeId].charts.loudnessHistory;
+      const loudnessHistory = UI_PREFERENCES.modules.loudness.history;
 
-      const momentary = tokens["--ui-chart-momentary"];
-      const momentaryOver = tokens["--ui-chart-momentary-over"];
-      const shortTerm = tokens["--ui-chart-shortterm"];
-      const shortTermOver = tokens["--ui-chart-shortterm-over"];
+      const momentary = tokens["--ui-loudness-momentary"];
+      const momentaryOver = tokens["--ui-loudness-momentary-over"];
+      const shortTerm = tokens["--ui-loudness-shortterm"];
+      const shortTermOver = tokens["--ui-loudness-shortterm-over"];
 
       expectHexColor(momentary);
       expectHexColor(momentaryOver);
@@ -79,8 +80,6 @@ describe("BUILTIN_THEMES", () => {
         Number(loudnessHistory.shortTermStrokeWidth) / Number(loudnessHistory.momentaryStrokeWidth)
       ).toBeGreaterThanOrEqual(1.75);
       expect(colorDistance(momentary, shortTerm)).toBeGreaterThanOrEqual(45);
-      expect(Number(loudnessHistory.shortTermOpacity)).toBeGreaterThan(0);
-      expect(Number(loudnessHistory.shortTermOpacity)).toBeLessThanOrEqual(1);
     }
   });
 
@@ -111,9 +110,9 @@ describe("BUILTIN_THEMES", () => {
   it("defines a distinct secondary spectrum color", () => {
     for (const themeId of THEME_IDS) {
       const tokens = buildThemeTokens(BUILTIN_THEMES[themeId]);
-      const spectrumLiveB = tokens["--ui-chart-spectrum-live-b"];
-      const spectrumLive = tokens["--ui-chart-spectrum-live"];
-      const spectrumSnapB = tokens["--ui-chart-spectrum-snap-b"];
+      const spectrumLiveB = tokens["--ui-spectrum-secondary"];
+      const spectrumLive = tokens["--ui-spectrum-primary"];
+      const spectrumSnapB = tokens["--ui-spectrum-secondary-snap"];
 
       expect(typeof spectrumLiveB).toBe("string");
       expect(spectrumLiveB.length).toBeGreaterThan(0);

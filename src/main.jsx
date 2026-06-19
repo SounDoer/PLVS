@@ -10,13 +10,11 @@ import {
   readSystemPrefersDark,
   resolveThemeId,
 } from "./uiPreferences";
-import { getBuiltinTheme } from "./theme/builtinThemes.js";
 
 const systemPrefersDark = readSystemPrefersDark();
 const shell = readPersistedShellThemeFields(UI_PREFERENCES);
 const resolvedThemeId = resolveThemeId(shell, systemPrefersDark);
-const resolvedTheme = getBuiltinTheme(resolvedThemeId);
-applyLayoutToDocument(UI_PREFERENCES, { colorScheme: resolvedTheme.colorScheme });
+applyLayoutToDocument(UI_PREFERENCES);
 applyThemeToDocument(resolvedThemeId);
 
 createRoot(document.getElementById("root")).render(

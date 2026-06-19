@@ -194,8 +194,8 @@ export function SpectrogramPanel({ compact = false }) {
                       x2={selLineSvgX}
                       y1={0}
                       y2={1000}
-                      stroke="var(--ui-chart-selection)"
-                      strokeWidth="var(--ui-lh-stroke-sel-w)"
+                      stroke="var(--ui-loudness-selection)"
+                      strokeWidth="var(--ui-loudness-selection-stroke-width)"
                       strokeDasharray="5 4"
                       vectorEffect="non-scaling-stroke"
                     />
