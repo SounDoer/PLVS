@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BUILTIN_THEMES, THEME_IDS, getBuiltinTheme } from "./builtinThemes.js";
+import { BUILTIN_THEMES, THEME_IDS } from "./builtinThemes.js";
 
 function hexToRgb(hex) {
   const matched = /^#([0-9a-f]{6})$/i.exec(hex);
