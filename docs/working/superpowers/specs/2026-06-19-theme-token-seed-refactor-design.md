@@ -142,6 +142,12 @@ express. It is therefore its own per-theme field, an explicit ordered list of st
 block, **not** seed-derived). It does not add to derivation complexity.
 
 - This round: the colormap drives the **spectrogram only**.
+- **Implementation path:** the current spectrogram color path is static (`src/config/scales.js`
+  owns the Inferno stops and `spectrogramColor(db)`). This refactor must parameterize that path:
+  move the stop list into the theme, build a 256-entry LUT from a theme colormap, and pass the
+  resolved theme LUT (or a theme-aware color function) into `useSpectrogramCanvas()` instead of
+  having the canvas import a global Inferno-only mapper. Theme changes must invalidate the cached
+  LUT and trigger a canvas redraw.
 - Each theme's colormap should **harmonize with that theme's accent** (e.g. dark runs through a warm
   black→deep-red→orange→bright-yellow ramp that sits naturally with the orange accent; light uses a
   lighter ramp). The current Inferno ramp is the dark starting point.
@@ -180,6 +186,9 @@ Color model = **3 chromatic seeds + 1 per-theme colormap + shell-derived neutral
   (`shortTermOpacity` is deleted, not moved — see §5.2.) After this, **a theme owns color only**
   (seeds + colormap + shell + scheme). These geometry values are currently near-identical across
   themes, confirming they are not theme concerns.
+  - Explicit call-site to move: `App.jsx` currently reads
+    `getBuiltinTheme(resolvedThemeId).charts.vectorscope.gridDiagInsetPct`; that value must come
+    from global layout data after this refactor, with no theme dependency.
 - **Unify token naming** per the convention in §5.1 — collapse the abbreviated `--ui-lh-*` /
   `--ui-vs-*` / `--ui-sp-*` namespaces and the `--ui-chart-<panel>-*` color namespace into one rule.
 - **Rewrite `docs/design-tokens.md`** to match the runtime exactly: document the seed model, the
@@ -324,6 +333,24 @@ Surviving typography/spacing/size tokens (`--ui-fs-*`, `--ui-shell-*`, `--ui-hea
 `--ui-min-h-*`, `--ui-w-*`) are already consistent and are **not renamed** — only the dead ones among
 them are deleted (§5.2).
 
+### 5.4 Rename rollout discipline
+
+This is a large token rename, so the implementation should avoid a single "rename everything and
+hope" cutover:
+
+1. Add `buildThemeTokens(theme)` and make `applyThemeToDocument()` write the **new canonical token
+   names**. During the migration slice only, it may also write old-name aliases for tokens that still
+   have live consumers. Alias writing must be centralized in one compatibility map, not scattered
+   through components.
+2. Move consumers to the new names panel by panel (`LoudnessHistoryChart`, `SpectrumPanel`,
+   `VectorscopePanel`, `WaveformPanel`, `PeakPanel`, CSS animation rules such as the header
+   snapshot pulse). After each panel move, exact-grep the old names it used.
+3. Delete the alias map only after an exact grep shows zero old-name consumers in `src` and the
+   generated first-paint CSS. The final committed state should not write legacy aliases.
+4. Because the generated first-paint file is a separate runtime surface, verify
+   `src/generated/theme-fallbacks.css` contains only the two remaining theme ids and the new token
+   names needed before JS applies the runtime theme.
+
 ## 6. Theme Deletion & Migration (step 1)
 
 Remove `plvs-phosphor`, `plvs-tungsten`, `plvs-abyss` and everything that exists only for them:
@@ -340,12 +367,22 @@ Remove `plvs-phosphor`, `plvs-tungsten`, `plvs-abyss` and everything that exists
 read path resolves through it (or normalizes the stored id) so a user previously on Phosphor lands on
 Dark without an error. Add a test for this.
 
+Concrete migration tests:
+- `resolveThemeId({ appearance: "fixed", themeId: "plvs-phosphor" }, ...)` returns `plvs-dark`
+  once `plvs-phosphor` is no longer in `THEME_IDS` (repeat for tungsten/abyss or table-test them).
+- `parsePersistedUiStateJson()` may keep the raw fixed id as persisted state, but the UI-facing
+  resolved theme and Settings select value must normalize to `plvs-dark` and never render a deleted
+  option.
+
 ## 7. Testing
 
 - `buildThemeTokens(theme)` (the derivation): unit tests asserting each seed produces the expected
   token set, snap/over/sibling direction is correct per scheme, and **no token is left unset**.
 - Snapshot/equivalence guard: for the polish phase, a test that dark's derived values match the
   intended anchor set (so a refactor doesn't silently shift colors).
+- Spectrogram colormap tests: build the dark LUT from the theme colormap and assert it matches the
+  current Inferno anchors closely enough before visual polish; assert theme changes produce a new
+  LUT and cause `useSpectrogramCanvas()` to redraw from the resolved theme colormap.
 - Deleted-theme migration test (§6).
 - **Before deleting each §5.2 dead token, re-grep it by exact name** across `src` (covering `var()`,
   `getPropertyValue`, and string literals) to confirm zero consumers — guards against
@@ -353,7 +390,8 @@ Dark without an error. Add a test for this.
 - Existing theme tests updated for the two-theme world and the renamed `accentSecondary`.
 - `npm run check` must pass (format + lint + test + build + version + Rust fmt/clippy/test).
 - `npm run theme:generate` regenerates `src/generated/theme-fallbacks.css` from the new dark semantic
-  (prebuild runs it; verify first-paint output).
+  (prebuild runs it; verify first-paint output, absence of deleted theme ids, and absence of legacy
+  token aliases in the final state).
 
 ## 8. Deferred / Future (not this round)
 
