@@ -16,6 +16,41 @@ This skill guides the complete release workflow for PLVS, a Tauri-based desktop 
 
 ---
 
+## Branching Model
+
+### Current (pre-1.0.0): release directly from `main`
+
+While PLVS is pre-1.0, development and releases both happen on `main`. Bump
+the version, update the CHANGELOG, run preflight, and tag `vX.Y.Z` — all on
+`main`. This is deliberate: before 1.0 there's no shipped version to back-port
+fixes to, so a dedicated release branch would be ceremony with no payoff.
+**Follow the workflow below as-is, on `main`.**
+
+### Planned (after 1.0.0): GitHub Flow + release branches
+
+Once 1.0.0 ships and old versions need to be maintained while `main` keeps
+moving, switch to cutting a `release/<MAJOR.MINOR>` branch per release:
+
+```
+main            ──●──●──●──●──●──────●──●──●──     ← active development line
+                        \                  ↑
+                         \            cherry-pick hotfix back
+                          \                │
+release/1.0          ●──●──●  ← tag v1.0.0 (and v1.0.1 hotfixes) live here
+```
+
+- **`release/<MAJOR.MINOR>` freezes a version for shipping.** Cut from `main`
+  when finalizing; bump / CHANGELOG / preflight / `vX.Y.Z` tag happen on it.
+- **Hotfixes land on the release branch, then cherry-pick back to `main`** so
+  the next version doesn't regress.
+
+No tooling changes are needed to adopt this: `release.yml` triggers on **tag
+push** (`refs/tags/v*`), branch-agnostic, and `preflight-release.mjs` does not
+enforce a branch. When the time comes, the only change is *where* you run the
+existing flow. Until then, ignore this section.
+
+---
+
 ## Release Workflow Overview
 
 ```
@@ -288,7 +323,7 @@ Run comprehensive checks before pushing:
 | 2 | CHANGELOG entry | Check `## [version]` exists | Update CHANGELOG |
 | 3 | Git working tree | `git status --porcelain` | Commit changes |
 | 4 | Tag not exists | `git tag` | Choose different version |
-| 5 | On main branch | `git branch --show-current` | Switch to main |
+| 5 | On main branch | `git branch --show-current` | Switch to main (post-1.0: the release branch — see Branching Model) |
 | 6 | Lint passes | `npm run lint` | Fix lint errors |
 | 7 | Tests pass | `npm test` | Fix failing tests |
 | 8 | Build passes | `npm run build` | Fix build errors |
@@ -490,7 +525,7 @@ git push origin :refs/tags/vX.Y.Z
 | Lint errors | `npm run lint` and fix |
 | Test failures | `npm test` and fix |
 | Build errors | `npm run build` and fix |
-| Not on main | `git checkout main` |
+| Not on main | `git checkout main` (post-1.0: the release branch) |
 | Uncommitted changes | `git add -A; git commit` |
 
 ### No Installers Were Produced
