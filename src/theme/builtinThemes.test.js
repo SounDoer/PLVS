@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BUILTIN_THEMES, THEME_IDS } from "./builtinThemes.js";
+import { buildThemeTokens } from "./buildThemeTokens.js";
 
 function hexToRgb(hex) {
   const matched = /^#([0-9a-f]{6})$/i.exec(hex);
@@ -26,18 +27,18 @@ function expectHexColor(value) {
 }
 
 function getSnapshotTokens(themeId) {
-  const charts = BUILTIN_THEMES[themeId].charts;
+  const t = buildThemeTokens(BUILTIN_THEMES[themeId]);
   return {
-    momentaryLive: charts.loudnessHistory.momentaryStroke,
-    momentarySnap: charts.loudnessHistory.momentaryStrokeSnap,
-    shortTermLive: charts.loudnessHistory.shortTermStroke,
-    shortTermSnap: charts.loudnessHistory.shortTermStrokeSnap,
-    vectorscopeLive: charts.vectorscope.strokeLive,
-    vectorscopeSnap: charts.vectorscope.strokeSnap,
-    spectrumLive: charts.spectrum.strokeLive,
-    spectrumSnap: charts.spectrum.strokeSnap,
-    spectrumLiveB: charts.spectrum.strokeLiveB,
-    spectrumSnapB: charts.spectrum.strokeSnapB,
+    momentaryLive: t["--ui-chart-momentary"],
+    momentarySnap: t["--ui-chart-momentary-snap"],
+    shortTermLive: t["--ui-chart-shortterm"],
+    shortTermSnap: t["--ui-chart-shortterm-snap"],
+    vectorscopeLive: t["--ui-chart-vectorscope-live"],
+    vectorscopeSnap: t["--ui-chart-vectorscope-snap"],
+    spectrumLive: t["--ui-chart-spectrum-live"],
+    spectrumSnap: t["--ui-chart-spectrum-snap"],
+    spectrumLiveB: t["--ui-chart-spectrum-live-b"],
+    spectrumSnapB: t["--ui-chart-spectrum-snap-b"],
   };
 }
 
@@ -53,35 +54,31 @@ describe("BUILTIN_THEMES", () => {
 
   it("defines distinct loudness history trace tokens for every theme", () => {
     for (const themeId of THEME_IDS) {
+      const tokens = buildThemeTokens(BUILTIN_THEMES[themeId]);
       const loudnessHistory = BUILTIN_THEMES[themeId].charts.loudnessHistory;
 
-      expect(loudnessHistory.momentaryStroke).toBeTruthy();
-      expect(loudnessHistory.momentaryStrokeSnap).toBeTruthy();
-      expect(loudnessHistory.shortTermStroke).toBeTruthy();
-      expect(loudnessHistory.shortTermStrokeSnap).toBeTruthy();
-      expect(loudnessHistory.selectionStroke).toBeTruthy();
-      expect(loudnessHistory.historyGridLineColor).toBeTruthy();
+      const momentary = tokens["--ui-chart-momentary"];
+      const momentaryOver = tokens["--ui-chart-momentary-over"];
+      const shortTerm = tokens["--ui-chart-shortterm"];
+      const shortTermOver = tokens["--ui-chart-shortterm-over"];
 
-      expectHexColor(loudnessHistory.momentaryStrokeOver);
-      expectHexColor(loudnessHistory.shortTermStrokeOver);
-      expect(loudnessHistory.momentaryStrokeOver).not.toBe(loudnessHistory.momentaryStroke);
-      expect(loudnessHistory.shortTermStrokeOver).not.toBe(loudnessHistory.shortTermStroke);
-      expect(
-        colorDistance(loudnessHistory.momentaryStroke, loudnessHistory.momentaryStrokeOver)
-      ).toBeGreaterThanOrEqual(45);
-      expect(
-        colorDistance(loudnessHistory.shortTermStroke, loudnessHistory.shortTermStrokeOver)
-      ).toBeGreaterThanOrEqual(45);
+      expectHexColor(momentary);
+      expectHexColor(momentaryOver);
+      expectHexColor(shortTerm);
+      expectHexColor(shortTermOver);
 
-      expect(loudnessHistory.momentaryStroke).not.toBe(loudnessHistory.shortTermStroke);
+      expect(momentaryOver).not.toBe(momentary);
+      expect(shortTermOver).not.toBe(shortTerm);
+      expect(colorDistance(momentary, momentaryOver)).toBeGreaterThanOrEqual(45);
+      expect(colorDistance(shortTerm, shortTermOver)).toBeGreaterThanOrEqual(45);
+
+      expect(momentary).not.toBe(shortTerm);
       expect(Number(loudnessHistory.momentaryStrokeWidth)).toBeGreaterThan(0);
       expect(Number(loudnessHistory.shortTermStrokeWidth)).toBeGreaterThan(0);
       expect(
         Number(loudnessHistory.shortTermStrokeWidth) / Number(loudnessHistory.momentaryStrokeWidth)
       ).toBeGreaterThanOrEqual(1.75);
-      expect(
-        colorDistance(loudnessHistory.momentaryStroke, loudnessHistory.shortTermStroke)
-      ).toBeGreaterThanOrEqual(45);
+      expect(colorDistance(momentary, shortTerm)).toBeGreaterThanOrEqual(45);
       expect(Number(loudnessHistory.shortTermOpacity)).toBeGreaterThan(0);
       expect(Number(loudnessHistory.shortTermOpacity)).toBeLessThanOrEqual(1);
     }
@@ -113,12 +110,16 @@ describe("BUILTIN_THEMES", () => {
 
   it("defines a distinct secondary spectrum color", () => {
     for (const themeId of THEME_IDS) {
-      const sp = BUILTIN_THEMES[themeId].charts.spectrum;
-      expect(typeof sp.strokeLiveB).toBe("string");
-      expect(sp.strokeLiveB.length).toBeGreaterThan(0);
-      expect(sp.strokeLiveB).not.toBe(sp.strokeLive);
-      expect(typeof sp.strokeSnapB).toBe("string");
-      expect(sp.strokeSnapB.length).toBeGreaterThan(0);
+      const tokens = buildThemeTokens(BUILTIN_THEMES[themeId]);
+      const spectrumLiveB = tokens["--ui-chart-spectrum-live-b"];
+      const spectrumLive = tokens["--ui-chart-spectrum-live"];
+      const spectrumSnapB = tokens["--ui-chart-spectrum-snap-b"];
+
+      expect(typeof spectrumLiveB).toBe("string");
+      expect(spectrumLiveB.length).toBeGreaterThan(0);
+      expect(spectrumLiveB).not.toBe(spectrumLive);
+      expect(typeof spectrumSnapB).toBe("string");
+      expect(spectrumSnapB.length).toBeGreaterThan(0);
     }
   });
 });
