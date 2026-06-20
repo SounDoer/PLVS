@@ -58,7 +58,7 @@ function renderPanel(visibleIds) {
       value={{
         primaryMetrics,
         secondaryMetrics,
-        loudnessStatsVisibleIds: visibleIds,
+        panelControls: { loudnessStatsVisibleIds: visibleIds },
       }}
     >
       <LoudnessStatsPanel />
@@ -113,7 +113,7 @@ describe("LoudnessStatsPanel", () => {
             { id: "dialogueCoverage", label: "Dialogue Coverage", value: "62", unit: "%" },
           ],
           secondaryMetrics: [],
-          loudnessStatsVisibleIds: ["dialogueCoverage"],
+          panelControls: { loudnessStatsVisibleIds: ["dialogueCoverage"] },
           dialogueActiveNow: true,
         }}
       >
@@ -130,8 +130,10 @@ describe("LoudnessStatsPanel", () => {
         value={{
           primaryMetrics,
           secondaryMetrics,
-          loudnessStatsVisibleIds: ["momentary", "integrated", "psr"],
-          loudnessStatsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
+          panelControls: {
+            loudnessStatsVisibleIds: ["momentary", "integrated", "psr"],
+            loudnessStatsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
+          },
         }}
       >
         <LoudnessStatsPanel />

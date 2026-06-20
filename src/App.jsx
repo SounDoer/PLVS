@@ -1023,9 +1023,6 @@ function AppContent() {
     resolveVectorscopeSnapshotForKey,
     getSpectrogramSnapsForKey,
     analysisStatusByPanelId,
-    loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
-    loudnessStatsOrder: normalizedPanelControls.loudnessStatsOrder,
-    loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
     dialogueActiveNow: displayAudio?.dialogueActiveNow ?? false,
     compactPanels: focusView.compactPanels,
   };

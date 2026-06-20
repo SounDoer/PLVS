@@ -33,7 +33,7 @@ describe("SpectrumPanel", () => {
     const { container } = renderPanel({
       displaySpectrumPath: "M 0 120 L 1000 80",
       displaySpectrumPeakPath: peakPath,
-      spectrumPeakHold: true,
+      panelControls: { spectrumPeakHold: true },
       selectedOffset: -1,
     });
 
@@ -43,12 +43,28 @@ describe("SpectrumPanel", () => {
     expect(container.querySelector("path[stroke-dasharray]")).toBeNull();
   });
 
+  it("uses the active panel's peak-hold setting, not the first panel's", () => {
+    const peakPath = "M 0 20 L 1000 20";
+    const livePath = "M 0 120 L 1000 80";
+    // Global (first panel) has peak hold on, but this panel's own control has it off.
+    const { container } = renderPanel({
+      displaySpectrumPath: livePath,
+      displaySpectrumPeakPath: peakPath,
+      spectrumPeakHold: true,
+      panelControls: { spectrumPeakHold: false },
+      selectedOffset: -1,
+    });
+
+    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    expect(fill?.getAttribute("d")).toBe(`${livePath} L 1000 260 L 0 260 Z`);
+  });
+
   it("fills up to the live contour when peak hold is off", () => {
     const livePath = "M 0 120 L 1000 80";
     const { container } = renderPanel({
       displaySpectrumPath: livePath,
       displaySpectrumPeakPath: "M 0 20 L 1000 20",
-      spectrumPeakHold: false,
+      panelControls: { spectrumPeakHold: false },
       selectedOffset: -1,
     });
 
@@ -62,7 +78,7 @@ describe("SpectrumPanel", () => {
       displaySpectrumPath: "M 0 120 L 1000 80",
       displaySpectrumPathB: "M 0 130 L 1000 90",
       displaySpectrumPeakPathB: peakB,
-      spectrumPeakHold: true,
+      panelControls: { spectrumPeakHold: true },
       selectedOffset: -1,
       displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
       spectrumViewLegend: null,

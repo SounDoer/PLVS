@@ -31,7 +31,6 @@ export function SpectrumPanel({ compact = false }) {
     displaySpectrumPeakPath,
     displaySpectrumPathB,
     displaySpectrumPeakPathB,
-    spectrumPeakHold,
     selectedOffset,
     displaySpectrumData,
     displayAudio,
@@ -39,6 +38,7 @@ export function SpectrumPanel({ compact = false }) {
     resolveSpectrumSnapshotForKey,
     analysisStatus,
   } = useAudioData();
+  const spectrumPeakHold = panelControls?.spectrumPeakHold ?? false;
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;

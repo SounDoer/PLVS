@@ -34,7 +34,7 @@ export function LoudnessPanel({ compact = false }) {
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
-    loudnessHistoryVisibleLayerIds,
+    panelControls,
     displayHistoryPathM,
     displayHistoryPathST,
     selectedOffset,
@@ -48,6 +48,8 @@ export function LoudnessPanel({ compact = false }) {
     effectiveOffsetSamples,
     visibleSamples,
   } = useAudioData();
+
+  const loudnessHistoryVisibleLayerIds = panelControls?.loudnessHistoryVisibleLayerIds;
 
   const {
     hover: historyHover,

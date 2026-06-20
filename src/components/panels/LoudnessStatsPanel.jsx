@@ -49,13 +49,9 @@ function MetricRow({ id, label, value, unit, active, hint }) {
 }
 
 export function LoudnessStatsPanel({ compact = false }) {
-  const {
-    primaryMetrics,
-    secondaryMetrics,
-    loudnessStatsVisibleIds,
-    loudnessStatsOrder,
-    dialogueActiveNow,
-  } = useAudioData();
+  const { primaryMetrics, secondaryMetrics, panelControls, dialogueActiveNow } = useAudioData();
+  const loudnessStatsVisibleIds = panelControls?.loudnessStatsVisibleIds;
+  const loudnessStatsOrder = panelControls?.loudnessStatsOrder;
   const visibleIds = Array.isArray(loudnessStatsVisibleIds) ? loudnessStatsVisibleIds : [];
   const allMetrics = [...primaryMetrics, ...secondaryMetrics];
   const metricById = new Map(allMetrics.map((metric) => [metric.id, metric]));
