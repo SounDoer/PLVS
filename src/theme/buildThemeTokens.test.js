@@ -41,8 +41,11 @@ describe("buildThemeTokens", () => {
       "--ui-spectrum-secondary",
       "--ui-spectrum-secondary-snap",
       "--ui-waveform-trace",
+      "--ui-waveform-trace-snap",
       "--ui-signal-peak-sample",
       "--ui-signal-tp-max",
+      "--ui-signal-bad",
+      "--ui-signal-warn",
       "--ui-meter-gradient-top",
       "--ui-meter-gradient-mid",
       "--ui-meter-gradient-bottom",
@@ -67,6 +70,7 @@ describe("buildThemeTokens", () => {
     expect(t["--ui-vectorscope-trace-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
     expect(t["--ui-spectrum-primary-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
     expect(t["--ui-loudness-selection"]).toBe(t["--ui-loudness-momentary-snap"]);
+    expect(t["--ui-waveform-trace-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
   });
 
   it("maps signal seed straight onto meter and tp-max", () => {
@@ -76,5 +80,14 @@ describe("buildThemeTokens", () => {
     expect(t["--ui-meter-gradient-mid"]).toBe(signal.warn);
     expect(t["--ui-meter-gradient-top"]).toBe(signal.bad);
     expect(t["--ui-signal-tp-max"]).toBe(signal.bad);
+    expect(t["--ui-signal-bad"]).toBe(signal.bad);
+    expect(t["--ui-signal-warn"]).toBe(signal.warn);
+  });
+
+  it("bridges accent onto the shell brand tokens --primary and --ring", () => {
+    const t = buildThemeTokens(BUILTIN_THEMES["plvs-dark"]);
+    const { accent } = BUILTIN_THEMES["plvs-dark"].seeds;
+    expect(t["--primary"]).toBe(accent);
+    expect(t["--ring"]).toBe(accent);
   });
 });

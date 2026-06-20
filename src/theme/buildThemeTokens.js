@@ -25,6 +25,10 @@ export function buildThemeTokens(theme) {
   const gridPct = scheme === "light" ? 20 : 10;
 
   return {
+    // accent is the brand bridge into the shadcn shell (spec §3): --primary/--ring follow accent,
+    // overriding the explicit semantic values so brand buttons + focus rings track the theme accent.
+    "--primary": accent,
+    "--ring": accent,
     "--ui-loudness-momentary": accent,
     "--ui-loudness-momentary-snap": accentSnap,
     "--ui-loudness-momentary-over": over(accent),
@@ -41,8 +45,11 @@ export function buildThemeTokens(theme) {
     "--ui-spectrum-secondary": accentSecondary,
     "--ui-spectrum-secondary-snap": snap(accentSecondary),
     "--ui-waveform-trace": accent,
+    "--ui-waveform-trace-snap": accentSnap,
     "--ui-signal-peak-sample": accent,
     "--ui-signal-tp-max": signal.bad,
+    "--ui-signal-bad": signal.bad,
+    "--ui-signal-warn": signal.warn,
     "--ui-meter-gradient-top": signal.bad,
     "--ui-meter-gradient-mid": signal.warn,
     "--ui-meter-gradient-bottom": signal.good,

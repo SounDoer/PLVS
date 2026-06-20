@@ -1,6 +1,13 @@
 // src/persistence/index.test.js
 import { afterEach, describe, expect, it } from "vitest";
-import { settingsStore, workspaceStore, presetsStore, exportAll, resetAll } from "./index.js";
+import {
+  settingsStore,
+  workspaceStore,
+  presetsStore,
+  themesStore,
+  exportAll,
+  resetAll,
+} from "./index.js";
 
 describe("persistence index", () => {
   afterEach(() => {
@@ -27,6 +34,14 @@ describe("persistence index", () => {
     });
   });
 
+  it("themesStore persists under plvs:themes", () => {
+    themesStore.patch({ themes: {}, order: [] });
+    expect(JSON.parse(localStorage.getItem("plvs:themes"))).toEqual({
+      themes: {},
+      order: [],
+    });
+  });
+
   it("workspaceStore strips old preset fields", () => {
     localStorage.setItem(
       "plvs:workspace",
@@ -43,10 +58,12 @@ describe("persistence index", () => {
     settingsStore.patch({ referenceLufs: -23 });
     workspaceStore.patch({ visibleModules: ["peak"] });
     presetsStore.patch({ list: [], activeId: null });
+    themesStore.patch({ themes: {}, order: [] });
     expect(exportAll()).toEqual({
       settings: { referenceLufs: -23 },
       workspace: { visibleModules: ["peak"] },
       presets: { list: [], activeId: null },
+      themes: { themes: {}, order: [] },
     });
   });
 
@@ -54,9 +71,11 @@ describe("persistence index", () => {
     settingsStore.patch({ referenceLufs: -23 });
     workspaceStore.patch({ visibleModules: ["peak"] });
     presetsStore.patch({ list: [], activeId: null });
+    themesStore.patch({ themes: {}, order: [] });
     resetAll();
     expect(localStorage.getItem("plvs:settings")).toBeNull();
     expect(localStorage.getItem("plvs:workspace")).toBeNull();
     expect(localStorage.getItem("plvs:presets")).toBeNull();
+    expect(localStorage.getItem("plvs:themes")).toBeNull();
   });
 });

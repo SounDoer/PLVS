@@ -5,6 +5,8 @@ import {
   resolveThemeId,
   THEME_IDS,
 } from "./themeResolve.js";
+import { makeCustomThemeFromBase } from "../theme/customTheme.js";
+import { BUILTIN_THEMES } from "../theme/builtinThemes.js";
 
 describe("resolveThemeId", () => {
   it("resolves to plvs-dark for system dark preference", () => {
@@ -92,6 +94,22 @@ describe("THEME_IDS", () => {
     expect(THEME_IDS).not.toContain("plvs-tungsten");
     expect(THEME_IDS).not.toContain("plvs-abyss");
     expect(THEME_IDS).toHaveLength(2);
+  });
+});
+
+describe("resolveThemeId with custom themes", () => {
+  const custom = makeCustomThemeFromBase(BUILTIN_THEMES["plvs-dark"], "C", () => "custom-1");
+  const customs = { "custom-1": custom };
+
+  it("resolves an existing fixed custom id to itself", () => {
+    expect(resolveThemeId({ appearance: "fixed", themeId: "custom-1" }, true, customs)).toBe(
+      "custom-1"
+    );
+  });
+  it("falls back to plvs-dark for a deleted custom id", () => {
+    expect(resolveThemeId({ appearance: "fixed", themeId: "custom-1" }, true, {})).toBe(
+      DEFAULT_THEME_ID
+    );
   });
 });
 

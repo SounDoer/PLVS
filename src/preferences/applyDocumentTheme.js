@@ -1,6 +1,6 @@
 import { applyShadcnSemanticTokensToDocument, oklchSafe } from "../theme/shadcnSemanticPreset.js";
 import { buildThemeTokens } from "../theme/buildThemeTokens.js";
-import { getBuiltinTheme } from "../theme/builtinThemes.js";
+import { getTheme } from "../theme/themeRegistry.js";
 import { UI_PREFERENCES } from "./data.js";
 
 function setCssVar(name, value) {
@@ -105,9 +105,9 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
  * Theme-owned palette tokens (ADR 0002 `applyTheme`).
  * @param {import("../theme/builtinThemes.js").ThemeId} themeId
  */
-export function applyThemeToDocument(themeId) {
+export function applyThemeToDocument(themeId, customThemes = {}) {
   if (typeof document === "undefined") return;
-  const theme = getBuiltinTheme(themeId);
+  const theme = getTheme(themeId, customThemes);
   document.documentElement.dataset.theme = theme.id;
   document.documentElement.style.setProperty("color-scheme", theme.colorScheme);
 

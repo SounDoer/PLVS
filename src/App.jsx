@@ -36,6 +36,7 @@ import {
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { ThemeEditor } from "./components/ThemeEditor";
 import { StatusPill } from "./components/StatusPill.jsx";
 import { TransportButton } from "./components/TransportButton.jsx";
 import { IconButton } from "./components/IconButton.jsx";
@@ -166,6 +167,14 @@ function AppContent() {
     setFocusView,
     setAutoHideControls,
     setCompactPanels,
+    editor,
+    editorPos,
+    moveEditor,
+    customThemeOptions,
+    createCustomTheme,
+    editActiveCustomTheme,
+    deleteCustomTheme,
+    activeIsCustom,
   } = useSettings({ onClearRef });
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
   const presets = usePresets({
@@ -1320,7 +1329,28 @@ function AppContent() {
           setClearCapturing={setClearCapturing}
           clearReady={clearReady}
           registrationError={registrationError}
+          customThemeOptions={customThemeOptions}
+          createCustomTheme={createCustomTheme}
+          editActiveCustomTheme={editActiveCustomTheme}
+          deleteCustomTheme={deleteCustomTheme}
+          activeIsCustom={activeIsCustom}
+          themeControlsDisabled={editor.isEditing}
         />
+
+        {editor.isEditing ? (
+          <ThemeEditor
+            draft={editor.draft}
+            onName={editor.setName}
+            onSeed={editor.updateSeed}
+            onShell={editor.updateShell}
+            onSave={editor.save}
+            onCancel={editor.cancel}
+            onDelete={undefined}
+            dirty={editor.dirty}
+            pos={editorPos}
+            onMove={moveEditor}
+          />
+        ) : null}
 
         <CloseConfirmDialog
           open={closeDialogOpen}

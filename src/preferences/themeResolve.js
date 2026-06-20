@@ -4,6 +4,7 @@
  */
 
 import { DEFAULT_THEME_ID, isThemeId, THEME_IDS } from "../theme/builtinThemes.js";
+import { isKnownThemeId } from "../theme/themeRegistry.js";
 import { settingsStore } from "../persistence/index.js";
 
 export { DEFAULT_THEME_ID, isThemeId, THEME_IDS };
@@ -47,14 +48,14 @@ export function readPersistedShellThemeFields() {
  * @param {boolean} systemPrefersDark
  * @returns {import("../theme/builtinThemes.js").ThemeId}
  */
-export function resolveThemeId(shell, systemPrefersDark) {
+export function resolveThemeId(shell, systemPrefersDark, customThemes = {}) {
   const appearance = shell?.appearance === "fixed" ? "fixed" : "system";
   if (appearance === "system") {
     return systemPrefersDark ? DEFAULT_THEME_ID : "plvs-light";
   }
   const rawId = shell?.themeId;
   const id = rawId == null || rawId === "" ? null : String(rawId);
-  if (!isThemeId(id)) {
+  if (!isKnownThemeId(id, customThemes)) {
     if (import.meta.env.DEV && id != null && id !== "") {
       console.warn(`[PLVS] Unknown themeId "${id}"; falling back to ${DEFAULT_THEME_ID}.`);
     }

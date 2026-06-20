@@ -8,12 +8,14 @@ const STATE_CONFIG = {
     label: "START",
   },
   live: {
-    className: "bg-transparent text-red-400 border border-red-400/40 hover:bg-red-400/8",
+    className:
+      "bg-transparent text-[color:var(--ui-signal-bad)] border border-[color:color-mix(in_srgb,var(--ui-signal-bad)_40%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--ui-signal-bad)_8%,transparent)]",
     Icon: Square,
     label: "STOP",
   },
   snapshot: {
-    className: "bg-transparent text-amber-400 border border-amber-400/40 hover:bg-amber-400/8",
+    className:
+      "bg-transparent text-[color:var(--ui-signal-warn)] border border-[color:color-mix(in_srgb,var(--ui-signal-warn)_40%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--ui-signal-warn)_8%,transparent)]",
     Icon: Radio,
     label: "LIVE",
   },

@@ -45,6 +45,57 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Colour Theme")).toBeTruthy();
   });
 
+  it("keeps custom theme actions on their own row", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="custom-1"
+        customThemeOptions={[{ id: "custom-1", label: "Custom Theme" }]}
+        activeIsCustom={true}
+      />
+    );
+
+    const themePicker = screen.getByRole("group", { name: "Theme picker" });
+    const themeActions = screen.getByRole("group", { name: "Theme actions" });
+
+    expect(themePicker.textContent).toContain("Colour Theme");
+    expect(themePicker.textContent).not.toContain("Add New Theme");
+    expect(themePicker.textContent).not.toContain("Edit");
+    expect(themePicker.textContent).not.toContain("Delete");
+    expect(themeActions.textContent).toContain("Add New Theme");
+    expect(themeActions.textContent).toContain("Edit");
+    expect(themeActions.textContent).toContain("Delete");
+    expect(screen.queryByRole("button", { name: "Duplicate" })).toBeNull();
+  });
+
+  it("locks theme controls while the theme editor is open", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="custom-1"
+        customThemeOptions={[{ id: "custom-1", label: "Custom Theme" }]}
+        activeIsCustom={true}
+        themeControlsDisabled={true}
+      />
+    );
+
+    const themeLockHint = screen.getByText(
+      "Finish editing the current theme before changing theme settings."
+    );
+    const appearanceSelect = screen.getByLabelText("Appearance");
+
+    expect(themeLockHint.compareDocumentPosition(appearanceSelect)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(appearanceSelect.disabled).toBe(true);
+    expect(screen.getByLabelText("Colour Theme").disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Add New Theme" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Edit" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Delete" }).disabled).toBe(true);
+  });
+
   it("does not render panel-specific channel selectors", () => {
     render(
       <SettingsPanel

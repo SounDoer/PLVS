@@ -113,6 +113,7 @@ export function WaveformPanel({ compact = false }) {
             firstBucket={firstBucket}
             lastBucket={lastBucket}
             compact={compact}
+            selected={selectedOffset >= 0}
           />
         ))}
 
@@ -236,6 +237,7 @@ function WaveformLane({
   firstBucket,
   lastBucket,
   compact,
+  selected,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -269,7 +271,10 @@ function WaveformLane({
     const style = getComputedStyle(document.documentElement);
     const zeroLineColor =
       style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
-    const strokeColor = style.getPropertyValue("--ui-waveform-trace").trim() || "#fb923c";
+    const strokeColor =
+      (selected
+        ? style.getPropertyValue("--ui-waveform-trace-snap").trim()
+        : style.getPropertyValue("--ui-waveform-trace").trim()) || "#fb923c";
     const fillOpacity =
       parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
 
@@ -310,7 +315,7 @@ function WaveformLane({
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = window.devicePixelRatio || 1;
     ctx.stroke();
-  }, [mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, canvasSize]);
+  }, [mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, canvasSize, selected]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 items-stretch">

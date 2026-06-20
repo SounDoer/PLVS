@@ -56,6 +56,12 @@ export function SettingsPanel({
   channelLabelHasOverride = false,
   setChannelLabelToken = () => {},
   resetChannelLabels = () => {},
+  customThemeOptions = [],
+  createCustomTheme = () => {},
+  editActiveCustomTheme = () => {},
+  deleteCustomTheme = () => {},
+  activeIsCustom = false,
+  themeControlsDisabled = false,
 }) {
   const reduceMotion = useReducedMotion();
   const isMac =
@@ -219,37 +225,106 @@ export function SettingsPanel({
                   ) : null}
                 </div>
                 <Separator />
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="settings-appearance" className="shrink-0">
-                    Appearance
-                  </Label>
-                  <Select value={appearance} onValueChange={setAppearanceMode}>
-                    <SelectTrigger id="settings-appearance" className="w-auto shrink-0">
-                      <SelectValue placeholder="Appearance" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem value="system">Follow System</SelectItem>
-                      <SelectItem value="fixed">Fixed Theme</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {appearance === "fixed" ? (
+                <div className="flex flex-col gap-2">
+                  {themeControlsDisabled ? (
+                    <span className="text-xs text-muted-foreground">
+                      Finish editing the current theme before changing theme settings.
+                    </span>
+                  ) : null}
                   <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="settings-theme-id" className="shrink-0">
-                      Colour Theme
+                    <Label htmlFor="settings-appearance" className="shrink-0">
+                      Appearance
                     </Label>
-                    <Select value={fixedThemeSelectValue} onValueChange={setFixedThemeIdFromPicker}>
-                      <SelectTrigger id="settings-theme-id" className="w-auto shrink-0">
-                        <SelectValue placeholder="Theme" />
+                    <Select
+                      value={appearance}
+                      onValueChange={setAppearanceMode}
+                      disabled={themeControlsDisabled}
+                    >
+                      <SelectTrigger
+                        id="settings-appearance"
+                        className="w-auto shrink-0"
+                        disabled={themeControlsDisabled}
+                      >
+                        <SelectValue placeholder="Appearance" />
                       </SelectTrigger>
                       <SelectContent position="popper">
-                        {themeSelectOptions.map((opt) => (
-                          <SelectItem key={opt.id} value={opt.id}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="system">Follow System</SelectItem>
+                        <SelectItem value="fixed">Fixed Theme</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                {appearance === "fixed" ? (
+                  <div className="flex flex-col gap-2">
+                    <div
+                      role="group"
+                      aria-label="Theme picker"
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <Label htmlFor="settings-theme-id" className="shrink-0">
+                        Colour Theme
+                      </Label>
+                      <Select
+                        value={fixedThemeSelectValue}
+                        onValueChange={setFixedThemeIdFromPicker}
+                        disabled={themeControlsDisabled}
+                      >
+                        <SelectTrigger
+                          id="settings-theme-id"
+                          className="w-auto shrink-0"
+                          disabled={themeControlsDisabled}
+                        >
+                          <SelectValue placeholder="Theme" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {themeSelectOptions.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                          {customThemeOptions.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div
+                      role="group"
+                      aria-label="Theme actions"
+                      className="flex items-center justify-end gap-2"
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={themeControlsDisabled}
+                        onClick={createCustomTheme}
+                      >
+                        Add New Theme
+                      </Button>
+                      {activeIsCustom ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={themeControlsDisabled}
+                            onClick={editActiveCustomTheme}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={themeControlsDisabled}
+                            className="text-destructive"
+                            onClick={() => deleteCustomTheme(fixedThemeSelectValue)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 ) : null}
                 <Separator />
