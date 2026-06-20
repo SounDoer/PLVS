@@ -1,0 +1,85 @@
+# Dev installer builds — manual, for testing only.
+# - Triggered by workflow_dispatch on any branch (driven by the plvs-dev-build skill).
+# - Builds the Windows NSIS installer + portable exe for the selected ref.
+# - Publishes to a single rolling "dev" Pre-release (overwritten each run).
+# - Does NOT bump the version, touch CHANGELOG, or create a v* tag — this is
+#   not an official release. See release.yml + the plvs-release skill for that.
+
+name: Dev Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Only one dev build at a time; a newer run supersedes the older.
+concurrency:
+  group: dev-build
+  cancel-in-progress: true
+
+jobs:
+  build-windows-dev:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend (Vite)
+        run: npm run build
+
+      - name: Build Tauri bundle (NSIS + release binary for portable)
+        run: npm run desktop:release-nsis
+
+      - name: Stage dev installers (filename marked -dev.<short-sha>)
+        id: stage
+        shell: pwsh
+        run: |
+          $ver = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          $label = "$ver-dev.$sha"
+          New-Item -ItemType Directory -Force dev-dist | Out-Null
+          $nsis = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
+          if (-not $nsis) { throw "NSIS installer not found" }
+          Copy-Item $nsis.FullName "dev-dist/PLVS_${label}_x64-setup.exe"
+          Copy-Item "src-tauri/target/release/plvs.exe" "dev-dist/PLVS-v${label}-x64-portable.exe"
+          "label=$label" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Remove previous dev pre-release
+        shell: pwsh
+        continue-on-error: true
+        run: gh release delete dev --yes --cleanup-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish rolling dev pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          target_commitish: ${{ github.sha }}
+          name: "Dev build ${{ steps.stage.outputs.label }}"
+          prerelease: true
+          body: |
+            Unofficial development build — for testing only, **not** an official release.
+
+            - Branch: `${{ github.ref_name }}`
+            - Commit: ${{ github.sha }}
+
+            This Pre-release is rolling: every dev build overwrites it, so it
+            always holds the latest build only.
+          files: dev-dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
