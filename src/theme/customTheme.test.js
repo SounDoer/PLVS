@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  CUSTOM_THEME_ID_PREFIX,
-  isCustomThemeId,
-  makeCustomThemeFromBase,
-  normalizeCustomTheme,
-} from "./customTheme.js";
+import { isCustomThemeId, makeCustomThemeFromBase, normalizeCustomTheme } from "./customTheme.js";
 import { BUILTIN_THEMES } from "./builtinThemes.js";
 
 describe("isCustomThemeId", () => {
