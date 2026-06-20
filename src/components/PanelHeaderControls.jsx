@@ -20,7 +20,7 @@ import {
 } from "@/lib/panelControls.js";
 
 const CHIP_CLASS =
-  "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none hover:bg-secondary hover:text-foreground focus:ring-0 focus:ring-offset-0";
+  "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
 
 function ChannelTrigger({ label, ariaLabel, triggerClassName }) {
   return (

@@ -66,7 +66,7 @@ function PanelRow({ panelId }) {
   return (
     <div className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50">
       <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
-      <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <IconAction
           label={`Rename ${title}`}
           icon={<Pencil className="size-3.5" />}

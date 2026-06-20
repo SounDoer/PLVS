@@ -42,6 +42,7 @@ describe("PanelHeaderControls", () => {
     );
 
     expect(screen.getByLabelText("level meter mode")).toBeTruthy();
+    expect(screen.getByLabelText("level meter mode").className).toContain("focus-visible:ring-0");
     expect(screen.getByText("Peak")).toBeTruthy();
 
     fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
