@@ -11,7 +11,8 @@ import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
 import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
-import { getBuiltinTheme } from "../../theme/builtinThemes.js";
+import { getTheme } from "../../theme/themeRegistry.js";
+import { listCustomThemes } from "../../theme/customThemesRepo.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 
 const SPECTROGRAM_HELP = [
@@ -67,7 +68,7 @@ export function SpectrogramPanel({ compact = false }) {
   const spectrogramSnaps =
     selectedOffset >= 0 ? (visualSpectrogramSnap ?? []) : (snapRef.current ?? []);
   const colormapLut = useMemo(
-    () => buildSpectrogramLut(getBuiltinTheme(resolvedThemeId).colormap),
+    () => buildSpectrogramLut(getTheme(resolvedThemeId, listCustomThemes()).colormap),
     [resolvedThemeId]
   );
   const visualViewport = useMemo(
