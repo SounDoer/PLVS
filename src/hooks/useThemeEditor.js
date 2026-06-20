@@ -20,6 +20,7 @@ import {
  */
 export function useThemeEditor(opts) {
   const apply = opts.apply ?? applyThemeToDocument;
+  const notify = opts.onChange ?? (() => {});
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
   const [dirty, setDirty] = useState(false);
   const draftRef = useRef(/** @type {object|null} */ (null));
@@ -60,8 +61,9 @@ export function useThemeEditor(opts) {
       setDraftBoth(d);
       setDirty(false);
       applyDraft(d);
+      notify();
     },
-    [opts, applyDraft, setDraftBoth]
+    [opts, applyDraft, setDraftBoth, notify]
   );
 
   // Pure mutate of the current draft, then sync + apply + mark dirty (no side-effects in setState).
@@ -99,7 +101,8 @@ export function useThemeEditor(opts) {
     if (d) upsertCustomTheme(d);
     setDraftBoth(null);
     setDirty(false);
-  }, [setDraftBoth]);
+    notify();
+  }, [setDraftBoth, notify]);
 
   const cancel = useCallback(() => {
     const d = draftRef.current;
@@ -110,7 +113,8 @@ export function useThemeEditor(opts) {
     apply(prev.appearance === "fixed" ? prev.themeId : "plvs-dark", listCustomThemes());
     setDraftBoth(null);
     setDirty(false);
-  }, [opts, apply, setDraftBoth]);
+    notify();
+  }, [opts, apply, setDraftBoth, notify]);
 
   return {
     isEditing: draft != null,

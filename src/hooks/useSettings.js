@@ -140,6 +140,8 @@ export function useSettings({ onClearRef } = {}) {
     prevSelection: { appearance, themeId },
     setThemeId,
     setAppearance,
+    // pluginStore.subscribe is a no-op, so refresh the list explicitly after editor mutations.
+    onChange: () => setCustomThemes(listCustomThemes()),
   });
 
   const customThemeOptions = useMemo(
