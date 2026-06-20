@@ -1,5 +1,6 @@
 /** @import { TreeNode, ModuleId, WorkspaceState } from './types.js' */
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
+import { createPanel } from "./panelInstances.js";
 
 /** @type {ModuleId[]} */
 export const ALL_MODULE_IDS = [
@@ -49,9 +50,19 @@ export const DEFAULT_TREE = {
 };
 
 /** @type {WorkspaceState} */
+export const DEFAULT_PANELS_BY_ID = Object.fromEntries(
+  ALL_MODULE_IDS.map((moduleId) => {
+    const panel = createPanel(moduleId, {}, { id: moduleId });
+    return [panel.id, panel];
+  })
+);
+
+export const DEFAULT_PANEL_ORDER = [...ALL_MODULE_IDS];
+
 export const DEFAULT_WORKSPACE_STATE = {
   tree: DEFAULT_TREE,
-  visibleModules: [...ALL_MODULE_IDS],
+  panelsById: DEFAULT_PANELS_BY_ID,
+  panelOrder: DEFAULT_PANEL_ORDER,
   fullscreenId: null,
   panelControls: DEFAULT_PANEL_CONTROLS,
 };

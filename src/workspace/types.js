@@ -1,7 +1,14 @@
 /**
  * @typedef {'peak' | 'loudness' | 'loudnessStats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform'} ModuleId
+ * @typedef {string} PanelId
+ * @typedef {{
+ *   id: PanelId,
+ *   moduleId: ModuleId,
+ *   customTitle?: string,
+ *   config?: object,
+ * }} PanelInstance
  *
- * @typedef {{ type: 'leaf', tabs: ModuleId[], activeTab: ModuleId }} LeafNode
+ * @typedef {{ type: 'leaf', tabs: PanelId[], activeTab: PanelId }} LeafNode
  *
  * @typedef {{ type: 'split', direction: 'h' | 'v', children: TreeNode[], sizes: (number | null)[] }} SplitNode
  *
@@ -16,8 +23,9 @@
  *
  * @typedef {{
  *   tree: TreeNode,
- *   visibleModules: ModuleId[],
- *   fullscreenId: ModuleId | null,
+ *   panelsById: Record<PanelId, PanelInstance>,
+ *   panelOrder: PanelId[],
+ *   fullscreenId: PanelId | null,
  *   panelControls: PanelControls,
  * }} WorkspaceState
  *
@@ -26,7 +34,8 @@
  *   name: string,
  *   windowBounds?: { x: number, y: number, width: number, height: number, isMaximized: boolean },
  *   tree: TreeNode,
- *   visibleModules: ModuleId[],
+ *   panelsById: Record<PanelId, PanelInstance>,
+ *   panelOrder: PanelId[],
  *   panelControls: PanelControls,
  * }} Preset
  *

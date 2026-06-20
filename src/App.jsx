@@ -40,7 +40,7 @@ import { StatusPill } from "./components/StatusPill.jsx";
 import { TransportButton } from "./components/TransportButton.jsx";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
-import { VisibilityPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
+import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
 import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
 import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1198,7 +1198,7 @@ function AppContent() {
                     <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
                       Modules
                     </p>
-                    <VisibilityPopoverContent />
+                    <ModulesPopoverContent />
                   </PopoverContent>
                 </Popover>
                 <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>

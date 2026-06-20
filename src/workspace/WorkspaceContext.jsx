@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import { bindWorkspaceActions, workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
@@ -7,7 +7,9 @@ const WorkspaceContext = createContext(null);
 
 function initState() {
   const parsed = workspaceStore.read();
-  if (!parsed.tree || !Array.isArray(parsed.visibleModules)) return DEFAULT_WORKSPACE_STATE;
+  if (!parsed.tree || !parsed.panelsById || !Array.isArray(parsed.panelOrder)) {
+    return DEFAULT_WORKSPACE_STATE;
+  }
   return {
     ...DEFAULT_WORKSPACE_STATE,
     ...parsed,
@@ -17,7 +19,6 @@ function initState() {
 
 export function WorkspaceProvider({ children }) {
   const [state, dispatch] = useReducer(workspaceReducer, null, initState);
-  const [hoveredModuleId, setHoveredModuleId] = useState(null);
   const actions = useMemo(() => {
     const bound = bindWorkspaceActions(dispatch);
     const clearActivePreset = () => presetsStore.patch({ activeId: null });
@@ -35,9 +36,17 @@ export function WorkspaceProvider({ children }) {
         clearActivePreset();
         bound.resizeChildren(...args);
       },
-      toggleModuleVisible: (...args) => {
+      addPanel: (...args) => {
         clearActivePreset();
-        bound.toggleModuleVisible(...args);
+        bound.addPanel(...args);
+      },
+      removePanel: (...args) => {
+        clearActivePreset();
+        bound.removePanel(...args);
+      },
+      renamePanel: (...args) => {
+        clearActivePreset();
+        bound.renamePanel(...args);
       },
       setPanelControls: (...args) => {
         clearActivePreset();
@@ -50,10 +59,7 @@ export function WorkspaceProvider({ children }) {
     workspaceStore.patch(state);
   }, [state]);
 
-  const value = useMemo(
-    () => ({ state, ...actions, hoveredModuleId, setHoveredModuleId }),
-    [state, actions, hoveredModuleId]
-  );
+  const value = useMemo(() => ({ state, ...actions }), [state, actions]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

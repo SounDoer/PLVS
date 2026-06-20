@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DEFAULT_WORKSPACE_STATE, ALL_MODULE_IDS } from "./constants.js";
+import { DEFAULT_PANELS_BY_ID, DEFAULT_WORKSPACE_STATE, ALL_MODULE_IDS } from "./constants.js";
 import { MODULE_REGISTRY } from "./registry.jsx";
 
 describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
@@ -15,8 +15,10 @@ describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
 describe("workspace state shape", () => {
   it("DEFAULT_WORKSPACE_STATE has the lean persisted shape", () => {
     expect(Object.keys(DEFAULT_WORKSPACE_STATE).sort()).toEqual(
-      ["fullscreenId", "panelControls", "tree", "visibleModules"].sort()
+      ["fullscreenId", "panelControls", "panelOrder", "panelsById", "tree"].sort()
     );
+    expect(DEFAULT_WORKSPACE_STATE).not.toHaveProperty("visibleModules");
+    expect(DEFAULT_PANELS_BY_ID.peak).toEqual({ id: "peak", moduleId: "peak" });
   });
 });
 
@@ -27,5 +29,12 @@ describe("panel minimum sizes (drag clamp floor)", () => {
       expect(def.minWidth).toBe(32);
       expect(def.minHeight).toBe(36);
     }
+  });
+});
+
+describe("module registry labels", () => {
+  it("keeps the peak module id but labels it as Level Meter", () => {
+    expect(MODULE_REGISTRY.peak.id).toBe("peak");
+    expect(MODULE_REGISTRY.peak.title).toBe("Level Meter");
   });
 });

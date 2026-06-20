@@ -1,79 +1,165 @@
-import { LayoutGrid } from "lucide-react";
+import { Check, LayoutGrid, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { MODULE_REGISTRY } from "./registry.jsx";
-import { cn } from "@/lib/utils";
+import { useWorkspaceStore } from "./WorkspaceContext.jsx";
+import { resolvePanelDisplayName } from "./panelInstances.js";
 
-// ---------------------------------------------------------------------------
-// Visibility Popover - toggle module visibility from the header
-// ---------------------------------------------------------------------------
-
-export function VisibilityPopoverContent() {
-  const { state, toggleModuleVisible, setFocus, setHoveredModuleId } = useWorkspaceStore();
-  const { visibleModules } = state;
+function IconAction({ label, icon, onClick, className = "" }) {
   return (
-    <>
-      {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => {
-        const isVisible = visibleModules.includes(id);
-        return (
+    <button
+      type="button"
+      aria-label={label}
+      className={`rounded p-0.5 text-muted-foreground opacity-70 transition-colors hover:text-foreground hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${className}`}
+      onClick={onClick}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function PanelRow({ panelId }) {
+  const { state, removePanel, renamePanel } = useWorkspaceStore();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const title = resolvePanelDisplayName(state, panelId);
+
+  const startRename = () => {
+    setDraft(state.panelsById[panelId]?.customTitle ?? title);
+    setEditing(true);
+  };
+
+  const commitRename = () => {
+    renamePanel(panelId, draft);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex w-full items-center gap-1 rounded px-1.5 py-1">
+        <input
+          type="text"
+          aria-label={`Rename ${title}`}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") commitRename();
+            if (event.key === "Escape") setEditing(false);
+          }}
+          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          autoFocus
+        />
+        <IconAction
+          label={`Save ${title} name`}
+          icon={<Check className="size-3.5" />}
+          onClick={commitRename}
+        />
+        <IconAction
+          label={`Cancel ${title} rename`}
+          icon={<X className="size-3.5" />}
+          onClick={() => setEditing(false)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50">
+      <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
+      <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <IconAction
+          label={`Rename ${title}`}
+          icon={<Pencil className="size-3.5" />}
+          onClick={startRename}
+        />
+        <IconAction
+          label={`Delete ${title}`}
+          icon={<Trash2 className="size-3.5" />}
+          className="hover:text-destructive"
+          onClick={() => removePanel(panelId)}
+        />
+      </span>
+    </div>
+  );
+}
+
+function AddPanelControl() {
+  const { addPanel } = useWorkspaceStore();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-1 flex h-7 w-full items-center justify-center gap-1.5 rounded border border-border/70 bg-transparent px-2 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Plus className="size-3.5" />
+          Add Panel
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={6} className="w-44 p-1">
+        {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => (
           <button
             key={id}
             type="button"
-            className={cn(
-              "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50",
-              isVisible ? "text-foreground" : "text-muted-foreground"
-            )}
-            onMouseEnter={() => setHoveredModuleId(id)}
-            onMouseLeave={() => setHoveredModuleId(null)}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-foreground transition-colors hover:bg-muted/50"
             onClick={() => {
-              toggleModuleVisible(id);
-              if (!isVisible) setFocus(id);
+              addPanel(id);
+              setOpen(false);
             }}
           >
-            <span
-              className={cn(
-                "flex shrink-0",
-                isVisible ? "text-foreground" : "text-muted-foreground/40"
-              )}
-            >
+            <span className="flex shrink-0 text-muted-foreground">
               <Icon />
             </span>
-            <span className="flex-1 text-left">{title}</span>
-            <span
-              className={cn(
-                "h-1.5 w-1.5 shrink-0 rounded-full",
-                isVisible ? "bg-primary" : "bg-muted-foreground/25"
-              )}
-            />
+            <span className="min-w-0 flex-1 truncate text-left">{title}</span>
           </button>
-        );
-      })}
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Modules Popover - manage panel instances from the header
+// ---------------------------------------------------------------------------
+
+export function ModulesPopoverContent() {
+  const { state } = useWorkspaceStore();
+  const panelIds = state.panelOrder.filter((id) => state.panelsById[id]);
+
+  return (
+    <>
+      <div className="grid gap-0.5">
+        {panelIds.map((panelId) => (
+          <PanelRow key={panelId} panelId={panelId} />
+        ))}
+        {panelIds.length === 0 ? (
+          <p className="px-2 py-1.5 text-xs text-muted-foreground">No panels</p>
+        ) : null}
+      </div>
+      <AddPanelControl />
     </>
   );
 }
 
 export function VisibilityPopover() {
-  const { setHoveredModuleId } = useWorkspaceStore();
   return (
-    <Popover
-      onOpenChange={(open) => {
-        if (!open) setHoveredModuleId(null);
-      }}
-    >
+    <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="Module visibility"
+          aria-label="Modules"
           className="flex h-7 w-7 items-center justify-center rounded border border-border/60 bg-card/40 text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <LayoutGrid size={14} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-44 p-1">
+      <PopoverContent align="end" className="w-52 p-1">
         <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
           Modules
         </p>
-        <VisibilityPopoverContent />
+        <ModulesPopoverContent />
       </PopoverContent>
     </Popover>
   );

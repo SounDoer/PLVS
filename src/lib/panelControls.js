@@ -64,7 +64,14 @@ export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "ref", label: "Reference" },
 ];
 
+export const LEVEL_METER_MODE_OPTIONS = [
+  { id: "peak", label: "Peak" },
+  { id: "momentary", label: "M" },
+  { id: "shortTerm", label: "ST" },
+];
+
 export const DEFAULT_PANEL_CONTROLS = {
+  levelMeterMode: "peak",
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
@@ -87,6 +94,7 @@ const LOUDNESS_STATS_IDS = new Set(LOUDNESS_STATS_OPTIONS.map((option) => option
 const LOUDNESS_HISTORY_LAYER_IDS = new Set(
   LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
 );
+const LEVEL_METER_MODE_IDS = new Set(LEVEL_METER_MODE_OPTIONS.map((option) => option.id));
 
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -116,6 +124,10 @@ function normalizeSpectrumView(raw) {
 
 function normalizeSpectrumPeakHold(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakHold;
+}
+
+function normalizeLevelMeterMode(raw) {
+  return LEVEL_METER_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.levelMeterMode;
 }
 
 function normalizeKnownIds(raw, knownIds, fallback) {
@@ -150,6 +162,7 @@ function normalizeOrder(raw, orderTemplate) {
 
 export function normalizePanelControls(raw) {
   return {
+    levelMeterMode: normalizeLevelMeterMode(raw?.levelMeterMode),
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),

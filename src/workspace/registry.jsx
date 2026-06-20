@@ -23,7 +23,7 @@ const MIN_PANEL_HEIGHT = 36;
 export const MODULE_REGISTRY = {
   peak: {
     id: "peak",
-    title: "Peak",
+    title: "Level Meter",
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: PeakPanel,

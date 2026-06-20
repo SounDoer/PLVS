@@ -4,15 +4,17 @@ import { render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { PeakPanel } from "./PeakPanel.jsx";
 
-function renderPanel() {
+function renderPanel(value = {}) {
   return render(
     <AudioDataContext.Provider
       value={{
-        displayAudio: { peakDb: [-9.9, -10] },
+        displayAudio: { peakDb: [-9.9, -10], momentary: -22.4, shortTerm: -18.6 },
         peakLabelContext: { resolvedLayout: "stereo" },
         fmt: (v) => (Number.isFinite(v) ? v.toFixed(1) : "-"),
         hasTpMaxValue: true,
+        panelControls: { levelMeterMode: "peak" },
         tpMaxText: "-1.0 dBTP",
+        ...value,
       }}
     >
       <PeakPanel />
@@ -41,5 +43,22 @@ describe("PeakPanel", () => {
 
     expect(container.firstElementChild?.className).toContain("min-w-0");
     expect(layoutGrid).toBeTruthy();
+  });
+
+  it("renders Momentary LUFS in Level Meter mode", () => {
+    renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+
+    expect(screen.getAllByText("-22.4").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("M").length).toBeGreaterThan(0);
+    expect(screen.getByText("LUFS")).toBeTruthy();
+    expect(screen.queryByText("TP Max")).toBeNull();
+  });
+
+  it("renders Short-term LUFS in Level Meter mode", () => {
+    renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
+
+    expect(screen.getAllByText("-18.6").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ST").length).toBeGreaterThan(0);
+    expect(screen.getByText("LUFS")).toBeTruthy();
   });
 });

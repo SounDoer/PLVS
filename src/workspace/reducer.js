@@ -1,5 +1,6 @@
-/** @import { WorkspaceState, ModuleId, DropTarget, TreeNode } from './types.js' */
+/** @import { WorkspaceState, DropTarget, TreeNode } from './types.js' */
 import { normalizePanelControls } from "../lib/panelControls.js";
+import { createPanel, trimCustomTitle } from "./panelInstances.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,7 @@ export function workspaceReducer(state, action) {
       return { ...state, tree: action.payload.tree };
 
     case "RESIZE_CHILDREN": {
+      if (!state.tree) return state;
       const { path, aboveIdx, belowIdx, aboveSize, belowSize } = action.payload;
       const actualBelowIdx = belowIdx ?? aboveIdx + 1;
       const newTree = updateNode(state.tree, path, (node) => {
@@ -57,22 +59,53 @@ export function workspaceReducer(state, action) {
     }
 
     case "SET_ACTIVE_TAB": {
+      if (!state.tree) return state;
       const { path, tabId } = action.payload;
       const newTree = updateNode(state.tree, path, (node) => ({ ...node, activeTab: tabId }));
       return { ...state, tree: newTree };
     }
 
-    case "TOGGLE_MODULE_VISIBLE": {
+    case "ADD_PANEL": {
+      const { moduleId } = action.payload;
+      const panel = createPanel(moduleId, state.panelsById);
+      const newLeaf = { type: "leaf", tabs: [panel.id], activeTab: panel.id };
+      return {
+        ...state,
+        tree: state.tree ? insertLeaf(state.tree, [], "right", newLeaf) : newLeaf,
+        panelsById: { ...state.panelsById, [panel.id]: panel },
+        panelOrder: [...state.panelOrder, panel.id],
+      };
+    }
+
+    case "REMOVE_PANEL": {
       const { id } = action.payload;
-      const isVisible = state.visibleModules.includes(id);
-      const visibleModules = isVisible
-        ? state.visibleModules.filter((m) => m !== id)
-        : [...state.visibleModules, id];
-      // Tree structure is unchanged — visibleModules controls rendering only
-      return { ...state, visibleModules };
+      if (!state.panelsById[id]) return state;
+      const { [id]: _removed, ...panelsById } = state.panelsById;
+      return {
+        ...state,
+        tree: state.tree ? removeTab(state.tree, id) : null,
+        panelsById,
+        panelOrder: state.panelOrder.filter((panelId) => panelId !== id),
+        fullscreenId: state.fullscreenId === id ? null : state.fullscreenId,
+      };
+    }
+
+    case "RENAME_PANEL": {
+      const { id, customTitle } = action.payload;
+      const panel = state.panelsById[id];
+      if (!panel) return state;
+      const title = trimCustomTitle(customTitle);
+      const nextPanel = { ...panel };
+      if (title) nextPanel.customTitle = title;
+      else delete nextPanel.customTitle;
+      return {
+        ...state,
+        panelsById: { ...state.panelsById, [id]: nextPanel },
+      };
     }
 
     case "SET_FOCUS": {
+      if (!state.tree) return state;
       const { id } = action.payload;
       const path = findLeafWithTab(state.tree, id);
       if (!path) return state;
@@ -84,10 +117,10 @@ export function workspaceReducer(state, action) {
       return { ...state, fullscreenId: action.payload };
 
     case "MOVE_TAB": {
+      if (!state.tree) return state;
       const { sourceId, drop } = action.payload;
       const { targetPath, zone, tabIndex = 0 } = drop;
 
-      // Identify an anchor tab in the target leaf so we can re-find it after removal
       const targetLeaf = (() => {
         try {
           let node = state.tree;
@@ -99,15 +132,12 @@ export function workspaceReducer(state, action) {
       })();
       const anchorTab = targetLeaf?.tabs.find((t) => t !== sourceId) ?? null;
 
-      // Remove source tab (may change tree structure)
       const treeAfterRemove = removeTab(state.tree, sourceId);
       if (!treeAfterRemove) return state;
 
-      // Re-resolve target path using anchor; fall back to root if path is now stale
       const resolvedPath = resolveTargetPath(treeAfterRemove, anchorTab, targetPath);
       const safeTargetPath = isPathValid(treeAfterRemove, resolvedPath) ? resolvedPath : [];
 
-      // Insert new leaf at resolved target
       const newLeaf = { type: "leaf", tabs: [sourceId], activeTab: sourceId };
       const newTree = insertLeaf(treeAfterRemove, safeTargetPath, zone, newLeaf, tabIndex);
 
@@ -115,11 +145,12 @@ export function workspaceReducer(state, action) {
     }
 
     case "SET_VIEW": {
-      const { tree, visibleModules, panelControls } = action.payload;
+      const { tree, panelsById, panelOrder, panelControls } = action.payload;
       return {
         ...state,
         tree,
-        visibleModules,
+        panelsById,
+        panelOrder,
         panelControls: normalizePanelControls(panelControls),
         fullscreenId: null,
       };
@@ -146,7 +177,10 @@ export function bindWorkspaceActions(dispatch) {
     setTree: (tree) => dispatch({ type: "SET_TREE", payload: { tree } }),
     moveTab: (sourceId, drop) => dispatch({ type: "MOVE_TAB", payload: { sourceId, drop } }),
     setActiveTab: (path, tabId) => dispatch({ type: "SET_ACTIVE_TAB", payload: { path, tabId } }),
-    toggleModuleVisible: (id) => dispatch({ type: "TOGGLE_MODULE_VISIBLE", payload: { id } }),
+    addPanel: (moduleId) => dispatch({ type: "ADD_PANEL", payload: { moduleId } }),
+    removePanel: (id) => dispatch({ type: "REMOVE_PANEL", payload: { id } }),
+    renamePanel: (id, customTitle) =>
+      dispatch({ type: "RENAME_PANEL", payload: { id, customTitle } }),
     setFocus: (id) => dispatch({ type: "SET_FOCUS", payload: { id } }),
     setFullscreen: (id) => dispatch({ type: "SET_FULLSCREEN", payload: id }),
     resizeChildren: (path, aboveIdx, belowIdx, aboveSize, belowSize) =>

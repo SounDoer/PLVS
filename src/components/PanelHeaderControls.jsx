@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   LOUDNESS_STATS_OPTIONS,
   LOUDNESS_STATS_ORDER,
@@ -35,7 +36,7 @@ function SingleSelectChip({ label, ariaLabel, options, value, onChange, triggerC
       <ChannelTrigger label={label} ariaLabel={ariaLabel} triggerClassName={triggerClassName} />
       <SelectContent align="end" sideOffset={6}>
         {options.map((opt) => (
-          <SelectItem key={opt.key} value={opt.key}>
+          <SelectItem key={opt.key ?? opt.id} value={opt.key ?? opt.id}>
             {opt.label}
           </SelectItem>
         ))}
@@ -230,6 +231,34 @@ export function PanelHeaderControls({
   panelControls,
   onPanelControlsChange,
 }) {
+  if (activeTab === "peak") {
+    if (!panelControls || typeof onPanelControlsChange !== "function") return null;
+
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const selectedMode =
+      LEVEL_METER_MODE_OPTIONS.find(
+        (option) => option.id === normalizedPanelControls.levelMeterMode
+      ) ?? LEVEL_METER_MODE_OPTIONS[0];
+
+    return (
+      <SingleSelectChip
+        label={selectedMode.label}
+        ariaLabel="level meter mode"
+        options={LEVEL_METER_MODE_OPTIONS}
+        value={selectedMode.id}
+        onChange={(levelMeterMode) => {
+          onPanelControlsChange(
+            normalizePanelControls({
+              ...normalizedPanelControls,
+              levelMeterMode,
+            })
+          );
+        }}
+        triggerClassName="w-auto"
+      />
+    );
+  }
+
   if (activeTab === "loudnessStats") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 

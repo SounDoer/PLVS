@@ -56,7 +56,8 @@ export function usePresets({
     const windowBounds = await readWindowBounds();
     const snapshot = {
       tree: clone(workspaceState.tree),
-      visibleModules: [...workspaceState.visibleModules],
+      panelsById: clone(workspaceState.panelsById),
+      panelOrder: [...workspaceState.panelOrder],
       panelControls: normalizePanelControls(workspaceState.panelControls),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
@@ -66,8 +67,9 @@ export function usePresets({
     windowPinned,
     focusView,
     workspaceState.panelControls,
+    workspaceState.panelOrder,
+    workspaceState.panelsById,
     workspaceState.tree,
-    workspaceState.visibleModules,
   ]);
 
   const save = useCallback(
@@ -94,7 +96,8 @@ export function usePresets({
       if (!preset) return false;
       setView({
         tree: clone(preset.tree),
-        visibleModules: [...preset.visibleModules],
+        panelsById: clone(preset.panelsById),
+        panelOrder: [...preset.panelOrder],
         panelControls: normalizePanelControls(preset.panelControls),
       });
       if (preset.windowBounds && isTauri()) {

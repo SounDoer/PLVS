@@ -31,6 +31,47 @@ beforeEach(() => {
 });
 
 describe("PanelHeaderControls", () => {
+  it("renders Level Meter mode chip and updates mode", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelHeaderControls
+        activeTab="peak"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.getByLabelText("level meter mode")).toBeTruthy();
+    expect(screen.getByText("Peak")).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "M" }));
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "momentary",
+    });
+  });
+
+  it("selects Short-term from the Level Meter mode chip", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelHeaderControls
+        activeTab="peak"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "ST" }));
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "shortTerm",
+    });
+  });
+
   it("does not render channel controls below multichannel for spectrum channelCount 2", () => {
     const { container } = render(
       <PanelHeaderControls

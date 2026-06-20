@@ -70,10 +70,24 @@ describe("WorkspaceContext active preset divergence", () => {
     expect(presetsStore.read().activeId).toBeNull();
   });
 
-  it("clears presets.activeId on manual toggleModuleVisible", () => {
+  it("clears presets.activeId on manual addPanel", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
-    act(() => actions.toggleModuleVisible("peak"));
+    act(() => actions.addPanel("peak"));
+    expect(presetsStore.read().activeId).toBeNull();
+  });
+
+  it("clears presets.activeId on manual removePanel", () => {
+    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
+    const actions = renderActions();
+    act(() => actions.removePanel("peak"));
+    expect(presetsStore.read().activeId).toBeNull();
+  });
+
+  it("clears presets.activeId on manual renamePanel", () => {
+    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
+    const actions = renderActions();
+    act(() => actions.renamePanel("peak", "Main Meter"));
     expect(presetsStore.read().activeId).toBeNull();
   });
 
@@ -83,7 +97,8 @@ describe("WorkspaceContext active preset divergence", () => {
     act(() =>
       actions.setView({
         tree: split("h", [leaf(["peak"]), leaf(["loudness"])]),
-        visibleModules: ["peak", "loudness"],
+        panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
+        panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
         panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
       })
     );
