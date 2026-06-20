@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   LOUDNESS_STATS_OPTIONS,
   LOUDNESS_STATS_ORDER,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/panelControls.js";
 
 const CHIP_CLASS =
-  "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none hover:bg-secondary hover:text-foreground focus:ring-0 focus:ring-offset-0";
+  "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
 
 function ChannelTrigger({ label, ariaLabel, triggerClassName }) {
   return (
@@ -35,7 +36,7 @@ function SingleSelectChip({ label, ariaLabel, options, value, onChange, triggerC
       <ChannelTrigger label={label} ariaLabel={ariaLabel} triggerClassName={triggerClassName} />
       <SelectContent align="end" sideOffset={6}>
         {options.map((opt) => (
-          <SelectItem key={opt.key} value={opt.key}>
+          <SelectItem key={opt.key ?? opt.id} value={opt.key ?? opt.id}>
             {opt.label}
           </SelectItem>
         ))}
@@ -204,6 +205,15 @@ function getSelectedOption(options, valueKey) {
   };
 }
 
+function spectrumKeyFromSelection(sel) {
+  if (!sel) return "";
+  return sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
+}
+
+function vectorscopeKeyFromPair(pair) {
+  return pair ? `${pair.x}-${pair.y}` : "";
+}
+
 function toggleId(ids, id) {
   if (ids.includes(id)) {
     return ids.filter((currentId) => currentId !== id);
@@ -230,6 +240,34 @@ export function PanelHeaderControls({
   panelControls,
   onPanelControlsChange,
 }) {
+  if (activeTab === "peak") {
+    if (!panelControls || typeof onPanelControlsChange !== "function") return null;
+
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const selectedMode =
+      LEVEL_METER_MODE_OPTIONS.find(
+        (option) => option.id === normalizedPanelControls.levelMeterMode
+      ) ?? LEVEL_METER_MODE_OPTIONS[0];
+
+    return (
+      <SingleSelectChip
+        label={selectedMode.label}
+        ariaLabel="level meter mode"
+        options={LEVEL_METER_MODE_OPTIONS}
+        value={selectedMode.id}
+        onChange={(levelMeterMode) => {
+          onPanelControlsChange(
+            normalizePanelControls({
+              ...normalizedPanelControls,
+              levelMeterMode,
+            })
+          );
+        }}
+        triggerClassName="w-auto"
+      />
+    );
+  }
+
   if (activeTab === "loudnessStats") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
@@ -298,7 +336,21 @@ export function PanelHeaderControls({
   }
 
   if (activeTab === "spectrum" || activeTab === "spectrogram") {
-    const { matchedOption, selectedOption } = getSelectedOption(spectrumOptions, spectrumValueKey);
+    const hasPanelControls = panelControls != null;
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const effectiveSpectrumValueKey =
+      (hasPanelControls ? spectrumKeyFromSelection(normalizedPanelControls.spectrumChannel) : "") ||
+      spectrumValueKey;
+    const effectiveSpectrumView = hasPanelControls
+      ? normalizedPanelControls.spectrumView
+      : spectrumView;
+    const effectiveSpectrumPeakHold = hasPanelControls
+      ? normalizedPanelControls.spectrumPeakHold
+      : spectrumPeakHold;
+    const { matchedOption, selectedOption } = getSelectedOption(
+      spectrumOptions,
+      effectiveSpectrumValueKey
+    );
     const sel = selectedOption?.sel ?? null;
     // The view toggle (M/S, L/R) only makes sense for the overlaid spectrum curve; a spectrogram is
     // a single heatmap and can't overlay, so it stays on the channel selection only.
@@ -322,7 +374,15 @@ export function PanelHeaderControls({
             value={selectedOption.key}
             onChange={(key) => {
               const opt = spectrumOptions.find((o) => o.key === key);
-              if (opt && typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
+              if (opt) {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumChannel: opt.sel,
+                  })
+                );
+                if (typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
+              }
             }}
             triggerClassName="w-auto"
           />
@@ -332,16 +392,21 @@ export function PanelHeaderControls({
             label={
               <SpectrumViewChipLabel
                 fallbackLabel={
-                  SPECTRUM_VIEW_OPTIONS.find((option) => option.key === spectrumView)?.label ??
-                  "Combined"
+                  SPECTRUM_VIEW_OPTIONS.find((option) => option.key === effectiveSpectrumView)
+                    ?.label ?? "Combined"
                 }
                 legend={spectrumViewLegend}
               />
             }
             ariaLabel="spectrum view"
             options={SPECTRUM_VIEW_OPTIONS}
-            value={spectrumView}
-            onChange={(key) => onSpectrumViewChange(key)}
+            value={effectiveSpectrumView}
+            onChange={(key) => {
+              onPanelControlsChange?.(
+                normalizePanelControls({ ...normalizedPanelControls, spectrumView: key })
+              );
+              onSpectrumViewChange?.(key);
+            }}
             triggerClassName="w-auto max-w-none"
           />
         ) : null}
@@ -349,8 +414,16 @@ export function PanelHeaderControls({
           <ToggleChip
             label="Peak"
             ariaLabel="peak hold"
-            pressed={spectrumPeakHold}
-            onToggle={onSpectrumPeakHoldToggle}
+            pressed={effectiveSpectrumPeakHold}
+            onToggle={() => {
+              onPanelControlsChange?.(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  spectrumPeakHold: !effectiveSpectrumPeakHold,
+                })
+              );
+              onSpectrumPeakHoldToggle?.();
+            }}
           />
         ) : null}
       </div>
@@ -360,9 +433,14 @@ export function PanelHeaderControls({
   if (!Number.isFinite(channelCount) || channelCount <= 2) return null;
 
   if (activeTab === "vectorscope" && vectorscopeOptions.length > 0) {
+    const hasPanelControls = panelControls != null;
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const effectiveVectorscopeValueKey =
+      (hasPanelControls ? vectorscopeKeyFromPair(normalizedPanelControls.vectorscopePair) : "") ||
+      vectorscopeValueKey;
     const { matchedOption, selectedOption } = getSelectedOption(
       vectorscopeOptions,
-      vectorscopeValueKey
+      effectiveVectorscopeValueKey
     );
     const selectedLabel =
       matchedOption && vectorscopeDisplayLabel ? vectorscopeDisplayLabel : selectedOption.label;
@@ -376,6 +454,12 @@ export function PanelHeaderControls({
         onChange={(key) => {
           const opt = vectorscopeOptions.find((o) => o.key === key);
           if (opt && typeof onVectorscopeChange === "function") {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                vectorscopePair: { x: opt.x, y: opt.y },
+              })
+            );
             onVectorscopeChange({ x: opt.x, y: opt.y });
           }
         }}

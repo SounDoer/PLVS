@@ -1,7 +1,14 @@
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
+import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
+import {
+  SnapshotEmptyState,
+  SNAPSHOT_NO_DATA_MESSAGE,
+  ANALYSIS_OVER_CAP_MESSAGE,
+} from "./SnapshotEmptyState.jsx";
 
 export function VectorscopePanel() {
   const {
@@ -14,14 +21,65 @@ export function VectorscopePanel() {
     peakLabelContext,
     vectorscopePairX: pairX = 0,
     vectorscopePairY: pairY = 1,
+    displayAudio,
+    panelControls,
+    resolveVectorscopeSnapshotForKey,
+    analysisStatus,
   } = useAudioData();
+  const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
+  const isOverCap = analysisStatus === "overCap";
+  const isSnapshot = selectedOffset >= 0;
+  const snapResolved = isSnapshot ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey) : null;
+  const snapshotMissing = snapResolved?.missing === true;
+  const liveVectorscopeResult = isSnapshot
+    ? null
+    : displayAudio?.vectorscopeResultsByKey?.[vectorscopeKey];
+  // The panel's own pair (snapshot/pending fall back to its per-instance controls, not the global).
+  const controlPair = normalizePanelControls(panelControls).vectorscopePair ?? {
+    x: pairX,
+    y: pairY,
+  };
+  let panelVectorPath;
+  let panelCorrelation;
+  let panelPairX;
+  let panelPairY;
+  if (isSnapshot) {
+    panelVectorPath = snapResolved?.path ?? "";
+    panelCorrelation = snapResolved?.correlation ?? correlation;
+    panelPairX = controlPair.x;
+    panelPairY = controlPair.y;
+  } else if (liveVectorscopeResult) {
+    panelVectorPath = liveVectorscopeResult.path;
+    panelCorrelation = liveVectorscopeResult.correlation;
+    panelPairX = liveVectorscopeResult.pairX;
+    panelPairY = liveVectorscopeResult.pairY;
+  } else {
+    panelVectorPath = displayVectorPath;
+    panelCorrelation = correlation;
+    panelPairX = controlPair.x;
+    panelPairY = controlPair.y;
+  }
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
-  const px = Number.isFinite(pairX) ? Math.max(0, Math.floor(Number(pairX))) : 0;
-  const py = Number.isFinite(pairY) ? Math.max(0, Math.floor(Number(pairY))) : 1;
+  const px = Number.isFinite(panelPairX) ? Math.max(0, Math.floor(Number(panelPairX))) : 0;
+  const py = Number.isFinite(panelPairY) ? Math.max(0, Math.floor(Number(panelPairY))) : 1;
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
+  if (isOverCap || snapshotMissing) {
+    return (
+      <div
+        className={cn(
+          PANEL_MIN_SPECTRUM,
+          "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        )}
+      >
+        <SnapshotEmptyState
+          message={isOverCap ? ANALYSIS_OVER_CAP_MESSAGE : SNAPSHOT_NO_DATA_MESSAGE}
+        />
+      </div>
+    );
+  }
   return (
     <div
       className={cn(
@@ -67,10 +125,10 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
-              {displayVectorPath && (
+              {panelVectorPath && (
                 <>
                   <path
-                    d={displayVectorPath}
+                    d={panelVectorPath}
                     fill="none"
                     stroke={
                       selectedOffset >= 0
@@ -118,12 +176,12 @@ export function VectorscopePanel() {
           <span className="text-muted-foreground">Correlation</span>
           <span
             className={
-              Number.isFinite(correlation)
+              Number.isFinite(panelCorrelation)
                 ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-signal-tp-max)]"
                 : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
             }
           >
-            {Number.isFinite(correlation) ? correlation.toFixed(2) : "-"}
+            {Number.isFinite(panelCorrelation) ? panelCorrelation.toFixed(2) : "-"}
           </span>
         </div>
       </div>

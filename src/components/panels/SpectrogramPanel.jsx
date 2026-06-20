@@ -14,6 +14,8 @@ import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { getTheme } from "../../theme/themeRegistry.js";
 import { listCustomThemes } from "../../theme/customThemesRepo.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
+import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
+import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptyState.jsx";
 
 const SPECTROGRAM_HELP = [
   "Left click - Select snapshot",
@@ -26,7 +28,6 @@ const SPECTROGRAM_HELP = [
 
 export function SpectrogramPanel({ compact = false }) {
   const {
-    spectrogramSnapRef: snapRef,
     frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
@@ -41,13 +42,29 @@ export function SpectrogramPanel({ compact = false }) {
     onHistoryPointerMove,
     onHistoryPointerUp,
     onHistoryWheel,
-    visualSpectrogramSnap,
     historyTimeTicks,
     resolvedThemeId,
+    panelControls,
+    getSpectrogramSnapsForKey,
+    snapshotSpectrumByKey,
+    analysisStatus,
   } = useAudioData();
+  const isOverCap = analysisStatus === "overCap";
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   useCanvasSize(canvasRef, containerRef);
+
+  // Spectrograms are request-keyed: resolve this panel's key once and read both the live rolling
+  // history and the frozen snapshot history for that key only.
+  const spectrogramKey = spectrumRequestKeyFromControls(panelControls);
+  const snapRef = useMemo(
+    () => ({
+      get current() {
+        return getSpectrogramSnapsForKey?.(spectrogramKey) ?? [];
+      },
+    }),
+    [getSpectrogramSnapsForKey, spectrogramKey]
+  );
 
   const selLineSvgX = (selLineX / 600) * 1000;
 
@@ -66,7 +83,7 @@ export function SpectrogramPanel({ compact = false }) {
   }
 
   const spectrogramSnaps =
-    selectedOffset >= 0 ? (visualSpectrogramSnap ?? []) : (snapRef.current ?? []);
+    selectedOffset >= 0 ? (snapshotSpectrumByKey?.[spectrogramKey] ?? []) : (snapRef.current ?? []);
   const colormapLut = useMemo(
     () => buildSpectrogramLut(getTheme(resolvedThemeId, listCustomThemes()).colormap),
     [resolvedThemeId]
@@ -108,6 +125,19 @@ export function SpectrogramPanel({ compact = false }) {
         )
       : null
   );
+
+  if (isOverCap) {
+    return (
+      <div
+        className={cn(
+          PANEL_MIN_SPECTROGRAM,
+          "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        )}
+      >
+        <SnapshotEmptyState message={ANALYSIS_OVER_CAP_MESSAGE} />
+      </div>
+    );
+  }
 
   return (
     <div

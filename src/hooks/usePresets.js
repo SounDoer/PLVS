@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
-import { normalizePanelControls } from "../lib/panelControls.js";
+import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { presetsStore } from "../persistence/index.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 
@@ -56,8 +56,12 @@ export function usePresets({
     const windowBounds = await readWindowBounds();
     const snapshot = {
       tree: clone(workspaceState.tree),
-      visibleModules: [...workspaceState.visibleModules],
-      panelControls: normalizePanelControls(workspaceState.panelControls),
+      panelsById: clone(workspaceState.panelsById),
+      panelOrder: [...workspaceState.panelOrder],
+      panelControlsById: normalizePanelControlsById(
+        workspaceState.panelsById,
+        workspaceState.panelControlsById
+      ),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
     };
@@ -65,9 +69,10 @@ export function usePresets({
   }, [
     windowPinned,
     focusView,
-    workspaceState.panelControls,
+    workspaceState.panelControlsById,
+    workspaceState.panelOrder,
+    workspaceState.panelsById,
     workspaceState.tree,
-    workspaceState.visibleModules,
   ]);
 
   const save = useCallback(
@@ -94,8 +99,9 @@ export function usePresets({
       if (!preset) return false;
       setView({
         tree: clone(preset.tree),
-        visibleModules: [...preset.visibleModules],
-        panelControls: normalizePanelControls(preset.panelControls),
+        panelsById: clone(preset.panelsById),
+        panelOrder: [...preset.panelOrder],
+        panelControlsById: normalizePanelControlsById(preset.panelsById, preset.panelControlsById),
       });
       if (preset.windowBounds && isTauri()) {
         try {

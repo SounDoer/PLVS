@@ -41,7 +41,9 @@ import { StatusPill } from "./components/StatusPill.jsx";
 import { TransportButton } from "./components/TransportButton.jsx";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
-import { VisibilityPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
+import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
+import { getPanelControls } from "./workspace/panelControlInstances.js";
+import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
 import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
 import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -63,11 +65,9 @@ import { Bookmark, Focus, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-r
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
+  setAnalysisRequests,
   setLoudnessWeights,
   setDialogueGating,
-  setVectorscopePair,
-  setSpectrumChannel,
-  setSpectrumView,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
@@ -89,6 +89,21 @@ const DIALOGUE_STAT_IDS = [
 ];
 
 const APP_VERSION = packageInfo.version;
+
+function toBackendAnalysisRequests(requests) {
+  return {
+    spectrum: requests.spectrumRequests.map((request) => ({
+      key: request.key,
+      channel: request.channel,
+      view: request.view,
+    })),
+    vectorscope: requests.vectorscopeRequests.map((request) => ({
+      key: request.key,
+      x: request.pair.x,
+      y: request.pair.y,
+    })),
+  };
+}
 
 function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
@@ -242,10 +257,21 @@ function AppContent() {
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
-  const normalizedPanelControls = useMemo(
-    () => normalizePanelControls(workspaceState.panelControls),
-    [workspaceState.panelControls]
+  const normalizedPanelControls = useMemo(() => {
+    const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
+    return normalizePanelControls(
+      firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
+    );
+  }, [workspaceState]);
+  const derivedAnalysisRequests = useMemo(
+    () => deriveAnalysisRequests(workspaceState),
+    [workspaceState]
   );
+  const analysisRequests = useMemo(
+    () => toBackendAnalysisRequests(derivedAnalysisRequests),
+    [derivedAnalysisRequests]
+  );
+  const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
@@ -272,6 +298,8 @@ function AppContent() {
     correlation: -Infinity,
     vectorscopePairX: 0,
     vectorscopePairY: 1,
+    spectrumResultsByKey: {},
+    vectorscopeResultsByKey: {},
   });
   const [spectrumPath, setSpectrumPath] = useState("");
   const [spectrumPeakPath, setSpectrumPeakPath] = useState("");
@@ -296,16 +324,6 @@ function AppContent() {
   const rafRef = useRef(0);
   const frameRef = useRef(0);
   const intakeRef = useRef(new FrameIntake());
-  // Stable ref-compatible accessor for SpectrogramPanel (reads snapDataSnap from intake).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const spectrogramSnapRef = useMemo(
-    () => ({
-      get current() {
-        return intakeRef.current.getSpectrogramSnapArray();
-      },
-    }),
-    []
-  );
   const frequencyMarkerRef = useMemo(
     () => ({
       get current() {
@@ -314,12 +332,14 @@ function AppContent() {
     }),
     []
   );
+  // Live per-request-key spectrogram source: each Spectrogram panel reads the rolling history for
+  // its own request key so two spectrograms with different channel/view never share one history.
+  const getSpectrogramSnapsForKey = useCallback(
+    (key) => intakeRef.current.getSpectrogramSnapArrayForKey(key),
+    []
+  );
   const selectedOffsetRef = useRef(-1);
-  const vectorscopePairRef = useRef(vectorscopePairUi);
-  const spectrumChannelRef = useRef(spectrumChannelUi);
-  const pendingVectorscopePairSyncRef = useRef(null);
-  const lastSentVectorscopePairKeyRef = useRef("");
-  const lastSentSpectrumChannelKeyRef = useRef("");
+  const lastSentAnalysisRequestsKeyRef = useRef("");
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
   // list updatePanelControls in their deps. If its identity changed per dispatch it would
@@ -339,21 +359,6 @@ function AppContent() {
     if (JSON.stringify(next) === JSON.stringify(current)) return;
     setWorkspacePanelControlsRef.current(next);
   }, []);
-  const sendTrackedVectorscopePair = useCallback((pair) => {
-    const key = `${pair.x}-${pair.y}`;
-    lastSentVectorscopePairKeyRef.current = key;
-    pendingVectorscopePairSyncRef.current = { x: pair.x, y: pair.y };
-    return setVectorscopePair({ x: pair.x, y: pair.y }).catch(() => {
-      if (lastSentVectorscopePairKeyRef.current === key) lastSentVectorscopePairKeyRef.current = "";
-    });
-  }, []);
-  const sendTrackedSpectrumChannel = useCallback((sel) => {
-    const key = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
-    lastSentSpectrumChannelKeyRef.current = key;
-    return setSpectrumChannel(sel).catch(() => {
-      if (lastSentSpectrumChannelKeyRef.current === key) lastSentSpectrumChannelKeyRef.current = "";
-    });
-  }, []);
   const sendTrackedLoudnessWeights = useCallback((weights) => {
     return setLoudnessWeights(weights).catch(() => {});
   }, []);
@@ -372,7 +377,9 @@ function AppContent() {
     channelMetadata,
     visualWaveformSnap,
     visualSnapIdx,
-    visualSpectrogramSnap,
+    snapshotSpectrumByKey,
+    resolveSpectrumSnapshotForKey,
+    resolveVectorscopeSnapshotForKey,
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
@@ -482,6 +489,21 @@ function AppContent() {
     if (!isTauri() || !running) return;
     void setDialogueGating(dialogueGating);
   }, [dialogueGating, running]);
+
+  useEffect(() => {
+    if (!isTauri() || !running) {
+      lastSentAnalysisRequestsKeyRef.current = "";
+      return;
+    }
+    const key = JSON.stringify(analysisRequests);
+    if (lastSentAnalysisRequestsKeyRef.current === key) return;
+    lastSentAnalysisRequestsKeyRef.current = key;
+    void setAnalysisRequests(analysisRequests).catch(() => {
+      if (lastSentAnalysisRequestsKeyRef.current === key) {
+        lastSentAnalysisRequestsKeyRef.current = "";
+      }
+    });
+  }, [analysisRequests, running]);
 
   const peakLabelContext = useMemo(
     () => ({
@@ -641,57 +663,14 @@ function AppContent() {
   );
 
   useEffect(() => {
-    if (!running || !isTauri()) return;
-    const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, peakLabelContext);
-    if (next.x !== vectorscopePairUi.x || next.y !== vectorscopePairUi.y) return;
-    const key = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
-    if (lastSentVectorscopePairKeyRef.current === key) return;
-    void sendTrackedVectorscopePair(vectorscopePairUi);
-  }, [
-    channelCount,
-    running,
-    sendTrackedVectorscopePair,
-    peakLabelContext,
-    vectorscopePairUi,
-    vectorscopePairUi.x,
-    vectorscopePairUi.y,
-  ]);
-
-  useEffect(() => {
-    if (!running || selectedOffset >= 0) return;
-    const x = Number.isFinite(displayAudio?.vectorscopePairX)
-      ? Number(displayAudio.vectorscopePairX)
-      : 0;
-    const y = Number.isFinite(displayAudio?.vectorscopePairY)
-      ? Number(displayAudio.vectorscopePairY)
-      : 1;
-    const pendingPair = pendingVectorscopePairSyncRef.current;
-    if (pendingPair && (pendingPair.x !== x || pendingPair.y !== y)) return;
-    if (pendingPair) pendingVectorscopePairSyncRef.current = null;
-    updatePanelControls((current) => {
-      if (current.vectorscopePair.x === x && current.vectorscopePair.y === y) return current;
-      return { ...current, vectorscopePair: { x, y } };
-    });
-  }, [
-    running,
-    selectedOffset,
-    displayAudio?.vectorscopePairX,
-    displayAudio?.vectorscopePairY,
-    updatePanelControls,
-  ]);
-
-  useEffect(() => {
     const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, peakLabelContext);
     if (next.x === vectorscopePairUi.x && next.y === vectorscopePairUi.y) return;
     updatePanelControls((current) => ({ ...current, vectorscopePair: next }));
-    if (isTauri() && running) void sendTrackedVectorscopePair(next);
   }, [
     channelCount,
-    sendTrackedVectorscopePair,
     peakLabelContext,
     vectorscopePairUi.x,
     vectorscopePairUi.y,
-    running,
     updatePanelControls,
   ]);
 
@@ -704,33 +683,9 @@ function AppContent() {
     const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
     if (curKey === nxtKey) return;
     updatePanelControls((current) => ({ ...current, spectrumChannel: next }));
-    if (isTauri() && running) void sendTrackedSpectrumChannel(next);
-  }, [
-    spectrumChannelUi,
-    spectrumChannelOptions,
-    running,
-    sendTrackedSpectrumChannel,
-    updatePanelControls,
-  ]);
+  }, [spectrumChannelUi, spectrumChannelOptions, updatePanelControls]);
 
-  useEffect(() => {
-    if (!running || !isTauri()) return;
-    const next = clampSpectrumChannelToAvailable(spectrumChannelUi, spectrumChannelOptions);
-    const curKey =
-      spectrumChannelUi.type === "pair"
-        ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
-        : `s-${spectrumChannelUi.ch}`;
-    const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
-    if (curKey !== nxtKey || lastSentSpectrumChannelKeyRef.current === curKey) return;
-    void sendTrackedSpectrumChannel(spectrumChannelUi);
-  }, [running, sendTrackedSpectrumChannel, spectrumChannelOptions, spectrumChannelUi]);
-
-  useEffect(() => {
-    if (!running || !isTauri()) return;
-    void setSpectrumView(spectrumViewUi);
-  }, [running, spectrumViewUi]);
-
-  const onVectorscopePairChange = async (pair) => {
+  const onVectorscopePairChange = (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({
       x: pair.x,
       y: pair.y,
@@ -742,17 +697,9 @@ function AppContent() {
     });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     updatePanelControls((current) => ({ ...current, vectorscopePair: pair }));
-    if (!isTauri()) return;
-    try {
-      if (running) {
-        await sendTrackedVectorscopePair(pair);
-      } else {
-        await setVectorscopePair({ x: pair.x, y: pair.y });
-      }
-    } catch (_) {}
   };
 
-  const onSpectrumChannelChange = async (sel) => {
+  const onSpectrumChannelChange = (sel) => {
     const prevLabel = spectrumLiveLabel;
     const nextKey = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
     const nextLabel = spectrumChannelOptions.find((o) => o.key === nextKey)?.label ?? prevLabel;
@@ -762,40 +709,19 @@ function AppContent() {
     });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     updatePanelControls((current) => ({ ...current, spectrumChannel: sel }));
-    spectrumChannelRef.current = sel;
     if (running && prevLabel !== nextLabel) {
       intakeRef.current.setPendingFrequencyMarker({ from: prevLabel, to: nextLabel });
     }
-    if (!isTauri()) return;
-    try {
-      if (running) {
-        await sendTrackedSpectrumChannel(sel);
-      } else {
-        await setSpectrumChannel(sel);
-      }
-    } catch (_) {}
   };
 
-  const onSpectrumViewChange = async (view) => {
+  const onSpectrumViewChange = (view) => {
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     updatePanelControls((current) => ({ ...current, spectrumView: view }));
-    if (!isTauri()) return;
-    try {
-      if (running) await setSpectrumView(view);
-    } catch (_) {}
   };
 
   const onSpectrumPeakHoldToggle = () => {
     updatePanelControls((current) => ({ ...current, spectrumPeakHold: !spectrumPeakHoldUi }));
   };
-
-  useEffect(() => {
-    vectorscopePairRef.current = vectorscopePairUi;
-  }, [vectorscopePairUi]);
-
-  useEffect(() => {
-    spectrumChannelRef.current = spectrumChannelUi;
-  }, [spectrumChannelUi]);
 
   const {
     showHistoryHud,
@@ -997,8 +923,6 @@ function AppContent() {
     frameRef,
     intake: intakeRef.current,
     selectedOffsetRef,
-    vectorscopePairRef,
-    spectrumChannelRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     setAudio,
@@ -1087,7 +1011,6 @@ function AppContent() {
     spectrumPeakHold: spectrumPeakHoldUi,
     onSpectrumPeakHoldToggle,
     // Spectrogram
-    spectrogramSnapRef,
     frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
@@ -1095,7 +1018,11 @@ function AppContent() {
     histSourceList,
     visualWaveformSnap,
     visualSnapIdx,
-    visualSpectrogramSnap,
+    snapshotSpectrumByKey,
+    resolveSpectrumSnapshotForKey,
+    resolveVectorscopeSnapshotForKey,
+    getSpectrogramSnapsForKey,
+    analysisStatusByPanelId,
     loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
     loudnessStatsOrder: normalizedPanelControls.loudnessStatsOrder,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
@@ -1203,11 +1130,15 @@ function AppContent() {
                       <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
                     </span>
                   </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
+                  <PopoverContent
+                    align="end"
+                    sideOffset={6}
+                    className="w-max min-w-44 max-w-[92vw] p-1"
+                  >
                     <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
                       Modules
                     </p>
-                    <VisibilityPopoverContent />
+                    <ModulesPopoverContent />
                   </PopoverContent>
                 </Popover>
                 <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>

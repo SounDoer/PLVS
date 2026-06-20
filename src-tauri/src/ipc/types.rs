@@ -6,6 +6,57 @@ use std::sync::{Arc, Mutex};
 
 use tauri::ipc::Channel;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum SpectrumAnalysisChannel {
+  Pair { x: u16, y: u16 },
+  Single { ch: u16 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpectrumAnalysisRequest {
+  pub key: String,
+  pub channel: SpectrumAnalysisChannel,
+  pub view: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorscopeAnalysisRequest {
+  pub key: String,
+  pub x: u16,
+  pub y: u16,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalysisRequests {
+  pub spectrum: Vec<SpectrumAnalysisRequest>,
+  pub vectorscope: Vec<VectorscopeAnalysisRequest>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpectrumFrameResult {
+  pub path: String,
+  pub peak_path: String,
+  pub path_b: String,
+  pub peak_path_b: String,
+  pub band_centers_hz: Vec<f64>,
+  pub smooth_db: Vec<f64>,
+  pub smooth_db_b: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorscopeFrameResult {
+  pub path: String,
+  pub correlation: f64,
+  pub pair_x: u16,
+  pub pair_y: u16,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineStateChanged {
@@ -76,6 +127,25 @@ pub struct MeterHistoryEntry {
   pub waveform_sub_count: u32,
 }
 
+/// Per-request-key spectrum sample for one visual history tick.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpectrumVisualEntry {
+  pub band_centers_hz: Vec<f64>,
+  pub smooth_db: Vec<f64>,
+  /// Secondary smoothed per-band dB (empty unless view is lr/ms).
+  pub smooth_db_b: Vec<f64>,
+}
+
+/// Per-request-key vectorscope sample for one visual history tick.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorscopeVisualEntry {
+  /// Lissajous pairs: interleaved [x0,y0, x1,y1, …] for the subsampled points.
+  pub pairs: Vec<f32>,
+  pub correlation: f64,
+}
+
 /// Visual history snapshot at ~25 Hz, independent of loudness tick.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +163,11 @@ pub struct VisualHistEntry {
   pub vectorscope_pairs: Vec<f32>,
   /// Pearson correlation coefficient [-1, 1].
   pub correlation: f64,
+  /// Request-keyed spectrum samples for snapshot history. Only active request keys appear in a
+  /// given tick; the frontend retains per-key history rings so inactive requests stay scrubbable.
+  pub spectrum_by_key: HashMap<String, SpectrumVisualEntry>,
+  /// Request-keyed vectorscope samples for snapshot history (same lifecycle as `spectrum_by_key`).
+  pub vectorscope_by_key: HashMap<String, VectorscopeVisualEntry>,
 }
 
 /// High-rate meter frame (~60 Hz) on Tauri Channel `audio-frame`.
@@ -126,6 +201,12 @@ pub struct AudioFramePayload {
   pub spectrum_peak_path_b: String,
   /// Secondary smoothed per-band dB (empty unless view is lr/ms).
   pub spectrum_smooth_db_b: Vec<f64>,
+  /// Request-keyed Spectrum/Spectrogram live results. Legacy single-result fields remain populated
+  /// from the first active spectrum request during the transition.
+  pub spectrum_results_by_key: HashMap<String, SpectrumFrameResult>,
+  /// Request-keyed Vectorscope live results. Legacy single-result fields remain populated from the
+  /// first active vectorscope request during the transition.
+  pub vectorscope_results_by_key: HashMap<String, VectorscopeFrameResult>,
   /// Loudness layout semantics for this frame (e.g. `stereo`, `5.1`, `unknown`).
   pub loudness_layout: String,
   /// Whether the loudness layout is known/correct for the input stream.

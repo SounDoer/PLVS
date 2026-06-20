@@ -24,6 +24,33 @@ pub struct MonitorRect {
   pub height: u32,
 }
 
+const DEFAULT_RESTORED_WIDTH: u32 = 1280;
+const DEFAULT_RESTORED_HEIGHT: u32 = 860;
+const MIN_RESTORED_WIDTH: u32 = 320;
+const MIN_RESTORED_HEIGHT: u32 = 240;
+const WINDOWS_MINIMIZED_SENTINEL: i32 = -32000;
+
+fn is_unusable_bounds(b: &WindowBounds) -> bool {
+  b.width < MIN_RESTORED_WIDTH
+    || b.height < MIN_RESTORED_HEIGHT
+    || b.x <= WINDOWS_MINIMIZED_SENTINEL
+    || b.y <= WINDOWS_MINIMIZED_SENTINEL
+}
+
+fn centered_on_monitor(b: WindowBounds, m: MonitorRect) -> WindowBounds {
+  let width = DEFAULT_RESTORED_WIDTH.min(m.width.max(MIN_RESTORED_WIDTH));
+  let height = DEFAULT_RESTORED_HEIGHT.min(m.height.max(MIN_RESTORED_HEIGHT));
+  let x = m.x + ((m.width as i32 - width as i32) / 2).max(0);
+  let y = m.y + ((m.height as i32 - height as i32) / 2).max(0);
+  WindowBounds {
+    x,
+    y,
+    width,
+    height,
+    ..b
+  }
+}
+
 /// Returns the visible-overlap area (px²) between the window and a monitor.
 fn overlap_area(b: &WindowBounds, m: &MonitorRect) -> i64 {
   let bx2 = b.x as i64 + b.width as i64;
@@ -40,6 +67,9 @@ fn overlap_area(b: &WindowBounds, m: &MonitorRect) -> i64 {
 pub fn clamp_to_visible(b: WindowBounds, monitors: &[MonitorRect]) -> WindowBounds {
   if monitors.is_empty() {
     return b;
+  }
+  if is_unusable_bounds(&b) {
+    return centered_on_monitor(b, monitors[0]);
   }
   let area = b.width as i64 * b.height as i64;
   let visible = monitors
@@ -157,13 +187,19 @@ pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     let pos = window.outer_position().ok();
     let size = window.inner_size().ok();
     match (pos, size) {
-      (Some(p), Some(s)) => WindowBounds {
-        x: p.x,
-        y: p.y,
-        width: s.width,
-        height: s.height,
-        is_maximized: false,
-      },
+      (Some(p), Some(s)) => {
+        let next = WindowBounds {
+          x: p.x,
+          y: p.y,
+          width: s.width,
+          height: s.height,
+          is_maximized: false,
+        };
+        if is_unusable_bounds(&next) {
+          return;
+        }
+        next
+      }
       _ => return,
     }
   };
@@ -242,6 +278,22 @@ mod tests {
     assert!(c.is_maximized);
     assert_eq!(c.width, 1280);
     assert_eq!(c.height, 800);
+  }
+
+  #[test]
+  fn recenters_minimized_windows_sentinel_bounds() {
+    let b = WindowBounds {
+      x: -32000,
+      y: -32000,
+      width: 0,
+      height: 0,
+      is_maximized: false,
+    };
+    let c = clamp_to_visible(b, &mon());
+    assert_eq!(c.width, 1280);
+    assert_eq!(c.height, 860);
+    assert_eq!(c.x, (1920 - 1280) / 2);
+    assert_eq!(c.y, (1080 - 860) / 2);
   }
 
   #[test]

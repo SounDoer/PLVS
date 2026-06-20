@@ -77,6 +77,14 @@ export function buildTauriFrameApply({
       vectorscopePairY: Number.isFinite(f.vectorscopePairY)
         ? f.vectorscopePairY
         : (prev.vectorscopePairY ?? 1),
+      spectrumResultsByKey:
+        f.spectrumResultsByKey && typeof f.spectrumResultsByKey === "object"
+          ? f.spectrumResultsByKey
+          : (prev.spectrumResultsByKey ?? {}),
+      vectorscopeResultsByKey:
+        f.vectorscopeResultsByKey && typeof f.vectorscopeResultsByKey === "object"
+          ? f.vectorscopeResultsByKey
+          : (prev.vectorscopeResultsByKey ?? {}),
       dialogueIntegrated: Number.isFinite(f.dialogueIntegrated) ? f.dialogueIntegrated : -Infinity,
       dialogueLra: Number.isFinite(f.dialogueLra) ? f.dialogueLra : 0,
       dialoguePercent: Number.isFinite(f.dialoguePercent) ? f.dialoguePercent : null,

@@ -4,8 +4,6 @@ import {
   previewAudioDevice,
   startAudioCapture,
   stopAudioCapture,
-  setVectorscopePair,
-  setSpectrumChannel,
   setLoudnessWeights,
   setDialogueGating,
   ackFrames,
@@ -56,8 +54,6 @@ export function useAudioEngine({
   frameRef,
   intake,
   selectedOffsetRef,
-  vectorscopePairRef,
-  spectrumChannelRef,
   loudnessWeightsRef,
   dialogueGatingRef,
   setAudio,
@@ -188,16 +184,6 @@ export function useAudioEngine({
             if (!mounted) return;
             baseApply(f);
           };
-
-          try {
-            const p = vectorscopePairRef?.current ?? { x: 0, y: 1 };
-            await setVectorscopePair({ x: p.x, y: p.y });
-          } catch (_) {}
-
-          try {
-            const sc = spectrumChannelRef?.current ?? { type: "pair", x: 0, y: 1 };
-            await setSpectrumChannel(sc);
-          } catch (_) {}
 
           try {
             await setLoudnessWeights(loudnessWeightsRef?.current ?? null);

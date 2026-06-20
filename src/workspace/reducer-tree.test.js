@@ -5,7 +5,11 @@ import { describe, it, expect } from "vitest";
 import { workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { findLeafWithTab } from "./treeUtils.js";
-import { DEFAULT_PANEL_CONTROLS, LOUDNESS_STATS_ORDER } from "../lib/panelControls.js";
+import {
+  DEFAULT_PANEL_CONTROLS,
+  LOUDNESS_STATS_ORDER,
+  normalizePanelControls,
+} from "../lib/panelControls.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,7 +28,8 @@ function state(tree, extra = {}) {
 }
 
 function expectPanelControlsIsolated(actual, source) {
-  expect(actual).toEqual(source);
+  const normalizedSource = normalizePanelControls(source);
+  expect(actual).toEqual(normalizedSource);
   expect(actual).not.toBe(source);
   expect(actual.vectorscopePair).not.toBe(source.vectorscopePair);
   expect(actual.spectrumChannel).not.toBe(source.spectrumChannel);
@@ -103,26 +108,64 @@ describe("SET_ACTIVE_TAB", () => {
 });
 
 // ---------------------------------------------------------------------------
-// TOGGLE_MODULE_VISIBLE
+// ADD_PANEL / REMOVE_PANEL / RENAME_PANEL
 // ---------------------------------------------------------------------------
 
-describe("TOGGLE_MODULE_VISIBLE", () => {
-  it("removes module from visibleModules when hiding", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE };
-    const next = workspaceReducer(s, { type: "TOGGLE_MODULE_VISIBLE", payload: { id: "peak" } });
-    expect(next.visibleModules).not.toContain("peak");
+describe("panel instances", () => {
+  it("adds duplicate module instances with distinct ids", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "ADD_PANEL",
+      payload: { moduleId: "peak" },
+    });
+
+    expect(next.panelsById["peak-2"]).toEqual({ id: "peak-2", moduleId: "peak" });
+    expect(next.panelOrder).toContain("peak-2");
+    expect(findLeafWithTab(next.tree, "peak-2")).not.toBeNull();
   });
 
-  it("adds module to visibleModules when showing", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE, visibleModules: ["loudness"] };
-    const next = workspaceReducer(s, { type: "TOGGLE_MODULE_VISIBLE", payload: { id: "peak" } });
-    expect(next.visibleModules).toContain("peak");
+  it("adds a panel as the root when the workspace is empty", () => {
+    const s = { ...DEFAULT_WORKSPACE_STATE, tree: null, panelsById: {}, panelOrder: [] };
+    const next = workspaceReducer(s, { type: "ADD_PANEL", payload: { moduleId: "spectrum" } });
+
+    expect(next.tree).toEqual({ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" });
+    expect(next.panelsById.spectrum).toEqual({ id: "spectrum", moduleId: "spectrum" });
   });
 
-  it("does NOT change tree structure when toggling visibility", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE };
-    const next = workspaceReducer(s, { type: "TOGGLE_MODULE_VISIBLE", payload: { id: "peak" } });
-    expect(next.tree).toBe(s.tree);
+  it("removes one duplicate without removing its sibling", () => {
+    const withDuplicate = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "ADD_PANEL",
+      payload: { moduleId: "peak" },
+    });
+    const next = workspaceReducer(withDuplicate, {
+      type: "REMOVE_PANEL",
+      payload: { id: "peak-2" },
+    });
+
+    expect(next.panelsById.peak).toBeDefined();
+    expect(next.panelsById["peak-2"]).toBeUndefined();
+    expect(next.panelOrder).not.toContain("peak-2");
+    expect(findLeafWithTab(next.tree, "peak")).not.toBeNull();
+    expect(findLeafWithTab(next.tree, "peak-2")).toBeNull();
+  });
+
+  it("clears fullscreen when removing the fullscreen panel", () => {
+    const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "peak" };
+    const next = workspaceReducer(s, { type: "REMOVE_PANEL", payload: { id: "peak" } });
+    expect(next.fullscreenId).toBeNull();
+  });
+
+  it("renames and clears custom panel titles", () => {
+    const renamed = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "RENAME_PANEL",
+      payload: { id: "peak", customTitle: "  Main Meter  " },
+    });
+    expect(renamed.panelsById.peak.customTitle).toBe("Main Meter");
+
+    const cleared = workspaceReducer(renamed, {
+      type: "RENAME_PANEL",
+      payload: { id: "peak", customTitle: "   " },
+    });
+    expect(cleared.panelsById.peak).not.toHaveProperty("customTitle");
   });
 });
 
@@ -182,7 +225,7 @@ describe("SET_FULLSCREEN", () => {
 describe("MOVE_TAB: zone=tabs", () => {
   it("merges source tab into target leaf", () => {
     const root = split("h", [leaf(["peak"]), leaf(["loudness"])]);
-    const s = state(root, { visibleModules: ["peak", "loudness"] });
+    const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
       payload: { sourceId: "peak", drop: { targetPath: [1], zone: "tabs", tabIndex: 0 } },
@@ -198,7 +241,7 @@ describe("MOVE_TAB: zone=tabs", () => {
 describe("MOVE_TAB: zone=below", () => {
   it("places source tab in a new leaf below target", () => {
     const root = split("h", [leaf(["peak"]), leaf(["loudness"])]);
-    const s = state(root, { visibleModules: ["peak", "loudness"] });
+    const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
       payload: { sourceId: "peak", drop: { targetPath: [1], zone: "below" } },
@@ -215,7 +258,7 @@ describe("MOVE_TAB: zone=below", () => {
     // After removing peak: root = leaf(loudness) (unwrapped)
     // targetPath [1] is stale; should resolve to insert below root
     const root = split("v", [leaf(["peak"]), leaf(["loudness"])]);
-    const s = state(root, { visibleModules: ["peak", "loudness"] });
+    const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
       payload: { sourceId: "peak", drop: { targetPath: [1], zone: "below" } },
@@ -229,7 +272,7 @@ describe("MOVE_TAB: zone=below", () => {
 describe("MOVE_TAB: zone=right", () => {
   it("places source tab in a new leaf to the right of target", () => {
     const root = split("v", [leaf(["peak"]), leaf(["loudness"])]);
-    const s = state(root, { visibleModules: ["peak", "loudness"] });
+    const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
       payload: { sourceId: "loudness", drop: { targetPath: [0], zone: "right" } },
@@ -251,7 +294,7 @@ describe("MOVE_TAB: drag to same single-tab leaf edge (regression)", () => {
 
   it("zone=above on same single-tab leaf does not throw and preserves both tabs", () => {
     const root = split("h", [leaf(["peak"]), leaf(["loudness"])]);
-    const s = state(root, { visibleModules: ["peak", "loudness"] });
+    const s = state(root);
     // sourceId 'peak' is in leaf at [0]; targetPath=[0] is same leaf
     expect(() =>
       workspaceReducer(s, {
@@ -271,7 +314,7 @@ describe("MOVE_TAB: drag to same single-tab leaf edge (regression)", () => {
 
   it("zone=right on same single-tab leaf does not throw", () => {
     const root = split("v", [leaf(["peak"]), leaf(["loudness"])]);
-    const s = state(root, { visibleModules: ["peak", "loudness"] });
+    const s = state(root);
     expect(() =>
       workspaceReducer(s, {
         type: "MOVE_TAB",
@@ -286,20 +329,25 @@ describe("MOVE_TAB: drag to same single-tab leaf edge (regression)", () => {
 // ---------------------------------------------------------------------------
 
 describe("SET_VIEW", () => {
-  it("atomically replaces tree, visibleModules, and panelControls", () => {
+  it("atomically replaces tree, panelsById, panelOrder, and panelControlsById", () => {
     const tree = leaf(["spectrum"]);
-    const panelControls = {
-      ...DEFAULT_PANEL_CONTROLS,
-      vectorscopePair: { x: 2, y: 3 },
-      spectrumChannel: { type: "single", ch: 2 },
+    const panelsById = { spectrum: { id: "spectrum", moduleId: "spectrum" } };
+    const panelOrder = ["spectrum"];
+    const panelControlsById = {
+      spectrum: {
+        ...DEFAULT_PANEL_CONTROLS,
+        vectorscopePair: { x: 2, y: 3 },
+        spectrumChannel: { type: "single", ch: 2 },
+      },
     };
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "SET_VIEW",
-      payload: { tree, visibleModules: ["spectrum"], panelControls },
+      payload: { tree, panelsById, panelOrder, panelControlsById },
     });
     expect(next.tree).toBe(tree);
-    expect(next.visibleModules).toEqual(["spectrum"]);
-    expectPanelControlsIsolated(next.panelControls, panelControls);
+    expect(next.panelsById).toBe(panelsById);
+    expect(next.panelOrder).toBe(panelOrder);
+    expectPanelControlsIsolated(next.panelControlsById.spectrum, panelControlsById.spectrum);
   });
 
   it("clears fullscreenId", () => {
@@ -308,8 +356,9 @@ describe("SET_VIEW", () => {
       type: "SET_VIEW",
       payload: {
         tree: DEFAULT_WORKSPACE_STATE.tree,
-        visibleModules: DEFAULT_WORKSPACE_STATE.visibleModules,
-        panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+        panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
+        panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
+        panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
       },
     });
     expect(next.fullscreenId).toBeNull();
@@ -320,8 +369,8 @@ describe("SET_VIEW", () => {
 // SET_PANEL_CONTROLS
 // ---------------------------------------------------------------------------
 
-describe("SET_PANEL_CONTROLS", () => {
-  it("updates panelControls", () => {
+describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
+  it("updates one panel's controls", () => {
     const nextControls = {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
@@ -333,10 +382,13 @@ describe("SET_PANEL_CONTROLS", () => {
     };
 
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
-      type: "SET_PANEL_CONTROLS",
-      payload: { panelControls: nextControls },
+      type: "SET_PANEL_CONTROLS_FOR_PANEL",
+      payload: { id: "peak", panelControls: nextControls },
     });
 
-    expectPanelControlsIsolated(next.panelControls, nextControls);
+    expectPanelControlsIsolated(next.panelControlsById.peak, nextControls);
+    expect(next.panelControlsById.loudness).toEqual(
+      DEFAULT_WORKSPACE_STATE.panelControlsById.loudness
+    );
   });
 });

@@ -3,34 +3,40 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
-import { MODULE_REGISTRY } from "./registry.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
-import { useAudioData } from "./AudioDataContext.jsx";
+import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
+import {
+  resolvePanelDefinition,
+  resolvePanelDisplayName,
+  resolvePanelModuleId,
+} from "./panelInstances.js";
+import { getPanelControls } from "./panelControlInstances.js";
 
 const SPLIT_DIVIDER_SIZE_REM = 0.375;
+const noop = () => {};
 
 // ---------------------------------------------------------------------------
 // Empty-node helper and min-size helper for a subtree
 // ---------------------------------------------------------------------------
 
-function isNodeEmpty(node, visibleModules) {
+function isNodeEmpty(node, panelsById) {
   if (node.type === "leaf") {
-    return !node.tabs.some((id) => visibleModules.includes(id));
+    return !node.tabs.some((id) => panelsById[id]);
   }
-  return node.children.every((c) => isNodeEmpty(c, visibleModules));
+  return node.children.every((c) => isNodeEmpty(c, panelsById));
 }
 
-function getSubtreeMinSize(node, visibleModules, dimension) {
+function getSubtreeMinSize(node, state, dimension) {
   if (node.type === "leaf") {
     const mins = node.tabs
-      .filter((id) => visibleModules.includes(id))
-      .map((id) => MODULE_REGISTRY[id]?.[dimension] ?? 0);
+      .filter((id) => state.panelsById[id])
+      .map((id) => resolvePanelDefinition(state, id)?.[dimension] ?? 0);
     return mins.length > 0 ? Math.max(...mins) : 0;
   }
   const childMins = node.children
-    .filter((c) => !isNodeEmpty(c, visibleModules))
-    .map((c) => getSubtreeMinSize(c, visibleModules, dimension));
+    .filter((c) => !isNodeEmpty(c, state.panelsById))
+    .map((c) => getSubtreeMinSize(c, state, dimension));
   if (childMins.length === 0) return 0;
   const isAdditive =
     (dimension === "minWidth" && node.direction === "h") ||
@@ -94,10 +100,8 @@ function SplitDivider({
     if (contentPx <= 0) return;
     const startPos = isH ? e.clientX : e.clientY;
     const dimension = isH ? "minWidth" : "minHeight";
-    const { visibleModules } = state;
-
-    const minAbove = getSubtreeMinSize(aboveNode, visibleModules, dimension);
-    const minBelow = getSubtreeMinSize(belowNode, visibleModules, dimension);
+    const minAbove = getSubtreeMinSize(aboveNode, state, dimension);
+    const minBelow = getSubtreeMinSize(belowNode, state, dimension);
 
     function onMove(ev) {
       const delta = (isH ? ev.clientX : ev.clientY) - startPos;
@@ -139,10 +143,10 @@ function SplitDivider({
 
 function SplitView({ node, path, style }) {
   const { state } = useWorkspaceStore();
-  const { visibleModules } = state;
+  const { panelsById } = state;
 
   if (node.type === "leaf") {
-    if (isNodeEmpty(node, visibleModules)) return null;
+    if (isNodeEmpty(node, panelsById)) return null;
     return <LeafView node={node} path={path} style={style} />;
   }
 
@@ -150,7 +154,7 @@ function SplitView({ node, path, style }) {
 
   // Collect indices of non-empty children to drive correct divider placement and resize indices.
   const visibleChildIndices = node.children
-    .map((child, i) => (isNodeEmpty(child, visibleModules) ? null : i))
+    .map((child, i) => (isNodeEmpty(child, panelsById) ? null : i))
     .filter((i) => i !== null);
 
   const visibleSizes = visibleChildIndices.map((i) => node.sizes[i]);
@@ -192,14 +196,21 @@ function SplitView({ node, path, style }) {
 // ---------------------------------------------------------------------------
 
 function FullscreenOverlay() {
-  const { state, setFullscreen } = useWorkspaceStore();
+  const { state, setFullscreen, setPanelControlsForPanel } = useWorkspaceStore();
   const { fullscreenId } = state;
   const audioData = useAudioData();
   if (!fullscreenId) return null;
 
-  const def = MODULE_REGISTRY[fullscreenId];
+  const def = resolvePanelDefinition(state, fullscreenId);
   if (!def) return null;
   const { Component } = def;
+  const fullscreenModuleId = resolvePanelModuleId(state, fullscreenId);
+  const panelControls = getPanelControls(state, fullscreenId);
+  const onPanelControlsChange = (nextPanelControls) =>
+    setPanelControlsForPanel(fullscreenId, nextPanelControls);
+  const panelAudioData = audioData
+    ? { ...audioData, panelControls, onPanelControlsChange }
+    : audioData;
 
   return (
     <div
@@ -208,25 +219,25 @@ function FullscreenOverlay() {
       tabIndex={-1}
     >
       <div className="flex h-9 shrink-0 items-center border-b border-border/60 bg-card px-3 text-sm font-medium">
-        {def.title}
+        {resolvePanelDisplayName(state, fullscreenId)}
         <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
           <PanelHeaderControls
-            activeTab={fullscreenId}
+            activeTab={fullscreenModuleId}
             channelCount={audioData?.channelCount ?? 0}
             vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
             vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
             vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
-            onVectorscopeChange={audioData?.onVectorscopePairChange}
+            onVectorscopeChange={noop}
             spectrumOptions={audioData?.spectrumChannelOptions ?? []}
             spectrumValueKey={audioData?.spectrumValueKey ?? ""}
             spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
-            onSpectrumChange={audioData?.onSpectrumChannelChange}
+            onSpectrumChange={noop}
             spectrumView={audioData?.spectrumView ?? "combined"}
-            onSpectrumViewChange={audioData?.onSpectrumViewChange}
+            onSpectrumViewChange={noop}
             spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
-            onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
-            panelControls={audioData?.panelControls}
-            onPanelControlsChange={audioData?.onPanelControlsChange}
+            onSpectrumPeakHoldToggle={noop}
+            panelControls={panelControls}
+            onPanelControlsChange={onPanelControlsChange}
           />
           <button
             type="button"
@@ -248,7 +259,9 @@ function FullscreenOverlay() {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Component />
+        <AudioDataContext.Provider value={panelAudioData}>
+          <Component />
+        </AudioDataContext.Provider>
       </div>
     </div>
   );
@@ -279,7 +292,11 @@ function SplitContent() {
       if (isDigit && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
         const moduleId = ALL_MODULE_IDS[digit - 1];
-        full(s.fullscreenId === moduleId ? null : moduleId);
+        const panelId =
+          s.panelOrder.find((id) => resolvePanelModuleId(s, id) === moduleId && s.panelsById[id]) ??
+          null;
+        if (!panelId) return;
+        full(s.fullscreenId === panelId ? null : panelId);
         return;
       }
       if (e.key === "Escape" && s.fullscreenId) {

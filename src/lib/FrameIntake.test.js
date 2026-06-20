@@ -279,9 +279,75 @@ describe("FrameIntake", () => {
     });
   });
 
-  it("visual spectrogram bands fall back to live frame centers when the tick omits them", () => {
+  it("pushVisualHistRow stores request-keyed visual history per key", () => {
+    const intake = new FrameIntake();
+    const baseRow = {
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumSmoothDb: [],
+      vectorscopePairs: [],
+      correlation: 0,
+    };
+    intake.pushVisualHistRow(
+      {
+        ...baseRow,
+        timestampMs: 1000,
+        spectrumByKey: {
+          "spectrum:single:0:combined": { bandCentersHz: [100, 200], smoothDb: [-20, -30] },
+        },
+        vectorscopeByKey: {
+          "vectorscope:pair:0:1": { pairs: [0.1, 0.2], correlation: 0.5 },
+        },
+      },
+      10
+    );
+
+    const specRing = intake.getVisualSpectrumHistByKey("spectrum:single:0:combined");
+    expect(specRing.length).toBe(1);
+    expect(specRing.at(0).dbList).toEqual([-20, -30]);
+    expect(intake.getVisualVectorscopeHistByKey("vectorscope:pair:0:1").length).toBe(1);
+    // A key never seen has no ring.
+    expect(intake.getVisualSpectrumHistByKey("spectrum:single:1:combined")).toBeNull();
+  });
+
+  it("retains an inactive request key's history when later ticks omit it (no backfill)", () => {
+    const intake = new FrameIntake();
+    const baseRow = {
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumSmoothDb: [],
+      vectorscopePairs: [],
+      correlation: 0,
+    };
+    const keyA = "spectrum:single:0:combined";
+    const keyB = "spectrum:single:1:combined";
+
+    // t=1000 only A is active.
+    intake.pushVisualHistRow(
+      { ...baseRow, timestampMs: 1000, spectrumByKey: { [keyA]: { smoothDb: [-10] } } },
+      10
+    );
+    // t=1040 the panel switched to B; A is now inactive, B starts collecting here (no backfill).
+    intake.pushVisualHistRow(
+      { ...baseRow, timestampMs: 1040, spectrumByKey: { [keyB]: { smoothDb: [-20] } } },
+      10
+    );
+
+    // A keeps its single retained entry; B only has the one from its start time.
+    expect(intake.getVisualSpectrumHistByKey(keyA).length).toBe(1);
+    expect(intake.getVisualSpectrumHistByKey(keyA).at(0).timestampMs).toBe(1000);
+    expect(intake.getVisualSpectrumHistByKey(keyB).length).toBe(1);
+    expect(intake.getVisualSpectrumHistByKey(keyB).at(0).timestampMs).toBe(1040);
+
+    intake.reset();
+    expect(intake.getVisualSpectrumHistByKey(keyA)).toBeNull();
+    expect(intake.getVisualSpectrumHistByKey(keyB)).toBeNull();
+  });
+
+  it("per-key spectrogram bands fall back to live frame centers when the tick omits them", () => {
     const intake = new FrameIntake();
     const centers = [100, 200, 400, 800];
+    const key = "spectrum:single:0:combined";
     // The live frame carries the constant grid centers...
     intake.pushFrame(
       makeFrame({ spectrumBandCentersHz: centers, spectrumSmoothDb: [-30, -40, -50, -60] }),
@@ -293,13 +359,14 @@ describe("FrameIntake", () => {
       {
         waveformMin: [0],
         waveformMax: [0],
-        spectrumSmoothDb: [-30, -40, -50, -60],
+        spectrumSmoothDb: [],
         vectorscopePairs: [],
         correlation: 0,
+        spectrumByKey: { [key]: { smoothDb: [-30, -40, -50, -60] } },
       },
       10
     );
-    const snap = intake.getSpectrogramSnapArray();
+    const snap = intake.getSpectrogramSnapArrayForKey(key);
     expect(snap[0].bands.length).toBe(centers.length);
     expect(snap[0].bands[0].fCenter).toBeCloseTo(centers[0]);
   });

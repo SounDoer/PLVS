@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { MODULE_REGISTRY } from "./registry.jsx";
+import { resolvePanelDisplayName } from "./panelInstances.js";
+import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 
 export const DragContext = createContext(null);
 
@@ -68,6 +69,7 @@ function computeDropTarget(x, y) {
 }
 
 export function DragProvider({ children, onDrop }) {
+  const { state } = useWorkspaceStore();
   const [dragState, setDragState] = useState(null); // { sourceId, x, y }
   const [hoverDrop, setHoverDrop] = useState(null);
 
@@ -137,7 +139,7 @@ export function DragProvider({ children, onDrop }) {
           className="pointer-events-none fixed z-50 rounded border border-primary/60 bg-card px-2 py-0.5 text-xs font-medium shadow-lg"
           style={{ left: dragState.x + 14, top: dragState.y - 8 }}
         >
-          {MODULE_REGISTRY[dragState.sourceId]?.title}
+          {resolvePanelDisplayName(state, dragState.sourceId)}
         </div>
       )}
     </DragContext.Provider>

@@ -35,6 +35,7 @@ pub fn run() {
       ipc::commands::set_vectorscope_pair,
       ipc::commands::set_spectrum_channel,
       ipc::commands::set_spectrum_view,
+      ipc::commands::set_analysis_requests,
       ipc::commands::set_loudness_weights,
       ipc::commands::set_dialogue_gating,
       ipc::commands::ack_frames,
@@ -103,7 +104,7 @@ pub fn run() {
           })
           .collect();
         let clamped = clamp_to_visible(b, &monitors);
-        let _ = window.set_size(tauri::PhysicalSize::new(b.width, b.height));
+        let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
         let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
         if b.is_maximized {
           let _ = window.maximize();

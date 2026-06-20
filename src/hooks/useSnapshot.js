@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { VISUAL_HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { buildVectorscopeSvgFromPairs } from "../math/vectorscopeMath.js";
 import { buildSpectrumSvgFromBandsAndDb } from "../math/spectrumMath.js";
-import { resolveSnapshot } from "../lib/snapshotResolve.js";
+import { resolveSnapshot, resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
 
 function freezeSnapshot(intake) {
   return {
@@ -15,6 +15,8 @@ function freezeSnapshot(intake) {
     visualSpectrum: intake.getVisualSpectrumHist().toArray(),
     visualVectorscope: intake.getVisualVectorscopeHist().toArray(),
     visualCorr: intake.getVisualCorrHist().toArray(),
+    spectrumByKey: intake.snapshotVisualSpectrumByKey?.() ?? {},
+    vectorscopeByKey: intake.snapshotVisualVectorscopeByKey?.() ?? {},
   };
 }
 
@@ -74,6 +76,47 @@ export function useSnapshot({
   const displaySpectrumPeakPath = selectedOffset >= 0 ? "" : spectrumPeakPath;
   const displaySpectrumPeakPathB = selectedOffset >= 0 ? "" : spectrumPeakPathB;
 
+  // Per-request-key snapshot resolution: each Spectrum/Spectrogram/Vectorscope panel derives its
+  // own request key and looks up history for that key at the selected timestamp. A request that did
+  // not exist at the selected time resolves to { missing: true } so the panel can show an empty
+  // state instead of another request's data.
+  const keyToleranceMs = VISUAL_HIST_SAMPLE_SEC * 1000;
+  const snapshotSpectrumByKey = snapSource?.spectrumByKey ?? null;
+  const resolveSpectrumSnapshotForKey = (key) => {
+    const entries = snapSource?.spectrumByKey?.[key];
+    const { index, missing } = resolveKeyedVisualIndex(
+      entries,
+      resolved.targetTimestampMs,
+      keyToleranceMs
+    );
+    if (missing) return { missing: true, path: "", pathB: "", data: null };
+    const snap = entries[index];
+    const centers = (snap.bands ?? []).map((b) => b.fCenter);
+    const dbList = snap.dbList ?? [];
+    const dbListB = snap.dbListB ?? [];
+    return {
+      missing: false,
+      path: dbList.length ? buildSpectrumSvgFromBandsAndDb(centers, dbList) : "",
+      pathB: dbListB.length ? buildSpectrumSvgFromBandsAndDb(centers, dbListB) : "",
+      data: { bands: snap.bands ?? [], dbList, dbListB },
+    };
+  };
+  const resolveVectorscopeSnapshotForKey = (key) => {
+    const entries = snapSource?.vectorscopeByKey?.[key];
+    const { index, missing } = resolveKeyedVisualIndex(
+      entries,
+      resolved.targetTimestampMs,
+      keyToleranceMs
+    );
+    if (missing) return { missing: true, path: "", correlation: -Infinity };
+    const snap = entries[index];
+    return {
+      missing: false,
+      path: buildVectorscopeSvgFromPairs(snap?.pairs ?? []),
+      correlation: Number.isFinite(snap?.correlation) ? snap.correlation : -Infinity,
+    };
+  };
+
   return {
     histSourceList,
     displayAudio: resolved.displayAudio,
@@ -88,6 +131,8 @@ export function useSnapshot({
     channelMetadata: resolved.channelMetadata,
     visualWaveformSnap,
     visualSnapIdx: resolved.visualSnapIdx,
-    visualSpectrogramSnap: snapSource?.visualSpectrum ?? null,
+    snapshotSpectrumByKey,
+    resolveSpectrumSnapshotForKey,
+    resolveVectorscopeSnapshotForKey,
   };
 }

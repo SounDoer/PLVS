@@ -1,20 +1,28 @@
 import { Maximize2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
-import { useAudioData } from "./AudioDataContext.jsx";
+import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
+import {
+  resolvePanelDefinition,
+  resolvePanelDisplayName,
+  resolvePanelModuleId,
+} from "./panelInstances.js";
+import { getPanelControls } from "./panelControlInstances.js";
+
+const noop = () => {};
 
 // ---------------------------------------------------------------------------
 // TabPill
 // ---------------------------------------------------------------------------
 
-function TabPill({ tabId, isActive, path, tabCount, slotTabIndex }) {
-  const { setActiveTab, toggleModuleVisible } = useWorkspaceStore();
+function TabPill({ tabId, isActive, path, slotTabIndex }) {
+  const { state, setActiveTab } = useWorkspaceStore();
   const { dragState, onTabMouseDown } = useDrag();
-  const def = MODULE_REGISTRY[tabId];
+  const def = resolvePanelDefinition(state, tabId);
   if (!def) return null;
+  const title = resolvePanelDisplayName(state, tabId);
 
   const isSourceTab = dragState?.sourceId === tabId;
 
@@ -35,21 +43,7 @@ function TabPill({ tabId, isActive, path, tabCount, slotTabIndex }) {
       <span className="flex shrink-0">
         <def.Icon />
       </span>
-      <span className="truncate max-w-[8rem]">{def.title}</span>
-      {tabCount > 1 && (
-        <button
-          type="button"
-          aria-label={`Hide ${def.title}`}
-          className="ml-0.5 rounded opacity-50 hover:opacity-100 focus-visible:outline-none"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleModuleVisible(tabId);
-          }}
-        >
-          <X size={10} />
-        </button>
-      )}
+      <span className="truncate max-w-[8rem]">{title}</span>
     </div>
   );
 }
@@ -77,17 +71,28 @@ function getTabInsertX(tabIndex, totalTabs) {
 // ---------------------------------------------------------------------------
 
 export function LeafView({ node, path, style }) {
-  const { state, toggleModuleVisible, setFullscreen } = useWorkspaceStore();
-  const { visibleModules } = state;
+  const { state, removePanel, setFullscreen, setPanelControlsForPanel } = useWorkspaceStore();
   const { dragState, hoverDrop } = useDrag();
-  const { hoveredModuleId } = useWorkspaceStore();
   const audioData = useAudioData();
   const compactPanels = audioData?.compactPanels === true;
 
-  const visibleTabs = node.tabs.filter((id) => visibleModules.includes(id));
+  const visibleTabs = node.tabs.filter((id) => state.panelsById[id]);
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
-  const ActiveComponent = activeTab ? MODULE_REGISTRY[activeTab]?.Component : null;
-  const isFocused = activeTab && hoveredModuleId === activeTab;
+  const ActiveComponent = activeTab ? resolvePanelDefinition(state, activeTab)?.Component : null;
+  const activeModuleId = activeTab ? resolvePanelModuleId(state, activeTab) : null;
+  const panelControls = activeTab ? getPanelControls(state, activeTab) : null;
+  const onPanelControlsChange = activeTab
+    ? (nextPanelControls) => setPanelControlsForPanel(activeTab, nextPanelControls)
+    : audioData?.onPanelControlsChange;
+  const panelAudioData =
+    activeTab && audioData
+      ? {
+          ...audioData,
+          panelControls,
+          onPanelControlsChange,
+          analysisStatus: audioData.analysisStatusByPanelId?.[activeTab],
+        }
+      : audioData;
   const zoneHint = getZoneHint(hoverDrop, path);
   const isDragging = !!dragState;
   const pathAttr = JSON.stringify(path);
@@ -98,9 +103,7 @@ export function LeafView({ node, path, style }) {
       data-leaf-path={pathAttr}
       className={cn(
         "relative flex min-h-0 flex-col overflow-hidden rounded-[10px] border bg-card/55 shadow-sm backdrop-blur-md transition-[border-color,box-shadow] duration-150",
-        isFocused
-          ? "border-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.6)]"
-          : "border-border/80 hover:border-border",
+        "border-border/80 hover:border-border",
         isDragging &&
           (zoneHint === "above" || zoneHint === "below") &&
           "ring-2 ring-primary ring-offset-0",
@@ -161,30 +164,29 @@ export function LeafView({ node, path, style }) {
               tabId={tabId}
               isActive={tabId === activeTab}
               path={path}
-              tabCount={visibleTabs.length}
               slotTabIndex={i}
             />
           ))}
 
           <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
             <PanelHeaderControls
-              activeTab={activeTab}
+              activeTab={activeModuleId}
               channelCount={audioData?.channelCount ?? 0}
               vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
               vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
               vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
-              onVectorscopeChange={audioData?.onVectorscopePairChange}
+              onVectorscopeChange={noop}
               spectrumOptions={audioData?.spectrumChannelOptions ?? []}
               spectrumValueKey={audioData?.spectrumValueKey ?? ""}
               spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
-              onSpectrumChange={audioData?.onSpectrumChannelChange}
+              onSpectrumChange={noop}
               spectrumView={audioData?.spectrumView ?? "combined"}
               spectrumViewLegend={audioData?.spectrumViewLegend ?? null}
-              onSpectrumViewChange={audioData?.onSpectrumViewChange}
+              onSpectrumViewChange={noop}
               spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
-              onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
-              panelControls={audioData?.panelControls}
-              onPanelControlsChange={audioData?.onPanelControlsChange}
+              onSpectrumPeakHoldToggle={noop}
+              panelControls={panelControls ?? audioData?.panelControls}
+              onPanelControlsChange={onPanelControlsChange}
             />
             <button
               type="button"
@@ -198,7 +200,7 @@ export function LeafView({ node, path, style }) {
               type="button"
               aria-label="Hide all in panel"
               className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
-              onClick={() => visibleTabs.forEach((id) => toggleModuleVisible(id))}
+              onClick={() => visibleTabs.forEach((id) => removePanel(id))}
             >
               <X size={12} />
             </button>
@@ -208,7 +210,11 @@ export function LeafView({ node, path, style }) {
 
       {/* Panel body */}
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
-        {ActiveComponent && <ActiveComponent />}
+        {ActiveComponent && (
+          <AudioDataContext.Provider value={panelAudioData}>
+            <ActiveComponent />
+          </AudioDataContext.Provider>
+        )}
       </div>
     </div>
   );

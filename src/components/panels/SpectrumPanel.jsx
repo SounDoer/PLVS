@@ -1,5 +1,12 @@
 import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
+import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
+import {
+  SnapshotEmptyState,
+  SNAPSHOT_NO_DATA_MESSAGE,
+  ANALYSIS_OVER_CAP_MESSAGE,
+} from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -27,14 +34,55 @@ export function SpectrumPanel({ compact = false }) {
     spectrumPeakHold,
     selectedOffset,
     displaySpectrumData,
+    displayAudio,
+    panelControls,
+    resolveSpectrumSnapshotForKey,
+    analysisStatus,
   } = useAudioData();
+  const spectrumKey = spectrumRequestKeyFromControls(panelControls);
+  const isOverCap = analysisStatus === "overCap";
+  const isSnapshot = selectedOffset >= 0;
+  // In snapshot mode each panel reads history for its own request key; in live mode it reads the
+  // request-keyed live result.
+  const snapResolved = isSnapshot ? resolveSpectrumSnapshotForKey?.(spectrumKey) : null;
+  const snapshotMissing = snapResolved?.missing === true;
+  const liveSpectrumResult = isSnapshot ? null : displayAudio?.spectrumResultsByKey?.[spectrumKey];
+  let panelSpectrumPath;
+  let panelSpectrumPeakPath;
+  let panelSpectrumPathB;
+  let panelSpectrumPeakPathB;
+  let panelSpectrumData;
+  if (isSnapshot) {
+    panelSpectrumPath = snapResolved?.path ?? "";
+    panelSpectrumPeakPath = "";
+    panelSpectrumPathB = snapResolved?.pathB ?? "";
+    panelSpectrumPeakPathB = "";
+    panelSpectrumData = snapResolved?.data ?? null;
+  } else if (liveSpectrumResult) {
+    panelSpectrumPath = liveSpectrumResult.path;
+    panelSpectrumPeakPath = liveSpectrumResult.peakPath;
+    panelSpectrumPathB = liveSpectrumResult.pathB;
+    panelSpectrumPeakPathB = liveSpectrumResult.peakPathB;
+    panelSpectrumData = buildSpectrumDataSnapshot({
+      spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
+      spectrumSmoothDb: liveSpectrumResult.smoothDb,
+      spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
+    });
+  } else {
+    // Live but no per-key result yet: fall back to the global live curve as a pending treatment.
+    panelSpectrumPath = displaySpectrumPath;
+    panelSpectrumPeakPath = displaySpectrumPeakPath;
+    panelSpectrumPathB = displaySpectrumPathB;
+    panelSpectrumPeakPathB = displaySpectrumPeakPathB;
+    panelSpectrumData = displaySpectrumData;
+  }
   const spectrumSvgRef = useRef(null);
   const {
     hover: spectrumHover,
     onMove,
     onLeave: onSpectrumHoverLeave,
   } = useChartHover((xFrac) => {
-    const data = displaySpectrumData;
+    const data = panelSpectrumData;
     if (!data?.bands?.length || !data?.dbList?.length) return null;
     const nearestIdx = computeSpectrumHoverIndex(xFrac, data.bands);
     const band = data.bands[nearestIdx];
@@ -53,15 +101,28 @@ export function SpectrumPanel({ compact = false }) {
   const reduceMotion = useReducedMotion();
   // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
   // on top). When peak hold is off, the fill follows the live curve as before.
-  const peakFillActive = spectrumPeakHold && !!displaySpectrumPeakPath;
+  const peakFillActive = spectrumPeakHold && !!panelSpectrumPeakPath;
   const displaySpectrumAreaPath = buildSpectrumAreaPath(
-    peakFillActive ? displaySpectrumPeakPath : displaySpectrumPath
+    peakFillActive ? panelSpectrumPeakPath : panelSpectrumPath
   );
   const displaySpectrumAreaPathB =
-    spectrumPeakHold && displaySpectrumPeakPathB
-      ? buildSpectrumAreaPath(displaySpectrumPeakPathB)
-      : "";
+    spectrumPeakHold && panelSpectrumPeakPathB ? buildSpectrumAreaPath(panelSpectrumPeakPathB) : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
+
+  if (isOverCap || snapshotMissing) {
+    return (
+      <div
+        className={cn(
+          PANEL_MIN_SPECTRUM,
+          "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        )}
+      >
+        <SnapshotEmptyState
+          message={isOverCap ? ANALYSIS_OVER_CAP_MESSAGE : SNAPSHOT_NO_DATA_MESSAGE}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -193,7 +254,7 @@ export function SpectrumPanel({ compact = false }) {
                       );
                     })}
                   </g>
-                  {displaySpectrumPath ? (
+                  {panelSpectrumPath ? (
                     <AnimatePresence mode="sync">
                       <motion.g
                         key={spectrumPaletteKey}
@@ -221,7 +282,7 @@ export function SpectrumPanel({ compact = false }) {
                           />
                         ) : null}
                         <path
-                          d={displaySpectrumPath}
+                          d={panelSpectrumPath}
                           fill="none"
                           stroke={
                             selectedOffset >= 0
@@ -232,9 +293,9 @@ export function SpectrumPanel({ compact = false }) {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                        {displaySpectrumPathB ? (
+                        {panelSpectrumPathB ? (
                           <path
-                            d={displaySpectrumPathB}
+                            d={panelSpectrumPathB}
                             fill="none"
                             stroke={
                               selectedOffset >= 0

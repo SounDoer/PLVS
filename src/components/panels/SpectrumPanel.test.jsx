@@ -103,6 +103,42 @@ describe("SpectrumPanel", () => {
     expect(screen.queryByText("S")).toBeNull();
   });
 
+  it("shows the no-data empty state when its request has no history at the selected time", () => {
+    renderPanel({
+      selectedOffset: 2,
+      resolveSpectrumSnapshotForKey: () => ({ missing: true, path: "", pathB: "", data: null }),
+    });
+
+    expect(screen.getByText("No data for this view at selected time")).toBeTruthy();
+  });
+
+  it("shows the over-cap empty state when its request is over the active cap", () => {
+    renderPanel({
+      selectedOffset: -1,
+      analysisStatus: "overCap",
+    });
+
+    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
+    // Over-cap is distinct from the snapshot no-data state.
+    expect(screen.queryByText("No data for this view at selected time")).toBeNull();
+  });
+
+  it("renders its own request key's snapshot curve in snapshot mode", () => {
+    const path = "M 0 100 L 1000 60";
+    const { container } = renderPanel({
+      selectedOffset: 2,
+      resolveSpectrumSnapshotForKey: () => ({
+        missing: false,
+        path,
+        pathB: "",
+        data: { bands: [], dbList: [-10], dbListB: [] },
+      }),
+    });
+
+    const snapStroke = container.querySelector('path[stroke="var(--ui-spectrum-primary-snap)"]');
+    expect(snapStroke?.getAttribute("d")).toBe(path);
+  });
+
   it("keeps the frequency axis in a dedicated layout row", () => {
     const { container } = renderPanel({
       displaySpectrumPath: "",

@@ -86,8 +86,10 @@ describe("usePresets", () => {
     });
     expect(saved.tree).toEqual(DEFAULT_WORKSPACE_STATE.tree);
     expect(saved.tree).not.toBe(DEFAULT_WORKSPACE_STATE.tree);
-    expect(saved.visibleModules).toEqual(DEFAULT_WORKSPACE_STATE.visibleModules);
-    expect(saved.visibleModules).not.toBe(DEFAULT_WORKSPACE_STATE.visibleModules);
+    expect(saved.panelsById).toEqual(DEFAULT_WORKSPACE_STATE.panelsById);
+    expect(saved.panelsById).not.toBe(DEFAULT_WORKSPACE_STATE.panelsById);
+    expect(saved.panelOrder).toEqual(DEFAULT_WORKSPACE_STATE.panelOrder);
+    expect(saved.panelOrder).not.toBe(DEFAULT_WORKSPACE_STATE.panelOrder);
     expect(presetsStore.read().activeId).toBe("preset-123");
   });
 
@@ -111,8 +113,9 @@ describe("usePresets", () => {
           id: "p1",
           name: "Preset",
           tree: leaf(["spectrum"]),
-          visibleModules: ["spectrum"],
-          panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
           windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
           windowPinned: true,
           focusView: { autoHideControls: true, compactPanels: true },
@@ -148,8 +151,9 @@ describe("usePresets", () => {
           id: "p1",
           name: "Preset",
           tree: leaf(["spectrum"]),
-          visibleModules: ["spectrum"],
-          panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
         },
       ],
       activeId: null,
@@ -171,8 +175,9 @@ describe("usePresets", () => {
           id: "p1",
           name: "Preset",
           tree: leaf(["spectrum"]),
-          visibleModules: ["spectrum"],
-          panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
           windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
         },
       ],
@@ -192,8 +197,9 @@ describe("usePresets", () => {
           id: "p1",
           name: "Preset",
           tree: leaf(["peak"]),
-          visibleModules: ["peak"],
-          panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+          panelsById: { peak: { id: "peak", moduleId: "peak", customTitle: "Main Meter" } },
+          panelOrder: ["peak"],
+          panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
         },
       ],
       activeId: null,
@@ -214,7 +220,15 @@ describe("usePresets", () => {
 
   it("renames and removes presets", () => {
     presetsStore.patch({
-      list: [{ id: "p1", name: "Preset", tree: leaf(["peak"]), visibleModules: ["peak"] }],
+      list: [
+        {
+          id: "p1",
+          name: "Preset",
+          tree: leaf(["peak"]),
+          panelsById: { peak: { id: "peak", moduleId: "peak" } },
+          panelOrder: ["peak"],
+        },
+      ],
       activeId: "p1",
     });
     const { result } = renderPresetHook();

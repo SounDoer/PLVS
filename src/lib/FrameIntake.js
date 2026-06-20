@@ -135,7 +135,14 @@ export class FrameIntake {
     this._visualSpectrumHist = new RingBuffer(1);
     this._visualVectorscopeHist = new RingBuffer(1);
     this._visualCorrHist = new RingBuffer(1);
-    this._spectrogramSnapArray = [];
+    // Request-keyed visual history: one ring per active analysis request key. Rings are created
+    // lazily and retained after a key goes inactive (no panel uses it), so scrubbing back to an
+    // old request still shows its history until reset() / capacity change clears them.
+    this._visualSpectrumHistByKey = new Map();
+    this._visualVectorscopeHistByKey = new Map();
+    // Cached per-key spectrogram arrays, rebuilt once per visual tick so the canvas can read a
+    // stable reference each frame.
+    this._spectrogramSnapArrayByKey = new Map();
     // Constant grid frequencies from the live frame; the ~25 Hz visual tick omits them.
     this._lastSpectrumCenters = [];
     this._currentChannelMetadata = {
@@ -209,6 +216,11 @@ export class FrameIntake {
       this._visualSpectrumHist = new RingBuffer(visualMaxSamples);
       this._visualVectorscopeHist = new RingBuffer(visualMaxSamples);
       this._visualCorrHist = new RingBuffer(visualMaxSamples);
+      // Per-key rings are sized to the same window; drop them so they are recreated at the new
+      // capacity rather than mixing sizes.
+      this._visualSpectrumHistByKey = new Map();
+      this._visualVectorscopeHistByKey = new Map();
+      this._spectrogramSnapArrayByKey = new Map();
     }
 
     this._visualWaveformHist.push({
@@ -233,7 +245,40 @@ export class FrameIntake {
       timestampMs: row.timestampMs,
     });
 
-    this._spectrogramSnapArray = this._visualSpectrumHist.toArray();
+    const spectrumByKey = row.spectrumByKey;
+    if (spectrumByKey) {
+      for (const key in spectrumByKey) {
+        const entry = spectrumByKey[key];
+        let ring = this._visualSpectrumHistByKey.get(key);
+        if (!ring) {
+          ring = new RingBuffer(visualMaxSamples);
+          this._visualSpectrumHistByKey.set(key, ring);
+        }
+        ring.push({
+          bands: getBandsFromCenters(entry.bandCentersHz ?? this._lastSpectrumCenters),
+          dbList: snapshotNumericArray(entry.smoothDb),
+          dbListB: snapshotNumericArray(entry.smoothDbB),
+          timestampMs: row.timestampMs,
+        });
+        this._spectrogramSnapArrayByKey.set(key, ring.toArray());
+      }
+    }
+    const vectorscopeByKey = row.vectorscopeByKey;
+    if (vectorscopeByKey) {
+      for (const key in vectorscopeByKey) {
+        const entry = vectorscopeByKey[key];
+        let ring = this._visualVectorscopeHistByKey.get(key);
+        if (!ring) {
+          ring = new RingBuffer(visualMaxSamples);
+          this._visualVectorscopeHistByKey.set(key, ring);
+        }
+        ring.push({
+          pairs: snapshotNumericArray(entry.pairs),
+          correlation: Number.isFinite(entry.correlation) ? entry.correlation : -Infinity,
+          timestampMs: row.timestampMs,
+        });
+      }
+    }
   }
 
   /** Set live spectrum data to the last seeded row (used by seed finalize). */
@@ -285,11 +330,29 @@ export class FrameIntake {
   getVisualVectorscopeHist() {
     return this._visualVectorscopeHist;
   }
+  getVisualSpectrumHistByKey(key) {
+    return this._visualSpectrumHistByKey.get(key) ?? null;
+  }
+  getVisualVectorscopeHistByKey(key) {
+    return this._visualVectorscopeHistByKey.get(key) ?? null;
+  }
+  getSpectrogramSnapArrayForKey(key) {
+    return this._spectrogramSnapArrayByKey.get(key) ?? EMPTY_ARRAY;
+  }
+  /** Freeze per-key spectrum history into plain arrays for snapshot scrubbing. */
+  snapshotVisualSpectrumByKey() {
+    const out = {};
+    for (const [key, ring] of this._visualSpectrumHistByKey) out[key] = ring.toArray();
+    return out;
+  }
+  /** Freeze per-key vectorscope history into plain arrays for snapshot scrubbing. */
+  snapshotVisualVectorscopeByKey() {
+    const out = {};
+    for (const [key, ring] of this._visualVectorscopeHistByKey) out[key] = ring.toArray();
+    return out;
+  }
   getVisualCorrHist() {
     return this._visualCorrHist;
-  }
-  getSpectrogramSnapArray() {
-    return this._spectrogramSnapArray;
   }
 
   reset() {
@@ -305,6 +368,8 @@ export class FrameIntake {
     this._visualSpectrumHist.clear();
     this._visualVectorscopeHist.clear();
     this._visualCorrHist.clear();
-    this._spectrogramSnapArray = [];
+    this._visualSpectrumHistByKey = new Map();
+    this._visualVectorscopeHistByKey = new Map();
+    this._spectrogramSnapArrayByKey = new Map();
   }
 }

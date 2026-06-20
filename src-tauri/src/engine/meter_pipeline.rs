@@ -1,5 +1,6 @@
 //! PCM → meters; drives the `AudioFramePayload` emit rate.
 
+use std::collections::HashMap;
 use std::time::Instant;
 
 use crate::dsp::loudness::LoudnessBlock;
@@ -12,7 +13,11 @@ use crate::dsp::{
   VectorscopeMeter,
 };
 use crate::engine::ChannelLayoutSetting;
-use crate::ipc::types::{AudioFramePayload, MeterHistoryEntry, VisualHistEntry};
+use crate::ipc::types::{
+  AnalysisRequests, AudioFramePayload, MeterHistoryEntry, SpectrumAnalysisChannel,
+  SpectrumFrameResult, SpectrumVisualEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
+  VisualHistEntry,
+};
 
 const FRAME_EMIT_MS: u128 = 16;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
@@ -52,12 +57,67 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
   }
 }
 
+fn spectrum_result_from_meter(meter: &SpectrumMeter) -> SpectrumFrameResult {
+  let (centers, smooth, peak) = meter.last_output();
+  let (path, peak_path) = if !centers.is_empty() && smooth.len() == centers.len() {
+    let pk = if peak.len() == centers.len() {
+      peak
+    } else {
+      smooth
+    };
+    spectrum_paths_from_bands(centers, smooth, pk, true)
+  } else {
+    (String::new(), String::new())
+  };
+  let (path_b, peak_path_b, smooth_db_b): (String, String, Vec<f64>) =
+    match meter.last_output_secondary() {
+      Some((smooth_b, peak_b)) if smooth_b.len() == centers.len() && !centers.is_empty() => {
+        let pkb = if peak_b.len() == centers.len() {
+          peak_b
+        } else {
+          smooth_b
+        };
+        let (path_b, peak_path_b) = spectrum_paths_from_bands(centers, smooth_b, pkb, true);
+        (path_b, peak_path_b, smooth_b.to_vec())
+      }
+      _ => (String::new(), String::new(), Vec::new()),
+    };
+
+  SpectrumFrameResult {
+    path,
+    peak_path,
+    path_b,
+    peak_path_b,
+    band_centers_hz: centers.to_vec(),
+    smooth_db: smooth.to_vec(),
+    smooth_db_b,
+  }
+}
+
+fn spectrum_request_selection(
+  request: &crate::ipc::types::SpectrumAnalysisRequest,
+) -> (SpectrumChannelSel, SpectrumView) {
+  let channel = match &request.channel {
+    SpectrumAnalysisChannel::Pair { x, y } => SpectrumChannelSel::Pair(*x, *y),
+    SpectrumAnalysisChannel::Single { ch } => SpectrumChannelSel::Single(*ch),
+  };
+  let view = match request.view.as_str() {
+    "lr" => SpectrumView::Lr,
+    "ms" => SpectrumView::Ms,
+    _ => SpectrumView::Combined,
+  };
+  (channel, view)
+}
+
 pub struct MeterPipeline {
+  sample_rate: f64,
   channels: u16,
   loudness: LoudnessMeter,
   spectrum: SpectrumMeter,
   vectorscope: VectorscopeMeter,
-  last_spectrum_channel: SpectrumChannelSel,
+  spectrum_by_key: HashMap<String, SpectrumMeter>,
+  vectorscope_by_key: HashMap<String, VectorscopeMeter>,
+  last_spectrum_request: Option<(SpectrumChannelSel, SpectrumView)>,
   last_loudness_weights: Option<Vec<f64>>,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
@@ -94,11 +154,14 @@ impl MeterPipeline {
   pub fn new(sample_rate: u32, channels: u16) -> Self {
     let sr = sample_rate as f64;
     let pipeline = Self {
+      sample_rate: sr,
       channels,
       loudness: LoudnessMeter::new(sr),
       spectrum: SpectrumMeter::new(sr),
       vectorscope: VectorscopeMeter::new(),
-      last_spectrum_channel: SpectrumChannelSel::default(),
+      spectrum_by_key: HashMap::new(),
+      vectorscope_by_key: HashMap::new(),
+      last_spectrum_request: None,
       last_loudness_weights: None,
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
@@ -148,6 +211,12 @@ impl MeterPipeline {
     self.loudness.reset();
     self.spectrum.reset();
     self.vectorscope.reset();
+    for meter in self.spectrum_by_key.values_mut() {
+      meter.reset();
+    }
+    for meter in self.vectorscope_by_key.values_mut() {
+      meter.reset();
+    }
     self.last_loudness = None;
     self.waveform_min_acc.fill(f32::INFINITY);
     self.waveform_max_acc.fill(f32::NEG_INFINITY);
@@ -163,6 +232,7 @@ impl MeterPipeline {
   }
 
   /// Process one PCM chunk from capture. Returns the frame payload when ready to send on IPC.
+  #[allow(dead_code)]
   #[allow(clippy::too_many_arguments)]
   pub fn push_pcm_f32(
     &mut self,
@@ -174,9 +244,154 @@ impl MeterPipeline {
     loudness_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
   ) -> Option<AudioFramePayload> {
+    self.push_pcm_f32_optional(
+      interleaved,
+      Some(vectorscope_pair),
+      channel_layout,
+      Some((spectrum_channel, spectrum_view)),
+      loudness_weights,
+      dialogue_gating,
+    )
+  }
+
+  pub fn push_pcm_f32_with_requests(
+    &mut self,
+    interleaved: &[f32],
+    channel_layout: ChannelLayoutSetting,
+    analysis_requests: &AnalysisRequests,
+    loudness_weights: Option<Vec<f64>>,
+    dialogue_gating: bool,
+  ) -> Option<AudioFramePayload> {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
-    let (pair_x, pair_y) = vectorscope_pair;
+    let effective_layout = match channel_layout {
+      ChannelLayoutSetting::Auto => match ch {
+        6 => ChannelLayoutSetting::Surround51,
+        8 => ChannelLayoutSetting::Surround71,
+        _ => channel_layout,
+      },
+      other => other,
+    };
+
+    let mut spectrum_results_by_key = HashMap::new();
+    for request in &analysis_requests.spectrum {
+      let (spectrum_channel, spectrum_view) = spectrum_request_selection(request);
+      let meter = self
+        .spectrum_by_key
+        .entry(request.key.clone())
+        .or_insert_with(|| SpectrumMeter::new(self.sample_rate));
+      let ctx = PcmContext {
+        interleaved,
+        channels: ch,
+        now_sec,
+        channel_layout: effective_layout,
+        loudness_weights: loudness_weights.clone(),
+        vectorscope_pair: (0, 1),
+        spectrum_channel,
+        spectrum_view,
+        dialogue_gating,
+      };
+      meter.push_pcm(&ctx);
+      spectrum_results_by_key.insert(request.key.clone(), spectrum_result_from_meter(meter));
+    }
+
+    let mut vectorscope_results_by_key = HashMap::new();
+    for request in &analysis_requests.vectorscope {
+      let meter = self
+        .vectorscope_by_key
+        .entry(request.key.clone())
+        .or_default();
+      let ctx = PcmContext {
+        interleaved,
+        channels: ch,
+        now_sec,
+        channel_layout: effective_layout,
+        loudness_weights: loudness_weights.clone(),
+        vectorscope_pair: (request.x, request.y),
+        spectrum_channel: SpectrumChannelSel::default(),
+        spectrum_view: SpectrumView::default(),
+        dialogue_gating,
+      };
+      meter.push_pcm(&ctx);
+      let (correlation, path) = meter.get_output();
+      vectorscope_results_by_key.insert(
+        request.key.clone(),
+        VectorscopeFrameResult {
+          path,
+          correlation,
+          pair_x: request.x,
+          pair_y: request.y,
+        },
+      );
+    }
+
+    let vectorscope_pair = analysis_requests
+      .vectorscope
+      .first()
+      .map(|request| (request.x, request.y));
+    let spectrum_request = analysis_requests
+      .spectrum
+      .first()
+      .map(spectrum_request_selection);
+    let mut frame = self.push_pcm_f32_optional(
+      interleaved,
+      vectorscope_pair,
+      channel_layout,
+      spectrum_request,
+      loudness_weights,
+      dialogue_gating,
+    )?;
+    frame.spectrum_results_by_key = spectrum_results_by_key;
+    frame.vectorscope_results_by_key = vectorscope_results_by_key;
+
+    // When this frame carries a visual history tick, attach per-request-key samples so the
+    // frontend can keep request-keyed snapshot history. Only active request keys are emitted;
+    // retention of inactive keys is the frontend's responsibility (it never deletes a key ring
+    // until Clear).
+    if let Some(entry) = frame.visual_hist_tick.as_mut() {
+      for request in &analysis_requests.spectrum {
+        if let Some(meter) = self.spectrum_by_key.get(&request.key) {
+          let (centers, smooth, _peak) = meter.last_output();
+          let smooth_db_b = meter
+            .last_output_secondary()
+            .map(|(smooth_b, _)| smooth_b.to_vec())
+            .unwrap_or_default();
+          entry.spectrum_by_key.insert(
+            request.key.clone(),
+            SpectrumVisualEntry {
+              band_centers_hz: centers.to_vec(),
+              smooth_db: smooth.to_vec(),
+              smooth_db_b,
+            },
+          );
+        }
+      }
+      for request in &analysis_requests.vectorscope {
+        if let Some(meter) = self.vectorscope_by_key.get_mut(&request.key) {
+          let (correlation, pairs) = meter.get_history_pairs(VS_HISTORY_POINTS);
+          entry.vectorscope_by_key.insert(
+            request.key.clone(),
+            VectorscopeVisualEntry { pairs, correlation },
+          );
+        }
+      }
+    }
+
+    Some(frame)
+  }
+
+  fn push_pcm_f32_optional(
+    &mut self,
+    interleaved: &[f32],
+    vectorscope_pair: Option<(u16, u16)>,
+    channel_layout: ChannelLayoutSetting,
+    spectrum_request: Option<(SpectrumChannelSel, SpectrumView)>,
+    loudness_weights: Option<Vec<f64>>,
+    dialogue_gating: bool,
+  ) -> Option<AudioFramePayload> {
+    let now_sec = self.t0.elapsed().as_secs_f64();
+    let ch = self.channels.max(1);
+    let (pair_x, pair_y) = vectorscope_pair.unwrap_or((0, 1));
 
     if dialogue_gating != self.last_dialogue_gating {
       self.loudness.reset_dialogue();
@@ -212,9 +427,9 @@ impl MeterPipeline {
       loudness_layout_meta(ch, effective_layout)
     };
 
-    if spectrum_channel != self.last_spectrum_channel {
+    if spectrum_request != self.last_spectrum_request {
       self.spectrum.reset();
-      self.last_spectrum_channel = spectrum_channel;
+      self.last_spectrum_request = spectrum_request;
     }
 
     // --- PCM intake: uniform push through Meter trait ---
@@ -224,14 +439,22 @@ impl MeterPipeline {
       now_sec,
       channel_layout: effective_layout,
       loudness_weights,
-      vectorscope_pair,
-      spectrum_channel,
-      spectrum_view,
+      vectorscope_pair: (pair_x, pair_y),
+      spectrum_channel: spectrum_request
+        .map(|request| request.0)
+        .unwrap_or_default(),
+      spectrum_view: spectrum_request
+        .map(|request| request.1)
+        .unwrap_or_default(),
       dialogue_gating,
     };
     self.loudness.push_pcm(&ctx);
-    self.spectrum.push_pcm(&ctx);
-    self.vectorscope.push_pcm(&ctx);
+    if spectrum_request.is_some() {
+      self.spectrum.push_pcm(&ctx);
+    }
+    if vectorscope_pair.is_some() {
+      self.vectorscope.push_pcm(&ctx);
+    }
 
     // --- Apply loudness block if a new one arrived ---
     if let Some(lb) = self.loudness.take_block() {
@@ -330,9 +553,18 @@ impl MeterPipeline {
       ),
     };
 
-    let (corr, vpath) = self.vectorscope.get_output();
+    let (corr, vpath) = if vectorscope_pair.is_some() {
+      self.vectorscope.get_output()
+    } else {
+      (0.0, String::new())
+    };
 
-    let (centers, smooth, peak) = self.spectrum.last_output();
+    let empty_f64: &[f64] = &[];
+    let (centers, smooth, peak) = if spectrum_request.is_some() {
+      self.spectrum.last_output()
+    } else {
+      (empty_f64, empty_f64, empty_f64)
+    };
     let (spath, spk) = if !centers.is_empty() && smooth.len() == centers.len() {
       let pk = if peak.len() == centers.len() {
         peak
@@ -451,7 +683,11 @@ impl MeterPipeline {
         self.visual_waveform_min_acc.fill(f32::INFINITY);
         self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
 
-        let (visual_corr, vs_pairs) = self.vectorscope.get_history_pairs(VS_HISTORY_POINTS);
+        let (visual_corr, vs_pairs) = if vectorscope_pair.is_some() {
+          self.vectorscope.get_history_pairs(VS_HISTORY_POINTS)
+        } else {
+          (0.0, Vec::new())
+        };
 
         Some(VisualHistEntry {
           timestamp_ms: self.t0.elapsed().as_millis() as u64,
@@ -461,6 +697,8 @@ impl MeterPipeline {
           spectrum_smooth_db_b: smooth_b_vec.clone(),
           vectorscope_pairs: vs_pairs,
           correlation: visual_corr,
+          spectrum_by_key: HashMap::new(),
+          vectorscope_by_key: HashMap::new(),
         })
       } else {
         None
@@ -492,6 +730,8 @@ impl MeterPipeline {
       spectrum_path_b: spath_b,
       spectrum_peak_path_b: spk_b,
       spectrum_smooth_db_b: smooth_b_vec,
+      spectrum_results_by_key: HashMap::new(),
+      vectorscope_results_by_key: HashMap::new(),
       loudness_layout,
       loudness_layout_known,
       timestamp_ms: self.t0.elapsed().as_millis() as u64,
@@ -601,6 +841,176 @@ mod tests {
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
     assert_eq!(p.vectorscope.vs_l.back().copied().unwrap_or_default(), 1.3);
     assert_eq!(p.vectorscope.vs_r.back().copied().unwrap_or_default(), 1.1);
+  }
+
+  #[test]
+  fn empty_analysis_requests_skip_optional_spectrum_and_vectorscope_work() {
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let frames = sr as usize / 10;
+    let pcm: Vec<f32> = (0..frames)
+      .flat_map(|i| {
+        let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr as f64).sin() as f32;
+        [s, s]
+      })
+      .collect();
+
+    let frame = pipeline
+      .push_pcm_f32_with_requests(
+        &pcm,
+        ChannelLayoutSetting::Auto,
+        &AnalysisRequests::default(),
+        None,
+        false,
+      )
+      .expect("100ms chunk should emit a frame");
+
+    assert!(frame.spectrum_path.is_empty());
+    assert!(frame.spectrum_smooth_db.is_empty());
+    assert!(frame.vectorscope_path.is_empty());
+    assert_eq!(frame.correlation, 0.0);
+  }
+
+  #[test]
+  fn keyed_analysis_requests_emit_multiple_live_results() {
+    use crate::ipc::types::{
+      SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
+    };
+
+    let sr = 48_000_u32;
+    let channels = 3_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let frames = 4096 * 8;
+    let pcm_a = tone_on_channel(frames, channels as usize, sr as f64, 1000.0, 0);
+    let pcm_b = tone_on_channel(frames, channels as usize, sr as f64, 500.0, 1);
+    let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
+    let requests = AnalysisRequests {
+      spectrum: vec![
+        SpectrumAnalysisRequest {
+          key: "spectrum:single:0:combined".to_string(),
+          channel: SpectrumAnalysisChannel::Single { ch: 0 },
+          view: "combined".to_string(),
+        },
+        SpectrumAnalysisRequest {
+          key: "spectrum:single:1:combined".to_string(),
+          channel: SpectrumAnalysisChannel::Single { ch: 1 },
+          view: "combined".to_string(),
+        },
+      ],
+      vectorscope: vec![
+        VectorscopeAnalysisRequest {
+          key: "vectorscope:pair:0:1".to_string(),
+          x: 0,
+          y: 1,
+        },
+        VectorscopeAnalysisRequest {
+          key: "vectorscope:pair:1:2".to_string(),
+          x: 1,
+          y: 2,
+        },
+      ],
+    };
+
+    let mut frame = None;
+    for _ in 0..4 {
+      pipeline.last_frame_emit =
+        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      frame = pipeline.push_pcm_f32_with_requests(
+        &pcm,
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+      );
+    }
+    let frame = frame.expect("frame");
+
+    assert_eq!(frame.spectrum_results_by_key.len(), 2);
+    assert_eq!(frame.vectorscope_results_by_key.len(), 2);
+    assert!(frame
+      .spectrum_results_by_key
+      .get("spectrum:single:0:combined")
+      .is_some_and(|result| !result.smooth_db.is_empty()));
+    assert!(frame
+      .spectrum_results_by_key
+      .get("spectrum:single:1:combined")
+      .is_some_and(|result| !result.smooth_db.is_empty()));
+    assert!(frame
+      .vectorscope_results_by_key
+      .get("vectorscope:pair:0:1")
+      .is_some_and(|result| !result.path.is_empty()));
+    assert!(frame
+      .vectorscope_results_by_key
+      .get("vectorscope:pair:1:2")
+      .is_some_and(|result| !result.path.is_empty()));
+  }
+
+  #[test]
+  fn keyed_analysis_requests_emit_request_keyed_visual_history() {
+    use crate::ipc::types::{
+      SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
+    };
+
+    let sr = 48_000_u32;
+    let channels = 3_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let frames = 4096 * 8;
+    let pcm_a = tone_on_channel(frames, channels as usize, sr as f64, 1000.0, 0);
+    let pcm_b = tone_on_channel(frames, channels as usize, sr as f64, 500.0, 1);
+    let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
+    let requests = AnalysisRequests {
+      spectrum: vec![
+        SpectrumAnalysisRequest {
+          key: "spectrum:single:0:combined".to_string(),
+          channel: SpectrumAnalysisChannel::Single { ch: 0 },
+          view: "combined".to_string(),
+        },
+        SpectrumAnalysisRequest {
+          key: "spectrum:single:1:combined".to_string(),
+          channel: SpectrumAnalysisChannel::Single { ch: 1 },
+          view: "combined".to_string(),
+        },
+      ],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: "vectorscope:pair:0:1".to_string(),
+        x: 0,
+        y: 1,
+      }],
+    };
+
+    let mut frame = None;
+    for _ in 0..6 {
+      pipeline.last_frame_emit =
+        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      // Force a visual tick on each push so the final frame carries a visual hist entry.
+      pipeline.last_visual_emit =
+        Instant::now() - std::time::Duration::from_millis(VISUAL_EMIT_MS as u64 + 1);
+      frame = pipeline.push_pcm_f32_with_requests(
+        &pcm,
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+      );
+    }
+    let frame = frame.expect("frame");
+    let visual = frame.visual_hist_tick.expect("visual hist tick");
+
+    assert_eq!(visual.spectrum_by_key.len(), 2);
+    assert!(visual
+      .spectrum_by_key
+      .get("spectrum:single:0:combined")
+      .is_some_and(|entry| !entry.smooth_db.is_empty()));
+    assert!(visual
+      .spectrum_by_key
+      .get("spectrum:single:1:combined")
+      .is_some_and(|entry| !entry.smooth_db.is_empty()));
+    assert_eq!(visual.vectorscope_by_key.len(), 1);
+    assert!(visual
+      .vectorscope_by_key
+      .get("vectorscope:pair:0:1")
+      .is_some_and(|entry| !entry.pairs.is_empty()));
   }
 
   #[test]
@@ -944,6 +1354,7 @@ mod tests {
       None,
       false,
     );
+    p.last_frame_emit = Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
     let frame = p.push_pcm_f32(
       &tone,
       (0, 1),

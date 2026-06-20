@@ -7,7 +7,7 @@ import { DEFAULT_PANEL_CONTROLS, LOUDNESS_STATS_ORDER } from "@/lib/panelControl
 import { AudioDataContext } from "@/workspace/AudioDataContext.jsx";
 import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
-import { WorkspaceProvider } from "@/workspace/WorkspaceContext.jsx";
+import { WorkspaceProvider, useWorkspaceStore } from "@/workspace/WorkspaceContext.jsx";
 
 vi.mock("framer-motion", () => ({
   Reorder: {
@@ -30,7 +30,55 @@ beforeEach(() => {
   }));
 });
 
+function WorkspaceStateProbe({ onState }) {
+  const { state } = useWorkspaceStore();
+  onState(state);
+  return null;
+}
+
 describe("PanelHeaderControls", () => {
+  it("renders Level Meter mode chip and updates mode", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelHeaderControls
+        activeTab="peak"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.getByLabelText("level meter mode")).toBeTruthy();
+    expect(screen.getByLabelText("level meter mode").className).toContain("focus-visible:ring-0");
+    expect(screen.getByText("Peak")).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "M" }));
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "momentary",
+    });
+  });
+
+  it("selects Short-term from the Level Meter mode chip", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelHeaderControls
+        activeTab="peak"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: "ST" }));
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "shortTerm",
+    });
+  });
+
   it("does not render channel controls below multichannel for spectrum channelCount 2", () => {
     const { container } = render(
       <PanelHeaderControls
@@ -334,7 +382,7 @@ describe("PanelHeaderControls", () => {
   });
 
   it("passes audio panel control changes through LeafView to the header controls", () => {
-    const onPanelControlsChange = vi.fn();
+    const onState = vi.fn();
 
     render(
       <WorkspaceProvider>
@@ -342,11 +390,11 @@ describe("PanelHeaderControls", () => {
           <AudioDataContext.Provider
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
-              onPanelControlsChange,
               primaryMetrics: [],
               secondaryMetrics: [],
             }}
           >
+            <WorkspaceStateProbe onState={onState} />
             <LeafView
               node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
               path={[]}
@@ -359,7 +407,8 @@ describe("PanelHeaderControls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
-    expect(onPanelControlsChange).toHaveBeenCalledWith({
+    const latestState = onState.mock.calls.at(-1)?.[0];
+    expect(latestState.panelControlsById.loudnessStats).toEqual({
       ...DEFAULT_PANEL_CONTROLS,
       loudnessStatsVisibleIds: [
         "shortTerm",
@@ -381,6 +430,7 @@ describe("PanelHeaderControls", () => {
             value={{
               compactPanels: true,
               panelControls: DEFAULT_PANEL_CONTROLS,
+              fmt: (value) => value.toFixed(1),
               primaryMetrics: [],
               secondaryMetrics: [],
             }}
@@ -398,5 +448,31 @@ describe("PanelHeaderControls", () => {
     expect(container.querySelector("[data-leaf-body]")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Fullscreen" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Hide all in panel" })).toBeNull();
+  });
+
+  it("does not render a remove button beside the panel tab title", () => {
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              fmt: (value) => value.toFixed(1),
+              primaryMetrics: [],
+              secondaryMetrics: [],
+            }}
+          >
+            <LeafView
+              node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
+              path={[]}
+            />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    expect(screen.getByText("Loudness Stats")).toBeTruthy();
+    expect(screen.queryByLabelText("Remove Loudness Stats")).toBeNull();
+    expect(screen.getByRole("button", { name: "Hide all in panel" })).toBeTruthy();
   });
 });
