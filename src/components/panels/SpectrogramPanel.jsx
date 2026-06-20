@@ -13,6 +13,7 @@ import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
 import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { getBuiltinTheme } from "../../theme/builtinThemes.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
+import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 
 const SPECTROGRAM_HELP = [
   "Left click - Select snapshot",
@@ -25,7 +26,6 @@ const SPECTROGRAM_HELP = [
 
 export function SpectrogramPanel({ compact = false }) {
   const {
-    spectrogramSnapRef: snapRef,
     frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
@@ -40,13 +40,27 @@ export function SpectrogramPanel({ compact = false }) {
     onHistoryPointerMove,
     onHistoryPointerUp,
     onHistoryWheel,
-    visualSpectrogramSnap,
     historyTimeTicks,
     resolvedThemeId,
+    panelControls,
+    getSpectrogramSnapsForKey,
+    snapshotSpectrumByKey,
   } = useAudioData();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   useCanvasSize(canvasRef, containerRef);
+
+  // Spectrograms are request-keyed: resolve this panel's key once and read both the live rolling
+  // history and the frozen snapshot history for that key only.
+  const spectrogramKey = spectrumRequestKeyFromControls(panelControls);
+  const snapRef = useMemo(
+    () => ({
+      get current() {
+        return getSpectrogramSnapsForKey?.(spectrogramKey) ?? [];
+      },
+    }),
+    [getSpectrogramSnapsForKey, spectrogramKey]
+  );
 
   const selLineSvgX = (selLineX / 600) * 1000;
 
@@ -65,7 +79,7 @@ export function SpectrogramPanel({ compact = false }) {
   }
 
   const spectrogramSnaps =
-    selectedOffset >= 0 ? (visualSpectrogramSnap ?? []) : (snapRef.current ?? []);
+    selectedOffset >= 0 ? (snapshotSpectrumByKey?.[spectrogramKey] ?? []) : (snapRef.current ?? []);
   const colormapLut = useMemo(
     () => buildSpectrogramLut(getBuiltinTheme(resolvedThemeId).colormap),
     [resolvedThemeId]

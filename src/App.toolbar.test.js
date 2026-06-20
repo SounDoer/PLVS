@@ -82,11 +82,9 @@ describe("App toolbar", () => {
     );
 
     expect(spectrumSource).toContain("spectrumRequestKeyFromControls(panelControls)");
-    expect(spectrumSource).toContain("displayAudio?.spectrumResultsByKey?.[liveSpectrumKey]");
+    expect(spectrumSource).toContain("displayAudio?.spectrumResultsByKey?.[spectrumKey]");
     expect(vectorscopeSource).toContain("vectorscopeRequestKeyFromControls(panelControls)");
-    expect(vectorscopeSource).toContain(
-      "displayAudio?.vectorscopeResultsByKey?.[liveVectorscopeKey]"
-    );
+    expect(vectorscopeSource).toContain("displayAudio?.vectorscopeResultsByKey?.[vectorscopeKey]");
   });
 
   it("writes settings state through the settingsStore", () => {

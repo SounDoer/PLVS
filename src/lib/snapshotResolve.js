@@ -30,6 +30,27 @@ export function nearestTimestampIndex(entries, targetMs) {
 }
 
 /**
+ * Resolve a request-keyed visual history index at the selected snapshot time.
+ *
+ * History belongs to request keys with no backfill: a request collects history only from the
+ * moment it became active. So a selected timestamp that predates the key's first entry means the
+ * request did not exist then — the caller should show "No data for this view at selected time".
+ *
+ * @param {object[]} entries per-key visual rows (carry timestampMs)
+ * @param {number} targetTimestampMs selected snapshot time; non-finite => latest entry
+ * @param {number} toleranceMs slack (≈ one visual sample) to absorb tick jitter at the boundary
+ * @returns {{ index: number, missing: boolean }}
+ */
+export function resolveKeyedVisualIndex(entries, targetTimestampMs, toleranceMs = 0) {
+  if (!hasTimestampEntries(entries)) return { index: -1, missing: true };
+  if (!Number.isFinite(targetTimestampMs)) return { index: entries.length - 1, missing: false };
+  if (targetTimestampMs < entries[0].timestampMs - toleranceMs) {
+    return { index: -1, missing: true };
+  }
+  return { index: nearestTimestampIndex(entries, targetTimestampMs), missing: false };
+}
+
+/**
  * @param {object} view
  * @param {number} view.selectedOffset seconds back from live; < 0 means live (no snapshot)
  * @param {number} view.sampleSec hist-rate sample period
@@ -112,6 +133,7 @@ export function resolveSnapshot(view) {
   return {
     snapIdx,
     visualSnapIdx,
+    targetTimestampMs,
     displayAudio,
     displaySpectrumData,
     correlation,

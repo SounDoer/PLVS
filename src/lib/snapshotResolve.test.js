@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveSnapshot } from "./snapshotResolve.js";
+import { resolveSnapshot, resolveKeyedVisualIndex } from "./snapshotResolve.js";
 
 /**
  * resolveSnapshot owns the two-timeline reconciliation that used to live inline in
@@ -138,5 +138,46 @@ describe("resolveSnapshot", () => {
     // steps = round(0.2 / 0.1) = 2 → snapIdx = max(0, 3 - 1 - 2) = 0
     expect(r.snapIdx).toBe(0);
     expect(r.displayAudio).toEqual({ correlation: 1 });
+  });
+
+  it("exposes the resolved target timestamp for per-key lookups", () => {
+    const r = resolveSnapshot(
+      baseView({
+        selectedOffset: 1,
+        histSourceList: [{ timestampMs: 1000 }, { timestampMs: 2000 }, { timestampMs: 3000 }],
+        audioList: [{}, {}, {}],
+        corrList: [0, 0, 0],
+        spectrumDataList: [{}, {}, {}],
+      })
+    );
+    // newest hist ts 3000 - 1s = 2000
+    expect(r.targetTimestampMs).toBe(2000);
+  });
+});
+
+describe("resolveKeyedVisualIndex", () => {
+  const entries = [{ timestampMs: 1000 }, { timestampMs: 1040 }, { timestampMs: 1080 }];
+
+  it("returns missing when the key has no history at all", () => {
+    expect(resolveKeyedVisualIndex([], 1000, 40)).toEqual({ index: -1, missing: true });
+    expect(resolveKeyedVisualIndex(undefined, 1000, 40)).toEqual({ index: -1, missing: true });
+  });
+
+  it("returns missing when the selected time predates the request's first entry", () => {
+    // Request started at 1000; selecting 900 (beyond tolerance) means it did not exist yet.
+    expect(resolveKeyedVisualIndex(entries, 900, 40)).toEqual({ index: -1, missing: true });
+  });
+
+  it("tolerates boundary jitter just before the first entry", () => {
+    // 980 is within one visual sample (40ms) of the 1000 start, so it resolves to entry 0.
+    expect(resolveKeyedVisualIndex(entries, 980, 40)).toEqual({ index: 0, missing: false });
+  });
+
+  it("picks the nearest entry to the target when within history", () => {
+    expect(resolveKeyedVisualIndex(entries, 1050, 40)).toEqual({ index: 1, missing: false });
+  });
+
+  it("returns the latest entry when the target is non-finite", () => {
+    expect(resolveKeyedVisualIndex(entries, null, 40)).toEqual({ index: 2, missing: false });
   });
 });

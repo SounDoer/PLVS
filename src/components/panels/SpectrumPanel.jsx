@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
+import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -31,21 +32,44 @@ export function SpectrumPanel({ compact = false }) {
     displaySpectrumData,
     displayAudio,
     panelControls,
+    resolveSpectrumSnapshotForKey,
   } = useAudioData();
-  const liveSpectrumKey = spectrumRequestKeyFromControls(panelControls);
-  const liveSpectrumResult =
-    selectedOffset < 0 ? displayAudio?.spectrumResultsByKey?.[liveSpectrumKey] : null;
-  const panelSpectrumPath = liveSpectrumResult?.path ?? displaySpectrumPath;
-  const panelSpectrumPeakPath = liveSpectrumResult?.peakPath ?? displaySpectrumPeakPath;
-  const panelSpectrumPathB = liveSpectrumResult?.pathB ?? displaySpectrumPathB;
-  const panelSpectrumPeakPathB = liveSpectrumResult?.peakPathB ?? displaySpectrumPeakPathB;
-  const panelSpectrumData = liveSpectrumResult
-    ? buildSpectrumDataSnapshot({
-        spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
-        spectrumSmoothDb: liveSpectrumResult.smoothDb,
-        spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
-      })
-    : displaySpectrumData;
+  const spectrumKey = spectrumRequestKeyFromControls(panelControls);
+  const isSnapshot = selectedOffset >= 0;
+  // In snapshot mode each panel reads history for its own request key; in live mode it reads the
+  // request-keyed live result.
+  const snapResolved = isSnapshot ? resolveSpectrumSnapshotForKey?.(spectrumKey) : null;
+  const snapshotMissing = snapResolved?.missing === true;
+  const liveSpectrumResult = isSnapshot ? null : displayAudio?.spectrumResultsByKey?.[spectrumKey];
+  let panelSpectrumPath;
+  let panelSpectrumPeakPath;
+  let panelSpectrumPathB;
+  let panelSpectrumPeakPathB;
+  let panelSpectrumData;
+  if (isSnapshot) {
+    panelSpectrumPath = snapResolved?.path ?? "";
+    panelSpectrumPeakPath = "";
+    panelSpectrumPathB = snapResolved?.pathB ?? "";
+    panelSpectrumPeakPathB = "";
+    panelSpectrumData = snapResolved?.data ?? null;
+  } else if (liveSpectrumResult) {
+    panelSpectrumPath = liveSpectrumResult.path;
+    panelSpectrumPeakPath = liveSpectrumResult.peakPath;
+    panelSpectrumPathB = liveSpectrumResult.pathB;
+    panelSpectrumPeakPathB = liveSpectrumResult.peakPathB;
+    panelSpectrumData = buildSpectrumDataSnapshot({
+      spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
+      spectrumSmoothDb: liveSpectrumResult.smoothDb,
+      spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
+    });
+  } else {
+    // Live but no per-key result yet: fall back to the global live curve as a pending treatment.
+    panelSpectrumPath = displaySpectrumPath;
+    panelSpectrumPeakPath = displaySpectrumPeakPath;
+    panelSpectrumPathB = displaySpectrumPathB;
+    panelSpectrumPeakPathB = displaySpectrumPeakPathB;
+    panelSpectrumData = displaySpectrumData;
+  }
   const spectrumSvgRef = useRef(null);
   const {
     hover: spectrumHover,
@@ -78,6 +102,19 @@ export function SpectrumPanel({ compact = false }) {
   const displaySpectrumAreaPathB =
     spectrumPeakHold && panelSpectrumPeakPathB ? buildSpectrumAreaPath(panelSpectrumPeakPathB) : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
+
+  if (snapshotMissing) {
+    return (
+      <div
+        className={cn(
+          PANEL_MIN_SPECTRUM,
+          "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        )}
+      >
+        <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
+      </div>
+    );
+  }
 
   return (
     <div

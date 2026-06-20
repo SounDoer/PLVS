@@ -310,22 +310,18 @@ function AppContent() {
   const rafRef = useRef(0);
   const frameRef = useRef(0);
   const intakeRef = useRef(new FrameIntake());
-  // Stable ref-compatible accessor for SpectrogramPanel (reads snapDataSnap from intake).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const spectrogramSnapRef = useMemo(
-    () => ({
-      get current() {
-        return intakeRef.current.getSpectrogramSnapArray();
-      },
-    }),
-    []
-  );
   const frequencyMarkerRef = useMemo(
     () => ({
       get current() {
         return intakeRef.current.getFrequencyChannelMarkers();
       },
     }),
+    []
+  );
+  // Live per-request-key spectrogram source: each Spectrogram panel reads the rolling history for
+  // its own request key so two spectrograms with different channel/view never share one history.
+  const getSpectrogramSnapsForKey = useCallback(
+    (key) => intakeRef.current.getSpectrogramSnapArrayForKey(key),
     []
   );
   const selectedOffsetRef = useRef(-1);
@@ -367,7 +363,9 @@ function AppContent() {
     channelMetadata,
     visualWaveformSnap,
     visualSnapIdx,
-    visualSpectrogramSnap,
+    snapshotSpectrumByKey,
+    resolveSpectrumSnapshotForKey,
+    resolveVectorscopeSnapshotForKey,
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
@@ -999,7 +997,6 @@ function AppContent() {
     spectrumPeakHold: spectrumPeakHoldUi,
     onSpectrumPeakHoldToggle,
     // Spectrogram
-    spectrogramSnapRef,
     frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
@@ -1007,7 +1004,10 @@ function AppContent() {
     histSourceList,
     visualWaveformSnap,
     visualSnapIdx,
-    visualSpectrogramSnap,
+    snapshotSpectrumByKey,
+    resolveSpectrumSnapshotForKey,
+    resolveVectorscopeSnapshotForKey,
+    getSpectrogramSnapsForKey,
     loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
     loudnessStatsOrder: normalizedPanelControls.loudnessStatsOrder,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,

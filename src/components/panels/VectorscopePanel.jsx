@@ -1,8 +1,10 @@
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
+import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
+import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 
 export function VectorscopePanel() {
   const {
@@ -17,14 +19,40 @@ export function VectorscopePanel() {
     vectorscopePairY: pairY = 1,
     displayAudio,
     panelControls,
+    resolveVectorscopeSnapshotForKey,
   } = useAudioData();
-  const liveVectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
-  const liveVectorscopeResult =
-    selectedOffset < 0 ? displayAudio?.vectorscopeResultsByKey?.[liveVectorscopeKey] : null;
-  const panelVectorPath = liveVectorscopeResult?.path ?? displayVectorPath;
-  const panelCorrelation = liveVectorscopeResult?.correlation ?? correlation;
-  const panelPairX = liveVectorscopeResult?.pairX ?? pairX;
-  const panelPairY = liveVectorscopeResult?.pairY ?? pairY;
+  const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
+  const isSnapshot = selectedOffset >= 0;
+  const snapResolved = isSnapshot ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey) : null;
+  const snapshotMissing = snapResolved?.missing === true;
+  const liveVectorscopeResult = isSnapshot
+    ? null
+    : displayAudio?.vectorscopeResultsByKey?.[vectorscopeKey];
+  // The panel's own pair (snapshot/pending fall back to its per-instance controls, not the global).
+  const controlPair = normalizePanelControls(panelControls).vectorscopePair ?? {
+    x: pairX,
+    y: pairY,
+  };
+  let panelVectorPath;
+  let panelCorrelation;
+  let panelPairX;
+  let panelPairY;
+  if (isSnapshot) {
+    panelVectorPath = snapResolved?.path ?? "";
+    panelCorrelation = snapResolved?.correlation ?? correlation;
+    panelPairX = controlPair.x;
+    panelPairY = controlPair.y;
+  } else if (liveVectorscopeResult) {
+    panelVectorPath = liveVectorscopeResult.path;
+    panelCorrelation = liveVectorscopeResult.correlation;
+    panelPairX = liveVectorscopeResult.pairX;
+    panelPairY = liveVectorscopeResult.pairY;
+  } else {
+    panelVectorPath = displayVectorPath;
+    panelCorrelation = correlation;
+    panelPairX = controlPair.x;
+    panelPairY = controlPair.y;
+  }
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
@@ -32,6 +60,18 @@ export function VectorscopePanel() {
   const py = Number.isFinite(panelPairY) ? Math.max(0, Math.floor(Number(panelPairY))) : 1;
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
+  if (snapshotMissing) {
+    return (
+      <div
+        className={cn(
+          PANEL_MIN_SPECTRUM,
+          "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        )}
+      >
+        <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
+      </div>
+    );
+  }
   return (
     <div
       className={cn(

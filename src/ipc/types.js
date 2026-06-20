@@ -56,6 +56,19 @@
  */
 
 /**
+ * @typedef {object} SpectrumVisualEntry
+ * @property {number[]} bandCentersHz
+ * @property {number[]} smoothDb
+ * @property {number[]} smoothDbB
+ */
+
+/**
+ * @typedef {object} VectorscopeVisualEntry
+ * @property {number[]} pairs
+ * @property {number} correlation
+ */
+
+/**
  * @typedef {object} VisualHistEntry
  * @property {number} timestampMs
  * @property {number[]} waveformMin
@@ -63,6 +76,8 @@
  * @property {number[]} spectrumSmoothDb
  * @property {number[]} vectorscopePairs
  * @property {number} correlation
+ * @property {Record<string, SpectrumVisualEntry>} spectrumByKey
+ * @property {Record<string, VectorscopeVisualEntry>} vectorscopeByKey
  */
 
 /**

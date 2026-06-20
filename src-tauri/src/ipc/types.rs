@@ -127,6 +127,25 @@ pub struct MeterHistoryEntry {
   pub waveform_sub_count: u32,
 }
 
+/// Per-request-key spectrum sample for one visual history tick.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpectrumVisualEntry {
+  pub band_centers_hz: Vec<f64>,
+  pub smooth_db: Vec<f64>,
+  /// Secondary smoothed per-band dB (empty unless view is lr/ms).
+  pub smooth_db_b: Vec<f64>,
+}
+
+/// Per-request-key vectorscope sample for one visual history tick.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorscopeVisualEntry {
+  /// Lissajous pairs: interleaved [x0,y0, x1,y1, …] for the subsampled points.
+  pub pairs: Vec<f32>,
+  pub correlation: f64,
+}
+
 /// Visual history snapshot at ~25 Hz, independent of loudness tick.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -144,6 +163,11 @@ pub struct VisualHistEntry {
   pub vectorscope_pairs: Vec<f32>,
   /// Pearson correlation coefficient [-1, 1].
   pub correlation: f64,
+  /// Request-keyed spectrum samples for snapshot history. Only active request keys appear in a
+  /// given tick; the frontend retains per-key history rings so inactive requests stay scrubbable.
+  pub spectrum_by_key: HashMap<String, SpectrumVisualEntry>,
+  /// Request-keyed vectorscope samples for snapshot history (same lifecycle as `spectrum_by_key`).
+  pub vectorscope_by_key: HashMap<String, VectorscopeVisualEntry>,
 }
 
 /// High-rate meter frame (~60 Hz) on Tauri Channel `audio-frame`.

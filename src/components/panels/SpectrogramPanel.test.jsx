@@ -5,13 +5,15 @@ import { render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
+import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 
 vi.mock("../../hooks/useSpectrogramCanvas", () => ({
   useSpectrogramCanvas: vi.fn(),
 }));
 
 const baseAudioData = {
-  spectrogramSnapRef: { current: [] },
+  getSpectrogramSnapsForKey: () => [],
+  snapshotSpectrumByKey: {},
   frequencyMarkerRef: { current: [] },
   effectiveOffsetSamples: 0,
   visibleSamples: 0,
@@ -26,7 +28,6 @@ const baseAudioData = {
   onHistoryPointerMove: vi.fn(),
   onHistoryPointerUp: vi.fn(),
   onHistoryWheel: vi.fn(),
-  visualSpectrogramSnap: [],
   historyTimeTicks: ["0s", "15s", "30s", "45s", "60s"],
   resolvedThemeId: "plvs-dark",
 };
@@ -76,5 +77,31 @@ describe("SpectrogramPanel", () => {
     expect(darkLut).toBeInstanceOf(Uint8Array);
     expect(lightLut).toBeInstanceOf(Uint8Array);
     expect(Array.from(lightLut.slice(0, 3))).not.toEqual(Array.from(darkLut.slice(0, 3)));
+  });
+
+  it("feeds the canvas only its own request key's frozen snapshot history", () => {
+    const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
+    const key = spectrumRequestKeyFromControls(panelControls);
+    const mine = [{ dbList: [-10], timestampMs: 1 }];
+    renderPanel({
+      selectedOffset: 2,
+      panelControls,
+      snapshotSpectrumByKey: {
+        [key]: mine,
+        "spectrum:single:9:combined": [{ dbList: [-99], timestampMs: 1 }],
+      },
+    });
+
+    const frozen = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].frozenSnaps;
+    expect(frozen).toBe(mine);
+  });
+
+  it("reads its own request key's live rolling history in live mode", () => {
+    const panelControls = { spectrumChannel: { type: "single", ch: 2 } };
+    const key = spectrumRequestKeyFromControls(panelControls);
+    const getSpectrogramSnapsForKey = vi.fn(() => []);
+    renderPanel({ selectedOffset: -1, panelControls, getSpectrogramSnapsForKey });
+
+    expect(getSpectrogramSnapsForKey).toHaveBeenCalledWith(key);
   });
 });

@@ -15,7 +15,8 @@ use crate::dsp::{
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, MeterHistoryEntry, SpectrumAnalysisChannel,
-  SpectrumFrameResult, VectorscopeFrameResult, VisualHistEntry,
+  SpectrumFrameResult, SpectrumVisualEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
+  VisualHistEntry,
 };
 
 const FRAME_EMIT_MS: u128 = 16;
@@ -299,7 +300,7 @@ impl MeterPipeline {
       let meter = self
         .vectorscope_by_key
         .entry(request.key.clone())
-        .or_insert_with(VectorscopeMeter::new);
+        .or_default();
       let ctx = PcmContext {
         interleaved,
         channels: ch,
@@ -342,6 +343,40 @@ impl MeterPipeline {
     )?;
     frame.spectrum_results_by_key = spectrum_results_by_key;
     frame.vectorscope_results_by_key = vectorscope_results_by_key;
+
+    // When this frame carries a visual history tick, attach per-request-key samples so the
+    // frontend can keep request-keyed snapshot history. Only active request keys are emitted;
+    // retention of inactive keys is the frontend's responsibility (it never deletes a key ring
+    // until Clear).
+    if let Some(entry) = frame.visual_hist_tick.as_mut() {
+      for request in &analysis_requests.spectrum {
+        if let Some(meter) = self.spectrum_by_key.get(&request.key) {
+          let (centers, smooth, _peak) = meter.last_output();
+          let smooth_db_b = meter
+            .last_output_secondary()
+            .map(|(smooth_b, _)| smooth_b.to_vec())
+            .unwrap_or_default();
+          entry.spectrum_by_key.insert(
+            request.key.clone(),
+            SpectrumVisualEntry {
+              band_centers_hz: centers.to_vec(),
+              smooth_db: smooth.to_vec(),
+              smooth_db_b,
+            },
+          );
+        }
+      }
+      for request in &analysis_requests.vectorscope {
+        if let Some(meter) = self.vectorscope_by_key.get_mut(&request.key) {
+          let (correlation, pairs) = meter.get_history_pairs(VS_HISTORY_POINTS);
+          entry.vectorscope_by_key.insert(
+            request.key.clone(),
+            VectorscopeVisualEntry { pairs, correlation },
+          );
+        }
+      }
+    }
+
     Some(frame)
   }
 
@@ -662,6 +697,8 @@ impl MeterPipeline {
           spectrum_smooth_db_b: smooth_b_vec.clone(),
           vectorscope_pairs: vs_pairs,
           correlation: visual_corr,
+          spectrum_by_key: HashMap::new(),
+          vectorscope_by_key: HashMap::new(),
         })
       } else {
         None
@@ -907,6 +944,73 @@ mod tests {
       .vectorscope_results_by_key
       .get("vectorscope:pair:1:2")
       .is_some_and(|result| !result.path.is_empty()));
+  }
+
+  #[test]
+  fn keyed_analysis_requests_emit_request_keyed_visual_history() {
+    use crate::ipc::types::{
+      SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
+    };
+
+    let sr = 48_000_u32;
+    let channels = 3_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let frames = 4096 * 8;
+    let pcm_a = tone_on_channel(frames, channels as usize, sr as f64, 1000.0, 0);
+    let pcm_b = tone_on_channel(frames, channels as usize, sr as f64, 500.0, 1);
+    let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
+    let requests = AnalysisRequests {
+      spectrum: vec![
+        SpectrumAnalysisRequest {
+          key: "spectrum:single:0:combined".to_string(),
+          channel: SpectrumAnalysisChannel::Single { ch: 0 },
+          view: "combined".to_string(),
+        },
+        SpectrumAnalysisRequest {
+          key: "spectrum:single:1:combined".to_string(),
+          channel: SpectrumAnalysisChannel::Single { ch: 1 },
+          view: "combined".to_string(),
+        },
+      ],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: "vectorscope:pair:0:1".to_string(),
+        x: 0,
+        y: 1,
+      }],
+    };
+
+    let mut frame = None;
+    for _ in 0..6 {
+      pipeline.last_frame_emit =
+        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      // Force a visual tick on each push so the final frame carries a visual hist entry.
+      pipeline.last_visual_emit =
+        Instant::now() - std::time::Duration::from_millis(VISUAL_EMIT_MS as u64 + 1);
+      frame = pipeline.push_pcm_f32_with_requests(
+        &pcm,
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+      );
+    }
+    let frame = frame.expect("frame");
+    let visual = frame.visual_hist_tick.expect("visual hist tick");
+
+    assert_eq!(visual.spectrum_by_key.len(), 2);
+    assert!(visual
+      .spectrum_by_key
+      .get("spectrum:single:0:combined")
+      .is_some_and(|entry| !entry.smooth_db.is_empty()));
+    assert!(visual
+      .spectrum_by_key
+      .get("spectrum:single:1:combined")
+      .is_some_and(|entry| !entry.smooth_db.is_empty()));
+    assert_eq!(visual.vectorscope_by_key.len(), 1);
+    assert!(visual
+      .vectorscope_by_key
+      .get("vectorscope:pair:0:1")
+      .is_some_and(|entry| !entry.pairs.is_empty()));
   }
 
   #[test]
