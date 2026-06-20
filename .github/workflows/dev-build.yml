@@ -60,8 +60,13 @@ jobs:
 
       - name: Remove previous dev pre-release
         shell: pwsh
-        continue-on-error: true
-        run: gh release delete dev --yes --cleanup-tag
+        # Deleting an absent release exits 1, which surfaces a misleading
+        # "exit code 1" annotation on an otherwise green run. Swallow it: a
+        # missing previous release is the normal first-build / post-failure
+        # case, not an error.
+        run: |
+          gh release delete dev --yes --cleanup-tag 2>$null
+          exit 0
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

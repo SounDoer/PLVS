@@ -77,10 +77,11 @@ log:
 gh run view <run-id> --json conclusion -q .conclusion   # want: success
 ```
 
-`gh run watch` may print a scary `Process completed with exit code 1`
-annotation that is just GitHub's Node-version deprecation warning on the
-actions — it does not fail the build. The `conclusion` field is the source of
-truth.
+The `conclusion` field is the source of truth. `gh run watch` can print a
+scary `Process completed with exit code 1` annotation on a run that still
+concludes `success` — it comes from the lenient "remove previous release"
+cleanup step exiting non-zero when there is no prior `dev` release to delete
+(first build, or right after a failed one). It does not mean the build failed.
 
 ### 4. Hand back the download link
 
