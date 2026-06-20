@@ -41,6 +41,7 @@ export function buildThemeTokens(theme) {
     "--ui-spectrum-secondary": accentSecondary,
     "--ui-spectrum-secondary-snap": snap(accentSecondary),
     "--ui-waveform-trace": accent,
+    "--ui-waveform-trace-snap": accentSnap,
     "--ui-signal-peak-sample": accent,
     "--ui-signal-tp-max": signal.bad,
     "--ui-signal-bad": signal.bad,

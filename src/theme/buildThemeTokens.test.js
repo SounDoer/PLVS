@@ -41,6 +41,7 @@ describe("buildThemeTokens", () => {
       "--ui-spectrum-secondary",
       "--ui-spectrum-secondary-snap",
       "--ui-waveform-trace",
+      "--ui-waveform-trace-snap",
       "--ui-signal-peak-sample",
       "--ui-signal-tp-max",
       "--ui-signal-bad",
@@ -69,6 +70,7 @@ describe("buildThemeTokens", () => {
     expect(t["--ui-vectorscope-trace-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
     expect(t["--ui-spectrum-primary-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
     expect(t["--ui-loudness-selection"]).toBe(t["--ui-loudness-momentary-snap"]);
+    expect(t["--ui-waveform-trace-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
   });
 
   it("maps signal seed straight onto meter and tp-max", () => {
