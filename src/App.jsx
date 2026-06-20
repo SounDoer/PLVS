@@ -67,9 +67,6 @@ import {
   setAnalysisRequests,
   setLoudnessWeights,
   setDialogueGating,
-  setVectorscopePair,
-  setSpectrumChannel,
-  setSpectrumView,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
@@ -332,10 +329,6 @@ function AppContent() {
     []
   );
   const selectedOffsetRef = useRef(-1);
-  const vectorscopePairRef = useRef(vectorscopePairUi);
-  const spectrumChannelRef = useRef(spectrumChannelUi);
-  const lastSentVectorscopePairKeyRef = useRef("");
-  const lastSentSpectrumChannelKeyRef = useRef("");
   const lastSentAnalysisRequestsKeyRef = useRef("");
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
@@ -355,20 +348,6 @@ function AppContent() {
     // an unchanged value would still churn workspace state (and persist) on every frame.
     if (JSON.stringify(next) === JSON.stringify(current)) return;
     setWorkspacePanelControlsRef.current(next);
-  }, []);
-  const sendTrackedVectorscopePair = useCallback((pair) => {
-    const key = `${pair.x}-${pair.y}`;
-    lastSentVectorscopePairKeyRef.current = key;
-    return setVectorscopePair({ x: pair.x, y: pair.y }).catch(() => {
-      if (lastSentVectorscopePairKeyRef.current === key) lastSentVectorscopePairKeyRef.current = "";
-    });
-  }, []);
-  const sendTrackedSpectrumChannel = useCallback((sel) => {
-    const key = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
-    lastSentSpectrumChannelKeyRef.current = key;
-    return setSpectrumChannel(sel).catch(() => {
-      if (lastSentSpectrumChannelKeyRef.current === key) lastSentSpectrumChannelKeyRef.current = "";
-    });
   }, []);
   const sendTrackedLoudnessWeights = useCallback((weights) => {
     return setLoudnessWeights(weights).catch(() => {});
@@ -672,34 +651,14 @@ function AppContent() {
   );
 
   useEffect(() => {
-    if (!running || !isTauri()) return;
-    const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, peakLabelContext);
-    if (next.x !== vectorscopePairUi.x || next.y !== vectorscopePairUi.y) return;
-    const key = `${vectorscopePairUi.x}-${vectorscopePairUi.y}`;
-    if (lastSentVectorscopePairKeyRef.current === key) return;
-    void sendTrackedVectorscopePair(vectorscopePairUi);
-  }, [
-    channelCount,
-    running,
-    sendTrackedVectorscopePair,
-    peakLabelContext,
-    vectorscopePairUi,
-    vectorscopePairUi.x,
-    vectorscopePairUi.y,
-  ]);
-
-  useEffect(() => {
     const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, peakLabelContext);
     if (next.x === vectorscopePairUi.x && next.y === vectorscopePairUi.y) return;
     updatePanelControls((current) => ({ ...current, vectorscopePair: next }));
-    if (isTauri() && running) void sendTrackedVectorscopePair(next);
   }, [
     channelCount,
-    sendTrackedVectorscopePair,
     peakLabelContext,
     vectorscopePairUi.x,
     vectorscopePairUi.y,
-    running,
     updatePanelControls,
   ]);
 
@@ -712,33 +671,9 @@ function AppContent() {
     const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
     if (curKey === nxtKey) return;
     updatePanelControls((current) => ({ ...current, spectrumChannel: next }));
-    if (isTauri() && running) void sendTrackedSpectrumChannel(next);
-  }, [
-    spectrumChannelUi,
-    spectrumChannelOptions,
-    running,
-    sendTrackedSpectrumChannel,
-    updatePanelControls,
-  ]);
+  }, [spectrumChannelUi, spectrumChannelOptions, updatePanelControls]);
 
-  useEffect(() => {
-    if (!running || !isTauri()) return;
-    const next = clampSpectrumChannelToAvailable(spectrumChannelUi, spectrumChannelOptions);
-    const curKey =
-      spectrumChannelUi.type === "pair"
-        ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
-        : `s-${spectrumChannelUi.ch}`;
-    const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
-    if (curKey !== nxtKey || lastSentSpectrumChannelKeyRef.current === curKey) return;
-    void sendTrackedSpectrumChannel(spectrumChannelUi);
-  }, [running, sendTrackedSpectrumChannel, spectrumChannelOptions, spectrumChannelUi]);
-
-  useEffect(() => {
-    if (!running || !isTauri()) return;
-    void setSpectrumView(spectrumViewUi);
-  }, [running, spectrumViewUi]);
-
-  const onVectorscopePairChange = async (pair) => {
+  const onVectorscopePairChange = (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({
       x: pair.x,
       y: pair.y,
@@ -750,17 +685,9 @@ function AppContent() {
     });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     updatePanelControls((current) => ({ ...current, vectorscopePair: pair }));
-    if (!isTauri()) return;
-    try {
-      if (running) {
-        await sendTrackedVectorscopePair(pair);
-      } else {
-        await setVectorscopePair({ x: pair.x, y: pair.y });
-      }
-    } catch (_) {}
   };
 
-  const onSpectrumChannelChange = async (sel) => {
+  const onSpectrumChannelChange = (sel) => {
     const prevLabel = spectrumLiveLabel;
     const nextKey = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
     const nextLabel = spectrumChannelOptions.find((o) => o.key === nextKey)?.label ?? prevLabel;
@@ -770,40 +697,19 @@ function AppContent() {
     });
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     updatePanelControls((current) => ({ ...current, spectrumChannel: sel }));
-    spectrumChannelRef.current = sel;
     if (running && prevLabel !== nextLabel) {
       intakeRef.current.setPendingFrequencyMarker({ from: prevLabel, to: nextLabel });
     }
-    if (!isTauri()) return;
-    try {
-      if (running) {
-        await sendTrackedSpectrumChannel(sel);
-      } else {
-        await setSpectrumChannel(sel);
-      }
-    } catch (_) {}
   };
 
-  const onSpectrumViewChange = async (view) => {
+  const onSpectrumViewChange = (view) => {
     if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
     updatePanelControls((current) => ({ ...current, spectrumView: view }));
-    if (!isTauri()) return;
-    try {
-      if (running) await setSpectrumView(view);
-    } catch (_) {}
   };
 
   const onSpectrumPeakHoldToggle = () => {
     updatePanelControls((current) => ({ ...current, spectrumPeakHold: !spectrumPeakHoldUi }));
   };
-
-  useEffect(() => {
-    vectorscopePairRef.current = vectorscopePairUi;
-  }, [vectorscopePairUi]);
-
-  useEffect(() => {
-    spectrumChannelRef.current = spectrumChannelUi;
-  }, [spectrumChannelUi]);
 
   const {
     showHistoryHud,
@@ -1005,8 +911,6 @@ function AppContent() {
     frameRef,
     intake: intakeRef.current,
     selectedOffsetRef,
-    vectorscopePairRef,
-    spectrumChannelRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     setAudio,

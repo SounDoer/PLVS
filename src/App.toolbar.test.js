@@ -57,16 +57,13 @@ describe("App toolbar", () => {
   it("does not sync live vectorscope selection from snapshot display audio", () => {
     expect(appSource).not.toContain("const x = Number.isFinite(displayAudio?.vectorscopePairX)");
     expect(appSource).not.toContain("displayAudio?.vectorscopePairY,");
-    expect(appSource).not.toContain(
-      "vectorscopePairUi.x,\n    vectorscopePairUi.y,\n    updatePanelControls,"
-    );
   });
 
-  it("syncs restored channel controls to the backend while running", () => {
-    expect(appSource).toContain('const lastSentVectorscopePairKeyRef = useRef("");');
-    expect(appSource).toContain('const lastSentSpectrumChannelKeyRef = useRef("");');
-    expect(appSource).toContain("void sendTrackedVectorscopePair(vectorscopePairUi);");
-    expect(appSource).toContain("void sendTrackedSpectrumChannel(spectrumChannelUi);");
+  it("syncs restored analysis controls through the aggregate request set", () => {
+    expect(appSource).toContain("deriveAnalysisRequests(workspaceState)");
+    expect(appSource).toContain("setAnalysisRequests(analysisRequests)");
+    expect(appSource).not.toContain("sendTrackedVectorscopePair");
+    expect(appSource).not.toContain("sendTrackedSpectrumChannel");
   });
 
   it("does not keep a frame-to-controls pending vectorscope guard in per-instance mode", () => {

@@ -12,8 +12,6 @@ vi.mock("../ipc/commands.js", () => ({
   previewAudioDevice: vi.fn(),
   startAudioCapture: vi.fn(),
   stopAudioCapture: vi.fn(),
-  setVectorscopePair: vi.fn(),
-  setSpectrumChannel: vi.fn(),
   setLoudnessWeights: vi.fn(),
   setDialogueGating: vi.fn(),
 }));
@@ -31,8 +29,6 @@ function useHarness(props) {
   const rafRef = useRef(0);
   const frameRef = useRef(0);
   const selectedOffsetRef = useRef(-1);
-  const vectorscopePairRef = useRef({ x: 0, y: 1 });
-  const spectrumChannelRef = useRef({ type: "pair", x: 0, y: 1 });
   const loudnessWeightsRef = useRef(null);
   const dialogueGatingRef = useRef(false);
 
@@ -46,8 +42,6 @@ function useHarness(props) {
     rafRef,
     frameRef,
     selectedOffsetRef,
-    vectorscopePairRef,
-    spectrumChannelRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     ...props,
