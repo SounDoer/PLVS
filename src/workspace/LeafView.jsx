@@ -90,6 +90,7 @@ export function LeafView({ node, path, style }) {
           ...audioData,
           panelControls,
           onPanelControlsChange,
+          analysisStatus: audioData.analysisStatusByPanelId?.[activeTab],
         }
       : audioData;
   const zoneHint = getZoneHint(hoverDrop, path);

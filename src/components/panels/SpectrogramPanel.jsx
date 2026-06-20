@@ -14,6 +14,7 @@ import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { getBuiltinTheme } from "../../theme/builtinThemes.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
+import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptyState.jsx";
 
 const SPECTROGRAM_HELP = [
   "Left click - Select snapshot",
@@ -45,7 +46,9 @@ export function SpectrogramPanel({ compact = false }) {
     panelControls,
     getSpectrogramSnapsForKey,
     snapshotSpectrumByKey,
+    analysisStatus,
   } = useAudioData();
+  const isOverCap = analysisStatus === "overCap";
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   useCanvasSize(canvasRef, containerRef);
@@ -121,6 +124,19 @@ export function SpectrogramPanel({ compact = false }) {
         )
       : null
   );
+
+  if (isOverCap) {
+    return (
+      <div
+        className={cn(
+          PANEL_MIN_SPECTROGRAM,
+          "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        )}
+      >
+        <SnapshotEmptyState message={ANALYSIS_OVER_CAP_MESSAGE} />
+      </div>
+    );
+  }
 
   return (
     <div

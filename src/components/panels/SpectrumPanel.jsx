@@ -2,7 +2,11 @@ import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
-import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
+import {
+  SnapshotEmptyState,
+  SNAPSHOT_NO_DATA_MESSAGE,
+  ANALYSIS_OVER_CAP_MESSAGE,
+} from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -33,8 +37,10 @@ export function SpectrumPanel({ compact = false }) {
     displayAudio,
     panelControls,
     resolveSpectrumSnapshotForKey,
+    analysisStatus,
   } = useAudioData();
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
+  const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
   // In snapshot mode each panel reads history for its own request key; in live mode it reads the
   // request-keyed live result.
@@ -103,7 +109,7 @@ export function SpectrumPanel({ compact = false }) {
     spectrumPeakHold && panelSpectrumPeakPathB ? buildSpectrumAreaPath(panelSpectrumPeakPathB) : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
 
-  if (snapshotMissing) {
+  if (isOverCap || snapshotMissing) {
     return (
       <div
         className={cn(
@@ -111,7 +117,9 @@ export function SpectrumPanel({ compact = false }) {
           "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
         )}
       >
-        <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
+        <SnapshotEmptyState
+          message={isOverCap ? ANALYSIS_OVER_CAP_MESSAGE : SNAPSHOT_NO_DATA_MESSAGE}
+        />
       </div>
     );
   }

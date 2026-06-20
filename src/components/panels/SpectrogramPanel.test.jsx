@@ -96,6 +96,13 @@ describe("SpectrogramPanel", () => {
     expect(frozen).toBe(mine);
   });
 
+  it("shows the over-cap empty state instead of the canvas when over the active cap", () => {
+    const { container } = renderPanel({ analysisStatus: "overCap" });
+
+    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
+    expect(container.querySelector("canvas")).toBeNull();
+  });
+
   it("reads its own request key's live rolling history in live mode", () => {
     const panelControls = { spectrumChannel: { type: "single", ch: 2 } };
     const key = spectrumRequestKeyFromControls(panelControls);

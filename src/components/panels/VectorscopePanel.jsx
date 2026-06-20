@@ -4,7 +4,11 @@ import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
-import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
+import {
+  SnapshotEmptyState,
+  SNAPSHOT_NO_DATA_MESSAGE,
+  ANALYSIS_OVER_CAP_MESSAGE,
+} from "./SnapshotEmptyState.jsx";
 
 export function VectorscopePanel() {
   const {
@@ -20,8 +24,10 @@ export function VectorscopePanel() {
     displayAudio,
     panelControls,
     resolveVectorscopeSnapshotForKey,
+    analysisStatus,
   } = useAudioData();
   const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
+  const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
   const snapResolved = isSnapshot ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey) : null;
   const snapshotMissing = snapResolved?.missing === true;
@@ -60,7 +66,7 @@ export function VectorscopePanel() {
   const py = Number.isFinite(panelPairY) ? Math.max(0, Math.floor(Number(panelPairY))) : 1;
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
-  if (snapshotMissing) {
+  if (isOverCap || snapshotMissing) {
     return (
       <div
         className={cn(
@@ -68,7 +74,9 @@ export function VectorscopePanel() {
           "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
         )}
       >
-        <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
+        <SnapshotEmptyState
+          message={isOverCap ? ANALYSIS_OVER_CAP_MESSAGE : SNAPSHOT_NO_DATA_MESSAGE}
+        />
       </div>
     );
   }

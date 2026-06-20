@@ -112,6 +112,17 @@ describe("SpectrumPanel", () => {
     expect(screen.getByText("No data for this view at selected time")).toBeTruthy();
   });
 
+  it("shows the over-cap empty state when its request is over the active cap", () => {
+    renderPanel({
+      selectedOffset: -1,
+      analysisStatus: "overCap",
+    });
+
+    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
+    // Over-cap is distinct from the snapshot no-data state.
+    expect(screen.queryByText("No data for this view at selected time")).toBeNull();
+  });
+
   it("renders its own request key's snapshot curve in snapshot mode", () => {
     const path = "M 0 100 L 1000 60";
     const { container } = renderPanel({

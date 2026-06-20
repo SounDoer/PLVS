@@ -23,6 +23,12 @@ describe("VectorscopePanel", () => {
     expect(screen.getByText("No data for this view at selected time")).toBeTruthy();
   });
 
+  it("shows the over-cap empty state when its request is over the active cap", () => {
+    renderPanel({ selectedOffset: -1, analysisStatus: "overCap" });
+
+    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
+  });
+
   it("renders its own request key's snapshot trace in snapshot mode", () => {
     const path = "M 10 10 L 250 250";
     const { container } = renderPanel({

@@ -254,10 +254,15 @@ function AppContent() {
       firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
     );
   }, [workspaceState]);
-  const analysisRequests = useMemo(
-    () => toBackendAnalysisRequests(deriveAnalysisRequests(workspaceState)),
+  const derivedAnalysisRequests = useMemo(
+    () => deriveAnalysisRequests(workspaceState),
     [workspaceState]
   );
+  const analysisRequests = useMemo(
+    () => toBackendAnalysisRequests(derivedAnalysisRequests),
+    [derivedAnalysisRequests]
+  );
+  const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
@@ -1008,6 +1013,7 @@ function AppContent() {
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
     getSpectrogramSnapsForKey,
+    analysisStatusByPanelId,
     loudnessStatsVisibleIds: normalizedPanelControls.loudnessStatsVisibleIds,
     loudnessStatsOrder: normalizedPanelControls.loudnessStatsOrder,
     loudnessHistoryVisibleLayerIds: normalizedPanelControls.loudnessHistoryVisibleLayerIds,
