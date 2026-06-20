@@ -11,9 +11,13 @@ use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AudioDevicePreview, AudioFramePayload, EngineStateChanged, FrameSubscribers,
+  AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged, FrameSubscribers,
+  SpectrumAnalysisChannel,
 };
 use crate::state::AppState;
+
+const MAX_SPECTRUM_ANALYSIS_REQUESTS: usize = 4;
+const MAX_VECTORSCOPE_ANALYSIS_REQUESTS: usize = 4;
 
 #[tauri::command]
 pub fn list_audio_devices() -> Result<Vec<DeviceInfo>, String> {
@@ -183,6 +187,79 @@ pub fn parse_spectrum_view(s: &str) -> Result<crate::dsp::SpectrumView, String> 
   }
 }
 
+fn expected_spectrum_request_key(
+  channel: &SpectrumAnalysisChannel,
+  view: &str,
+) -> Result<String, String> {
+  parse_spectrum_view(view)?;
+  Ok(match channel {
+    SpectrumAnalysisChannel::Pair { x, y } => format!("spectrum:pair:{x}:{y}:{view}"),
+    SpectrumAnalysisChannel::Single { ch } => format!("spectrum:single:{ch}:combined"),
+  })
+}
+
+fn validate_analysis_request_key(key: &str, label: &str) -> Result<(), String> {
+  if key.is_empty() {
+    return Err(format!("{label} request key cannot be empty"));
+  }
+  if key.len() > 128 {
+    return Err(format!("{label} request key cannot exceed 128 bytes"));
+  }
+  Ok(())
+}
+
+fn validate_analysis_requests(requests: &AnalysisRequests) -> Result<(), String> {
+  if requests.spectrum.len() > MAX_SPECTRUM_ANALYSIS_REQUESTS {
+    return Err(format!(
+      "spectrum request count cannot exceed {MAX_SPECTRUM_ANALYSIS_REQUESTS}"
+    ));
+  }
+  if requests.vectorscope.len() > MAX_VECTORSCOPE_ANALYSIS_REQUESTS {
+    return Err(format!(
+      "vectorscope request count cannot exceed {MAX_VECTORSCOPE_ANALYSIS_REQUESTS}"
+    ));
+  }
+
+  for request in &requests.spectrum {
+    validate_analysis_request_key(&request.key, "spectrum")?;
+    let expected = expected_spectrum_request_key(&request.channel, &request.view)?;
+    if request.key != expected {
+      return Err(format!(
+        "spectrum request key mismatch: expected {expected}, got {}",
+        request.key
+      ));
+    }
+  }
+
+  for request in &requests.vectorscope {
+    validate_analysis_request_key(&request.key, "vectorscope")?;
+    let expected = format!("vectorscope:pair:{}:{}", request.x, request.y);
+    if request.key != expected {
+      return Err(format!(
+        "vectorscope request key mismatch: expected {expected}, got {}",
+        request.key
+      ));
+    }
+  }
+  Ok(())
+}
+
+/// Store the active per-instance analysis request set requested by the workspace UI.
+#[tauri::command]
+pub fn set_analysis_requests(
+  requests: AnalysisRequests,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  validate_analysis_requests(&requests)?;
+  let mut g = state
+    .inner()
+    .analysis_requests
+    .lock()
+    .map_err(|_| "analysis requests lock poisoned".to_string())?;
+  *g = requests;
+  Ok(())
+}
+
 /// Update spectrum view mode. Applied on the capture thread for subsequent frames.
 #[tauri::command]
 pub fn set_spectrum_view(view: String, state: State<'_, AppState>) -> Result<(), String> {
@@ -312,6 +389,9 @@ pub fn get_engine_state(state: State<'_, AppState>) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
   use super::validate_loudness_weights;
+  use crate::ipc::types::{
+    AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
+  };
 
   #[test]
   fn loudness_weights_validation_accepts_finite_non_negative_vectors() {
@@ -346,6 +426,62 @@ mod tests {
     assert!(*flag.lock().unwrap());
     super::apply_dialogue_gating(&flag, false);
     assert!(!*flag.lock().unwrap());
+  }
+
+  #[test]
+  fn analysis_requests_validation_accepts_frontend_keys() {
+    let requests = AnalysisRequests {
+      spectrum: vec![
+        SpectrumAnalysisRequest {
+          key: "spectrum:pair:0:1:lr".to_string(),
+          channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+          view: "lr".to_string(),
+        },
+        SpectrumAnalysisRequest {
+          key: "spectrum:single:2:combined".to_string(),
+          channel: SpectrumAnalysisChannel::Single { ch: 2 },
+          view: "combined".to_string(),
+        },
+      ],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: "vectorscope:pair:0:1".to_string(),
+        x: 0,
+        y: 1,
+      }],
+    };
+    assert!(super::validate_analysis_requests(&requests).is_ok());
+  }
+
+  #[test]
+  fn analysis_requests_validation_rejects_mismatched_keys() {
+    let requests = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: "spectrum:pair:0:1:combined".to_string(),
+        channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+        view: "ms".to_string(),
+      }],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: "vectorscope:pair:1:2".to_string(),
+        x: 0,
+        y: 1,
+      }],
+    };
+    assert!(super::validate_analysis_requests(&requests).is_err());
+  }
+
+  #[test]
+  fn analysis_requests_validation_rejects_over_cap_requests() {
+    let requests = AnalysisRequests {
+      spectrum: (0..=super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
+        .map(|idx| SpectrumAnalysisRequest {
+          key: format!("spectrum:single:{idx}:combined"),
+          channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
+          view: "combined".to_string(),
+        })
+        .collect(),
+      vectorscope: vec![],
+    };
+    assert!(super::validate_analysis_requests(&requests).is_err());
   }
 
   #[test]

@@ -42,6 +42,7 @@ import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
+import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
 import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
 import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -63,6 +64,7 @@ import { Bookmark, Focus, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-r
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
+  setAnalysisRequests,
   setLoudnessWeights,
   setDialogueGating,
   setVectorscopePair,
@@ -89,6 +91,21 @@ const DIALOGUE_STAT_IDS = [
 ];
 
 const APP_VERSION = packageInfo.version;
+
+function toBackendAnalysisRequests(requests) {
+  return {
+    spectrum: requests.spectrumRequests.map((request) => ({
+      key: request.key,
+      channel: request.channel,
+      view: request.view,
+    })),
+    vectorscope: requests.vectorscopeRequests.map((request) => ({
+      key: request.key,
+      x: request.pair.x,
+      y: request.pair.y,
+    })),
+  };
+}
 
 function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
@@ -240,6 +257,10 @@ function AppContent() {
       firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
     );
   }, [workspaceState]);
+  const analysisRequests = useMemo(
+    () => toBackendAnalysisRequests(deriveAnalysisRequests(workspaceState)),
+    [workspaceState]
+  );
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
@@ -314,6 +335,7 @@ function AppContent() {
   const pendingVectorscopePairSyncRef = useRef(null);
   const lastSentVectorscopePairKeyRef = useRef("");
   const lastSentSpectrumChannelKeyRef = useRef("");
+  const lastSentAnalysisRequestsKeyRef = useRef("");
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
   // list updatePanelControls in their deps. If its identity changed per dispatch it would
@@ -476,6 +498,21 @@ function AppContent() {
     if (!isTauri() || !running) return;
     void setDialogueGating(dialogueGating);
   }, [dialogueGating, running]);
+
+  useEffect(() => {
+    if (!isTauri() || !running) {
+      lastSentAnalysisRequestsKeyRef.current = "";
+      return;
+    }
+    const key = JSON.stringify(analysisRequests);
+    if (lastSentAnalysisRequestsKeyRef.current === key) return;
+    lastSentAnalysisRequestsKeyRef.current = key;
+    void setAnalysisRequests(analysisRequests).catch(() => {
+      if (lastSentAnalysisRequestsKeyRef.current === key) {
+        lastSentAnalysisRequestsKeyRef.current = "";
+      }
+    });
+  }, [analysisRequests, running]);
 
   const peakLabelContext = useMemo(
     () => ({

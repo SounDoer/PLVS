@@ -6,6 +6,36 @@ use std::sync::{Arc, Mutex};
 
 use tauri::ipc::Channel;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum SpectrumAnalysisChannel {
+  Pair { x: u16, y: u16 },
+  Single { ch: u16 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpectrumAnalysisRequest {
+  pub key: String,
+  pub channel: SpectrumAnalysisChannel,
+  pub view: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorscopeAnalysisRequest {
+  pub key: String,
+  pub x: u16,
+  pub y: u16,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalysisRequests {
+  pub spectrum: Vec<SpectrumAnalysisRequest>,
+  pub vectorscope: Vec<VectorscopeAnalysisRequest>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineStateChanged {

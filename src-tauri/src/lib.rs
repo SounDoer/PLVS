@@ -35,6 +35,7 @@ pub fn run() {
       ipc::commands::set_vectorscope_pair,
       ipc::commands::set_spectrum_channel,
       ipc::commands::set_spectrum_view,
+      ipc::commands::set_analysis_requests,
       ipc::commands::set_loudness_weights,
       ipc::commands::set_dialogue_gating,
       ipc::commands::ack_frames,

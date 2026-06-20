@@ -65,7 +65,7 @@ export function deriveAnalysisRequests(state) {
       const key = spectrumRequestKeyFromControls(controls);
       pushRequest(spectrumByKey, key, panelId, {
         channel: controls.spectrumChannel,
-        view: controls.spectrumView,
+        view: controls.spectrumChannel?.type === "single" ? "combined" : controls.spectrumView,
       });
       statusByPanelId[panelId] = "active";
     } else if (moduleId === "vectorscope") {

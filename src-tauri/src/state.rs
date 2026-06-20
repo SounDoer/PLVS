@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::audio::capture::AudioCaptureSession;
 use crate::dsp::SpectrumChannelSel;
-use crate::ipc::types::FrameSubscribers;
+use crate::ipc::types::{AnalysisRequests, FrameSubscribers};
 
 pub struct AppState {
   pub capture: Mutex<Option<Box<dyn AudioCaptureSession>>>,
@@ -20,6 +20,8 @@ pub struct AppState {
   pub spectrum_channel: Arc<Mutex<SpectrumChannelSel>>,
   /// Selected spectrum view mode (Combined/Lr/Ms). Updated by UI; applied on the capture thread.
   pub spectrum_view: Arc<Mutex<crate::dsp::SpectrumView>>,
+  /// Active per-instance analysis requests requested by the workspace UI.
+  pub analysis_requests: Arc<Mutex<AnalysisRequests>>,
   /// Dynamic loudness energy weights from user channel-role overrides.
   pub loudness_weights: Arc<Mutex<Option<Vec<f64>>>>,
   /// Dialogue gating enabled flag. Updated by UI.
@@ -35,6 +37,7 @@ impl Default for AppState {
       vectorscope_pair: Arc::new(Mutex::new((0, 1))),
       spectrum_channel: Arc::new(Mutex::new(SpectrumChannelSel::default())),
       spectrum_view: Arc::new(Mutex::new(crate::dsp::SpectrumView::default())),
+      analysis_requests: Arc::new(Mutex::new(AnalysisRequests::default())),
       loudness_weights: Arc::new(Mutex::new(None)),
       dialogue_gating_enabled: Arc::new(Mutex::new(false)),
     }

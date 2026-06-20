@@ -79,6 +79,13 @@ export function setSpectrumView(view) {
   return invoke("set_spectrum_view", { view });
 }
 
+/**
+ * @param {{ spectrum: Array<{ key: string; channel: object; view: string }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
+ */
+export function setAnalysisRequests(requests) {
+  return invoke("set_analysis_requests", { requests });
+}
+
 /** @param {number[] | null} weights */
 export function setLoudnessWeights(weights) {
   return invoke("set_loudness_weights", { weights });

@@ -44,14 +44,17 @@ describe("analysisRequests", () => {
         "spectrum-2": {
           ...DEFAULT_PANEL_CONTROLS,
           spectrumChannel: { type: "single", ch: 2 },
+          spectrumView: "ms",
         },
       },
     });
 
-    expect(deriveAnalysisRequests(s).spectrumRequests.map((r) => r.key)).toEqual([
+    const requests = deriveAnalysisRequests(s).spectrumRequests;
+    expect(requests.map((r) => r.key)).toEqual([
       "spectrum:pair:0:1:combined",
       "spectrum:single:2:combined",
     ]);
+    expect(requests[1].view).toBe("combined");
   });
 
   it("does not include peak hold in the spectrum request key", () => {
