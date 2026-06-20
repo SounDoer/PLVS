@@ -29,6 +29,7 @@ PLVS：实时音频计量桌面应用（Tauri 2 + Rust 后端 / React 19 + Vite 
 - 测试与源文件同目录，命名 `*.test.js` / `*.test.jsx`（Vitest）。
 
 ## 工作流偏好
-- 纯文档改动直接提交 main，不开 feature 分支。
 - 回复用中文；代码 / 路径 / 术语保持英文。
+- **可以用 subagents（Agent 工具）分担工作**，但省着点 token：仅在任务确实能并行、或需要隔离上下文时才 spawn；琐碎的小活直接自己干，别为省事频繁起 agent。
+  - **按子任务难度选模型**：搜索 / 改字串 / 跑命令这类机械活派便宜模型（Haiku、Sonnet），只有需要复杂推理的子任务才用 Opus。用 Agent 的 `model` 参数指定。
 - **Commit/CL message 不要以 `@` 开头**。根因：Windows PowerShell 下用 here-string `@'...'@` 传多行 message 时，定界符的 `@` 会漏进 subject。改用多个 `-m` 拼 subject 和 body，别用 here-string。
