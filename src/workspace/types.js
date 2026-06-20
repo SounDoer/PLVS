@@ -17,7 +17,11 @@
  * @typedef {{
  *   vectorscopePair: { x: number, y: number },
  *   spectrumChannel: { type: 'pair', x: number, y: number } | { type: 'single', ch: number },
+ *   spectrumView: string,
+ *   spectrumPeakHold: boolean,
+ *   levelMeterMode: string,
  *   loudnessStatsVisibleIds: string[],
+ *   loudnessStatsOrder: string[],
  *   loudnessHistoryVisibleLayerIds: string[],
  * }} PanelControls
  *
@@ -26,7 +30,7 @@
  *   panelsById: Record<PanelId, PanelInstance>,
  *   panelOrder: PanelId[],
  *   fullscreenId: PanelId | null,
- *   panelControls: PanelControls,
+ *   panelControlsById: Record<PanelId, PanelControls>,
  * }} WorkspaceState
  *
  * @typedef {{
@@ -36,7 +40,7 @@
  *   tree: TreeNode,
  *   panelsById: Record<PanelId, PanelInstance>,
  *   panelOrder: PanelId[],
- *   panelControls: PanelControls,
+ *   panelControlsById: Record<PanelId, PanelControls>,
  * }} Preset
  *
  * @typedef {{

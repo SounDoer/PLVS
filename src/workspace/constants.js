@@ -1,6 +1,6 @@
 /** @import { TreeNode, ModuleId, WorkspaceState } from './types.js' */
-import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { createPanel } from "./panelInstances.js";
+import { normalizePanelControlsById } from "./panelControlInstances.js";
 
 /** @type {ModuleId[]} */
 export const ALL_MODULE_IDS = [
@@ -59,10 +59,12 @@ export const DEFAULT_PANELS_BY_ID = Object.fromEntries(
 
 export const DEFAULT_PANEL_ORDER = [...ALL_MODULE_IDS];
 
+export const DEFAULT_PANEL_CONTROLS_BY_ID = normalizePanelControlsById(DEFAULT_PANELS_BY_ID);
+
 export const DEFAULT_WORKSPACE_STATE = {
   tree: DEFAULT_TREE,
   panelsById: DEFAULT_PANELS_BY_ID,
   panelOrder: DEFAULT_PANEL_ORDER,
   fullscreenId: null,
-  panelControls: DEFAULT_PANEL_CONTROLS,
+  panelControlsById: DEFAULT_PANEL_CONTROLS_BY_ID,
 };

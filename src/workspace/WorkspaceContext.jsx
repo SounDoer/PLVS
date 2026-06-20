@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import { bindWorkspaceActions, workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
+import { normalizePanelControlsById } from "./panelControlInstances.js";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
 
 const WorkspaceContext = createContext(null);
@@ -13,6 +14,7 @@ function initState() {
   return {
     ...DEFAULT_WORKSPACE_STATE,
     ...parsed,
+    panelControlsById: normalizePanelControlsById(parsed.panelsById, parsed.panelControlsById),
     fullscreenId: null, // transient view state: never restored across launches
   };
 }
@@ -48,9 +50,9 @@ export function WorkspaceProvider({ children }) {
         clearActivePreset();
         bound.renamePanel(...args);
       },
-      setPanelControls: (...args) => {
+      setPanelControlsForPanel: (...args) => {
         clearActivePreset();
-        bound.setPanelControls(...args);
+        bound.setPanelControlsForPanel(...args);
       },
     };
   }, []);

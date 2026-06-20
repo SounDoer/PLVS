@@ -7,7 +7,7 @@ import { DEFAULT_PANEL_CONTROLS, LOUDNESS_STATS_ORDER } from "@/lib/panelControl
 import { AudioDataContext } from "@/workspace/AudioDataContext.jsx";
 import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
-import { WorkspaceProvider } from "@/workspace/WorkspaceContext.jsx";
+import { WorkspaceProvider, useWorkspaceStore } from "@/workspace/WorkspaceContext.jsx";
 
 vi.mock("framer-motion", () => ({
   Reorder: {
@@ -29,6 +29,12 @@ beforeEach(() => {
     removeEventListener: vi.fn(),
   }));
 });
+
+function WorkspaceStateProbe({ onState }) {
+  const { state } = useWorkspaceStore();
+  onState(state);
+  return null;
+}
 
 describe("PanelHeaderControls", () => {
   it("renders Level Meter mode chip and updates mode", () => {
@@ -376,7 +382,7 @@ describe("PanelHeaderControls", () => {
   });
 
   it("passes audio panel control changes through LeafView to the header controls", () => {
-    const onPanelControlsChange = vi.fn();
+    const onState = vi.fn();
 
     render(
       <WorkspaceProvider>
@@ -384,11 +390,11 @@ describe("PanelHeaderControls", () => {
           <AudioDataContext.Provider
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
-              onPanelControlsChange,
               primaryMetrics: [],
               secondaryMetrics: [],
             }}
           >
+            <WorkspaceStateProbe onState={onState} />
             <LeafView
               node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
               path={[]}
@@ -401,7 +407,8 @@ describe("PanelHeaderControls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
-    expect(onPanelControlsChange).toHaveBeenCalledWith({
+    const latestState = onState.mock.calls.at(-1)?.[0];
+    expect(latestState.panelControlsById.loudnessStats).toEqual({
       ...DEFAULT_PANEL_CONTROLS,
       loudnessStatsVisibleIds: [
         "shortTerm",

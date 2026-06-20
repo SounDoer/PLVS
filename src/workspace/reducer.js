@@ -1,5 +1,9 @@
 /** @import { WorkspaceState, DropTarget, TreeNode } from './types.js' */
-import { normalizePanelControls } from "../lib/panelControls.js";
+import {
+  createDefaultPanelControls,
+  normalizePanelControlsById,
+  updatePanelControlsById,
+} from "./panelControlInstances.js";
 import { createPanel, trimCustomTitle } from "./panelInstances.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 
@@ -74,6 +78,10 @@ export function workspaceReducer(state, action) {
         tree: state.tree ? insertLeaf(state.tree, [], "right", newLeaf) : newLeaf,
         panelsById: { ...state.panelsById, [panel.id]: panel },
         panelOrder: [...state.panelOrder, panel.id],
+        panelControlsById: {
+          ...state.panelControlsById,
+          [panel.id]: createDefaultPanelControls(),
+        },
       };
     }
 
@@ -81,11 +89,13 @@ export function workspaceReducer(state, action) {
       const { id } = action.payload;
       if (!state.panelsById[id]) return state;
       const { [id]: _removed, ...panelsById } = state.panelsById;
+      const { [id]: _removedControls, ...panelControlsById } = state.panelControlsById ?? {};
       return {
         ...state,
         tree: state.tree ? removeTab(state.tree, id) : null,
         panelsById,
         panelOrder: state.panelOrder.filter((panelId) => panelId !== id),
+        panelControlsById,
         fullscreenId: state.fullscreenId === id ? null : state.fullscreenId,
       };
     }
@@ -145,22 +155,39 @@ export function workspaceReducer(state, action) {
     }
 
     case "SET_VIEW": {
-      const { tree, panelsById, panelOrder, panelControls } = action.payload;
+      const { tree, panelsById, panelOrder, panelControlsById } = action.payload;
       return {
         ...state,
         tree,
         panelsById,
         panelOrder,
-        panelControls: normalizePanelControls(panelControls),
+        panelControlsById: normalizePanelControlsById(panelsById, panelControlsById),
         fullscreenId: null,
       };
     }
 
-    case "SET_PANEL_CONTROLS":
+    case "SET_PANEL_CONTROLS_FOR_PANEL":
       return {
         ...state,
-        panelControls: normalizePanelControls(action.payload.panelControls),
+        panelControlsById: updatePanelControlsById(
+          state.panelControlsById,
+          action.payload.id,
+          action.payload.panelControls
+        ),
       };
+
+    case "SET_PANEL_CONTROLS": {
+      const id = state.panelOrder.find((panelId) => state.panelsById[panelId]);
+      if (!id) return state;
+      return {
+        ...state,
+        panelControlsById: updatePanelControlsById(
+          state.panelControlsById,
+          id,
+          action.payload.panelControls
+        ),
+      };
+    }
 
     default:
       return state;
@@ -189,6 +216,8 @@ export function bindWorkspaceActions(dispatch) {
         payload: { path, aboveIdx, belowIdx, aboveSize, belowSize },
       }),
     setView: (view) => dispatch({ type: "SET_VIEW", payload: view }),
+    setPanelControlsForPanel: (id, panelControls) =>
+      dispatch({ type: "SET_PANEL_CONTROLS_FOR_PANEL", payload: { id, panelControls } }),
     setPanelControls: (panelControls) =>
       dispatch({ type: "SET_PANEL_CONTROLS", payload: { panelControls } }),
   };

@@ -41,6 +41,7 @@ import { TransportButton } from "./components/TransportButton.jsx";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
+import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
 import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -233,10 +234,12 @@ function AppContent() {
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
   const [status2, setStatus2] = useState("Device: Not connected");
-  const normalizedPanelControls = useMemo(
-    () => normalizePanelControls(workspaceState.panelControls),
-    [workspaceState.panelControls]
-  );
+  const normalizedPanelControls = useMemo(() => {
+    const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
+    return normalizePanelControls(
+      firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
+    );
+  }, [workspaceState]);
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;

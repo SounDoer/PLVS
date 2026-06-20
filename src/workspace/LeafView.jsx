@@ -2,13 +2,16 @@ import { Maximize2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
-import { useAudioData } from "./AudioDataContext.jsx";
+import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
 import {
   resolvePanelDefinition,
   resolvePanelDisplayName,
   resolvePanelModuleId,
 } from "./panelInstances.js";
+import { getPanelControls } from "./panelControlInstances.js";
+
+const noop = () => {};
 
 // ---------------------------------------------------------------------------
 // TabPill
@@ -68,7 +71,7 @@ function getTabInsertX(tabIndex, totalTabs) {
 // ---------------------------------------------------------------------------
 
 export function LeafView({ node, path, style }) {
-  const { state, removePanel, setFullscreen } = useWorkspaceStore();
+  const { state, removePanel, setFullscreen, setPanelControlsForPanel } = useWorkspaceStore();
   const { dragState, hoverDrop } = useDrag();
   const audioData = useAudioData();
   const compactPanels = audioData?.compactPanels === true;
@@ -77,6 +80,18 @@ export function LeafView({ node, path, style }) {
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
   const ActiveComponent = activeTab ? resolvePanelDefinition(state, activeTab)?.Component : null;
   const activeModuleId = activeTab ? resolvePanelModuleId(state, activeTab) : null;
+  const panelControls = activeTab ? getPanelControls(state, activeTab) : null;
+  const onPanelControlsChange = activeTab
+    ? (nextPanelControls) => setPanelControlsForPanel(activeTab, nextPanelControls)
+    : audioData?.onPanelControlsChange;
+  const panelAudioData =
+    activeTab && audioData
+      ? {
+          ...audioData,
+          panelControls,
+          onPanelControlsChange,
+        }
+      : audioData;
   const zoneHint = getZoneHint(hoverDrop, path);
   const isDragging = !!dragState;
   const pathAttr = JSON.stringify(path);
@@ -159,18 +174,18 @@ export function LeafView({ node, path, style }) {
               vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
               vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
               vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
-              onVectorscopeChange={audioData?.onVectorscopePairChange}
+              onVectorscopeChange={noop}
               spectrumOptions={audioData?.spectrumChannelOptions ?? []}
               spectrumValueKey={audioData?.spectrumValueKey ?? ""}
               spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
-              onSpectrumChange={audioData?.onSpectrumChannelChange}
+              onSpectrumChange={noop}
               spectrumView={audioData?.spectrumView ?? "combined"}
               spectrumViewLegend={audioData?.spectrumViewLegend ?? null}
-              onSpectrumViewChange={audioData?.onSpectrumViewChange}
+              onSpectrumViewChange={noop}
               spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
-              onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
-              panelControls={audioData?.panelControls}
-              onPanelControlsChange={audioData?.onPanelControlsChange}
+              onSpectrumPeakHoldToggle={noop}
+              panelControls={panelControls ?? audioData?.panelControls}
+              onPanelControlsChange={onPanelControlsChange}
             />
             <button
               type="button"
@@ -194,7 +209,11 @@ export function LeafView({ node, path, style }) {
 
       {/* Panel body */}
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
-        {ActiveComponent && <ActiveComponent />}
+        {ActiveComponent && (
+          <AudioDataContext.Provider value={panelAudioData}>
+            <ActiveComponent />
+          </AudioDataContext.Provider>
+        )}
       </div>
     </div>
   );

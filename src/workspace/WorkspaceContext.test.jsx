@@ -99,7 +99,7 @@ describe("WorkspaceContext active preset divergence", () => {
         tree: split("h", [leaf(["peak"]), leaf(["loudness"])]),
         panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
         panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
-        panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+        panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
       })
     );
     expect(presetsStore.read().activeId).toBe("p1");

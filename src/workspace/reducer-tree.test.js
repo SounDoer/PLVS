@@ -329,23 +329,25 @@ describe("MOVE_TAB: drag to same single-tab leaf edge (regression)", () => {
 // ---------------------------------------------------------------------------
 
 describe("SET_VIEW", () => {
-  it("atomically replaces tree, panelsById, panelOrder, and panelControls", () => {
+  it("atomically replaces tree, panelsById, panelOrder, and panelControlsById", () => {
     const tree = leaf(["spectrum"]);
     const panelsById = { spectrum: { id: "spectrum", moduleId: "spectrum" } };
     const panelOrder = ["spectrum"];
-    const panelControls = {
-      ...DEFAULT_PANEL_CONTROLS,
-      vectorscopePair: { x: 2, y: 3 },
-      spectrumChannel: { type: "single", ch: 2 },
+    const panelControlsById = {
+      spectrum: {
+        ...DEFAULT_PANEL_CONTROLS,
+        vectorscopePair: { x: 2, y: 3 },
+        spectrumChannel: { type: "single", ch: 2 },
+      },
     };
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "SET_VIEW",
-      payload: { tree, panelsById, panelOrder, panelControls },
+      payload: { tree, panelsById, panelOrder, panelControlsById },
     });
     expect(next.tree).toBe(tree);
     expect(next.panelsById).toBe(panelsById);
     expect(next.panelOrder).toBe(panelOrder);
-    expectPanelControlsIsolated(next.panelControls, panelControls);
+    expectPanelControlsIsolated(next.panelControlsById.spectrum, panelControlsById.spectrum);
   });
 
   it("clears fullscreenId", () => {
@@ -356,7 +358,7 @@ describe("SET_VIEW", () => {
         tree: DEFAULT_WORKSPACE_STATE.tree,
         panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
         panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
-        panelControls: DEFAULT_WORKSPACE_STATE.panelControls,
+        panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
       },
     });
     expect(next.fullscreenId).toBeNull();
@@ -367,8 +369,8 @@ describe("SET_VIEW", () => {
 // SET_PANEL_CONTROLS
 // ---------------------------------------------------------------------------
 
-describe("SET_PANEL_CONTROLS", () => {
-  it("updates panelControls", () => {
+describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
+  it("updates one panel's controls", () => {
     const nextControls = {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
@@ -380,10 +382,13 @@ describe("SET_PANEL_CONTROLS", () => {
     };
 
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
-      type: "SET_PANEL_CONTROLS",
-      payload: { panelControls: nextControls },
+      type: "SET_PANEL_CONTROLS_FOR_PANEL",
+      payload: { id: "peak", panelControls: nextControls },
     });
 
-    expectPanelControlsIsolated(next.panelControls, nextControls);
+    expectPanelControlsIsolated(next.panelControlsById.peak, nextControls);
+    expect(next.panelControlsById.loudness).toEqual(
+      DEFAULT_WORKSPACE_STATE.panelControlsById.loudness
+    );
   });
 });

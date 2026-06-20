@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
-import { normalizePanelControls } from "../lib/panelControls.js";
+import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { presetsStore } from "../persistence/index.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 
@@ -58,7 +58,10 @@ export function usePresets({
       tree: clone(workspaceState.tree),
       panelsById: clone(workspaceState.panelsById),
       panelOrder: [...workspaceState.panelOrder],
-      panelControls: normalizePanelControls(workspaceState.panelControls),
+      panelControlsById: normalizePanelControlsById(
+        workspaceState.panelsById,
+        workspaceState.panelControlsById
+      ),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
     };
@@ -66,7 +69,7 @@ export function usePresets({
   }, [
     windowPinned,
     focusView,
-    workspaceState.panelControls,
+    workspaceState.panelControlsById,
     workspaceState.panelOrder,
     workspaceState.panelsById,
     workspaceState.tree,
@@ -98,7 +101,7 @@ export function usePresets({
         tree: clone(preset.tree),
         panelsById: clone(preset.panelsById),
         panelOrder: [...preset.panelOrder],
-        panelControls: normalizePanelControls(preset.panelControls),
+        panelControlsById: normalizePanelControlsById(preset.panelsById, preset.panelControlsById),
       });
       if (preset.windowBounds && isTauri()) {
         try {

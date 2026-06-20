@@ -4,15 +4,17 @@ import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
-import { useAudioData } from "./AudioDataContext.jsx";
+import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
 import {
   resolvePanelDefinition,
   resolvePanelDisplayName,
   resolvePanelModuleId,
 } from "./panelInstances.js";
+import { getPanelControls } from "./panelControlInstances.js";
 
 const SPLIT_DIVIDER_SIZE_REM = 0.375;
+const noop = () => {};
 
 // ---------------------------------------------------------------------------
 // Empty-node helper and min-size helper for a subtree
@@ -194,7 +196,7 @@ function SplitView({ node, path, style }) {
 // ---------------------------------------------------------------------------
 
 function FullscreenOverlay() {
-  const { state, setFullscreen } = useWorkspaceStore();
+  const { state, setFullscreen, setPanelControlsForPanel } = useWorkspaceStore();
   const { fullscreenId } = state;
   const audioData = useAudioData();
   if (!fullscreenId) return null;
@@ -203,6 +205,12 @@ function FullscreenOverlay() {
   if (!def) return null;
   const { Component } = def;
   const fullscreenModuleId = resolvePanelModuleId(state, fullscreenId);
+  const panelControls = getPanelControls(state, fullscreenId);
+  const onPanelControlsChange = (nextPanelControls) =>
+    setPanelControlsForPanel(fullscreenId, nextPanelControls);
+  const panelAudioData = audioData
+    ? { ...audioData, panelControls, onPanelControlsChange }
+    : audioData;
 
   return (
     <div
@@ -219,17 +227,17 @@ function FullscreenOverlay() {
             vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
             vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
             vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
-            onVectorscopeChange={audioData?.onVectorscopePairChange}
+            onVectorscopeChange={noop}
             spectrumOptions={audioData?.spectrumChannelOptions ?? []}
             spectrumValueKey={audioData?.spectrumValueKey ?? ""}
             spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
-            onSpectrumChange={audioData?.onSpectrumChannelChange}
+            onSpectrumChange={noop}
             spectrumView={audioData?.spectrumView ?? "combined"}
-            onSpectrumViewChange={audioData?.onSpectrumViewChange}
+            onSpectrumViewChange={noop}
             spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
-            onSpectrumPeakHoldToggle={audioData?.onSpectrumPeakHoldToggle}
-            panelControls={audioData?.panelControls}
-            onPanelControlsChange={audioData?.onPanelControlsChange}
+            onSpectrumPeakHoldToggle={noop}
+            panelControls={panelControls}
+            onPanelControlsChange={onPanelControlsChange}
           />
           <button
             type="button"
@@ -251,7 +259,9 @@ function FullscreenOverlay() {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Component />
+        <AudioDataContext.Provider value={panelAudioData}>
+          <Component />
+        </AudioDataContext.Provider>
       </div>
     </div>
   );

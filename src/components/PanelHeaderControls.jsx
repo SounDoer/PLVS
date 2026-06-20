@@ -205,6 +205,15 @@ function getSelectedOption(options, valueKey) {
   };
 }
 
+function spectrumKeyFromSelection(sel) {
+  if (!sel) return "";
+  return sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
+}
+
+function vectorscopeKeyFromPair(pair) {
+  return pair ? `${pair.x}-${pair.y}` : "";
+}
+
 function toggleId(ids, id) {
   if (ids.includes(id)) {
     return ids.filter((currentId) => currentId !== id);
@@ -327,7 +336,21 @@ export function PanelHeaderControls({
   }
 
   if (activeTab === "spectrum" || activeTab === "spectrogram") {
-    const { matchedOption, selectedOption } = getSelectedOption(spectrumOptions, spectrumValueKey);
+    const hasPanelControls = panelControls != null;
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const effectiveSpectrumValueKey =
+      (hasPanelControls ? spectrumKeyFromSelection(normalizedPanelControls.spectrumChannel) : "") ||
+      spectrumValueKey;
+    const effectiveSpectrumView = hasPanelControls
+      ? normalizedPanelControls.spectrumView
+      : spectrumView;
+    const effectiveSpectrumPeakHold = hasPanelControls
+      ? normalizedPanelControls.spectrumPeakHold
+      : spectrumPeakHold;
+    const { matchedOption, selectedOption } = getSelectedOption(
+      spectrumOptions,
+      effectiveSpectrumValueKey
+    );
     const sel = selectedOption?.sel ?? null;
     // The view toggle (M/S, L/R) only makes sense for the overlaid spectrum curve; a spectrogram is
     // a single heatmap and can't overlay, so it stays on the channel selection only.
@@ -351,7 +374,15 @@ export function PanelHeaderControls({
             value={selectedOption.key}
             onChange={(key) => {
               const opt = spectrumOptions.find((o) => o.key === key);
-              if (opt && typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
+              if (opt) {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumChannel: opt.sel,
+                  })
+                );
+                if (typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
+              }
             }}
             triggerClassName="w-auto"
           />
@@ -361,16 +392,21 @@ export function PanelHeaderControls({
             label={
               <SpectrumViewChipLabel
                 fallbackLabel={
-                  SPECTRUM_VIEW_OPTIONS.find((option) => option.key === spectrumView)?.label ??
-                  "Combined"
+                  SPECTRUM_VIEW_OPTIONS.find((option) => option.key === effectiveSpectrumView)
+                    ?.label ?? "Combined"
                 }
                 legend={spectrumViewLegend}
               />
             }
             ariaLabel="spectrum view"
             options={SPECTRUM_VIEW_OPTIONS}
-            value={spectrumView}
-            onChange={(key) => onSpectrumViewChange(key)}
+            value={effectiveSpectrumView}
+            onChange={(key) => {
+              onPanelControlsChange?.(
+                normalizePanelControls({ ...normalizedPanelControls, spectrumView: key })
+              );
+              onSpectrumViewChange?.(key);
+            }}
             triggerClassName="w-auto max-w-none"
           />
         ) : null}
@@ -378,8 +414,16 @@ export function PanelHeaderControls({
           <ToggleChip
             label="Peak"
             ariaLabel="peak hold"
-            pressed={spectrumPeakHold}
-            onToggle={onSpectrumPeakHoldToggle}
+            pressed={effectiveSpectrumPeakHold}
+            onToggle={() => {
+              onPanelControlsChange?.(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  spectrumPeakHold: !effectiveSpectrumPeakHold,
+                })
+              );
+              onSpectrumPeakHoldToggle?.();
+            }}
           />
         ) : null}
       </div>
@@ -389,9 +433,14 @@ export function PanelHeaderControls({
   if (!Number.isFinite(channelCount) || channelCount <= 2) return null;
 
   if (activeTab === "vectorscope" && vectorscopeOptions.length > 0) {
+    const hasPanelControls = panelControls != null;
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const effectiveVectorscopeValueKey =
+      (hasPanelControls ? vectorscopeKeyFromPair(normalizedPanelControls.vectorscopePair) : "") ||
+      vectorscopeValueKey;
     const { matchedOption, selectedOption } = getSelectedOption(
       vectorscopeOptions,
-      vectorscopeValueKey
+      effectiveVectorscopeValueKey
     );
     const selectedLabel =
       matchedOption && vectorscopeDisplayLabel ? vectorscopeDisplayLabel : selectedOption.label;
@@ -405,6 +454,12 @@ export function PanelHeaderControls({
         onChange={(key) => {
           const opt = vectorscopeOptions.find((o) => o.key === key);
           if (opt && typeof onVectorscopeChange === "function") {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                vectorscopePair: { x: opt.x, y: opt.y },
+              })
+            );
             onVectorscopeChange({ x: opt.x, y: opt.y });
           }
         }}
