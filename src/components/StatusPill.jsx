@@ -21,9 +21,9 @@ const STATE_CONFIG = {
       "shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-signal-bad)_18%,transparent),0_0_6px_var(--ui-signal-bad)]",
   },
   snapshot: {
-    bg: "bg-amber-500/8",
-    border: "border border-amber-400/30",
-    color: "text-amber-400",
+    bg: "bg-[color:color-mix(in_srgb,var(--ui-signal-warn)_8%,transparent)]",
+    border: "border border-[color:color-mix(in_srgb,var(--ui-signal-warn)_30%,transparent)]",
+    color: "text-[color:var(--ui-signal-warn)]",
     label: "SNAP",
     showClock: (clock) => clock != null,
     dotPulse: false,
