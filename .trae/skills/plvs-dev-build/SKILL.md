@@ -70,6 +70,18 @@ gh run list --workflow=dev-build.yml --limit 1
 gh run watch <run-id>            # or open the Actions URL it prints
 ```
 
+Treat the run as successful only by its **conclusion**, not by the tail of the
+log:
+
+```bash
+gh run view <run-id> --json conclusion -q .conclusion   # want: success
+```
+
+`gh run watch` may print a scary `Process completed with exit code 1`
+annotation that is just GitHub's Node-version deprecation warning on the
+actions — it does not fail the build. The `conclusion` field is the source of
+truth.
+
 ### 4. Hand back the download link
 
 On success, the installer is on the rolling Pre-release:
