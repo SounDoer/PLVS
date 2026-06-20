@@ -10,12 +10,14 @@ import {
   readSystemPrefersDark,
   resolveThemeId,
 } from "./uiPreferences";
+import { listCustomThemes } from "./theme/customThemesRepo.js";
 
 const systemPrefersDark = readSystemPrefersDark();
 const shell = readPersistedShellThemeFields(UI_PREFERENCES);
-const resolvedThemeId = resolveThemeId(shell, systemPrefersDark);
+const customThemes = listCustomThemes();
+const resolvedThemeId = resolveThemeId(shell, systemPrefersDark, customThemes);
 applyLayoutToDocument(UI_PREFERENCES);
-applyThemeToDocument(resolvedThemeId);
+applyThemeToDocument(resolvedThemeId, customThemes);
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

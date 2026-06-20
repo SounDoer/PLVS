@@ -8,10 +8,12 @@ import {
   resolveThemeId,
 } from "../uiPreferences";
 import { isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
+import { listCustomThemes } from "../theme/customThemesRepo.js";
+import { isKnownThemeId } from "../theme/themeRegistry.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { normalizeFocusView } from "../lib/focusView.js";
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 
 function normalizeReferenceLufs(raw) {
   const n = Number(raw);
@@ -36,9 +38,11 @@ export function useSettings({ onClearRef } = {}) {
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
   const clearShortcutState = useClearShortcut(onClearRef);
 
+  const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
+
   const resolvedThemeId = useMemo(
-    () => resolveThemeId({ appearance, themeId }, systemPrefersDark),
-    [appearance, themeId, systemPrefersDark]
+    () => resolveThemeId({ appearance, themeId }, systemPrefersDark, customThemes),
+    [appearance, themeId, systemPrefersDark, customThemes]
   );
   /** ADR 0002 §6: switching system → fixed seeds `themeId` from the resolved builtin at that moment. */
   function setAppearanceMode(mode) {
@@ -61,8 +65,8 @@ export function useSettings({ onClearRef } = {}) {
 
   const fixedThemeSelectValue = useMemo(() => {
     if (appearance !== "fixed") return "";
-    return isThemeId(themeId) ? themeId : resolvedThemeId;
-  }, [appearance, themeId, resolvedThemeId]);
+    return isKnownThemeId(themeId, customThemes) ? themeId : resolvedThemeId;
+  }, [appearance, themeId, resolvedThemeId, customThemes]);
 
   function setCloseAction(value) {
     if (value === "ask") {
@@ -100,8 +104,8 @@ export function useSettings({ onClearRef } = {}) {
 
   useEffect(() => {
     applyLayoutToDocument(UI_PREFERENCES);
-    applyThemeToDocument(resolvedThemeId);
-  }, [resolvedThemeId]);
+    applyThemeToDocument(resolvedThemeId, customThemes);
+  }, [resolvedThemeId, customThemes]);
 
   useEffect(
     () =>
@@ -113,6 +117,8 @@ export function useSettings({ onClearRef } = {}) {
       }),
     []
   );
+
+  useEffect(() => themesStore.subscribe(() => setCustomThemes(listCustomThemes())), []);
 
   return {
     settingsOpen,
