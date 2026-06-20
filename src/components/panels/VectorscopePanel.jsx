@@ -1,4 +1,5 @@
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
@@ -14,12 +15,21 @@ export function VectorscopePanel() {
     peakLabelContext,
     vectorscopePairX: pairX = 0,
     vectorscopePairY: pairY = 1,
+    displayAudio,
+    panelControls,
   } = useAudioData();
+  const liveVectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
+  const liveVectorscopeResult =
+    selectedOffset < 0 ? displayAudio?.vectorscopeResultsByKey?.[liveVectorscopeKey] : null;
+  const panelVectorPath = liveVectorscopeResult?.path ?? displayVectorPath;
+  const panelCorrelation = liveVectorscopeResult?.correlation ?? correlation;
+  const panelPairX = liveVectorscopeResult?.pairX ?? pairX;
+  const panelPairY = liveVectorscopeResult?.pairY ?? pairY;
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
-  const px = Number.isFinite(pairX) ? Math.max(0, Math.floor(Number(pairX))) : 0;
-  const py = Number.isFinite(pairY) ? Math.max(0, Math.floor(Number(pairY))) : 1;
+  const px = Number.isFinite(panelPairX) ? Math.max(0, Math.floor(Number(panelPairX))) : 0;
+  const py = Number.isFinite(panelPairY) ? Math.max(0, Math.floor(Number(panelPairY))) : 1;
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
   return (
@@ -67,10 +77,10 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
-              {displayVectorPath && (
+              {panelVectorPath && (
                 <>
                   <path
-                    d={displayVectorPath}
+                    d={panelVectorPath}
                     fill="none"
                     stroke={
                       selectedOffset >= 0
@@ -118,12 +128,12 @@ export function VectorscopePanel() {
           <span className="text-muted-foreground">Correlation</span>
           <span
             className={
-              Number.isFinite(correlation)
+              Number.isFinite(panelCorrelation)
                 ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-signal-tp-max)]"
                 : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
             }
           >
-            {Number.isFinite(correlation) ? correlation.toFixed(2) : "-"}
+            {Number.isFinite(panelCorrelation) ? panelCorrelation.toFixed(2) : "-"}
           </span>
         </div>
       </div>

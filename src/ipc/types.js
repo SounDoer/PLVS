@@ -48,6 +48,8 @@
  * @property {string} spectrumPeakPath
  * @property {number[]} spectrumBandCentersHz
  * @property {number[]} spectrumSmoothDb
+ * @property {Record<string, SpectrumFrameResult>} spectrumResultsByKey
+ * @property {Record<string, VectorscopeFrameResult>} vectorscopeResultsByKey
  * @property {number} timestampMs
  * @property {MeterHistoryEntry|null|undefined} loudnessHistTick
  * @property {VisualHistEntry|null|undefined} visualHistTick
@@ -61,6 +63,25 @@
  * @property {number[]} spectrumSmoothDb
  * @property {number[]} vectorscopePairs
  * @property {number} correlation
+ */
+
+/**
+ * @typedef {object} SpectrumFrameResult
+ * @property {string} path
+ * @property {string} peakPath
+ * @property {string} pathB
+ * @property {string} peakPathB
+ * @property {number[]} bandCentersHz
+ * @property {number[]} smoothDb
+ * @property {number[]} smoothDbB
+ */
+
+/**
+ * @typedef {object} VectorscopeFrameResult
+ * @property {string} path
+ * @property {number} correlation
+ * @property {number} pairX
+ * @property {number} pairY
  */
 
 /**

@@ -55,12 +55,8 @@ describe("App toolbar", () => {
   });
 
   it("does not sync live vectorscope selection from snapshot display audio", () => {
-    expect(appSource).toContain("if (!running || selectedOffset >= 0) return;");
-    expect(appSource).toContain("updatePanelControls((current) => {");
-    expect(appSource).toContain(
-      "if (current.vectorscopePair.x === x && current.vectorscopePair.y === y) return current;"
-    );
-    expect(appSource).toContain("displayAudio?.vectorscopePairY,");
+    expect(appSource).not.toContain("const x = Number.isFinite(displayAudio?.vectorscopePairX)");
+    expect(appSource).not.toContain("displayAudio?.vectorscopePairY,");
     expect(appSource).not.toContain(
       "vectorscopePairUi.x,\n    vectorscopePairUi.y,\n    updatePanelControls,"
     );
@@ -73,28 +69,27 @@ describe("App toolbar", () => {
     expect(appSource).toContain("void sendTrackedSpectrumChannel(spectrumChannelUi);");
   });
 
-  it("does not let stale live vectorscope frames overwrite pending app changes", () => {
-    expect(appSource).toContain("const pendingVectorscopePairSyncRef = useRef(null);");
-    expect(appSource).toContain("pendingVectorscopePairSyncRef.current = null;");
-    expect(appSource).toContain(
-      "pendingVectorscopePairSyncRef.current = { x: pair.x, y: pair.y };"
-    );
-    expect(appSource).toContain(
-      "if (pendingPair && (pendingPair.x !== x || pendingPair.y !== y)) return;"
-    );
+  it("does not keep a frame-to-controls pending vectorscope guard in per-instance mode", () => {
+    expect(appSource).not.toContain("pendingVectorscopePairSyncRef");
+    expect(appSource).toContain("setAnalysisRequests(analysisRequests)");
   });
 
-  it("sets the vectorscope backend pending guard before reading live frame pairs", () => {
-    const backendSyncIndex = appSource.indexOf(
-      "if (!running || !isTauri()) return;\n    const next = clampVectorscopePairToAvailable("
+  it("routes realtime analysis results through request-keyed maps", () => {
+    const spectrumSource = readFileSync(
+      join(currentDir, "components", "panels", "SpectrumPanel.jsx"),
+      "utf8"
     );
-    const liveSyncIndex = appSource.indexOf(
-      "if (!running || selectedOffset >= 0) return;\n    const x = Number.isFinite(displayAudio?.vectorscopePairX)"
+    const vectorscopeSource = readFileSync(
+      join(currentDir, "components", "panels", "VectorscopePanel.jsx"),
+      "utf8"
     );
 
-    expect(backendSyncIndex).toBeGreaterThan(-1);
-    expect(liveSyncIndex).toBeGreaterThan(-1);
-    expect(backendSyncIndex).toBeLessThan(liveSyncIndex);
+    expect(spectrumSource).toContain("spectrumRequestKeyFromControls(panelControls)");
+    expect(spectrumSource).toContain("displayAudio?.spectrumResultsByKey?.[liveSpectrumKey]");
+    expect(vectorscopeSource).toContain("vectorscopeRequestKeyFromControls(panelControls)");
+    expect(vectorscopeSource).toContain(
+      "displayAudio?.vectorscopeResultsByKey?.[liveVectorscopeKey]"
+    );
   });
 
   it("writes settings state through the settingsStore", () => {

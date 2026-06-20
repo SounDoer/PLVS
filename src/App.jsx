@@ -287,6 +287,8 @@ function AppContent() {
     correlation: -Infinity,
     vectorscopePairX: 0,
     vectorscopePairY: 1,
+    spectrumResultsByKey: {},
+    vectorscopeResultsByKey: {},
   });
   const [spectrumPath, setSpectrumPath] = useState("");
   const [spectrumPeakPath, setSpectrumPeakPath] = useState("");
@@ -332,7 +334,6 @@ function AppContent() {
   const selectedOffsetRef = useRef(-1);
   const vectorscopePairRef = useRef(vectorscopePairUi);
   const spectrumChannelRef = useRef(spectrumChannelUi);
-  const pendingVectorscopePairSyncRef = useRef(null);
   const lastSentVectorscopePairKeyRef = useRef("");
   const lastSentSpectrumChannelKeyRef = useRef("");
   const lastSentAnalysisRequestsKeyRef = useRef("");
@@ -358,7 +359,6 @@ function AppContent() {
   const sendTrackedVectorscopePair = useCallback((pair) => {
     const key = `${pair.x}-${pair.y}`;
     lastSentVectorscopePairKeyRef.current = key;
-    pendingVectorscopePairSyncRef.current = { x: pair.x, y: pair.y };
     return setVectorscopePair({ x: pair.x, y: pair.y }).catch(() => {
       if (lastSentVectorscopePairKeyRef.current === key) lastSentVectorscopePairKeyRef.current = "";
     });
@@ -686,29 +686,6 @@ function AppContent() {
     vectorscopePairUi,
     vectorscopePairUi.x,
     vectorscopePairUi.y,
-  ]);
-
-  useEffect(() => {
-    if (!running || selectedOffset >= 0) return;
-    const x = Number.isFinite(displayAudio?.vectorscopePairX)
-      ? Number(displayAudio.vectorscopePairX)
-      : 0;
-    const y = Number.isFinite(displayAudio?.vectorscopePairY)
-      ? Number(displayAudio.vectorscopePairY)
-      : 1;
-    const pendingPair = pendingVectorscopePairSyncRef.current;
-    if (pendingPair && (pendingPair.x !== x || pendingPair.y !== y)) return;
-    if (pendingPair) pendingVectorscopePairSyncRef.current = null;
-    updatePanelControls((current) => {
-      if (current.vectorscopePair.x === x && current.vectorscopePair.y === y) return current;
-      return { ...current, vectorscopePair: { x, y } };
-    });
-  }, [
-    running,
-    selectedOffset,
-    displayAudio?.vectorscopePairX,
-    displayAudio?.vectorscopePairY,
-    updatePanelControls,
   ]);
 
   useEffect(() => {

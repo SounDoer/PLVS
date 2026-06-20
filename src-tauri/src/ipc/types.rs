@@ -36,6 +36,27 @@ pub struct AnalysisRequests {
   pub vectorscope: Vec<VectorscopeAnalysisRequest>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpectrumFrameResult {
+  pub path: String,
+  pub peak_path: String,
+  pub path_b: String,
+  pub peak_path_b: String,
+  pub band_centers_hz: Vec<f64>,
+  pub smooth_db: Vec<f64>,
+  pub smooth_db_b: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VectorscopeFrameResult {
+  pub path: String,
+  pub correlation: f64,
+  pub pair_x: u16,
+  pub pair_y: u16,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineStateChanged {
@@ -156,6 +177,12 @@ pub struct AudioFramePayload {
   pub spectrum_peak_path_b: String,
   /// Secondary smoothed per-band dB (empty unless view is lr/ms).
   pub spectrum_smooth_db_b: Vec<f64>,
+  /// Request-keyed Spectrum/Spectrogram live results. Legacy single-result fields remain populated
+  /// from the first active spectrum request during the transition.
+  pub spectrum_results_by_key: HashMap<String, SpectrumFrameResult>,
+  /// Request-keyed Vectorscope live results. Legacy single-result fields remain populated from the
+  /// first active vectorscope request during the transition.
+  pub vectorscope_results_by_key: HashMap<String, VectorscopeFrameResult>,
   /// Loudness layout semantics for this frame (e.g. `stereo`, `5.1`, `unknown`).
   pub loudness_layout: String,
   /// Whether the loudness layout is known/correct for the input stream.

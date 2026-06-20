@@ -1,5 +1,7 @@
 import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
+import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -27,14 +29,30 @@ export function SpectrumPanel({ compact = false }) {
     spectrumPeakHold,
     selectedOffset,
     displaySpectrumData,
+    displayAudio,
+    panelControls,
   } = useAudioData();
+  const liveSpectrumKey = spectrumRequestKeyFromControls(panelControls);
+  const liveSpectrumResult =
+    selectedOffset < 0 ? displayAudio?.spectrumResultsByKey?.[liveSpectrumKey] : null;
+  const panelSpectrumPath = liveSpectrumResult?.path ?? displaySpectrumPath;
+  const panelSpectrumPeakPath = liveSpectrumResult?.peakPath ?? displaySpectrumPeakPath;
+  const panelSpectrumPathB = liveSpectrumResult?.pathB ?? displaySpectrumPathB;
+  const panelSpectrumPeakPathB = liveSpectrumResult?.peakPathB ?? displaySpectrumPeakPathB;
+  const panelSpectrumData = liveSpectrumResult
+    ? buildSpectrumDataSnapshot({
+        spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
+        spectrumSmoothDb: liveSpectrumResult.smoothDb,
+        spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
+      })
+    : displaySpectrumData;
   const spectrumSvgRef = useRef(null);
   const {
     hover: spectrumHover,
     onMove,
     onLeave: onSpectrumHoverLeave,
   } = useChartHover((xFrac) => {
-    const data = displaySpectrumData;
+    const data = panelSpectrumData;
     if (!data?.bands?.length || !data?.dbList?.length) return null;
     const nearestIdx = computeSpectrumHoverIndex(xFrac, data.bands);
     const band = data.bands[nearestIdx];
@@ -53,14 +71,12 @@ export function SpectrumPanel({ compact = false }) {
   const reduceMotion = useReducedMotion();
   // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
   // on top). When peak hold is off, the fill follows the live curve as before.
-  const peakFillActive = spectrumPeakHold && !!displaySpectrumPeakPath;
+  const peakFillActive = spectrumPeakHold && !!panelSpectrumPeakPath;
   const displaySpectrumAreaPath = buildSpectrumAreaPath(
-    peakFillActive ? displaySpectrumPeakPath : displaySpectrumPath
+    peakFillActive ? panelSpectrumPeakPath : panelSpectrumPath
   );
   const displaySpectrumAreaPathB =
-    spectrumPeakHold && displaySpectrumPeakPathB
-      ? buildSpectrumAreaPath(displaySpectrumPeakPathB)
-      : "";
+    spectrumPeakHold && panelSpectrumPeakPathB ? buildSpectrumAreaPath(panelSpectrumPeakPathB) : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
 
   return (
@@ -193,7 +209,7 @@ export function SpectrumPanel({ compact = false }) {
                       );
                     })}
                   </g>
-                  {displaySpectrumPath ? (
+                  {panelSpectrumPath ? (
                     <AnimatePresence mode="sync">
                       <motion.g
                         key={spectrumPaletteKey}
@@ -221,7 +237,7 @@ export function SpectrumPanel({ compact = false }) {
                           />
                         ) : null}
                         <path
-                          d={displaySpectrumPath}
+                          d={panelSpectrumPath}
                           fill="none"
                           stroke={
                             selectedOffset >= 0
@@ -232,9 +248,9 @@ export function SpectrumPanel({ compact = false }) {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                        {displaySpectrumPathB ? (
+                        {panelSpectrumPathB ? (
                           <path
-                            d={displaySpectrumPathB}
+                            d={panelSpectrumPathB}
                             fill="none"
                             stroke={
                               selectedOffset >= 0
