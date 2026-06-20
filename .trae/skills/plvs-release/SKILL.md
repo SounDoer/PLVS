@@ -410,6 +410,20 @@ version number (e.g. 0.3.2 → 0.3.3).
 
 ## Step 8: Automated Release
 
+After pushing the tag, watch the release run and judge it by its
+**conclusion**, not the tail of the log:
+
+```bash
+gh run list --workflow=release.yml --limit 1
+gh run watch <run-id>
+gh run view <run-id> --json conclusion -q .conclusion   # want: success
+```
+
+`gh run watch` may print a scary `Process completed with exit code 1`
+annotation that is only GitHub's Node-version deprecation warning on the
+actions — it does not fail the run. The `conclusion` field is the source of
+truth. If `conclusion` is `failure`, see "No Installers Were Produced" below.
+
 GitHub Actions workflow (`.github/workflows/release.yml`) handles:
 
 ### Release Gate (runs first, blocks builds on failure)
