@@ -45,6 +45,19 @@ describe("useSettings", () => {
     expect(result.current.themeId).toBe("plvs-light");
   });
 
+  it("names newly-created custom themes Custom by default", async () => {
+    const { result } = renderHook(() => useSettings());
+    await waitFor(() => {
+      expect(result.current.resolvedThemeId).toBe("plvs-dark");
+    });
+
+    act(() => {
+      result.current.createCustomTheme();
+    });
+
+    expect(result.current.editor.draft.name).toBe("Custom");
+  });
+
   it("defaults referenceLufs to -23 when localStorage is empty", () => {
     localStorage.clear();
     const { result } = renderHook(() => useSettings());

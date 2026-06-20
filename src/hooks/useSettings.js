@@ -155,7 +155,7 @@ export function useSettings({ onClearRef } = {}) {
   }
   function createCustomTheme() {
     setSettingsOpen(false);
-    editor.beginCreate(`${getTheme(resolvedThemeId, customThemes).label ?? "Theme"} copy`);
+    editor.beginCreate("Custom");
   }
   function editActiveCustomTheme() {
     if (!isCustomThemeId(resolvedThemeId)) return;

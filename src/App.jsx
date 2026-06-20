@@ -1334,6 +1334,7 @@ function AppContent() {
           editActiveCustomTheme={editActiveCustomTheme}
           deleteCustomTheme={deleteCustomTheme}
           activeIsCustom={activeIsCustom}
+          themeControlsDisabled={editor.isEditing}
         />
 
         {editor.isEditing ? (
