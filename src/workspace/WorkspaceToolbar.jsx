@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
-import { resolvePanelDisplayName } from "./panelInstances.js";
+import { resolvePanelDefinition, resolvePanelDisplayName } from "./panelInstances.js";
 
 function IconAction({ label, icon, onClick, className = "" }) {
   return (
@@ -23,6 +23,7 @@ function PanelRow({ panelId }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const title = resolvePanelDisplayName(state, panelId);
+  const def = resolvePanelDefinition(state, panelId);
 
   const startRename = () => {
     setDraft(state.panelsById[panelId]?.customTitle ?? title);
@@ -64,7 +65,12 @@ function PanelRow({ panelId }) {
   }
 
   return (
-    <div className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50">
+    <div className="group flex w-full min-w-44 items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50">
+      {def?.Icon ? (
+        <span className="flex shrink-0 text-muted-foreground">
+          <def.Icon />
+        </span>
+      ) : null}
       <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
       <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <IconAction
@@ -98,7 +104,7 @@ function AddPanelControl() {
           Add Panel
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-44 p-1">
+      <PopoverContent align="end" sideOffset={6} className="w-max min-w-44 max-w-[92vw] p-1">
         {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => (
           <button
             key={id}
@@ -130,7 +136,7 @@ export function ModulesPopoverContent() {
 
   return (
     <>
-      <div className="grid gap-0.5">
+      <div className="grid w-max min-w-44 max-w-full gap-0.5">
         {panelIds.map((panelId) => (
           <PanelRow key={panelId} panelId={panelId} />
         ))}
@@ -155,7 +161,7 @@ export function VisibilityPopover() {
           <LayoutGrid size={14} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-52 p-1">
+      <PopoverContent align="end" className="w-max min-w-44 max-w-[92vw] p-1">
         <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
           Modules
         </p>

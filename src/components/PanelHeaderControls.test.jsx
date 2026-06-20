@@ -423,6 +423,7 @@ describe("PanelHeaderControls", () => {
             value={{
               compactPanels: true,
               panelControls: DEFAULT_PANEL_CONTROLS,
+              fmt: (value) => value.toFixed(1),
               primaryMetrics: [],
               secondaryMetrics: [],
             }}
@@ -440,5 +441,31 @@ describe("PanelHeaderControls", () => {
     expect(container.querySelector("[data-leaf-body]")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Fullscreen" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Hide all in panel" })).toBeNull();
+  });
+
+  it("does not render a remove button beside the panel tab title", () => {
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              fmt: (value) => value.toFixed(1),
+              primaryMetrics: [],
+              secondaryMetrics: [],
+            }}
+          >
+            <LeafView
+              node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
+              path={[]}
+            />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    expect(screen.getByText("Loudness Stats")).toBeTruthy();
+    expect(screen.queryByLabelText("Remove Loudness Stats")).toBeNull();
+    expect(screen.getByRole("button", { name: "Hide all in panel" })).toBeTruthy();
   });
 });

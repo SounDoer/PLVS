@@ -14,8 +14,8 @@ import {
 // TabPill
 // ---------------------------------------------------------------------------
 
-function TabPill({ tabId, isActive, path, tabCount, slotTabIndex }) {
-  const { state, setActiveTab, removePanel } = useWorkspaceStore();
+function TabPill({ tabId, isActive, path, slotTabIndex }) {
+  const { state, setActiveTab } = useWorkspaceStore();
   const { dragState, onTabMouseDown } = useDrag();
   const def = resolvePanelDefinition(state, tabId);
   if (!def) return null;
@@ -41,18 +41,6 @@ function TabPill({ tabId, isActive, path, tabCount, slotTabIndex }) {
         <def.Icon />
       </span>
       <span className="truncate max-w-[8rem]">{title}</span>
-      <button
-        type="button"
-        aria-label={`Remove ${title}`}
-        className="ml-0.5 rounded opacity-50 hover:opacity-100 focus-visible:outline-none"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          removePanel(tabId);
-        }}
-      >
-        <X size={10} />
-      </button>
     </div>
   );
 }
@@ -160,7 +148,6 @@ export function LeafView({ node, path, style }) {
               tabId={tabId}
               isActive={tabId === activeTab}
               path={path}
-              tabCount={visibleTabs.length}
               slotTabIndex={i}
             />
           ))}

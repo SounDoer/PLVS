@@ -1194,7 +1194,11 @@ function AppContent() {
                       <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
                     </span>
                   </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
+                  <PopoverContent
+                    align="end"
+                    sideOffset={6}
+                    className="w-max min-w-44 max-w-[92vw] p-1"
+                  >
                     <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
                       Modules
                     </p>
