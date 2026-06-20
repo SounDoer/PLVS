@@ -16,7 +16,7 @@ use super::device_enum::{build_device_list, resolve_device};
 use crate::dsp::{SpectrumChannelSel, SpectrumView};
 use crate::engine::ChannelLayoutSetting;
 use crate::engine::MeterPipeline;
-use crate::ipc::types::EngineBackpressurePayload;
+use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload};
 use tauri::{AppHandle, Emitter, Manager};
 
 const PCM_QUEUE_CAP: usize = 64;
@@ -302,10 +302,10 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   frame_subscribers: crate::ipc::types::FrameSubscribers,
   app: tauri::AppHandle,
   clear_peak_history: Arc<AtomicBool>,
-  vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
+  _vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-  spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
+  _spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
+  _spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dropped_chunks: Arc<AtomicU64>,
@@ -318,6 +318,10 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     .try_state::<crate::state::AppState>()
     .map(|s| s.frame_ack_seq.clone())
     .unwrap_or_else(|| Arc::new(AtomicU64::new(0)));
+  let analysis_requests = app
+    .try_state::<crate::state::AppState>()
+    .map(|s| s.analysis_requests.clone())
+    .unwrap_or_else(|| Arc::new(Mutex::new(AnalysisRequests::default())));
   let mut sent_seq: u64 = 0;
   let mut dropped_frames: u64 = 0;
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
@@ -346,21 +350,20 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       clear_peak_history.store(false, Ordering::Release);
       pipeline.clear_peak_and_history();
     }
-    let pair = vectorscope_pair.lock().map(|g| *g).unwrap_or((0, 1));
     let layout = channel_layout
       .lock()
       .map(|g| *g)
       .unwrap_or(ChannelLayoutSetting::Auto);
-    let spectrum_sel = spectrum_channel.lock().map(|g| *g).unwrap_or_default();
-    let spectrum_view = spectrum_view.lock().map(|g| *g).unwrap_or_default();
+    let requests = analysis_requests
+      .lock()
+      .map(|g| g.clone())
+      .unwrap_or_else(|_| AnalysisRequests::default());
     let loudness_weights = loudness_weights.lock().map(|g| g.clone()).unwrap_or(None);
     let dialogue_gating = dialogue_gating.lock().map(|g| *g).unwrap_or(false);
-    let frame = pipeline.push_pcm_f32(
+    let frame = pipeline.push_pcm_f32_with_requests(
       &floats,
-      pair,
       layout,
-      spectrum_sel,
-      spectrum_view,
+      &requests,
       loudness_weights,
       dialogue_gating,
     );
