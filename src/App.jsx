@@ -1345,6 +1345,7 @@ function AppContent() {
             onSave={editor.save}
             onCancel={editor.cancel}
             onDelete={undefined}
+            dirty={editor.dirty}
             pos={editorPos}
             onMove={moveEditor}
           />

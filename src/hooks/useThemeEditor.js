@@ -21,6 +21,8 @@ import {
 export function useThemeEditor(opts) {
   const apply = opts.apply ?? applyThemeToDocument;
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
+  const [dirty, setDirty] = useState(false);
+  const draftRef = useRef(/** @type {object|null} */ (null));
   const wasNewRef = useRef(false);
   const prevRef = useRef(opts.prevSelection);
 
@@ -29,15 +31,22 @@ export function useThemeEditor(opts) {
     [apply]
   );
 
+  // Keep state and ref in sync so save/cancel can read the latest draft without a state-updater.
+  const setDraftBoth = useCallback((next) => {
+    draftRef.current = next;
+    setDraft(next);
+  }, []);
+
   const beginEdit = useCallback(
     (theme) => {
       wasNewRef.current = false;
       prevRef.current = { appearance: "fixed", themeId: theme.id };
       const d = structuredClone(theme);
-      setDraft(d);
+      setDraftBoth(d);
+      setDirty(false);
       applyDraft(d);
     },
-    [applyDraft]
+    [applyDraft, setDraftBoth]
   );
 
   const beginCreate = useCallback(
@@ -48,64 +57,65 @@ export function useThemeEditor(opts) {
       upsertCustomTheme(d);
       opts.setAppearance("fixed");
       opts.setThemeId(d.id);
-      setDraft(d);
+      setDraftBoth(d);
+      setDirty(false);
       applyDraft(d);
     },
-    [opts, applyDraft]
+    [opts, applyDraft, setDraftBoth]
   );
 
-  const setName = useCallback((name) => {
-    setDraft((d) => (d ? { ...d, name: String(name) } : d));
-  }, []);
+  // Pure mutate of the current draft, then sync + apply + mark dirty (no side-effects in setState).
+  const edit = useCallback(
+    (mutate) => {
+      const d = draftRef.current;
+      if (!d) return;
+      const next = mutate(d);
+      setDraftBoth(next);
+      setDirty(true);
+      applyDraft(next);
+    },
+    [applyDraft, setDraftBoth]
+  );
+
+  const setName = useCallback((name) => edit((d) => ({ ...d, name: String(name) })), [edit]);
 
   const updateSeed = useCallback(
-    (key, value) => {
-      setDraft((d) => {
-        if (!d) return d;
-        const next =
-          key === "good" || key === "warn" || key === "bad"
-            ? { ...d, seeds: { ...d.seeds, signal: { ...d.seeds.signal, [key]: value } } }
-            : { ...d, seeds: { ...d.seeds, [key]: value } };
-        applyDraft(next);
-        return next;
-      });
-    },
-    [applyDraft]
+    (key, value) =>
+      edit((d) =>
+        key === "good" || key === "warn" || key === "bad"
+          ? { ...d, seeds: { ...d.seeds, signal: { ...d.seeds.signal, [key]: value } } }
+          : { ...d, seeds: { ...d.seeds, [key]: value } }
+      ),
+    [edit]
   );
 
   const updateShell = useCallback(
-    (key, value) => {
-      setDraft((d) => {
-        if (!d) return d;
-        const next = { ...d, semantic: { ...d.semantic, [key]: value } };
-        applyDraft(next);
-        return next;
-      });
-    },
-    [applyDraft]
+    (key, value) => edit((d) => ({ ...d, semantic: { ...d.semantic, [key]: value } })),
+    [edit]
   );
 
   const save = useCallback(() => {
-    setDraft((d) => {
-      if (d) upsertCustomTheme(d);
-      return null;
-    });
-  }, []);
+    const d = draftRef.current;
+    if (d) upsertCustomTheme(d);
+    setDraftBoth(null);
+    setDirty(false);
+  }, [setDraftBoth]);
 
   const cancel = useCallback(() => {
-    setDraft((d) => {
-      if (d && wasNewRef.current) removeCustomTheme(d.id);
-      const prev = prevRef.current;
-      opts.setAppearance(prev.appearance);
-      opts.setThemeId(prev.themeId);
-      apply(prev.appearance === "fixed" ? prev.themeId : "plvs-dark", listCustomThemes());
-      return null;
-    });
-  }, [opts, apply]);
+    const d = draftRef.current;
+    if (d && wasNewRef.current) removeCustomTheme(d.id);
+    const prev = prevRef.current;
+    opts.setAppearance(prev.appearance);
+    opts.setThemeId(prev.themeId);
+    apply(prev.appearance === "fixed" ? prev.themeId : "plvs-dark", listCustomThemes());
+    setDraftBoth(null);
+    setDirty(false);
+  }, [opts, apply, setDraftBoth]);
 
   return {
     isEditing: draft != null,
     draft,
+    dirty,
     beginCreate,
     beginEdit,
     setName,

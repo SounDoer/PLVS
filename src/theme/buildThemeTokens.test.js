@@ -83,4 +83,11 @@ describe("buildThemeTokens", () => {
     expect(t["--ui-signal-bad"]).toBe(signal.bad);
     expect(t["--ui-signal-warn"]).toBe(signal.warn);
   });
+
+  it("bridges accent onto the shell brand tokens --primary and --ring", () => {
+    const t = buildThemeTokens(BUILTIN_THEMES["plvs-dark"]);
+    const { accent } = BUILTIN_THEMES["plvs-dark"].seeds;
+    expect(t["--primary"]).toBe(accent);
+    expect(t["--ring"]).toBe(accent);
+  });
 });

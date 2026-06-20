@@ -21,8 +21,9 @@ const SHELL_GROUPS = [
     ],
   },
   {
+    // primary + ring are not listed: they follow the accent seed (see buildThemeTokens), not the shell.
     title: "Brand",
-    keys: ["primary", "primaryForeground", "ring", "destructive", "destructiveForeground"],
+    keys: ["primaryForeground", "destructive", "destructiveForeground"],
   },
   { title: "Lines", keys: ["border", "input"] },
 ];
@@ -36,6 +37,7 @@ const SHELL_GROUPS = [
  *   onSave: () => void,
  *   onCancel: () => void,
  *   onDelete?: () => void,
+ *   dirty?: boolean,
  *   pos: {x:number,y:number},
  *   onMove: (p: {x:number,y:number}) => void,
  * }} props
@@ -48,9 +50,13 @@ export function ThemeEditor({
   onSave,
   onCancel,
   onDelete,
+  dirty,
   pos,
   onMove,
 }) {
+  function handleCancel() {
+    if (!dirty || window.confirm("Discard changes and revert to the previous theme?")) onCancel();
+  }
   const ref = useRef(null);
   const dragRef = useRef(null);
 
@@ -157,7 +163,7 @@ export function ThemeEditor({
           <span />
         )}
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={onCancel}>
+          <Button variant="ghost" onClick={handleCancel}>
             Cancel
           </Button>
           <Button onClick={onSave}>Save</Button>
