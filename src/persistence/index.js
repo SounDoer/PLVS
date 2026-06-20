@@ -26,6 +26,7 @@ export const workspaceStore = createDomainStore({
   migrate: migrateWorkspace,
 });
 export const presetsStore = createDomainStore({ name: "plvs:presets", backend });
+export const themesStore = createDomainStore({ name: "plvs:themes", backend });
 
 /** Whole-app snapshot of every persisted domain (foundation for problem #5). */
 export function exportAll() {
@@ -33,6 +34,7 @@ export function exportAll() {
     settings: settingsStore.export(),
     workspace: workspaceStore.export(),
     presets: presetsStore.export(),
+    themes: themesStore.export(),
   };
 }
 
@@ -41,4 +43,5 @@ export function resetAll() {
   settingsStore.reset();
   workspaceStore.reset();
   presetsStore.reset();
+  themesStore.reset();
 }
