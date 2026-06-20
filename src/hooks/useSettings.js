@@ -7,9 +7,15 @@ import {
   readSystemPrefersDark,
   resolveThemeId,
 } from "../uiPreferences";
-import { isThemeId, THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
-import { listCustomThemes } from "../theme/customThemesRepo.js";
-import { isKnownThemeId } from "../theme/themeRegistry.js";
+import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
+import {
+  listCustomThemes,
+  listCustomThemesOrdered,
+  removeCustomTheme,
+} from "../theme/customThemesRepo.js";
+import { getTheme, isKnownThemeId } from "../theme/themeRegistry.js";
+import { isCustomThemeId } from "../theme/customTheme.js";
+import { useThemeEditor } from "./useThemeEditor.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { normalizeFocusView } from "../lib/focusView.js";
@@ -39,6 +45,9 @@ export function useSettings({ onClearRef } = {}) {
   const clearShortcutState = useClearShortcut(onClearRef);
 
   const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
+  const [editorPos, setEditorPos] = useState(
+    () => settingsStore.read().themeEditorPos ?? { x: 80, y: 80 }
+  );
 
   const resolvedThemeId = useMemo(
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark, customThemes),
@@ -58,7 +67,7 @@ export function useSettings({ onClearRef } = {}) {
   }
 
   function setFixedThemeIdFromPicker(id) {
-    if (!isThemeId(id)) return;
+    if (!isKnownThemeId(id, customThemes)) return;
     setAppearance("fixed");
     setThemeId(id);
   }
@@ -120,6 +129,43 @@ export function useSettings({ onClearRef } = {}) {
 
   useEffect(() => themesStore.subscribe(() => setCustomThemes(listCustomThemes())), []);
 
+  function moveEditor(pos) {
+    setEditorPos(pos);
+    settingsStore.patch({ themeEditorPos: pos });
+  }
+
+  const editor = useThemeEditor({
+    activeTheme: getTheme(resolvedThemeId, customThemes),
+    customThemes,
+    prevSelection: { appearance, themeId },
+    setThemeId,
+    setAppearance,
+  });
+
+  const customThemeOptions = useMemo(
+    () => listCustomThemesOrdered().map((t) => ({ id: t.id, label: t.name })),
+    [customThemes]
+  );
+
+  function selectThemeId(id) {
+    setAppearance("fixed");
+    setThemeId(id);
+  }
+  function createCustomTheme() {
+    setSettingsOpen(false);
+    editor.beginCreate(`${getTheme(resolvedThemeId, customThemes).label ?? "Theme"} copy`);
+  }
+  function editActiveCustomTheme() {
+    if (!isCustomThemeId(resolvedThemeId)) return;
+    setSettingsOpen(false);
+    editor.beginEdit(getTheme(resolvedThemeId, customThemes));
+  }
+  function deleteCustomTheme(id) {
+    removeCustomTheme(id);
+    setCustomThemes(listCustomThemes());
+    if (themeId === id) selectThemeId("plvs-dark");
+  }
+
   return {
     settingsOpen,
     setSettingsOpen,
@@ -143,6 +189,14 @@ export function useSettings({ onClearRef } = {}) {
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
+    editor,
+    editorPos,
+    moveEditor,
+    customThemeOptions,
+    createCustomTheme,
+    editActiveCustomTheme,
+    deleteCustomTheme,
+    activeIsCustom: isCustomThemeId(resolvedThemeId),
     ...clearShortcutState,
   };
 }
