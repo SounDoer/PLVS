@@ -43,6 +43,7 @@ describe("buildThemeTokens", () => {
       "--ui-waveform-trace",
       "--ui-signal-peak-sample",
       "--ui-signal-tp-max",
+      "--ui-signal-bad",
       "--ui-meter-gradient-top",
       "--ui-meter-gradient-mid",
       "--ui-meter-gradient-bottom",
@@ -76,5 +77,6 @@ describe("buildThemeTokens", () => {
     expect(t["--ui-meter-gradient-mid"]).toBe(signal.warn);
     expect(t["--ui-meter-gradient-top"]).toBe(signal.bad);
     expect(t["--ui-signal-tp-max"]).toBe(signal.bad);
+    expect(t["--ui-signal-bad"]).toBe(signal.bad);
   });
 });
