@@ -56,6 +56,11 @@ export function SettingsPanel({
   channelLabelHasOverride = false,
   setChannelLabelToken = () => {},
   resetChannelLabels = () => {},
+  customThemeOptions = [],
+  createCustomTheme = () => {},
+  editActiveCustomTheme = () => {},
+  deleteCustomTheme = () => {},
+  activeIsCustom = false,
 }) {
   const reduceMotion = useReducedMotion();
   const isMac =
@@ -248,8 +253,33 @@ export function SettingsPanel({
                             {opt.label}
                           </SelectItem>
                         ))}
+                        {customThemeOptions.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.id}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="ghost" onClick={createCustomTheme}>
+                        Duplicate
+                      </Button>
+                      {activeIsCustom ? (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={editActiveCustomTheme}>
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => deleteCustomTheme(fixedThemeSelectValue)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 ) : null}
                 <Separator />
