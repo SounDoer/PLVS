@@ -474,8 +474,8 @@ describe("PanelHeaderControls", () => {
       </WorkspaceProvider>
     );
 
-    expect(screen.getByText("Loudness Stats")).toBeTruthy();
-    expect(screen.queryByLabelText("Remove Loudness Stats")).toBeNull();
+    expect(screen.getAllByText("Stats").length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("Remove Stats")).toBeNull();
     expect(screen.getByRole("button", { name: "Hide all in panel" })).toBeTruthy();
   });
 });

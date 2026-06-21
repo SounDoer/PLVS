@@ -39,7 +39,7 @@ export const MODULE_REGISTRY = {
   },
   loudnessStats: {
     id: "loudnessStats",
-    title: "Loudness Stats",
+    title: "Stats",
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: LoudnessStatsPanel,
