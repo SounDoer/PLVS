@@ -1,5 +1,5 @@
 /**
- * @typedef {'peak' | 'loudness' | 'loudnessStats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform'} ModuleId
+ * @typedef {'levelMeter' | 'loudness' | 'stats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform'} ModuleId
  * @typedef {string} PanelId
  * @typedef {{
  *   id: PanelId,
@@ -20,8 +20,8 @@
  *   spectrumView: string,
  *   spectrumPeakHold: boolean,
  *   levelMeterMode: string,
- *   loudnessStatsVisibleIds: string[],
- *   loudnessStatsOrder: string[],
+ *   statsVisibleIds: string[],
+ *   statsOrder: string[],
  *   loudnessHistoryVisibleLayerIds: string[],
  * }} PanelControls
  *

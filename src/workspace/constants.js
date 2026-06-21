@@ -4,9 +4,9 @@ import { normalizePanelControlsById } from "./panelControlInstances.js";
 
 /** @type {ModuleId[]} */
 export const ALL_MODULE_IDS = [
-  "peak",
+  "levelMeter",
   "loudness",
-  "loudnessStats",
+  "stats",
   "vectorscope",
   "spectrum",
   "spectrogram",
@@ -15,8 +15,8 @@ export const ALL_MODULE_IDS = [
 
 // ---------------------------------------------------------------------------
 // Default tree — PLVSSW:
-//   H[ leaf(peak) | V[ leaf(loudness) | leaf(waveform) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(loudnessStats) | leaf(vectorscope) ] ]
-// Ratios: peak=14% of container width, right column=18%, middle fills remainder.
+//   H[ leaf(levelMeter) | V[ leaf(loudness) | leaf(waveform) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(stats) | leaf(vectorscope) ] ]
+// Ratios: levelMeter=14% of container width, right column=18%, middle fills remainder.
 // ---------------------------------------------------------------------------
 
 /** @type {TreeNode} */
@@ -25,7 +25,7 @@ export const DEFAULT_TREE = {
   direction: "h",
   sizes: [0.14, null, 0.18],
   children: [
-    { type: "leaf", tabs: ["peak"], activeTab: "peak" },
+    { type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" },
     {
       type: "split",
       direction: "v",
@@ -42,7 +42,7 @@ export const DEFAULT_TREE = {
       direction: "v",
       sizes: [0.54, null],
       children: [
-        { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
+        { type: "leaf", tabs: ["stats"], activeTab: "stats" },
         { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },
       ],
     },

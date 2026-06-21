@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
-import { LoudnessStatsPanel } from "./LoudnessStatsPanel.jsx";
+import { StatsPanel } from "./StatsPanel.jsx";
 
 const statsMetrics = [
   {
@@ -54,15 +54,15 @@ function renderPanel(visibleIds) {
     <AudioDataContext.Provider
       value={{
         statsMetrics,
-        panelControls: { loudnessStatsVisibleIds: visibleIds },
+        panelControls: { statsVisibleIds: visibleIds },
       }}
     >
-      <LoudnessStatsPanel />
+      <StatsPanel />
     </AudioDataContext.Provider>
   );
 }
 
-describe("LoudnessStatsPanel", () => {
+describe("StatsPanel", () => {
   it("renders only visible stats", () => {
     renderPanel(["integrated", "psr"]);
 
@@ -108,29 +108,29 @@ describe("LoudnessStatsPanel", () => {
           statsMetrics: [
             { id: "dialogueCoverage", label: "Dialogue Coverage", value: "62", unit: "%" },
           ],
-          panelControls: { loudnessStatsVisibleIds: ["dialogueCoverage"] },
+          panelControls: { statsVisibleIds: ["dialogueCoverage"] },
           dialogueActiveNow: true,
         }}
       >
-        <LoudnessStatsPanel />
+        <StatsPanel />
       </AudioDataContext.Provider>
     );
 
     expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
   });
 
-  it("renders visible metrics in loudnessStatsOrder, ignoring hidden ids", () => {
+  it("renders visible metrics in statsOrder, ignoring hidden ids", () => {
     render(
       <AudioDataContext.Provider
         value={{
           statsMetrics,
           panelControls: {
-            loudnessStatsVisibleIds: ["momentary", "integrated", "psr"],
-            loudnessStatsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
+            statsVisibleIds: ["momentary", "integrated", "psr"],
+            statsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
           },
         }}
       >
-        <LoudnessStatsPanel />
+        <StatsPanel />
       </AudioDataContext.Provider>
     );
 

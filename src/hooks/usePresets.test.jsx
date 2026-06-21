@@ -196,9 +196,11 @@ describe("usePresets", () => {
         {
           id: "p1",
           name: "Preset",
-          tree: leaf(["peak"]),
-          panelsById: { peak: { id: "peak", moduleId: "peak", customTitle: "Main Meter" } },
-          panelOrder: ["peak"],
+          tree: leaf(["levelMeter"]),
+          panelsById: {
+            levelMeter: { id: "levelMeter", moduleId: "levelMeter", customTitle: "Main Meter" },
+          },
+          panelOrder: ["levelMeter"],
           panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
         },
       ],
@@ -218,15 +220,42 @@ describe("usePresets", () => {
     expect(presetsStore.read().activeId).toBe("p1");
   });
 
+  it("filters out presets referencing unknown module ids", () => {
+    presetsStore.patch({
+      list: [
+        {
+          id: "p-valid",
+          name: "Valid",
+          tree: leaf(["spectrum"]),
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+        },
+        {
+          id: "p-legacy",
+          name: "Legacy",
+          tree: leaf(["loudnessStats"]),
+          panelsById: { loudnessStats: { id: "loudnessStats", moduleId: "loudnessStats" } },
+          panelOrder: ["loudnessStats"],
+        },
+      ],
+      activeId: "p-legacy",
+    });
+    const { result } = renderPresetHook();
+    expect(result.current.presets.list).toHaveLength(1);
+    expect(result.current.presets.list[0].id).toBe("p-valid");
+    // activeId pointed at the dropped legacy preset: it must not dangle.
+    expect(result.current.presets.activeId).toBeNull();
+  });
+
   it("renames and removes presets", () => {
     presetsStore.patch({
       list: [
         {
           id: "p1",
           name: "Preset",
-          tree: leaf(["peak"]),
-          panelsById: { peak: { id: "peak", moduleId: "peak" } },
-          panelOrder: ["peak"],
+          tree: leaf(["levelMeter"]),
+          panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+          panelOrder: ["levelMeter"],
         },
       ],
       activeId: "p1",

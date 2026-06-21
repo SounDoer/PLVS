@@ -1,8 +1,4 @@
-import { STATS_META, STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
-
-export const LOUDNESS_STATS_META = STATS_META;
-export const LOUDNESS_STATS_ORDER = STATS_CANONICAL_ORDER;
-export const LOUDNESS_STATS_OPTIONS = STATS_OPTIONS;
+import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -22,7 +18,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
   spectrumPeakHold: false,
-  loudnessStatsVisibleIds: [
+  statsVisibleIds: [
     "momentary",
     "shortTerm",
     "integrated",
@@ -32,11 +28,11 @@ export const DEFAULT_PANEL_CONTROLS = {
     "psr",
     "plr",
   ],
-  loudnessStatsOrder: [...LOUDNESS_STATS_ORDER],
+  statsOrder: [...STATS_CANONICAL_ORDER],
   loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
 };
 
-const LOUDNESS_STATS_IDS = new Set(LOUDNESS_STATS_OPTIONS.map((option) => option.id));
+const STATS_IDS = new Set(STATS_OPTIONS.map((option) => option.id));
 const LOUDNESS_HISTORY_LAYER_IDS = new Set(
   LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
 );
@@ -113,12 +109,12 @@ export function normalizePanelControls(raw) {
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
     spectrumPeakHold: normalizeSpectrumPeakHold(raw?.spectrumPeakHold),
-    loudnessStatsVisibleIds: normalizeKnownIds(
-      raw?.loudnessStatsVisibleIds,
-      LOUDNESS_STATS_IDS,
-      DEFAULT_PANEL_CONTROLS.loudnessStatsVisibleIds
+    statsVisibleIds: normalizeKnownIds(
+      raw?.statsVisibleIds,
+      STATS_IDS,
+      DEFAULT_PANEL_CONTROLS.statsVisibleIds
     ),
-    loudnessStatsOrder: normalizeOrder(raw?.loudnessStatsOrder, LOUDNESS_STATS_ORDER),
+    statsOrder: normalizeOrder(raw?.statsOrder, STATS_CANONICAL_ORDER),
     loudnessHistoryVisibleLayerIds: normalizeKnownIds(
       raw?.loudnessHistoryVisibleLayerIds,
       LOUDNESS_HISTORY_LAYER_IDS,

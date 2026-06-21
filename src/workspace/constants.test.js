@@ -18,8 +18,8 @@ describe("workspace state shape", () => {
       ["fullscreenId", "panelControlsById", "panelOrder", "panelsById", "tree"].sort()
     );
     expect(DEFAULT_WORKSPACE_STATE).not.toHaveProperty("visibleModules");
-    expect(DEFAULT_PANELS_BY_ID.peak).toEqual({ id: "peak", moduleId: "peak" });
-    expect(DEFAULT_WORKSPACE_STATE.panelControlsById.peak.levelMeterMode).toBe("peak");
+    expect(DEFAULT_PANELS_BY_ID.levelMeter).toEqual({ id: "levelMeter", moduleId: "levelMeter" });
+    expect(DEFAULT_WORKSPACE_STATE.panelControlsById.levelMeter.levelMeterMode).toBe("peak");
   });
 });
 
@@ -34,8 +34,8 @@ describe("panel minimum sizes (drag clamp floor)", () => {
 });
 
 describe("module registry labels", () => {
-  it("keeps the peak module id but labels it as Level Meter", () => {
-    expect(MODULE_REGISTRY.peak.id).toBe("peak");
-    expect(MODULE_REGISTRY.peak.title).toBe("Level Meter");
+  it("keeps the levelMeter module id and labels it as Level Meter", () => {
+    expect(MODULE_REGISTRY.levelMeter.id).toBe("levelMeter");
+    expect(MODULE_REGISTRY.levelMeter.title).toBe("Level Meter");
   });
 });

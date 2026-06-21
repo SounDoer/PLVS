@@ -20,9 +20,9 @@ describe("persistence index", () => {
   });
 
   it("workspaceStore persists under plvs:workspace", () => {
-    workspaceStore.patch({ visibleModules: ["peak"] });
+    workspaceStore.patch({ visibleModules: ["levelMeter"] });
     expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({
-      visibleModules: ["peak"],
+      visibleModules: ["levelMeter"],
     });
   });
 
@@ -46,22 +46,22 @@ describe("persistence index", () => {
     localStorage.setItem(
       "plvs:workspace",
       JSON.stringify({
-        visibleModules: ["peak"],
+        visibleModules: ["levelMeter"],
         activePresetId: "lls",
         customPresets: [{ id: "x" }],
       })
     );
-    expect(workspaceStore.export()).toEqual({ visibleModules: ["peak"] });
+    expect(workspaceStore.export()).toEqual({ visibleModules: ["levelMeter"] });
   });
 
   it("exportAll returns all domains keyed by name", () => {
     settingsStore.patch({ referenceLufs: -23 });
-    workspaceStore.patch({ visibleModules: ["peak"] });
+    workspaceStore.patch({ visibleModules: ["levelMeter"] });
     presetsStore.patch({ list: [], activeId: null });
     themesStore.patch({ themes: {}, order: [] });
     expect(exportAll()).toEqual({
       settings: { referenceLufs: -23 },
-      workspace: { visibleModules: ["peak"] },
+      workspace: { visibleModules: ["levelMeter"] },
       presets: { list: [], activeId: null },
       themes: { themes: {}, order: [] },
     });
@@ -69,7 +69,7 @@ describe("persistence index", () => {
 
   it("resetAll clears all domains", () => {
     settingsStore.patch({ referenceLufs: -23 });
-    workspaceStore.patch({ visibleModules: ["peak"] });
+    workspaceStore.patch({ visibleModules: ["levelMeter"] });
     presetsStore.patch({ list: [], activeId: null });
     themesStore.patch({ themes: {}, order: [] });
     resetAll();

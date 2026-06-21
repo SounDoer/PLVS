@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createPanel,
   createPanelId,
+  hasKnownModulesOnly,
   resolvePanelDisplayName,
   trimCustomTitle,
 } from "./panelInstances.js";
@@ -55,5 +56,28 @@ describe("panelInstances", () => {
     expect(resolvePanelDisplayName(s, "spectrum")).toBe("Spectrum 1");
     expect(resolvePanelDisplayName(s, "spectrum-2")).toBe("Dialogue");
     expect(resolvePanelDisplayName(s, "spectrum-3")).toBe("Spectrum 2");
+  });
+});
+
+describe("hasKnownModulesOnly", () => {
+  it("returns true when every panel moduleId is registered", () => {
+    expect(hasKnownModulesOnly({ panelsById: { stats: { id: "stats", moduleId: "stats" } } })).toBe(
+      true
+    );
+  });
+  it("returns false when a panel references an unknown/legacy moduleId", () => {
+    expect(
+      hasKnownModulesOnly({
+        panelsById: { loudnessStats: { id: "loudnessStats", moduleId: "loudnessStats" } },
+      })
+    ).toBe(false);
+    expect(hasKnownModulesOnly({ panelsById: { peak: { id: "peak", moduleId: "peak" } } })).toBe(
+      false
+    );
+  });
+  it("treats empty or missing panelsById as known (nothing invalid)", () => {
+    expect(hasKnownModulesOnly({ panelsById: {} })).toBe(true);
+    expect(hasKnownModulesOnly({})).toBe(true);
+    expect(hasKnownModulesOnly(null)).toBe(true);
   });
 });

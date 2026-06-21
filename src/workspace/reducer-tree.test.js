@@ -5,11 +5,8 @@ import { describe, it, expect } from "vitest";
 import { workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { findLeafWithTab } from "./treeUtils.js";
-import {
-  DEFAULT_PANEL_CONTROLS,
-  LOUDNESS_STATS_ORDER,
-  normalizePanelControls,
-} from "../lib/panelControls.js";
+import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
+import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,7 +30,7 @@ function expectPanelControlsIsolated(actual, source) {
   expect(actual).not.toBe(source);
   expect(actual.vectorscopePair).not.toBe(source.vectorscopePair);
   expect(actual.spectrumChannel).not.toBe(source.spectrumChannel);
-  expect(actual.loudnessStatsVisibleIds).not.toBe(source.loudnessStatsVisibleIds);
+  expect(actual.statsVisibleIds).not.toBe(source.statsVisibleIds);
   expect(actual.loudnessHistoryVisibleLayerIds).not.toBe(source.loudnessHistoryVisibleLayerIds);
 }
 
@@ -43,7 +40,7 @@ function expectPanelControlsIsolated(actual, source) {
 
 describe("SET_TREE", () => {
   it("replaces the entire tree", () => {
-    const newTree = leaf(["peak"]);
+    const newTree = leaf(["levelMeter"]);
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "SET_TREE",
       payload: { tree: newTree },
@@ -58,7 +55,7 @@ describe("SET_TREE", () => {
 
 describe("RESIZE_CHILDREN", () => {
   it("updates sizes of adjacent children in a SplitNode at root", () => {
-    const root = split("v", [leaf(["peak"]), leaf(["loudness"])], [0.5, 0.5]);
+    const root = split("v", [leaf(["levelMeter"]), leaf(["loudness"])], [0.5, 0.5]);
     const s = state(root);
     const next = workspaceReducer(s, {
       type: "RESIZE_CHILDREN",
@@ -69,7 +66,7 @@ describe("RESIZE_CHILDREN", () => {
   });
 
   it("updates sizes in a nested SplitNode", () => {
-    const inner = split("h", [leaf(["peak"]), leaf(["loudness"])], [0.4, 0.4]);
+    const inner = split("h", [leaf(["levelMeter"]), leaf(["loudness"])], [0.4, 0.4]);
     const root = split("v", [inner, leaf(["spectrum"])]);
     const s = state(root);
     const next = workspaceReducer(s, {
@@ -88,7 +85,7 @@ describe("RESIZE_CHILDREN", () => {
 
 describe("SET_ACTIVE_TAB", () => {
   it("sets activeTab on a leaf at a given path", () => {
-    const root = split("h", [leaf(["peak", "loudness"], "peak"), leaf(["spectrum"])]);
+    const root = split("h", [leaf(["levelMeter", "loudness"], "levelMeter"), leaf(["spectrum"])]);
     const next = workspaceReducer(state(root), {
       type: "SET_ACTIVE_TAB",
       payload: { path: [0], tabId: "loudness" },
@@ -98,7 +95,7 @@ describe("SET_ACTIVE_TAB", () => {
 
   it("does not touch other leaves", () => {
     const right = leaf(["spectrum"]);
-    const root = split("h", [leaf(["peak", "loudness"], "peak"), right]);
+    const root = split("h", [leaf(["levelMeter", "loudness"], "levelMeter"), right]);
     const next = workspaceReducer(state(root), {
       type: "SET_ACTIVE_TAB",
       payload: { path: [0], tabId: "loudness" },
@@ -115,12 +112,12 @@ describe("panel instances", () => {
   it("adds duplicate module instances with distinct ids", () => {
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "ADD_PANEL",
-      payload: { moduleId: "peak" },
+      payload: { moduleId: "levelMeter" },
     });
 
-    expect(next.panelsById["peak-2"]).toEqual({ id: "peak-2", moduleId: "peak" });
-    expect(next.panelOrder).toContain("peak-2");
-    expect(findLeafWithTab(next.tree, "peak-2")).not.toBeNull();
+    expect(next.panelsById["levelMeter-2"]).toEqual({ id: "levelMeter-2", moduleId: "levelMeter" });
+    expect(next.panelOrder).toContain("levelMeter-2");
+    expect(findLeafWithTab(next.tree, "levelMeter-2")).not.toBeNull();
   });
 
   it("adds a panel as the root when the workspace is empty", () => {
@@ -134,38 +131,38 @@ describe("panel instances", () => {
   it("removes one duplicate without removing its sibling", () => {
     const withDuplicate = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "ADD_PANEL",
-      payload: { moduleId: "peak" },
+      payload: { moduleId: "levelMeter" },
     });
     const next = workspaceReducer(withDuplicate, {
       type: "REMOVE_PANEL",
-      payload: { id: "peak-2" },
+      payload: { id: "levelMeter-2" },
     });
 
-    expect(next.panelsById.peak).toBeDefined();
-    expect(next.panelsById["peak-2"]).toBeUndefined();
-    expect(next.panelOrder).not.toContain("peak-2");
-    expect(findLeafWithTab(next.tree, "peak")).not.toBeNull();
-    expect(findLeafWithTab(next.tree, "peak-2")).toBeNull();
+    expect(next.panelsById.levelMeter).toBeDefined();
+    expect(next.panelsById["levelMeter-2"]).toBeUndefined();
+    expect(next.panelOrder).not.toContain("levelMeter-2");
+    expect(findLeafWithTab(next.tree, "levelMeter")).not.toBeNull();
+    expect(findLeafWithTab(next.tree, "levelMeter-2")).toBeNull();
   });
 
   it("clears fullscreen when removing the fullscreen panel", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "peak" };
-    const next = workspaceReducer(s, { type: "REMOVE_PANEL", payload: { id: "peak" } });
+    const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "levelMeter" };
+    const next = workspaceReducer(s, { type: "REMOVE_PANEL", payload: { id: "levelMeter" } });
     expect(next.fullscreenId).toBeNull();
   });
 
   it("renames and clears custom panel titles", () => {
     const renamed = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "RENAME_PANEL",
-      payload: { id: "peak", customTitle: "  Main Meter  " },
+      payload: { id: "levelMeter", customTitle: "  Main Meter  " },
     });
-    expect(renamed.panelsById.peak.customTitle).toBe("Main Meter");
+    expect(renamed.panelsById.levelMeter.customTitle).toBe("Main Meter");
 
     const cleared = workspaceReducer(renamed, {
       type: "RENAME_PANEL",
-      payload: { id: "peak", customTitle: "   " },
+      payload: { id: "levelMeter", customTitle: "   " },
     });
-    expect(cleared.panelsById.peak).not.toHaveProperty("customTitle");
+    expect(cleared.panelsById.levelMeter).not.toHaveProperty("customTitle");
   });
 });
 
@@ -177,8 +174,8 @@ describe("SET_FOCUS", () => {
   it("activates the target tab in its leaf", () => {
     const root = {
       type: "leaf",
-      tabs: ["peak", "loudness"],
-      activeTab: "peak",
+      tabs: ["levelMeter", "loudness"],
+      activeTab: "levelMeter",
     };
     const next = workspaceReducer(state(root), { type: "SET_FOCUS", payload: { id: "loudness" } });
     expect(next.tree.activeTab).toBe("loudness");
@@ -186,15 +183,18 @@ describe("SET_FOCUS", () => {
   });
 
   it("makes focused tab active in its leaf (split tree)", () => {
-    const root = split("h", [leaf(["peak", "loudness"], "peak"), leaf(["spectrum"])]);
+    const root = split("h", [leaf(["levelMeter", "loudness"], "levelMeter"), leaf(["spectrum"])]);
     const next = workspaceReducer(state(root), { type: "SET_FOCUS", payload: { id: "loudness" } });
     expect(next.tree.children[0].activeTab).toBe("loudness");
   });
 
   it("does not change tree when module is already active", () => {
-    const root = leaf(["peak"]);
-    const next = workspaceReducer(state(root), { type: "SET_FOCUS", payload: { id: "peak" } });
-    expect(next.tree.children?.[0] ?? next.tree).toMatchObject({ activeTab: "peak" });
+    const root = leaf(["levelMeter"]);
+    const next = workspaceReducer(state(root), {
+      type: "SET_FOCUS",
+      payload: { id: "levelMeter" },
+    });
+    expect(next.tree.children?.[0] ?? next.tree).toMatchObject({ activeTab: "levelMeter" });
   });
 });
 
@@ -206,13 +206,13 @@ describe("SET_FULLSCREEN", () => {
   it("sets fullscreenId", () => {
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "SET_FULLSCREEN",
-      payload: "peak",
+      payload: "levelMeter",
     });
-    expect(next.fullscreenId).toBe("peak");
+    expect(next.fullscreenId).toBe("levelMeter");
   });
 
   it("clears fullscreenId with null", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "peak" };
+    const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "levelMeter" };
     const next = workspaceReducer(s, { type: "SET_FULLSCREEN", payload: null });
     expect(next.fullscreenId).toBeNull();
   });
@@ -224,62 +224,62 @@ describe("SET_FULLSCREEN", () => {
 
 describe("MOVE_TAB: zone=tabs", () => {
   it("merges source tab into target leaf", () => {
-    const root = split("h", [leaf(["peak"]), leaf(["loudness"])]);
+    const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
     const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
-      payload: { sourceId: "peak", drop: { targetPath: [1], zone: "tabs", tabIndex: 0 } },
+      payload: { sourceId: "levelMeter", drop: { targetPath: [1], zone: "tabs", tabIndex: 0 } },
     });
     // left leaf emptied → pruned → root unwraps to right leaf
     expect(next.tree.type).toBe("leaf");
-    expect(next.tree.tabs).toContain("peak");
+    expect(next.tree.tabs).toContain("levelMeter");
     expect(next.tree.tabs).toContain("loudness");
-    expect(next.tree.activeTab).toBe("peak"); // moved tab becomes active
+    expect(next.tree.activeTab).toBe("levelMeter"); // moved tab becomes active
   });
 });
 
 describe("MOVE_TAB: zone=below", () => {
   it("places source tab in a new leaf below target", () => {
-    const root = split("h", [leaf(["peak"]), leaf(["loudness"])]);
+    const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
     const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
-      payload: { sourceId: "peak", drop: { targetPath: [1], zone: "below" } },
+      payload: { sourceId: "levelMeter", drop: { targetPath: [1], zone: "below" } },
     });
-    // peak removed from [0] → left leaf empty → root = loudness leaf
-    // Then peak inserted below loudness → V[loudness, peak]
+    // levelMeter removed from [0] → left leaf empty → root = loudness leaf
+    // Then levelMeter inserted below loudness → V[loudness, levelMeter]
     expect(next.tree.direction).toBe("v");
     expect(next.tree.children[0].tabs).toContain("loudness");
-    expect(next.tree.children[1].tabs).toContain("peak");
+    expect(next.tree.children[1].tabs).toContain("levelMeter");
   });
 
   it("adjusts path when source removal changes tree structure", () => {
-    // V[leaf(peak), leaf(loudness)] — drag peak to below loudness (targetPath=[1])
-    // After removing peak: root = leaf(loudness) (unwrapped)
+    // V[leaf(levelMeter), leaf(loudness)] — drag levelMeter to below loudness (targetPath=[1])
+    // After removing levelMeter: root = leaf(loudness) (unwrapped)
     // targetPath [1] is stale; should resolve to insert below root
-    const root = split("v", [leaf(["peak"]), leaf(["loudness"])]);
+    const root = split("v", [leaf(["levelMeter"]), leaf(["loudness"])]);
     const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
-      payload: { sourceId: "peak", drop: { targetPath: [1], zone: "below" } },
+      payload: { sourceId: "levelMeter", drop: { targetPath: [1], zone: "below" } },
     });
     expect(next.tree.direction).toBe("v");
     expect(next.tree.children[0].tabs).toContain("loudness");
-    expect(next.tree.children[1].tabs).toContain("peak");
+    expect(next.tree.children[1].tabs).toContain("levelMeter");
   });
 });
 
 describe("MOVE_TAB: zone=right", () => {
   it("places source tab in a new leaf to the right of target", () => {
-    const root = split("v", [leaf(["peak"]), leaf(["loudness"])]);
+    const root = split("v", [leaf(["levelMeter"]), leaf(["loudness"])]);
     const s = state(root);
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
       payload: { sourceId: "loudness", drop: { targetPath: [0], zone: "right" } },
     });
-    // loudness removed from [1] → root = leaf(peak); then loudness inserted right of peak
+    // loudness removed from [1] → root = leaf(levelMeter); then loudness inserted right of levelMeter
     expect(next.tree.direction).toBe("h");
-    expect(next.tree.children[0].tabs).toContain("peak");
+    expect(next.tree.children[0].tabs).toContain("levelMeter");
     expect(next.tree.children[1].tabs).toContain("loudness");
   });
 });
@@ -293,32 +293,32 @@ describe("MOVE_TAB: drag to same single-tab leaf edge (regression)", () => {
   // causes anchorTab=null → stale fallbackPath → insertLeaf throws on LeafNode
 
   it("zone=above on same single-tab leaf does not throw and preserves both tabs", () => {
-    const root = split("h", [leaf(["peak"]), leaf(["loudness"])]);
+    const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
     const s = state(root);
-    // sourceId 'peak' is in leaf at [0]; targetPath=[0] is same leaf
+    // sourceId 'levelMeter' is in leaf at [0]; targetPath=[0] is same leaf
     expect(() =>
       workspaceReducer(s, {
         type: "MOVE_TAB",
-        payload: { sourceId: "peak", drop: { targetPath: [0], zone: "above" } },
+        payload: { sourceId: "levelMeter", drop: { targetPath: [0], zone: "above" } },
       })
     ).not.toThrow();
     const next = workspaceReducer(s, {
       type: "MOVE_TAB",
-      payload: { sourceId: "peak", drop: { targetPath: [0], zone: "above" } },
+      payload: { sourceId: "levelMeter", drop: { targetPath: [0], zone: "above" } },
     });
     expect(next.tree).toBeDefined();
     // Both modules must still be in the tree
-    expect(findLeafWithTab(next.tree, "peak")).not.toBeNull();
+    expect(findLeafWithTab(next.tree, "levelMeter")).not.toBeNull();
     expect(findLeafWithTab(next.tree, "loudness")).not.toBeNull();
   });
 
   it("zone=right on same single-tab leaf does not throw", () => {
-    const root = split("v", [leaf(["peak"]), leaf(["loudness"])]);
+    const root = split("v", [leaf(["levelMeter"]), leaf(["loudness"])]);
     const s = state(root);
     expect(() =>
       workspaceReducer(s, {
         type: "MOVE_TAB",
-        payload: { sourceId: "peak", drop: { targetPath: [0], zone: "right" } },
+        payload: { sourceId: "levelMeter", drop: { targetPath: [0], zone: "right" } },
       })
     ).not.toThrow();
   });
@@ -351,7 +351,7 @@ describe("SET_VIEW", () => {
   });
 
   it("clears fullscreenId", () => {
-    const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "peak" };
+    const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "levelMeter" };
     const next = workspaceReducer(s, {
       type: "SET_VIEW",
       payload: {
@@ -376,17 +376,17 @@ describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      loudnessStatsVisibleIds: [],
-      loudnessStatsOrder: LOUDNESS_STATS_ORDER,
+      statsVisibleIds: [],
+      statsOrder: STATS_CANONICAL_ORDER,
       loudnessHistoryVisibleLayerIds: [],
     };
 
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "SET_PANEL_CONTROLS_FOR_PANEL",
-      payload: { id: "peak", panelControls: nextControls },
+      payload: { id: "levelMeter", panelControls: nextControls },
     });
 
-    expectPanelControlsIsolated(next.panelControlsById.peak, nextControls);
+    expectPanelControlsIsolated(next.panelControlsById.levelMeter, nextControls);
     expect(next.panelControlsById.loudness).toEqual(
       DEFAULT_WORKSPACE_STATE.panelControlsById.loudness
     );

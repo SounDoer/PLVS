@@ -3,9 +3,9 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
-  LOUDNESS_STATS_OPTIONS,
   normalizePanelControls,
 } from "./panelControls.js";
+import { STATS_OPTIONS } from "./statsCatalog.js";
 
 describe("panelControls", () => {
   afterEach(() => {
@@ -13,7 +13,7 @@ describe("panelControls", () => {
   });
 
   it("offers the four dialogue stats options but excludes them from defaults", () => {
-    const ids = LOUDNESS_STATS_OPTIONS.map((o) => o.id);
+    const ids = STATS_OPTIONS.map((o) => o.id);
     expect(ids).toEqual(
       expect.arrayContaining([
         "dialogueCoverage",
@@ -22,12 +22,12 @@ describe("panelControls", () => {
         "dialogueOffset",
       ])
     );
-    expect(DEFAULT_PANEL_CONTROLS.loudnessStatsVisibleIds).not.toContain("dialogueCoverage");
+    expect(DEFAULT_PANEL_CONTROLS.statsVisibleIds).not.toContain("dialogueCoverage");
   });
 
   it("defines stable stats and layer option ids", () => {
     expect(LEVEL_METER_MODE_OPTIONS.map((o) => o.id)).toEqual(["peak", "momentary", "shortTerm"]);
-    expect(LOUDNESS_STATS_OPTIONS.map((o) => o.id)).toEqual([
+    expect(STATS_OPTIONS.map((o) => o.id)).toEqual([
       "momentary",
       "shortTerm",
       "integrated",
@@ -51,7 +51,7 @@ describe("panelControls", () => {
   });
 
   it("uses plain-language labels for the derived metrics", () => {
-    const byId = Object.fromEntries(LOUDNESS_STATS_OPTIONS.map((o) => [o.id, o.label]));
+    const byId = Object.fromEntries(STATS_OPTIONS.map((o) => [o.id, o.label]));
     expect(byId.lra).toBe("Loudness Range");
     expect(byId.psr).toBe("Short-term Dynamics");
     expect(byId.plr).toBe("Integrated Dynamics");
@@ -59,7 +59,7 @@ describe("panelControls", () => {
   });
 
   it("gives every stats option a non-empty hint", () => {
-    for (const opt of LOUDNESS_STATS_OPTIONS) {
+    for (const opt of STATS_OPTIONS) {
       expect(typeof opt.hint).toBe("string");
       expect(opt.hint.length).toBeGreaterThan(0);
     }
@@ -72,7 +72,7 @@ describe("panelControls", () => {
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      loudnessStatsVisibleIds: [
+      statsVisibleIds: [
         "momentary",
         "shortTerm",
         "integrated",
@@ -82,7 +82,7 @@ describe("panelControls", () => {
         "psr",
         "plr",
       ],
-      loudnessStatsOrder: [
+      statsOrder: [
         "momentary",
         "shortTerm",
         "integrated",
@@ -102,8 +102,8 @@ describe("panelControls", () => {
     });
   });
 
-  it("defaults loudnessStatsOrder to the full LOUDNESS_STATS_ORDER", () => {
-    expect(DEFAULT_PANEL_CONTROLS.loudnessStatsOrder).toEqual([
+  it("defaults statsOrder to the full STATS_CANONICAL_ORDER", () => {
+    expect(DEFAULT_PANEL_CONTROLS.statsOrder).toEqual([
       "momentary",
       "shortTerm",
       "integrated",
@@ -121,11 +121,11 @@ describe("panelControls", () => {
     ]);
   });
 
-  it("normalizes loudnessStatsOrder: dedupe, drop unknown, backfill missing in default order", () => {
+  it("normalizes statsOrder: dedupe, drop unknown, backfill missing in default order", () => {
     const result = normalizePanelControls({
-      loudnessStatsOrder: ["psr", "psr", "bogus", "integrated"],
+      statsOrder: ["psr", "psr", "bogus", "integrated"],
     });
-    expect(result.loudnessStatsOrder).toEqual([
+    expect(result.statsOrder).toEqual([
       "psr",
       "integrated",
       "momentary",
@@ -143,9 +143,9 @@ describe("panelControls", () => {
     ]);
   });
 
-  it("falls back to default loudnessStatsOrder when raw is not an array", () => {
-    expect(normalizePanelControls({ loudnessStatsOrder: "nope" }).loudnessStatsOrder).toEqual(
-      DEFAULT_PANEL_CONTROLS.loudnessStatsOrder
+  it("falls back to default statsOrder when raw is not an array", () => {
+    expect(normalizePanelControls({ statsOrder: "nope" }).statsOrder).toEqual(
+      DEFAULT_PANEL_CONTROLS.statsOrder
     );
   });
 
@@ -155,7 +155,7 @@ describe("panelControls", () => {
         levelMeterMode: "money",
         vectorscopePair: { x: 2, y: "bad" },
         spectrumChannel: { type: "single", ch: 3 },
-        loudnessStatsVisibleIds: ["momentary", "unknown", "momentary"],
+        statsVisibleIds: ["momentary", "unknown", "momentary"],
         loudnessHistoryVisibleLayerIds: ["ref", "bad", "ref"],
       })
     ).toEqual({
@@ -164,8 +164,8 @@ describe("panelControls", () => {
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      loudnessStatsVisibleIds: ["momentary"],
-      loudnessStatsOrder: DEFAULT_PANEL_CONTROLS.loudnessStatsOrder,
+      statsVisibleIds: ["momentary"],
+      statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
       loudnessHistoryVisibleLayerIds: ["ref"],
     });
   });
