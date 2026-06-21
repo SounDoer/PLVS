@@ -251,7 +251,7 @@ export function PanelHeaderControls({
   panelControls,
   onPanelControlsChange,
 }) {
-  if (activeTab === "peak") {
+  if (activeTab === "levelMeter") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);

@@ -21,8 +21,8 @@ const MIN_PANEL_HEIGHT = 36;
 
 /** @type {Record<import('./types.js').ModuleId, { id: string, title: string, minWidth: number, minHeight: number, Component: React.FC<{compact?: boolean}>, Icon: React.FC }>} */
 export const MODULE_REGISTRY = {
-  peak: {
-    id: "peak",
+  levelMeter: {
+    id: "levelMeter",
     title: "Level Meter",
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,

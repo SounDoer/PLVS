@@ -31,7 +31,7 @@ describe("WorkspaceContext fullscreenId", () => {
   it("never restores fullscreenId from storage", () => {
     localStorage.setItem(
       "plvs:workspace",
-      JSON.stringify({ ...DEFAULT_WORKSPACE_STATE, fullscreenId: "peak" })
+      JSON.stringify({ ...DEFAULT_WORKSPACE_STATE, fullscreenId: "levelMeter" })
     );
     let captured = null;
     render(
@@ -59,21 +59,21 @@ describe("WorkspaceContext active preset divergence", () => {
   it("clears presets.activeId on manual setTree", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
-    act(() => actions.setTree(leaf(["peak"])));
+    act(() => actions.setTree(leaf(["levelMeter"])));
     expect(presetsStore.read().activeId).toBeNull();
   });
 
   it("clears presets.activeId on manual moveTab", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
-    act(() => actions.moveTab("peak", { targetPath: [1, 0], zone: "tabs", tabIndex: 0 }));
+    act(() => actions.moveTab("levelMeter", { targetPath: [1, 0], zone: "tabs", tabIndex: 0 }));
     expect(presetsStore.read().activeId).toBeNull();
   });
 
   it("clears presets.activeId on manual addPanel", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
-    act(() => actions.addPanel("peak"));
+    act(() => actions.addPanel("levelMeter"));
     expect(presetsStore.read().activeId).toBeNull();
   });
 
@@ -87,14 +87,14 @@ describe("WorkspaceContext active preset divergence", () => {
   it("clears presets.activeId on manual removePanel", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
-    act(() => actions.removePanel("peak"));
+    act(() => actions.removePanel("levelMeter"));
     expect(presetsStore.read().activeId).toBeNull();
   });
 
   it("clears presets.activeId on manual renamePanel", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
-    act(() => actions.renamePanel("peak", "Main Meter"));
+    act(() => actions.renamePanel("levelMeter", "Main Meter"));
     expect(presetsStore.read().activeId).toBeNull();
   });
 
@@ -103,7 +103,7 @@ describe("WorkspaceContext active preset divergence", () => {
     const actions = renderActions();
     act(() =>
       actions.setView({
-        tree: split("h", [leaf(["peak"]), leaf(["loudness"])]),
+        tree: split("h", [leaf(["levelMeter"]), leaf(["loudness"])]),
         panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
         panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
         panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,

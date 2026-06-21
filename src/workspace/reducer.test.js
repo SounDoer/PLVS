@@ -6,9 +6,11 @@ describe("workspaceReducer RESET_WORKSPACE", () => {
   it("restores tree, panels, order, and panel controls to defaults", () => {
     const mutated = {
       ...DEFAULT_WORKSPACE_STATE,
-      panelOrder: ["peak"],
-      panelsById: { peak: { id: "peak", moduleId: "peak", customTitle: "My Peak" } },
-      tree: { type: "leaf", tabs: ["peak"], activeTab: "peak" },
+      panelOrder: ["levelMeter"],
+      panelsById: {
+        levelMeter: { id: "levelMeter", moduleId: "levelMeter", customTitle: "My Peak" },
+      },
+      tree: { type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" },
     };
 
     const next = workspaceReducer(mutated, { type: "RESET_WORKSPACE" });

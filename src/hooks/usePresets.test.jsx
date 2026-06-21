@@ -196,9 +196,11 @@ describe("usePresets", () => {
         {
           id: "p1",
           name: "Preset",
-          tree: leaf(["peak"]),
-          panelsById: { peak: { id: "peak", moduleId: "peak", customTitle: "Main Meter" } },
-          panelOrder: ["peak"],
+          tree: leaf(["levelMeter"]),
+          panelsById: {
+            levelMeter: { id: "levelMeter", moduleId: "levelMeter", customTitle: "Main Meter" },
+          },
+          panelOrder: ["levelMeter"],
           panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
         },
       ],
@@ -224,9 +226,9 @@ describe("usePresets", () => {
         {
           id: "p1",
           name: "Preset",
-          tree: leaf(["peak"]),
-          panelsById: { peak: { id: "peak", moduleId: "peak" } },
-          panelOrder: ["peak"],
+          tree: leaf(["levelMeter"]),
+          panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+          panelOrder: ["levelMeter"],
         },
       ],
       activeId: "p1",

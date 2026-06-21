@@ -1,5 +1,5 @@
 /**
- * @typedef {'peak' | 'loudness' | 'stats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform'} ModuleId
+ * @typedef {'levelMeter' | 'loudness' | 'stats' | 'vectorscope' | 'spectrum' | 'spectrogram' | 'waveform'} ModuleId
  * @typedef {string} PanelId
  * @typedef {{
  *   id: PanelId,

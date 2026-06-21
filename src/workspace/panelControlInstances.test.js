@@ -16,31 +16,33 @@ describe("panelControlInstances", () => {
 
   it("normalizes controls only for existing panel ids", () => {
     const panelsById = {
-      peak: { id: "peak", moduleId: "peak" },
-      "peak-2": { id: "peak-2", moduleId: "peak" },
+      levelMeter: { id: "levelMeter", moduleId: "levelMeter" },
+      "levelMeter-2": { id: "levelMeter-2", moduleId: "levelMeter" },
     };
 
     const controlsById = normalizePanelControlsById(panelsById, {
-      peak: { levelMeterMode: "momentary" },
+      levelMeter: { levelMeterMode: "momentary" },
       stale: { levelMeterMode: "shortTerm" },
     });
 
-    expect(Object.keys(controlsById).sort()).toEqual(["peak", "peak-2"]);
-    expect(controlsById.peak.levelMeterMode).toBe("momentary");
-    expect(controlsById["peak-2"].levelMeterMode).toBe("peak");
+    expect(Object.keys(controlsById).sort()).toEqual(["levelMeter", "levelMeter-2"]);
+    expect(controlsById.levelMeter.levelMeterMode).toBe("momentary");
+    expect(controlsById["levelMeter-2"].levelMeterMode).toBe("peak");
   });
 
   it("reads and updates controls by panel id", () => {
     const state = {
       panelControlsById: {
-        peak: createDefaultPanelControls(),
+        levelMeter: createDefaultPanelControls(),
       },
     };
-    const next = updatePanelControlsById(state.panelControlsById, "peak", {
+    const next = updatePanelControlsById(state.panelControlsById, "levelMeter", {
       levelMeterMode: "shortTerm",
     });
 
-    expect(getPanelControls({ panelControlsById: next }, "peak").levelMeterMode).toBe("shortTerm");
-    expect(state.panelControlsById.peak.levelMeterMode).toBe("peak");
+    expect(getPanelControls({ panelControlsById: next }, "levelMeter").levelMeterMode).toBe(
+      "shortTerm"
+    );
+    expect(state.panelControlsById.levelMeter.levelMeterMode).toBe("peak");
   });
 });

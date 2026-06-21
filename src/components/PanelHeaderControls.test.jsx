@@ -42,7 +42,7 @@ describe("PanelHeaderControls", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelHeaderControls
-        activeTab="peak"
+        activeTab="levelMeter"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -65,7 +65,7 @@ describe("PanelHeaderControls", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelHeaderControls
-        activeTab="peak"
+        activeTab="levelMeter"
         panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
         onPanelControlsChange={onPanelControlsChange}
       />
