@@ -48,7 +48,7 @@ function MetricRow({ id, label, value, unit, active, hint }) {
   );
 }
 
-export function LoudnessStatsPanel({ compact = false }) {
+export function StatsPanel({ compact = false }) {
   const { statsMetrics, panelControls, dialogueActiveNow } = useAudioData();
   const statsVisibleIds = panelControls?.statsVisibleIds;
   const statsOrder = panelControls?.statsOrder;

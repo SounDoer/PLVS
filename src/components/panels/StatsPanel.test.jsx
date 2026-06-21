@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
-import { LoudnessStatsPanel } from "./LoudnessStatsPanel.jsx";
+import { StatsPanel } from "./StatsPanel.jsx";
 
 const statsMetrics = [
   {
@@ -57,12 +57,12 @@ function renderPanel(visibleIds) {
         panelControls: { statsVisibleIds: visibleIds },
       }}
     >
-      <LoudnessStatsPanel />
+      <StatsPanel />
     </AudioDataContext.Provider>
   );
 }
 
-describe("LoudnessStatsPanel", () => {
+describe("StatsPanel", () => {
   it("renders only visible stats", () => {
     renderPanel(["integrated", "psr"]);
 
@@ -112,7 +112,7 @@ describe("LoudnessStatsPanel", () => {
           dialogueActiveNow: true,
         }}
       >
-        <LoudnessStatsPanel />
+        <StatsPanel />
       </AudioDataContext.Provider>
     );
 
@@ -130,7 +130,7 @@ describe("LoudnessStatsPanel", () => {
           },
         }}
       >
-        <LoudnessStatsPanel />
+        <StatsPanel />
       </AudioDataContext.Provider>
     );
 

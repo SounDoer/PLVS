@@ -7,9 +7,9 @@ import {
   Layers,
   List,
 } from "lucide-react";
-import { PeakPanel } from "../components/panels/PeakPanel";
+import { LevelMeterPanel } from "../components/panels/LevelMeterPanel";
 import { LoudnessPanel } from "../components/panels/LoudnessPanel";
-import { LoudnessStatsPanel } from "../components/panels/LoudnessStatsPanel";
+import { StatsPanel } from "../components/panels/StatsPanel";
 import { VectorscopePanel } from "../components/panels/VectorscopePanel";
 import { SpectrumPanel } from "../components/panels/SpectrumPanel";
 import { SpectrogramPanel } from "../components/panels/SpectrogramPanel";
@@ -26,7 +26,7 @@ export const MODULE_REGISTRY = {
     title: "Level Meter",
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
-    Component: PeakPanel,
+    Component: LevelMeterPanel,
     Icon: () => <BarChart2 size={16} />,
   },
   loudness: {
@@ -42,7 +42,7 @@ export const MODULE_REGISTRY = {
     title: "Stats",
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
-    Component: LoudnessStatsPanel,
+    Component: StatsPanel,
     Icon: () => <List size={16} />,
   },
   vectorscope: {

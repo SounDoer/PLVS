@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
-import { PeakPanel } from "./PeakPanel.jsx";
+import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 
 function renderPanel(value = {}) {
   return render(
@@ -17,12 +17,12 @@ function renderPanel(value = {}) {
         ...value,
       }}
     >
-      <PeakPanel />
+      <LevelMeterPanel />
     </AudioDataContext.Provider>
   );
 }
 
-describe("PeakPanel", () => {
+describe("LevelMeterPanel", () => {
   it("renders peak values in fixed-width nowrap slots separate from channel labels", () => {
     renderPanel();
 

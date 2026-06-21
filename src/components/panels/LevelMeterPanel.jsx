@@ -63,7 +63,7 @@ function formatLevelValue(value) {
   return Number.isFinite(value) ? value.toFixed(1) : "-";
 }
 
-export function PeakPanel() {
+export function LevelMeterPanel() {
   const { displayAudio, peakLabelContext, fmt, hasTpMaxValue, panelControls, tpMaxText } =
     useAudioData();
   const levelMeterMode = panelControls?.levelMeterMode ?? "peak";
