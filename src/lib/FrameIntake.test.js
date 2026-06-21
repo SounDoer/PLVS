@@ -304,10 +304,72 @@ describe("FrameIntake", () => {
 
     const specRing = intake.getVisualSpectrumHistByKey("spectrum:single:0:combined");
     expect(specRing.length).toBe(1);
-    expect(specRing.at(0).dbList).toEqual([-20, -30]);
+    expect(specRing.at(0).dbList).toBeInstanceOf(Float32Array);
+    expect(Array.from(specRing.at(0).dbList)).toEqual([-20, -30]);
     expect(intake.getVisualVectorscopeHistByKey("vectorscope:pair:0:1").length).toBe(1);
     // A key never seen has no ring.
     expect(intake.getVisualSpectrumHistByKey("spectrum:single:1:combined")).toBeNull();
+  });
+
+  it("recreates a request-keyed spectrum slab when the band grid changes", () => {
+    const intake = new FrameIntake();
+    const key = "spectrum:single:0:combined";
+    const baseRow = {
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumSmoothDb: [],
+      vectorscopePairs: [],
+      correlation: 0,
+    };
+
+    intake.pushVisualHistRow(
+      {
+        ...baseRow,
+        timestampMs: 1000,
+        spectrumByKey: {
+          [key]: { bandCentersHz: [100, 200], smoothDb: [-10, -20] },
+        },
+      },
+      10
+    );
+
+    intake.pushVisualHistRow(
+      {
+        ...baseRow,
+        timestampMs: 1040,
+        spectrumByKey: {
+          [key]: { bandCentersHz: [100, 200, 400], smoothDb: [-30, -40, -50] },
+        },
+      },
+      10
+    );
+
+    const history = intake.getVisualSpectrumHistByKey(key);
+    expect(history.length).toBe(1);
+    expect(history.at(0).timestampMs).toBe(1040);
+    expect(Array.from(history.at(0).dbList)).toEqual([-30, -40, -50]);
+  });
+
+  it("clear releases request-keyed spectrum slabs and spectrogram arrays", () => {
+    const intake = new FrameIntake();
+    const key = "spectrum:single:0:combined";
+    const row = {
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumSmoothDb: [],
+      vectorscopePairs: [],
+      correlation: 0,
+      spectrumByKey: { [key]: { bandCentersHz: [100], smoothDb: [-10] } },
+    };
+
+    intake.pushVisualHistRow(row, 10);
+    expect(intake.getVisualSpectrumHistByKey(key)).not.toBeNull();
+    expect(intake.getSpectrogramSnapArrayForKey(key).length).toBe(1);
+
+    intake.reset();
+
+    expect(intake.getVisualSpectrumHistByKey(key)).toBeNull();
+    expect(intake.getSpectrogramSnapArrayForKey(key)).toEqual([]);
   });
 
   it("retains an inactive request key's history when later ticks omit it (no backfill)", () => {

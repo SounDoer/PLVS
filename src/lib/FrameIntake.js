@@ -1,4 +1,5 @@
 import { RingBuffer } from "./RingBuffer.js";
+import { SpectrumHistorySlab } from "./SpectrumHistorySlab.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -135,7 +136,7 @@ export class FrameIntake {
     this._visualSpectrumHist = new RingBuffer(1);
     this._visualVectorscopeHist = new RingBuffer(1);
     this._visualCorrHist = new RingBuffer(1);
-    // Request-keyed visual history: one ring per active analysis request key. Rings are created
+    // Request-keyed visual history: one slab/ring per active analysis request key. They are created
     // lazily and retained after a key goes inactive (no panel uses it), so scrubbing back to an
     // old request still shows its history until reset() / capacity change clears them.
     this._visualSpectrumHistByKey = new Map();
@@ -249,18 +250,19 @@ export class FrameIntake {
     if (spectrumByKey) {
       for (const key in spectrumByKey) {
         const entry = spectrumByKey[key];
-        let ring = this._visualSpectrumHistByKey.get(key);
-        if (!ring) {
-          ring = new RingBuffer(visualMaxSamples);
-          this._visualSpectrumHistByKey.set(key, ring);
+        const bands = getBandsFromCenters(entry.bandCentersHz ?? this._lastSpectrumCenters);
+        let slab = this._visualSpectrumHistByKey.get(key);
+        if (!slab || slab.capacity !== visualMaxSamples || !slab.matchesBands(bands)) {
+          slab = new SpectrumHistorySlab(visualMaxSamples, bands);
+          this._visualSpectrumHistByKey.set(key, slab);
         }
-        ring.push({
-          bands: getBandsFromCenters(entry.bandCentersHz ?? this._lastSpectrumCenters),
-          dbList: snapshotNumericArray(entry.smoothDb),
-          dbListB: snapshotNumericArray(entry.smoothDbB),
+        slab.push({
+          bands,
+          dbList: entry.smoothDb,
+          dbListB: entry.smoothDbB,
           timestampMs: row.timestampMs,
         });
-        this._spectrogramSnapArrayByKey.set(key, ring.toArray());
+        this._spectrogramSnapArrayByKey.set(key, slab.toArray());
       }
     }
     const vectorscopeByKey = row.vectorscopeByKey;
