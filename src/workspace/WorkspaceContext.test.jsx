@@ -43,6 +43,32 @@ describe("WorkspaceContext fullscreenId", () => {
   });
 });
 
+describe("WorkspaceContext initState unknown module guard", () => {
+  afterEach(() => localStorage.clear());
+
+  it("resets to defaults when persisted workspace references an unknown moduleId", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        ...DEFAULT_WORKSPACE_STATE,
+        panelsById: {
+          ...DEFAULT_WORKSPACE_STATE.panelsById,
+          loudnessStats: { id: "loudnessStats", moduleId: "loudnessStats" },
+        },
+        panelOrder: [...DEFAULT_WORKSPACE_STATE.panelOrder, "loudnessStats"],
+      })
+    );
+    let captured = null;
+    render(
+      <WorkspaceProvider>
+        <Probe onState={(s) => (captured = s)} />
+      </WorkspaceProvider>
+    );
+    expect(captured.tree).toEqual(DEFAULT_WORKSPACE_STATE.tree);
+    expect(captured.panelsById).toEqual(DEFAULT_WORKSPACE_STATE.panelsById);
+  });
+});
+
 describe("WorkspaceContext active preset divergence", () => {
   afterEach(() => localStorage.clear());
 

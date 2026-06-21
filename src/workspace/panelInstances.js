@@ -39,6 +39,12 @@ function unnamedPanelIdsForModule(state, moduleId) {
   });
 }
 
+export function hasKnownModulesOnly(stateLike) {
+  const panelsById = stateLike?.panelsById;
+  if (!panelsById || typeof panelsById !== "object") return true;
+  return Object.values(panelsById).every((panel) => Boolean(MODULE_REGISTRY[panel?.moduleId]));
+}
+
 export function resolvePanelDisplayName(state, panelId) {
   const panel = state.panelsById?.[panelId];
   if (!panel) return panelId;

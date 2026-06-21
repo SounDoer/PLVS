@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer } from "react
 import { bindWorkspaceActions, workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { normalizePanelControlsById } from "./panelControlInstances.js";
+import { hasKnownModulesOnly } from "./panelInstances.js";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
 
 const WorkspaceContext = createContext(null);
@@ -9,6 +10,9 @@ const WorkspaceContext = createContext(null);
 function initState() {
   const parsed = workspaceStore.read();
   if (!parsed.tree || !parsed.panelsById || !Array.isArray(parsed.panelOrder)) {
+    return DEFAULT_WORKSPACE_STATE;
+  }
+  if (!hasKnownModulesOnly(parsed)) {
     return DEFAULT_WORKSPACE_STATE;
   }
   return {

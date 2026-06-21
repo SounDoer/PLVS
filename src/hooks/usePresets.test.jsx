@@ -220,6 +220,31 @@ describe("usePresets", () => {
     expect(presetsStore.read().activeId).toBe("p1");
   });
 
+  it("filters out presets referencing unknown module ids", () => {
+    presetsStore.patch({
+      list: [
+        {
+          id: "p-valid",
+          name: "Valid",
+          tree: leaf(["spectrum"]),
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+        },
+        {
+          id: "p-legacy",
+          name: "Legacy",
+          tree: leaf(["loudnessStats"]),
+          panelsById: { loudnessStats: { id: "loudnessStats", moduleId: "loudnessStats" } },
+          panelOrder: ["loudnessStats"],
+        },
+      ],
+      activeId: null,
+    });
+    const { result } = renderPresetHook();
+    expect(result.current.presets.list).toHaveLength(1);
+    expect(result.current.presets.list[0].id).toBe("p-valid");
+  });
+
   it("renames and removes presets", () => {
     presetsStore.patch({
       list: [

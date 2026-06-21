@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
+import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { presetsStore } from "../persistence/index.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
@@ -15,10 +16,8 @@ function clone(value) {
 
 function normalizePresets(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return EMPTY_PRESETS;
-  return {
-    list: Array.isArray(raw.list) ? raw.list : [],
-    activeId: typeof raw.activeId === "string" ? raw.activeId : null,
-  };
+  const list = (Array.isArray(raw.list) ? raw.list : []).filter(hasKnownModulesOnly);
+  return { list, activeId: typeof raw.activeId === "string" ? raw.activeId : null };
 }
 
 async function readWindowBounds() {
