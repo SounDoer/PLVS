@@ -252,7 +252,7 @@ describe("PanelHeaderControls", () => {
     ]);
   });
 
-  it("resets the order to LOUDNESS_STATS_ORDER", () => {
+  it("resets order and visibility to defaults after confirm", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelHeaderControls
@@ -260,16 +260,22 @@ describe("PanelHeaderControls", () => {
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           loudnessStatsOrder: ["psr", "momentary", "integrated"],
+          loudnessStatsVisibleIds: ["psr"],
         }}
         onPanelControlsChange={onPanelControlsChange}
       />
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reset order" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset stats" }));
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
 
+    fireEvent.click(screen.getByLabelText("Confirm reset stats"));
     expect(onPanelControlsChange).toHaveBeenCalledWith(
-      expect.objectContaining({ loudnessStatsOrder: LOUDNESS_STATS_ORDER })
+      expect.objectContaining({
+        loudnessStatsOrder: LOUDNESS_STATS_ORDER,
+        loudnessStatsVisibleIds: DEFAULT_PANEL_CONTROLS.loudnessStatsVisibleIds,
+      })
     );
   });
 

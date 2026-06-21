@@ -12,12 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   LOUDNESS_STATS_OPTIONS,
   LOUDNESS_STATS_ORDER,
   normalizePanelControls,
 } from "@/lib/panelControls.js";
+import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 
 const CHIP_CLASS =
   "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
@@ -107,7 +109,7 @@ function SortableStatsChip({
   selectedIds,
   onToggle,
   onReorder,
-  onResetOrder,
+  onReset,
 }) {
   const labelById = new Map(options.map((option) => [option.id, option.label]));
   return (
@@ -136,13 +138,23 @@ function SortableStatsChip({
             />
           ))}
         </Reorder.Group>
-        <button
-          type="button"
-          onClick={onResetOrder}
-          className="mt-1 w-full rounded-sm px-2 py-1 text-left text-xs text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground"
-        >
-          Reset order
-        </button>
+        <div className="mt-1">
+          <InlineConfirm
+            onConfirm={onReset}
+            confirmLabel="Confirm reset stats"
+            cancelLabel="Cancel reset stats"
+            trigger={(arm) => (
+              <button
+                type="button"
+                aria-label="Reset stats"
+                onClick={arm}
+                className="w-full rounded-sm px-2 py-1 text-left text-xs text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+              >
+                Reset
+              </button>
+            )}
+          />
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -298,11 +310,12 @@ export function PanelHeaderControls({
             })
           );
         }}
-        onResetOrder={() => {
+        onReset={() => {
           onPanelControlsChange(
             normalizePanelControls({
               ...normalizedPanelControls,
               loudnessStatsOrder: [...LOUDNESS_STATS_ORDER],
+              loudnessStatsVisibleIds: [...DEFAULT_PANEL_CONTROLS.loudnessStatsVisibleIds],
             })
           );
         }}
