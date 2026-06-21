@@ -54,7 +54,7 @@ function renderPanel(visibleIds) {
     <AudioDataContext.Provider
       value={{
         statsMetrics,
-        panelControls: { loudnessStatsVisibleIds: visibleIds },
+        panelControls: { statsVisibleIds: visibleIds },
       }}
     >
       <LoudnessStatsPanel />
@@ -108,7 +108,7 @@ describe("LoudnessStatsPanel", () => {
           statsMetrics: [
             { id: "dialogueCoverage", label: "Dialogue Coverage", value: "62", unit: "%" },
           ],
-          panelControls: { loudnessStatsVisibleIds: ["dialogueCoverage"] },
+          panelControls: { statsVisibleIds: ["dialogueCoverage"] },
           dialogueActiveNow: true,
         }}
       >
@@ -119,14 +119,14 @@ describe("LoudnessStatsPanel", () => {
     expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
   });
 
-  it("renders visible metrics in loudnessStatsOrder, ignoring hidden ids", () => {
+  it("renders visible metrics in statsOrder, ignoring hidden ids", () => {
     render(
       <AudioDataContext.Provider
         value={{
           statsMetrics,
           panelControls: {
-            loudnessStatsVisibleIds: ["momentary", "integrated", "psr"],
-            loudnessStatsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
+            statsVisibleIds: ["momentary", "integrated", "psr"],
+            statsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
           },
         }}
       >

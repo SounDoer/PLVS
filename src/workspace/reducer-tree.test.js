@@ -5,11 +5,8 @@ import { describe, it, expect } from "vitest";
 import { workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { findLeafWithTab } from "./treeUtils.js";
-import {
-  DEFAULT_PANEL_CONTROLS,
-  LOUDNESS_STATS_ORDER,
-  normalizePanelControls,
-} from "../lib/panelControls.js";
+import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
+import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,7 +30,7 @@ function expectPanelControlsIsolated(actual, source) {
   expect(actual).not.toBe(source);
   expect(actual.vectorscopePair).not.toBe(source.vectorscopePair);
   expect(actual.spectrumChannel).not.toBe(source.spectrumChannel);
-  expect(actual.loudnessStatsVisibleIds).not.toBe(source.loudnessStatsVisibleIds);
+  expect(actual.statsVisibleIds).not.toBe(source.statsVisibleIds);
   expect(actual.loudnessHistoryVisibleLayerIds).not.toBe(source.loudnessHistoryVisibleLayerIds);
 }
 
@@ -376,8 +373,8 @@ describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      loudnessStatsVisibleIds: [],
-      loudnessStatsOrder: LOUDNESS_STATS_ORDER,
+      statsVisibleIds: [],
+      statsOrder: STATS_CANONICAL_ORDER,
       loudnessHistoryVisibleLayerIds: [],
     };
 

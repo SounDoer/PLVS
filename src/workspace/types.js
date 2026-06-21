@@ -20,8 +20,8 @@
  *   spectrumView: string,
  *   spectrumPeakHold: boolean,
  *   levelMeterMode: string,
- *   loudnessStatsVisibleIds: string[],
- *   loudnessStatsOrder: string[],
+ *   statsVisibleIds: string[],
+ *   statsOrder: string[],
  *   loudnessHistoryVisibleLayerIds: string[],
  * }} PanelControls
  *

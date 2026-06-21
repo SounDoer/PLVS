@@ -457,9 +457,8 @@ function AppContent() {
   );
   const loudnessWeightsRef = useRef(loudnessWeights);
   const dialogueGating = useMemo(
-    () =>
-      normalizedPanelControls.loudnessStatsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id)),
-    [normalizedPanelControls.loudnessStatsVisibleIds]
+    () => normalizedPanelControls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id)),
+    [normalizedPanelControls.statsVisibleIds]
   );
   const dialogueGatingRef = useRef(dialogueGating);
   const channelAutoLabels = useMemo(

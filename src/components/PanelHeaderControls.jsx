@@ -15,10 +15,9 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
-  LOUDNESS_STATS_OPTIONS,
-  LOUDNESS_STATS_ORDER,
   normalizePanelControls,
 } from "@/lib/panelControls.js";
+import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 
 const CHIP_CLASS =
@@ -288,17 +287,14 @@ export function PanelHeaderControls({
     return (
       <SortableStatsChip
         label="Stats"
-        options={LOUDNESS_STATS_OPTIONS}
-        orderedIds={normalizedPanelControls.loudnessStatsOrder}
-        selectedIds={normalizedPanelControls.loudnessStatsVisibleIds}
+        options={STATS_OPTIONS}
+        orderedIds={normalizedPanelControls.statsOrder}
+        selectedIds={normalizedPanelControls.statsVisibleIds}
         onToggle={(id) => {
           onPanelControlsChange(
             normalizePanelControls({
               ...normalizedPanelControls,
-              loudnessStatsVisibleIds: toggleId(
-                normalizedPanelControls.loudnessStatsVisibleIds,
-                id
-              ),
+              statsVisibleIds: toggleId(normalizedPanelControls.statsVisibleIds, id),
             })
           );
         }}
@@ -306,7 +302,7 @@ export function PanelHeaderControls({
           onPanelControlsChange(
             normalizePanelControls({
               ...normalizedPanelControls,
-              loudnessStatsOrder: nextOrder,
+              statsOrder: nextOrder,
             })
           );
         }}
@@ -314,8 +310,8 @@ export function PanelHeaderControls({
           onPanelControlsChange(
             normalizePanelControls({
               ...normalizedPanelControls,
-              loudnessStatsOrder: [...LOUDNESS_STATS_ORDER],
-              loudnessStatsVisibleIds: [...DEFAULT_PANEL_CONTROLS.loudnessStatsVisibleIds],
+              statsOrder: [...STATS_CANONICAL_ORDER],
+              statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
             })
           );
         }}
