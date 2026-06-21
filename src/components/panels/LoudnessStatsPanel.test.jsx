@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { LoudnessStatsPanel } from "./LoudnessStatsPanel.jsx";
 
-const primaryMetrics = [
+const statsMetrics = [
   {
     id: "momentary",
     label: "Momentary",
@@ -33,9 +33,6 @@ const primaryMetrics = [
     unit: "LU",
     hint: "LRA, loudness range over the whole program",
   },
-];
-
-const secondaryMetrics = [
   {
     id: "psr",
     label: "Short-term Dynamics",
@@ -56,8 +53,7 @@ function renderPanel(visibleIds) {
   return render(
     <AudioDataContext.Provider
       value={{
-        primaryMetrics,
-        secondaryMetrics,
+        statsMetrics,
         panelControls: { loudnessStatsVisibleIds: visibleIds },
       }}
     >
@@ -109,10 +105,9 @@ describe("LoudnessStatsPanel", () => {
     render(
       <AudioDataContext.Provider
         value={{
-          primaryMetrics: [
+          statsMetrics: [
             { id: "dialogueCoverage", label: "Dialogue Coverage", value: "62", unit: "%" },
           ],
-          secondaryMetrics: [],
           panelControls: { loudnessStatsVisibleIds: ["dialogueCoverage"] },
           dialogueActiveNow: true,
         }}
@@ -128,8 +123,7 @@ describe("LoudnessStatsPanel", () => {
     render(
       <AudioDataContext.Provider
         value={{
-          primaryMetrics,
-          secondaryMetrics,
+          statsMetrics,
           panelControls: {
             loudnessStatsVisibleIds: ["momentary", "integrated", "psr"],
             loudnessStatsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],

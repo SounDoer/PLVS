@@ -396,8 +396,7 @@ describe("PanelHeaderControls", () => {
           <AudioDataContext.Provider
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
-              primaryMetrics: [],
-              secondaryMetrics: [],
+              statsMetrics: [],
             }}
           >
             <WorkspaceStateProbe onState={onState} />
@@ -437,8 +436,7 @@ describe("PanelHeaderControls", () => {
               compactPanels: true,
               panelControls: DEFAULT_PANEL_CONTROLS,
               fmt: (value) => value.toFixed(1),
-              primaryMetrics: [],
-              secondaryMetrics: [],
+              statsMetrics: [],
             }}
           >
             <LeafView
@@ -464,8 +462,7 @@ describe("PanelHeaderControls", () => {
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               fmt: (value) => value.toFixed(1),
-              primaryMetrics: [],
-              secondaryMetrics: [],
+              statsMetrics: [],
             }}
           >
             <LeafView
@@ -477,8 +474,8 @@ describe("PanelHeaderControls", () => {
       </WorkspaceProvider>
     );
 
-    expect(screen.getByText("Loudness Stats")).toBeTruthy();
-    expect(screen.queryByLabelText("Remove Loudness Stats")).toBeNull();
+    expect(screen.getAllByText("Stats").length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("Remove Stats")).toBeNull();
     expect(screen.getByRole("button", { name: "Hide all in panel" })).toBeTruthy();
   });
 });

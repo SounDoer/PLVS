@@ -40,6 +40,8 @@ describe("panelControls", () => {
       "dialogueIntegrated",
       "dialogueRange",
       "dialogueOffset",
+      "truePeak",
+      "correlation",
     ]);
     expect(LOUDNESS_HISTORY_LAYER_OPTIONS.map((o) => o.id)).toEqual([
       "momentary",
@@ -93,6 +95,8 @@ describe("panelControls", () => {
         "dialogueIntegrated",
         "dialogueRange",
         "dialogueOffset",
+        "truePeak",
+        "correlation",
       ],
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
     });
@@ -112,6 +116,8 @@ describe("panelControls", () => {
       "dialogueIntegrated",
       "dialogueRange",
       "dialogueOffset",
+      "truePeak",
+      "correlation",
     ]);
   });
 
@@ -132,6 +138,8 @@ describe("panelControls", () => {
       "dialogueIntegrated",
       "dialogueRange",
       "dialogueOffset",
+      "truePeak",
+      "correlation",
     ]);
   });
 

@@ -5,15 +5,8 @@ import {
   buildHistoryTimeAxisLabels,
   getHistoryViewport,
 } from "../math/historyMath";
-import { fmtMetric } from "../math/formatMath";
 import { UI_PREFERENCES } from "../uiPreferences";
-import { LOUDNESS_STATS_META } from "@/lib/panelControls.js";
-
-export function dialogueOffsetText(dialogueIntegrated, integrated) {
-  if (!Number.isFinite(dialogueIntegrated) || !Number.isFinite(integrated)) return "-";
-  const d = dialogueIntegrated - integrated;
-  return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
-}
+import { buildStatsMetrics } from "@/lib/statsCatalog.js";
 
 export const HIST_SAMPLE_SEC = 0.1;
 export const VISUAL_HIST_SAMPLE_SEC = 0.04;
@@ -115,76 +108,7 @@ export function useLoudnessHistory({
 
   const historyYAxisTicks = LOUDNESS_TICKS;
 
-  const psr =
-    Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.shortTerm)
-      ? displayAudio.tpMax - displayAudio.shortTerm
-      : -Infinity;
-  const plr =
-    Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.integrated)
-      ? displayAudio.tpMax - displayAudio.integrated
-      : -Infinity;
-
-  const primaryMetrics = useMemo(
-    () => [
-      {
-        id: "momentary",
-        ...LOUDNESS_STATS_META.momentary,
-        value: fmtMetric(displayAudio.momentary),
-      },
-      {
-        id: "shortTerm",
-        ...LOUDNESS_STATS_META.shortTerm,
-        value: fmtMetric(displayAudio.shortTerm),
-      },
-      {
-        id: "integrated",
-        ...LOUDNESS_STATS_META.integrated,
-        value: fmtMetric(displayAudio.integrated),
-      },
-      {
-        id: "momentaryMax",
-        ...LOUDNESS_STATS_META.momentaryMax,
-        value: fmtMetric(displayAudio.mMax),
-      },
-      {
-        id: "shortTermMax",
-        ...LOUDNESS_STATS_META.shortTermMax,
-        value: fmtMetric(displayAudio.stMax),
-      },
-      { id: "lra", ...LOUDNESS_STATS_META.lra, value: fmtMetric(displayAudio.lra) },
-    ],
-    [displayAudio]
-  );
-
-  const secondaryMetrics = useMemo(
-    () => [
-      { id: "psr", ...LOUDNESS_STATS_META.psr, value: fmtMetric(psr) },
-      { id: "plr", ...LOUDNESS_STATS_META.plr, value: fmtMetric(plr) },
-      {
-        id: "dialogueCoverage",
-        ...LOUDNESS_STATS_META.dialogueCoverage,
-        value: Number.isFinite(displayAudio.dialoguePercent)
-          ? `${displayAudio.dialoguePercent.toFixed(0)}`
-          : "-",
-      },
-      {
-        id: "dialogueIntegrated",
-        ...LOUDNESS_STATS_META.dialogueIntegrated,
-        value: fmtMetric(displayAudio.dialogueIntegrated),
-      },
-      {
-        id: "dialogueRange",
-        ...LOUDNESS_STATS_META.dialogueRange,
-        value: fmtMetric(displayAudio.dialogueLra),
-      },
-      {
-        id: "dialogueOffset",
-        ...LOUDNESS_STATS_META.dialogueOffset,
-        value: dialogueOffsetText(displayAudio.dialogueIntegrated, displayAudio.integrated),
-      },
-    ],
-    [psr, plr, displayAudio]
-  );
+  const statsMetrics = useMemo(() => buildStatsMetrics(displayAudio), [displayAudio]);
 
   return {
     // State & setters (consumed by useHistoryInteraction and clearAll / reset flows)
@@ -215,7 +139,6 @@ export function useLoudnessHistory({
     referenceLufs,
     targetLufs,
     historyYAxisTicks,
-    primaryMetrics,
-    secondaryMetrics,
+    statsMetrics,
   };
 }
