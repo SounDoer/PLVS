@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dialogueOffsetText } from "./useLoudnessHistory.js";
+import { dialogueOffsetText } from "../lib/statsCatalog.js";
 
 describe("dialogueOffsetText", () => {
   it("shows a signed LU value when both operands are finite", () => {

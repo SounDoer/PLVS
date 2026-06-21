@@ -8,12 +8,8 @@ import {
 import { fmtMetric } from "../math/formatMath";
 import { UI_PREFERENCES } from "../uiPreferences";
 import { LOUDNESS_STATS_META } from "@/lib/panelControls.js";
-
-export function dialogueOffsetText(dialogueIntegrated, integrated) {
-  if (!Number.isFinite(dialogueIntegrated) || !Number.isFinite(integrated)) return "-";
-  const d = dialogueIntegrated - integrated;
-  return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
-}
+import { dialogueOffsetText } from "@/lib/statsCatalog.js";
+export { dialogueOffsetText };
 
 export const HIST_SAMPLE_SEC = 0.1;
 export const VISUAL_HIST_SAMPLE_SEC = 0.04;
