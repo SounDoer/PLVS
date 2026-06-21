@@ -33,8 +33,9 @@ export function nearestTimestampIndex(entries, targetMs) {
  * Resolve a request-keyed visual history index at the selected snapshot time.
  *
  * History belongs to request keys with no backfill: a request collects history only from the
- * moment it became active. So a selected timestamp that predates the key's first entry means the
- * request did not exist then — the caller should show "No data for this view at selected time".
+ * moment it became active and stops collecting when it goes inactive. So a selected timestamp
+ * outside that collected interval means the request did not exist then — the caller should show
+ * "No data for this view at selected time".
  *
  * @param {object[]} entries per-key visual rows (carry timestampMs)
  * @param {number} targetTimestampMs selected snapshot time; non-finite => latest entry
@@ -45,6 +46,9 @@ export function resolveKeyedVisualIndex(entries, targetTimestampMs, toleranceMs 
   if (!hasTimestampEntries(entries)) return { index: -1, missing: true };
   if (!Number.isFinite(targetTimestampMs)) return { index: entries.length - 1, missing: false };
   if (targetTimestampMs < entries[0].timestampMs - toleranceMs) {
+    return { index: -1, missing: true };
+  }
+  if (targetTimestampMs > entries[entries.length - 1].timestampMs + toleranceMs) {
     return { index: -1, missing: true };
   }
   return { index: nearestTimestampIndex(entries, targetTimestampMs), missing: false };

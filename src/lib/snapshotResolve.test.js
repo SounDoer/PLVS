@@ -168,9 +168,19 @@ describe("resolveKeyedVisualIndex", () => {
     expect(resolveKeyedVisualIndex(entries, 900, 40)).toEqual({ index: -1, missing: true });
   });
 
+  it("returns missing when the selected time is after the request's last entry", () => {
+    // Request stopped at 1080; selecting 1140 (beyond tolerance) means it was inactive then.
+    expect(resolveKeyedVisualIndex(entries, 1140, 40)).toEqual({ index: -1, missing: true });
+  });
+
   it("tolerates boundary jitter just before the first entry", () => {
     // 980 is within one visual sample (40ms) of the 1000 start, so it resolves to entry 0.
     expect(resolveKeyedVisualIndex(entries, 980, 40)).toEqual({ index: 0, missing: false });
+  });
+
+  it("tolerates boundary jitter just after the last entry", () => {
+    // 1110 is within one visual sample (40ms) of the 1080 end, so it resolves to entry 2.
+    expect(resolveKeyedVisualIndex(entries, 1110, 40)).toEqual({ index: 2, missing: false });
   });
 
   it("picks the nearest entry to the target when within history", () => {

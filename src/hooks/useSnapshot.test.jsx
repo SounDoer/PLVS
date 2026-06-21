@@ -173,4 +173,51 @@ describe("useSnapshot", () => {
 
     expect(result.current.displaySpectrumPathB).toBe("live-b");
   });
+
+  it("marks a per-key spectrum snapshot missing after that request stopped collecting", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }, { timestampMs: 1200 }],
+      spectrumData: [
+        { bands: [{ fCenter: 100 }], dbList: [-20] },
+        { bands: [{ fCenter: 100 }], dbList: [-18] },
+      ],
+      corr: [0.1, 0.2],
+      audio: [{ correlation: 0.1 }, { correlation: 0.2 }],
+      liveSpectrumData: { bands: [{ fCenter: 100 }], dbList: [-10] },
+    };
+    const intake = createIntake(samples);
+    intake.snapshotVisualSpectrumByKey = () => ({
+      "spectrum:single:2:combined": [
+        {
+          timestampMs: 1040,
+          bands: [{ fCenter: 100 }],
+          dbList: [-30],
+        },
+        {
+          timestampMs: 1080,
+          bands: [{ fCenter: 100 }],
+          dbList: [-24],
+        },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({
+        selectedOffset: 0,
+        sampleSec: 0.1,
+        intake,
+        audio: { correlation: 0 },
+        spectrumPath: "live-spectrum",
+        spectrumPeakPath: "live-peak",
+        vectorPath: "live-vector",
+      })
+    );
+
+    expect(result.current.resolveSpectrumSnapshotForKey("spectrum:single:2:combined")).toEqual({
+      missing: true,
+      path: "",
+      pathB: "",
+      data: null,
+    });
+  });
 });
