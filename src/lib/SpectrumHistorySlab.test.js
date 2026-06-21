@@ -1,0 +1,82 @@
+import { describe, expect, it } from "vitest";
+import { SpectrumHistorySlab } from "./SpectrumHistorySlab.js";
+
+const bands = [{ fCenter: 100 }, { fCenter: 200 }, { fCenter: 400 }];
+
+describe("SpectrumHistorySlab", () => {
+  it("stores rows and returns them in chronological order", () => {
+    const slab = new SpectrumHistorySlab(4, bands);
+
+    slab.push({ bands, dbList: [-10, -20, -30], timestampMs: 1000 });
+    slab.push({ bands, dbList: [-11, -21, -31], timestampMs: 1040 });
+
+    expect(slab.length).toBe(2);
+    expect(slab.capacity).toBe(4);
+    expect(slab.at(0).timestampMs).toBe(1000);
+    expect(Array.from(slab.at(0).dbList)).toEqual([-10, -20, -30]);
+    expect(slab.at(1).timestampMs).toBe(1040);
+    expect(slab.toArray().map((row) => row.timestampMs)).toEqual([1000, 1040]);
+  });
+
+  it("overwrites the oldest rows after capacity is full", () => {
+    const slab = new SpectrumHistorySlab(2, bands);
+
+    slab.push({ bands, dbList: [1, 2, 3], timestampMs: 1 });
+    slab.push({ bands, dbList: [4, 5, 6], timestampMs: 2 });
+    slab.push({ bands, dbList: [7, 8, 9], timestampMs: 3 });
+
+    expect(slab.length).toBe(2);
+    expect(slab.toArray().map((row) => row.timestampMs)).toEqual([2, 3]);
+    expect(Array.from(slab.at(1).dbList)).toEqual([7, 8, 9]);
+  });
+
+  it("allocates the secondary curve lazily", () => {
+    const slab = new SpectrumHistorySlab(4, bands);
+
+    slab.push({ bands, dbList: [-1, -2, -3], timestampMs: 1 });
+    expect(slab.hasSecondary).toBe(false);
+    expect(slab.at(0).dbListB.length).toBe(0);
+
+    slab.push({
+      bands,
+      dbList: [-4, -5, -6],
+      dbListB: [-7, -8, -9],
+      timestampMs: 2,
+    });
+
+    expect(slab.hasSecondary).toBe(true);
+    expect(Array.from(slab.at(1).dbListB)).toEqual([-7, -8, -9]);
+  });
+
+  it("fills missing primary values with -Infinity and truncates extras", () => {
+    const slab = new SpectrumHistorySlab(4, bands);
+
+    slab.push({ bands, dbList: [-1], timestampMs: 1 });
+    slab.push({ bands, dbList: [-2, -3, -4, -5], timestampMs: 2 });
+
+    expect(Array.from(slab.at(0).dbList)).toEqual([-1, -Infinity, -Infinity]);
+    expect(Array.from(slab.at(1).dbList)).toEqual([-2, -3, -4]);
+  });
+
+  it("detects incompatible band grids", () => {
+    const slab = new SpectrumHistorySlab(4, bands);
+
+    expect(slab.matchesBands(bands)).toBe(true);
+    expect(slab.matchesBands([{ fCenter: 100 }, { fCenter: 300 }, { fCenter: 400 }])).toBe(false);
+    expect(slab.matchesBands([{ fCenter: 100 }, { fCenter: 200 }])).toBe(false);
+  });
+
+  it("clear releases backing arrays and resets length", () => {
+    const slab = new SpectrumHistorySlab(4, bands);
+
+    slab.push({ bands, dbList: [-1, -2, -3], timestampMs: 1 });
+    const before = slab.dbA;
+
+    slab.clear();
+
+    expect(slab.length).toBe(0);
+    expect(slab.dbA).toBeNull();
+    expect(slab.timestamps).toBeNull();
+    expect(before).toBeInstanceOf(Float32Array);
+  });
+});
