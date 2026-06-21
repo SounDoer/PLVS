@@ -37,8 +37,8 @@ export const MODULE_REGISTRY = {
     Component: LoudnessPanel,
     Icon: () => <Activity size={16} />,
   },
-  loudnessStats: {
-    id: "loudnessStats",
+  stats: {
+    id: "stats",
     title: "Stats",
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,

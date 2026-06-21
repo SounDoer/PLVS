@@ -279,7 +279,7 @@ export function PanelHeaderControls({
     );
   }
 
-  if (activeTab === "loudnessStats") {
+  if (activeTab === "stats") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);

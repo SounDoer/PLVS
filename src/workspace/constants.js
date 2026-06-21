@@ -6,7 +6,7 @@ import { normalizePanelControlsById } from "./panelControlInstances.js";
 export const ALL_MODULE_IDS = [
   "peak",
   "loudness",
-  "loudnessStats",
+  "stats",
   "vectorscope",
   "spectrum",
   "spectrogram",
@@ -15,7 +15,7 @@ export const ALL_MODULE_IDS = [
 
 // ---------------------------------------------------------------------------
 // Default tree — PLVSSW:
-//   H[ leaf(peak) | V[ leaf(loudness) | leaf(waveform) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(loudnessStats) | leaf(vectorscope) ] ]
+//   H[ leaf(peak) | V[ leaf(loudness) | leaf(waveform) | leaf(spectrogram) | leaf(spectrum) ] | V[ leaf(stats) | leaf(vectorscope) ] ]
 // Ratios: peak=14% of container width, right column=18%, middle fills remainder.
 // ---------------------------------------------------------------------------
 
@@ -42,7 +42,7 @@ export const DEFAULT_TREE = {
       direction: "v",
       sizes: [0.54, null],
       children: [
-        { type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" },
+        { type: "leaf", tabs: ["stats"], activeTab: "stats" },
         { type: "leaf", tabs: ["vectorscope"], activeTab: "vectorscope" },
       ],
     },

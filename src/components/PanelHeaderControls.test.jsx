@@ -190,7 +190,7 @@ describe("PanelHeaderControls", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelHeaderControls
-        activeTab="loudnessStats"
+        activeTab="stats"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -235,7 +235,7 @@ describe("PanelHeaderControls", () => {
   it("renders stat rows in statsOrder", () => {
     render(
       <PanelHeaderControls
-        activeTab="loudnessStats"
+        activeTab="stats"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           statsOrder: ["psr", "momentary", "integrated"],
@@ -257,7 +257,7 @@ describe("PanelHeaderControls", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelHeaderControls
-        activeTab="loudnessStats"
+        activeTab="stats"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           statsOrder: ["psr", "momentary", "integrated"],
@@ -380,7 +380,7 @@ describe("PanelHeaderControls", () => {
   });
 
   it("does not render loudness controls before panel controls are wired", () => {
-    const stats = render(<PanelHeaderControls activeTab="loudnessStats" />);
+    const stats = render(<PanelHeaderControls activeTab="stats" />);
     expect(stats.container.firstChild).toBeNull();
     stats.unmount();
 
@@ -401,10 +401,7 @@ describe("PanelHeaderControls", () => {
             }}
           >
             <WorkspaceStateProbe onState={onState} />
-            <LeafView
-              node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
-              path={[]}
-            />
+            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
           </AudioDataContext.Provider>
         </DragProvider>
       </WorkspaceProvider>
@@ -414,7 +411,7 @@ describe("PanelHeaderControls", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     const latestState = onState.mock.calls.at(-1)?.[0];
-    expect(latestState.panelControlsById.loudnessStats).toEqual({
+    expect(latestState.panelControlsById.stats).toEqual({
       ...DEFAULT_PANEL_CONTROLS,
       statsVisibleIds: [
         "shortTerm",
@@ -440,10 +437,7 @@ describe("PanelHeaderControls", () => {
               statsMetrics: [],
             }}
           >
-            <LeafView
-              node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
-              path={[]}
-            />
+            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
           </AudioDataContext.Provider>
         </DragProvider>
       </WorkspaceProvider>
@@ -466,10 +460,7 @@ describe("PanelHeaderControls", () => {
               statsMetrics: [],
             }}
           >
-            <LeafView
-              node={{ type: "leaf", tabs: ["loudnessStats"], activeTab: "loudnessStats" }}
-              path={[]}
-            />
+            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
           </AudioDataContext.Provider>
         </DragProvider>
       </WorkspaceProvider>
