@@ -34,7 +34,8 @@ export function InlineConfirm({ trigger, onConfirm, confirmLabel, cancelLabel, c
       <button
         type="button"
         aria-label={confirmLabel}
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           setArmed(false);
           onConfirm();
         }}
@@ -45,7 +46,10 @@ export function InlineConfirm({ trigger, onConfirm, confirmLabel, cancelLabel, c
       <button
         type="button"
         aria-label={cancelLabel}
-        onClick={() => setArmed(false)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setArmed(false);
+        }}
         className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <X className="size-3.5" />

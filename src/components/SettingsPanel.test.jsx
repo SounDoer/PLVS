@@ -93,7 +93,7 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Colour Theme").disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Add New Theme" }).disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Edit" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Delete" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Delete theme" }).disabled).toBe(true);
   });
 
   it("does not render panel-specific channel selectors", () => {
@@ -365,7 +365,7 @@ describe("SettingsPanel — Delete theme", () => {
         deleteCustomTheme={deleteCustomTheme}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete theme" }));
     expect(deleteCustomTheme).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Confirm delete theme"));
     expect(deleteCustomTheme).toHaveBeenCalledWith("custom-1");

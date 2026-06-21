@@ -333,6 +333,7 @@ export function SettingsPanel({
                                 disabled={themeControlsDisabled}
                                 className="text-destructive"
                                 onClick={arm}
+                                aria-label="Delete theme"
                               >
                                 Delete
                               </Button>
