@@ -17,7 +17,9 @@ function clone(value) {
 function normalizePresets(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return EMPTY_PRESETS;
   const list = (Array.isArray(raw.list) ? raw.list : []).filter(hasKnownModulesOnly);
-  return { list, activeId: typeof raw.activeId === "string" ? raw.activeId : null };
+  const rawActiveId = typeof raw.activeId === "string" ? raw.activeId : null;
+  const activeId = list.some((preset) => preset.id === rawActiveId) ? rawActiveId : null;
+  return { list, activeId };
 }
 
 async function readWindowBounds() {

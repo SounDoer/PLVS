@@ -238,11 +238,13 @@ describe("usePresets", () => {
           panelOrder: ["loudnessStats"],
         },
       ],
-      activeId: null,
+      activeId: "p-legacy",
     });
     const { result } = renderPresetHook();
     expect(result.current.presets.list).toHaveLength(1);
     expect(result.current.presets.list[0].id).toBe("p-valid");
+    // activeId pointed at the dropped legacy preset: it must not dangle.
+    expect(result.current.presets.activeId).toBeNull();
   });
 
   it("renames and removes presets", () => {
