@@ -396,8 +396,7 @@ describe("PanelHeaderControls", () => {
           <AudioDataContext.Provider
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
-              primaryMetrics: [],
-              secondaryMetrics: [],
+              statsMetrics: [],
             }}
           >
             <WorkspaceStateProbe onState={onState} />
@@ -437,8 +436,7 @@ describe("PanelHeaderControls", () => {
               compactPanels: true,
               panelControls: DEFAULT_PANEL_CONTROLS,
               fmt: (value) => value.toFixed(1),
-              primaryMetrics: [],
-              secondaryMetrics: [],
+              statsMetrics: [],
             }}
           >
             <LeafView
@@ -464,8 +462,7 @@ describe("PanelHeaderControls", () => {
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               fmt: (value) => value.toFixed(1),
-              primaryMetrics: [],
-              secondaryMetrics: [],
+              statsMetrics: [],
             }}
           >
             <LeafView
