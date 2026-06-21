@@ -79,4 +79,20 @@ describe("SpectrumHistorySlab", () => {
     expect(slab.timestamps).toBeNull();
     expect(before).toBeInstanceOf(Float32Array);
   });
+
+  it("returns row views backed by one contiguous Float32Array", () => {
+    const slab = new SpectrumHistorySlab(4, bands);
+
+    slab.push({ bands, dbList: [-10, -20, -30], timestampMs: 1 });
+    slab.push({ bands, dbList: [-11, -21, -31], timestampMs: 2 });
+
+    const first = slab.at(0).dbList;
+    const second = slab.at(1).dbList;
+
+    expect(first).toBeInstanceOf(Float32Array);
+    expect(second).toBeInstanceOf(Float32Array);
+    expect(first.buffer).toBe(slab.dbA.buffer);
+    expect(second.buffer).toBe(slab.dbA.buffer);
+    expect(first.byteOffset).not.toBe(second.byteOffset);
+  });
 });

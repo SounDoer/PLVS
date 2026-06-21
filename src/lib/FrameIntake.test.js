@@ -372,6 +372,32 @@ describe("FrameIntake", () => {
     expect(intake.getSpectrogramSnapArrayForKey(key)).toEqual([]);
   });
 
+  it("stores request-keyed secondary spectrum curves in typed row views", () => {
+    const intake = new FrameIntake();
+    const key = "spectrum:pair:0:1:lr";
+    const row = {
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumSmoothDb: [],
+      vectorscopePairs: [],
+      correlation: 0,
+      spectrumByKey: {
+        [key]: {
+          bandCentersHz: [100, 200],
+          smoothDb: [-10, -20],
+          smoothDbB: [-30, -40],
+        },
+      },
+    };
+
+    intake.pushVisualHistRow(row, 10);
+    const snap = intake.getVisualSpectrumHistByKey(key).at(0);
+
+    expect(snap.dbList).toBeInstanceOf(Float32Array);
+    expect(snap.dbListB).toBeInstanceOf(Float32Array);
+    expect(Array.from(snap.dbListB)).toEqual([-30, -40]);
+  });
+
   it("retains an inactive request key's history when later ticks omit it (no backfill)", () => {
     const intake = new FrameIntake();
     const baseRow = {
