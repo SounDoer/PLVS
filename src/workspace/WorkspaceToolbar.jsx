@@ -1,5 +1,6 @@
 import { Check, LayoutGrid, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
@@ -78,11 +79,18 @@ function PanelRow({ panelId }) {
           icon={<Pencil className="size-3.5" />}
           onClick={startRename}
         />
-        <IconAction
-          label={`Delete ${title}`}
-          icon={<Trash2 className="size-3.5" />}
-          className="hover:text-destructive"
-          onClick={() => removePanel(panelId)}
+        <InlineConfirm
+          onConfirm={() => removePanel(panelId)}
+          confirmLabel={`Confirm delete ${title}`}
+          cancelLabel={`Cancel delete ${title}`}
+          trigger={(arm) => (
+            <IconAction
+              label={`Delete ${title}`}
+              icon={<Trash2 className="size-3.5" />}
+              className="hover:text-destructive"
+              onClick={arm}
+            />
+          )}
         />
       </span>
     </div>
@@ -131,7 +139,7 @@ function AddPanelControl() {
 // ---------------------------------------------------------------------------
 
 export function ModulesPopoverContent() {
-  const { state } = useWorkspaceStore();
+  const { state, resetWorkspace } = useWorkspaceStore();
   const panelIds = state.panelOrder.filter((id) => state.panelsById[id]);
 
   return (
@@ -145,6 +153,23 @@ export function ModulesPopoverContent() {
         ) : null}
       </div>
       <AddPanelControl />
+      <div className="mt-1 flex justify-end">
+        <InlineConfirm
+          onConfirm={resetWorkspace}
+          confirmLabel="Confirm reset layout"
+          cancelLabel="Cancel reset layout"
+          trigger={(arm) => (
+            <button
+              type="button"
+              aria-label="Reset layout"
+              onClick={arm}
+              className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              Reset
+            </button>
+          )}
+        />
+      </div>
     </>
   );
 }

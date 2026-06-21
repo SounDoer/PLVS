@@ -50,4 +50,32 @@ describe("ModulesPopoverContent", () => {
     expect(content?.className).toContain("w-max");
     expect(content?.className).not.toContain("w-52");
   });
+
+  it("arms then resets the layout via the Reset control", () => {
+    render(
+      <WorkspaceProvider>
+        <ModulesPopoverContent />
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
+    expect(screen.getByLabelText("Confirm reset layout")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Confirm reset layout"));
+    // Default workspace has seven panels; the first is the Level Meter.
+    expect(screen.getByText("Level Meter")).toBeTruthy();
+  });
+
+  it("arms delete on the panel trash before removing", () => {
+    render(
+      <WorkspaceProvider>
+        <ModulesPopoverContent />
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByLabelText("Delete Level Meter"));
+    expect(screen.getByLabelText("Confirm delete Level Meter")).toBeTruthy();
+    expect(screen.getByText("Level Meter")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Confirm delete Level Meter"));
+    expect(screen.queryByText("Level Meter")).toBeNull();
+  });
 });
