@@ -45,6 +45,7 @@ describe("SpectrumHistorySlab", () => {
     });
 
     expect(slab.hasSecondary).toBe(true);
+    expect(slab.at(0).dbListB.length).toBe(0);
     expect(Array.from(slab.at(1).dbListB)).toEqual([-7, -8, -9]);
   });
 
@@ -94,5 +95,20 @@ describe("SpectrumHistorySlab", () => {
     expect(first.buffer).toBe(slab.dbA.buffer);
     expect(second.buffer).toBe(slab.dbA.buffer);
     expect(first.byteOffset).not.toBe(second.byteOffset);
+  });
+
+  it("can return copied rows for snapshot freeze safety", () => {
+    const slab = new SpectrumHistorySlab(2, bands);
+
+    slab.push({ bands, dbList: [1, 2, 3], timestampMs: 1 });
+    slab.push({ bands, dbList: [4, 5, 6], timestampMs: 2 });
+
+    const live = slab.toArray();
+    const frozen = slab.toArray({ copyRows: true });
+
+    slab.push({ bands, dbList: [7, 8, 9], timestampMs: 3 });
+
+    expect(Array.from(live[0].dbList)).toEqual([7, 8, 9]);
+    expect(Array.from(frozen[0].dbList)).toEqual([1, 2, 3]);
   });
 });

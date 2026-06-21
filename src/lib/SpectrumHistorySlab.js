@@ -36,6 +36,7 @@ export class SpectrumHistorySlab {
     this._timestamps = new Float64Array(capacity);
     this._dbA = new Float32Array(capacity * this._bandCount);
     this._dbB = null;
+    this._hasB = null;
   }
 
   get capacity() {
@@ -89,8 +90,12 @@ export class SpectrumHistorySlab {
     copyPrimaryRow(this._dbA, offset, this._bandCount, dbList);
 
     if (dbListB?.length || this._dbB) {
-      if (!this._dbB) this._dbB = new Float32Array(this._cap * this._bandCount);
+      if (!this._dbB) {
+        this._dbB = new Float32Array(this._cap * this._bandCount);
+        this._hasB = new Uint8Array(this._cap);
+      }
       copySecondaryRow(this._dbB, offset, this._bandCount, dbListB);
+      this._hasB[slot] = dbListB?.length ? 1 : 0;
     }
 
     if (this._size < this._cap) {
@@ -100,22 +105,27 @@ export class SpectrumHistorySlab {
     }
   }
 
-  at(index) {
+  at(index, { copyRows = false } = {}) {
     if (index < 0 || index >= this._size || !this._dbA || !this._timestamps) return undefined;
     const slot = (this._head + index) % this._cap;
     const offset = slot * this._bandCount;
+    const dbList = this._dbA.subarray(offset, offset + this._bandCount);
+    const dbListB =
+      this._dbB && this._hasB?.[slot]
+        ? this._dbB.subarray(offset, offset + this._bandCount)
+        : EMPTY_F32;
     return {
       bands: this._bands,
-      dbList: this._dbA.subarray(offset, offset + this._bandCount),
-      dbListB: this._dbB ? this._dbB.subarray(offset, offset + this._bandCount) : EMPTY_F32,
+      dbList: copyRows ? Float32Array.from(dbList) : dbList,
+      dbListB: copyRows && dbListB.length ? Float32Array.from(dbListB) : dbListB,
       timestampMs: this._timestamps[slot],
     };
   }
 
-  toArray() {
+  toArray(options) {
     const out = new Array(this._size);
     for (let i = 0; i < this._size; i += 1) {
-      out[i] = this.at(i);
+      out[i] = this.at(i, options);
     }
     return out;
   }
@@ -124,6 +134,7 @@ export class SpectrumHistorySlab {
     this._timestamps = null;
     this._dbA = null;
     this._dbB = null;
+    this._hasB = null;
     this._head = 0;
     this._size = 0;
   }

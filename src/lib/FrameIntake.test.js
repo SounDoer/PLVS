@@ -398,6 +398,49 @@ describe("FrameIntake", () => {
     expect(Array.from(snap.dbListB)).toEqual([-30, -40]);
   });
 
+  it("freezes request-keyed spectrum snapshot rows against later slab overwrites", () => {
+    const intake = new FrameIntake();
+    const key = "spectrum:single:0:combined";
+    const baseRow = {
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumSmoothDb: [],
+      vectorscopePairs: [],
+      correlation: 0,
+    };
+
+    intake.pushVisualHistRow(
+      {
+        ...baseRow,
+        timestampMs: 1000,
+        spectrumByKey: { [key]: { bandCentersHz: [100, 200], smoothDb: [-10, -20] } },
+      },
+      2
+    );
+    intake.pushVisualHistRow(
+      {
+        ...baseRow,
+        timestampMs: 1040,
+        spectrumByKey: { [key]: { bandCentersHz: [100, 200], smoothDb: [-30, -40] } },
+      },
+      2
+    );
+
+    const frozen = intake.snapshotVisualSpectrumByKey()[key];
+
+    intake.pushVisualHistRow(
+      {
+        ...baseRow,
+        timestampMs: 1080,
+        spectrumByKey: { [key]: { bandCentersHz: [100, 200], smoothDb: [-50, -60] } },
+      },
+      2
+    );
+
+    expect(Array.from(frozen[0].dbList)).toEqual([-10, -20]);
+    expect(Array.from(intake.getVisualSpectrumHistByKey(key).at(1).dbList)).toEqual([-50, -60]);
+  });
+
   it("retains an inactive request key's history when later ticks omit it (no backfill)", () => {
     const intake = new FrameIntake();
     const baseRow = {

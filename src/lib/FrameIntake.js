@@ -344,7 +344,9 @@ export class FrameIntake {
   /** Freeze per-key spectrum history into plain arrays for snapshot scrubbing. */
   snapshotVisualSpectrumByKey() {
     const out = {};
-    for (const [key, ring] of this._visualSpectrumHistByKey) out[key] = ring.toArray();
+    for (const [key, ring] of this._visualSpectrumHistByKey) {
+      out[key] = ring.toArray({ copyRows: true });
+    }
     return out;
   }
   /** Freeze per-key vectorscope history into plain arrays for snapshot scrubbing. */
