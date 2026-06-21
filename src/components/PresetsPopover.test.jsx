@@ -250,35 +250,29 @@ describe("PresetsPopoverContent", () => {
     expect(apply).not.toHaveBeenCalled();
   });
 
-  it("deletes a preset via the Delete icon", () => {
+  it("deletes a preset only after confirming", () => {
     const remove = vi.fn();
     render(
       <PresetsPopoverContent
-        presets={{
-          ...NOOP_PRESETS,
-          list: [{ id: "a", name: "Focus" }],
-          remove,
-        }}
+        presets={{ ...NOOP_PRESETS, list: [{ id: "a", name: "Focus" }], remove }}
       />
     );
     fireEvent.click(screen.getByLabelText("Delete preset Focus"));
+    expect(remove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Confirm delete preset Focus"));
     expect(remove).toHaveBeenCalledWith("a");
   });
 
-  it("does not call apply when the Delete icon is clicked (stopPropagation)", () => {
+  it("does not apply the preset while arming or confirming delete", () => {
     const apply = vi.fn();
     const remove = vi.fn();
     render(
       <PresetsPopoverContent
-        presets={{
-          ...NOOP_PRESETS,
-          list: [{ id: "a", name: "Focus" }],
-          apply,
-          remove,
-        }}
+        presets={{ ...NOOP_PRESETS, list: [{ id: "a", name: "Focus" }], apply, remove }}
       />
     );
     fireEvent.click(screen.getByLabelText("Delete preset Focus"));
+    fireEvent.click(screen.getByLabelText("Confirm delete preset Focus"));
     expect(remove).toHaveBeenCalledWith("a");
     expect(apply).not.toHaveBeenCalled();
   });

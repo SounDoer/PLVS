@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -160,17 +161,24 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
                       >
                         <Pencil className="size-3.5" />
                       </button>
-                      <button
-                        type="button"
-                        aria-label={`Delete preset ${preset.name}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          presets.remove(preset.id);
-                        }}
-                        className="rounded text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <InlineConfirm
+                        onConfirm={() => presets.remove(preset.id)}
+                        confirmLabel={`Confirm delete preset ${preset.name}`}
+                        cancelLabel={`Cancel delete preset ${preset.name}`}
+                        trigger={(arm) => (
+                          <button
+                            type="button"
+                            aria-label={`Delete preset ${preset.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              arm();
+                            }}
+                            className="rounded text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      />
                     </span>
                   </div>
                 )}
