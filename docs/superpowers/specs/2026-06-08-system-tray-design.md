@@ -68,8 +68,8 @@ User clicks ×
 ┌──────────────────────────────────────┐
 │  Close PLVS                          │
 │                                      │
-│  ○  Minimize to tray                 │
 │  ○  Quit                             │
+│  ○  Minimize to tray                 │
 │                                      │
 │  □  Don't ask again                  │
 │                                      │
@@ -77,7 +77,7 @@ User clicks ×
 └──────────────────────────────────────┘
 ```
 
-- Default selection: "Minimize to tray"
+- Default selection: "Quit"
 - Cancel: closes the dialog, window stays open, nothing is persisted
 - Confirm: executes the selected action; if "Don't ask again" is checked, writes the action to `plvs:closeAction` in localStorage
 - Style: uses existing shadcn/Radix Dialog, PLVS dark theme

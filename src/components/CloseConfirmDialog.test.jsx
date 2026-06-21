@@ -20,7 +20,7 @@ describe("CloseConfirmDialog", () => {
     expect(screen.getByText("Quit")).toBeTruthy();
   });
 
-  it("defaults to Minimize to tray selected", () => {
+  it("defaults to Quit selected", () => {
     render(<CloseConfirmDialog open={true} onConfirm={vi.fn()} onCancel={vi.fn()} />);
     const radios = screen.getAllByRole("radio");
     expect(radios[0].checked).toBe(true);
@@ -34,19 +34,19 @@ describe("CloseConfirmDialog", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
-  it("calls onConfirm('tray', false) when Confirm clicked with defaults", () => {
+  it("calls onConfirm('quit', false) when Confirm clicked with defaults", () => {
     const onConfirm = vi.fn();
     render(<CloseConfirmDialog open={true} onConfirm={onConfirm} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByText("Confirm"));
-    expect(onConfirm).toHaveBeenCalledWith("tray", false);
+    expect(onConfirm).toHaveBeenCalledWith("quit", false);
   });
 
-  it("calls onConfirm('quit', false) when Quit is selected then Confirm clicked", () => {
+  it("calls onConfirm('tray', false) when Minimize to Tray is selected then Confirm clicked", () => {
     const onConfirm = vi.fn();
     render(<CloseConfirmDialog open={true} onConfirm={onConfirm} onCancel={vi.fn()} />);
     fireEvent.click(screen.getAllByRole("radio")[1]);
     fireEvent.click(screen.getByText("Confirm"));
-    expect(onConfirm).toHaveBeenCalledWith("quit", false);
+    expect(onConfirm).toHaveBeenCalledWith("tray", false);
   });
 
   it("calls onConfirm with dontAskAgain=true when checkbox is checked", () => {
@@ -54,6 +54,6 @@ describe("CloseConfirmDialog", () => {
     render(<CloseConfirmDialog open={true} onConfirm={onConfirm} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByText("Confirm"));
-    expect(onConfirm).toHaveBeenCalledWith("tray", true);
+    expect(onConfirm).toHaveBeenCalledWith("quit", true);
   });
 });

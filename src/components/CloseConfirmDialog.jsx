@@ -2,19 +2,19 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 
 export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
-  const [action, setAction] = useState("tray");
+  const [action, setAction] = useState("quit");
   const [dontAsk, setDontAsk] = useState(false);
 
   function handleConfirm() {
     const a = action;
     const d = dontAsk;
-    setAction("tray");
+    setAction("quit");
     setDontAsk(false);
     onConfirm(a, d);
   }
 
   function handleCancel() {
-    setAction("tray");
+    setAction("quit");
     setDontAsk(false);
     onCancel();
   }
@@ -38,23 +38,23 @@ export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
               <input
                 type="radio"
                 name="closeAction"
-                value="tray"
-                checked={action === "tray"}
-                onChange={() => setAction("tray")}
-                className="accent-primary"
-              />
-              <span className="text-sm text-foreground">Minimize to Tray</span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2.5">
-              <input
-                type="radio"
-                name="closeAction"
                 value="quit"
                 checked={action === "quit"}
                 onChange={() => setAction("quit")}
                 className="accent-primary"
               />
               <span className="text-sm text-foreground">Quit</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="radio"
+                name="closeAction"
+                value="tray"
+                checked={action === "tray"}
+                onChange={() => setAction("tray")}
+                className="accent-primary"
+              />
+              <span className="text-sm text-foreground">Minimize to Tray</span>
             </label>
           </div>
 
