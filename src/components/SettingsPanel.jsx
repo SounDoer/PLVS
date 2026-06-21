@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
 import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
@@ -202,15 +203,23 @@ export function SettingsPanel({
                       />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={!clearReady}
-                        onClick={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
-                      >
-                        Reset
-                      </Button>
+                      <InlineConfirm
+                        onConfirm={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
+                        confirmLabel="Confirm reset clear shortcut"
+                        cancelLabel="Cancel reset clear shortcut"
+                        trigger={(arm) => (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={!clearReady}
+                            onClick={arm}
+                            aria-label="Reset clear shortcut"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      />
                       <Switch
                         id="settings-clear"
                         checked={clearGlobal}
@@ -313,15 +322,22 @@ export function SettingsPanel({
                           >
                             Edit
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={themeControlsDisabled}
-                            className="text-destructive"
-                            onClick={() => deleteCustomTheme(fixedThemeSelectValue)}
-                          >
-                            Delete
-                          </Button>
+                          <InlineConfirm
+                            onConfirm={() => deleteCustomTheme(fixedThemeSelectValue)}
+                            confirmLabel="Confirm delete theme"
+                            cancelLabel="Cancel delete theme"
+                            trigger={(arm) => (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={themeControlsDisabled}
+                                className="text-destructive"
+                                onClick={arm}
+                              >
+                                Delete
+                              </Button>
+                            )}
+                          />
                         </>
                       ) : null}
                     </div>
@@ -357,16 +373,24 @@ export function SettingsPanel({
                       Channel Labels{channelCount > 0 ? ` · ${channelCount}-channel` : ""}
                     </Label>
                     {channelCount > 0 ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={resetChannelLabels}
-                        disabled={!channelLabelHasOverride}
-                        className="h-auto px-2 py-1 text-xs"
-                      >
-                        Reset to Auto
-                      </Button>
+                      <InlineConfirm
+                        onConfirm={resetChannelLabels}
+                        confirmLabel="Confirm reset channel labels"
+                        cancelLabel="Cancel reset channel labels"
+                        trigger={(arm) => (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={arm}
+                            disabled={!channelLabelHasOverride}
+                            aria-label="Reset channel labels"
+                            className="h-auto px-2 py-1 text-xs"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      />
                     ) : null}
                   </div>
                   {channelCount > 0 ? (

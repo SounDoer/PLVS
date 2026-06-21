@@ -311,7 +311,7 @@ describe("SettingsPanel — Channel labels", () => {
     expect(screen.getByLabelText("Channel 2 role")).toBeTruthy();
   });
 
-  it("disables Reset to Auto when there is no override", () => {
+  it("disables Reset when there is no channel-label override", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
@@ -320,10 +320,10 @@ describe("SettingsPanel — Channel labels", () => {
         channelLabelHasOverride={false}
       />
     );
-    expect(screen.getByRole("button", { name: "Reset to Auto" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Reset channel labels" }).disabled).toBe(true);
   });
 
-  it("calls resetChannelLabels when Reset to Auto is clicked", () => {
+  it("resets channel labels only after confirming", () => {
     const resetChannelLabels = vi.fn();
     render(
       <SettingsPanel
@@ -334,7 +334,40 @@ describe("SettingsPanel — Channel labels", () => {
         resetChannelLabels={resetChannelLabels}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Reset to Auto" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset channel labels" }));
+    expect(resetChannelLabels).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Confirm reset channel labels"));
     expect(resetChannelLabels).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("SettingsPanel — Clear shortcut reset", () => {
+  it("resets the clear shortcut only after confirming", () => {
+    const setClearShortcut = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} clearReady={true} setClearShortcut={setClearShortcut} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reset clear shortcut" }));
+    expect(setClearShortcut).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Confirm reset clear shortcut"));
+    expect(setClearShortcut).toHaveBeenCalledWith("CmdOrCtrl+K");
+  });
+});
+
+describe("SettingsPanel — Delete theme", () => {
+  it("deletes the active custom theme only after confirming", () => {
+    const deleteCustomTheme = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="custom-1"
+        customThemeOptions={[{ id: "custom-1", label: "Custom Theme" }]}
+        activeIsCustom={true}
+        deleteCustomTheme={deleteCustomTheme}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(deleteCustomTheme).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Confirm delete theme"));
+    expect(deleteCustomTheme).toHaveBeenCalledWith("custom-1");
   });
 });
