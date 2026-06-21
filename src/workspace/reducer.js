@@ -6,6 +6,7 @@ import {
 } from "./panelControlInstances.js";
 import { createPanel, trimCustomTitle } from "./panelInstances.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
+import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 
 // ---------------------------------------------------------------------------
 // MOVE_TAB helpers
@@ -189,6 +190,9 @@ export function workspaceReducer(state, action) {
       };
     }
 
+    case "RESET_WORKSPACE":
+      return { ...DEFAULT_WORKSPACE_STATE };
+
     default:
       return state;
   }
@@ -220,5 +224,6 @@ export function bindWorkspaceActions(dispatch) {
       dispatch({ type: "SET_PANEL_CONTROLS_FOR_PANEL", payload: { id, panelControls } }),
     setPanelControls: (panelControls) =>
       dispatch({ type: "SET_PANEL_CONTROLS", payload: { panelControls } }),
+    resetWorkspace: () => dispatch({ type: "RESET_WORKSPACE" }),
   };
 }
