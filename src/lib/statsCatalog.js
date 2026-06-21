@@ -78,6 +78,8 @@ export function dialogueOffsetText(dialogueIntegrated, integrated) {
   return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
 }
 
+// Correlation is bounded to [-1, +1], so it only needs a finite check (no
+// floor/ceil clamping like fmtMetric) and a fixed 2-decimal precision.
 function fmtCorrelation(v) {
   return Number.isFinite(v) ? v.toFixed(2) : "-";
 }
