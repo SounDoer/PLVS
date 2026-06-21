@@ -54,6 +54,10 @@ export function WorkspaceProvider({ children }) {
         clearActivePreset();
         bound.setPanelControlsForPanel(...args);
       },
+      resetWorkspace: (...args) => {
+        clearActivePreset();
+        bound.resetWorkspace(...args);
+      },
     };
   }, []);
 
