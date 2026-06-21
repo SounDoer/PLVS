@@ -4,7 +4,7 @@
  */
 
 import { PLVS_SEMANTIC_DARK, PLVS_SEMANTIC_LIGHT } from "./shadcnSemanticPreset.js";
-import { INFERNO_COLORMAP_STOPS, LIGHT_SPECTROGRAM_COLORMAP_STOPS } from "./spectrogramColormap.js";
+import { INFERNO_COLORMAP_STOPS } from "./spectrogramColormap.js";
 
 /** @typedef {import("./shadcnSemanticPreset.js").ShadcnSemantic} ShadcnSemantic */
 
@@ -53,7 +53,7 @@ export const BUILTIN_THEMES = {
       accentSecondary: "#0e7490",
       signal: { good: "#18976a", warn: "#fbbf24", bad: "#d03535" },
     },
-    colormap: LIGHT_SPECTROGRAM_COLORMAP_STOPS,
+    colormap: INFERNO_COLORMAP_STOPS,
   },
 };
 

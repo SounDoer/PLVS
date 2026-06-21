@@ -76,7 +76,7 @@ describe("SpectrogramPanel", () => {
 
     expect(darkLut).toBeInstanceOf(Uint8Array);
     expect(lightLut).toBeInstanceOf(Uint8Array);
-    expect(Array.from(lightLut.slice(0, 3))).not.toEqual(Array.from(darkLut.slice(0, 3)));
+    expect(Array.from(lightLut)).toEqual(Array.from(darkLut));
   });
 
   it("feeds the canvas only its own request key's frozen snapshot history", () => {

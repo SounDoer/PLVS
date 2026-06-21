@@ -14,20 +14,6 @@ export const INFERNO_COLORMAP_STOPS = Object.freeze([
   [255, [252, 255, 164]],
 ]);
 
-export const LIGHT_SPECTROGRAM_COLORMAP_STOPS = Object.freeze([
-  [0, [247, 249, 252]],
-  [26, [221, 231, 242]],
-  [51, [179, 209, 231]],
-  [77, [124, 184, 218]],
-  [102, [71, 154, 198]],
-  [128, [34, 122, 178]],
-  [153, [38, 99, 151]],
-  [179, [77, 80, 136]],
-  [204, [128, 61, 117]],
-  [230, [190, 70, 92]],
-  [255, [232, 108, 70]],
-]);
-
 /**
  * @typedef {readonly [number, readonly [number, number, number]]} SpectrogramColorStop
  * @typedef {readonly SpectrogramColorStop[]} SpectrogramColorStops

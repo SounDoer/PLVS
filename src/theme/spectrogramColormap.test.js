@@ -23,13 +23,10 @@ describe("spectrogram colormap", () => {
     expect(spectrogramColorFromLut(10, lut)).toEqual(spectrogramColorFromLut(0, lut));
   });
 
-  it("lets light and dark themes provide different ramps", () => {
+  it("uses the unified Inferno ramp for both light and dark themes", () => {
     const dark = buildSpectrogramLut(getBuiltinTheme("plvs-dark").colormap);
     const light = buildSpectrogramLut(getBuiltinTheme("plvs-light").colormap);
 
-    expect(Array.from(light.slice(0, 3))).not.toEqual(Array.from(dark.slice(0, 3)));
-    expect(Array.from(light.slice(255 * 3, 255 * 3 + 3))).not.toEqual(
-      Array.from(dark.slice(255 * 3, 255 * 3 + 3))
-    );
+    expect(Array.from(light)).toEqual(Array.from(dark));
   });
 });
