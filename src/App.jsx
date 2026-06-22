@@ -377,6 +377,7 @@ function AppContent() {
     channelMetadata,
     visualWaveformSnap,
     visualSnapIdx,
+    targetTimestampMs,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
@@ -435,6 +436,9 @@ function AppContent() {
     return Math.max(0, Math.min(20, pct));
   }, []);
   const vsGridDiagFar = 100 - vsGridDiagInset;
+  // In file mode, selectedMediaTimeMs feeds deriveSourceTransportState for scrub display.
+  // Currently this session is always live; file sessions wire this via sourceMode === "file".
+  const selectedMediaTimeMs = targetTimestampMs;
   const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
   // Maps old startMode values to new 3-state chrome vocabulary
   const chromeState = startMode === "stop" ? "live" : startMode === "live" ? "snapshot" : "ready";

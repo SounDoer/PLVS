@@ -131,6 +131,7 @@ export function useSnapshot({
     channelMetadata: resolved.channelMetadata,
     visualWaveformSnap,
     visualSnapIdx: resolved.visualSnapIdx,
+    targetTimestampMs: resolved.targetTimestampMs,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
