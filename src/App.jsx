@@ -10,6 +10,7 @@ import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMa
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
 import { useAudioEngine } from "./hooks/useAudioEngine";
+import { useFileAnalysisEngine } from "./hooks/useFileAnalysisEngine.js";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
@@ -34,6 +35,8 @@ import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ThemeEditor } from "./components/ThemeEditor";
 import { SourceTransportCluster } from "./components/SourceTransportCluster.jsx";
+import { FileAnalysisSummary } from "./components/FileAnalysisSummary.jsx";
+import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
@@ -68,6 +71,7 @@ import {
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
+import { pickMediaFile } from "./ipc/fileDialog.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
@@ -258,6 +262,9 @@ function AppContent() {
 
   const [sourceMode, setSourceMode] = useState("live");
   const [fileSession, setFileSession] = useState({ state: "empty" });
+  const [pendingFilePath, setPendingFilePath] = useState("");
+  // Incremented on every analyze/reanalyze/drop so re-analyzing the SAME path re-runs the engine.
+  const [fileRunId, setFileRunId] = useState(0);
   const [running, setRunning] = useState(false);
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
@@ -344,6 +351,7 @@ function AppContent() {
     []
   );
   const selectedOffsetRef = useRef(-1);
+  const defaultSampleRateRef = useRef(48000);
   const lastSentAnalysisRequestsKeyRef = useRef("");
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
@@ -816,6 +824,38 @@ function AppContent() {
   };
   onClearRef.current = clearAll;
 
+  const beginFileAnalysis = useCallback(
+    (path) => {
+      if (!path) return;
+      setSelectedOffset(-1);
+      setPendingFilePath(path);
+      setFileRunId((id) => id + 1);
+    },
+    [setSelectedOffset]
+  );
+
+  // `path` already comes from the Tauri drag-drop event (a real filesystem path).
+  const handleDropFile = useCallback((path) => beginFileAnalysis(path), [beginFileAnalysis]);
+
+  const fileAnalysis = useFileAnalysisEngine({
+    enabled: sourceMode === "file" && Boolean(pendingFilePath),
+    filePath: pendingFilePath,
+    runId: fileRunId,
+    histMaxSamples: HIST_MAX_SAMPLES,
+    visualMaxSamples: VISUAL_MAX_SAMPLES,
+    audioRef,
+    frameRef,
+    selectedOffsetRef,
+    defaultSampleRateRef,
+    intake: intakeRef.current,
+    setFileSession,
+    setAudio,
+    setHistoryPathM: () => {},
+    setHistoryPathST: () => {},
+    setSelectedOffset,
+    setStatus,
+  });
+
   const runLiveStartAction = () => {
     if (selectedOffset >= 0) {
       setSelectedOffset(-1);
@@ -835,7 +875,7 @@ function AppContent() {
     setShowClock(true);
   };
 
-  const onSourceTransportAction = (actionKind) => {
+  const onSourceTransportAction = async (actionKind) => {
     if (actionKind === "returnToLive") {
       setSelectedOffset(-1);
       setStatus("Monitoring live input");
@@ -850,7 +890,21 @@ function AppContent() {
       setStatus("File analysis result");
       return;
     }
-    setStatus("File analysis engine is not connected yet");
+    if (actionKind === "chooseFile" || actionKind === "analyzeFile") {
+      const path = await pickMediaFile();
+      if (path) beginFileAnalysis(path);
+      return;
+    }
+    if (actionKind === "reanalyzeFile") {
+      const path = pendingFilePath || fileSession.path;
+      if (path) beginFileAnalysis(path);
+      else setStatus("Choose a file to analyze");
+      return;
+    }
+    if (actionKind === "stopFileAnalysis") {
+      void fileAnalysis.stop();
+      return;
+    }
   };
 
   const onStartClick = runLiveStartAction;
@@ -984,6 +1038,7 @@ function AppContent() {
     frameRef,
     intake: intakeRef.current,
     selectedOffsetRef,
+    defaultSampleRateRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     setAudio,
@@ -1089,6 +1144,7 @@ function AppContent() {
 
   return (
     <AudioDataContext.Provider value={audioData}>
+      <FileDropOverlay active={sourceMode === "file"} onDropFile={handleDropFile} />
       <div className={SHELL_PAGE}>
         <div className={focusView.autoHideControls ? SHELL_INNER_FOCUS : SHELL_INNER}>
           {focusView.autoHideControls ? (
@@ -1115,6 +1171,10 @@ function AppContent() {
                 onSourceModeChange={onSourceModeChange}
                 onPrimaryAction={onSourceTransportAction}
               />
+              {sourceMode === "file" &&
+              (fileSession.state === "complete" || fileSession.state === "error") ? (
+                <FileAnalysisSummary fileSession={fileSession} />
+              ) : null}
               <div className="flex-1" />
               <div className="flex items-center gap-1">
                 <IconButton

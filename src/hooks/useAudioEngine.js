@@ -70,8 +70,10 @@ export function useAudioEngine({
   setSelectedOffset,
   resetTimer,
   setShowClock,
+  defaultSampleRateRef: externalDefaultSampleRateRef,
 }) {
-  const defaultSampleRateRef = useRef(48000);
+  const internalDefaultSampleRateRef = useRef(48000);
+  const defaultSampleRateRef = externalDefaultSampleRateRef ?? internalDefaultSampleRateRef;
 
   const clearLocalMeterStateForRestart = () => {
     intake.reset();
