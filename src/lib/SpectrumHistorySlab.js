@@ -86,6 +86,37 @@ export class SpectrumHistorySlab {
     return this.at(index);
   }
 
+  freeze() {
+    const n = this._size;
+    const bc = this._bandCount;
+    const timestamps = new Float64Array(n);
+    const dbA = new Float32Array(n * bc);
+    let dbB = null;
+    let hasB = null;
+    if (this._dbB) {
+      dbB = new Float32Array(n * bc);
+      hasB = new Uint8Array(n);
+    }
+    for (let i = 0; i < n; i += 1) {
+      const slot = (this._head + i) % this._cap;
+      timestamps[i] = this._timestamps[slot];
+      dbA.set(this._dbA.subarray(slot * bc, slot * bc + bc), i * bc);
+      if (dbB) {
+        dbB.set(this._dbB.subarray(slot * bc, slot * bc + bc), i * bc);
+        hasB[i] = this._hasB[slot];
+      }
+    }
+    return new FrozenSpectrumHistory({
+      bands: this._bands,
+      bandCount: bc,
+      size: n,
+      timestamps,
+      dbA,
+      dbB,
+      hasB,
+    });
+  }
+
   matchesBands(bands) {
     return sameBands(this._bands, bands ?? []);
   }
@@ -155,3 +186,50 @@ export class SpectrumHistorySlab {
     this._size = 0;
   }
 }
+
+export class FrozenSpectrumHistory {
+  constructor({ bands, bandCount, size, timestamps, dbA, dbB, hasB }) {
+    this._bands = bands ?? [];
+    this._bandCount = bandCount;
+    this._size = size;
+    this._timestamps = timestamps;
+    this._dbA = dbA;
+    this._dbB = dbB ?? null;
+    this._hasB = hasB ?? null;
+  }
+
+  get length() {
+    return this._size;
+  }
+
+  get version() {
+    return 0;
+  }
+
+  timestampAt(index) {
+    if (index < 0 || index >= this._size) return NaN;
+    return this._timestamps[index];
+  }
+
+  rowAt(index) {
+    if (index < 0 || index >= this._size) return undefined;
+    const offset = index * this._bandCount;
+    const dbList = this._dbA.subarray(offset, offset + this._bandCount);
+    const dbListB =
+      this._dbB && this._hasB?.[index]
+        ? this._dbB.subarray(offset, offset + this._bandCount)
+        : EMPTY_F32;
+    return { bands: this._bands, dbList, dbListB, timestampMs: this._timestamps[index] };
+  }
+}
+
+export const EMPTY_SPECTRUM_VIEW = {
+  length: 0,
+  version: 0,
+  timestampAt() {
+    return NaN;
+  },
+  rowAt() {
+    return undefined;
+  },
+};

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { SpectrumHistorySlab } from "./SpectrumHistorySlab.js";
+import {
+  SpectrumHistorySlab,
+  FrozenSpectrumHistory,
+  EMPTY_SPECTRUM_VIEW,
+} from "./SpectrumHistorySlab.js";
 
 const bands = [{ fCenter: 100 }, { fCenter: 200 }, { fCenter: 400 }];
 
@@ -113,6 +117,31 @@ describe("SpectrumHistorySlab", () => {
     expect(Array.from(slab.rowAt(0).dbList)).toEqual([-30, -40]);
     expect(slab.rowAt(1).timestampMs).toBe(1080);
     expect(slab.rowAt(5)).toBeUndefined();
+  });
+
+  it("freeze() copies the ring and is immune to later pushes", () => {
+    const bands = [{ fCenter: 100 }, { fCenter: 200 }];
+    const slab = new SpectrumHistorySlab(2, bands);
+    slab.push({ bands, dbList: [-10, -20], dbListB: [-1, -2], timestampMs: 1000 });
+    slab.push({ bands, dbList: [-30, -40], dbListB: [-3, -4], timestampMs: 1040 });
+
+    const frozen = slab.freeze();
+    slab.push({ bands, dbList: [-50, -60], timestampMs: 1080 }); // overwrites slot 0 in the live ring
+
+    expect(frozen).toBeInstanceOf(FrozenSpectrumHistory);
+    expect(frozen.length).toBe(2);
+    expect(frozen.timestampAt(0)).toBe(1000);
+    expect(Array.from(frozen.rowAt(0).dbList)).toEqual([-10, -20]);
+    expect(Array.from(frozen.rowAt(0).dbListB)).toEqual([-1, -2]);
+    expect(Array.from(frozen.rowAt(1).dbList)).toEqual([-30, -40]);
+    // Live ring moved on; frozen snapshot did not.
+    expect(Array.from(slab.rowAt(1).dbList)).toEqual([-50, -60]);
+  });
+
+  it("EMPTY_SPECTRUM_VIEW is an empty read-only view", () => {
+    expect(EMPTY_SPECTRUM_VIEW.length).toBe(0);
+    expect(EMPTY_SPECTRUM_VIEW.timestampAt(0)).toBeNaN();
+    expect(EMPTY_SPECTRUM_VIEW.rowAt(0)).toBeUndefined();
   });
 
   it("can return copied rows for snapshot freeze safety", () => {
