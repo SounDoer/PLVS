@@ -210,4 +210,10 @@ describe("App toolbar", () => {
     expect(appSource).toContain('tip="Modules"');
     expect(appSource).not.toContain('tip="Layout & Modules"');
   });
+
+  it("exposes file analysis probing through the frontend IPC wrapper", () => {
+    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
+    expect(commandsSource).toContain("export function probeFileAnalysis(path)");
+    expect(commandsSource).toContain('return invoke("file_analysis_probe", { path });');
+  });
 });

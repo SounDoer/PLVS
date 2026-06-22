@@ -74,3 +74,8 @@ export function setLoudnessWeights(weights) {
 export function setDialogueGating(enabled) {
   return invoke("set_dialogue_gating", { enabled: !!enabled });
 }
+
+/** @param {string} path Local media path selected or dropped in the desktop app. */
+export function probeFileAnalysis(path) {
+  return invoke("file_analysis_probe", { path });
+}
