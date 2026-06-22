@@ -297,6 +297,14 @@ pub struct AudioFramePayload {
   pub dialogue_lra: f64,
   /// Whether the current 100ms block was classified as active speech.
   pub dialogue_active_now: bool,
+  /// File-mode batch of loudness history ticks accumulated since the previous emitted frame.
+  /// Empty in live mode (which uses `loudness_hist_tick`).
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub loudness_hist_batch: Vec<MeterHistoryEntry>,
+  /// File-mode batch of visual history ticks accumulated since the previous emitted frame.
+  /// Empty in live mode (which uses `visual_hist_tick`).
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub visual_hist_batch: Vec<VisualHistEntry>,
 }
 
 /// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.
