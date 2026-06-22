@@ -233,7 +233,7 @@ fn run_file_worker(
   }
 
   // Flush any buffered history ticks from the tail of the file before emitting completion.
-  if let Some(mut frame) = pipeline.flush_file_batch() {
+  if let Some(mut frame) = pipeline.flush_file_batch(&config.requests) {
     seq += 1;
     frame.seq = seq;
     send_frame(&frame_subscribers, frame)?;

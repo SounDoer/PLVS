@@ -72,9 +72,12 @@ function deriveFileState({ selectedOffset = -1, selectedMediaTimeMs, fileSession
 
   if (state === "complete") {
     const fileName = fileSession.fileName || "File";
+    const durationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
     return {
       sourceLabel: "File",
-      statusLabel: `${fileName} Done`,
+      statusLabel: Number.isFinite(durationMs)
+        ? `${fileName} ${formatClock(durationMs)}`
+        : `${fileName} Done`,
       actionLabel: "REANALYZE",
       chromeState: "ready",
       actionKind: "reanalyzeFile",

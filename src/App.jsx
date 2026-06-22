@@ -438,6 +438,7 @@ function AppContent() {
     displayAudio,
     referenceLufs,
     selectedOffset,
+    sourceMode,
   });
 
   const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(
@@ -449,9 +450,29 @@ function AppContent() {
     return Math.max(0, Math.min(20, pct));
   }, []);
   const vsGridDiagFar = 100 - vsGridDiagInset;
-  // In file mode, selectedMediaTimeMs feeds deriveSourceTransportState for scrub display.
-  // Currently this session is always live; file sessions wire this via sourceMode === "file".
-  const selectedMediaTimeMs = targetTimestampMs;
+  // In file mode the selected history sample's timestamp is absolute media time (>= 0); clamp it so
+  // a scrub past the decoded tail never renders a negative time in the transport pill. Live mode
+  // keeps the raw value (its timeline is wall-clock relative).
+  const fileDurationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
+  const selectedMediaTimeMs =
+    sourceMode === "file" && Number.isFinite(targetTimestampMs)
+      ? Math.max(0, targetTimestampMs)
+      : targetTimestampMs;
+
+  // Once a file's duration is known (probe metadata while analyzing, or the final summary), fit the
+  // loudness-history window to the whole file and reset scrub so the full analyzed curve shows over
+  // an absolute media-time axis. selectedOffset is intentionally not a dependency so user scrubbing
+  // afterwards is preserved; getHistoryViewport clamps the window to [MIN, MAX].
+  useEffect(() => {
+    if (sourceMode !== "file") return;
+    if (fileSession.state !== "analyzing" && fileSession.state !== "complete") return;
+    setHistoryWindowSec(
+      Number.isFinite(fileDurationMs) ? fileDurationMs / 1000 : HISTORY_MAX_WINDOW_SEC
+    );
+    setHistoryOffsetSec(0);
+    setSelectedOffset(-1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceMode, fileSession.state, fileDurationMs]);
 
   const latestTimestampMs = useMemo(() => {
     const last = histSourceList.length > 0 ? histSourceList[histSourceList.length - 1] : null;

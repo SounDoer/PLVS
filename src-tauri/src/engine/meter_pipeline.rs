@@ -157,6 +157,11 @@ pub struct MeterPipeline {
   pending_file_loudness_queue: Vec<(f64, f64, u64)>,
   /// File mode: queued visual tick media timestamps between frame emits.
   pending_file_visual_queue: Vec<u64>,
+  /// File mode: media time (ms) of the last queued loudness tick; gates tick cadence by media time
+  /// instead of wall clock (offline decode runs far faster than real time). `None` = none queued yet.
+  last_hist_media_ms: Option<u64>,
+  /// File mode: media time (ms) of the last queued visual tick. See `last_hist_media_ms`.
+  last_visual_media_ms: Option<u64>,
 }
 
 pub struct PipelineSummary {
@@ -212,6 +217,8 @@ impl MeterPipeline {
       current_media_time_ms: None,
       pending_file_loudness_queue: Vec::new(),
       pending_file_visual_queue: Vec::new(),
+      last_hist_media_ms: None,
+      last_visual_media_ms: None,
     };
     debug_assert_eq!(
       pipeline.waveform_min_acc.len(),
@@ -251,6 +258,8 @@ impl MeterPipeline {
     self.visual_waveform_min_acc.fill(f32::INFINITY);
     self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
     self.last_visual_emit = Instant::now() - std::time::Duration::from_millis(200);
+    self.last_hist_media_ms = None;
+    self.last_visual_media_ms = None;
   }
 
   /// Create a pipeline configured for offline file analysis. Timestamps on emitted frames and
@@ -409,32 +418,56 @@ impl MeterPipeline {
     // frontend can keep request-keyed snapshot history. Only active request keys are emitted;
     // retention of inactive keys is the frontend's responsibility (it never deletes a key ring
     // until Clear).
-    if let Some(entry) = frame.visual_hist_tick.as_mut() {
-      for request in &analysis_requests.spectrum {
-        if let Some(meter) = self.spectrum_by_key.get(&request.key) {
+    // Build the per-key samples once from the current meter snapshots, then stamp them onto the
+    // visual history carrier. Live mode carries a single `visual_hist_tick`; file mode carries a
+    // `visual_hist_batch` whose entries share this frame's snapshot (coarse but present — same as the
+    // non-keyed `spectrum_smooth_db`). Without this, request-keyed panels (Spectrogram, and scrubbed
+    // Spectrum/Vectorscope) have no history in file mode.
+    let spectrum_by_key: Vec<(String, SpectrumVisualEntry)> = analysis_requests
+      .spectrum
+      .iter()
+      .filter_map(|request| {
+        self.spectrum_by_key.get(&request.key).map(|meter| {
           let (centers, smooth, _peak) = meter.last_output();
           let smooth_db_b = meter
             .last_output_secondary()
             .map(|(smooth_b, _)| smooth_b.to_vec())
             .unwrap_or_default();
-          entry.spectrum_by_key.insert(
+          (
             request.key.clone(),
             SpectrumVisualEntry {
               band_centers_hz: centers.to_vec(),
               smooth_db: smooth.to_vec(),
               smooth_db_b,
             },
-          );
-        }
-      }
-      for request in &analysis_requests.vectorscope {
-        if let Some(meter) = self.vectorscope_by_key.get_mut(&request.key) {
+          )
+        })
+      })
+      .collect();
+    let vectorscope_by_key: Vec<(String, VectorscopeVisualEntry)> = analysis_requests
+      .vectorscope
+      .iter()
+      .filter_map(|request| {
+        self.vectorscope_by_key.get_mut(&request.key).map(|meter| {
           let (correlation, pairs) = meter.get_history_pairs(VS_HISTORY_POINTS);
-          entry.vectorscope_by_key.insert(
+          (
             request.key.clone(),
             VectorscopeVisualEntry { pairs, correlation },
-          );
-        }
+          )
+        })
+      })
+      .collect();
+
+    if let Some(entry) = frame.visual_hist_tick.as_mut() {
+      entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
+      entry.vectorscope_by_key = vectorscope_by_key.iter().cloned().collect();
+    }
+    if !frame.visual_hist_batch.is_empty()
+      && (!spectrum_by_key.is_empty() || !vectorscope_by_key.is_empty())
+    {
+      for entry in frame.visual_hist_batch.iter_mut() {
+        entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
+        entry.vectorscope_by_key = vectorscope_by_key.iter().cloned().collect();
       }
     }
 
@@ -467,7 +500,15 @@ impl MeterPipeline {
 
   /// Drain any buffered file-mode history ticks into a final frame after end-of-stream.
   /// Returns `None` if not in file mode or if both queues are empty.
-  pub fn flush_file_batch(&mut self) -> Option<AudioFramePayload> {
+  ///
+  /// Takes the live `analysis_requests` so the flushed frame carries real per-request-key
+  /// spectrum/vectorscope results (each meter's retained last_output). Passing empty requests here
+  /// would clear `spectrum_results_by_key`/`vectorscope_results_by_key`, leaving the post-completion
+  /// "latest" view blank for the request-keyed Spectrum/Vectorscope panels.
+  pub fn flush_file_batch(
+    &mut self,
+    analysis_requests: &AnalysisRequests,
+  ) -> Option<AudioFramePayload> {
     if !self.file_timing {
       return None;
     }
@@ -477,12 +518,12 @@ impl MeterPipeline {
     // Force the wall-clock throttle to expire so the next push assembles and emits a frame.
     self.last_frame_emit =
       Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
-    // Push empty PCM through the normal path; DSP state is unchanged, but the frame assembly
-    // code drains both batch queues into the emitted payload.
+    // Push empty PCM through the normal path; DSP state is unchanged (no samples), so each meter's
+    // last_output is retained, and the frame assembly code drains both batch queues into the payload.
     self.push_pcm_f32_with_requests(
       &[],
       ChannelLayoutSetting::Auto,
-      &AnalysisRequests::default(),
+      analysis_requests,
       self.last_loudness_weights.clone(),
       self.last_dialogue_gating,
     )
@@ -632,13 +673,18 @@ impl MeterPipeline {
       }
     }
 
-    // In file mode, queue visual ticks instead of emitting them inline. The batch is drained
-    // when the wall-clock throttle allows a frame to be emitted.
+    // In file mode, queue visual ticks instead of emitting them inline. Gate by MEDIA time, not wall
+    // clock (offline decode runs far faster than real time; see apply_loudness_block). The batch is
+    // drained when the frame throttle allows a frame to be emitted.
     if self.file_timing {
-      let now = Instant::now();
-      if now.duration_since(self.last_visual_emit).as_millis() >= VISUAL_EMIT_MS {
-        self.last_visual_emit = now;
-        self.pending_file_visual_queue.push(self.timestamp_ms());
+      let ts = self.timestamp_ms();
+      let advanced = match self.last_visual_media_ms {
+        Some(last) => ts.saturating_sub(last) >= VISUAL_EMIT_MS as u64,
+        None => true,
+      };
+      if advanced {
+        self.last_visual_media_ms = Some(ts);
+        self.pending_file_visual_queue.push(ts);
       }
     }
 
@@ -993,21 +1039,31 @@ impl MeterPipeline {
     self.last_loudness = Some(lb.clone());
     // Keep appending history during digital silence (M/S are -inf from zero energy) so the chart
     // and snapshot ring continue to advance while capture is running.
+    if self.file_timing {
+      // Offline file analysis decodes far faster than real time, so gate history ticks by MEDIA
+      // time, not wall clock -- otherwise the whole file collapses into a couple of wall-clock
+      // windows and almost every tick is dropped. Queue the tick without forcing a frame; the batch
+      // is drained when the frame throttle next allows a frame (or on flush_file_batch).
+      let ts = self.timestamp_ms();
+      let advanced = match self.last_hist_media_ms {
+        Some(last) => ts.saturating_sub(last) >= HIST_EMIT_MS as u64,
+        None => true,
+      };
+      if !advanced {
+        return;
+      }
+      self.last_hist_media_ms = Some(ts);
+      self
+        .pending_file_loudness_queue
+        .push((lb.momentary, lb.short_term, ts));
+      return;
+    }
     let now = Instant::now();
     if now.duration_since(self.last_hist_emit).as_millis() < HIST_EMIT_MS {
       return;
     }
     self.last_hist_emit = now;
-    if self.file_timing {
-      // In file mode, queue the tick without forcing a frame; the batch is drained when the
-      // wall-clock throttle next allows a frame to be emitted (or on flush_file_batch).
-      let ts = self.timestamp_ms();
-      self
-        .pending_file_loudness_queue
-        .push((lb.momentary, lb.short_term, ts));
-    } else {
-      self.pending_loudness_hist = Some((lb.momentary, lb.short_term));
-    }
+    self.pending_loudness_hist = Some((lb.momentary, lb.short_term));
   }
 }
 
@@ -1045,6 +1101,68 @@ mod tests {
     assert_eq!(
       frame.loudness_hist_batch.first().map(|e| e.timestamp_ms),
       Some(12_345)
+    );
+  }
+
+  #[test]
+  fn file_mode_history_ticks_track_media_time_not_wall_clock() {
+    // Offline decode runs in a tight loop where wall clock barely advances. History ticks must be
+    // produced at the media-time cadence and not collapsed into one or two wall-clock windows.
+    // Most pushes return None (16 ms frame throttle), so ticks accumulate in the queue and are
+    // drained by flush_file_batch -- exactly the real worker's path.
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let requests = AnalysisRequests::default();
+    let chunk = vec![0.1_f32; (sr as usize / 10) * channels as usize]; // 100 ms of audio
+
+    let chunks = 20_usize;
+    let mut loudness_ticks = 0_usize;
+    let mut visual_ticks = 0_usize;
+    let mut last_ts = 0_u64;
+    let tally = |frame: &AudioFramePayload, last_ts: &mut u64| {
+      for entry in &frame.loudness_hist_batch {
+        assert!(
+          entry.timestamp_ms >= *last_ts,
+          "tick timestamps must be non-decreasing"
+        );
+        *last_ts = entry.timestamp_ms;
+      }
+    };
+
+    for i in 1..=chunks {
+      let media_time_ms = (i as u64) * 100;
+      if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
+        &chunk,
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        media_time_ms,
+      ) {
+        tally(&frame, &mut last_ts);
+        loudness_ticks += frame.loudness_hist_batch.len();
+        visual_ticks += frame.visual_hist_batch.len();
+      }
+    }
+    if let Some(frame) = pipeline.flush_file_batch(&requests) {
+      tally(&frame, &mut last_ts);
+      loudness_ticks += frame.loudness_hist_batch.len();
+      visual_ticks += frame.visual_hist_batch.len();
+    }
+
+    // ~one tick per 100 ms of media over a 2 s span. Wall-clock gating would yield only 1-2.
+    assert!(
+      loudness_ticks >= 10,
+      "expected many media-time loudness ticks, got {loudness_ticks}"
+    );
+    assert!(
+      visual_ticks >= 10,
+      "expected many media-time visual ticks, got {visual_ticks}"
+    );
+    assert!(
+      last_ts >= 1_000,
+      "ticks should span most of the media timeline, last={last_ts}"
     );
   }
 
@@ -1285,6 +1403,83 @@ mod tests {
       .vectorscope_by_key
       .get("vectorscope:pair:0:1")
       .is_some_and(|entry| !entry.pairs.is_empty()));
+  }
+
+  #[test]
+  fn file_mode_visual_batch_carries_request_keyed_history() {
+    // Regression: file mode emits visual_hist_batch (not visual_hist_tick), and the flush frame must
+    // pass the real requests. Request-keyed panels (Spectrogram, scrubbed Spectrum/Vectorscope) need
+    // per-key samples on every batch entry; otherwise they stay blank in file mode.
+    use crate::ipc::types::{
+      SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
+    };
+
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let frames = 4096 * 8;
+    let pcm_a = tone_on_channel(frames, channels as usize, sr as f64, 1000.0, 0);
+    let pcm_b = tone_on_channel(frames, channels as usize, sr as f64, 500.0, 1);
+    let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
+    let requests = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: "spectrum:single:0:combined".to_string(),
+        channel: SpectrumAnalysisChannel::Single { ch: 0 },
+        view: "combined".to_string(),
+      }],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: "vectorscope:pair:0:1".to_string(),
+        x: 0,
+        y: 1,
+      }],
+    };
+
+    let chunk_ms = ((frames as f64 / sr as f64) * 1000.0) as u64;
+    let mut spectrum_entries = 0_usize;
+    let mut vectorscope_entries = 0_usize;
+    let tally = |frame: &AudioFramePayload, sp: &mut usize, vs: &mut usize| {
+      for entry in &frame.visual_hist_batch {
+        if entry
+          .spectrum_by_key
+          .get("spectrum:single:0:combined")
+          .is_some_and(|e| !e.smooth_db.is_empty())
+        {
+          *sp += 1;
+        }
+        if entry
+          .vectorscope_by_key
+          .get("vectorscope:pair:0:1")
+          .is_some_and(|e| !e.pairs.is_empty())
+        {
+          *vs += 1;
+        }
+      }
+    };
+
+    for i in 1..=6 {
+      if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
+        &pcm,
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        (i as u64) * chunk_ms,
+      ) {
+        tally(&frame, &mut spectrum_entries, &mut vectorscope_entries);
+      }
+    }
+    if let Some(frame) = pipeline.flush_file_batch(&requests) {
+      tally(&frame, &mut spectrum_entries, &mut vectorscope_entries);
+    }
+
+    assert!(
+      spectrum_entries > 0,
+      "visual batch entries should carry per-key spectrum"
+    );
+    assert!(
+      vectorscope_entries > 0,
+      "visual batch entries should carry per-key vectorscope"
+    );
   }
 
   #[test]

@@ -95,17 +95,19 @@ export function buildTauriFrameApply({
 
     if (!SPECTRUM_SETTINGS.freeze) {
       if (selectedOffsetRef.current < 0 && shouldPaintUi) {
-        setSpectrumPath(f.spectrumPath || "");
-        setSpectrumPeakPath(f.spectrumPeakPath || "");
-        setSpectrumPathB(f.spectrumPathB || "");
-        setSpectrumPeakPathB(f.spectrumPeakPathB || "");
-        setVectorPath(f.vectorscopePath || "");
+        // File mode omits the live spectrum/vector setters (panels read from intake snapshots),
+        // so guard with optional chaining to avoid throwing per frame.
+        setSpectrumPath?.(f.spectrumPath || "");
+        setSpectrumPeakPath?.(f.spectrumPeakPath || "");
+        setSpectrumPathB?.(f.spectrumPathB || "");
+        setSpectrumPeakPathB?.(f.spectrumPeakPathB || "");
+        setVectorPath?.(f.vectorscopePath || "");
       }
     }
 
     if (selectedOffsetRef.current < 0 && shouldPaintUi) {
-      setHistoryPathM("");
-      setHistoryPathST("");
+      setHistoryPathM?.("");
+      setHistoryPathST?.("");
     }
   };
 

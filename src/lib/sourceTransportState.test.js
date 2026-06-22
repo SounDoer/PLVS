@@ -120,6 +120,51 @@ describe("deriveSourceTransportState", () => {
     });
   });
 
+  it("shows the file duration on the completed state when known", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "file",
+        fileSession: {
+          state: "complete",
+          fileName: "final_mix.wav",
+          summary: { durationMs: 123_000 },
+        },
+      })
+    ).toMatchObject({
+      statusLabel: "final_mix.wav 00:02:03",
+      actionLabel: "REANALYZE",
+      actionKind: "reanalyzeFile",
+    });
+  });
+
+  it("falls back to probe metadata duration on the completed state", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "file",
+        fileSession: {
+          state: "complete",
+          fileName: "final_mix.wav",
+          metadata: { durationMs: 5_000 },
+        },
+      }).statusLabel
+    ).toBe("final_mix.wav 00:00:05");
+  });
+
+  it("clamps a negative scrub media time is the caller's job; finite values render as a clock", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "file",
+        selectedOffset: 3,
+        selectedMediaTimeMs: 0,
+        fileSession: { state: "complete", fileName: "final_mix.wav" },
+      })
+    ).toMatchObject({
+      statusLabel: "00:00:00",
+      actionLabel: "RESULT",
+      actionKind: "returnToFileResult",
+    });
+  });
+
   it("derives the file scrub state from media time", () => {
     expect(
       deriveSourceTransportState({
