@@ -81,6 +81,31 @@ pub struct AudioDevicePreview {
   pub channels: u16,
 }
 
+/// One audio track discovered in a local media file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAudioTrackMetadata {
+  pub index: u32,
+  pub codec: String,
+  pub sample_rate_hz: Option<u32>,
+  pub channels: Option<u16>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub language: Option<String>,
+}
+
+/// Metadata returned before starting full offline analysis.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisProbeResult {
+  pub path: String,
+  pub file_name: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub container: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub duration_ms: Option<u64>,
+  pub selected_track: FileAudioTrackMetadata,
+}
+
 /// One aligned history row (~10 Hz): loudness chart + snapshot tracks + fields for `audioSnapRef` replay.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
