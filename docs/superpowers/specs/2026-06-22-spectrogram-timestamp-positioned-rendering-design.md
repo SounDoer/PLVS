@@ -1,7 +1,7 @@
 # Spectrogram Timestamp-Positioned Rendering
 
 **Date:** 2026-06-22
-**Status:** Draft
+**Status:** Implemented (pending on-device visual verification)
 
 ## Summary
 

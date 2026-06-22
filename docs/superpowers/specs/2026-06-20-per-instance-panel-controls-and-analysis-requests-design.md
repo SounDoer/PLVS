@@ -1,7 +1,7 @@
 # Per-instance Panel Controls and Analysis Requests
 
 **Date:** 2026-06-20
-**Status:** Draft
+**Status:** Implemented
 
 ## Summary
 
@@ -412,6 +412,12 @@ Panel states:
 - request is over the active cap:
   `Too many active analysis views`;
 - no capture data at all: existing no-data treatment.
+
+The `No data for this view at selected time` message applies to the instantaneous
+Spectrum and Vectorscope panels. The Spectrogram is a time-window heatmap, so its
+data-availability is shown with timeline boundary marker lines instead of a
+full-panel message — see
+`2026-06-22-spectrogram-timestamp-positioned-rendering-design.md`.
 
 ## Out of Scope
 
