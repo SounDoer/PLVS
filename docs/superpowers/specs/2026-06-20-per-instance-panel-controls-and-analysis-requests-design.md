@@ -111,6 +111,45 @@ All header chips are per-instance in this slice:
 Pure display controls can be applied entirely in the frontend. Backend-affecting
 controls become analysis requests.
 
+### Spectrogram Control Contract
+
+Spectrogram is a single-layer time-frequency heatmap. It shares the Spectrum
+analysis engine, but it does not share Spectrum's overlay view semantics.
+
+Rules:
+
+- Spectrogram has a channel chip only when there is a meaningful channel choice
+  to make, matching the Spectrum channel option list.
+- Spectrogram does not expose `Combined` / `L/R` / `M/S` view chips.
+- Spectrogram does not expose Spectrum peak hold.
+- A Spectrogram pair selection always means one combined heatmap:
+  `0.5 * (x + y)`.
+- A Spectrogram single selection means one duplicated-single-channel heatmap.
+- Spectrum view chips affect only the Spectrum panel instance that owns them.
+  They must never change a Spectrogram panel's heatmap.
+- Two Spectrum panels and one Spectrogram panel may share computation only when
+  their normalized request keys are identical; sharing computation must not
+  imply shared visible chip state.
+
+Examples:
+
+```txt
+Stereo:
+  Spectrum 1 = L/R Combined
+  Spectrum 2 = L/R M/S
+  Spectrogram = L/R combined heatmap
+
+Changing either Spectrum view chip does not change Spectrogram.
+
+5.1:
+  Spectrum 1 = L/R Combined
+  Spectrum 2 = L/R M/S
+  Spectrogram = Ls/Rs combined heatmap
+
+Changing either Spectrum channel or view chip does not change Spectrogram.
+Only changing the Spectrogram channel chip changes the Spectrogram request.
+```
+
 ## Analysis Requests
 
 The backend should not maintain one analysis state per panel id. It should
@@ -146,8 +185,19 @@ spectrum:pair:<x>:<y>:ms
 spectrum:single:<ch>:combined
 ```
 
-Spectrogram uses the same spectrum-like calculation key when it asks for the
-same channel/view calculation, but its history consumer differs.
+Spectrum panels derive keys from their own selected channel and selected view.
+
+Spectrogram panels derive keys from their own selected channel and always force
+the view segment to `combined`, regardless of any stored or hidden
+`spectrumView` value in their panel controls:
+
+```txt
+spectrogram pair x/y -> spectrum:pair:<x>:<y>:combined
+spectrogram single ch -> spectrum:single:<ch>:combined
+```
+
+This keeps the Spectrogram model visible and predictable: it is controlled only
+by its own channel chip.
 
 Vectorscope keys:
 
@@ -292,6 +342,10 @@ Examples:
 - no Spectrum or Spectrogram panels -> no spectrum-like request calculation;
 - no Vectorscope panels -> no vectorscope request calculation;
 - two panels with the same Spectrum request -> one calculation shared by both.
+- one Spectrogram and one Spectrum panel with the same pair combined request ->
+  one spectrum-like calculation may be shared by both;
+- one Spectrogram and one Spectrum panel with the same pair but Spectrum view
+  `lr` or `ms` -> separate request keys, because Spectrogram stays combined.
 
 Shared low-cost core metrics may continue to run globally:
 
@@ -385,6 +439,8 @@ Panel states:
 - Workspace reducer tests cover `panelControlsById` initialization, update,
   delete, and preset restore.
 - Frontend request derivation tests cover deduplication and cap ordering.
+- Frontend request derivation tests cover Spectrogram forcing `combined` and
+  remaining independent from Spectrum panel view chips.
 - IPC tests cover request parsing and rejection of malformed request keys.
 - Pipeline tests cover multiple unique Spectrum and Vectorscope requests in one
   frame.
