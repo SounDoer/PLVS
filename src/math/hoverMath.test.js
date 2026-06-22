@@ -9,6 +9,17 @@ import {
   freqToNote,
 } from "./hoverMath";
 
+function viewOf(rows) {
+  return {
+    get length() {
+      return rows.length;
+    },
+    version: 0,
+    timestampAt: (i) => (i >= 0 && i < rows.length ? rows[i].timestampMs : NaN),
+    rowAt: (i) => (i >= 0 && i < rows.length ? rows[i] : undefined),
+  };
+}
+
 describe("formatHoverOffset", () => {
   it("formats sub-10s with one decimal", () => {
     expect(formatHoverOffset(3.4)).toBe("3.4s ago");
@@ -131,10 +142,10 @@ describe("computeSpectrogramHoverPoint", () => {
     }
     return out;
   };
-  const snaps = makeSnaps();
+  const snaps = viewOf(makeSnaps());
 
   it("returns null for empty snaps array", () => {
-    expect(computeSpectrogramHoverPoint(0.5, 0.5, [], OLD, NEW, SMS)).toBeNull();
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, viewOf([]), OLD, NEW, SMS)).toBeNull();
   });
 
   it("leftPct equals xFrac * 100", () => {
@@ -171,24 +182,24 @@ describe("computeSpectrogramHoverPoint", () => {
 
   it("returns null when the nearest frame has no bands", () => {
     expect(
-      computeSpectrogramHoverPoint(0.5, 0.5, makeSnaps({ bands: [] }), OLD, NEW, SMS)
+      computeSpectrogramHoverPoint(0.5, 0.5, viewOf(makeSnaps({ bands: [] })), OLD, NEW, SMS)
     ).toBeNull();
   });
 
   it("returns null when the nearest frame has no dbList", () => {
     expect(
-      computeSpectrogramHoverPoint(0.5, 0.5, makeSnaps({ dbList: [] }), OLD, NEW, SMS)
+      computeSpectrogramHoverPoint(0.5, 0.5, viewOf(makeSnaps({ dbList: [] })), OLD, NEW, SMS)
     ).toBeNull();
   });
 
   it("returns null when hovering a time gap with no nearby frame", () => {
-    const sparse = [{ timestampMs: 950, bands: testBands, dbList: testDbList }];
+    const sparse = viewOf([{ timestampMs: 950, bands: testBands, dbList: testDbList }]);
     // cursor at xFrac 0.1 → ts ~100, far from the only frame at 950 → gap.
     expect(computeSpectrogramHoverPoint(0.1, 0.5, sparse, OLD, NEW, SMS)).toBeNull();
   });
 
   it("includes a note label in spectrogram hover", () => {
-    const single = [{ timestampMs: 500, bands: [{ fCenter: 440 }], dbList: [-20] }];
+    const single = viewOf([{ timestampMs: 500, bands: [{ fCenter: 440 }], dbList: [-20] }]);
     const out = computeSpectrogramHoverPoint(0.5, 0.5, single, OLD, NEW, SMS);
     expect(out).not.toBeNull();
     expect(typeof out.noteLabel).toBe("string");

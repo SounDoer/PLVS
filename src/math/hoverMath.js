@@ -134,31 +134,31 @@ export function computeWaveformHoverPoint(
  *
  * @param {number} xFrac - normalized X (0=left/oldest, 1=right/newest)
  * @param {number} yFrac - normalized Y (0=top=20kHz, 1=bottom=20Hz)
- * @param {{ timestampMs: number, bands: {fCenter: number}[], dbList: number[] }[]} snaps
+ * @param {{ length: number, timestampAt: (i: number) => number, rowAt: (i: number) => object }} snaps
  * @param {number} oldestMs - visible window start
  * @param {number} newestMs - visible window end
  * @param {number} sampleMs - nominal visual sample period (ms); also the hover tolerance
  * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string } | null}
  */
 export function computeSpectrogramHoverPoint(xFrac, yFrac, snaps, oldestMs, newestMs, sampleMs) {
-  if (!snaps.length || !(newestMs > oldestMs)) return null;
+  if (!snaps || !snaps.length || !(newestMs > oldestMs)) return null;
 
   const ts = oldestMs + xFrac * (newestMs - oldestMs);
   const { startIdx, endIdx } = inWindowRange(snaps, oldestMs, newestMs);
   if (endIdx < startIdx) return null;
   let hoverIndex = -1;
   let bestDist = Infinity;
-  for (let i = startIdx; i <= endIdx; i++) {
-    const dist = Math.abs(snaps[i].timestampMs - ts);
+  for (let i = startIdx; i <= endIdx; i += 1) {
+    const dist = Math.abs(snaps.timestampAt(i) - ts);
     if (dist < bestDist) {
       bestDist = dist;
       hoverIndex = i;
     }
   }
   if (hoverIndex < 0 || bestDist > sampleMs) return null; // hovering a gap
-  const snap = snaps[hoverIndex];
+  const snap = snaps.rowAt(hoverIndex);
   if (!snap) return null;
-  const newestTs = snaps[snaps.length - 1].timestampMs;
+  const newestTs = snaps.timestampAt(snaps.length - 1);
   const offsetSec = Math.max(0, (newestTs - snap.timestampMs) / 1000);
 
   const { bands, dbList } = snap;
