@@ -788,7 +788,9 @@ impl MeterPipeline {
     let visual_hist_tick = {
       let now = Instant::now();
       // In file mode, visual ticks were already queued into pending_file_visual_queue above.
-      if !self.file_timing && now.duration_since(self.last_visual_emit).as_millis() >= VISUAL_EMIT_MS {
+      if !self.file_timing
+        && now.duration_since(self.last_visual_emit).as_millis() >= VISUAL_EMIT_MS
+      {
         self.last_visual_emit = now;
 
         let visual_waveform_min: Vec<f32> = self
@@ -852,8 +854,7 @@ impl MeterPipeline {
         self.waveform_sub_idx = 0;
       }
       let stride = 2 * ch_usize;
-      let waveform_sub_count =
-        self.waveform_sub_acc.len().checked_div(stride).unwrap_or(0) as u32;
+      let waveform_sub_count = self.waveform_sub_acc.len().checked_div(stride).unwrap_or(0) as u32;
       let mut waveform_sub_pairs = std::mem::take(&mut self.waveform_sub_acc);
       for v in waveform_sub_pairs.iter_mut() {
         if !v.is_finite() {
@@ -1001,7 +1002,9 @@ impl MeterPipeline {
       // In file mode, queue the tick without forcing a frame; the batch is drained when the
       // wall-clock throttle next allows a frame to be emitted (or on flush_file_batch).
       let ts = self.timestamp_ms();
-      self.pending_file_loudness_queue.push((lb.momentary, lb.short_term, ts));
+      self
+        .pending_file_loudness_queue
+        .push((lb.momentary, lb.short_term, ts));
     } else {
       self.pending_loudness_hist = Some((lb.momentary, lb.short_term));
     }

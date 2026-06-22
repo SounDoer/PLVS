@@ -28,55 +28,109 @@ pub fn audio_buffer_ref_to_interleaved_f32(buffer: AudioBufferRef<'_>) -> Result
     }
     AudioBufferRef::U8(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::U16(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::U24(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::U32(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::S8(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::S16(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::S24(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::S32(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }
     AudioBufferRef::F64(buf) => {
       let channels: Vec<Vec<f32>> = (0..buf.spec().channels.count())
-        .map(|ch| buf.chan(ch).iter().map(|sample| (*sample).into_sample()).collect())
+        .map(|ch| {
+          buf
+            .chan(ch)
+            .iter()
+            .map(|sample| (*sample).into_sample())
+            .collect()
+        })
         .collect();
       interleave_planar_f32(&channels)
     }

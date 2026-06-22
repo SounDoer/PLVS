@@ -208,8 +208,7 @@ fn run_file_worker(
     };
     let pcm = audio_buffer_ref_to_interleaved_f32(decoded)?;
     decoded_frames += (pcm.len() / channels.max(1) as usize) as u64;
-    let media_time_ms =
-      ((decoded_frames as f64 / sample_rate as f64) * 1000.0).round() as u64;
+    let media_time_ms = ((decoded_frames as f64 / sample_rate as f64) * 1000.0).round() as u64;
     if let Some(mut frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
       &pcm,
       ChannelLayoutSetting::Auto,
