@@ -253,4 +253,19 @@ describe("App toolbar", () => {
     expect(eventsSource).toContain("export function onFileAnalysisError(handler)");
     expect(eventsSource).toContain('listen("file-analysis-error"');
   });
+
+  it("opens files through the dialog plugin wrapper", () => {
+    const dialogSource = readFileSync(join(currentDir, "ipc", "fileDialog.js"), "utf8");
+    expect(dialogSource).toContain('from "@tauri-apps/plugin-dialog"');
+    expect(dialogSource).toContain("export async function pickMediaFile()");
+    expect(appSource).toContain("pickMediaFile");
+  });
+
+  it("wires file analysis hook, drop overlay, and summary into App", () => {
+    expect(appSource).toContain("useFileAnalysisEngine({");
+    expect(appSource).toContain('<FileDropOverlay active={sourceMode === "file"}');
+    expect(appSource).toContain("<FileAnalysisSummary");
+    expect(appSource).toContain("setPendingFilePath");
+    expect(appSource).toContain("setFileRunId");
+  });
 });
