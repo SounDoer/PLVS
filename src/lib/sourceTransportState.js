@@ -1,76 +1,105 @@
-/**
- * Derives source/transport display state for the toolbar chrome.
- *
- * Pure: no React, no side effects. Accepts the current session mode, snapshot offset,
- * and resolved media timestamp, and returns display strings for the toolbar chrome.
- */
+import { formatClock } from "../hooks/useSessionTimer.js";
 
-/**
- * Format milliseconds to HH:MM:SS display string.
- * @param {number} ms
- * @returns {string}
- */
-function formatMediaTime(ms) {
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+function clampProgress(progress) {
+  if (!Number.isFinite(progress)) return 0;
+  return Math.max(0, Math.min(1, progress));
 }
 
-/**
- * Derive toolbar chrome state from source mode and session context.
- *
- * @param {object} input
- * @param {"live"|"file"} input.sourceMode
- * @param {number} [input.selectedOffset] seconds back from live; < 0 means live/no snapshot
- * @param {number} [input.selectedMediaTimeMs] resolved media timestamp for file scrub display
- * @param {object} [input.fileSession] current file analysis session state
- * @param {string} [input.fileSession.state] e.g. "complete", "analyzing", "error"
- * @param {string} [input.fileSession.fileName]
- * @returns {{ sourceLabel: string, statusLabel: string, actionLabel: string, chromeState: string, actionKind: string }}
- */
-export function deriveSourceTransportState(input) {
-  const { sourceMode, selectedOffset = -1, selectedMediaTimeMs, fileSession } = input;
+function formatProgress(progress) {
+  return `${Math.round(clampProgress(progress) * 100)}%`;
+}
 
-  if (sourceMode === "file") {
-    const isSnapshot = selectedOffset >= 0 && Number.isFinite(selectedMediaTimeMs);
-    if (isSnapshot) {
-      return {
-        sourceLabel: "File",
-        statusLabel: formatMediaTime(selectedMediaTimeMs),
-        actionLabel: "RESULT",
-        chromeState: "snapshot",
-        actionKind: "returnToFileResult",
-      };
-    }
-    const fileName = fileSession?.fileName ?? "";
-    const sessionState = fileSession?.state ?? "idle";
+function scrubTimeFromLatest({ latestTimestampMs, selectedOffset }) {
+  if (Number.isFinite(latestTimestampMs)) {
+    return Math.max(0, latestTimestampMs - selectedOffset * 1000);
+  }
+  return Math.max(0, selectedOffset * 1000);
+}
+
+function deriveLiveState({ running, selectedOffset = -1, latestTimestampMs, elapsedMs = 0 }) {
+  if (selectedOffset >= 0) {
+    return {
+      sourceLabel: "Live",
+      statusLabel: formatClock(scrubTimeFromLatest({ latestTimestampMs, selectedOffset })),
+      actionLabel: "LIVE",
+      chromeState: "snapshot",
+      actionKind: "returnToLive",
+    };
+  }
+
+  if (running) {
+    return {
+      sourceLabel: "Live",
+      statusLabel: formatClock(elapsedMs),
+      actionLabel: "STOP",
+      chromeState: "live",
+      actionKind: "stopLive",
+    };
+  }
+
+  return {
+    sourceLabel: "Live",
+    statusLabel: "Ready",
+    actionLabel: "START",
+    chromeState: "ready",
+    actionKind: "startLive",
+  };
+}
+
+function deriveFileState({ selectedOffset = -1, selectedMediaTimeMs, fileSession = {} }) {
+  const state = fileSession.state ?? "empty";
+
+  if (selectedOffset >= 0 && Number.isFinite(selectedMediaTimeMs)) {
     return {
       sourceLabel: "File",
-      statusLabel: fileName,
-      actionLabel: sessionState === "complete" ? "DONE" : "ANALYZING",
-      chromeState: sessionState === "complete" ? "ready" : "live",
+      statusLabel: formatClock(selectedMediaTimeMs),
+      actionLabel: "RESULT",
+      chromeState: "snapshot",
+      actionKind: "returnToFileResult",
+    };
+  }
+
+  if (state === "analyzing") {
+    const fileName = fileSession.fileName || "Analyzing";
+    return {
+      sourceLabel: "File",
+      statusLabel: `${fileName} ${formatProgress(fileSession.progress)}`,
+      actionLabel: "STOP",
+      chromeState: "live",
       actionKind: "stopFileAnalysis",
     };
   }
 
-  // Live mode
-  const isSnapshot = selectedOffset >= 0;
-  if (isSnapshot) {
+  if (state === "complete") {
+    const fileName = fileSession.fileName || "File";
     return {
-      sourceLabel: "Live",
-      statusLabel: "",
-      actionLabel: "SNAPSHOT",
-      chromeState: "snapshot",
-      actionKind: "exitSnapshot",
+      sourceLabel: "File",
+      statusLabel: `${fileName} Done`,
+      actionLabel: "REANALYZE",
+      chromeState: "ready",
+      actionKind: "reanalyzeFile",
     };
   }
+
+  if (state === "ready") {
+    return {
+      sourceLabel: "File",
+      statusLabel: fileSession.fileName || "File ready",
+      actionLabel: "ANALYZE",
+      chromeState: "ready",
+      actionKind: "analyzeFile",
+    };
+  }
+
   return {
-    sourceLabel: "Live",
-    statusLabel: "",
-    actionLabel: "START",
+    sourceLabel: "File",
+    statusLabel: "No file",
+    actionLabel: "ANALYZE",
     chromeState: "ready",
-    actionKind: "start",
+    actionKind: "chooseFile",
   };
+}
+
+export function deriveSourceTransportState(input) {
+  return input.sourceMode === "file" ? deriveFileState(input) : deriveLiveState(input);
 }
