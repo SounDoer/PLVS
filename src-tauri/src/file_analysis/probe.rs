@@ -63,7 +63,7 @@ fn codec_label(codec: symphonia::core::codecs::CodecType) -> String {
   format!("{codec:?}").to_lowercase()
 }
 
-fn track_candidate_from_symphonia(
+pub(crate) fn track_candidate_from_symphonia(
   index: usize,
   track: &symphonia::core::formats::Track,
 ) -> TrackCandidate {

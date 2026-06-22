@@ -150,6 +150,15 @@ pub struct MeterPipeline {
   last_dialogue_gating: bool,
 }
 
+pub struct PipelineSummary {
+  pub integrated_lufs: f64,
+  pub lra: f64,
+  pub true_peak_max_dbtp: f64,
+  pub sample_peak_max_l_db: f64,
+  pub sample_peak_max_r_db: f64,
+  pub dialogue_integrated: f64,
+}
+
 impl MeterPipeline {
   pub fn new(sample_rate: u32, channels: u16) -> Self {
     let sr = sample_rate as f64;
@@ -229,6 +238,21 @@ impl MeterPipeline {
     self.visual_waveform_min_acc.fill(f32::INFINITY);
     self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
     self.last_visual_emit = Instant::now() - std::time::Duration::from_millis(200);
+  }
+
+  pub fn summary_metrics(&self) -> PipelineSummary {
+    let (integrated_lufs, lra, dialogue_integrated) = match &self.last_loudness {
+      Some(l) => (l.integrated, l.lra, l.dialogue_integrated),
+      None => (f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY),
+    };
+    PipelineSummary {
+      integrated_lufs,
+      lra,
+      true_peak_max_dbtp: self.tp_max_db,
+      sample_peak_max_l_db: self.sample_peak_max_l,
+      sample_peak_max_r_db: self.sample_peak_max_r,
+      dialogue_integrated,
+    }
   }
 
   /// Process one PCM chunk from capture. Returns the frame payload when ready to send on IPC.
