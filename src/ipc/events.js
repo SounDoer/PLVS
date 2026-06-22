@@ -39,3 +39,19 @@ export async function onMeterHistoryCleared(handler) {
     handler();
   });
 }
+
+function unwrapEventPayload(event) {
+  return event?.payload ?? event;
+}
+
+export function onFileAnalysisProgress(handler) {
+  return listen("file-analysis-progress", (event) => handler(unwrapEventPayload(event)));
+}
+
+export function onFileAnalysisCompleted(handler) {
+  return listen("file-analysis-completed", (event) => handler(unwrapEventPayload(event)));
+}
+
+export function onFileAnalysisError(handler) {
+  return listen("file-analysis-error", (event) => handler(unwrapEventPayload(event)));
+}

@@ -244,8 +244,13 @@ describe("App toolbar", () => {
     expect(appSource).toContain("elapsedMs: elapsedMsRef.current");
   });
 
-  it("keeps File mode as an explicit UI shell until the file engine plan wires it", () => {
-    expect(appSource).toContain('state: "empty"');
-    expect(appSource).toContain("File analysis engine is not connected yet");
+  it("exposes file analysis events through frontend event wrappers", () => {
+    const eventsSource = readFileSync(join(currentDir, "ipc", "events.js"), "utf8");
+    expect(eventsSource).toContain("export function onFileAnalysisProgress(handler)");
+    expect(eventsSource).toContain('listen("file-analysis-progress"');
+    expect(eventsSource).toContain("export function onFileAnalysisCompleted(handler)");
+    expect(eventsSource).toContain('listen("file-analysis-completed"');
+    expect(eventsSource).toContain("export function onFileAnalysisError(handler)");
+    expect(eventsSource).toContain('listen("file-analysis-error"');
   });
 });
