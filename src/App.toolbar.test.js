@@ -216,4 +216,14 @@ describe("App toolbar", () => {
     expect(commandsSource).toContain("export function probeFileAnalysis(path)");
     expect(commandsSource).toContain('return invoke("file_analysis_probe", { path });');
   });
+
+  it("exposes file analysis start and stop through frontend IPC wrappers", () => {
+    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
+    expect(commandsSource).toContain("export async function startFileAnalysis({ path, onFrame })");
+    expect(commandsSource).toContain(
+      'await invoke("file_analysis_start", { path, onFrame: onAudio });'
+    );
+    expect(commandsSource).toContain("export function stopFileAnalysis()");
+    expect(commandsSource).toContain('return invoke("file_analysis_stop");');
+  });
 });
