@@ -540,10 +540,14 @@ function AppContent() {
   }, [dialogueGating, running]);
 
   useEffect(() => {
-    if (!isTauri() || !running) {
+    if (!isTauri()) {
       lastSentAnalysisRequestsKeyRef.current = "";
       return;
     }
+    // Sync request keys to the backend whenever they change, not only during live capture. The file
+    // analysis worker snapshots these at start, so on a fresh launch (no live capture yet) file mode
+    // would otherwise get empty requests and the request-keyed panels (Spectrogram/Spectrum/
+    // Vectorscope) would stay blank until the first live start.
     const key = JSON.stringify(analysisRequests);
     if (lastSentAnalysisRequestsKeyRef.current === key) return;
     lastSentAnalysisRequestsKeyRef.current = key;
@@ -552,7 +556,7 @@ function AppContent() {
         lastSentAnalysisRequestsKeyRef.current = "";
       }
     });
-  }, [analysisRequests, running]);
+  }, [analysisRequests]);
 
   const peakLabelContext = useMemo(
     () => ({
