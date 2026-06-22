@@ -119,60 +119,77 @@ describe("computeWaveformHoverPoint", () => {
 });
 
 describe("computeSpectrogramHoverPoint", () => {
-  const makeSnap = (bands, dbList) => ({ bands, dbList });
   const testBands = [{ fCenter: 100 }, { fCenter: 1000 }, { fCenter: 10000 }];
   const testDbList = [-50, -30, -20];
-  const snaps = [makeSnap(testBands, testDbList)];
+  const OLD = 0;
+  const NEW = 1000;
+  const SMS = 40;
+  const makeSnaps = (extra = {}) => {
+    const out = [];
+    for (let ts = OLD; ts <= NEW; ts += SMS) {
+      out.push({ timestampMs: ts, bands: testBands, dbList: testDbList, ...extra });
+    }
+    return out;
+  };
+  const snaps = makeSnaps();
 
   it("returns null for empty snaps array", () => {
-    expect(computeSpectrogramHoverPoint(0.5, 0.5, [], 0, 1, 0.04)).toBeNull();
+    expect(computeSpectrogramHoverPoint(0.5, 0.5, [], OLD, NEW, SMS)).toBeNull();
   });
 
   it("leftPct equals xFrac * 100", () => {
-    const r = computeSpectrogramHoverPoint(0.4, 0.5, snaps, 0, 1, 0.04);
+    const r = computeSpectrogramHoverPoint(0.4, 0.5, snaps, OLD, NEW, SMS);
     expect(r).not.toBeNull();
     expect(r.leftPct).toBeCloseTo(40);
   });
 
   it("topPct equals yFrac * 100", () => {
-    const r = computeSpectrogramHoverPoint(0.5, 0.3, snaps, 0, 1, 0.04);
+    const r = computeSpectrogramHoverPoint(0.5, 0.3, snaps, OLD, NEW, SMS);
     expect(r).not.toBeNull();
     expect(r.topPct).toBeCloseTo(30);
   });
 
   it("timeLabel is a string", () => {
-    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, OLD, NEW, SMS);
     expect(r).not.toBeNull();
     expect(typeof r.timeLabel).toBe("string");
     expect(r.timeLabel).toMatch(/ago/);
   });
 
   it("freqLabel is a string containing Hz or kHz", () => {
-    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, OLD, NEW, SMS);
     expect(r).not.toBeNull();
     expect(typeof r.freqLabel).toBe("string");
     expect(r.freqLabel).toMatch(/Hz/);
   });
 
   it("dbLabel is in -XX.X dB format", () => {
-    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, 0, 1, 0.04);
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, OLD, NEW, SMS);
     expect(r).not.toBeNull();
     expect(r.dbLabel).toMatch(/^-?\d+\.\d dB$/);
   });
 
-  it("returns null when snap has no bands", () => {
-    const emptyBandsSnap = [makeSnap([], testDbList)];
-    expect(computeSpectrogramHoverPoint(0.5, 0.5, emptyBandsSnap, 0, 1, 0.04)).toBeNull();
+  it("returns null when the nearest frame has no bands", () => {
+    expect(
+      computeSpectrogramHoverPoint(0.5, 0.5, makeSnaps({ bands: [] }), OLD, NEW, SMS)
+    ).toBeNull();
   });
 
-  it("returns null when snap has no dbList", () => {
-    const emptyDbSnap = [makeSnap(testBands, [])];
-    expect(computeSpectrogramHoverPoint(0.5, 0.5, emptyDbSnap, 0, 1, 0.04)).toBeNull();
+  it("returns null when the nearest frame has no dbList", () => {
+    expect(
+      computeSpectrogramHoverPoint(0.5, 0.5, makeSnaps({ dbList: [] }), OLD, NEW, SMS)
+    ).toBeNull();
+  });
+
+  it("returns null when hovering a time gap with no nearby frame", () => {
+    const sparse = [{ timestampMs: 950, bands: testBands, dbList: testDbList }];
+    // cursor at xFrac 0.1 → ts ~100, far from the only frame at 950 → gap.
+    expect(computeSpectrogramHoverPoint(0.1, 0.5, sparse, OLD, NEW, SMS)).toBeNull();
   });
 
   it("includes a note label in spectrogram hover", () => {
-    const snaps = [{ bands: [{ fCenter: 440 }], dbList: [-20] }];
-    const out = computeSpectrogramHoverPoint(1, 0.5, snaps, 0, 1, 0.1);
+    const single = [{ timestampMs: 500, bands: [{ fCenter: 440 }], dbList: [-20] }];
+    const out = computeSpectrogramHoverPoint(0.5, 0.5, single, OLD, NEW, SMS);
     expect(out).not.toBeNull();
     expect(typeof out.noteLabel).toBe("string");
     expect(out.noteLabel).not.toBe("");

@@ -176,32 +176,6 @@ export const SPEC_Y_TICKS = [
   { v: -80, lb: "-80" },
 ];
 
-/**
- * Computes the slice of a history snap array that maps to the visible time window.
- * @param {number} totalSamples  - total entries in the snap array
- * @param {number} effectiveOffsetSamples - samples from the newest end that are panned off-screen
- * @param {number} visibleSamples - number of samples the visible window covers
- * @returns {{ startIdx: number, count: number }}
- */
-export function spectrogramVisibleRange(totalSamples, effectiveOffsetSamples, visibleSamples) {
-  const windowSamples = Math.max(1, visibleSamples);
-  if (totalSamples <= 0) {
-    return { startIdx: 0, count: 0, leadingEmptySamples: windowSamples, windowSamples };
-  }
-  const offSamples = Math.max(0, Math.min(Math.max(0, totalSamples - 1), effectiveOffsetSamples));
-  const newestVisible = totalSamples - 1 - offSamples;
-  const oldestVisible = newestVisible - windowSamples + 1;
-  const startIdx = Math.max(0, oldestVisible);
-  const endIdx = Math.max(0, Math.min(totalSamples - 1, newestVisible));
-  const count = Math.max(0, endIdx - startIdx + 1);
-  return {
-    startIdx,
-    count,
-    leadingEmptySamples: count > 0 ? Math.max(0, startIdx - oldestVisible) : windowSamples,
-    windowSamples,
-  };
-}
-
 /** Spectrum frequency axis labels */
 export const FREQ_LABELS = [
   [20, "20"],

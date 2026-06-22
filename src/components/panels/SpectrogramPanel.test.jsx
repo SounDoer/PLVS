@@ -112,6 +112,44 @@ describe("SpectrogramPanel", () => {
     expect(getSpectrogramSnapsForKey).toHaveBeenCalledWith(key);
   });
 
+  it("draws a data-availability boundary line where this view's history starts mid-window", () => {
+    const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
+    const key = spectrumRequestKeyFromControls(panelControls);
+    // Window [1000, 2000] from history; this key's frames only start at 1500 (leading gap).
+    const frames = [];
+    for (let ts = 1500; ts <= 2000; ts += 40) frames.push({ timestampMs: ts, dbList: [-10] });
+    const { container } = renderPanel({
+      selectedOffset: 2,
+      panelControls,
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+      snapshotSpectrumByKey: { [key]: frames },
+    });
+
+    const boundary = container.querySelector('line[stroke-dasharray="1 5"]');
+    expect(boundary).toBeTruthy();
+    // x = (1500 - 1000) / (2000 - 1000) * 1000 = 500
+    expect(Number(boundary.getAttribute("x1"))).toBeCloseTo(500);
+  });
+
+  it("draws no boundary line for a continuous capture filling the window", () => {
+    const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
+    const key = spectrumRequestKeyFromControls(panelControls);
+    const frames = [];
+    for (let ts = 900; ts <= 2100; ts += 40) frames.push({ timestampMs: ts, dbList: [-10] });
+    const { container } = renderPanel({
+      selectedOffset: 2,
+      panelControls,
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+      snapshotSpectrumByKey: { [key]: frames },
+    });
+
+    expect(container.querySelector('line[stroke-dasharray="1 5"]')).toBeNull();
+  });
+
   it("hides the gestures help button in compact mode", () => {
     renderPanel({}, { compact: true });
 

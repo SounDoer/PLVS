@@ -1,14 +1,16 @@
 import { useEffect, useRef } from "react";
-import { spectrogramVisibleRange, SPEC_DB_MIN, SPEC_DB_MAX } from "../config/scales.js";
+import { SPEC_DB_MIN, SPEC_DB_MAX } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
+import { inWindowRange } from "../math/spectrogramTimeline.js";
 
 function paintImageData(
   imageData,
   snaps,
   startIdx,
-  count,
-  leadingEmptySamples,
-  windowSamples,
+  endIdx,
+  oldestMs,
+  span,
+  sampleMs,
   yToBand,
   colormapLut
 ) {
@@ -16,12 +18,14 @@ function paintImageData(
   const rng = SPEC_DB_MAX - SPEC_DB_MIN;
   data.fill(0);
 
-  for (let col = 0; col < count; col++) {
-    const snap = snaps[startIdx + col];
+  for (let i = startIdx; i <= endIdx; i++) {
+    const snap = snaps[i];
     if (!snap || !snap.dbList) continue;
-    const slot = leadingEmptySamples + col;
-    const xStart = Math.round((slot * W) / windowSamples);
-    const xEnd = Math.round(((slot + 1) * W) / windowSamples);
+    const ts = snap.timestampMs;
+    if (!Number.isFinite(ts)) continue;
+    // Place the column at the x of its real timestamp; gaps in time stay unpainted (blank).
+    const xStart = Math.max(0, Math.round(((ts - oldestMs) / span) * W));
+    const xEnd = Math.min(W, Math.round(((ts + sampleMs - oldestMs) / span) * W));
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
     for (let y = 0; y < H; y++) {
@@ -46,8 +50,9 @@ function paintImageData(
 export function useSpectrogramCanvas({
   canvasRef,
   snapRef,
-  effectiveOffsetSamples,
-  visibleSamples,
+  oldestMs,
+  newestMs,
+  sampleMs,
   selectedOffset,
   frozenSnaps,
   colormapLut,
@@ -57,8 +62,8 @@ export function useSpectrogramCanvas({
   const cacheRef = useRef({ W: 0, H: 0, yToBand: null, imageData: null });
   const lastPaintRef = useRef({
     len: -1,
-    offset: -1,
-    visible: -1,
+    oldestMs: NaN,
+    newestMs: NaN,
     sel: -1,
     W: 0,
     H: 0,
@@ -66,13 +71,7 @@ export function useSpectrogramCanvas({
   });
 
   useEffect(() => {
-    paramsRef.current = {
-      effectiveOffsetSamples,
-      visibleSamples,
-      selectedOffset,
-      frozenSnaps,
-      colormapLut,
-    };
+    paramsRef.current = { oldestMs, newestMs, sampleMs, selectedOffset, frozenSnaps, colormapLut };
   });
 
   useEffect(() => {
@@ -84,7 +83,7 @@ export function useSpectrogramCanvas({
       const H = canvas.height;
       if (W === 0 || H === 0) return;
 
-      const { effectiveOffsetSamples, visibleSamples, selectedOffset, frozenSnaps, colormapLut } =
+      const { oldestMs, newestMs, sampleMs, selectedOffset, frozenSnaps, colormapLut } =
         paramsRef.current;
       if (!colormapLut || colormapLut.length < 256 * 3) return;
       const snaps = frozenSnaps ?? snapRef.current;
@@ -94,8 +93,8 @@ export function useSpectrogramCanvas({
       const last = lastPaintRef.current;
       if (
         last.len === len &&
-        last.offset === effectiveOffsetSamples &&
-        last.visible === visibleSamples &&
+        last.oldestMs === oldestMs &&
+        last.newestMs === newestMs &&
         last.sel === selectedOffset &&
         last.W === W &&
         last.H === H &&
@@ -104,8 +103,8 @@ export function useSpectrogramCanvas({
         return;
       lastPaintRef.current = {
         len,
-        offset: effectiveOffsetSamples,
-        visible: visibleSamples,
+        oldestMs,
+        newestMs,
         sel: selectedOffset,
         W,
         H,
@@ -115,11 +114,11 @@ export function useSpectrogramCanvas({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Rebuild per-pixel frequency lookup when canvas size or band set changes.
+      const span = Number.isFinite(oldestMs) && Number.isFinite(newestMs) ? newestMs - oldestMs : 0;
       const cache = cacheRef.current;
       const firstSnap = snaps && snaps.length > 0 ? snaps[snaps.length - 1] : null;
       const bands = firstSnap?.bands;
-      if (!bands || bands.length === 0 || len === 0) {
+      if (!bands || bands.length === 0 || len === 0 || span <= 0) {
         ctx.clearRect(0, 0, W, H);
         return;
       }
@@ -130,12 +129,8 @@ export function useSpectrogramCanvas({
         cache.H = H;
       }
 
-      const { startIdx, count, leadingEmptySamples, windowSamples } = spectrogramVisibleRange(
-        len,
-        effectiveOffsetSamples,
-        visibleSamples
-      );
-      if (count === 0) {
+      const { startIdx, endIdx } = inWindowRange(snaps, oldestMs, newestMs);
+      if (endIdx < startIdx) {
         ctx.clearRect(0, 0, W, H);
         return;
       }
@@ -144,9 +139,10 @@ export function useSpectrogramCanvas({
         cache.imageData,
         snaps,
         startIdx,
-        count,
-        leadingEmptySamples,
-        windowSamples,
+        endIdx,
+        oldestMs,
+        span,
+        sampleMs,
         cache.yToBand,
         colormapLut
       );

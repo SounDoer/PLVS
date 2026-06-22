@@ -1,5 +1,6 @@
 import { loudnessFromTopFrac, freqToXFrac } from "../config/scales";
 import { hzFromFrac } from "./spectrogramMath.js";
+import { inWindowRange } from "./spectrogramTimeline.js";
 
 /**
  * Formats a history hover age as a human-readable "X ago" string.
@@ -128,33 +129,37 @@ export function computeWaveformHoverPoint(
 /**
  * Resolves hover data for the spectrogram panel from normalized X/Y fractions.
  *
+ * The cursor X maps to a real timestamp within the visible window; the nearest in-window frame
+ * within one sample period is used. Hovering a time gap (no frame near the cursor) returns null.
+ *
  * @param {number} xFrac - normalized X (0=left/oldest, 1=right/newest)
  * @param {number} yFrac - normalized Y (0=top=20kHz, 1=bottom=20Hz)
- * @param {{ bands: {fCenter: number}[], dbList: number[] }[]} snaps
- * @param {number} effectiveOffsetSamples
- * @param {number} visibleSamples
- * @param {number} sampleSec
+ * @param {{ timestampMs: number, bands: {fCenter: number}[], dbList: number[] }[]} snaps
+ * @param {number} oldestMs - visible window start
+ * @param {number} newestMs - visible window end
+ * @param {number} sampleMs - nominal visual sample period (ms); also the hover tolerance
  * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string } | null}
  */
-export function computeSpectrogramHoverPoint(
-  xFrac,
-  yFrac,
-  snaps,
-  effectiveOffsetSamples,
-  visibleSamples,
-  sampleSec
-) {
-  if (!snaps.length) return null;
+export function computeSpectrogramHoverPoint(xFrac, yFrac, snaps, oldestMs, newestMs, sampleMs) {
+  if (!snaps.length || !(newestMs > oldestMs)) return null;
 
-  const normalized = 1 - xFrac;
-  const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
-  const hoverIndex = Math.max(
-    0,
-    Math.min(snaps.length - 1, snaps.length - 1 - Math.round(fromEndSamples))
-  );
+  const ts = oldestMs + xFrac * (newestMs - oldestMs);
+  const { startIdx, endIdx } = inWindowRange(snaps, oldestMs, newestMs);
+  if (endIdx < startIdx) return null;
+  let hoverIndex = -1;
+  let bestDist = Infinity;
+  for (let i = startIdx; i <= endIdx; i++) {
+    const dist = Math.abs(snaps[i].timestampMs - ts);
+    if (dist < bestDist) {
+      bestDist = dist;
+      hoverIndex = i;
+    }
+  }
+  if (hoverIndex < 0 || bestDist > sampleMs) return null; // hovering a gap
   const snap = snaps[hoverIndex];
   if (!snap) return null;
-  const offsetSec = Math.max(0, (snaps.length - 1 - hoverIndex) * sampleSec);
+  const newestTs = snaps[snaps.length - 1].timestampMs;
+  const offsetSec = Math.max(0, (newestTs - snap.timestampMs) / 1000);
 
   const { bands, dbList } = snap;
   if (!bands?.length || !dbList?.length) return null;

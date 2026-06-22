@@ -6,7 +6,7 @@ import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
-import { mapHistoryViewportToVisual } from "../../math/spectrogramViewportMath";
+import { spectrogramTimeWindow, spectrogramDataBoundaries } from "../../math/spectrogramTimeline";
 import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
@@ -88,23 +88,26 @@ export function SpectrogramPanel({ compact = false }) {
     () => buildSpectrogramLut(getTheme(resolvedThemeId, listCustomThemes()).colormap),
     [resolvedThemeId]
   );
-  const visualViewport = useMemo(
-    () =>
-      mapHistoryViewportToVisual({
-        historyEntries: histSourceList ?? [],
-        visualEntries: spectrogramSnaps,
-        totalHistorySamples: totalSamples,
-        totalVisualSamples: spectrogramSnaps.length,
-        effectiveOffsetSamples,
-        visibleSamples,
-      }),
-    [effectiveOffsetSamples, histSourceList, spectrogramSnaps, totalSamples, visibleSamples]
+  const sampleMs = VISUAL_HIST_SAMPLE_SEC * 1000;
+  // Visible time window from the master (loudness history) timeline; frames are placed by timestamp.
+  const timeWindow = useMemo(
+    () => spectrogramTimeWindow(histSourceList ?? [], effectiveOffsetSamples, visibleSamples),
+    [histSourceList, effectiveOffsetSamples, visibleSamples]
+  );
+  const oldestMs = timeWindow?.oldestMs ?? NaN;
+  const newestMs = timeWindow?.newestMs ?? NaN;
+  // Marker lines where this request key's data appears/disappears inside the window (memoized so the
+  // O(window) gap scan does not run on every ~60Hz panel re-render).
+  const dataBoundaries = useMemo(
+    () => spectrogramDataBoundaries(spectrogramSnaps, oldestMs, newestMs, sampleMs),
+    [spectrogramSnaps, oldestMs, newestMs, sampleMs]
   );
   useSpectrogramCanvas({
     canvasRef,
     snapRef,
-    effectiveOffsetSamples: visualViewport.effectiveOffsetSamples,
-    visibleSamples: visualViewport.visibleSamples,
+    oldestMs,
+    newestMs,
+    sampleMs,
     selectedOffset,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
     colormapLut,
@@ -115,16 +118,10 @@ export function SpectrogramPanel({ compact = false }) {
     onLeave: onSpectrogramHoverLeave,
   } = useChartHover((xFrac, yFrac) =>
     historyChartInteractive
-      ? computeSpectrogramHoverPoint(
-          xFrac,
-          yFrac,
-          spectrogramSnaps,
-          visualViewport.effectiveOffsetSamples,
-          visualViewport.visibleSamples,
-          VISUAL_HIST_SAMPLE_SEC
-        )
+      ? computeSpectrogramHoverPoint(xFrac, yFrac, spectrogramSnaps, oldestMs, newestMs, sampleMs)
       : null
   );
+  const boundarySpan = newestMs - oldestMs;
 
   if (isOverCap) {
     return (
@@ -207,12 +204,35 @@ export function SpectrogramPanel({ compact = false }) {
                   setSelectedOffset(-1);
                 }}
               />
-              {(selectedOffset >= 0 && showSelLine) || visibleFrequencyMarkers.length > 0 ? (
+              {(selectedOffset >= 0 && showSelLine) ||
+              visibleFrequencyMarkers.length > 0 ||
+              (dataBoundaries.length > 0 && boundarySpan > 0) ? (
                 <svg
                   viewBox="0 0 1000 1000"
                   preserveAspectRatio="none"
                   className="pointer-events-none absolute inset-0 h-full w-full"
                 >
+                  {boundarySpan > 0
+                    ? dataBoundaries.map((ts) => {
+                        const bx = ((ts - oldestMs) / boundarySpan) * 1000;
+                        return (
+                          <line
+                            key={`data-boundary-${ts}`}
+                            x1={bx}
+                            x2={bx}
+                            y1={0}
+                            y2={1000}
+                            stroke="var(--muted-foreground)"
+                            strokeWidth="1"
+                            strokeDasharray="1 5"
+                            opacity="0.5"
+                            vectorEffect="non-scaling-stroke"
+                          >
+                            <title>No data for this view on the blank side of this line</title>
+                          </line>
+                        );
+                      })
+                    : null}
                   {visibleFrequencyMarkers.map(({ marker, x }) => (
                     <line
                       key={`${x}-${marker.from}-${marker.to}`}

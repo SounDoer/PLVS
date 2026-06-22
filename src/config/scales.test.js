@@ -15,7 +15,6 @@ import {
   freqToXFrac,
   buildRtaBands,
   getWeightingDb,
-  spectrogramVisibleRange,
 } from "./scales";
 
 describe("peakFrac", () => {
@@ -112,49 +111,6 @@ describe("buildRtaBands", () => {
     const bands = buildRtaBands(20, 20000, "1/3");
     expect(bands[0].fLow).toBeGreaterThanOrEqual(20);
     expect(bands[bands.length - 1].fHigh).toBeLessThanOrEqual(20001);
-  });
-});
-
-describe("spectrogramVisibleRange", () => {
-  it("most recent 50 of 100 samples", () => {
-    expect(spectrogramVisibleRange(100, 0, 50)).toEqual({
-      startIdx: 50,
-      count: 50,
-      leadingEmptySamples: 0,
-      windowSamples: 50,
-    });
-  });
-  it("panned right by 10 shows samples 40–89", () => {
-    expect(spectrogramVisibleRange(100, 10, 50)).toEqual({
-      startIdx: 40,
-      count: 50,
-      leadingEmptySamples: 0,
-      windowSamples: 50,
-    });
-  });
-  it("fewer total samples than window — returns all", () => {
-    expect(spectrogramVisibleRange(30, 0, 50)).toEqual({
-      startIdx: 0,
-      count: 30,
-      leadingEmptySamples: 20,
-      windowSamples: 50,
-    });
-  });
-  it("empty snap list returns count 0", () => {
-    expect(spectrogramVisibleRange(0, 0, 50)).toEqual({
-      startIdx: 0,
-      count: 0,
-      leadingEmptySamples: 50,
-      windowSamples: 50,
-    });
-  });
-  it("panned so far only 5 entries remain in view", () => {
-    expect(spectrogramVisibleRange(100, 95, 50)).toEqual({
-      startIdx: 0,
-      count: 5,
-      leadingEmptySamples: 45,
-      windowSamples: 50,
-    });
   });
 });
 
