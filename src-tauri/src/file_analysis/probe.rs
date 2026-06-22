@@ -1,4 +1,13 @@
-use crate::ipc::types::FileAudioTrackMetadata;
+use std::fs::File;
+use std::path::Path;
+
+use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
+
+use crate::ipc::types::{FileAnalysisProbeResult, FileAudioTrackMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TrackCandidate {
@@ -32,6 +41,102 @@ pub(crate) fn duration_ms_from_frames(n_frames: u64, sample_rate_hz: u32) -> Opt
     return None;
   }
   Some(((n_frames as f64 / sample_rate_hz as f64) * 1000.0).round() as u64)
+}
+
+fn file_name_from_path(path: &Path) -> String {
+  path
+    .file_name()
+    .and_then(|name| name.to_str())
+    .unwrap_or("Untitled media")
+    .to_string()
+}
+
+fn hint_from_path(path: &Path) -> Hint {
+  let mut hint = Hint::new();
+  if let Some(ext) = path.extension().and_then(|value| value.to_str()) {
+    hint.with_extension(ext);
+  }
+  hint
+}
+
+fn codec_label(codec: symphonia::core::codecs::CodecType) -> String {
+  format!("{codec:?}").to_lowercase()
+}
+
+fn track_candidate_from_symphonia(
+  index: usize,
+  track: &symphonia::core::formats::Track,
+) -> TrackCandidate {
+  let params = &track.codec_params;
+  let decodable = params.codec != CODEC_TYPE_NULL
+    && symphonia::default::get_codecs()
+      .make(params, &DecoderOptions::default())
+      .is_ok();
+  TrackCandidate {
+    index: index as u32,
+    codec: codec_label(params.codec),
+    sample_rate_hz: params.sample_rate,
+    channels: params.channels.map(|channels| channels.count() as u16),
+    language: track.language.clone(),
+    decodable,
+  }
+}
+
+/// Duration of a symphonia track in milliseconds, preferring the container time base and
+/// falling back to frame-count / sample-rate. Returns `None` when neither is available.
+fn duration_ms_from_symphonia(track: &symphonia::core::formats::Track) -> Option<u64> {
+  let params = &track.codec_params;
+  let n_frames = params.n_frames?;
+  if let Some(time_base) = params.time_base {
+    let time = time_base.calc_time(n_frames);
+    return Some(((time.seconds as f64 + time.frac) * 1000.0).round() as u64);
+  }
+  duration_ms_from_frames(n_frames, params.sample_rate?)
+}
+
+pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, String> {
+  let path = path.as_ref();
+  let file = File::open(path).map_err(|err| format!("Unable to open media file: {err}"))?;
+  let mss = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
+  let hint = hint_from_path(path);
+  let probed = symphonia::default::get_probe()
+    .format(
+      &hint,
+      mss,
+      &FormatOptions::default(),
+      &MetadataOptions::default(),
+    )
+    .map_err(|err| format!("Unsupported or unreadable media file: {err}"))?;
+
+  let container = Some(
+    std::any::type_name_of_val(probed.format.as_ref())
+      .rsplit("::")
+      .next()
+      .unwrap_or("unknown")
+      .trim_end_matches("Reader")
+      .to_lowercase(),
+  );
+  let tracks: Vec<TrackCandidate> = probed
+    .format
+    .tracks()
+    .iter()
+    .enumerate()
+    .map(|(index, track)| track_candidate_from_symphonia(index, track))
+    .collect();
+  let selected_track = select_first_decodable_track(&tracks)?;
+  let duration_ms = probed
+    .format
+    .tracks()
+    .get(selected_track.index as usize)
+    .and_then(duration_ms_from_symphonia);
+
+  Ok(FileAnalysisProbeResult {
+    path: path.to_string_lossy().to_string(),
+    file_name: file_name_from_path(path),
+    container,
+    duration_ms,
+    selected_track,
+  })
 }
 
 #[cfg(test)]
