@@ -182,7 +182,7 @@ fn run_file_worker(
     .map_err(|err| format!("Unsupported audio codec: {err}"))?;
 
   let config = snapshot_config(&app);
-  let mut pipeline = MeterPipeline::new(sample_rate, channels);
+  let mut pipeline = MeterPipeline::new_for_file(sample_rate, channels);
   let mut seq = 0_u64;
   let mut decoded_frames = 0_u64;
   let mut last_progress_emit_frames = 0_u64;
@@ -208,12 +208,15 @@ fn run_file_worker(
     };
     let pcm = audio_buffer_ref_to_interleaved_f32(decoded)?;
     decoded_frames += (pcm.len() / channels.max(1) as usize) as u64;
-    if let Some(mut frame) = pipeline.push_pcm_f32_with_requests(
+    let media_time_ms =
+      ((decoded_frames as f64 / sample_rate as f64) * 1000.0).round() as u64;
+    if let Some(mut frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
       &pcm,
       ChannelLayoutSetting::Auto,
       &config.requests,
       config.loudness_weights.clone(),
       config.dialogue_gating,
+      media_time_ms,
     ) {
       seq += 1;
       frame.seq = seq;
@@ -235,6 +238,13 @@ fn run_file_worker(
         },
       );
     }
+  }
+
+  // Flush any buffered history ticks from the tail of the file before emitting completion.
+  if let Some(mut frame) = pipeline.flush_file_batch() {
+    seq += 1;
+    frame.seq = seq;
+    send_frame(&frame_subscribers, frame)?;
   }
 
   // Authoritative whole-file metrics come from final pipeline state, not the last UI frame.
