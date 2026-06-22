@@ -88,13 +88,6 @@ impl FileAnalysisSession {
 
     Ok(Self::new(stop_tx, worker))
   }
-
-  pub fn stop(mut self) {
-    let _ = self.stop_tx.send(());
-    if let Some(worker) = self.worker.take() {
-      let _ = worker.join();
-    }
-  }
 }
 
 impl Drop for FileAnalysisSession {
