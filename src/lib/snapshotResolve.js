@@ -11,16 +11,26 @@
  * and owns the freeze lifecycle.
  */
 
+function lengthOf(entries) {
+  return entries ? entries.length : 0;
+}
+
+function timestampAt(entries, i) {
+  if (!entries) return undefined;
+  if (typeof entries.timestampAt === "function") return entries.timestampAt(i);
+  return entries[i]?.timestampMs;
+}
+
 function hasTimestampEntries(entries) {
-  return Array.isArray(entries) && entries.length > 0 && Number.isFinite(entries[0]?.timestampMs);
+  return lengthOf(entries) > 0 && Number.isFinite(timestampAt(entries, 0));
 }
 
 export function nearestTimestampIndex(entries, targetMs) {
   if (!hasTimestampEntries(entries) || !Number.isFinite(targetMs)) return -1;
   let bestIdx = 0;
-  let bestDistance = Math.abs(entries[0].timestampMs - targetMs);
-  for (let i = 1; i < entries.length; i++) {
-    const distance = Math.abs(entries[i].timestampMs - targetMs);
+  let bestDistance = Math.abs(timestampAt(entries, 0) - targetMs);
+  for (let i = 1; i < lengthOf(entries); i += 1) {
+    const distance = Math.abs(timestampAt(entries, i) - targetMs);
     if (distance <= bestDistance) {
       bestDistance = distance;
       bestIdx = i;
@@ -42,16 +52,16 @@ export function nearestTimestampIndex(entries, targetMs) {
  * then (before its first entry, after its last, or inside a gap) and the caller should show
  * "No data for this view at selected time".
  *
- * @param {object[]} entries per-key visual rows (carry timestampMs)
+ * @param {object[]|object} entries per-key visual rows (array or view with timestampAt/length)
  * @param {number} targetTimestampMs selected snapshot time; non-finite => latest entry
  * @param {number} toleranceMs slack (≈ one visual sample) to absorb tick jitter
  * @returns {{ index: number, missing: boolean }}
  */
 export function resolveKeyedVisualIndex(entries, targetTimestampMs, toleranceMs = 0) {
   if (!hasTimestampEntries(entries)) return { index: -1, missing: true };
-  if (!Number.isFinite(targetTimestampMs)) return { index: entries.length - 1, missing: false };
+  if (!Number.isFinite(targetTimestampMs)) return { index: lengthOf(entries) - 1, missing: false };
   const index = nearestTimestampIndex(entries, targetTimestampMs);
-  if (index < 0 || Math.abs(entries[index].timestampMs - targetTimestampMs) > toleranceMs) {
+  if (index < 0 || Math.abs(timestampAt(entries, index) - targetTimestampMs) > toleranceMs) {
     return { index: -1, missing: true };
   }
   return { index, missing: false };

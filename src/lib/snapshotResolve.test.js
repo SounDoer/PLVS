@@ -8,6 +8,17 @@ import { resolveSnapshot, resolveKeyedVisualIndex } from "./snapshotResolve.js";
  * React freeze lifecycle stay in the hook.
  */
 
+function viewOf(rows) {
+  return {
+    get length() {
+      return rows.length;
+    },
+    version: 0,
+    timestampAt: (i) => (i >= 0 && i < rows.length ? rows[i].timestampMs : NaN),
+    rowAt: (i) => (i >= 0 && i < rows.length ? rows[i] : undefined),
+  };
+}
+
 const liveAudio = { correlation: 0.9, peak: -1 };
 
 function baseView(overrides = {}) {
@@ -96,32 +107,41 @@ describe("resolveKeyedVisualIndex", () => {
   const entries = [{ timestampMs: 1000 }, { timestampMs: 1040 }, { timestampMs: 1080 }];
 
   it("returns missing when the key has no history at all", () => {
-    expect(resolveKeyedVisualIndex([], 1000, 40)).toEqual({ index: -1, missing: true });
+    expect(resolveKeyedVisualIndex(viewOf([]), 1000, 40)).toEqual({ index: -1, missing: true });
     expect(resolveKeyedVisualIndex(undefined, 1000, 40)).toEqual({ index: -1, missing: true });
   });
 
   it("returns missing when the selected time predates the request's first entry", () => {
     // Request started at 1000; selecting 900 (beyond tolerance) means it did not exist yet.
-    expect(resolveKeyedVisualIndex(entries, 900, 40)).toEqual({ index: -1, missing: true });
+    expect(resolveKeyedVisualIndex(viewOf(entries), 900, 40)).toEqual({ index: -1, missing: true });
   });
 
   it("returns missing when the selected time is after the request's last entry", () => {
     // Request stopped at 1080; selecting 1140 (beyond tolerance) means it was inactive then.
-    expect(resolveKeyedVisualIndex(entries, 1140, 40)).toEqual({ index: -1, missing: true });
+    expect(resolveKeyedVisualIndex(viewOf(entries), 1140, 40)).toEqual({
+      index: -1,
+      missing: true,
+    });
   });
 
   it("tolerates boundary jitter just before the first entry", () => {
     // 980 is within one visual sample (40ms) of the 1000 start, so it resolves to entry 0.
-    expect(resolveKeyedVisualIndex(entries, 980, 40)).toEqual({ index: 0, missing: false });
+    expect(resolveKeyedVisualIndex(viewOf(entries), 980, 40)).toEqual({ index: 0, missing: false });
   });
 
   it("tolerates boundary jitter just after the last entry", () => {
     // 1110 is within one visual sample (40ms) of the 1080 end, so it resolves to entry 2.
-    expect(resolveKeyedVisualIndex(entries, 1110, 40)).toEqual({ index: 2, missing: false });
+    expect(resolveKeyedVisualIndex(viewOf(entries), 1110, 40)).toEqual({
+      index: 2,
+      missing: false,
+    });
   });
 
   it("picks the nearest entry to the target when within history", () => {
-    expect(resolveKeyedVisualIndex(entries, 1050, 40)).toEqual({ index: 1, missing: false });
+    expect(resolveKeyedVisualIndex(viewOf(entries), 1050, 40)).toEqual({
+      index: 1,
+      missing: false,
+    });
   });
 
   it("returns missing when the selected time lands in an interior gap", () => {
@@ -133,13 +153,16 @@ describe("resolveKeyedVisualIndex", () => {
       { timestampMs: 5000 },
       { timestampMs: 5040 },
     ];
-    expect(resolveKeyedVisualIndex(gapped, 3000, 40)).toEqual({ index: -1, missing: true });
+    expect(resolveKeyedVisualIndex(viewOf(gapped), 3000, 40)).toEqual({ index: -1, missing: true });
     // A time near either active stretch still resolves.
-    expect(resolveKeyedVisualIndex(gapped, 1020, 40)).toEqual({ index: 1, missing: false });
-    expect(resolveKeyedVisualIndex(gapped, 5010, 40)).toEqual({ index: 2, missing: false });
+    expect(resolveKeyedVisualIndex(viewOf(gapped), 1020, 40)).toEqual({ index: 1, missing: false });
+    expect(resolveKeyedVisualIndex(viewOf(gapped), 5010, 40)).toEqual({ index: 2, missing: false });
   });
 
   it("returns the latest entry when the target is non-finite", () => {
-    expect(resolveKeyedVisualIndex(entries, null, 40)).toEqual({ index: 2, missing: false });
+    expect(resolveKeyedVisualIndex(viewOf(entries), null, 40)).toEqual({
+      index: 2,
+      missing: false,
+    });
   });
 });
