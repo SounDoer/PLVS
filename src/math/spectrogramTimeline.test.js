@@ -7,10 +7,21 @@ import {
 
 const SAMPLE_MS = 40;
 
+function viewOf(rows) {
+  return {
+    get length() {
+      return rows.length;
+    },
+    version: 0,
+    timestampAt: (i) => (i >= 0 && i < rows.length ? rows[i].timestampMs : NaN),
+    rowAt: (i) => (i >= 0 && i < rows.length ? rows[i] : undefined),
+  };
+}
+
 function frames(startMs, endMs, step = SAMPLE_MS) {
-  const out = [];
-  for (let ts = startMs; ts <= endMs; ts += step) out.push({ timestampMs: ts });
-  return out;
+  const rows = [];
+  for (let ts = startMs; ts <= endMs; ts += step) rows.push({ timestampMs: ts });
+  return viewOf(rows);
 }
 
 describe("spectrogramTimeWindow", () => {
@@ -42,7 +53,7 @@ describe("inWindowRange", () => {
 
   it("returns an empty range when no frame is inside", () => {
     expect(inWindowRange(f, 300, 400)).toEqual({ startIdx: 0, endIdx: -1 });
-    expect(inWindowRange([], 100, 200)).toEqual({ startIdx: 0, endIdx: -1 });
+    expect(inWindowRange(viewOf([]), 100, 200)).toEqual({ startIdx: 0, endIdx: -1 });
   });
 });
 
@@ -65,12 +76,15 @@ describe("spectrogramDataBoundaries", () => {
   });
 
   it("marks both edges of an interior gap (switch back and forth)", () => {
-    const f = [...frames(800, 1200), ...frames(1600, 2000)];
+    const rows = [];
+    for (let ts = 800; ts <= 1200; ts += SAMPLE_MS) rows.push({ timestampMs: ts });
+    for (let ts = 1600; ts <= 2000; ts += SAMPLE_MS) rows.push({ timestampMs: ts });
+    const f = viewOf(rows);
     expect(spectrogramDataBoundaries(f, 900, 1900, SAMPLE_MS)).toEqual([1240, 1600]);
   });
 
   it("returns no markers for empty input or a degenerate window", () => {
-    expect(spectrogramDataBoundaries([], 1000, 2000, SAMPLE_MS)).toEqual([]);
+    expect(spectrogramDataBoundaries(viewOf([]), 1000, 2000, SAMPLE_MS)).toEqual([]);
     expect(spectrogramDataBoundaries(frames(1000, 1200), 1500, 1500, SAMPLE_MS)).toEqual([]);
   });
 });

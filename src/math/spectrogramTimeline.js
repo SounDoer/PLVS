@@ -11,25 +11,25 @@ function hasTimestamps(entries) {
   return Array.isArray(entries) && entries.length > 0 && Number.isFinite(entries[0]?.timestampMs);
 }
 
-/** First index whose timestampMs >= target (lower bound). frames must be ascending by timestamp. */
-function lowerBound(frames, target) {
+/** First index whose timestampAt >= target (lower bound). view is ascending by timestamp. */
+function lowerBound(view, target) {
   let lo = 0;
-  let hi = frames.length;
+  let hi = view.length;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (frames[mid].timestampMs < target) lo = mid + 1;
+    if (view.timestampAt(mid) < target) lo = mid + 1;
     else hi = mid;
   }
   return lo;
 }
 
-/** First index whose timestampMs > target (upper bound). frames must be ascending by timestamp. */
-function upperBound(frames, target) {
+/** First index whose timestampAt > target (upper bound). view is ascending by timestamp. */
+function upperBound(view, target) {
   let lo = 0;
-  let hi = frames.length;
+  let hi = view.length;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (frames[mid].timestampMs <= target) lo = mid + 1;
+    if (view.timestampAt(mid) <= target) lo = mid + 1;
     else hi = mid;
   }
   return lo;
@@ -58,15 +58,15 @@ export function spectrogramTimeWindow(historyEntries, effectiveOffsetSamples, vi
 }
 
 /**
- * Index range `[startIdx, endIdx]` of frames whose timestampMs falls within `[oldestMs, newestMs]`.
+ * Index range `[startIdx, endIdx]` of frames whose timestamp falls within `[oldestMs, newestMs]`.
  * Returns `{ startIdx: 0, endIdx: -1 }` (empty) when no frame is in range.
  *
- * @param {{ timestampMs: number }[]} frames ascending by timestamp
+ * @param {{ length: number, timestampAt: (i:number)=>number }} view ascending by timestamp
  */
-export function inWindowRange(frames, oldestMs, newestMs) {
-  if (!Array.isArray(frames) || frames.length === 0) return { startIdx: 0, endIdx: -1 };
-  const startIdx = lowerBound(frames, oldestMs);
-  const endIdx = upperBound(frames, newestMs) - 1;
+export function inWindowRange(view, oldestMs, newestMs) {
+  if (!view || view.length === 0) return { startIdx: 0, endIdx: -1 };
+  const startIdx = lowerBound(view, oldestMs);
+  const endIdx = upperBound(view, newestMs) - 1;
   if (startIdx > endIdx) return { startIdx: 0, endIdx: -1 };
   return { startIdx, endIdx };
 }
@@ -77,27 +77,27 @@ export function inWindowRange(frames, oldestMs, newestMs) {
  * that merely touch the window bound (data continues beyond the view) are clipped, not marked, so a
  * continuous capture produces no markers.
  *
- * @param {{ timestampMs: number }[]} frames ascending by timestamp
+ * @param {{ length: number, timestampAt: (i:number)=>number }} view ascending by timestamp
  * @param {number} oldestMs window start
  * @param {number} newestMs window end
  * @param {number} sampleMs nominal visual sample period (ms)
  * @param {number} [gapFactor] a gap is a jump > gapFactor * sampleMs between consecutive frames
  * @returns {number[]} boundary timestamps (ms)
  */
-export function spectrogramDataBoundaries(frames, oldestMs, newestMs, sampleMs, gapFactor = 1.8) {
-  if (!Array.isArray(frames) || frames.length === 0 || !(newestMs > oldestMs)) return [];
+export function spectrogramDataBoundaries(view, oldestMs, newestMs, sampleMs, gapFactor = 1.8) {
+  if (!view || view.length === 0 || !(newestMs > oldestMs)) return [];
   const gapThresh = gapFactor * sampleMs;
   const eps = sampleMs * 0.5;
   // Scan one sample beyond the window on each side so edge frames see their true neighbors.
-  const startScan = Math.max(0, lowerBound(frames, oldestMs - 2 * sampleMs));
-  const endScan = Math.min(frames.length - 1, upperBound(frames, newestMs + 2 * sampleMs) - 1);
+  const startScan = Math.max(0, lowerBound(view, oldestMs - 2 * sampleMs));
+  const endScan = Math.min(view.length - 1, upperBound(view, newestMs + 2 * sampleMs) - 1);
   const marks = [];
-  for (let i = startScan; i <= endScan; i++) {
-    const ts = frames[i]?.timestampMs;
+  for (let i = startScan; i <= endScan; i += 1) {
+    const ts = view.timestampAt(i);
     if (!Number.isFinite(ts)) continue;
-    const gapBefore = i === 0 || ts - frames[i - 1].timestampMs > gapThresh;
+    const gapBefore = i === 0 || ts - view.timestampAt(i - 1) > gapThresh;
     if (gapBefore && ts > oldestMs + eps && ts < newestMs - eps) marks.push(ts);
-    const gapAfter = i === frames.length - 1 || frames[i + 1].timestampMs - ts > gapThresh;
+    const gapAfter = i === view.length - 1 || view.timestampAt(i + 1) - ts > gapThresh;
     const endEdge = ts + sampleMs;
     if (gapAfter && endEdge > oldestMs + eps && endEdge < newestMs - eps) marks.push(endEdge);
   }
