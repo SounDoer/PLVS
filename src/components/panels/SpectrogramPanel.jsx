@@ -146,11 +146,13 @@ export function SpectrogramPanel({ compact = false }) {
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
-        <div className="pointer-events-auto">
-          <HelpPopover items={SPECTROGRAM_HELP} />
+      {!compact ? (
+        <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
+          <div className="pointer-events-auto">
+            <HelpPopover items={SPECTROGRAM_HELP} />
+          </div>
         </div>
-      </div>
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(

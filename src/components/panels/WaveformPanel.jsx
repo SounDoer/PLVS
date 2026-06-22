@@ -95,11 +95,13 @@ export function WaveformPanel({ compact = false }) {
         "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
-        <div className="pointer-events-auto">
-          <HelpPopover items={WAVEFORM_HELP} />
+      {!compact ? (
+        <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
+          <div className="pointer-events-auto">
+            <HelpPopover items={WAVEFORM_HELP} />
+          </div>
         </div>
-      </div>
+      ) : null}
       {/* Channel lanes + interaction overlay */}
       <div ref={lanesRef} className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
         {Array.from({ length: effectiveChannels }, (_, ch) => (

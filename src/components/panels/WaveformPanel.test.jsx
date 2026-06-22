@@ -27,10 +27,10 @@ const baseAudioData = {
   showHistoryHud: vi.fn(),
 };
 
-function renderPanel(value = {}) {
+function renderPanel(value = {}, props = {}) {
   return render(
     <AudioDataContext.Provider value={{ ...baseAudioData, ...value }}>
-      <WaveformPanel />
+      <WaveformPanel {...props} />
     </AudioDataContext.Provider>
   );
 }
@@ -63,5 +63,11 @@ describe("WaveformPanel", () => {
     expect(axisRow?.className).toContain("shrink-0");
     expect(axisRow?.className).not.toContain("absolute");
     expect(axisRow?.className).not.toContain("bottom-0");
+  });
+
+  it("hides the gestures help button in compact mode", () => {
+    renderPanel({}, { compact: true });
+
+    expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
   });
 });

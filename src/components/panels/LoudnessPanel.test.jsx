@@ -48,23 +48,30 @@ const baseAudioData = {
   visibleSamples: 0,
 };
 
+function renderPanel(value = {}, props = {}) {
+  return render(
+    <AudioDataContext.Provider value={{ ...baseAudioData, ...value }}>
+      <LoudnessPanel {...props} />
+    </AudioDataContext.Provider>
+  );
+}
+
 describe("LoudnessPanel", () => {
   it("respects the active panel's visible layers, not the first panel's", () => {
     // The chip writes layer visibility into this panel's own panelControls. The
     // top-level loudnessHistoryVisibleLayerIds reflects the first panel and must
     // not override the per-panel selection.
-    render(
-      <AudioDataContext.Provider
-        value={{
-          ...baseAudioData,
-          loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
-          panelControls: { loudnessHistoryVisibleLayerIds: [] },
-        }}
-      >
-        <LoudnessPanel />
-      </AudioDataContext.Provider>
-    );
+    renderPanel({
+      loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+      panelControls: { loudnessHistoryVisibleLayerIds: [] },
+    });
 
     expect(screen.getByText("No layers selected")).toBeTruthy();
+  });
+
+  it("hides the gestures help button in compact mode", () => {
+    renderPanel({}, { compact: true });
+
+    expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
   });
 });

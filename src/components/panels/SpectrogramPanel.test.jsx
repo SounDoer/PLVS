@@ -32,10 +32,10 @@ const baseAudioData = {
   resolvedThemeId: "plvs-dark",
 };
 
-function renderPanel(value = {}) {
+function renderPanel(value = {}, props = {}) {
   return render(
     <AudioDataContext.Provider value={{ ...baseAudioData, ...value }}>
-      <SpectrogramPanel />
+      <SpectrogramPanel {...props} />
     </AudioDataContext.Provider>
   );
 }
@@ -110,5 +110,11 @@ describe("SpectrogramPanel", () => {
     renderPanel({ selectedOffset: -1, panelControls, getSpectrogramSnapsForKey });
 
     expect(getSpectrogramSnapsForKey).toHaveBeenCalledWith(key);
+  });
+
+  it("hides the gestures help button in compact mode", () => {
+    renderPanel({}, { compact: true });
+
+    expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
   });
 });
