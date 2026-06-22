@@ -19,7 +19,7 @@ function paintImageData(
   data.fill(0);
 
   for (let i = startIdx; i <= endIdx; i++) {
-    const snap = snaps[i];
+    const snap = snaps.rowAt(i);
     if (!snap || !snap.dbList) continue;
     const ts = snap.timestampMs;
     if (!Number.isFinite(ts)) continue;
@@ -116,7 +116,7 @@ export function useSpectrogramCanvas({
 
       const span = Number.isFinite(oldestMs) && Number.isFinite(newestMs) ? newestMs - oldestMs : 0;
       const cache = cacheRef.current;
-      const firstSnap = snaps && snaps.length > 0 ? snaps[snaps.length - 1] : null;
+      const firstSnap = snaps && snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
       const bands = firstSnap?.bands;
       if (!bands || bands.length === 0 || len === 0 || span <= 0) {
         ctx.clearRect(0, 0, W, H);
