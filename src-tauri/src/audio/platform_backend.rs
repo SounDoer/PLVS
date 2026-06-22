@@ -8,7 +8,6 @@ use super::cpal_backend::CpalBackend;
 use super::device::DeviceInfo;
 #[cfg(target_os = "macos")]
 use super::macos;
-use crate::dsp::{SpectrumChannelSel, SpectrumView};
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
@@ -32,10 +31,7 @@ impl AudioCapture for AppAudioBackend {
     device_id: &str,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
-    vectorscope_pair: std::sync::Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    spectrum_channel: std::sync::Arc<std::sync::Mutex<SpectrumChannelSel>>,
-    spectrum_view: std::sync::Arc<std::sync::Mutex<SpectrumView>>,
     loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
@@ -45,10 +41,7 @@ impl AudioCapture for AppAudioBackend {
         device_id,
         frame_subscribers,
         app,
-        vectorscope_pair,
         channel_layout,
-        spectrum_channel,
-        spectrum_view,
         loudness_weights,
         dialogue_gating,
       )
@@ -59,10 +52,7 @@ impl AudioCapture for AppAudioBackend {
         device_id,
         frame_subscribers,
         app,
-        vectorscope_pair,
         channel_layout,
-        spectrum_channel,
-        spectrum_view,
         loudness_weights,
         dialogue_gating,
       )

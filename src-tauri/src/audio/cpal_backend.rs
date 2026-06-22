@@ -13,7 +13,6 @@ use super::device::DeviceInfo;
 use super::device_enum::is_loopback_capture;
 use super::device_enum::{build_device_list, resolve_device};
 
-use crate::dsp::{SpectrumChannelSel, SpectrumView};
 use crate::engine::ChannelLayoutSetting;
 use crate::engine::MeterPipeline;
 use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload};
@@ -58,10 +57,7 @@ impl AudioCapture for CpalBackend {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-    spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
@@ -69,10 +65,7 @@ impl AudioCapture for CpalBackend {
       device_id,
       frame_subscribers,
       app,
-      vectorscope_pair,
       channel_layout,
-      spectrum_channel,
-      spectrum_view,
       loudness_weights,
       dialogue_gating,
     )?))
@@ -106,10 +99,7 @@ impl CaptureSession {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-    spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
   ) -> Result<Self, String> {
@@ -135,10 +125,7 @@ impl CaptureSession {
           app,
           stop_rx,
           clear_peak_history: clear_worker,
-          vectorscope_pair,
           channel_layout,
-          spectrum_channel,
-          spectrum_view,
           loudness_weights,
           dialogue_gating,
           dropped_chunks,
@@ -164,10 +151,7 @@ struct RunCaptureArgs {
   app: tauri::AppHandle,
   stop_rx: std::sync::mpsc::Receiver<()>,
   clear_peak_history: Arc<AtomicBool>,
-  vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-  spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dropped_chunks: Arc<AtomicU64>,
@@ -302,10 +286,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   frame_subscribers: crate::ipc::types::FrameSubscribers,
   app: tauri::AppHandle,
   clear_peak_history: Arc<AtomicBool>,
-  _vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-  _spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  _spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dropped_chunks: Arc<AtomicU64>,
@@ -457,10 +438,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     app,
     stop_rx,
     clear_peak_history,
-    vectorscope_pair,
     channel_layout,
-    spectrum_channel,
-    spectrum_view,
     loudness_weights,
     dialogue_gating,
     dropped_chunks,
@@ -498,10 +476,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       frame_subscribers,
       app,
       clear_peak_history,
-      vectorscope_pair,
       channel_layout,
-      spectrum_channel,
-      spectrum_view,
       loudness_weights,
       dialogue_gating,
       dropped_chunks,

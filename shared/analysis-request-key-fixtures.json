@@ -1,0 +1,13 @@
+{
+  "_comment": "Single source of truth for analysis request-key string format. Consumed by both the JS deriver test (src/analysis/analysisRequestKeyFormat.test.js) and the Rust validator test (src-tauri/src/ipc/commands.rs). Changing the key grammar on either side without updating this file fails one of those tests. Format: spectrum pair = spectrum:pair:<x>:<y>:<view> (view in combined|lr|ms); spectrum single = spectrum:single:<ch>:combined (view always forced to combined); vectorscope = vectorscope:pair:<x>:<y>.",
+  "spectrum": [
+    { "type": "pair", "x": 0, "y": 1, "view": "combined", "key": "spectrum:pair:0:1:combined" },
+    { "type": "pair", "x": 0, "y": 1, "view": "lr", "key": "spectrum:pair:0:1:lr" },
+    { "type": "pair", "x": 4, "y": 5, "view": "ms", "key": "spectrum:pair:4:5:ms" },
+    { "type": "single", "ch": 2, "view": "combined", "key": "spectrum:single:2:combined" }
+  ],
+  "vectorscope": [
+    { "x": 0, "y": 1, "key": "vectorscope:pair:0:1" },
+    { "x": 4, "y": 5, "key": "vectorscope:pair:4:5" }
+  ]
+}

@@ -20,13 +20,9 @@ import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
   buildVectorscopePairOptions,
-  clampVectorscopePairToAvailable,
   formatVectorscopePairLabel,
 } from "./math/vectorscopePairMath.js";
-import {
-  buildSpectrumChannelOptions,
-  clampSpectrumChannelToAvailable,
-} from "./math/spectrumChannelOptions.js";
+import { buildSpectrumChannelOptions } from "./math/spectrumChannelOptions.js";
 import {
   roleTokensToLabels,
   roleTokensToLoudnessWeights,
@@ -43,6 +39,7 @@ import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
+import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
 import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
 import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
@@ -152,8 +149,11 @@ export default function App() {
 }
 
 function AppContent() {
-  const { state: workspaceState, setPanelControls: setWorkspacePanelControls } =
-    useWorkspaceStore();
+  const {
+    state: workspaceState,
+    setPanelControls: setWorkspacePanelControls,
+    setPanelControlsForPanel,
+  } = useWorkspaceStore();
   const onClearRef = useRef(null);
   const {
     settingsOpen,
@@ -660,28 +660,25 @@ function AppContent() {
     []
   );
 
+  // Clamp every panel instance's channel selection to the currently available channels. Lowering
+  // the device channel count must repair all panels (not just the first), otherwise a stale
+  // out-of-range selection would derive an analysis request key with no matching backend result.
   useEffect(() => {
-    const next = clampVectorscopePairToAvailable(vectorscopePairUi, channelCount, peakLabelContext);
-    if (next.x === vectorscopePairUi.x && next.y === vectorscopePairUi.y) return;
-    updatePanelControls((current) => ({ ...current, vectorscopePair: next }));
+    const updates = deriveClampedPanelControls(workspaceState, {
+      spectrumChannelOptions,
+      channelCount,
+      peakLabelContext,
+    });
+    for (const { panelId, panelControls } of updates) {
+      setPanelControlsForPanel(panelId, panelControls);
+    }
   }, [
+    workspaceState,
+    spectrumChannelOptions,
     channelCount,
     peakLabelContext,
-    vectorscopePairUi.x,
-    vectorscopePairUi.y,
-    updatePanelControls,
+    setPanelControlsForPanel,
   ]);
-
-  useEffect(() => {
-    const next = clampSpectrumChannelToAvailable(spectrumChannelUi, spectrumChannelOptions);
-    const curKey =
-      spectrumChannelUi.type === "pair"
-        ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
-        : `s-${spectrumChannelUi.ch}`;
-    const nxtKey = next.type === "pair" ? `p-${next.x}-${next.y}` : `s-${next.ch}`;
-    if (curKey === nxtKey) return;
-    updatePanelControls((current) => ({ ...current, spectrumChannel: next }));
-  }, [spectrumChannelUi, spectrumChannelOptions, updatePanelControls]);
 
   const onVectorscopePairChange = (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({

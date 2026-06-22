@@ -19,7 +19,6 @@ use super::cpal_backend::{
 };
 use super::device::DeviceInfo;
 use super::device_id;
-use crate::dsp::{SpectrumChannelSel, SpectrumView};
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
@@ -150,10 +149,7 @@ fn run_macos_tap_worker(
   app: AppHandle,
   stop_rx: std::sync::mpsc::Receiver<()>,
   clear_peak_history: Arc<AtomicBool>,
-  vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-  spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dropped_chunks: Arc<AtomicU64>,
@@ -172,10 +168,7 @@ fn run_macos_tap_worker(
       frame_subscribers,
       app,
       clear_for_thread,
-      vectorscope_pair,
       channel_layout,
-      spectrum_channel,
-      spectrum_view,
       loudness_weights,
       dialogue_gating,
       dropped_for_thread,
@@ -255,10 +248,7 @@ impl MacosTapCaptureSession {
     device_id: &str,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
-    vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-    spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
   ) -> Result<Self, String> {
@@ -276,10 +266,7 @@ impl MacosTapCaptureSession {
           app,
           stop_rx,
           clear_worker,
-          vectorscope_pair,
           channel_layout,
-          spectrum_channel,
-          spectrum_view,
           loudness_weights,
           dialogue_gating,
           dropped_chunks,
@@ -305,10 +292,7 @@ pub fn start_session(
   device_id: &str,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
-  vectorscope_pair: Arc<std::sync::Mutex<(u16, u16)>>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-  spectrum_channel: Arc<std::sync::Mutex<SpectrumChannelSel>>,
-  spectrum_view: Arc<std::sync::Mutex<SpectrumView>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
 ) -> Result<Box<dyn AudioCaptureSession>, String> {
@@ -317,10 +301,7 @@ pub fn start_session(
       device_id,
       frame_subscribers,
       app,
-      vectorscope_pair,
       channel_layout,
-      spectrum_channel,
-      spectrum_view,
       loudness_weights,
       dialogue_gating,
     )?))
@@ -329,10 +310,7 @@ pub fn start_session(
       device_id,
       frame_subscribers,
       app,
-      vectorscope_pair,
       channel_layout,
-      spectrum_channel,
-      spectrum_view,
       loudness_weights,
       dialogue_gating,
     )

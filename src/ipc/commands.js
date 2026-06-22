@@ -59,26 +59,6 @@ export function applyWindowBounds(bounds) {
   return invoke("apply_window_bounds", { bounds });
 }
 
-/** @param {{ x: number; y: number }} pair 0-based channel indices. */
-export function setVectorscopePair({ x, y }) {
-  return invoke("set_vectorscope_pair", { x, y });
-}
-
-/**
- * @param {{ type: "pair"; x: number; y: number } | { type: "single"; ch: number }} sel
- */
-export function setSpectrumChannel(sel) {
-  const selType = sel.type;
-  const chX = sel.type === "pair" ? sel.x : sel.ch;
-  const chY = sel.type === "pair" ? sel.y : 0;
-  return invoke("set_spectrum_channel", { selType, chX, chY });
-}
-
-/** @param {"combined" | "lr" | "ms"} view */
-export function setSpectrumView(view) {
-  return invoke("set_spectrum_view", { view });
-}
-
 /**
  * @param {{ spectrum: Array<{ key: string; channel: object; view: string }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
  */

@@ -102,11 +102,8 @@ pub fn audio_start(
       .map_err(|_| "frame subscribers lock poisoned".to_string())?;
     *slot = Some(pool.clone());
   }
-  let pair = state.inner().vectorscope_pair.clone();
   // Channel layout is auto-resolved from channel count on the capture thread; no user override.
   let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
-  let spectrum = state.inner().spectrum_channel.clone();
-  let spectrum_view = state.inner().spectrum_view.clone();
   let loudness_weights = state.inner().loudness_weights.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let session = AudioCapture::start_session(
@@ -114,10 +111,7 @@ pub fn audio_start(
     &device_id,
     pool,
     app.clone(),
-    pair,
     layout,
-    spectrum,
-    spectrum_view,
     loudness_weights,
     dialogue_gating,
   )?;
@@ -139,41 +133,6 @@ pub fn audio_start(
       error: None,
     },
   );
-  Ok(())
-}
-
-/// Update vectorscope XY pair (0-based channel indices). Applied on the capture thread for subsequent frames.
-#[tauri::command]
-pub fn set_vectorscope_pair(x: u16, y: u16, state: State<'_, AppState>) -> Result<(), String> {
-  let mut g = state
-    .inner()
-    .vectorscope_pair
-    .lock()
-    .map_err(|_| "vectorscope pair lock poisoned".to_string())?;
-  *g = (x, y);
-  Ok(())
-}
-
-/// Update spectrum channel selection. Applied on the capture thread for subsequent frames.
-#[tauri::command]
-pub fn set_spectrum_channel(
-  sel_type: String,
-  ch_x: u16,
-  ch_y: u16,
-  state: State<'_, AppState>,
-) -> Result<(), String> {
-  use crate::dsp::SpectrumChannelSel;
-  let sel = match sel_type.as_str() {
-    "pair" => SpectrumChannelSel::Pair(ch_x, ch_y),
-    "single" => SpectrumChannelSel::Single(ch_x),
-    _ => return Err(format!("unknown spectrum_channel sel_type: {sel_type}")),
-  };
-  let mut g = state
-    .inner()
-    .spectrum_channel
-    .lock()
-    .map_err(|_| "spectrum channel lock poisoned".to_string())?;
-  *g = sel;
   Ok(())
 }
 
@@ -257,19 +216,6 @@ pub fn set_analysis_requests(
     .lock()
     .map_err(|_| "analysis requests lock poisoned".to_string())?;
   *g = requests;
-  Ok(())
-}
-
-/// Update spectrum view mode. Applied on the capture thread for subsequent frames.
-#[tauri::command]
-pub fn set_spectrum_view(view: String, state: State<'_, AppState>) -> Result<(), String> {
-  let parsed = parse_spectrum_view(&view)?;
-  let mut g = state
-    .inner()
-    .spectrum_view
-    .lock()
-    .map_err(|_| "spectrum view lock poisoned".to_string())?;
-  *g = parsed;
   Ok(())
 }
 
@@ -482,6 +428,59 @@ mod tests {
       vectorscope: vec![],
     };
     assert!(super::validate_analysis_requests(&requests).is_err());
+  }
+
+  #[test]
+  fn analysis_request_keys_match_shared_fixture() {
+    // Parity guard against the JS deriver: the Rust validator must accept exactly the request-key
+    // strings recorded in the shared fixture. The JS test (src/analysis/analysisRequestKeyFormat.test.js)
+    // asserts the same file, so the key grammar cannot drift on one side unnoticed.
+    let raw = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../shared/analysis-request-key-fixtures.json"
+    ));
+    let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
+
+    for entry in fixture["spectrum"].as_array().expect("spectrum array") {
+      let key = entry["key"].as_str().unwrap().to_string();
+      let view = entry["view"].as_str().unwrap().to_string();
+      let channel = if entry["type"] == "single" {
+        SpectrumAnalysisChannel::Single {
+          ch: entry["ch"].as_u64().unwrap() as u16,
+        }
+      } else {
+        SpectrumAnalysisChannel::Pair {
+          x: entry["x"].as_u64().unwrap() as u16,
+          y: entry["y"].as_u64().unwrap() as u16,
+        }
+      };
+      let requests = AnalysisRequests {
+        spectrum: vec![SpectrumAnalysisRequest { key, channel, view }],
+        vectorscope: vec![],
+      };
+      assert!(
+        super::validate_analysis_requests(&requests).is_ok(),
+        "spectrum fixture entry {entry:?} rejected by validator"
+      );
+    }
+
+    for entry in fixture["vectorscope"]
+      .as_array()
+      .expect("vectorscope array")
+    {
+      let requests = AnalysisRequests {
+        spectrum: vec![],
+        vectorscope: vec![VectorscopeAnalysisRequest {
+          key: entry["key"].as_str().unwrap().to_string(),
+          x: entry["x"].as_u64().unwrap() as u16,
+          y: entry["y"].as_u64().unwrap() as u16,
+        }],
+      };
+      assert!(
+        super::validate_analysis_requests(&requests).is_ok(),
+        "vectorscope fixture entry {entry:?} rejected by validator"
+      );
+    }
   }
 
   #[test]

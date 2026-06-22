@@ -4,7 +4,6 @@ use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 use crate::audio::capture::AudioCaptureSession;
-use crate::dsp::SpectrumChannelSel;
 use crate::ipc::types::{AnalysisRequests, FrameSubscribers};
 
 pub struct AppState {
@@ -14,12 +13,6 @@ pub struct AppState {
   /// Highest frame `seq` the UI has acknowledged (via `ack_frames`). The capture bridge compares
   /// it against frames sent to bound the unacked backlog on the backpressure-free UI Channel.
   pub frame_ack_seq: Arc<AtomicU64>,
-  /// Selected vectorscope XY channel pair (0-based). Updated by UI.
-  pub vectorscope_pair: Arc<Mutex<(u16, u16)>>,
-  /// Selected channel(s) for spectrum analysis. Updated by UI; applied on the capture thread.
-  pub spectrum_channel: Arc<Mutex<SpectrumChannelSel>>,
-  /// Selected spectrum view mode (Combined/Lr/Ms). Updated by UI; applied on the capture thread.
-  pub spectrum_view: Arc<Mutex<crate::dsp::SpectrumView>>,
   /// Active per-instance analysis requests requested by the workspace UI.
   pub analysis_requests: Arc<Mutex<AnalysisRequests>>,
   /// Dynamic loudness energy weights from user channel-role overrides.
@@ -34,9 +27,6 @@ impl Default for AppState {
       capture: Mutex::new(None),
       frame_subscribers: Mutex::new(None),
       frame_ack_seq: Arc::new(AtomicU64::new(0)),
-      vectorscope_pair: Arc::new(Mutex::new((0, 1))),
-      spectrum_channel: Arc::new(Mutex::new(SpectrumChannelSel::default())),
-      spectrum_view: Arc::new(Mutex::new(crate::dsp::SpectrumView::default())),
       analysis_requests: Arc::new(Mutex::new(AnalysisRequests::default())),
       loudness_weights: Arc::new(Mutex::new(None)),
       dialogue_gating_enabled: Arc::new(Mutex::new(false)),
