@@ -4,11 +4,23 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { ModulesPopoverContent, VisibilityPopover } from "./WorkspaceToolbar.jsx";
 import { WorkspaceProvider } from "./WorkspaceContext.jsx";
+import { DragProvider } from "./DragContext.jsx";
+import { AudioDataContext } from "./AudioDataContext.jsx";
+import { LeafView } from "./LeafView.jsx";
 
 vi.mock("framer-motion", () => ({
   motion: {
     div: ({ children, ...props }) => <div {...props}>{children}</div>,
   },
+  Reorder: {
+    Group: ({ children, role, "aria-label": ariaLabel, className }) => (
+      <div role={role} aria-label={ariaLabel} className={className}>
+        {children}
+      </div>
+    ),
+    Item: ({ children, className }) => <div className={className}>{children}</div>,
+  },
+  useDragControls: () => ({ start: () => {} }),
 }));
 
 describe("ModulesPopoverContent", () => {
@@ -77,5 +89,50 @@ describe("ModulesPopoverContent", () => {
     expect(screen.getByText("Level Meter")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Confirm delete Level Meter"));
     expect(screen.queryByText("Level Meter")).toBeNull();
+  });
+
+  it("highlights the corresponding panel frame while hovering a module row", () => {
+    const { container } = render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider value={{ statsMetrics: [] }}>
+            <ModulesPopoverContent />
+            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    const statsRow = screen
+      .getAllByText("Stats")
+      .find((el) => el.closest(".group"))
+      ?.closest(".group");
+    const leaf = container.querySelector("[data-leaf]");
+
+    expect(leaf?.className).not.toContain("ring-primary/60");
+    fireEvent.mouseEnter(statsRow);
+    expect(leaf?.className).toContain("ring-primary/60");
+    fireEvent.mouseLeave(statsRow);
+    expect(leaf?.className).not.toContain("ring-primary/60");
+  });
+
+  it("does not highlight a panel just because the modules popover opens", () => {
+    const { container } = render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider value={{ statsMetrics: [] }}>
+            <VisibilityPopover />
+            <LeafView
+              node={{ type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" }}
+              path={[]}
+            />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+
+    expect(container.querySelector("[data-leaf]")?.className).not.toContain("ring-primary/60");
   });
 });

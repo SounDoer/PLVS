@@ -29,6 +29,14 @@ beforeEach(() => {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   }));
+
+  class ResizeObserverStub {
+    observe() {}
+    disconnect() {}
+  }
+
+  window.ResizeObserver = ResizeObserverStub;
+  globalThis.ResizeObserver = ResizeObserverStub;
 });
 
 function WorkspaceStateProbe({ onState }) {
@@ -447,6 +455,58 @@ describe("PanelHeaderControls", () => {
     expect(container.querySelector("[data-leaf-body]")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Fullscreen" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Hide all in panel" })).toBeNull();
+  });
+
+  it("passes compact panel mode into the active timeline panel body", () => {
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              compactPanels: true,
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              historyYAxisTicks: [
+                { v: -12, lb: "-12" },
+                { v: -23, lb: "-23" },
+                { v: -36, lb: "-36" },
+              ],
+              targetLufs: -23,
+              referenceLufs: -23,
+              hasHistoryData: true,
+              historyChartInteractive: false,
+              running: false,
+              setSelectedOffset: vi.fn(),
+              setStatus: vi.fn(),
+              holdHistoryHud: vi.fn(),
+              showHistoryHud: vi.fn(),
+              onHistoryWheel: vi.fn(),
+              onHistoryPointerDown: vi.fn(),
+              onHistoryPointerMove: vi.fn(),
+              onHistoryPointerUp: vi.fn(),
+              displayHistoryPathM: "",
+              displayHistoryPathST: "",
+              selectedOffset: -1,
+              showSelLine: false,
+              selLineX: 0,
+              isHistoryHudVisible: false,
+              clampedWindowSec: 30,
+              effectiveOffsetSec: 0,
+              historyTimeTicks: ["0s", "15s", "30s"],
+              histSourceList: [],
+              effectiveOffsetSamples: 0,
+              visibleSamples: 0,
+            }}
+          >
+            <LeafView
+              node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
+              path={[]}
+            />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
   });
 
   it("does not render a remove button beside the panel tab title", () => {

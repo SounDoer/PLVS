@@ -260,7 +260,7 @@ function FullscreenOverlay() {
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <AudioDataContext.Provider value={panelAudioData}>
-          <Component />
+          <Component compact={audioData?.compactPanels === true} />
         </AudioDataContext.Provider>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { Check, LayoutGrid, Pencil, Plus, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MODULE_REGISTRY } from "./registry.jsx";
@@ -20,7 +20,7 @@ function IconAction({ label, icon, onClick, className = "" }) {
 }
 
 function PanelRow({ panelId }) {
-  const { state, removePanel, renamePanel } = useWorkspaceStore();
+  const { state, removePanel, renamePanel, setHoveredPanelId } = useWorkspaceStore();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const title = resolvePanelDisplayName(state, panelId);
@@ -66,7 +66,11 @@ function PanelRow({ panelId }) {
   }
 
   return (
-    <div className="group flex w-full min-w-44 items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50">
+    <div
+      className="group flex w-full min-w-44 items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50"
+      onMouseEnter={() => setHoveredPanelId(panelId)}
+      onMouseLeave={() => setHoveredPanelId(null)}
+    >
       {def?.Icon ? (
         <span className="flex shrink-0 text-muted-foreground">
           <def.Icon />
@@ -139,8 +143,10 @@ function AddPanelControl() {
 // ---------------------------------------------------------------------------
 
 export function ModulesPopoverContent() {
-  const { state, resetWorkspace } = useWorkspaceStore();
+  const { state, resetWorkspace, setHoveredPanelId } = useWorkspaceStore();
   const panelIds = state.panelOrder.filter((id) => state.panelsById[id]);
+
+  useEffect(() => () => setHoveredPanelId(null), [setHoveredPanelId]);
 
   return (
     <>

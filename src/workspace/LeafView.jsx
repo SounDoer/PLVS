@@ -71,7 +71,8 @@ function getTabInsertX(tabIndex, totalTabs) {
 // ---------------------------------------------------------------------------
 
 export function LeafView({ node, path, style }) {
-  const { state, removePanel, setFullscreen, setPanelControlsForPanel } = useWorkspaceStore();
+  const { state, removePanel, setFullscreen, setPanelControlsForPanel, hoveredPanelId } =
+    useWorkspaceStore();
   const { dragState, hoverDrop } = useDrag();
   const audioData = useAudioData();
   const compactPanels = audioData?.compactPanels === true;
@@ -95,6 +96,7 @@ export function LeafView({ node, path, style }) {
       : audioData;
   const zoneHint = getZoneHint(hoverDrop, path);
   const isDragging = !!dragState;
+  const isPanelHoverHighlighted = hoveredPanelId != null && visibleTabs.includes(hoveredPanelId);
   const pathAttr = JSON.stringify(path);
 
   return (
@@ -104,6 +106,7 @@ export function LeafView({ node, path, style }) {
       className={cn(
         "relative flex min-h-0 flex-col overflow-hidden rounded-[10px] border bg-card/55 shadow-sm backdrop-blur-md transition-[border-color,box-shadow] duration-150",
         "border-border/80 hover:border-border",
+        isPanelHoverHighlighted && "border-primary/70 ring-2 ring-primary/60 ring-offset-0",
         isDragging &&
           (zoneHint === "above" || zoneHint === "below") &&
           "ring-2 ring-primary ring-offset-0",
@@ -212,7 +215,7 @@ export function LeafView({ node, path, style }) {
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
         {ActiveComponent && (
           <AudioDataContext.Provider value={panelAudioData}>
-            <ActiveComponent />
+            <ActiveComponent compact={compactPanels} />
           </AudioDataContext.Provider>
         )}
       </div>
