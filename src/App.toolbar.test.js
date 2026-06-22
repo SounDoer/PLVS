@@ -226,4 +226,26 @@ describe("App toolbar", () => {
     expect(commandsSource).toContain("export function stopFileAnalysis()");
     expect(commandsSource).toContain('return invoke("file_analysis_stop");');
   });
+
+  it("renders the source-aware transport cluster instead of separate status and transport controls", () => {
+    expect(appSource).toContain(
+      'import { SourceTransportCluster } from "./components/SourceTransportCluster.jsx";'
+    );
+    expect(appSource).toContain("<SourceTransportCluster");
+    expect(appSource).not.toContain("<StatusPill");
+    expect(appSource).not.toContain("<TransportButton");
+  });
+
+  it("derives transport state from source mode and session state", () => {
+    expect(appSource).toContain('const [sourceMode, setSourceMode] = useState("live");');
+    expect(appSource).toContain("deriveSourceTransportState({");
+    expect(appSource).toContain("sourceMode,");
+    expect(appSource).toContain("latestTimestampMs");
+    expect(appSource).toContain("elapsedMs: elapsedMsRef.current");
+  });
+
+  it("keeps File mode as an explicit UI shell until the file engine plan wires it", () => {
+    expect(appSource).toContain('state: "empty"');
+    expect(appSource).toContain("File analysis engine is not connected yet");
+  });
 });

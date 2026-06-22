@@ -33,8 +33,8 @@ import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ThemeEditor } from "./components/ThemeEditor";
-import { StatusPill } from "./components/StatusPill.jsx";
-import { TransportButton } from "./components/TransportButton.jsx";
+import { SourceTransportCluster } from "./components/SourceTransportCluster.jsx";
+import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
@@ -252,9 +252,12 @@ function AppContent() {
 
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
 
-  const { clockRef, canClearRef, startTimer, stopTimer, resetTimer } = useSessionTimer();
+  const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } =
+    useSessionTimer();
   const [showClock, setShowClock] = useState(false);
 
+  const [sourceMode, setSourceMode] = useState("live");
+  const [fileSession, setFileSession] = useState({ state: "empty" });
   const [running, setRunning] = useState(false);
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
@@ -441,9 +444,22 @@ function AppContent() {
   // In file mode, selectedMediaTimeMs feeds deriveSourceTransportState for scrub display.
   // Currently this session is always live; file sessions wire this via sourceMode === "file".
   const selectedMediaTimeMs = targetTimestampMs;
-  const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
-  // Maps old startMode values to new 3-state chrome vocabulary
-  const chromeState = startMode === "stop" ? "live" : startMode === "live" ? "snapshot" : "ready";
+
+  const latestTimestampMs = useMemo(() => {
+    const last = histSourceList.length > 0 ? histSourceList[histSourceList.length - 1] : null;
+    return Number.isFinite(last?.timestampMs) ? last.timestampMs : undefined;
+  }, [histSourceList]);
+
+  const sourceTransportState = deriveSourceTransportState({
+    sourceMode,
+    running,
+    selectedOffset,
+    latestTimestampMs,
+    elapsedMs: elapsedMsRef.current,
+    selectedMediaTimeMs,
+    fileSession,
+  });
+  const chromeState = sourceTransportState.chromeState;
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
   const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
@@ -800,9 +816,12 @@ function AppContent() {
   };
   onClearRef.current = clearAll;
 
-  const onStartClick = () => {
-    if (selectedOffset >= 0)
-      return void (setSelectedOffset(-1), setStatus("Monitoring live input"));
+  const runLiveStartAction = () => {
+    if (selectedOffset >= 0) {
+      setSelectedOffset(-1);
+      setStatus("Monitoring live input");
+      return;
+    }
     if (running) {
       setRunning(false);
       setSelectedOffset(-1);
@@ -814,6 +833,47 @@ function AppContent() {
     setRunning(true);
     startTimer();
     setShowClock(true);
+  };
+
+  const onSourceTransportAction = (actionKind) => {
+    if (actionKind === "returnToLive") {
+      setSelectedOffset(-1);
+      setStatus("Monitoring live input");
+      return;
+    }
+    if (actionKind === "startLive" || actionKind === "stopLive") {
+      runLiveStartAction();
+      return;
+    }
+    if (actionKind === "returnToFileResult") {
+      setSelectedOffset(-1);
+      setStatus("File analysis result");
+      return;
+    }
+    setStatus("File analysis engine is not connected yet");
+  };
+
+  const onStartClick = runLiveStartAction;
+
+  const onSourceModeChange = (nextMode) => {
+    if (nextMode === sourceMode) return;
+    if (nextMode === "file") {
+      if (running) {
+        setRunning(false);
+        stopTimer();
+        setStatus("Stopped live monitoring - file mode selected");
+        setStatus2("Device: Not connected");
+      } else {
+        setStatus("File mode - drop a file or click Analyze");
+      }
+      setSelectedOffset(-1);
+      setSourceMode("file");
+      return;
+    }
+    setSelectedOffset(-1);
+    setSourceMode("live");
+    setStatus("Ready - click Start to begin monitoring");
+    setStatus2("Device: Not connected");
   };
 
   useTray({
@@ -1049,11 +1109,14 @@ function AppContent() {
               onPointerUp={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
               onPointerCancel={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
             >
-              <StatusPill state={chromeState} showClock={showClock} clockRef={clockRef} />
+              <SourceTransportCluster
+                state={sourceTransportState}
+                sourceMode={sourceMode}
+                onSourceModeChange={onSourceModeChange}
+                onPrimaryAction={onSourceTransportAction}
+              />
               <div className="flex-1" />
               <div className="flex items-center gap-1">
-                <TransportButton state={chromeState} onClick={onStartClick} />
-                <div className="mx-1 h-[18px] w-px shrink-0 bg-border" />
                 <IconButton
                   icon={<Trash2 className="size-3.5" />}
                   tip="Clear"
