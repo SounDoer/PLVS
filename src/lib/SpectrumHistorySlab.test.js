@@ -97,6 +97,24 @@ describe("SpectrumHistorySlab", () => {
     expect(first.byteOffset).not.toBe(second.byteOffset);
   });
 
+  it("exposes version, timestampAt, and rowAt over wrap-around", () => {
+    const bands = [{ fCenter: 100 }, { fCenter: 200 }];
+    const slab = new SpectrumHistorySlab(2, bands);
+    const v0 = slab.version;
+    slab.push({ bands, dbList: [-10, -20], timestampMs: 1000 });
+    slab.push({ bands, dbList: [-30, -40], timestampMs: 1040 });
+    slab.push({ bands, dbList: [-50, -60], timestampMs: 1080 }); // overwrites slot 0
+
+    expect(slab.length).toBe(2);
+    expect(slab.version).toBeGreaterThan(v0);
+    expect(slab.timestampAt(0)).toBe(1040);
+    expect(slab.timestampAt(1)).toBe(1080);
+    expect(slab.timestampAt(2)).toBeNaN();
+    expect(Array.from(slab.rowAt(0).dbList)).toEqual([-30, -40]);
+    expect(slab.rowAt(1).timestampMs).toBe(1080);
+    expect(slab.rowAt(5)).toBeUndefined();
+  });
+
   it("can return copied rows for snapshot freeze safety", () => {
     const slab = new SpectrumHistorySlab(2, bands);
 

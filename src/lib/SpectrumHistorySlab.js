@@ -33,6 +33,7 @@ export class SpectrumHistorySlab {
     this._bandCount = this._bands.length;
     this._head = 0;
     this._size = 0;
+    this._version = 0;
     this._timestamps = new Float64Array(capacity);
     this._dbA = new Float32Array(capacity * this._bandCount);
     this._dbB = null;
@@ -71,6 +72,20 @@ export class SpectrumHistorySlab {
     return this._timestamps;
   }
 
+  get version() {
+    return this._version;
+  }
+
+  timestampAt(index) {
+    if (index < 0 || index >= this._size || !this._timestamps) return NaN;
+    const slot = (this._head + index) % this._cap;
+    return this._timestamps[slot];
+  }
+
+  rowAt(index) {
+    return this.at(index);
+  }
+
   matchesBands(bands) {
     return sameBands(this._bands, bands ?? []);
   }
@@ -103,6 +118,7 @@ export class SpectrumHistorySlab {
     } else {
       this._head = (this._head + 1) % this._cap;
     }
+    this._version += 1;
   }
 
   at(index, { copyRows = false } = {}) {
