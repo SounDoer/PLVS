@@ -1,6 +1,7 @@
 mod audio;
 mod dsp;
 mod engine;
+mod file_analysis;
 mod ipc;
 mod state;
 mod window_state;
