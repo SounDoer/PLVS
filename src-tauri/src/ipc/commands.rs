@@ -11,8 +11,8 @@ use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged, FrameSubscribers,
-  SpectrumAnalysisChannel,
+  AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged,
+  FileAnalysisProbeResult, FrameSubscribers, SpectrumAnalysisChannel,
 };
 use crate::state::AppState;
 
@@ -297,6 +297,11 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
     },
   );
   Ok(())
+}
+
+#[tauri::command]
+pub fn file_analysis_probe(path: String) -> Result<FileAnalysisProbeResult, String> {
+  crate::file_analysis::probe::probe_file(path)
 }
 
 /// Reset DSP state (peak maxima + history accumulators) on the capture thread to match UI Clear
