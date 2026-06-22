@@ -61,31 +61,21 @@ export function resolveKeyedVisualIndex(entries, targetTimestampMs, toleranceMs 
  * @param {object} view
  * @param {number} view.selectedOffset seconds back from live; < 0 means live (no snapshot)
  * @param {number} view.sampleSec hist-rate sample period
- * @param {number} view.visualSampleSec visual-rate sample period
  * @param {object[]} view.histSourceList loudness hist rows (carry timestampMs)
  * @param {object[]} view.audioList per-tick audio snaps (hist rate)
  * @param {number[]} view.corrList per-tick correlation (hist rate)
- * @param {object[]} view.spectrumDataList per-tick spectrum data (hist rate)
  * @param {object[]} view.channelMetadataList per-tick channel metadata (hist rate)
- * @param {object[]} view.visualSpectrum visual-rate spectrum rows (carry timestampMs, dbList)
- * @param {object[]} view.visualVectorscope visual-rate vectorscope rows (carry timestampMs, pairs)
  * @param {object} view.liveAudio live audio fallback
- * @param {object} view.liveSpectrumData live spectrum data fallback
  */
 export function resolveSnapshot(view) {
   const {
     selectedOffset,
     sampleSec,
-    visualSampleSec,
     histSourceList,
     audioList,
     corrList,
-    spectrumDataList,
     channelMetadataList,
-    visualSpectrum,
-    visualVectorscope,
     liveAudio,
-    liveSpectrumData,
   } = view;
 
   const targetTimestampMs =
@@ -96,24 +86,16 @@ export function resolveSnapshot(view) {
   const selectedHistSteps =
     selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / sampleSec)) : -1;
   const fallbackSnapIdx =
-    selectedHistSteps >= 0 ? Math.max(0, spectrumDataList.length - 1 - selectedHistSteps) : -1;
+    selectedHistSteps >= 0 ? Math.max(0, histSourceList.length - 1 - selectedHistSteps) : -1;
   const snapIdx =
     targetTimestampMs != null
       ? nearestTimestampIndex(histSourceList, targetTimestampMs)
       : fallbackSnapIdx;
 
   const audioSnapIdx = snapIdx >= 0 ? Math.min(audioList.length - 1, snapIdx) : -1;
-  const visualSnapIdx =
-    targetTimestampMs != null
-      ? nearestTimestampIndex(visualSpectrum, targetTimestampMs)
-      : selectedOffset >= 0
-        ? Math.max(0, visualSpectrum.length - 1 - Math.round(selectedOffset / visualSampleSec))
-        : -1;
 
   const displayAudio =
     audioSnapIdx >= 0 && audioList[audioSnapIdx] ? audioList[audioSnapIdx] : liveAudio;
-  const displaySpectrumData =
-    snapIdx >= 0 && spectrumDataList[snapIdx] ? spectrumDataList[snapIdx] : liveSpectrumData;
   const correlation =
     snapIdx >= 0 && Number.isFinite(corrList[snapIdx])
       ? corrList[snapIdx]
@@ -121,34 +103,12 @@ export function resolveSnapshot(view) {
   const channelMetadata =
     snapIdx >= 0 && channelMetadataList[snapIdx] ? channelMetadataList[snapIdx] : null;
 
-  let spectrumSnapCenters = null;
-  let spectrumSnapDbList = null;
-  let spectrumSnapDbListB = null;
-  if (visualSnapIdx >= 0 && visualSpectrum[visualSnapIdx]) {
-    const snap = visualSpectrum[visualSnapIdx];
-    const centerSource = displaySpectrumData;
-    spectrumSnapCenters = (centerSource?.bands ?? []).map((b) => b.fCenter);
-    spectrumSnapDbList = snap.dbList ?? [];
-    spectrumSnapDbListB = snap.dbListB ?? [];
-  }
-
-  const vectorSnapPairs =
-    visualSnapIdx >= 0 && visualVectorscope[visualSnapIdx]
-      ? (visualVectorscope[visualSnapIdx].pairs ?? visualVectorscope[visualSnapIdx])
-      : null;
-
   return {
     snapIdx,
-    visualSnapIdx,
     targetTimestampMs,
     displayAudio,
-    displaySpectrumData,
     correlation,
     channelMetadata,
     hasHistoryData: histSourceList.length > 0,
-    spectrumSnapCenters,
-    spectrumSnapDbList,
-    spectrumSnapDbListB,
-    vectorSnapPairs,
   };
 }

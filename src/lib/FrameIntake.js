@@ -127,15 +127,10 @@ export class FrameIntake {
     this._loudnessHist = [];
     this._audioSnap = [];
     this._corrSnap = [];
-    this._spectrumDataSnap = [];
-    this._spectrumData = null;
     this._frequencyChannelMarkers = [];
     this._channelMetadataSnap = [];
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist = new RingBuffer(1); // lazily resized on first pushVisualHistRow
-    this._visualSpectrumHist = new RingBuffer(1);
-    this._visualVectorscopeHist = new RingBuffer(1);
-    this._visualCorrHist = new RingBuffer(1);
     // Request-keyed visual history: one slab/ring per active analysis request key. They are created
     // lazily and retained after a key goes inactive (no panel uses it), so scrubbing back to an
     // old request still shows its history until reset() / capacity change clears them.
@@ -144,8 +139,6 @@ export class FrameIntake {
     // Cached per-key spectrogram arrays, rebuilt once per visual tick so the canvas can read a
     // stable reference each frame.
     this._spectrogramSnapArrayByKey = new Map();
-    // Constant grid frequencies from the live frame; the ~25 Hz visual tick omits them.
-    this._lastSpectrumCenters = [];
     this._currentChannelMetadata = {
       frequencyLabel: "L/R",
       vectorscopePairLabel: "L/R",
@@ -156,30 +149,21 @@ export class FrameIntake {
    * Process a live audio frame.
    * @param {object} frame AudioFramePayload from Tauri
    * @param {number} histMaxSamples ring capacity
-   * @param {number} defaultSampleRate for spectrum band calc
-   * @param {boolean} [freezeSpectrum] skip live spectrum update when true
    */
-  pushFrame(frame, histMaxSamples, defaultSampleRate, freezeSpectrum = false) {
-    if (frame.spectrumBandCentersHz?.length) {
-      this._lastSpectrumCenters = frame.spectrumBandCentersHz;
-    }
-    if (!freezeSpectrum) {
-      this._spectrumData = buildSpectrumDataSnapshot(frame, { defaultSampleRate });
-    }
+  pushFrame(frame, histMaxSamples) {
     if (frame.loudnessHistTick != null) {
-      this.pushHistRow(frame.loudnessHistTick, histMaxSamples, defaultSampleRate);
+      this.pushHistRow(frame.loudnessHistTick, histMaxSamples);
     }
   }
 
   /**
    * Push one history row into the hist-rate snap rings.
-   * Spectrum/vectorscope SVG paths are not stored here — they are rebuilt on demand
-   * from the visual rings (see useSnapshot), so only numeric/data snaps are kept.
+   * Spectrum/vectorscope data is stored per request key in the visual rings (see
+   * pushVisualHistRow); only shared numeric/audio snaps are kept here.
    * @param {object} row MeterHistoryEntry
    * @param {number} histMaxSamples
-   * @param {number} defaultSampleRate
    */
-  pushHistRow(row, histMaxSamples, defaultSampleRate) {
+  pushHistRow(row, histMaxSamples) {
     const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
     ringPush(
@@ -201,11 +185,6 @@ export class FrameIntake {
       Number.isFinite(row.correlation) ? row.correlation : -Infinity,
       histMaxSamples
     );
-    ringPush(
-      this._spectrumDataSnap,
-      buildSpectrumDataSnapshot(row, { defaultSampleRate }),
-      histMaxSamples
-    );
     ringPush(this._frequencyChannelMarkers, this._pendingFrequencyMarker, histMaxSamples);
     ringPush(this._channelMetadataSnap, { ...this._currentChannelMetadata }, histMaxSamples);
     this._pendingFrequencyMarker = null;
@@ -214,9 +193,6 @@ export class FrameIntake {
   pushVisualHistRow(row, visualMaxSamples) {
     if (this._visualWaveformHist.capacity !== visualMaxSamples) {
       this._visualWaveformHist = new RingBuffer(visualMaxSamples);
-      this._visualSpectrumHist = new RingBuffer(visualMaxSamples);
-      this._visualVectorscopeHist = new RingBuffer(visualMaxSamples);
-      this._visualCorrHist = new RingBuffer(visualMaxSamples);
       // Per-key rings are sized to the same window; drop them so they are recreated at the new
       // capacity rather than mixing sizes.
       this._visualSpectrumHistByKey = new Map();
@@ -230,27 +206,11 @@ export class FrameIntake {
       timestampMs: row.timestampMs,
     });
 
-    this._visualSpectrumHist.push({
-      bands: getBandsFromCenters(row.spectrumBandCentersHz ?? this._lastSpectrumCenters),
-      dbList: snapshotNumericArray(row.spectrumSmoothDb),
-      dbListB: snapshotNumericArray(row.spectrumSmoothDbB),
-      timestampMs: row.timestampMs,
-    });
-
-    this._visualVectorscopeHist.push({
-      pairs: snapshotNumericArray(row.vectorscopePairs),
-      timestampMs: row.timestampMs,
-    });
-    this._visualCorrHist.push({
-      value: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
-      timestampMs: row.timestampMs,
-    });
-
     const spectrumByKey = row.spectrumByKey;
     if (spectrumByKey) {
       for (const key in spectrumByKey) {
         const entry = spectrumByKey[key];
-        const bands = getBandsFromCenters(entry.bandCentersHz ?? this._lastSpectrumCenters);
+        const bands = getBandsFromCenters(entry.bandCentersHz ?? []);
         let slab = this._visualSpectrumHistByKey.get(key);
         if (!slab || slab.capacity !== visualMaxSamples || !slab.matchesBands(bands)) {
           slab = new SpectrumHistorySlab(visualMaxSamples, bands);
@@ -283,11 +243,6 @@ export class FrameIntake {
     }
   }
 
-  /** Set live spectrum data to the last seeded row (used by seed finalize). */
-  finalizeFromRow(row, defaultSampleRate) {
-    this._spectrumData = buildSpectrumDataSnapshot(row, { defaultSampleRate });
-  }
-
   setPendingFrequencyMarker(marker) {
     this._pendingFrequencyMarker = marker
       ? { type: "frequencyChannelChange", from: marker.from, to: marker.to }
@@ -305,12 +260,6 @@ export class FrameIntake {
   getLoudnessHistory() {
     return this._loudnessHist;
   }
-  getSpectrumData() {
-    return this._spectrumData;
-  }
-  getSpectrumDataSnap() {
-    return this._spectrumDataSnap;
-  }
   getAudioSnap() {
     return this._audioSnap;
   }
@@ -325,12 +274,6 @@ export class FrameIntake {
   }
   getVisualWaveformHist() {
     return this._visualWaveformHist;
-  }
-  getVisualSpectrumHist() {
-    return this._visualSpectrumHist;
-  }
-  getVisualVectorscopeHist() {
-    return this._visualVectorscopeHist;
   }
   getVisualSpectrumHistByKey(key) {
     return this._visualSpectrumHistByKey.get(key) ?? null;
@@ -355,23 +298,15 @@ export class FrameIntake {
     for (const [key, ring] of this._visualVectorscopeHistByKey) out[key] = ring.toArray();
     return out;
   }
-  getVisualCorrHist() {
-    return this._visualCorrHist;
-  }
 
   reset() {
     this._loudnessHist = [];
     this._audioSnap = [];
     this._corrSnap = [];
-    this._spectrumDataSnap = [];
-    this._spectrumData = null;
     this._frequencyChannelMarkers = [];
     this._channelMetadataSnap = [];
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist.clear();
-    this._visualSpectrumHist.clear();
-    this._visualVectorscopeHist.clear();
-    this._visualCorrHist.clear();
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
     this._spectrogramSnapArrayByKey = new Map();

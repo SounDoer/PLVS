@@ -27,12 +27,7 @@ function buildSpectrumAreaPath(path) {
 
 export function SpectrumPanel({ compact = false }) {
   const {
-    displaySpectrumPath,
-    displaySpectrumPeakPath,
-    displaySpectrumPathB,
-    displaySpectrumPeakPathB,
     selectedOffset,
-    displaySpectrumData,
     displayAudio,
     panelControls,
     resolveSpectrumSnapshotForKey,
@@ -69,12 +64,13 @@ export function SpectrumPanel({ compact = false }) {
       spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
     });
   } else {
-    // Live but no per-key result yet: fall back to the global live curve as a pending treatment.
-    panelSpectrumPath = displaySpectrumPath;
-    panelSpectrumPeakPath = displaySpectrumPeakPath;
-    panelSpectrumPathB = displaySpectrumPathB;
-    panelSpectrumPeakPathB = displaySpectrumPeakPathB;
-    panelSpectrumData = displaySpectrumData;
+    // Live but no per-key result yet: pending treatment (empty chart) until this request's first
+    // frame arrives. Showing another request's curve here would be wrong for this panel's key.
+    panelSpectrumPath = "";
+    panelSpectrumPeakPath = "";
+    panelSpectrumPathB = "";
+    panelSpectrumPeakPathB = "";
+    panelSpectrumData = null;
   }
   const spectrumSvgRef = useRef(null);
   const {

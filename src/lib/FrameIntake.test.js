@@ -60,17 +60,14 @@ describe("FrameIntake", () => {
     expect(intake.getLoudnessHistory()).toHaveLength(0);
     expect(intake.getAudioSnap()).toHaveLength(0);
     expect(intake.getCorrSnap()).toHaveLength(0);
-    expect(intake.getSpectrumDataSnap()).toHaveLength(0);
-    expect(intake.getSpectrumData()).toBeNull();
   });
 
   it("pushHistRow adds to the hist-rate rings", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    intake.pushHistRow(makeRow(), HIST_MAX);
     expect(intake.getLoudnessHistory()).toHaveLength(1);
     expect(intake.getAudioSnap()).toHaveLength(1);
     expect(intake.getCorrSnap()).toHaveLength(1);
-    expect(intake.getSpectrumDataSnap()).toHaveLength(1);
   });
 
   it("preserves history and visual timestamps for cross-rate alignment", () => {
@@ -90,7 +87,6 @@ describe("FrameIntake", () => {
 
     expect(intake.getLoudnessHistory()[0].timestampMs).toBe(1200);
     expect(intake.getVisualWaveformHist().at(0).timestampMs).toBe(1240);
-    expect(intake.getVisualSpectrumHist().at(0).timestampMs).toBe(1240);
   });
 
   it("writes a pending frequency marker on the next history row", () => {
@@ -192,7 +188,6 @@ describe("FrameIntake", () => {
     expect(intake.getLoudnessHistory()).toHaveLength(HIST_MAX);
     expect(intake.getAudioSnap()).toHaveLength(HIST_MAX);
     expect(intake.getCorrSnap()).toHaveLength(HIST_MAX);
-    expect(intake.getSpectrumDataSnap()).toHaveLength(HIST_MAX);
   });
 
   it("pushHistRow treats non-finite as -Infinity", () => {
@@ -202,47 +197,29 @@ describe("FrameIntake", () => {
     expect(intake.getCorrSnap()[0]).toBe(-Infinity);
   });
 
-  it("pushFrame without histTick updates spectrum only", () => {
+  it("pushFrame without histTick does not touch the hist rings", () => {
     const intake = new FrameIntake();
-    intake.pushFrame(makeFrame(), HIST_MAX, SR);
+    intake.pushFrame(makeFrame(), HIST_MAX);
     expect(intake.getLoudnessHistory()).toHaveLength(0);
-    expect(intake.getSpectrumData()).not.toBeNull();
   });
 
   it("pushFrame with histTick pushes to all rings", () => {
     const intake = new FrameIntake();
     const row = makeRow();
-    intake.pushFrame(makeFrame({ loudnessHistTick: row }), HIST_MAX, SR);
+    intake.pushFrame(makeFrame({ loudnessHistTick: row }), HIST_MAX);
     expect(intake.getLoudnessHistory()).toHaveLength(1);
     expect(intake.getCorrSnap()).toHaveLength(1);
   });
 
-  it("pushFrame with freezeSpectrum=true does not update spectrum data", () => {
-    const intake = new FrameIntake();
-    intake.pushFrame(makeFrame(), HIST_MAX, SR, true);
-    expect(intake.getSpectrumData()).toBeNull();
-  });
-
-  it("finalizeFromRow sets live spectrum data", () => {
-    const intake = new FrameIntake();
-    intake.finalizeFromRow(makeRow(), SR);
-    expect(intake.getSpectrumData()).not.toBeNull();
-    expect(intake.getSpectrumData()).toHaveProperty("bands");
-    expect(intake.getSpectrumData()).toHaveProperty("dbList");
-  });
-
-  it("reset clears all rings and spectrum data", () => {
+  it("reset clears all rings", () => {
     const intake = new FrameIntake();
     for (let i = 0; i < 3; i++) {
-      intake.pushHistRow(makeRow(), HIST_MAX, SR);
+      intake.pushHistRow(makeRow(), HIST_MAX);
     }
-    intake.pushFrame(makeFrame(), HIST_MAX, SR);
     intake.reset();
     expect(intake.getLoudnessHistory()).toHaveLength(0);
     expect(intake.getAudioSnap()).toHaveLength(0);
     expect(intake.getCorrSnap()).toHaveLength(0);
-    expect(intake.getSpectrumDataSnap()).toHaveLength(0);
-    expect(intake.getSpectrumData()).toBeNull();
   });
 
   it("audioSnap has expected shape", () => {
@@ -270,9 +247,6 @@ describe("FrameIntake", () => {
     };
     intake.pushVisualHistRow(row, 10);
     expect(intake.getVisualWaveformHist().length).toBe(1);
-    expect(intake.getVisualSpectrumHist().length).toBe(1);
-    expect(intake.getVisualVectorscopeHist().length).toBe(1);
-    expect(intake.getVisualCorrHist().length).toBe(1);
     expect(intake.getVisualWaveformHist().at(0)).toEqual({
       waveformMin: [-0.5, -0.3],
       waveformMax: [0.5, 0.3],
@@ -475,25 +449,18 @@ describe("FrameIntake", () => {
     expect(intake.getVisualSpectrumHistByKey(keyB)).toBeNull();
   });
 
-  it("per-key spectrogram bands fall back to live frame centers when the tick omits them", () => {
+  it("per-key spectrogram bands come from the per-key tick band centers", () => {
     const intake = new FrameIntake();
     const centers = [100, 200, 400, 800];
     const key = "spectrum:single:0:combined";
-    // The live frame carries the constant grid centers...
-    intake.pushFrame(
-      makeFrame({ spectrumBandCentersHz: centers, spectrumSmoothDb: [-30, -40, -50, -60] }),
-      HIST_MAX,
-      SR
-    );
-    // ...but the ~25 Hz visual tick omits them to save bandwidth.
     intake.pushVisualHistRow(
       {
         waveformMin: [0],
         waveformMax: [0],
-        spectrumSmoothDb: [],
-        vectorscopePairs: [],
         correlation: 0,
-        spectrumByKey: { [key]: { smoothDb: [-30, -40, -50, -60] } },
+        spectrumByKey: {
+          [key]: { bandCentersHz: centers, smoothDb: [-30, -40, -50, -60] },
+        },
       },
       10
     );
@@ -530,13 +497,11 @@ describe("FrameIntake", () => {
     expect(intake.getVisualWaveformHist().length).toBe(3);
   });
 
-  it("reuses constant visual arrays instead of cloning silent rows", () => {
+  it("reuses constant waveform arrays instead of cloning silent rows", () => {
     const intake = new FrameIntake();
     const row = {
       waveformMin: [0, 0],
       waveformMax: [0, 0],
-      spectrumSmoothDb: [-100, -100, -100],
-      vectorscopePairs: [0, 0, 0, 0],
       correlation: 0,
     };
 
@@ -546,27 +511,15 @@ describe("FrameIntake", () => {
     expect(intake.getVisualWaveformHist().at(0).waveformMin).toBe(
       intake.getVisualWaveformHist().at(1).waveformMin
     );
-    expect(intake.getVisualSpectrumHist().at(0).dbList).toBe(
-      intake.getVisualSpectrumHist().at(1).dbList
-    );
-    expect(intake.getVisualVectorscopeHist().at(0).pairs).toBe(
-      intake.getVisualVectorscopeHist().at(1).pairs
-    );
   });
 
-  it("does not reuse non-constant visual arrays", () => {
+  it("does not reuse non-constant waveform arrays", () => {
     const intake = new FrameIntake();
-    intake.pushVisualHistRow(
-      { waveformMin: [0, -0.1], waveformMax: [0, 0.1], spectrumSmoothDb: [-90, -80] },
-      10
-    );
-    intake.pushVisualHistRow(
-      { waveformMin: [0, -0.1], waveformMax: [0, 0.1], spectrumSmoothDb: [-90, -80] },
-      10
-    );
+    intake.pushVisualHistRow({ waveformMin: [0, -0.1], waveformMax: [0, 0.1] }, 10);
+    intake.pushVisualHistRow({ waveformMin: [0, -0.1], waveformMax: [0, 0.1] }, 10);
 
-    expect(intake.getVisualSpectrumHist().at(0).dbList).not.toBe(
-      intake.getVisualSpectrumHist().at(1).dbList
+    expect(intake.getVisualWaveformHist().at(0).waveformMin).not.toBe(
+      intake.getVisualWaveformHist().at(1).waveformMin
     );
   });
 

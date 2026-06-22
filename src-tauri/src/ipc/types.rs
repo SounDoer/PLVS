@@ -108,10 +108,6 @@ pub struct MeterHistoryEntry {
   pub correlation: f64,
   pub vectorscope_pair_x: u16,
   pub vectorscope_pair_y: u16,
-  pub spectrum_band_centers_hz: Vec<f64>,
-  pub spectrum_smooth_db: Vec<f64>,
-  /// Secondary smoothed per-band dB for snapshot overlay (empty unless view is lr/ms).
-  pub spectrum_smooth_db_b: Vec<f64>,
   /// Loudness layout semantics for this entry (e.g. `stereo`, `5.1`, `unknown`).
   pub loudness_layout: String,
   /// Whether the loudness layout is known/correct for the input stream.
@@ -155,12 +151,6 @@ pub struct VisualHistEntry {
   pub waveform_min: Vec<f32>,
   /// Per-channel linear amplitude maximum over this ~40ms window.
   pub waveform_max: Vec<f32>,
-  /// Smoothed per-band dB values for Spectrum/Spectrogram display.
-  pub spectrum_smooth_db: Vec<f64>,
-  /// Secondary smoothed per-band dB for snapshot overlay (empty unless view is lr/ms).
-  pub spectrum_smooth_db_b: Vec<f64>,
-  /// Vectorscope Lissajous: interleaved [L0,R0, L1,R1, …] for 200 subsampled points.
-  pub vectorscope_pairs: Vec<f32>,
   /// Pearson correlation coefficient [-1, 1].
   pub correlation: f64,
   /// Request-keyed spectrum samples for snapshot history. Only active request keys appear in a
@@ -188,24 +178,11 @@ pub struct AudioFramePayload {
   pub sample_l_db: f64,
   pub sample_r_db: f64,
   pub correlation: f64,
-  pub vectorscope_path: String,
   pub vectorscope_pair_x: u16,
   pub vectorscope_pair_y: u16,
-  pub spectrum_path: String,
-  pub spectrum_peak_path: String,
-  pub spectrum_band_centers_hz: Vec<f64>,
-  pub spectrum_smooth_db: Vec<f64>,
-  /// Secondary spectrum SVG path (empty unless view is lr/ms).
-  pub spectrum_path_b: String,
-  /// Secondary peak-hold SVG path (empty unless view is lr/ms). Live-only; not stored in history.
-  pub spectrum_peak_path_b: String,
-  /// Secondary smoothed per-band dB (empty unless view is lr/ms).
-  pub spectrum_smooth_db_b: Vec<f64>,
-  /// Request-keyed Spectrum/Spectrogram live results. Legacy single-result fields remain populated
-  /// from the first active spectrum request during the transition.
+  /// Request-keyed Spectrum/Spectrogram live results, one entry per active analysis request key.
   pub spectrum_results_by_key: HashMap<String, SpectrumFrameResult>,
-  /// Request-keyed Vectorscope live results. Legacy single-result fields remain populated from the
-  /// first active vectorscope request during the transition.
+  /// Request-keyed Vectorscope live results, one entry per active analysis request key.
   pub vectorscope_results_by_key: HashMap<String, VectorscopeFrameResult>,
   /// Loudness layout semantics for this frame (e.g. `stereo`, `5.1`, `unknown`).
   pub loudness_layout: String,

@@ -18,11 +18,6 @@ export function buildTauriFrameApply({
   selectedOffsetRef,
   defaultSampleRateRef,
   setAudio,
-  setSpectrumPath,
-  setSpectrumPeakPath,
-  setSpectrumPathB,
-  setSpectrumPeakPathB,
-  setVectorPath,
   setHistoryPathM,
   setHistoryPathST,
   ackFrames,
@@ -90,16 +85,6 @@ export function buildTauriFrameApply({
       dialoguePercent: Number.isFinite(f.dialoguePercent) ? f.dialoguePercent : null,
       dialogueActiveNow: !!f.dialogueActiveNow,
     }));
-
-    if (!SPECTRUM_SETTINGS.freeze) {
-      if (selectedOffsetRef.current < 0 && shouldPaintUi) {
-        setSpectrumPath(f.spectrumPath || "");
-        setSpectrumPeakPath(f.spectrumPeakPath || "");
-        setSpectrumPathB(f.spectrumPathB || "");
-        setSpectrumPeakPathB(f.spectrumPeakPathB || "");
-        setVectorPath(f.vectorscopePath || "");
-      }
-    }
 
     if (selectedOffsetRef.current < 0 && shouldPaintUi) {
       setHistoryPathM("");

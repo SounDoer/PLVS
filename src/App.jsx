@@ -301,11 +301,6 @@ function AppContent() {
     spectrumResultsByKey: {},
     vectorscopeResultsByKey: {},
   });
-  const [spectrumPath, setSpectrumPath] = useState("");
-  const [spectrumPeakPath, setSpectrumPeakPath] = useState("");
-  const [spectrumPathB, setSpectrumPathB] = useState("");
-  const [spectrumPeakPathB, setSpectrumPeakPathB] = useState("");
-  const [vectorPath, setVectorPath] = useState("");
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
   const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
   const [focusControlsVisible, setFocusControlsVisible] = useState(false);
@@ -319,8 +314,6 @@ function AppContent() {
   const focusControlsDragTimerRef = useRef(0);
 
   const audioRef = useRef(null);
-  const spectrumStateRef = useRef({ smoothDb: [], peakDb: [], peakHoldUntil: [] });
-  const spectrumTimeRef = useRef(0);
   const rafRef = useRef(0);
   const frameRef = useRef(0);
   const intakeRef = useRef(new FrameIntake());
@@ -366,17 +359,10 @@ function AppContent() {
   const {
     histSourceList,
     displayAudio,
-    displaySpectrumPath,
-    displaySpectrumPeakPath,
-    displaySpectrumPathB,
-    displaySpectrumPeakPathB,
-    displaySpectrumData,
-    displayVectorPath,
     hasHistoryData,
     correlation,
     channelMetadata,
     visualWaveformSnap,
-    visualSnapIdx,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
@@ -385,11 +371,6 @@ function AppContent() {
     sampleSec: HIST_SAMPLE_SEC,
     intake: intakeRef.current,
     audio,
-    spectrumPath,
-    spectrumPeakPath,
-    spectrumPathB,
-    spectrumPeakPathB,
-    vectorPath,
   });
 
   const {
@@ -755,13 +736,6 @@ function AppContent() {
       } catch (_) {}
     }
     intakeRef.current.reset();
-    spectrumStateRef.current = { smoothDb: [], peakDb: [], peakHoldUntil: [] };
-    spectrumTimeRef.current = 0;
-    setSpectrumPath("");
-    setSpectrumPeakPath("");
-    setSpectrumPathB("");
-    setSpectrumPeakPathB("");
-    setVectorPath("");
     setAudio({
       momentary: -Infinity,
       shortTerm: -Infinity,
@@ -912,8 +886,6 @@ function AppContent() {
     histMaxSamples: HIST_MAX_SAMPLES,
     visualMaxSamples: VISUAL_MAX_SAMPLES,
     audioRef,
-    spectrumStateRef,
-    spectrumTimeRef,
     rafRef,
     frameRef,
     intake: intakeRef.current,
@@ -921,11 +893,6 @@ function AppContent() {
     loudnessWeightsRef,
     dialogueGatingRef,
     setAudio,
-    setSpectrumPath,
-    setSpectrumPeakPath,
-    setSpectrumPathB,
-    setSpectrumPeakPathB,
-    setVectorPath,
     setHistoryPathM: () => {},
     setHistoryPathST: () => {},
     setStatus,
@@ -946,7 +913,6 @@ function AppContent() {
     // Vectorscope
     vsGridDiagInset,
     vsGridDiagFar,
-    displayVectorPath,
     correlation,
     vectorscopePairOptions,
     vectorscopeValueKey,
@@ -986,14 +952,10 @@ function AppContent() {
     onHistoryPointerMove,
     onHistoryPointerUp,
     // Spectrum
-    displaySpectrumPath,
-    displaySpectrumPeakPath,
-    displaySpectrumData,
     spectrumChannelOptions,
     spectrumValueKey,
     spectrumDisplayLabel,
     onSpectrumChannelChange,
-    displaySpectrumPathB,
     spectrumView: spectrumViewUi,
     onSpectrumViewChange,
     spectrumViewLegend: spectrumViewLegend(
@@ -1001,7 +963,6 @@ function AppContent() {
       spectrumChannelUi,
       vectorscopeChannelLabels
     ),
-    displaySpectrumPeakPathB,
     spectrumPeakHold: spectrumPeakHoldUi,
     onSpectrumPeakHoldToggle,
     // Spectrogram
@@ -1011,7 +972,6 @@ function AppContent() {
     totalSamples,
     histSourceList,
     visualWaveformSnap,
-    visualSnapIdx,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,

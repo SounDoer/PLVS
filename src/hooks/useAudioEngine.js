@@ -48,8 +48,6 @@ export function useAudioEngine({
   histMaxSamples,
   visualMaxSamples,
   audioRef,
-  spectrumStateRef,
-  spectrumTimeRef,
   rafRef,
   frameRef,
   intake,
@@ -57,11 +55,6 @@ export function useAudioEngine({
   loudnessWeightsRef,
   dialogueGatingRef,
   setAudio,
-  setSpectrumPath,
-  setSpectrumPeakPath,
-  setSpectrumPathB,
-  setSpectrumPeakPathB,
-  setVectorPath,
   setHistoryPathM,
   setHistoryPathST,
   setStatus,
@@ -75,18 +68,9 @@ export function useAudioEngine({
 
   const clearLocalMeterStateForRestart = () => {
     intake.reset();
-    if (spectrumStateRef) {
-      spectrumStateRef.current = { smoothDb: [], peakDb: [], peakHoldUntil: [] };
-    }
-    spectrumTimeRef.current = 0;
     frameRef.current = 0;
     selectedOffsetRef.current = -1;
     setSelectedOffset(-1);
-    setSpectrumPath("");
-    setSpectrumPeakPath("");
-    setSpectrumPathB("");
-    setSpectrumPeakPathB("");
-    setVectorPath("");
     setHistoryPathM("");
     setHistoryPathST("");
     setAudio({ ...CLEARED_AUDIO_STATE });
@@ -169,11 +153,6 @@ export function useAudioEngine({
             selectedOffsetRef,
             defaultSampleRateRef,
             setAudio,
-            setSpectrumPath,
-            setSpectrumPeakPath,
-            setSpectrumPathB,
-            setSpectrumPeakPathB,
-            setVectorPath,
             setHistoryPathM,
             setHistoryPathST,
             ackFrames: (seq) => {
@@ -201,7 +180,6 @@ export function useAudioEngine({
           audioRef.current = { mode: "tauri", unsubs };
           setStatus(statusMain);
           setStatus2(`Device: ${deviceStatusLabel}`);
-          spectrumTimeRef.current = performance.now() / 1000;
           return;
         }
 

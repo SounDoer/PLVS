@@ -14,7 +14,6 @@ export function VectorscopePanel() {
   const {
     vsGridDiagInset,
     vsGridDiagFar,
-    displayVectorPath,
     selectedOffset,
     correlation,
     channelCount = 0,
@@ -54,8 +53,10 @@ export function VectorscopePanel() {
     panelPairX = liveVectorscopeResult.pairX;
     panelPairY = liveVectorscopeResult.pairY;
   } else {
-    panelVectorPath = displayVectorPath;
-    panelCorrelation = correlation;
+    // Live but no per-key result yet: pending treatment (empty trace) until this request's first
+    // frame arrives, rather than showing another request's trace.
+    panelVectorPath = "";
+    panelCorrelation = null;
     panelPairX = controlPair.x;
     panelPairY = controlPair.y;
   }

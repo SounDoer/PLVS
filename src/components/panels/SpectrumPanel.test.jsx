@@ -27,15 +27,39 @@ function renderPanel(audioData) {
   );
 }
 
+// Default panel controls resolve to this live request key (pair 0/1, combined view).
+const LIVE_KEY = "spectrum:pair:0:1:combined";
+
+function liveResult(over = {}) {
+  return {
+    path: "",
+    peakPath: "",
+    pathB: "",
+    peakPathB: "",
+    bandCentersHz: [],
+    smoothDb: [],
+    smoothDbB: [],
+    ...over,
+  };
+}
+
+/** Live audioData with a per-key spectrum result under the default panel's request key. */
+function liveAudioData(result, rest = {}) {
+  return {
+    selectedOffset: -1,
+    displayAudio: { spectrumResultsByKey: { [LIVE_KEY]: result } },
+    ...rest,
+  };
+}
+
 describe("SpectrumPanel", () => {
   it("fills up to the peak contour when peak hold is on", () => {
     const peakPath = "M 0 20 L 1000 20";
-    const { container } = renderPanel({
-      displaySpectrumPath: "M 0 120 L 1000 80",
-      displaySpectrumPeakPath: peakPath,
-      panelControls: { spectrumPeakHold: true },
-      selectedOffset: -1,
-    });
+    const { container } = renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80", peakPath }), {
+        panelControls: { spectrumPeakHold: true },
+      })
+    );
 
     const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
     expect(fill?.getAttribute("d")).toBe(`${peakPath} L 1000 260 L 0 260 Z`);
@@ -47,13 +71,12 @@ describe("SpectrumPanel", () => {
     const peakPath = "M 0 20 L 1000 20";
     const livePath = "M 0 120 L 1000 80";
     // Global (first panel) has peak hold on, but this panel's own control has it off.
-    const { container } = renderPanel({
-      displaySpectrumPath: livePath,
-      displaySpectrumPeakPath: peakPath,
-      spectrumPeakHold: true,
-      panelControls: { spectrumPeakHold: false },
-      selectedOffset: -1,
-    });
+    const { container } = renderPanel(
+      liveAudioData(liveResult({ path: livePath, peakPath }), {
+        spectrumPeakHold: true,
+        panelControls: { spectrumPeakHold: false },
+      })
+    );
 
     const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
     expect(fill?.getAttribute("d")).toBe(`${livePath} L 1000 260 L 0 260 Z`);
@@ -61,12 +84,11 @@ describe("SpectrumPanel", () => {
 
   it("fills up to the live contour when peak hold is off", () => {
     const livePath = "M 0 120 L 1000 80";
-    const { container } = renderPanel({
-      displaySpectrumPath: livePath,
-      displaySpectrumPeakPath: "M 0 20 L 1000 20",
-      panelControls: { spectrumPeakHold: false },
-      selectedOffset: -1,
-    });
+    const { container } = renderPanel(
+      liveAudioData(liveResult({ path: livePath, peakPath: "M 0 20 L 1000 20" }), {
+        panelControls: { spectrumPeakHold: false },
+      })
+    );
 
     const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
     expect(fill?.getAttribute("d")).toBe(`${livePath} L 1000 260 L 0 260 Z`);
@@ -74,29 +96,27 @@ describe("SpectrumPanel", () => {
 
   it("fills the secondary peak with the live-b gradient when peak hold is on", () => {
     const peakB = "M 0 30 L 1000 30";
-    const { container } = renderPanel({
-      displaySpectrumPath: "M 0 120 L 1000 80",
-      displaySpectrumPathB: "M 0 130 L 1000 90",
-      displaySpectrumPeakPathB: peakB,
-      panelControls: { spectrumPeakHold: true },
-      selectedOffset: -1,
-      displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
-      spectrumViewLegend: null,
-    });
+    const { container } = renderPanel(
+      liveAudioData(
+        liveResult({
+          path: "M 0 120 L 1000 80",
+          pathB: "M 0 130 L 1000 90",
+          peakPathB: peakB,
+        }),
+        { panelControls: { spectrumPeakHold: true }, spectrumViewLegend: null }
+      )
+    );
 
     const fillB = container.querySelector('path[fill="url(#spectrumFillLiveB)"]');
     expect(fillB?.getAttribute("d")).toBe(`${peakB} L 1000 260 L 0 260 Z`);
   });
 
-  it("renders the secondary curve path with the live-b token when displaySpectrumPathB is non-empty", () => {
-    const { container } = renderPanel({
-      displaySpectrumPath: "M 0 120 L 1000 80",
-      displaySpectrumPathB: "M 0 130 L 1000 90",
-      displaySpectrumPeakPath: "",
-      selectedOffset: -1,
-      displaySpectrumData: { bands: [], dbList: [], dbListB: [] },
-      spectrumViewLegend: null,
-    });
+  it("renders the secondary curve path with the live-b token when the result has a B path", () => {
+    const { container } = renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80", pathB: "M 0 130 L 1000 90" }), {
+        spectrumViewLegend: null,
+      })
+    );
 
     const secondary = container.querySelector('path[stroke="var(--ui-spectrum-secondary)"]');
     expect(secondary).toBeTruthy();

@@ -25,7 +25,6 @@ import {
 
 function useHarness(props) {
   const audioRef = useRef(null);
-  const spectrumTimeRef = useRef(0);
   const rafRef = useRef(0);
   const frameRef = useRef(0);
   const selectedOffsetRef = useRef(-1);
@@ -38,7 +37,6 @@ function useHarness(props) {
     histMaxSamples: 10,
     visualMaxSamples: 10,
     audioRef,
-    spectrumTimeRef,
     rafRef,
     frameRef,
     selectedOffsetRef,
@@ -76,11 +74,6 @@ describe("useAudioEngine", () => {
       captureFormatSignature: "2:48000",
       intake: { reset: vi.fn() },
       setAudio: vi.fn(),
-      setSpectrumPath: vi.fn(),
-      setSpectrumPeakPath: vi.fn(),
-      setSpectrumPathB: vi.fn(),
-      setSpectrumPeakPathB: vi.fn(),
-      setVectorPath: vi.fn(),
       setHistoryPathM: vi.fn(),
       setHistoryPathST: vi.fn(),
       setStatus: vi.fn(),
@@ -106,11 +99,6 @@ describe("useAudioEngine", () => {
     expect(props.intake.reset).toHaveBeenCalledTimes(1);
     expect(result.current.frameRef.current).toBe(0);
     expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
-    expect(props.setSpectrumPath).toHaveBeenCalledWith("");
-    expect(props.setSpectrumPeakPath).toHaveBeenCalledWith("");
-    expect(props.setSpectrumPathB).toHaveBeenCalledWith("");
-    expect(props.setSpectrumPeakPathB).toHaveBeenCalledWith("");
-    expect(props.setVectorPath).toHaveBeenCalledWith("");
     expect(props.setHistoryPathM).toHaveBeenCalledWith("");
     expect(props.setHistoryPathST).toHaveBeenCalledWith("");
     expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });

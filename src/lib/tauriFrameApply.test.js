@@ -13,11 +13,6 @@ function makeOptions(overrides = {}) {
     selectedOffsetRef: { current: -1 },
     defaultSampleRateRef: { current: 48000 },
     setAudio() {},
-    setSpectrumPath() {},
-    setSpectrumPeakPath() {},
-    setSpectrumPathB() {},
-    setSpectrumPeakPathB() {},
-    setVectorPath() {},
     setHistoryPathM() {},
     setHistoryPathST() {},
     ...overrides,
@@ -79,13 +74,16 @@ describe("buildTauriFrameApply", () => {
     expect(ackFrames).not.toHaveBeenCalled();
   });
 
-  it("calls setSpectrumPathB with the B path from the frame", () => {
-    const setSpectrumPathB = vi.fn();
-    // frameRef starts at 1 so first applyFrame increments to 2 (even → shouldPaintUi = true)
-    const { applyFrame } = buildTauriFrameApply(
-      makeOptions({ setSpectrumPathB, frameRef: { current: 1 } })
-    );
-    applyFrame({ spectrumPathB: "abc" });
-    expect(setSpectrumPathB).toHaveBeenCalledWith("abc");
+  it("propagates per-key spectrum/vectorscope live results into audio state", () => {
+    let audioState = { spectrumResultsByKey: {}, vectorscopeResultsByKey: {} };
+    const setAudio = (updater) => {
+      audioState = updater(audioState);
+    };
+    const { applyFrame } = buildTauriFrameApply(makeOptions({ setAudio }));
+    const spectrumResultsByKey = { "spectrum:pair:0:1:combined": { path: "p" } };
+    const vectorscopeResultsByKey = { "vectorscope:pair:0:1": { path: "v" } };
+    applyFrame({ peakDb: [], peakHoldDb: [], spectrumResultsByKey, vectorscopeResultsByKey });
+    expect(audioState.spectrumResultsByKey).toBe(spectrumResultsByKey);
+    expect(audioState.vectorscopeResultsByKey).toBe(vectorscopeResultsByKey);
   });
 });

@@ -553,39 +553,13 @@ impl MeterPipeline {
       ),
     };
 
-    let (corr, vpath) = if vectorscope_pair.is_some() {
-      self.vectorscope.get_output()
+    // Top-level correlation scalar (first vectorscope request's pair); per-key paths/curves live in
+    // the by-key result maps assembled by push_pcm_f32_with_requests.
+    let corr = if vectorscope_pair.is_some() {
+      self.vectorscope.get_output().0
     } else {
-      (0.0, String::new())
+      0.0
     };
-
-    let empty_f64: &[f64] = &[];
-    let (centers, smooth, peak) = if spectrum_request.is_some() {
-      self.spectrum.last_output()
-    } else {
-      (empty_f64, empty_f64, empty_f64)
-    };
-    let (spath, spk) = if !centers.is_empty() && smooth.len() == centers.len() {
-      let pk = if peak.len() == centers.len() {
-        peak
-      } else {
-        smooth
-      };
-      spectrum_paths_from_bands(centers, smooth, pk, true)
-    } else {
-      (String::new(), String::new())
-    };
-    let (spath_b, spk_b, smooth_b_vec): (String, String, Vec<f64>) =
-      match self.spectrum.last_output_secondary() {
-        Some((sb, pb)) if sb.len() == centers.len() && !centers.is_empty() => {
-          let pkb = if pb.len() == centers.len() { pb } else { sb };
-          let (lp, pp) = spectrum_paths_from_bands(centers, sb, pkb, true);
-          (lp, pp, sb.to_vec())
-        }
-        _ => (String::new(), String::new(), Vec::new()),
-      };
-    let centers = centers.to_vec();
-    let smooth = smooth.to_vec();
 
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let peak_hold_db = peak_db.clone();
@@ -650,9 +624,6 @@ impl MeterPipeline {
         correlation: corr,
         vectorscope_pair_x: pair_x,
         vectorscope_pair_y: pair_y,
-        spectrum_band_centers_hz: centers.clone(),
-        spectrum_smooth_db: smooth.clone(),
-        spectrum_smooth_db_b: smooth_b_vec.clone(),
         loudness_layout: loudness_layout.clone(),
         loudness_layout_known,
         waveform_min,
@@ -683,19 +654,16 @@ impl MeterPipeline {
         self.visual_waveform_min_acc.fill(f32::INFINITY);
         self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
 
-        let (visual_corr, vs_pairs) = if vectorscope_pair.is_some() {
-          self.vectorscope.get_history_pairs(VS_HISTORY_POINTS)
+        let visual_corr = if vectorscope_pair.is_some() {
+          self.vectorscope.get_history_pairs(VS_HISTORY_POINTS).0
         } else {
-          (0.0, Vec::new())
+          0.0
         };
 
         Some(VisualHistEntry {
           timestamp_ms: self.t0.elapsed().as_millis() as u64,
           waveform_min: visual_waveform_min,
           waveform_max: visual_waveform_max,
-          spectrum_smooth_db: smooth.clone(),
-          spectrum_smooth_db_b: smooth_b_vec.clone(),
-          vectorscope_pairs: vs_pairs,
           correlation: visual_corr,
           spectrum_by_key: HashMap::new(),
           vectorscope_by_key: HashMap::new(),
@@ -720,16 +688,8 @@ impl MeterPipeline {
       sample_l_db: sl,
       sample_r_db: sr,
       correlation: corr,
-      vectorscope_path: vpath,
       vectorscope_pair_x: pair_x,
       vectorscope_pair_y: pair_y,
-      spectrum_path: spath,
-      spectrum_peak_path: spk,
-      spectrum_band_centers_hz: centers,
-      spectrum_smooth_db: smooth,
-      spectrum_path_b: spath_b,
-      spectrum_peak_path_b: spk_b,
-      spectrum_smooth_db_b: smooth_b_vec,
       spectrum_results_by_key: HashMap::new(),
       vectorscope_results_by_key: HashMap::new(),
       loudness_layout,
@@ -866,9 +826,8 @@ mod tests {
       )
       .expect("100ms chunk should emit a frame");
 
-    assert!(frame.spectrum_path.is_empty());
-    assert!(frame.spectrum_smooth_db.is_empty());
-    assert!(frame.vectorscope_path.is_empty());
+    assert!(frame.spectrum_results_by_key.is_empty());
+    assert!(frame.vectorscope_results_by_key.is_empty());
     assert_eq!(frame.correlation, 0.0);
   }
 
