@@ -76,6 +76,8 @@ import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
+// Live and file sessions share bounded display history. File-mode summary metrics are authoritative
+// for the whole file; panel history is an inspectable downsampled/session view, not unlimited storage.
 const HIST_MAX_SAMPLES = 72000;
 const VISUAL_MAX_SAMPLES = 180_000; // 25 Hz × 2 h
 const DIALOGUE_STAT_IDS = [
