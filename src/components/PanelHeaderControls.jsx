@@ -376,7 +376,11 @@ export function PanelHeaderControls({
         {showChannel ? (
           <SingleSelectChip
             label={
-              matchedOption && spectrumDisplayLabel ? spectrumDisplayLabel : selectedOption.label
+              hasPanelControls
+                ? selectedOption.label
+                : matchedOption && spectrumDisplayLabel
+                  ? spectrumDisplayLabel
+                  : selectedOption.label
             }
             ariaLabel={`${activeTab} channel`}
             options={spectrumOptions}
@@ -451,8 +455,11 @@ export function PanelHeaderControls({
       vectorscopeOptions,
       effectiveVectorscopeValueKey
     );
-    const selectedLabel =
-      matchedOption && vectorscopeDisplayLabel ? vectorscopeDisplayLabel : selectedOption.label;
+    const selectedLabel = hasPanelControls
+      ? selectedOption.label
+      : matchedOption && vectorscopeDisplayLabel
+        ? vectorscopeDisplayLabel
+        : selectedOption.label;
 
     return (
       <SingleSelectChip

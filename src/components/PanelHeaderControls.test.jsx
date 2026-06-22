@@ -137,6 +137,29 @@ describe("PanelHeaderControls", () => {
     expect(screen.getByText("Historical L/R")).toBeTruthy();
   });
 
+  it("shows the panel's own channel label, not the global display label, per instance", () => {
+    // Reproduces the multichannel bug: a second Spectrogram panel selects C, but the global
+    // (first-panel) display label is still L+R. The chip must reflect this panel's own selection.
+    render(
+      <PanelHeaderControls
+        activeTab="spectrogram"
+        channelCount={6}
+        spectrumOptions={[
+          { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+          { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+        ]}
+        spectrumValueKey="p-0-1"
+        spectrumDisplayLabel="L+R"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: 2 } }}
+        onPanelControlsChange={vi.fn()}
+        onSpectrumChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("C")).toBeTruthy();
+    expect(screen.queryByText("L+R")).toBeNull();
+  });
+
   it("calls vectorscope change with selected pair", () => {
     const onVectorscopeChange = vi.fn();
     render(
