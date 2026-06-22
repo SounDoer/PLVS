@@ -304,6 +304,75 @@ pub fn file_analysis_probe(path: String) -> Result<FileAnalysisProbeResult, Stri
   crate::file_analysis::probe::probe_file(path)
 }
 
+#[tauri::command]
+pub fn file_analysis_start(
+  app: AppHandle,
+  path: String,
+  on_frame: tauri::ipc::Channel<AudioFramePayload>,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  {
+    let mut capture = state
+      .inner()
+      .capture
+      .lock()
+      .map_err(|_| "state lock poisoned".to_string())?;
+    *capture = None;
+  }
+  {
+    let mut file = state
+      .inner()
+      .file_analysis
+      .lock()
+      .map_err(|_| "file analysis state lock poisoned".to_string())?;
+    *file = None;
+  }
+  state
+    .inner()
+    .frame_ack_seq
+    .store(0, std::sync::atomic::Ordering::Relaxed);
+  let pool: FrameSubscribers = Arc::new(std::sync::Mutex::new(HashMap::new()));
+  {
+    let mut p = pool
+      .lock()
+      .map_err(|_| "frame subscriber map poisoned".to_string())?;
+    p.insert("main".to_string(), on_frame);
+  }
+  {
+    let mut slot = state
+      .inner()
+      .frame_subscribers
+      .lock()
+      .map_err(|_| "frame subscribers lock poisoned".to_string())?;
+    *slot = Some(pool.clone());
+  }
+  let session = crate::file_analysis::session::FileAnalysisSession::start(path, pool, app)?;
+  let mut file = state
+    .inner()
+    .file_analysis
+    .lock()
+    .map_err(|_| "file analysis state lock poisoned".to_string())?;
+  *file = Some(session);
+  Ok(())
+}
+
+#[tauri::command]
+pub fn file_analysis_stop(state: State<'_, AppState>) -> Result<(), String> {
+  let mut file = state
+    .inner()
+    .file_analysis
+    .lock()
+    .map_err(|_| "file analysis state lock poisoned".to_string())?;
+  *file = None;
+  let mut subscribers = state
+    .inner()
+    .frame_subscribers
+    .lock()
+    .map_err(|_| "frame subscribers lock poisoned".to_string())?;
+  *subscribers = None;
+  Ok(())
+}
+
 /// Reset DSP state (peak maxima + history accumulators) on the capture thread to match UI Clear
 /// for the native path, then emit `meter-history-cleared`.
 #[tauri::command]

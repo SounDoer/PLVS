@@ -39,6 +39,8 @@ pub fn run() {
       ipc::commands::ack_frames,
       ipc::commands::audio_stop,
       ipc::commands::file_analysis_probe,
+      ipc::commands::file_analysis_start,
+      ipc::commands::file_analysis_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_engine_state,
       window_state::current_window_bounds,
