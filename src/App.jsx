@@ -589,6 +589,23 @@ function AppContent() {
     }, 900);
   }, [focusControlsHeld]);
 
+  const hideFocusControlsNow = useCallback(() => {
+    if (focusControlsHeld) return;
+    window.clearTimeout(focusControlsHideTimerRef.current);
+    setFocusControlsVisible(false);
+  }, [focusControlsHeld]);
+
+  const toggleFocusControls = useCallback(() => {
+    if (focusControlsVisible) {
+      hideFocusControlsNow();
+    } else {
+      showFocusControls();
+      focusControlsHideTimerRef.current = window.setTimeout(() => {
+        setFocusControlsVisible(false);
+      }, 3000);
+    }
+  }, [focusControlsVisible, hideFocusControlsNow, showFocusControls]);
+
   const holdFocusControls = useCallback((open) => {
     setFocusControlsHeld(open);
     if (open) {
@@ -803,7 +820,7 @@ function AppContent() {
     setSettingsOpen,
     clearShortcut,
     autoHideControls: focusView.autoHideControls,
-    showFocusControls,
+    toggleFocusControls,
   };
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -815,7 +832,7 @@ function AppContent() {
         setSettingsOpen: openSettings,
         clearShortcut: clearCombo,
         autoHideControls,
-        showFocusControls: revealFocusControls,
+        toggleFocusControls: toggleFocus,
       } = shortcutHandlerRef.current;
       const tag = document.activeElement?.tagName ?? "";
       const editable =
@@ -832,7 +849,7 @@ function AppContent() {
       }
       if (e.key === "Escape" && autoHideControls && !editable) {
         e.preventDefault();
-        revealFocusControls();
+        toggleFocus();
         return;
       }
       if ((e.metaKey || e.ctrlKey) && e.key === ",") {
@@ -984,7 +1001,10 @@ function AppContent() {
   return (
     <AudioDataContext.Provider value={audioData}>
       <div className={SHELL_PAGE}>
-        <div className={focusView.autoHideControls ? SHELL_INNER_FOCUS : SHELL_INNER}>
+        <div
+          className={focusView.autoHideControls ? SHELL_INNER_FOCUS : SHELL_INNER}
+          onPointerLeave={focusView.autoHideControls ? hideFocusControlsNow : undefined}
+        >
           {focusView.autoHideControls ? (
             <div
               className={SHELL_TOP_REVEAL_HOT_ZONE}
