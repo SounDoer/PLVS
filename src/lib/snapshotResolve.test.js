@@ -187,6 +187,21 @@ describe("resolveKeyedVisualIndex", () => {
     expect(resolveKeyedVisualIndex(entries, 1050, 40)).toEqual({ index: 1, missing: false });
   });
 
+  it("returns missing when the selected time lands in an interior gap", () => {
+    // The view was active around 1000 then again around 5000 (the user switched away and back).
+    // 3000 sits inside the gap and is far from any entry, so the view had no data then.
+    const gapped = [
+      { timestampMs: 1000 },
+      { timestampMs: 1040 },
+      { timestampMs: 5000 },
+      { timestampMs: 5040 },
+    ];
+    expect(resolveKeyedVisualIndex(gapped, 3000, 40)).toEqual({ index: -1, missing: true });
+    // A time near either active stretch still resolves.
+    expect(resolveKeyedVisualIndex(gapped, 1020, 40)).toEqual({ index: 1, missing: false });
+    expect(resolveKeyedVisualIndex(gapped, 5010, 40)).toEqual({ index: 2, missing: false });
+  });
+
   it("returns the latest entry when the target is non-finite", () => {
     expect(resolveKeyedVisualIndex(entries, null, 40)).toEqual({ index: 2, missing: false });
   });
