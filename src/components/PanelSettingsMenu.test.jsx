@@ -22,8 +22,10 @@ describe("PanelSettingsMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
 
     expect(screen.getByLabelText("level meter mode")).toBeTruthy();
-    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
     fireEvent.click(screen.getByRole("option", { name: "M" }));
+    expect(screen.getByText("Mode")).toBeTruthy();
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,

@@ -1,16 +1,10 @@
-import { Check, GripVertical } from "lucide-react";
+import { useState } from "react";
+import { Check, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
@@ -19,30 +13,85 @@ import {
 } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { Switch } from "@/components/ui/switch";
 
-const CHIP_CLASS =
-  "h-6 min-w-0 max-w-[6rem] rounded-md border border-border/70 bg-transparent px-2 py-0 text-[11px] text-muted-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
+const SETTINGS_SELECT_TRIGGER_CLASS =
+  "h-7 w-auto max-w-none rounded-md border border-border/70 bg-transparent px-2 py-0 text-xs text-muted-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
 
-function ChannelTrigger({ label, ariaLabel, triggerClassName }) {
+function SettingsGroup({ children }) {
+  return <div className="flex w-max max-w-[22rem] flex-col gap-1">{children}</div>;
+}
+
+function SettingsRow({ label, children }) {
   return (
-    <SelectTrigger aria-label={ariaLabel} className={cn(CHIP_CLASS, triggerClassName)}>
-      <SelectValue>{label}</SelectValue>
-    </SelectTrigger>
+    <div className="flex min-h-7 items-center justify-between gap-4 rounded-sm px-1 py-0.5">
+      <span className="whitespace-nowrap text-xs font-medium text-popover-foreground">{label}</span>
+      <div className="flex min-w-0 shrink-0 items-center">{children}</div>
+    </div>
   );
 }
 
-function SingleSelectChip({ label, ariaLabel, options, value, onChange, triggerClassName }) {
+function ConfigurePopover({ ariaLabel, children }) {
   return (
-    <Select value={value} onValueChange={onChange}>
-      <ChannelTrigger label={label} ariaLabel={ariaLabel} triggerClassName={triggerClassName} />
-      <SelectContent align="end" sideOffset={6}>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-secondary hover:text-foreground"
+        >
+          Configure
+          <ChevronRight aria-hidden="true" className="size-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-auto p-1">
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function SettingsSelect({ label, ariaLabel, options, value, onChange, triggerClassName }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          className={cn(
+            SETTINGS_SELECT_TRIGGER_CLASS,
+            "inline-flex items-center justify-between gap-2",
+            triggerClassName
+          )}
+        >
+          <span className="min-w-0 whitespace-nowrap">{label}</span>
+          <ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-auto p-1">
         {options.map((opt) => (
-          <SelectItem key={opt.key ?? opt.id} value={opt.key ?? opt.id}>
+          <button
+            key={opt.key ?? opt.id}
+            type="button"
+            role="option"
+            aria-selected={(opt.key ?? opt.id) === value}
+            className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+            onClick={() => {
+              onChange(opt.key ?? opt.id);
+              setOpen(false);
+            }}
+          >
+            <span className="flex size-4 items-center justify-center">
+              {(opt.key ?? opt.id) === value ? (
+                <Check aria-hidden="true" className="size-3.5" />
+              ) : null}
+            </span>
             {opt.label}
-          </SelectItem>
+          </button>
         ))}
-      </SelectContent>
-    </Select>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -89,7 +138,7 @@ function SortableStatRow({ id, label, checked, onToggle }) {
         type="button"
         role="checkbox"
         aria-checked={checked}
-        className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap rounded-sm px-1 py-1 text-left text-sm text-popover-foreground outline-none hover:text-accent-foreground"
+        className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap rounded-sm px-1 py-1 text-left text-xs text-popover-foreground outline-none hover:text-accent-foreground"
         onClick={() => onToggle(id)}
       >
         <span className="flex size-4 items-center justify-center">
@@ -101,7 +150,7 @@ function SortableStatRow({ id, label, checked, onToggle }) {
   );
 }
 
-function SortableStatsChip({
+function SortableStatsList({
   label,
   options,
   orderedIds,
@@ -112,99 +161,69 @@ function SortableStatsChip({
 }) {
   const labelById = new Map(options.map((option) => [option.id, option.label]));
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className={CHIP_CLASS}>
-          {label}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-auto min-w-[8rem] p-1">
-        <Reorder.Group
-          axis="y"
-          values={orderedIds}
-          onReorder={onReorder}
-          role="group"
-          aria-label={label}
-          className="flex select-none flex-col gap-0.5"
-        >
-          {orderedIds.map((id) => (
-            <SortableStatRow
-              key={id}
-              id={id}
-              label={labelById.get(id) ?? id}
-              checked={selectedIds.includes(id)}
-              onToggle={onToggle}
-            />
-          ))}
-        </Reorder.Group>
-        <div className="mt-1">
-          <InlineConfirm
-            onConfirm={onReset}
-            confirmLabel="Confirm reset stats"
-            cancelLabel="Cancel reset stats"
-            trigger={(arm) => (
-              <button
-                type="button"
-                aria-label="Reset stats"
-                onClick={arm}
-                className="w-full rounded-sm px-2 py-1 text-left text-xs text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground"
-              >
-                Reset
-              </button>
-            )}
+    <div className="flex flex-col gap-0.5">
+      <Reorder.Group
+        axis="y"
+        values={orderedIds}
+        onReorder={onReorder}
+        role="group"
+        aria-label={label}
+        className="flex select-none flex-col gap-0.5"
+      >
+        {orderedIds.map((id) => (
+          <SortableStatRow
+            key={id}
+            id={id}
+            label={labelById.get(id) ?? id}
+            checked={selectedIds.includes(id)}
+            onToggle={onToggle}
           />
-        </div>
-      </PopoverContent>
-    </Popover>
+        ))}
+      </Reorder.Group>
+      <div className="mt-1">
+        <InlineConfirm
+          onConfirm={onReset}
+          confirmLabel="Confirm reset stats"
+          cancelLabel="Cancel reset stats"
+          trigger={(arm) => (
+            <button
+              type="button"
+              aria-label="Reset stats"
+              onClick={arm}
+              className="w-full rounded-sm px-2 py-1 text-left text-xs text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+            >
+              Reset
+            </button>
+          )}
+        />
+      </div>
+    </div>
   );
 }
 
-function MultiSelectChip({ label, options, selectedIds, onToggle }) {
+function MultiSelectList({ label, options, selectedIds, onToggle }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className={CHIP_CLASS}>
-          {label}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-auto min-w-[8rem] p-1">
-        <div role="group" aria-label={label}>
-          {options.map((option) => {
-            const checked = selectedIds.includes(option.id);
+    <div role="group" aria-label={label}>
+      {options.map((option) => {
+        const checked = selectedIds.includes(option.id);
 
-            return (
-              <button
-                key={option.id}
-                type="button"
-                role="checkbox"
-                aria-checked={checked}
-                className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-sm text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
-                onClick={() => onToggle(option.id)}
-              >
-                <span className="flex size-4 items-center justify-center">
-                  {checked ? <Check aria-hidden="true" className="size-4" /> : null}
-                </span>
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function ToggleChip({ label, ariaLabel, pressed, onToggle }) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      aria-pressed={pressed}
-      onClick={onToggle}
-      className={cn(CHIP_CLASS, "w-auto", pressed && "bg-secondary text-foreground")}
-    >
-      {label}
-    </button>
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="checkbox"
+            aria-checked={checked}
+            className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+            onClick={() => onToggle(option.id)}
+          >
+            <span className="flex size-4 items-center justify-center">
+              {checked ? <Check aria-hidden="true" className="size-4" /> : null}
+            </span>
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -261,21 +280,24 @@ export function PanelSettingsContent({
       ) ?? LEVEL_METER_MODE_OPTIONS[0];
 
     return (
-      <SingleSelectChip
-        label={selectedMode.label}
-        ariaLabel="level meter mode"
-        options={LEVEL_METER_MODE_OPTIONS}
-        value={selectedMode.id}
-        onChange={(levelMeterMode) => {
-          onPanelControlsChange(
-            normalizePanelControls({
-              ...normalizedPanelControls,
-              levelMeterMode,
-            })
-          );
-        }}
-        triggerClassName="w-auto"
-      />
+      <SettingsGroup title="Level Meter">
+        <SettingsRow label="Mode">
+          <SettingsSelect
+            label={selectedMode.label}
+            ariaLabel="level meter mode"
+            options={LEVEL_METER_MODE_OPTIONS}
+            value={selectedMode.id}
+            onChange={(levelMeterMode) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  levelMeterMode,
+                })
+              );
+            }}
+          />
+        </SettingsRow>
+      </SettingsGroup>
     );
   }
 
@@ -285,37 +307,43 @@ export function PanelSettingsContent({
     const normalizedPanelControls = normalizePanelControls(panelControls);
 
     return (
-      <SortableStatsChip
-        label="Stats"
-        options={STATS_OPTIONS}
-        orderedIds={normalizedPanelControls.statsOrder}
-        selectedIds={normalizedPanelControls.statsVisibleIds}
-        onToggle={(id) => {
-          onPanelControlsChange(
-            normalizePanelControls({
-              ...normalizedPanelControls,
-              statsVisibleIds: toggleId(normalizedPanelControls.statsVisibleIds, id),
-            })
-          );
-        }}
-        onReorder={(nextOrder) => {
-          onPanelControlsChange(
-            normalizePanelControls({
-              ...normalizedPanelControls,
-              statsOrder: nextOrder,
-            })
-          );
-        }}
-        onReset={() => {
-          onPanelControlsChange(
-            normalizePanelControls({
-              ...normalizedPanelControls,
-              statsOrder: [...STATS_CANONICAL_ORDER],
-              statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
-            })
-          );
-        }}
-      />
+      <SettingsGroup title="Stats">
+        <SettingsRow label="Metrics">
+          <ConfigurePopover label="Metrics" ariaLabel="Configure metrics">
+            <SortableStatsList
+              label="Metrics"
+              options={STATS_OPTIONS}
+              orderedIds={normalizedPanelControls.statsOrder}
+              selectedIds={normalizedPanelControls.statsVisibleIds}
+              onToggle={(id) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    statsVisibleIds: toggleId(normalizedPanelControls.statsVisibleIds, id),
+                  })
+                );
+              }}
+              onReorder={(nextOrder) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    statsOrder: nextOrder,
+                  })
+                );
+              }}
+              onReset={() => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    statsOrder: [...STATS_CANONICAL_ORDER],
+                    statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
+                  })
+                );
+              }}
+            />
+          </ConfigurePopover>
+        </SettingsRow>
+      </SettingsGroup>
     );
   }
 
@@ -325,22 +353,28 @@ export function PanelSettingsContent({
     const normalizedPanelControls = normalizePanelControls(panelControls);
 
     return (
-      <MultiSelectChip
-        label="Layers"
-        options={LOUDNESS_HISTORY_LAYER_OPTIONS}
-        selectedIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
-        onToggle={(id) => {
-          onPanelControlsChange(
-            normalizePanelControls({
-              ...normalizedPanelControls,
-              loudnessHistoryVisibleLayerIds: toggleId(
-                normalizedPanelControls.loudnessHistoryVisibleLayerIds,
-                id
-              ),
-            })
-          );
-        }}
-      />
+      <SettingsGroup title="Loudness">
+        <SettingsRow label="Layers">
+          <ConfigurePopover label="Layers" ariaLabel="Configure layers">
+            <MultiSelectList
+              label="Layers"
+              options={LOUDNESS_HISTORY_LAYER_OPTIONS}
+              selectedIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
+              onToggle={(id) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    loudnessHistoryVisibleLayerIds: toggleId(
+                      normalizedPanelControls.loudnessHistoryVisibleLayerIds,
+                      id
+                    ),
+                  })
+                );
+              }}
+            />
+          </ConfigurePopover>
+        </SettingsRow>
+      </SettingsGroup>
     );
   }
 
@@ -372,74 +406,77 @@ export function PanelSettingsContent({
     if (!showView && !showChannel && !showPeak) return null;
 
     return (
-      <div className="flex items-center gap-0.5">
+      <SettingsGroup title={activeTab === "spectrum" ? "Spectrum" : "Spectrogram"}>
         {showChannel ? (
-          <SingleSelectChip
-            label={
-              hasPanelControls
-                ? selectedOption.label
-                : matchedOption && spectrumDisplayLabel
-                  ? spectrumDisplayLabel
-                  : selectedOption.label
-            }
-            ariaLabel={`${activeTab} channel`}
-            options={spectrumOptions}
-            value={selectedOption.key}
-            onChange={(key) => {
-              const opt = spectrumOptions.find((o) => o.key === key);
-              if (opt) {
+          <SettingsRow label="Channel">
+            <SettingsSelect
+              label={
+                hasPanelControls
+                  ? selectedOption.label
+                  : matchedOption && spectrumDisplayLabel
+                    ? spectrumDisplayLabel
+                    : selectedOption.label
+              }
+              ariaLabel={`${activeTab} channel`}
+              options={spectrumOptions}
+              value={selectedOption.key}
+              onChange={(key) => {
+                const opt = spectrumOptions.find((o) => o.key === key);
+                if (opt) {
+                  onPanelControlsChange?.(
+                    normalizePanelControls({
+                      ...normalizedPanelControls,
+                      spectrumChannel: opt.sel,
+                    })
+                  );
+                  if (typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
+                }
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showView ? (
+          <SettingsRow label="View">
+            <SettingsSelect
+              label={
+                <SpectrumViewChipLabel
+                  fallbackLabel={
+                    SPECTRUM_VIEW_OPTIONS.find((option) => option.key === effectiveSpectrumView)
+                      ?.label ?? "Combined"
+                  }
+                  legend={spectrumViewLegend}
+                />
+              }
+              ariaLabel="spectrum view"
+              options={SPECTRUM_VIEW_OPTIONS}
+              value={effectiveSpectrumView}
+              onChange={(key) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({ ...normalizedPanelControls, spectrumView: key })
+                );
+                onSpectrumViewChange?.(key);
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showPeak ? (
+          <SettingsRow label="Peak hold">
+            <Switch
+              aria-label="peak hold"
+              checked={effectiveSpectrumPeakHold}
+              onCheckedChange={(checked) => {
                 onPanelControlsChange?.(
                   normalizePanelControls({
                     ...normalizedPanelControls,
-                    spectrumChannel: opt.sel,
+                    spectrumPeakHold: checked,
                   })
                 );
-                if (typeof onSpectrumChange === "function") onSpectrumChange(opt.sel);
-              }
-            }}
-            triggerClassName="w-auto"
-          />
+                onSpectrumPeakHoldToggle?.();
+              }}
+            />
+          </SettingsRow>
         ) : null}
-        {showView ? (
-          <SingleSelectChip
-            label={
-              <SpectrumViewChipLabel
-                fallbackLabel={
-                  SPECTRUM_VIEW_OPTIONS.find((option) => option.key === effectiveSpectrumView)
-                    ?.label ?? "Combined"
-                }
-                legend={spectrumViewLegend}
-              />
-            }
-            ariaLabel="spectrum view"
-            options={SPECTRUM_VIEW_OPTIONS}
-            value={effectiveSpectrumView}
-            onChange={(key) => {
-              onPanelControlsChange?.(
-                normalizePanelControls({ ...normalizedPanelControls, spectrumView: key })
-              );
-              onSpectrumViewChange?.(key);
-            }}
-            triggerClassName="w-auto max-w-none"
-          />
-        ) : null}
-        {showPeak ? (
-          <ToggleChip
-            label="Peak"
-            ariaLabel="peak hold"
-            pressed={effectiveSpectrumPeakHold}
-            onToggle={() => {
-              onPanelControlsChange?.(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  spectrumPeakHold: !effectiveSpectrumPeakHold,
-                })
-              );
-              onSpectrumPeakHoldToggle?.();
-            }}
-          />
-        ) : null}
-      </div>
+      </SettingsGroup>
     );
   }
 
@@ -462,24 +499,28 @@ export function PanelSettingsContent({
         : selectedOption.label;
 
     return (
-      <SingleSelectChip
-        label={selectedLabel}
-        ariaLabel="vectorscope channel"
-        options={vectorscopeOptions}
-        value={selectedOption.key}
-        onChange={(key) => {
-          const opt = vectorscopeOptions.find((o) => o.key === key);
-          if (opt && typeof onVectorscopeChange === "function") {
-            onPanelControlsChange?.(
-              normalizePanelControls({
-                ...normalizedPanelControls,
-                vectorscopePair: { x: opt.x, y: opt.y },
-              })
-            );
-            onVectorscopeChange({ x: opt.x, y: opt.y });
-          }
-        }}
-      />
+      <SettingsGroup title="Vectorscope">
+        <SettingsRow label="Channel pair">
+          <SettingsSelect
+            label={selectedLabel}
+            ariaLabel="vectorscope channel"
+            options={vectorscopeOptions}
+            value={selectedOption.key}
+            onChange={(key) => {
+              const opt = vectorscopeOptions.find((o) => o.key === key);
+              if (opt && typeof onVectorscopeChange === "function") {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    vectorscopePair: { x: opt.x, y: opt.y },
+                  })
+                );
+                onVectorscopeChange({ x: opt.x, y: opt.y });
+              }
+            }}
+          />
+        </SettingsRow>
+      </SettingsGroup>
     );
   }
 

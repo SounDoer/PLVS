@@ -51,7 +51,7 @@ function WorkspaceStateProbe({ onState }) {
 }
 
 describe("PanelSettingsContent", () => {
-  it("renders Level Meter mode chip and updates mode", () => {
+  it("renders Level Meter mode as a labeled settings row and updates mode", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -61,11 +61,13 @@ describe("PanelSettingsContent", () => {
       />
     );
 
+    expect(screen.getByText("Mode")).toBeTruthy();
     expect(screen.getByLabelText("level meter mode")).toBeTruthy();
-    expect(screen.getByLabelText("level meter mode").className).toContain("focus-visible:ring-0");
+    expect(screen.getByLabelText("level meter mode").className).not.toContain("min-w-[");
     expect(screen.getByText("Peak")).toBeTruthy();
 
-    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
     fireEvent.click(screen.getByRole("option", { name: "M" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -84,7 +86,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
     fireEvent.click(screen.getByRole("option", { name: "ST" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -181,7 +183,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("button", { name: "vectorscope channel" }));
     fireEvent.click(screen.getByRole("option", { name: "L/C" }));
 
     expect(onVectorscopeChange).toHaveBeenCalledWith({ x: 0, y: 2 });
@@ -222,7 +224,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("Stale")).toBeNull();
   });
 
-  it("renders Stats chip and toggles stat ids", () => {
+  it("renders Stats metrics as a secondary configure popover and toggles stat ids", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -232,7 +234,8 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    expect(screen.getByText("Metrics")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -259,7 +262,13 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+    expect(screen.queryByText("Loudness")).toBeNull();
+    expect(screen.getByText("Layers").className).toContain("text-xs");
+    fireEvent.click(screen.getByRole("button", { name: "Configure layers" }));
+    expect(document.querySelector('[data-slot="popover-content"]').className).not.toContain(
+      "min-w-[12rem]"
+    );
+    expect(screen.getByRole("checkbox", { name: "Momentary" }).className).toContain("text-xs");
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -280,7 +289,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
     const checkboxes = screen.getAllByRole("checkbox");
     expect(checkboxes.slice(0, 3).map((c) => c.textContent)).toEqual([
       "Short-term Dynamics",
@@ -303,7 +312,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
     fireEvent.click(screen.getByRole("button", { name: "Reset stats" }));
     expect(onPanelControlsChange).not.toHaveBeenCalled();
 
@@ -317,6 +326,7 @@ describe("PanelSettingsContent", () => {
   });
 
   it("shows the view toggle for a stereo spectrum panel", () => {
+    const onSpectrumViewChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -324,10 +334,17 @@ describe("PanelSettingsContent", () => {
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
         spectrumValueKey="p-0-1"
         spectrumView="combined"
-        onSpectrumViewChange={vi.fn()}
+        onSpectrumViewChange={onSpectrumViewChange}
       />
     );
+    expect(screen.getByText("View")).toBeTruthy();
     expect(screen.getByLabelText("spectrum view")).toBeTruthy();
+    expect(screen.getByLabelText("spectrum view").className).not.toContain("min-w-[");
+    expect(screen.queryByRole("combobox")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "spectrum view" }));
+    fireEvent.click(screen.getByRole("option", { name: "M / S" }));
+    expect(onSpectrumViewChange).toHaveBeenCalledWith("ms");
   });
 
   it("renders spectrum curve legend inside the view chip", () => {
@@ -381,7 +398,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
   });
 
-  it("shows the Peak toggle on spectrum and reflects + flips state", () => {
+  it("shows Peak hold as a switch on spectrum and reflects + flips state", () => {
     const onSpectrumPeakHoldToggle = vi.fn();
     render(
       <PanelSettingsContent
@@ -395,8 +412,8 @@ describe("PanelSettingsContent", () => {
         onSpectrumPeakHoldToggle={onSpectrumPeakHoldToggle}
       />
     );
-    const btn = screen.getByLabelText("peak hold");
-    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    const btn = screen.getByRole("switch", { name: "peak hold" });
+    expect(btn.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(btn);
     expect(onSpectrumPeakHoldToggle).toHaveBeenCalledTimes(1);
   });
@@ -445,7 +462,7 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.queryByRole("button", { name: "Stats" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     const latestState = onState.mock.calls.at(-1)?.[0];
@@ -494,7 +511,7 @@ describe("PanelSettingsContent", () => {
 
     const settingsButtons = screen.getAllByRole("button", { name: "Panel settings" });
     fireEvent.click(settingsButtons.at(-1));
-    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     const latestState = onState.mock.calls.at(-1)?.[0];
