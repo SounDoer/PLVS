@@ -57,9 +57,18 @@ describe("LevelMeterPanel", () => {
     const marker = container.querySelector("[data-level-value-marker]");
     expect(marker?.textContent).toBe("-22.4");
     expect(marker.className).toContain("text-primary");
+    expect(marker.className).toContain("font-[family-name:var(--ui-font-mono)]");
+    expect(marker.className).toContain("tabular-nums");
+    expect(marker.className).not.toContain("font-semibold");
     expect(marker.className).not.toContain("bg-primary");
-    expect(marker.className).toContain("right-0");
+    expect(marker.className).toContain("left-0");
+    expect(marker.className).toContain("text-left");
+    expect(marker.className).not.toContain("right-0");
     expect(marker.className).not.toContain("translate-x");
+    const axisTick = screen.getByText("-18");
+    expect(axisTick.className).toContain("left-0");
+    expect(axisTick.className).toContain("font-[family-name:var(--ui-font-mono)]");
+    expect(axisTick.className).toContain("tabular-nums");
   });
 
   it("renders Short-term LUFS in Level Meter mode", () => {

@@ -3,7 +3,6 @@ import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
   LOUDNESS_DB_MAX,
   LOUDNESS_DB_MIN,
@@ -21,6 +20,19 @@ const LEVEL_MODE_META = {
   momentary: { label: "M", unit: "LUFS", field: "momentary" },
   shortTerm: { label: "ST", unit: "LUFS", field: "shortTerm" },
 };
+
+const LEVEL_METER_Y_LABEL_POSITION = {
+  start: "top-0",
+  middle: "-translate-y-1/2",
+  end: "bottom-0",
+};
+
+const LEVEL_METER_Y_LABEL_BASE =
+  "absolute left-0 whitespace-nowrap text-left font-[family-name:var(--ui-font-mono)] leading-none tabular-nums";
+
+function levelMeterYAxisLabelClass(position) {
+  return `${LEVEL_METER_Y_LABEL_BASE} ${LEVEL_METER_Y_LABEL_POSITION[position]}`;
+}
 
 function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
   const reduceMotion = useReducedMotion();
@@ -70,7 +82,7 @@ function CurrentValueMarker({ value }) {
   return (
     <span
       data-level-value-marker
-      className="pointer-events-none absolute right-0 z-10 -translate-y-1/2 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] font-semibold leading-none text-primary tabular-nums"
+      className={cn("pointer-events-none z-10 text-primary", levelMeterYAxisLabelClass("middle"))}
       style={{ top: `${loudnessFromTopFrac(value) * 100}%` }}
     >
       {formatLevelValue(value)}
@@ -111,14 +123,14 @@ export function LevelMeterPanel() {
                 {LOUDNESS_TICKS.map(({ v, lb }, i) => {
                   if (i === 0) {
                     return (
-                      <span key={v} className={axisLabelClass("y", "start")}>
+                      <span key={v} className={levelMeterYAxisLabelClass("start")}>
                         {lb}
                       </span>
                     );
                   }
                   if (i === LOUDNESS_TICKS.length - 1) {
                     return (
-                      <span key={v} className={axisLabelClass("y", "end")}>
+                      <span key={v} className={levelMeterYAxisLabelClass("end")}>
                         {lb}
                       </span>
                     );
@@ -126,7 +138,7 @@ export function LevelMeterPanel() {
                   return (
                     <span
                       key={v}
-                      className={axisLabelClass("y", "middle")}
+                      className={levelMeterYAxisLabelClass("middle")}
                       style={{ top: `${loudnessFromTopFrac(v) * 100}%` }}
                     >
                       {lb}
@@ -208,14 +220,14 @@ export function LevelMeterPanel() {
               {PEAK_TICKS.map(({ v, lb }, i) => {
                 if (i === 0) {
                   return (
-                    <span key={v} className={axisLabelClass("y", "start")}>
+                    <span key={v} className={levelMeterYAxisLabelClass("start")}>
                       {lb}
                     </span>
                   );
                 }
                 if (i === PEAK_TICKS.length - 1) {
                   return (
-                    <span key={v} className={axisLabelClass("y", "end")}>
+                    <span key={v} className={levelMeterYAxisLabelClass("end")}>
                       {lb}
                     </span>
                   );
@@ -223,7 +235,7 @@ export function LevelMeterPanel() {
                 return (
                   <span
                     key={v}
-                    className={axisLabelClass("y", "middle")}
+                    className={levelMeterYAxisLabelClass("middle")}
                     style={{ top: `${peakFromTopFrac(v) * 100}%` }}
                   >
                     {lb}

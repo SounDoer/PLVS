@@ -21,7 +21,7 @@ describe("spacing data", () => {
 
   it("uses compact default panel padding", () => {
     expect(UI_PREFERENCES.layout.articlePadding).toMatchObject({
-      defaultXRem: 0.5,
+      defaultXRem: 0.25,
       defaultYRem: 0.35,
       metricsRem: 0,
     });
@@ -56,6 +56,6 @@ describe("spacing data", () => {
   });
 
   it("uses one axis rail width source for chart Y axes", () => {
-    expect(UI_PREFERENCES.layout.widthsPx).toEqual({ axisRail: 24 });
+    expect(UI_PREFERENCES.layout.widthsPx).toEqual({ axisRail: 20 });
   });
 });

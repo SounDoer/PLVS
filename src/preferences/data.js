@@ -21,7 +21,7 @@ export const UI_PREFERENCES = {
       paddingYRem: 0.65,
     },
     articlePadding: {
-      defaultXRem: 0.5,
+      defaultXRem: 0.25,
       defaultYRem: 0.35,
       metricsRem: 0,
     },
@@ -76,7 +76,7 @@ export const UI_PREFERENCES = {
       chartXAxisRowRem: 0.6,
     },
     widthsPx: {
-      axisRail: 24,
+      axisRail: 20,
     },
   },
 
