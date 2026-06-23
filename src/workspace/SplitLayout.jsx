@@ -5,7 +5,7 @@ import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
-import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
+import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
 import {
   resolvePanelDefinition,
   resolvePanelDisplayName,
@@ -221,7 +221,7 @@ function FullscreenOverlay() {
       <div className="flex h-9 shrink-0 items-center border-b border-border/60 bg-card px-3 text-sm font-medium">
         {resolvePanelDisplayName(state, fullscreenId)}
         <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
-          <PanelHeaderControls
+          <PanelSettingsMenu
             activeTab={fullscreenModuleId}
             channelCount={audioData?.channelCount ?? 0}
             vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
@@ -233,6 +233,7 @@ function FullscreenOverlay() {
             spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
             onSpectrumChange={noop}
             spectrumView={audioData?.spectrumView ?? "combined"}
+            spectrumViewLegend={audioData?.spectrumViewLegend ?? null}
             onSpectrumViewChange={noop}
             spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
             onSpectrumPeakHoldToggle={noop}

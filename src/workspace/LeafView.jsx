@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
-import { PanelHeaderControls } from "../components/PanelHeaderControls.jsx";
+import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
 import {
   resolvePanelDefinition,
   resolvePanelDisplayName,
@@ -172,7 +172,7 @@ export function LeafView({ node, path, style }) {
           ))}
 
           <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
-            <PanelHeaderControls
+            <PanelSettingsMenu
               activeTab={activeModuleId}
               channelCount={audioData?.channelCount ?? 0}
               vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}

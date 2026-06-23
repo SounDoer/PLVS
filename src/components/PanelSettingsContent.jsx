@@ -232,7 +232,7 @@ function toggleId(ids, id) {
   return [...ids, id];
 }
 
-export function PanelHeaderControls({
+export function PanelSettingsContent({
   activeTab,
   channelCount = 0,
   vectorscopeOptions = [],

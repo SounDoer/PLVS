@@ -1,13 +1,14 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { PanelHeaderControls } from "./PanelHeaderControls.jsx";
+import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
 import { AudioDataContext } from "@/workspace/AudioDataContext.jsx";
 import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
+import { SplitLayout } from "@/workspace/SplitLayout.jsx";
 import { WorkspaceProvider, useWorkspaceStore } from "@/workspace/WorkspaceContext.jsx";
 
 vi.mock("framer-motion", () => ({
@@ -39,17 +40,21 @@ beforeEach(() => {
   globalThis.ResizeObserver = ResizeObserverStub;
 });
 
+afterEach(() => {
+  localStorage.clear();
+});
+
 function WorkspaceStateProbe({ onState }) {
   const { state } = useWorkspaceStore();
   onState(state);
   return null;
 }
 
-describe("PanelHeaderControls", () => {
+describe("PanelSettingsContent", () => {
   it("renders Level Meter mode chip and updates mode", () => {
     const onPanelControlsChange = vi.fn();
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="levelMeter"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
@@ -72,7 +77,7 @@ describe("PanelHeaderControls", () => {
   it("selects Short-term from the Level Meter mode chip", () => {
     const onPanelControlsChange = vi.fn();
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="levelMeter"
         panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
         onPanelControlsChange={onPanelControlsChange}
@@ -90,7 +95,7 @@ describe("PanelHeaderControls", () => {
 
   it("does not render channel controls below multichannel for spectrum channelCount 2", () => {
     const { container } = render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -106,7 +111,7 @@ describe("PanelHeaderControls", () => {
   it("renders spectrum label for Spectrum and Spectrogram", () => {
     for (const activeTab of ["spectrum", "spectrogram"]) {
       const { unmount } = render(
-        <PanelHeaderControls
+        <PanelSettingsContent
           activeTab={activeTab}
           channelCount={6}
           spectrumOptions={[{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }]}
@@ -124,7 +129,7 @@ describe("PanelHeaderControls", () => {
 
   it("uses snapshot display label when provided by the caller", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrum"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -141,7 +146,7 @@ describe("PanelHeaderControls", () => {
     // Reproduces the multichannel bug: a second Spectrogram panel selects C, but the global
     // (first-panel) display label is still L+R. The chip must reflect this panel's own selection.
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrogram"
         channelCount={6}
         spectrumOptions={[
@@ -163,7 +168,7 @@ describe("PanelHeaderControls", () => {
   it("calls vectorscope change with selected pair", () => {
     const onVectorscopeChange = vi.fn();
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="vectorscope"
         channelCount={6}
         vectorscopeOptions={[
@@ -184,7 +189,7 @@ describe("PanelHeaderControls", () => {
 
   it("falls back to the first spectrum option when the value key is stale", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrum"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -200,7 +205,7 @@ describe("PanelHeaderControls", () => {
 
   it("falls back to the first vectorscope option when the value key is stale", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="vectorscope"
         channelCount={6}
         vectorscopeOptions={[
@@ -220,7 +225,7 @@ describe("PanelHeaderControls", () => {
   it("renders Stats chip and toggles stat ids", () => {
     const onPanelControlsChange = vi.fn();
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="stats"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
@@ -247,7 +252,7 @@ describe("PanelHeaderControls", () => {
   it("renders Layers chip and toggles layer ids", () => {
     const onPanelControlsChange = vi.fn();
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="loudness"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
@@ -265,7 +270,7 @@ describe("PanelHeaderControls", () => {
 
   it("renders stat rows in statsOrder", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="stats"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
@@ -287,7 +292,7 @@ describe("PanelHeaderControls", () => {
   it("resets order and visibility to defaults after confirm", () => {
     const onPanelControlsChange = vi.fn();
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="stats"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
@@ -313,7 +318,7 @@ describe("PanelHeaderControls", () => {
 
   it("shows the view toggle for a stereo spectrum panel", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -327,7 +332,7 @@ describe("PanelHeaderControls", () => {
 
   it("renders spectrum curve legend inside the view chip", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -348,7 +353,7 @@ describe("PanelHeaderControls", () => {
 
   it("hides the view toggle when a single channel is selected", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrum"
         channelCount={6}
         spectrumOptions={[{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }]}
@@ -362,7 +367,7 @@ describe("PanelHeaderControls", () => {
 
   it("hides the view toggle on the spectrogram tab (single heatmap can't overlay)", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrogram"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -379,7 +384,7 @@ describe("PanelHeaderControls", () => {
   it("shows the Peak toggle on spectrum and reflects + flips state", () => {
     const onSpectrumPeakHoldToggle = vi.fn();
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrum"
         channelCount={2}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -398,7 +403,7 @@ describe("PanelHeaderControls", () => {
 
   it("hides the Peak toggle on the spectrogram tab", () => {
     render(
-      <PanelHeaderControls
+      <PanelSettingsContent
         activeTab="spectrogram"
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
@@ -411,11 +416,11 @@ describe("PanelHeaderControls", () => {
   });
 
   it("does not render loudness controls before panel controls are wired", () => {
-    const stats = render(<PanelHeaderControls activeTab="stats" />);
+    const stats = render(<PanelSettingsContent activeTab="stats" />);
     expect(stats.container.firstChild).toBeNull();
     stats.unmount();
 
-    const layers = render(<PanelHeaderControls activeTab="loudness" />);
+    const layers = render(<PanelSettingsContent activeTab="loudness" />);
     expect(layers.container.firstChild).toBeNull();
   });
 
@@ -438,6 +443,8 @@ describe("PanelHeaderControls", () => {
       </WorkspaceProvider>
     );
 
+    expect(screen.queryByRole("button", { name: "Stats" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
@@ -454,6 +461,44 @@ describe("PanelHeaderControls", () => {
         "plr",
       ],
     });
+  });
+
+  it("uses the settings menu in the fullscreen header", () => {
+    const onState = vi.fn();
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: { type: "leaf", tabs: ["stats"], activeTab: "stats" },
+        panelsById: { stats: { id: "stats", moduleId: "stats" } },
+        panelOrder: ["stats"],
+        panelControlsById: { stats: DEFAULT_PANEL_CONTROLS },
+      })
+    );
+
+    render(
+      <WorkspaceProvider>
+        <AudioDataContext.Provider
+          value={{
+            panelControls: DEFAULT_PANEL_CONTROLS,
+            statsMetrics: [],
+          }}
+        >
+          <WorkspaceStateProbe onState={onState} />
+          <SplitLayout />
+        </AudioDataContext.Provider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    expect(screen.getByRole("button", { name: "Exit fullscreen" })).toBeTruthy();
+
+    const settingsButtons = screen.getAllByRole("button", { name: "Panel settings" });
+    fireEvent.click(settingsButtons.at(-1));
+    fireEvent.click(screen.getByRole("button", { name: "Stats" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
+
+    const latestState = onState.mock.calls.at(-1)?.[0];
+    expect(latestState.panelControlsById.stats.statsVisibleIds).not.toContain("momentary");
   });
 
   it("hides LeafView panel controls in compact panel mode", () => {
@@ -477,6 +522,7 @@ describe("PanelHeaderControls", () => {
     expect(container.querySelector("[data-leaf-tabs]")).toBeNull();
     expect(container.querySelector("[data-leaf-body]")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Fullscreen" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Panel settings" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Hide all in panel" })).toBeNull();
   });
 
