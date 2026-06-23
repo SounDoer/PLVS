@@ -34,6 +34,7 @@ export function SpectrumPanel({ compact = false }) {
     analysisStatus,
     historyChartInteractive,
     totalSamples,
+    setSelectedOffset,
     captureCurrentSnapshot,
   } = useAudioData();
   const spectrumPeakHold = panelControls?.spectrumPeakHold ?? false;
@@ -163,6 +164,10 @@ export function SpectrumPanel({ compact = false }) {
               onClick={() => {
                 if (!canCaptureCurrentSnapshot) return;
                 captureCurrentSnapshot?.();
+              }}
+              onDoubleClick={() => {
+                if (!historyChartInteractive) return;
+                setSelectedOffset?.(-1);
               }}
             >
               <div

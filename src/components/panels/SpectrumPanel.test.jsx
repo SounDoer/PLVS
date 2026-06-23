@@ -191,6 +191,27 @@ describe("SpectrumPanel", () => {
     expect(captureCurrentSnapshot).toHaveBeenCalledTimes(1);
   });
 
+  it("returns to live when double-clicking the chart in snapshot mode", () => {
+    const setSelectedOffset = vi.fn();
+    renderPanel({
+      selectedOffset: 2,
+      historyChartInteractive: true,
+      totalSamples: 3,
+      setSelectedOffset,
+      resolveSpectrumSnapshotForKey: () => ({
+        missing: false,
+        path: "M 0 100 L 1000 60",
+        pathB: "",
+        data: { bands: [], dbList: [-10], dbListB: [] },
+      }),
+    });
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent.doubleClick(chart);
+
+    expect(setSelectedOffset).toHaveBeenCalledWith(-1);
+  });
+
   it("keeps the frequency axis in a dedicated layout row", () => {
     const { container } = renderPanel({
       displaySpectrumPath: "",
