@@ -43,9 +43,9 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-min-h-history-chart", `${heightsRem.historyChartMin}rem`);
   setCssVar("--ui-chart-x-axis-row-h", `${heightsRem.chartXAxisRowRem}rem`);
 
-  setCssVar("--ui-w-loudness-y-axis", `${widthsPx.loudnessYAxis}px`);
-  setCssVar("--ui-w-spectrum-y-axis", `${widthsPx.spectrumYAxis}px`);
-  setCssVar("--ui-w-peak-ticks", `${widthsPx.peakTickCol}px`);
+  setCssVar("--ui-w-loudness-y-axis", `${widthsPx.axisRail}px`);
+  setCssVar("--ui-w-spectrum-y-axis", `${widthsPx.axisRail}px`);
+  setCssVar("--ui-w-peak-ticks", `${widthsPx.axisRail}px`);
 
   setCssVar("--ui-splitter-bar-thickness", `${splitters.barThicknessPx}px`);
 
@@ -75,9 +75,9 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-chart-inset-bottom", `${spacingRem.spectrumDisplayBottomInset}rem`);
   setCssVar("--ui-meter-chart-inset-x", `${spacingRem.meterChartInsetX}rem`);
   setCssVar("--ui-meter-label-top-inset", `${spacingRem.meterLabelTopInset}rem`);
-  setCssVar("--ui-chart-outer-inset", `${spacingRem.chartOuterInset}rem`);
+  setCssVar("--ui-vector-outer-inset", `${spacingRem.vectorOuterInset}rem`);
   setCssVar("--ui-vector-corner-inset", `${spacingRem.vectorCornerInset}rem`);
-  setCssVar("--ui-chart-pad", `${spacingRem.historySvgPad}rem`);
+  setCssVar("--ui-chart-pad", `${spacingRem.chartPad}rem`);
   setCssVar("--ui-chart-hud-inset", `${spacingRem.hudInset}rem`);
 
   setCssVar("--ui-footer-pad-x", `${footer.paddingXRem}rem`);

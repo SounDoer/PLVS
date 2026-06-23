@@ -93,7 +93,7 @@ export function VectorscopePanel() {
           className="relative w-full rounded-lg bg-muted"
           style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}
         >
-          <div className="absolute inset-[var(--ui-chart-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
+          <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             <svg
               className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
               viewBox="0 0 100 100"
