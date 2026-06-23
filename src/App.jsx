@@ -520,8 +520,14 @@ function AppContent() {
   );
   const loudnessWeightsRef = useRef(loudnessWeights);
   const dialogueGating = useMemo(
-    () => normalizedPanelControls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id)),
-    [normalizedPanelControls.statsVisibleIds]
+    () =>
+      workspaceState.panelOrder.some((panelId) => {
+        const panel = workspaceState.panelsById[panelId];
+        if (panel?.moduleId !== "stats") return false;
+        const controls = getPanelControls(workspaceState, panelId);
+        return controls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id));
+      }),
+    [workspaceState]
   );
   const dialogueGatingRef = useRef(dialogueGating);
   const channelAutoLabels = useMemo(
@@ -547,9 +553,9 @@ function AppContent() {
 
   useEffect(() => {
     dialogueGatingRef.current = dialogueGating;
-    if (!isTauri() || !running) return;
+    if (!isTauri()) return;
     void setDialogueGating(dialogueGating);
-  }, [dialogueGating, running]);
+  }, [dialogueGating]);
 
   useEffect(() => {
     if (!isTauri()) {

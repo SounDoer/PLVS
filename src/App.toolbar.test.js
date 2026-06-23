@@ -123,7 +123,20 @@ describe("App toolbar", () => {
 
   it("derives dialogue gating from visible dialogue stats ids and sends it", () => {
     expect(appSource).toContain("const DIALOGUE_STAT_IDS");
-    expect(appSource).toContain("setDialogueGating(dialogueGating)");
+    expect(appSource).toContain("workspaceState.panelOrder.some((panelId) => {");
+    expect(appSource).toContain('if (panel?.moduleId !== "stats") return false;');
+    expect(appSource).toContain("getPanelControls(workspaceState, panelId)");
+    expect(appSource).not.toContain(
+      "() => normalizedPanelControls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id))"
+    );
+    const syncStart = appSource.indexOf("dialogueGatingRef.current = dialogueGating;");
+    expect(syncStart).toBeGreaterThan(-1);
+    const syncEnd = appSource.indexOf("}, [dialogueGating]);", syncStart);
+    expect(syncEnd).toBeGreaterThan(syncStart);
+    const syncBody = appSource.slice(syncStart, syncEnd);
+
+    expect(syncBody).toContain("setDialogueGating(dialogueGating)");
+    expect(syncBody).not.toContain("!running");
   });
 
   it("keeps capture running when Clear resets the measurement window", () => {
