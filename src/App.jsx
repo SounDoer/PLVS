@@ -61,7 +61,7 @@ import {
   SHELL_TOP_REVEAL_HOT_ZONE,
 } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
-import { Bookmark, Focus, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
+import { Bookmark, Focus, FolderOpen, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
@@ -335,7 +335,16 @@ function AppContent() {
   const spectrumTimeRef = useRef(0);
   const rafRef = useRef(0);
   const frameRef = useRef(0);
-  const intakeRef = useRef(new FrameIntake());
+  // Live and File keep separate history rings so a source switch never bleeds one into the other,
+  // and returning to File restores its previous analysis without re-decoding. Each engine writes its
+  // own ring (live->liveIntake, file->fileIntake); `intakeRef` always points at the active source's
+  // ring and is what the display / channel-metadata reads use.
+  const liveIntakeRef = useRef(null);
+  if (liveIntakeRef.current === null) liveIntakeRef.current = new FrameIntake();
+  const fileIntakeRef = useRef(null);
+  if (fileIntakeRef.current === null) fileIntakeRef.current = new FrameIntake();
+  const intakeRef = useRef(liveIntakeRef.current);
+  intakeRef.current = sourceMode === "file" ? fileIntakeRef.current : liveIntakeRef.current;
   const frequencyMarkerRef = useMemo(
     () => ({
       get current() {
@@ -798,18 +807,10 @@ function AppContent() {
     setHistoryHudHold,
   });
 
-  const clearAll = async () => {
-    if (audioRef.current?.wklt) {
-      try {
-        audioRef.current.wklt.port.postMessage("reset");
-      } catch (_) {}
-    }
-    if (isTauri()) {
-      try {
-        await clearAudioHistory();
-      } catch (_) {}
-    }
-    intakeRef.current.reset();
+  // Clear the live-driven meter display only: spectrum/vector paths, the displayed audio snapshot,
+  // and the scrub window. Does NOT touch any history ring, so it is safe to call when switching to
+  // File (whose ring must be preserved to restore the previous analysis).
+  const clearMeterDisplayState = () => {
     spectrumStateRef.current = { smoothDb: [], peakDb: [], peakHoldUntil: [] };
     spectrumTimeRef.current = 0;
     setSpectrumPath("");
@@ -839,6 +840,36 @@ function AppContent() {
     setSelectedOffset(-1);
     setHistoryOffsetSec(0);
     setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+  };
+
+  // Reset the active source's history ring AND clear the display. Used by Clear, which wipes whatever
+  // source is currently shown.
+  const resetMeterView = () => {
+    intakeRef.current.reset();
+    clearMeterDisplayState();
+  };
+
+  const clearAll = async () => {
+    if (audioRef.current?.wklt) {
+      try {
+        audioRef.current.wklt.port.postMessage("reset");
+      } catch (_) {}
+    }
+    if (isTauri()) {
+      try {
+        await clearAudioHistory();
+      } catch (_) {}
+    }
+    resetMeterView();
+    if (sourceMode === "file") {
+      // Clear the file session: result/summary, scrub history, and the imported file all go.
+      setFileSession({ state: "empty" });
+      setPendingFilePath("");
+      setStatus("File mode - drop a file or click Analyze");
+      resetTimer({ restart: false });
+      setShowClock(false);
+      return;
+    }
     setStatus(
       running
         ? "Running - cleared history and peak hold"
@@ -872,7 +903,7 @@ function AppContent() {
     frameRef,
     selectedOffsetRef,
     defaultSampleRateRef,
-    intake: intakeRef.current,
+    intake: fileIntakeRef.current,
     setFileSession,
     setAudio,
     setHistoryPathM: () => {},
@@ -936,6 +967,11 @@ function AppContent() {
 
   const onSourceModeChange = (nextMode) => {
     if (nextMode === sourceMode) return;
+    // Drop the live-driven display state and always wipe the Live ring (every switch starts Live
+    // fresh). The File ring is left intact, so switching back to File restores its previous analysis
+    // without re-decoding.
+    clearMeterDisplayState();
+    liveIntakeRef.current.reset();
     if (nextMode === "file") {
       if (running) {
         setRunning(false);
@@ -945,11 +981,13 @@ function AppContent() {
       } else {
         setStatus("File mode - drop a file or click Analyze");
       }
-      setSelectedOffset(-1);
       setSourceMode("file");
       return;
     }
-    setSelectedOffset(-1);
+    // Leaving File mode: stop an in-progress analysis so its worker does not keep running.
+    if (fileSession.state === "analyzing") {
+      void fileAnalysis.stop();
+    }
     setSourceMode("live");
     setStatus("Ready - click Start to begin monitoring");
     setStatus2("Device: Not connected");
@@ -1061,7 +1099,7 @@ function AppContent() {
     spectrumTimeRef,
     rafRef,
     frameRef,
-    intake: intakeRef.current,
+    intake: liveIntakeRef.current,
     selectedOffsetRef,
     defaultSampleRateRef,
     loudnessWeightsRef,
@@ -1205,70 +1243,90 @@ function AppContent() {
                 <IconButton
                   icon={<Trash2 className="size-3.5" />}
                   tip="Clear"
-                  disabled={!running && !showClock}
+                  disabled={
+                    sourceMode === "file"
+                      ? !["ready", "complete", "error"].includes(fileSession.state)
+                      : !running && !showClock
+                  }
                   onClick={clearAll}
                 />
-                {isTauri() && (
-                  <Popover
-                    open={devicesOpen}
-                    onOpenChange={(open) => {
-                      if (open && !audioDevices.length) return;
-                      setDevicesOpen(open);
-                      if (focusView.autoHideControls) holdFocusControls(open);
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <span>
-                        <IconButton
-                          icon={<Volume2 className="size-4 shrink-0" />}
-                          tip="Devices"
-                          disabled={!audioDevices.length}
+                {isTauri() &&
+                  (sourceMode === "file" ? (
+                    // Reuse the Devices slot (meaningless in File mode) as a re-import affordance,
+                    // mirroring the ANALYZE picker without adding a new toolbar control.
+                    <IconButton
+                      icon={<FolderOpen className="size-4 shrink-0" />}
+                      tip="Open file"
+                      onClick={async () => {
+                        const path = await pickMediaFile();
+                        if (path) beginFileAnalysis(path);
+                      }}
+                    />
+                  ) : (
+                    <Popover
+                      open={devicesOpen}
+                      onOpenChange={(open) => {
+                        if (open && !audioDevices.length) return;
+                        setDevicesOpen(open);
+                        if (focusView.autoHideControls) holdFocusControls(open);
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <span>
+                          <IconButton
+                            icon={<Volume2 className="size-4 shrink-0" />}
+                            tip="Devices"
+                            disabled={!audioDevices.length}
+                          />
+                        </span>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="end"
+                        sideOffset={6}
+                        className="w-auto max-w-[92vw] p-1"
+                      >
+                        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                          Devices
+                        </p>
+                        <DeviceRow
+                          ariaLabel="Automatic (default system output)"
+                          primary="Automatic (default system output)"
+                          selected={safeAudioDeviceId === "default"}
+                          onSelect={() => handleDeviceSelect("default")}
                         />
-                      </span>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" sideOffset={6} className="w-auto max-w-[92vw] p-1">
-                      <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-                        Devices
-                      </p>
-                      <DeviceRow
-                        ariaLabel="Automatic (default system output)"
-                        primary="Automatic (default system output)"
-                        selected={safeAudioDeviceId === "default"}
-                        onSelect={() => handleDeviceSelect("default")}
-                      />
-                      {audioOutputs.length ? (
-                        <>
-                          <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
-                            Output
-                          </p>
-                          {audioOutputs.map((d) => (
-                            <AudioDeviceOption
-                              key={d.id}
-                              device={d}
-                              selected={safeAudioDeviceId === d.id}
-                              onSelect={() => handleDeviceSelect(d.id)}
-                            />
-                          ))}
-                        </>
-                      ) : null}
-                      {audioInputs.length ? (
-                        <>
-                          <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
-                            Input
-                          </p>
-                          {audioInputs.map((d) => (
-                            <AudioDeviceOption
-                              key={d.id}
-                              device={d}
-                              selected={safeAudioDeviceId === d.id}
-                              onSelect={() => handleDeviceSelect(d.id)}
-                            />
-                          ))}
-                        </>
-                      ) : null}
-                    </PopoverContent>
-                  </Popover>
-                )}
+                        {audioOutputs.length ? (
+                          <>
+                            <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                              Output
+                            </p>
+                            {audioOutputs.map((d) => (
+                              <AudioDeviceOption
+                                key={d.id}
+                                device={d}
+                                selected={safeAudioDeviceId === d.id}
+                                onSelect={() => handleDeviceSelect(d.id)}
+                              />
+                            ))}
+                          </>
+                        ) : null}
+                        {audioInputs.length ? (
+                          <>
+                            <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                              Input
+                            </p>
+                            {audioInputs.map((d) => (
+                              <AudioDeviceOption
+                                key={d.id}
+                                device={d}
+                                selected={safeAudioDeviceId === d.id}
+                                onSelect={() => handleDeviceSelect(d.id)}
+                              />
+                            ))}
+                          </>
+                        ) : null}
+                      </PopoverContent>
+                    </Popover>
+                  ))}
                 <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
                   <PopoverTrigger asChild>
                     <span>

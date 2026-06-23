@@ -56,7 +56,7 @@ export function useFileAnalysisEngine({
   }, [setFileSession]);
 
   useEffect(() => {
-    if (!enabled || !filePath) return;
+    if (!enabled || !filePath || runId <= 0) return;
     if (!isTauri()) {
       setStatus("File analysis runs in the desktop app");
       setFileSession({ state: "empty" });
@@ -165,9 +165,12 @@ export function useFileAnalysisEngine({
         } catch (_) {}
       }
     };
-    // `runId` is in the dependency list so REANALYZE (same path, incremented runId) re-runs the
-    // effect and re-decodes the file from disk.
-  }, [enabled, filePath, runId]);
+    // Trigger ONLY on `runId`, which is bumped on an explicit analyze/reanalyze/drop. Keying off
+    // `enabled`/`filePath` too would re-run analysis merely because the File source became enabled
+    // again after a Live<->File switch. `beginFileAnalysis` sets `filePath` and bumps `runId`
+    // together, so the latest path is read here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
 
   return { stop };
 }
