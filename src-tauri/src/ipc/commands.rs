@@ -11,10 +11,10 @@ use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged, FrameSubscribers,
-  SpectrumAnalysisChannel,
+  AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged,
+  FileAnalysisProbeResult, FrameSubscribers, SpectrumAnalysisChannel,
 };
-use crate::state::AppState;
+use crate::state::{AppState, EngineSource};
 
 const MAX_SPECTRUM_ANALYSIS_REQUESTS: usize = 4;
 const MAX_VECTORSCOPE_ANALYSIS_REQUESTS: usize = 4;
@@ -66,12 +66,13 @@ pub fn audio_start(
   state: State<'_, AppState>,
 ) -> Result<(), String> {
   {
-    let mut g = state
+    // Stop any active source (live or file) before starting live capture; only one runs at a time.
+    let mut source = state
       .inner()
-      .capture
+      .source
       .lock()
       .map_err(|_| "state lock poisoned".to_string())?;
-    *g = None;
+    *source = EngineSource::Stopped;
   }
   {
     let mut s = state
@@ -116,12 +117,12 @@ pub fn audio_start(
     dialogue_gating,
   )?;
   {
-    let mut g = state
+    let mut source = state
       .inner()
-      .capture
+      .source
       .lock()
       .map_err(|_| "state lock poisoned".to_string())?;
-    *g = Some(session);
+    *source = EngineSource::Live(session);
   }
   if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
     let _ = app.emit("sample-rate-changed", sr);
@@ -275,12 +276,14 @@ pub fn ack_frames(seq: u64, state: State<'_, AppState>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-  let mut g = state
-    .inner()
-    .capture
-    .lock()
-    .map_err(|_| "state lock poisoned".to_string())?;
-  *g = None;
+  {
+    let mut source = state
+      .inner()
+      .source
+      .lock()
+      .map_err(|_| "state lock poisoned".to_string())?;
+    *source = EngineSource::Stopped;
+  }
   {
     let mut s = state
       .inner()
@@ -299,6 +302,75 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
   Ok(())
 }
 
+#[tauri::command]
+pub fn file_analysis_probe(path: String) -> Result<FileAnalysisProbeResult, String> {
+  crate::file_analysis::probe::probe_file(path)
+}
+
+#[tauri::command]
+pub fn file_analysis_start(
+  app: AppHandle,
+  path: String,
+  on_frame: tauri::ipc::Channel<AudioFramePayload>,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  {
+    // Stop any active source (live or a previous file run) before starting a new file analysis.
+    let mut source = state
+      .inner()
+      .source
+      .lock()
+      .map_err(|_| "state lock poisoned".to_string())?;
+    *source = EngineSource::Stopped;
+  }
+  state
+    .inner()
+    .frame_ack_seq
+    .store(0, std::sync::atomic::Ordering::Relaxed);
+  let pool: FrameSubscribers = Arc::new(std::sync::Mutex::new(HashMap::new()));
+  {
+    let mut p = pool
+      .lock()
+      .map_err(|_| "frame subscriber map poisoned".to_string())?;
+    p.insert("main".to_string(), on_frame);
+  }
+  {
+    let mut slot = state
+      .inner()
+      .frame_subscribers
+      .lock()
+      .map_err(|_| "frame subscribers lock poisoned".to_string())?;
+    *slot = Some(pool.clone());
+  }
+  let session = crate::file_analysis::session::FileAnalysisSession::start(path, pool, app)?;
+  let mut source = state
+    .inner()
+    .source
+    .lock()
+    .map_err(|_| "state lock poisoned".to_string())?;
+  *source = EngineSource::File(session);
+  Ok(())
+}
+
+#[tauri::command]
+pub fn file_analysis_stop(state: State<'_, AppState>) -> Result<(), String> {
+  {
+    let mut source = state
+      .inner()
+      .source
+      .lock()
+      .map_err(|_| "state lock poisoned".to_string())?;
+    *source = EngineSource::Stopped;
+  }
+  let mut subscribers = state
+    .inner()
+    .frame_subscribers
+    .lock()
+    .map_err(|_| "frame subscribers lock poisoned".to_string())?;
+  *subscribers = None;
+  Ok(())
+}
+
 /// Reset DSP state (peak maxima + history accumulators) on the capture thread to match UI Clear
 /// for the native path, then emit `meter-history-cleared`.
 #[tauri::command]
@@ -306,10 +378,10 @@ pub fn clear_audio_history(app: AppHandle, state: State<'_, AppState>) -> Result
   {
     let g = state
       .inner()
-      .capture
+      .source
       .lock()
       .map_err(|_| "state lock poisoned".to_string())?;
-    if let Some(sess) = g.as_ref() {
+    if let EngineSource::Live(sess) = &*g {
       sess.request_clear_peak_history();
     }
   }
@@ -322,10 +394,12 @@ pub fn clear_audio_history(app: AppHandle, state: State<'_, AppState>) -> Result
 pub fn get_engine_state(state: State<'_, AppState>) -> Result<String, String> {
   let g = state
     .inner()
-    .capture
+    .source
     .lock()
     .map_err(|_| "state lock poisoned".to_string())?;
-  Ok(if g.is_some() {
+  // Only live capture maps to the "running" engine state the UI reconciles against; file analysis
+  // is a separate, self-completing source and reports as stopped here, matching prior behavior.
+  Ok(if matches!(&*g, EngineSource::Live(_)) {
     "running".into()
   } else {
     "stopped".into()

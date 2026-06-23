@@ -88,6 +88,8 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     correlation: resolved.correlation,
     channelMetadata: resolved.channelMetadata,
     visualWaveformSnap,
+    visualSnapIdx: resolved.visualSnapIdx,
+    targetTimestampMs: resolved.targetTimestampMs,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,

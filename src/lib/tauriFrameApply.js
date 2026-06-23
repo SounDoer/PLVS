@@ -35,11 +35,13 @@ export function buildTauriFrameApply({
     const st = Number.isFinite(f.lufsShortTerm) ? f.lufsShortTerm : -Infinity;
     const defaultSampleRate = defaultSampleRateRef.current ?? 48000;
 
-    intake.pushFrame(f, histMaxSamples, defaultSampleRate, SPECTRUM_SETTINGS.freeze);
-
-    if (f.visualHistTick != null) {
-      intake.pushVisualHistRow(f.visualHistTick, visualMaxSamples);
-    }
+    intake.pushFrame(
+      f,
+      histMaxSamples,
+      defaultSampleRate,
+      SPECTRUM_SETTINGS.freeze,
+      visualMaxSamples
+    );
 
     setAudio((prev) => ({
       ...prev,
@@ -87,8 +89,8 @@ export function buildTauriFrameApply({
     }));
 
     if (selectedOffsetRef.current < 0 && shouldPaintUi) {
-      setHistoryPathM("");
-      setHistoryPathST("");
+      setHistoryPathM?.("");
+      setHistoryPathST?.("");
     }
   };
 

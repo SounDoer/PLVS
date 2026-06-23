@@ -81,6 +81,76 @@ pub struct AudioDevicePreview {
   pub channels: u16,
 }
 
+/// One audio track discovered in a local media file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAudioTrackMetadata {
+  pub index: u32,
+  pub codec: String,
+  pub sample_rate_hz: Option<u32>,
+  pub channels: Option<u16>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub language: Option<String>,
+}
+
+/// Metadata returned before starting full offline analysis.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisProbeResult {
+  pub path: String,
+  pub file_name: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub container: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub duration_ms: Option<u64>,
+  pub selected_track: FileAudioTrackMetadata,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisProgressPayload {
+  pub path: String,
+  pub decoded_frames: u64,
+  /// Total decodable frames for the selected track, when known from the container.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub total_frames: Option<u64>,
+  /// Real progress fraction in `0.0..=1.0`, `None` only when total frames are unknown.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub progress: Option<f64>,
+}
+
+/// Authoritative whole-file delivery metrics, read from the final pipeline state on completion.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisSummaryMetrics {
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub duration_ms: Option<u64>,
+  pub sample_rate_hz: u32,
+  pub channels: u16,
+  pub integrated_lufs: f64,
+  pub lra: f64,
+  pub true_peak_max_dbtp: f64,
+  pub sample_peak_max_l_db: f64,
+  pub sample_peak_max_r_db: f64,
+  /// Dialogue-gated integrated loudness; `NEG_INFINITY` when gating was off.
+  pub dialogue_integrated: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisCompletedPayload {
+  pub path: String,
+  pub decoded_frames: u64,
+  pub summary: FileAnalysisSummaryMetrics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisErrorPayload {
+  pub path: String,
+  pub message: String,
+}
+
 /// One aligned history row (~10 Hz): loudness chart + snapshot tracks + fields for `audioSnapRef` replay.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -204,6 +274,14 @@ pub struct AudioFramePayload {
   pub dialogue_lra: f64,
   /// Whether the current 100ms block was classified as active speech.
   pub dialogue_active_now: bool,
+  /// File-mode batch of loudness history ticks accumulated since the previous emitted frame.
+  /// Empty in live mode (which uses `loudness_hist_tick`).
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub loudness_hist_batch: Vec<MeterHistoryEntry>,
+  /// File-mode batch of visual history ticks accumulated since the previous emitted frame.
+  /// Empty in live mode (which uses `visual_hist_tick`).
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub visual_hist_batch: Vec<VisualHistEntry>,
 }
 
 /// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.

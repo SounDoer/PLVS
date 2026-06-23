@@ -101,6 +101,20 @@ describe("resolveSnapshot", () => {
     // newest hist ts 3000 - 1s = 2000
     expect(r.targetTimestampMs).toBe(2000);
   });
+
+  it("returns the selected target timestamp for UI display", () => {
+    const r = resolveSnapshot(
+      baseView({
+        selectedOffset: 1,
+        histSourceList: [{ timestampMs: 10_000 }, { timestampMs: 20_000 }, { timestampMs: 30_000 }],
+        audioList: [{}, {}, {}],
+        corrList: [0, 0, 0],
+        spectrumDataList: [{}, {}, {}],
+      })
+    );
+    // newest hist ts 30_000 - 1s = 29_000
+    expect(r.targetTimestampMs).toBe(29_000);
+  });
 });
 
 describe("resolveKeyedVisualIndex", () => {

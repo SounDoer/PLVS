@@ -7,6 +7,8 @@ import {
   HISTORY_MAX_WINDOW_SEC,
   HISTORY_TIME_TICK_STEPS,
   buildHistoryTimeAxisLabels,
+  buildMediaTimeAxisLabels,
+  mediaTimeAxisRangeSec,
 } from "./historyMath";
 
 describe("getHistoryViewport", () => {
@@ -45,6 +47,48 @@ describe("buildHistoryTimeAxisLabels", () => {
     const labels = buildHistoryTimeAxisLabels(0, 60);
     expect(labels[0]).toBe("1m");
     expect(labels[labels.length - 1]).toBe("0s");
+  });
+});
+
+describe("buildMediaTimeAxisLabels", () => {
+  it("returns one more label than HISTORY_TIME_TICK_STEPS", () => {
+    expect(buildMediaTimeAxisLabels(0, 120)).toHaveLength(HISTORY_TIME_TICK_STEPS + 1);
+  });
+  it("counts up from oldest (left) to newest (right) media time", () => {
+    const labels = buildMediaTimeAxisLabels(0, 120);
+    expect(labels[0]).toBe("0s");
+    expect(labels[labels.length - 1]).toBe("2m");
+  });
+  it("brackets a sub-minute window with second labels", () => {
+    const labels = buildMediaTimeAxisLabels(0, 60);
+    expect(labels[0]).toBe("0s");
+    expect(labels[labels.length - 1]).toBe("1m");
+  });
+  it("labels are non-decreasing in seconds", () => {
+    const labels = buildMediaTimeAxisLabels(10, 200);
+    const toSec = (lb) => {
+      const m = lb.match(/^(?:(\d+)m)?(?:(\d+)s)?$/);
+      return Number(m[1] || 0) * 60 + Number(m[2] || 0);
+    };
+    for (let i = 0; i < labels.length - 1; i++) {
+      expect(toSec(labels[i + 1])).toBeGreaterThanOrEqual(toSec(labels[i]));
+    }
+  });
+});
+
+describe("mediaTimeAxisRangeSec", () => {
+  it("spans 0 -> newest when the whole file is visible at offset 0", () => {
+    const { startSec, endSec } = mediaTimeAxisRangeSec(600, 0, 600, 0.1);
+    expect(startSec).toBe(0);
+    expect(endSec).toBeCloseTo(59.9, 5);
+  });
+  it("shifts the window earlier as the pan offset grows", () => {
+    const { startSec, endSec } = mediaTimeAxisRangeSec(1000, 100, 200, 0.1);
+    expect(endSec).toBeCloseTo(89.9, 5);
+    expect(startSec).toBeCloseTo(70, 5);
+  });
+  it("clamps to zero for an empty history", () => {
+    expect(mediaTimeAxisRangeSec(0, 0, 600, 0.1)).toEqual({ startSec: 0, endSec: 0 });
   });
 });
 

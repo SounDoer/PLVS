@@ -26,6 +26,45 @@ export function buildHistoryTimeAxisLabels(historyOffsetSec, windowSec) {
   return ticks;
 }
 
+/**
+ * Build absolute media-time labels (ascending, left -> right) for the file-mode history X axis.
+ * Mirrors `buildHistoryTimeAxisLabels` formatting but counts up from the oldest visible media time
+ * (left) to the newest (right), instead of "time ago".
+ * @param {number} startSec media time at the left (oldest visible) edge
+ * @param {number} endSec media time at the right (newest visible) edge
+ */
+export function buildMediaTimeAxisLabels(startSec, endSec) {
+  const span = Math.max(0, endSec - startSec);
+  const ticks = [];
+  for (let i = 0; i <= HISTORY_TIME_TICK_STEPS; i++) {
+    const sec = Math.round(startSec + (span * i) / HISTORY_TIME_TICK_STEPS);
+    if (sec >= 60) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      ticks.push(`${m}m${s ? `${s}s` : ""}`);
+    } else {
+      ticks.push(`${sec}s`);
+    }
+  }
+  return ticks;
+}
+
+/**
+ * Media-time range (seconds) covered by the visible history window, derived from sample indices.
+ * File-mode history is uniformly sampled from media time 0, so sample index i maps to i * sampleSec.
+ * @returns {{ startSec: number, endSec: number }} oldest (left) and newest (right) visible media time
+ */
+export function mediaTimeAxisRangeSec(
+  totalSamples,
+  effectiveOffsetSamples,
+  visibleSamples,
+  sampleSec
+) {
+  const endSec = Math.max(0, (totalSamples - 1 - effectiveOffsetSamples) * sampleSec);
+  const startSec = Math.max(0, endSec - (visibleSamples - 1) * sampleSec);
+  return { startSec, endSec };
+}
+
 export function getHistoryViewport(totalSamples, historyWindowSec, historyOffsetSec, sampleSec) {
   const safeTotal = Math.max(0, totalSamples);
   const clampedWindowSec = Math.max(
