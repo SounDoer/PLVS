@@ -76,6 +76,43 @@ describe("PanelSettingsContent", () => {
     });
   });
 
+  it("hides the Level Meter value marker switch in Peak mode", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.queryByText("Value marker")).toBeNull();
+    expect(screen.queryByRole("switch", { name: "level meter value marker" })).toBeNull();
+  });
+
+  it("renders the Level Meter value marker switch for Momentary and updates it", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.getByText("Value marker")).toBeTruthy();
+    const switchButton = screen.getByRole("switch", { name: "level meter value marker" });
+    expect(switchButton.getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(switchButton);
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "momentary",
+      levelMeterValueMarker: false,
+    });
+  });
+
   it("selects Short-term from the Level Meter mode chip", () => {
     const onPanelControlsChange = vi.fn();
     render(

@@ -46,19 +46,40 @@ describe("LevelMeterPanel", () => {
   });
 
   it("renders Momentary LUFS in Level Meter mode", () => {
-    renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
 
     expect(screen.getAllByText("-22.4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("M").length).toBeGreaterThan(0);
     expect(screen.getByText("LUFS")).toBeTruthy();
     expect(screen.queryByText("TP Max")).toBeNull();
+    const marker = container.querySelector("[data-level-value-marker]");
+    expect(marker?.textContent).toBe("-22.4");
+    expect(marker.className).toContain("text-primary");
+    expect(marker.className).not.toContain("bg-primary");
+    expect(marker.className).toContain("right-0");
+    expect(marker.className).not.toContain("translate-x");
   });
 
   it("renders Short-term LUFS in Level Meter mode", () => {
-    renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
+    const { container } = renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
 
     expect(screen.getAllByText("-18.6").length).toBeGreaterThan(0);
     expect(screen.getAllByText("ST").length).toBeGreaterThan(0);
     expect(screen.getByText("LUFS")).toBeTruthy();
+    expect(container.querySelector("[data-level-value-marker]")?.textContent).toBe("-18.6");
+  });
+
+  it("does not render the value marker in Peak mode", () => {
+    const { container } = renderPanel();
+
+    expect(container.querySelector("[data-level-value-marker]")).toBeNull();
+  });
+
+  it("hides the value marker when the panel setting is off", () => {
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: false },
+    });
+
+    expect(container.querySelector("[data-level-value-marker]")).toBeNull();
   });
 });

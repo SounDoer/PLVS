@@ -63,10 +63,25 @@ function formatLevelValue(value) {
   return Number.isFinite(value) ? value.toFixed(1) : "-";
 }
 
+function CurrentValueMarker({ value }) {
+  if (!Number.isFinite(value)) return null;
+
+  return (
+    <span
+      data-level-value-marker
+      className="pointer-events-none absolute right-0 z-10 -translate-y-1/2 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] font-semibold leading-none text-primary tabular-nums"
+      style={{ top: `${loudnessFromTopFrac(value) * 100}%` }}
+    >
+      {formatLevelValue(value)}
+    </span>
+  );
+}
+
 export function LevelMeterPanel() {
   const { displayAudio, peakLabelContext, fmt, hasTpMaxValue, panelControls, tpMaxText } =
     useAudioData();
   const levelMeterMode = panelControls?.levelMeterMode ?? "peak";
+  const showLevelValueMarker = panelControls?.levelMeterValueMarker ?? true;
   const modeMeta = LEVEL_MODE_META[levelMeterMode] ?? LEVEL_MODE_META.peak;
 
   if (levelMeterMode !== "peak") {
@@ -101,6 +116,7 @@ export function LevelMeterPanel() {
                     {lb}
                   </span>
                 ))}
+                {showLevelValueMarker ? <CurrentValueMarker value={levelValue} /> : null}
               </div>
             </div>
             <div className="grid grid-cols-[minmax(0,1fr)]">

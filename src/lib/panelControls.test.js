@@ -68,6 +68,7 @@ describe("panelControls", () => {
   it("uses the agreed defaults", () => {
     expect(DEFAULT_PANEL_CONTROLS).toEqual({
       levelMeterMode: "peak",
+      levelMeterValueMarker: true,
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
@@ -160,6 +161,7 @@ describe("panelControls", () => {
       })
     ).toEqual({
       levelMeterMode: "peak",
+      levelMeterValueMarker: true,
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
@@ -179,6 +181,19 @@ describe("panelControls", () => {
     );
     expect(normalizePanelControls({}).levelMeterMode).toBe("peak");
     expect(normalizePanelControls({ levelMeterMode: "integrated" }).levelMeterMode).toBe("peak");
+  });
+
+  it("normalizes the level meter value marker toggle", () => {
+    expect(normalizePanelControls({}).levelMeterValueMarker).toBe(true);
+    expect(normalizePanelControls({ levelMeterValueMarker: true }).levelMeterValueMarker).toBe(
+      true
+    );
+    expect(normalizePanelControls({ levelMeterValueMarker: false }).levelMeterValueMarker).toBe(
+      false
+    );
+    expect(normalizePanelControls({ levelMeterValueMarker: "yes" }).levelMeterValueMarker).toBe(
+      true
+    );
   });
 });
 

@@ -14,6 +14,7 @@ export const LEVEL_METER_MODE_OPTIONS = [
 
 export const DEFAULT_PANEL_CONTROLS = {
   levelMeterMode: "peak",
+  levelMeterValueMarker: true,
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
@@ -72,6 +73,10 @@ function normalizeLevelMeterMode(raw) {
   return LEVEL_METER_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.levelMeterMode;
 }
 
+function normalizeLevelMeterValueMarker(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterValueMarker;
+}
+
 function normalizeKnownIds(raw, knownIds, fallback) {
   if (!Array.isArray(raw)) return [...fallback];
 
@@ -105,6 +110,7 @@ function normalizeOrder(raw, orderTemplate) {
 export function normalizePanelControls(raw) {
   return {
     levelMeterMode: normalizeLevelMeterMode(raw?.levelMeterMode),
+    levelMeterValueMarker: normalizeLevelMeterValueMarker(raw?.levelMeterValueMarker),
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
