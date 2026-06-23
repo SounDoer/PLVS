@@ -13,7 +13,7 @@ import {
   loudnessFromTopFrac,
   peakFromTopFrac,
 } from "../../config/scales";
-import { getPeakChannels, getPeakChannelSpacingScale } from "../../math/peakChannelMath";
+import { getPeakChannels } from "../../math/peakChannelMath";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -29,6 +29,11 @@ const LEVEL_METER_Y_LABEL_POSITION = {
 
 const LEVEL_METER_Y_LABEL_BASE =
   "absolute left-0 whitespace-nowrap text-left font-[family-name:var(--ui-font-mono)] leading-none tabular-nums";
+const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[5ch]";
+const LEVEL_METER_BAR_INSET_X = "0.1rem";
+const LEVEL_METER_CHANNEL_GAP = "0.15rem";
+const LEVEL_METER_GRID =
+  "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-[var(--ui-chart-axis-gap)]";
 
 function levelMeterYAxisLabelClass(position) {
   return `${LEVEL_METER_Y_LABEL_BASE} ${LEVEL_METER_Y_LABEL_POSITION[position]}`;
@@ -99,6 +104,8 @@ export function LevelMeterPanel() {
 
   if (levelMeterMode !== "peak") {
     const levelValue = displayAudio?.[modeMeta.field];
+    const showMarker = showLevelValueMarker && Number.isFinite(levelValue);
+    const yAxisWidthClass = showMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
     return (
       <div
         className={cn(
@@ -107,15 +114,11 @@ export function LevelMeterPanel() {
         )}
       >
         <div className="flex min-h-0 flex-1 flex-col gap-0">
-          <div
-            className={cn(
-              "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]",
-              PANEL_MIN_PEAK
-            )}
-          >
+          <div className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
             <div
+              data-level-meter-y-axis
               className={cn(
-                W_PEAK_TICKS,
+                yAxisWidthClass,
                 "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
               )}
             >
@@ -145,12 +148,16 @@ export function LevelMeterPanel() {
                     </span>
                   );
                 })}
-                {showLevelValueMarker ? <CurrentValueMarker value={levelValue} /> : null}
+                {showMarker ? <CurrentValueMarker value={levelValue} /> : null}
               </div>
             </div>
             <div className="grid grid-cols-[minmax(0,1fr)]">
               <div className="relative h-full min-h-0 p-0">
-                <div className="absolute inset-x-[var(--ui-meter-chart-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
+                <div
+                  data-level-meter-bar-fill
+                  className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
+                  style={{ "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X }}
+                >
                   <AnimatedLevelFill
                     value={levelValue}
                     min={LOUDNESS_DB_MIN}
@@ -174,6 +181,8 @@ export function LevelMeterPanel() {
                 </div>
               </div>
             </div>
+            <div />
+            <div />
           </div>
           <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
             <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
@@ -195,7 +204,6 @@ export function LevelMeterPanel() {
   }
 
   const channels = getPeakChannels(displayAudio, peakLabelContext);
-  const channelSpacingScale = getPeakChannelSpacingScale(channels.length);
   return (
     <div
       className={cn(
@@ -204,13 +212,9 @@ export function LevelMeterPanel() {
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
-        <div
-          className={cn(
-            "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]",
-            PANEL_MIN_PEAK
-          )}
-        >
+        <div className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
           <div
+            data-level-meter-y-axis
             className={cn(
               W_PEAK_TICKS,
               "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
@@ -245,12 +249,21 @@ export function LevelMeterPanel() {
             </div>
           </div>
           <div
-            className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-[calc(var(--ui-peak-channel-gap)*var(--ui-peak-channel-spacing-scale))]"
-            style={{ "--ui-peak-channel-spacing-scale": channelSpacingScale }}
+            data-level-meter-channel-grid
+            className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-[var(--ui-level-meter-channel-gap)]"
+            style={{
+              "--ui-level-meter-channel-gap": LEVEL_METER_CHANNEL_GAP,
+            }}
           >
             {channels.map((c, idx) => (
               <div key={`${idx}-${c.label}`} className="relative h-full min-h-0 p-0">
-                <div className="absolute inset-x-[calc(var(--ui-meter-chart-inset-x)*var(--ui-peak-channel-spacing-scale))] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
+                <div
+                  data-level-meter-bar-fill
+                  className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
+                  style={{
+                    "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X,
+                  }}
+                >
                   <AnimatedPeakFill dbValue={c.valueDb} />
                 </div>
                 <div
@@ -270,6 +283,8 @@ export function LevelMeterPanel() {
               </div>
             ))}
           </div>
+          <div />
+          <div />
         </div>
         <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
           <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getPeakChannels, getPeakChannelSpacingScale } from "./peakChannelMath";
+import { getPeakChannels } from "./peakChannelMath";
 
 describe("getPeakChannels", () => {
   it("uses peakDb when present (multichannel) with layout labels", () => {
@@ -36,19 +36,5 @@ describe("getPeakChannels", () => {
     expect(ch.map((c) => c.label)).toEqual(["Ch 1", "Ch 2", "Ch 3", "Ch 4", "Ch 5", "Ch 6"]);
     expect(ch[0].valueDb).toBe(-1);
     expect(ch[5].valueDb).toBe(-6);
-  });
-
-  it("scales peak channel spacing down as channel count grows", () => {
-    expect(getPeakChannelSpacingScale(1)).toBe(1);
-    expect(getPeakChannelSpacingScale(2)).toBe(1);
-    expect(getPeakChannelSpacingScale(6)).toBeCloseTo(1 / 3);
-    expect(getPeakChannelSpacingScale(8)).toBeCloseTo(0.25);
-    expect(getPeakChannelSpacingScale(16)).toBeCloseTo(0.125);
-  });
-
-  it("uses full spacing when channel count is unavailable", () => {
-    expect(getPeakChannelSpacingScale(undefined)).toBe(1);
-    expect(getPeakChannelSpacingScale(0)).toBe(1);
-    expect(getPeakChannelSpacingScale(Number.NaN)).toBe(1);
   });
 });

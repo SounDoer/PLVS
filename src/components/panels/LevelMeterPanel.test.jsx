@@ -47,6 +47,26 @@ describe("LevelMeterPanel", () => {
     expect(layoutGrid.className).not.toContain("--ui-peak-axis-chart-gap");
   });
 
+  it("uses compact Level Meter bar spacing without changing the protected axis gap", () => {
+    const { container } = renderPanel();
+
+    const layoutGrid = container.querySelector(".grid-cols-\\[auto_minmax\\(0\\2c 1fr\\)\\]");
+    const channelGrid = container.querySelector("[data-level-meter-channel-grid]");
+    const barFill = container.querySelector("[data-level-meter-bar-fill]");
+
+    expect(layoutGrid.className).toContain("gap-[var(--ui-chart-axis-gap)]");
+    expect(layoutGrid.className).toContain(
+      "grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)]"
+    );
+    expect(channelGrid?.className).toContain("gap-[var(--ui-level-meter-channel-gap)]");
+    expect(channelGrid?.getAttribute("style")).toContain("--ui-level-meter-channel-gap: 0.15rem");
+    expect(channelGrid?.getAttribute("style")).not.toContain("calc(");
+    expect(barFill?.className).toContain("inset-x-[var(--ui-level-meter-bar-inset-x)]");
+    expect(barFill?.getAttribute("style")).toContain("--ui-level-meter-bar-inset-x: 0.1rem");
+    expect(barFill?.getAttribute("style")).not.toContain("calc(");
+    expect(barFill?.className).not.toContain("--ui-meter-chart-inset-x");
+  });
+
   it("renders Momentary LUFS in Level Meter mode", () => {
     const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
 
@@ -65,6 +85,10 @@ describe("LevelMeterPanel", () => {
     expect(marker.className).toContain("text-left");
     expect(marker.className).not.toContain("right-0");
     expect(marker.className).not.toContain("translate-x");
+    expect(marker.closest("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
+    expect(marker.closest("[data-level-meter-y-axis]")?.className).not.toContain(
+      "w-[var(--ui-w-axis-rail)]"
+    );
     const axisTick = screen.getByText("-18");
     expect(axisTick.className).toContain("left-0");
     expect(axisTick.className).toContain("font-[family-name:var(--ui-font-mono)]");
@@ -104,6 +128,9 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel();
 
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();
+    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
+      "w-[var(--ui-w-axis-rail)]"
+    );
   });
 
   it("hides the value marker when the panel setting is off", () => {
@@ -112,5 +139,8 @@ describe("LevelMeterPanel", () => {
     });
 
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();
+    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
+      "w-[var(--ui-w-axis-rail)]"
+    );
   });
 });
