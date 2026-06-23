@@ -20,7 +20,7 @@ function makeEntry(history, id, overrides = {}) {
     id,
     path: `C:\\mixes\\${id}.wav`,
     intake: new FrameIntake(),
-    createdAt: overrides.createdAt ?? id.charCodeAt(0),
+    now: overrides.now ?? overrides.createdAt ?? id.charCodeAt(0),
     ...overrides,
   });
 }
@@ -35,13 +35,13 @@ describe("fileAnalysisSessionRegistry", () => {
       id: "first",
       path: "C:\\mixes\\song.wav",
       intake: firstIntake,
-      createdAt: 1,
+      now: 1,
     });
     history = addFileEntry(history, {
       id: "second",
       path: "C:\\mixes\\song.wav",
       intake: secondIntake,
-      createdAt: 2,
+      now: 2,
     });
 
     expect(history.order).toEqual(["first", "second"]);
@@ -51,12 +51,14 @@ describe("fileAnalysisSessionRegistry", () => {
       path: "C:\\mixes\\song.wav",
       fileName: "song.wav",
       state: "ready",
+      createdAt: 1,
     });
     expect(history.sessionsById.second).toMatchObject({
       id: "second",
       path: "C:\\mixes\\song.wav",
       fileName: "song.wav",
       state: "ready",
+      createdAt: 2,
     });
     expect(history.sessionsById.first.intake).toBe(firstIntake);
     expect(history.sessionsById.second.intake).toBe(secondIntake);
@@ -208,7 +210,7 @@ describe("fileAnalysisSessionRegistry", () => {
       decodedFrames: 2048,
       historyTruncated: true,
       historyCoveredMs: 8000,
-      analyzedAt: 10,
+      now: 10,
     });
 
     expect(history.analyzingFileId).toBeNull();
@@ -228,7 +230,7 @@ describe("fileAnalysisSessionRegistry", () => {
     history = makeEntry(history, "one");
     history = startFileAnalysisEntry(history, "one");
 
-    history = markFileAnalysisError(history, "one", { error: "decode failed", analyzedAt: 20 });
+    history = markFileAnalysisError(history, "one", { error: "decode failed", now: 20 });
 
     expect(history.analyzingFileId).toBeNull();
     expect(history.sessionsById.one).toMatchObject({

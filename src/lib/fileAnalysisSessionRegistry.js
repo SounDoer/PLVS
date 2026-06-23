@@ -81,7 +81,7 @@ export function getAnalyzingFileSession(history) {
 
 export function addFileEntry(history, options) {
   const id = options.id ?? generateFileSessionId();
-  const now = options.createdAt ?? Date.now();
+  const now = options.now ?? options.createdAt ?? Date.now();
   const entry = {
     id,
     path: options.path,
@@ -162,7 +162,7 @@ export function markFileAnalysisComplete(history, id, payload = {}) {
       decodedFrames: payload.decodedFrames ?? 0,
       historyTruncated: payload.historyTruncated ?? false,
       historyCoveredMs: payload.historyCoveredMs ?? null,
-      analyzedAt: payload.analyzedAt ?? Date.now(),
+      analyzedAt: payload.now ?? payload.analyzedAt ?? Date.now(),
       error: null,
     }),
     analyzingFileId: history.analyzingFileId === id ? null : history.analyzingFileId,
@@ -177,7 +177,7 @@ export function markFileAnalysisError(history, id, payload = {}) {
       ...entry,
       state: "error",
       error: payload.error ?? null,
-      analyzedAt: payload.analyzedAt ?? Date.now(),
+      analyzedAt: payload.now ?? payload.analyzedAt ?? Date.now(),
     }),
     analyzingFileId: history.analyzingFileId === id ? null : history.analyzingFileId,
   });
