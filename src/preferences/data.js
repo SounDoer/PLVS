@@ -21,8 +21,8 @@ export const UI_PREFERENCES = {
       paddingYRem: 0.65,
     },
     articlePadding: {
-      defaultXRem: 0.7,
-      defaultYRem: 0.5,
+      defaultXRem: 0.5,
+      defaultYRem: 0.35,
       metricsRem: 0,
     },
     spacingRem: {

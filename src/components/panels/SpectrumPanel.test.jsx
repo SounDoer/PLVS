@@ -248,4 +248,15 @@ describe("SpectrumPanel", () => {
     expect(container.querySelector("svg")?.parentElement?.className).not.toContain("px-[");
     expect(screen.getByText("1k").parentElement?.className).toContain("inset-x-0");
   });
+
+  it("keeps frequency axis endpoint labels inside the chart bounds", () => {
+    renderPanel(liveAudioData(liveResult()));
+
+    expect(screen.getByText("20").className).toContain("text-left");
+    expect(screen.getByText("20").className).not.toContain("-translate-x-1/2");
+    expect(screen.getByText("20k").className).toContain("right-0");
+    expect(screen.getByText("20k").className).toContain("text-right");
+    expect(screen.getByText("20k").className).not.toContain("-translate-x-1/2");
+    expect(screen.getByText("1k").className).toContain("-translate-x-1/2");
+  });
 });

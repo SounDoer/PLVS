@@ -19,6 +19,14 @@ describe("spacing data", () => {
     expect(UI_PREFERENCES.layout.splitters).not.toHaveProperty("sectionGapRem");
   });
 
+  it("uses compact default panel padding", () => {
+    expect(UI_PREFERENCES.layout.articlePadding).toMatchObject({
+      defaultXRem: 0.5,
+      defaultYRem: 0.35,
+      metricsRem: 0,
+    });
+  });
+
   it("keeps one shared chart axis gap and no retired display padding aliases", () => {
     const spacing = UI_PREFERENCES.layout.spacingRem;
 

@@ -387,15 +387,31 @@ export function SpectrumPanel({ compact = false }) {
           <div />
           <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}>
             <div className="absolute inset-x-0 top-0 h-full">
-              {FREQ_LABELS.map(([f, lb]) => (
-                <span
-                  key={f}
-                  className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
-                  style={{ left: `${freqToXFrac(f) * 100}%` }}
-                >
-                  {lb}
-                </span>
-              ))}
+              {FREQ_LABELS.map(([f, lb], i) => {
+                if (i === 0) {
+                  return (
+                    <span key={f} className="absolute left-0 top-0 whitespace-nowrap text-left">
+                      {lb}
+                    </span>
+                  );
+                }
+                if (i === FREQ_LABELS.length - 1) {
+                  return (
+                    <span key={f} className="absolute right-0 top-0 whitespace-nowrap text-right">
+                      {lb}
+                    </span>
+                  );
+                }
+                return (
+                  <span
+                    key={f}
+                    className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
+                    style={{ left: `${freqToXFrac(f) * 100}%` }}
+                  >
+                    {lb}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
