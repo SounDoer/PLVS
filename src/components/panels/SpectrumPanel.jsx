@@ -159,7 +159,7 @@ export function SpectrumPanel({ compact = false }) {
           <div className="relative min-h-0 min-w-0">
             <div
               data-testid="spectrum-chart"
-              className="relative min-h-0 h-full rounded-lg bg-muted"
+              className="relative min-h-0 h-full"
               onPointerLeave={onSpectrumHoverLeave}
               onClick={() => {
                 if (!canCaptureCurrentSnapshot) return;

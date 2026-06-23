@@ -90,7 +90,7 @@ export function VectorscopePanel() {
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-0">
         <div
-          className="relative w-full rounded-lg bg-muted"
+          className="relative w-full"
           style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}
         >
           <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">

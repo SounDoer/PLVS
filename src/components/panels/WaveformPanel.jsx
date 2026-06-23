@@ -350,8 +350,8 @@ function WaveformLane({
       >
         {compact ? null : label}
       </div>
-      <div ref={containerRef} className="relative min-h-0 min-w-0 flex-1 rounded bg-muted">
-        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full rounded" />
+      <div ref={containerRef} className="relative min-h-0 min-w-0 flex-1">
+        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
       </div>
     </div>
   );

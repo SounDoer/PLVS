@@ -215,11 +215,11 @@ export function SpectrogramPanel({ compact = false }) {
 
           {/* Canvas chart */}
           <div className="relative min-h-0 min-w-0">
-            <div ref={containerRef} className="relative min-h-0 h-full rounded-lg bg-muted">
+            <div ref={containerRef} className="relative min-h-0 h-full">
               <canvas
                 ref={canvasRef}
                 className={cn(
-                  "absolute inset-0 h-full w-full rounded-lg bg-muted",
+                  "absolute inset-0 h-full w-full",
                   historyChartInteractive ? "cursor-crosshair" : "pointer-events-none"
                 )}
                 onContextMenu={(e) => e.preventDefault()}

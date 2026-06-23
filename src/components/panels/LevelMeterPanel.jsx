@@ -39,7 +39,7 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
   if (clamped == null) return null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden rounded-md">
+    <div className="absolute inset-0 overflow-hidden">
       <motion.div
         className="meter-gradient absolute inset-0 will-change-transform"
         style={{ scaleY: spring, transformOrigin: "bottom" }}
@@ -120,7 +120,7 @@ export function LevelMeterPanel() {
               </div>
             </div>
             <div className="grid grid-cols-[minmax(0,1fr)]">
-              <div className="relative h-full min-h-0 rounded-lg bg-muted p-0">
+              <div className="relative h-full min-h-0 p-0">
                 <div className="absolute inset-x-[var(--ui-meter-chart-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
                   <AnimatedLevelFill
                     value={levelValue}
@@ -204,10 +204,7 @@ export function LevelMeterPanel() {
             style={{ "--ui-peak-channel-spacing-scale": channelSpacingScale }}
           >
             {channels.map((c, idx) => (
-              <div
-                key={`${idx}-${c.label}`}
-                className="relative h-full min-h-0 rounded-lg bg-muted p-0"
-              >
+              <div key={`${idx}-${c.label}`} className="relative h-full min-h-0 p-0">
                 <div className="absolute inset-x-[calc(var(--ui-meter-chart-inset-x)*var(--ui-peak-channel-spacing-scale))] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]">
                   <AnimatedPeakFill dbValue={c.valueDb} />
                 </div>
