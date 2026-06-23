@@ -46,8 +46,15 @@ function deriveLiveState({ running, selectedOffset = -1, latestTimestampMs, elap
   };
 }
 
-function deriveFileState({ selectedOffset = -1, selectedMediaTimeMs, fileSession = {} }) {
+function deriveFileState({
+  selectedOffset = -1,
+  selectedMediaTimeMs,
+  fileSession = {},
+  analyzingFileSession = null,
+}) {
   const state = fileSession.state ?? "empty";
+  const analyzingSession = analyzingFileSession ?? (state === "analyzing" ? fileSession : null);
+  const analyzingState = analyzingSession?.state ?? "empty";
 
   if (selectedOffset >= 0 && Number.isFinite(selectedMediaTimeMs)) {
     return {
@@ -59,10 +66,10 @@ function deriveFileState({ selectedOffset = -1, selectedMediaTimeMs, fileSession
     };
   }
 
-  if (state === "analyzing") {
+  if (analyzingState === "analyzing") {
     return {
       sourceLabel: "File",
-      statusLabel: formatProgress(fileSession.progress),
+      statusLabel: formatProgress(analyzingSession.progress),
       actionLabel: "STOP",
       chromeState: "live",
       actionKind: "stopFileAnalysis",

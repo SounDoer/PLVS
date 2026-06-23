@@ -108,6 +108,22 @@ describe("fileAnalysisSessionRegistry", () => {
     expect(history.activeFileId).toBe("two");
   });
 
+  it("removes only the active entry and retains the rest of history", () => {
+    let history = createInitialFileHistory();
+    history = makeEntry(history, "one", { createdAt: 1 });
+    history = makeEntry(history, "two", { createdAt: 2 });
+    history = makeEntry(history, "three", { createdAt: 3 });
+    history = selectFileEntry(history, "two");
+
+    history = removeFileEntry(history, history.activeFileId);
+
+    expect(history.order).toEqual(["one", "three"]);
+    expect(history.sessionsById.one).toBeDefined();
+    expect(history.sessionsById.two).toBeUndefined();
+    expect(history.sessionsById.three).toBeDefined();
+    expect(history.activeFileId).toBe("three");
+  });
+
   it("clears the analyzing identity when removing the analyzing entry", () => {
     let history = createInitialFileHistory();
     history = makeEntry(history, "one");
@@ -182,6 +198,7 @@ describe("fileAnalysisSessionRegistry", () => {
   it("resets an entry when analysis starts and records completion payloads", () => {
     let history = createInitialFileHistory();
     history = makeEntry(history, "one");
+    const intake = history.sessionsById.one.intake;
     history = updateFileEntry(history, "one", (entry) => ({
       ...entry,
       summary: { stale: true },
@@ -204,6 +221,7 @@ describe("fileAnalysisSessionRegistry", () => {
       decodedFrames: 0,
       runId: 1,
     });
+    expect(history.sessionsById.one.intake).toBe(intake);
 
     history = markFileAnalysisComplete(history, "one", {
       summary: { durationMs: 9000 },

@@ -107,6 +107,55 @@ describe("deriveSourceTransportState", () => {
     });
   });
 
+  it("shows analyzing progress from a separate analyzing file session", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "file",
+        fileSession: {
+          state: "complete",
+          fileName: "displayed.wav",
+          summary: { durationMs: 120_000 },
+        },
+        analyzingFileSession: {
+          state: "analyzing",
+          fileName: "background.wav",
+          progress: 0.37,
+        },
+      })
+    ).toMatchObject({
+      sourceLabel: "File",
+      statusLabel: "37%",
+      actionLabel: "STOP",
+      chromeState: "live",
+      actionKind: "stopFileAnalysis",
+    });
+  });
+
+  it("keeps selected media time ahead of analyzing progress", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "file",
+        selectedOffset: 0,
+        selectedMediaTimeMs: 84_000,
+        fileSession: {
+          state: "complete",
+          fileName: "displayed.wav",
+          summary: { durationMs: 120_000 },
+        },
+        analyzingFileSession: {
+          state: "analyzing",
+          fileName: "background.wav",
+          progress: 0.37,
+        },
+      })
+    ).toMatchObject({
+      statusLabel: "00:01:24",
+      actionLabel: "RESULT",
+      chromeState: "snapshot",
+      actionKind: "returnToFileResult",
+    });
+  });
+
   it("derives the completed file state", () => {
     expect(
       deriveSourceTransportState({

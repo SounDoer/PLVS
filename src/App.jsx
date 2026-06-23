@@ -38,6 +38,15 @@ import { SourceTransportCluster } from "./components/SourceTransportCluster.jsx"
 import { FileAnalysisSummary } from "./components/FileAnalysisSummary.jsx";
 import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
+import {
+  addFileEntry,
+  createInitialFileHistory,
+  getActiveFileSession,
+  getAnalyzingFileSession,
+  removeFileEntry,
+  startFileAnalysisEntry,
+  updateFileEntry,
+} from "./lib/fileAnalysisSessionRegistry.js";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
@@ -92,6 +101,7 @@ const DIALOGUE_STAT_IDS = [
 ];
 
 const APP_VERSION = packageInfo.version;
+const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 
 function toBackendAnalysisRequests(requests) {
   return {
@@ -261,10 +271,12 @@ function AppContent() {
   const [showClock, setShowClock] = useState(false);
 
   const [sourceMode, setSourceMode] = useState("live");
-  const [fileSession, setFileSession] = useState({ state: "empty" });
-  const [pendingFilePath, setPendingFilePath] = useState("");
-  // Incremented on every analyze/reanalyze/drop so re-analyzing the SAME path re-runs the engine.
-  const [fileRunId, setFileRunId] = useState(0);
+  const [fileHistory, setFileHistory] = useState(() => createInitialFileHistory());
+  const [fileRunRequest, setFileRunRequest] = useState(null);
+  const fileEntrySeqRef = useRef(0);
+  const activeFileSession = useMemo(() => getActiveFileSession(fileHistory), [fileHistory]);
+  const analyzingFileSession = useMemo(() => getAnalyzingFileSession(fileHistory), [fileHistory]);
+  const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const [running, setRunning] = useState(false);
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
@@ -341,10 +353,12 @@ function AppContent() {
   // ring and is what the display / channel-metadata reads use.
   const liveIntakeRef = useRef(null);
   if (liveIntakeRef.current === null) liveIntakeRef.current = new FrameIntake();
-  const fileIntakeRef = useRef(null);
-  if (fileIntakeRef.current === null) fileIntakeRef.current = new FrameIntake();
+  const emptyFileIntakeRef = useRef(null);
+  if (emptyFileIntakeRef.current === null) emptyFileIntakeRef.current = new FrameIntake();
+  const fileDisplayIntake = activeFileSession?.intake ?? emptyFileIntakeRef.current;
+  const fileAnalysisIntake = analyzingFileSession?.intake ?? emptyFileIntakeRef.current;
   const intakeRef = useRef(liveIntakeRef.current);
-  intakeRef.current = sourceMode === "file" ? fileIntakeRef.current : liveIntakeRef.current;
+  intakeRef.current = sourceMode === "file" ? fileDisplayIntake : liveIntakeRef.current;
   const frequencyMarkerRef = useMemo(
     () => ({
       get current() {
@@ -496,6 +510,7 @@ function AppContent() {
     elapsedMs: elapsedMsRef.current,
     selectedMediaTimeMs,
     fileSession,
+    analyzingFileSession,
   });
   const showFileAnalysisResult =
     sourceMode === "file" && (fileSession.state === "complete" || fileSession.state === "error");
@@ -851,7 +866,93 @@ function AppContent() {
     clearMeterDisplayState();
   };
 
+  const updateFileSession = useCallback((sessionId, updater) => {
+    setFileHistory((history) => updateFileEntry(history, sessionId, updater));
+  }, []);
+
+  const setAnalyzingFileId = useCallback((nextOrUpdater) => {
+    setFileHistory((history) => {
+      const nextId =
+        typeof nextOrUpdater === "function"
+          ? nextOrUpdater(history.analyzingFileId)
+          : nextOrUpdater;
+      const analyzingFileId = nextId && history.sessionsById[nextId] ? nextId : null;
+      if (analyzingFileId === history.analyzingFileId) return history;
+      return { ...history, analyzingFileId };
+    });
+  }, []);
+
+  const validFileRunRequest =
+    fileRunRequest &&
+    fileRunRequest.sessionId === fileHistory.analyzingFileId &&
+    fileHistory.sessionsById[fileRunRequest.sessionId]
+      ? fileRunRequest
+      : null;
+
+  const fileAnalysis = useFileAnalysisEngine({
+    enabled: sourceMode === "file" && Boolean(validFileRunRequest),
+    sessionId: validFileRunRequest?.sessionId ?? null,
+    filePath: validFileRunRequest?.filePath ?? "",
+    runId: validFileRunRequest?.runId ?? 0,
+    histMaxSamples: HIST_MAX_SAMPLES,
+    visualMaxSamples: VISUAL_MAX_SAMPLES,
+    audioRef,
+    frameRef,
+    selectedOffsetRef,
+    defaultSampleRateRef,
+    intake: fileAnalysisIntake,
+    updateFileSession,
+    setAnalyzingFileId,
+    setAudio,
+    setHistoryPathM: () => {},
+    setHistoryPathST: () => {},
+    setSelectedOffset,
+    setStatus,
+  });
+
+  const stopCurrentFileAnalysis = useCallback(async () => {
+    const sessionId = fileHistory.analyzingFileId;
+    if (!sessionId) return;
+
+    try {
+      await fileAnalysis.stop();
+    } finally {
+      setFileRunRequest(null);
+      setFileHistory((history) => {
+        if (history.analyzingFileId !== sessionId) return history;
+        const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
+          ...entry,
+          state: "ready",
+          progress: 0,
+          error: null,
+        }));
+        return { ...updatedHistory, analyzingFileId: null };
+      });
+      setStatus("File analysis stopped");
+    }
+  }, [fileAnalysis, fileHistory.analyzingFileId]);
+
   const clearAll = async () => {
+    if (sourceMode === "file") {
+      const activeId = fileHistory.activeFileId;
+      if (!activeId) return;
+      const activeEntry = fileHistory.sessionsById[activeId];
+      if (fileHistory.analyzingFileId === activeId) {
+        await stopCurrentFileAnalysis();
+      }
+      activeEntry?.intake?.reset?.();
+      clearMeterDisplayState();
+      setFileHistory((history) => removeFileEntry(history, activeId));
+      setStatus(
+        fileHistory.order.length > 1
+          ? "File entry cleared"
+          : "File mode - drop a file or click Analyze"
+      );
+      resetTimer({ restart: false });
+      setShowClock(false);
+      return;
+    }
+
     if (audioRef.current?.wklt) {
       try {
         audioRef.current.wklt.port.postMessage("reset");
@@ -863,15 +964,6 @@ function AppContent() {
       } catch (_) {}
     }
     resetMeterView();
-    if (sourceMode === "file") {
-      // Clear the file session: result/summary, scrub history, and the imported file all go.
-      setFileSession({ state: "empty" });
-      setPendingFilePath("");
-      setStatus("File mode - drop a file or click Analyze");
-      resetTimer({ restart: false });
-      setShowClock(false);
-      return;
-    }
     setStatus(
       running
         ? "Running - cleared history and peak hold"
@@ -885,34 +977,56 @@ function AppContent() {
   const beginFileAnalysis = useCallback(
     (path) => {
       if (!path) return;
+      if (fileHistory.analyzingFileId) {
+        setStatus("File analysis already in progress");
+        return;
+      }
+
+      const runId = fileEntrySeqRef.current + 1;
+      fileEntrySeqRef.current = runId;
+      const sessionId = `file-analysis-${Date.now()}-${runId}`;
+      const intake = new FrameIntake();
+
       setSelectedOffset(-1);
-      setPendingFilePath(path);
-      setFileRunId((id) => id + 1);
+      selectedOffsetRef.current = -1;
+      setFileHistory((history) =>
+        startFileAnalysisEntry(
+          addFileEntry(history, {
+            id: sessionId,
+            path,
+            intake,
+          }),
+          sessionId
+        )
+      );
+      setFileRunRequest({ sessionId, filePath: path, runId });
     },
-    [setSelectedOffset]
+    [fileHistory.analyzingFileId, setSelectedOffset]
+  );
+
+  const reanalyzeActiveFile = useCallback(
+    (entry) => {
+      if (!entry?.id || !entry.path) {
+        setStatus("Choose a file to analyze");
+        return;
+      }
+      if (fileHistory.analyzingFileId) {
+        setStatus("File analysis already in progress");
+        return;
+      }
+
+      const runId = fileEntrySeqRef.current + 1;
+      fileEntrySeqRef.current = runId;
+      setSelectedOffset(-1);
+      selectedOffsetRef.current = -1;
+      setFileHistory((history) => startFileAnalysisEntry(history, entry.id));
+      setFileRunRequest({ sessionId: entry.id, filePath: entry.path, runId });
+    },
+    [fileHistory.analyzingFileId, setSelectedOffset]
   );
 
   // `path` already comes from the Tauri drag-drop event (a real filesystem path).
   const handleDropFile = useCallback((path) => beginFileAnalysis(path), [beginFileAnalysis]);
-
-  const fileAnalysis = useFileAnalysisEngine({
-    enabled: sourceMode === "file" && Boolean(pendingFilePath),
-    filePath: pendingFilePath,
-    runId: fileRunId,
-    histMaxSamples: HIST_MAX_SAMPLES,
-    visualMaxSamples: VISUAL_MAX_SAMPLES,
-    audioRef,
-    frameRef,
-    selectedOffsetRef,
-    defaultSampleRateRef,
-    intake: fileIntakeRef.current,
-    setFileSession,
-    setAudio,
-    setHistoryPathM: () => {},
-    setHistoryPathST: () => {},
-    setSelectedOffset,
-    setStatus,
-  });
 
   const runLiveStartAction = () => {
     if (selectedOffset >= 0) {
@@ -948,19 +1062,26 @@ function AppContent() {
       setStatus("File analysis result");
       return;
     }
-    if (actionKind === "chooseFile" || actionKind === "analyzeFile") {
+    if (actionKind === "chooseFile") {
       const path = await pickMediaFile();
       if (path) beginFileAnalysis(path);
       return;
     }
+    if (actionKind === "analyzeFile") {
+      if (activeFileSession?.path) {
+        reanalyzeActiveFile(activeFileSession);
+      } else {
+        const path = await pickMediaFile();
+        if (path) beginFileAnalysis(path);
+      }
+      return;
+    }
     if (actionKind === "reanalyzeFile") {
-      const path = pendingFilePath || fileSession.path;
-      if (path) beginFileAnalysis(path);
-      else setStatus("Choose a file to analyze");
+      reanalyzeActiveFile(activeFileSession);
       return;
     }
     if (actionKind === "stopFileAnalysis") {
-      void fileAnalysis.stop();
+      void stopCurrentFileAnalysis();
       return;
     }
   };
@@ -987,8 +1108,8 @@ function AppContent() {
       return;
     }
     // Leaving File mode: stop an in-progress analysis so its worker does not keep running.
-    if (fileSession.state === "analyzing") {
-      void fileAnalysis.stop();
+    if (fileHistory.analyzingFileId) {
+      void stopCurrentFileAnalysis();
     }
     setSourceMode("live");
     setStatus("Ready - click Start to begin monitoring");
@@ -1241,11 +1362,7 @@ function AppContent() {
                 <IconButton
                   icon={<Trash2 className="size-3.5" />}
                   tip="Clear"
-                  disabled={
-                    sourceMode === "file"
-                      ? !["ready", "complete", "error"].includes(fileSession.state)
-                      : !running && !showClock
-                  }
+                  disabled={sourceMode === "file" ? !activeFileSession : !running && !showClock}
                   onClick={clearAll}
                 />
                 {isTauri() &&
