@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
-import React, { useRef, useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, render } from "@testing-library/react";
+import React, { useRef } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, waitFor } from "@testing-library/react";
 import { detectHistoryTruncation, useFileAnalysisEngine } from "./useFileAnalysisEngine.js";
 
 vi.mock("../ipc/commands.js", () => ({
@@ -18,10 +18,25 @@ vi.mock("../ipc/commands.js", () => ({
   stopFileAnalysis: vi.fn(async () => {}),
 }));
 
+const eventCallbacks = {
+  progress: null,
+  completed: null,
+  error: null,
+};
+
 vi.mock("../ipc/events.js", () => ({
-  onFileAnalysisProgress: vi.fn(async () => vi.fn()),
-  onFileAnalysisCompleted: vi.fn(async () => vi.fn()),
-  onFileAnalysisError: vi.fn(async () => vi.fn()),
+  onFileAnalysisProgress: vi.fn(async (callback) => {
+    eventCallbacks.progress = callback;
+    return vi.fn();
+  }),
+  onFileAnalysisCompleted: vi.fn(async (callback) => {
+    eventCallbacks.completed = callback;
+    return vi.fn();
+  }),
+  onFileAnalysisError: vi.fn(async (callback) => {
+    eventCallbacks.error = callback;
+    return vi.fn();
+  }),
 }));
 
 vi.mock("../ipc/env.js", () => ({
@@ -36,8 +51,16 @@ vi.mock("../lib/tauriFrameApply.js", () => ({
 
 import { probeFileAnalysis, startFileAnalysis, stopFileAnalysis } from "../ipc/commands.js";
 
-function Harness({ path }) {
-  const [fileSession, setFileSession] = useState({ state: "empty" });
+function Harness({
+  enabled = true,
+  path = "C:/mix/final.wav",
+  runId = 1,
+  sessionId = "session-a",
+  intake = { reset: vi.fn(), getLoudnessHistory: () => [] },
+  updateFileSession = vi.fn(),
+  setAnalyzingFileId = vi.fn(),
+  setFileSession,
+}) {
   const audioRef = useRef(null);
   const selectedOffsetRef = useRef(-1);
   const frameRef = useRef(0);
@@ -45,14 +68,18 @@ function Harness({ path }) {
 
   const api = useFileAnalysisEngine({
     filePath: path,
-    enabled: Boolean(path),
+    enabled,
+    runId,
+    sessionId,
     histMaxSamples: 10,
     visualMaxSamples: 10,
     audioRef,
     frameRef,
     selectedOffsetRef,
     defaultSampleRateRef,
-    intake: { reset: vi.fn() },
+    intake,
+    updateFileSession,
+    setAnalyzingFileId,
     setFileSession,
     setAudio: vi.fn(),
     setHistoryPathM: vi.fn(),
@@ -61,44 +88,184 @@ function Harness({ path }) {
     setStatus: vi.fn(),
   });
 
-  window.__fileSession = fileSession;
   window.__fileApi = api;
   return null;
 }
 
+function renderHarness(props = {}) {
+  const updateFileSession = props.updateFileSession ?? vi.fn();
+  const setAnalyzingFileId = props.setAnalyzingFileId ?? vi.fn();
+
+  render(
+    <Harness
+      {...props}
+      updateFileSession={updateFileSession}
+      setAnalyzingFileId={setAnalyzingFileId}
+    />
+  );
+
+  return { updateFileSession, setAnalyzingFileId };
+}
+
+function applySessionUpdater(updateFileSession, base = {}) {
+  const updater = updateFileSession.mock.calls.at(-1)?.[1];
+  expect(updater).toEqual(expect.any(Function));
+  return updater(base);
+}
+
+beforeEach(() => {
+  eventCallbacks.progress = null;
+  eventCallbacks.completed = null;
+  eventCallbacks.error = null;
+});
+
 afterEach(() => {
   vi.clearAllMocks();
-  delete window.__fileSession;
   delete window.__fileApi;
 });
 
 describe("useFileAnalysisEngine", () => {
-  it("probes and starts a file analysis session when enabled", async () => {
+  it("starts analysis by marking the targeted file session as analyzing", async () => {
+    const setAnalyzingFileId = vi.fn();
+    const updateFileSession = vi.fn();
+
     await act(async () => {
-      render(<Harness path="C:/mix/final.wav" />);
+      renderHarness({ setAnalyzingFileId, updateFileSession, sessionId: "session-a" });
     });
 
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
+
+    expect(setAnalyzingFileId).toHaveBeenCalledWith("session-a");
     expect(probeFileAnalysis).toHaveBeenCalledWith("C:/mix/final.wav");
+    expect(updateFileSession).toHaveBeenCalledWith("session-a", expect.any(Function));
+    expect(applySessionUpdater(updateFileSession, { state: "empty" })).toMatchObject({
+      state: "analyzing",
+      path: "C:/mix/final.wav",
+      fileName: "final.wav",
+      progress: 0,
+      error: undefined,
+      summary: undefined,
+    });
     expect(startFileAnalysis).toHaveBeenCalledWith(
       expect.objectContaining({ path: "C:/mix/final.wav", onFrame: expect.any(Function) })
     );
-    expect(window.__fileSession).toMatchObject({
+  });
+
+  it("updates progress only for the targeted session id", async () => {
+    const { updateFileSession } = renderHarness({ sessionId: "session-a" });
+
+    await waitFor(() => expect(eventCallbacks.progress).toEqual(expect.any(Function)));
+    const startCallCount = updateFileSession.mock.calls.length;
+
+    act(() => {
+      eventCallbacks.progress({ path: "C:/mix/final.wav", progress: 0.42 });
+    });
+
+    expect(updateFileSession).toHaveBeenCalledTimes(startCallCount + 1);
+    expect(updateFileSession).toHaveBeenLastCalledWith("session-a", expect.any(Function));
+    expect(applySessionUpdater(updateFileSession, { progress: 0.1 })).toMatchObject({
       state: "analyzing",
-      fileName: "final.wav",
+      progress: 0.42,
     });
   });
 
-  it("stops the active file analysis session", async () => {
-    await act(async () => {
-      render(<Harness path="C:/mix/final.wav" />);
+  it("ignores stale progress, completion, and error events for another path", async () => {
+    const { updateFileSession, setAnalyzingFileId } = renderHarness({ sessionId: "session-a" });
+
+    await waitFor(() => expect(eventCallbacks.error).toEqual(expect.any(Function)));
+    const startCallCount = updateFileSession.mock.calls.length;
+
+    act(() => {
+      eventCallbacks.progress({ path: "C:/mix/old.wav", progress: 0.5 });
+      eventCallbacks.completed({
+        path: "C:/mix/old.wav",
+        decodedFrames: 128,
+        summary: { durationMs: 1000 },
+      });
+      eventCallbacks.error({ path: "C:/mix/old.wav", message: "stale" });
     });
+
+    expect(updateFileSession).toHaveBeenCalledTimes(startCallCount);
+    expect(setAnalyzingFileId).toHaveBeenCalledTimes(1);
+  });
+
+  it("completes the targeted session with summary and truncation details", async () => {
+    const intake = {
+      reset: vi.fn(),
+      getLoudnessHistory: () =>
+        Array.from({ length: 10 }, (_, i) => ({ timestampMs: 600_000 + i * 100 })),
+    };
+    const { updateFileSession, setAnalyzingFileId } = renderHarness({
+      sessionId: "session-a",
+      intake,
+    });
+
+    await waitFor(() => expect(eventCallbacks.completed).toEqual(expect.any(Function)));
+
+    act(() => {
+      eventCallbacks.completed({
+        path: "C:/mix/final.wav",
+        decodedFrames: 4096,
+        summary: { durationMs: 3_600_000 },
+      });
+    });
+
+    expect(updateFileSession).toHaveBeenLastCalledWith("session-a", expect.any(Function));
+    expect(applySessionUpdater(updateFileSession, { state: "analyzing" })).toMatchObject({
+      state: "complete",
+      progress: 1,
+      decodedFrames: 4096,
+      summary: { durationMs: 3_600_000 },
+      historyTruncated: true,
+      historyCoveredMs: 900,
+      analyzedAt: expect.any(Number),
+    });
+    expect(setAnalyzingFileId).toHaveBeenLastCalledWith(expect.any(Function));
+    expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-a")).toBeNull();
+    expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-b")).toBe("session-b");
+  });
+
+  it("marks the targeted session as error and clears the matching analyzing id", async () => {
+    const { updateFileSession, setAnalyzingFileId } = renderHarness({ sessionId: "session-a" });
+
+    await waitFor(() => expect(eventCallbacks.error).toEqual(expect.any(Function)));
+
+    act(() => {
+      eventCallbacks.error({ path: "C:/mix/final.wav", message: "decode failed" });
+    });
+
+    expect(updateFileSession).toHaveBeenLastCalledWith("session-a", expect.any(Function));
+    expect(applySessionUpdater(updateFileSession, { state: "analyzing" })).toMatchObject({
+      state: "error",
+      error: "decode failed",
+      analyzedAt: expect.any(Number),
+    });
+    expect(setAnalyzingFileId).toHaveBeenLastCalledWith(expect.any(Function));
+    expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-a")).toBeNull();
+    expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-b")).toBe("session-b");
+  });
+
+  it("stops the active file analysis without mutating a single file session", async () => {
+    const setFileSession = vi.fn();
+    renderHarness({ setFileSession });
+
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
 
     await act(async () => {
       await window.__fileApi.stop();
     });
 
     expect(stopFileAnalysis).toHaveBeenCalled();
-    expect(window.__fileSession).toMatchObject({ state: "ready" });
+    expect(setFileSession).not.toHaveBeenCalled();
+  });
+
+  it("does not start when the session id is missing", async () => {
+    renderHarness({ sessionId: null });
+
+    await act(async () => {});
+
+    expect(probeFileAnalysis).not.toHaveBeenCalled();
+    expect(startFileAnalysis).not.toHaveBeenCalled();
   });
 });
 

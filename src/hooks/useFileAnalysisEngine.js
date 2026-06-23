@@ -36,7 +36,9 @@ export function useFileAnalysisEngine({
   selectedOffsetRef,
   defaultSampleRateRef,
   intake,
-  setFileSession,
+  sessionId,
+  updateFileSession,
+  setAnalyzingFileId,
   setAudio,
   setHistoryPathM,
   setHistoryPathST,
@@ -47,19 +49,13 @@ export function useFileAnalysisEngine({
 
   const stop = useCallback(async () => {
     await stopFileAnalysis();
-    setFileSession((current) => ({
-      state: current.fileName ? "ready" : "empty",
-      fileName: current.fileName,
-      path: current.path,
-      metadata: current.metadata,
-    }));
-  }, [setFileSession]);
+  }, []);
 
   useEffect(() => {
-    if (!enabled || !filePath || runId <= 0) return;
+    if (!enabled || !sessionId || !filePath || runId <= 0) return;
     if (!isTauri()) {
       setStatus("File analysis runs in the desktop app");
-      setFileSession({ state: "empty" });
+      updateFileSession(sessionId, () => ({ state: "empty" }));
       return;
     }
 
@@ -75,23 +71,27 @@ export function useFileAnalysisEngine({
         setSelectedOffset(-1);
         setHistoryPathM("");
         setHistoryPathST("");
+        setAnalyzingFileId(sessionId);
         setStatus("Probing file...");
         const metadata = await probeFileAnalysis(filePath);
         if (!mounted) return;
         defaultSampleRateRef.current = metadata.selectedTrack?.sampleRateHz || 48000;
-        setFileSession({
+        updateFileSession(sessionId, (current) => ({
+          ...current,
           state: "analyzing",
           path: filePath,
           fileName: metadata.fileName,
           metadata,
           progress: 0,
-        });
+          error: undefined,
+          summary: undefined,
+        }));
         setStatus(`Analyzing ${metadata.fileName}`);
 
         unsubs.push(
           await onFileAnalysisProgress((payload) => {
             if (payload?.path !== activePathRef.current) return;
-            setFileSession((current) => ({
+            updateFileSession(sessionId, (current) => ({
               ...current,
               state: "analyzing",
               progress: Number.isFinite(payload.progress) ? payload.progress : current.progress,
@@ -106,25 +106,30 @@ export function useFileAnalysisEngine({
               histMaxSamples,
               payload.summary?.durationMs
             );
-            setFileSession((current) => ({
+            updateFileSession(sessionId, (current) => ({
               ...current,
               state: "complete",
+              progress: 1,
               decodedFrames: payload.decodedFrames,
               summary: payload.summary,
               historyTruncated,
               historyCoveredMs,
+              analyzedAt: Date.now(),
             }));
+            setAnalyzingFileId((current) => (current === sessionId ? null : current));
             setStatus("File analysis complete");
           })
         );
         unsubs.push(
           await onFileAnalysisError((payload) => {
             if (payload?.path !== activePathRef.current) return;
-            setFileSession((current) => ({
+            updateFileSession(sessionId, (current) => ({
               ...current,
               state: "error",
               error: payload.message,
+              analyzedAt: Date.now(),
             }));
+            setAnalyzingFileId((current) => (current === sessionId ? null : current));
             setStatus(`Error: ${payload.message}`);
           })
         );
@@ -151,7 +156,14 @@ export function useFileAnalysisEngine({
       } catch (err) {
         if (!mounted) return;
         const message = err?.message || "File analysis unavailable";
-        setFileSession({ state: "error", path: filePath, error: message });
+        updateFileSession(sessionId, (current) => ({
+          ...current,
+          state: "error",
+          path: filePath,
+          error: message,
+          analyzedAt: Date.now(),
+        }));
+        setAnalyzingFileId((current) => (current === sessionId ? null : current));
         setStatus(`Error: ${message}`);
       }
     };
