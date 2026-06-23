@@ -19,7 +19,7 @@ const WAVEFORM_HELP = [
   "Mouse wheel - Wheel up/down to zoom in/out",
 ];
 
-const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-loudness-y-axis";
+const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-axis-rail";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
 
 function cssLengthToPx(value) {

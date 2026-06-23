@@ -42,9 +42,9 @@ export const PANEL_MIN_SPECTRUM = "min-h-[var(--ui-min-h-spectrum)]";
 export const PANEL_MIN_SPECTROGRAM = "min-h-[120px]";
 export const PANEL_MIN_WAVEFORM = "min-h-[80px]";
 
-export const W_PEAK_TICKS = "w-[var(--ui-w-peak-ticks)]";
-export const W_LOUDNESS_Y_AXIS = "w-[var(--ui-w-loudness-y-axis)]";
-export const W_SPECTRUM_Y_AXIS = "w-[var(--ui-w-spectrum-y-axis)]";
+export const W_PEAK_TICKS = "w-[var(--ui-w-axis-rail)]";
+export const W_LOUDNESS_Y_AXIS = "w-[var(--ui-w-axis-rail)]";
+export const W_SPECTRUM_Y_AXIS = "w-[var(--ui-w-axis-rail)]";
 
 export const CHART_INSET_MIN_H = "min-h-[var(--ui-min-h-history-chart)]";
 

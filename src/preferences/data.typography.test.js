@@ -22,10 +22,17 @@ describe("spacing data", () => {
   it("keeps one shared chart axis gap and no retired display padding aliases", () => {
     const spacing = UI_PREFERENCES.layout.spacingRem;
 
-    expect(spacing).toHaveProperty("axisGapX");
+    expect(spacing).toHaveProperty("chartAxisGap");
+    expect(spacing).not.toHaveProperty("axisGapX");
     expect(spacing).not.toHaveProperty("axisGapY");
     expect(spacing).not.toHaveProperty("peakDisplayTopInset");
     expect(spacing).not.toHaveProperty("peakDisplayBottomInset");
+    expect(spacing).not.toHaveProperty("historyDisplayTopInset");
+    expect(spacing).not.toHaveProperty("historyDisplayBottomInset");
+    expect(spacing).not.toHaveProperty("spectrumDisplayTopInset");
+    expect(spacing).not.toHaveProperty("spectrumDisplayBottomInset");
+    expect(spacing).toHaveProperty("chartInsetTop");
+    expect(spacing).toHaveProperty("chartInsetBottom");
     expect(spacing).not.toHaveProperty("historySvgPad");
     expect(spacing).not.toHaveProperty("spectrumSvgPad");
     expect(spacing).toHaveProperty("chartPad");

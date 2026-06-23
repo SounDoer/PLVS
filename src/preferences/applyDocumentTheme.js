@@ -43,9 +43,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-min-h-history-chart", `${heightsRem.historyChartMin}rem`);
   setCssVar("--ui-chart-x-axis-row-h", `${heightsRem.chartXAxisRowRem}rem`);
 
-  setCssVar("--ui-w-loudness-y-axis", `${widthsPx.axisRail}px`);
-  setCssVar("--ui-w-spectrum-y-axis", `${widthsPx.axisRail}px`);
-  setCssVar("--ui-w-peak-ticks", `${widthsPx.axisRail}px`);
+  setCssVar("--ui-w-axis-rail", `${widthsPx.axisRail}px`);
 
   setCssVar("--ui-splitter-bar-thickness", `${splitters.barThicknessPx}px`);
 
@@ -68,11 +66,11 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   setCssVar("--ui-panel-footer-gap", `${spacingRem.panelFooterGap}rem`);
   setCssVar("--ui-metric-list-gap", `${spacingRem.metricsListGap}rem`);
-  setCssVar("--ui-chart-axis-gap", `${spacingRem.axisGapX}rem`);
+  setCssVar("--ui-chart-axis-gap", `${spacingRem.chartAxisGap}rem`);
   setCssVar("--ui-metric-inline-gap", `${spacingRem.inlineValueGap}rem`);
   setCssVar("--ui-peak-channel-gap", `${spacingRem.peakChannelGap}rem`);
-  setCssVar("--ui-chart-inset-top", `${spacingRem.spectrumDisplayTopInset}rem`);
-  setCssVar("--ui-chart-inset-bottom", `${spacingRem.spectrumDisplayBottomInset}rem`);
+  setCssVar("--ui-chart-inset-top", `${spacingRem.chartInsetTop}rem`);
+  setCssVar("--ui-chart-inset-bottom", `${spacingRem.chartInsetBottom}rem`);
   setCssVar("--ui-meter-chart-inset-x", `${spacingRem.meterChartInsetX}rem`);
   setCssVar("--ui-meter-label-top-inset", `${spacingRem.meterLabelTopInset}rem`);
   setCssVar("--ui-vector-outer-inset", `${spacingRem.vectorOuterInset}rem`);

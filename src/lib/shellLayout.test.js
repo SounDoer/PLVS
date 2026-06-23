@@ -5,6 +5,9 @@ import {
   SHELL_HEADER,
   APP_TITLE,
   METRICS_LIST_PAD,
+  W_LOUDNESS_Y_AXIS,
+  W_PEAK_TICKS,
+  W_SPECTRUM_Y_AXIS,
 } from "./shellLayout";
 
 describe("shellLayout token names", () => {
@@ -44,5 +47,14 @@ describe("shellLayout token names", () => {
   it("SHELL_FOOTER border uses border-border (not a hardcoded white tint)", () => {
     expect(SHELL_FOOTER).toContain("border-border");
     expect(SHELL_FOOTER).not.toContain("border-white/");
+  });
+
+  it("panel axis rail helpers share one CSS variable", () => {
+    for (const widthClass of [W_LOUDNESS_Y_AXIS, W_SPECTRUM_Y_AXIS, W_PEAK_TICKS]) {
+      expect(widthClass).toContain("--ui-w-axis-rail");
+      expect(widthClass).not.toContain("--ui-w-loudness-y-axis");
+      expect(widthClass).not.toContain("--ui-w-spectrum-y-axis");
+      expect(widthClass).not.toContain("--ui-w-peak-ticks");
+    }
   });
 });
