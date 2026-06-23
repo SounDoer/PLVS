@@ -43,6 +43,8 @@ describe("LevelMeterPanel", () => {
 
     expect(container.firstElementChild?.className).toContain("min-w-0");
     expect(layoutGrid).toBeTruthy();
+    expect(layoutGrid.className).toContain("gap-[var(--ui-chart-axis-gap)]");
+    expect(layoutGrid.className).not.toContain("--ui-peak-axis-chart-gap");
   });
 
   it("renders Momentary LUFS in Level Meter mode", () => {

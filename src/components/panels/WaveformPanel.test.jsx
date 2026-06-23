@@ -65,6 +65,26 @@ describe("WaveformPanel", () => {
     expect(axisRow?.className).not.toContain("bottom-0");
   });
 
+  it("uses the shared chart axis gap between channel labels and waveform charts", () => {
+    const { container } = renderPanel();
+
+    const lane = container.querySelector("[data-waveform-lane]");
+    const labelRail = lane?.querySelector("[data-waveform-label-rail]");
+    const timeAxisRow = screen.getAllByText("0s")[2].parentElement?.parentElement;
+    const timeAxisSpacer = container.querySelector("[data-waveform-x-axis-spacer]");
+    const interactionOverlay = container.querySelector("[data-waveform-interaction-overlay]");
+
+    expect(labelRail?.className).not.toContain("pr-1");
+    expect(container.firstElementChild?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
+    expect(labelRail?.className).toContain("w-[var(--ui-w-loudness-y-axis)]");
+    expect(lane?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
+    expect(timeAxisRow?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
+    expect(timeAxisSpacer?.className).toContain("w-[var(--ui-w-loudness-y-axis)]");
+    expect(interactionOverlay?.style.left).toBe(
+      "calc(var(--ui-w-loudness-y-axis) + var(--ui-chart-axis-gap))"
+    );
+  });
+
   it("hides the gestures help button in compact mode", () => {
     renderPanel({}, { compact: true });
 

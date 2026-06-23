@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, PANEL_MIN_WAVEFORM } from "@/lib/shellLayout";
+import { CAPTION_TEXT, PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
@@ -19,7 +19,20 @@ const WAVEFORM_HELP = [
   "Mouse wheel - Wheel up/down to zoom in/out",
 ];
 
-const LABEL_WIDTH_PX = 28;
+const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-loudness-y-axis";
+const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
+
+function cssLengthToPx(value) {
+  const trimmed = value?.trim();
+  if (!trimmed) return 0;
+  const numeric = Number.parseFloat(trimmed);
+  if (!Number.isFinite(numeric)) return 0;
+  if (trimmed.endsWith("rem")) {
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    return numeric * (Number.isFinite(rootFontSize) ? rootFontSize : 16);
+  }
+  return numeric;
+}
 
 export function WaveformPanel({ compact = false }) {
   const {
@@ -51,7 +64,10 @@ export function WaveformPanel({ compact = false }) {
     if (!el) return;
     const ro = new ResizeObserver(() => {
       const dpr = window.devicePixelRatio || 1;
-      const cssW = Math.max(0, el.clientWidth - LABEL_WIDTH_PX);
+      const computedStyle = getComputedStyle(el);
+      const axisWidthPx = cssLengthToPx(computedStyle.getPropertyValue(WAVEFORM_AXIS_WIDTH_VAR));
+      const chartAxisGapPx = cssLengthToPx(computedStyle.getPropertyValue("--ui-chart-axis-gap"));
+      const cssW = Math.max(0, el.clientWidth - axisWidthPx - chartAxisGapPx);
       setCanvasW(Math.round(cssW * dpr));
     });
     ro.observe(el);
@@ -91,7 +107,7 @@ export function WaveformPanel({ compact = false }) {
     <div
       className={cn(
         PANEL_MIN_WAVEFORM,
-        "@container relative flex min-h-0 flex-1 flex-col overflow-hidden",
+        "@container relative flex min-h-0 flex-1 flex-col gap-[var(--ui-chart-axis-gap)] overflow-hidden",
         "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
@@ -123,7 +139,7 @@ export function WaveformPanel({ compact = false }) {
         {waveformHover && (
           <div
             className="pointer-events-none absolute inset-0 z-[25]"
-            style={{ left: LABEL_WIDTH_PX }}
+            style={{ left: WAVEFORM_CHART_LEFT }}
           >
             {/* Vertical crosshair line */}
             <div
@@ -151,7 +167,7 @@ export function WaveformPanel({ compact = false }) {
         {selectedOffset >= 0 && showSelLine && (
           <div
             className="pointer-events-none absolute inset-0 z-20"
-            style={{ left: LABEL_WIDTH_PX }}
+            style={{ left: WAVEFORM_CHART_LEFT }}
           >
             <svg viewBox="0 0 600 1" preserveAspectRatio="none" className="h-full w-full">
               <line
@@ -171,8 +187,9 @@ export function WaveformPanel({ compact = false }) {
         {/* Interaction overlay — covers canvas area only so pointer x maps correctly */}
         <div
           className="absolute inset-0 z-30"
+          data-waveform-interaction-overlay
           style={{
-            left: LABEL_WIDTH_PX,
+            left: WAVEFORM_CHART_LEFT,
             cursor: historyChartInteractive ? "crosshair" : "default",
             pointerEvents: historyChartInteractive ? "auto" : "none",
           }}
@@ -196,8 +213,8 @@ export function WaveformPanel({ compact = false }) {
         />
       </div>
 
-      <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start">
-        <div className="shrink-0" style={{ width: LABEL_WIDTH_PX }} />
+      <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start gap-[var(--ui-chart-axis-gap)]">
+        <div data-waveform-x-axis-spacer className={cn(W_LOUDNESS_Y_AXIS, "shrink-0")} />
         <div className={cn(CAPTION_TEXT, "relative h-full flex-1")}>
           {(historyTimeTicks ?? []).map((tick, i) => {
             if (i === 0) {
@@ -320,10 +337,16 @@ function WaveformLane({
   }, [mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, canvasSize, selected]);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
+    <div
+      data-waveform-lane
+      className="flex min-h-0 min-w-0 flex-1 items-stretch gap-[var(--ui-chart-axis-gap)]"
+    >
       <div
-        className="flex shrink-0 items-center justify-end pr-1 text-[length:var(--ui-fs-axis)] text-muted-foreground"
-        style={{ width: LABEL_WIDTH_PX }}
+        data-waveform-label-rail
+        className={cn(
+          W_LOUDNESS_Y_AXIS,
+          "flex shrink-0 items-center justify-end text-[length:var(--ui-fs-axis)] text-muted-foreground"
+        )}
       >
         {compact ? null : label}
       </div>

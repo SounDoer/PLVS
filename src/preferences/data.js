@@ -31,7 +31,6 @@ export const UI_PREFERENCES = {
       metricsListGap: 0.2,
       axisGapX: 0.4,
       axisGapY: 0.4,
-      peakAxisChartGap: 0.5,
       peakChannelGap: 0.4,
       peakDisplayTopInset: 0.5,
       peakDisplayBottomInset: 0.5,

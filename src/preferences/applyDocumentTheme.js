@@ -70,7 +70,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-metric-list-gap", `${spacingRem.metricsListGap}rem`);
   setCssVar("--ui-chart-axis-gap", `${spacingRem.axisGapX}rem`);
   setCssVar("--ui-metric-inline-gap", `${spacingRem.inlineValueGap}rem`);
-  setCssVar("--ui-peak-axis-chart-gap", `${spacingRem.peakAxisChartGap}rem`);
   setCssVar("--ui-peak-channel-gap", `${spacingRem.peakChannelGap}rem`);
   setCssVar("--ui-chart-inset-top", `${spacingRem.spectrumDisplayTopInset}rem`);
   setCssVar("--ui-chart-inset-bottom", `${spacingRem.spectrumDisplayBottomInset}rem`);
