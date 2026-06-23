@@ -1,4 +1,5 @@
 import { formatClock } from "../hooks/useSessionTimer.js";
+import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 
 function fmtNumber(value, suffix) {
   return Number.isFinite(value) ? `${value.toFixed(1)} ${suffix}` : `-- ${suffix}`;
@@ -15,14 +16,36 @@ function trackLine(track) {
 
 // Metrics come from the authoritative completion summary payload (fileSession.summary), not the
 // last displayed UI frame, so throttled/batched frames cannot skew the delivery numbers.
-export function FileAnalysisSummary({ fileSession }) {
+export function FileAnalysisSummary({
+  fileSession,
+  fileSessions,
+  activeFileId,
+  analyzingFileId,
+  onSelectFile,
+  onReanalyzeFile,
+  onRemoveFile,
+  onClearAllFiles,
+}) {
+  const historyMenu = (
+    <FileAnalysisHistoryMenu
+      fileSessions={fileSessions}
+      activeFileId={activeFileId}
+      analyzingFileId={analyzingFileId}
+      onSelectFile={onSelectFile}
+      onReanalyzeFile={onReanalyzeFile}
+      onRemoveFile={onRemoveFile}
+      onClearAllFiles={onClearAllFiles}
+    />
+  );
+
   if (fileSession?.state === "error") {
     return (
       <section className="flex w-full min-w-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-[color:color-mix(in_srgb,var(--ui-signal-bad)_30%,var(--border))] bg-[color:color-mix(in_srgb,var(--ui-signal-bad)_7%,var(--card))] px-[var(--ui-header-pad-x)] py-2 text-sm text-popover-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]">
         <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--ui-signal-bad)]">
           File analysis error
         </p>
-        <p className="min-w-0 truncate text-xs text-foreground">{fileSession.error}</p>
+        <p className="min-w-0 flex-1 truncate text-xs text-foreground">{fileSession.error}</p>
+        {historyMenu}
       </section>
     );
   }
@@ -54,6 +77,7 @@ export function FileAnalysisSummary({ fileSession }) {
           {formatClock(fileSession.historyCoveredMs ?? 0)}.
         </p>
       ) : null}
+      {historyMenu}
     </section>
   );
 }

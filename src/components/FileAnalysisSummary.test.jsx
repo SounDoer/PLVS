@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
 
+const menuProps = {
+  fileSessions: [
+    { id: "one", fileName: "one.wav", state: "complete", summary: { durationMs: 1000 } },
+    { id: "two", fileName: "two.wav", state: "error", error: "Failed" },
+  ],
+  activeFileId: "one",
+  analyzingFileId: null,
+};
+
 describe("FileAnalysisSummary", () => {
   it("renders completed file metadata and authoritative delivery metrics", () => {
     render(
@@ -45,6 +54,28 @@ describe("FileAnalysisSummary", () => {
   it("renders an error state", () => {
     render(<FileAnalysisSummary fileSession={{ state: "error", error: "Unsupported codec" }} />);
     expect(screen.getByText("Unsupported codec")).toBeTruthy();
+  });
+
+  it("renders the file history menu in the completed banner", () => {
+    render(
+      <FileAnalysisSummary
+        fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
+        {...menuProps}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "2 files" })).toBeTruthy();
+  });
+
+  it("renders the file history menu in the error banner", () => {
+    render(
+      <FileAnalysisSummary
+        fileSession={{ state: "error", error: "Unsupported codec" }}
+        {...menuProps}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "2 files" })).toBeTruthy();
   });
 
   it("warns that scrub history is limited when the session was truncated", () => {

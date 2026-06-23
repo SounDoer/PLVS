@@ -40,10 +40,12 @@ import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
 import {
   addFileEntry,
+  clearFileHistory,
   createInitialFileHistory,
   getActiveFileSession,
   getAnalyzingFileSession,
   removeFileEntry,
+  selectFileEntry,
   startFileAnalysisEntry,
   updateFileEntry,
 } from "./lib/fileAnalysisSessionRegistry.js";
@@ -274,6 +276,10 @@ function AppContent() {
   const [fileHistory, setFileHistory] = useState(() => createInitialFileHistory());
   const [fileRunRequest, setFileRunRequest] = useState(null);
   const fileEntrySeqRef = useRef(0);
+  const fileSessions = useMemo(
+    () => fileHistory.order.map((id) => fileHistory.sessionsById[id]).filter(Boolean),
+    [fileHistory]
+  );
   const activeFileSession = useMemo(() => getActiveFileSession(fileHistory), [fileHistory]);
   const analyzingFileSession = useMemo(() => getAnalyzingFileSession(fileHistory), [fileHistory]);
   const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
@@ -1025,6 +1031,59 @@ function AppContent() {
     [fileHistory.analyzingFileId, setSelectedOffset]
   );
 
+  const onSelectFile = (id) => {
+    setSelectedOffset(-1);
+    selectedOffsetRef.current = -1;
+    clearMeterDisplayState();
+    setFileHistory((history) => selectFileEntry(history, id));
+    setStatus("File analysis result");
+  };
+
+  const onReanalyzeFile = (id) => {
+    const entry = fileHistory.sessionsById[id];
+    reanalyzeActiveFile(entry);
+  };
+
+  const onRemoveFile = async (id) => {
+    const entry = fileHistory.sessionsById[id];
+    if (!entry) return;
+    const removedAnalyzingFile = fileHistory.analyzingFileId === id;
+
+    if (removedAnalyzingFile) {
+      await stopCurrentFileAnalysis();
+    }
+    entry.intake?.reset?.();
+    if (fileHistory.activeFileId === id || fileHistory.order.length <= 1) {
+      clearMeterDisplayState();
+    }
+    if (removedAnalyzingFile) {
+      setFileRunRequest(null);
+    }
+    setFileHistory((history) => removeFileEntry(history, id));
+    setStatus(
+      fileHistory.order.length > 1
+        ? "File entry removed"
+        : "File mode - drop a file or click Analyze"
+    );
+    resetTimer({ restart: false });
+    setShowClock(false);
+  };
+
+  const onClearAllFiles = async () => {
+    if (fileHistory.analyzingFileId) {
+      await stopCurrentFileAnalysis();
+    }
+    for (const entry of Object.values(fileHistory.sessionsById)) {
+      entry.intake?.reset?.();
+    }
+    clearMeterDisplayState();
+    setFileRunRequest(null);
+    setFileHistory(clearFileHistory());
+    setStatus("File mode - drop a file or click Analyze");
+    resetTimer({ restart: false });
+    setShowClock(false);
+  };
+
   // `path` already comes from the Tauri drag-drop event (a real filesystem path).
   const handleDropFile = useCallback((path) => beginFileAnalysis(path), [beginFileAnalysis]);
 
@@ -1508,7 +1567,16 @@ function AppContent() {
               onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
               onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
             >
-              <FileAnalysisSummary fileSession={fileSession} />
+              <FileAnalysisSummary
+                fileSession={fileSession}
+                fileSessions={fileSessions}
+                activeFileId={fileHistory.activeFileId}
+                analyzingFileId={fileHistory.analyzingFileId}
+                onSelectFile={onSelectFile}
+                onReanalyzeFile={onReanalyzeFile}
+                onRemoveFile={onRemoveFile}
+                onClearAllFiles={onClearAllFiles}
+              />
             </div>
           ) : null}
 
