@@ -338,12 +338,12 @@ describe("FrameIntake", () => {
 
     intake.pushVisualHistRow(row, 10);
     expect(intake.getVisualSpectrumHistByKey(key)).not.toBeNull();
-    expect(intake.getSpectrogramSnapArrayForKey(key).length).toBe(1);
+    expect(intake.getSpectrogramSnapsForKey(key).length).toBe(1);
 
     intake.reset();
 
     expect(intake.getVisualSpectrumHistByKey(key)).toBeNull();
-    expect(intake.getSpectrogramSnapArrayForKey(key)).toEqual([]);
+    expect(intake.getSpectrogramSnapsForKey(key).length).toBe(0);
   });
 
   it("stores request-keyed secondary spectrum curves in typed row views", () => {
@@ -411,7 +411,7 @@ describe("FrameIntake", () => {
       2
     );
 
-    expect(Array.from(frozen[0].dbList)).toEqual([-10, -20]);
+    expect(Array.from(frozen.rowAt(0).dbList)).toEqual([-10, -20]);
     expect(Array.from(intake.getVisualSpectrumHistByKey(key).at(1).dbList)).toEqual([-50, -60]);
   });
 
@@ -464,9 +464,9 @@ describe("FrameIntake", () => {
       },
       10
     );
-    const snap = intake.getSpectrogramSnapArrayForKey(key);
-    expect(snap[0].bands.length).toBe(centers.length);
-    expect(snap[0].bands[0].fCenter).toBeCloseTo(centers[0]);
+    const snap = intake.getSpectrogramSnapsForKey(key);
+    expect(snap.rowAt(0).bands.length).toBe(centers.length);
+    expect(snap.rowAt(0).bands[0].fCenter).toBeCloseTo(centers[0]);
   });
 
   it("uses payload grid frequencies, not recomputed RTA bands", () => {

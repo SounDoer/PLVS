@@ -328,7 +328,7 @@ function AppContent() {
   // Live per-request-key spectrogram source: each Spectrogram panel reads the rolling history for
   // its own request key so two spectrograms with different channel/view never share one history.
   const getSpectrogramSnapsForKey = useCallback(
-    (key) => intakeRef.current.getSpectrogramSnapArrayForKey(key),
+    (key) => intakeRef.current.getSpectrogramSnapsForKey(key),
     []
   );
   const selectedOffsetRef = useRef(-1);

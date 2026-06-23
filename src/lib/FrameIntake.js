@@ -1,5 +1,5 @@
 import { RingBuffer } from "./RingBuffer.js";
-import { SpectrumHistorySlab } from "./SpectrumHistorySlab.js";
+import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -136,9 +136,6 @@ export class FrameIntake {
     // old request still shows its history until reset() / capacity change clears them.
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
-    // Cached per-key spectrogram arrays, rebuilt once per visual tick so the canvas can read a
-    // stable reference each frame.
-    this._spectrogramSnapArrayByKey = new Map();
     this._currentChannelMetadata = {
       frequencyLabel: "L/R",
       vectorscopePairLabel: "L/R",
@@ -197,7 +194,6 @@ export class FrameIntake {
       // capacity rather than mixing sizes.
       this._visualSpectrumHistByKey = new Map();
       this._visualVectorscopeHistByKey = new Map();
-      this._spectrogramSnapArrayByKey = new Map();
     }
 
     this._visualWaveformHist.push({
@@ -222,7 +218,6 @@ export class FrameIntake {
           dbListB: entry.smoothDbB,
           timestampMs: row.timestampMs,
         });
-        this._spectrogramSnapArrayByKey.set(key, slab.toArray());
       }
     }
     const vectorscopeByKey = row.vectorscopeByKey;
@@ -281,15 +276,13 @@ export class FrameIntake {
   getVisualVectorscopeHistByKey(key) {
     return this._visualVectorscopeHistByKey.get(key) ?? null;
   }
-  getSpectrogramSnapArrayForKey(key) {
-    return this._spectrogramSnapArrayByKey.get(key) ?? EMPTY_ARRAY;
+  getSpectrogramSnapsForKey(key) {
+    return this._visualSpectrumHistByKey.get(key) ?? EMPTY_SPECTRUM_VIEW;
   }
-  /** Freeze per-key spectrum history into plain arrays for snapshot scrubbing. */
+  /** Freeze per-key spectrum history into read-only views for snapshot scrubbing. */
   snapshotVisualSpectrumByKey() {
     const out = {};
-    for (const [key, ring] of this._visualSpectrumHistByKey) {
-      out[key] = ring.toArray({ copyRows: true });
-    }
+    for (const [key, slab] of this._visualSpectrumHistByKey) out[key] = slab.freeze();
     return out;
   }
   /** Freeze per-key vectorscope history into plain arrays for snapshot scrubbing. */
@@ -309,6 +302,5 @@ export class FrameIntake {
     this._visualWaveformHist.clear();
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
-    this._spectrogramSnapArrayByKey = new Map();
   }
 }
