@@ -51,7 +51,7 @@ fn file_name_from_path(path: &Path) -> String {
     .to_string()
 }
 
-fn hint_from_path(path: &Path) -> Hint {
+pub(crate) fn hint_from_path(path: &Path) -> Hint {
   let mut hint = Hint::new();
   if let Some(ext) = path.extension().and_then(|value| value.to_str()) {
     hint.with_extension(ext);
@@ -84,7 +84,7 @@ pub(crate) fn track_candidate_from_symphonia(
 
 /// Duration of a symphonia track in milliseconds, preferring the container time base and
 /// falling back to frame-count / sample-rate. Returns `None` when neither is available.
-fn duration_ms_from_symphonia(track: &symphonia::core::formats::Track) -> Option<u64> {
+pub(crate) fn duration_ms_from_symphonia(track: &symphonia::core::formats::Track) -> Option<u64> {
   let params = &track.codec_params;
   let n_frames = params.n_frames?;
   if let Some(time_base) = params.time_base {
