@@ -8,6 +8,23 @@ import {
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
+// File history rings are bounded (see HIST_MAX_SAMPLES in App.jsx). When a file is long enough to
+// fill them, scrub only reaches the most recent window. Compare the retained loudness window
+// against the authoritative file duration so the summary can warn instead of silently truncating.
+export function detectHistoryTruncation(intake, histMaxSamples, durationMs) {
+  const loudness = intake?.getLoudnessHistory?.() ?? [];
+  if (loudness.length < histMaxSamples || !Number.isFinite(durationMs) || durationMs <= 0) {
+    return { historyTruncated: false, historyCoveredMs: undefined };
+  }
+  const firstTs = loudness[0]?.timestampMs ?? 0;
+  const lastTs = loudness[loudness.length - 1]?.timestampMs ?? 0;
+  const coveredMs = Math.max(0, lastTs - firstTs);
+  if (coveredMs >= durationMs * 0.98) {
+    return { historyTruncated: false, historyCoveredMs: undefined };
+  }
+  return { historyTruncated: true, historyCoveredMs: coveredMs };
+}
+
 export function useFileAnalysisEngine({
   enabled,
   filePath,
@@ -84,11 +101,18 @@ export function useFileAnalysisEngine({
         unsubs.push(
           await onFileAnalysisCompleted((payload) => {
             if (payload?.path !== activePathRef.current) return;
+            const { historyTruncated, historyCoveredMs } = detectHistoryTruncation(
+              intake,
+              histMaxSamples,
+              payload.summary?.durationMs
+            );
             setFileSession((current) => ({
               ...current,
               state: "complete",
               decodedFrames: payload.decodedFrames,
               summary: payload.summary,
+              historyTruncated,
+              historyCoveredMs,
             }));
             setStatus("File analysis complete");
           })

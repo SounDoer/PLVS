@@ -46,4 +46,35 @@ describe("FileAnalysisSummary", () => {
     render(<FileAnalysisSummary fileSession={{ state: "error", error: "Unsupported codec" }} />);
     expect(screen.getByText("Unsupported codec")).toBeTruthy();
   });
+
+  it("warns that scrub history is limited when the session was truncated", () => {
+    render(
+      <FileAnalysisSummary
+        fileSession={{
+          state: "complete",
+          fileName: "long.wav",
+          summary: { durationMs: 3_600_000, sampleRateHz: 48000, channels: 2 },
+          historyTruncated: true,
+          historyCoveredMs: 300_000,
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Scrub history is limited to the last/)).toBeTruthy();
+    expect(screen.getByText(/00:05:00/)).toBeTruthy();
+  });
+
+  it("omits the truncation warning for a fully-covered session", () => {
+    render(
+      <FileAnalysisSummary
+        fileSession={{
+          state: "complete",
+          fileName: "short.wav",
+          summary: { durationMs: 5_000, sampleRateHz: 48000, channels: 2 },
+        }}
+      />
+    );
+
+    expect(screen.queryByText(/Scrub history is limited/)).toBeNull();
+  });
 });

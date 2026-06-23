@@ -2,7 +2,7 @@
 import React, { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
-import { useFileAnalysisEngine } from "./useFileAnalysisEngine.js";
+import { detectHistoryTruncation, useFileAnalysisEngine } from "./useFileAnalysisEngine.js";
 
 vi.mock("../ipc/commands.js", () => ({
   probeFileAnalysis: vi.fn(async () => ({
@@ -99,5 +99,35 @@ describe("useFileAnalysisEngine", () => {
 
     expect(stopFileAnalysis).toHaveBeenCalled();
     expect(window.__fileSession).toMatchObject({ state: "ready" });
+  });
+});
+
+function intakeWithLoudness(entries) {
+  return { getLoudnessHistory: () => entries };
+}
+
+describe("detectHistoryTruncation", () => {
+  it("flags truncation when a full ring covers less than the file duration", () => {
+    const entries = Array.from({ length: 10 }, (_, i) => ({ timestampMs: 600_000 + i * 100 }));
+    const result = detectHistoryTruncation(intakeWithLoudness(entries), 10, 3_600_000);
+    expect(result.historyTruncated).toBe(true);
+    expect(result.historyCoveredMs).toBe(900);
+  });
+
+  it("does not flag truncation when the ring is not full", () => {
+    const entries = Array.from({ length: 5 }, (_, i) => ({ timestampMs: i * 100 }));
+    expect(detectHistoryTruncation(intakeWithLoudness(entries), 10, 3_600_000)).toEqual({
+      historyTruncated: false,
+      historyCoveredMs: undefined,
+    });
+  });
+
+  it("does not flag truncation when the retained window covers the whole file", () => {
+    const entries = Array.from({ length: 10 }, (_, i) => ({ timestampMs: i * 100 }));
+    // Covered window is 900ms; a 900ms file is fully represented, so no truncation.
+    expect(detectHistoryTruncation(intakeWithLoudness(entries), 10, 900)).toEqual({
+      historyTruncated: false,
+      historyCoveredMs: undefined,
+    });
   });
 });

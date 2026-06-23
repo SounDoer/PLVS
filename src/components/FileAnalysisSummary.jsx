@@ -1,3 +1,5 @@
+import { formatClock } from "../hooks/useSessionTimer.js";
+
 function fmtNumber(value, suffix) {
   return Number.isFinite(value) ? `${value.toFixed(1)} ${suffix}` : `-- ${suffix}`;
 }
@@ -64,6 +66,12 @@ export function FileAnalysisSummary({ fileSession }) {
           </dd>
         </div>
       </dl>
+      {fileSession?.historyTruncated ? (
+        <p className="mt-3 text-xs text-[color:var(--ui-signal-warn)]">
+          Delivery metrics cover the whole file. Scrub history is limited to the last{" "}
+          {formatClock(fileSession.historyCoveredMs ?? 0)}.
+        </p>
+      ) : null}
     </section>
   );
 }
