@@ -35,7 +35,7 @@ describe("spacing data", () => {
     expect(spacing).toHaveProperty("chartInsetBottom");
     expect(spacing).not.toHaveProperty("historySvgPad");
     expect(spacing).not.toHaveProperty("spectrumSvgPad");
-    expect(spacing).toHaveProperty("chartPad");
+    expect(spacing).not.toHaveProperty("chartPad");
     expect(spacing).toHaveProperty("vectorOuterInset");
     expect(spacing).not.toHaveProperty("chartOuterInset");
   });

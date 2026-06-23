@@ -232,4 +232,20 @@ describe("SpectrumPanel", () => {
     expect(axisRow?.className).not.toContain("bottom-0");
     expect(chartInset?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
   });
+
+  it("uses the full chart width without an internal horizontal pad", () => {
+    const { container } = renderPanel(
+      liveAudioData(
+        liveResult({
+          path: "M 0 120 L 1000 80",
+          bandCentersHz: [100, 1000],
+          smoothDb: [-30, -20],
+        })
+      )
+    );
+
+    expect(container.innerHTML).not.toContain("--ui-chart-pad");
+    expect(container.querySelector("svg")?.parentElement?.className).not.toContain("px-[");
+    expect(screen.getByText("1k").parentElement?.className).toContain("inset-x-0");
+  });
 });

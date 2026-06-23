@@ -75,7 +75,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-meter-label-top-inset", `${spacingRem.meterLabelTopInset}rem`);
   setCssVar("--ui-vector-outer-inset", `${spacingRem.vectorOuterInset}rem`);
   setCssVar("--ui-vector-corner-inset", `${spacingRem.vectorCornerInset}rem`);
-  setCssVar("--ui-chart-pad", `${spacingRem.chartPad}rem`);
   setCssVar("--ui-chart-hud-inset", `${spacingRem.hudInset}rem`);
 
   setCssVar("--ui-footer-pad-x", `${footer.paddingXRem}rem`);

@@ -171,7 +171,7 @@ export function SpectrumPanel({ compact = false }) {
               }}
             >
               <div
-                className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
+                className="absolute inset-0 min-h-0 min-w-0 pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
                 onPointerMove={(e) => {
                   const r = spectrumSvgRef.current?.getBoundingClientRect();
                   if (r) onMove(e.clientX, e.clientY, r);
@@ -323,7 +323,7 @@ export function SpectrumPanel({ compact = false }) {
                 </svg>
               </div>
               {spectrumHover ? (
-                <div className="pointer-events-none absolute inset-[var(--ui-chart-pad)] top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
+                <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
                   <div
                     className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
                     style={{ left: `${spectrumHover.leftPct}%` }}
@@ -386,7 +386,7 @@ export function SpectrumPanel({ compact = false }) {
 
           <div />
           <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}>
-            <div className="absolute inset-x-[var(--ui-chart-pad)] top-0 h-full">
+            <div className="absolute inset-x-0 top-0 h-full">
               {FREQ_LABELS.map(([f, lb]) => (
                 <span
                   key={f}
