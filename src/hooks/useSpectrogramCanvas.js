@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { SPEC_DB_MIN, SPEC_DB_MAX } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
-import { inWindowRange } from "../math/spectrogramTimeline.js";
+import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
 
 function paintImageData(
   imageData,
@@ -23,9 +23,11 @@ function paintImageData(
     if (!snap || !snap.dbList) continue;
     const ts = snap.timestampMs;
     if (!Number.isFinite(ts)) continue;
-    // Place the column at the x of its real timestamp; gaps in time stay unpainted (blank).
+    // Place the column at the x of its real timestamp; tiny scheduling jitter is stitched to the
+    // next frame, while real gaps in time stay unpainted (blank).
     const xStart = Math.max(0, Math.round(((ts - oldestMs) / span) * W));
-    const xEnd = Math.min(W, Math.round(((ts + sampleMs - oldestMs) / span) * W));
+    const endMs = spectrogramFrameEndMs(snaps, i, sampleMs);
+    const xEnd = Math.min(W, Math.round(((endMs - oldestMs) / span) * W));
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
     for (let y = 0; y < H; y++) {
@@ -62,6 +64,7 @@ export function useSpectrogramCanvas({
   const cacheRef = useRef({ W: 0, H: 0, yToBand: null, imageData: null });
   const lastPaintRef = useRef({
     len: -1,
+    version: -1,
     oldestMs: NaN,
     newestMs: NaN,
     sel: -1,
@@ -88,11 +91,13 @@ export function useSpectrogramCanvas({
       if (!colormapLut || colormapLut.length < 256 * 3) return;
       const snaps = frozenSnaps ?? snapRef.current;
       const len = snaps ? snaps.length : 0;
+      const version = snaps?.version ?? 0;
 
       // Skip repaint when nothing changed.
       const last = lastPaintRef.current;
       if (
         last.len === len &&
+        last.version === version &&
         last.oldestMs === oldestMs &&
         last.newestMs === newestMs &&
         last.sel === selectedOffset &&
@@ -103,6 +108,7 @@ export function useSpectrogramCanvas({
         return;
       lastPaintRef.current = {
         len,
+        version,
         oldestMs,
         newestMs,
         sel: selectedOffset,

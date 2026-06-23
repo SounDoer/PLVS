@@ -124,6 +124,64 @@ describe("SpectrogramPanel", () => {
     expect(getSpectrogramSnapsForKey).toHaveBeenCalledWith(key);
   });
 
+  it("updates the live time window when the stable history array mutates in place", () => {
+    const histSourceList = [];
+    const props = {
+      histSourceList,
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+    };
+    const { rerender } = renderPanel(props);
+
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].newestMs).toBeNaN();
+
+    histSourceList.push({ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 });
+    rerender(
+      <AudioDataContext.Provider value={{ ...baseAudioData, ...props }}>
+        <SpectrogramPanel />
+      </AudioDataContext.Provider>
+    );
+
+    const canvasArgs = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0];
+    expect(canvasArgs.oldestMs).toBe(1000);
+    expect(canvasArgs.newestMs).toBe(1200);
+  });
+
+  it("hides frequency change markers when no selectable channel chip is shown", () => {
+    const { container } = renderPanel({
+      channelCount: 2,
+      spectrumChannelOptions: [{ key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } }],
+      frequencyMarkerRef: {
+        current: [null, { type: "frequencyChannelChange", from: "L/R", to: "C" }],
+      },
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }],
+      totalSamples: 3,
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+    });
+
+    expect(container.querySelector('line[stroke-dasharray="2 4"]')).toBeNull();
+  });
+
+  it("shows frequency change markers when the channel chip is selectable", () => {
+    const { container } = renderPanel({
+      channelCount: 6,
+      spectrumChannelOptions: [
+        { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+        { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+      ],
+      frequencyMarkerRef: {
+        current: [null, { type: "frequencyChannelChange", from: "L/R", to: "C" }],
+      },
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }],
+      totalSamples: 3,
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+    });
+
+    expect(container.querySelector('line[stroke-dasharray="2 4"]')).toBeTruthy();
+  });
+
   it("draws a data-availability boundary line where this view's history starts mid-window", () => {
     const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
     const key = spectrumRequestKeyFromControls(panelControls);
@@ -133,6 +191,11 @@ describe("SpectrogramPanel", () => {
     const { container } = renderPanel({
       selectedOffset: 2,
       panelControls,
+      channelCount: 6,
+      spectrumChannelOptions: [
+        { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+        { key: "s-1", label: "C", sel: { type: "single", ch: 1 } },
+      ],
       histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
       effectiveOffsetSamples: 0,
       visibleSamples: 3,
@@ -143,6 +206,25 @@ describe("SpectrogramPanel", () => {
     expect(boundary).toBeTruthy();
     // x = (1500 - 1000) / (2000 - 1000) * 1000 = 500
     expect(Number(boundary.getAttribute("x1"))).toBeCloseTo(500);
+  });
+
+  it("hides data-availability boundary lines when no selectable channel chip is shown", () => {
+    const panelControls = { spectrumChannel: { type: "pair", x: 0, y: 1 } };
+    const key = spectrumRequestKeyFromControls(panelControls);
+    const frames = [];
+    for (let ts = 1500; ts <= 2000; ts += 40) frames.push({ timestampMs: ts, dbList: [-10] });
+    const { container } = renderPanel({
+      selectedOffset: 2,
+      panelControls,
+      channelCount: 2,
+      spectrumChannelOptions: [{ key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } }],
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+      snapshotSpectrumByKey: { [key]: viewOf(frames) },
+    });
+
+    expect(container.querySelector('line[stroke-dasharray="1 5"]')).toBeNull();
   });
 
   it("draws no boundary line for a continuous capture filling the window", () => {

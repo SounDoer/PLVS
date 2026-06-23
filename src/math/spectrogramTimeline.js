@@ -11,6 +11,17 @@ function hasTimestamps(entries) {
   return Array.isArray(entries) && entries.length > 0 && Number.isFinite(entries[0]?.timestampMs);
 }
 
+function sampleIntervalMsNear(entries, index) {
+  const current = entries[index]?.timestampMs;
+  const prev = entries[index - 1]?.timestampMs;
+  if (Number.isFinite(current) && Number.isFinite(prev) && current > prev) return current - prev;
+
+  const next = entries[index + 1]?.timestampMs;
+  if (Number.isFinite(current) && Number.isFinite(next) && next > current) return next - current;
+
+  return NaN;
+}
+
 /** First index whose timestampAt >= target (lower bound). view is ascending by timestamp. */
 function lowerBound(view, target) {
   let lo = 0;
@@ -42,19 +53,45 @@ function upperBound(view, target) {
  * @param {{ timestampMs: number }[]} historyEntries hist-rate rows, ascending by timestamp
  * @param {number} effectiveOffsetSamples history-sample offset back from the newest sample
  * @param {number} visibleSamples history-sample window width
+ * @param {number} [historySampleMs] nominal hist-rate period; avoids amplifying timestamp jitter
  * @returns {{ oldestMs: number, newestMs: number } | null}
  */
-export function spectrogramTimeWindow(historyEntries, effectiveOffsetSamples, visibleSamples) {
+export function spectrogramTimeWindow(
+  historyEntries,
+  effectiveOffsetSamples,
+  visibleSamples,
+  historySampleMs
+) {
   if (!hasTimestamps(historyEntries)) return null;
   const total = historyEntries.length;
-  const offset = Math.max(0, Math.min(total - 1, Math.floor(effectiveOffsetSamples || 0)));
+  const requestedOffset = Math.max(0, Math.floor(effectiveOffsetSamples || 0));
+  const offset = Math.min(total - 1, requestedOffset);
   const newestIdx = total - 1 - offset;
   const requested = Math.max(1, Math.floor(visibleSamples || 0));
-  const oldestIdx = Math.max(0, newestIdx - requested + 1);
+  const oldestIdx = newestIdx - requested + 1;
+  const newestMs = historyEntries[newestIdx].timestampMs;
+  const intervalMs =
+    Number.isFinite(historySampleMs) && historySampleMs > 0
+      ? historySampleMs
+      : sampleIntervalMsNear(historyEntries, newestIdx);
+  const shouldExtrapolateLeft = oldestIdx < 0 && requestedOffset === offset && intervalMs > 0;
   return {
-    oldestMs: historyEntries[oldestIdx].timestampMs,
-    newestMs: historyEntries[newestIdx].timestampMs,
+    oldestMs: shouldExtrapolateLeft
+      ? newestMs - (requested - 1) * intervalMs
+      : historyEntries[Math.max(0, oldestIdx)].timestampMs,
+    newestMs,
   };
+}
+
+export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 1.8) {
+  const ts = view?.timestampAt?.(index);
+  if (!Number.isFinite(ts)) return NaN;
+
+  const nextTs = view.timestampAt(index + 1);
+  const gapThresh = gapFactor * sampleMs;
+  if (Number.isFinite(nextTs) && nextTs > ts && nextTs - ts <= gapThresh) return nextTs;
+
+  return ts + sampleMs;
 }
 
 /**

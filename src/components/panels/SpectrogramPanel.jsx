@@ -10,7 +10,7 @@ import { spectrogramTimeWindow, spectrogramDataBoundaries } from "../../math/spe
 import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
-import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
+import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { getTheme } from "../../theme/themeRegistry.js";
 import { listCustomThemes } from "../../theme/customThemesRepo.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
@@ -36,6 +36,8 @@ export function SpectrogramPanel({ compact = false }) {
     setSelectedOffset,
     showSelLine,
     selLineX,
+    channelCount,
+    spectrumChannelOptions,
     totalSamples,
     histSourceList,
     historyChartInteractive,
@@ -71,7 +73,8 @@ export function SpectrogramPanel({ compact = false }) {
 
   const markers = frequencyMarkerRef?.current ?? [];
   let visibleFrequencyMarkers = [];
-  if (markers.length && visibleSamples > 0 && totalSamples > 0) {
+  const showFrequencyMarkers = channelCount > 2 && (spectrumChannelOptions?.length ?? 0) > 0;
+  if (showFrequencyMarkers && markers.length && visibleSamples > 0 && totalSamples > 0) {
     const newestVisible = totalSamples - 1 - effectiveOffsetSamples;
     const oldestVisible = newestVisible - visibleSamples + 1;
     visibleFrequencyMarkers = markers
@@ -93,17 +96,26 @@ export function SpectrogramPanel({ compact = false }) {
   );
   const sampleMs = VISUAL_HIST_SAMPLE_SEC * 1000;
   // Visible time window from the master (loudness history) timeline; frames are placed by timestamp.
-  const timeWindow = useMemo(
-    () => spectrogramTimeWindow(histSourceList ?? [], effectiveOffsetSamples, visibleSamples),
-    [histSourceList, effectiveOffsetSamples, visibleSamples]
+  // Computed inline (not memoized): histSourceList is a stable, mutated-in-place ring reference in
+  // live mode, so a useMemo keyed on it never recomputes as data arrives and would freeze the
+  // window at its first (empty -> NaN) value. spectrogramTimeWindow is O(1), so recomputing each
+  // render is free and keeps the window advancing with live capture.
+  const timeWindow = spectrogramTimeWindow(
+    histSourceList ?? [],
+    effectiveOffsetSamples,
+    visibleSamples,
+    HIST_SAMPLE_SEC * 1000
   );
   const oldestMs = timeWindow?.oldestMs ?? NaN;
   const newestMs = timeWindow?.newestMs ?? NaN;
   // Marker lines where this request key's data appears/disappears inside the window (memoized so the
   // O(window) gap scan does not run on every ~60Hz panel re-render).
   const dataBoundaries = useMemo(
-    () => spectrogramDataBoundaries(spectrogramSnaps, oldestMs, newestMs, sampleMs),
-    [spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
+    () =>
+      showFrequencyMarkers
+        ? spectrogramDataBoundaries(spectrogramSnaps, oldestMs, newestMs, sampleMs)
+        : [],
+    [showFrequencyMarkers, spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
   );
   useSpectrogramCanvas({
     canvasRef,

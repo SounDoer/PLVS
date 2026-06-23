@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   spectrogramTimeWindow,
+  spectrogramFrameEndMs,
   inWindowRange,
   spectrogramDataBoundaries,
 } from "./spectrogramTimeline.js";
@@ -40,6 +41,35 @@ describe("spectrogramTimeWindow", () => {
   it("returns null when history has no timestamps", () => {
     expect(spectrogramTimeWindow([], 0, 3)).toBeNull();
     expect(spectrogramTimeWindow([{}], 0, 3)).toBeNull();
+  });
+
+  it("spans the full requested window when fewer samples exist (right-aligned, no stretch)", () => {
+    // 3 samples at 100ms spacing, but the window asks for 10 samples. The window must still cover
+    // 10 samples back in time (oldest extrapolated to newest - 9*interval), matching the
+    // index-based loudness/waveform panels, instead of stretching 3 samples across the whole view.
+    const partial = [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }];
+    expect(spectrogramTimeWindow(partial, 0, 10, 100)).toEqual({ oldestMs: 300, newestMs: 1200 });
+  });
+
+  it("uses the nominal history interval for partial windows instead of amplifying timestamp jitter", () => {
+    const jittered = [{ timestampMs: 1000 }, { timestampMs: 1097 }, { timestampMs: 1203 }];
+    expect(spectrogramTimeWindow(jittered, 0, 10, 100)).toEqual({
+      oldestMs: 303,
+      newestMs: 1203,
+    });
+  });
+});
+
+describe("spectrogramFrameEndMs", () => {
+  it("stitches small timestamp jitter to the next frame", () => {
+    const f = viewOf([{ timestampMs: 1000 }, { timestampMs: 1043 }, { timestampMs: 1081 }]);
+    expect(spectrogramFrameEndMs(f, 0, SAMPLE_MS)).toBe(1043);
+    expect(spectrogramFrameEndMs(f, 1, SAMPLE_MS)).toBe(1081);
+  });
+
+  it("keeps real gaps blank", () => {
+    const f = viewOf([{ timestampMs: 1000 }, { timestampMs: 1120 }]);
+    expect(spectrogramFrameEndMs(f, 0, SAMPLE_MS)).toBe(1040);
   });
 });
 
