@@ -32,6 +32,9 @@ export function SpectrumPanel({ compact = false }) {
     panelControls,
     resolveSpectrumSnapshotForKey,
     analysisStatus,
+    historyChartInteractive,
+    totalSamples,
+    captureCurrentSnapshot,
   } = useAudioData();
   const spectrumPeakHold = panelControls?.spectrumPeakHold ?? false;
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
@@ -104,6 +107,7 @@ export function SpectrumPanel({ compact = false }) {
   const displaySpectrumAreaPathB =
     spectrumPeakHold && panelSpectrumPeakPathB ? buildSpectrumAreaPath(panelSpectrumPeakPathB) : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
+  const canCaptureCurrentSnapshot = historyChartInteractive && totalSamples > 0;
 
   if (isOverCap || snapshotMissing) {
     return (
@@ -153,8 +157,13 @@ export function SpectrumPanel({ compact = false }) {
           </div>
           <div className="relative min-h-0 min-w-0">
             <div
+              data-testid="spectrum-chart"
               className="relative min-h-0 h-full rounded-lg bg-muted"
               onPointerLeave={onSpectrumHoverLeave}
+              onClick={() => {
+                if (!canCaptureCurrentSnapshot) return;
+                captureCurrentSnapshot?.();
+              }}
             >
               <div
                 className="absolute inset-0 min-h-0 min-w-0 px-[var(--ui-chart-pad)] pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"

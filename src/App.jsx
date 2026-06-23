@@ -741,6 +741,12 @@ function AppContent() {
     setHistoryHudHold,
   });
 
+  const captureCurrentSnapshot = useCallback(() => {
+    if (!historyChartInteractive || totalSamples <= 0) return;
+    setSelectedOffset(0);
+    showHistoryHud(1600);
+  }, [historyChartInteractive, totalSamples, setSelectedOffset, showHistoryHud]);
+
   const clearAll = async () => {
     if (audioRef.current?.wklt) {
       try {
@@ -968,6 +974,7 @@ function AppContent() {
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
+    captureCurrentSnapshot,
     // Spectrum
     spectrumChannelOptions,
     spectrumValueKey,

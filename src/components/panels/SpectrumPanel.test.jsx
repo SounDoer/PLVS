@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { SpectrumPanel } from "./SpectrumPanel.jsx";
@@ -173,6 +173,22 @@ describe("SpectrumPanel", () => {
 
     const snapStroke = container.querySelector('path[stroke="var(--ui-spectrum-primary-snap)"]');
     expect(snapStroke?.getAttribute("d")).toBe(path);
+  });
+
+  it("captures the current snapshot when left-clicking the chart with history data", () => {
+    const captureCurrentSnapshot = vi.fn();
+    renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80" }), {
+        historyChartInteractive: true,
+        totalSamples: 3,
+        captureCurrentSnapshot,
+      })
+    );
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent.click(chart);
+
+    expect(captureCurrentSnapshot).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the frequency axis in a dedicated layout row", () => {
