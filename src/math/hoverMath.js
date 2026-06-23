@@ -126,6 +126,18 @@ export function computeWaveformHoverPoint(
   };
 }
 
+export function findMarkerNoteAtX(xFrac, markers, hitFrac = 0.015) {
+  if (!markers?.length) return null;
+  let best = null;
+  for (const marker of markers) {
+    if (!marker?.label || !Number.isFinite(marker.xFrac)) continue;
+    const dist = Math.abs(marker.xFrac - xFrac);
+    if (dist > hitFrac) continue;
+    if (!best || dist < best.dist) best = { dist, label: marker.label };
+  }
+  return best?.label ?? null;
+}
+
 /**
  * Resolves hover data for the spectrogram panel from normalized X/Y fractions.
  *
@@ -138,9 +150,18 @@ export function computeWaveformHoverPoint(
  * @param {number} oldestMs - visible window start
  * @param {number} newestMs - visible window end
  * @param {number} sampleMs - nominal visual sample period (ms); also the hover tolerance
- * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string } | null}
+ * @param {{ xFrac: number, label: string }[]} [markerNotes] marker notes shown near vertical markers
+ * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string, markerNoteLabel?: string } | null}
  */
-export function computeSpectrogramHoverPoint(xFrac, yFrac, snaps, oldestMs, newestMs, sampleMs) {
+export function computeSpectrogramHoverPoint(
+  xFrac,
+  yFrac,
+  snaps,
+  oldestMs,
+  newestMs,
+  sampleMs,
+  markerNotes
+) {
   if (!snaps || !snaps.length || !(newestMs > oldestMs)) return null;
 
   const ts = oldestMs + xFrac * (newestMs - oldestMs);
@@ -183,6 +204,7 @@ export function computeSpectrogramHoverPoint(xFrac, yFrac, snaps, oldestMs, newe
     lo = lo - 1;
   }
   const db = dbList[lo];
+  const markerNoteLabel = findMarkerNoteAtX(xFrac, markerNotes);
 
   return {
     leftPct: xFrac * 100,
@@ -191,6 +213,7 @@ export function computeSpectrogramHoverPoint(xFrac, yFrac, snaps, oldestMs, newe
     freqLabel: formatSpectrumFreq(hz),
     dbLabel: Number.isFinite(db) ? `${db.toFixed(1)} dB` : "-",
     noteLabel: freqToNote(bands[lo]?.fCenter ?? hz),
+    ...(markerNoteLabel ? { markerNoteLabel } : {}),
   };
 }
 

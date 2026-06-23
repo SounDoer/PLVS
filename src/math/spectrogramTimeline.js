@@ -121,7 +121,13 @@ export function inWindowRange(view, oldestMs, newestMs) {
  * @param {number} [gapFactor] a gap is a jump > gapFactor * sampleMs between consecutive frames
  * @returns {number[]} boundary timestamps (ms)
  */
-export function spectrogramDataBoundaries(view, oldestMs, newestMs, sampleMs, gapFactor = 1.8) {
+export function spectrogramDataBoundaryMarkers(
+  view,
+  oldestMs,
+  newestMs,
+  sampleMs,
+  gapFactor = 1.8
+) {
   if (!view || view.length === 0 || !(newestMs > oldestMs)) return [];
   const gapThresh = gapFactor * sampleMs;
   const eps = sampleMs * 0.5;
@@ -133,10 +139,20 @@ export function spectrogramDataBoundaries(view, oldestMs, newestMs, sampleMs, ga
     const ts = view.timestampAt(i);
     if (!Number.isFinite(ts)) continue;
     const gapBefore = i === 0 || ts - view.timestampAt(i - 1) > gapThresh;
-    if (gapBefore && ts > oldestMs + eps && ts < newestMs - eps) marks.push(ts);
+    if (gapBefore && ts > oldestMs + eps && ts < newestMs - eps) {
+      marks.push({ ts, label: "Data starts here" });
+    }
     const gapAfter = i === view.length - 1 || view.timestampAt(i + 1) - ts > gapThresh;
     const endEdge = ts + sampleMs;
-    if (gapAfter && endEdge > oldestMs + eps && endEdge < newestMs - eps) marks.push(endEdge);
+    if (gapAfter && endEdge > oldestMs + eps && endEdge < newestMs - eps) {
+      marks.push({ ts: endEdge, label: "Data ends here" });
+    }
   }
   return marks;
+}
+
+export function spectrogramDataBoundaries(view, oldestMs, newestMs, sampleMs, gapFactor = 1.8) {
+  return spectrogramDataBoundaryMarkers(view, oldestMs, newestMs, sampleMs, gapFactor).map(
+    ({ ts }) => ts
+  );
 }

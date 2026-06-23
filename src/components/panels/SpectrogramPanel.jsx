@@ -6,7 +6,10 @@ import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
-import { spectrogramTimeWindow, spectrogramDataBoundaries } from "../../math/spectrogramTimeline";
+import {
+  spectrogramTimeWindow,
+  spectrogramDataBoundaryMarkers,
+} from "../../math/spectrogramTimeline";
 import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
@@ -110,10 +113,10 @@ export function SpectrogramPanel({ compact = false }) {
   const newestMs = timeWindow?.newestMs ?? NaN;
   // Marker lines where this request key's data appears/disappears inside the window (memoized so the
   // O(window) gap scan does not run on every ~60Hz panel re-render).
-  const dataBoundaries = useMemo(
+  const dataBoundaryMarkers = useMemo(
     () =>
       showFrequencyMarkers
-        ? spectrogramDataBoundaries(spectrogramSnaps, oldestMs, newestMs, sampleMs)
+        ? spectrogramDataBoundaryMarkers(spectrogramSnaps, oldestMs, newestMs, sampleMs)
         : [],
     [showFrequencyMarkers, spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
   );
@@ -127,16 +130,35 @@ export function SpectrogramPanel({ compact = false }) {
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
     colormapLut,
   });
+  const boundarySpan = newestMs - oldestMs;
   const {
     hover: spectrogramHover,
     onMove: onSpectrogramHoverMove,
     onLeave: onSpectrogramHoverLeave,
-  } = useChartHover((xFrac, yFrac) =>
-    historyChartInteractive
-      ? computeSpectrogramHoverPoint(xFrac, yFrac, spectrogramSnaps, oldestMs, newestMs, sampleMs)
-      : null
-  );
-  const boundarySpan = newestMs - oldestMs;
+  } = useChartHover((xFrac, yFrac) => {
+    if (!historyChartInteractive) return null;
+    const markerNotes = [
+      ...visibleFrequencyMarkers.map(({ marker, x }) => ({
+        xFrac: x / 1000,
+        label: `${marker.from} -> ${marker.to}`,
+      })),
+      ...(boundarySpan > 0
+        ? dataBoundaryMarkers.map(({ ts, label }) => ({
+            xFrac: (ts - oldestMs) / boundarySpan,
+            label,
+          }))
+        : []),
+    ];
+    return computeSpectrogramHoverPoint(
+      xFrac,
+      yFrac,
+      spectrogramSnaps,
+      oldestMs,
+      newestMs,
+      sampleMs,
+      markerNotes
+    );
+  });
 
   if (isOverCap) {
     return (
@@ -221,14 +243,14 @@ export function SpectrogramPanel({ compact = false }) {
               />
               {(selectedOffset >= 0 && showSelLine) ||
               visibleFrequencyMarkers.length > 0 ||
-              (dataBoundaries.length > 0 && boundarySpan > 0) ? (
+              (dataBoundaryMarkers.length > 0 && boundarySpan > 0) ? (
                 <svg
                   viewBox="0 0 1000 1000"
                   preserveAspectRatio="none"
                   className="pointer-events-none absolute inset-0 h-full w-full"
                 >
                   {boundarySpan > 0
-                    ? dataBoundaries.map((ts) => {
+                    ? dataBoundaryMarkers.map(({ ts, label }) => {
                         const bx = ((ts - oldestMs) / boundarySpan) * 1000;
                         return (
                           <line
@@ -243,7 +265,7 @@ export function SpectrogramPanel({ compact = false }) {
                             opacity="0.5"
                             vectorEffect="non-scaling-stroke"
                           >
-                            <title>No data for this view on the blank side of this line</title>
+                            <title>{label}</title>
                           </line>
                         );
                       })
@@ -304,6 +326,11 @@ export function SpectrogramPanel({ compact = false }) {
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrogramHover.noteLabel}
                     </div>
+                    {spectrogramHover.markerNoteLabel ? (
+                      <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
+                        {spectrogramHover.markerNoteLabel}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}

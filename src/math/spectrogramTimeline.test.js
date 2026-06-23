@@ -3,6 +3,7 @@ import {
   spectrogramTimeWindow,
   spectrogramFrameEndMs,
   inWindowRange,
+  spectrogramDataBoundaryMarkers,
   spectrogramDataBoundaries,
 } from "./spectrogramTimeline.js";
 
@@ -116,5 +117,16 @@ describe("spectrogramDataBoundaries", () => {
   it("returns no markers for empty input or a degenerate window", () => {
     expect(spectrogramDataBoundaries(viewOf([]), 1000, 2000, SAMPLE_MS)).toEqual([]);
     expect(spectrogramDataBoundaries(frames(1000, 1200), 1500, 1500, SAMPLE_MS)).toEqual([]);
+  });
+});
+
+describe("spectrogramDataBoundaryMarkers", () => {
+  it("labels leading and trailing data boundaries", () => {
+    expect(spectrogramDataBoundaryMarkers(frames(1500, 2100), 1000, 2000, SAMPLE_MS)).toEqual([
+      { ts: 1500, label: "Data starts here" },
+    ]);
+    expect(spectrogramDataBoundaryMarkers(frames(900, 1500), 1000, 2000, SAMPLE_MS)).toEqual([
+      { ts: 1540, label: "Data ends here" },
+    ]);
   });
 });

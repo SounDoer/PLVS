@@ -6,6 +6,7 @@ import {
   computeSpectrumHoverIndex,
   computeWaveformHoverPoint,
   computeSpectrogramHoverPoint,
+  findMarkerNoteAtX,
   freqToNote,
 } from "./hoverMath";
 
@@ -204,6 +205,28 @@ describe("computeSpectrogramHoverPoint", () => {
     expect(out).not.toBeNull();
     expect(typeof out.noteLabel).toBe("string");
     expect(out.noteLabel).not.toBe("");
+  });
+
+  it("includes a marker note when hovering near a spectrogram marker", () => {
+    const r = computeSpectrogramHoverPoint(0.5, 0.5, snaps, OLD, NEW, SMS, [
+      { xFrac: 0.5, label: "L+R -> C" },
+    ]);
+    expect(r.markerNoteLabel).toBe("L+R -> C");
+  });
+});
+
+describe("findMarkerNoteAtX", () => {
+  it("returns the nearest marker label within the hit radius", () => {
+    expect(
+      findMarkerNoteAtX(0.502, [
+        { xFrac: 0.2, label: "Data starts here" },
+        { xFrac: 0.5, label: "L+R -> C" },
+      ])
+    ).toBe("L+R -> C");
+  });
+
+  it("returns null outside the hit radius", () => {
+    expect(findMarkerNoteAtX(0.6, [{ xFrac: 0.5, label: "L+R -> C" }])).toBeNull();
   });
 });
 
