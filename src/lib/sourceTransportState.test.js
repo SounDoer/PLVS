@@ -87,7 +87,7 @@ describe("deriveSourceTransportState", () => {
         fileSession: { state: "ready", fileName: "final_mix.wav" },
       })
     ).toMatchObject({
-      statusLabel: "final_mix.wav",
+      statusLabel: "Ready",
       actionLabel: "ANALYZE",
       actionKind: "analyzeFile",
     });
@@ -100,7 +100,7 @@ describe("deriveSourceTransportState", () => {
         fileSession: { state: "analyzing", fileName: "final_mix.wav", progress: 0.42 },
       })
     ).toMatchObject({
-      statusLabel: "final_mix.wav 42%",
+      statusLabel: "42%",
       actionLabel: "STOP",
       chromeState: "live",
       actionKind: "stopFileAnalysis",
@@ -114,7 +114,7 @@ describe("deriveSourceTransportState", () => {
         fileSession: { state: "complete", fileName: "final_mix.wav" },
       })
     ).toMatchObject({
-      statusLabel: "final_mix.wav Done",
+      statusLabel: "Done",
       actionLabel: "REANALYZE",
       actionKind: "reanalyzeFile",
     });
@@ -131,7 +131,7 @@ describe("deriveSourceTransportState", () => {
         },
       })
     ).toMatchObject({
-      statusLabel: "final_mix.wav 00:02:03",
+      statusLabel: "00:02:03",
       actionLabel: "REANALYZE",
       actionKind: "reanalyzeFile",
     });
@@ -147,7 +147,7 @@ describe("deriveSourceTransportState", () => {
           metadata: { durationMs: 5_000 },
         },
       }).statusLabel
-    ).toBe("final_mix.wav 00:00:05");
+    ).toBe("00:00:05");
   });
 
   it("clamps a negative scrub media time is the caller's job; finite values render as a clock", () => {

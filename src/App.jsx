@@ -497,6 +497,8 @@ function AppContent() {
     selectedMediaTimeMs,
     fileSession,
   });
+  const showFileAnalysisResult =
+    sourceMode === "file" && (fileSession.state === "complete" || fileSession.state === "error");
   const chromeState = sourceTransportState.chromeState;
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
@@ -1234,10 +1236,6 @@ function AppContent() {
                 onSourceModeChange={onSourceModeChange}
                 onPrimaryAction={onSourceTransportAction}
               />
-              {sourceMode === "file" &&
-              (fileSession.state === "complete" || fileSession.state === "error") ? (
-                <FileAnalysisSummary fileSession={fileSession} />
-              ) : null}
               <div className="flex-1" />
               <div className="flex items-center gap-1">
                 <IconButton
@@ -1382,6 +1380,20 @@ function AppContent() {
               </div>
             </header>
           )}
+
+          {showFileAnalysisResult ? (
+            <div
+              className={
+                focusView.autoHideControls
+                  ? "absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[calc(var(--ui-shell-pad)+2.75rem)] z-30"
+                  : "shrink-0"
+              }
+              onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
+              onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
+            >
+              <FileAnalysisSummary fileSession={fileSession} />
+            </div>
+          ) : null}
 
           <SplitLayout />
 

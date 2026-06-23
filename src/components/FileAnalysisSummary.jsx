@@ -18,11 +18,11 @@ function trackLine(track) {
 export function FileAnalysisSummary({ fileSession }) {
   if (fileSession?.state === "error") {
     return (
-      <section className="min-w-72 rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ui-signal-bad)]">
+      <section className="flex w-full min-w-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-[color:color-mix(in_srgb,var(--ui-signal-bad)_30%,var(--border))] bg-[color:color-mix(in_srgb,var(--ui-signal-bad)_7%,var(--card))] px-[var(--ui-header-pad-x)] py-2 text-sm text-popover-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]">
+        <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--ui-signal-bad)]">
           File analysis error
         </p>
-        <p className="mt-1 text-sm">{fileSession.error}</p>
+        <p className="min-w-0 truncate text-xs text-foreground">{fileSession.error}</p>
       </section>
     );
   }
@@ -37,41 +37,32 @@ export function FileAnalysisSummary({ fileSession }) {
   );
 
   return (
-    <section className="min-w-72 rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground">
-      <p className="truncate text-sm font-semibold text-foreground">{fileName}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{trackLine(track)}</p>
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-        <div>
-          <dt className="text-muted-foreground">Integrated</dt>
-          <dd className="font-semibold tabular-nums text-foreground">
-            {fmtNumber(summary.integratedLufs, "LUFS")}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">LRA</dt>
-          <dd className="font-semibold tabular-nums text-foreground">
-            {fmtNumber(summary.lra, "LU")}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">True Peak Max</dt>
-          <dd className="font-semibold tabular-nums text-foreground">
-            {fmtNumber(summary.truePeakMaxDbtp, "dBTP")}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Sample Peak Max</dt>
-          <dd className="font-semibold tabular-nums text-foreground">
-            {fmtNumber(samplePeakMax, "dBFS")}
-          </dd>
-        </div>
+    <section className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-[calc(var(--radius)*0.66)] border border-border bg-card/55 px-[var(--ui-header-pad-x)] py-2 text-sm text-popover-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_rgba(255,255,255,0.026)] backdrop-blur-[14px] backdrop-saturate-[140%]">
+      <div className="min-w-[14rem] flex-1">
+        <p className="truncate text-sm font-semibold text-foreground">{fileName}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">{trackLine(track)}</p>
+      </div>
+      <dl className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+        <MetricChip label="Integrated" value={fmtNumber(summary.integratedLufs, "LUFS")} />
+        <MetricChip label="LRA" value={fmtNumber(summary.lra, "LU")} />
+        <MetricChip label="True Peak Max" value={fmtNumber(summary.truePeakMaxDbtp, "dBTP")} />
+        <MetricChip label="Sample Peak Max" value={fmtNumber(samplePeakMax, "dBFS")} />
       </dl>
       {fileSession?.historyTruncated ? (
-        <p className="mt-3 text-xs text-[color:var(--ui-signal-warn)]">
+        <p className="min-w-0 text-xs text-[color:var(--ui-signal-warn)]">
           Delivery metrics cover the whole file. Scrub history is limited to the last{" "}
           {formatClock(fileSession.historyCoveredMs ?? 0)}.
         </p>
       ) : null}
     </section>
+  );
+}
+
+function MetricChip({ label, value }) {
+  return (
+    <div className="flex items-baseline gap-2 rounded-md border border-border/70 bg-background/35 px-2.5 py-1">
+      <dt className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</dt>
+      <dd className="font-semibold tabular-nums text-foreground">{value}</dd>
+    </div>
   );
 }

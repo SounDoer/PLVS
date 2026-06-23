@@ -60,10 +60,9 @@ function deriveFileState({ selectedOffset = -1, selectedMediaTimeMs, fileSession
   }
 
   if (state === "analyzing") {
-    const fileName = fileSession.fileName || "Analyzing";
     return {
       sourceLabel: "File",
-      statusLabel: `${fileName} ${formatProgress(fileSession.progress)}`,
+      statusLabel: formatProgress(fileSession.progress),
       actionLabel: "STOP",
       chromeState: "live",
       actionKind: "stopFileAnalysis",
@@ -71,13 +70,10 @@ function deriveFileState({ selectedOffset = -1, selectedMediaTimeMs, fileSession
   }
 
   if (state === "complete") {
-    const fileName = fileSession.fileName || "File";
     const durationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
     return {
       sourceLabel: "File",
-      statusLabel: Number.isFinite(durationMs)
-        ? `${fileName} ${formatClock(durationMs)}`
-        : `${fileName} Done`,
+      statusLabel: Number.isFinite(durationMs) ? formatClock(durationMs) : "Done",
       actionLabel: "REANALYZE",
       chromeState: "ready",
       actionKind: "reanalyzeFile",
@@ -87,7 +83,7 @@ function deriveFileState({ selectedOffset = -1, selectedMediaTimeMs, fileSession
   if (state === "ready") {
     return {
       sourceLabel: "File",
-      statusLabel: fileSession.fileName || "File ready",
+      statusLabel: "Ready",
       actionLabel: "ANALYZE",
       chromeState: "ready",
       actionKind: "analyzeFile",
