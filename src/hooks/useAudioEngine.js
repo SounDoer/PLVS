@@ -63,8 +63,10 @@ export function useAudioEngine({
   setSelectedOffset,
   resetTimer,
   setShowClock,
+  defaultSampleRateRef: externalDefaultSampleRateRef,
 }) {
-  const defaultSampleRateRef = useRef(48000);
+  const internalDefaultSampleRateRef = useRef(48000);
+  const defaultSampleRateRef = externalDefaultSampleRateRef ?? internalDefaultSampleRateRef;
 
   const clearLocalMeterStateForRestart = () => {
     intake.reset();
@@ -89,7 +91,10 @@ export function useAudioEngine({
    *   them is redundant. If a future caller passed an unstable inline setter, stale closures
    *   would be a bug in the caller, not fixed by widening this array.
    */
-  /* eslint-disable react-hooks/exhaustive-deps */
+  // `defaultSampleRateRef` may be a ref lifted from the parent (shared with the file-analysis
+  // engine); writing its `.current` inside the effect is the intended ref-box mutation, so the
+  // immutability rule is disabled here alongside exhaustive-deps.
+  /* eslint-disable react-hooks/exhaustive-deps, react-hooks/immutability */
   useEffect(() => {
     if (!running) {
       if (audioRef.current?.mode === "tauri") {
@@ -219,5 +224,5 @@ export function useAudioEngine({
       }
     };
   }, [running, captureDeviceId, captureFormatSignature]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  /* eslint-enable react-hooks/exhaustive-deps, react-hooks/immutability */
 }

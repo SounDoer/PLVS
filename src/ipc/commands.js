@@ -74,3 +74,23 @@ export function setLoudnessWeights(weights) {
 export function setDialogueGating(enabled) {
   return invoke("set_dialogue_gating", { enabled: !!enabled });
 }
+
+/** @param {string} path Local media path selected or dropped in the desktop app. */
+export function probeFileAnalysis(path) {
+  return invoke("file_analysis_probe", { path });
+}
+
+/** @param {{ path: string; onFrame: (payload: object) => void }} opts */
+export async function startFileAnalysis({ path, onFrame }) {
+  const onAudio = new Channel();
+  onAudio.onmessage = (msg) => {
+    const p = msg && typeof msg === "object" && "message" in msg ? msg.message : msg;
+    if (p && typeof p === "object") onFrame(p);
+  };
+  await invoke("file_analysis_start", { path, onFrame: onAudio });
+  return onAudio;
+}
+
+export function stopFileAnalysis() {
+  return invoke("file_analysis_stop");
+}

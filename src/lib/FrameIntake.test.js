@@ -236,6 +236,41 @@ describe("FrameIntake", () => {
     expect(snap.vectorscopePairY).toBe(3);
   });
 
+  it("pushFrame with visualHistBatch ingests all entries into the visual ring in order", () => {
+    const intake = new FrameIntake();
+    const batch = [
+      {
+        timestampMs: 1000,
+        waveformMin: [0],
+        waveformMax: [0],
+        spectrumSmoothDb: [],
+        vectorscopePairs: [],
+        correlation: 0,
+      },
+      {
+        timestampMs: 1040,
+        waveformMin: [0],
+        waveformMax: [0],
+        spectrumSmoothDb: [],
+        vectorscopePairs: [],
+        correlation: 0,
+      },
+      {
+        timestampMs: 1080,
+        waveformMin: [0],
+        waveformMax: [0],
+        spectrumSmoothDb: [],
+        vectorscopePairs: [],
+        correlation: 0,
+      },
+    ];
+    intake.pushFrame(makeFrame({ visualHistBatch: batch }), HIST_MAX, SR, false, 10);
+    expect(intake.getVisualWaveformHist().length).toBe(3);
+    expect(intake.getVisualWaveformHist().at(0).timestampMs).toBe(1000);
+    expect(intake.getVisualWaveformHist().at(1).timestampMs).toBe(1040);
+    expect(intake.getVisualWaveformHist().at(2).timestampMs).toBe(1080);
+  });
+
   it("pushVisualHistRow stores entry in visual ring buffers", () => {
     const intake = new FrameIntake();
     const row = {

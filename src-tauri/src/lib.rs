@@ -1,6 +1,7 @@
 mod audio;
 mod dsp;
 mod engine;
+mod file_analysis;
 mod ipc;
 mod state;
 mod window_state;
@@ -26,6 +27,7 @@ pub fn run() {
     ))
     .plugin(tauri_plugin_store::Builder::default().build())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+    .plugin(tauri_plugin_dialog::init())
     .manage(AppState::default())
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
@@ -37,6 +39,9 @@ pub fn run() {
       ipc::commands::set_dialogue_gating,
       ipc::commands::ack_frames,
       ipc::commands::audio_stop,
+      ipc::commands::file_analysis_probe,
+      ipc::commands::file_analysis_start,
+      ipc::commands::file_analysis_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_engine_state,
       window_state::current_window_bounds,

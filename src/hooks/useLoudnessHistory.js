@@ -3,7 +3,9 @@ import { loudnessHistY, LOUDNESS_TICKS } from "../config/scales";
 import {
   buildHistoryPath,
   buildHistoryTimeAxisLabels,
+  buildMediaTimeAxisLabels,
   getHistoryViewport,
+  mediaTimeAxisRangeSec,
 } from "../math/historyMath";
 import { UI_PREFERENCES } from "../uiPreferences";
 import { buildStatsMetrics } from "@/lib/statsCatalog.js";
@@ -25,6 +27,7 @@ export function useLoudnessHistory({
   displayAudio,
   referenceLufs,
   selectedOffset,
+  sourceMode,
 }) {
   const [historyWindowSec, setHistoryWindowSec] = useState(
     UI_PREFERENCES.modules.loudness.history.defaultWindowSec
@@ -58,13 +61,22 @@ export function useLoudnessHistory({
   // --- Viewport & display paths ---
 
   const totalSamples = histSourceList.length;
+  // File mode shows a fixed-extent recording: cap the window to the whole file so zoom-out can never
+  // exceed the data. Otherwise the window grows past the file and the content right-aligns, leaving a
+  // gap on the left while the media-time axis still spans 0 -> duration (ambiguous). Live mode keeps
+  // the unclamped window (its data grows over time).
+  const fileMaxWindowSec = totalSamples * HIST_SAMPLE_SEC;
+  const effectiveWindowSec =
+    sourceMode === "file" && totalSamples > 0
+      ? Math.min(historyWindowSec, fileMaxWindowSec)
+      : historyWindowSec;
   const {
     clampedWindowSec,
     visibleSamples,
     maxOffsetSamples,
     effectiveOffsetSamples,
     effectiveOffsetSec,
-  } = getHistoryViewport(totalSamples, historyWindowSec, historyOffsetSec, HIST_SAMPLE_SEC);
+  } = getHistoryViewport(totalSamples, effectiveWindowSec, historyOffsetSec, HIST_SAMPLE_SEC);
 
   const displayHistoryPathM = buildHistoryPath(
     histSourceList,
@@ -97,10 +109,19 @@ export function useLoudnessHistory({
     )
   );
 
-  const historyTimeTicks = useMemo(
-    () => buildHistoryTimeAxisLabels(effectiveOffsetSec, visibleSamples * HIST_SAMPLE_SEC),
-    [effectiveOffsetSec, visibleSamples]
-  );
+  // File mode reads an absolute media-time axis (0 -> duration); live mode keeps the "time ago" axis.
+  const historyTimeTicks = useMemo(() => {
+    if (sourceMode === "file") {
+      const { startSec, endSec } = mediaTimeAxisRangeSec(
+        totalSamples,
+        effectiveOffsetSamples,
+        visibleSamples,
+        HIST_SAMPLE_SEC
+      );
+      return buildMediaTimeAxisLabels(startSec, endSec);
+    }
+    return buildHistoryTimeAxisLabels(effectiveOffsetSec, visibleSamples * HIST_SAMPLE_SEC);
+  }, [sourceMode, totalSamples, effectiveOffsetSamples, effectiveOffsetSec, visibleSamples]);
 
   // --- Loudness metrics for LoudnessPanel ---
 

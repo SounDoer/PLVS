@@ -1,0 +1,118 @@
+import { RefreshCw, Trash2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { formatClock } from "../hooks/useSessionTimer.js";
+
+function statusLabel(session) {
+  if (session?.state === "ready") return "Ready";
+  if (session?.state === "analyzing") {
+    const pct = Number.isFinite(session.progress) ? Math.round(session.progress * 100) : 0;
+    return `${Math.max(0, Math.min(100, pct))}%`;
+  }
+  if (session?.state === "complete") {
+    const durationMs = session.summary?.durationMs ?? session.metadata?.durationMs;
+    return Number.isFinite(durationMs) ? formatClock(durationMs) : "Done";
+  }
+  if (session?.state === "error") return "Error";
+  return "File";
+}
+
+export function FileAnalysisHistoryMenu({
+  fileSessions = [],
+  activeFileId = null,
+  analyzingFileId = null,
+  onSelectFile,
+  onReanalyzeFile,
+  onRemoveFile,
+  onClearAllFiles,
+}) {
+  const count = fileSessions.length;
+  if (count === 0) return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-7 shrink-0 items-center rounded-md border border-border/70 bg-background/35 px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          {count} {count === 1 ? "file" : "files"}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={6} className="w-80 max-w-[92vw] p-1">
+        <div className="flex items-center justify-between gap-2 px-2 py-1">
+          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground">
+            File History
+          </p>
+          <button
+            type="button"
+            onClick={() => onClearAllFiles?.()}
+            className="rounded px-1.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label="Clear all file history"
+          >
+            Clear all
+          </button>
+        </div>
+        <div className="grid gap-0.5">
+          {fileSessions.map((session) => {
+            const isActive = session.id === activeFileId;
+            const isAnalyzing = session.id === analyzingFileId;
+            return (
+              <div
+                key={session.id}
+                className="group flex items-center gap-1 rounded text-xs transition-colors hover:bg-muted/50 focus-within:bg-muted/50"
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelectFile?.(session.id)}
+                  aria-label={`Show file ${session.fileName}`}
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <span
+                    aria-label={isActive ? `Active file ${session.fileName}` : undefined}
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full",
+                      isActive ? "bg-primary" : "bg-muted-foreground/20"
+                    )}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-foreground">
+                      {session.fileName}
+                    </span>
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span>{statusLabel(session)}</span>
+                      {isAnalyzing ? (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span>Analyzing</span>
+                        </>
+                      ) : null}
+                    </span>
+                  </span>
+                </button>
+                <span className="flex shrink-0 items-center gap-0.5 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => onReanalyzeFile?.(session.id)}
+                    aria-label={`Reanalyze ${session.fileName}`}
+                    className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <RefreshCw className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveFile?.(session.id)}
+                    aria-label={`Remove ${session.fileName}`}
+                    className="rounded p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}

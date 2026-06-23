@@ -10,6 +10,7 @@ import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMa
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
 import { useAudioEngine } from "./hooks/useAudioEngine";
+import { useFileAnalysisEngine } from "./hooks/useFileAnalysisEngine.js";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
@@ -33,8 +34,21 @@ import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ThemeEditor } from "./components/ThemeEditor";
-import { StatusPill } from "./components/StatusPill.jsx";
-import { TransportButton } from "./components/TransportButton.jsx";
+import { SourceTransportCluster } from "./components/SourceTransportCluster.jsx";
+import { FileAnalysisSummary } from "./components/FileAnalysisSummary.jsx";
+import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
+import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
+import {
+  addFileEntry,
+  clearFileHistory,
+  createInitialFileHistory,
+  getActiveFileSession,
+  getAnalyzingFileSession,
+  removeFileEntry,
+  selectFileEntry,
+  startFileAnalysisEntry,
+  updateFileEntry,
+} from "./lib/fileAnalysisSessionRegistry.js";
 import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
@@ -58,7 +72,7 @@ import {
   SHELL_TOP_REVEAL_HOT_ZONE,
 } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
-import { Bookmark, Focus, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
+import { Bookmark, Focus, FolderOpen, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
@@ -68,6 +82,7 @@ import {
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
+import { pickMediaFile } from "./ipc/fileDialog.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
@@ -76,6 +91,8 @@ import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
+// Live and file sessions share bounded display history. File-mode summary metrics are authoritative
+// for the whole file; panel history is an inspectable downsampled/session view, not unlimited storage.
 const HIST_MAX_SAMPLES = 72000;
 const VISUAL_MAX_SAMPLES = 180_000; // 25 Hz × 2 h
 const DIALOGUE_STAT_IDS = [
@@ -86,6 +103,7 @@ const DIALOGUE_STAT_IDS = [
 ];
 
 const APP_VERSION = packageInfo.version;
+const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 
 function toBackendAnalysisRequests(requests) {
   return {
@@ -250,9 +268,21 @@ function AppContent() {
 
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
 
-  const { clockRef, canClearRef, startTimer, stopTimer, resetTimer } = useSessionTimer();
+  const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } =
+    useSessionTimer();
   const [showClock, setShowClock] = useState(false);
 
+  const [sourceMode, setSourceMode] = useState("live");
+  const [fileHistory, setFileHistory] = useState(() => createInitialFileHistory());
+  const [fileRunRequest, setFileRunRequest] = useState(null);
+  const fileEntrySeqRef = useRef(0);
+  const fileSessions = useMemo(
+    () => fileHistory.order.map((id) => fileHistory.sessionsById[id]).filter(Boolean),
+    [fileHistory]
+  );
+  const activeFileSession = useMemo(() => getActiveFileSession(fileHistory), [fileHistory]);
+  const analyzingFileSession = useMemo(() => getAnalyzingFileSession(fileHistory), [fileHistory]);
+  const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const [running, setRunning] = useState(false);
   const [selectedOffset, setSelectedOffset] = useState(-1);
   const [status, setStatus] = useState("Ready - click Start to begin monitoring");
@@ -316,7 +346,18 @@ function AppContent() {
   const audioRef = useRef(null);
   const rafRef = useRef(0);
   const frameRef = useRef(0);
-  const intakeRef = useRef(new FrameIntake());
+  // Live and File keep separate history rings so a source switch never bleeds one into the other,
+  // and returning to File restores its previous analysis without re-decoding. Each engine writes its
+  // own ring (live->liveIntake, file->fileIntake); `intakeRef` always points at the active source's
+  // ring and is what the display / channel-metadata reads use.
+  const liveIntakeRef = useRef(null);
+  if (liveIntakeRef.current === null) liveIntakeRef.current = new FrameIntake();
+  const emptyFileIntakeRef = useRef(null);
+  if (emptyFileIntakeRef.current === null) emptyFileIntakeRef.current = new FrameIntake();
+  const fileDisplayIntake = activeFileSession?.intake ?? emptyFileIntakeRef.current;
+  const fileAnalysisIntake = analyzingFileSession?.intake ?? emptyFileIntakeRef.current;
+  const intakeRef = useRef(liveIntakeRef.current);
+  intakeRef.current = sourceMode === "file" ? fileDisplayIntake : liveIntakeRef.current;
   const frequencyMarkerRef = useMemo(
     () => ({
       get current() {
@@ -332,6 +373,7 @@ function AppContent() {
     []
   );
   const selectedOffsetRef = useRef(-1);
+  const defaultSampleRateRef = useRef(48000);
   const lastSentAnalysisRequestsKeyRef = useRef("");
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
@@ -363,6 +405,7 @@ function AppContent() {
     correlation,
     channelMetadata,
     visualWaveformSnap,
+    targetTimestampMs,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
@@ -405,6 +448,7 @@ function AppContent() {
     displayAudio,
     referenceLufs,
     selectedOffset,
+    sourceMode,
   });
 
   const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(
@@ -416,9 +460,47 @@ function AppContent() {
     return Math.max(0, Math.min(20, pct));
   }, []);
   const vsGridDiagFar = 100 - vsGridDiagInset;
-  const startMode = selectedOffset >= 0 ? "live" : running ? "stop" : "start";
-  // Maps old startMode values to new 3-state chrome vocabulary
-  const chromeState = startMode === "stop" ? "live" : startMode === "live" ? "snapshot" : "ready";
+  // In file mode the selected history sample's timestamp is absolute media time (>= 0); clamp it so
+  // a scrub past the decoded tail never renders a negative time in the transport pill. Live mode
+  // keeps the raw value (its timeline is wall-clock relative).
+  const fileDurationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
+  const selectedMediaTimeMs =
+    sourceMode === "file" && Number.isFinite(targetTimestampMs)
+      ? Math.max(0, targetTimestampMs)
+      : targetTimestampMs;
+
+  // Once a file's duration is known (probe metadata while analyzing, or the final summary), fit the
+  // loudness-history window to the whole file and reset scrub so the full analyzed curve shows over
+  // an absolute media-time axis. selectedOffset is intentionally not a dependency so user scrubbing
+  // afterwards is preserved; getHistoryViewport clamps the window to [MIN, MAX].
+  useEffect(() => {
+    if (sourceMode !== "file") return;
+    if (fileSession.state !== "analyzing" && fileSession.state !== "complete") return;
+    setHistoryWindowSec(
+      Number.isFinite(fileDurationMs) ? fileDurationMs / 1000 : HISTORY_MAX_WINDOW_SEC
+    );
+    setHistoryOffsetSec(0);
+    setSelectedOffset(-1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceMode, fileSession.state, fileDurationMs]);
+
+  const latestTimestampMs = useMemo(() => {
+    const last = histSourceList.length > 0 ? histSourceList[histSourceList.length - 1] : null;
+    return Number.isFinite(last?.timestampMs) ? last.timestampMs : undefined;
+  }, [histSourceList]);
+
+  const sourceTransportState = deriveSourceTransportState({
+    sourceMode,
+    running,
+    selectedOffset,
+    latestTimestampMs,
+    elapsedMs: elapsedMsRef.current,
+    selectedMediaTimeMs,
+    fileSession,
+    analyzingFileSession,
+  });
+  const showFileAnalysisResult = sourceMode === "file" && fileSessions.length > 0;
+  const chromeState = sourceTransportState.chromeState;
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
   const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
@@ -470,10 +552,14 @@ function AppContent() {
   }, [dialogueGating, running]);
 
   useEffect(() => {
-    if (!isTauri() || !running) {
+    if (!isTauri()) {
       lastSentAnalysisRequestsKeyRef.current = "";
       return;
     }
+    // Sync request keys to the backend whenever they change, not only during live capture. The file
+    // analysis worker snapshots these at start, so on a fresh launch (no live capture yet) file mode
+    // would otherwise get empty requests and the request-keyed panels (Spectrogram/Spectrum/
+    // Vectorscope) would stay blank until the first live start.
     const key = JSON.stringify(analysisRequests);
     if (lastSentAnalysisRequestsKeyRef.current === key) return;
     lastSentAnalysisRequestsKeyRef.current = key;
@@ -482,7 +568,7 @@ function AppContent() {
         lastSentAnalysisRequestsKeyRef.current = "";
       }
     });
-  }, [analysisRequests, running]);
+  }, [analysisRequests]);
 
   const peakLabelContext = useMemo(
     () => ({
@@ -747,18 +833,10 @@ function AppContent() {
     showHistoryHud(1600);
   }, [historyChartInteractive, totalSamples, setSelectedOffset, showHistoryHud]);
 
-  const clearAll = async () => {
-    if (audioRef.current?.wklt) {
-      try {
-        audioRef.current.wklt.port.postMessage("reset");
-      } catch (_) {}
-    }
-    if (isTauri()) {
-      try {
-        await clearAudioHistory();
-      } catch (_) {}
-    }
-    intakeRef.current.reset();
+  // Clear the live-driven meter display only: spectrum/vector paths, the displayed audio snapshot,
+  // and the scrub window. Does NOT touch any history ring, so it is safe to call when switching to
+  // File (whose ring must be preserved to restore the previous analysis).
+  const clearMeterDisplayState = () => {
     setAudio({
       momentary: -Infinity,
       shortTerm: -Infinity,
@@ -781,6 +859,113 @@ function AppContent() {
     setSelectedOffset(-1);
     setHistoryOffsetSec(0);
     setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+  };
+
+  // Reset the active source's history ring AND clear the display. Used by Clear, which wipes whatever
+  // source is currently shown.
+  const resetMeterView = () => {
+    intakeRef.current.reset();
+    clearMeterDisplayState();
+  };
+
+  const updateFileSession = useCallback((sessionId, updater) => {
+    setFileHistory((history) => updateFileEntry(history, sessionId, updater));
+  }, []);
+
+  const setAnalyzingFileId = useCallback((nextOrUpdater) => {
+    setFileHistory((history) => {
+      const nextId =
+        typeof nextOrUpdater === "function"
+          ? nextOrUpdater(history.analyzingFileId)
+          : nextOrUpdater;
+      const analyzingFileId = nextId && history.sessionsById[nextId] ? nextId : null;
+      if (analyzingFileId === history.analyzingFileId) return history;
+      return { ...history, analyzingFileId };
+    });
+  }, []);
+
+  const validFileRunRequest =
+    fileRunRequest &&
+    fileRunRequest.sessionId === fileHistory.analyzingFileId &&
+    fileHistory.sessionsById[fileRunRequest.sessionId]
+      ? fileRunRequest
+      : null;
+
+  const fileAnalysis = useFileAnalysisEngine({
+    enabled: sourceMode === "file" && Boolean(validFileRunRequest),
+    sessionId: validFileRunRequest?.sessionId ?? null,
+    filePath: validFileRunRequest?.filePath ?? "",
+    runId: validFileRunRequest?.runId ?? 0,
+    histMaxSamples: HIST_MAX_SAMPLES,
+    visualMaxSamples: VISUAL_MAX_SAMPLES,
+    audioRef,
+    frameRef,
+    selectedOffsetRef,
+    defaultSampleRateRef,
+    intake: fileAnalysisIntake,
+    updateFileSession,
+    setAnalyzingFileId,
+    setAudio,
+    setHistoryPathM: () => {},
+    setHistoryPathST: () => {},
+    setSelectedOffset,
+    setStatus,
+  });
+
+  const stopCurrentFileAnalysis = useCallback(async () => {
+    const sessionId = fileHistory.analyzingFileId;
+    if (!sessionId) return;
+
+    try {
+      await fileAnalysis.stop();
+    } finally {
+      setFileRunRequest(null);
+      setFileHistory((history) => {
+        if (history.analyzingFileId !== sessionId) return history;
+        const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
+          ...entry,
+          state: "ready",
+          progress: 0,
+          error: null,
+        }));
+        return { ...updatedHistory, analyzingFileId: null };
+      });
+      setStatus("File analysis stopped");
+    }
+  }, [fileAnalysis, fileHistory.analyzingFileId]);
+
+  const clearAll = async () => {
+    if (sourceMode === "file") {
+      const activeId = fileHistory.activeFileId;
+      if (!activeId) return;
+      const activeEntry = fileHistory.sessionsById[activeId];
+      if (fileHistory.analyzingFileId === activeId) {
+        await stopCurrentFileAnalysis();
+      }
+      activeEntry?.intake?.reset?.();
+      clearMeterDisplayState();
+      setFileHistory((history) => removeFileEntry(history, activeId));
+      setStatus(
+        fileHistory.order.length > 1
+          ? "File entry cleared"
+          : "File mode - drop a file or click Analyze"
+      );
+      resetTimer({ restart: false });
+      setShowClock(false);
+      return;
+    }
+
+    if (audioRef.current?.wklt) {
+      try {
+        audioRef.current.wklt.port.postMessage("reset");
+      } catch (_) {}
+    }
+    if (isTauri()) {
+      try {
+        await clearAudioHistory();
+      } catch (_) {}
+    }
+    resetMeterView();
     setStatus(
       running
         ? "Running - cleared history and peak hold"
@@ -791,9 +976,119 @@ function AppContent() {
   };
   onClearRef.current = clearAll;
 
-  const onStartClick = () => {
-    if (selectedOffset >= 0)
-      return void (setSelectedOffset(-1), setStatus("Monitoring live input"));
+  const beginFileAnalysis = useCallback(
+    (path) => {
+      if (!path) return;
+      if (fileHistory.analyzingFileId) {
+        setStatus("File analysis already in progress");
+        return;
+      }
+
+      const runId = fileEntrySeqRef.current + 1;
+      fileEntrySeqRef.current = runId;
+      const sessionId = `file-analysis-${Date.now()}-${runId}`;
+      const intake = new FrameIntake();
+
+      setSelectedOffset(-1);
+      selectedOffsetRef.current = -1;
+      setFileHistory((history) =>
+        startFileAnalysisEntry(
+          addFileEntry(history, {
+            id: sessionId,
+            path,
+            intake,
+          }),
+          sessionId
+        )
+      );
+      setFileRunRequest({ sessionId, filePath: path, runId });
+    },
+    [fileHistory.analyzingFileId, setSelectedOffset]
+  );
+
+  const reanalyzeActiveFile = useCallback(
+    (entry) => {
+      if (!entry?.id || !entry.path) {
+        setStatus("Choose a file to analyze");
+        return;
+      }
+      if (fileHistory.analyzingFileId) {
+        setStatus("File analysis already in progress");
+        return;
+      }
+
+      const runId = fileEntrySeqRef.current + 1;
+      fileEntrySeqRef.current = runId;
+      setSelectedOffset(-1);
+      selectedOffsetRef.current = -1;
+      setFileHistory((history) => startFileAnalysisEntry(history, entry.id));
+      setFileRunRequest({ sessionId: entry.id, filePath: entry.path, runId });
+    },
+    [fileHistory.analyzingFileId, setSelectedOffset]
+  );
+
+  const onSelectFile = (id) => {
+    setSelectedOffset(-1);
+    selectedOffsetRef.current = -1;
+    clearMeterDisplayState();
+    setFileHistory((history) => selectFileEntry(history, id));
+    setStatus("File analysis result");
+  };
+
+  const onReanalyzeFile = (id) => {
+    const entry = fileHistory.sessionsById[id];
+    reanalyzeActiveFile(entry);
+  };
+
+  const onRemoveFile = async (id) => {
+    const entry = fileHistory.sessionsById[id];
+    if (!entry) return;
+    const removedAnalyzingFile = fileHistory.analyzingFileId === id;
+
+    if (removedAnalyzingFile) {
+      await stopCurrentFileAnalysis();
+    }
+    entry.intake?.reset?.();
+    if (fileHistory.activeFileId === id || fileHistory.order.length <= 1) {
+      clearMeterDisplayState();
+    }
+    if (removedAnalyzingFile) {
+      setFileRunRequest(null);
+    }
+    setFileHistory((history) => removeFileEntry(history, id));
+    setStatus(
+      fileHistory.order.length > 1
+        ? "File entry removed"
+        : "File mode - drop a file or click Analyze"
+    );
+    resetTimer({ restart: false });
+    setShowClock(false);
+  };
+
+  const onClearAllFiles = async () => {
+    if (fileHistory.analyzingFileId) {
+      await stopCurrentFileAnalysis();
+    }
+    for (const entry of Object.values(fileHistory.sessionsById)) {
+      entry.intake?.reset?.();
+    }
+    clearMeterDisplayState();
+    setFileRunRequest(null);
+    setFileHistory(clearFileHistory());
+    setStatus("File mode - drop a file or click Analyze");
+    resetTimer({ restart: false });
+    setShowClock(false);
+  };
+
+  // `path` already comes from the Tauri drag-drop event (a real filesystem path).
+  const handleDropFile = useCallback((path) => beginFileAnalysis(path), [beginFileAnalysis]);
+
+  const runLiveStartAction = () => {
+    if (selectedOffset >= 0) {
+      setSelectedOffset(-1);
+      setStatus("Monitoring live input");
+      return;
+    }
     if (running) {
       setRunning(false);
       setSelectedOffset(-1);
@@ -806,6 +1101,75 @@ function AppContent() {
     setRunning(true);
     startTimer();
     setShowClock(true);
+  };
+
+  const onSourceTransportAction = async (actionKind) => {
+    if (actionKind === "returnToLive") {
+      setSelectedOffset(-1);
+      setStatus("Monitoring live input");
+      return;
+    }
+    if (actionKind === "startLive" || actionKind === "stopLive") {
+      runLiveStartAction();
+      return;
+    }
+    if (actionKind === "returnToFileResult") {
+      setSelectedOffset(-1);
+      setStatus("File analysis result");
+      return;
+    }
+    if (actionKind === "chooseFile") {
+      const path = await pickMediaFile();
+      if (path) beginFileAnalysis(path);
+      return;
+    }
+    if (actionKind === "analyzeFile") {
+      if (activeFileSession?.path) {
+        reanalyzeActiveFile(activeFileSession);
+      } else {
+        const path = await pickMediaFile();
+        if (path) beginFileAnalysis(path);
+      }
+      return;
+    }
+    if (actionKind === "reanalyzeFile") {
+      reanalyzeActiveFile(activeFileSession);
+      return;
+    }
+    if (actionKind === "stopFileAnalysis") {
+      void stopCurrentFileAnalysis();
+      return;
+    }
+  };
+
+  const onStartClick = runLiveStartAction;
+
+  const onSourceModeChange = (nextMode) => {
+    if (nextMode === sourceMode) return;
+    // Drop the live-driven display state and always wipe the Live ring (every switch starts Live
+    // fresh). The File ring is left intact, so switching back to File restores its previous analysis
+    // without re-decoding.
+    clearMeterDisplayState();
+    liveIntakeRef.current.reset();
+    if (nextMode === "file") {
+      if (running) {
+        setRunning(false);
+        stopTimer();
+        setStatus("Stopped live monitoring - file mode selected");
+        setStatus2("Device: Not connected");
+      } else {
+        setStatus("File mode - drop a file or click Analyze");
+      }
+      setSourceMode("file");
+      return;
+    }
+    // Leaving File mode: stop an in-progress analysis so its worker does not keep running.
+    if (fileHistory.analyzingFileId) {
+      void stopCurrentFileAnalysis();
+    }
+    setSourceMode("live");
+    setStatus("Ready - click Start to begin monitoring");
+    setStatus2("Device: Not connected");
   };
 
   useTray({
@@ -912,8 +1276,9 @@ function AppContent() {
     audioRef,
     rafRef,
     frameRef,
-    intake: intakeRef.current,
+    intake: liveIntakeRef.current,
     selectedOffsetRef,
+    defaultSampleRateRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     setAudio,
@@ -1008,6 +1373,7 @@ function AppContent() {
 
   return (
     <AudioDataContext.Provider value={audioData}>
+      <FileDropOverlay active={sourceMode === "file"} onDropFile={handleDropFile} />
       <div className={SHELL_PAGE}>
         <div
           className={focusView.autoHideControls ? SHELL_INNER_FOCUS : SHELL_INNER}
@@ -1031,78 +1397,97 @@ function AppContent() {
               onPointerUp={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
               onPointerCancel={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
             >
-              <StatusPill state={chromeState} showClock={showClock} clockRef={clockRef} />
+              <SourceTransportCluster
+                state={sourceTransportState}
+                sourceMode={sourceMode}
+                onSourceModeChange={onSourceModeChange}
+                onPrimaryAction={onSourceTransportAction}
+              />
               <div className="flex-1" />
               <div className="flex items-center gap-1">
-                <TransportButton state={chromeState} onClick={onStartClick} />
-                <div className="mx-1 h-[18px] w-px shrink-0 bg-border" />
                 <IconButton
                   icon={<Trash2 className="size-3.5" />}
                   tip="Clear"
-                  disabled={!running && !showClock}
+                  disabled={sourceMode === "file" ? !activeFileSession : !running && !showClock}
                   onClick={clearAll}
                 />
-                {isTauri() && (
-                  <Popover
-                    open={devicesOpen}
-                    onOpenChange={(open) => {
-                      if (open && !audioDevices.length) return;
-                      setDevicesOpen(open);
-                      if (focusView.autoHideControls) holdFocusControls(open);
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <span>
-                        <IconButton
-                          icon={<Volume2 className="size-4 shrink-0" />}
-                          tip="Devices"
-                          disabled={!audioDevices.length}
+                {isTauri() &&
+                  (sourceMode === "file" ? (
+                    // Reuse the Devices slot (meaningless in File mode) as a re-import affordance,
+                    // mirroring the ANALYZE picker without adding a new toolbar control.
+                    <IconButton
+                      icon={<FolderOpen className="size-4 shrink-0" />}
+                      tip="Open file"
+                      onClick={async () => {
+                        const path = await pickMediaFile();
+                        if (path) beginFileAnalysis(path);
+                      }}
+                    />
+                  ) : (
+                    <Popover
+                      open={devicesOpen}
+                      onOpenChange={(open) => {
+                        if (open && !audioDevices.length) return;
+                        setDevicesOpen(open);
+                        if (focusView.autoHideControls) holdFocusControls(open);
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <span>
+                          <IconButton
+                            icon={<Volume2 className="size-4 shrink-0" />}
+                            tip="Devices"
+                            disabled={!audioDevices.length}
+                          />
+                        </span>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="end"
+                        sideOffset={6}
+                        className="w-auto max-w-[92vw] p-1"
+                      >
+                        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                          Devices
+                        </p>
+                        <DeviceRow
+                          ariaLabel="Automatic (default system output)"
+                          primary="Automatic (default system output)"
+                          selected={safeAudioDeviceId === "default"}
+                          onSelect={() => handleDeviceSelect("default")}
                         />
-                      </span>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" sideOffset={6} className="w-auto max-w-[92vw] p-1">
-                      <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-                        Devices
-                      </p>
-                      <DeviceRow
-                        ariaLabel="Automatic (default system output)"
-                        primary="Automatic (default system output)"
-                        selected={safeAudioDeviceId === "default"}
-                        onSelect={() => handleDeviceSelect("default")}
-                      />
-                      {audioOutputs.length ? (
-                        <>
-                          <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
-                            Output
-                          </p>
-                          {audioOutputs.map((d) => (
-                            <AudioDeviceOption
-                              key={d.id}
-                              device={d}
-                              selected={safeAudioDeviceId === d.id}
-                              onSelect={() => handleDeviceSelect(d.id)}
-                            />
-                          ))}
-                        </>
-                      ) : null}
-                      {audioInputs.length ? (
-                        <>
-                          <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
-                            Input
-                          </p>
-                          {audioInputs.map((d) => (
-                            <AudioDeviceOption
-                              key={d.id}
-                              device={d}
-                              selected={safeAudioDeviceId === d.id}
-                              onSelect={() => handleDeviceSelect(d.id)}
-                            />
-                          ))}
-                        </>
-                      ) : null}
-                    </PopoverContent>
-                  </Popover>
-                )}
+                        {audioOutputs.length ? (
+                          <>
+                            <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                              Output
+                            </p>
+                            {audioOutputs.map((d) => (
+                              <AudioDeviceOption
+                                key={d.id}
+                                device={d}
+                                selected={safeAudioDeviceId === d.id}
+                                onSelect={() => handleDeviceSelect(d.id)}
+                              />
+                            ))}
+                          </>
+                        ) : null}
+                        {audioInputs.length ? (
+                          <>
+                            <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                              Input
+                            </p>
+                            {audioInputs.map((d) => (
+                              <AudioDeviceOption
+                                key={d.id}
+                                device={d}
+                                selected={safeAudioDeviceId === d.id}
+                                onSelect={() => handleDeviceSelect(d.id)}
+                              />
+                            ))}
+                          </>
+                        ) : null}
+                      </PopoverContent>
+                    </Popover>
+                  ))}
                 <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
                   <PopoverTrigger asChild>
                     <span>
@@ -1158,6 +1543,29 @@ function AppContent() {
               </div>
             </header>
           )}
+
+          {showFileAnalysisResult ? (
+            <div
+              className={
+                focusView.autoHideControls
+                  ? "absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[calc(var(--ui-shell-pad)+2.75rem)] z-30"
+                  : "shrink-0"
+              }
+              onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
+              onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
+            >
+              <FileAnalysisSummary
+                fileSession={fileSession}
+                fileSessions={fileSessions}
+                activeFileId={fileHistory.activeFileId}
+                analyzingFileId={fileHistory.analyzingFileId}
+                onSelectFile={onSelectFile}
+                onReanalyzeFile={onReanalyzeFile}
+                onRemoveFile={onRemoveFile}
+                onClearAllFiles={onClearAllFiles}
+              />
+            </div>
+          ) : null}
 
           <SplitLayout />
 
