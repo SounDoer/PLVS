@@ -802,6 +802,7 @@ function AppContent() {
       stopTimer();
       return;
     }
+    intakeRef.current.beginCaptureSession();
     setRunning(true);
     startTimer();
     setShowClock(true);

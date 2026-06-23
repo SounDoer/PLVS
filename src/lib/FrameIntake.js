@@ -117,6 +117,14 @@ function ringPush(arr, value, max) {
   if (arr.length > max) arr.shift();
 }
 
+function createTimestampDomain() {
+  return {
+    offsetMs: 0,
+    lastMs: NaN,
+    pendingSessionBoundary: false,
+  };
+}
+
 /**
  * Owns all live-data ring buffers (history, snaps, spectrum).
  * Replaces the scattered loudnessHistRef / audioSnapRef / corrSnapRef / vectorSnapRef /
@@ -136,10 +144,34 @@ export class FrameIntake {
     // old request still shows its history until reset() / capacity change clears them.
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
+    this._histTimestamp = createTimestampDomain();
+    this._visualTimestamp = createTimestampDomain();
     this._currentChannelMetadata = {
       frequencyLabel: "L/R",
       vectorscopePairLabel: "L/R",
     };
+  }
+
+  beginCaptureSession() {
+    this._histTimestamp.pendingSessionBoundary = true;
+    this._visualTimestamp.pendingSessionBoundary = true;
+  }
+
+  _normalizeTimestampMs(timestampMs, domain) {
+    if (!Number.isFinite(timestampMs)) return timestampMs;
+
+    if (domain.pendingSessionBoundary) {
+      if (Number.isFinite(domain.lastMs)) {
+        domain.offsetMs = domain.lastMs + 1 - timestampMs;
+      }
+      domain.pendingSessionBoundary = false;
+    }
+
+    const normalized = timestampMs + domain.offsetMs;
+    if (!Number.isFinite(domain.lastMs) || normalized > domain.lastMs) {
+      domain.lastMs = normalized;
+    }
+    return normalized;
   }
 
   /**
@@ -161,6 +193,7 @@ export class FrameIntake {
    * @param {number} histMaxSamples
    */
   pushHistRow(row, histMaxSamples) {
+    const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._histTimestamp);
     const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
     ringPush(
@@ -172,7 +205,7 @@ export class FrameIntake {
         waveformMax: snapshotNumericArray(row.waveformMax),
         waveformSubPairs: snapshotFloat32Array(row.waveformSubPairs),
         waveformSubCount: row.waveformSubCount ?? 0,
-        timestampMs: row.timestampMs,
+        timestampMs,
       },
       histMaxSamples
     );
@@ -188,6 +221,7 @@ export class FrameIntake {
   }
 
   pushVisualHistRow(row, visualMaxSamples) {
+    const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._visualTimestamp);
     if (this._visualWaveformHist.capacity !== visualMaxSamples) {
       this._visualWaveformHist = new RingBuffer(visualMaxSamples);
       // Per-key rings are sized to the same window; drop them so they are recreated at the new
@@ -199,7 +233,7 @@ export class FrameIntake {
     this._visualWaveformHist.push({
       waveformMin: snapshotNumericArray(row.waveformMin),
       waveformMax: snapshotNumericArray(row.waveformMax),
-      timestampMs: row.timestampMs,
+      timestampMs,
     });
 
     const spectrumByKey = row.spectrumByKey;
@@ -207,6 +241,7 @@ export class FrameIntake {
       for (const key in spectrumByKey) {
         const entry = spectrumByKey[key];
         const bands = getBandsFromCenters(entry.bandCentersHz ?? []);
+        if (bands.length === 0 || !entry.smoothDb?.length) continue;
         let slab = this._visualSpectrumHistByKey.get(key);
         if (!slab || slab.capacity !== visualMaxSamples || !slab.matchesBands(bands)) {
           slab = new SpectrumHistorySlab(visualMaxSamples, bands);
@@ -216,7 +251,7 @@ export class FrameIntake {
           bands,
           dbList: entry.smoothDb,
           dbListB: entry.smoothDbB,
-          timestampMs: row.timestampMs,
+          timestampMs,
         });
       }
     }
@@ -232,7 +267,7 @@ export class FrameIntake {
         ring.push({
           pairs: snapshotNumericArray(entry.pairs),
           correlation: Number.isFinite(entry.correlation) ? entry.correlation : -Infinity,
-          timestampMs: row.timestampMs,
+          timestampMs,
         });
       }
     }
@@ -302,5 +337,7 @@ export class FrameIntake {
     this._visualWaveformHist.clear();
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
+    this._histTimestamp = createTimestampDomain();
+    this._visualTimestamp = createTimestampDomain();
   }
 }

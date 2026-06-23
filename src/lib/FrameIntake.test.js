@@ -429,12 +429,20 @@ describe("FrameIntake", () => {
 
     // t=1000 only A is active.
     intake.pushVisualHistRow(
-      { ...baseRow, timestampMs: 1000, spectrumByKey: { [keyA]: { smoothDb: [-10] } } },
+      {
+        ...baseRow,
+        timestampMs: 1000,
+        spectrumByKey: { [keyA]: { bandCentersHz: [100], smoothDb: [-10] } },
+      },
       10
     );
     // t=1040 the panel switched to B; A is now inactive, B starts collecting here (no backfill).
     intake.pushVisualHistRow(
-      { ...baseRow, timestampMs: 1040, spectrumByKey: { [keyB]: { smoothDb: [-20] } } },
+      {
+        ...baseRow,
+        timestampMs: 1040,
+        spectrumByKey: { [keyB]: { bandCentersHz: [100], smoothDb: [-20] } },
+      },
       10
     );
 
@@ -467,6 +475,99 @@ describe("FrameIntake", () => {
     const snap = intake.getSpectrogramSnapsForKey(key);
     expect(snap.rowAt(0).bands.length).toBe(centers.length);
     expect(snap.rowAt(0).bands[0].fCenter).toBeCloseTo(centers[0]);
+  });
+
+  it("continues frontend timestamps across an explicit native capture session", () => {
+    const intake = new FrameIntake();
+    const key = "spectrum:single:0:combined";
+    const visualRow = (timestampMs, smoothDb) => ({
+      timestampMs,
+      waveformMin: [0],
+      waveformMax: [0],
+      correlation: 0,
+      spectrumByKey: {
+        [key]: { bandCentersHz: [100], smoothDb },
+      },
+    });
+
+    intake.pushHistRow(makeRow({ timestampMs: 1000 }), HIST_MAX);
+    intake.pushVisualHistRow(visualRow(1000, [-10]), 10);
+
+    // The Rust pipeline timestamps are relative to each capture session. Stop -> Start creates a
+    // new native pipeline whose timestamps begin near zero, while the frontend history continues.
+    intake.beginCaptureSession();
+    intake.pushHistRow(makeRow({ timestampMs: 40 }), HIST_MAX);
+    intake.pushVisualHistRow(visualRow(40, [-20]), 10);
+
+    const loudness = intake.getLoudnessHistory();
+    const spectrogram = intake.getSpectrogramSnapsForKey(key);
+
+    expect(loudness[1].timestampMs).toBeGreaterThan(loudness[0].timestampMs);
+    expect(spectrogram.timestampAt(1)).toBeGreaterThan(spectrogram.timestampAt(0));
+  });
+
+  it("does not infer a new capture session from a backward timestamp without an explicit boundary", () => {
+    const intake = new FrameIntake();
+
+    intake.pushHistRow(makeRow({ timestampMs: 1000 }), HIST_MAX);
+    intake.pushHistRow(makeRow({ timestampMs: 40 }), HIST_MAX);
+
+    const loudness = intake.getLoudnessHistory();
+    expect(loudness[1].timestampMs).toBe(40);
+  });
+
+  it("continues hist and visual timelines independently after a session boundary", () => {
+    const intake = new FrameIntake();
+    const key = "spectrum:single:0:combined";
+    const visualRow = (timestampMs) => ({
+      timestampMs,
+      waveformMin: [0],
+      waveformMax: [0],
+      correlation: 0,
+      spectrumByKey: {
+        [key]: { bandCentersHz: [100], smoothDb: [-20] },
+      },
+    });
+
+    intake.pushHistRow(makeRow({ timestampMs: 1000 }), HIST_MAX);
+    intake.pushVisualHistRow(visualRow(1040), 10);
+
+    intake.beginCaptureSession();
+    intake.pushHistRow(makeRow({ timestampMs: 20 }), HIST_MAX);
+    intake.pushVisualHistRow(visualRow(80), 10);
+
+    const loudness = intake.getLoudnessHistory();
+    const spectrogram = intake.getSpectrogramSnapsForKey(key);
+
+    expect(loudness[1].timestampMs).toBe(1001);
+    expect(spectrogram.timestampAt(1)).toBe(1041);
+  });
+
+  it("does not replace existing spectrogram history with an empty startup spectrum tick", () => {
+    const intake = new FrameIntake();
+    const key = "spectrum:single:0:combined";
+    const visualRow = (timestampMs, spectrumEntry) => ({
+      timestampMs,
+      waveformMin: [0],
+      waveformMax: [0],
+      correlation: 0,
+      spectrumByKey: {
+        [key]: spectrumEntry,
+      },
+    });
+
+    intake.pushVisualHistRow(
+      visualRow(1000, { bandCentersHz: [100, 200], smoothDb: [-10, -20] }),
+      10
+    );
+
+    intake.beginCaptureSession();
+    intake.pushVisualHistRow(visualRow(40, { bandCentersHz: [], smoothDb: [] }), 10);
+
+    const spectrogram = intake.getSpectrogramSnapsForKey(key);
+    expect(spectrogram.length).toBe(1);
+    expect(spectrogram.timestampAt(0)).toBe(1000);
+    expect(Array.from(spectrogram.rowAt(0).dbList)).toEqual([-10, -20]);
   });
 
   it("uses payload grid frequencies, not recomputed RTA bands", () => {
