@@ -97,6 +97,16 @@ describe("LoudnessHistoryChart", () => {
     expect(chartArea?.className).not.toContain("min-h-[var(--ui-min-h-history-chart)]");
   });
 
+  it("keeps y-axis endpoint labels inside the chart bounds", () => {
+    renderChart(["momentary"]);
+
+    expect(screen.getByText("-12").className).toContain("top-0");
+    expect(screen.getByText("-12").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-36").className).toContain("bottom-0");
+    expect(screen.getByText("-36").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-23").className).toContain("-translate-y-1/2");
+  });
+
   it("does not color the reference tick as a primary chart trace", () => {
     renderChart(["ref"]);
 

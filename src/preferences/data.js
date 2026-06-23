@@ -36,7 +36,7 @@ export const UI_PREFERENCES = {
       vectorOuterInset: 0,
       vectorCornerInset: 0.4,
       hudInset: 0.25,
-      chartInsetTop: 0.5,
+      chartInsetTop: 0.2,
       chartInsetBottom: 0,
     },
     mainColumn: {

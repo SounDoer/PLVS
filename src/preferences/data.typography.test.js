@@ -27,6 +27,13 @@ describe("spacing data", () => {
     });
   });
 
+  it("uses compact vertical chart insets", () => {
+    expect(UI_PREFERENCES.layout.spacingRem).toMatchObject({
+      chartInsetTop: 0.2,
+      chartInsetBottom: 0,
+    });
+  });
+
   it("keeps one shared chart axis gap and no retired display padding aliases", () => {
     const spacing = UI_PREFERENCES.layout.spacingRem;
 

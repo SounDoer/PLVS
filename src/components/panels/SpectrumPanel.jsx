@@ -12,6 +12,7 @@ import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../..
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
+import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
   FREQ_LABELS,
   SPEC_Y_TICKS,
@@ -145,15 +146,31 @@ export function SpectrumPanel({ compact = false }) {
             )}
           >
             <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-              {SPEC_Y_TICKS.map(({ v, lb }) => (
-                <span
-                  key={v}
-                  className="absolute right-0 -translate-y-1/2 leading-none"
-                  style={{ top: `${spectrumDbToTopFrac(v) * 100}%` }}
-                >
-                  {lb}
-                </span>
-              ))}
+              {SPEC_Y_TICKS.map(({ v, lb }, i) => {
+                if (i === 0) {
+                  return (
+                    <span key={v} className={axisLabelClass("y", "start")}>
+                      {lb}
+                    </span>
+                  );
+                }
+                if (i === SPEC_Y_TICKS.length - 1) {
+                  return (
+                    <span key={v} className={axisLabelClass("y", "end")}>
+                      {lb}
+                    </span>
+                  );
+                }
+                return (
+                  <span
+                    key={v}
+                    className={axisLabelClass("y", "middle")}
+                    style={{ top: `${spectrumDbToTopFrac(v) * 100}%` }}
+                  >
+                    {lb}
+                  </span>
+                );
+              })}
             </div>
           </div>
           <div className="relative min-h-0 min-w-0">
@@ -390,14 +407,14 @@ export function SpectrumPanel({ compact = false }) {
               {FREQ_LABELS.map(([f, lb], i) => {
                 if (i === 0) {
                   return (
-                    <span key={f} className="absolute left-0 top-0 whitespace-nowrap text-left">
+                    <span key={f} className={axisLabelClass("x", "start")}>
                       {lb}
                     </span>
                   );
                 }
                 if (i === FREQ_LABELS.length - 1) {
                   return (
-                    <span key={f} className="absolute right-0 top-0 whitespace-nowrap text-right">
+                    <span key={f} className={axisLabelClass("x", "end")}>
                       {lb}
                     </span>
                   );
@@ -405,7 +422,7 @@ export function SpectrumPanel({ compact = false }) {
                 return (
                   <span
                     key={f}
-                    className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
+                    className={axisLabelClass("x", "middle")}
                     style={{ left: `${freqToXFrac(f) * 100}%` }}
                   >
                     {lb}

@@ -3,6 +3,7 @@ import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
+import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
   LOUDNESS_DB_MAX,
   LOUDNESS_DB_MIN,
@@ -107,15 +108,31 @@ export function LevelMeterPanel() {
               )}
             >
               <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-                {LOUDNESS_TICKS.map(({ v, lb }) => (
-                  <span
-                    key={v}
-                    className="absolute right-0 -translate-y-1/2 leading-none"
-                    style={{ top: `${loudnessFromTopFrac(v) * 100}%` }}
-                  >
-                    {lb}
-                  </span>
-                ))}
+                {LOUDNESS_TICKS.map(({ v, lb }, i) => {
+                  if (i === 0) {
+                    return (
+                      <span key={v} className={axisLabelClass("y", "start")}>
+                        {lb}
+                      </span>
+                    );
+                  }
+                  if (i === LOUDNESS_TICKS.length - 1) {
+                    return (
+                      <span key={v} className={axisLabelClass("y", "end")}>
+                        {lb}
+                      </span>
+                    );
+                  }
+                  return (
+                    <span
+                      key={v}
+                      className={axisLabelClass("y", "middle")}
+                      style={{ top: `${loudnessFromTopFrac(v) * 100}%` }}
+                    >
+                      {lb}
+                    </span>
+                  );
+                })}
                 {showLevelValueMarker ? <CurrentValueMarker value={levelValue} /> : null}
               </div>
             </div>
@@ -188,15 +205,31 @@ export function LevelMeterPanel() {
             )}
           >
             <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-              {PEAK_TICKS.map(({ v, lb }) => (
-                <span
-                  key={v}
-                  className="absolute right-0 -translate-y-1/2 leading-none"
-                  style={{ top: `${peakFromTopFrac(v) * 100}%` }}
-                >
-                  {lb}
-                </span>
-              ))}
+              {PEAK_TICKS.map(({ v, lb }, i) => {
+                if (i === 0) {
+                  return (
+                    <span key={v} className={axisLabelClass("y", "start")}>
+                      {lb}
+                    </span>
+                  );
+                }
+                if (i === PEAK_TICKS.length - 1) {
+                  return (
+                    <span key={v} className={axisLabelClass("y", "end")}>
+                      {lb}
+                    </span>
+                  );
+                }
+                return (
+                  <span
+                    key={v}
+                    className={axisLabelClass("y", "middle")}
+                    style={{ top: `${peakFromTopFrac(v) * 100}%` }}
+                  >
+                    {lb}
+                  </span>
+                );
+              })}
             </div>
           </div>
           <div

@@ -79,6 +79,16 @@ describe("SpectrogramPanel", () => {
     expect(container.querySelector("canvas")).toBeTruthy();
   });
 
+  it("keeps frequency axis endpoint labels inside the chart bounds", () => {
+    renderPanel();
+
+    expect(screen.getByText("20k").className).toContain("top-0");
+    expect(screen.getByText("20k").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("20").className).toContain("bottom-0");
+    expect(screen.getByText("20").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("1k").className).toContain("-translate-y-1/2");
+  });
+
   it("passes the resolved theme colormap to the canvas hook", () => {
     renderPanel({ resolvedThemeId: "plvs-dark" });
     const darkLut = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].colormapLut;

@@ -1,7 +1,8 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
-import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, loudnessFromTopFrac } from "../../config/scales";
+import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { loudnessFromTopFrac } from "../../config/scales";
 import { fmtSec } from "../../math/formatMath";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
@@ -102,21 +103,19 @@ export function LoudnessHistoryChart({
         )}
       >
         <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-          {historyYAxisTicksLabeled.map(({ v, lb }) => {
+          {historyYAxisTicksLabeled.map(({ v, lb }, i) => {
             const isTargetTick = v === targetLufs;
-            const tickClass = isTargetTick
-              ? "absolute right-0 leading-none font-semibold"
-              : "absolute right-0 leading-none";
-            if (v === LOUDNESS_DB_MAX) {
+            const tickClassExtra = isTargetTick ? "font-semibold" : "";
+            if (i === 0) {
               return (
-                <span key={v} className={`${tickClass} top-0`}>
+                <span key={v} className={axisLabelClass("y", "start", tickClassExtra)}>
                   {lb}
                 </span>
               );
             }
-            if (v === LOUDNESS_DB_MIN) {
+            if (i === historyYAxisTicksLabeled.length - 1) {
               return (
-                <span key={v} className={`${tickClass} bottom-0`}>
+                <span key={v} className={axisLabelClass("y", "end", tickClassExtra)}>
                   {lb}
                 </span>
               );
@@ -124,7 +123,7 @@ export function LoudnessHistoryChart({
             return (
               <span
                 key={v}
-                className={`${tickClass} -translate-y-1/2`}
+                className={axisLabelClass("y", "middle", tickClassExtra)}
                 style={{ top: `${loudnessFromTopFrac(v) * 100}%` }}
               >
                 {lb}
@@ -324,14 +323,14 @@ export function LoudnessHistoryChart({
           {historyTimeTicks.map((tick, i) => {
             if (i === 0) {
               return (
-                <span key={`${i}-${tick}`} className="absolute left-0 top-0 text-left">
+                <span key={`${i}-${tick}`} className={axisLabelClass("x", "start")}>
                   {tick}
                 </span>
               );
             }
             if (i === historyTickSteps) {
               return (
-                <span key={`${i}-${tick}`} className="absolute right-0 top-0 text-right">
+                <span key={`${i}-${tick}`} className={axisLabelClass("x", "end")}>
                   {tick}
                 </span>
               );
@@ -339,7 +338,7 @@ export function LoudnessHistoryChart({
             return (
               <span
                 key={`${i}-${tick}`}
-                className="absolute top-0 -translate-x-1/2 text-center"
+                className={axisLabelClass("x", "middle")}
                 style={{ left: `${(i / historyTickSteps) * 100}%` }}
               >
                 {tick}

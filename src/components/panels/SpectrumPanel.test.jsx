@@ -259,4 +259,14 @@ describe("SpectrumPanel", () => {
     expect(screen.getByText("20k").className).not.toContain("-translate-x-1/2");
     expect(screen.getByText("1k").className).toContain("-translate-x-1/2");
   });
+
+  it("keeps dB axis endpoint labels inside the chart bounds", () => {
+    renderPanel(liveAudioData(liveResult()));
+
+    expect(screen.getByText("0").className).toContain("top-0");
+    expect(screen.getByText("0").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-80").className).toContain("bottom-0");
+    expect(screen.getByText("-80").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-40").className).toContain("-translate-y-1/2");
+  });
 });

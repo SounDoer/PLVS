@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
+import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
@@ -219,14 +220,14 @@ export function WaveformPanel({ compact = false }) {
           {(historyTimeTicks ?? []).map((tick, i) => {
             if (i === 0) {
               return (
-                <span key={`${i}-${tick}`} className="absolute left-0 top-0 text-left">
+                <span key={`${i}-${tick}`} className={axisLabelClass("x", "start")}>
                   {tick}
                 </span>
               );
             }
             if (i === HISTORY_TIME_TICK_STEPS) {
               return (
-                <span key={`${i}-${tick}`} className="absolute right-0 top-0 text-right">
+                <span key={`${i}-${tick}`} className={axisLabelClass("x", "end")}>
                   {tick}
                 </span>
               );
@@ -234,7 +235,7 @@ export function WaveformPanel({ compact = false }) {
             return (
               <span
                 key={`${i}-${tick}`}
-                className="absolute top-0 -translate-x-1/2 text-center"
+                className={axisLabelClass("x", "middle")}
                 style={{ left: `${(i / HISTORY_TIME_TICK_STEPS) * 100}%` }}
               >
                 {tick}

@@ -71,6 +71,26 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-value-marker]")?.textContent).toBe("-18.6");
   });
 
+  it("keeps LUFS axis endpoint labels inside the chart bounds", () => {
+    renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
+
+    expect(screen.getByText("0").className).toContain("top-0");
+    expect(screen.getByText("0").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-63").className).toContain("bottom-0");
+    expect(screen.getByText("-63").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-18").className).toContain("-translate-y-1/2");
+  });
+
+  it("keeps peak axis endpoint labels inside the chart bounds", () => {
+    renderPanel();
+
+    expect(screen.getByText("+3").className).toContain("top-0");
+    expect(screen.getByText("+3").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-60").className).toContain("bottom-0");
+    expect(screen.getByText("-60").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("0").className).toContain("-translate-y-1/2");
+  });
+
   it("does not render the value marker in Peak mode", () => {
     const { container } = renderPanel();
 
