@@ -265,7 +265,10 @@ describe("App toolbar", () => {
     expect(appSource).toContain("useFileAnalysisEngine({");
     expect(appSource).toContain('<FileDropOverlay active={sourceMode === "file"}');
     expect(appSource).toContain("<FileAnalysisSummary");
-    expect(appSource).toContain("setPendingFilePath");
-    expect(appSource).toContain("setFileRunId");
+    expect(appSource).toContain("createInitialFileHistory()");
+    expect(appSource).toContain("setFileRunRequest");
+    expect(appSource).toContain("activeFileSession");
+    expect(appSource).toContain("analyzingFileSession");
+    expect(appSource).toContain("updateFileSession");
   });
 });
