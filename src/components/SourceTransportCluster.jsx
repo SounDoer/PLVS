@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Play, Radio, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const CHROME = {
   ready: {
@@ -27,20 +28,31 @@ const CHROME = {
 const SOURCE_OPTIONS = [
   {
     id: "live",
-    label: "Live",
-    description: "System playback / input monitoring",
+    label: "LIVE",
   },
   {
     id: "file",
-    label: "File",
-    description: "Analyze a local audio or video file",
+    label: "FILE",
   },
 ];
 
 export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, onPrimaryAction }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const contentRef = useRef(null);
   const chrome = CHROME[state.chromeState] ?? CHROME.ready;
   const ActionIcon = chrome.Icon;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event) => {
+      const target = event.target;
+      if (triggerRef.current?.contains(target) || contentRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
 
   return (
     <div className="relative inline-flex items-center gap-1.5">
@@ -50,19 +62,52 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
           chrome.shell
         )}
       >
-        <button
-          type="button"
-          aria-label={`Source: ${state.sourceLabel}`}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-          className="flex h-full items-center gap-1.5 px-3 text-[11px] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          {state.sourceLabel}
-          <ChevronDown className="size-3" />
-        </button>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              ref={triggerRef}
+              type="button"
+              aria-label={`Source: ${state.sourceLabel}`}
+              className="flex h-full items-center gap-1.5 px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {state.sourceLabel}
+              <ChevronDown className="size-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            ref={contentRef}
+            role="menu"
+            aria-label="Source"
+            align="start"
+            sideOffset={6}
+            className="w-auto min-w-[var(--radix-popover-trigger-width)] p-1"
+          >
+            {SOURCE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={sourceMode === option.id}
+                onClick={() => {
+                  setOpen(false);
+                  if (option.id !== sourceMode) onSourceModeChange(option.id);
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    sourceMode === option.id ? "bg-primary" : "bg-muted-foreground/20"
+                  )}
+                />
+                <span className="min-w-0 font-medium text-foreground">{option.label}</span>
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
         <span className="h-[1em] w-px bg-current opacity-30" />
-        <span className="min-w-0 truncate px-3 text-[11.5px] font-semibold tabular-nums">
+        <span className="min-w-0 truncate px-3 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
           {state.statusLabel}
         </span>
       </div>
@@ -71,50 +116,13 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
         type="button"
         onClick={() => onPrimaryAction(state.actionKind)}
         className={cn(
-          "flex h-8 items-center gap-1.5 rounded-md px-3.5 text-[11.5px] font-bold tracking-[0.06em] transition-all duration-150",
+          "flex h-8 items-center gap-1.5 rounded-md px-3.5 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150",
           chrome.action
         )}
       >
         <ActionIcon className="size-[10px]" />
         {state.actionLabel}
       </button>
-
-      {open ? (
-        <div
-          role="menu"
-          aria-label="Source"
-          className="absolute left-0 top-[calc(100%+6px)] z-50 w-72 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-        >
-          <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-            Source
-          </p>
-          {SOURCE_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              role="menuitemradio"
-              aria-checked={sourceMode === option.id}
-              onClick={() => {
-                setOpen(false);
-                if (option.id !== sourceMode) onSourceModeChange(option.id);
-              }}
-              className="flex w-full items-start gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "mt-1 size-1.5 shrink-0 rounded-full",
-                  sourceMode === option.id ? "bg-primary" : "bg-muted-foreground/20"
-                )}
-              />
-              <span className="min-w-0">
-                <span className="block font-medium text-foreground">{option.label}</span>
-                <span className="mt-0.5 block text-muted-foreground/70">{option.description}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
