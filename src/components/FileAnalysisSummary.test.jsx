@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
 
 const menuProps = {
@@ -76,6 +76,41 @@ describe("FileAnalysisSummary", () => {
     );
 
     expect(screen.getByRole("button", { name: "2 files" })).toBeTruthy();
+  });
+
+  it("renders a lightweight analyzing banner with selectable history entries", () => {
+    const onSelectFile = vi.fn();
+    render(
+      <FileAnalysisSummary
+        fileSession={{
+          id: "analyzing",
+          state: "analyzing",
+          fileName: "current.wav",
+          progress: 0.25,
+        }}
+        fileSessions={[
+          { id: "analyzing", fileName: "current.wav", state: "analyzing", progress: 0.25 },
+          {
+            id: "complete",
+            fileName: "done.wav",
+            state: "complete",
+            summary: { durationMs: 10_000 },
+          },
+        ]}
+        activeFileId="analyzing"
+        analyzingFileId="analyzing"
+        onSelectFile={onSelectFile}
+      />
+    );
+
+    expect(screen.getByText("current.wav")).toBeTruthy();
+    expect(screen.getByText("25%")).toBeTruthy();
+    expect(screen.queryByText("Integrated")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "2 files" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show file done.wav" }));
+
+    expect(onSelectFile).toHaveBeenCalledWith("complete");
   });
 
   it("warns that scrub history is limited when the session was truncated", () => {

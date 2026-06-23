@@ -518,8 +518,7 @@ function AppContent() {
     fileSession,
     analyzingFileSession,
   });
-  const showFileAnalysisResult =
-    sourceMode === "file" && (fileSession.state === "complete" || fileSession.state === "error");
+  const showFileAnalysisResult = sourceMode === "file" && fileSessions.length > 0;
   const chromeState = sourceTransportState.chromeState;
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;

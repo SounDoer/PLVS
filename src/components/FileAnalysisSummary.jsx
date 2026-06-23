@@ -14,6 +14,15 @@ function trackLine(track) {
   return `Track ${track.index ?? 0} · ${track.codec || "unknown codec"} · ${sampleRate} · ${channels}`;
 }
 
+function fileStateLine(fileSession) {
+  if (fileSession?.state === "analyzing") {
+    const pct = Number.isFinite(fileSession.progress) ? Math.round(fileSession.progress * 100) : 0;
+    return `${Math.max(0, Math.min(100, pct))}%`;
+  }
+  if (fileSession?.state === "ready") return "Ready";
+  return null;
+}
+
 // Metrics come from the authoritative completion summary payload (fileSession.summary), not the
 // last displayed UI frame, so throttled/batched frames cannot skew the delivery numbers.
 export function FileAnalysisSummary({
@@ -54,6 +63,8 @@ export function FileAnalysisSummary({
   const summary = fileSession?.summary ?? {};
   const fileName = fileSession?.fileName || "No file";
   const track = metadata?.selectedTrack;
+  const isComplete = fileSession?.state === "complete";
+  const stateLine = fileStateLine(fileSession);
   const samplePeakMax = Math.max(
     summary.samplePeakMaxLDb ?? -Infinity,
     summary.samplePeakMaxRDb ?? -Infinity
@@ -65,13 +76,19 @@ export function FileAnalysisSummary({
         <p className="truncate text-sm font-semibold text-foreground">{fileName}</p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{trackLine(track)}</p>
       </div>
-      <dl className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
-        <MetricChip label="Integrated" value={fmtNumber(summary.integratedLufs, "LUFS")} />
-        <MetricChip label="LRA" value={fmtNumber(summary.lra, "LU")} />
-        <MetricChip label="True Peak Max" value={fmtNumber(summary.truePeakMaxDbtp, "dBTP")} />
-        <MetricChip label="Sample Peak Max" value={fmtNumber(samplePeakMax, "dBFS")} />
-      </dl>
-      {fileSession?.historyTruncated ? (
+      {isComplete ? (
+        <dl className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+          <MetricChip label="Integrated" value={fmtNumber(summary.integratedLufs, "LUFS")} />
+          <MetricChip label="LRA" value={fmtNumber(summary.lra, "LU")} />
+          <MetricChip label="True Peak Max" value={fmtNumber(summary.truePeakMaxDbtp, "dBTP")} />
+          <MetricChip label="Sample Peak Max" value={fmtNumber(samplePeakMax, "dBFS")} />
+        </dl>
+      ) : stateLine ? (
+        <p className="rounded-md border border-border/70 bg-background/35 px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground">
+          {stateLine}
+        </p>
+      ) : null}
+      {isComplete && fileSession?.historyTruncated ? (
         <p className="min-w-0 text-xs text-[color:var(--ui-signal-warn)]">
           Delivery metrics cover the whole file. Scrub history is limited to the last{" "}
           {formatClock(fileSession.historyCoveredMs ?? 0)}.
