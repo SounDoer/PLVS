@@ -16,6 +16,7 @@ import { listCustomThemes } from "../../theme/customThemesRepo.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptyState.jsx";
+import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 
 const SPECTROGRAM_HELP = [
   "Left click - Select snapshot",
@@ -60,7 +61,7 @@ export function SpectrogramPanel({ compact = false }) {
   const snapRef = useMemo(
     () => ({
       get current() {
-        return getSpectrogramSnapsForKey?.(spectrogramKey) ?? [];
+        return getSpectrogramSnapsForKey?.(spectrogramKey) ?? EMPTY_SPECTRUM_VIEW;
       },
     }),
     [getSpectrogramSnapsForKey, spectrogramKey]
@@ -83,7 +84,9 @@ export function SpectrogramPanel({ compact = false }) {
   }
 
   const spectrogramSnaps =
-    selectedOffset >= 0 ? (snapshotSpectrumByKey?.[spectrogramKey] ?? []) : (snapRef.current ?? []);
+    selectedOffset >= 0
+      ? (snapshotSpectrumByKey?.[spectrogramKey] ?? EMPTY_SPECTRUM_VIEW)
+      : (snapRef.current ?? EMPTY_SPECTRUM_VIEW);
   const colormapLut = useMemo(
     () => buildSpectrogramLut(getTheme(resolvedThemeId, listCustomThemes()).colormap),
     [resolvedThemeId]
@@ -100,7 +103,7 @@ export function SpectrogramPanel({ compact = false }) {
   // O(window) gap scan does not run on every ~60Hz panel re-render).
   const dataBoundaries = useMemo(
     () => spectrogramDataBoundaries(spectrogramSnaps, oldestMs, newestMs, sampleMs),
-    [spectrogramSnaps, oldestMs, newestMs, sampleMs]
+    [spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
   );
   useSpectrogramCanvas({
     canvasRef,

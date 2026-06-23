@@ -6,13 +6,25 @@ import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
+import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 
 vi.mock("../../hooks/useSpectrogramCanvas", () => ({
   useSpectrogramCanvas: vi.fn(),
 }));
 
+function viewOf(rows) {
+  return {
+    get length() {
+      return rows.length;
+    },
+    version: 0,
+    timestampAt: (i) => (i >= 0 && i < rows.length ? rows[i].timestampMs : NaN),
+    rowAt: (i) => (i >= 0 && i < rows.length ? rows[i] : undefined),
+  };
+}
+
 const baseAudioData = {
-  getSpectrogramSnapsForKey: () => [],
+  getSpectrogramSnapsForKey: () => EMPTY_SPECTRUM_VIEW,
   snapshotSpectrumByKey: {},
   frequencyMarkerRef: { current: [] },
   effectiveOffsetSamples: 0,
@@ -82,13 +94,13 @@ describe("SpectrogramPanel", () => {
   it("feeds the canvas only its own request key's frozen snapshot history", () => {
     const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
     const key = spectrumRequestKeyFromControls(panelControls);
-    const mine = [{ dbList: [-10], timestampMs: 1 }];
+    const mine = viewOf([{ dbList: [-10], timestampMs: 1 }]);
     renderPanel({
       selectedOffset: 2,
       panelControls,
       snapshotSpectrumByKey: {
         [key]: mine,
-        "spectrum:single:9:combined": [{ dbList: [-99], timestampMs: 1 }],
+        "spectrum:single:9:combined": viewOf([{ dbList: [-99], timestampMs: 1 }]),
       },
     });
 
@@ -106,7 +118,7 @@ describe("SpectrogramPanel", () => {
   it("reads its own request key's live rolling history in live mode", () => {
     const panelControls = { spectrumChannel: { type: "single", ch: 2 } };
     const key = spectrumRequestKeyFromControls(panelControls);
-    const getSpectrogramSnapsForKey = vi.fn(() => []);
+    const getSpectrogramSnapsForKey = vi.fn(() => EMPTY_SPECTRUM_VIEW);
     renderPanel({ selectedOffset: -1, panelControls, getSpectrogramSnapsForKey });
 
     expect(getSpectrogramSnapsForKey).toHaveBeenCalledWith(key);
@@ -124,7 +136,7 @@ describe("SpectrogramPanel", () => {
       histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
       effectiveOffsetSamples: 0,
       visibleSamples: 3,
-      snapshotSpectrumByKey: { [key]: frames },
+      snapshotSpectrumByKey: { [key]: viewOf(frames) },
     });
 
     const boundary = container.querySelector('line[stroke-dasharray="1 5"]');
@@ -144,7 +156,7 @@ describe("SpectrogramPanel", () => {
       histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
       effectiveOffsetSamples: 0,
       visibleSamples: 3,
-      snapshotSpectrumByKey: { [key]: frames },
+      snapshotSpectrumByKey: { [key]: viewOf(frames) },
     });
 
     expect(container.querySelector('line[stroke-dasharray="1 5"]')).toBeNull();

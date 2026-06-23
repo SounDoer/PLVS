@@ -54,7 +54,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       keyToleranceMs
     );
     if (missing) return { missing: true, path: "", pathB: "", data: null };
-    const snap = entries[index];
+    const snap = entries.rowAt(index);
     const centers = (snap.bands ?? []).map((b) => b.fCenter);
     const dbList = snap.dbList ?? [];
     const dbListB = snap.dbListB ?? [];
