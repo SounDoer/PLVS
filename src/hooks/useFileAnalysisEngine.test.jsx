@@ -40,7 +40,7 @@ vi.mock("../ipc/events.js", () => ({
 }));
 
 vi.mock("../ipc/env.js", () => ({
-  isTauri: () => true,
+  isTauri: vi.fn(() => true),
 }));
 
 vi.mock("../lib/tauriFrameApply.js", () => ({
@@ -50,6 +50,7 @@ vi.mock("../lib/tauriFrameApply.js", () => ({
 }));
 
 import { probeFileAnalysis, startFileAnalysis, stopFileAnalysis } from "../ipc/commands.js";
+import { isTauri } from "../ipc/env.js";
 
 function Harness({
   enabled = true,
@@ -117,6 +118,7 @@ beforeEach(() => {
   eventCallbacks.progress = null;
   eventCallbacks.completed = null;
   eventCallbacks.error = null;
+  isTauri.mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -264,6 +266,36 @@ describe("useFileAnalysisEngine", () => {
 
     await act(async () => {});
 
+    expect(probeFileAnalysis).not.toHaveBeenCalled();
+    expect(startFileAnalysis).not.toHaveBeenCalled();
+  });
+
+  it("preserves the targeted session entry shape in browser fallback", async () => {
+    isTauri.mockReturnValue(false);
+    const updateFileSession = vi.fn();
+
+    renderHarness({ updateFileSession, sessionId: "session-a" });
+
+    await waitFor(() =>
+      expect(updateFileSession).toHaveBeenCalledWith("session-a", expect.any(Function))
+    );
+
+    const intake = { marker: "intake" };
+    expect(
+      applySessionUpdater(updateFileSession, {
+        id: "session-a",
+        path: "C:/mix/final.wav",
+        fileName: "final.wav",
+        intake,
+        state: "analyzing",
+      })
+    ).toEqual({
+      id: "session-a",
+      path: "C:/mix/final.wav",
+      fileName: "final.wav",
+      intake,
+      state: "empty",
+    });
     expect(probeFileAnalysis).not.toHaveBeenCalled();
     expect(startFileAnalysis).not.toHaveBeenCalled();
   });

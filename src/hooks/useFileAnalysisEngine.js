@@ -55,7 +55,7 @@ export function useFileAnalysisEngine({
     if (!enabled || !sessionId || !filePath || runId <= 0) return;
     if (!isTauri()) {
       setStatus("File analysis runs in the desktop app");
-      updateFileSession(sessionId, () => ({ state: "empty" }));
+      updateFileSession(sessionId, (current) => ({ ...current, state: "empty" }));
       return;
     }
 
