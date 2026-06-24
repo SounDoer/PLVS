@@ -39,6 +39,7 @@ describe("SourceTransportCluster", () => {
   it("uses compact header control sizing", () => {
     expect(source).toContain("h-7");
     expect(source).toContain("px-2.5");
+    expect(source).toContain("pl-1.2 pr-2.5");
     expect(source).toContain("px-3");
     expect(source).not.toContain("h-8");
     expect(source).not.toContain("px-3.5");
@@ -49,6 +50,7 @@ describe("SourceTransportCluster", () => {
     expect(source).toContain("p-0.5");
     expect(source).toContain("rounded-full px-3");
     expect(source).not.toContain("relative inline-flex items-center gap-1.5");
+    expect(source).not.toContain("h-[1em] w-px bg-current opacity-30");
     expect(source).not.toContain("border-l border-current/20");
     expect(source).not.toContain("rounded-md px-3 text-[length:var(--ui-fs-status)]");
   });

@@ -105,8 +105,7 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
           ))}
         </PopoverContent>
       </Popover>
-      <span className="h-[1em] w-px bg-current opacity-30" />
-      <span className="min-w-0 truncate px-2.5 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
+      <span className="min-w-0 truncate pl-1.2 pr-2.5 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
         {state.statusLabel}
       </span>
 
