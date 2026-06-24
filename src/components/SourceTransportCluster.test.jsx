@@ -26,6 +26,11 @@ describe("SourceTransportCluster", () => {
     expect(source).not.toContain("text-xs");
   });
 
+  it("uses semantic borders instead of hard-coded white tints", () => {
+    expect(source).toContain("border-border");
+    expect(source).not.toContain("border-white/");
+  });
+
   it("sizes the source menu from content and trigger instead of a fixed width", () => {
     expect(source).toContain("min-w-[var(--radix-popover-trigger-width)]");
     expect(source).not.toContain("w-44");

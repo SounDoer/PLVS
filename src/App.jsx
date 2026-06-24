@@ -34,7 +34,7 @@ import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ThemeEditor } from "./components/ThemeEditor";
-import { SourceTransportCluster } from "./components/SourceTransportCluster.jsx";
+import { AppHeader } from "./components/AppHeader.jsx";
 import { FileAnalysisSummary } from "./components/FileAnalysisSummary.jsx";
 import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -49,16 +49,10 @@ import {
   startFileAnalysisEntry,
   updateFileEntry,
 } from "./lib/fileAnalysisSessionRegistry.js";
-import { IconButton } from "./components/IconButton.jsx";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
-import { ModulesPopoverContent } from "./workspace/WorkspaceToolbar.jsx";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
-import { PresetsPopoverContent } from "./components/PresetsPopover.jsx";
-import { FocusViewPopoverContent } from "./components/FocusViewPopover.jsx";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { eventMatchesAccelerator } from "./lib/accelerator.js";
 import {
   FOOTER_DIVIDER,
@@ -67,15 +61,12 @@ import {
   SHELL_BOTTOM_REVEAL_HOT_ZONE,
   SHELL_FOOTER,
   SHELL_FOOTER_OVERLAY,
-  SHELL_HEADER,
-  SHELL_HEADER_OVERLAY,
   SHELL_INNER,
   SHELL_INNER_FOCUS,
   SHELL_PAGE,
   SHELL_TOP_REVEAL_HOT_ZONE,
 } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
-import { Bookmark, Focus, FolderOpen, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
@@ -121,44 +112,6 @@ function toBackendAnalysisRequests(requests) {
       y: request.pair.y,
     })),
   };
-}
-
-function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={onSelect}
-      className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-    >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          selected ? "bg-primary" : "bg-muted-foreground/20"
-        )}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-foreground">{primary}</span>
-        {secondary ? (
-          <span className="mt-0.5 block truncate text-muted-foreground/70">{secondary}</span>
-        ) : null}
-      </span>
-    </button>
-  );
-}
-
-function AudioDeviceOption({ device, selected, onSelect }) {
-  const label = formatAudioDeviceLabel(device.label);
-  return (
-    <DeviceRow
-      ariaLabel={label.full}
-      primary={label.primary}
-      secondary={label.secondary}
-      selected={selected}
-      onSelect={onSelect}
-    />
-  );
 }
 
 export default function App() {
@@ -338,11 +291,6 @@ function AppContent() {
   const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
   const [focusControlsVisible, setFocusControlsVisible] = useState(false);
   const [focusControlsHeld, setFocusControlsHeld] = useState(false);
-  const [devicesOpen, setDevicesOpen] = useState(false);
-  const handleDeviceSelect = (id) => {
-    setCaptureDeviceIdAndPersist(id);
-    setDevicesOpen(false);
-  };
   const focusControlsHideTimerRef = useRef(0);
   const focusControlsDragTimerRef = useRef(0);
 
@@ -1398,159 +1346,39 @@ function AppContent() {
             />
           ) : null}
           {(!focusView.autoHideControls || focusControlsVisible) && (
-            <header
-              className={focusView.autoHideControls ? SHELL_HEADER_OVERLAY : SHELL_HEADER}
+            <AppHeader
+              autoHideControls={focusView.autoHideControls}
               onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
               onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
               onPointerDown={focusView.autoHideControls ? handleWindowDrag : undefined}
               onPointerUp={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
               onPointerCancel={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
-            >
-              <SourceTransportCluster
-                state={sourceTransportState}
-                sourceMode={sourceMode}
-                onSourceModeChange={onSourceModeChange}
-                onPrimaryAction={onSourceTransportAction}
-              />
-              <div className="flex-1" />
-              <div className="flex items-center gap-1">
-                <IconButton
-                  icon={<Trash2 className="size-3.5" />}
-                  tip="Clear"
-                  disabled={sourceMode === "file" ? !activeFileSession : !running && !showClock}
-                  onClick={clearAll}
-                />
-                {isTauri() &&
-                  (sourceMode === "file" ? (
-                    // Reuse the Devices slot (meaningless in File mode) as a re-import affordance,
-                    // mirroring the ANALYZE picker without adding a new toolbar control.
-                    <IconButton
-                      icon={<FolderOpen className="size-4 shrink-0" />}
-                      tip="Open file"
-                      onClick={async () => {
-                        const path = await pickMediaFile();
-                        if (path) beginFileAnalysis(path);
-                      }}
-                    />
-                  ) : (
-                    <Popover
-                      open={devicesOpen}
-                      onOpenChange={(open) => {
-                        if (open && !audioDevices.length) return;
-                        setDevicesOpen(open);
-                        if (focusView.autoHideControls) holdFocusControls(open);
-                      }}
-                    >
-                      <PopoverTrigger asChild>
-                        <span>
-                          <IconButton
-                            icon={<Volume2 className="size-4 shrink-0" />}
-                            tip="Devices"
-                            disabled={!audioDevices.length}
-                          />
-                        </span>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        align="end"
-                        sideOffset={6}
-                        className="w-auto max-w-[92vw] p-1"
-                      >
-                        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-                          Devices
-                        </p>
-                        <DeviceRow
-                          ariaLabel="Automatic (default system output)"
-                          primary="Automatic (default system output)"
-                          selected={safeAudioDeviceId === "default"}
-                          onSelect={() => handleDeviceSelect("default")}
-                        />
-                        {audioOutputs.length ? (
-                          <>
-                            <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
-                              Output
-                            </p>
-                            {audioOutputs.map((d) => (
-                              <AudioDeviceOption
-                                key={d.id}
-                                device={d}
-                                selected={safeAudioDeviceId === d.id}
-                                onSelect={() => handleDeviceSelect(d.id)}
-                              />
-                            ))}
-                          </>
-                        ) : null}
-                        {audioInputs.length ? (
-                          <>
-                            <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
-                              Input
-                            </p>
-                            {audioInputs.map((d) => (
-                              <AudioDeviceOption
-                                key={d.id}
-                                device={d}
-                                selected={safeAudioDeviceId === d.id}
-                                onSelect={() => handleDeviceSelect(d.id)}
-                              />
-                            ))}
-                          </>
-                        ) : null}
-                      </PopoverContent>
-                    </Popover>
-                  ))}
-                <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
-                  <PopoverTrigger asChild>
-                    <span>
-                      <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="end"
-                    sideOffset={6}
-                    className="w-max min-w-44 max-w-[92vw] p-1"
-                  >
-                    <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-                      Modules
-                    </p>
-                    <ModulesPopoverContent />
-                  </PopoverContent>
-                </Popover>
-                <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
-                  <PopoverTrigger asChild>
-                    <span>
-                      <IconButton
-                        icon={<Focus className="size-3.5" />}
-                        tip="Focus View"
-                        className={focusViewActive ? "text-foreground" : undefined}
-                      />
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={6} className="w-56 p-1">
-                    <FocusViewPopoverContent
-                      pinned={pinned}
-                      setPinned={setPinned}
-                      focusView={focusView}
-                      setAutoHideControls={setAutoHideControls}
-                      setCompactPanels={setCompactPanels}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}>
-                  <PopoverTrigger asChild>
-                    <span>
-                      <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" />
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
-                    <PresetsPopoverContent presets={presets} />
-                  </PopoverContent>
-                </Popover>
-                <IconButton
-                  icon={<Settings className="size-3.5" />}
-                  tip="Settings"
-                  onClick={() => setSettingsOpen(true)}
-                />
-              </div>
-            </header>
+              sourceTransportState={sourceTransportState}
+              sourceMode={sourceMode}
+              onSourceModeChange={onSourceModeChange}
+              onSourceTransportAction={onSourceTransportAction}
+              onClear={clearAll}
+              clearDisabled={sourceMode === "file" ? !activeFileSession : !running && !showClock}
+              isTauriApp={isTauri()}
+              onOpenFile={async () => {
+                const path = await pickMediaFile();
+                if (path) beginFileAnalysis(path);
+              }}
+              audioDevices={audioDevices}
+              audioOutputs={audioOutputs}
+              audioInputs={audioInputs}
+              safeAudioDeviceId={safeAudioDeviceId}
+              setCaptureDeviceId={setCaptureDeviceIdAndPersist}
+              holdFocusControls={holdFocusControls}
+              focusView={focusView}
+              focusViewActive={focusViewActive}
+              pinned={pinned}
+              setPinned={setPinned}
+              setAutoHideControls={setAutoHideControls}
+              setCompactPanels={setCompactPanels}
+              presets={presets}
+              setSettingsOpen={setSettingsOpen}
+            />
           )}
 
           {showFileAnalysisResult ? (

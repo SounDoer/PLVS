@@ -55,6 +55,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   setCssVar("--ui-header-pad-x", `${header.paddingXRem}rem`);
   setCssVar("--ui-header-pad-y", `${header.paddingYRem}rem`);
+  setCssVar("--ui-header-action-gap", `${header.actionGapRem}rem`);
 
   setCssVar("--ui-panel-pad-x", `${articlePadding.defaultXRem}rem`);
   setCssVar("--ui-panel-pad-y", `${articlePadding.defaultYRem}rem`);

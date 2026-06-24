@@ -6,6 +6,7 @@ import {
   FOOTER_VALUE,
   PANEL_HEADER_BAR,
   PANEL_HEADER_TITLE_GROUP,
+  SHELL_HEADER_ACTIONS,
   SHELL_FOOTER,
   SHELL_HEADER,
   W_LOUDNESS_Y_AXIS,
@@ -47,6 +48,11 @@ describe("shellLayout token names", () => {
   it("SHELL_HEADER border uses border-border (not a hardcoded white tint)", () => {
     expect(SHELL_HEADER).toContain("border-border");
     expect(SHELL_HEADER).not.toContain("border-white/");
+  });
+
+  it("header actions use the header action gap variable", () => {
+    expect(SHELL_HEADER_ACTIONS).toContain("--ui-header-action-gap");
+    expect(SHELL_HEADER_ACTIONS).not.toContain("gap-1");
   });
 
   it("SHELL_FOOTER border uses border-border (not a hardcoded white tint)", () => {

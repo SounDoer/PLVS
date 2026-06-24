@@ -1,5 +1,11 @@
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
+import {
+  SHELL_SURFACE_BASE,
+  SHELL_SURFACE_INSET_SHADOW,
+  SHELL_SURFACE_SOFT_SHADOW,
+} from "@/lib/shellLayout";
+import { cn } from "@/lib/utils";
 
 function fmtNumber(value, suffix) {
   return Number.isFinite(value) ? `${value.toFixed(1)} ${suffix}` : `-- ${suffix}`;
@@ -49,7 +55,13 @@ export function FileAnalysisSummary({
 
   if (fileSession?.state === "error") {
     return (
-      <section className="flex w-full min-w-0 items-center gap-3 rounded-[calc(var(--radius)*0.66)] border border-[color:color-mix(in_srgb,var(--ui-signal-bad)_30%,var(--border))] bg-[color:color-mix(in_srgb,var(--ui-signal-bad)_7%,var(--card))] px-[var(--ui-header-pad-x)] py-2 text-sm text-popover-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]">
+      <section
+        className={cn(
+          "flex w-full min-w-0 items-center gap-3 border-[color:color-mix(in_srgb,var(--ui-signal-bad)_30%,var(--border))] bg-[color:color-mix(in_srgb,var(--ui-signal-bad)_7%,var(--card))] py-2 text-sm text-popover-foreground",
+          SHELL_SURFACE_BASE,
+          SHELL_SURFACE_INSET_SHADOW
+        )}
+      >
         <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--ui-signal-bad)]">
           File analysis error
         </p>
@@ -71,7 +83,13 @@ export function FileAnalysisSummary({
   );
 
   return (
-    <section className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-[calc(var(--radius)*0.66)] border border-border bg-card/55 px-[var(--ui-header-pad-x)] py-2 text-sm text-popover-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_rgba(255,255,255,0.026)] backdrop-blur-[14px] backdrop-saturate-[140%]">
+    <section
+      className={cn(
+        "flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-border bg-card/55 py-2 text-sm text-popover-foreground",
+        SHELL_SURFACE_BASE,
+        SHELL_SURFACE_SOFT_SHADOW
+      )}
+    >
       <div className="min-w-[14rem] flex-1">
         <p className="truncate text-sm font-semibold text-foreground">{fileName}</p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{trackLine(track)}</p>

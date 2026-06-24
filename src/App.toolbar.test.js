@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(join(currentDir, "App.jsx"), "utf8");
+const appHeaderPath = join(currentDir, "components", "AppHeader.jsx");
+const appHeaderSource = existsSync(appHeaderPath) ? readFileSync(appHeaderPath, "utf8") : "";
+const toolbarSource = `${appSource}\n${appHeaderSource}`;
 
 function functionBodyAfter(marker) {
   const start = appSource.indexOf(marker);
@@ -33,25 +36,25 @@ describe("App toolbar", () => {
   });
 
   it("uses a slightly larger device icon to match neighboring toolbar glyphs visually", () => {
-    expect(appSource).toContain('<Volume2 className="size-4 shrink-0" />');
+    expect(toolbarSource).toContain('<Volume2 className="size-4 shrink-0" />');
   });
 
   it("uses a short toolbar label for devices", () => {
-    expect(appSource).toContain('tip="Devices"');
-    expect(appSource).toMatch(/>\s*Devices\s*<\/p>/);
-    expect(appSource).not.toContain('tip="Audio Device"');
-    expect(appSource).not.toMatch(/>\s*Audio Device\s*<\/p>/);
+    expect(toolbarSource).toContain('tip="Devices"');
+    expect(toolbarSource).toMatch(/>\s*Devices\s*<\/p>/);
+    expect(toolbarSource).not.toContain('tip="Audio Device"');
+    expect(toolbarSource).not.toMatch(/>\s*Audio Device\s*<\/p>/);
   });
 
   it("uses formatted audio device labels in both the picker and footer", () => {
-    expect(appSource).toContain("formatAudioDeviceLabel(device.label)");
+    expect(toolbarSource).toContain("formatAudioDeviceLabel(device.label)");
     expect(appSource).toContain("formatAudioDeviceLabel(deviceName)");
     expect(appSource).toContain("const footerDeviceLabel = deviceDisplay");
     expect(appSource).toContain("deviceDisplay.secondary || deviceDisplay.primary");
     expect(appSource).toContain("{footerDeviceLabel}");
-    expect(appSource).not.toContain("title={label.full}");
+    expect(toolbarSource).not.toContain("title={label.full}");
     expect(appSource).not.toContain("title={deviceDisplay?.full}");
-    expect(appSource).toContain("w-auto max-w-[92vw]");
+    expect(toolbarSource).toContain("w-auto max-w-[92vw]");
   });
 
   it("does not sync live vectorscope selection from snapshot display audio", () => {
@@ -162,25 +165,27 @@ describe("App toolbar", () => {
   });
 
   it("renders a Presets toolbar popover with a Bookmark trigger", () => {
-    expect(appSource).toMatch(/import\s*\{[^}]*\bBookmark\b[^}]*\}\s*from\s*"lucide-react"/);
-    expect(appSource).toContain('tip="Presets"');
-    expect(appSource).toContain("<PresetsPopoverContent");
+    expect(toolbarSource).toMatch(/import\s*\{[^}]*\bBookmark\b[^}]*\}\s*from\s*"lucide-react"/);
+    expect(toolbarSource).toContain('tip="Presets"');
+    expect(toolbarSource).toContain("<PresetsPopoverContent");
   });
 
   it("renders a Focus View toolbar popover with active state", () => {
-    expect(appSource).toMatch(/import\s*\{[^}]*\bFocus\b[^}]*\}\s*from\s*"lucide-react"/);
-    expect(appSource).toContain('tip="Focus View"');
-    expect(appSource).toContain("<FocusViewPopoverContent");
-    expect(appSource).toContain("pinned={pinned}");
-    expect(appSource).toContain("setPinned={setPinned}");
+    expect(toolbarSource).toMatch(/import\s*\{[^}]*\bFocus\b[^}]*\}\s*from\s*"lucide-react"/);
+    expect(toolbarSource).toContain('tip="Focus View"');
+    expect(toolbarSource).toContain("<FocusViewPopoverContent");
+    expect(toolbarSource).toContain("pinned={pinned}");
+    expect(toolbarSource).toContain("setPinned={setPinned}");
     expect(appSource).toContain(
       "const focusViewActive = pinned || focusView.autoHideControls || focusView.compactPanels;"
     );
-    expect(appSource).toContain('className={focusViewActive ? "text-foreground" : undefined}');
+    expect(toolbarSource).toContain('className={focusViewActive ? "text-foreground" : undefined}');
   });
 
   it("places Focus View before Presets in the toolbar", () => {
-    expect(appSource.indexOf('tip="Focus View"')).toBeLessThan(appSource.indexOf('tip="Presets"'));
+    expect(toolbarSource.indexOf('tip="Focus View"')).toBeLessThan(
+      toolbarSource.indexOf('tip="Presets"')
+    );
   });
 
   it("moves the Pin toolbar control into Focus View", () => {
@@ -191,7 +196,7 @@ describe("App toolbar", () => {
 
   it("wires Focus View shell overlay hot zones and Escape reveal", () => {
     expect(appSource).toContain("SHELL_INNER_FOCUS");
-    expect(appSource).toContain("SHELL_HEADER_OVERLAY");
+    expect(toolbarSource).toContain("SHELL_HEADER_OVERLAY");
     expect(appSource).toContain("SHELL_FOOTER_OVERLAY");
     expect(appSource).toContain("SHELL_TOP_REVEAL_HOT_ZONE");
     expect(appSource).toContain("SHELL_BOTTOM_REVEAL_HOT_ZONE");
@@ -210,8 +215,8 @@ describe("App toolbar", () => {
     expect(appSource).toContain("onPointerUp={releaseFocusControlsHold}");
     expect(appSource).toContain('window.addEventListener("pointerup", releaseAfterDrag');
     expect(appSource).toContain("focusControlsDragTimerRef.current = window.setTimeout");
-    expect(appSource).toContain(
-      "onOpenChange={focusView.autoHideControls ? holdFocusControls : undefined}"
+    expect(toolbarSource).toContain(
+      "onOpenChange={autoHideControls ? holdFocusControls : undefined}"
     );
   });
 
@@ -235,8 +240,8 @@ describe("App toolbar", () => {
   });
 
   it("renames the Layout & Modules tooltip to Modules", () => {
-    expect(appSource).toContain('tip="Modules"');
-    expect(appSource).not.toContain('tip="Layout & Modules"');
+    expect(toolbarSource).toContain('tip="Modules"');
+    expect(toolbarSource).not.toContain('tip="Layout & Modules"');
   });
 
   it("exposes file analysis probing through the frontend IPC wrapper", () => {
@@ -256,12 +261,19 @@ describe("App toolbar", () => {
   });
 
   it("renders the source-aware transport cluster instead of separate status and transport controls", () => {
-    expect(appSource).toContain(
+    expect(existsSync(appHeaderPath)).toBe(true);
+
+    expect(appSource).toContain('import { AppHeader } from "./components/AppHeader.jsx";');
+    expect(appSource).toContain("<AppHeader");
+    expect(appSource).not.toContain(
       'import { SourceTransportCluster } from "./components/SourceTransportCluster.jsx";'
     );
-    expect(appSource).toContain("<SourceTransportCluster");
-    expect(appSource).not.toContain("<StatusPill");
-    expect(appSource).not.toContain("<TransportButton");
+    expect(appHeaderSource).toContain(
+      'import { SourceTransportCluster } from "./SourceTransportCluster.jsx";'
+    );
+    expect(appHeaderSource).toContain("<SourceTransportCluster");
+    expect(toolbarSource).not.toContain("<StatusPill");
+    expect(toolbarSource).not.toContain("<TransportButton");
   });
 
   it("derives transport state from source mode and session state", () => {

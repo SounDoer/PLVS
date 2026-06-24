@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const CHROME = {
   ready: {
-    shell: "bg-secondary text-muted-foreground border border-white/10",
+    shell: "border border-border/70 bg-secondary text-muted-foreground",
     action: "bg-primary text-primary-foreground hover:brightness-[1.08]",
     Icon: Play,
   },
