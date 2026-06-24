@@ -1,9 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ExternalLink } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
+import { ExternalLink, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -23,18 +20,47 @@ import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
-const SETTINGS_SHEET_CLASS =
-  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-6 pt-12 backdrop-blur-md sm:max-w-md";
-const SETTINGS_BODY_CLASS = "flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]";
-const SETTINGS_SECTION_CLASS = "grid gap-2";
-const SETTINGS_ROW_CLASS = "flex items-center justify-between gap-2";
-const SETTINGS_SELECT_TRIGGER_CLASS = "w-auto shrink-0";
-const SETTINGS_NUMBER_INPUT_CLASS =
-  "flex h-9 w-16 rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+const SHEET_CLASS =
+  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-3.5 backdrop-blur-md sm:max-w-sm";
+
+const BODY_CLASS = "flex flex-col gap-3 text-[length:var(--ui-fs-display)]";
+
+const SECTION_CLASS = "flex flex-col gap-1";
+
+const ROW_CLASS =
+  "grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded px-1.5 py-0.5";
+
+const ROW_LABEL_CLASS =
+  "whitespace-nowrap text-[length:var(--ui-fs-display)] text-muted-foreground";
+
+const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
+
+const SELECT_TRIGGER_CLASS =
+  "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+
+const SELECT_CONTENT_CLASS =
+  "border-border/50 min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)] [&_[data-slot=select-item]]:hover:bg-secondary/85";
+
+const SWITCH_CLASS =
+  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+
+const SWITCH_THUMB_CLASS =
+  "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
+
+const NUMBER_INPUT_CLASS =
+  "flex h-6 w-14 rounded-md border border-transparent bg-transparent px-1.5 py-0 text-center font-mono text-[length:var(--ui-fs-display)] tabular-nums transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+const ICON_BTN_CLASS =
+  "rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
+
+const FOOTER_LINK_CLASS =
+  "h-auto px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground/60 transition-colors hover:text-foreground cursor-pointer bg-transparent border-none outline-none";
 
 function SettingsBody({ children }) {
   return (
-    <div data-settings-body className={SETTINGS_BODY_CLASS}>
+    <div data-settings-body className={BODY_CLASS}>
       {children}
     </div>
   );
@@ -42,30 +68,40 @@ function SettingsBody({ children }) {
 
 function SettingsSection({ children, className }) {
   return (
-    <div data-settings-section className={cn(SETTINGS_SECTION_CLASS, className)}>
+    <div data-settings-section className={cn(SECTION_CLASS, className)}>
       {children}
     </div>
   );
 }
 
-function SettingsRow({ children, label, htmlFor, labelClassName, labelNode, className, ...props }) {
+function SettingsRow({ children, label, labelNode, className, ...props }) {
   return (
-    <div data-settings-row className={cn(SETTINGS_ROW_CLASS, className)} {...props}>
-      {labelNode ?? (
-        <Label htmlFor={htmlFor} className={labelClassName}>
-          {label}
-        </Label>
-      )}
-      {children}
+    <div data-settings-row className={cn(ROW_CLASS, className)} {...props}>
+      {labelNode ?? <span className={ROW_LABEL_CLASS}>{label}</span>}
+      <div className={ROW_VALUE_CLASS}>{children}</div>
     </div>
   );
 }
 
-function SettingsFooter({ children }) {
+function SettingsDivider() {
+  return <div className="border-t border-border" />;
+}
+
+function SettingsSwitch({ className, ...props }) {
   return (
-    <div data-settings-footer className="flex items-center justify-end text-muted-foreground">
+    <Switch
+      className={cn(SWITCH_CLASS, className)}
+      thumbClassName={SWITCH_THUMB_CLASS}
+      {...props}
+    />
+  );
+}
+
+function IconButton({ children, className, ...props }) {
+  return (
+    <button type="button" className={cn(ICON_BTN_CLASS, className)} {...props}>
       {children}
-    </div>
+    </button>
   );
 }
 
@@ -165,7 +201,7 @@ export function SettingsPanel({
 
   return (
     <Sheet open={settingsOpen} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" aria-describedby={undefined} className={SETTINGS_SHEET_CLASS}>
+      <SheetContent side="right" hideClose aria-describedby={undefined} className={SHEET_CLASS}>
         <AnimatePresence
           onExitComplete={() => {
             if (closingIntentRef.current) {
@@ -191,28 +227,22 @@ export function SettingsPanel({
               }
             >
               <SettingsBody>
-                <SettingsSection className="gap-5">
-                  <SettingsRow label="Open at Login" htmlFor="settings-open-at-login">
-                    <Switch
-                      id="settings-open-at-login"
+                {/* Behavior */}
+                <SettingsSection>
+                  <SettingsRow label="Open at login">
+                    <SettingsSwitch
+                      aria-label="Open at login"
                       checked={autostartEnabled}
                       onCheckedChange={setAutostartEnabled}
                       disabled={!autostartReady}
                     />
                   </SettingsRow>
-                  <SettingsRow
-                    label="Close Behavior"
-                    htmlFor="settings-close-action"
-                    labelClassName="shrink-0"
-                  >
+                  <SettingsRow label="Close behavior">
                     <Select value={closeAction} onValueChange={setCloseAction}>
-                      <SelectTrigger
-                        id="settings-close-action"
-                        className={SETTINGS_SELECT_TRIGGER_CLASS}
-                      >
+                      <SelectTrigger aria-label="Close behavior" className={SELECT_TRIGGER_CLASS}>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent position="popper">
+                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
                         <SelectItem value="ask">Ask Each Time</SelectItem>
                         <SelectItem value="tray">Minimize to Tray</SelectItem>
                         <SelectItem value="quit">Quit</SelectItem>
@@ -220,117 +250,109 @@ export function SettingsPanel({
                     </Select>
                   </SettingsRow>
                 </SettingsSection>
-                <Separator />
+
+                <SettingsDivider />
+
+                {/* Keyboard shortcuts */}
                 <SettingsSection>
-                  <Label>Keyboard Shortcuts</Label>
-                  <div className="grid gap-1.5 text-muted-foreground">
-                    {KEYBOARD_SHORTCUTS.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between gap-2">
-                        <span>{s.label}</span>
-                        <span className="font-mono tabular-nums">
-                          {formatAcceleratorForDisplay(s.keys, { isMac })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <SettingsRow
-                    labelNode={
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="settings-clear">Clear</Label>
-                        <ShortcutCapture
-                          value={clearShortcut}
-                          onChange={setClearShortcut}
-                          onRecordingChange={setClearCapturing}
-                          isMac={isMac}
-                          disabled={!clearReady}
-                        />
-                      </div>
-                    }
-                  >
-                    <div className="flex items-center gap-2">
+                  {KEYBOARD_SHORTCUTS.map((s) => (
+                    <div key={s.id} className={KBD_ROW_CLASS}>
+                      <span className="text-muted-foreground">{s.label}</span>
+                      <span className="font-mono tabular-nums text-muted-foreground/60 text-[length:var(--ui-fs-metric-meta)]">
+                        {formatAcceleratorForDisplay(s.keys, { isMac })}
+                      </span>
+                    </div>
+                  ))}
+                  <SettingsRow label="Clear">
+                    <div className="flex items-center gap-1.5">
+                      <ShortcutCapture
+                        value={clearShortcut}
+                        onChange={setClearShortcut}
+                        onRecordingChange={setClearCapturing}
+                        isMac={isMac}
+                        disabled={!clearReady}
+                      />
                       <InlineConfirm
                         onConfirm={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
                         confirmLabel="Confirm reset clear shortcut"
                         cancelLabel="Cancel reset clear shortcut"
                         trigger={(arm) => (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
+                          <IconButton
                             disabled={!clearReady}
                             onClick={arm}
                             aria-label="Reset clear shortcut"
                           >
-                            Reset
-                          </Button>
+                            <RotateCcw className="size-3.5" />
+                          </IconButton>
                         )}
-                      />
-                      <Switch
-                        id="settings-clear"
-                        checked={clearGlobal}
-                        onCheckedChange={setClearGlobal}
-                        disabled={!clearReady}
-                        className={cn(registrationError && "ring-2 ring-destructive")}
                       />
                     </div>
                   </SettingsRow>
                   {registrationError ? (
-                    <span className="text-xs text-destructive">Combo unavailable, try another</span>
+                    <div className="text-right text-[11px] text-destructive px-1.5">
+                      Combo unavailable, try another
+                    </div>
                   ) : null}
+                  <SettingsRow label="Global Shortcut">
+                    <SettingsSwitch
+                      aria-label="Global Shortcut"
+                      checked={clearGlobal}
+                      onCheckedChange={setClearGlobal}
+                      disabled={!clearReady}
+                      className={cn(registrationError && "ring-2 ring-destructive")}
+                    />
+                  </SettingsRow>
                 </SettingsSection>
-                <Separator />
+
+                <SettingsDivider />
+
+                {/* Appearance */}
                 <SettingsSection>
                   {themeControlsDisabled ? (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="px-1.5 text-[11px] text-muted-foreground">
                       Finish editing the current theme before changing theme settings.
                     </span>
                   ) : null}
-                  <SettingsRow
-                    label="Appearance"
-                    htmlFor="settings-appearance"
-                    labelClassName="shrink-0"
-                  >
+                  <SettingsRow label="Appearance">
                     <Select
                       value={appearance}
                       onValueChange={setAppearanceMode}
                       disabled={themeControlsDisabled}
                     >
                       <SelectTrigger
-                        id="settings-appearance"
-                        className={SETTINGS_SELECT_TRIGGER_CLASS}
+                        aria-label="Appearance"
+                        className={SELECT_TRIGGER_CLASS}
                         disabled={themeControlsDisabled}
                       >
                         <SelectValue placeholder="Appearance" />
                       </SelectTrigger>
-                      <SelectContent position="popper">
+                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
                         <SelectItem value="system">Follow System</SelectItem>
                         <SelectItem value="fixed">Fixed Theme</SelectItem>
                       </SelectContent>
                     </Select>
                   </SettingsRow>
-                </SettingsSection>
-                {appearance === "fixed" ? (
-                  <SettingsSection>
-                    <SettingsRow
+                  {appearance === "fixed" ? (
+                    <div
                       role="group"
                       aria-label="Theme picker"
-                      label="Colour Theme"
-                      htmlFor="settings-theme-id"
-                      labelClassName="shrink-0"
+                      className="flex min-h-6 items-center gap-1 px-1.5 py-0.5"
                     >
+                      <span className={ROW_LABEL_CLASS}>Theme</span>
+                      <div className="flex-1" />
                       <Select
                         value={fixedThemeSelectValue}
                         onValueChange={setFixedThemeIdFromPicker}
                         disabled={themeControlsDisabled}
                       >
                         <SelectTrigger
-                          id="settings-theme-id"
-                          className={SETTINGS_SELECT_TRIGGER_CLASS}
+                          aria-label="Theme"
+                          className={SELECT_TRIGGER_CLASS}
                           disabled={themeControlsDisabled}
                         >
                           <SelectValue placeholder="Theme" />
                         </SelectTrigger>
-                        <SelectContent position="popper">
+                        <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
                           {themeSelectOptions.map((opt) => (
                             <SelectItem key={opt.id} value={opt.id}>
                               {opt.label}
@@ -343,83 +365,79 @@ export function SettingsPanel({
                           ))}
                         </SelectContent>
                       </Select>
-                    </SettingsRow>
-                    <div
-                      role="group"
-                      aria-label="Theme actions"
-                      className="flex items-center justify-end gap-2"
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={themeControlsDisabled}
-                        onClick={createCustomTheme}
-                      >
-                        Add New Theme
-                      </Button>
                       {activeIsCustom ? (
                         <>
-                          <Button
-                            size="sm"
-                            variant="ghost"
+                          <IconButton
                             disabled={themeControlsDisabled}
                             onClick={editActiveCustomTheme}
+                            aria-label="Edit theme"
                           >
-                            Edit
-                          </Button>
+                            <Pencil className="size-3.5" />
+                          </IconButton>
                           <InlineConfirm
                             onConfirm={() => deleteCustomTheme(fixedThemeSelectValue)}
                             confirmLabel="Confirm delete theme"
                             cancelLabel="Cancel delete theme"
                             trigger={(arm) => (
-                              <Button
-                                size="sm"
-                                variant="ghost"
+                              <IconButton
                                 disabled={themeControlsDisabled}
-                                className="text-destructive"
+                                className="text-destructive/60 hover:text-destructive"
                                 onClick={arm}
                                 aria-label="Delete theme"
                               >
-                                Delete
-                              </Button>
+                                <Trash2 className="size-3.5" />
+                              </IconButton>
                             )}
                           />
+                          <div className="h-3 w-px shrink-0 bg-border" />
                         </>
                       ) : null}
+                      <IconButton
+                        disabled={themeControlsDisabled}
+                        onClick={createCustomTheme}
+                        aria-label="New theme"
+                        className="text-foreground/60 hover:text-foreground"
+                      >
+                        <Plus className="size-3.5" />
+                      </IconButton>
                     </div>
-                  </SettingsSection>
-                ) : null}
-                <Separator />
-                <SettingsRow
-                  label="Loudness Reference"
-                  htmlFor="settings-ref-lufs"
-                  labelClassName="shrink-0"
-                >
-                  <div className="flex items-center gap-2 shrink-0">
-                    <input
-                      id="settings-ref-lufs"
-                      type="number"
-                      min={-70}
-                      max={0}
-                      step={1}
-                      value={refLufsInput}
-                      onChange={(e) => setRefLufsInput(e.target.value)}
-                      onBlur={commitRefLufs}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur();
-                      }}
-                      className={SETTINGS_NUMBER_INPUT_CLASS}
-                    />
-                    <span className="text-muted-foreground shrink-0">LUFS</span>
-                  </div>
-                </SettingsRow>
-                <Separator />
+                  ) : null}
+                </SettingsSection>
+
+                <SettingsDivider />
+
+                {/* Loudness reference */}
+                <SettingsSection>
+                  <SettingsRow label="Loudness Ref">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <input
+                        aria-label="Loudness reference"
+                        type="number"
+                        min={-70}
+                        max={0}
+                        step={1}
+                        value={refLufsInput}
+                        onChange={(e) => setRefLufsInput(e.target.value)}
+                        onBlur={commitRefLufs}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                        }}
+                        className={NUMBER_INPUT_CLASS}
+                      />
+                      <span className="text-[11px] text-muted-foreground/60 shrink-0">LUFS</span>
+                    </div>
+                  </SettingsRow>
+                </SettingsSection>
+
+                <SettingsDivider />
+
+                {/* Channel labels */}
                 <SettingsSection>
                   <SettingsRow
                     labelNode={
-                      <Label className="shrink-0">
-                        Channel Labels{channelCount > 0 ? ` · ${channelCount}-channel` : ""}
-                      </Label>
+                      <span className={ROW_LABEL_CLASS}>
+                        Channels{channelCount > 0 ? ` · ${channelCount}ch` : ""}
+                      </span>
                     }
                   >
                     {channelCount > 0 ? (
@@ -428,40 +446,36 @@ export function SettingsPanel({
                         confirmLabel="Confirm reset channel labels"
                         cancelLabel="Cancel reset channel labels"
                         trigger={(arm) => (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
+                          <IconButton
                             onClick={arm}
                             disabled={!channelLabelHasOverride}
                             aria-label="Reset channel labels"
-                            className="h-auto px-2 py-1 text-xs"
                           >
-                            Reset
-                          </Button>
+                            <RotateCcw className="size-3.5" />
+                          </IconButton>
                         )}
                       />
                     ) : null}
                   </SettingsRow>
                   {channelCount > 0 ? (
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-0.5">
                       {channelLabelTokens.map((token, i) => (
                         <SettingsRow
                           key={i}
                           labelNode={
-                            <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                            <span className="shrink-0 tabular-nums font-mono text-[11px] text-muted-foreground/60">
                               {i + 1}
                             </span>
                           }
                         >
                           <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
                             <SelectTrigger
-                              className={SETTINGS_SELECT_TRIGGER_CLASS}
+                              className={SELECT_TRIGGER_CLASS}
                               aria-label={`Channel ${i + 1} role`}
                             >
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent position="popper">
+                            <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
                               {CHANNEL_ROLE_VOCABULARY.map((role) => (
                                 <SelectItem key={role.id} value={role.id}>
                                   {role.label}
@@ -473,52 +487,47 @@ export function SettingsPanel({
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="px-1.5 text-[11px] text-muted-foreground/60">
                       Connect an input to label its channels.
                     </span>
                   )}
                 </SettingsSection>
+
+                {/* Footer */}
                 {appVersion ? (
                   <>
-                    <Separator />
-                    <SettingsFooter>
-                      <div className="flex min-w-0 items-center justify-end gap-1.5 text-xs">
-                        <span className="font-mono tabular-nums text-muted-foreground">
-                          v{appVersion}
-                        </span>
-                        <span className="text-muted-foreground/50">·</span>
-                        <span className={hasUpdate ? "text-primary" : "text-muted-foreground"}>
-                          {updateStatusText}
-                        </span>
-                        <span className="text-muted-foreground/50">·</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground disabled:opacity-60"
-                          disabled={updateCheckDisabled}
-                          onClick={onCheckForUpdate}
-                        >
-                          Check Again
-                        </Button>
-                        <span className="text-muted-foreground/50">·</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className={cn(
-                            "h-auto gap-1 px-0 py-0 text-xs hover:bg-transparent",
-                            hasUpdate
-                              ? "text-primary hover:text-primary"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                          onClick={() => openReleaseUrl(effectiveReleaseUrl)}
-                        >
-                          {hasUpdate ? "View Release" : "View Releases"}
-                          <ExternalLink className="size-3" />
-                        </Button>
-                      </div>
-                    </SettingsFooter>
+                    <SettingsDivider />
+                    <div className="flex min-w-0 items-center justify-end gap-1.5 px-1.5 text-[length:var(--ui-fs-metric-meta)]">
+                      <span className="font-mono tabular-nums text-muted-foreground/60">
+                        v{appVersion}
+                      </span>
+                      <span className="text-muted-foreground/30">·</span>
+                      <span className={hasUpdate ? "text-primary" : "text-muted-foreground/60"}>
+                        {updateStatusText}
+                      </span>
+                      <span className="text-muted-foreground/30">·</span>
+                      <button
+                        type="button"
+                        className={FOOTER_LINK_CLASS}
+                        disabled={updateCheckDisabled}
+                        onClick={onCheckForUpdate}
+                      >
+                        Check Again
+                      </button>
+                      <span className="text-muted-foreground/30">·</span>
+                      <button
+                        type="button"
+                        className={cn(
+                          FOOTER_LINK_CLASS,
+                          "inline-flex items-center gap-1",
+                          hasUpdate && "text-primary hover:text-primary"
+                        )}
+                        onClick={() => openReleaseUrl(effectiveReleaseUrl)}
+                      >
+                        Releases
+                        <ExternalLink className="size-3" />
+                      </button>
+                    </div>
                   </>
                 ) : null}
               </SettingsBody>

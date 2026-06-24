@@ -42,14 +42,14 @@ export function ShortcutCapture({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col items-end gap-0.5">
       <Button
         type="button"
         variant="outline"
         size="sm"
         disabled={disabled}
         aria-label="Clear shortcut"
-        className="font-mono"
+        className="h-6 font-mono"
         onClick={() => {
           setRecording(true);
           setHint("");
@@ -60,7 +60,7 @@ export function ShortcutCapture({
       >
         {recording ? "Press a combo…" : formatAcceleratorForDisplay(value, { isMac })}
       </Button>
-      {hint ? <span className="text-xs text-destructive">{hint}</span> : null}
+      {hint ? <span className="text-[11px] text-destructive">{hint}</span> : null}
     </div>
   );
 }

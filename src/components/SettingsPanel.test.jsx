@@ -1,7 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { act } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 
@@ -34,15 +33,15 @@ const BASE_PROPS = {
 describe("SettingsPanel", () => {
   it("renders core controls when open in system mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
-    expect(screen.getByLabelText("Loudness Reference")).toBeTruthy();
+    expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
-    expect(screen.queryByLabelText("Colour theme")).toBeNull();
+    expect(screen.queryByLabelText("Theme")).toBeNull();
   });
 
   it("shows theme picker in fixed mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
-    expect(screen.getByLabelText("Colour Theme")).toBeTruthy();
+    expect(screen.getByLabelText("Theme")).toBeTruthy();
   });
 
   it("uses shared layout primitives for settings sections and rows", () => {
@@ -50,12 +49,12 @@ describe("SettingsPanel", () => {
 
     expect(document.body.querySelector("[data-settings-body]")).toBeTruthy();
     expect(document.body.querySelectorAll("[data-settings-section]").length).toBeGreaterThanOrEqual(
-      5
+      4
     );
-    expect(document.body.querySelectorAll("[data-settings-row]").length).toBeGreaterThanOrEqual(6);
+    expect(document.body.querySelectorAll("[data-settings-row]").length).toBeGreaterThanOrEqual(5);
   });
 
-  it("keeps custom theme actions on their own row", () => {
+  it("shows theme actions inline with the theme select for custom themes", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
@@ -67,16 +66,25 @@ describe("SettingsPanel", () => {
     );
 
     const themePicker = screen.getByRole("group", { name: "Theme picker" });
-    const themeActions = screen.getByRole("group", { name: "Theme actions" });
+    expect(themePicker).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New theme" })).toBeTruthy();
+  });
 
-    expect(themePicker.textContent).toContain("Colour Theme");
-    expect(themePicker.textContent).not.toContain("Add New Theme");
-    expect(themePicker.textContent).not.toContain("Edit");
-    expect(themePicker.textContent).not.toContain("Delete");
-    expect(themeActions.textContent).toContain("Add New Theme");
-    expect(themeActions.textContent).toContain("Edit");
-    expect(themeActions.textContent).toContain("Delete");
-    expect(screen.queryByRole("button", { name: "Duplicate" })).toBeNull();
+  it("hides edit/delete for built-in themes", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="plvs-dark"
+        activeIsCustom={false}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "Edit theme" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete theme" })).toBeNull();
+    expect(screen.getByRole("button", { name: "New theme" })).toBeTruthy();
   });
 
   it("locks theme controls while the theme editor is open", () => {
@@ -91,18 +99,13 @@ describe("SettingsPanel", () => {
       />
     );
 
-    const themeLockHint = screen.getByText(
-      "Finish editing the current theme before changing theme settings."
-    );
-    const appearanceSelect = screen.getByLabelText("Appearance");
-
-    expect(themeLockHint.compareDocumentPosition(appearanceSelect)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING
-    );
-    expect(appearanceSelect.disabled).toBe(true);
-    expect(screen.getByLabelText("Colour Theme").disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Add New Theme" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Edit" }).disabled).toBe(true);
+    expect(
+      screen.getByText("Finish editing the current theme before changing theme settings.")
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Appearance").disabled).toBe(true);
+    expect(screen.getByLabelText("Theme").disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "New theme" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Edit theme" }).disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Delete theme" }).disabled).toBe(true);
   });
 
@@ -130,7 +133,7 @@ describe("SettingsPanel", () => {
     render(
       <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
     );
-    const input = screen.getByLabelText("Loudness Reference");
+    const input = screen.getByLabelText("Loudness reference");
     fireEvent.change(input, { target: { value: "" } });
     expect(setReferenceLufs).not.toHaveBeenCalled();
   });
@@ -140,7 +143,7 @@ describe("SettingsPanel", () => {
     render(
       <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
     );
-    const input = screen.getByLabelText("Loudness Reference");
+    const input = screen.getByLabelText("Loudness reference");
     fireEvent.change(input, { target: { value: "-14" } });
     fireEvent.blur(input);
     expect(setReferenceLufs).toHaveBeenCalledWith(-14);
@@ -151,7 +154,7 @@ describe("SettingsPanel", () => {
     render(
       <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
     );
-    const input = screen.getByLabelText("Loudness Reference");
+    const input = screen.getByLabelText("Loudness reference");
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.blur(input);
     expect(setReferenceLufs).not.toHaveBeenCalled();
@@ -160,11 +163,9 @@ describe("SettingsPanel", () => {
 
   it("shows the current app version in settings", () => {
     render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" />);
-    expect(screen.queryByText("Version")).toBeNull();
     expect(screen.getByText("v0.0.17")).toBeTruthy();
     expect(screen.getByText("Checking updates")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Check Again" }).disabled).toBe(true);
-    expect(screen.getByText("View Releases")).toBeTruthy();
+    expect(screen.getByText("Releases")).toBeTruthy();
   });
 
   it("keeps release link visible when update check fails", () => {
@@ -179,7 +180,7 @@ describe("SettingsPanel", () => {
     );
 
     expect(screen.getByText("Update check unavailable")).toBeTruthy();
-    fireEvent.click(screen.getByText("View Releases"));
+    fireEvent.click(screen.getByText("Releases"));
     expect(openReleaseUrl).toHaveBeenCalledWith("https://github.com/SounDoer/PLVS/releases");
   });
 
@@ -195,7 +196,7 @@ describe("SettingsPanel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Check Again" }));
+    fireEvent.click(screen.getByText("Check Again"));
     expect(onCheckForUpdate).toHaveBeenCalledTimes(1);
   });
 
@@ -212,7 +213,7 @@ describe("SettingsPanel", () => {
 
     expect(screen.getByText("Up to date")).toBeTruthy();
     expect(screen.queryByText(/New version available/)).toBeNull();
-    expect(screen.getByText("View Releases")).toBeTruthy();
+    expect(screen.getByText("Releases")).toBeTruthy();
   });
 
   it("opens the release URL through the provided handler", () => {
@@ -230,7 +231,7 @@ describe("SettingsPanel", () => {
     );
 
     expect(screen.getByText("Update available: v0.1.10")).toBeTruthy();
-    fireEvent.click(screen.getByText("View Release"));
+    fireEvent.click(screen.getByText("Releases"));
 
     expect(openReleaseUrl).toHaveBeenCalledWith(releaseUrl);
   });
@@ -266,23 +267,22 @@ describe("SettingsPanel", () => {
 
   it("renders Close behavior select with current value", () => {
     render(<SettingsPanel {...BASE_PROPS} {...SYSTEM_PROPS} closeAction="tray" />);
-    expect(screen.getByLabelText("Close Behavior")).toBeTruthy();
+    expect(screen.getByLabelText("Close behavior")).toBeTruthy();
   });
 
   it("existing controls still render with new props absent (backwards compat)", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.getByLabelText("Loudness Reference")).toBeTruthy();
+    expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
 
-  it("renders the keyboard shortcuts reference rows without a Clear read-only row", () => {
+  it("renders the keyboard shortcuts reference rows", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.getByText("Keyboard Shortcuts")).toBeTruthy();
     expect(screen.getByText("Start / Stop")).toBeTruthy();
     expect(screen.getByText("Exit Fullscreen")).toBeTruthy();
   });
 
-  it("renders the editable Clear row with toggle and capture", () => {
+  it("renders the editable Clear row with capture and global toggle", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
@@ -291,11 +291,11 @@ describe("SettingsPanel", () => {
         clearShortcut="CmdOrCtrl+K"
       />
     );
-    expect(screen.getByLabelText("Clear")).toBeTruthy();
     expect(screen.getByLabelText("Clear shortcut")).toBeTruthy();
+    expect(screen.getByRole("switch", { name: /Global Shortcut/i })).toBeTruthy();
   });
 
-  it("shows the error state on the Clear toggle when registration failed", () => {
+  it("shows the error state on the Global shortcut toggle when registration failed", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
@@ -305,7 +305,9 @@ describe("SettingsPanel", () => {
       />
     );
     expect(screen.getByText(/combo unavailable/i)).toBeTruthy();
-    expect(screen.getByLabelText("Clear").className).toContain("ring-destructive");
+    expect(screen.getByRole("switch", { name: /Global Shortcut/i }).className).toContain(
+      "ring-destructive"
+    );
   });
 });
 
