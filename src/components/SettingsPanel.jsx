@@ -23,6 +23,52 @@ import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
+const SETTINGS_SHEET_CLASS =
+  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-6 pt-12 backdrop-blur-md sm:max-w-md";
+const SETTINGS_BODY_CLASS = "flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]";
+const SETTINGS_SECTION_CLASS = "grid gap-2";
+const SETTINGS_ROW_CLASS = "flex items-center justify-between gap-2";
+const SETTINGS_SELECT_TRIGGER_CLASS = "w-auto shrink-0";
+const SETTINGS_NUMBER_INPUT_CLASS =
+  "flex h-9 w-16 rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+function SettingsBody({ children }) {
+  return (
+    <div data-settings-body className={SETTINGS_BODY_CLASS}>
+      {children}
+    </div>
+  );
+}
+
+function SettingsSection({ children, className }) {
+  return (
+    <div data-settings-section className={cn(SETTINGS_SECTION_CLASS, className)}>
+      {children}
+    </div>
+  );
+}
+
+function SettingsRow({ children, label, htmlFor, labelClassName, labelNode, className, ...props }) {
+  return (
+    <div data-settings-row className={cn(SETTINGS_ROW_CLASS, className)} {...props}>
+      {labelNode ?? (
+        <Label htmlFor={htmlFor} className={labelClassName}>
+          {label}
+        </Label>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function SettingsFooter({ children }) {
+  return (
+    <div data-settings-footer className="flex items-center justify-end text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,
@@ -119,14 +165,7 @@ export function SettingsPanel({
 
   return (
     <Sheet open={settingsOpen} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="right"
-        aria-describedby={undefined}
-        className={cn(
-          "w-full gap-0 overflow-y-auto border-border bg-card/95 p-6 backdrop-blur-md sm:max-w-md",
-          "pt-12"
-        )}
-      >
+      <SheetContent side="right" aria-describedby={undefined} className={SETTINGS_SHEET_CLASS}>
         <AnimatePresence
           onExitComplete={() => {
             if (closingIntentRef.current) {
@@ -151,23 +190,26 @@ export function SettingsPanel({
                   : { type: "spring", stiffness: 420, damping: 36, mass: 0.35 }
               }
             >
-              <div className="flex flex-col gap-5 text-[length:var(--ui-fs-metric-meta)]">
-                <div className="grid gap-5">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="settings-open-at-login">Open at Login</Label>
+              <SettingsBody>
+                <SettingsSection className="gap-5">
+                  <SettingsRow label="Open at Login" htmlFor="settings-open-at-login">
                     <Switch
                       id="settings-open-at-login"
                       checked={autostartEnabled}
                       onCheckedChange={setAutostartEnabled}
                       disabled={!autostartReady}
                     />
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="settings-close-action" className="shrink-0">
-                      Close Behavior
-                    </Label>
+                  </SettingsRow>
+                  <SettingsRow
+                    label="Close Behavior"
+                    htmlFor="settings-close-action"
+                    labelClassName="shrink-0"
+                  >
                     <Select value={closeAction} onValueChange={setCloseAction}>
-                      <SelectTrigger id="settings-close-action" className="w-auto shrink-0">
+                      <SelectTrigger
+                        id="settings-close-action"
+                        className={SETTINGS_SELECT_TRIGGER_CLASS}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper">
@@ -176,10 +218,10 @@ export function SettingsPanel({
                         <SelectItem value="quit">Quit</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                </div>
+                  </SettingsRow>
+                </SettingsSection>
                 <Separator />
-                <div className="grid gap-2">
+                <SettingsSection>
                   <Label>Keyboard Shortcuts</Label>
                   <div className="grid gap-1.5 text-muted-foreground">
                     {KEYBOARD_SHORTCUTS.map((s) => (
@@ -191,17 +233,20 @@ export function SettingsPanel({
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-clear">Clear</Label>
-                      <ShortcutCapture
-                        value={clearShortcut}
-                        onChange={setClearShortcut}
-                        onRecordingChange={setClearCapturing}
-                        isMac={isMac}
-                        disabled={!clearReady}
-                      />
-                    </div>
+                  <SettingsRow
+                    labelNode={
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="settings-clear">Clear</Label>
+                        <ShortcutCapture
+                          value={clearShortcut}
+                          onChange={setClearShortcut}
+                          onRecordingChange={setClearCapturing}
+                          isMac={isMac}
+                          disabled={!clearReady}
+                        />
+                      </div>
+                    }
+                  >
                     <div className="flex items-center gap-2">
                       <InlineConfirm
                         onConfirm={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
@@ -228,22 +273,23 @@ export function SettingsPanel({
                         className={cn(registrationError && "ring-2 ring-destructive")}
                       />
                     </div>
-                  </div>
+                  </SettingsRow>
                   {registrationError ? (
                     <span className="text-xs text-destructive">Combo unavailable, try another</span>
                   ) : null}
-                </div>
+                </SettingsSection>
                 <Separator />
-                <div className="flex flex-col gap-2">
+                <SettingsSection>
                   {themeControlsDisabled ? (
                     <span className="text-xs text-muted-foreground">
                       Finish editing the current theme before changing theme settings.
                     </span>
                   ) : null}
-                  <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor="settings-appearance" className="shrink-0">
-                      Appearance
-                    </Label>
+                  <SettingsRow
+                    label="Appearance"
+                    htmlFor="settings-appearance"
+                    labelClassName="shrink-0"
+                  >
                     <Select
                       value={appearance}
                       onValueChange={setAppearanceMode}
@@ -251,7 +297,7 @@ export function SettingsPanel({
                     >
                       <SelectTrigger
                         id="settings-appearance"
-                        className="w-auto shrink-0"
+                        className={SETTINGS_SELECT_TRIGGER_CLASS}
                         disabled={themeControlsDisabled}
                       >
                         <SelectValue placeholder="Appearance" />
@@ -261,18 +307,17 @@ export function SettingsPanel({
                         <SelectItem value="fixed">Fixed Theme</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                </div>
+                  </SettingsRow>
+                </SettingsSection>
                 {appearance === "fixed" ? (
-                  <div className="flex flex-col gap-2">
-                    <div
+                  <SettingsSection>
+                    <SettingsRow
                       role="group"
                       aria-label="Theme picker"
-                      className="flex items-center justify-between gap-2"
+                      label="Colour Theme"
+                      htmlFor="settings-theme-id"
+                      labelClassName="shrink-0"
                     >
-                      <Label htmlFor="settings-theme-id" className="shrink-0">
-                        Colour Theme
-                      </Label>
                       <Select
                         value={fixedThemeSelectValue}
                         onValueChange={setFixedThemeIdFromPicker}
@@ -280,7 +325,7 @@ export function SettingsPanel({
                       >
                         <SelectTrigger
                           id="settings-theme-id"
-                          className="w-auto shrink-0"
+                          className={SETTINGS_SELECT_TRIGGER_CLASS}
                           disabled={themeControlsDisabled}
                         >
                           <SelectValue placeholder="Theme" />
@@ -298,7 +343,7 @@ export function SettingsPanel({
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </SettingsRow>
                     <div
                       role="group"
                       aria-label="Theme actions"
@@ -342,13 +387,14 @@ export function SettingsPanel({
                         </>
                       ) : null}
                     </div>
-                  </div>
+                  </SettingsSection>
                 ) : null}
                 <Separator />
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="settings-ref-lufs" className="shrink-0">
-                    Loudness Reference
-                  </Label>
+                <SettingsRow
+                  label="Loudness Reference"
+                  htmlFor="settings-ref-lufs"
+                  labelClassName="shrink-0"
+                >
                   <div className="flex items-center gap-2 shrink-0">
                     <input
                       id="settings-ref-lufs"
@@ -362,17 +408,20 @@ export function SettingsPanel({
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.currentTarget.blur();
                       }}
-                      className="flex h-9 w-16 rounded-md border border-input bg-transparent px-3 py-1 text-[length:var(--ui-fs-metric-meta)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className={SETTINGS_NUMBER_INPUT_CLASS}
                     />
                     <span className="text-muted-foreground shrink-0">LUFS</span>
                   </div>
-                </div>
+                </SettingsRow>
                 <Separator />
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className="shrink-0">
-                      Channel Labels{channelCount > 0 ? ` · ${channelCount}-channel` : ""}
-                    </Label>
+                <SettingsSection>
+                  <SettingsRow
+                    labelNode={
+                      <Label className="shrink-0">
+                        Channel Labels{channelCount > 0 ? ` · ${channelCount}-channel` : ""}
+                      </Label>
+                    }
+                  >
                     {channelCount > 0 ? (
                       <InlineConfirm
                         onConfirm={resetChannelLabels}
@@ -393,17 +442,21 @@ export function SettingsPanel({
                         )}
                       />
                     ) : null}
-                  </div>
+                  </SettingsRow>
                   {channelCount > 0 ? (
                     <div className="flex flex-col gap-1.5">
                       {channelLabelTokens.map((token, i) => (
-                        <div key={i} className="flex items-center justify-between gap-2">
-                          <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                            {i + 1}
-                          </span>
+                        <SettingsRow
+                          key={i}
+                          labelNode={
+                            <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                              {i + 1}
+                            </span>
+                          }
+                        >
                           <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
                             <SelectTrigger
-                              className="w-auto shrink-0"
+                              className={SETTINGS_SELECT_TRIGGER_CLASS}
                               aria-label={`Channel ${i + 1} role`}
                             >
                               <SelectValue />
@@ -416,7 +469,7 @@ export function SettingsPanel({
                               ))}
                             </SelectContent>
                           </Select>
-                        </div>
+                        </SettingsRow>
                       ))}
                     </div>
                   ) : (
@@ -424,11 +477,11 @@ export function SettingsPanel({
                       Connect an input to label its channels.
                     </span>
                   )}
-                </div>
+                </SettingsSection>
                 {appVersion ? (
                   <>
                     <Separator />
-                    <div className="flex items-center justify-end text-muted-foreground">
+                    <SettingsFooter>
                       <div className="flex min-w-0 items-center justify-end gap-1.5 text-xs">
                         <span className="font-mono tabular-nums text-muted-foreground">
                           v{appVersion}
@@ -465,10 +518,10 @@ export function SettingsPanel({
                           <ExternalLink className="size-3" />
                         </Button>
                       </div>
-                    </div>
+                    </SettingsFooter>
                   </>
                 ) : null}
-              </div>
+              </SettingsBody>
             </motion.div>
           ) : null}
         </AnimatePresence>

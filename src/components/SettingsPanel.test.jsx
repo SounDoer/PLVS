@@ -45,6 +45,16 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Colour Theme")).toBeTruthy();
   });
 
+  it("uses shared layout primitives for settings sections and rows", () => {
+    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
+
+    expect(document.body.querySelector("[data-settings-body]")).toBeTruthy();
+    expect(document.body.querySelectorAll("[data-settings-section]").length).toBeGreaterThanOrEqual(
+      5
+    );
+    expect(document.body.querySelectorAll("[data-settings-row]").length).toBeGreaterThanOrEqual(6);
+  });
+
   it("keeps custom theme actions on their own row", () => {
     render(
       <SettingsPanel
