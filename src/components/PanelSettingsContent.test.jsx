@@ -53,7 +53,7 @@ function WorkspaceStateProbe({ onState }) {
 describe("PanelSettingsContent", () => {
   it("renders Level Meter mode as a labeled settings row and updates mode", () => {
     const onPanelControlsChange = vi.fn();
-    render(
+    const { container } = render(
       <PanelSettingsContent
         activeTab="levelMeter"
         panelControls={DEFAULT_PANEL_CONTROLS}
@@ -74,8 +74,12 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Mode").className).not.toContain("text-popover-foreground");
     expect(modeRow?.className).toContain("min-h-6");
     expect(modeRow?.className).toContain("gap-2");
+    expect(modeRow?.className).toContain("grid-cols-[max-content_minmax(0,1fr)]");
+    expect(modeRow?.className).not.toContain("grid-cols-[4.75rem");
     expect(modeRow?.className).not.toContain("min-h-7");
     expect(modeRow?.className).not.toContain("gap-4");
+    expect(container.firstChild?.className).toContain("w-max");
+    expect(container.firstChild?.className).not.toContain("w-[17rem]");
     expect(screen.getByText("Peak")).toBeTruthy();
 
     expect(screen.queryByRole("combobox")).toBeNull();
@@ -283,7 +287,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("Stale")).toBeNull();
   });
 
-  it("renders Stats metrics as a secondary configure popover and toggles stat ids", () => {
+  it("renders Stats metrics as an inline labeled detail and toggles stat ids", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -294,7 +298,9 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.getByText("Metrics")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
+    expect(screen.queryByRole("button", { name: "Configure metrics" })).toBeNull();
+    expect(screen.getByText("8 visible")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -311,7 +317,7 @@ describe("PanelSettingsContent", () => {
     });
   });
 
-  it("renders Layers chip and toggles layer ids", () => {
+  it("renders Loudness layers as an inline labeled detail and toggles layer ids", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -322,14 +328,11 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.queryByText("Loudness")).toBeNull();
-    expect(screen.getByText("Layers").className).toContain("text-xs");
-    const configureButton = screen.getByRole("button", { name: "Configure layers" });
-    expect(configureButton.className).toContain("h-6");
-    expect(configureButton.className).not.toContain("h-7");
-    fireEvent.click(configureButton);
-    expect(document.querySelector('[data-slot="popover-content"]').className).not.toContain(
-      "min-w-[12rem]"
-    );
+    expect(screen.getByText("Layers")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Configure layers" })).toBeNull();
+    const editButton = screen.getByRole("button", { name: "Edit layers" });
+    expect(editButton.textContent).toContain("3 visible");
+    fireEvent.click(editButton);
     const momentaryRow = screen.getByRole("checkbox", { name: "Momentary" });
     expect(momentaryRow.getAttribute("data-settings-option-row")).toBe("true");
     expect(momentaryRow.querySelector("[data-settings-option-check]")?.className).toContain(
@@ -359,7 +362,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     const checkboxes = screen.getAllByRole("checkbox");
     expect(checkboxes[0].getAttribute("data-settings-option-row")).toBe("true");
     expect(checkboxes[0].querySelector("[data-settings-option-check]")?.className).toContain(
@@ -386,7 +389,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     fireEvent.click(screen.getByRole("button", { name: "Reset stats" }));
     expect(onPanelControlsChange).not.toHaveBeenCalled();
 
@@ -536,7 +539,7 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.queryByRole("button", { name: "Stats" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     const latestState = onState.mock.calls.at(-1)?.[0];
@@ -585,7 +588,7 @@ describe("PanelSettingsContent", () => {
 
     const settingsButtons = screen.getAllByRole("button", { name: "Panel settings" });
     fireEvent.click(settingsButtons.at(-1));
-    fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     const latestState = onState.mock.calls.at(-1)?.[0];

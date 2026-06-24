@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
+import { Check, ChevronDown, GripVertical } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -19,35 +19,35 @@ const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 w-auto max-w-none rounded-md border border-border/70 bg-transparent px-2 py-0 text-xs text-popover-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
 
 function SettingsGroup({ children }) {
-  return <div className="flex w-max max-w-[22rem] flex-col gap-1">{children}</div>;
+  return <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col gap-0.5">{children}</div>;
 }
 
-function SettingsRow({ label, children }) {
+function SettingsRow({ label, children, expanded = false }) {
   return (
-    <div className="flex min-h-6 items-center justify-between gap-2 rounded-sm px-1 py-0.5">
-      <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{label}</span>
-      <div className="flex min-w-0 shrink-0 items-center">{children}</div>
+    <div
+      className={cn(
+        "grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded-md px-1.5 py-0.5 text-xs",
+        expanded && "items-start bg-accent/20"
+      )}
+    >
+      <span className="whitespace-nowrap pt-0.5 font-medium text-muted-foreground">{label}</span>
+      <div className="flex min-w-0 items-center justify-end">{children}</div>
     </div>
   );
 }
 
-function ConfigurePopover({ ariaLabel, children }) {
+function InlineDetailTrigger({ ariaLabel, summary, open, onToggle }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          className="inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-secondary hover:text-foreground"
-        >
-          Configure
-          <ChevronRight aria-hidden="true" className="size-3" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="w-auto p-1">
-        {children}
-      </PopoverContent>
-    </Popover>
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-expanded={open}
+      onClick={onToggle}
+      className="grid h-6 w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border/70 bg-transparent px-2 py-0 text-left text-xs text-popover-foreground outline-none hover:bg-secondary hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      <span className="min-w-0 truncate">{summary}</span>
+      <span className="text-muted-foreground">{open ? "Hide" : "Edit"}</span>
+    </button>
   );
 }
 
@@ -244,6 +244,10 @@ function MultiSelectList({ label, options, selectedIds, onToggle }) {
   );
 }
 
+function visibleSummary(count) {
+  return `${count} visible`;
+}
+
 function getSelectedOption(options, valueKey) {
   const matchedOption = options.find((opt) => opt.key === valueKey);
   return {
@@ -287,6 +291,9 @@ export function PanelSettingsContent({
   panelControls,
   onPanelControlsChange,
 }) {
+  const [metricsOpen, setMetricsOpen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+
   if (activeTab === "levelMeter") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
@@ -343,40 +350,50 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Stats">
-        <SettingsRow label="Metrics">
-          <ConfigurePopover label="Metrics" ariaLabel="Configure metrics">
-            <SortableStatsList
-              label="Metrics"
-              options={STATS_OPTIONS}
-              orderedIds={normalizedPanelControls.statsOrder}
-              selectedIds={normalizedPanelControls.statsVisibleIds}
-              onToggle={(id) => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    statsVisibleIds: toggleId(normalizedPanelControls.statsVisibleIds, id),
-                  })
-                );
-              }}
-              onReorder={(nextOrder) => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    statsOrder: nextOrder,
-                  })
-                );
-              }}
-              onReset={() => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    statsOrder: [...STATS_CANONICAL_ORDER],
-                    statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
-                  })
-                );
-              }}
+        <SettingsRow label="Metrics" expanded={metricsOpen}>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <InlineDetailTrigger
+              ariaLabel={metricsOpen ? "Hide metrics" : "Edit metrics"}
+              summary={visibleSummary(normalizedPanelControls.statsVisibleIds.length)}
+              open={metricsOpen}
+              onToggle={() => setMetricsOpen((open) => !open)}
             />
-          </ConfigurePopover>
+            {metricsOpen ? (
+              <div className="mt-1 rounded-md border border-border/70 bg-background/20 p-1">
+                <SortableStatsList
+                  label="Metrics"
+                  options={STATS_OPTIONS}
+                  orderedIds={normalizedPanelControls.statsOrder}
+                  selectedIds={normalizedPanelControls.statsVisibleIds}
+                  onToggle={(id) => {
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        statsVisibleIds: toggleId(normalizedPanelControls.statsVisibleIds, id),
+                      })
+                    );
+                  }}
+                  onReorder={(nextOrder) => {
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        statsOrder: nextOrder,
+                      })
+                    );
+                  }}
+                  onReset={() => {
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        statsOrder: [...STATS_CANONICAL_ORDER],
+                        statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
+                      })
+                    );
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
         </SettingsRow>
       </SettingsGroup>
     );
@@ -389,25 +406,37 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Loudness">
-        <SettingsRow label="Layers">
-          <ConfigurePopover label="Layers" ariaLabel="Configure layers">
-            <MultiSelectList
-              label="Layers"
-              options={LOUDNESS_HISTORY_LAYER_OPTIONS}
-              selectedIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
-              onToggle={(id) => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    loudnessHistoryVisibleLayerIds: toggleId(
-                      normalizedPanelControls.loudnessHistoryVisibleLayerIds,
-                      id
-                    ),
-                  })
-                );
-              }}
+        <SettingsRow label="Layers" expanded={layersOpen}>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <InlineDetailTrigger
+              ariaLabel={layersOpen ? "Hide layers" : "Edit layers"}
+              summary={visibleSummary(
+                normalizedPanelControls.loudnessHistoryVisibleLayerIds.length
+              )}
+              open={layersOpen}
+              onToggle={() => setLayersOpen((open) => !open)}
             />
-          </ConfigurePopover>
+            {layersOpen ? (
+              <div className="mt-1 rounded-md border border-border/70 bg-background/20 p-1">
+                <MultiSelectList
+                  label="Layers"
+                  options={LOUDNESS_HISTORY_LAYER_OPTIONS}
+                  selectedIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
+                  onToggle={(id) => {
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        loudnessHistoryVisibleLayerIds: toggleId(
+                          normalizedPanelControls.loudnessHistoryVisibleLayerIds,
+                          id
+                        ),
+                      })
+                    );
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
         </SettingsRow>
       </SettingsGroup>
     );
