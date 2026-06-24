@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { ModulesPopoverContent, VisibilityPopover } from "./WorkspaceToolbar.jsx";
+import { ModulesPopoverContent } from "./WorkspaceToolbar.jsx";
 import { WorkspaceProvider } from "./WorkspaceContext.jsx";
 import { DragProvider } from "./DragContext.jsx";
 import { AudioDataContext } from "./AudioDataContext.jsx";
@@ -48,19 +48,6 @@ describe("ModulesPopoverContent", () => {
 
     const row = screen.getByText("Level Meter").closest(".group");
     expect(row?.querySelector("svg")).toBeTruthy();
-  });
-
-  it("uses content-sized popover width instead of a fixed modules width", () => {
-    render(
-      <WorkspaceProvider>
-        <VisibilityPopover />
-      </WorkspaceProvider>
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Modules" }));
-    const content = screen.getByText("Modules").closest("[data-slot='popover-content']");
-    expect(content?.className).toContain("w-max");
-    expect(content?.className).not.toContain("w-52");
   });
 
   it("arms then resets the layout via the Reset control", () => {
@@ -114,25 +101,5 @@ describe("ModulesPopoverContent", () => {
     expect(leaf?.className).toContain("ring-primary/60");
     fireEvent.mouseLeave(statsRow);
     expect(leaf?.className).not.toContain("ring-primary/60");
-  });
-
-  it("does not highlight a panel just because the modules popover opens", () => {
-    const { container } = render(
-      <WorkspaceProvider>
-        <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider value={{ statsMetrics: [] }}>
-            <VisibilityPopover />
-            <LeafView
-              node={{ type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" }}
-              path={[]}
-            />
-          </AudioDataContext.Provider>
-        </DragProvider>
-      </WorkspaceProvider>
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Modules" }));
-
-    expect(container.querySelector("[data-leaf]")?.className).not.toContain("ring-primary/60");
   });
 });

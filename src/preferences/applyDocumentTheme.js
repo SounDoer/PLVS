@@ -21,13 +21,11 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-font-sans", typography.fontFamily);
 
   const s = typography.sizesPx;
-  setCssVar("--ui-fs-app-title", `${s.title}px`);
   setCssVar("--ui-fs-axis", `${s.axisUnit}px`);
   setCssVar("--ui-fs-display", `${s.extraValue}px`);
   setCssVar("--ui-fs-metric-meta", `${s.metricMeta}px`);
   setCssVar("--ui-fs-metric-value", `${s.metricValue}px`);
   setCssVar("--ui-fs-status", `${s.status}px`);
-  setCssVar("--ui-fw-app-title", String(typography.weights.appTitle));
 
   setCssVar("--radius", radii.card);
 

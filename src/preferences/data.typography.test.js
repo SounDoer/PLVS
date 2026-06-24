@@ -4,7 +4,6 @@ import { UI_PREFERENCES } from "./data.js";
 const sizes = UI_PREFERENCES.typography.sizesPx;
 
 describe("typography size scale", () => {
-  it("App Title is 16px", () => expect(sizes.title).toBe(16));
   it("Axis token source (axisUnit) is 11px", () => expect(sizes.axisUnit).toBe(11));
   it("Dynamic Display source (extraValue) is 13px (unchanged)", () =>
     expect(sizes.extraValue).toBe(13));

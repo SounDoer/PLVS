@@ -1,4 +1,4 @@
-import { Check, LayoutGrid, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -177,27 +177,5 @@ export function ModulesPopoverContent() {
         />
       </div>
     </>
-  );
-}
-
-export function VisibilityPopover() {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Modules"
-          className="flex h-7 w-7 items-center justify-center rounded border border-border/60 bg-card/40 text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-        >
-          <LayoutGrid size={14} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-max min-w-44 max-w-[92vw] p-1">
-        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-          Modules
-        </p>
-        <ModulesPopoverContent />
-      </PopoverContent>
-    </Popover>
   );
 }

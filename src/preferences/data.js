@@ -81,16 +81,12 @@ export const UI_PREFERENCES = {
   typography: {
     fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     sizesPx: {
-      title: 16,
       axisValue: 13,
       axisUnit: 11,
       extraValue: 13,
       metricMeta: 12,
       metricValue: 16,
       status: 11,
-    },
-    weights: {
-      appTitle: 800,
     },
   },
 

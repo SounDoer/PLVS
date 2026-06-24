@@ -4,12 +4,12 @@ import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
   PANEL_HEADER_BAR,
-  PANEL_HEADER_TITLE_GROUP,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
+import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import {
   resolvePanelDefinition,
   resolvePanelDisplayName,
@@ -33,12 +33,12 @@ function TabPill({ tabId, isActive, path, slotTabIndex }) {
   const isSourceTab = dragState?.sourceId === tabId;
 
   return (
-    <div
+    <PanelTitleGroup
       data-tab-pill
       data-tab-pill-index={slotTabIndex}
-      data-panel-title-group
+      icon={def.Icon}
+      title={title}
       className={cn(
-        PANEL_HEADER_TITLE_GROUP,
         "rounded-t-[5px] select-none cursor-pointer transition-colors",
         isActive
           ? "text-foreground"
@@ -47,12 +47,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex }) {
       )}
       onMouseDown={(e) => onTabMouseDown(e, tabId)}
       onClick={() => !dragState && setActiveTab(path, tabId)}
-    >
-      <span data-panel-title-icon className="flex shrink-0">
-        <def.Icon />
-      </span>
-      <span className="truncate max-w-[8rem]">{title}</span>
-    </div>
+    />
   );
 }
 

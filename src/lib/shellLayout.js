@@ -28,11 +28,6 @@ export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3
 
 export const SHELL_BOTTOM_REVEAL_HOT_ZONE = "absolute bottom-0 left-0 right-0 z-20 h-3";
 
-export const APP_TITLE =
-  "text-[length:var(--ui-fs-app-title)] font-[var(--ui-fw-app-title)] tracking-wide text-foreground";
-
-export const APP_TITLE_BRAND = "text-primary";
-
 export const PANEL_HEADER_BAR =
   "relative flex h-7 shrink-0 items-center gap-0.5 border-b border-border/60 bg-card px-1 text-xs font-medium";
 

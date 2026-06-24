@@ -4,7 +4,6 @@ import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
   PANEL_HEADER_BAR,
-  PANEL_HEADER_TITLE_GROUP,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
@@ -12,6 +11,7 @@ import { LeafView } from "./LeafView.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
+import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import {
   resolvePanelDefinition,
   resolvePanelDisplayName,
@@ -225,14 +225,7 @@ function FullscreenOverlay() {
       tabIndex={-1}
     >
       <div className={PANEL_HEADER_BAR}>
-        <div data-panel-title-group className={PANEL_HEADER_TITLE_GROUP}>
-          <span data-panel-title-icon className="flex shrink-0">
-            <def.Icon />
-          </span>
-          <span className="truncate max-w-[8rem]">
-            {resolvePanelDisplayName(state, fullscreenId)}
-          </span>
-        </div>
+        <PanelTitleGroup icon={def.Icon} title={resolvePanelDisplayName(state, fullscreenId)} />
         <div className={PANEL_HEADER_ACTIONS}>
           <PanelSettingsMenu
             activeTab={fullscreenModuleId}

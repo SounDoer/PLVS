@@ -6,7 +6,6 @@ import {
   FOOTER_VALUE,
   SHELL_FOOTER,
   SHELL_HEADER,
-  APP_TITLE,
   W_LOUDNESS_Y_AXIS,
   W_PEAK_TICKS,
   W_SPECTRUM_Y_AXIS,
@@ -31,10 +30,6 @@ describe("shellLayout token names", () => {
     }
     expect(FOOTER_DIVIDER).toContain("h-3");
     expect(FOOTER_DIVIDER).toContain("mx-1.5");
-  });
-
-  it("APP_TITLE uses --ui-fs-app-title", () => {
-    expect(APP_TITLE).toContain("--ui-fs-app-title");
   });
 
   it("SHELL_HEADER uses --radius (not the retired --ui-radius-card)", () => {
