@@ -18,14 +18,15 @@ import { isCustomThemeId } from "../theme/customTheme.js";
 import { useThemeEditor } from "./useThemeEditor.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
-import { normalizeFocusView } from "../lib/focusView.js";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
-
-function normalizeReferenceLufs(raw) {
-  const n = Number(raw);
-  return Number.isFinite(n) && n >= -70 && n <= 0 ? n : -23;
-}
+import {
+  DEFAULT_CLOSE_ACTION,
+  normalizeCloseAction,
+  normalizeReferenceLufs,
+  normalizeSettingsFocusView,
+  normalizeThemeEditorPos,
+} from "../settings/defaults.js";
 
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -37,11 +38,11 @@ export function useSettings({ onClearRef } = {}) {
   const [referenceLufs, setReferenceLufsState] = useState(() =>
     normalizeReferenceLufs(settingsStore.read().referenceLufs)
   );
-  const [closeAction, setCloseActionState] = useState(
-    () => settingsStore.read().closeAction ?? "ask"
+  const [closeAction, setCloseActionState] = useState(() =>
+    normalizeCloseAction(settingsStore.read().closeAction)
   );
   const [focusView, setFocusViewState] = useState(() =>
-    normalizeFocusView(settingsStore.read().focusView)
+    normalizeSettingsFocusView(settingsStore.read().focusView)
   );
   const [channelLabelOverrides, setChannelLabelOverridesState] = useState(() =>
     sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
@@ -51,8 +52,8 @@ export function useSettings({ onClearRef } = {}) {
   const clearShortcutState = useClearShortcut(onClearRef);
 
   const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
-  const [editorPos, setEditorPos] = useState(
-    () => settingsStore.read().themeEditorPos ?? { x: 80, y: 80 }
+  const [editorPos, setEditorPos] = useState(() =>
+    normalizeThemeEditorPos(settingsStore.read().themeEditorPos)
   );
 
   const resolvedThemeId = useMemo(
@@ -106,18 +107,19 @@ export function useSettings({ onClearRef } = {}) {
   }
 
   function setCloseAction(value) {
-    if (value === "ask") {
+    const next = normalizeCloseAction(value);
+    if (next === DEFAULT_CLOSE_ACTION) {
       const { closeAction: _drop, ...rest } = settingsStore.read();
       settingsStore.reset();
       settingsStore.patch(rest);
     } else {
-      settingsStore.patch({ closeAction: value });
+      settingsStore.patch({ closeAction: next });
     }
-    setCloseActionState(value);
+    setCloseActionState(next);
   }
 
   function setFocusView(nextFocusView) {
-    const next = normalizeFocusView(nextFocusView);
+    const next = normalizeSettingsFocusView(nextFocusView);
     settingsStore.patch({ focusView: next });
     presetsStore.patch({ activeId: null });
     setFocusViewState(next);
@@ -160,7 +162,7 @@ export function useSettings({ onClearRef } = {}) {
         setAppearanceState(next.appearance);
         setThemeIdState(next.themeId);
         setReferenceLufsState(normalizeReferenceLufs(settingsStore.read().referenceLufs));
-        setFocusViewState(normalizeFocusView(settingsStore.read().focusView));
+        setFocusViewState(normalizeSettingsFocusView(settingsStore.read().focusView));
         setChannelLabelOverridesState(
           sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
         );
@@ -171,8 +173,9 @@ export function useSettings({ onClearRef } = {}) {
   useEffect(() => themesStore.subscribe(() => setCustomThemes(listCustomThemes())), []);
 
   function moveEditor(pos) {
-    setEditorPos(pos);
-    settingsStore.patch({ themeEditorPos: pos });
+    const next = normalizeThemeEditorPos(pos);
+    setEditorPos(next);
+    settingsStore.patch({ themeEditorPos: next });
   }
 
   const editor = useThemeEditor({
