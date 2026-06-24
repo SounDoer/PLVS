@@ -9,6 +9,7 @@ describe("UI_PREFERENCES loudness history", () => {
 
 describe("UI_PREFERENCES header density", () => {
   it("keeps the app header lightly compact", () => {
+    expect(UI_PREFERENCES.layout.header.paddingXRem).toBe(0.4);
     expect(UI_PREFERENCES.layout.header.paddingYRem).toBe(0.4);
     expect(UI_PREFERENCES.layout.header.actionGapRem).toBe(0.2);
   });

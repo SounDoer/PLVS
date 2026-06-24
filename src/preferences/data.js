@@ -13,7 +13,7 @@ export const UI_PREFERENCES = {
       barThicknessPx: 1,
     },
     header: {
-      paddingXRem: 0.9,
+      paddingXRem: 0.4,
       paddingYRem: 0.4,
       actionGapRem: 0.2,
     },
