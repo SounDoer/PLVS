@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   CAPTION_TEXT,
+  FOOTER_DIVIDER,
+  FOOTER_LABEL,
+  FOOTER_VALUE,
   SHELL_FOOTER,
   SHELL_HEADER,
   APP_TITLE,
@@ -17,6 +20,17 @@ describe("shellLayout token names", () => {
 
   it("SHELL_FOOTER uses --ui-fs-status", () => {
     expect(SHELL_FOOTER).toContain("--ui-fs-status");
+  });
+
+  it("footer item helpers share the status typography token", () => {
+    expect(FOOTER_LABEL).toContain("--ui-fs-status");
+    expect(FOOTER_VALUE).toContain("text-muted-foreground");
+    for (const className of [FOOTER_LABEL, FOOTER_VALUE]) {
+      expect(className).not.toContain("text-[10px]");
+      expect(className).not.toContain("text-xs");
+    }
+    expect(FOOTER_DIVIDER).toContain("h-3");
+    expect(FOOTER_DIVIDER).toContain("mx-1.5");
   });
 
   it("APP_TITLE uses --ui-fs-app-title", () => {

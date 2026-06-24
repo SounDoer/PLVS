@@ -17,8 +17,8 @@ export const UI_PREFERENCES = {
       paddingYRem: 0.55,
     },
     footer: {
-      paddingXRem: 1,
-      paddingYRem: 0.65,
+      paddingXRem: 0.5,
+      paddingYRem: 0.4,
     },
     articlePadding: {
       defaultXRem: 0.25,

@@ -215,6 +215,21 @@ describe("App toolbar", () => {
     );
   });
 
+  it("uses shared footer status classes", () => {
+    expect(appSource).toContain("FOOTER_LABEL");
+    expect(appSource).toContain("FOOTER_VALUE");
+    expect(appSource).toContain("FOOTER_DIVIDER");
+    expect(appSource).not.toContain('className="text-[10px] tracking-[0.06em]');
+    expect(appSource).not.toContain('className="mx-3.5 h-3 w-px shrink-0 bg-border"');
+    expect(appSource).not.toContain(
+      'className="min-w-0 truncate text-xs text-primary hover:underline"'
+    );
+    expect(appSource).not.toContain('cn(FOOTER_VALUE, "text-foreground")');
+    expect(appSource).not.toContain(
+      'FOOTER_VALUE,\n                  deviceDisplay ? "text-foreground"'
+    );
+  });
+
   it("keeps the Presets toolbar icon in the default muted state", () => {
     expect(appSource).not.toContain('className={presets.activeId ? "text-foreground" : undefined}');
   });

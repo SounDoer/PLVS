@@ -61,6 +61,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { eventMatchesAccelerator } from "./lib/accelerator.js";
 import {
+  FOOTER_DIVIDER,
+  FOOTER_LABEL,
+  FOOTER_VALUE,
   SHELL_BOTTOM_REVEAL_HOT_ZONE,
   SHELL_FOOTER,
   SHELL_FOOTER_OVERLAY,
@@ -1581,32 +1584,21 @@ function AppContent() {
               onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
               onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
             >
-              <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Device</span>
-              <span
-                className={cn(
-                  "min-w-0 truncate tabular-nums",
-                  deviceDisplay ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
-                {footerDeviceLabel}
-              </span>
-              <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-              <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Ref</span>
-              <span className="min-w-0 truncate tabular-nums text-foreground">
-                {referenceLufs} LUFS
-              </span>
-              <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
-              <span className="text-[10px] tracking-[0.06em] text-muted-foreground/60">Preset</span>
-              <span className="min-w-0 truncate tabular-nums text-foreground">
-                {activePresetName}
-              </span>
+              <span className={FOOTER_LABEL}>Device</span>
+              <span className={FOOTER_VALUE}>{footerDeviceLabel}</span>
+              <div className={FOOTER_DIVIDER} />
+              <span className={FOOTER_LABEL}>Ref</span>
+              <span className={FOOTER_VALUE}>{referenceLufs} LUFS</span>
+              <div className={FOOTER_DIVIDER} />
+              <span className={FOOTER_LABEL}>Preset</span>
+              <span className={FOOTER_VALUE}>{activePresetName}</span>
               {updateInfo?.hasUpdate ? (
                 <>
-                  <div className="mx-3.5 h-3 w-px shrink-0 bg-border" />
+                  <div className={FOOTER_DIVIDER} />
                   <button
                     type="button"
                     onClick={() => setSettingsOpen(true)}
-                    className="min-w-0 truncate text-xs text-primary hover:underline"
+                    className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:underline"
                   >
                     Update available · Check in Settings
                   </button>

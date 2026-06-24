@@ -27,6 +27,13 @@ describe("spacing data", () => {
     expect(UI_PREFERENCES.layout.articlePadding).not.toHaveProperty("metricsRem");
   });
 
+  it("uses compact footer padding", () => {
+    expect(UI_PREFERENCES.layout.footer).toMatchObject({
+      paddingXRem: 0.5,
+      paddingYRem: 0.4,
+    });
+  });
+
   it("uses tighter metric list spacing", () => {
     expect(UI_PREFERENCES.layout.spacingRem.metricsListGap).toBe(0.1);
   });

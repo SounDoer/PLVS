@@ -44,6 +44,13 @@ export const PANEL_HEADER_ACTION_BUTTON =
 export const PANEL_HEADER_TITLE_GROUP =
   "flex min-w-0 items-center gap-1 px-1 py-0.5 text-xs font-medium";
 
+export const FOOTER_LABEL =
+  "text-[length:var(--ui-fs-status)] tracking-[0.06em] text-muted-foreground/60";
+
+export const FOOTER_VALUE = "min-w-0 truncate tabular-nums text-muted-foreground";
+
+export const FOOTER_DIVIDER = "mx-1.5 h-3 w-px shrink-0 bg-border";
+
 /** Axis tick / caption text (replaces former `.ui-caption`). */
 export const CAPTION_TEXT = "text-[length:var(--ui-fs-axis)] text-muted-foreground";
 
