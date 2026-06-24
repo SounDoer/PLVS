@@ -69,7 +69,7 @@ export function PanelSettingsMenu(props) {
           <Settings2 size={12} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-auto p-2">
+      <PopoverContent align="end" sideOffset={6} className="w-auto p-1">
         <PanelSettingsContent {...props} />
       </PopoverContent>
     </Popover>

@@ -16,7 +16,7 @@ import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
-  "h-7 w-auto max-w-none rounded-md border border-border/70 bg-transparent px-2 py-0 text-xs text-muted-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
+  "h-6 w-auto max-w-none rounded-md border border-border/70 bg-transparent px-2 py-0 text-xs text-popover-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
 
 function SettingsGroup({ children }) {
   return <div className="flex w-max max-w-[22rem] flex-col gap-1">{children}</div>;
@@ -24,8 +24,8 @@ function SettingsGroup({ children }) {
 
 function SettingsRow({ label, children }) {
   return (
-    <div className="flex min-h-7 items-center justify-between gap-4 rounded-sm px-1 py-0.5">
-      <span className="whitespace-nowrap text-xs font-medium text-popover-foreground">{label}</span>
+    <div className="flex min-h-6 items-center justify-between gap-2 rounded-sm px-1 py-0.5">
+      <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{label}</span>
       <div className="flex min-w-0 shrink-0 items-center">{children}</div>
     </div>
   );
@@ -38,7 +38,7 @@ function ConfigurePopover({ ariaLabel, children }) {
         <button
           type="button"
           aria-label={ariaLabel}
-          className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-secondary hover:text-foreground"
+          className="inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-secondary hover:text-foreground"
         >
           Configure
           <ChevronRight aria-hidden="true" className="size-3" />
@@ -48,6 +48,36 @@ function ConfigurePopover({ ariaLabel, children }) {
         {children}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function SettingsOptionRow({
+  children,
+  checked = false,
+  className,
+  checkClassName,
+  role,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      data-settings-option-row
+      role={role}
+      className={cn(
+        "flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-0.5 text-left text-xs text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground",
+        className
+      )}
+      {...props}
+    >
+      <span
+        data-settings-option-check
+        className={cn("flex size-3.5 items-center justify-center", checkClassName)}
+      >
+        {checked ? <Check aria-hidden="true" className="size-3" /> : null}
+      </span>
+      {children}
+    </button>
   );
 }
 
@@ -71,24 +101,18 @@ function SettingsSelect({ label, ariaLabel, options, value, onChange, triggerCla
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} className="w-auto p-1">
         {options.map((opt) => (
-          <button
+          <SettingsOptionRow
             key={opt.key ?? opt.id}
-            type="button"
             role="option"
             aria-selected={(opt.key ?? opt.id) === value}
-            className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+            checked={(opt.key ?? opt.id) === value}
             onClick={() => {
               onChange(opt.key ?? opt.id);
               setOpen(false);
             }}
           >
-            <span className="flex size-4 items-center justify-center">
-              {(opt.key ?? opt.id) === value ? (
-                <Check aria-hidden="true" className="size-3.5" />
-              ) : null}
-            </span>
             {opt.label}
-          </button>
+          </SettingsOptionRow>
         ))}
       </PopoverContent>
     </Popover>
@@ -134,18 +158,15 @@ function SortableStatRow({ id, label, checked, onToggle }) {
       >
         <GripVertical className="size-3.5" />
       </span>
-      <button
-        type="button"
+      <SettingsOptionRow
         role="checkbox"
         aria-checked={checked}
-        className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap rounded-sm px-1 py-1 text-left text-xs text-popover-foreground outline-none hover:text-accent-foreground"
+        className="min-w-0 flex-1 px-1 hover:bg-transparent"
+        checked={checked}
         onClick={() => onToggle(id)}
       >
-        <span className="flex size-4 items-center justify-center">
-          {checked ? <Check aria-hidden="true" className="size-4" /> : null}
-        </span>
         {label}
-      </button>
+      </SettingsOptionRow>
     </Reorder.Item>
   );
 }
@@ -208,19 +229,15 @@ function MultiSelectList({ label, options, selectedIds, onToggle }) {
         const checked = selectedIds.includes(option.id);
 
         return (
-          <button
+          <SettingsOptionRow
             key={option.id}
-            type="button"
             role="checkbox"
             aria-checked={checked}
-            className="flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+            checked={checked}
             onClick={() => onToggle(option.id)}
           >
-            <span className="flex size-4 items-center justify-center">
-              {checked ? <Check aria-hidden="true" className="size-4" /> : null}
-            </span>
             {option.label}
-          </button>
+          </SettingsOptionRow>
         );
       })}
     </div>

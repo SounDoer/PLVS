@@ -21,6 +21,13 @@ describe("PanelSettingsMenu", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
 
+    const content = screen
+      .getByLabelText("level meter mode")
+      .closest("[data-slot='popover-content']");
+    const contentClasses = content?.className.split(/\s+/) ?? [];
+    expect(contentClasses).toContain("p-1");
+    expect(contentClasses).not.toContain("p-2");
+
     expect(screen.getByLabelText("level meter mode")).toBeTruthy();
     expect(screen.queryByRole("combobox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));

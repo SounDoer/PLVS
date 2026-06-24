@@ -62,13 +62,35 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.getByText("Mode")).toBeTruthy();
-    expect(screen.getByLabelText("level meter mode")).toBeTruthy();
-    expect(screen.getByLabelText("level meter mode").className).not.toContain("min-w-[");
+    const modeButton = screen.getByLabelText("level meter mode");
+    const modeRow = screen.getByText("Mode").parentElement;
+    expect(modeButton).toBeTruthy();
+    expect(modeButton.className).toContain("h-6");
+    expect(modeButton.className).toContain("text-popover-foreground");
+    expect(modeButton.className).not.toContain("text-muted-foreground");
+    expect(modeButton.className).not.toContain("h-7");
+    expect(modeButton.className).not.toContain("min-w-[");
+    expect(screen.getByText("Mode").className).toContain("text-muted-foreground");
+    expect(screen.getByText("Mode").className).not.toContain("text-popover-foreground");
+    expect(modeRow?.className).toContain("min-h-6");
+    expect(modeRow?.className).toContain("gap-2");
+    expect(modeRow?.className).not.toContain("min-h-7");
+    expect(modeRow?.className).not.toContain("gap-4");
     expect(screen.getByText("Peak")).toBeTruthy();
 
     expect(screen.queryByRole("combobox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
-    fireEvent.click(screen.getByRole("option", { name: "M" }));
+    const peakOption = screen.getByRole("option", { name: "Peak" });
+    expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain(
+      "size-3.5"
+    );
+    expect(peakOption.querySelector("svg")?.className.baseVal).toContain("size-3");
+    const momentaryOption = screen.getByRole("option", { name: "M" });
+    expect(momentaryOption.getAttribute("data-settings-option-row")).toBe("true");
+    expect(momentaryOption.querySelector("[data-settings-option-check]")?.className).toContain(
+      "size-3.5"
+    );
+    fireEvent.click(momentaryOption);
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
@@ -301,11 +323,22 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.queryByText("Loudness")).toBeNull();
     expect(screen.getByText("Layers").className).toContain("text-xs");
-    fireEvent.click(screen.getByRole("button", { name: "Configure layers" }));
+    const configureButton = screen.getByRole("button", { name: "Configure layers" });
+    expect(configureButton.className).toContain("h-6");
+    expect(configureButton.className).not.toContain("h-7");
+    fireEvent.click(configureButton);
     expect(document.querySelector('[data-slot="popover-content"]').className).not.toContain(
       "min-w-[12rem]"
     );
-    expect(screen.getByRole("checkbox", { name: "Momentary" }).className).toContain("text-xs");
+    const momentaryRow = screen.getByRole("checkbox", { name: "Momentary" });
+    expect(momentaryRow.getAttribute("data-settings-option-row")).toBe("true");
+    expect(momentaryRow.querySelector("[data-settings-option-check]")?.className).toContain(
+      "size-3.5"
+    );
+    expect(momentaryRow.className).toContain("py-0.5");
+    expect(momentaryRow.className).not.toContain("py-1 ");
+    expect(momentaryRow.className).not.toContain("py-1.5");
+    expect(momentaryRow.className).toContain("text-xs");
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -328,6 +361,10 @@ describe("PanelSettingsContent", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Configure metrics" }));
     const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes[0].getAttribute("data-settings-option-row")).toBe("true");
+    expect(checkboxes[0].querySelector("[data-settings-option-check]")?.className).toContain(
+      "size-3.5"
+    );
     expect(checkboxes.slice(0, 3).map((c) => c.textContent)).toEqual([
       "Short-term Dynamics",
       "Momentary",
