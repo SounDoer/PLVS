@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, GripVertical } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -70,6 +70,8 @@ function SettingsSwitch(props) {
 }
 
 function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) {
+  const DisclosureIcon = open ? ChevronUp : ChevronDown;
+
   return (
     <button
       type="button"
@@ -83,7 +85,7 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) 
       )}
     >
       <span className="min-w-0 truncate">{summary}</span>
-      <span className="text-muted-foreground/70">{open ? "Hide" : "Edit"}</span>
+      <DisclosureIcon aria-hidden="true" className="size-3 text-muted-foreground/60" />
     </button>
   );
 }

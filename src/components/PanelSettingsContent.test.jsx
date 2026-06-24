@@ -72,6 +72,8 @@ describe("PanelSettingsContent", () => {
     expect(modeButton.className).not.toContain("text-muted-foreground");
     expect(modeButton.className).not.toContain("h-7");
     expect(modeButton.className).not.toContain("min-w-[");
+    expect(modeButton.textContent).not.toContain("Edit");
+    expect(modeButton.querySelector("svg")?.className.baseVal).toContain("size-3");
     expect(screen.getByText("Mode").className).toContain("text-muted-foreground");
     expect(screen.getByText("Mode").className).toContain("h-6");
     expect(screen.getByText("Mode").className).toContain("items-center");
@@ -93,6 +95,7 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
     expect(modeRow?.className).toBe(modeRowClassBeforeOpen);
     expect(modeButton.className).not.toContain("w-full");
+    expect(modeButton.textContent).not.toContain("Hide");
     const peakOption = screen.getByRole("option", { name: "Peak" });
     expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain("size-3");
     expect(peakOption.querySelector("svg")?.className.baseVal).toContain("size-3");
