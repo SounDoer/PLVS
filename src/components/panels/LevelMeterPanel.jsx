@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
+import { PANEL_METRIC_FOOTER, PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
 import {
   LOUDNESS_DB_MAX,
   LOUDNESS_DB_MIN,
@@ -34,12 +34,6 @@ const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
 const LEVEL_METER_GRID =
   "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
-
-// The bottom metric line mirrors the neighbouring charts' x-axis row: same height
-// and the same axis gap above it. When it is hidden (narrow panes) it collapses
-// entirely so the meter grid expands to align its bottom with the neighbours' x-axis.
-const LEVEL_METER_FOOTER =
-  "@max-[220px]:hidden mt-[var(--ui-chart-axis-gap)] flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start justify-center text-[length:var(--ui-fs-axis)]";
 
 function levelMeterYAxisLabelClass(position) {
   return `${LEVEL_METER_Y_LABEL_BASE} ${LEVEL_METER_Y_LABEL_POSITION[position]}`;
@@ -193,7 +187,7 @@ export function LevelMeterPanel() {
               </div>
             </div>
           </div>
-          <div data-level-meter-footer className={LEVEL_METER_FOOTER}>
+          <div data-level-meter-footer className={PANEL_METRIC_FOOTER}>
             <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
               <span className="text-muted-foreground">{modeMeta.label}</span>
               <span
@@ -297,7 +291,7 @@ export function LevelMeterPanel() {
             ))}
           </div>
         </div>
-        <div data-level-meter-footer className={LEVEL_METER_FOOTER}>
+        <div data-level-meter-footer className={PANEL_METRIC_FOOTER}>
           <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
             <span className="text-muted-foreground">TP Max</span>
             <span

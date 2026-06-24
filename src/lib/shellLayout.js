@@ -36,6 +36,16 @@ export const APP_TITLE_BRAND = "text-primary";
 /** Axis tick / caption text (replaces former `.ui-caption`). */
 export const CAPTION_TEXT = "text-[length:var(--ui-fs-axis)] text-muted-foreground";
 
+/**
+ * Bottom metric line shared by panels whose chart area sits above an inline
+ * metric (level meter, vectorscope). It mirrors the neighbouring charts' x-axis
+ * row: same height, same axis gap above it, axis-sized text. When hidden in
+ * narrow panes (`@max-[220px]`) it collapses entirely so the chart area expands
+ * to align its bottom with the neighbours' x-axis bottom.
+ */
+export const PANEL_METRIC_FOOTER =
+  "@max-[220px]:hidden mt-[var(--ui-chart-axis-gap)] flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start justify-center text-[length:var(--ui-fs-axis)]";
+
 export const PANEL_MIN_PEAK = "min-h-[var(--ui-min-h-peak)]";
 export const PANEL_MIN_HISTORY = "min-h-[var(--ui-min-h-history)]";
 export const PANEL_MIN_SPECTRUM = "min-h-[var(--ui-min-h-spectrum)]";

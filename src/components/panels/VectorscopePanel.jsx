@@ -2,7 +2,7 @@ import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
+import { CAPTION_TEXT, PANEL_METRIC_FOOTER, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
   SnapshotEmptyState,
@@ -172,7 +172,7 @@ export function VectorscopePanel() {
           </span>
         </div>
       </div>
-      <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
+      <div data-vectorscope-footer className={PANEL_METRIC_FOOTER}>
         <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
           <span className="text-muted-foreground">Correlation</span>
           <span

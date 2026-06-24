@@ -64,7 +64,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-panel-pad-y", `${articlePadding.defaultYRem}rem`);
   setCssVar("--ui-panel-pad-metrics", `${articlePadding.metricsRem}rem`);
 
-  setCssVar("--ui-panel-footer-gap", `${spacingRem.panelFooterGap}rem`);
   setCssVar("--ui-metric-list-gap", `${spacingRem.metricsListGap}rem`);
   setCssVar("--ui-chart-axis-gap", `${spacingRem.chartAxisGap}rem`);
   setCssVar("--ui-metric-inline-gap", `${spacingRem.inlineValueGap}rem`);

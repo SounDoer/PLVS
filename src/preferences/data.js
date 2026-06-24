@@ -26,7 +26,6 @@ export const UI_PREFERENCES = {
       metricsRem: 0,
     },
     spacingRem: {
-      panelFooterGap: 0.4,
       inlineValueGap: 0.4,
       metricsListGap: 0.2,
       chartAxisGap: 0.4,

@@ -187,7 +187,6 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 --ui-panel-pad-x          0.7rem    Horizontal padding inside each Card panel
 --ui-panel-pad-y          0.5rem    Vertical padding inside each Card panel
 --ui-panel-title-gap      0.4rem    Gap between panel title and panel body
---ui-panel-footer-gap     0.4rem    Gap between chart area and inline info row below it
 --ui-panel-gap            0.55rem   Gap between sibling panels — = --ui-shell-gap (unified rhythm)
 --ui-splitter-bar-thickness  1px    Visual width of draggable splitter bar
 ```

@@ -55,4 +55,26 @@ describe("VectorscopePanel", () => {
     const trace = container.querySelector('path[stroke="var(--ui-vectorscope-trace)"]');
     expect(trace?.getAttribute("d")).toBe(path);
   });
+
+  it("mirrors the neighbouring x-axis row with the correlation footer when it is visible", () => {
+    const { container } = renderPanel({ selectedOffset: -1, panelControls: {} });
+
+    const footer = container.querySelector("[data-vectorscope-footer]");
+
+    // Footer matches an x-axis row: same height, same axis gap above it, axis font.
+    expect(footer?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
+    expect(footer?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
+    expect(footer?.className).toContain("text-[length:var(--ui-fs-axis)]");
+    expect(footer?.className).not.toContain("text-[length:var(--ui-fs-display)]");
+  });
+
+  it("collapses the correlation footer in narrow panes so the chart area fills full height", () => {
+    const { container } = renderPanel({ selectedOffset: -1, panelControls: {} });
+
+    const footer = container.querySelector("[data-vectorscope-footer]");
+
+    // display:none collapses the footer box and its top margin, so the centered
+    // square's content column expands to the neighbours' x-axis bottom.
+    expect(footer?.className).toContain("@max-[220px]:hidden");
+  });
 });
