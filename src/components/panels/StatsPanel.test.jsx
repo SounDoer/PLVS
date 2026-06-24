@@ -112,6 +112,19 @@ describe("StatsPanel", () => {
     expect(row?.className).not.toContain("rounded-[var(--ui-radius-metric-row)]");
   });
 
+  it("hides metric units before abbreviating labels in narrow panes", () => {
+    const { container } = renderPanel(["momentary"]);
+
+    const panel = container.firstElementChild;
+    const value = screen.getByText("-20.0");
+    const unit = screen.getByText("LUFS");
+
+    expect(panel?.className).toContain("@container");
+    expect(value.className).toContain("shrink-0");
+    expect(value.getAttribute("style")).toContain("width: 5.5ch");
+    expect(unit.className).toContain("@max-[200px]:hidden");
+  });
+
   it("shows an active speaking-now dot when dialogueCoverage is visible and dialogueActiveNow is true", () => {
     render(
       <AudioDataContext.Provider

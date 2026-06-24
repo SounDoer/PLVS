@@ -17,7 +17,7 @@ function MetricRow({ id, label, value, unit, active, hint }) {
     "shrink-0 text-right text-[length:var(--ui-fs-metric-value)] font-semibold leading-none text-foreground"
   );
   const unitClass =
-    "shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
+    "@max-[200px]:hidden shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
   const content = (
     <>
       {id === "dialogueCoverage" && (
@@ -60,7 +60,7 @@ export function StatsPanel() {
   const visibleMetrics = orderedMetrics.filter((metric) => visibleIds.includes(metric.id));
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
+    <div className="@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--ui-metric-list-gap)] overflow-y-auto">
           {visibleMetrics.length > 0 ? (
