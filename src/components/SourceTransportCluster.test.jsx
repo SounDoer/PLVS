@@ -31,12 +31,26 @@ describe("SourceTransportCluster", () => {
     expect(source).not.toContain("border-white/");
   });
 
+  it("keeps a solid primary accent for the ready action segment", () => {
+    expect(source).toContain("bg-primary text-primary-foreground");
+    expect(source).not.toContain("bg-primary/15 text-primary");
+  });
+
   it("uses compact header control sizing", () => {
     expect(source).toContain("h-7");
     expect(source).toContain("px-2.5");
     expect(source).toContain("px-3");
     expect(source).not.toContain("h-8");
     expect(source).not.toContain("px-3.5");
+  });
+
+  it("renders source, status, and action as one continuous pill", () => {
+    expect(source).toContain("overflow-hidden rounded-full");
+    expect(source).toContain("p-0.5");
+    expect(source).toContain("rounded-full px-3");
+    expect(source).not.toContain("relative inline-flex items-center gap-1.5");
+    expect(source).not.toContain("border-l border-current/20");
+    expect(source).not.toContain("rounded-md px-3 text-[length:var(--ui-fs-status)]");
   });
 
   it("sizes the source menu from content and trigger instead of a fixed width", () => {
