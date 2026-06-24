@@ -14,3 +14,10 @@ describe("UI_PREFERENCES header density", () => {
     expect(UI_PREFERENCES.layout.header.actionGapRem).toBe(0.2);
   });
 });
+
+describe("UI_PREFERENCES shell density", () => {
+  it("keeps the shell region gap compact", () => {
+    expect(UI_PREFERENCES.layout.shell.paddingRem.base).toBe(0.3);
+    expect(UI_PREFERENCES.layout.shell.gapRem.base).toBe(0.35);
+  });
+});

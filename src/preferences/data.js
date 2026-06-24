@@ -6,8 +6,8 @@
 export const UI_PREFERENCES = {
   layout: {
     shell: {
-      paddingRem: { base: 0.8 },
-      gapRem: { base: 0.55 },
+      paddingRem: { base: 0.3 },
+      gapRem: { base: 0.35 },
     },
     splitters: {
       barThicknessPx: 1,
