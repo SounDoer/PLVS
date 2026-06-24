@@ -4,7 +4,6 @@ import {
   SHELL_FOOTER,
   SHELL_HEADER,
   APP_TITLE,
-  METRICS_LIST_PAD,
   W_LOUDNESS_Y_AXIS,
   W_PEAK_TICKS,
   W_SPECTRUM_Y_AXIS,
@@ -22,11 +21,6 @@ describe("shellLayout token names", () => {
 
   it("APP_TITLE uses --ui-fs-app-title", () => {
     expect(APP_TITLE).toContain("--ui-fs-app-title");
-  });
-
-  it("METRICS_LIST_PAD uses --ui-panel-pad-metrics (not the retired --ui-article-pad-metrics)", () => {
-    expect(METRICS_LIST_PAD).toContain("--ui-panel-pad-metrics");
-    expect(METRICS_LIST_PAD).not.toContain("--ui-article-pad-metrics");
   });
 
   it("SHELL_HEADER uses --radius (not the retired --ui-radius-card)", () => {

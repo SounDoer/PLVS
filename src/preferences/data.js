@@ -23,11 +23,10 @@ export const UI_PREFERENCES = {
     articlePadding: {
       defaultXRem: 0.25,
       defaultYRem: 0.35,
-      metricsRem: 0,
     },
     spacingRem: {
       inlineValueGap: 0.4,
-      metricsListGap: 0.2,
+      metricsListGap: 0.1,
       chartAxisGap: 0.4,
       peakChannelGap: 0.4,
       meterChartInsetX: 0.6,
@@ -87,7 +86,7 @@ export const UI_PREFERENCES = {
       axisUnit: 11,
       extraValue: 13,
       metricMeta: 12,
-      metricValue: 18,
+      metricValue: 16,
       status: 11,
     },
     weights: {
@@ -98,7 +97,6 @@ export const UI_PREFERENCES = {
   /** `card` is used for `--radius` at runtime and for generated first-paint CSS (`scripts/generate-theme-fallbacks.mjs`). */
   radii: {
     card: "0.625rem",
-    metricRow: "0.375rem",
   },
 
   modules: {
@@ -112,9 +110,8 @@ export const UI_PREFERENCES = {
       metrics: {
         valueColumnCh: 5.5,
         unitColumnRem: 2.1,
-        rowMinHeightRem: 2.5,
-        rowPaddingXRem: 0.5,
-        rowPaddingYRem: 0.375,
+        rowMinHeightRem: 1.2,
+        rowPaddingXRem: 0.25,
         rowGapRem: 0.5,
       },
     },

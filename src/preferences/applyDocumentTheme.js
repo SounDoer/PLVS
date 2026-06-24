@@ -30,7 +30,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-fw-app-title", String(typography.weights.appTitle));
 
   setCssVar("--radius", radii.card);
-  setCssVar("--ui-radius-metric-row", radii.metricRow);
 
   setCssVar("--ui-shell-pad", `${shell.paddingRem.base}rem`);
   setCssVar("--ui-shell-gap", `${shell.gapRem.base}rem`);
@@ -54,7 +53,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-loudness-selection-stroke-width", String(lh.selectionStrokeWidth));
   setCssVar("--ui-metric-row-min-h", `${lm.rowMinHeightRem}rem`);
   setCssVar("--ui-metric-row-pad-x", `${lm.rowPaddingXRem}rem`);
-  setCssVar("--ui-metric-row-pad-y", `${lm.rowPaddingYRem}rem`);
   setCssVar("--ui-metric-row-gap", `${lm.rowGapRem}rem`);
 
   setCssVar("--ui-header-pad-x", `${header.paddingXRem}rem`);
@@ -62,7 +60,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   setCssVar("--ui-panel-pad-x", `${articlePadding.defaultXRem}rem`);
   setCssVar("--ui-panel-pad-y", `${articlePadding.defaultYRem}rem`);
-  setCssVar("--ui-panel-pad-metrics", `${articlePadding.metricsRem}rem`);
 
   setCssVar("--ui-metric-list-gap", `${spacingRem.metricsListGap}rem`);
   setCssVar("--ui-chart-axis-gap", `${spacingRem.chartAxisGap}rem`);

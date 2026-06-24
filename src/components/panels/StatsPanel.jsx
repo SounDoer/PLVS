@@ -1,11 +1,10 @@
 import { cn } from "@/lib/utils";
-import { METRICS_LIST_PAD } from "@/lib/shellLayout";
 import { UI_PREFERENCES } from "../../uiPreferences";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { HoverTip } from "@/components/HoverTip";
 
 const METRIC_ROW_LAYOUT =
-  "flex min-h-[var(--ui-metric-row-min-h)] items-center gap-[var(--ui-metric-row-gap)] rounded-[var(--ui-radius-metric-row)] px-[var(--ui-metric-row-pad-x)] py-[var(--ui-metric-row-pad-y)]";
+  "flex min-h-[var(--ui-metric-row-min-h)] items-center gap-[var(--ui-metric-row-gap)] px-[var(--ui-metric-row-pad-x)]";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
@@ -26,7 +25,7 @@ function MetricRow({ id, label, value, unit, active, hint }) {
           data-testid="dialogue-active-dot"
           data-active={active ? "true" : "false"}
           className={cn(
-            "mr-1 inline-block h-2 w-2 shrink-0 rounded-full",
+            "inline-block h-2 w-2 shrink-0 rounded-full",
             active ? "bg-foreground" : "bg-muted-foreground/30"
           )}
         />
@@ -48,7 +47,7 @@ function MetricRow({ id, label, value, unit, active, hint }) {
   );
 }
 
-export function StatsPanel({ compact = false }) {
+export function StatsPanel() {
   const { statsMetrics, panelControls, dialogueActiveNow } = useAudioData();
   const statsVisibleIds = panelControls?.statsVisibleIds;
   const statsOrder = panelControls?.statsOrder;
@@ -63,12 +62,7 @@ export function StatsPanel({ compact = false }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
-        <div
-          className={cn(
-            METRICS_LIST_PAD,
-            "flex min-h-0 flex-1 flex-col gap-[var(--ui-metric-list-gap)] overflow-y-auto"
-          )}
-        >
+        <div className="flex min-h-0 flex-1 flex-col gap-[var(--ui-metric-list-gap)] overflow-y-auto">
           {visibleMetrics.length > 0 ? (
             visibleMetrics.map((metric) => (
               <MetricRow

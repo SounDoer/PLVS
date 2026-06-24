@@ -101,6 +101,17 @@ describe("StatsPanel", () => {
     expect(screen.getByText("Momentary")).toBeTruthy();
   });
 
+  it("keeps stats rows tight with horizontal padding only", () => {
+    renderPanel(["momentary"]);
+
+    const row = screen.getByText("Momentary").parentElement;
+
+    expect(row?.className).toContain("gap-[var(--ui-metric-row-gap)]");
+    expect(row?.className).toContain("px-[var(--ui-metric-row-pad-x)]");
+    expect(row?.className).not.toContain("py-[var(--ui-metric-row-pad-y)]");
+    expect(row?.className).not.toContain("rounded-[var(--ui-radius-metric-row)]");
+  });
+
   it("shows an active speaking-now dot when dialogueCoverage is visible and dialogueActiveNow is true", () => {
     render(
       <AudioDataContext.Provider
@@ -117,6 +128,7 @@ describe("StatsPanel", () => {
     );
 
     expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("dialogue-active-dot").className).not.toContain("mr-1");
   });
 
   it("renders visible metrics in statsOrder, ignoring hidden ids", () => {

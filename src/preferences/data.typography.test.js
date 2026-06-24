@@ -9,7 +9,7 @@ describe("typography size scale", () => {
   it("Dynamic Display source (extraValue) is 13px (unchanged)", () =>
     expect(sizes.extraValue).toBe(13));
   it("Metric Annotation (metricMeta) is 12px", () => expect(sizes.metricMeta).toBe(12));
-  it("Metric Value (metricValue) is 18px", () => expect(sizes.metricValue).toBe(18));
+  it("Metric Value (metricValue) is 16px", () => expect(sizes.metricValue).toBe(16));
   it("Status is 11px", () => expect(sizes.status).toBe(11));
 });
 
@@ -23,8 +23,12 @@ describe("spacing data", () => {
     expect(UI_PREFERENCES.layout.articlePadding).toMatchObject({
       defaultXRem: 0.25,
       defaultYRem: 0.35,
-      metricsRem: 0,
     });
+    expect(UI_PREFERENCES.layout.articlePadding).not.toHaveProperty("metricsRem");
+  });
+
+  it("uses tighter metric list spacing", () => {
+    expect(UI_PREFERENCES.layout.spacingRem.metricsListGap).toBe(0.1);
   });
 
   it("uses compact vertical chart insets", () => {
@@ -57,5 +61,19 @@ describe("spacing data", () => {
 
   it("uses one axis rail width source for chart Y axes", () => {
     expect(UI_PREFERENCES.layout.widthsPx).toEqual({ axisRail: 20 });
+  });
+});
+
+describe("metric row tuning", () => {
+  it("keeps only the row dimensions still used by StatsPanel", () => {
+    expect(UI_PREFERENCES.modules.loudness.metrics).toMatchObject({
+      valueColumnCh: 5.5,
+      unitColumnRem: 2.1,
+      rowMinHeightRem: 1.2,
+      rowPaddingXRem: 0.25,
+      rowGapRem: 0.5,
+    });
+    expect(UI_PREFERENCES.modules.loudness.metrics).not.toHaveProperty("rowPaddingYRem");
+    expect(UI_PREFERENCES.radii).not.toHaveProperty("metricRow");
   });
 });
