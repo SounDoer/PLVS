@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Check, ChevronDown, GripVertical } from "lucide-react";
+import { Check, GripVertical } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
@@ -26,9 +25,6 @@ const SETTINGS_VALUE_OPEN_CLASS = "border-primary/55 bg-secondary/30 text-foregr
 const SETTINGS_DETAIL_SURFACE_CLASS =
   "mt-1 overflow-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
 
-const SETTINGS_POPOVER_CONTENT_CLASS =
-  "w-auto rounded-lg border-border/70 bg-popover/95 p-1 shadow-sm";
-
 const SETTINGS_CHOICE_ROW_CLASS =
   "flex w-full items-center gap-1.5 whitespace-nowrap rounded-sm px-1.5 py-0.5 text-left text-xs text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
 
@@ -44,16 +40,13 @@ function SettingsGroup({ children }) {
   return <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col gap-0.5">{children}</div>;
 }
 
-function SettingsRow({ label, children, expanded = false }) {
+function SettingsRow({ label, children }) {
   return (
-    <div
-      className={cn(
-        "grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded-md px-1.5 py-0.5 text-xs",
-        expanded && "items-start"
-      )}
-    >
-      <span className="whitespace-nowrap pt-0.5 font-medium text-muted-foreground">{label}</span>
-      <div className="flex min-w-0 items-center justify-end">{children}</div>
+    <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-xs">
+      <span className="flex h-6 items-center whitespace-nowrap font-medium text-muted-foreground">
+        {label}
+      </span>
+      <div className="flex min-h-6 min-w-0 items-center justify-end">{children}</div>
     </div>
   );
 }
@@ -76,7 +69,7 @@ function SettingsSwitch(props) {
   );
 }
 
-function InlineDetailTrigger({ ariaLabel, summary, open, onToggle }) {
+function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) {
   return (
     <button
       type="button"
@@ -85,7 +78,8 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle }) {
       onClick={onToggle}
       className={cn(
         settingsValueClass(open),
-        "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-left"
+        "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-left",
+        className
       )}
     >
       <span className="min-w-0 truncate">{summary}</span>
@@ -118,41 +112,35 @@ function SettingsOptionRow({
   );
 }
 
-function SettingsSelect({ label, ariaLabel, options, value, onChange, triggerClassName }) {
-  const [open, setOpen] = useState(false);
+function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOpenChange }) {
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          className={cn(
-            settingsValueClass(open),
-            "inline-flex items-center justify-between gap-2",
-            triggerClassName
-          )}
-        >
-          <span className="min-w-0 whitespace-nowrap">{label}</span>
-          <ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-60" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className={SETTINGS_POPOVER_CONTENT_CLASS}>
-        {options.map((opt) => (
-          <SettingsOptionRow
-            key={opt.key ?? opt.id}
-            role="option"
-            aria-selected={(opt.key ?? opt.id) === value}
-            checked={(opt.key ?? opt.id) === value}
-            onClick={() => {
-              onChange(opt.key ?? opt.id);
-              setOpen(false);
-            }}
-          >
-            {opt.label}
-          </SettingsOptionRow>
-        ))}
-      </PopoverContent>
-    </Popover>
+    <div className="flex min-w-0 flex-col items-end">
+      <InlineDetailTrigger
+        ariaLabel={ariaLabel}
+        summary={label}
+        open={open}
+        onToggle={() => onOpenChange(!open)}
+        className="w-auto grid-cols-[auto_auto] gap-1.5 justify-self-end"
+      />
+      {open ? (
+        <div role="listbox" aria-label={ariaLabel} className={SETTINGS_DETAIL_SURFACE_CLASS}>
+          {options.map((opt) => (
+            <SettingsOptionRow
+              key={opt.key ?? opt.id}
+              role="option"
+              aria-selected={(opt.key ?? opt.id) === value}
+              checked={(opt.key ?? opt.id) === value}
+              onClick={() => {
+                onChange(opt.key ?? opt.id);
+                onOpenChange(false);
+              }}
+            >
+              {opt.label}
+            </SettingsOptionRow>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -330,6 +318,10 @@ export function PanelSettingsContent({
 }) {
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [levelMeterModeOpen, setLevelMeterModeOpen] = useState(false);
+  const [spectrumChannelOpen, setSpectrumChannelOpen] = useState(false);
+  const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
+  const [vectorscopeChannelOpen, setVectorscopeChannelOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
@@ -350,6 +342,8 @@ export function PanelSettingsContent({
             ariaLabel="level meter mode"
             options={LEVEL_METER_MODE_OPTIONS}
             value={selectedMode.id}
+            open={levelMeterModeOpen}
+            onOpenChange={setLevelMeterModeOpen}
             onChange={(levelMeterMode) => {
               onPanelControlsChange(
                 normalizePanelControls({
@@ -521,6 +515,8 @@ export function PanelSettingsContent({
               ariaLabel={`${activeTab} channel`}
               options={spectrumOptions}
               value={selectedOption.key}
+              open={spectrumChannelOpen}
+              onOpenChange={setSpectrumChannelOpen}
               onChange={(key) => {
                 const opt = spectrumOptions.find((o) => o.key === key);
                 if (opt) {
@@ -551,6 +547,8 @@ export function PanelSettingsContent({
               ariaLabel="spectrum view"
               options={SPECTRUM_VIEW_OPTIONS}
               value={effectiveSpectrumView}
+              open={spectrumViewOpen}
+              onOpenChange={setSpectrumViewOpen}
               onChange={(key) => {
                 onPanelControlsChange?.(
                   normalizePanelControls({ ...normalizedPanelControls, spectrumView: key })
@@ -607,6 +605,8 @@ export function PanelSettingsContent({
             ariaLabel="vectorscope channel"
             options={vectorscopeOptions}
             value={selectedOption.key}
+            open={vectorscopeChannelOpen}
+            onOpenChange={setVectorscopeChannelOpen}
             onChange={(key) => {
               const opt = vectorscopeOptions.find((o) => o.key === key);
               if (opt && typeof onVectorscopeChange === "function") {

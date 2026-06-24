@@ -64,6 +64,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Mode")).toBeTruthy();
     const modeButton = screen.getByLabelText("level meter mode");
     const modeRow = screen.getByText("Mode").parentElement;
+    const modeControlCell = modeButton.parentElement?.parentElement;
     expect(modeButton).toBeTruthy();
     expect(modeButton.className).toContain("h-6");
     expect(modeButton.className).toContain("text-popover-foreground");
@@ -72,7 +73,11 @@ describe("PanelSettingsContent", () => {
     expect(modeButton.className).not.toContain("h-7");
     expect(modeButton.className).not.toContain("min-w-[");
     expect(screen.getByText("Mode").className).toContain("text-muted-foreground");
+    expect(screen.getByText("Mode").className).toContain("h-6");
+    expect(screen.getByText("Mode").className).toContain("items-center");
     expect(screen.getByText("Mode").className).not.toContain("text-popover-foreground");
+    expect(modeControlCell?.className).toContain("min-h-6");
+    expect(modeControlCell?.className).toContain("items-center");
     expect(modeRow?.className).toContain("min-h-6");
     expect(modeRow?.className).toContain("gap-2");
     expect(modeRow?.className).toContain("grid-cols-[max-content_minmax(0,1fr)]");
@@ -84,11 +89,15 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Peak")).toBeTruthy();
 
     expect(screen.queryByRole("combobox")).toBeNull();
+    const modeRowClassBeforeOpen = modeRow?.className;
     fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
+    expect(modeRow?.className).toBe(modeRowClassBeforeOpen);
+    expect(modeButton.className).not.toContain("w-full");
     const peakOption = screen.getByRole("option", { name: "Peak" });
     expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain("size-3");
     expect(peakOption.querySelector("svg")?.className.baseVal).toContain("size-3");
     const momentaryOption = screen.getByRole("option", { name: "M" });
+    expect(modeRow?.contains(momentaryOption)).toBe(true);
     expect(momentaryOption.getAttribute("data-settings-option-row")).toBe("true");
     expect(momentaryOption.querySelector("[data-settings-option-check]")?.className).toContain(
       "size-3"
