@@ -67,6 +67,7 @@ describe("PanelSettingsContent", () => {
     expect(modeButton).toBeTruthy();
     expect(modeButton.className).toContain("h-6");
     expect(modeButton.className).toContain("text-popover-foreground");
+    expect(modeButton.className).not.toContain("focus:border");
     expect(modeButton.className).not.toContain("text-muted-foreground");
     expect(modeButton.className).not.toContain("h-7");
     expect(modeButton.className).not.toContain("min-w-[");
@@ -85,14 +86,12 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
     const peakOption = screen.getByRole("option", { name: "Peak" });
-    expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain(
-      "size-3.5"
-    );
+    expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain("size-3");
     expect(peakOption.querySelector("svg")?.className.baseVal).toContain("size-3");
     const momentaryOption = screen.getByRole("option", { name: "M" });
     expect(momentaryOption.getAttribute("data-settings-option-row")).toBe("true");
     expect(momentaryOption.querySelector("[data-settings-option-check]")?.className).toContain(
-      "size-3.5"
+      "size-3"
     );
     fireEvent.click(momentaryOption);
 
@@ -336,7 +335,7 @@ describe("PanelSettingsContent", () => {
     const momentaryRow = screen.getByRole("checkbox", { name: "Momentary" });
     expect(momentaryRow.getAttribute("data-settings-option-row")).toBe("true");
     expect(momentaryRow.querySelector("[data-settings-option-check]")?.className).toContain(
-      "size-3.5"
+      "size-3"
     );
     expect(momentaryRow.className).toContain("py-0.5");
     expect(momentaryRow.className).not.toContain("py-1 ");
@@ -366,7 +365,7 @@ describe("PanelSettingsContent", () => {
     const checkboxes = screen.getAllByRole("checkbox");
     expect(checkboxes[0].getAttribute("data-settings-option-row")).toBe("true");
     expect(checkboxes[0].querySelector("[data-settings-option-check]")?.className).toContain(
-      "size-3.5"
+      "size-3"
     );
     expect(checkboxes.slice(0, 3).map((c) => c.textContent)).toEqual([
       "Short-term Dynamics",

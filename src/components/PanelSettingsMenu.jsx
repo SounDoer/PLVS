@@ -69,7 +69,12 @@ export function PanelSettingsMenu(props) {
           <Settings2 size={12} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-auto p-1">
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="w-auto rounded-lg border-border/70 bg-popover/95 p-1 shadow-sm"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <PanelSettingsContent {...props} />
       </PopoverContent>
     </Popover>

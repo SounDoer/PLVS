@@ -16,7 +16,20 @@ import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
-  "h-6 w-auto max-w-none rounded-md border border-border/70 bg-transparent px-2 py-0 text-xs text-popover-foreground shadow-none outline-none hover:bg-secondary hover:text-foreground focus:border-border/70 focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:ring-0 focus-visible:ring-offset-0";
+  "h-6 max-w-none rounded-md border px-2 py-0 text-xs text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+
+const SETTINGS_VALUE_IDLE_CLASS =
+  "border-transparent bg-secondary/20 hover:border-border/65 hover:bg-secondary/45 hover:text-foreground";
+
+const SETTINGS_VALUE_OPEN_CLASS = "border-primary/55 bg-secondary/30 text-foreground";
+
+const SETTINGS_DETAIL_SURFACE_CLASS =
+  "mt-1 overflow-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
+
+const SETTINGS_CHOICE_ROW_CLASS =
+  "flex w-full items-center gap-1.5 whitespace-nowrap rounded-sm px-1.5 py-0.5 text-left text-xs text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
+
+const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
 
 function SettingsGroup({ children }) {
   return <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col gap-0.5">{children}</div>;
@@ -27,7 +40,7 @@ function SettingsRow({ label, children, expanded = false }) {
     <div
       className={cn(
         "grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded-md px-1.5 py-0.5 text-xs",
-        expanded && "items-start bg-accent/20"
+        expanded && "items-start"
       )}
     >
       <span className="whitespace-nowrap pt-0.5 font-medium text-muted-foreground">{label}</span>
@@ -43,10 +56,13 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle }) {
       aria-label={ariaLabel}
       aria-expanded={open}
       onClick={onToggle}
-      className="grid h-6 w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border/70 bg-transparent px-2 py-0 text-left text-xs text-popover-foreground outline-none hover:bg-secondary hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+      className={cn(
+        "grid h-6 w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-2 py-0 text-left text-xs text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring",
+        open ? SETTINGS_VALUE_OPEN_CLASS : SETTINGS_VALUE_IDLE_CLASS
+      )}
     >
       <span className="min-w-0 truncate">{summary}</span>
-      <span className="text-muted-foreground">{open ? "Hide" : "Edit"}</span>
+      <span className="text-muted-foreground/70">{open ? "Hide" : "Edit"}</span>
     </button>
   );
 }
@@ -64,16 +80,10 @@ function SettingsOptionRow({
       type="button"
       data-settings-option-row
       role={role}
-      className={cn(
-        "flex w-full items-center gap-2 whitespace-nowrap rounded-sm px-2 py-0.5 text-left text-xs text-popover-foreground outline-none hover:bg-accent hover:text-accent-foreground",
-        className
-      )}
+      className={cn(SETTINGS_CHOICE_ROW_CLASS, className)}
       {...props}
     >
-      <span
-        data-settings-option-check
-        className={cn("flex size-3.5 items-center justify-center", checkClassName)}
-      >
+      <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS, checkClassName)}>
         {checked ? <Check aria-hidden="true" className="size-3" /> : null}
       </span>
       {children}
@@ -92,6 +102,7 @@ function SettingsSelect({ label, ariaLabel, options, value, onChange, triggerCla
           className={cn(
             SETTINGS_SELECT_TRIGGER_CLASS,
             "inline-flex items-center justify-between gap-2",
+            open ? SETTINGS_VALUE_OPEN_CLASS : SETTINGS_VALUE_IDLE_CLASS,
             triggerClassName
           )}
         >
@@ -99,7 +110,11 @@ function SettingsSelect({ label, ariaLabel, options, value, onChange, triggerCla
           <ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="w-auto p-1">
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="w-auto rounded-lg border-border/70 bg-popover/95 p-1 shadow-sm"
+      >
         {options.map((opt) => (
           <SettingsOptionRow
             key={opt.key ?? opt.id}
@@ -149,12 +164,12 @@ function SortableStatRow({ id, label, checked, onToggle }) {
       value={id}
       dragListener={false}
       dragControls={controls}
-      className="flex items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-accent/40"
+      className="group flex items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-secondary/35"
     >
       <span
         aria-hidden="true"
         onPointerDown={(event) => controls.start(event)}
-        className="flex cursor-grab touch-none items-center text-muted-foreground"
+        className="flex cursor-grab touch-none items-center text-muted-foreground/25 transition-opacity group-hover:text-muted-foreground/70"
       >
         <GripVertical className="size-3.5" />
       </span>
@@ -201,7 +216,7 @@ function SortableStatsList({
           />
         ))}
       </Reorder.Group>
-      <div className="mt-1">
+      <div className="mt-0.5 border-t border-border/30 pt-0.5">
         <InlineConfirm
           onConfirm={onReset}
           confirmLabel="Confirm reset stats"
@@ -211,7 +226,7 @@ function SortableStatsList({
               type="button"
               aria-label="Reset stats"
               onClick={arm}
-              className="w-full rounded-sm px-2 py-1 text-left text-xs text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground"
+              className="w-auto rounded-sm px-2 py-0.5 text-left text-[11px] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
             >
               Reset
             </button>
@@ -359,7 +374,7 @@ export function PanelSettingsContent({
               onToggle={() => setMetricsOpen((open) => !open)}
             />
             {metricsOpen ? (
-              <div className="mt-1 rounded-md border border-border/70 bg-background/20 p-1">
+              <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
                 <SortableStatsList
                   label="Metrics"
                   options={STATS_OPTIONS}
@@ -417,7 +432,7 @@ export function PanelSettingsContent({
               onToggle={() => setLayersOpen((open) => !open)}
             />
             {layersOpen ? (
-              <div className="mt-1 rounded-md border border-border/70 bg-background/20 p-1">
+              <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
                 <MultiSelectList
                   label="Layers"
                   options={LOUDNESS_HISTORY_LAYER_OPTIONS}
