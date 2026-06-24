@@ -13,7 +13,7 @@ import {
 import { listCustomThemes } from "./theme/customThemesRepo.js";
 
 const systemPrefersDark = readSystemPrefersDark();
-const shell = readPersistedShellThemeFields(UI_PREFERENCES);
+const shell = readPersistedShellThemeFields();
 const customThemes = listCustomThemes();
 const resolvedThemeId = resolveThemeId(shell, systemPrefersDark, customThemes);
 applyLayoutToDocument(UI_PREFERENCES);

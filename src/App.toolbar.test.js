@@ -90,18 +90,14 @@ describe("App toolbar", () => {
     expect(vectorscopeSource).toContain("displayAudio?.vectorscopeResultsByKey?.[vectorscopeKey]");
   });
 
-  it("writes settings state through the settingsStore", () => {
-    // Legacy-key stripping + read-merge-write now live in the settingsStore domain
-    // (covered by src/persistence); App just routes its fields through it.
-    expect(appSource).toContain("settingsStore.patch({");
-    expect(appSource).toContain('themeId: appearance === "system" ? null : fixedThemeSelectValue,');
+  it("keeps settings persistence behind useSettings", () => {
+    expect(appSource).not.toContain('from "./persistence/index.js"');
+    expect(appSource).toContain("} = useSettings({ onClearRef });");
+    expect(appSource).toContain("channelLabelOverrides,");
+    expect(appSource).toContain("setChannelLabelOverrides,");
   });
 
   it("wires per-count channel label overrides into live label contexts", () => {
-    expect(appSource).toContain("sanitizeChannelLabelOverrides");
-    expect(appSource).toContain(
-      "const [channelLabelOverrides, setChannelLabelOverrides] = useState({});"
-    );
     expect(appSource).toContain(
       "const overrideLabels = useMemo(\n    () => (channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null),"
     );
@@ -109,8 +105,8 @@ describe("App toolbar", () => {
       'resolvedLayout: channelCount === 0 ? "stereo" : layoutResolution.resolved,'
     );
     expect(appSource).toContain("overrideLabels,");
-    expect(appSource).toContain("setChannelLabelOverrides(sanitizeChannelLabelOverrides");
     expect(appSource).toContain("channelLabelOverrides,");
+    expect(appSource).toContain("setChannelLabelOverrides((prev) =>");
     expect(appSource).toContain("channelLabelTokens={channelLabelTokens}");
     expect(appSource).toContain("setChannelLabelToken={setChannelLabelToken}");
     expect(appSource).toContain("resetChannelLabels={resetChannelLabels}");

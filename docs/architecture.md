@@ -179,7 +179,7 @@ Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `
 
 首屏渲染流程（`src/main.jsx`）：
 
-1. 从 `localStorage` 键 `plvs.ui` 读 `appearance`（`system`|`fixed`）与 `themeId`
+1. 通过 `settingsStore` 读取 `appearance`（`system`|`fixed`）与 `themeId`（Tauri 下由 Rust 预注入 `window.__PLVS_INITIAL_STATE__`，浏览器开发环境走 `localStorage`）
 2. `resolveThemeId`（结合 `prefers-color-scheme`）→ 当前 `themeId`
 3. `getBuiltinTheme(themeId)` → 主题对象（含 `colorScheme`）
 4. `applyLayoutToDocument(UI_PREFERENCES)`：布局 / 字号 / 几何 / 非调色变量
@@ -206,8 +206,11 @@ Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `
 | **Core Audio Tap**    | macOS 14.2+ 原生系统音频捕获（等效于 Windows WASAPI Loopback） |
 | **realtime-safe**     | 音频回调线程不做内存分配、不加锁、不 syscall                   |
 | **Channel**           | Tauri 高频单向推送通道（~60Hz 指标帧）                         |
-| **plvs.ui**           | `localStorage` 键，持久化 `appearance` + `themeId`             |
-| **plvs:workspace:v2** | `localStorage` 键，持久化工作区布局树                          |
+| **plvs:settings**     | 持久化全局偏好：`appearance`、`themeId`、`referenceLufs`、面板标签覆盖等 |
+| **plvs:workspace**    | 持久化工作区布局树与每个 panel 的控制状态                      |
+| **plvs:presets**      | 持久化用户保存的 workspace presets                             |
+| **plvs:themes**       | 持久化自定义主题                                               |
+| **windowBounds**      | `plvs-settings.json` 顶层键，由 Rust 独立维护窗口几何，避免 JS settings 写回覆盖 |
 
 ---
 

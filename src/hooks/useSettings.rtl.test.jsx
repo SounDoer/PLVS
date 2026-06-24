@@ -70,10 +70,63 @@ describe("useSettings", () => {
     expect(result.current.referenceLufs).toBe(-14);
   });
 
+  it("persists referenceLufs from the settings hook", async () => {
+    const { result } = renderHook(() => useSettings());
+    act(() => {
+      result.current.setReferenceLufs(-18);
+    });
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem("plvs:settings")).referenceLufs).toBe(-18);
+    });
+    expect(result.current.referenceLufs).toBe(-18);
+  });
+
   it("resets referenceLufs to -23 when stored value is out of range", () => {
     localStorage.setItem("plvs:settings", JSON.stringify({ referenceLufs: 5 }));
     const { result } = renderHook(() => useSettings());
     expect(result.current.referenceLufs).toBe(-23);
+  });
+
+  it("persists appearance and themeId from the settings hook", async () => {
+    const { result } = renderHook(() => useSettings());
+    await waitFor(() => {
+      expect(result.current.resolvedThemeId).toBe("plvs-dark");
+    });
+
+    act(() => {
+      result.current.setAppearanceMode("fixed");
+    });
+
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem("plvs:settings"))).toMatchObject({
+        appearance: "fixed",
+        themeId: "plvs-dark",
+      });
+    });
+  });
+
+  it("owns sanitized channel-label overrides", async () => {
+    localStorage.setItem(
+      "plvs:settings",
+      JSON.stringify({
+        channelLabelOverrides: {
+          2: ["L", "R"],
+          3: ["L", "bad", "R"],
+        },
+      })
+    );
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.channelLabelOverrides).toEqual({ 2: ["L", "R"] });
+
+    act(() => {
+      result.current.setChannelLabelOverrides({ 1: ["M"] });
+    });
+
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem("plvs:settings")).channelLabelOverrides).toEqual({
+        1: ["M"],
+      });
+    });
   });
 
   it("defaults closeAction to 'ask' when localStorage key is absent", () => {

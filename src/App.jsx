@@ -3,7 +3,6 @@ import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceConte
 import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
 import { FrameIntake } from "./lib/FrameIntake.js";
 import { UI_PREFERENCES } from "./uiPreferences";
-import { settingsStore } from "./persistence/index.js";
 import { cleanupLegacyKeys } from "./persistence/cleanupLegacyKeys.js";
 import { normalizePanelControls } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
@@ -27,7 +26,6 @@ import { buildSpectrumChannelOptions } from "./math/spectrumChannelOptions.js";
 import {
   roleTokensToLabels,
   roleTokensToLoudnessWeights,
-  sanitizeChannelLabelOverrides,
   seedTokensFromLabels,
 } from "./math/channelRoles.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
@@ -156,6 +154,8 @@ function AppContent() {
     setFocusView,
     setAutoHideControls,
     setCompactPanels,
+    channelLabelOverrides,
+    setChannelLabelOverrides,
     editor,
     editorPos,
     moveEditor,
@@ -288,7 +288,6 @@ function AppContent() {
     vectorscopeResultsByKey: {},
   });
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
-  const [channelLabelOverrides, setChannelLabelOverrides] = useState({});
   const [focusControlsVisible, setFocusControlsVisible] = useState(false);
   const [focusControlsHeld, setFocusControlsHeld] = useState(false);
   const focusControlsHideTimerRef = useRef(0);
@@ -1190,22 +1189,8 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const s = settingsStore.read();
-    setChannelLabelOverrides(sanitizeChannelLabelOverrides(s.channelLabelOverrides));
-  }, []);
-
-  useEffect(() => {
     cleanupLegacyKeys();
   }, []);
-
-  useEffect(() => {
-    settingsStore.patch({
-      referenceLufs,
-      appearance,
-      themeId: appearance === "system" ? null : fixedThemeSelectValue,
-      channelLabelOverrides,
-    });
-  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides]);
 
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;

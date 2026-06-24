@@ -20,6 +20,7 @@ import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { normalizeFocusView } from "../lib/focusView.js";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 
 function normalizeReferenceLufs(raw) {
   const n = Number(raw);
@@ -28,10 +29,12 @@ function normalizeReferenceLufs(raw) {
 
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [appearance, setAppearance] = useState(() => readPersistedShellThemeFields().appearance);
-  const [themeId, setThemeId] = useState(() => readPersistedShellThemeFields().themeId);
+  const [appearance, setAppearanceState] = useState(
+    () => readPersistedShellThemeFields().appearance
+  );
+  const [themeId, setThemeIdState] = useState(() => readPersistedShellThemeFields().themeId);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
-  const [referenceLufs, setReferenceLufs] = useState(() =>
+  const [referenceLufs, setReferenceLufsState] = useState(() =>
     normalizeReferenceLufs(settingsStore.read().referenceLufs)
   );
   const [closeAction, setCloseActionState] = useState(
@@ -39,6 +42,9 @@ export function useSettings({ onClearRef } = {}) {
   );
   const [focusView, setFocusViewState] = useState(() =>
     normalizeFocusView(settingsStore.read().focusView)
+  );
+  const [channelLabelOverrides, setChannelLabelOverridesState] = useState(() =>
+    sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
@@ -76,6 +82,28 @@ export function useSettings({ onClearRef } = {}) {
     if (appearance !== "fixed") return "";
     return isKnownThemeId(themeId, customThemes) ? themeId : resolvedThemeId;
   }, [appearance, themeId, resolvedThemeId, customThemes]);
+
+  function setAppearance(nextAppearance) {
+    const next = nextAppearance === "fixed" ? "fixed" : "system";
+    setAppearanceState(next);
+    if (next === "system") setThemeIdState(null);
+  }
+
+  function setThemeId(nextThemeId) {
+    setThemeIdState(nextThemeId == null || nextThemeId === "" ? null : String(nextThemeId));
+  }
+
+  function setReferenceLufs(nextReferenceLufs) {
+    setReferenceLufsState(normalizeReferenceLufs(nextReferenceLufs));
+  }
+
+  function setChannelLabelOverrides(nextOverrides) {
+    setChannelLabelOverridesState((prev) =>
+      sanitizeChannelLabelOverrides(
+        typeof nextOverrides === "function" ? nextOverrides(prev) : nextOverrides
+      )
+    );
+  }
 
   function setCloseAction(value) {
     if (value === "ask") {
@@ -116,13 +144,26 @@ export function useSettings({ onClearRef } = {}) {
     applyThemeToDocument(resolvedThemeId, customThemes);
   }, [resolvedThemeId, customThemes]);
 
+  useEffect(() => {
+    settingsStore.patch({
+      referenceLufs,
+      appearance,
+      themeId: appearance === "system" ? null : fixedThemeSelectValue,
+      channelLabelOverrides,
+    });
+  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides]);
+
   useEffect(
     () =>
       settingsStore.subscribe(() => {
         const next = readPersistedShellThemeFields();
-        setAppearance(next.appearance);
-        setThemeId(next.themeId);
+        setAppearanceState(next.appearance);
+        setThemeIdState(next.themeId);
+        setReferenceLufsState(normalizeReferenceLufs(settingsStore.read().referenceLufs));
         setFocusViewState(normalizeFocusView(settingsStore.read().focusView));
+        setChannelLabelOverridesState(
+          sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
+        );
       }),
     []
   );
@@ -144,10 +185,7 @@ export function useSettings({ onClearRef } = {}) {
     onChange: () => setCustomThemes(listCustomThemes()),
   });
 
-  const customThemeOptions = useMemo(
-    () => listCustomThemesOrdered().map((t) => ({ id: t.id, label: t.name })),
-    [customThemes]
-  );
+  const customThemeOptions = listCustomThemesOrdered().map((t) => ({ id: t.id, label: t.name }));
 
   function selectThemeId(id) {
     setAppearance("fixed");
@@ -182,6 +220,8 @@ export function useSettings({ onClearRef } = {}) {
     fixedThemeSelectValue,
     referenceLufs,
     setReferenceLufs,
+    channelLabelOverrides,
+    setChannelLabelOverrides,
     closeAction,
     setCloseAction,
     focusView,
