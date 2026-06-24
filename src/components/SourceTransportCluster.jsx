@@ -58,7 +58,7 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
     <div className="relative inline-flex items-center gap-1.5">
       <div
         className={cn(
-          "inline-flex h-8 max-w-[340px] items-center overflow-hidden rounded-full transition-all duration-200",
+          "inline-flex h-7 max-w-[340px] items-center overflow-hidden rounded-full transition-all duration-200",
           chrome.shell
         )}
       >
@@ -68,7 +68,7 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
               ref={triggerRef}
               type="button"
               aria-label={`Source: ${state.sourceLabel}`}
-              className="flex h-full items-center gap-1.5 px-3 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-full items-center gap-1.5 px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {state.sourceLabel}
               <ChevronDown className="size-3" />
@@ -107,7 +107,7 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
           </PopoverContent>
         </Popover>
         <span className="h-[1em] w-px bg-current opacity-30" />
-        <span className="min-w-0 truncate px-3 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
+        <span className="min-w-0 truncate px-2.5 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
           {state.statusLabel}
         </span>
       </div>
@@ -116,7 +116,7 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
         type="button"
         onClick={() => onPrimaryAction(state.actionKind)}
         className={cn(
-          "flex h-8 items-center gap-1.5 rounded-md px-3.5 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150",
+          "flex h-7 items-center gap-1.5 rounded-md px-3 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150",
           chrome.action
         )}
       >

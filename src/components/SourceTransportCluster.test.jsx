@@ -31,6 +31,14 @@ describe("SourceTransportCluster", () => {
     expect(source).not.toContain("border-white/");
   });
 
+  it("uses compact header control sizing", () => {
+    expect(source).toContain("h-7");
+    expect(source).toContain("px-2.5");
+    expect(source).toContain("px-3");
+    expect(source).not.toContain("h-8");
+    expect(source).not.toContain("px-3.5");
+  });
+
   it("sizes the source menu from content and trigger instead of a fixed width", () => {
     expect(source).toContain("min-w-[var(--radix-popover-trigger-width)]");
     expect(source).not.toContain("w-44");

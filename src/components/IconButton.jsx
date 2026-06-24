@@ -29,7 +29,7 @@ export function IconButton({
         disabled={disabled}
         onClick={onClick}
         className={cn(
-          "flex items-center justify-center size-8 rounded-md",
+          "flex items-center justify-center size-7 rounded-md",
           "text-muted-foreground bg-transparent",
           "transition-colors duration-[120ms]",
           disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-secondary hover:text-foreground",

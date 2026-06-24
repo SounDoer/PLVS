@@ -14,8 +14,8 @@ export const UI_PREFERENCES = {
     },
     header: {
       paddingXRem: 0.9,
-      paddingYRem: 0.55,
-      actionGapRem: 0.25,
+      paddingYRem: 0.4,
+      actionGapRem: 0.2,
     },
     footer: {
       paddingXRem: 0.5,
