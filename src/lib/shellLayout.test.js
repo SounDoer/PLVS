@@ -4,6 +4,8 @@ import {
   FOOTER_DIVIDER,
   FOOTER_LABEL,
   FOOTER_VALUE,
+  PANEL_HEADER_BAR,
+  PANEL_HEADER_TITLE_GROUP,
   SHELL_FOOTER,
   SHELL_HEADER,
   W_LOUDNESS_Y_AXIS,
@@ -50,6 +52,13 @@ describe("shellLayout token names", () => {
   it("SHELL_FOOTER border uses border-border (not a hardcoded white tint)", () => {
     expect(SHELL_FOOTER).toContain("border-border");
     expect(SHELL_FOOTER).not.toContain("border-white/");
+  });
+
+  it("panel title groups clip overflow before action buttons", () => {
+    expect(PANEL_HEADER_BAR).toContain("@container");
+    expect(PANEL_HEADER_TITLE_GROUP).toContain("min-w-0");
+    expect(PANEL_HEADER_TITLE_GROUP).toContain("overflow-hidden");
+    expect(PANEL_HEADER_TITLE_GROUP).toContain("@max-[80px]:hidden");
   });
 
   it("panel axis rail helpers share one CSS variable", () => {
