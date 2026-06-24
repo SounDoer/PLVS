@@ -574,11 +574,13 @@ describe("PanelSettingsContent", () => {
 
     const titleBar = container.querySelector("[data-leaf-tabs]");
     const tabPill = container.querySelector("[data-tab-pill]");
+    const titleGroup = container.querySelector("[data-panel-title-group]");
 
     expect(titleBar?.className).toContain("h-7");
     expect(titleBar?.className).not.toContain("h-9");
     expect(tabPill?.className).toContain("px-1");
     expect(tabPill?.className).not.toContain("px-2");
+    expect(titleGroup?.className).toContain("px-1");
     expect(tabPill?.querySelector("[data-panel-title-icon]")).toBeTruthy();
   });
 
@@ -610,8 +612,10 @@ describe("PanelSettingsContent", () => {
 
     const exitButton = screen.getByRole("button", { name: "Exit fullscreen" });
     const titleBar = exitButton.parentElement?.parentElement;
+    const titleGroup = titleBar?.querySelector("[data-panel-title-group]");
 
     expect(titleBar?.querySelector("[data-panel-title-icon]")).toBeTruthy();
+    expect(titleGroup?.className).toContain("px-1");
     expect(titleBar?.className).toContain("h-7");
     expect(titleBar?.className).toContain("px-1");
     expect(titleBar?.className).toContain("text-xs");

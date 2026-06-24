@@ -4,6 +4,7 @@ import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
   PANEL_HEADER_BAR,
+  PANEL_HEADER_TITLE_GROUP,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
@@ -35,8 +36,10 @@ function TabPill({ tabId, isActive, path, slotTabIndex }) {
     <div
       data-tab-pill
       data-tab-pill-index={slotTabIndex}
+      data-panel-title-group
       className={cn(
-        "flex items-center gap-1 rounded-t-[5px] px-1 py-0.5 text-xs font-medium select-none cursor-pointer transition-colors",
+        PANEL_HEADER_TITLE_GROUP,
+        "rounded-t-[5px] select-none cursor-pointer transition-colors",
         isActive
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50",

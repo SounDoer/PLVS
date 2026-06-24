@@ -41,6 +41,9 @@ export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 
 export const PANEL_HEADER_ACTION_BUTTON =
   "rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none";
 
+export const PANEL_HEADER_TITLE_GROUP =
+  "flex min-w-0 items-center gap-1 px-1 py-0.5 text-xs font-medium";
+
 /** Axis tick / caption text (replaces former `.ui-caption`). */
 export const CAPTION_TEXT = "text-[length:var(--ui-fs-axis)] text-muted-foreground";
 

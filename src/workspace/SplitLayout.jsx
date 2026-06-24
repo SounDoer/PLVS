@@ -4,6 +4,7 @@ import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
   PANEL_HEADER_BAR,
+  PANEL_HEADER_TITLE_GROUP,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
@@ -224,12 +225,14 @@ function FullscreenOverlay() {
       tabIndex={-1}
     >
       <div className={PANEL_HEADER_BAR}>
-        <span data-panel-title-icon className="flex shrink-0">
-          <def.Icon />
-        </span>
-        <span className="truncate max-w-[8rem]">
-          {resolvePanelDisplayName(state, fullscreenId)}
-        </span>
+        <div data-panel-title-group className={PANEL_HEADER_TITLE_GROUP}>
+          <span data-panel-title-icon className="flex shrink-0">
+            <def.Icon />
+          </span>
+          <span className="truncate max-w-[8rem]">
+            {resolvePanelDisplayName(state, fullscreenId)}
+          </span>
+        </div>
         <div className={PANEL_HEADER_ACTIONS}>
           <PanelSettingsMenu
             activeTab={fullscreenModuleId}
