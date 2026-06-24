@@ -33,7 +33,13 @@ const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[5ch]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
 const LEVEL_METER_GRID =
-  "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-[var(--ui-chart-axis-gap)]";
+  "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
+
+// The bottom metric line mirrors the neighbouring charts' x-axis row: same height
+// and the same axis gap above it. When it is hidden (narrow panes) it collapses
+// entirely so the meter grid expands to align its bottom with the neighbours' x-axis.
+const LEVEL_METER_FOOTER =
+  "@max-[220px]:hidden mt-[var(--ui-chart-axis-gap)] flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start justify-center text-[length:var(--ui-fs-axis)]";
 
 function levelMeterYAxisLabelClass(position) {
   return `${LEVEL_METER_Y_LABEL_BASE} ${LEVEL_METER_Y_LABEL_POSITION[position]}`;
@@ -114,7 +120,7 @@ export function LevelMeterPanel() {
         )}
       >
         <div className="flex min-h-0 flex-1 flex-col gap-0">
-          <div className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
+          <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
             <div
               data-level-meter-y-axis
               className={cn(
@@ -122,7 +128,10 @@ export function LevelMeterPanel() {
                 "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
               )}
             >
-              <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
+              <div
+                data-level-meter-y-axis-scale
+                className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]"
+              >
                 {LOUDNESS_TICKS.map(({ v, lb }, i) => {
                   if (i === 0) {
                     return (
@@ -151,12 +160,14 @@ export function LevelMeterPanel() {
                 {showMarker ? <CurrentValueMarker value={levelValue} /> : null}
               </div>
             </div>
-            <div className="grid grid-cols-[minmax(0,1fr)]">
+            <div data-level-meter-bar-region className="grid grid-cols-[minmax(0,1fr)]">
               <div className="relative h-full min-h-0 p-0">
                 <div
                   data-level-meter-bar-fill
                   className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
-                  style={{ "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X }}
+                  style={{
+                    "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X,
+                  }}
                 >
                   <AnimatedLevelFill
                     value={levelValue}
@@ -181,10 +192,8 @@ export function LevelMeterPanel() {
                 </div>
               </div>
             </div>
-            <div />
-            <div />
           </div>
-          <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
+          <div data-level-meter-footer className={LEVEL_METER_FOOTER}>
             <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
               <span className="text-muted-foreground">{modeMeta.label}</span>
               <span
@@ -212,7 +221,7 @@ export function LevelMeterPanel() {
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
-        <div className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
+        <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
           <div
             data-level-meter-y-axis
             className={cn(
@@ -220,7 +229,10 @@ export function LevelMeterPanel() {
               "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
             )}
           >
-            <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
+            <div
+              data-level-meter-y-axis-scale
+              className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]"
+            >
               {PEAK_TICKS.map(({ v, lb }, i) => {
                 if (i === 0) {
                   return (
@@ -249,6 +261,7 @@ export function LevelMeterPanel() {
             </div>
           </div>
           <div
+            data-level-meter-bar-region
             data-level-meter-channel-grid
             className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-[var(--ui-level-meter-channel-gap)]"
             style={{
@@ -283,10 +296,8 @@ export function LevelMeterPanel() {
               </div>
             ))}
           </div>
-          <div />
-          <div />
         </div>
-        <div className="@max-[220px]:hidden mt-[var(--ui-panel-footer-gap)] flex shrink-0 items-baseline justify-center text-[length:var(--ui-fs-display)]">
+        <div data-level-meter-footer className={LEVEL_METER_FOOTER}>
           <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
             <span className="text-muted-foreground">TP Max</span>
             <span

@@ -39,7 +39,7 @@ describe("LevelMeterPanel", () => {
   it("allows the chart column to shrink inside narrow split panes", () => {
     const { container } = renderPanel();
 
-    const layoutGrid = container.querySelector(".grid-cols-\\[auto_minmax\\(0\\2c 1fr\\)\\]");
+    const layoutGrid = container.querySelector("[data-level-meter-grid]");
 
     expect(container.firstElementChild?.className).toContain("min-w-0");
     expect(layoutGrid).toBeTruthy();
@@ -50,21 +50,49 @@ describe("LevelMeterPanel", () => {
   it("uses compact Level Meter bar spacing without changing the protected axis gap", () => {
     const { container } = renderPanel();
 
-    const layoutGrid = container.querySelector(".grid-cols-\\[auto_minmax\\(0\\2c 1fr\\)\\]");
+    const layoutGrid = container.querySelector("[data-level-meter-grid]");
     const channelGrid = container.querySelector("[data-level-meter-channel-grid]");
     const barFill = container.querySelector("[data-level-meter-bar-fill]");
 
     expect(layoutGrid.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(layoutGrid.className).toContain(
-      "grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)]"
-    );
+    expect(layoutGrid.className).toContain("grid-rows-[minmax(0,1fr)]");
     expect(channelGrid?.className).toContain("gap-[var(--ui-level-meter-channel-gap)]");
     expect(channelGrid?.getAttribute("style")).toContain("--ui-level-meter-channel-gap: 0.15rem");
     expect(channelGrid?.getAttribute("style")).not.toContain("calc(");
     expect(barFill?.className).toContain("inset-x-[var(--ui-level-meter-bar-inset-x)]");
     expect(barFill?.getAttribute("style")).toContain("--ui-level-meter-bar-inset-x: 0.1rem");
-    expect(barFill?.getAttribute("style")).not.toContain("calc(");
+    expect(barFill?.getAttribute("style")).not.toContain("--ui-peak-channel-spacing-scale");
     expect(barFill?.className).not.toContain("--ui-meter-chart-inset-x");
+  });
+
+  it("mirrors the neighbouring x-axis row with the bottom metric line when it is visible", () => {
+    const { container } = renderPanel();
+
+    const layoutGrid = container.querySelector("[data-level-meter-grid]");
+    const footer = container.querySelector("[data-level-meter-footer]");
+
+    expect(layoutGrid.className).toContain("grid-rows-[minmax(0,1fr)]");
+    expect(layoutGrid.className).toContain("gap-[var(--ui-chart-axis-gap)]");
+    // Footer matches an x-axis row: same height, same axis gap above it, axis font.
+    expect(footer?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
+    expect(footer?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
+    expect(footer?.className).toContain("text-[length:var(--ui-fs-axis)]");
+    expect(footer?.className).not.toContain("text-[length:var(--ui-fs-display)]");
+  });
+
+  it("lets the meter grid fill full height by collapsing the metric line when it is hidden", () => {
+    const { container } = renderPanel();
+
+    const layoutGrid = container.querySelector("[data-level-meter-grid]");
+    const footer = container.querySelector("[data-level-meter-footer]");
+
+    // The grid is a single 1fr row, so y-axis + bars always fill it. With the
+    // footer removed (display:none collapses its box and top margin), the grid
+    // bottom lines up with the neighbours' x-axis bottom — no row-span hacks.
+    expect(layoutGrid?.className).toContain("grid-rows-[minmax(0,1fr)]");
+    expect(layoutGrid?.className).not.toContain("var(--ui-chart-x-axis-row-h)");
+    expect(footer?.className).toContain("@max-[220px]:hidden");
+    expect(footer?.parentElement).not.toBe(layoutGrid);
   });
 
   it("renders Momentary LUFS in Level Meter mode", () => {

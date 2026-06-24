@@ -73,7 +73,7 @@ export const UI_PREFERENCES = {
       historyModuleMin: 10,
       spectrumModuleMin: 10,
       historyChartMin: 8,
-      chartXAxisRowRem: 0.6,
+      chartXAxisRowRem: 0.8,
     },
     widthsPx: {
       axisRail: 20,
