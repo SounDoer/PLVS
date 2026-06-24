@@ -19,17 +19,26 @@ const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-xs text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
 
 const SETTINGS_VALUE_IDLE_CLASS =
-  "border-transparent bg-secondary/20 hover:border-border/65 hover:bg-secondary/45 hover:text-foreground";
+  "border-transparent bg-transparent hover:border-border hover:bg-secondary/85 hover:text-foreground";
 
 const SETTINGS_VALUE_OPEN_CLASS = "border-primary/55 bg-secondary/30 text-foreground";
 
 const SETTINGS_DETAIL_SURFACE_CLASS =
   "mt-1 overflow-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
 
+const SETTINGS_POPOVER_CONTENT_CLASS =
+  "w-auto rounded-lg border-border/70 bg-popover/95 p-1 shadow-sm";
+
 const SETTINGS_CHOICE_ROW_CLASS =
   "flex w-full items-center gap-1.5 whitespace-nowrap rounded-sm px-1.5 py-0.5 text-left text-xs text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
+
+const SETTINGS_SWITCH_CLASS =
+  "h-4 w-7 border border-border/40 bg-secondary/85 data-[state=checked]:border-primary/50 data-[state=checked]:bg-primary/80 data-[state=unchecked]:bg-secondary/85 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+
+const SETTINGS_SWITCH_THUMB_CLASS =
+  "size-3.5 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
 
 function SettingsGroup({ children }) {
   return <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col gap-0.5">{children}</div>;
@@ -49,6 +58,24 @@ function SettingsRow({ label, children, expanded = false }) {
   );
 }
 
+function settingsValueClass(open, className) {
+  return cn(
+    SETTINGS_SELECT_TRIGGER_CLASS,
+    open ? SETTINGS_VALUE_OPEN_CLASS : SETTINGS_VALUE_IDLE_CLASS,
+    className
+  );
+}
+
+function SettingsSwitch(props) {
+  return (
+    <Switch
+      className={SETTINGS_SWITCH_CLASS}
+      thumbClassName={SETTINGS_SWITCH_THUMB_CLASS}
+      {...props}
+    />
+  );
+}
+
 function InlineDetailTrigger({ ariaLabel, summary, open, onToggle }) {
   return (
     <button
@@ -57,8 +84,8 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle }) {
       aria-expanded={open}
       onClick={onToggle}
       className={cn(
-        "grid h-6 w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-2 py-0 text-left text-xs text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring",
-        open ? SETTINGS_VALUE_OPEN_CLASS : SETTINGS_VALUE_IDLE_CLASS
+        settingsValueClass(open),
+        "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-left"
       )}
     >
       <span className="min-w-0 truncate">{summary}</span>
@@ -100,9 +127,8 @@ function SettingsSelect({ label, ariaLabel, options, value, onChange, triggerCla
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            SETTINGS_SELECT_TRIGGER_CLASS,
+            settingsValueClass(open),
             "inline-flex items-center justify-between gap-2",
-            open ? SETTINGS_VALUE_OPEN_CLASS : SETTINGS_VALUE_IDLE_CLASS,
             triggerClassName
           )}
         >
@@ -110,11 +136,7 @@ function SettingsSelect({ label, ariaLabel, options, value, onChange, triggerCla
           <ChevronDown aria-hidden="true" className="size-3 shrink-0 opacity-60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={8}
-        className="w-auto rounded-lg border-border/70 bg-popover/95 p-1 shadow-sm"
-      >
+      <PopoverContent align="end" sideOffset={8} className={SETTINGS_POPOVER_CONTENT_CLASS}>
         {options.map((opt) => (
           <SettingsOptionRow
             key={opt.key ?? opt.id}
@@ -340,7 +362,7 @@ export function PanelSettingsContent({
         </SettingsRow>
         {showValueMarkerToggle ? (
           <SettingsRow label="Value marker">
-            <Switch
+            <SettingsSwitch
               aria-label="level meter value marker"
               checked={normalizedPanelControls.levelMeterValueMarker}
               onCheckedChange={(checked) => {
@@ -540,7 +562,7 @@ export function PanelSettingsContent({
         ) : null}
         {showPeak ? (
           <SettingsRow label="Peak hold">
-            <Switch
+            <SettingsSwitch
               aria-label="peak hold"
               checked={effectiveSpectrumPeakHold}
               onCheckedChange={(checked) => {

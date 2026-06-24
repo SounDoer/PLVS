@@ -128,6 +128,12 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Value marker")).toBeTruthy();
     const switchButton = screen.getByRole("switch", { name: "level meter value marker" });
     expect(switchButton.getAttribute("aria-checked")).toBe("true");
+    expect(switchButton.className).toContain("h-4");
+    expect(switchButton.className).toContain("w-7");
+    expect(switchButton.className).toContain("data-[state=checked]:bg-primary/80");
+    expect(switchButton.querySelector("[data-slot='switch-thumb']")?.className).toContain(
+      "size-3.5"
+    );
 
     fireEvent.click(switchButton);
 
