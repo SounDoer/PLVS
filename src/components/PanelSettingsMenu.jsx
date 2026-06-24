@@ -2,6 +2,7 @@ import { Settings2 } from "lucide-react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
 import { normalizePanelControls } from "@/lib/panelControls.js";
 import { spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 
@@ -64,11 +65,7 @@ export function PanelSettingsMenu(props) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Panel settings"
-          className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
-        >
+        <button type="button" aria-label="Panel settings" className={PANEL_HEADER_ACTION_BUTTON}>
           <Settings2 size={12} />
         </button>
       </PopoverTrigger>

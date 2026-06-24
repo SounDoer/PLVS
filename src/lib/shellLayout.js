@@ -33,6 +33,14 @@ export const APP_TITLE =
 
 export const APP_TITLE_BRAND = "text-primary";
 
+export const PANEL_HEADER_BAR =
+  "relative flex h-7 shrink-0 items-center gap-0.5 border-b border-border/60 bg-card px-1 text-xs font-medium";
+
+export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
+
+export const PANEL_HEADER_ACTION_BUTTON =
+  "rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none";
+
 /** Axis tick / caption text (replaces former `.ui-caption`). */
 export const CAPTION_TEXT = "text-[length:var(--ui-fs-axis)] text-muted-foreground";
 

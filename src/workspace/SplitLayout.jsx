@@ -1,5 +1,10 @@
 import { Fragment, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import {
+  PANEL_HEADER_ACTION_BUTTON,
+  PANEL_HEADER_ACTIONS,
+  PANEL_HEADER_BAR,
+} from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
@@ -218,9 +223,14 @@ function FullscreenOverlay() {
       onKeyDown={(e) => e.key === "Escape" && setFullscreen(null)}
       tabIndex={-1}
     >
-      <div className="flex h-9 shrink-0 items-center border-b border-border/60 bg-card px-3 text-sm font-medium">
-        {resolvePanelDisplayName(state, fullscreenId)}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
+      <div className={PANEL_HEADER_BAR}>
+        <span data-panel-title-icon className="flex shrink-0">
+          <def.Icon />
+        </span>
+        <span className="truncate max-w-[8rem]">
+          {resolvePanelDisplayName(state, fullscreenId)}
+        </span>
+        <div className={PANEL_HEADER_ACTIONS}>
           <PanelSettingsMenu
             activeTab={fullscreenModuleId}
             channelCount={audioData?.channelCount ?? 0}
@@ -242,7 +252,7 @@ function FullscreenOverlay() {
           />
           <button
             type="button"
-            className="rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none"
+            className={PANEL_HEADER_ACTION_BUTTON}
             onClick={() => setFullscreen(null)}
             aria-label="Exit fullscreen"
           >

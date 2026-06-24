@@ -555,6 +555,73 @@ describe("PanelSettingsContent", () => {
     expect(latestState.panelControlsById.stats.statsVisibleIds).not.toContain("momentary");
   });
 
+  it("uses a compact title bar for normal workspace panels", () => {
+    const { container } = render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              fmt: (value) => value.toFixed(1),
+              statsMetrics: [],
+            }}
+          >
+            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    const titleBar = container.querySelector("[data-leaf-tabs]");
+    const tabPill = container.querySelector("[data-tab-pill]");
+
+    expect(titleBar?.className).toContain("h-7");
+    expect(titleBar?.className).not.toContain("h-9");
+    expect(tabPill?.className).toContain("px-1");
+    expect(tabPill?.className).not.toContain("px-2");
+    expect(tabPill?.querySelector("[data-panel-title-icon]")).toBeTruthy();
+  });
+
+  it("uses the same compact title bar density in fullscreen", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: { type: "leaf", tabs: ["stats"], activeTab: "stats" },
+        panelsById: { stats: { id: "stats", moduleId: "stats" } },
+        panelOrder: ["stats"],
+        panelControlsById: { stats: DEFAULT_PANEL_CONTROLS },
+      })
+    );
+
+    render(
+      <WorkspaceProvider>
+        <AudioDataContext.Provider
+          value={{
+            panelControls: DEFAULT_PANEL_CONTROLS,
+            statsMetrics: [],
+          }}
+        >
+          <SplitLayout />
+        </AudioDataContext.Provider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+
+    const exitButton = screen.getByRole("button", { name: "Exit fullscreen" });
+    const titleBar = exitButton.parentElement?.parentElement;
+
+    expect(titleBar?.querySelector("[data-panel-title-icon]")).toBeTruthy();
+    expect(titleBar?.className).toContain("h-7");
+    expect(titleBar?.className).toContain("px-1");
+    expect(titleBar?.className).toContain("text-xs");
+    expect(titleBar?.className).not.toContain("h-9");
+    expect(titleBar?.className).not.toContain("px-3");
+    expect(titleBar?.className).not.toContain("text-sm");
+    expect(exitButton.className).toContain("p-0.5");
+    expect(exitButton.className).not.toContain("p-1");
+  });
+
   it("hides LeafView panel controls in compact panel mode", () => {
     const { container } = render(
       <WorkspaceProvider>

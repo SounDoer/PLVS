@@ -1,5 +1,10 @@
 import { Maximize2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  PANEL_HEADER_ACTION_BUTTON,
+  PANEL_HEADER_ACTIONS,
+  PANEL_HEADER_BAR,
+} from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
@@ -31,7 +36,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex }) {
       data-tab-pill
       data-tab-pill-index={slotTabIndex}
       className={cn(
-        "flex items-center gap-1 rounded-t-[5px] px-2 py-0.5 text-xs font-medium select-none cursor-pointer transition-colors",
+        "flex items-center gap-1 rounded-t-[5px] px-1 py-0.5 text-xs font-medium select-none cursor-pointer transition-colors",
         isActive
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
@@ -40,7 +45,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex }) {
       onMouseDown={(e) => onTabMouseDown(e, tabId)}
       onClick={() => !dragState && setActiveTab(path, tabId)}
     >
-      <span className="flex shrink-0">
+      <span data-panel-title-icon className="flex shrink-0">
         <def.Icon />
       </span>
       <span className="truncate max-w-[8rem]">{title}</span>
@@ -149,7 +154,7 @@ export function LeafView({ node, path, style }) {
         <div
           data-leaf-tabs
           className={cn(
-            "relative flex h-9 shrink-0 items-center gap-0.5 border-b border-border/60 bg-card px-1",
+            PANEL_HEADER_BAR,
             isDragging && zoneHint === "tabs" && "border-t-2 border-t-primary"
           )}
         >
@@ -171,7 +176,7 @@ export function LeafView({ node, path, style }) {
             />
           ))}
 
-          <div className="ml-auto flex shrink-0 items-center gap-0.5 pl-1">
+          <div className={PANEL_HEADER_ACTIONS}>
             <PanelSettingsMenu
               activeTab={activeModuleId}
               channelCount={audioData?.channelCount ?? 0}
@@ -194,7 +199,7 @@ export function LeafView({ node, path, style }) {
             <button
               type="button"
               aria-label="Fullscreen"
-              className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
+              className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => activeTab && setFullscreen(activeTab)}
             >
               <Maximize2 size={12} />
@@ -202,7 +207,7 @@ export function LeafView({ node, path, style }) {
             <button
               type="button"
               aria-label="Hide all in panel"
-              className="rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none"
+              className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => visibleTabs.forEach((id) => removePanel(id))}
             >
               <X size={12} />
