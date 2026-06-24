@@ -107,6 +107,8 @@ export const UI_PREFERENCES = {
         shortTermStrokeWidth: 2.1,
         selectionStrokeWidth: 1.2,
       },
+    },
+    stats: {
       metrics: {
         valueColumnCh: 5.5,
         unitColumnRem: 2.1,

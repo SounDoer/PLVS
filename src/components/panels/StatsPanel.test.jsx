@@ -83,7 +83,9 @@ describe("StatsPanel", () => {
   it("renders an empty state when no stats are selected", () => {
     renderPanel([]);
 
-    expect(screen.getByText("No stats selected")).toBeTruthy();
+    expect(screen.getByText("No stats selected").className).toContain(
+      "px-[var(--ui-metric-row-pad-x)]"
+    );
     expect(screen.queryByText("Momentary")).toBeNull();
   });
 
@@ -142,6 +144,8 @@ describe("StatsPanel", () => {
 
     expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
     expect(screen.getByTestId("dialogue-active-dot").className).not.toContain("mr-1");
+    expect(screen.getByTestId("dialogue-active-dot").className).toContain("h-1.5");
+    expect(screen.getByTestId("dialogue-active-dot").className).toContain("w-1.5");
   });
 
   it("renders visible metrics in statsOrder, ignoring hidden ids", () => {

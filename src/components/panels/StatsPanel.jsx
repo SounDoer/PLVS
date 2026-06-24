@@ -9,7 +9,7 @@ const METRIC_ROW_LAYOUT =
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
 function MetricRow({ id, label, value, unit, active, hint }) {
-  const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.loudness.metrics;
+  const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.stats.metrics;
   const labelClass =
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-tight text-muted-foreground";
   const valueClass = cn(
@@ -25,7 +25,7 @@ function MetricRow({ id, label, value, unit, active, hint }) {
           data-testid="dialogue-active-dot"
           data-active={active ? "true" : "false"}
           className={cn(
-            "inline-block h-2 w-2 shrink-0 rounded-full",
+            "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
             active ? "bg-foreground" : "bg-muted-foreground/30"
           )}
         />
@@ -72,7 +72,7 @@ export function StatsPanel() {
               />
             ))
           ) : (
-            <div className="text-[length:var(--ui-fs-metric-meta)] font-medium text-muted-foreground">
+            <div className="px-[var(--ui-metric-row-pad-x)] text-[length:var(--ui-fs-metric-meta)] font-medium text-muted-foreground">
               No stats selected
             </div>
           )}

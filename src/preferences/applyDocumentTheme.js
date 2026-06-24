@@ -46,14 +46,14 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   setCssVar("--ui-splitter-bar-thickness", `${splitters.barThicknessPx}px`);
 
-  const lm = prefs.modules.loudness.metrics;
   const lh = prefs.modules.loudness.history;
+  const sm = prefs.modules.stats.metrics;
   setCssVar("--ui-loudness-momentary-stroke-width", String(lh.momentaryStrokeWidth));
   setCssVar("--ui-loudness-shortterm-stroke-width", String(lh.shortTermStrokeWidth));
   setCssVar("--ui-loudness-selection-stroke-width", String(lh.selectionStrokeWidth));
-  setCssVar("--ui-metric-row-min-h", `${lm.rowMinHeightRem}rem`);
-  setCssVar("--ui-metric-row-pad-x", `${lm.rowPaddingXRem}rem`);
-  setCssVar("--ui-metric-row-gap", `${lm.rowGapRem}rem`);
+  setCssVar("--ui-metric-row-min-h", `${sm.rowMinHeightRem}rem`);
+  setCssVar("--ui-metric-row-pad-x", `${sm.rowPaddingXRem}rem`);
+  setCssVar("--ui-metric-row-gap", `${sm.rowGapRem}rem`);
 
   setCssVar("--ui-header-pad-x", `${header.paddingXRem}rem`);
   setCssVar("--ui-header-pad-y", `${header.paddingYRem}rem`);

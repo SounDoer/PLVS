@@ -66,14 +66,15 @@ describe("spacing data", () => {
 
 describe("metric row tuning", () => {
   it("keeps only the row dimensions still used by StatsPanel", () => {
-    expect(UI_PREFERENCES.modules.loudness.metrics).toMatchObject({
+    expect(UI_PREFERENCES.modules.stats.metrics).toMatchObject({
       valueColumnCh: 5.5,
       unitColumnRem: 2.1,
       rowMinHeightRem: 1.2,
       rowPaddingXRem: 0.25,
       rowGapRem: 0.5,
     });
-    expect(UI_PREFERENCES.modules.loudness.metrics).not.toHaveProperty("rowPaddingYRem");
+    expect(UI_PREFERENCES.modules.loudness).not.toHaveProperty("metrics");
+    expect(UI_PREFERENCES.modules.stats.metrics).not.toHaveProperty("rowPaddingYRem");
     expect(UI_PREFERENCES.radii).not.toHaveProperty("metricRow");
   });
 });
