@@ -35,10 +35,10 @@ const SETTINGS_CHOICE_ROW_CLASS =
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
 
 const SETTINGS_SWITCH_CLASS =
-  "h-4 w-7 border border-border/40 bg-secondary/85 data-[state=checked]:border-primary/50 data-[state=checked]:bg-primary/80 data-[state=unchecked]:bg-secondary/85 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
 
 const SETTINGS_SWITCH_THUMB_CLASS =
-  "size-3.5 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
+  "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
 
 function SettingsGroup({ children }) {
   return <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col gap-0.5">{children}</div>;

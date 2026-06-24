@@ -130,10 +130,8 @@ describe("PanelSettingsContent", () => {
     expect(switchButton.getAttribute("aria-checked")).toBe("true");
     expect(switchButton.className).toContain("h-4");
     expect(switchButton.className).toContain("w-7");
-    expect(switchButton.className).toContain("data-[state=checked]:bg-primary/80");
-    expect(switchButton.querySelector("[data-slot='switch-thumb']")?.className).toContain(
-      "size-3.5"
-    );
+    expect(switchButton.className).toContain("data-[state=checked]:bg-primary");
+    expect(switchButton.querySelector("[data-slot='switch-thumb']")?.className).toContain("size-3");
 
     fireEvent.click(switchButton);
 
