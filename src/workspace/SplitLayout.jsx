@@ -321,7 +321,16 @@ function SplitContent() {
     <DragProvider onDrop={onDrop}>
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
         {tree ? (
-          <SplitView node={tree} path={[]} style={{ flex: "1 1 0", minWidth: 0, minHeight: 0 }} />
+          <SplitView
+            node={tree}
+            path={[]}
+            style={{
+              flex: "1 1 0",
+              minWidth: 0,
+              minHeight: 0,
+              visibility: state.fullscreenId ? "hidden" : undefined,
+            }}
+          />
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             No panels
