@@ -23,6 +23,7 @@ import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 import {
   DEFAULT_CLOSE_ACTION,
   normalizeCloseAction,
+  normalizePanelOpacity,
   normalizeReferenceLufs,
   normalizeSettingsFocusView,
   normalizeThemeEditorPos,
@@ -46,6 +47,9 @@ export function useSettings({ onClearRef } = {}) {
   );
   const [channelLabelOverrides, setChannelLabelOverridesState] = useState(() =>
     sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
+  );
+  const [panelOpacity, setPanelOpacityState] = useState(() =>
+    normalizePanelOpacity(settingsStore.read().panelOpacity)
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
@@ -133,6 +137,13 @@ export function useSettings({ onClearRef } = {}) {
     setFocusView({ ...focusView, compactPanels: value === true });
   }
 
+  function setPanelOpacity(value) {
+    const next = normalizePanelOpacity(value);
+    settingsStore.patch({ panelOpacity: next });
+    presetsStore.patch({ activeId: null });
+    setPanelOpacityState(next);
+  }
+
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setSystemPrefersDark(mq.matches);
@@ -152,8 +163,9 @@ export function useSettings({ onClearRef } = {}) {
       appearance,
       themeId: appearance === "system" ? null : fixedThemeSelectValue,
       channelLabelOverrides,
+      panelOpacity,
     });
-  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides]);
+  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides, panelOpacity]);
 
   useEffect(
     () =>
@@ -166,6 +178,7 @@ export function useSettings({ onClearRef } = {}) {
         setChannelLabelOverridesState(
           sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
         );
+        setPanelOpacityState(normalizePanelOpacity(settingsStore.read().panelOpacity));
       }),
     []
   );
@@ -231,6 +244,8 @@ export function useSettings({ onClearRef } = {}) {
     setFocusView,
     setAutoHideControls,
     setCompactPanels,
+    panelOpacity,
+    setPanelOpacity,
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
