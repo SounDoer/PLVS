@@ -52,22 +52,17 @@ export function FocusViewPopoverContent({
         <Label htmlFor="panel-opacity" className="min-w-0 text-xs font-normal text-foreground">
           Opacity
         </Label>
-        <div className="flex items-center gap-1.5">
-          <input
-            id="panel-opacity"
-            aria-label="Panel opacity"
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={panelOpacity}
-            onInput={(e) => setPanelOpacity(Number(e.target.value))}
-            className="h-4 w-20 accent-primary"
-          />
-          <span className="w-7 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
-            {panelOpacity}%
-          </span>
-        </div>
+        <input
+          id="panel-opacity"
+          aria-label="Panel opacity"
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={panelOpacity}
+          onInput={(e) => setPanelOpacity(Number(e.target.value))}
+          className="h-4 w-20 accent-primary"
+        />
       </div>
     </div>
   );

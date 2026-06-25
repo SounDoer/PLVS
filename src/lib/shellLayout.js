@@ -3,8 +3,7 @@
  * Uses Tailwind semantic tokens plus existing `--ui-*` layout variables from `uiPreferences`.
  */
 
-export const SHELL_PAGE =
-  "flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-background text-foreground";
+export const SHELL_PAGE = "flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden text-foreground";
 
 export const SHELL_INNER =
   "flex min-h-0 w-full flex-1 select-none flex-col gap-[var(--ui-shell-gap)] p-[var(--ui-shell-pad)]";
