@@ -107,8 +107,8 @@ export function LeafView({ node, path, style }) {
       data-leaf
       data-leaf-path={pathAttr}
       className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden rounded-[10px] border shadow-sm backdrop-blur-[24px] transition-[border-color,box-shadow] duration-150",
-        "border-border/80 hover:border-border",
+        "relative flex min-h-0 flex-col overflow-hidden rounded-[10px] shadow-sm backdrop-blur-[24px] transition-[border-color,box-shadow] duration-150",
+        "border border-[color:color-mix(in_srgb,var(--border)_var(--panel-opacity),transparent)] hover:border-border",
         isPanelHoverHighlighted && "border-primary/70 ring-2 ring-primary/60 ring-offset-0",
         isDragging &&
           (zoneHint === "above" || zoneHint === "below") &&
