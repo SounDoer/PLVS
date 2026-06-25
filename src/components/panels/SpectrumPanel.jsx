@@ -2,6 +2,8 @@ import { useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
+import { normalizePanelControls } from "../../lib/panelControls.js";
+import { buildSpectrumSvgFromBandsAndDb } from "../../math/spectrumMath.js";
 import {
   SnapshotEmptyState,
   SNAPSHOT_NO_DATA_MESSAGE,
@@ -15,7 +17,7 @@ import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shell
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
   FREQ_LABELS,
-  SPEC_Y_TICKS,
+  buildSpectrumYTicks,
   freqToXFrac,
   spectrumDbToTopFrac,
   spectrumDbToYViewBox,
@@ -24,6 +26,11 @@ import {
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
   return `${path} L 1000 260 L 0 260 Z`;
+}
+
+function buildSpectrumPathFromData(data, dbList, range) {
+  const centers = data?.bands?.map((band) => band.fCenter) ?? [];
+  return buildSpectrumSvgFromBandsAndDb(centers, dbList ?? [], range);
 }
 
 export function SpectrumPanel({ compact = false }) {
@@ -38,7 +45,13 @@ export function SpectrumPanel({ compact = false }) {
     setSelectedOffset,
     captureCurrentSnapshot,
   } = useAudioData();
-  const spectrumPeakHold = panelControls?.spectrumPeakHold ?? false;
+  const normalizedPanelControls = normalizePanelControls(panelControls);
+  const spectrumPeakHold = normalizedPanelControls.spectrumPeakHold;
+  const spectrumRange = {
+    yMaxDb: normalizedPanelControls.spectrumYMaxDb,
+    yRangeDb: normalizedPanelControls.spectrumYRangeDb,
+  };
+  const spectrumYTicks = buildSpectrumYTicks(spectrumRange);
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
@@ -52,17 +65,23 @@ export function SpectrumPanel({ compact = false }) {
   let panelSpectrumPathB;
   let panelSpectrumPeakPathB;
   let panelSpectrumData;
+  let panelSpectrumPeakDb;
+  let panelSpectrumPeakDbB;
   if (isSnapshot) {
     panelSpectrumPath = snapResolved?.path ?? "";
     panelSpectrumPeakPath = "";
     panelSpectrumPathB = snapResolved?.pathB ?? "";
     panelSpectrumPeakPathB = "";
     panelSpectrumData = snapResolved?.data ?? null;
+    panelSpectrumPeakDb = [];
+    panelSpectrumPeakDbB = [];
   } else if (liveSpectrumResult) {
     panelSpectrumPath = liveSpectrumResult.path;
     panelSpectrumPeakPath = liveSpectrumResult.peakPath;
     panelSpectrumPathB = liveSpectrumResult.pathB;
     panelSpectrumPeakPathB = liveSpectrumResult.peakPathB;
+    panelSpectrumPeakDb = liveSpectrumResult.peakDb;
+    panelSpectrumPeakDbB = liveSpectrumResult.peakDbB;
     panelSpectrumData = buildSpectrumDataSnapshot({
       spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
       spectrumSmoothDb: liveSpectrumResult.smoothDb,
@@ -76,6 +95,8 @@ export function SpectrumPanel({ compact = false }) {
     panelSpectrumPathB = "";
     panelSpectrumPeakPathB = "";
     panelSpectrumData = null;
+    panelSpectrumPeakDb = [];
+    panelSpectrumPeakDbB = [];
   }
   const spectrumSvgRef = useRef(null);
   const {
@@ -92,7 +113,7 @@ export function SpectrumPanel({ compact = false }) {
     const dbB = data.dbListB?.[nearestIdx];
     return {
       leftPct: freqToXFrac(band.fCenter) * 100,
-      topPct: spectrumDbToTopFrac(db) * 100,
+      topPct: spectrumDbToTopFrac(db, spectrumRange) * 100,
       freqLabel: formatSpectrumFreq(band.fCenter),
       dbLabel: `${db.toFixed(1)} dB`,
       dbLabelB: Number.isFinite(dbB) ? `${dbB.toFixed(1)} dB` : null,
@@ -100,14 +121,28 @@ export function SpectrumPanel({ compact = false }) {
     };
   });
   const reduceMotion = useReducedMotion();
+  const displayPanelSpectrumPath =
+    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbList, spectrumRange) ||
+    panelSpectrumPath;
+  const displayPanelSpectrumPathB =
+    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbListB, spectrumRange) ||
+    panelSpectrumPathB;
+  const displayPanelSpectrumPeakPath =
+    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDb, spectrumRange) ||
+    panelSpectrumPeakPath;
+  const displayPanelSpectrumPeakPathB =
+    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDbB, spectrumRange) ||
+    panelSpectrumPeakPathB;
   // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
   // on top). When peak hold is off, the fill follows the live curve as before.
-  const peakFillActive = spectrumPeakHold && !!panelSpectrumPeakPath;
+  const peakFillActive = spectrumPeakHold && !!displayPanelSpectrumPeakPath;
   const displaySpectrumAreaPath = buildSpectrumAreaPath(
-    peakFillActive ? panelSpectrumPeakPath : panelSpectrumPath
+    peakFillActive ? displayPanelSpectrumPeakPath : displayPanelSpectrumPath
   );
   const displaySpectrumAreaPathB =
-    spectrumPeakHold && panelSpectrumPeakPathB ? buildSpectrumAreaPath(panelSpectrumPeakPathB) : "";
+    spectrumPeakHold && displayPanelSpectrumPeakPathB
+      ? buildSpectrumAreaPath(displayPanelSpectrumPeakPathB)
+      : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
   const canCaptureCurrentSnapshot = historyChartInteractive && totalSamples > 0;
 
@@ -146,7 +181,7 @@ export function SpectrumPanel({ compact = false }) {
             )}
           >
             <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-              {SPEC_Y_TICKS.map(({ v, lb }, i) => {
+              {spectrumYTicks.map(({ v, lb }, i) => {
                 if (i === 0) {
                   return (
                     <span key={v} className={axisLabelClass("y", "start")}>
@@ -154,7 +189,7 @@ export function SpectrumPanel({ compact = false }) {
                     </span>
                   );
                 }
-                if (i === SPEC_Y_TICKS.length - 1) {
+                if (i === spectrumYTicks.length - 1) {
                   return (
                     <span key={v} className={axisLabelClass("y", "end")}>
                       {lb}
@@ -165,7 +200,7 @@ export function SpectrumPanel({ compact = false }) {
                   <span
                     key={v}
                     className={axisLabelClass("y", "middle")}
-                    style={{ top: `${spectrumDbToTopFrac(v) * 100}%` }}
+                    style={{ top: `${spectrumDbToTopFrac(v, spectrumRange) * 100}%` }}
                   >
                     {lb}
                   </span>
@@ -251,13 +286,13 @@ export function SpectrumPanel({ compact = false }) {
                     </linearGradient>
                   </defs>
                   <g pointerEvents="none" aria-hidden>
-                    {SPEC_Y_TICKS.map(({ v }) => (
+                    {spectrumYTicks.map(({ v }) => (
                       <line
                         key={`sp-grid-h-${v}`}
                         x1={0}
                         x2={1000}
-                        y1={spectrumDbToYViewBox(v)}
-                        y2={spectrumDbToYViewBox(v)}
+                        y1={spectrumDbToYViewBox(v, spectrumRange)}
+                        y2={spectrumDbToYViewBox(v, spectrumRange)}
                         stroke="var(--border)"
                         strokeWidth={1}
                         vectorEffect="non-scaling-stroke"
@@ -281,7 +316,7 @@ export function SpectrumPanel({ compact = false }) {
                       );
                     })}
                   </g>
-                  {panelSpectrumPath ? (
+                  {displayPanelSpectrumPath ? (
                     <AnimatePresence mode="sync">
                       <motion.g
                         key={spectrumPaletteKey}
@@ -309,7 +344,7 @@ export function SpectrumPanel({ compact = false }) {
                           />
                         ) : null}
                         <path
-                          d={panelSpectrumPath}
+                          d={displayPanelSpectrumPath}
                           fill="none"
                           stroke={
                             selectedOffset >= 0
@@ -320,9 +355,9 @@ export function SpectrumPanel({ compact = false }) {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                        {panelSpectrumPathB ? (
+                        {displayPanelSpectrumPathB ? (
                           <path
-                            d={panelSpectrumPathB}
+                            d={displayPanelSpectrumPathB}
                             fill="none"
                             stroke={
                               selectedOffset >= 0

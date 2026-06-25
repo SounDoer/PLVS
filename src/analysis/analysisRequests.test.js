@@ -65,6 +65,16 @@ describe("analysisRequests", () => {
     ).toBe(spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumPeakHold: true }));
   });
 
+  it("does not include Y-axis display controls in the spectrum request key", () => {
+    expect(
+      spectrumRequestKeyFromControls({
+        ...DEFAULT_PANEL_CONTROLS,
+        spectrumYMaxDb: -24,
+        spectrumYRangeDb: 60,
+      })
+    ).toBe(spectrumRequestKeyFromControls(DEFAULT_PANEL_CONTROLS));
+  });
+
   it("includes smoothing and tilt in the spectrum request key", () => {
     expect(
       spectrumRequestKeyFromControls({

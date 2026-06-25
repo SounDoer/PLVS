@@ -533,6 +533,8 @@ export function PanelSettingsContent({
       : spectrumPeakHold;
     const effectiveSmoothingPercent = normalizedPanelControls.spectrumSmoothingPercent;
     const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
+    const effectiveYMaxDb = normalizedPanelControls.spectrumYMaxDb;
+    const effectiveYRangeDb = normalizedPanelControls.spectrumYRangeDb;
     const { matchedOption, selectedOption } = getSelectedOption(
       spectrumOptions,
       effectiveSpectrumValueKey
@@ -659,6 +661,46 @@ export function PanelSettingsContent({
                   normalizePanelControls({
                     ...normalizedPanelControls,
                     spectrumTiltDbPerOctave: value,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showDisplayControls ? (
+          <SettingsRow label="Y Max">
+            <SettingsSlider
+              ariaLabel="spectrum y max"
+              min={-48}
+              max={0}
+              step={6}
+              value={effectiveYMaxDb}
+              formatValue={(value) => `${value.toFixed(0)} dB`}
+              onCommit={(value) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumYMaxDb: value,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showDisplayControls ? (
+          <SettingsRow label="Y Range">
+            <SettingsSlider
+              ariaLabel="spectrum y range"
+              min={48}
+              max={120}
+              step={6}
+              value={effectiveYRangeDb}
+              formatValue={(value) => `${value.toFixed(0)} dB`}
+              onCommit={(value) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumYRangeDb: value,
                   })
                 );
               }}

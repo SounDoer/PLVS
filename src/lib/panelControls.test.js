@@ -75,6 +75,8 @@ describe("panelControls", () => {
       spectrumPeakHold: false,
       spectrumSmoothingPercent: 50,
       spectrumTiltDbPerOctave: 4.5,
+      spectrumYMaxDb: -12,
+      spectrumYRangeDb: 84,
       statsVisibleIds: [
         "momentary",
         "shortTerm",
@@ -170,6 +172,8 @@ describe("panelControls", () => {
       spectrumPeakHold: false,
       spectrumSmoothingPercent: 50,
       spectrumTiltDbPerOctave: 4.5,
+      spectrumYMaxDb: -12,
+      spectrumYRangeDb: 84,
       statsVisibleIds: ["momentary"],
       statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
       loudnessHistoryVisibleLayerIds: ["ref"],
@@ -235,6 +239,10 @@ describe("spectrum display controls normalization", () => {
     expect(DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent).toBe(50);
     expect(normalizePanelControls({}).spectrumTiltDbPerOctave).toBe(4.5);
     expect(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave).toBe(4.5);
+    expect(normalizePanelControls({}).spectrumYMaxDb).toBe(-12);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumYMaxDb).toBe(-12);
+    expect(normalizePanelControls({}).spectrumYRangeDb).toBe(84);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumYRangeDb).toBe(84);
   });
 
   it("clamps smoothing to 0..100 percent", () => {
@@ -261,5 +269,16 @@ describe("spectrum display controls normalization", () => {
     expect(normalizePanelControls({ spectrumTiltDbPerOctave: "4.5" }).spectrumTiltDbPerOctave).toBe(
       4.5
     );
+  });
+
+  it("clamps Y-axis display range controls", () => {
+    expect(normalizePanelControls({ spectrumYMaxDb: -60 }).spectrumYMaxDb).toBe(-48);
+    expect(normalizePanelControls({ spectrumYMaxDb: 6 }).spectrumYMaxDb).toBe(0);
+    expect(normalizePanelControls({ spectrumYMaxDb: -24 }).spectrumYMaxDb).toBe(-24);
+    expect(normalizePanelControls({ spectrumYMaxDb: "-12" }).spectrumYMaxDb).toBe(-12);
+    expect(normalizePanelControls({ spectrumYRangeDb: 42 }).spectrumYRangeDb).toBe(48);
+    expect(normalizePanelControls({ spectrumYRangeDb: 126 }).spectrumYRangeDb).toBe(120);
+    expect(normalizePanelControls({ spectrumYRangeDb: 60 }).spectrumYRangeDb).toBe(60);
+    expect(normalizePanelControls({ spectrumYRangeDb: "84" }).spectrumYRangeDb).toBe(84);
   });
 });

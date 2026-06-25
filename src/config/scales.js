@@ -40,15 +40,15 @@ export function loudnessHistY(v, viewH = 220) {
   return viewH * loudnessFromTopFrac(v);
 }
 
-/** Spectrum viewBox height 260; dB→y uses top/bottom padding so 0 dB does not hug the SVG edge */
+/** Spectrum viewBox height 260; dB→y uses top/bottom padding so max dB does not hug the SVG edge */
 export const SPEC_VIEW_H = 260;
-/** Top padding inside viewBox (px); 0 dB maps to this y, not 0 */
+/** Top padding inside viewBox (px); max dB maps to this y, not 0 */
 export const SPEC_VIEW_TOP_PAD = 10;
 /** Bottom padding inside viewBox (px) */
 export const SPEC_VIEW_BOTTOM_PAD = 4;
-export const SPEC_DB_MIN = -100;
-export const SPEC_DB_MAX = 0;
-const SPEC_DB_RNG = SPEC_DB_MAX - SPEC_DB_MIN;
+export const SPEC_DB_MAX = -12;
+export const SPEC_DB_RANGE = 84;
+export const SPEC_DB_MIN = SPEC_DB_MAX - SPEC_DB_RANGE;
 /** Plot height for dB→y (viewBox height minus vertical padding) */
 export const SPEC_PLOT_H = SPEC_VIEW_H - SPEC_VIEW_TOP_PAD - SPEC_VIEW_BOTTOM_PAD;
 
@@ -64,14 +64,22 @@ export const SPECTRUM_SETTINGS = {
   maxHz: 20000,
 };
 
-export function spectrumDbToYViewBox(d) {
-  const dd = Math.max(SPEC_DB_MIN, Math.min(SPEC_DB_MAX, Number.isFinite(d) ? d : SPEC_DB_MIN));
-  return SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD - ((dd - SPEC_DB_MIN) / SPEC_DB_RNG) * SPEC_PLOT_H;
+function normalizeSpectrumRange(range = {}) {
+  const yMaxDb = Number.isFinite(range.yMaxDb) ? range.yMaxDb : SPEC_DB_MAX;
+  const yRangeDb = Number.isFinite(range.yRangeDb) ? range.yRangeDb : SPEC_DB_RANGE;
+  return { yMaxDb, yRangeDb };
+}
+
+export function spectrumDbToYViewBox(d, range = {}) {
+  const { yMaxDb, yRangeDb } = normalizeSpectrumRange(range);
+  const yMinDb = yMaxDb - yRangeDb;
+  const dd = Math.max(yMinDb, Math.min(yMaxDb, Number.isFinite(d) ? d : yMinDb));
+  return SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD - ((dd - yMinDb) / yRangeDb) * SPEC_PLOT_H;
 }
 
 /** Tick line top as fraction of full viewBox height (same coords as spectrum trace) */
-export function spectrumDbToTopFrac(d) {
-  return spectrumDbToYViewBox(d) / SPEC_VIEW_H;
+export function spectrumDbToTopFrac(d, range = {}) {
+  return spectrumDbToYViewBox(d, range) / SPEC_VIEW_H;
 }
 
 const LOG20 = Math.log10(20);
@@ -167,14 +175,19 @@ export const LOUDNESS_TICKS = [
   { v: -63, lb: "-63" },
 ];
 
-/** Spectrum left dB ticks (-100 to 0) */
-export const SPEC_Y_TICKS = [
-  { v: 0, lb: "0" },
-  { v: -20, lb: "-20" },
-  { v: -40, lb: "-40" },
-  { v: -60, lb: "-60" },
-  { v: -80, lb: "-80" },
-];
+export function buildSpectrumYTicks(range = {}) {
+  const { yMaxDb, yRangeDb } = normalizeSpectrumRange(range);
+  const yMinDb = yMaxDb - yRangeDb;
+  const ticks = [{ v: yMaxDb, lb: `${yMaxDb}` }];
+  for (let v = yMaxDb - 12; v > yMinDb; v -= 12) {
+    ticks.push({ v, lb: `${v}` });
+  }
+  ticks.push({ v: yMinDb, lb: `${yMinDb}` });
+  return ticks;
+}
+
+/** Spectrum left dB ticks for the default -12..-96 dB display range */
+export const SPEC_Y_TICKS = buildSpectrumYTicks();
 
 /** Spectrum frequency axis labels */
 export const FREQ_LABELS = [

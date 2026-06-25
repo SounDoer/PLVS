@@ -38,7 +38,9 @@ function liveResult(over = {}) {
     peakPathB: "",
     bandCentersHz: [],
     smoothDb: [],
+    peakDb: [],
     smoothDbB: [],
+    peakDbB: [],
     ...over,
   };
 }
@@ -120,6 +122,55 @@ describe("SpectrumPanel", () => {
 
     const secondary = container.querySelector('path[stroke="var(--ui-spectrum-secondary)"]');
     expect(secondary).toBeTruthy();
+  });
+
+  it("rebuilds the live curve with the default -12..-96 dB Y range", () => {
+    const { container } = renderPanel(
+      liveAudioData(
+        liveResult({
+          path: "M 0 1 L 1000 1",
+          bandCentersHz: [20, 20000],
+          smoothDb: [-12, -96],
+        })
+      )
+    );
+
+    const primary = container.querySelector('path[stroke="var(--ui-spectrum-primary)"]');
+    expect(primary?.getAttribute("d")).toBe("M 0.00 10.00 L 1000.00 256.00");
+  });
+
+  it("uses the panel Y-axis controls when rebuilding the live curve", () => {
+    const { container } = renderPanel(
+      liveAudioData(
+        liveResult({
+          path: "M 0 1 L 1000 1",
+          bandCentersHz: [20, 20000],
+          smoothDb: [-24, -84],
+        }),
+        { panelControls: { spectrumYMaxDb: -24, spectrumYRangeDb: 60 } }
+      )
+    );
+
+    const primary = container.querySelector('path[stroke="var(--ui-spectrum-primary)"]');
+    expect(primary?.getAttribute("d")).toBe("M 0.00 10.00 L 1000.00 256.00");
+  });
+
+  it("rebuilds peak-hold fill with the selected Y range when peak dB data is present", () => {
+    const { container } = renderPanel(
+      liveAudioData(
+        liveResult({
+          path: "M 0 1 L 1000 1",
+          peakPath: "M 0 2 L 1000 2",
+          bandCentersHz: [20, 20000],
+          smoothDb: [-40, -70],
+          peakDb: [-24, -84],
+        }),
+        { panelControls: { spectrumPeakHold: true, spectrumYMaxDb: -24, spectrumYRangeDb: 60 } }
+      )
+    );
+
+    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    expect(fill?.getAttribute("d")).toBe("M 0.00 10.00 L 1000.00 256.00 L 1000 260 L 0 260 Z");
   });
 
   it("does not render the curve legend inside the chart area", () => {
@@ -263,10 +314,10 @@ describe("SpectrumPanel", () => {
   it("keeps dB axis endpoint labels inside the chart bounds", () => {
     renderPanel(liveAudioData(liveResult()));
 
-    expect(screen.getByText("0").className).toContain("top-0");
-    expect(screen.getByText("0").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-80").className).toContain("bottom-0");
-    expect(screen.getByText("-80").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-40").className).toContain("-translate-y-1/2");
+    expect(screen.getByText("-12").className).toContain("top-0");
+    expect(screen.getByText("-12").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-96").className).toContain("bottom-0");
+    expect(screen.getByText("-96").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-48").className).toContain("-translate-y-1/2");
   });
 });

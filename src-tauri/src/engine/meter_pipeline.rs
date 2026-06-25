@@ -69,7 +69,7 @@ fn spectrum_result_from_meter(meter: &SpectrumMeter) -> SpectrumFrameResult {
   } else {
     (String::new(), String::new())
   };
-  let (path_b, peak_path_b, smooth_db_b): (String, String, Vec<f64>) =
+  let (path_b, peak_path_b, smooth_db_b, peak_db_b): (String, String, Vec<f64>, Vec<f64>) =
     match meter.last_output_secondary() {
       Some((smooth_b, peak_b)) if smooth_b.len() == centers.len() && !centers.is_empty() => {
         let pkb = if peak_b.len() == centers.len() {
@@ -78,9 +78,9 @@ fn spectrum_result_from_meter(meter: &SpectrumMeter) -> SpectrumFrameResult {
           smooth_b
         };
         let (path_b, peak_path_b) = spectrum_paths_from_bands(centers, smooth_b, pkb, true);
-        (path_b, peak_path_b, smooth_b.to_vec())
+        (path_b, peak_path_b, smooth_b.to_vec(), pkb.to_vec())
       }
-      _ => (String::new(), String::new(), Vec::new()),
+      _ => (String::new(), String::new(), Vec::new(), Vec::new()),
     };
 
   SpectrumFrameResult {
@@ -90,7 +90,9 @@ fn spectrum_result_from_meter(meter: &SpectrumMeter) -> SpectrumFrameResult {
     peak_path_b,
     band_centers_hz: centers.to_vec(),
     smooth_db: smooth.to_vec(),
+    peak_db: peak.to_vec(),
     smooth_db_b,
+    peak_db_b,
   }
 }
 

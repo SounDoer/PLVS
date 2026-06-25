@@ -47,7 +47,9 @@ pub struct SpectrumFrameResult {
   pub peak_path_b: String,
   pub band_centers_hz: Vec<f64>,
   pub smooth_db: Vec<f64>,
+  pub peak_db: Vec<f64>,
   pub smooth_db_b: Vec<f64>,
+  pub peak_db_b: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

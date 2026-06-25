@@ -529,12 +529,20 @@ describe("PanelSettingsContent", () => {
     const peak = screen.getByText("Peak hold");
     const smoothing = screen.getByText("Smoothing");
     const tilt = screen.getByText("Tilt");
+    const yMax = screen.getByText("Y Max");
+    const yRange = screen.getByText("Y Range");
     expect(peak.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(smoothing.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tilt.compareDocumentPosition(yMax) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(yMax.compareDocumentPosition(yRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByLabelText("spectrum smoothing")).toBeTruthy();
     expect(screen.getByLabelText("spectrum tilt")).toBeTruthy();
+    expect(screen.getByLabelText("spectrum y max")).toBeTruthy();
+    expect(screen.getByLabelText("spectrum y range")).toBeTruthy();
     expect(screen.queryByText("50%")).toBeNull();
     expect(screen.queryByText("4.50 dB/oct")).toBeNull();
+    expect(screen.queryByText("-12 dB")).toBeNull();
+    expect(screen.queryByText("84 dB")).toBeNull();
     expect(screen.queryByText("Smoothing: 50%")).toBeNull();
     expect(screen.queryByText("Tilt: 4.50 dB/oct")).toBeNull();
   });
@@ -566,6 +574,16 @@ describe("PanelSettingsContent", () => {
     fireEvent.focus(tilt);
     expect(screen.getByText("4.50 dB/oct")).toBeTruthy();
     expect(screen.queryByText("Tilt: 4.50 dB/oct")).toBeNull();
+
+    const yMax = screen.getByLabelText("spectrum y max");
+    fireEvent.mouseEnter(yMax);
+    expect(screen.getByText("-12 dB")).toBeTruthy();
+    fireEvent.mouseLeave(yMax);
+    expect(screen.queryByText("-12 dB")).toBeNull();
+
+    const yRange = screen.getByLabelText("spectrum y range");
+    fireEvent.focus(yRange);
+    expect(screen.getByText("84 dB")).toBeTruthy();
   });
 
   it("commits spectrum display slider changes on release", () => {
@@ -602,6 +620,22 @@ describe("PanelSettingsContent", () => {
       ...DEFAULT_PANEL_CONTROLS,
       spectrumTiltDbPerOctave: 1.25,
     });
+
+    const yMax = screen.getByLabelText("spectrum y max");
+    fireEvent.change(yMax, { target: { value: "-24" } });
+    fireEvent.pointerUp(yMax);
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumYMaxDb: -24,
+    });
+
+    const yRange = screen.getByLabelText("spectrum y range");
+    fireEvent.change(yRange, { target: { value: "60" } });
+    fireEvent.pointerUp(yRange);
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumYRangeDb: 60,
+    });
   });
 
   it("hides the Peak toggle on the spectrogram tab", () => {
@@ -631,6 +665,8 @@ describe("PanelSettingsContent", () => {
     );
     expect(screen.queryByLabelText("spectrum smoothing")).toBeNull();
     expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
+    expect(screen.queryByLabelText("spectrum y max")).toBeNull();
+    expect(screen.queryByLabelText("spectrum y range")).toBeNull();
   });
 
   it("does not render loudness controls before panel controls are wired", () => {

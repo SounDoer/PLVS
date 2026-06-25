@@ -21,6 +21,8 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumPeakHold: false,
   spectrumSmoothingPercent: 50,
   spectrumTiltDbPerOctave: 4.5,
+  spectrumYMaxDb: -12,
+  spectrumYRangeDb: 84,
   statsVisibleIds: [
     "momentary",
     "shortTerm",
@@ -84,6 +86,14 @@ function normalizeSpectrumTiltDbPerOctave(raw) {
   return clampNumber(raw, 0, 6, DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave);
 }
 
+function normalizeSpectrumYMaxDb(raw) {
+  return clampNumber(raw, -48, 0, DEFAULT_PANEL_CONTROLS.spectrumYMaxDb);
+}
+
+function normalizeSpectrumYRangeDb(raw) {
+  return clampNumber(raw, 48, 120, DEFAULT_PANEL_CONTROLS.spectrumYRangeDb);
+}
+
 function normalizeLevelMeterMode(raw) {
   return LEVEL_METER_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.levelMeterMode;
 }
@@ -132,6 +142,8 @@ export function normalizePanelControls(raw) {
     spectrumPeakHold: normalizeSpectrumPeakHold(raw?.spectrumPeakHold),
     spectrumSmoothingPercent: normalizeSpectrumSmoothingPercent(raw?.spectrumSmoothingPercent),
     spectrumTiltDbPerOctave: normalizeSpectrumTiltDbPerOctave(raw?.spectrumTiltDbPerOctave),
+    spectrumYMaxDb: normalizeSpectrumYMaxDb(raw?.spectrumYMaxDb),
+    spectrumYRangeDb: normalizeSpectrumYRangeDb(raw?.spectrumYRangeDb),
     statsVisibleIds: normalizeKnownIds(
       raw?.statsVisibleIds,
       STATS_IDS,
