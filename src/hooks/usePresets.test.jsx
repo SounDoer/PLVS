@@ -247,6 +247,44 @@ describe("usePresets", () => {
     expect(result.current.presets.activeId).toBeNull();
   });
 
+  it("captures and restores panelOpacity in presets", async () => {
+    const setPanelOpacity = vi.fn();
+    const { result } = renderPresetHook({ panelOpacity: 75, setPanelOpacity });
+    await act(async () => {
+      await result.current.presets.save("WithOpacity");
+    });
+    const saved = presetsStore.read().list[0];
+    expect(saved.panelOpacity).toBe(75);
+
+    // Apply restores it
+    await act(async () => {
+      await result.current.presets.apply(saved.id);
+    });
+    expect(setPanelOpacity).toHaveBeenCalledWith(75);
+  });
+
+  it("does not call setPanelOpacity when applying an older preset without panelOpacity", async () => {
+    const setPanelOpacity = vi.fn();
+    presetsStore.patch({
+      list: [
+        {
+          id: "p-old",
+          name: "Old",
+          tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: {},
+        },
+      ],
+      activeId: null,
+    });
+    const { result } = renderPresetHook({ setPanelOpacity });
+    await act(async () => {
+      await result.current.presets.apply("p-old");
+    });
+    expect(setPanelOpacity).not.toHaveBeenCalled();
+  });
+
   it("renames and removes presets", () => {
     presetsStore.patch({
       list: [

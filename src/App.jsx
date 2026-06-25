@@ -175,6 +175,8 @@ function AppContent() {
     setWindowPinned: setPinned,
     focusView,
     setFocusView,
+    panelOpacity,
+    setPanelOpacity,
   });
   useFocusViewWindow(focusView.autoHideControls);
 

@@ -36,6 +36,8 @@ export function usePresets({
   setWindowPinned = () => {},
   focusView = DEFAULT_FOCUS_VIEW,
   setFocusView = () => {},
+  panelOpacity = 100,
+  setPanelOpacity = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
@@ -65,11 +67,13 @@ export function usePresets({
       ),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
+      panelOpacity,
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
   }, [
     windowPinned,
     focusView,
+    panelOpacity,
     workspaceState.panelControlsById,
     workspaceState.panelOrder,
     workspaceState.panelsById,
@@ -118,10 +122,13 @@ export function usePresets({
       if (preset.focusView) {
         setFocusView(normalizeFocusView(preset.focusView));
       }
+      if (typeof preset.panelOpacity === "number") {
+        setPanelOpacity(preset.panelOpacity);
+      }
       write({ activeId: id });
       return true;
     },
-    [setView, setWindowPinned, setFocusView, write]
+    [setView, setWindowPinned, setFocusView, setPanelOpacity, write]
   );
 
   const update = useCallback(
