@@ -20,6 +20,7 @@ export function FocusViewPopoverContent({
   focusView = DEFAULT_FOCUS_VIEW,
   setAutoHideControls = () => {},
   setCompactPanels = () => {},
+  setBorderless = () => {},
   panelOpacity = DEFAULT_PANEL_OPACITY,
   setPanelOpacity = () => {},
 }) {
@@ -32,19 +33,25 @@ export function FocusViewPopoverContent({
       </p>
       <FocusSwitch
         id="focus-view-always-on-top"
-        label="Always on top"
+        label="Always on Top"
         checked={pinned === true}
         onCheckedChange={setPinned}
       />
       <FocusSwitch
         id="focus-view-compact-panels"
-        label="Compact panels"
+        label="Compact Panels"
         checked={normalized.compactPanels}
         onCheckedChange={setCompactPanels}
       />
       <FocusSwitch
+        id="focus-view-borderless"
+        label="Hide Chrome"
+        checked={normalized.borderless}
+        onCheckedChange={setBorderless}
+      />
+      <FocusSwitch
         id="focus-view-auto-hide-controls"
-        label="Auto-hide controls"
+        label="Auto-hide Controls"
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
       />

@@ -199,6 +199,14 @@ describe("App toolbar", () => {
     expect(appSource).toContain("showFocusControls");
   });
 
+  it("suppresses the native WebView context menu globally", () => {
+    expect(appSource).toContain("preventNativeContextMenu");
+    expect(appSource).toContain('window.addEventListener("contextmenu", preventNativeContextMenu)');
+    expect(appSource).toContain(
+      'window.removeEventListener("contextmenu", preventNativeContextMenu)'
+    );
+  });
+
   it("keeps auto-hidden controls mounted while toolbar popovers are open", () => {
     expect(appSource).toContain(
       "const [focusControlsHeld, setFocusControlsHeld] = useState(false);"

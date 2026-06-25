@@ -166,6 +166,7 @@ describe("useSettings", () => {
     expect(result.current.focusView).toEqual({
       autoHideControls: false,
       compactPanels: false,
+      borderless: false,
     });
   });
 
@@ -178,6 +179,7 @@ describe("useSettings", () => {
     expect(result.current.focusView).toEqual({
       autoHideControls: true,
       compactPanels: true,
+      borderless: false,
     });
   });
 
@@ -190,6 +192,7 @@ describe("useSettings", () => {
     expect(result.current.focusView).toEqual({
       autoHideControls: false,
       compactPanels: false,
+      borderless: false,
     });
   });
 
@@ -204,6 +207,7 @@ describe("useSettings", () => {
     expect(JSON.parse(localStorage.getItem("plvs:settings")).focusView).toEqual({
       autoHideControls: true,
       compactPanels: false,
+      borderless: false,
     });
     expect(presetsStore.read().activeId).toBeNull();
 
@@ -214,6 +218,7 @@ describe("useSettings", () => {
     expect(JSON.parse(localStorage.getItem("plvs:settings")).focusView).toEqual({
       autoHideControls: true,
       compactPanels: true,
+      borderless: false,
     });
   });
 
@@ -232,6 +237,7 @@ describe("useSettings", () => {
       expect(result.current.focusView).toEqual({
         autoHideControls: true,
         compactPanels: false,
+        borderless: false,
       });
     });
   });

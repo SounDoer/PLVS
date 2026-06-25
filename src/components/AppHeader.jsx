@@ -75,6 +75,7 @@ export function AppHeader({
   setPinned,
   setAutoHideControls,
   setCompactPanels,
+  setBorderless,
   panelOpacity,
   setPanelOpacity,
   presets,
@@ -210,6 +211,7 @@ export function AppHeader({
               focusView={focusView}
               setAutoHideControls={setAutoHideControls}
               setCompactPanels={setCompactPanels}
+              setBorderless={setBorderless}
               panelOpacity={panelOpacity}
               setPanelOpacity={setPanelOpacity}
             />

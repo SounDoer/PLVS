@@ -37,6 +37,7 @@ describe("settings defaults", () => {
     expect(normalizeSettingsFocusView({ autoHideControls: true, compactPanels: 1 })).toEqual({
       autoHideControls: true,
       compactPanels: false,
+      borderless: false,
     });
     expect(normalizeThemeEditorPos({ x: 12, y: 24 })).toEqual({ x: 12, y: 24 });
     expect(normalizeThemeEditorPos({ x: "12", y: 24 })).toEqual(DEFAULT_THEME_EDITOR_POS);

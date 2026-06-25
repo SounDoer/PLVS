@@ -18,10 +18,10 @@ async function setWindowShadow(enabled) {
   }
 }
 
-export function useFocusViewWindow(autoHideControls) {
+export function useFocusViewWindow(autoHideControls, borderless) {
   useEffect(() => {
-    const frameless = autoHideControls === true;
+    const frameless = autoHideControls === true || borderless === true;
     void setWindowDecorations(!frameless).catch(() => {});
     void setWindowShadow(!frameless).catch(() => {});
-  }, [autoHideControls]);
+  }, [autoHideControls, borderless]);
 }

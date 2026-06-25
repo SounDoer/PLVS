@@ -48,6 +48,7 @@ import {
   updateFileEntry,
 } from "./lib/fileAnalysisSessionRegistry.js";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
+import { preventNativeContextMenu } from "./lib/contextMenu.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
@@ -156,6 +157,7 @@ function AppContent() {
     setFocusView,
     setAutoHideControls,
     setCompactPanels,
+    setBorderless,
     channelLabelOverrides,
     setChannelLabelOverrides,
     editor,
@@ -178,7 +180,7 @@ function AppContent() {
     panelOpacity,
     setPanelOpacity,
   });
-  useFocusViewWindow(focusView.autoHideControls);
+  useFocusViewWindow(focusView.autoHideControls, focusView.borderless);
 
   const {
     audioDevices,
@@ -632,7 +634,11 @@ function AppContent() {
   const activePresetName =
     presets.list.find((preset) => preset.id === presets.activeId)?.name ?? "-";
   const focusViewActive =
-    pinned || focusView.autoHideControls || focusView.compactPanels || panelOpacity < 100;
+    pinned ||
+    focusView.autoHideControls ||
+    focusView.compactPanels ||
+    focusView.borderless ||
+    panelOpacity < 100;
 
   const showFocusControls = useCallback(() => {
     window.clearTimeout(focusControlsHideTimerRef.current);
@@ -676,10 +682,11 @@ function AppContent() {
     setFocusControlsHeld(false);
   }, []);
 
+  const frameless = focusView.autoHideControls || focusView.borderless;
+
   const handleWindowDrag = useCallback(
     async (event) => {
-      if (!focusView.autoHideControls || event.button !== 0 || event.target !== event.currentTarget)
-        return;
+      if (!frameless || event.button !== 0 || event.target !== event.currentTarget) return;
       if (!isTauri()) return;
       const releaseAfterDrag = () => {
         releaseFocusControlsHold();
@@ -698,7 +705,7 @@ function AppContent() {
         releaseAfterDrag();
       }
     },
-    [focusView.autoHideControls, holdFocusControls, releaseFocusControlsHold]
+    [frameless, holdFocusControls, releaseFocusControlsHold]
   );
 
   useEffect(() => {
@@ -1209,6 +1216,11 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    window.addEventListener("contextmenu", preventNativeContextMenu);
+    return () => window.removeEventListener("contextmenu", preventNativeContextMenu);
+  }, []);
+
+  useEffect(() => {
     selectedOffsetRef.current = selectedOffset;
   }, [selectedOffset]);
 
@@ -1351,9 +1363,9 @@ function AppContent() {
               autoHideControls={focusView.autoHideControls}
               onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
               onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
-              onPointerDown={focusView.autoHideControls ? handleWindowDrag : undefined}
-              onPointerUp={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
-              onPointerCancel={focusView.autoHideControls ? releaseFocusControlsHold : undefined}
+              onPointerDown={frameless ? handleWindowDrag : undefined}
+              onPointerUp={frameless ? releaseFocusControlsHold : undefined}
+              onPointerCancel={frameless ? releaseFocusControlsHold : undefined}
               sourceTransportState={sourceTransportState}
               sourceMode={sourceMode}
               onSourceModeChange={onSourceModeChange}
@@ -1377,6 +1389,7 @@ function AppContent() {
               setPinned={setPinned}
               setAutoHideControls={setAutoHideControls}
               setCompactPanels={setCompactPanels}
+              setBorderless={setBorderless}
               panelOpacity={panelOpacity}
               setPanelOpacity={setPanelOpacity}
               presets={presets}

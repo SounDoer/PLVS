@@ -139,6 +139,7 @@ describe("usePresets", () => {
     expect(setFocusView).toHaveBeenCalledWith({
       autoHideControls: true,
       compactPanels: true,
+      borderless: false,
     });
     expect(presetsStore.read().activeId).toBe("p1");
   });

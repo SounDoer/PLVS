@@ -137,6 +137,10 @@ export function useSettings({ onClearRef } = {}) {
     setFocusView({ ...focusView, compactPanels: value === true });
   }
 
+  function setBorderless(value) {
+    setFocusView({ ...focusView, borderless: value === true });
+  }
+
   function setPanelOpacity(value) {
     const next = normalizePanelOpacity(value);
     settingsStore.patch({ panelOpacity: next });
@@ -244,6 +248,7 @@ export function useSettings({ onClearRef } = {}) {
     setFocusView,
     setAutoHideControls,
     setCompactPanels,
+    setBorderless,
     panelOpacity,
     setPanelOpacity,
     autostartEnabled,
