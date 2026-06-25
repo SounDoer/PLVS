@@ -235,6 +235,7 @@ export function SpectrogramPanel({ compact = false }) {
             <div ref={containerRef} className="relative min-h-0 h-full">
               <canvas
                 ref={canvasRef}
+                style={{ opacity: "var(--panel-opacity-meter, 1)" }}
                 className={cn(
                   "absolute inset-0 h-full w-full",
                   historyChartInteractive ? "cursor-crosshair" : "pointer-events-none"
