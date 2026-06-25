@@ -19,8 +19,8 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
   spectrumPeakHold: false,
-  spectrumSmoothingPercent: 50,
-  spectrumTiltDbPerOctave: 4.5,
+  spectrumSmoothingPercent: 25,
+  spectrumTiltDbPerOctave: 3,
   spectrumYMaxDb: -12,
   spectrumYRangeDb: 84,
   statsVisibleIds: [

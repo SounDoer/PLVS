@@ -73,8 +73,8 @@ describe("panelControls", () => {
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      spectrumSmoothingPercent: 50,
-      spectrumTiltDbPerOctave: 4.5,
+      spectrumSmoothingPercent: 25,
+      spectrumTiltDbPerOctave: 3,
       spectrumYMaxDb: -12,
       spectrumYRangeDb: 84,
       statsVisibleIds: [
@@ -170,8 +170,8 @@ describe("panelControls", () => {
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      spectrumSmoothingPercent: 50,
-      spectrumTiltDbPerOctave: 4.5,
+      spectrumSmoothingPercent: 25,
+      spectrumTiltDbPerOctave: 3,
       spectrumYMaxDb: -12,
       spectrumYRangeDb: 84,
       statsVisibleIds: ["momentary"],
@@ -235,10 +235,10 @@ describe("spectrumPeakHold normalization", () => {
 
 describe("spectrum display controls normalization", () => {
   it("defaults to the current display behavior", () => {
-    expect(normalizePanelControls({}).spectrumSmoothingPercent).toBe(50);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent).toBe(50);
-    expect(normalizePanelControls({}).spectrumTiltDbPerOctave).toBe(4.5);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave).toBe(4.5);
+    expect(normalizePanelControls({}).spectrumSmoothingPercent).toBe(25);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent).toBe(25);
+    expect(normalizePanelControls({}).spectrumTiltDbPerOctave).toBe(3);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave).toBe(3);
     expect(normalizePanelControls({}).spectrumYMaxDb).toBe(-12);
     expect(DEFAULT_PANEL_CONTROLS.spectrumYMaxDb).toBe(-12);
     expect(normalizePanelControls({}).spectrumYRangeDb).toBe(84);
@@ -257,7 +257,7 @@ describe("spectrum display controls normalization", () => {
     );
     expect(
       normalizePanelControls({ spectrumSmoothingPercent: "75" }).spectrumSmoothingPercent
-    ).toBe(50);
+    ).toBe(25);
   });
 
   it("clamps tilt to 0..6 dB per octave", () => {
@@ -267,7 +267,7 @@ describe("spectrum display controls normalization", () => {
       4.25
     );
     expect(normalizePanelControls({ spectrumTiltDbPerOctave: "4.5" }).spectrumTiltDbPerOctave).toBe(
-      4.5
+      3
     );
   });
 

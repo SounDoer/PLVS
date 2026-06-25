@@ -28,10 +28,10 @@ describe("analysisRequests", () => {
 
     expect(result.spectrumRequests).toHaveLength(1);
     expect(result.spectrumRequests[0]).toMatchObject({
-      key: "spectrum:pair:0:1:combined:sm50:tilt450",
+      key: "spectrum:pair:0:1:combined:sm25:tilt300",
       panelIds: ["spectrum", "spectrum-2"],
-      smoothingPercent: 50,
-      tiltDbPerOctave: 4.5,
+      smoothingPercent: 25,
+      tiltDbPerOctave: 3,
     });
   });
 
@@ -53,8 +53,8 @@ describe("analysisRequests", () => {
 
     const requests = deriveAnalysisRequests(s).spectrumRequests;
     expect(requests.map((r) => r.key)).toEqual([
-      "spectrum:pair:0:1:combined:sm50:tilt450",
-      "spectrum:single:2:combined:sm50:tilt450",
+      "spectrum:pair:0:1:combined:sm25:tilt300",
+      "spectrum:single:2:combined:sm25:tilt300",
     ]);
     expect(requests[1].view).toBe("combined");
   });
