@@ -7,6 +7,8 @@ import {
   removeCustomTheme,
 } from "../theme/customThemesRepo.js";
 
+const noop = () => {};
+
 /**
  * @param {{
  *   activeTheme: object,
@@ -19,13 +21,22 @@ import {
  * }} opts
  */
 export function useThemeEditor(opts) {
-  const apply = opts.apply ?? applyThemeToDocument;
-  const notify = opts.onChange ?? (() => {});
+  const {
+    activeTheme,
+    prevSelection,
+    setThemeId,
+    setAppearance,
+    apply: applyOverride,
+    makeId,
+    onChange,
+  } = opts;
+  const apply = applyOverride ?? applyThemeToDocument;
+  const notify = onChange ?? noop;
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
   const [dirty, setDirty] = useState(false);
   const draftRef = useRef(/** @type {object|null} */ (null));
   const wasNewRef = useRef(false);
-  const prevRef = useRef(opts.prevSelection);
+  const prevRef = useRef(prevSelection);
 
   const applyDraft = useCallback(
     (next) => apply(next.id, { ...listCustomThemes(), [next.id]: next }),
@@ -53,17 +64,26 @@ export function useThemeEditor(opts) {
   const beginCreate = useCallback(
     (name) => {
       wasNewRef.current = true;
-      prevRef.current = opts.prevSelection;
-      const d = makeCustomThemeFromBase(opts.activeTheme, name, opts.makeId);
+      prevRef.current = prevSelection;
+      const d = makeCustomThemeFromBase(activeTheme, name, makeId);
       upsertCustomTheme(d);
-      opts.setAppearance("fixed");
-      opts.setThemeId(d.id);
+      setAppearance("fixed");
+      setThemeId(d.id);
       setDraftBoth(d);
       setDirty(false);
       applyDraft(d);
       notify();
     },
-    [opts, applyDraft, setDraftBoth, notify]
+    [
+      activeTheme,
+      applyDraft,
+      makeId,
+      notify,
+      prevSelection,
+      setAppearance,
+      setDraftBoth,
+      setThemeId,
+    ]
   );
 
   // Pure mutate of the current draft, then sync + apply + mark dirty (no side-effects in setState).
@@ -108,13 +128,13 @@ export function useThemeEditor(opts) {
     const d = draftRef.current;
     if (d && wasNewRef.current) removeCustomTheme(d.id);
     const prev = prevRef.current;
-    opts.setAppearance(prev.appearance);
-    opts.setThemeId(prev.themeId);
+    setAppearance(prev.appearance);
+    setThemeId(prev.themeId);
     apply(prev.appearance === "fixed" ? prev.themeId : "plvs-dark", listCustomThemes());
     setDraftBoth(null);
     setDirty(false);
     notify();
-  }, [opts, apply, setDraftBoth, notify]);
+  }, [apply, notify, setAppearance, setDraftBoth, setThemeId]);
 
   return {
     isEditing: draft != null,

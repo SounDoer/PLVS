@@ -50,5 +50,7 @@ export default defineConfig({
     })(),
     minify: process.env.TAURI_DEBUG ? false : "esbuild",
     sourcemap: !!process.env.TAURI_DEBUG,
+    // PLVS is a local Tauri app with one primary route; keep the warning for real growth.
+    chunkSizeWarningLimit: 900,
   },
 });
