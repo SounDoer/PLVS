@@ -48,27 +48,26 @@ export function FocusViewPopoverContent({
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
       />
-      <div className="flex items-center gap-3 rounded px-2 py-1.5">
-        <Label
-          htmlFor="panel-opacity"
-          className="min-w-0 shrink-0 text-xs font-normal text-foreground"
-        >
+      <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
+        <Label htmlFor="panel-opacity" className="min-w-0 text-xs font-normal text-foreground">
           Opacity
         </Label>
-        <input
-          id="panel-opacity"
-          aria-label="Panel opacity"
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={panelOpacity}
-          onInput={(e) => setPanelOpacity(Number(e.target.value))}
-          className="h-4 flex-1 accent-primary"
-        />
-        <span className="w-7 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
-          {panelOpacity}%
-        </span>
+        <div className="flex items-center gap-1.5">
+          <input
+            id="panel-opacity"
+            aria-label="Panel opacity"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={panelOpacity}
+            onInput={(e) => setPanelOpacity(Number(e.target.value))}
+            className="h-4 w-20 accent-primary"
+          />
+          <span className="w-7 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+            {panelOpacity}%
+          </span>
+        </div>
       </div>
     </div>
   );

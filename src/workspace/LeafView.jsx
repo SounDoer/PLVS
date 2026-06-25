@@ -120,7 +120,7 @@ export function LeafView({ node, path, style }) {
       style={{
         ...style,
         backgroundColor:
-          "color-mix(in srgb, var(--card) calc(var(--panel-opacity, 1) * 55%), transparent)",
+          "color-mix(in srgb, var(--card) var(--panel-opacity-card, 55%), transparent)",
       }}
     >
       {/* Zone hint: above */}

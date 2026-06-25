@@ -508,7 +508,9 @@ function AppContent() {
   }, [loudnessWeights, running, sendTrackedLoudnessWeights]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--panel-opacity", String(panelOpacity / 100));
+    const s = document.documentElement.style;
+    s.setProperty("--panel-opacity", `${panelOpacity}%`);
+    s.setProperty("--panel-opacity-card", `${Math.round(panelOpacity * 0.55)}%`);
   }, [panelOpacity]);
 
   useEffect(() => {
