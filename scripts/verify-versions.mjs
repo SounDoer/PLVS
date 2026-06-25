@@ -2,6 +2,7 @@
  * Ensures root package.json "version" matches:
  * - src-tauri/Cargo.toml [package].version
  * - src-tauri/tauri.conf.json "version"
+ * - package-lock.json root "version" (top-level + packages[""])
  */
 import fs from "fs";
 import path from "path";
@@ -39,13 +40,37 @@ if (typeof tauriVersion !== "string") {
   process.exit(1);
 }
 
-if (pkgVersion !== cargoVersion || pkgVersion !== tauriVersion) {
+// package-lock.json — root version mirrors in top-level + packages[""]
+const lockPath = path.join(root, "package-lock.json");
+let lockVersion;
+try {
+  const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+  const top = typeof lock.version === "string" ? lock.version : undefined;
+  const rootPkg = lock.packages?.[""]?.version;
+  if (top !== rootPkg) {
+    console.error("package-lock.json: top-level version and packages[\"\"].version disagree");
+    console.error(`  version            ${top}`);
+    console.error(`  packages[""].version  ${rootPkg}`);
+    process.exit(1);
+  }
+  lockVersion = top;
+} catch (e) {
+  console.error("package-lock.json: not found or unreadable");
+  process.exit(1);
+}
+
+if (
+  pkgVersion !== cargoVersion ||
+  pkgVersion !== tauriVersion ||
+  pkgVersion !== lockVersion
+) {
   console.error(
-    "Version mismatch — package.json, src-tauri/Cargo.toml [package], src-tauri/tauri.conf.json must match:",
+    "Version mismatch — package.json, src-tauri/Cargo.toml [package], src-tauri/tauri.conf.json, package-lock.json must match:",
   );
-  console.error(`  package.json     ${pkgVersion}`);
-  console.error(`  Cargo.toml       ${cargoVersion}`);
-  console.error(`  tauri.conf.json  ${tauriVersion}`);
+  console.error(`  package.json      ${pkgVersion}`);
+  console.error(`  Cargo.toml        ${cargoVersion}`);
+  console.error(`  tauri.conf.json   ${tauriVersion}`);
+  console.error(`  package-lock.json ${lockVersion}`);
   process.exit(1);
 }
 

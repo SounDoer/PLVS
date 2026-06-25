@@ -61,6 +61,27 @@ try {
   console.warn("Cargo.lock:            skipped (cargo not available)");
 }
 
+// package-lock.json — sync root version mirrors (top-level + packages[""])
+const lockPath = join(root, "package-lock.json");
+try {
+  const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+  let lockChanged = false;
+  if (typeof lock.version === "string" && lock.version !== newVersion) {
+    lock.version = newVersion;
+    lockChanged = true;
+  }
+  if (lock.packages?.[""]?.version !== newVersion) {
+    lock.packages[""].version = newVersion;
+    lockChanged = true;
+  }
+  if (lockChanged) {
+    writeFileSync(lockPath, JSON.stringify(lock, null, 2) + "\n", "utf8");
+    console.log(`package-lock.json:      ${oldVersion} → ${newVersion}`);
+  }
+} catch {
+  console.warn("package-lock.json:      skipped (not found or unreadable)");
+}
+
 // Verify
 try {
   execSync("node scripts/verify-versions.mjs", { cwd: root, stdio: "inherit" });
