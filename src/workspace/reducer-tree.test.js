@@ -424,6 +424,15 @@ describe("SET_PANEL_PINNED", () => {
     expect(next.pinnedPanelsById).toEqual({ spectrum: { width: 640, height: 260 } });
   });
 
+  it("preserves sub-pixel pinned sizes from DOM measurements", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "SET_PANEL_PINNED",
+      payload: { id: "spectrum", size: { width: 640.5, height: 260.25 } },
+    });
+
+    expect(next.pinnedPanelsById).toEqual({ spectrum: { width: 640.5, height: 260.25 } });
+  });
+
   it("removes a panel's pinned pixel size", () => {
     const stateWithPin = {
       ...DEFAULT_WORKSPACE_STATE,

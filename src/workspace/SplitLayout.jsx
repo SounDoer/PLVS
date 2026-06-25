@@ -55,6 +55,10 @@ function formatFlexFactor(value) {
   return Number(value.toFixed(6)).toString();
 }
 
+function formatPx(value) {
+  return Number(value.toFixed(3)).toString();
+}
+
 export function getSplitSizingContext(visibleSizes, dividerCount, pinnedPixels = []) {
   const isPinned = (i) => Number.isFinite(pinnedPixels[i]) && pinnedPixels[i] > 0;
   const fixedSizes = visibleSizes.filter((s, i) => s !== null && !isPinned(i));
@@ -75,7 +79,7 @@ export function getSplitSizingContext(visibleSizes, dividerCount, pinnedPixels =
 export function getSplitChildStyle(size, sizingContext, pinnedPx = null) {
   const baseStyle = { minWidth: 0, minHeight: 0 };
   if (Number.isFinite(pinnedPx) && pinnedPx > 0) {
-    return { flex: `0 0 ${Math.round(pinnedPx)}px`, ...baseStyle };
+    return { flex: `0 0 ${formatPx(pinnedPx)}px`, ...baseStyle };
   }
   if (size === null) return { flex: "1 1 0", ...baseStyle };
 

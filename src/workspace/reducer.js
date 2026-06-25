@@ -47,8 +47,8 @@ export function normalizePinnedPanelsById(panelsById, pinnedPanelsById) {
       .map(([id, size]) => [
         id,
         {
-          width: Math.max(0, Math.round(size.width)),
-          height: Math.max(0, Math.round(size.height)),
+          width: Math.max(0, size.width),
+          height: Math.max(0, size.height),
         },
       ])
   );
@@ -66,7 +66,7 @@ function updatePinnedDimensionForNode(pinnedPanelsById, node, dimension, px) {
   if (ids.length === 0) return pinnedPanelsById;
   const next = { ...pinnedPanelsById };
   for (const id of ids) {
-    next[id] = { ...next[id], [dimension]: Math.max(0, Math.round(px)) };
+    next[id] = { ...next[id], [dimension]: Math.max(0, px) };
   }
   return next;
 }

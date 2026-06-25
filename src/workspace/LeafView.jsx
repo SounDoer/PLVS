@@ -84,6 +84,14 @@ function nodeHasVisiblePanels(node, panelsById) {
   return node.children.some((child) => nodeHasVisiblePanels(child, panelsById));
 }
 
+function getMeasuredSize(el, dimension) {
+  if (!el) return 0;
+  const rect = el.getBoundingClientRect();
+  const value = dimension === "width" ? rect.width : rect.height;
+  const fallback = dimension === "width" ? el.offsetWidth : el.offsetHeight;
+  return value || fallback || 0;
+}
+
 // ---------------------------------------------------------------------------
 // LeafView
 // ---------------------------------------------------------------------------
@@ -135,8 +143,8 @@ export function LeafView({ node, path, style }) {
     if (!el) return { width: 0, height: 0 };
     const rect = el.getBoundingClientRect();
     return {
-      width: Math.round(rect.width || el.offsetWidth || 0),
-      height: Math.round(rect.height || el.offsetHeight || 0),
+      width: rect.width || el.offsetWidth || 0,
+      height: rect.height || el.offsetHeight || 0,
     };
   }
 
@@ -163,7 +171,7 @@ export function LeafView({ node, path, style }) {
           const el = childElements[renderIdx];
           return {
             childIdx,
-            sizePx: isH ? (el?.offsetWidth ?? 0) : (el?.offsetHeight ?? 0),
+            sizePx: getMeasuredSize(el, isH ? "width" : "height"),
           };
         }),
       });

@@ -80,6 +80,16 @@ describe("getSplitChildStyle", () => {
     });
   });
 
+  it("preserves sub-pixel pinned flex bases to avoid a visual nudge on pin", () => {
+    const sizing = getSplitSizingContext([0.14, null, 0.18], 2, [219.5, null, 0]);
+
+    expect(getSplitChildStyle(0.14, sizing, 219.5)).toEqual({
+      flex: "0 0 219.5px",
+      minWidth: 0,
+      minHeight: 0,
+    });
+  });
+
   it("subtracts pinned pixel space from ratio-sized siblings", () => {
     const sizing = getSplitSizingContext([0.14, null, 0.18], 2, [220, null, 0]);
 
