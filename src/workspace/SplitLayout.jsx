@@ -220,7 +220,10 @@ function FullscreenOverlay() {
 
   return (
     <div
-      className="absolute inset-0 z-50 flex flex-col bg-background"
+      className="absolute inset-0 z-50 flex flex-col"
+      style={{
+        backgroundColor: "color-mix(in srgb, var(--background) var(--panel-opacity), transparent)",
+      }}
       onKeyDown={(e) => e.key === "Escape" && setFullscreen(null)}
       tabIndex={-1}
     >

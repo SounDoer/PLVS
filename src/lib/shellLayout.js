@@ -19,17 +19,17 @@ export const SHELL_SURFACE_INSET_SHADOW = "shadow-[inset_0_1px_0_rgba(255,255,25
 export const SHELL_SURFACE_SOFT_SHADOW =
   "shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_0_rgba(255,255,255,0.026)]";
 
-export const SHELL_HEADER = `flex shrink-0 items-center gap-3 border-border bg-card/60 py-[var(--ui-header-pad-y)] z-10 ${SHELL_SURFACE_BASE} ${SHELL_SURFACE_SOFT_SHADOW}`;
+export const SHELL_HEADER = `flex shrink-0 items-center gap-3 border-border bg-[color-mix(in_srgb,var(--card)_var(--panel-opacity-header),transparent)] py-[var(--ui-header-pad-y)] z-10 ${SHELL_SURFACE_BASE} ${SHELL_SURFACE_SOFT_SHADOW}`;
 
-export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 border-border bg-card/75 py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(0,0,0,0.18)] z-30 ${SHELL_SURFACE_BASE}`;
+export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 border-border bg-[color-mix(in_srgb,var(--card)_var(--panel-opacity-header-overlay),transparent)] py-[var(--ui-header-pad-y)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(0,0,0,0.18)] z-30 ${SHELL_SURFACE_BASE}`;
 
 export const SHELL_HEADER_ACTIONS = "flex items-center gap-[var(--ui-header-action-gap)]";
 
 export const SHELL_FOOTER =
-  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-card/60 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]";
+  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-[color-mix(in_srgb,var(--card)_var(--panel-opacity-header),transparent)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[14px] backdrop-saturate-[140%]";
 
 export const SHELL_FOOTER_OVERLAY =
-  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-card/75 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_-8px_24px_rgba(0,0,0,0.14)] backdrop-blur-[14px] backdrop-saturate-[140%] z-30";
+  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-[color-mix(in_srgb,var(--card)_var(--panel-opacity-header-overlay),transparent)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_-8px_24px_rgba(0,0,0,0.14)] backdrop-blur-[14px] backdrop-saturate-[140%] z-30";
 
 export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3 cursor-move";
 
