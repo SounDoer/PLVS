@@ -83,6 +83,7 @@ pub fn run() {
         .title("PLVS")
         .resizable(true)
         .visible(false)
+        .transparent(true)
         .inner_size(1280.0, 860.0)
         .initialization_script(&init_script)
         .build()
