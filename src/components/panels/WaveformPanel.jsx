@@ -349,7 +349,7 @@ function WaveformLane({
           "flex shrink-0 items-center justify-end text-[length:var(--ui-fs-axis)] text-muted-foreground"
         )}
       >
-        {compact ? null : label}
+        {label}
       </div>
       <div ref={containerRef} className="relative min-h-0 min-w-0 flex-1">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
