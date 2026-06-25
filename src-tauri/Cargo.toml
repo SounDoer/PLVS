@@ -1,6 +1,6 @@
 [package]
 name = "plvs"
-version = "0.5.0"
+version = "0.5.1"
 description = "PLVS — real-time audio metering (Tauri desktop shell)"
 authors = ["SounDoer"]
 license = "MIT"

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-21
+
+### Added
+- Panel size pinning for workspace panels
+- Hide Chrome toggle with native context menu suppression
+
+### Fixed
+- Preserve subpixel panel pin sizes
+- Bold value marker now hidden when below scale range
+- Lower default spectrum display shaping
+- Tuned multiresolution spectrum smoothing
+
 ## [0.5.0] - 2026-06-25
 
 ### Added
