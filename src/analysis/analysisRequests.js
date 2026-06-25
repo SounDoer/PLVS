@@ -5,6 +5,14 @@ import { resolvePanelModuleId } from "../workspace/panelInstances.js";
 export const MAX_SPECTRUM_REQUESTS = 4;
 export const MAX_VECTORSCOPE_REQUESTS = 4;
 
+function spectrumDisplayControlsFromControls(panelControls) {
+  const controls = normalizePanelControls(panelControls);
+  const smoothingPercent = Math.round(controls.spectrumSmoothingPercent);
+  const tiltDbPerOctave = Math.round(controls.spectrumTiltDbPerOctave * 100) / 100;
+  const tiltCentidb = Math.round(tiltDbPerOctave * 100);
+  return { smoothingPercent, tiltDbPerOctave, tiltCentidb };
+}
+
 function collectPanelIdsFromTree(node, panelsById, out = []) {
   if (!node) return out;
   if (node.type === "leaf") {
@@ -21,8 +29,10 @@ export function spectrumRequestKeyFromControls(panelControls) {
   const controls = normalizePanelControls(panelControls);
   const view = controls.spectrumView ?? "combined";
   const sel = controls.spectrumChannel;
-  if (sel?.type === "single") return `spectrum:single:${sel.ch}:combined`;
-  return `spectrum:pair:${sel?.x ?? 0}:${sel?.y ?? 1}:${view}`;
+  const display = spectrumDisplayControlsFromControls(controls);
+  const suffix = `sm${display.smoothingPercent}:tilt${display.tiltCentidb}`;
+  if (sel?.type === "single") return `spectrum:single:${sel.ch}:combined:${suffix}`;
+  return `spectrum:pair:${sel?.x ?? 0}:${sel?.y ?? 1}:${view}:${suffix}`;
 }
 
 export function vectorscopeRequestKeyFromControls(panelControls) {
@@ -63,9 +73,12 @@ export function deriveAnalysisRequests(state) {
     const controls = getPanelControls(state, panelId);
     if (moduleId === "spectrum" || moduleId === "spectrogram") {
       const key = spectrumRequestKeyFromControls(controls);
+      const display = spectrumDisplayControlsFromControls(controls);
       pushRequest(spectrumByKey, key, panelId, {
         channel: controls.spectrumChannel,
         view: controls.spectrumChannel?.type === "single" ? "combined" : controls.spectrumView,
+        smoothingPercent: display.smoothingPercent,
+        tiltDbPerOctave: display.tiltDbPerOctave,
       });
       statusByPanelId[panelId] = "active";
     } else if (moduleId === "vectorscope") {

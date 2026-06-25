@@ -510,6 +510,100 @@ describe("PanelSettingsContent", () => {
     expect(onSpectrumPeakHoldToggle).toHaveBeenCalledTimes(1);
   });
 
+  it("shows compact spectrum display controls after Peak hold", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+        spectrumPeakHold={true}
+        onSpectrumPeakHoldToggle={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const peak = screen.getByText("Peak hold");
+    const smoothing = screen.getByText("Smoothing");
+    const tilt = screen.getByText("Tilt");
+    expect(peak.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(smoothing.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByLabelText("spectrum smoothing")).toBeTruthy();
+    expect(screen.getByLabelText("spectrum tilt")).toBeTruthy();
+    expect(screen.queryByText("50%")).toBeNull();
+    expect(screen.queryByText("4.50 dB/oct")).toBeNull();
+    expect(screen.queryByText("Smoothing: 50%")).toBeNull();
+    expect(screen.queryByText("Tilt: 4.50 dB/oct")).toBeNull();
+  });
+
+  it("shows spectrum slider values on hover and focus", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+        spectrumPeakHold={false}
+        onSpectrumPeakHoldToggle={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const smoothing = screen.getByLabelText("spectrum smoothing");
+    fireEvent.mouseEnter(smoothing);
+    expect(screen.getByText("50%")).toBeTruthy();
+    expect(screen.queryByText("Smoothing: 50%")).toBeNull();
+    fireEvent.mouseLeave(smoothing);
+    expect(screen.queryByText("50%")).toBeNull();
+
+    const tilt = screen.getByLabelText("spectrum tilt");
+    fireEvent.focus(tilt);
+    expect(screen.getByText("4.50 dB/oct")).toBeTruthy();
+    expect(screen.queryByText("Tilt: 4.50 dB/oct")).toBeNull();
+  });
+
+  it("commits spectrum display slider changes on release", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+        spectrumPeakHold={false}
+        onSpectrumPeakHoldToggle={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const smoothing = screen.getByLabelText("spectrum smoothing");
+    fireEvent.change(smoothing, { target: { value: "42" } });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+    fireEvent.pointerUp(smoothing);
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumSmoothingPercent: 42,
+    });
+
+    const tilt = screen.getByLabelText("spectrum tilt");
+    fireEvent.change(tilt, { target: { value: "1.25" } });
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    fireEvent.keyUp(tilt, { key: "ArrowLeft" });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumTiltDbPerOctave: 1.25,
+    });
+  });
+
   it("hides the Peak toggle on the spectrogram tab", () => {
     render(
       <PanelSettingsContent
@@ -522,6 +616,21 @@ describe("PanelSettingsContent", () => {
       />
     );
     expect(screen.queryByLabelText("peak hold")).toBeNull();
+  });
+
+  it("hides spectrum display sliders on the spectrogram tab", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="spectrogram"
+        channelCount={6}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("spectrum smoothing")).toBeNull();
+    expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
   });
 
   it("does not render loudness controls before panel controls are wired", () => {

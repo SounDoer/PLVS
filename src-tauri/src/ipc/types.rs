@@ -13,12 +13,14 @@ pub enum SpectrumAnalysisChannel {
   Single { ch: u16 },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpectrumAnalysisRequest {
   pub key: String,
   pub channel: SpectrumAnalysisChannel,
   pub view: String,
+  pub smoothing_percent: f64,
+  pub tilt_db_per_octave: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,7 +31,7 @@ pub struct VectorscopeAnalysisRequest {
   pub y: u16,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisRequests {
   pub spectrum: Vec<SpectrumAnalysisRequest>,

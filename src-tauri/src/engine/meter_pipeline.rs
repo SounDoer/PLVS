@@ -1,6 +1,6 @@
 //! PCM → meters; drives the `AudioFramePayload` emit rate.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 use crate::dsp::loudness::LoudnessBlock;
@@ -343,6 +343,23 @@ impl MeterPipeline {
       other => other,
     };
 
+    let active_spectrum_keys: HashSet<&str> = analysis_requests
+      .spectrum
+      .iter()
+      .map(|request| request.key.as_str())
+      .collect();
+    self
+      .spectrum_by_key
+      .retain(|key, _| active_spectrum_keys.contains(key.as_str()));
+    let active_vectorscope_keys: HashSet<&str> = analysis_requests
+      .vectorscope
+      .iter()
+      .map(|request| request.key.as_str())
+      .collect();
+    self
+      .vectorscope_by_key
+      .retain(|key, _| active_vectorscope_keys.contains(key.as_str()));
+
     let mut spectrum_results_by_key = HashMap::new();
     for request in &analysis_requests.spectrum {
       let (spectrum_channel, spectrum_view) = spectrum_request_selection(request);
@@ -350,6 +367,7 @@ impl MeterPipeline {
         .spectrum_by_key
         .entry(request.key.clone())
         .or_insert_with(|| SpectrumMeter::new(self.sample_rate));
+      meter.set_display_controls(request.smoothing_percent, request.tilt_db_per_octave);
       let ctx = PcmContext {
         interleaved,
         channels: ch,
@@ -1218,6 +1236,84 @@ mod tests {
   }
 
   #[test]
+  fn inactive_keyed_analysis_meters_are_pruned() {
+    use crate::ipc::types::{
+      SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
+    };
+
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let frames = 4096 * 2;
+    let pcm = tone_on_channel(frames, channels as usize, sr as f64, 1000.0, 0);
+    let requests_a = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
+        channel: SpectrumAnalysisChannel::Single { ch: 0 },
+        view: "combined".to_string(),
+        smoothing_percent: 50.0,
+        tilt_db_per_octave: 4.5,
+      }],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: "vectorscope:pair:0:1".to_string(),
+        x: 0,
+        y: 1,
+      }],
+    };
+    let requests_b = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: "spectrum:single:0:combined:sm25:tilt450".to_string(),
+        channel: SpectrumAnalysisChannel::Single { ch: 0 },
+        view: "combined".to_string(),
+        smoothing_percent: 25.0,
+        tilt_db_per_octave: 4.5,
+      }],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: "vectorscope:pair:1:0".to_string(),
+        x: 1,
+        y: 0,
+      }],
+    };
+
+    let _ = pipeline.push_pcm_f32_with_requests(
+      &pcm,
+      ChannelLayoutSetting::Auto,
+      &requests_a,
+      None,
+      false,
+    );
+    assert!(pipeline
+      .spectrum_by_key
+      .contains_key("spectrum:single:0:combined:sm50:tilt450"));
+    assert!(pipeline
+      .vectorscope_by_key
+      .contains_key("vectorscope:pair:0:1"));
+
+    let _ = pipeline.push_pcm_f32_with_requests(
+      &pcm,
+      ChannelLayoutSetting::Auto,
+      &requests_b,
+      None,
+      false,
+    );
+
+    assert_eq!(pipeline.spectrum_by_key.len(), 1);
+    assert!(pipeline
+      .spectrum_by_key
+      .contains_key("spectrum:single:0:combined:sm25:tilt450"));
+    assert!(!pipeline
+      .spectrum_by_key
+      .contains_key("spectrum:single:0:combined:sm50:tilt450"));
+    assert_eq!(pipeline.vectorscope_by_key.len(), 1);
+    assert!(pipeline
+      .vectorscope_by_key
+      .contains_key("vectorscope:pair:1:0"));
+    assert!(!pipeline
+      .vectorscope_by_key
+      .contains_key("vectorscope:pair:0:1"));
+  }
+
+  #[test]
   fn keyed_analysis_requests_emit_multiple_live_results() {
     use crate::ipc::types::{
       SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
@@ -1233,14 +1329,18 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:single:0:combined".to_string(),
+          key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 0 },
           view: "combined".to_string(),
+          smoothing_percent: 50.0,
+          tilt_db_per_octave: 4.5,
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:1:combined".to_string(),
+          key: "spectrum:single:1:combined:sm50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 1 },
           view: "combined".to_string(),
+          smoothing_percent: 50.0,
+          tilt_db_per_octave: 4.5,
         },
       ],
       vectorscope: vec![
@@ -1275,11 +1375,11 @@ mod tests {
     assert_eq!(frame.vectorscope_results_by_key.len(), 2);
     assert!(frame
       .spectrum_results_by_key
-      .get("spectrum:single:0:combined")
+      .get("spectrum:single:0:combined:sm50:tilt450")
       .is_some_and(|result| !result.smooth_db.is_empty()));
     assert!(frame
       .spectrum_results_by_key
-      .get("spectrum:single:1:combined")
+      .get("spectrum:single:1:combined:sm50:tilt450")
       .is_some_and(|result| !result.smooth_db.is_empty()));
     assert!(frame
       .vectorscope_results_by_key
@@ -1307,14 +1407,18 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:single:0:combined".to_string(),
+          key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 0 },
           view: "combined".to_string(),
+          smoothing_percent: 50.0,
+          tilt_db_per_octave: 4.5,
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:1:combined".to_string(),
+          key: "spectrum:single:1:combined:sm50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 1 },
           view: "combined".to_string(),
+          smoothing_percent: 50.0,
+          tilt_db_per_octave: 4.5,
         },
       ],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -1345,11 +1449,11 @@ mod tests {
     assert_eq!(visual.spectrum_by_key.len(), 2);
     assert!(visual
       .spectrum_by_key
-      .get("spectrum:single:0:combined")
+      .get("spectrum:single:0:combined:sm50:tilt450")
       .is_some_and(|entry| !entry.smooth_db.is_empty()));
     assert!(visual
       .spectrum_by_key
-      .get("spectrum:single:1:combined")
+      .get("spectrum:single:1:combined:sm50:tilt450")
       .is_some_and(|entry| !entry.smooth_db.is_empty()));
     assert_eq!(visual.vectorscope_by_key.len(), 1);
     assert!(visual
@@ -1376,9 +1480,11 @@ mod tests {
     let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
     let requests = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:single:0:combined".to_string(),
+        key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
         view: "combined".to_string(),
+        smoothing_percent: 50.0,
+        tilt_db_per_octave: 4.5,
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
         key: "vectorscope:pair:0:1".to_string(),
@@ -1394,7 +1500,7 @@ mod tests {
       for entry in &frame.visual_hist_batch {
         if entry
           .spectrum_by_key
-          .get("spectrum:single:0:combined")
+          .get("spectrum:single:0:combined:sm50:tilt450")
           .is_some_and(|e| !e.smooth_db.is_empty())
         {
           *sp += 1;

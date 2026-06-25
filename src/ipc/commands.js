@@ -60,7 +60,7 @@ export function applyWindowBounds(bounds) {
 }
 
 /**
- * @param {{ spectrum: Array<{ key: string; channel: object; view: string }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
+ * @param {{ spectrum: Array<{ key: string; channel: object; view: string; smoothingPercent: number; tiltDbPerOctave: number }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
  */
 export function setAnalysisRequests(requests) {
   return invoke("set_analysis_requests", { requests });

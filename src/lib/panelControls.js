@@ -19,6 +19,8 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
   spectrumPeakHold: false,
+  spectrumSmoothingPercent: 50,
+  spectrumTiltDbPerOctave: 4.5,
   statsVisibleIds: [
     "momentary",
     "shortTerm",
@@ -69,6 +71,19 @@ function normalizeSpectrumPeakHold(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakHold;
 }
 
+function clampNumber(raw, min, max, fallback) {
+  if (!isNumber(raw)) return fallback;
+  return Math.min(max, Math.max(min, raw));
+}
+
+function normalizeSpectrumSmoothingPercent(raw) {
+  return clampNumber(raw, 0, 100, DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent);
+}
+
+function normalizeSpectrumTiltDbPerOctave(raw) {
+  return clampNumber(raw, 0, 6, DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave);
+}
+
 function normalizeLevelMeterMode(raw) {
   return LEVEL_METER_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.levelMeterMode;
 }
@@ -115,6 +130,8 @@ export function normalizePanelControls(raw) {
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
     spectrumPeakHold: normalizeSpectrumPeakHold(raw?.spectrumPeakHold),
+    spectrumSmoothingPercent: normalizeSpectrumSmoothingPercent(raw?.spectrumSmoothingPercent),
+    spectrumTiltDbPerOctave: normalizeSpectrumTiltDbPerOctave(raw?.spectrumTiltDbPerOctave),
     statsVisibleIds: normalizeKnownIds(
       raw?.statsVisibleIds,
       STATS_IDS,

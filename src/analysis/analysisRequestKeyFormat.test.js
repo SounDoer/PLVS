@@ -14,7 +14,12 @@ describe("analysis request key format (shared fixture)", () => {
       entry.type === "single"
         ? { type: "single", ch: entry.ch }
         : { type: "pair", x: entry.x, y: entry.y };
-    const key = spectrumRequestKeyFromControls({ spectrumChannel, spectrumView: entry.view });
+    const key = spectrumRequestKeyFromControls({
+      spectrumChannel,
+      spectrumView: entry.view,
+      spectrumSmoothingPercent: entry.smoothingPercent,
+      spectrumTiltDbPerOctave: entry.tiltDbPerOctave,
+    });
     expect(key).toBe(entry.key);
   });
 

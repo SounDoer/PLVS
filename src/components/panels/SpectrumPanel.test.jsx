@@ -28,7 +28,7 @@ function renderPanel(audioData) {
 }
 
 // Default panel controls resolve to this live request key (pair 0/1, combined view).
-const LIVE_KEY = "spectrum:pair:0:1:combined";
+const LIVE_KEY = "spectrum:pair:0:1:combined:sm50:tilt450";
 
 function liveResult(over = {}) {
   return {

@@ -52,6 +52,22 @@ fn apply_envelope(
   peak_hold_sec: f64,
   peak_decay_db_per_sec: f64,
 ) {
+  if attack_ms <= 0.0 && release_ms <= 0.0 {
+    *smooth = incoming.to_vec();
+    if peak.len() != incoming.len() {
+      *peak = incoming.to_vec();
+      *hold_until = vec![now_sec; incoming.len()];
+    }
+    for (i, &sm) in smooth.iter().enumerate() {
+      if sm >= peak[i] {
+        peak[i] = sm;
+        hold_until[i] = now_sec + peak_hold_sec;
+      } else if now_sec > hold_until[i] {
+        peak[i] = sm.max(peak[i] - peak_decay_db_per_sec * delta_sec);
+      }
+    }
+    return;
+  }
   if smooth.len() != incoming.len() {
     *smooth = incoming.to_vec();
     *peak = incoming.to_vec();
@@ -135,6 +151,25 @@ impl SpectrumMeter {
       cached_peak_b: Vec::new(),
       has_secondary: false,
     }
+  }
+
+  pub fn smoothing_times_ms_for_percent(percent: f64) -> (f64, f64) {
+    let p = percent.clamp(0.0, 100.0);
+    if p <= 0.0 {
+      return (0.0, 0.0);
+    }
+    let normalized = p / 100.0;
+    let exponent = (15.0_f64.log10() / 200.0_f64.log10()).ln() / 0.5_f64.ln();
+    let release_ms = 10.0 * 200.0_f64.powf(normalized.powf(exponent));
+    let attack_ms = release_ms * 0.2;
+    (attack_ms, release_ms)
+  }
+
+  pub fn set_display_controls(&mut self, smoothing_percent: f64, tilt_db_per_octave: f64) {
+    let (attack_ms, release_ms) = Self::smoothing_times_ms_for_percent(smoothing_percent);
+    self.attack_ms = attack_ms;
+    self.release_ms = release_ms;
+    self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
   }
 
   /// Returns the most recently computed `(centers_hz, smooth_db, peak_db)` slices.
@@ -677,6 +712,67 @@ mod tests {
     assert!(
       delta > 4.5 * octaves * 0.6,
       "slope not applied: delta={delta}"
+    );
+  }
+
+  #[test]
+  fn smoothing_percent_50_matches_current_attack_release() {
+    let (attack_ms, release_ms) = SpectrumMeter::smoothing_times_ms_for_percent(50.0);
+    assert!(
+      (attack_ms - 30.0).abs() < 0.1,
+      "50% smoothing should preserve current 30ms attack, got {attack_ms}"
+    );
+    assert!(
+      (release_ms - 150.0).abs() < 0.1,
+      "50% smoothing should preserve current 150ms release, got {release_ms}"
+    );
+  }
+
+  #[test]
+  fn smoothing_percent_100_is_extra_slow() {
+    let (attack_ms, release_ms) = SpectrumMeter::smoothing_times_ms_for_percent(100.0);
+    assert!(
+      (attack_ms - 400.0).abs() < 1.0,
+      "100% smoothing should use about 400ms attack, got {attack_ms}"
+    );
+    assert!(
+      (release_ms - 2000.0).abs() < 1.0,
+      "100% smoothing should use about 2000ms release, got {release_ms}"
+    );
+  }
+
+  #[test]
+  fn zero_tilt_disables_default_slope() {
+    let sr = 48000.0;
+    let mut m = SpectrumMeter::new(sr);
+    m.set_display_controls(75.0, 0.0);
+    let mut x: u32 = 0xC0FFEE;
+    let frames = 16384 * 6;
+    let mut pcm = vec![0.0_f32; frames * 2];
+    for i in 0..frames {
+      x = x.wrapping_mul(1664525).wrapping_add(1013904223);
+      let s = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
+      pcm[i * 2] = s;
+      pcm[i * 2 + 1] = s;
+    }
+    let mut out = None;
+    for _ in 0..4 {
+      out = m.push_interleaved(&pcm, 2, 1.0);
+    }
+    let (smooth, _) = out.expect("spectrum output");
+    let centers = m.band_centers();
+    let val_near = |t: f64| {
+      let (i, _) = centers
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| (**a - t).abs().partial_cmp(&(**b - t).abs()).unwrap())
+        .unwrap();
+      smooth[i]
+    };
+    let delta = val_near(10000.0) - val_near(100.0);
+    assert!(
+      delta < 10.0,
+      "0 dB/oct tilt should not apply the default +4.5 dB/oct slope: delta={delta}"
     );
   }
 

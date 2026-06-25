@@ -103,6 +103,8 @@ function toBackendAnalysisRequests(requests) {
       key: request.key,
       channel: request.channel,
       view: request.view,
+      smoothingPercent: request.smoothingPercent,
+      tiltDbPerOctave: request.tiltDbPerOctave,
     })),
     vectorscope: requests.vectorscopeRequests.map((request) => ({
       key: request.key,

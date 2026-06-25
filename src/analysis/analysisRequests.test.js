@@ -28,8 +28,10 @@ describe("analysisRequests", () => {
 
     expect(result.spectrumRequests).toHaveLength(1);
     expect(result.spectrumRequests[0]).toMatchObject({
-      key: "spectrum:pair:0:1:combined",
+      key: "spectrum:pair:0:1:combined:sm50:tilt450",
       panelIds: ["spectrum", "spectrum-2"],
+      smoothingPercent: 50,
+      tiltDbPerOctave: 4.5,
     });
   });
 
@@ -51,8 +53,8 @@ describe("analysisRequests", () => {
 
     const requests = deriveAnalysisRequests(s).spectrumRequests;
     expect(requests.map((r) => r.key)).toEqual([
-      "spectrum:pair:0:1:combined",
-      "spectrum:single:2:combined",
+      "spectrum:pair:0:1:combined:sm50:tilt450",
+      "spectrum:single:2:combined:sm50:tilt450",
     ]);
     expect(requests[1].view).toBe("combined");
   });
@@ -61,6 +63,16 @@ describe("analysisRequests", () => {
     expect(
       spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumPeakHold: false })
     ).toBe(spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumPeakHold: true }));
+  });
+
+  it("includes smoothing and tilt in the spectrum request key", () => {
+    expect(
+      spectrumRequestKeyFromControls({
+        ...DEFAULT_PANEL_CONTROLS,
+        spectrumSmoothingPercent: 25,
+        spectrumTiltDbPerOctave: 1.25,
+      })
+    ).toBe("spectrum:pair:0:1:combined:sm25:tilt125");
   });
 
   it("includes spectrogram in spectrum-like requests", () => {

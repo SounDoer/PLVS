@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
@@ -66,6 +66,50 @@ function SettingsSwitch(props) {
       thumbClassName={SETTINGS_SWITCH_THUMB_CLASS}
       {...props}
     />
+  );
+}
+
+function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommit }) {
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const [draftValue, setDraftValue] = useState(value);
+  const displayValue = formatValue(draftValue);
+
+  useEffect(() => {
+    setDraftValue(value);
+  }, [value]);
+
+  const commit = (nextValue) => {
+    onCommit(Number(nextValue));
+  };
+
+  return (
+    <div className="relative flex min-w-0 items-center justify-end">
+      <input
+        aria-label={ariaLabel}
+        aria-valuetext={displayValue}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={draftValue}
+        onMouseEnter={() => setTooltipOpen(true)}
+        onMouseLeave={() => setTooltipOpen(false)}
+        onFocus={() => setTooltipOpen(true)}
+        onBlur={() => setTooltipOpen(false)}
+        onChange={(event) => setDraftValue(Number(event.target.value))}
+        onPointerUp={(event) => commit(event.currentTarget.value)}
+        onKeyUp={(event) => commit(event.currentTarget.value)}
+        className="h-6 w-16 accent-primary opacity-75 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+      />
+      {tooltipOpen ? (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full right-0 mb-1 whitespace-nowrap rounded-md border border-border bg-popover px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-popover-foreground shadow-sm"
+        >
+          {displayValue}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -487,6 +531,8 @@ export function PanelSettingsContent({
     const effectiveSpectrumPeakHold = hasPanelControls
       ? normalizedPanelControls.spectrumPeakHold
       : spectrumPeakHold;
+    const effectiveSmoothingPercent = normalizedPanelControls.spectrumSmoothingPercent;
+    const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
     const { matchedOption, selectedOption } = getSelectedOption(
       spectrumOptions,
       effectiveSpectrumValueKey
@@ -500,7 +546,9 @@ export function PanelSettingsContent({
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
     const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
-    if (!showView && !showChannel && !showPeak) return null;
+    const showDisplayControls =
+      activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
+    if (!showView && !showChannel && !showPeak && !showDisplayControls) return null;
 
     return (
       <SettingsGroup title={activeTab === "spectrum" ? "Spectrum" : "Spectrogram"}>
@@ -573,6 +621,46 @@ export function PanelSettingsContent({
                   })
                 );
                 onSpectrumPeakHoldToggle?.();
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showDisplayControls ? (
+          <SettingsRow label="Smoothing">
+            <SettingsSlider
+              ariaLabel="spectrum smoothing"
+              min={0}
+              max={100}
+              step={1}
+              value={effectiveSmoothingPercent}
+              formatValue={(value) => `${value.toFixed(0)}%`}
+              onCommit={(value) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumSmoothingPercent: value,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showDisplayControls ? (
+          <SettingsRow label="Tilt">
+            <SettingsSlider
+              ariaLabel="spectrum tilt"
+              min={0}
+              max={6}
+              step={0.25}
+              value={effectiveTiltDbPerOctave}
+              formatValue={(value) => `${value.toFixed(2)} dB/oct`}
+              onCommit={(value) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumTiltDbPerOctave: value,
+                  })
+                );
               }}
             />
           </SettingsRow>
