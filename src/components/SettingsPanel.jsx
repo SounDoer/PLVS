@@ -21,7 +21,7 @@ import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
 const SHEET_CLASS =
-  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-[var(--ui-drawer-pad)] backdrop-blur-md sm:max-w-sm";
+  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-[var(--ui-drawer-pad)] backdrop-blur-[24px] sm:max-w-sm";
 
 const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--ui-fs-display)]";
 
