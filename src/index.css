@@ -64,7 +64,11 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background-color: var(--background);
+  background-color: color-mix(
+    in srgb,
+    var(--background) calc(var(--panel-opacity, 1) * 100%),
+    transparent
+  );
   color: var(--foreground);
 }
 

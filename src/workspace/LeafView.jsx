@@ -107,7 +107,7 @@ export function LeafView({ node, path, style }) {
       data-leaf
       data-leaf-path={pathAttr}
       className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden rounded-[10px] border bg-card/55 shadow-sm backdrop-blur-md transition-[border-color,box-shadow] duration-150",
+        "relative flex min-h-0 flex-col overflow-hidden rounded-[10px] border shadow-sm backdrop-blur-md transition-[border-color,box-shadow] duration-150",
         "border-border/80 hover:border-border",
         isPanelHoverHighlighted && "border-primary/70 ring-2 ring-primary/60 ring-offset-0",
         isDragging &&
@@ -117,7 +117,11 @@ export function LeafView({ node, path, style }) {
           (zoneHint === "left" || zoneHint === "right") &&
           "ring-2 ring-primary ring-offset-0"
       )}
-      style={style}
+      style={{
+        ...style,
+        backgroundColor:
+          "color-mix(in srgb, var(--card) calc(var(--panel-opacity, 1) * 55%), transparent)",
+      }}
     >
       {/* Zone hint: above */}
       {isDragging && zoneHint === "above" && (

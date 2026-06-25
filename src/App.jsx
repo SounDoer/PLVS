@@ -506,6 +506,10 @@ function AppContent() {
   }, [loudnessWeights, running, sendTrackedLoudnessWeights]);
 
   useEffect(() => {
+    document.documentElement.style.setProperty("--panel-opacity", String(panelOpacity / 100));
+  }, [panelOpacity]);
+
+  useEffect(() => {
     dialogueGatingRef.current = dialogueGating;
     if (!isTauri()) return;
     void setDialogueGating(dialogueGating);
