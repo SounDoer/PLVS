@@ -21,6 +21,12 @@ export const UI_PREFERENCES = {
       paddingXRem: 0.5,
       paddingYRem: 0.4,
     },
+    drawer: {
+      paddingRem: 0.875,
+      sectionGapRem: 0.75,
+      rowGapRem: 0.25,
+      rowMinHeightRem: 1.5,
+    },
     articlePadding: {
       defaultXRem: 0.25,
       defaultYRem: 0.35,

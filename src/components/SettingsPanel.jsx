@@ -21,14 +21,14 @@ import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
 const SHEET_CLASS =
-  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-3.5 backdrop-blur-md sm:max-w-sm";
+  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-[var(--ui-drawer-pad)] backdrop-blur-md sm:max-w-sm";
 
-const BODY_CLASS = "flex flex-col gap-3 text-[length:var(--ui-fs-display)]";
+const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--ui-fs-display)]";
 
-const SECTION_CLASS = "flex flex-col gap-1";
+const SECTION_CLASS = "flex flex-col gap-[var(--ui-drawer-row-gap)]";
 
 const ROW_CLASS =
-  "grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded px-1.5 py-0.5";
+  "grid min-h-[var(--ui-drawer-row-min-h)] grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded px-1.5 py-0.5";
 
 const ROW_LABEL_CLASS =
   "whitespace-nowrap text-[length:var(--ui-fs-display)] text-muted-foreground";
@@ -289,7 +289,7 @@ export function SettingsPanel({
                     </div>
                   </SettingsRow>
                   {registrationError ? (
-                    <div className="text-right text-[11px] text-destructive px-1.5">
+                    <div className="text-right text-[length:var(--ui-fs-axis)] text-destructive px-1.5">
                       Combo unavailable, try another
                     </div>
                   ) : null}
@@ -309,7 +309,7 @@ export function SettingsPanel({
                 {/* Appearance */}
                 <SettingsSection>
                   {themeControlsDisabled ? (
-                    <span className="px-1.5 text-[11px] text-muted-foreground">
+                    <span className="px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       Finish editing the current theme before changing theme settings.
                     </span>
                   ) : null}
@@ -424,7 +424,9 @@ export function SettingsPanel({
                         }}
                         className={NUMBER_INPUT_CLASS}
                       />
-                      <span className="text-[11px] text-muted-foreground/60 shrink-0">LUFS</span>
+                      <span className="text-[length:var(--ui-fs-axis)] text-muted-foreground/60 shrink-0">
+                        LUFS
+                      </span>
                     </div>
                   </SettingsRow>
                 </SettingsSection>
@@ -463,7 +465,7 @@ export function SettingsPanel({
                         <SettingsRow
                           key={i}
                           labelNode={
-                            <span className="shrink-0 tabular-nums font-mono text-[11px] text-muted-foreground/60">
+                            <span className="shrink-0 tabular-nums font-mono text-[length:var(--ui-fs-axis)] text-muted-foreground/60">
                               {i + 1}
                             </span>
                           }
@@ -487,7 +489,7 @@ export function SettingsPanel({
                       ))}
                     </div>
                   ) : (
-                    <span className="px-1.5 text-[11px] text-muted-foreground/60">
+                    <span className="px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground/60">
                       Connect an input to label its channels.
                     </span>
                   )}

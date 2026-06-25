@@ -75,6 +75,12 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-footer-pad-x", `${footer.paddingXRem}rem`);
   setCssVar("--ui-footer-pad-y", `${footer.paddingYRem}rem`);
 
+  const drawer = prefs.layout.drawer;
+  setCssVar("--ui-drawer-pad", `${drawer.paddingRem}rem`);
+  setCssVar("--ui-drawer-gap", `${drawer.sectionGapRem}rem`);
+  setCssVar("--ui-drawer-row-gap", `${drawer.rowGapRem}rem`);
+  setCssVar("--ui-drawer-row-min-h", `${drawer.rowMinHeightRem}rem`);
+
   const peak = prefs.modules.peak.meterGradient;
   setCssVar("--ui-meter-gradient-mid-stop", `${peak.midStopPercent}%`);
 

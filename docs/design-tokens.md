@@ -48,7 +48,7 @@ Current PLVS Dark values:
 | `--accent`                 | same as `--secondary`               | Accent surface                      |
 | `--accent-foreground`      | same as `--foreground`              | Text on accent surface              |
 | `--border`                 | `oklch(1 0 0 / 9%)`                 | Borders and dividers                |
-| `--input`                  | `oklch(1 0 0 / 14%)`                | Input field border                  |
+| `--input`                  | `oklch(1 0 0 / 14%)`               | Input field border                  |
 | `--ring`                   | `#fb923c`                           | Focus ring — matches brand color    |
 | `--destructive`            | `oklch(0.65 0.22 25)`               | Error / danger state                |
 | `--destructive-foreground` | `oklch(0.985 0 0)`                  | Text on destructive                 |
@@ -105,6 +105,7 @@ dedicated Y-axis tick.
 | `--ui-spectrum-secondary`      | `#38bdf8`        | Spectrum secondary path + fill          |
 | `--ui-spectrum-secondary-snap` | `#7dd3fc`        | Spectrum secondary snapshot path + fill |
 | `--ui-waveform-trace`          | `#fb923c`        | Waveform envelope stroke + fill         |
+| `--ui-waveform-trace-snap`     | derived          | Waveform snapshot trace                 |
 
 ### Component: Signal (semantic state colors)
 
@@ -114,6 +115,8 @@ Values that carry a pass/warn/fail meaning — not brand-derived.
 | ------------------------- | --------- | ------------------------------- |
 | `--ui-signal-peak-sample` | `#fb923c` | Peak hold line — sample peak    |
 | `--ui-signal-tp-max`      | `#f97373` | TP MAX value text when exceeded |
+| `--ui-signal-bad`         | `#f97373` | General error / clip state      |
+| `--ui-signal-warn`        | `#fbbf24` | General warning state           |
 
 ### Component: Spectrogram Colormap
 
@@ -130,97 +133,147 @@ the instrument tokens above.
 Two font families:
 
 ```css
---ui-font-sans: "Inter", system-ui, sans-serif;
---ui-font-mono: "JetBrains Mono", ui-monospace, monospace;
+--ui-font-sans: "Inter", system-ui, sans-serif;        /* set by applyLayoutToDocument */
+--ui-font-mono: "JetBrains Mono", ui-monospace, monospace;  /* set statically in index.css */
 ```
 
 **Rule:** All live-changing numeric displays use `--ui-font-mono` + `tabular-nums`. Static UI text uses `--ui-font-sans`.
 
 ### Text Roles and Sizes
 
-| #   | Role                  | Token                  | Size | Weight | Notes                                                                         |
-| --- | --------------------- | ---------------------- | ---- | ------ | ----------------------------------------------------------------------------- |
-| 1   | **App Title**         | `--ui-fs-app-title`    | 16px | 800    | "PLVS" in header.                                                             |
-| 2   | **Panel Title**       | `--ui-fs-panel-title`  | 12px | 600    | CardTitle in each panel and the Settings panel title. Muted foreground color. |
-| 3   | **Axis Annotation**   | `--ui-fs-axis`         | 11px | 400    | Static chart scale labels: dB ticks, freq labels, time axis. Muted.           |
-| 4   | **Dynamic Display**   | `--ui-fs-display`      | 13px | —      | Live values overlaid on charts: channel labels, TP MAX, correlation.          |
-| 5a  | **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | 500    | Loudness metric row label + unit. Uppercase + tracking.                       |
-| 5b  | **Metric Value**      | `--ui-fs-metric-value` | 20px | 600    | Loudness metric row numeric value. Mono + tabular-nums.                       |
-| 6   | **Status**            | `--ui-fs-status`       | 11px | 400    | Footer status bar text. Muted.                                                |
-| 7   | **Controls**          | `--ui-fs-controls`     | 14px | —      | Buttons (semibold), form labels (medium).                                     |
+| # | Role                  | Token                  | Size | Weight | Notes                                                                        |
+|---|-----------------------|------------------------|------|--------|------------------------------------------------------------------------------|
+| 1 | **Axis Annotation**   | `--ui-fs-axis`         | 11px | 400    | Chart scale labels, secondary hints, error text. Muted.                      |
+| 2 | **Dynamic Display**   | `--ui-fs-display`      | 13px | —      | Live values on charts, settings drawer labels and control text.              |
+| 3 | **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | 500    | Loudness metric row label + unit. Also footer status links in drawer.        |
+| 4 | **Metric Value**      | `--ui-fs-metric-value` | 16px | 600    | Loudness metric row numeric value. Mono + tabular-nums.                      |
+| 5 | **Status**            | `--ui-fs-status`       | 11px | 400    | Footer status bar text. Muted.                                               |
 
 ---
 
 ## Spacing Tokens
 
-Six namespaces matching the six structural regions of the UI.  
 Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 
 ### Shell
 
 ```
---ui-shell-max-w     1600px   Max content width
---ui-shell-pad       0.8rem   Outer padding — base breakpoint
---ui-shell-pad-lg    1.2rem   Outer padding — lg breakpoint
---ui-shell-gap       0.55rem  Vertical gap between regions — base
---ui-shell-gap-lg    0.6rem   Vertical gap between regions — lg
+--ui-shell-pad       0.3rem    Outer padding
+--ui-shell-gap       0.35rem   Vertical gap between regions
 ```
 
 ### Header
 
 ```
---ui-header-pad-x       0.9rem    Horizontal padding
---ui-header-pad-y       0.55rem   Vertical padding
---ui-header-action-gap  0.35rem   Gap between action buttons
+--ui-header-pad-x       0.4rem    Horizontal padding
+--ui-header-pad-y       0.4rem    Vertical padding
+--ui-header-action-gap  0.2rem    Gap between action buttons
 ```
 
 ### Footer
 
 ```
---ui-footer-pad-x    1rem     Horizontal padding
---ui-footer-pad-y    0.65rem  Vertical padding
+--ui-footer-pad-x    0.5rem    Horizontal padding
+--ui-footer-pad-y    0.4rem    Vertical padding
 ```
 
 ### Panel
 
 ```
---ui-panel-pad-x          0.7rem    Horizontal padding inside each Card panel
---ui-panel-pad-y          0.5rem    Vertical padding inside each Card panel
---ui-panel-title-gap      0.4rem    Gap between panel title and panel body
---ui-panel-gap            0.55rem   Gap between sibling panels — = --ui-shell-gap (unified rhythm)
---ui-splitter-bar-thickness  1px    Visual width of draggable splitter bar
+--ui-panel-pad-x              0.25rem   Horizontal padding inside each Card panel
+--ui-panel-pad-y              0.35rem   Vertical padding inside each Card panel
+--ui-splitter-bar-thickness   1px       Visual width of draggable splitter bar
 ```
 
 #### Panel → Chart (sub-namespace)
 
 ```
---ui-chart-pad           0.4rem  SVG horizontal padding inside chart container
---ui-chart-inset-top     0.5rem  Top inset within chart display area
---ui-chart-inset-bottom  0rem    Bottom inset within chart display area
---ui-chart-axis-gap      0.4rem  Gap between axis label column and chart area
---ui-chart-hud-inset     0.25rem Inset for floating HUD / tooltip boxes
+--ui-chart-inset-top     0.2rem   Top inset within chart display area
+--ui-chart-inset-bottom  0rem     Bottom inset within chart display area
+--ui-chart-axis-gap      0.4rem   Gap between axis label column and chart area
+--ui-chart-hud-inset     0.25rem  Inset for floating HUD / tooltip boxes
+--ui-chart-x-axis-row-h  0.8rem  Height of the x-axis label row
+```
+
+#### Panel → Module Spacing
+
+```
+--ui-peak-channel-gap       0.4rem   Gap between peak meter channels
+--ui-meter-chart-inset-x    0.6rem   Horizontal inset inside meter chart area
+--ui-meter-label-top-inset  0.5rem   Top inset for meter channel labels
+--ui-vector-outer-inset     0rem     Outer inset around vectorscope plot
+--ui-vector-corner-inset    0.4rem   Corner label inset in vectorscope
+```
+
+#### Panel → Minimum Heights
+
+```
+--ui-min-h-peak           12rem    Peak panel minimum height
+--ui-min-h-history        10rem    Loudness history panel minimum height
+--ui-min-h-spectrum       10rem    Spectrum panel minimum height
+--ui-min-h-history-chart  8rem     Loudness history chart area minimum height
+```
+
+#### Panel → Axis Widths
+
+```
+--ui-w-axis-rail   20px   Width of the Y-axis label column
 ```
 
 ### Metric Row
 
 ```
---ui-metric-row-pad-x   0.5rem    Horizontal padding inside each metric row
---ui-metric-row-pad-y   0.375rem  Vertical padding inside each metric row
---ui-metric-row-gap     0.5rem    Gap between sibling metric rows
---ui-metric-row-min-h   2.5rem    Minimum row height
---ui-metric-title-gap   0.4rem    Gap between metrics section title and first row
---ui-metric-list-gap    0.2rem    Gap managed by the scroll container
---ui-metric-inline-gap  0.4rem    Gap between inline label + value pairs
+--ui-metric-row-pad-x    0.25rem   Horizontal padding inside each metric row
+--ui-metric-row-gap      0.5rem    Gap between sibling metric rows
+--ui-metric-row-min-h    1.2rem    Minimum row height
+--ui-metric-list-gap     0.1rem    Gap managed by the scroll container
+--ui-metric-inline-gap   0.4rem    Gap between inline label + value pairs
 ```
 
-### Modal
+### Drawer (Settings Sheet)
 
 ```
---ui-modal-pad           1.25rem  Inner padding of the Settings sheet
---ui-modal-gap           1rem     Gap between settings sections
---ui-modal-header-gap    1.25rem  Gap between modal title and first section
---ui-modal-action-pad-x  0.75rem  Horizontal padding on action buttons
---ui-modal-action-pad-y  0.25rem  Vertical padding on action buttons
+--ui-drawer-pad          0.875rem  Inner padding of the settings drawer
+--ui-drawer-gap          0.75rem   Gap between settings sections
+--ui-drawer-row-gap      0.25rem   Gap between rows within a section
+--ui-drawer-row-min-h    1.5rem    Minimum row height
+```
+
+---
+
+## Dataviz Style Tokens
+
+Stroke widths, fill opacities, and grid tuning for chart instruments.
+
+### Loudness
+
+```
+--ui-loudness-momentary-stroke-width   1.1    Momentary trace stroke width
+--ui-loudness-shortterm-stroke-width   2.1    Short-term trace stroke width
+--ui-loudness-selection-stroke-width   1.2    Selection overlay stroke width
+```
+
+### Vectorscope
+
+```
+--ui-vectorscope-stroke-width    1          Trace stroke width
+--ui-vectorscope-axis-opacity    0.8        Axis line opacity
+--ui-vectorscope-grid-dash       "2.6 3.4"  Diagonal grid dash pattern
+```
+
+### Spectrum
+
+```
+--ui-spectrum-stroke-width           1.5    Trace stroke width
+--ui-spectrum-fill-top-opacity       0.22   Fill gradient top opacity
+--ui-spectrum-fill-bottom-opacity    0.03   Fill gradient bottom opacity
+--ui-spectrum-grid-opacity           0.08   Grid line opacity
+```
+
+### Waveform
+
+```
+--ui-waveform-fill-opacity   0.22   Envelope fill opacity
 ```
 
 ---
@@ -228,10 +281,7 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 ## Radius Tokens
 
 ```
---radius                  0.625rem  Base card-level radius (shadcn native). Use directly.
---ui-radius-modal         1rem      Sheet / overlay radius
---ui-radius-pill          9999px    Full-round pill (Badge, etc.)
---ui-radius-metric-row    0.375rem  Metric row inner radius
+--radius   0.625rem   Base card-level radius (shadcn native). Use directly.
 ```
 
 ---
