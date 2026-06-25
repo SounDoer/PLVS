@@ -104,6 +104,7 @@ pub struct SpectrumMeter {
   peak_hold_sec: f64,
   peak_decay_db_per_sec: f64,
   tilt_db_per_octave: f64,
+  analysis_average_sec: f64,
   min_hz: f64,
   max_hz: f64,
   /// Cached output from the most recent FFT frame — centers, smooth dB, peak dB.
@@ -138,6 +139,7 @@ impl SpectrumMeter {
       peak_hold_sec: 1.5,
       peak_decay_db_per_sec: 8.0,
       tilt_db_per_octave: 4.5,
+      analysis_average_sec: MultiResBank::analysis_average_sec_for_smoothing_percent(50.0),
       min_hz,
       max_hz,
       cached_centers: Vec::new(),
@@ -167,9 +169,16 @@ impl SpectrumMeter {
 
   pub fn set_display_controls(&mut self, smoothing_percent: f64, tilt_db_per_octave: f64) {
     let (attack_ms, release_ms) = Self::smoothing_times_ms_for_percent(smoothing_percent);
+    let analysis_average_sec =
+      MultiResBank::analysis_average_sec_for_smoothing_percent(smoothing_percent);
     self.attack_ms = attack_ms;
     self.release_ms = release_ms;
     self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
+    self.analysis_average_sec = analysis_average_sec;
+    self.bank.set_analysis_average_sec(analysis_average_sec);
+    if let Some(bank_b) = self.bank_b.as_mut() {
+      bank_b.set_analysis_average_sec(analysis_average_sec);
+    }
   }
 
   /// Returns the most recently computed `(centers_hz, smooth_db, peak_db)` slices.
@@ -204,6 +213,9 @@ impl SpectrumMeter {
     let ch = channels.max(1) as usize;
     if self.last_input_channels != ch {
       self.bank = MultiResBank::new(self.sample_rate, self.min_hz, self.max_hz);
+      self
+        .bank
+        .set_analysis_average_sec(self.analysis_average_sec);
       self.last_input_channels = ch;
       self.smooth_db.clear();
       self.peak_db.clear();
@@ -328,6 +340,9 @@ impl SpectrumMeter {
 
     if self.last_input_channels != ch {
       self.bank = MultiResBank::new(self.sample_rate, self.min_hz, self.max_hz);
+      self
+        .bank
+        .set_analysis_average_sec(self.analysis_average_sec);
       self.last_input_channels = ch;
       self.smooth_db.clear();
       self.peak_db.clear();
@@ -339,6 +354,9 @@ impl SpectrumMeter {
         self.min_hz,
         self.max_hz,
       ));
+      if let Some(bank_b) = self.bank_b.as_mut() {
+        bank_b.set_analysis_average_sec(self.analysis_average_sec);
+      }
       self.smooth_db_b.clear();
       self.peak_db_b.clear();
     }
@@ -773,6 +791,51 @@ mod tests {
     assert!(
       delta < 10.0,
       "0 dB/oct tilt should not apply the default +4.5 dB/oct slope: delta={delta}"
+    );
+  }
+
+  #[test]
+  fn zero_smoothing_bypasses_hidden_analysis_average() {
+    let sr = 48000.0;
+    let hz = 8000.0;
+    let mut m = SpectrumMeter::new(sr);
+    m.set_display_controls(0.0, 4.5);
+
+    let tone_frames = 16384 * 8;
+    let mut tone = vec![0.0_f32; tone_frames * 2];
+    for i in 0..tone_frames {
+      let s = (2.0 * std::f64::consts::PI * hz * i as f64 / sr).sin() as f32;
+      tone[i * 2] = s;
+      tone[i * 2 + 1] = s;
+    }
+    let (steady, _) = m.push_interleaved(&tone, 2, 1.0).expect("tone output");
+
+    let silence_frames = (sr * 0.100) as usize;
+    let silence = vec![0.0_f32; silence_frames * 2];
+    let (after, _) = m
+      .push_interleaved(&silence, 2, 1.1)
+      .expect("silence output");
+
+    let centers = m.band_centers();
+    let val_near = |db: &[f64], target: f64| {
+      let (i, _) = centers
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+          (**a - target)
+            .abs()
+            .partial_cmp(&(**b - target).abs())
+            .unwrap()
+        })
+        .unwrap();
+      db[i]
+    };
+    let steady_db = val_near(&steady, hz);
+    let after_db = val_near(&after, hz);
+
+    assert!(
+      after_db < steady_db - 20.0,
+      "0% smoothing should not retain a hidden analysis average: steady={steady_db}, after={after_db}"
     );
   }
 

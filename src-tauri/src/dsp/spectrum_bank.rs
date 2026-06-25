@@ -1,6 +1,5 @@
 use realfft::RealFftPlanner;
 use rustfft::num_complex::Complex;
-use std::collections::VecDeque;
 
 pub const FFT_BIG: usize = 16384;
 pub const FFT_MID: usize = 4096;
@@ -9,8 +8,10 @@ pub const XOVER_LO_HZ: f64 = 200.0;
 pub const XOVER_HI_HZ: f64 = 2000.0;
 pub const XFADE_HALF_OCT: f64 = 1.0 / 6.0; // crossfade half-width, octaves
 pub const GRID_POINTS_PER_OCT: f64 = 96.0;
-pub const POWER_AVG_FRAMES: usize = 4;
-pub const OVERLAP: usize = 4; // 75% overlap → hop = size / OVERLAP
+pub const ANALYSIS_AVERAGE_SEC: f64 = 0.150;
+pub const OVERLAP_BIG: usize = 8; // smoother low-band updates without changing bass resolution
+pub const OVERLAP_MID: usize = 4; // 75% overlap → hop = size / overlap
+pub const OVERLAP_SMALL: usize = 2; // calmer high-band updates while keeping the 1024-point window
 /// Display calibration: added to PSD-dB so a 0 dBFS sine peak reads ~0 dB.
 /// Empirically tuned; pinned by `calibration_full_scale_sine_near_zero`.
 pub const CAL_OFFSET_DB: f64 = 16.5;
@@ -36,7 +37,7 @@ impl LogGrid {
 }
 
 /// One windowed-rFFT analyzer at a fixed size. Produces per-bin PSD (power / Hz),
-/// averaged over the last POWER_AVG_FRAMES STFT frames.
+/// averaged by real time so different FFT sizes share comparable display ballistics.
 pub struct StftAnalyzer {
   size: usize,
   hop: usize,
@@ -48,12 +49,19 @@ pub struct StftAnalyzer {
   write: usize,
   filled: usize,
   ingested: u64,
-  power_hist: VecDeque<Vec<f64>>,
+  smoothed_psd: Vec<f64>,
+  average_initialized: bool,
+  analysis_average_sec: f64,
   sample_rate: f64,
 }
 
 impl StftAnalyzer {
   pub fn new(size: usize, sample_rate: f64) -> Self {
+    let overlap = match size {
+      FFT_BIG => OVERLAP_BIG,
+      FFT_SMALL => OVERLAP_SMALL,
+      _ => OVERLAP_MID,
+    };
     let mut planner = RealFftPlanner::<f32>::new();
     let r2c = planner.plan_fft_forward(size);
     let scratch_spec = r2c.make_output_vec();
@@ -64,7 +72,7 @@ impl StftAnalyzer {
     }
     Self {
       size,
-      hop: size / OVERLAP,
+      hop: size / overlap,
       r2c,
       scratch_in: vec![0.0_f32; size],
       scratch_spec,
@@ -73,7 +81,9 @@ impl StftAnalyzer {
       write: 0,
       filled: 0,
       ingested: 0,
-      power_hist: VecDeque::new(),
+      smoothed_psd: Vec::new(),
+      average_initialized: false,
+      analysis_average_sec: ANALYSIS_AVERAGE_SEC,
       sample_rate,
     }
   }
@@ -83,7 +93,15 @@ impl StftAnalyzer {
   }
 
   pub fn ready(&self) -> bool {
-    self.filled >= self.size && !self.power_hist.is_empty()
+    self.filled >= self.size && self.average_initialized
+  }
+
+  pub fn set_analysis_average_sec(&mut self, seconds: f64) {
+    self.analysis_average_sec = if seconds.is_finite() {
+      seconds.max(0.0)
+    } else {
+      ANALYSIS_AVERAGE_SEC
+    };
   }
 
   /// Push one mono sample; runs an STFT whenever a hop boundary is crossed.
@@ -110,7 +128,16 @@ impl StftAnalyzer {
       .expect("fft");
     let bin_count = self.scratch_spec.len();
     let bw = self.bin_width_hz();
-    let mut psd = vec![0.0_f64; bin_count];
+    if self.smoothed_psd.len() != bin_count {
+      self.smoothed_psd = vec![0.0_f64; bin_count];
+      self.average_initialized = false;
+    }
+    let hop_sec = self.hop as f64 / self.sample_rate;
+    let alpha = if self.analysis_average_sec <= 0.0 {
+      1.0
+    } else {
+      1.0 - (-hop_sec / self.analysis_average_sec).exp()
+    };
     for (k, c) in self.scratch_spec.iter().enumerate() {
       let m = (c.re * c.re + c.im * c.im).sqrt() as f64;
       let m_norm = if k == 0 || k + 1 == bin_count {
@@ -119,33 +146,28 @@ impl StftAnalyzer {
         m * 2.0 / n
       };
       let power = m_norm.max(1e-12).powi(2);
-      psd[k] = power / bw; // power per Hz
+      let psd = power / bw; // power per Hz
+      if self.average_initialized {
+        self.smoothed_psd[k] += (psd - self.smoothed_psd[k]) * alpha;
+      } else {
+        self.smoothed_psd[k] = psd;
+      }
     }
-    self.power_hist.push_back(psd);
-    while self.power_hist.len() > POWER_AVG_FRAMES {
-      self.power_hist.pop_front();
-    }
+    self.average_initialized = true;
   }
 
   /// Time-averaged PSD at an arbitrary frequency via linear interpolation between bins.
   pub fn psd_at(&self, hz: f64) -> f64 {
-    if self.power_hist.is_empty() {
+    if !self.average_initialized {
       return 1e-20;
     }
-    let bin_count = self.scratch_spec.len();
-    let n_hist = self.power_hist.len() as f64;
+    let bin_count = self.smoothed_psd.len();
     let pos = hz / self.bin_width_hz();
     let k0 = pos.floor().clamp(0.0, (bin_count - 1) as f64) as usize;
     let k1 = (k0 + 1).min(bin_count - 1);
     let frac = (pos - k0 as f64).clamp(0.0, 1.0);
-    let mut a = 0.0;
-    let mut b = 0.0;
-    for row in &self.power_hist {
-      a += row[k0];
-      b += row[k1];
-    }
-    a /= n_hist;
-    b /= n_hist;
+    let a = self.smoothed_psd[k0];
+    let b = self.smoothed_psd[k1];
     (a * (1.0 - frac) + b * frac).max(1e-20)
   }
 }
@@ -167,8 +189,23 @@ impl MultiResBank {
     }
   }
 
+  pub fn analysis_average_sec_for_smoothing_percent(percent: f64) -> f64 {
+    let p = percent.clamp(0.0, 100.0);
+    if p <= 0.0 {
+      0.0
+    } else {
+      ANALYSIS_AVERAGE_SEC * (p / 100.0)
+    }
+  }
+
   pub fn grid_freqs(&self) -> &[f64] {
     &self.grid.freqs
+  }
+
+  pub fn set_analysis_average_sec(&mut self, seconds: f64) {
+    self.big.set_analysis_average_sec(seconds);
+    self.mid.set_analysis_average_sec(seconds);
+    self.small.set_analysis_average_sec(seconds);
   }
 
   pub fn ready(&self) -> bool {
@@ -225,6 +262,12 @@ mod tests {
     }
   }
 
+  fn feed_silence(an: &mut StftAnalyzer, samples: usize) {
+    for _ in 0..samples {
+      an.push_sample(0.0);
+    }
+  }
+
   #[test]
   fn analyzer_peaks_at_tone_frequency() {
     let sr = 48000.0;
@@ -236,6 +279,51 @@ mod tests {
     assert!(
       on > off * 100.0,
       "tone PSD {on} should dominate off-tone {off}"
+    );
+  }
+
+  #[test]
+  fn high_band_analysis_average_decays_by_time_not_frame_count() {
+    let sr = 48000.0;
+    let hz = 8000.0;
+    let mut an = StftAnalyzer::new(FFT_SMALL, sr);
+    feed_tone(&mut an, sr, hz, FFT_SMALL * 16);
+    assert!(an.ready());
+    let steady = an.psd_at(hz);
+
+    feed_silence(&mut an, (sr * 0.100) as usize);
+    let after_100ms = an.psd_at(hz);
+    let ratio = after_100ms / steady.max(1e-20);
+
+    assert!(
+      ratio > 0.15,
+      "high-band averaging should decay over real time, not drop after four short frames: ratio={ratio}"
+    );
+  }
+
+  #[test]
+  fn fft_overlaps_balance_low_band_smoothness_and_high_band_stability() {
+    let sr = 48000.0;
+    let big = StftAnalyzer::new(FFT_BIG, sr);
+    let mid = StftAnalyzer::new(FFT_MID, sr);
+    let small = StftAnalyzer::new(FFT_SMALL, sr);
+
+    assert_eq!(big.hop, FFT_BIG / 8);
+    assert_eq!(mid.hop, FFT_MID / 4);
+    assert_eq!(small.hop, FFT_SMALL / 2);
+  }
+
+  #[test]
+  fn analysis_average_scales_across_full_smoothing_range() {
+    assert_eq!(
+      MultiResBank::analysis_average_sec_for_smoothing_percent(0.0),
+      0.0
+    );
+    assert!((MultiResBank::analysis_average_sec_for_smoothing_percent(50.0) - 0.075).abs() < 1e-9);
+    assert!(
+      (MultiResBank::analysis_average_sec_for_smoothing_percent(100.0) - ANALYSIS_AVERAGE_SEC)
+        .abs()
+        < 1e-9
     );
   }
 
