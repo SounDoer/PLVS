@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CLOSE_ACTION,
+  DEFAULT_PANEL_OPACITY,
   DEFAULT_REFERENCE_LUFS,
   DEFAULT_THEME_EDITOR_POS,
   normalizeCloseAction,
+  normalizePanelOpacity,
   normalizeReferenceLufs,
   normalizeThemeEditorPos,
   normalizeSettingsFocusView,
@@ -38,5 +40,17 @@ describe("settings defaults", () => {
     });
     expect(normalizeThemeEditorPos({ x: 12, y: 24 })).toEqual({ x: 12, y: 24 });
     expect(normalizeThemeEditorPos({ x: "12", y: 24 })).toEqual(DEFAULT_THEME_EDITOR_POS);
+  });
+
+  it("normalizes panel opacity", () => {
+    expect(normalizePanelOpacity(null)).toBe(DEFAULT_PANEL_OPACITY);
+    expect(normalizePanelOpacity(undefined)).toBe(DEFAULT_PANEL_OPACITY);
+    expect(normalizePanelOpacity(-10)).toBe(0);
+    expect(normalizePanelOpacity(150)).toBe(100);
+    expect(normalizePanelOpacity(55.7)).toBe(56);
+    expect(normalizePanelOpacity(0)).toBe(0);
+    expect(normalizePanelOpacity(50)).toBe(50);
+    expect(normalizePanelOpacity(100)).toBe(100);
+    expect(normalizePanelOpacity("abc")).toBe(DEFAULT_PANEL_OPACITY);
   });
 });
