@@ -90,7 +90,23 @@ describe("usePresets", () => {
     expect(saved.panelsById).not.toBe(DEFAULT_WORKSPACE_STATE.panelsById);
     expect(saved.panelOrder).toEqual(DEFAULT_WORKSPACE_STATE.panelOrder);
     expect(saved.panelOrder).not.toBe(DEFAULT_WORKSPACE_STATE.panelOrder);
+    expect(saved.pinnedPanelsById).toEqual({});
     expect(presetsStore.read().activeId).toBe("preset-123");
+  });
+
+  it("saves pinned panel sizes in snapshots", async () => {
+    const { result } = renderPresetHook();
+    act(() => {
+      result.current.workspace.setPanelPinned("spectrum", { width: 640, height: 260 });
+    });
+
+    await act(async () => {
+      await result.current.presets.save("Pinned");
+    });
+
+    expect(presetsStore.read().list[0].pinnedPanelsById).toEqual({
+      spectrum: { width: 640, height: 260 },
+    });
   });
 
   it("omits windowBounds outside Tauri", async () => {
@@ -116,6 +132,7 @@ describe("usePresets", () => {
           panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
           panelOrder: ["spectrum"],
           panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+          pinnedPanelsById: { spectrum: { width: 640, height: 260 } },
           windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
           windowPinned: true,
           focusView: { autoHideControls: true, compactPanels: true },
@@ -128,6 +145,9 @@ describe("usePresets", () => {
       await result.current.presets.apply("p1");
     });
     expect(result.current.workspace.state.tree).toEqual(leaf(["spectrum"]));
+    expect(result.current.workspace.state.pinnedPanelsById).toEqual({
+      spectrum: { width: 640, height: 260 },
+    });
     expect(mocks.applyWindowBounds).toHaveBeenCalledWith({
       x: 1,
       y: 2,

@@ -4,6 +4,7 @@ import { isTauri } from "../ipc/env.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
+import { normalizePinnedPanelsById } from "../workspace/reducer.js";
 import { presetsStore } from "../persistence/index.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 
@@ -65,6 +66,10 @@ export function usePresets({
         workspaceState.panelsById,
         workspaceState.panelControlsById
       ),
+      pinnedPanelsById: normalizePinnedPanelsById(
+        workspaceState.panelsById,
+        workspaceState.pinnedPanelsById
+      ),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
       panelOpacity,
@@ -77,6 +82,7 @@ export function usePresets({
     workspaceState.panelControlsById,
     workspaceState.panelOrder,
     workspaceState.panelsById,
+    workspaceState.pinnedPanelsById,
     workspaceState.tree,
   ]);
 
@@ -107,6 +113,7 @@ export function usePresets({
         panelsById: clone(preset.panelsById),
         panelOrder: [...preset.panelOrder],
         panelControlsById: normalizePanelControlsById(preset.panelsById, preset.panelControlsById),
+        pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
       });
       if (preset.windowBounds && isTauri()) {
         try {

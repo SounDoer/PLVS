@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
-import { bindWorkspaceActions, workspaceReducer } from "./reducer.js";
+import { bindWorkspaceActions, normalizePinnedPanelsById, workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { normalizePanelControlsById } from "./panelControlInstances.js";
 import { hasKnownModulesOnly } from "./panelInstances.js";
@@ -19,6 +19,7 @@ function initState() {
     ...DEFAULT_WORKSPACE_STATE,
     ...parsed,
     panelControlsById: normalizePanelControlsById(parsed.panelsById, parsed.panelControlsById),
+    pinnedPanelsById: normalizePinnedPanelsById(parsed.panelsById, parsed.pinnedPanelsById),
     fullscreenId: null, // transient view state: never restored across launches
   };
 }
@@ -54,6 +55,10 @@ export function WorkspaceProvider({ children }) {
       renamePanel: (...args) => {
         clearActivePreset();
         bound.renamePanel(...args);
+      },
+      setPanelPinned: (...args) => {
+        clearActivePreset();
+        bound.setPanelPinned(...args);
       },
       setPanelControlsForPanel: (...args) => {
         clearActivePreset();

@@ -36,6 +36,69 @@ function isPathValid(root, path) {
   return node != null;
 }
 
+export function normalizePinnedPanelsById(panelsById, pinnedPanelsById) {
+  if (!pinnedPanelsById || typeof pinnedPanelsById !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(pinnedPanelsById)
+      .filter(([id, size]) => {
+        if (!panelsById[id]) return false;
+        return Number.isFinite(size?.width) && Number.isFinite(size?.height);
+      })
+      .map(([id, size]) => [
+        id,
+        {
+          width: Math.max(0, Math.round(size.width)),
+          height: Math.max(0, Math.round(size.height)),
+        },
+      ])
+  );
+}
+
+function getPinnedPanelIdsInNode(node, pinnedPanelsById) {
+  if (!node || !pinnedPanelsById) return [];
+  if (node.type === "leaf") return node.tabs.filter((id) => pinnedPanelsById[id]);
+  return node.children.flatMap((child) => getPinnedPanelIdsInNode(child, pinnedPanelsById));
+}
+
+function updatePinnedDimensionForNode(pinnedPanelsById, node, dimension, px) {
+  if (!Number.isFinite(px)) return pinnedPanelsById;
+  const ids = getPinnedPanelIdsInNode(node, pinnedPanelsById);
+  if (ids.length === 0) return pinnedPanelsById;
+  const next = { ...pinnedPanelsById };
+  for (const id of ids) {
+    next[id] = { ...next[id], [dimension]: Math.max(0, Math.round(px)) };
+  }
+  return next;
+}
+
+function applySplitSnapshots(tree, splitSnapshots) {
+  if (!tree || !Array.isArray(splitSnapshots)) return tree;
+  return splitSnapshots.reduce((nextTree, snapshot) => {
+    const { path, childIdx, mode, children } = snapshot ?? {};
+    if (!Array.isArray(path) || !Array.isArray(children)) return nextTree;
+    const visibleChildren = children.filter(
+      (child) => Number.isInteger(child?.childIdx) && Number.isFinite(child?.sizePx)
+    );
+    const contentPx = visibleChildren.reduce((sum, child) => sum + child.sizePx, 0);
+    if (contentPx <= 0) return nextTree;
+    return updateNode(nextTree, path, (node) => {
+      if (node.type !== "split") return node;
+      const sizes = [...node.sizes];
+      const pinnedSizePx =
+        mode === "pin" ? visibleChildren.find((child) => child.childIdx === childIdx)?.sizePx : 0;
+      const availablePx = Math.max(0, contentPx - (pinnedSizePx ?? 0));
+      for (const child of visibleChildren) {
+        if (child.childIdx < 0 || child.childIdx >= sizes.length) continue;
+        if (mode === "pin" && child.childIdx === childIdx) continue;
+        const divisor = mode === "pin" ? availablePx : contentPx;
+        if (divisor <= 0) continue;
+        sizes[child.childIdx] = Math.max(0, child.sizePx / divisor);
+      }
+      return { ...node, sizes };
+    });
+  }, tree);
+}
+
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
@@ -52,15 +115,32 @@ export function workspaceReducer(state, action) {
 
     case "RESIZE_CHILDREN": {
       if (!state.tree) return state;
-      const { path, aboveIdx, belowIdx, aboveSize, belowSize } = action.payload;
+      const { path, aboveIdx, belowIdx, aboveSize, belowSize, direction, abovePx, belowPx } =
+        action.payload;
       const actualBelowIdx = belowIdx ?? aboveIdx + 1;
+      let pinnedPanelsById = state.pinnedPanelsById ?? {};
       const newTree = updateNode(state.tree, path, (node) => {
         const sizes = [...node.sizes];
         sizes[aboveIdx] = aboveSize;
         sizes[actualBelowIdx] = belowSize;
+        if (direction === "h" || direction === "v") {
+          const dimension = direction === "h" ? "width" : "height";
+          pinnedPanelsById = updatePinnedDimensionForNode(
+            pinnedPanelsById,
+            node.children[aboveIdx],
+            dimension,
+            abovePx
+          );
+          pinnedPanelsById = updatePinnedDimensionForNode(
+            pinnedPanelsById,
+            node.children[actualBelowIdx],
+            dimension,
+            belowPx
+          );
+        }
         return { ...node, sizes };
       });
-      return { ...state, tree: newTree };
+      return { ...state, tree: newTree, pinnedPanelsById };
     }
 
     case "SET_ACTIVE_TAB": {
@@ -91,12 +171,14 @@ export function workspaceReducer(state, action) {
       if (!state.panelsById[id]) return state;
       const { [id]: _removed, ...panelsById } = state.panelsById;
       const { [id]: _removedControls, ...panelControlsById } = state.panelControlsById ?? {};
+      const { [id]: _removedPinned, ...pinnedPanelsById } = state.pinnedPanelsById ?? {};
       return {
         ...state,
         tree: state.tree ? removeTab(state.tree, id) : null,
         panelsById,
         panelOrder: state.panelOrder.filter((panelId) => panelId !== id),
         panelControlsById,
+        pinnedPanelsById,
         fullscreenId: state.fullscreenId === id ? null : state.fullscreenId,
       };
     }
@@ -156,15 +238,30 @@ export function workspaceReducer(state, action) {
     }
 
     case "SET_VIEW": {
-      const { tree, panelsById, panelOrder, panelControlsById } = action.payload;
+      const { tree, panelsById, panelOrder, panelControlsById, pinnedPanelsById } = action.payload;
       return {
         ...state,
         tree,
         panelsById,
         panelOrder,
         panelControlsById: normalizePanelControlsById(panelsById, panelControlsById),
+        pinnedPanelsById: normalizePinnedPanelsById(panelsById, pinnedPanelsById),
         fullscreenId: null,
       };
+    }
+
+    case "SET_PANEL_PINNED": {
+      const { id, size, splitSnapshots } = action.payload;
+      if (!state.panelsById[id]) return state;
+      const pinnedPanelsById = { ...(state.pinnedPanelsById ?? {}) };
+      if (size == null) {
+        delete pinnedPanelsById[id];
+      } else {
+        const normalized = normalizePinnedPanelsById(state.panelsById, { [id]: size })[id];
+        if (!normalized) return state;
+        pinnedPanelsById[id] = normalized;
+      }
+      return { ...state, tree: applySplitSnapshots(state.tree, splitSnapshots), pinnedPanelsById };
     }
 
     case "SET_PANEL_CONTROLS_FOR_PANEL":
@@ -214,12 +311,14 @@ export function bindWorkspaceActions(dispatch) {
       dispatch({ type: "RENAME_PANEL", payload: { id, customTitle } }),
     setFocus: (id) => dispatch({ type: "SET_FOCUS", payload: { id } }),
     setFullscreen: (id) => dispatch({ type: "SET_FULLSCREEN", payload: id }),
-    resizeChildren: (path, aboveIdx, belowIdx, aboveSize, belowSize) =>
+    resizeChildren: (path, aboveIdx, belowIdx, aboveSize, belowSize, metadata) =>
       dispatch({
         type: "RESIZE_CHILDREN",
-        payload: { path, aboveIdx, belowIdx, aboveSize, belowSize },
+        payload: { path, aboveIdx, belowIdx, aboveSize, belowSize, ...metadata },
       }),
     setView: (view) => dispatch({ type: "SET_VIEW", payload: view }),
+    setPanelPinned: (id, size, metadata) =>
+      dispatch({ type: "SET_PANEL_PINNED", payload: { id, size, ...metadata } }),
     setPanelControlsForPanel: (id, panelControls) =>
       dispatch({ type: "SET_PANEL_CONTROLS_FOR_PANEL", payload: { id, panelControls } }),
     setPanelControls: (panelControls) =>

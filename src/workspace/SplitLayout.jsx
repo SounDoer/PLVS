@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef } from "react";
+import { Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PANEL_HEADER_ACTION_BUTTON,
@@ -54,24 +55,55 @@ function formatFlexFactor(value) {
   return Number(value.toFixed(6)).toString();
 }
 
-export function getSplitSizingContext(visibleSizes, dividerCount) {
-  const fixedSizes = visibleSizes.filter((s) => s !== null);
+export function getSplitSizingContext(visibleSizes, dividerCount, pinnedPixels = []) {
+  const isPinned = (i) => Number.isFinite(pinnedPixels[i]) && pinnedPixels[i] > 0;
+  const fixedSizes = visibleSizes.filter((s, i) => s !== null && !isPinned(i));
   const fixedTotal = fixedSizes.reduce((sum, s) => sum + s, 0);
+  const unpinnedCount = visibleSizes.filter((_, i) => !isPinned(i)).length;
+  const pinnedTotalPx = pinnedPixels.reduce(
+    (sum, px) => (Number.isFinite(px) && px > 0 ? sum + px : sum),
+    0
+  );
   return {
     dividerTotalRem: dividerCount * SPLIT_DIVIDER_SIZE_REM,
     fixedTotal,
-    normalizeFixed: fixedSizes.length === visibleSizes.length || fixedTotal >= 1,
+    normalizeFixed: fixedSizes.length === unpinnedCount || fixedTotal >= 1,
+    pinnedTotalPx,
   };
 }
 
-export function getSplitChildStyle(size, sizingContext) {
+export function getSplitChildStyle(size, sizingContext, pinnedPx = null) {
   const baseStyle = { minWidth: 0, minHeight: 0 };
+  if (Number.isFinite(pinnedPx) && pinnedPx > 0) {
+    return { flex: `0 0 ${Math.round(pinnedPx)}px`, ...baseStyle };
+  }
   if (size === null) return { flex: "1 1 0", ...baseStyle };
 
   const divisor = sizingContext.normalizeFixed ? sizingContext.fixedTotal : 1;
   const factor = formatFlexFactor(size / divisor);
   const dividerTotalRem = formatFlexFactor(sizingContext.dividerTotalRem);
-  return { flex: `0 0 calc((100% - ${dividerTotalRem}rem) * ${factor})`, ...baseStyle };
+  const pinnedTotalPx = formatFlexFactor(sizingContext.pinnedTotalPx ?? 0);
+  const availableSpace =
+    sizingContext.pinnedTotalPx > 0
+      ? `100% - ${dividerTotalRem}rem - ${pinnedTotalPx}px`
+      : `100% - ${dividerTotalRem}rem`;
+  return { flex: `0 0 calc((${availableSpace}) * ${factor})`, ...baseStyle };
+}
+
+function getPinnedSizesForNode(node, state, dimension) {
+  if (!node || !state.pinnedPanelsById) return [];
+  if (node.type === "leaf") {
+    return node.tabs
+      .map((id) => state.pinnedPanelsById[id]?.[dimension])
+      .filter((size) => Number.isFinite(size) && size > 0);
+  }
+  return node.children.flatMap((child) => getPinnedSizesForNode(child, state, dimension));
+}
+
+function getPinnedSizeForNode(node, state, direction) {
+  const dimension = direction === "h" ? "width" : "height";
+  const sizes = getPinnedSizesForNode(node, state, dimension);
+  return sizes.length > 0 ? Math.max(...sizes) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +152,12 @@ function SplitDivider({
         aboveIdx,
         belowIdx,
         (startAbovePx + clampedDelta) / contentPx,
-        (startBelowPx - clampedDelta) / contentPx
+        (startBelowPx - clampedDelta) / contentPx,
+        {
+          direction,
+          abovePx: startAbovePx + clampedDelta,
+          belowPx: startBelowPx - clampedDelta,
+        }
       );
     }
     function onUp() {
@@ -164,15 +201,23 @@ function SplitView({ node, path, style }) {
     .filter((i) => i !== null);
 
   const visibleSizes = visibleChildIndices.map((i) => node.sizes[i]);
+  const visiblePinnedPixels = visibleChildIndices.map((i) =>
+    getPinnedSizeForNode(node.children[i], state, node.direction)
+  );
   const dividerCount = Math.max(0, visibleChildIndices.length - 1);
-  const sizingContext = getSplitSizingContext(visibleSizes, dividerCount);
+  const sizingContext = getSplitSizingContext(visibleSizes, dividerCount, visiblePinnedPixels);
 
   return (
-    <div style={style} className={cn("flex min-h-0 min-w-0", isH ? "flex-row" : "flex-col")}>
+    <div
+      data-split
+      style={style}
+      className={cn("flex min-h-0 min-w-0", isH ? "flex-row" : "flex-col")}
+    >
       {visibleChildIndices.map((childIdx, renderIdx) => {
         const child = node.children[childIdx];
         const size = node.sizes[childIdx];
-        const childStyle = getSplitChildStyle(size, sizingContext);
+        const pinnedPx = visiblePinnedPixels[renderIdx];
+        const childStyle = getSplitChildStyle(size, sizingContext, pinnedPx);
 
         const aboveChildIdx = renderIdx > 0 ? visibleChildIndices[renderIdx - 1] : -1;
 
@@ -202,7 +247,7 @@ function SplitView({ node, path, style }) {
 // ---------------------------------------------------------------------------
 
 function FullscreenOverlay() {
-  const { state, setFullscreen, setPanelControlsForPanel } = useWorkspaceStore();
+  const { state, setFullscreen, setPanelControlsForPanel, setPanelPinned } = useWorkspaceStore();
   const { fullscreenId } = state;
   const audioData = useAudioData();
   if (!fullscreenId) return null;
@@ -212,6 +257,7 @@ function FullscreenOverlay() {
   const { Component } = def;
   const fullscreenModuleId = resolvePanelModuleId(state, fullscreenId);
   const panelControls = getPanelControls(state, fullscreenId);
+  const isPinned = Boolean(state.pinnedPanelsById?.[fullscreenId]);
   const onPanelControlsChange = (nextPanelControls) =>
     setPanelControlsForPanel(fullscreenId, nextPanelControls);
   const panelAudioData = audioData
@@ -249,6 +295,17 @@ function FullscreenOverlay() {
             panelControls={panelControls}
             onPanelControlsChange={onPanelControlsChange}
           />
+          <button
+            type="button"
+            className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary opacity-100")}
+            onClick={() => isPinned && setPanelPinned(fullscreenId, null)}
+            aria-label={isPinned ? "Unpin panel size" : "Panel size pin unavailable in fullscreen"}
+            aria-pressed={isPinned}
+            title={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
+            disabled={!isPinned}
+          >
+            <Pin size={12} fill={isPinned ? "currentColor" : "none"} />
+          </button>
           <button
             type="button"
             className={PANEL_HEADER_ACTION_BUTTON}

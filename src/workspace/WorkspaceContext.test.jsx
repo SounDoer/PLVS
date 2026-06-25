@@ -41,6 +41,35 @@ describe("WorkspaceContext fullscreenId", () => {
     );
     expect(captured.fullscreenId).toBeNull();
   });
+
+  it("restores pinned panel sizes from storage", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        ...DEFAULT_WORKSPACE_STATE,
+        pinnedPanelsById: { spectrum: { width: 640, height: 260 } },
+      })
+    );
+    let captured = null;
+    render(
+      <WorkspaceProvider>
+        <Probe onState={(s) => (captured = s)} />
+      </WorkspaceProvider>
+    );
+    expect(captured.pinnedPanelsById).toEqual({ spectrum: { width: 640, height: 260 } });
+  });
+
+  it("normalizes older stored workspaces without pinned panel sizes", () => {
+    const { pinnedPanelsById: _pinnedPanelsById, ...legacyState } = DEFAULT_WORKSPACE_STATE;
+    localStorage.setItem("plvs:workspace", JSON.stringify(legacyState));
+    let captured = null;
+    render(
+      <WorkspaceProvider>
+        <Probe onState={(s) => (captured = s)} />
+      </WorkspaceProvider>
+    );
+    expect(captured.pinnedPanelsById).toEqual({});
+  });
 });
 
 describe("WorkspaceContext initState unknown module guard", () => {
@@ -121,6 +150,13 @@ describe("WorkspaceContext active preset divergence", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.renamePanel("levelMeter", "Main Meter"));
+    expect(presetsStore.read().activeId).toBeNull();
+  });
+
+  it("clears presets.activeId on manual panel pin changes", () => {
+    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
+    const actions = renderActions();
+    act(() => actions.setPanelPinned("spectrum", { width: 640, height: 260 }));
     expect(presetsStore.read().activeId).toBeNull();
   });
 

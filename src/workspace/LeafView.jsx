@@ -1,4 +1,5 @@
-import { Maximize2, X } from "lucide-react";
+import { useRef } from "react";
+import { Maximize2, Pin, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PANEL_HEADER_ACTION_BUTTON,
@@ -69,13 +70,34 @@ function getTabInsertX(tabIndex, totalTabs) {
   return `${Math.round((tabIndex / totalTabs) * 100)}%`;
 }
 
+function getNodeAtPath(root, path) {
+  let node = root;
+  for (const idx of path) {
+    node = node?.children?.[idx];
+  }
+  return node ?? null;
+}
+
+function nodeHasVisiblePanels(node, panelsById) {
+  if (!node) return false;
+  if (node.type === "leaf") return node.tabs.some((id) => panelsById[id]);
+  return node.children.some((child) => nodeHasVisiblePanels(child, panelsById));
+}
+
 // ---------------------------------------------------------------------------
 // LeafView
 // ---------------------------------------------------------------------------
 
 export function LeafView({ node, path, style }) {
-  const { state, removePanel, setFullscreen, setPanelControlsForPanel, hoveredPanelId } =
-    useWorkspaceStore();
+  const {
+    state,
+    removePanel,
+    setFullscreen,
+    setPanelControlsForPanel,
+    setPanelPinned,
+    hoveredPanelId,
+  } = useWorkspaceStore();
+  const leafRef = useRef(null);
   const { dragState, hoverDrop } = useDrag();
   const audioData = useAudioData();
   const compactPanels = audioData?.compactPanels === true;
@@ -100,10 +122,67 @@ export function LeafView({ node, path, style }) {
   const zoneHint = getZoneHint(hoverDrop, path);
   const isDragging = !!dragState;
   const isPanelHoverHighlighted = hoveredPanelId != null && visibleTabs.includes(hoveredPanelId);
+  const pinnedPanelsById = state.pinnedPanelsById ?? {};
+  const slotPinnedId = visibleTabs.find((id) => pinnedPanelsById[id]) ?? null;
+  const slotPinnedSize = slotPinnedId ? pinnedPanelsById[slotPinnedId] : null;
+  const isActivePinned = activeTab ? Boolean(pinnedPanelsById[activeTab]) : false;
+  const slotPinnedByOther = Boolean(slotPinnedId && slotPinnedId !== activeTab);
+  const slotPinnedTitle = slotPinnedId ? resolvePanelDisplayName(state, slotPinnedId) : "";
   const pathAttr = JSON.stringify(path);
+
+  function getCurrentLeafSize() {
+    const el = leafRef.current;
+    if (!el) return { width: 0, height: 0 };
+    const rect = el.getBoundingClientRect();
+    return {
+      width: Math.round(rect.width || el.offsetWidth || 0),
+      height: Math.round(rect.height || el.offsetHeight || 0),
+    };
+  }
+
+  function getSplitSnapshots() {
+    const snapshots = [];
+    let childEl = leafRef.current;
+    for (let depth = path.length - 1; depth >= 0; depth--) {
+      const splitEl = childEl?.parentElement;
+      const parentPath = path.slice(0, depth);
+      const parentNode = getNodeAtPath(state.tree, parentPath);
+      if (!splitEl || parentNode?.type !== "split") break;
+      const isH = parentNode.direction === "h";
+      const childElements = Array.from(splitEl.children).filter(
+        (el) => el.hasAttribute("data-leaf") || el.hasAttribute("data-split")
+      );
+      const visibleChildIndices = parentNode.children
+        .map((child, idx) => (nodeHasVisiblePanels(child, state.panelsById) ? idx : null))
+        .filter((idx) => idx !== null);
+      snapshots.push({
+        path: parentPath,
+        childIdx: path[depth],
+        mode: isActivePinned ? "unpin" : "pin",
+        children: visibleChildIndices.map((childIdx, renderIdx) => {
+          const el = childElements[renderIdx];
+          return {
+            childIdx,
+            sizePx: isH ? (el?.offsetWidth ?? 0) : (el?.offsetHeight ?? 0),
+          };
+        }),
+      });
+      childEl = splitEl;
+    }
+    return snapshots;
+  }
+
+  function handlePinClick(e) {
+    e.stopPropagation();
+    if (!activeTab) return;
+    setPanelPinned(activeTab, isActivePinned ? null : getCurrentLeafSize(), {
+      splitSnapshots: getSplitSnapshots(),
+    });
+  }
 
   return (
     <div
+      ref={leafRef}
       data-leaf
       data-leaf-path={pathAttr}
       className={cn(
@@ -119,6 +198,13 @@ export function LeafView({ node, path, style }) {
       )}
       style={{
         ...style,
+        ...(slotPinnedSize
+          ? {
+              width: slotPinnedSize.width,
+              height: slotPinnedSize.height,
+              alignSelf: "flex-start",
+            }
+          : null),
         backgroundColor:
           "color-mix(in srgb, var(--card) var(--panel-opacity-card, 55%), transparent)",
       }}
@@ -198,6 +284,25 @@ export function LeafView({ node, path, style }) {
               panelControls={panelControls ?? audioData?.panelControls}
               onPanelControlsChange={onPanelControlsChange}
             />
+            <button
+              type="button"
+              aria-label={isActivePinned ? "Unpin panel size" : "Pin panel size"}
+              aria-pressed={isActivePinned}
+              title={
+                slotPinnedByOther
+                  ? `Slot size locked by ${slotPinnedTitle}`
+                  : isActivePinned
+                    ? "Unpin panel size"
+                    : "Pin panel size"
+              }
+              className={cn(
+                PANEL_HEADER_ACTION_BUTTON,
+                (isActivePinned || slotPinnedByOther) && "text-primary opacity-100"
+              )}
+              onClick={handlePinClick}
+            >
+              <Pin size={12} fill={isActivePinned ? "currentColor" : "none"} />
+            </button>
             <button
               type="button"
               aria-label="Fullscreen"

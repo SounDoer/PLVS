@@ -21,6 +21,7 @@ vi.mock("framer-motion", () => ({
     Item: ({ children, className }) => <div className={className}>{children}</div>,
   },
   useDragControls: () => ({ start: () => {} }),
+  useReducedMotion: () => false,
 }));
 
 beforeEach(() => {
@@ -565,15 +566,15 @@ describe("PanelSettingsContent", () => {
 
     const smoothing = screen.getByLabelText("spectrum smoothing");
     fireEvent.mouseEnter(smoothing);
-    expect(screen.getByText("50%")).toBeTruthy();
-    expect(screen.queryByText("Smoothing: 50%")).toBeNull();
+    expect(screen.getByText("25%")).toBeTruthy();
+    expect(screen.queryByText("Smoothing: 25%")).toBeNull();
     fireEvent.mouseLeave(smoothing);
-    expect(screen.queryByText("50%")).toBeNull();
+    expect(screen.queryByText("25%")).toBeNull();
 
     const tilt = screen.getByLabelText("spectrum tilt");
     fireEvent.focus(tilt);
-    expect(screen.getByText("4.50 dB/oct")).toBeTruthy();
-    expect(screen.queryByText("Tilt: 4.50 dB/oct")).toBeNull();
+    expect(screen.getByText("3.00 dB/oct")).toBeTruthy();
+    expect(screen.queryByText("Tilt: 3.00 dB/oct")).toBeNull();
 
     const yMax = screen.getByLabelText("spectrum y max");
     fireEvent.mouseEnter(yMax);
@@ -717,6 +718,131 @@ describe("PanelSettingsContent", () => {
     });
   });
 
+  it("pins the active panel size from the LeafView header", () => {
+    const onState = vi.fn();
+    const { container } = render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              statsMetrics: [],
+            }}
+          >
+            <WorkspaceStateProbe onState={onState} />
+            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+    const leafEl = container.querySelector("[data-leaf]");
+    leafEl.getBoundingClientRect = () => ({ width: 320, height: 180 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Pin panel size" }));
+
+    const latestState = onState.mock.calls.at(-1)?.[0];
+    expect(latestState.pinnedPanelsById).toEqual({
+      stats: { width: 320, height: 180 },
+    });
+    expect(screen.getByRole("button", { name: "Unpin panel size" })).toBeTruthy();
+  });
+
+  it("uses another tab's pinned size for the shared tab slot", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: {
+          type: "split",
+          direction: "h",
+          sizes: [null, null],
+          children: [
+            { type: "leaf", tabs: ["spectrum", "waveform"], activeTab: "waveform" },
+            { type: "leaf", tabs: ["stats"], activeTab: "stats" },
+          ],
+        },
+        panelsById: {
+          spectrum: { id: "spectrum", moduleId: "spectrum" },
+          waveform: { id: "waveform", moduleId: "waveform" },
+          stats: { id: "stats", moduleId: "stats" },
+        },
+        panelOrder: ["spectrum", "waveform", "stats"],
+        panelControlsById: {
+          spectrum: DEFAULT_PANEL_CONTROLS,
+          waveform: DEFAULT_PANEL_CONTROLS,
+          stats: DEFAULT_PANEL_CONTROLS,
+        },
+        pinnedPanelsById: { spectrum: { width: 360, height: 220 } },
+      })
+    );
+
+    const { container } = render(
+      <WorkspaceProvider>
+        <AudioDataContext.Provider
+          value={{
+            panelControls: DEFAULT_PANEL_CONTROLS,
+            fmt: (value) => value.toFixed(1),
+            statsMetrics: [],
+          }}
+        >
+          <SplitLayout />
+        </AudioDataContext.Provider>
+      </WorkspaceProvider>
+    );
+
+    const leaves = container.querySelectorAll("[data-leaf]");
+    expect(leaves[0].style.flex).toBe("0 0 360px");
+    const slotPinButton = screen
+      .getAllByRole("button", { name: "Pin panel size" })
+      .find((button) => button.title.includes("locked by Spectrum"));
+    expect(slotPinButton).toBeTruthy();
+  });
+
+  it("locks both axes for a pinned panel that occupies its own column", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: {
+          type: "split",
+          direction: "h",
+          sizes: [null, null],
+          children: [
+            { type: "leaf", tabs: ["stats"], activeTab: "stats" },
+            { type: "leaf", tabs: ["stats-2"], activeTab: "stats-2" },
+          ],
+        },
+        panelsById: {
+          stats: { id: "stats", moduleId: "stats" },
+          "stats-2": { id: "stats-2", moduleId: "stats" },
+        },
+        panelOrder: ["stats", "stats-2"],
+        panelControlsById: {
+          stats: DEFAULT_PANEL_CONTROLS,
+          "stats-2": DEFAULT_PANEL_CONTROLS,
+        },
+        pinnedPanelsById: { stats: { width: 320, height: 180 } },
+      })
+    );
+
+    const { container } = render(
+      <WorkspaceProvider>
+        <AudioDataContext.Provider
+          value={{
+            panelControls: DEFAULT_PANEL_CONTROLS,
+            fmt: (value) => value.toFixed(1),
+            statsMetrics: [],
+          }}
+        >
+          <SplitLayout />
+        </AudioDataContext.Provider>
+      </WorkspaceProvider>
+    );
+
+    const pinnedLeaf = container.querySelector("[data-leaf]");
+    expect(pinnedLeaf.style.flex).toBe("0 0 320px");
+    expect(pinnedLeaf.style.height).toBe("180px");
+    expect(pinnedLeaf.style.alignSelf).toBe("flex-start");
+  });
+
   it("uses the settings menu in the fullscreen header", () => {
     const onState = vi.fn();
     localStorage.setItem(
@@ -848,6 +974,7 @@ describe("PanelSettingsContent", () => {
     expect(container.querySelector("[data-leaf-body]")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Fullscreen" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Panel settings" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pin panel size" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Hide all in panel" })).toBeNull();
   });
 

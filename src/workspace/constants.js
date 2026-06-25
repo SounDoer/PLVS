@@ -67,4 +67,5 @@ export const DEFAULT_WORKSPACE_STATE = {
   panelOrder: DEFAULT_PANEL_ORDER,
   fullscreenId: null,
   panelControlsById: DEFAULT_PANEL_CONTROLS_BY_ID,
+  pinnedPanelsById: {},
 };

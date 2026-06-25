@@ -151,6 +151,20 @@ describe("panel instances", () => {
     expect(next.fullscreenId).toBeNull();
   });
 
+  it("cleans up pinned size state when removing a panel", () => {
+    const s = {
+      ...DEFAULT_WORKSPACE_STATE,
+      pinnedPanelsById: {
+        levelMeter: { width: 120, height: 400 },
+        spectrum: { width: 640, height: 220 },
+      },
+    };
+    const next = workspaceReducer(s, { type: "REMOVE_PANEL", payload: { id: "levelMeter" } });
+    expect(next.pinnedPanelsById).toEqual({
+      spectrum: { width: 640, height: 220 },
+    });
+  });
+
   it("renames and clears custom panel titles", () => {
     const renamed = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "RENAME_PANEL",
@@ -350,6 +364,37 @@ describe("SET_VIEW", () => {
     expectPanelControlsIsolated(next.panelControlsById.spectrum, panelControlsById.spectrum);
   });
 
+  it("restores pinned panel sizes from a view", () => {
+    const tree = leaf(["spectrum"]);
+    const panelsById = { spectrum: { id: "spectrum", moduleId: "spectrum" } };
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "SET_VIEW",
+      payload: {
+        tree,
+        panelsById,
+        panelOrder: ["spectrum"],
+        panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+        pinnedPanelsById: { spectrum: { width: 640, height: 260 } },
+      },
+    });
+
+    expect(next.pinnedPanelsById).toEqual({ spectrum: { width: 640, height: 260 } });
+  });
+
+  it("normalizes missing pinned panel sizes from older views", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "SET_VIEW",
+      payload: {
+        tree: DEFAULT_WORKSPACE_STATE.tree,
+        panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
+        panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
+        panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+      },
+    });
+
+    expect(next.pinnedPanelsById).toEqual({});
+  });
+
   it("clears fullscreenId", () => {
     const s = { ...DEFAULT_WORKSPACE_STATE, fullscreenId: "levelMeter" };
     const next = workspaceReducer(s, {
@@ -362,6 +407,96 @@ describe("SET_VIEW", () => {
       },
     });
     expect(next.fullscreenId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SET_PANEL_PINNED
+// ---------------------------------------------------------------------------
+
+describe("SET_PANEL_PINNED", () => {
+  it("stores a panel's pinned pixel size", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "SET_PANEL_PINNED",
+      payload: { id: "spectrum", size: { width: 640, height: 260 } },
+    });
+
+    expect(next.pinnedPanelsById).toEqual({ spectrum: { width: 640, height: 260 } });
+  });
+
+  it("removes a panel's pinned pixel size", () => {
+    const stateWithPin = {
+      ...DEFAULT_WORKSPACE_STATE,
+      pinnedPanelsById: { spectrum: { width: 640, height: 260 } },
+    };
+    const next = workspaceReducer(stateWithPin, {
+      type: "SET_PANEL_PINNED",
+      payload: { id: "spectrum", size: null },
+    });
+
+    expect(next.pinnedPanelsById).toEqual({});
+  });
+
+  it("refreshes split ratios from current layout snapshots when unpinning", () => {
+    const tree = split("h", [leaf(["spectrum"]), leaf(["stats"])], [0.5, null]);
+    const stateWithPin = state(tree, {
+      pinnedPanelsById: { spectrum: { width: 360, height: 260 } },
+    });
+
+    const next = workspaceReducer(stateWithPin, {
+      type: "SET_PANEL_PINNED",
+      payload: {
+        id: "spectrum",
+        size: null,
+        splitSnapshots: [
+          {
+            path: [],
+            childIdx: 0,
+            mode: "unpin",
+            children: [
+              { childIdx: 0, sizePx: 360 },
+              { childIdx: 1, sizePx: 540 },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(next.pinnedPanelsById).toEqual({});
+    expect(next.tree.sizes[0]).toBe(0.4);
+    expect(next.tree.sizes[1]).toBe(0.6);
+  });
+
+  it("normalizes sibling ratios against remaining space when pinning", () => {
+    const tree = split(
+      "h",
+      [leaf(["levelMeter"]), leaf(["spectrum"]), leaf(["stats"])],
+      [0.14, null, 0.18]
+    );
+    const next = workspaceReducer(state(tree), {
+      type: "SET_PANEL_PINNED",
+      payload: {
+        id: "spectrum",
+        size: { width: 680, height: 260 },
+        splitSnapshots: [
+          {
+            path: [],
+            childIdx: 1,
+            mode: "pin",
+            children: [
+              { childIdx: 0, sizePx: 140 },
+              { childIdx: 1, sizePx: 680 },
+              { childIdx: 2, sizePx: 180 },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(next.pinnedPanelsById.spectrum).toEqual({ width: 680, height: 260 });
+    expect(next.tree.sizes[0]).toBeCloseTo(140 / 320);
+    expect(next.tree.sizes[1]).toBeNull();
+    expect(next.tree.sizes[2]).toBeCloseTo(180 / 320);
   });
 });
 

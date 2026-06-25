@@ -8,6 +8,8 @@
  *   config?: object,
  * }} PanelInstance
  *
+ * @typedef {{ width: number, height: number }} PinnedPanelSize
+ *
  * @typedef {{ type: 'leaf', tabs: PanelId[], activeTab: PanelId }} LeafNode
  *
  * @typedef {{ type: 'split', direction: 'h' | 'v', children: TreeNode[], sizes: (number | null)[] }} SplitNode
@@ -32,6 +34,7 @@
  *   panelOrder: PanelId[],
  *   fullscreenId: PanelId | null,
  *   panelControlsById: Record<PanelId, PanelControls>,
+ *   pinnedPanelsById: Record<PanelId, PinnedPanelSize>,
  * }} WorkspaceState
  *
  * @typedef {{
@@ -42,6 +45,7 @@
  *   panelsById: Record<PanelId, PanelInstance>,
  *   panelOrder: PanelId[],
  *   panelControlsById: Record<PanelId, PanelControls>,
+ *   pinnedPanelsById?: Record<PanelId, PinnedPanelSize>,
  * }} Preset
  *
  * @typedef {{
