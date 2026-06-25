@@ -15,7 +15,14 @@ describe("digit keyboard shortcuts (keys 1–N map to ALL_MODULE_IDS)", () => {
 describe("workspace state shape", () => {
   it("DEFAULT_WORKSPACE_STATE has the lean persisted shape", () => {
     expect(Object.keys(DEFAULT_WORKSPACE_STATE).sort()).toEqual(
-      ["fullscreenId", "panelControlsById", "panelOrder", "panelsById", "tree"].sort()
+      [
+        "fullscreenId",
+        "panelControlsById",
+        "panelOrder",
+        "panelsById",
+        "pinnedPanelsById",
+        "tree",
+      ].sort()
     );
     expect(DEFAULT_WORKSPACE_STATE).not.toHaveProperty("visibleModules");
     expect(DEFAULT_PANELS_BY_ID.levelMeter).toEqual({ id: "levelMeter", moduleId: "levelMeter" });
