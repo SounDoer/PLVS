@@ -513,7 +513,6 @@ function AppContent() {
     s.setProperty("--panel-opacity", `${p}%`);
     s.setProperty("--panel-opacity-card", `${Math.round(p * 0.55)}%`);
     s.setProperty("--panel-opacity-header", `${Math.round(p * 0.6)}%`);
-    s.setProperty("--panel-opacity-header-overlay", `${Math.round(p * 0.75)}%`);
   }, [panelOpacity]);
 
   useEffect(() => {
