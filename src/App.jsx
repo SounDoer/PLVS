@@ -166,6 +166,8 @@ function AppContent() {
     editActiveCustomTheme,
     deleteCustomTheme,
     activeIsCustom,
+    panelOpacity,
+    setPanelOpacity,
   } = useSettings({ onClearRef });
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
   const presets = usePresets({
@@ -618,7 +620,8 @@ function AppContent() {
     : "Not connected";
   const activePresetName =
     presets.list.find((preset) => preset.id === presets.activeId)?.name ?? "-";
-  const focusViewActive = pinned || focusView.autoHideControls || focusView.compactPanels;
+  const focusViewActive =
+    pinned || focusView.autoHideControls || focusView.compactPanels || panelOpacity < 100;
 
   const showFocusControls = useCallback(() => {
     window.clearTimeout(focusControlsHideTimerRef.current);
@@ -1363,6 +1366,8 @@ function AppContent() {
               setPinned={setPinned}
               setAutoHideControls={setAutoHideControls}
               setCompactPanels={setCompactPanels}
+              panelOpacity={panelOpacity}
+              setPanelOpacity={setPanelOpacity}
               presets={presets}
               setSettingsOpen={setSettingsOpen}
             />

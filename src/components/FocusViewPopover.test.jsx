@@ -5,16 +5,16 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { FocusViewPopoverContent } from "./FocusViewPopover.jsx";
 
 describe("FocusViewPopoverContent", () => {
-  it("renders Focus View switches", () => {
+  it("renders Views switches", () => {
     render(<FocusViewPopoverContent />);
 
-    expect(screen.getByText("Focus View")).toBeTruthy();
+    expect(screen.getByText("Views")).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Always on top" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Auto-hide controls" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Compact panels" })).toBeTruthy();
   });
 
-  it("orders Focus View switches from window behaviour to content density", () => {
+  it("orders Views switches from window behaviour to content density", () => {
     render(<FocusViewPopoverContent />);
 
     expect(screen.getAllByRole("switch").map((node) => node.id)).toEqual([

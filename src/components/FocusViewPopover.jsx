@@ -1,4 +1,5 @@
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
+import { DEFAULT_PANEL_OPACITY } from "@/settings/defaults.js";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
@@ -19,13 +20,15 @@ export function FocusViewPopoverContent({
   focusView = DEFAULT_FOCUS_VIEW,
   setAutoHideControls = () => {},
   setCompactPanels = () => {},
+  panelOpacity = DEFAULT_PANEL_OPACITY,
+  setPanelOpacity = () => {},
 }) {
   const normalized = normalizeFocusView(focusView);
 
   return (
     <div className="grid gap-1">
       <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-        Focus View
+        Views
       </p>
       <FocusSwitch
         id="focus-view-always-on-top"
@@ -45,6 +48,28 @@ export function FocusViewPopoverContent({
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
       />
+      <div className="flex items-center gap-3 rounded px-2 py-1.5">
+        <Label
+          htmlFor="panel-opacity"
+          className="min-w-0 shrink-0 text-xs font-normal text-foreground"
+        >
+          Opacity
+        </Label>
+        <input
+          id="panel-opacity"
+          aria-label="Panel opacity"
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={panelOpacity}
+          onInput={(e) => setPanelOpacity(Number(e.target.value))}
+          className="h-4 flex-1 accent-primary"
+        />
+        <span className="w-7 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+          {panelOpacity}%
+        </span>
+      </div>
     </div>
   );
 }

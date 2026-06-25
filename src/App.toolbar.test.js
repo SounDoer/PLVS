@@ -168,18 +168,18 @@ describe("App toolbar", () => {
 
   it("renders a Focus View toolbar popover with active state", () => {
     expect(toolbarSource).toMatch(/import\s*\{[^}]*\bFocus\b[^}]*\}\s*from\s*"lucide-react"/);
-    expect(toolbarSource).toContain('tip="Focus View"');
+    expect(toolbarSource).toContain('tip="Views"');
     expect(toolbarSource).toContain("<FocusViewPopoverContent");
     expect(toolbarSource).toContain("pinned={pinned}");
     expect(toolbarSource).toContain("setPinned={setPinned}");
     expect(appSource).toContain(
-      "const focusViewActive = pinned || focusView.autoHideControls || focusView.compactPanels;"
+      "const focusViewActive = pinned || focusView.autoHideControls || focusView.compactPanels || panelOpacity < 100;"
     );
     expect(toolbarSource).toContain('className={focusViewActive ? "text-foreground" : undefined}');
   });
 
   it("places Focus View before Presets in the toolbar", () => {
-    expect(toolbarSource.indexOf('tip="Focus View"')).toBeLessThan(
+    expect(toolbarSource.indexOf('tip="Views"')).toBeLessThan(
       toolbarSource.indexOf('tip="Presets"')
     );
   });

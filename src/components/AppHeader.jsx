@@ -75,6 +75,8 @@ export function AppHeader({
   setPinned,
   setAutoHideControls,
   setCompactPanels,
+  panelOpacity,
+  setPanelOpacity,
   presets,
   setSettingsOpen,
 }) {
@@ -196,7 +198,7 @@ export function AppHeader({
             <span>
               <IconButton
                 icon={<Focus className="size-3.5" />}
-                tip="Focus View"
+                tip="Views"
                 className={focusViewActive ? "text-foreground" : undefined}
               />
             </span>
@@ -208,6 +210,8 @@ export function AppHeader({
               focusView={focusView}
               setAutoHideControls={setAutoHideControls}
               setCompactPanels={setCompactPanels}
+              panelOpacity={panelOpacity}
+              setPanelOpacity={setPanelOpacity}
             />
           </PopoverContent>
         </Popover>
