@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-25
+
+### Added
+- File mode: local audio-file analysis with probe, decode, media-time history, scrub support, and in-memory session history.
+- Analysis: per-instance panel controls, request-keyed live results, and over-cap analysis panels.
+- Theme: custom themes, theme editor, derived instrument colors, and theme-driven spectrogram colormap.
+- Views: opacity control for panels, presets, meter bars, spectrogram canvas, and transparent window support.
+- Spectrum: display controls, y-axis range controls, slab-backed visual history, and timestamp-positioned rendering.
+- Panels: unified panel settings entry, level meter value marker, and Stats panel abstraction.
+
+### Changed
+- UI: renamed Focus View to Views and tightened app chrome, headers, panels, settings, and compact layouts.
+- Settings: centralized defaults, persistence, and reusable settings primitives.
+- Spectrogram: read history through slab/frozen view interfaces instead of rebuilding arrays per tick.
+- File analysis: active source is modeled as a single backend source and shares decode/probe helpers.
+
+### Fixed
+- Spectrogram: preserve history across capture restart, align live timeline rendering, and mark missing data inside gaps.
+- File mode: keep history selector visible, isolate live/file history, and render panels correctly during file analysis.
+- Views: panel opacity now reaches headers, footers, fullscreen state, auto-hide borders, and shell backgrounds consistently.
+- Panels: align neighboring axes, preserve per-instance controls, and fix compact/label behavior.
+- Persistence: seed custom themes in release builds and ignore minimized persisted window bounds.
+
 ## [0.4.0] - 2026-06-18
 
 ### Added
