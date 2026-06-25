@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File analysis: active source is modeled as a single backend source and shares decode/probe helpers.
 
 ### Fixed
+- Release: build macOS DMG by limiting transparent-window builder setup to Windows.
 - Spectrogram: preserve history across capture restart, align live timeline rendering, and mark missing data inside gaps.
 - File mode: keep history selector visible, isolate live/file history, and render panels correctly during file analysis.
 - Views: panel opacity now reaches headers, footers, fullscreen state, auto-hide borders, and shell backgrounds consistently.

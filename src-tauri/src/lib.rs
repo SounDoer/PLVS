@@ -79,11 +79,14 @@ pub fn run() {
         .get("windowBounds")
         .and_then(|v| serde_json::from_value(v).ok());
 
-      let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+      let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title("PLVS")
         .resizable(true)
-        .visible(false)
-        .transparent(true)
+        .visible(false);
+      #[cfg(target_os = "windows")]
+      let builder = builder.transparent(true);
+
+      let window = builder
         .inner_size(1280.0, 860.0)
         .initialization_script(&init_script)
         .build()
