@@ -513,6 +513,7 @@ function AppContent() {
     s.setProperty("--panel-opacity", `${p}%`);
     s.setProperty("--panel-opacity-card", `${Math.round(p * 0.55)}%`);
     s.setProperty("--panel-opacity-header", `${Math.round(p * 0.6)}%`);
+    s.setProperty("--panel-opacity-meter", String(Math.max(0.25, p / 100)));
   }, [panelOpacity]);
 
   useEffect(() => {

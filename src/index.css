@@ -86,6 +86,7 @@ body {
     var(--ui-meter-gradient-mid, #f59e0b) var(--ui-meter-gradient-mid-stop, 40%),
     var(--ui-meter-gradient-bottom, #22c55e) 100%
   );
+  opacity: var(--panel-opacity-meter, 1);
 }
 
 /* LIVE (history snapshot) pulse on header primary control — see App.jsx */
