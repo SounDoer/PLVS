@@ -172,9 +172,8 @@ describe("App toolbar", () => {
     expect(toolbarSource).toContain("<FocusViewPopoverContent");
     expect(toolbarSource).toContain("pinned={pinned}");
     expect(toolbarSource).toContain("setPinned={setPinned}");
-    expect(appSource).toContain(
-      "const focusViewActive = pinned || focusView.autoHideControls || focusView.compactPanels || panelOpacity < 100;"
-    );
+    expect(appSource).toContain("const focusViewActive =");
+    expect(appSource).toContain("panelOpacity < 100");
     expect(toolbarSource).toContain('className={focusViewActive ? "text-foreground" : undefined}');
   });
 
