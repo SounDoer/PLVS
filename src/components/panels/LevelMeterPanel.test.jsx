@@ -107,7 +107,7 @@ describe("LevelMeterPanel", () => {
     expect(marker.className).toContain("text-primary");
     expect(marker.className).toContain("font-[family-name:var(--ui-font-mono)]");
     expect(marker.className).toContain("tabular-nums");
-    expect(marker.className).not.toContain("font-semibold");
+    expect(marker.className).toContain("font-semibold");
     expect(marker.className).not.toContain("bg-primary");
     expect(marker.className).toContain("left-0");
     expect(marker.className).toContain("text-left");
@@ -159,6 +159,15 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
       "w-[var(--ui-w-axis-rail)]"
     );
+  });
+
+  it("hides the value marker when the value is below the loudness scale minimum", () => {
+    const { container } = renderPanel({
+      displayAudio: { momentary: -819.1 },
+      panelControls: { levelMeterMode: "momentary" },
+    });
+
+    expect(container.querySelector("[data-level-value-marker]")).toBeNull();
   });
 
   it("hides the value marker when the panel setting is off", () => {

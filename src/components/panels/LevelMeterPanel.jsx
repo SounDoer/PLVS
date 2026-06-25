@@ -82,12 +82,15 @@ function formatLevelValue(value) {
 }
 
 function CurrentValueMarker({ value }) {
-  if (!Number.isFinite(value)) return null;
+  if (!Number.isFinite(value) || value < LOUDNESS_DB_MIN) return null;
 
   return (
     <span
       data-level-value-marker
-      className={cn("pointer-events-none z-10 text-primary", levelMeterYAxisLabelClass("middle"))}
+      className={cn(
+        "pointer-events-none z-10 font-semibold text-primary",
+        levelMeterYAxisLabelClass("middle")
+      )}
       style={{ top: `${loudnessFromTopFrac(value) * 100}%` }}
     >
       {formatLevelValue(value)}
