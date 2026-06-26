@@ -242,6 +242,87 @@ describe("SpectrumPanel", () => {
     expect(captureCurrentSnapshot).toHaveBeenCalledTimes(1);
   });
 
+  it("zooms the frequency range when wheeling over the chart", () => {
+    const onPanelControlsChange = vi.fn();
+    const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 240,
+      top: 0,
+      right: 400,
+      bottom: 240,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80" }), {
+        historyChartInteractive: true,
+        onPanelControlsChange,
+      })
+    );
+
+    fireEvent.wheel(screen.getByTestId("spectrum-chart"), {
+      deltaY: -100,
+      clientX: 200,
+      clientY: 120,
+    });
+
+    expect(onPanelControlsChange).toHaveBeenCalled();
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrumXMinFreq).toBeGreaterThan(20);
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrumXMaxFreq).toBeLessThan(20000);
+    rectSpy.mockRestore();
+  });
+
+  it("zooms the dB range on ctrl wheel over the chart", () => {
+    const onPanelControlsChange = vi.fn();
+    const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 240,
+      top: 0,
+      right: 400,
+      bottom: 240,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80" }), {
+        historyChartInteractive: true,
+        onPanelControlsChange,
+      })
+    );
+
+    fireEvent.wheel(screen.getByTestId("spectrum-chart"), {
+      ctrlKey: true,
+      deltaY: -100,
+      clientX: 200,
+      clientY: 120,
+    });
+
+    expect(onPanelControlsChange).toHaveBeenCalled();
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrumYMinDb).toBeGreaterThan(-96);
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrumYMaxDb).toBeLessThanOrEqual(0);
+    rectSpy.mockRestore();
+  });
+
+  it("updates the chart cursor when ctrl is pressed while hovering", () => {
+    renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80" }), {
+        historyChartInteractive: true,
+      })
+    );
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent.pointerMove(chart, { ctrlKey: false });
+    expect(chart.style.cursor).toBe("crosshair");
+
+    fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
+
+    expect(chart.style.cursor).toBe("grab");
+  });
+
   it("returns to live when double-clicking the chart in snapshot mode", () => {
     const setSelectedOffset = vi.fn();
     renderPanel({

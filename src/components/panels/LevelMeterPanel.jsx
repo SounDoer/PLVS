@@ -178,7 +178,8 @@ export function LevelMeterPanel() {
               style={{ cursor: levelMeterYAxis.cursorStyle }}
               className={cn(
                 yAxisWidthClass,
-                "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
+                "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+                levelMeterYAxis.isActive && "text-foreground"
               )}
             >
               <div
@@ -288,7 +289,8 @@ export function LevelMeterPanel() {
             style={{ cursor: levelMeterYAxis.cursorStyle }}
             className={cn(
               W_PEAK_TICKS,
-              "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
+              "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+              levelMeterYAxis.isActive && "text-foreground"
             )}
           >
             <div

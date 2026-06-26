@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { LoudnessHistoryChart } from "./LoudnessHistoryChart.jsx";
 
@@ -146,6 +146,55 @@ describe("LoudnessHistoryChart", () => {
     renderChart([]);
 
     expect(screen.getByText("No layers selected")).toBeTruthy();
+  });
+
+  it("updates the chart cursor when ctrl is pressed while hovering", () => {
+    const { container } = renderChart(["momentary"]);
+    const chart = container.querySelector("svg")?.parentElement;
+
+    fireEvent.pointerMove(chart, { ctrlKey: false });
+    expect(chart?.style.cursor).toBe("crosshair");
+
+    fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
+
+    expect(chart?.style.cursor).toBe("grab");
+  });
+
+  it("highlights the y axis when chart ctrl wheel changes the y range", () => {
+    const onLoudnessYRangeChange = vi.fn();
+    const { container } = render(
+      <LoudnessHistoryChart
+        {...baseProps}
+        onLoudnessYRangeChange={onLoudnessYRangeChange}
+        loudnessHistoryVisibleLayerIds={["momentary"]}
+      />
+    );
+    const chart = container.querySelector("svg")?.parentElement;
+
+    fireEvent.wheel(chart, {
+      ctrlKey: true,
+      deltaY: -100,
+      clientY: 100,
+    });
+
+    const yAxis = screen.getByText("-12").parentElement?.parentElement;
+    expect(onLoudnessYRangeChange).toHaveBeenCalled();
+    expect(yAxis?.className).toContain("text-foreground");
+    expect(yAxis?.className).not.toContain("var(--muted)_44%");
+  });
+
+  it("highlights the time axis when time changes elsewhere", () => {
+    render(
+      <LoudnessHistoryChart
+        {...baseProps}
+        isTimeAxisActive
+        loudnessHistoryVisibleLayerIds={["momentary"]}
+      />
+    );
+
+    const timeAxis = screen.getByText("15s").parentElement?.parentElement;
+    expect(timeAxis?.className).toContain("text-foreground");
+    expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });
 
   it("keeps the hover HUD compact without trace swatches", () => {

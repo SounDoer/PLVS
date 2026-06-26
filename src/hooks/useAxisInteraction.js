@@ -10,6 +10,7 @@ import {
 
 const ZOOM_IN_FACTOR = 0.85;
 const ZOOM_OUT_FACTOR = 1.18;
+const ACTIVE_PULSE_MS = 160;
 
 export function useAxisInteraction({
   axis,
@@ -26,9 +27,21 @@ export function useAxisInteraction({
   const axisRef = useRef(null);
   const dragRef = useRef(null);
   const moveCleanupRef = useRef(null);
+  const activeTimerRef = useRef(null);
   const [axisPx, setAxisPx] = useState(axis === "y" ? 300 : 500);
   const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isActive, setIsActive] = useState(false);
   const cursorStyle = axis === "y" ? "ns-resize" : "ew-resize";
+
+  const pulseActive = useCallback(() => {
+    setIsActive(true);
+    if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
+    activeTimerRef.current = window.setTimeout(() => {
+      activeTimerRef.current = null;
+      setIsActive(false);
+    }, ACTIVE_PULSE_MS);
+  }, []);
 
   useLayoutEffect(() => {
     const el = axisRef.current;
@@ -48,13 +61,13 @@ export function useAxisInteraction({
   useEffect(
     () => () => {
       moveCleanupRef.current?.();
+      if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
     },
     []
   );
 
   const onWheel = useCallback(
     (e) => {
-      if (!e.ctrlKey) return;
       e.preventDefault();
       const el = axisRef.current;
       if (!el || typeof onRangeChange !== "function") return;
@@ -63,6 +76,7 @@ export function useAxisInteraction({
       const size = Math.max(1, isY ? rect.height : rect.width);
       const rawPx = isY ? e.clientY - rect.top : e.clientX - rect.left;
       const px = isY ? rawPx : size - rawPx;
+
       const factor = e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR;
       const next =
         scale === "log"
@@ -85,8 +99,9 @@ export function useAxisInteraction({
               factor,
             });
       onRangeChange(next.min, next.max);
+      pulseActive();
     },
-    [absMax, absMin, axis, max, min, minSpan, onRangeChange, scale]
+    [absMax, absMin, axis, max, min, minSpan, onRangeChange, pulseActive, scale]
   );
 
   const onMouseDown = useCallback(
@@ -100,6 +115,8 @@ export function useAxisInteraction({
         startMax: max,
       };
       setIsDragging(true);
+      if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
+      setIsActive(true);
 
       const onMouseMove = (moveEvent) => {
         const drag = dragRef.current;
@@ -109,7 +126,7 @@ export function useAxisInteraction({
         const size = Math.max(1, isY ? rect.height : rect.width);
         const currentPx = isY ? moveEvent.clientY : moveEvent.clientX;
         const rawDelta = currentPx - drag.startPx;
-        const deltaPx = -rawDelta;
+        const deltaPx = isY ? rawDelta : -rawDelta;
         const next =
           scale === "log"
             ? computeLogPan({
@@ -134,6 +151,7 @@ export function useAxisInteraction({
       const cleanup = () => {
         dragRef.current = null;
         setIsDragging(false);
+        setIsActive(false);
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", cleanup);
         moveCleanupRef.current = null;
@@ -150,15 +168,24 @@ export function useAxisInteraction({
     (e) => {
       e.preventDefault();
       onRangeChange?.(defaultMin, defaultMax);
+      pulseActive();
     },
-    [defaultMax, defaultMin, onRangeChange]
+    [defaultMax, defaultMin, onRangeChange, pulseActive]
   );
 
   return {
     axisRef,
-    axisHandlers: { onWheel, onMouseDown, onDoubleClick },
+    axisHandlers: {
+      onWheel,
+      onMouseDown,
+      onDoubleClick,
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false),
+    },
     axisPx,
     cursorStyle,
+    isActive: isActive || isDragging,
     isDragging,
+    isHovered,
   };
 }

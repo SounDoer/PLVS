@@ -1,10 +1,20 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
 import { fmtSec } from "../../math/formatMath";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
+import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
+import {
+  computeLinearPan,
+  computeLinearZoom,
+  pixelToLinearValue,
+} from "../../math/axisInteractionMath.js";
+
+const CHART_ZOOM_IN_FACTOR = 0.85;
+const CHART_ZOOM_OUT_FACTOR = 1.18;
+const ACTIVE_PULSE_MS = 160;
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
@@ -31,6 +41,8 @@ export function LoudnessHistoryChart({
   onHistoryPointerDown,
   onHistoryPointerMove,
   onHistoryPointerUp,
+  historyTimeAxisHandlers,
+  isTimeAxisActive = false,
   loudnessHistoryVisibleLayerIds = [],
   displayHistoryPathM,
   displayHistoryPathST,
@@ -71,6 +83,46 @@ export function LoudnessHistoryChart({
     scale: "linear",
     onRangeChange: onLoudnessYRangeChange,
   });
+  const chartActiveTimerRef = useRef(null);
+  const [chartYAxisActive, setChartYAxisActive] = useState(false);
+  const pulseChartYAxis = useCallback(() => {
+    setChartYAxisActive(true);
+    if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+    chartActiveTimerRef.current = window.setTimeout(() => {
+      chartActiveTimerRef.current = null;
+      setChartYAxisActive(false);
+    }, ACTIVE_PULSE_MS);
+  }, []);
+  useEffect(
+    () => () => {
+      if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+    },
+    []
+  );
+  const onChartWheel = useCallback(
+    (e) => {
+      if (!e.ctrlKey || typeof onLoudnessYRangeChange !== "function") {
+        onHistoryWheel?.(e);
+        return;
+      }
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const height = Math.max(1, rect.height);
+      const px = Math.max(0, Math.min(height, e.clientY - rect.top));
+      const next = computeLinearZoom({
+        min: loudnessYMinDb,
+        max: loudnessYMaxDb,
+        absMin: -64,
+        absMax: 0,
+        minSpan: 12,
+        anchor: pixelToLinearValue(px, height, loudnessYMinDb, loudnessYMaxDb),
+        factor: e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR,
+      });
+      onLoudnessYRangeChange(next.min, next.max);
+      pulseChartYAxis();
+    },
+    [loudnessYMaxDb, loudnessYMinDb, onHistoryWheel, onLoudnessYRangeChange, pulseChartYAxis]
+  );
   const adaptiveHistoryYAxisTicks = useMemo(
     () => buildAdaptiveDbTicks(loudnessYMinDb, loudnessYMaxDb, loudnessYAxis.axisPx),
     [loudnessYMinDb, loudnessYMaxDb, loudnessYAxis.axisPx]
@@ -95,9 +147,63 @@ export function LoudnessHistoryChart({
 
   const mGradId = useId().replace(/:/g, "");
   const stGradId = useId().replace(/:/g, "");
+  const chartYDragRef = useRef(null);
+  const [chartDragging, setChartDragging] = useState(false);
+  const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
 
   const historyGridRef = useRef(null);
   const [historyGridTopPx, setHistoryGridTopPx] = useState(() => ({}));
+
+  const onChartPointerDown = useCallback(
+    (e) => {
+      if (e.ctrlKey && e.button === 0 && typeof onLoudnessYRangeChange === "function") {
+        chartYDragRef.current = {
+          startY: e.clientY,
+          min: loudnessYMinDb,
+          max: loudnessYMaxDb,
+        };
+        setChartDragging(true);
+        if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+        setChartYAxisActive(true);
+      }
+      onHistoryPointerDown?.(e);
+    },
+    [loudnessYMaxDb, loudnessYMinDb, onHistoryPointerDown, onLoudnessYRangeChange]
+  );
+
+  const onChartPointerMove = useCallback(
+    (e) => {
+      notePointerMove(e);
+      onHistoryPointerMove?.(e);
+      const drag = chartYDragRef.current;
+      if (drag && typeof onLoudnessYRangeChange === "function") {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const next = computeLinearPan({
+          min: drag.min,
+          max: drag.max,
+          absMin: -64,
+          absMax: 0,
+          deltaPx: e.clientY - drag.startY,
+          axisPx: Math.max(1, rect.height),
+        });
+        onLoudnessYRangeChange(next.min, next.max);
+        setChartYAxisActive(true);
+        return;
+      }
+      onHistoryHoverMove?.(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
+    },
+    [onHistoryHoverMove, onHistoryPointerMove, onLoudnessYRangeChange]
+  );
+
+  const onChartPointerUp = useCallback(
+    (e) => {
+      chartYDragRef.current = null;
+      setChartDragging(false);
+      setChartYAxisActive(false);
+      onHistoryPointerUp?.(e);
+    },
+    [onHistoryPointerUp]
+  );
 
   useLayoutEffect(() => {
     const el = historyGridRef.current;
@@ -139,7 +245,8 @@ export function LoudnessHistoryChart({
         style={{ cursor: loudnessYAxis.cursorStyle }}
         className={cn(
           W_LOUDNESS_Y_AXIS,
-          "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
+          "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+          (loudnessYAxis.isActive || chartYAxisActive) && "text-foreground"
         )}
       >
         <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
@@ -177,8 +284,17 @@ export function LoudnessHistoryChart({
       <div
         className={cn(
           "relative flex min-h-0 min-w-0 flex-1",
-          historyChartInteractive ? "cursor-crosshair" : "pointer-events-none"
+          !historyChartInteractive && "pointer-events-none"
         )}
+        style={{
+          cursor: historyChartInteractive
+            ? chartDragging
+              ? "grabbing"
+              : isCtrlHover
+                ? "grab"
+                : "crosshair"
+            : "default",
+        }}
         onContextMenu={(e) => e.preventDefault()}
         onDoubleClick={() => {
           if (!historyChartInteractive) return;
@@ -187,15 +303,15 @@ export function LoudnessHistoryChart({
           holdHistoryHud(false);
           showHistoryHud(1200);
         }}
-        onWheel={onHistoryWheel}
-        onPointerDown={onHistoryPointerDown}
-        onPointerMove={(e) => {
-          onHistoryPointerMove(e);
-          onHistoryHoverMove?.(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
+        onWheel={onChartWheel}
+        onPointerDown={onChartPointerDown}
+        onPointerMove={onChartPointerMove}
+        onPointerUp={onChartPointerUp}
+        onPointerCancel={onChartPointerUp}
+        onPointerLeave={(e) => {
+          notePointerLeave(e);
+          onHistoryHoverLeave?.(e);
         }}
-        onPointerUp={onHistoryPointerUp}
-        onPointerCancel={onHistoryPointerUp}
-        onPointerLeave={onHistoryHoverLeave}
       >
         {/* Horizontal grid lines */}
         <div
@@ -358,7 +474,15 @@ export function LoudnessHistoryChart({
       </div>
 
       <div />
-      <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)]")}>
+      <div
+        {...(historyTimeAxisHandlers ?? {})}
+        style={{ cursor: historyTimeAxisHandlers ? "ew-resize" : undefined }}
+        className={cn(
+          CAPTION_TEXT,
+          "relative h-[var(--ui-chart-x-axis-row-h)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+          isTimeAxisActive && "text-foreground"
+        )}
+      >
         <div className="absolute inset-0">
           {historyTimeTicks.map((tick, i) => {
             if (i === 0) {

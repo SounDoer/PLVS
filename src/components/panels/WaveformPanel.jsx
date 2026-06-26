@@ -8,17 +8,37 @@ import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js"
 import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
+import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { HelpPopover } from "../HelpPopover";
 
 const WAVEFORM_HELP = [
-  "Left click - Select snapshot",
-  "Left drag - Scrub timeline",
-  "Left double-click - Return to live",
-  "Right drag - Pan timeline",
-  "Right double-click - Reset window and offset",
-  "Mouse wheel - Wheel up/down to zoom in/out",
+  {
+    title: "Snapshot",
+    items: [
+      "Left click - Select snapshot",
+      "Left drag - Scrub timeline",
+      "Left double-click - Return to live",
+    ],
+  },
+  {
+    title: "Viewport",
+    items: [
+      "Mouse wheel - Zoom time",
+      "Ctrl + drag - Pan timeline",
+      "Right drag - Pan timeline",
+      "Right double-click - Reset timeline",
+    ],
+  },
+  {
+    title: "Axes",
+    items: [
+      "Time axis wheel - Zoom time",
+      "Time axis drag - Pan time",
+      "Double-click time axis - Reset time",
+    ],
+  },
 ];
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-axis-rail";
@@ -125,6 +145,8 @@ export function WaveformPanel({ compact = false }) {
     peakLabelContext,
     historyTimeTicks,
     historyChartInteractive,
+    historyTimeAxisHandlers,
+    historyTimeAxisActive,
     selectedOffset,
     selLineX,
     showSelLine,
@@ -218,6 +240,8 @@ export function WaveformPanel({ compact = false }) {
         )
       : null
   );
+  const [chartDragging, setChartDragging] = useState(false);
+  const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
 
   return (
     <div
@@ -251,7 +275,7 @@ export function WaveformPanel({ compact = false }) {
           />
         ))}
 
-        {/* Hover crosshair + popover — pointer-events-none so interaction overlay stays active */}
+        {/* Hover crosshair + popover 鈥?pointer-events-none so interaction overlay stays active */}
         {waveformHover && (
           <div
             className="pointer-events-none absolute inset-0 z-[25]"
@@ -279,7 +303,7 @@ export function WaveformPanel({ compact = false }) {
           </div>
         )}
 
-        {/* Selection line — aligned with canvas area, not the label column */}
+        {/* Selection line 鈥?aligned with canvas area, not the label column */}
         {selectedOffset >= 0 && showSelLine && (
           <div
             className="pointer-events-none absolute inset-0 z-20"
@@ -300,13 +324,19 @@ export function WaveformPanel({ compact = false }) {
           </div>
         )}
 
-        {/* Interaction overlay — covers canvas area only so pointer x maps correctly */}
+        {/* Interaction overlay 鈥?covers canvas area only so pointer x maps correctly */}
         <div
           className="absolute inset-0 z-30"
           data-waveform-interaction-overlay
           style={{
             left: WAVEFORM_CHART_LEFT,
-            cursor: historyChartInteractive ? "crosshair" : "default",
+            cursor: historyChartInteractive
+              ? chartDragging
+                ? "grabbing"
+                : isCtrlHover
+                  ? "grab"
+                  : "crosshair"
+              : "default",
             pointerEvents: historyChartInteractive ? "auto" : "none",
           }}
           onContextMenu={(e) => e.preventDefault()}
@@ -318,20 +348,41 @@ export function WaveformPanel({ compact = false }) {
             showHistoryHud(1200);
           }}
           onWheel={onHistoryWheel}
-          onPointerDown={onHistoryPointerDown}
+          onPointerDown={(e) => {
+            if (e.ctrlKey && e.button === 0) setChartDragging(true);
+            onHistoryPointerDown(e);
+          }}
           onPointerMove={(e) => {
+            notePointerMove(e);
             onHistoryPointerMove(e);
             onWaveformHoverMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
           }}
-          onPointerLeave={onWaveformHoverLeave}
-          onPointerUp={onHistoryPointerUp}
-          onPointerCancel={onHistoryPointerUp}
+          onPointerLeave={(e) => {
+            notePointerLeave(e);
+            onWaveformHoverLeave(e);
+          }}
+          onPointerUp={(e) => {
+            setChartDragging(false);
+            onHistoryPointerUp(e);
+          }}
+          onPointerCancel={(e) => {
+            setChartDragging(false);
+            onHistoryPointerUp(e);
+          }}
         />
       </div>
 
       <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start gap-[var(--ui-chart-axis-gap)]">
         <div data-waveform-x-axis-spacer className={cn(W_LOUDNESS_Y_AXIS, "shrink-0")} />
-        <div className={cn(CAPTION_TEXT, "relative h-full flex-1")}>
+        <div
+          {...(historyTimeAxisHandlers ?? {})}
+          style={{ cursor: historyTimeAxisHandlers ? "ew-resize" : undefined }}
+          className={cn(
+            CAPTION_TEXT,
+            "relative h-full flex-1 transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+            historyTimeAxisActive && "text-foreground"
+          )}
+        >
           {(historyTimeTicks ?? []).map((tick, i) => {
             if (i === 0) {
               return (

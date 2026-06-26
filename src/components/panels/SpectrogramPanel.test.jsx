@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
@@ -91,6 +91,46 @@ describe("SpectrogramPanel", () => {
         span.className.includes("-translate-y-1/2")
       )
     ).toBe(true);
+  });
+
+  it("updates the chart cursor when ctrl is pressed while hovering", () => {
+    const { container } = renderPanel({ historyChartInteractive: true });
+    const chart = container.querySelector("canvas");
+
+    fireEvent.pointerMove(chart, { ctrlKey: false });
+    expect(chart?.style.cursor).toBe("crosshair");
+
+    fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
+
+    expect(chart?.style.cursor).toBe("grab");
+  });
+
+  it("highlights the frequency axis when chart ctrl wheel changes the y range", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+    });
+    const chart = container.querySelector("canvas");
+
+    fireEvent.wheel(chart, {
+      ctrlKey: true,
+      deltaY: -100,
+      clientY: 100,
+    });
+
+    const yAxis = screen.getByText("20k").parentElement?.parentElement;
+    expect(onPanelControlsChange).toHaveBeenCalled();
+    expect(yAxis?.className).toContain("text-foreground");
+    expect(yAxis?.className).not.toContain("var(--muted)_44%");
+  });
+
+  it("highlights the time axis when time changes elsewhere", () => {
+    renderPanel({ historyTimeAxisActive: true });
+
+    const timeAxis = screen.getByText("30s").parentElement?.parentElement;
+    expect(timeAxis?.className).toContain("text-foreground");
+    expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });
 
   it("passes the resolved theme colormap to the canvas hook", () => {

@@ -20,7 +20,7 @@ function iconForHint(item) {
 
   if (text.includes("wheel")) {
     return (
-      <svg {...common}>
+      <svg {...common} data-gesture-icon="wheel">
         <rect x="5.5" y="3" width="13" height="17" rx="5.4" />
         <rect
           x="10.7"
@@ -35,9 +35,18 @@ function iconForHint(item) {
     );
   }
 
+  if (text.includes("hover")) {
+    return (
+      <svg {...common} data-gesture-icon="hover">
+        <path d="M5 4.5L18.5 12L13.2 13.4L10.4 18.5L5 4.5Z" />
+        <path d="M13.2 13.4L17.5 17.7" />
+      </svg>
+    );
+  }
+
   if (text.includes("right")) {
     return (
-      <svg {...common}>
+      <svg {...common} data-gesture-icon="right-mouse">
         <rect x="5.5" y="3" width="13" height="17" rx="5.4" />
         <path
           d="M12 3.2H15.2A3.3 3.3 0 0 1 18.5 6.5V8.6H12V3.2Z"
@@ -49,9 +58,9 @@ function iconForHint(item) {
     );
   }
 
-  if (text.includes("left")) {
+  if (text.includes("left") || text.includes("click") || text.includes("drag")) {
     return (
-      <svg {...common}>
+      <svg {...common} data-gesture-icon="left-mouse">
         <rect x="5.5" y="3" width="13" height="17" rx="5.4" />
         <path d="M12 3.2H8.8A3.3 3.3 0 0 0 5.5 6.5V8.6H12V3.2Z" fill="currentColor" stroke="none" />
         <line x1="12" y1="3.2" x2="12" y2="8.6" />
@@ -70,16 +79,68 @@ function iconForHint(item) {
   }
 
   return (
-    <svg {...common}>
+    <svg {...common} data-gesture-icon="mouse">
       <rect x="5.5" y="3" width="13" height="17" rx="5.4" />
       <line x1="12" y1="3.2" x2="12" y2="8.6" />
     </svg>
   );
 }
 
+function AxisChip({ children }) {
+  return (
+    <span className="inline-flex h-[1.45em] min-w-[1.45em] items-center justify-center rounded-[3px] border border-border bg-muted/40 px-1 font-[family-name:var(--ui-font-mono)] text-[0.82em] font-semibold leading-none text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
+function Keycap({ children }) {
+  return (
+    <span className="inline-flex h-[1.45em] items-center justify-center rounded-[3px] border border-border bg-background px-1.5 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground shadow-sm">
+      {children}
+    </span>
+  );
+}
+
+function GestureIcon({ item }) {
+  const text = String(item).toLowerCase();
+  const axis = text.startsWith("x axis")
+    ? "X"
+    : text.startsWith("y axis")
+      ? "Y"
+      : text.startsWith("time axis")
+        ? "T"
+        : null;
+
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {axis ? <AxisChip>{axis}</AxisChip> : null}
+      {text.includes("ctrl") ? <Keycap>Ctrl</Keycap> : null}
+      {iconForHint(item)}
+    </span>
+  );
+}
+
+function normalizeGroups(items) {
+  if (!Array.isArray(items)) return [];
+  if (items.every((item) => typeof item === "string")) {
+    return [{ title: null, items }];
+  }
+  return items
+    .map((group) => {
+      if (typeof group === "string") return { title: null, items: [group] };
+      return {
+        title: group?.title ?? null,
+        items: Array.isArray(group?.items) ? group.items : [],
+      };
+    })
+    .filter((group) => group.items.length > 0);
+}
+
 export function HelpPopover({ items }) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef(null);
+  const groups = normalizeGroups(items);
 
   const scheduleClose = () => {
     closeTimer.current = setTimeout(() => setOpen(false), 100);
@@ -114,13 +175,27 @@ export function HelpPopover({ items }) {
           "flex w-max max-w-[min(100vw-1rem,24rem)] flex-col gap-1 p-3 text-[length:var(--ui-fs-metric-meta)]"
         )}
       >
-        {items.map((item) => (
-          <div
-            key={item}
-            className="flex items-center gap-1.5 whitespace-nowrap text-muted-foreground"
-          >
-            {iconForHint(item)}
-            <span>{item}</span>
+        {groups.map((group, groupIndex) => (
+          <div key={group.title ?? groupIndex} className="flex flex-col gap-1">
+            {group.title ? (
+              <div
+                className={cn(
+                  groupIndex > 0 && "mt-1.5",
+                  "text-[0.78em] font-semibold text-muted-foreground/70"
+                )}
+              >
+                {group.title}
+              </div>
+            ) : null}
+            {group.items.map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-1.5 whitespace-nowrap text-muted-foreground"
+              >
+                <GestureIcon item={item} />
+                <span>{item}</span>
+              </div>
+            ))}
           </div>
         ))}
       </PopoverContent>

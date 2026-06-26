@@ -12,12 +12,34 @@ import { loudnessHistY } from "../../config/scales";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 
 const LOUDNESS_HELP = [
-  "Left click - Select snapshot",
-  "Left drag - Scrub timeline",
-  "Left double-click - Return to live",
-  "Right drag - Pan timeline",
-  "Right double-click - Reset window and offset",
-  "Mouse wheel - Wheel up/down to zoom in/out",
+  {
+    title: "Snapshot",
+    items: [
+      "Left click - Select snapshot",
+      "Left drag - Scrub timeline",
+      "Left double-click - Return to live",
+    ],
+  },
+  {
+    title: "Viewport",
+    items: [
+      "Mouse wheel - Zoom time",
+      "Ctrl + wheel - Zoom level",
+      "Ctrl + drag - Pan viewport",
+      "Right drag - Pan timeline",
+      "Right double-click - Reset timeline",
+    ],
+  },
+  {
+    title: "Axes",
+    items: [
+      "Time axis wheel - Zoom time",
+      "Time axis drag - Pan time",
+      "Y axis wheel - Zoom level",
+      "Y axis drag - Pan level",
+      "Double-click axis - Reset axis",
+    ],
+  },
 ];
 
 export function LoudnessPanel({ compact = false }) {
@@ -36,6 +58,8 @@ export function LoudnessPanel({ compact = false }) {
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
+    historyTimeAxisHandlers,
+    historyTimeAxisActive,
     panelControls,
     selectedOffset,
     showSelLine,
@@ -139,6 +163,8 @@ export function LoudnessPanel({ compact = false }) {
           onHistoryPointerDown={onHistoryPointerDown}
           onHistoryPointerMove={onHistoryPointerMove}
           onHistoryPointerUp={onHistoryPointerUp}
+          historyTimeAxisHandlers={historyTimeAxisHandlers}
+          isTimeAxisActive={historyTimeAxisActive}
           loudnessHistoryVisibleLayerIds={loudnessHistoryVisibleLayerIds}
           displayHistoryPathM={displayHistoryPathMForRange}
           displayHistoryPathST={displayHistoryPathSTForRange}

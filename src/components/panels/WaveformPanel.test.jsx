@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { WaveformPanel } from "./WaveformPanel.jsx";
 
@@ -100,6 +100,29 @@ describe("WaveformPanel", () => {
     expect(interactionOverlay?.style.left).toBe(
       "calc(var(--ui-w-axis-rail) + var(--ui-chart-axis-gap))"
     );
+  });
+
+  it("updates the chart cursor when ctrl is pressed while hovering", () => {
+    const { container } = renderPanel({ historyChartInteractive: true });
+    const chart = container.querySelector("[data-waveform-interaction-overlay]");
+
+    fireEvent.pointerMove(chart, { ctrlKey: false });
+    expect(chart?.style.cursor).toBe("crosshair");
+
+    fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
+
+    expect(chart?.style.cursor).toBe("grab");
+  });
+
+  it("highlights the time axis when time changes elsewhere", () => {
+    renderPanel({
+      historyTimeAxisActive: true,
+      historyTimeTicks: ["14s", "11s", "7s", "4s", "0s"],
+    });
+
+    const timeAxis = screen.getByText("7s").parentElement;
+    expect(timeAxis?.className).toContain("text-foreground");
+    expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });
 
   it("hides the gestures help button in compact mode", () => {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
@@ -9,6 +9,7 @@ import {
   SNAPSHOT_NO_DATA_MESSAGE,
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
+import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
@@ -23,6 +24,40 @@ import {
   spectrumDbToTopFrac,
   spectrumDbToYViewBox,
 } from "../../config/scales";
+import {
+  computeLinearPan,
+  computeLinearZoom,
+  computeLogPan,
+  computeLogZoom,
+  pixelToLinearValue,
+  pixelToLogValue,
+} from "../../math/axisInteractionMath.js";
+
+const CHART_ZOOM_IN_FACTOR = 0.85;
+const CHART_ZOOM_OUT_FACTOR = 1.18;
+const CHART_WHEEL_PAN_SCALE = 0.5;
+const ACTIVE_PULSE_MS = 160;
+
+const SPECTRUM_HELP = [
+  {
+    title: "Inspect",
+    items: ["Hover - Inspect value", "Click - Capture snapshot", "Double-click - Return to live"],
+  },
+  {
+    title: "Viewport",
+    items: ["Mouse wheel - Zoom frequency", "Ctrl + wheel - Zoom dB", "Ctrl + drag - Pan viewport"],
+  },
+  {
+    title: "Axes",
+    items: [
+      "X axis wheel - Zoom frequency",
+      "X axis drag - Pan frequency",
+      "Y axis wheel - Zoom dB",
+      "Y axis drag - Pan dB",
+      "Double-click axis - Reset axis",
+    ],
+  },
+];
 
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
@@ -153,6 +188,220 @@ export function SpectrumPanel({ compact = false }) {
     panelSpectrumPeakDbB = [];
   }
   const spectrumSvgRef = useRef(null);
+  const chartDragRef = useRef(null);
+  const chartHoverRef = useRef(false);
+  const chartActiveTimerRef = useRef(null);
+  const suppressChartClickRef = useRef(false);
+  const [chartAxisActive, setChartAxisActive] = useState({ x: false, y: false });
+  const [chartCtrlHover, setChartCtrlHover] = useState(false);
+  const [chartDragging, setChartDragging] = useState(false);
+  useEffect(() => {
+    const updateCtrlHover = (e) => {
+      if (!chartHoverRef.current) return;
+      setChartCtrlHover(e.ctrlKey);
+    };
+    const clearCtrlHover = () => setChartCtrlHover(false);
+    window.addEventListener("keydown", updateCtrlHover);
+    window.addEventListener("keyup", updateCtrlHover);
+    window.addEventListener("blur", clearCtrlHover);
+    return () => {
+      window.removeEventListener("keydown", updateCtrlHover);
+      window.removeEventListener("keyup", updateCtrlHover);
+      window.removeEventListener("blur", clearCtrlHover);
+    };
+  }, []);
+  useEffect(
+    () => () => {
+      if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+    },
+    []
+  );
+  const pulseChartAxis = useCallback((axes) => {
+    setChartAxisActive({
+      x: Boolean(axes?.x),
+      y: Boolean(axes?.y),
+    });
+    if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+    chartActiveTimerRef.current = window.setTimeout(() => {
+      chartActiveTimerRef.current = null;
+      setChartAxisActive({ x: false, y: false });
+    }, ACTIVE_PULSE_MS);
+  }, []);
+  const zoomSpectrumXFromChart = useCallback(
+    (e, factor) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const width = Math.max(1, rect.width);
+      const px = width - Math.max(0, Math.min(width, e.clientX - rect.left));
+      const next = computeLogZoom({
+        min: normalizedPanelControls.spectrumXMinFreq,
+        max: normalizedPanelControls.spectrumXMaxFreq,
+        absMin: 20,
+        absMax: 20000,
+        minOctaves: 1,
+        anchor: pixelToLogValue(
+          px,
+          width,
+          normalizedPanelControls.spectrumXMinFreq,
+          normalizedPanelControls.spectrumXMaxFreq
+        ),
+        factor,
+      });
+      updatePanelControlsRange({ spectrumXMinFreq: next.min, spectrumXMaxFreq: next.max });
+      pulseChartAxis({ x: true });
+    },
+    [
+      normalizedPanelControls.spectrumXMaxFreq,
+      normalizedPanelControls.spectrumXMinFreq,
+      pulseChartAxis,
+      updatePanelControlsRange,
+    ]
+  );
+  const zoomSpectrumYFromChart = useCallback(
+    (e, factor) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const height = Math.max(1, rect.height);
+      const px = Math.max(0, Math.min(height, e.clientY - rect.top));
+      const next = computeLinearZoom({
+        min: normalizedPanelControls.spectrumYMinDb,
+        max: normalizedPanelControls.spectrumYMaxDb,
+        absMin: -120,
+        absMax: 0,
+        minSpan: 12,
+        anchor: pixelToLinearValue(
+          px,
+          height,
+          normalizedPanelControls.spectrumYMinDb,
+          normalizedPanelControls.spectrumYMaxDb
+        ),
+        factor,
+      });
+      updatePanelControlsRange({ spectrumYMinDb: next.min, spectrumYMaxDb: next.max });
+      pulseChartAxis({ y: true });
+    },
+    [
+      normalizedPanelControls.spectrumYMaxDb,
+      normalizedPanelControls.spectrumYMinDb,
+      pulseChartAxis,
+      updatePanelControlsRange,
+    ]
+  );
+  const panSpectrumXFromChart = useCallback(
+    (rect, deltaPx, startRange = normalizedPanelControls) => {
+      const next = computeLogPan({
+        min: startRange.spectrumXMinFreq,
+        max: startRange.spectrumXMaxFreq,
+        absMin: 20,
+        absMax: 20000,
+        deltaPx,
+        axisPx: Math.max(1, rect.width),
+      });
+      return { spectrumXMinFreq: next.min, spectrumXMaxFreq: next.max };
+    },
+    [normalizedPanelControls]
+  );
+  const panSpectrumYFromChart = useCallback(
+    (rect, deltaPx, startRange = normalizedPanelControls) => {
+      const next = computeLinearPan({
+        min: startRange.spectrumYMinDb,
+        max: startRange.spectrumYMaxDb,
+        absMin: -120,
+        absMax: 0,
+        deltaPx,
+        axisPx: Math.max(1, rect.height),
+      });
+      return { spectrumYMinDb: next.min, spectrumYMaxDb: next.max };
+    },
+    [normalizedPanelControls]
+  );
+  const onSpectrumChartWheel = useCallback(
+    (e) => {
+      if (!historyChartInteractive) return;
+      e.preventDefault();
+      if (e.ctrlKey) {
+        zoomSpectrumYFromChart(e, e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR);
+        return;
+      }
+      if (Number.isFinite(e.deltaX) && Math.abs(e.deltaX) > Math.abs(e.deltaY ?? 0)) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        updatePanelControlsRange(panSpectrumXFromChart(rect, e.deltaX * CHART_WHEEL_PAN_SCALE));
+        pulseChartAxis({ x: true });
+        return;
+      }
+      zoomSpectrumXFromChart(e, e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR);
+    },
+    [
+      historyChartInteractive,
+      panSpectrumXFromChart,
+      pulseChartAxis,
+      updatePanelControlsRange,
+      zoomSpectrumXFromChart,
+      zoomSpectrumYFromChart,
+    ]
+  );
+  const onSpectrumChartPointerDown = useCallback(
+    (e) => {
+      chartHoverRef.current = true;
+      setChartCtrlHover(e.ctrlKey);
+      if (!historyChartInteractive || !e.ctrlKey || e.button !== 0) return;
+      e.preventDefault();
+      suppressChartClickRef.current = true;
+      chartDragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startRange: {
+          spectrumXMinFreq: normalizedPanelControls.spectrumXMinFreq,
+          spectrumXMaxFreq: normalizedPanelControls.spectrumXMaxFreq,
+          spectrumYMinDb: normalizedPanelControls.spectrumYMinDb,
+          spectrumYMaxDb: normalizedPanelControls.spectrumYMaxDb,
+        },
+      };
+      setChartDragging(true);
+      pulseChartAxis({ x: true, y: true });
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    },
+    [
+      historyChartInteractive,
+      normalizedPanelControls.spectrumXMaxFreq,
+      normalizedPanelControls.spectrumXMinFreq,
+      normalizedPanelControls.spectrumYMaxDb,
+      normalizedPanelControls.spectrumYMinDb,
+      pulseChartAxis,
+    ]
+  );
+  const onSpectrumChartPointerMove = useCallback(
+    (e) => {
+      chartHoverRef.current = true;
+      setChartCtrlHover(e.ctrlKey);
+      const drag = chartDragRef.current;
+      if (!drag) return false;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      const next = {
+        ...panSpectrumXFromChart(rect, -dx, drag.startRange),
+        ...panSpectrumYFromChart(rect, dy, drag.startRange),
+      };
+      updatePanelControlsRange(next);
+      pulseChartAxis({ x: Math.abs(dx) >= 2, y: Math.abs(dy) >= 2 });
+      return true;
+    },
+    [panSpectrumXFromChart, panSpectrumYFromChart, pulseChartAxis, updatePanelControlsRange]
+  );
+  const onSpectrumChartPointerUp = useCallback((e) => {
+    const wasDragging = !!chartDragRef.current;
+    chartDragRef.current = null;
+    setChartDragging(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    if (wasDragging) {
+      window.setTimeout(() => {
+        suppressChartClickRef.current = false;
+      }, 0);
+    }
+  }, []);
   const {
     hover: spectrumHover,
     onMove,
@@ -224,9 +473,16 @@ export function SpectrumPanel({ compact = false }) {
     <div
       className={cn(
         PANEL_MIN_SPECTRUM,
-        "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
+      {!compact ? (
+        <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
+          <div className="pointer-events-auto">
+            <HelpPopover items={SPECTRUM_HELP} />
+          </div>
+        </div>
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(
@@ -239,7 +495,8 @@ export function SpectrumPanel({ compact = false }) {
             style={{ cursor: spectrumYAxis.cursorStyle }}
             className={cn(
               W_SPECTRUM_Y_AXIS,
-              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
+              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+              (spectrumYAxis.isActive || chartAxisActive.y) && "text-foreground"
             )}
           >
             <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
@@ -274,8 +531,16 @@ export function SpectrumPanel({ compact = false }) {
             <div
               data-testid="spectrum-chart"
               className="relative min-h-0 h-full"
-              onPointerLeave={onSpectrumHoverLeave}
+              style={{
+                cursor: chartDragging ? "grabbing" : chartCtrlHover ? "grab" : "crosshair",
+              }}
+              onPointerLeave={() => {
+                chartHoverRef.current = false;
+                setChartCtrlHover(false);
+                onSpectrumHoverLeave();
+              }}
               onClick={() => {
+                if (suppressChartClickRef.current) return;
                 if (!canCaptureCurrentSnapshot) return;
                 captureCurrentSnapshot?.();
               }}
@@ -283,14 +548,17 @@ export function SpectrumPanel({ compact = false }) {
                 if (!historyChartInteractive) return;
                 setSelectedOffset?.(-1);
               }}
+              onWheel={onSpectrumChartWheel}
+              onPointerDown={onSpectrumChartPointerDown}
+              onPointerMove={(e) => {
+                if (onSpectrumChartPointerMove(e)) return;
+                const r = spectrumSvgRef.current?.getBoundingClientRect();
+                if (r) onMove(e.clientX, e.clientY, r);
+              }}
+              onPointerUp={onSpectrumChartPointerUp}
+              onPointerCancel={onSpectrumChartPointerUp}
             >
-              <div
-                className="absolute inset-0 min-h-0 min-w-0 pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
-                onPointerMove={(e) => {
-                  const r = spectrumSvgRef.current?.getBoundingClientRect();
-                  if (r) onMove(e.clientX, e.clientY, r);
-                }}
-              >
+              <div className="absolute inset-0 min-h-0 min-w-0 pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]">
                 <svg
                   ref={spectrumSvgRef}
                   viewBox="0 0 1000 260"
@@ -437,7 +705,7 @@ export function SpectrumPanel({ compact = false }) {
                   ) : null}
                 </svg>
               </div>
-              {spectrumHover ? (
+              {spectrumHover && !chartDragging ? (
                 <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
                   <div
                     className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
@@ -504,7 +772,11 @@ export function SpectrumPanel({ compact = false }) {
             ref={spectrumXAxis.axisRef}
             {...spectrumXAxis.axisHandlers}
             style={{ cursor: spectrumXAxis.cursorStyle }}
-            className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}
+            className={cn(
+              CAPTION_TEXT,
+              "relative h-[var(--ui-chart-x-axis-row-h)] w-full transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+              (spectrumXAxis.isActive || chartAxisActive.x) && "text-foreground"
+            )}
           >
             <div className="absolute inset-x-0 top-0 h-full">
               {spectrumFreqTicks.map(({ v: f, lb }, i) => {

@@ -788,6 +788,8 @@ function AppContent() {
     onHistoryPointerMove,
     onHistoryPointerUp,
     onHistoryWheel,
+    isTimeAxisActive,
+    historyTimeAxisHandlers,
   } = useHistoryInteraction({
     enabled: historyChartInteractive,
     sampleSec: HIST_SAMPLE_SEC,
@@ -1310,6 +1312,8 @@ function AppContent() {
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
+    historyTimeAxisHandlers,
+    historyTimeAxisActive: isTimeAxisActive,
     captureCurrentSnapshot,
     // Spectrum
     spectrumChannelOptions,

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
@@ -8,12 +8,14 @@ import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
+import { computeLogPan, computeLogZoom, pixelToLogValue } from "../../math/axisInteractionMath.js";
 import {
   spectrogramTimeWindow,
   spectrogramDataBoundaryMarkers,
 } from "../../math/spectrogramTimeline";
 import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
+import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { getTheme } from "../../theme/themeRegistry.js";
@@ -24,13 +26,39 @@ import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptySt
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 
+const CHART_ZOOM_IN_FACTOR = 0.85;
+const CHART_ZOOM_OUT_FACTOR = 1.18;
+const ACTIVE_PULSE_MS = 160;
+
 const SPECTROGRAM_HELP = [
-  "Left click - Select snapshot",
-  "Left drag - Scrub timeline",
-  "Left double-click - Return to live",
-  "Right drag - Pan timeline",
-  "Right double-click - Reset window and offset",
-  "Mouse wheel - Wheel up/down to zoom in/out",
+  {
+    title: "Snapshot",
+    items: [
+      "Left click - Select snapshot",
+      "Left drag - Scrub timeline",
+      "Left double-click - Return to live",
+    ],
+  },
+  {
+    title: "Viewport",
+    items: [
+      "Mouse wheel - Zoom time",
+      "Ctrl + wheel - Zoom frequency",
+      "Ctrl + drag - Pan viewport",
+      "Right drag - Pan timeline",
+      "Right double-click - Reset timeline",
+    ],
+  },
+  {
+    title: "Axes",
+    items: [
+      "Time axis wheel - Zoom time",
+      "Time axis drag - Pan time",
+      "Y axis wheel - Zoom frequency",
+      "Y axis drag - Pan frequency",
+      "Double-click axis - Reset axis",
+    ],
+  },
 ];
 
 export function SpectrogramPanel({ compact = false }) {
@@ -51,6 +79,8 @@ export function SpectrogramPanel({ compact = false }) {
     onHistoryPointerMove,
     onHistoryPointerUp,
     onHistoryWheel,
+    historyTimeAxisHandlers,
+    historyTimeAxisActive,
     historyTimeTicks,
     resolvedThemeId,
     panelControls,
@@ -59,6 +89,7 @@ export function SpectrogramPanel({ compact = false }) {
     analysisStatus,
     onPanelControlsChange,
   } = useAudioData();
+  const chartYDragRef = useRef(null);
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]
@@ -86,6 +117,57 @@ export function SpectrogramPanel({ compact = false }) {
       [normalizedPanelControls, onPanelControlsChange]
     ),
   });
+  const chartActiveTimerRef = useRef(null);
+  const [chartYAxisActive, setChartYAxisActive] = useState(false);
+  const pulseChartYAxis = useCallback(() => {
+    setChartYAxisActive(true);
+    if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+    chartActiveTimerRef.current = window.setTimeout(() => {
+      chartActiveTimerRef.current = null;
+      setChartYAxisActive(false);
+    }, ACTIVE_PULSE_MS);
+  }, []);
+  useEffect(
+    () => () => {
+      if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+    },
+    []
+  );
+  const onSpectrogramChartWheel = useCallback(
+    (e) => {
+      if (!e.ctrlKey) {
+        onHistoryWheel?.(e);
+        return;
+      }
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const height = Math.max(1, rect.height);
+      const px = Math.max(0, Math.min(height, e.clientY - rect.top));
+      const next = computeLogZoom({
+        min: normalizedPanelControls.spectrogramYMinFreq,
+        max: normalizedPanelControls.spectrogramYMaxFreq,
+        absMin: 20,
+        absMax: 20000,
+        minOctaves: 1,
+        anchor: pixelToLogValue(
+          px,
+          height,
+          normalizedPanelControls.spectrogramYMinFreq,
+          normalizedPanelControls.spectrogramYMaxFreq
+        ),
+        factor: e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR,
+      });
+      onPanelControlsChange?.(
+        normalizePanelControls({
+          ...normalizedPanelControls,
+          spectrogramYMinFreq: next.min,
+          spectrogramYMaxFreq: next.max,
+        })
+      );
+      pulseChartYAxis();
+    },
+    [normalizedPanelControls, onHistoryWheel, onPanelControlsChange, pulseChartYAxis]
+  );
   const spectrogramFreqTicks = buildAdaptiveFreqTicks(
     normalizedPanelControls.spectrogramYMinFreq,
     normalizedPanelControls.spectrogramYMaxFreq,
@@ -94,6 +176,8 @@ export function SpectrogramPanel({ compact = false }) {
   const isOverCap = analysisStatus === "overCap";
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const [chartDragging, setChartDragging] = useState(false);
+  const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
   useCanvasSize(canvasRef, containerRef);
 
   // Spectrograms are request-keyed: resolve this panel's key once and read both the live rolling
@@ -199,6 +283,64 @@ export function SpectrogramPanel({ compact = false }) {
       normalizedPanelControls.spectrogramYMaxFreq
     );
   });
+  const onSpectrogramChartPointerDown = useCallback(
+    (e) => {
+      if (e.ctrlKey && e.button === 0) {
+        chartYDragRef.current = {
+          startY: e.clientY,
+          min: normalizedPanelControls.spectrogramYMinFreq,
+          max: normalizedPanelControls.spectrogramYMaxFreq,
+        };
+        setChartDragging(true);
+        if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
+        setChartYAxisActive(true);
+      }
+      onHistoryPointerDown?.(e);
+    },
+    [
+      normalizedPanelControls.spectrogramYMaxFreq,
+      normalizedPanelControls.spectrogramYMinFreq,
+      onHistoryPointerDown,
+    ]
+  );
+  const onSpectrogramChartPointerMove = useCallback(
+    (e) => {
+      notePointerMove(e);
+      onHistoryPointerMove?.(e);
+      const drag = chartYDragRef.current;
+      if (drag) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const next = computeLogPan({
+          min: drag.min,
+          max: drag.max,
+          absMin: 20,
+          absMax: 20000,
+          deltaPx: e.clientY - drag.startY,
+          axisPx: Math.max(1, rect.height),
+        });
+        onPanelControlsChange?.(
+          normalizePanelControls({
+            ...normalizedPanelControls,
+            spectrogramYMinFreq: next.min,
+            spectrogramYMaxFreq: next.max,
+          })
+        );
+        setChartYAxisActive(true);
+        return;
+      }
+      onSpectrogramHoverMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
+    },
+    [normalizedPanelControls, onHistoryPointerMove, onPanelControlsChange, onSpectrogramHoverMove]
+  );
+  const onSpectrogramChartPointerUp = useCallback(
+    (e) => {
+      chartYDragRef.current = null;
+      setChartDragging(false);
+      setChartYAxisActive(false);
+      onHistoryPointerUp?.(e);
+    },
+    [onHistoryPointerUp]
+  );
 
   if (isOverCap) {
     return (
@@ -240,7 +382,8 @@ export function SpectrogramPanel({ compact = false }) {
             style={{ cursor: spectrogramYAxis.cursorStyle }}
             className={cn(
               W_SPECTRUM_Y_AXIS,
-              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
+              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+              (spectrogramYAxis.isActive || chartYAxisActive) && "text-foreground"
             )}
           >
             <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
@@ -285,25 +428,30 @@ export function SpectrogramPanel({ compact = false }) {
             <div ref={containerRef} className="relative min-h-0 h-full">
               <canvas
                 ref={canvasRef}
-                style={{ opacity: "var(--panel-opacity-meter, 1)" }}
+                style={{
+                  opacity: "var(--panel-opacity-meter, 1)",
+                  cursor: historyChartInteractive
+                    ? chartDragging
+                      ? "grabbing"
+                      : isCtrlHover
+                        ? "grab"
+                        : "crosshair"
+                    : "default",
+                }}
                 className={cn(
                   "absolute inset-0 h-full w-full",
-                  historyChartInteractive ? "cursor-crosshair" : "pointer-events-none"
+                  !historyChartInteractive && "pointer-events-none"
                 )}
                 onContextMenu={(e) => e.preventDefault()}
-                onPointerDown={onHistoryPointerDown}
-                onPointerMove={(e) => {
-                  onHistoryPointerMove(e);
-                  onSpectrogramHoverMove(
-                    e.clientX,
-                    e.clientY,
-                    e.currentTarget.getBoundingClientRect()
-                  );
+                onPointerDown={onSpectrogramChartPointerDown}
+                onPointerMove={onSpectrogramChartPointerMove}
+                onPointerLeave={(e) => {
+                  notePointerLeave(e);
+                  onSpectrogramHoverLeave?.(e);
                 }}
-                onPointerLeave={onSpectrogramHoverLeave}
-                onPointerUp={onHistoryPointerUp}
-                onPointerCancel={onHistoryPointerUp}
-                onWheel={onHistoryWheel}
+                onPointerUp={onSpectrogramChartPointerUp}
+                onPointerCancel={onSpectrogramChartPointerUp}
+                onWheel={onSpectrogramChartWheel}
                 onDoubleClick={() => {
                   if (!historyChartInteractive) return;
                   setSelectedOffset(-1);
@@ -406,7 +554,15 @@ export function SpectrogramPanel({ compact = false }) {
           </div>
 
           <div />
-          <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}>
+          <div
+            {...(historyTimeAxisHandlers ?? {})}
+            style={{ cursor: historyTimeAxisHandlers ? "ew-resize" : undefined }}
+            className={cn(
+              CAPTION_TEXT,
+              "relative h-[var(--ui-chart-x-axis-row-h)] w-full transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
+              historyTimeAxisActive && "text-foreground"
+            )}
+          >
             <div className="absolute inset-0">
               {(historyTimeTicks ?? []).map((tick, i) => {
                 if (i === 0) {
