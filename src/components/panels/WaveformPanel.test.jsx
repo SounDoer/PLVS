@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { WaveformPanel } from "./WaveformPanel.jsx";
@@ -60,6 +60,11 @@ beforeEach(() => {
 
   window.ResizeObserver = ResizeObserverStub;
   globalThis.ResizeObserver = ResizeObserverStub;
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("WaveformPanel", () => {
@@ -159,5 +164,81 @@ describe("WaveformPanel", () => {
     renderPanel({ panelVisible: false });
 
     expect(sliceWaveformSubHistoryMock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the live hover value when waveform buckets change without pointer movement", () => {
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((cb) => {
+        cb();
+        return 1;
+      })
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 120,
+      top: 0,
+      right: 400,
+      bottom: 120,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+    });
+    sliceWaveformSubHistoryMock.mockImplementation((histSourceList) => {
+      const maxL = histSourceList?.[0]?.timestampMs === 1100 ? 1 : 0.5;
+      return {
+        mins: [[0], [0]],
+        maxes: [[maxL], [0.25]],
+        bucketCount: 1,
+        fracPhase: 0,
+        firstBucket: 0,
+        lastBucket: 0,
+      };
+    });
+
+    const { container, rerender } = renderPanel({
+      histSourceList: [{ timestampMs: 1000 }],
+      visibleSamples: 1,
+      channelCount: 2,
+      historyChartInteractive: true,
+    });
+    const chart = container.querySelector("[data-waveform-interaction-overlay]");
+
+    fireEvent(
+      chart,
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        clientX: 0,
+        clientY: 60,
+      })
+    );
+    expect(screen.getByText("-6.0 dBFS")).toBeTruthy();
+
+    rerender(
+      <AudioDataContext.Provider
+        value={{
+          ...baseAudioData,
+          histSourceList: [{ timestampMs: 1100 }],
+          visibleSamples: 1,
+          channelCount: 2,
+          historyChartInteractive: true,
+        }}
+      >
+        <WaveformPanel />
+      </AudioDataContext.Provider>
+    );
+
+    expect(screen.getByText("0.0 dBFS")).toBeTruthy();
   });
 });

@@ -500,28 +500,31 @@ export function SpectrumPanel({ compact = false }) {
     hover: spectrumHover,
     onMove,
     onLeave: onSpectrumHoverLeave,
-  } = useChartHover((xFrac) => {
-    const data = panelSpectrumData;
-    if (!data?.bands?.length || !data?.dbList?.length) return null;
-    const nearestIdx = computeSpectrumHoverIndex(
-      xFrac,
-      data.bands,
-      spectrumRange.minHz,
-      spectrumRange.maxHz
-    );
-    const band = data.bands[nearestIdx];
-    const db = data.dbList[nearestIdx];
-    if (!band || !Number.isFinite(db)) return null;
-    const dbB = data.dbListB?.[nearestIdx];
-    return {
-      leftPct: rangedFreqToXFrac(band.fCenter, spectrumRange.minHz, spectrumRange.maxHz) * 100,
-      topPct: spectrumDbToTopFrac(db, spectrumRange) * 100,
-      freqLabel: formatSpectrumFreq(band.fCenter),
-      dbLabel: `${db.toFixed(1)} dB`,
-      dbLabelB: Number.isFinite(dbB) ? `${dbB.toFixed(1)} dB` : null,
-      noteLabel: freqToNote(band.fCenter),
-    };
-  });
+  } = useChartHover(
+    (xFrac) => {
+      const data = panelSpectrumData;
+      if (!data?.bands?.length || !data?.dbList?.length) return null;
+      const nearestIdx = computeSpectrumHoverIndex(
+        xFrac,
+        data.bands,
+        spectrumRange.minHz,
+        spectrumRange.maxHz
+      );
+      const band = data.bands[nearestIdx];
+      const db = data.dbList[nearestIdx];
+      if (!band || !Number.isFinite(db)) return null;
+      const dbB = data.dbListB?.[nearestIdx];
+      return {
+        leftPct: rangedFreqToXFrac(band.fCenter, spectrumRange.minHz, spectrumRange.maxHz) * 100,
+        topPct: spectrumDbToTopFrac(db, spectrumRange) * 100,
+        freqLabel: formatSpectrumFreq(band.fCenter),
+        dbLabel: `${db.toFixed(1)} dB`,
+        dbLabelB: Number.isFinite(dbB) ? `${dbB.toFixed(1)} dB` : null,
+        noteLabel: freqToNote(band.fCenter),
+      };
+    },
+    selectedOffset < 0 ? liveSpectrumResult : null
+  );
   const reduceMotion = useReducedMotion();
   const displayPanelSpectrumPath =
     buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbList, spectrumRange) ||

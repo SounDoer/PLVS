@@ -88,4 +88,60 @@ describe("useChartHover", () => {
     expect(computeFn).toHaveBeenCalledTimes(1);
     expect(result.current.hover).toEqual({ x: 0.5, y: 0.25 });
   });
+
+  it("refreshes the last hover position when the refresh key changes", () => {
+    const computeFn = vi.fn((x, y) => ({ x, y, value: computeFn.mock.calls.length }));
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => useChartHover(computeFn, refreshKey),
+      {
+        initialProps: { refreshKey: 1 },
+      }
+    );
+
+    act(() => result.current.onMove(60, 70, rect));
+    act(() => flushRaf());
+    expect(result.current.hover).toEqual({ x: 0.5, y: 0.25, value: 1 });
+
+    rerender({ refreshKey: 2 });
+
+    expect(result.current.hover).toEqual({ x: 0.5, y: 0.25, value: 2 });
+  });
+
+  it("does not refresh after hover leaves", () => {
+    const computeFn = vi.fn((x, y) => ({ x, y }));
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => useChartHover(computeFn, refreshKey),
+      {
+        initialProps: { refreshKey: 1 },
+      }
+    );
+
+    act(() => result.current.onMove(60, 70, rect));
+    act(() => flushRaf());
+    act(() => result.current.onLeave());
+    computeFn.mockClear();
+
+    rerender({ refreshKey: 2 });
+
+    expect(computeFn).not.toHaveBeenCalled();
+    expect(result.current.hover).toBeNull();
+  });
+
+  it("does not refresh while the refresh key is null", () => {
+    const computeFn = vi.fn((x, y) => ({ x, y, value: computeFn.mock.calls.length }));
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => useChartHover(computeFn, refreshKey),
+      {
+        initialProps: { refreshKey: 1 },
+      }
+    );
+
+    act(() => result.current.onMove(60, 70, rect));
+    act(() => flushRaf());
+    expect(result.current.hover).toEqual({ x: 0.5, y: 0.25, value: 1 });
+
+    rerender({ refreshKey: null });
+
+    expect(result.current.hover).toEqual({ x: 0.5, y: 0.25, value: 1 });
+  });
 });

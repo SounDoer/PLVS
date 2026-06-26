@@ -64,6 +64,8 @@ function firstPathY(path) {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("SpectrumPanel", () => {
@@ -236,6 +238,56 @@ describe("SpectrumPanel", () => {
 
     const snapStroke = container.querySelector('path[stroke="var(--ui-spectrum-primary-snap)"]');
     expect(snapStroke?.getAttribute("d")).toBe(path);
+  });
+
+  it("refreshes the live hover value when spectrum data changes without pointer movement", () => {
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((cb) => {
+        cb();
+        return 1;
+      })
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 240,
+      top: 0,
+      right: 400,
+      bottom: 240,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    const { rerender } = render(
+      <AudioDataContext.Provider
+        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
+          historyChartInteractive: true,
+        })}
+      >
+        <SpectrumPanel />
+      </AudioDataContext.Provider>
+    );
+
+    fireEvent.pointerMove(screen.getByTestId("spectrum-chart"), {
+      clientX: 0,
+      clientY: 120,
+    });
+    expect(screen.getByText("-96.0 dB")).toBeTruthy();
+
+    rerender(
+      <AudioDataContext.Provider
+        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
+          historyChartInteractive: true,
+        })}
+      >
+        <SpectrumPanel />
+      </AudioDataContext.Provider>
+    );
+
+    expect(screen.getByText("0.0 dB")).toBeTruthy();
   });
 
   it("captures the current snapshot when left-clicking the chart with history data", () => {

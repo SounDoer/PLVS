@@ -215,18 +215,22 @@ function WaveformPanelContent({ compact, audioData }) {
     hover: waveformHover,
     onMove: onWaveformHoverMove,
     onLeave: onWaveformHoverLeave,
-  } = useChartHover((xFrac) =>
-    historyChartInteractive
-      ? computeWaveformHoverPoint(
-          xFrac,
-          mins,
-          maxes,
-          bucketCount,
-          effectiveOffsetSamples ?? 0,
-          visibleSamples ?? 0,
-          HIST_SAMPLE_SEC,
-          labels
-        )
+  } = useChartHover(
+    (xFrac) =>
+      historyChartInteractive
+        ? computeWaveformHoverPoint(
+            xFrac,
+            mins,
+            maxes,
+            bucketCount,
+            effectiveOffsetSamples ?? 0,
+            visibleSamples ?? 0,
+            HIST_SAMPLE_SEC,
+            labels
+          )
+        : null,
+    selectedOffset < 0
+      ? `${waveformHistoryWindow.startIndex}:${waveformHistoryWindow.endIndex}:${waveformHistoryWindow.startRow?.timestampMs ?? ""}:${waveformHistoryWindow.endRow?.timestampMs ?? ""}:${effectiveOffsetSamples ?? 0}:${visibleSamples ?? 0}:${bucketCount}:${fracPhase}:${firstBucket}:${lastBucket}`
       : null
   );
   const [chartDragging, setChartDragging] = useState(false);

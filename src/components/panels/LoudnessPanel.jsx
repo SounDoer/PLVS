@@ -39,6 +39,7 @@ export function LoudnessPanel({ compact = false }) {
     histSourceList,
     effectiveOffsetSamples,
     visibleSamples,
+    totalSamples,
     onPanelControlsChange,
   } = useAudioData();
 
@@ -87,16 +88,20 @@ export function LoudnessPanel({ compact = false }) {
     hover: historyHover,
     onMove: onHistoryHoverMove,
     onLeave: onHistoryHoverLeave,
-  } = useChartHover((xFrac) =>
-    historyChartInteractive
-      ? computeHistoryHoverPoint(
-          xFrac,
-          histSourceList,
-          effectiveOffsetSamples,
-          visibleSamples,
-          HIST_SAMPLE_SEC,
-          loudnessYRange
-        )
+  } = useChartHover(
+    (xFrac) =>
+      historyChartInteractive
+        ? computeHistoryHoverPoint(
+            xFrac,
+            histSourceList,
+            effectiveOffsetSamples,
+            visibleSamples,
+            HIST_SAMPLE_SEC,
+            loudnessYRange
+          )
+        : null,
+    selectedOffset < 0
+      ? `${totalSamples ?? 0}:${effectiveOffsetSamples}:${visibleSamples}:${loudnessYMinDb}:${loudnessYMaxDb}`
       : null
   );
 

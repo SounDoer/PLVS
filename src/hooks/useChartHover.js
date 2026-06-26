@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-export function useChartHover(computeFn) {
+export function useChartHover(computeFn, refreshKey) {
   const computeRef = useRef(computeFn);
   const rafRef = useRef(0);
   const pendingMoveRef = useRef(null);
+  const lastMoveRef = useRef(null);
   useLayoutEffect(() => {
     computeRef.current = computeFn;
   }, [computeFn]);
@@ -28,11 +29,21 @@ export function useChartHover(computeFn) {
       const pendingMove = pendingMoveRef.current;
       pendingMoveRef.current = null;
       if (!pendingMove) return;
+      lastMoveRef.current = pendingMove;
       setHover(computeRef.current(pendingMove.xFrac, pendingMove.yFrac));
     });
   }, []);
+
+  useEffect(() => {
+    if (refreshKey == null) return;
+    const lastMove = lastMoveRef.current;
+    if (!lastMove) return;
+    setHover(computeRef.current(lastMove.xFrac, lastMove.yFrac));
+  }, [refreshKey]);
+
   const onLeave = useCallback(() => {
     pendingMoveRef.current = null;
+    lastMoveRef.current = null;
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;

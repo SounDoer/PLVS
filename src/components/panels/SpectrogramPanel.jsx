@@ -225,32 +225,37 @@ export function SpectrogramPanel({ compact = false }) {
     hover: spectrogramHover,
     onMove: onSpectrogramHoverMove,
     onLeave: onSpectrogramHoverLeave,
-  } = useChartHover((xFrac, yFrac) => {
-    if (!historyChartInteractive) return null;
-    const markerNotes = [
-      ...visibleFrequencyMarkers.map(({ marker, x }) => ({
-        xFrac: x / 1000,
-        label: `${marker.from} -> ${marker.to}`,
-      })),
-      ...(boundarySpan > 0
-        ? dataBoundaryMarkers.map(({ ts, label }) => ({
-            xFrac: (ts - oldestMs) / boundarySpan,
-            label,
-          }))
-        : []),
-    ];
-    return computeSpectrogramHoverPoint(
-      xFrac,
-      yFrac,
-      spectrogramSnaps,
-      oldestMs,
-      newestMs,
-      sampleMs,
-      markerNotes,
-      normalizedPanelControls.spectrogramYMinFreq,
-      normalizedPanelControls.spectrogramYMaxFreq
-    );
-  });
+  } = useChartHover(
+    (xFrac, yFrac) => {
+      if (!historyChartInteractive) return null;
+      const markerNotes = [
+        ...visibleFrequencyMarkers.map(({ marker, x }) => ({
+          xFrac: x / 1000,
+          label: `${marker.from} -> ${marker.to}`,
+        })),
+        ...(boundarySpan > 0
+          ? dataBoundaryMarkers.map(({ ts, label }) => ({
+              xFrac: (ts - oldestMs) / boundarySpan,
+              label,
+            }))
+          : []),
+      ];
+      return computeSpectrogramHoverPoint(
+        xFrac,
+        yFrac,
+        spectrogramSnaps,
+        oldestMs,
+        newestMs,
+        sampleMs,
+        markerNotes,
+        normalizedPanelControls.spectrogramYMinFreq,
+        normalizedPanelControls.spectrogramYMaxFreq
+      );
+    },
+    selectedOffset < 0
+      ? `${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${normalizedPanelControls.spectrogramYMinFreq}:${normalizedPanelControls.spectrogramYMaxFreq}:${dataBoundaryMarkers.length}:${visibleFrequencyMarkers.length}`
+      : null
+  );
   const onSpectrogramChartPointerDown = useCallback(
     (e) => {
       if (e.ctrlKey && e.button === 0) {
