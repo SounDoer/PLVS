@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
-export function useCanvasSize(canvasRef, containerRef, onResize) {
+export function useCanvasSize(canvasRef, containerRef, onResize, options = {}) {
   const onResizeRef = useRef(onResize);
+  const maxDevicePixelRatio = options.maxDevicePixelRatio;
 
   useEffect(() => {
     onResizeRef.current = onResize;
@@ -16,7 +17,11 @@ export function useCanvasSize(canvasRef, containerRef, onResize) {
       rafId = 0;
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const dpr = window.devicePixelRatio || 1;
+      const rawDpr = window.devicePixelRatio || 1;
+      const dpr =
+        Number.isFinite(maxDevicePixelRatio) && maxDevicePixelRatio > 0
+          ? Math.min(rawDpr, maxDevicePixelRatio)
+          : rawDpr;
       canvas.width = container.clientWidth * dpr;
       canvas.height = container.clientHeight * dpr;
       onResizeRef.current?.({ width: canvas.width, height: canvas.height });
@@ -31,5 +36,5 @@ export function useCanvasSize(canvasRef, containerRef, onResize) {
       if (rafId) cancelAnimationFrame(rafId);
       ro.disconnect();
     };
-  }, [canvasRef, containerRef]);
+  }, [canvasRef, containerRef, maxDevicePixelRatio]);
 }

@@ -102,4 +102,46 @@ describe("sliceWaveformSubHistory", () => {
     const r = sliceWaveformSubHistory(entries, 2, 0, 1, 200);
     expect(Math.max(...r.maxes[0])).toBeCloseTo(0.9, 5);
   });
+
+  it("uses whole-tick bounds when a pixel bucket spans full history entries", () => {
+    const entries = Array.from({ length: 100 }, () => flatEntry(0.2));
+    entries[40] = {
+      ...flatEntry(0.2),
+      waveformMin: [-0.95],
+      waveformMax: [0.95],
+    };
+
+    const r = sliceWaveformSubHistory(entries, 100, 0, 1, 10);
+
+    expect(Math.max(...r.maxes[0])).toBeCloseTo(0.95, 5);
+    expect(Math.min(...r.mins[0])).toBeCloseTo(-0.95, 5);
+  });
+
+  it("uses whole-tick bounds near the one-entry-per-pixel density cliff", () => {
+    const entries = Array.from({ length: 100 }, () => flatEntry(0.2));
+    entries[40] = {
+      ...flatEntry(0.2),
+      waveformMin: [-0.95],
+      waveformMax: [0.95],
+    };
+
+    const r = sliceWaveformSubHistory(entries, 100, 0, 1, 110);
+
+    expect(Math.max(...r.maxes[0])).toBeCloseTo(0.95, 5);
+    expect(Math.min(...r.mins[0])).toBeCloseTo(-0.95, 5);
+  });
+
+  it("keeps sub-pair detail when zoomed in beyond the density budget", () => {
+    const entries = Array.from({ length: 100 }, () => flatEntry(0.2));
+    entries[40] = {
+      ...flatEntry(0.2),
+      waveformMin: [-0.95],
+      waveformMax: [0.95],
+    };
+
+    const r = sliceWaveformSubHistory(entries, 100, 0, 1, 200);
+
+    expect(Math.max(...r.maxes[0])).toBeCloseTo(0.2, 5);
+    expect(Math.min(...r.mins[0])).toBeCloseTo(-0.2, 5);
+  });
 });

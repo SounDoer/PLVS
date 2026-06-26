@@ -81,6 +81,16 @@ describe("useCanvasSize", () => {
     expect(canvasRef.current.height).toBe(300);
   });
 
+  it("caps canvas dimensions with maxDevicePixelRatio", () => {
+    vi.stubGlobal("devicePixelRatio", 2);
+    const { canvasRef, containerRef } = makeRefs(400, 300);
+    renderHook(() => useCanvasSize(canvasRef, containerRef, undefined, { maxDevicePixelRatio: 1 }));
+    triggerResize();
+    flushRaf();
+    expect(canvasRef.current.width).toBe(400);
+    expect(canvasRef.current.height).toBe(300);
+  });
+
   it("coalesces multiple resize notifications into one animation frame", () => {
     const { canvasRef, containerRef } = makeRefs(400, 300);
     renderHook(() => useCanvasSize(canvasRef, containerRef));
