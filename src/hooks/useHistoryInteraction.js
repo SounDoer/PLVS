@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   computeSelectionOffset,
   computePanOffset,
@@ -26,6 +26,15 @@ export function useHistoryInteraction({
   const dragModeRef = useRef(null);
   const panStartRef = useRef({ x: 0, offset: 0 });
   const lastRightDownTsRef = useRef(0);
+  const wheelRafRef = useRef(0);
+  const pendingWheelZoomRef = useRef(null);
+
+  useEffect(
+    () => () => {
+      if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+    },
+    []
+  );
 
   const showHistoryHud = useCallback(
     (ms = 1600) => {
@@ -158,18 +167,30 @@ export function useHistoryInteraction({
       const width = Math.max(1, rect.width);
       const x = Math.max(0, Math.min(width, ev.clientX - rect.left));
       const norm = 1 - x / width;
-      const { nextWindowSec, nextOffsetSec } = computeWheelZoom({
-        factor,
+      const pending = pendingWheelZoomRef.current;
+      pendingWheelZoomRef.current = {
+        factor: (pending?.factor ?? 1) * factor,
         norm,
-        effectiveOffsetSamples,
-        visibleSamples,
-        sampleSec,
-        minWindowSec,
-        maxWindowSec,
-        totalSamples,
+      };
+      if (wheelRafRef.current) return;
+      wheelRafRef.current = requestAnimationFrame(() => {
+        wheelRafRef.current = 0;
+        const pending = pendingWheelZoomRef.current;
+        pendingWheelZoomRef.current = null;
+        if (!pending) return;
+        const { nextWindowSec, nextOffsetSec } = computeWheelZoom({
+          factor: pending.factor,
+          norm: pending.norm,
+          effectiveOffsetSamples,
+          visibleSamples,
+          sampleSec,
+          minWindowSec,
+          maxWindowSec,
+          totalSamples,
+        });
+        setHistoryWindowSec(nextWindowSec);
+        setHistoryOffsetSec(nextOffsetSec);
       });
-      setHistoryWindowSec(nextWindowSec);
-      setHistoryOffsetSec(nextOffsetSec);
     },
     [
       enabled,

@@ -131,4 +131,10 @@ describe("WaveformPanel", () => {
 
     expect(sliceWaveformSubHistoryMock).toHaveBeenCalledTimes(1);
   });
+
+  it("does not slice waveform history while the panel instance is hidden", () => {
+    renderPanel({ panelVisible: false });
+
+    expect(sliceWaveformSubHistoryMock).not.toHaveBeenCalled();
+  });
 });

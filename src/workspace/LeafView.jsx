@@ -125,6 +125,7 @@ export function LeafView({ node, path, style }) {
           panelControls,
           onPanelControlsChange,
           analysisStatus: audioData.analysisStatusByPanelId?.[activeTab],
+          panelVisible: !state.fullscreenId,
         }
       : audioData;
   const zoneHint = getZoneHint(hoverDrop, path);

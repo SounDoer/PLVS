@@ -23,6 +23,7 @@ const WAVEFORM_HELP = [
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-axis-rail";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
+const WAVEFORM_MAX_DEVICE_PIXEL_RATIO = 1;
 
 function cssLengthToPx(value) {
   const trimmed = value?.trim();
@@ -117,6 +118,23 @@ function drawWaveformCanvas(
 }
 
 export function WaveformPanel({ compact = false }) {
+  const audioData = useAudioData();
+  if (audioData?.panelVisible === false) {
+    return (
+      <div
+        className={cn(
+          PANEL_MIN_WAVEFORM,
+          "@container relative flex min-h-0 flex-1 flex-col overflow-hidden",
+          "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
+        )}
+      />
+    );
+  }
+
+  return <WaveformPanelContent compact={compact} audioData={audioData} />;
+}
+
+function WaveformPanelContent({ compact, audioData }) {
   const {
     histSourceList,
     visibleSamples,
@@ -137,7 +155,7 @@ export function WaveformPanel({ compact = false }) {
     setStatus,
     holdHistoryHud,
     showHistoryHud,
-  } = useAudioData();
+  } = audioData;
 
   const lanesRef = useRef(null);
   const [canvasW, setCanvasW] = useState(0);
@@ -148,7 +166,7 @@ export function WaveformPanel({ compact = false }) {
 
     const measureWidth = () => {
       rafId = 0;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, WAVEFORM_MAX_DEVICE_PIXEL_RATIO);
       const computedStyle = getComputedStyle(el);
       const axisWidthPx = cssLengthToPx(computedStyle.getPropertyValue(WAVEFORM_AXIS_WIDTH_VAR));
       const chartAxisGapPx = cssLengthToPx(computedStyle.getPropertyValue("--ui-chart-axis-gap"));
@@ -390,7 +408,9 @@ function WaveformLane({
     });
   }, []);
 
-  useCanvasSize(canvasRef, containerRef, scheduleDraw);
+  useCanvasSize(canvasRef, containerRef, scheduleDraw, {
+    maxDevicePixelRatio: WAVEFORM_MAX_DEVICE_PIXEL_RATIO,
+  });
 
   useEffect(() => {
     drawParamsRef.current = {

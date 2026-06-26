@@ -1,3 +1,5 @@
+const MAX_WAVEFORM_SUB_SAMPLES_PER_BUCKET = 16;
+
 /**
  * Decimate the visible sub-block history to one min/max bucket per device pixel,
  * with bucket boundaries anchored to absolute entry-index position so that
@@ -60,8 +62,15 @@ export function sliceWaveformSubHistory(
     const row = histSourceList[e];
     const pairs = row.waveformSubPairs;
     const subCount = row.waveformSubCount | 0;
+    const wmin = row.waveformMin ?? [];
+    const wmax = row.waveformMax ?? [];
+    const hasWholeTickBounds = wmin.length > 0 || wmax.length > 0;
+    const subSampleDensity = subCount * coordsPerBucket;
+    const useWholeTickBounds =
+      hasWholeTickBounds &&
+      (coordsPerBucket >= 1 || subSampleDensity > MAX_WAVEFORM_SUB_SAMPLES_PER_BUCKET);
 
-    if (pairs && subCount > 0 && pairs.length >= subCount * stride) {
+    if (!useWholeTickBounds && pairs && subCount > 0 && pairs.length >= subCount * stride) {
       for (let s = 0; s < subCount; s++) {
         const absPos = e + (s + 0.5) / subCount;
         const j = Math.floor(absPos / coordsPerBucket) - kStart;
@@ -76,8 +85,6 @@ export function sliceWaveformSubHistory(
       const absPos = e + 0.5;
       const j = Math.floor(absPos / coordsPerBucket) - kStart;
       if (j < 0 || j >= bucketCount) continue;
-      const wmin = row.waveformMin ?? [];
-      const wmax = row.waveformMax ?? [];
       for (let ch = 0; ch < channelCount; ch++) {
         fold(j, ch, wmin[ch] ?? 0, wmax[ch] ?? 0);
       }
