@@ -43,7 +43,12 @@ export const LOUDNESS_HELP = [
 export const SPECTRUM_HELP = [
   {
     title: "Inspect",
-    items: ["Hover - Inspect value", "Click - Capture snapshot", "Double-click - Return to live"],
+    items: [
+      "Hover - Inspect value",
+      "Left hold - Increase smoothing",
+      "Click - Capture snapshot",
+      "Double-click - Return to live",
+    ],
   },
   {
     title: "Viewport",

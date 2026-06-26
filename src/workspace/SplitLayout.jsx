@@ -268,7 +268,13 @@ function FullscreenOverlay() {
   const onPanelControlsChange = (nextPanelControls) =>
     setPanelControlsForPanel(fullscreenId, nextPanelControls);
   const panelAudioData = audioData
-    ? { ...audioData, panelControls, onPanelControlsChange, panelVisible: true }
+    ? {
+        ...audioData,
+        panelControls,
+        onPanelControlsChange,
+        analysisStatus: audioData.analysisStatusByPanelId?.[fullscreenId],
+        panelVisible: true,
+      }
     : audioData;
 
   return (

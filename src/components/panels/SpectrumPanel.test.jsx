@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { SpectrumPanel } from "./SpectrumPanel.jsx";
@@ -53,6 +53,18 @@ function liveAudioData(result, rest = {}) {
     ...rest,
   };
 }
+
+function primaryPath(container) {
+  return container.querySelector('path[stroke="var(--ui-spectrum-primary)"]')?.getAttribute("d");
+}
+
+function firstPathY(path) {
+  return Number(path?.match(/^M\s+[-\d.]+\s+([-\d.]+)/)?.[1]);
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("SpectrumPanel", () => {
   it("fills up to the peak contour when peak hold is on", () => {
@@ -239,6 +251,201 @@ describe("SpectrumPanel", () => {
     const chart = screen.getByTestId("spectrum-chart");
     fireEvent.click(chart);
 
+    expect(captureCurrentSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it("temporarily enables display hold smoothing after a left-button hold", () => {
+    vi.useFakeTimers();
+    const captureCurrentSnapshot = vi.fn();
+    const setSpectrumHoldSmoothing = vi.fn();
+    renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80" }), {
+        historyChartInteractive: true,
+        totalSamples: 3,
+        captureCurrentSnapshot,
+        setSpectrumHoldSmoothing,
+      })
+    );
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent(
+      chart,
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: 100,
+        clientY: 80,
+        ctrlKey: false,
+      })
+    );
+    act(() => vi.advanceTimersByTime(299));
+    expect(setSpectrumHoldSmoothing).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(setSpectrumHoldSmoothing).not.toHaveBeenCalled();
+
+    fireEvent(
+      chart,
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        clientX: 120,
+        clientY: 80,
+        ctrlKey: false,
+      })
+    );
+    fireEvent(chart, new MouseEvent("pointerup", { bubbles: true }));
+    expect(setSpectrumHoldSmoothing).not.toHaveBeenCalled();
+
+    fireEvent.click(chart);
+    expect(captureCurrentSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("keeps using the panel request key while display hold smoothing is active", () => {
+    vi.useFakeTimers();
+    const livePath = "M 0 120 L 1000 80";
+    const { container } = renderPanel(
+      liveAudioData(liveResult({ path: livePath }), {
+        historyChartInteractive: true,
+        totalSamples: 3,
+      })
+    );
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent(
+      chart,
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: 100,
+        clientY: 80,
+        ctrlKey: false,
+      })
+    );
+
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(primaryPath(container)).toBe(livePath);
+  });
+
+  it("smooths live curve changes locally while display hold smoothing is active", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = render(
+      <AudioDataContext.Provider
+        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
+          historyChartInteractive: true,
+          totalSamples: 3,
+        })}
+      >
+        <SpectrumPanel />
+      </AudioDataContext.Provider>
+    );
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent(
+      chart,
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: 100,
+        clientY: 80,
+        ctrlKey: false,
+      })
+    );
+    act(() => vi.advanceTimersByTime(300));
+    rerender(
+      <AudioDataContext.Provider
+        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
+          historyChartInteractive: true,
+          totalSamples: 3,
+        })}
+      >
+        <SpectrumPanel />
+      </AudioDataContext.Provider>
+    );
+
+    const y = firstPathY(primaryPath(container));
+    expect(y).toBeGreaterThan(10);
+    expect(y).toBeLessThan(256);
+  });
+
+  it("returns to the immediate live curve after display hold smoothing is released", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = render(
+      <AudioDataContext.Provider
+        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
+          historyChartInteractive: true,
+          totalSamples: 3,
+        })}
+      >
+        <SpectrumPanel />
+      </AudioDataContext.Provider>
+    );
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent(
+      chart,
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: 100,
+        clientY: 80,
+        ctrlKey: false,
+      })
+    );
+    act(() => vi.advanceTimersByTime(300));
+    fireEvent(chart, new MouseEvent("pointerup", { bubbles: true }));
+    rerender(
+      <AudioDataContext.Provider
+        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
+          historyChartInteractive: true,
+          totalSamples: 3,
+        })}
+      >
+        <SpectrumPanel />
+      </AudioDataContext.Provider>
+    );
+
+    expect(primaryPath(container)).toBe("M 0.00 10.00 L 1000.00 10.00");
+  });
+
+  it("cancels pending hold smoothing when the pointer moves before the hold delay", () => {
+    vi.useFakeTimers();
+    const captureCurrentSnapshot = vi.fn();
+    const setSpectrumHoldSmoothing = vi.fn();
+    renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80" }), {
+        historyChartInteractive: true,
+        totalSamples: 3,
+        captureCurrentSnapshot,
+        setSpectrumHoldSmoothing,
+      })
+    );
+
+    const chart = screen.getByTestId("spectrum-chart");
+    fireEvent(
+      chart,
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: 100,
+        clientY: 80,
+        ctrlKey: false,
+      })
+    );
+    fireEvent(
+      chart,
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        clientX: 140,
+        clientY: 80,
+        ctrlKey: false,
+      })
+    );
+    act(() => vi.advanceTimersByTime(300));
+    fireEvent(chart, new MouseEvent("pointerup", { bubbles: true }));
+    fireEvent.click(chart);
+
+    expect(setSpectrumHoldSmoothing).not.toHaveBeenCalled();
     expect(captureCurrentSnapshot).toHaveBeenCalledTimes(1);
   });
 

@@ -36,6 +36,9 @@ const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
 const CHART_WHEEL_PAN_SCALE = 0.5;
 const ACTIVE_PULSE_MS = 160;
+const HOLD_SMOOTHING_DELAY_MS = 300;
+const HOLD_SMOOTHING_CANCEL_PX = 4;
+const HOLD_DISPLAY_SMOOTHING_ALPHA = 0.06;
 
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
@@ -45,6 +48,33 @@ function buildSpectrumAreaPath(path) {
 function buildSpectrumPathFromData(data, dbList, range) {
   const centers = data?.bands?.map((band) => band.fCenter) ?? [];
   return buildSpectrumSvgFromBandsAndDb(centers, dbList ?? [], range);
+}
+
+function canSmoothSpectrumResult(result) {
+  return Boolean(result?.bandCentersHz?.length && result?.smoothDb?.length);
+}
+
+function bandsMatch(a, b) {
+  return (
+    a?.length === b?.length &&
+    (!a?.length || (Object.is(a[0], b[0]) && Object.is(a[a.length - 1], b[b.length - 1])))
+  );
+}
+
+function smoothDbList(previous, next, alpha) {
+  if (!previous || previous.length !== next?.length) return next;
+  return next.map((value, idx) => previous[idx] + (value - previous[idx]) * alpha);
+}
+
+function smoothSpectrumResult(previous, next) {
+  if (!previous || !bandsMatch(previous.bandCentersHz, next.bandCentersHz)) return next;
+  return {
+    ...next,
+    smoothDb: smoothDbList(previous.smoothDb, next.smoothDb, HOLD_DISPLAY_SMOOTHING_ALPHA),
+    smoothDbB: smoothDbList(previous.smoothDbB, next.smoothDbB, HOLD_DISPLAY_SMOOTHING_ALPHA),
+    peakDb: smoothDbList(previous.peakDb, next.peakDb, HOLD_DISPLAY_SMOOTHING_ALPHA),
+    peakDbB: smoothDbList(previous.peakDbB, next.peakDbB, HOLD_DISPLAY_SMOOTHING_ALPHA),
+  };
 }
 
 export function SpectrumPanel({ compact = false }) {
@@ -64,6 +94,7 @@ export function SpectrumPanel({ compact = false }) {
     () => normalizePanelControls(panelControls),
     [panelControls]
   );
+  const [holdSmoothingActive, setHoldSmoothingActive] = useState(false);
   const spectrumPeakHold = normalizedPanelControls.spectrumPeakHold;
   const spectrumRange = {
     minHz: normalizedPanelControls.spectrumXMinFreq,
@@ -119,6 +150,7 @@ export function SpectrumPanel({ compact = false }) {
     normalizedPanelControls.spectrumXMaxFreq,
     spectrumXAxis.axisPx
   );
+  const holdDisplaySpectrumResultRef = useRef(null);
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
@@ -126,7 +158,25 @@ export function SpectrumPanel({ compact = false }) {
   // request-keyed live result.
   const snapResolved = isSnapshot ? resolveSpectrumSnapshotForKey?.(spectrumKey) : null;
   const snapshotMissing = snapResolved?.missing === true;
-  const liveSpectrumResult = isSnapshot ? null : displayAudio?.spectrumResultsByKey?.[spectrumKey];
+  const rawLiveSpectrumResult = isSnapshot
+    ? null
+    : displayAudio?.spectrumResultsByKey?.[spectrumKey];
+  const liveSpectrumResult = useMemo(() => {
+    if (isSnapshot || !canSmoothSpectrumResult(rawLiveSpectrumResult)) {
+      holdDisplaySpectrumResultRef.current = null;
+      return rawLiveSpectrumResult;
+    }
+    if (!holdSmoothingActive) {
+      holdDisplaySpectrumResultRef.current = rawLiveSpectrumResult;
+      return rawLiveSpectrumResult;
+    }
+    const smoothed = smoothSpectrumResult(
+      holdDisplaySpectrumResultRef.current,
+      rawLiveSpectrumResult
+    );
+    holdDisplaySpectrumResultRef.current = smoothed;
+    return smoothed;
+  }, [holdSmoothingActive, isSnapshot, rawLiveSpectrumResult]);
   let panelSpectrumPath;
   let panelSpectrumPeakPath;
   let panelSpectrumPathB;
@@ -167,6 +217,9 @@ export function SpectrumPanel({ compact = false }) {
   }
   const spectrumSvgRef = useRef(null);
   const chartDragRef = useRef(null);
+  const holdSmoothingTimerRef = useRef(null);
+  const holdSmoothingPointerRef = useRef(null);
+  const holdSmoothingActiveRef = useRef(false);
   const chartHoverRef = useRef(false);
   const chartActiveTimerRef = useRef(null);
   const suppressChartClickRef = useRef(false);
@@ -193,6 +246,47 @@ export function SpectrumPanel({ compact = false }) {
       if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
     },
     []
+  );
+  const clearPendingHoldSmoothing = useCallback(() => {
+    if (holdSmoothingTimerRef.current != null) {
+      window.clearTimeout(holdSmoothingTimerRef.current);
+      holdSmoothingTimerRef.current = null;
+    }
+    holdSmoothingPointerRef.current = null;
+  }, []);
+  const releaseHoldSmoothing = useCallback(() => {
+    clearPendingHoldSmoothing();
+    if (holdSmoothingActiveRef.current) {
+      holdSmoothingActiveRef.current = false;
+      setHoldSmoothingActive(false);
+    }
+  }, [clearPendingHoldSmoothing]);
+  useEffect(() => releaseHoldSmoothing, [releaseHoldSmoothing]);
+  const scheduleHoldSmoothing = useCallback(
+    (e) => {
+      if (
+        selectedOffset >= 0 ||
+        !historyChartInteractive ||
+        (e.button != null && e.button !== 0) ||
+        e.ctrlKey
+      ) {
+        return;
+      }
+      clearPendingHoldSmoothing();
+      holdSmoothingPointerRef.current = {
+        id: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+      };
+      holdSmoothingTimerRef.current = window.setTimeout(() => {
+        holdSmoothingTimerRef.current = null;
+        if (!holdSmoothingPointerRef.current) return;
+        holdSmoothingActiveRef.current = true;
+        setHoldSmoothingActive(true);
+        suppressChartClickRef.current = true;
+      }, HOLD_SMOOTHING_DELAY_MS);
+    },
+    [clearPendingHoldSmoothing, historyChartInteractive, selectedOffset]
   );
   const pulseChartAxis = useCallback((axes) => {
     setChartAxisActive({
@@ -320,7 +414,8 @@ export function SpectrumPanel({ compact = false }) {
     (e) => {
       chartHoverRef.current = true;
       setChartCtrlHover(e.ctrlKey);
-      if (!historyChartInteractive || !e.ctrlKey || e.button !== 0) return;
+      scheduleHoldSmoothing(e);
+      if (!historyChartInteractive || !e.ctrlKey || (e.button != null && e.button !== 0)) return;
       e.preventDefault();
       suppressChartClickRef.current = true;
       chartDragRef.current = {
@@ -346,12 +441,22 @@ export function SpectrumPanel({ compact = false }) {
       normalizedPanelControls.spectrumYMaxDb,
       normalizedPanelControls.spectrumYMinDb,
       pulseChartAxis,
+      scheduleHoldSmoothing,
     ]
   );
   const onSpectrumChartPointerMove = useCallback(
     (e) => {
       chartHoverRef.current = true;
       setChartCtrlHover(e.ctrlKey);
+      const holdPointer = holdSmoothingPointerRef.current;
+      if (
+        holdPointer &&
+        !holdSmoothingActiveRef.current &&
+        Math.hypot(e.clientX - holdPointer.startX, e.clientY - holdPointer.startY) >
+          HOLD_SMOOTHING_CANCEL_PX
+      ) {
+        clearPendingHoldSmoothing();
+      }
       const drag = chartDragRef.current;
       if (!drag) return false;
       const rect = e.currentTarget.getBoundingClientRect();
@@ -365,21 +470,32 @@ export function SpectrumPanel({ compact = false }) {
       pulseChartAxis({ x: Math.abs(dx) >= 2, y: Math.abs(dy) >= 2 });
       return true;
     },
-    [panSpectrumXFromChart, panSpectrumYFromChart, pulseChartAxis, updatePanelControlsRange]
+    [
+      clearPendingHoldSmoothing,
+      panSpectrumXFromChart,
+      panSpectrumYFromChart,
+      pulseChartAxis,
+      updatePanelControlsRange,
+    ]
   );
-  const onSpectrumChartPointerUp = useCallback((e) => {
-    const wasDragging = !!chartDragRef.current;
-    chartDragRef.current = null;
-    setChartDragging(false);
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (_) {}
-    if (wasDragging) {
-      window.setTimeout(() => {
-        suppressChartClickRef.current = false;
-      }, 0);
-    }
-  }, []);
+  const onSpectrumChartPointerUp = useCallback(
+    (e) => {
+      const wasDragging = !!chartDragRef.current;
+      const wasHoldSmoothingActive = holdSmoothingActiveRef.current;
+      chartDragRef.current = null;
+      setChartDragging(false);
+      releaseHoldSmoothing();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      if (wasDragging || wasHoldSmoothingActive) {
+        window.setTimeout(() => {
+          suppressChartClickRef.current = false;
+        }, 0);
+      }
+    },
+    [releaseHoldSmoothing]
+  );
   const {
     hover: spectrumHover,
     onMove,
@@ -508,10 +624,14 @@ export function SpectrumPanel({ compact = false }) {
               onPointerLeave={() => {
                 chartHoverRef.current = false;
                 setChartCtrlHover(false);
+                releaseHoldSmoothing();
                 onSpectrumHoverLeave();
               }}
               onClick={() => {
-                if (suppressChartClickRef.current) return;
+                if (suppressChartClickRef.current) {
+                  suppressChartClickRef.current = false;
+                  return;
+                }
                 if (!canCaptureCurrentSnapshot) return;
                 captureCurrentSnapshot?.();
               }}
