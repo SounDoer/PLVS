@@ -14,6 +14,10 @@ import {
   SPEC_VIEW_TOP_PAD,
   SPEC_VIEW_BOTTOM_PAD,
   freqToXFrac,
+  rangedFreqToXFrac,
+  rangedFreqToYFrac,
+  buildAdaptiveDbTicks,
+  buildAdaptiveFreqTicks,
   buildRtaBands,
   getWeightingDb,
 } from "./scales";
@@ -49,18 +53,18 @@ describe("loudnessFromTopFrac", () => {
 });
 
 describe("spectrumDbToYViewBox", () => {
-  it("-12 dB maps below viewBox top by SPEC_VIEW_TOP_PAD", () =>
-    expect(spectrumDbToYViewBox(-12)).toBe(SPEC_VIEW_TOP_PAD));
-  it("-96 dB maps above viewBox bottom by SPEC_VIEW_BOTTOM_PAD", () => {
-    expect(spectrumDbToYViewBox(-96)).toBe(SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD);
+  it("0 dB maps below viewBox top by SPEC_VIEW_TOP_PAD", () =>
+    expect(spectrumDbToYViewBox(0)).toBe(SPEC_VIEW_TOP_PAD));
+  it("-84 dB maps above viewBox bottom by SPEC_VIEW_BOTTOM_PAD", () => {
+    expect(spectrumDbToYViewBox(-84)).toBe(SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD);
   });
-  it("clamps values above -12 dB", () => expect(spectrumDbToYViewBox(10)).toBe(SPEC_VIEW_TOP_PAD));
+  it("clamps values above 0 dB", () => expect(spectrumDbToYViewBox(10)).toBe(SPEC_VIEW_TOP_PAD));
   it("clamps values below -96 dB", () => {
     expect(spectrumDbToYViewBox(-200)).toBe(SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD);
   });
-  it("-54 dB maps to vertical midpoint of plot band", () => {
+  it("-42 dB maps to vertical midpoint of plot band", () => {
     const midY = SPEC_VIEW_TOP_PAD + (SPEC_VIEW_H - SPEC_VIEW_TOP_PAD - SPEC_VIEW_BOTTOM_PAD) / 2;
-    expect(spectrumDbToYViewBox(-54)).toBeCloseTo(midY);
+    expect(spectrumDbToYViewBox(-42)).toBeCloseTo(midY);
   });
   it("supports a custom display range", () => {
     expect(spectrumDbToYViewBox(-24, { yMaxDb: -24, yRangeDb: 60 })).toBe(SPEC_VIEW_TOP_PAD);
@@ -71,11 +75,11 @@ describe("spectrumDbToYViewBox", () => {
 });
 
 describe("spectrumDbToTopFrac", () => {
-  it("-12 dB maps to fraction of viewBox height at top pad", () => {
-    expect(spectrumDbToTopFrac(-12)).toBeCloseTo(SPEC_VIEW_TOP_PAD / SPEC_VIEW_H);
+  it("0 dB maps to fraction of viewBox height at top pad", () => {
+    expect(spectrumDbToTopFrac(0)).toBeCloseTo(SPEC_VIEW_TOP_PAD / SPEC_VIEW_H);
   });
-  it("-96 dB maps to fraction just below full height", () => {
-    expect(spectrumDbToTopFrac(-96)).toBeCloseTo(
+  it("-84 dB maps to fraction just below full height", () => {
+    expect(spectrumDbToTopFrac(-84)).toBeCloseTo(
       (SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD) / SPEC_VIEW_H
     );
   });
@@ -109,6 +113,120 @@ describe("freqToXFrac", () => {
   it("is monotonically increasing", () => {
     expect(freqToXFrac(100)).toBeLessThan(freqToXFrac(1000));
     expect(freqToXFrac(1000)).toBeLessThan(freqToXFrac(10000));
+  });
+});
+
+describe("range-aware frequency helpers", () => {
+  it("maps custom ranges to full axis extents", () => {
+    expect(rangedFreqToXFrac(1000, 1000, 4000)).toBe(0);
+    expect(rangedFreqToXFrac(4000, 1000, 4000)).toBe(1);
+    expect(rangedFreqToYFrac(4000, 1000, 4000)).toBe(0);
+    expect(rangedFreqToYFrac(1000, 1000, 4000)).toBe(1);
+  });
+});
+
+describe("adaptive tick builders", () => {
+  it("returns dB ticks within range and reduces count for short axes", () => {
+    const wide = buildAdaptiveDbTicks(-96, -12, 400);
+    const narrow = buildAdaptiveDbTicks(-96, -12, 64);
+    expect(wide[0].v).toBe(-12);
+    expect(wide.at(-1).v).toBe(-96);
+    expect(narrow.length).toBeLessThan(wide.length);
+  });
+
+  it("keeps dB ticks integer-labeled across zoom ranges", () => {
+    const axisPx = 300;
+    const full = buildAdaptiveDbTicks(-96, -12, axisPx);
+    const zoomed = buildAdaptiveDbTicks(-36, -24, axisPx);
+
+    expect(zoomed.length).toBeLessThanOrEqual(full.length);
+    for (const tick of [...full, ...zoomed]) {
+      expect(Number.isInteger(tick.v)).toBe(true);
+      expect(tick.lb).not.toContain(".");
+    }
+  });
+
+  it("returns frequency ticks within range", () => {
+    const ticks = buildAdaptiveFreqTicks(1000, 4000, 500);
+    expect(ticks[0].v).toBe(1000);
+    expect(ticks.at(-1).v).toBe(4000);
+    expect(ticks.length).toBeGreaterThan(2);
+  });
+
+  it("keeps frequency tick count stable across zoom ranges with the same axis height", () => {
+    const axisPx = 850;
+    const full = buildAdaptiveFreqTicks(20, 20000, axisPx);
+    const zoomed = buildAdaptiveFreqTicks(211, 423, axisPx);
+
+    expect(zoomed.length).toBe(full.length);
+  });
+
+  it("uses panel height to choose frequency tick count", () => {
+    const tall = buildAdaptiveFreqTicks(211, 423, 850);
+    const short = buildAdaptiveFreqTicks(211, 423, 160);
+
+    expect(tall.length).toBeGreaterThan(short.length);
+  });
+
+  it("keeps reduced frequency ticks spread out on a short log axis", () => {
+    const ticks = buildAdaptiveFreqTicks(20, 20000, 160);
+
+    expect(ticks.map((tick) => tick.v)).toEqual([20, 125, 630, 4000, 20000]);
+  });
+
+  it("does not repeat adjacent frequency labels on narrow zoomed ranges", () => {
+    for (const [min, max, px] of [
+      [1000, 2000, 600],
+      [1000, 2000, 300],
+      [4000, 8000, 600],
+    ]) {
+      const labels = buildAdaptiveFreqTicks(min, max, px).map((tick) => tick.lb);
+      for (let i = 1; i < labels.length; i += 1) {
+        expect(labels[i]).not.toBe(labels[i - 1]);
+      }
+    }
+  });
+
+  it("drops frequency ticks that would overlap zoomed range endpoints", () => {
+    const axisPx = 850;
+    const ticks = buildAdaptiveFreqTicks(95, 6600, axisPx);
+    const values = ticks.map((tick) => tick.v);
+
+    expect(values[0]).toBe(95);
+    expect(values.at(-1)).toBe(6600);
+    expect(values).not.toContain(100);
+    expect(values).not.toContain(6300);
+    for (let i = 1; i < ticks.length; i += 1) {
+      const prevTop = rangedFreqToYFrac(ticks[i - 1].v, 95, 6600) * axisPx;
+      const nextTop = rangedFreqToYFrac(ticks[i].v, 95, 6600) * axisPx;
+      expect(Math.abs(nextTop - prevTop)).toBeGreaterThanOrEqual(24);
+    }
+  });
+
+  it("drops dB ticks that would overlap custom range endpoints", () => {
+    const axisPx = 300;
+    const ticks = buildAdaptiveDbTicks(-50, -10, axisPx);
+    const values = ticks.map((tick) => tick.v);
+
+    expect(values[0]).toBe(-10);
+    expect(values.at(-1)).toBe(-50);
+    expect(values).not.toContain(-12);
+    expect(values).not.toContain(-48);
+    for (let i = 1; i < ticks.length; i += 1) {
+      const prevTop = ((-10 - ticks[i - 1].v) / 40) * axisPx;
+      const nextTop = ((-10 - ticks[i].v) / 40) * axisPx;
+      expect(Math.abs(nextTop - prevTop)).toBeGreaterThanOrEqual(24);
+    }
+  });
+
+  it("uses integer dB labels for fractional display ranges", () => {
+    const ticks = buildAdaptiveDbTicks(-47.1, -13.6, 850);
+
+    expect(ticks.length).toBeGreaterThan(2);
+    for (const tick of ticks) {
+      expect(Number.isInteger(tick.v)).toBe(true);
+      expect(tick.lb).not.toContain(".");
+    }
   });
 });
 

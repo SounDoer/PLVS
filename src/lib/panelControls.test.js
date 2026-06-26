@@ -75,8 +75,16 @@ describe("panelControls", () => {
       spectrumPeakHold: false,
       spectrumSmoothingPercent: 25,
       spectrumTiltDbPerOctave: 3,
-      spectrumYMaxDb: -12,
-      spectrumYRangeDb: 84,
+      spectrumXMinFreq: 20,
+      spectrumXMaxFreq: 20000,
+      spectrumYMaxDb: 0,
+      spectrumYMinDb: -96,
+      spectrogramYMinFreq: 20,
+      spectrogramYMaxFreq: 20000,
+      loudnessYMinDb: -64,
+      loudnessYMaxDb: 0,
+      levelMeterYMinDb: -60,
+      levelMeterYMaxDb: 3,
       statsVisibleIds: [
         "momentary",
         "shortTerm",
@@ -172,8 +180,16 @@ describe("panelControls", () => {
       spectrumPeakHold: false,
       spectrumSmoothingPercent: 25,
       spectrumTiltDbPerOctave: 3,
-      spectrumYMaxDb: -12,
-      spectrumYRangeDb: 84,
+      spectrumXMinFreq: 20,
+      spectrumXMaxFreq: 20000,
+      spectrumYMaxDb: 0,
+      spectrumYMinDb: -96,
+      spectrogramYMinFreq: 20,
+      spectrogramYMaxFreq: 20000,
+      loudnessYMinDb: -64,
+      loudnessYMaxDb: 0,
+      levelMeterYMinDb: -60,
+      levelMeterYMaxDb: 3,
       statsVisibleIds: ["momentary"],
       statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
       loudnessHistoryVisibleLayerIds: ["ref"],
@@ -239,10 +255,18 @@ describe("spectrum display controls normalization", () => {
     expect(DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent).toBe(25);
     expect(normalizePanelControls({}).spectrumTiltDbPerOctave).toBe(3);
     expect(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave).toBe(3);
-    expect(normalizePanelControls({}).spectrumYMaxDb).toBe(-12);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumYMaxDb).toBe(-12);
-    expect(normalizePanelControls({}).spectrumYRangeDb).toBe(84);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumYRangeDb).toBe(84);
+    expect(normalizePanelControls({}).spectrumYMaxDb).toBe(0);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumYMaxDb).toBe(0);
+    expect(normalizePanelControls({}).spectrumYMinDb).toBe(-96);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumYMinDb).toBe(-96);
+    expect(normalizePanelControls({}).spectrumXMinFreq).toBe(20);
+    expect(normalizePanelControls({}).spectrumXMaxFreq).toBe(20000);
+    expect(normalizePanelControls({}).spectrogramYMinFreq).toBe(20);
+    expect(normalizePanelControls({}).spectrogramYMaxFreq).toBe(20000);
+    expect(normalizePanelControls({}).loudnessYMinDb).toBe(-64);
+    expect(normalizePanelControls({}).loudnessYMaxDb).toBe(0);
+    expect(normalizePanelControls({}).levelMeterYMinDb).toBe(-60);
+    expect(normalizePanelControls({}).levelMeterYMaxDb).toBe(3);
   });
 
   it("clamps smoothing to 0..100 percent", () => {
@@ -272,13 +296,22 @@ describe("spectrum display controls normalization", () => {
   });
 
   it("clamps Y-axis display range controls", () => {
-    expect(normalizePanelControls({ spectrumYMaxDb: -60 }).spectrumYMaxDb).toBe(-48);
+    expect(normalizePanelControls({ spectrumYMaxDb: -60 }).spectrumYMaxDb).toBe(-60);
     expect(normalizePanelControls({ spectrumYMaxDb: 6 }).spectrumYMaxDb).toBe(0);
     expect(normalizePanelControls({ spectrumYMaxDb: -24 }).spectrumYMaxDb).toBe(-24);
-    expect(normalizePanelControls({ spectrumYMaxDb: "-12" }).spectrumYMaxDb).toBe(-12);
-    expect(normalizePanelControls({ spectrumYRangeDb: 42 }).spectrumYRangeDb).toBe(48);
-    expect(normalizePanelControls({ spectrumYRangeDb: 126 }).spectrumYRangeDb).toBe(120);
-    expect(normalizePanelControls({ spectrumYRangeDb: 60 }).spectrumYRangeDb).toBe(60);
-    expect(normalizePanelControls({ spectrumYRangeDb: "84" }).spectrumYRangeDb).toBe(84);
+    expect(normalizePanelControls({ spectrumYMaxDb: "-12" }).spectrumYMaxDb).toBe(0);
+    expect(normalizePanelControls({ spectrumYMinDb: -200 }).spectrumYMinDb).toBe(-120);
+    expect(normalizePanelControls({ spectrumYMinDb: 6 }).spectrumYMinDb).toBe(-12);
+    expect(normalizePanelControls({ spectrumYMinDb: -72 }).spectrumYMinDb).toBe(-72);
+    expect(normalizePanelControls({ spectrumYMinDb: "-96" }).spectrumYMinDb).toBe(-96);
+    expect(
+      normalizePanelControls({ spectrumYMaxDb: -24, spectrumYRangeDb: 60 }).spectrumYMinDb
+    ).toBe(-84);
+    expect(
+      normalizePanelControls({ spectrumXMinFreq: 1000, spectrumXMaxFreq: 4000 })
+    ).toMatchObject({
+      spectrumXMinFreq: 1000,
+      spectrumXMaxFreq: 4000,
+    });
   });
 });

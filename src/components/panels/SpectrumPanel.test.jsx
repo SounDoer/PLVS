@@ -124,13 +124,13 @@ describe("SpectrumPanel", () => {
     expect(secondary).toBeTruthy();
   });
 
-  it("rebuilds the live curve with the default -12..-96 dB Y range", () => {
+  it("rebuilds the live curve with the default 0..-96 dB Y range", () => {
     const { container } = renderPanel(
       liveAudioData(
         liveResult({
           path: "M 0 1 L 1000 1",
           bandCentersHz: [20, 20000],
-          smoothDb: [-12, -96],
+          smoothDb: [0, -96],
         })
       )
     );
@@ -312,12 +312,16 @@ describe("SpectrumPanel", () => {
   });
 
   it("keeps dB axis endpoint labels inside the chart bounds", () => {
-    renderPanel(liveAudioData(liveResult()));
+    const { container } = renderPanel(liveAudioData(liveResult()));
 
-    expect(screen.getByText("-12").className).toContain("top-0");
-    expect(screen.getByText("-12").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("0").className).toContain("top-0");
+    expect(screen.getByText("0").className).not.toContain("-translate-y-1/2");
     expect(screen.getByText("-96").className).toContain("bottom-0");
     expect(screen.getByText("-96").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-48").className).toContain("-translate-y-1/2");
+    expect(
+      Array.from(container.querySelectorAll("span")).some((span) =>
+        span.className.includes("-translate-y-1/2")
+      )
+    ).toBe(true);
   });
 });

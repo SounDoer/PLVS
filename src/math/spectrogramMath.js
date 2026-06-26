@@ -1,14 +1,15 @@
-const _LOG20 = Math.log10(20);
-const _LOG_DEN = Math.log10(20000) - _LOG20;
-
 /**
  * Converts a normalised vertical fraction to Hz on a logarithmic 20–20 000 Hz scale.
  * frac=0 → 20 kHz (top), frac=1 → 20 Hz (bottom).
  * @param {number} frac
  * @returns {number}
  */
-export function hzFromFrac(frac) {
-  return Math.pow(10, frac * _LOG_DEN + _LOG20);
+export function hzFromFrac(frac, minHz = 20, maxHz = 20000) {
+  const safeMin = Math.max(1, Number.isFinite(minHz) ? minHz : 20);
+  const safeMax = Math.max(safeMin * 1.001, Number.isFinite(maxHz) ? maxHz : 20000);
+  const logMin = Math.log10(safeMin);
+  const logDen = Math.log10(safeMax) - logMin;
+  return Math.pow(10, frac * logDen + logMin);
 }
 
 /**
@@ -18,10 +19,10 @@ export function hzFromFrac(frac) {
  * @param {number} canvasH
  * @returns {Int16Array}
  */
-export function buildYToBand(bands, canvasH) {
+export function buildYToBand(bands, canvasH, minHz = 20, maxHz = 20000) {
   const lookup = new Int16Array(canvasH);
   for (let y = 0; y < canvasH; y++) {
-    const hz = hzFromFrac(1 - y / canvasH);
+    const hz = hzFromFrac(1 - y / canvasH, minHz, maxHz);
     let lo = 0,
       hi = bands.length - 1;
     while (lo < hi) {

@@ -115,6 +115,27 @@ describe("LoudnessHistoryChart", () => {
     expect(referenceTick?.className).not.toContain("text-chart-3");
   });
 
+  it("renders adaptive y-axis ticks without a measurement update loop", () => {
+    const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 64,
+      height: 220,
+      top: 0,
+      right: 64,
+      bottom: 220,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const { historyYAxisTicks: _historyYAxisTicks, ...props } = baseProps;
+
+    render(<LoudnessHistoryChart {...props} loudnessHistoryVisibleLayerIds={["momentary"]} />);
+
+    expect(screen.getByText("0")).toBeTruthy();
+    expect(screen.getByText("-64")).toBeTruthy();
+    rectSpy.mockRestore();
+  });
+
   it("hides reference layer when ref is not selected", () => {
     renderChart(["shortTerm"]);
 

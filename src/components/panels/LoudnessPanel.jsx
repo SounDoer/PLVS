@@ -1,12 +1,15 @@
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
 import { HelpPopover } from "../HelpPopover";
 import { LoudnessHistoryChart } from "./LoudnessHistoryChart";
-import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
+import { buildHistoryPath, HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeHistoryHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
+import { loudnessHistY } from "../../config/scales";
+import { normalizePanelControls } from "../../lib/panelControls.js";
 
 const LOUDNESS_HELP = [
   "Left click - Select snapshot",
@@ -20,7 +23,6 @@ const LOUDNESS_HELP = [
 export function LoudnessPanel({ compact = false }) {
   const historyTickSteps = HISTORY_TIME_TICK_STEPS;
   const {
-    historyYAxisTicks,
     targetLufs,
     referenceLufs,
     hasHistoryData,
@@ -35,8 +37,6 @@ export function LoudnessPanel({ compact = false }) {
     onHistoryPointerMove,
     onHistoryPointerUp,
     panelControls,
-    displayHistoryPathM,
-    displayHistoryPathST,
     selectedOffset,
     showSelLine,
     selLineX,
@@ -47,9 +47,49 @@ export function LoudnessPanel({ compact = false }) {
     histSourceList,
     effectiveOffsetSamples,
     visibleSamples,
+    onPanelControlsChange,
   } = useAudioData();
 
-  const loudnessHistoryVisibleLayerIds = panelControls?.loudnessHistoryVisibleLayerIds;
+  const normalizedPanelControls = useMemo(
+    () => normalizePanelControls(panelControls),
+    [panelControls]
+  );
+  const loudnessYMinDb = normalizedPanelControls.loudnessYMinDb;
+  const loudnessYMaxDb = normalizedPanelControls.loudnessYMaxDb;
+  const loudnessYRange = useMemo(
+    () => ({ min: loudnessYMinDb, max: loudnessYMaxDb }),
+    [loudnessYMinDb, loudnessYMaxDb]
+  );
+  const loudnessHistoryVisibleLayerIds = normalizedPanelControls.loudnessHistoryVisibleLayerIds;
+  // Computed inline (not memoized): histSourceList is a stable, mutated-in-place ring buffer, so its
+  // reference never changes between frames even as samples are appended. Memoizing on it would freeze
+  // the curve. Cheap enough to rebuild each render.
+  const displayHistoryPathMForRange = buildHistoryPath(
+    histSourceList,
+    "m",
+    visibleSamples,
+    effectiveOffsetSamples,
+    (v) => loudnessHistY(v, 220, loudnessYRange)
+  );
+  const displayHistoryPathSTForRange = buildHistoryPath(
+    histSourceList,
+    "st",
+    visibleSamples,
+    effectiveOffsetSamples,
+    (v) => loudnessHistY(v, 220, loudnessYRange)
+  );
+  const onLoudnessYRangeChange = useCallback(
+    (newMin, newMax) => {
+      onPanelControlsChange?.(
+        normalizePanelControls({
+          ...normalizedPanelControls,
+          loudnessYMinDb: newMin,
+          loudnessYMaxDb: newMax,
+        })
+      );
+    },
+    [normalizedPanelControls, onPanelControlsChange]
+  );
 
   const {
     hover: historyHover,
@@ -62,7 +102,8 @@ export function LoudnessPanel({ compact = false }) {
           histSourceList,
           effectiveOffsetSamples,
           visibleSamples,
-          HIST_SAMPLE_SEC
+          HIST_SAMPLE_SEC,
+          loudnessYRange
         )
       : null
   );
@@ -83,8 +124,10 @@ export function LoudnessPanel({ compact = false }) {
       ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
         <LoudnessHistoryChart
-          historyYAxisTicks={historyYAxisTicks}
           targetLufs={targetLufs}
+          loudnessYMinDb={normalizedPanelControls.loudnessYMinDb}
+          loudnessYMaxDb={normalizedPanelControls.loudnessYMaxDb}
+          onLoudnessYRangeChange={onLoudnessYRangeChange}
           hasHistoryData={hasHistoryData}
           historyChartInteractive={historyChartInteractive}
           running={running}
@@ -97,8 +140,8 @@ export function LoudnessPanel({ compact = false }) {
           onHistoryPointerMove={onHistoryPointerMove}
           onHistoryPointerUp={onHistoryPointerUp}
           loudnessHistoryVisibleLayerIds={loudnessHistoryVisibleLayerIds}
-          displayHistoryPathM={displayHistoryPathM}
-          displayHistoryPathST={displayHistoryPathST}
+          displayHistoryPathM={displayHistoryPathMForRange}
+          displayHistoryPathST={displayHistoryPathSTForRange}
           selectedOffset={selectedOffset}
           showSelLine={showSelLine}
           selLineX={selLineX}

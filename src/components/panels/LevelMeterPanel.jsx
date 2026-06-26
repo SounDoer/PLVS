@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -10,10 +10,12 @@ import {
   PEAK_DB_MAX,
   PEAK_DB_MIN,
   PEAK_TICKS,
-  loudnessFromTopFrac,
-  peakFromTopFrac,
+  buildAdaptiveDbTicks,
+  rangedFromTopFrac,
 } from "../../config/scales";
 import { getPeakChannels } from "../../math/peakChannelMath";
+import { normalizePanelControls } from "../../lib/panelControls.js";
+import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -66,13 +68,13 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
   );
 }
 
-function AnimatedPeakFill({ dbValue }) {
+function AnimatedPeakFill({ dbValue, yRange }) {
   return (
     <AnimatedLevelFill
       value={dbValue}
-      min={PEAK_DB_MIN}
-      max={PEAK_DB_MAX}
-      fromTopFrac={peakFromTopFrac}
+      min={yRange.min}
+      max={yRange.max}
+      fromTopFrac={(v) => rangedFromTopFrac(v, yRange.min, yRange.max)}
     />
   );
 }
@@ -81,8 +83,8 @@ function formatLevelValue(value) {
   return Number.isFinite(value) ? value.toFixed(1) : "-";
 }
 
-function CurrentValueMarker({ value }) {
-  if (!Number.isFinite(value) || value < LOUDNESS_DB_MIN) return null;
+function CurrentValueMarker({ value, yRange }) {
+  if (!Number.isFinite(value) || value < yRange.min) return null;
 
   return (
     <span
@@ -91,7 +93,7 @@ function CurrentValueMarker({ value }) {
         "pointer-events-none z-10 font-semibold text-primary",
         levelMeterYAxisLabelClass("middle")
       )}
-      style={{ top: `${loudnessFromTopFrac(value) * 100}%` }}
+      style={{ top: `${rangedFromTopFrac(value, yRange.min, yRange.max) * 100}%` }}
     >
       {formatLevelValue(value)}
     </span>
@@ -99,11 +101,66 @@ function CurrentValueMarker({ value }) {
 }
 
 export function LevelMeterPanel() {
-  const { displayAudio, peakLabelContext, fmt, hasTpMaxValue, panelControls, tpMaxText } =
-    useAudioData();
-  const levelMeterMode = panelControls?.levelMeterMode ?? "peak";
-  const showLevelValueMarker = panelControls?.levelMeterValueMarker ?? true;
+  const {
+    displayAudio,
+    peakLabelContext,
+    fmt,
+    hasTpMaxValue,
+    panelControls,
+    tpMaxText,
+    onPanelControlsChange,
+  } = useAudioData();
+  const normalizedPanelControls = useMemo(
+    () => normalizePanelControls(panelControls),
+    [panelControls]
+  );
+  const levelMeterMode = normalizedPanelControls.levelMeterMode;
+  const showLevelValueMarker = normalizedPanelControls.levelMeterValueMarker;
   const modeMeta = LEVEL_MODE_META[levelMeterMode] ?? LEVEL_MODE_META.peak;
+  const isPeak = levelMeterMode === "peak";
+  // Peak mode keeps its own dBFS range; the loudness-family modes (M/ST) share the
+  // LoudnessPanel's LUFS Y range so zooming one rescales the other.
+  const modeDefaults = isPeak
+    ? { min: PEAK_DB_MIN, max: PEAK_DB_MAX }
+    : { min: LOUDNESS_DB_MIN, max: LOUDNESS_DB_MAX };
+  const levelMeterYRange = isPeak
+    ? {
+        min: normalizedPanelControls.levelMeterYMinDb,
+        max: normalizedPanelControls.levelMeterYMaxDb,
+      }
+    : {
+        min: normalizedPanelControls.loudnessYMinDb,
+        max: normalizedPanelControls.loudnessYMaxDb,
+      };
+  const levelMeterYAxis = useAxisInteraction({
+    axis: "y",
+    min: levelMeterYRange.min,
+    max: levelMeterYRange.max,
+    absMin: modeDefaults.min,
+    absMax: modeDefaults.max,
+    defaultMin: modeDefaults.min,
+    defaultMax: modeDefaults.max,
+    minSpan: 12,
+    scale: "linear",
+    onRangeChange: useCallback(
+      (newMin, newMax) => {
+        const rangeKeys = isPeak
+          ? { levelMeterYMinDb: newMin, levelMeterYMaxDb: newMax }
+          : { loudnessYMinDb: newMin, loudnessYMaxDb: newMax };
+        onPanelControlsChange?.(
+          normalizePanelControls({ ...normalizedPanelControls, ...rangeKeys })
+        );
+      },
+      [isPeak, normalizedPanelControls, onPanelControlsChange]
+    ),
+  });
+  const isDefaultLevelMeterRange =
+    levelMeterYRange.min === modeDefaults.min && levelMeterYRange.max === modeDefaults.max;
+  const levelMeterTicks = isDefaultLevelMeterRange
+    ? isPeak
+      ? PEAK_TICKS
+      : LOUDNESS_TICKS
+    : buildAdaptiveDbTicks(levelMeterYRange.min, levelMeterYRange.max, levelMeterYAxis.axisPx);
 
   if (levelMeterMode !== "peak") {
     const levelValue = displayAudio?.[modeMeta.field];
@@ -120,6 +177,9 @@ export function LevelMeterPanel() {
           <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
             <div
               data-level-meter-y-axis
+              ref={levelMeterYAxis.axisRef}
+              {...levelMeterYAxis.axisHandlers}
+              style={{ cursor: levelMeterYAxis.cursorStyle }}
               className={cn(
                 yAxisWidthClass,
                 "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
@@ -129,7 +189,7 @@ export function LevelMeterPanel() {
                 data-level-meter-y-axis-scale
                 className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]"
               >
-                {LOUDNESS_TICKS.map(({ v, lb }, i) => {
+                {levelMeterTicks.map(({ v, lb }, i) => {
                   if (i === 0) {
                     return (
                       <span key={v} className={levelMeterYAxisLabelClass("start")}>
@@ -137,7 +197,7 @@ export function LevelMeterPanel() {
                       </span>
                     );
                   }
-                  if (i === LOUDNESS_TICKS.length - 1) {
+                  if (i === levelMeterTicks.length - 1) {
                     return (
                       <span key={v} className={levelMeterYAxisLabelClass("end")}>
                         {lb}
@@ -148,13 +208,17 @@ export function LevelMeterPanel() {
                     <span
                       key={v}
                       className={levelMeterYAxisLabelClass("middle")}
-                      style={{ top: `${loudnessFromTopFrac(v) * 100}%` }}
+                      style={{
+                        top: `${rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max) * 100}%`,
+                      }}
                     >
                       {lb}
                     </span>
                   );
                 })}
-                {showMarker ? <CurrentValueMarker value={levelValue} /> : null}
+                {showMarker ? (
+                  <CurrentValueMarker value={levelValue} yRange={levelMeterYRange} />
+                ) : null}
               </div>
             </div>
             <div data-level-meter-bar-region className="grid grid-cols-[minmax(0,1fr)]">
@@ -168,9 +232,11 @@ export function LevelMeterPanel() {
                 >
                   <AnimatedLevelFill
                     value={levelValue}
-                    min={LOUDNESS_DB_MIN}
-                    max={LOUDNESS_DB_MAX}
-                    fromTopFrac={loudnessFromTopFrac}
+                    min={levelMeterYRange.min}
+                    max={levelMeterYRange.max}
+                    fromTopFrac={(v) =>
+                      rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max)
+                    }
                   />
                 </div>
                 <div
@@ -221,6 +287,9 @@ export function LevelMeterPanel() {
         <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
           <div
             data-level-meter-y-axis
+            ref={levelMeterYAxis.axisRef}
+            {...levelMeterYAxis.axisHandlers}
+            style={{ cursor: levelMeterYAxis.cursorStyle }}
             className={cn(
               W_PEAK_TICKS,
               "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
@@ -230,7 +299,7 @@ export function LevelMeterPanel() {
               data-level-meter-y-axis-scale
               className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]"
             >
-              {PEAK_TICKS.map(({ v, lb }, i) => {
+              {levelMeterTicks.map(({ v, lb }, i) => {
                 if (i === 0) {
                   return (
                     <span key={v} className={levelMeterYAxisLabelClass("start")}>
@@ -238,7 +307,7 @@ export function LevelMeterPanel() {
                     </span>
                   );
                 }
-                if (i === PEAK_TICKS.length - 1) {
+                if (i === levelMeterTicks.length - 1) {
                   return (
                     <span key={v} className={levelMeterYAxisLabelClass("end")}>
                       {lb}
@@ -249,7 +318,9 @@ export function LevelMeterPanel() {
                   <span
                     key={v}
                     className={levelMeterYAxisLabelClass("middle")}
-                    style={{ top: `${peakFromTopFrac(v) * 100}%` }}
+                    style={{
+                      top: `${rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max) * 100}%`,
+                    }}
                   >
                     {lb}
                   </span>
@@ -274,7 +345,7 @@ export function LevelMeterPanel() {
                     "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X,
                   }}
                 >
-                  <AnimatedPeakFill dbValue={c.valueDb} />
+                  <AnimatedPeakFill dbValue={c.valueDb} yRange={levelMeterYRange} />
                 </div>
                 <div
                   data-peak-value

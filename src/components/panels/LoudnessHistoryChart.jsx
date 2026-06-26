@@ -2,8 +2,9 @@ import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
-import { loudnessFromTopFrac } from "../../config/scales";
+import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
 import { fmtSec } from "../../math/formatMath";
+import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
@@ -14,8 +15,11 @@ const LOUDNESS_HUD_BOX_POPOVER =
   "rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm";
 
 export function LoudnessHistoryChart({
-  historyYAxisTicks,
+  historyYAxisTicks: historyYAxisTicksProp,
   targetLufs,
+  loudnessYMinDb = -64,
+  loudnessYMaxDb = 0,
+  onLoudnessYRangeChange,
   hasHistoryData,
   historyChartInteractive,
   running,
@@ -51,6 +55,27 @@ export function LoudnessHistoryChart({
   const showReference = visibleLayerIds.includes("ref");
   const useOverGradient = showReference && Number.isFinite(referenceLufs);
   const hasSelectedLayer = showMomentary || showShortTerm || showReference;
+  const loudnessYRange = useMemo(
+    () => ({ min: loudnessYMinDb, max: loudnessYMaxDb }),
+    [loudnessYMinDb, loudnessYMaxDb]
+  );
+  const loudnessYAxis = useAxisInteraction({
+    axis: "y",
+    min: loudnessYMinDb,
+    max: loudnessYMaxDb,
+    absMin: -64,
+    absMax: 0,
+    defaultMin: -64,
+    defaultMax: 0,
+    minSpan: 12,
+    scale: "linear",
+    onRangeChange: onLoudnessYRangeChange,
+  });
+  const adaptiveHistoryYAxisTicks = useMemo(
+    () => buildAdaptiveDbTicks(loudnessYMinDb, loudnessYMaxDb, loudnessYAxis.axisPx),
+    [loudnessYMinDb, loudnessYMaxDb, loudnessYAxis.axisPx]
+  );
+  const historyYAxisTicks = historyYAxisTicksProp ?? adaptiveHistoryYAxisTicks;
 
   const historyYAxisTicksLabeled = useMemo(
     () => historyYAxisTicks.filter((t) => !(t.v === targetLufs && !hasHistoryData)),
@@ -64,7 +89,9 @@ export function LoudnessHistoryChart({
   const stStrokeNormal = isSnap
     ? "var(--ui-loudness-shortterm-snap)"
     : "var(--ui-loudness-shortterm)";
-  const refTopFrac = Number.isFinite(referenceLufs) ? loudnessFromTopFrac(referenceLufs) : null;
+  const refTopFrac = Number.isFinite(referenceLufs)
+    ? loudnessFromTopFrac(referenceLufs, loudnessYRange)
+    : null;
 
   const mGradId = useId().replace(/:/g, "");
   const stGradId = useId().replace(/:/g, "");
@@ -81,22 +108,35 @@ export function LoudnessHistoryChart({
       const next = {};
       for (const { v } of historyYAxisTicksLabeled) {
         if (v === targetLufs && hasHistoryData) continue;
-        const frac = loudnessFromTopFrac(v);
+        const frac = loudnessFromTopFrac(v, loudnessYRange);
         const raw = Math.round(frac * h - 0.5);
         next[v] = Math.max(0, Math.min(h - 1, raw));
       }
-      setHistoryGridTopPx(next);
+      setHistoryGridTopPx((prev) => {
+        const prevKeys = Object.keys(prev);
+        const nextKeys = Object.keys(next);
+        if (
+          prevKeys.length === nextKeys.length &&
+          nextKeys.every((key) => prev[key] === next[key])
+        ) {
+          return prev;
+        }
+        return next;
+      });
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [historyYAxisTicksLabeled, hasHistoryData, targetLufs]);
+  }, [historyYAxisTicksLabeled, hasHistoryData, loudnessYMinDb, loudnessYMaxDb, targetLufs]);
 
   return (
     <div className="grid min-h-0 h-full grid-cols-[var(--ui-w-axis-rail)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
       {/* Y-axis labels */}
       <div
+        ref={loudnessYAxis.axisRef}
+        {...loudnessYAxis.axisHandlers}
+        style={{ cursor: loudnessYAxis.cursorStyle }}
         className={cn(
           W_LOUDNESS_Y_AXIS,
           "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
@@ -124,7 +164,7 @@ export function LoudnessHistoryChart({
               <span
                 key={v}
                 className={axisLabelClass("y", "middle", tickClassExtra)}
-                style={{ top: `${loudnessFromTopFrac(v) * 100}%` }}
+                style={{ top: `${loudnessFromTopFrac(v, loudnessYRange) * 100}%` }}
               >
                 {lb}
               </span>
@@ -171,7 +211,7 @@ export function LoudnessHistoryChart({
                 className={`absolute left-0 right-0 h-px bg-[var(--ui-loudness-grid)]${topPx == null ? " -translate-y-1/2" : ""}`}
                 style={
                   topPx == null
-                    ? { top: `${loudnessFromTopFrac(v) * 100}%` }
+                    ? { top: `${loudnessFromTopFrac(v, loudnessYRange) * 100}%` }
                     : { top: `${topPx}px` }
                 }
               />

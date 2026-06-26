@@ -1,4 +1,4 @@
-import { loudnessFromTopFrac, freqToXFrac } from "../config/scales";
+import { loudnessFromTopFrac, rangedFreqToXFrac } from "../config/scales";
 import { hzFromFrac } from "./spectrogramMath.js";
 import { inWindowRange } from "./spectrogramTimeline.js";
 
@@ -65,7 +65,8 @@ export function computeHistoryHoverPoint(
   histSourceList,
   effectiveOffsetSamples,
   visibleSamples,
-  sampleSec
+  sampleSec,
+  yRange = {}
 ) {
   if (!histSourceList.length) return null;
   const normalized = 1 - xFrac;
@@ -80,7 +81,7 @@ export function computeHistoryHoverPoint(
   const yValue = Number.isFinite(point.st) ? point.st : point.m;
   return {
     leftPct: xFrac * 100,
-    topPct: Number.isFinite(yValue) ? loudnessFromTopFrac(yValue) * 100 : null,
+    topPct: Number.isFinite(yValue) ? loudnessFromTopFrac(yValue, yRange) * 100 : null,
     momentary: Number.isFinite(point.m) ? point.m : null,
     shortTerm: Number.isFinite(point.st) ? point.st : null,
     offsetLabel: formatHoverOffset(offsetSec),
@@ -160,7 +161,9 @@ export function computeSpectrogramHoverPoint(
   oldestMs,
   newestMs,
   sampleMs,
-  markerNotes
+  markerNotes,
+  minHz = 20,
+  maxHz = 20000
 ) {
   if (!snaps || !snaps.length || !(newestMs > oldestMs)) return null;
 
@@ -186,7 +189,7 @@ export function computeSpectrogramHoverPoint(
   if (!bands?.length || !dbList?.length) return null;
 
   // yFrac=0 (top) → 20kHz, yFrac=1 (bottom) → 20Hz; hzFromFrac(0)=20Hz, hzFromFrac(1)=20kHz
-  const hz = hzFromFrac(1 - yFrac);
+  const hz = hzFromFrac(1 - yFrac, minHz, maxHz);
 
   // Log-domain binary search for nearest band
   let lo = 0,
@@ -223,11 +226,11 @@ export function computeSpectrogramHoverPoint(
  * @param {{ fCenter: number }[]} bands
  * @returns {number}
  */
-export function computeSpectrumHoverIndex(xFrac, bands) {
+export function computeSpectrumHoverIndex(xFrac, bands, minHz = 20, maxHz = 20000) {
   let nearestIdx = 0;
   let nearestDist = Infinity;
   for (let i = 0; i < bands.length; i += 1) {
-    const dist = Math.abs(freqToXFrac(bands[i].fCenter) - xFrac);
+    const dist = Math.abs(rangedFreqToXFrac(bands[i].fCenter, minHz, maxHz) - xFrac);
     if (dist < nearestDist) {
       nearestDist = dist;
       nearestIdx = i;

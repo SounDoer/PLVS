@@ -21,8 +21,16 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumPeakHold: false,
   spectrumSmoothingPercent: 25,
   spectrumTiltDbPerOctave: 3,
-  spectrumYMaxDb: -12,
-  spectrumYRangeDb: 84,
+  spectrumXMinFreq: 20,
+  spectrumXMaxFreq: 20000,
+  spectrumYMaxDb: 0,
+  spectrumYMinDb: -96,
+  spectrogramYMinFreq: 20,
+  spectrogramYMaxFreq: 20000,
+  loudnessYMinDb: -64,
+  loudnessYMaxDb: 0,
+  levelMeterYMinDb: -60,
+  levelMeterYMaxDb: 3,
   statsVisibleIds: [
     "momentary",
     "shortTerm",
@@ -86,12 +94,50 @@ function normalizeSpectrumTiltDbPerOctave(raw) {
   return clampNumber(raw, 0, 6, DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave);
 }
 
-function normalizeSpectrumYMaxDb(raw) {
-  return clampNumber(raw, -48, 0, DEFAULT_PANEL_CONTROLS.spectrumYMaxDb);
+function normalizeLinearRange({ rawMin, rawMax, defaultMin, defaultMax, absMin, absMax, minSpan }) {
+  let min = Math.round(clampNumber(rawMin, absMin, absMax, defaultMin));
+  let max = Math.round(clampNumber(rawMax, absMin, absMax, defaultMax));
+  if (max - min < minSpan) {
+    if (isNumber(rawMax) && !isNumber(rawMin)) {
+      min = Math.max(absMin, max - minSpan);
+    } else {
+      max = Math.min(absMax, min + minSpan);
+      if (max - min < minSpan) min = Math.max(absMin, max - minSpan);
+    }
+  }
+  return { min, max };
 }
 
-function normalizeSpectrumYRangeDb(raw) {
-  return clampNumber(raw, 48, 120, DEFAULT_PANEL_CONTROLS.spectrumYRangeDb);
+function normalizeLogRange({ rawMin, rawMax, defaultMin, defaultMax, absMin, absMax, minOctaves }) {
+  let min = clampNumber(rawMin, absMin, absMax, defaultMin);
+  let max = clampNumber(rawMax, absMin, absMax, defaultMax);
+  if (max <= min || Math.log2(max / min) < minOctaves) {
+    if (isNumber(rawMax) && !isNumber(rawMin)) {
+      min = Math.max(absMin, max / 2 ** minOctaves);
+    } else {
+      max = Math.min(absMax, min * 2 ** minOctaves);
+      if (Math.log2(max / min) < minOctaves) min = Math.max(absMin, max / 2 ** minOctaves);
+    }
+  }
+  return { min, max };
+}
+
+function normalizeSpectrumYRange(raw) {
+  const rawMax = raw?.spectrumYMaxDb;
+  const migratedMin =
+    isNumber(raw?.spectrumYMinDb) || !isNumber(raw?.spectrumYRangeDb)
+      ? raw?.spectrumYMinDb
+      : clampNumber(rawMax, -120, 0, DEFAULT_PANEL_CONTROLS.spectrumYMaxDb) -
+        clampNumber(raw.spectrumYRangeDb, 12, 126, 84);
+  return normalizeLinearRange({
+    rawMin: migratedMin,
+    rawMax,
+    defaultMin: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
+    defaultMax: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
+    absMin: -120,
+    absMax: 0,
+    minSpan: 12,
+  });
 }
 
 function normalizeLevelMeterMode(raw) {
@@ -133,6 +179,43 @@ function normalizeOrder(raw, orderTemplate) {
 }
 
 export function normalizePanelControls(raw) {
+  const spectrumXRange = normalizeLogRange({
+    rawMin: raw?.spectrumXMinFreq,
+    rawMax: raw?.spectrumXMaxFreq,
+    defaultMin: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
+    defaultMax: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
+    absMin: 20,
+    absMax: 20000,
+    minOctaves: 1,
+  });
+  const spectrumYRange = normalizeSpectrumYRange(raw);
+  const spectrogramYRange = normalizeLogRange({
+    rawMin: raw?.spectrogramYMinFreq,
+    rawMax: raw?.spectrogramYMaxFreq,
+    defaultMin: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
+    defaultMax: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
+    absMin: 20,
+    absMax: 20000,
+    minOctaves: 1,
+  });
+  const loudnessYRange = normalizeLinearRange({
+    rawMin: raw?.loudnessYMinDb,
+    rawMax: raw?.loudnessYMaxDb,
+    defaultMin: DEFAULT_PANEL_CONTROLS.loudnessYMinDb,
+    defaultMax: DEFAULT_PANEL_CONTROLS.loudnessYMaxDb,
+    absMin: -64,
+    absMax: 0,
+    minSpan: 12,
+  });
+  const levelMeterYRange = normalizeLinearRange({
+    rawMin: raw?.levelMeterYMinDb,
+    rawMax: raw?.levelMeterYMaxDb,
+    defaultMin: DEFAULT_PANEL_CONTROLS.levelMeterYMinDb,
+    defaultMax: DEFAULT_PANEL_CONTROLS.levelMeterYMaxDb,
+    absMin: -60,
+    absMax: 3,
+    minSpan: 12,
+  });
   return {
     levelMeterMode: normalizeLevelMeterMode(raw?.levelMeterMode),
     levelMeterValueMarker: normalizeLevelMeterValueMarker(raw?.levelMeterValueMarker),
@@ -142,8 +225,16 @@ export function normalizePanelControls(raw) {
     spectrumPeakHold: normalizeSpectrumPeakHold(raw?.spectrumPeakHold),
     spectrumSmoothingPercent: normalizeSpectrumSmoothingPercent(raw?.spectrumSmoothingPercent),
     spectrumTiltDbPerOctave: normalizeSpectrumTiltDbPerOctave(raw?.spectrumTiltDbPerOctave),
-    spectrumYMaxDb: normalizeSpectrumYMaxDb(raw?.spectrumYMaxDb),
-    spectrumYRangeDb: normalizeSpectrumYRangeDb(raw?.spectrumYRangeDb),
+    spectrumXMinFreq: spectrumXRange.min,
+    spectrumXMaxFreq: spectrumXRange.max,
+    spectrumYMaxDb: spectrumYRange.max,
+    spectrumYMinDb: spectrumYRange.min,
+    spectrogramYMinFreq: spectrogramYRange.min,
+    spectrogramYMaxFreq: spectrogramYRange.max,
+    loudnessYMinDb: loudnessYRange.min,
+    loudnessYMaxDb: loudnessYRange.max,
+    levelMeterYMinDb: levelMeterYRange.min,
+    levelMeterYMaxDb: levelMeterYRange.max,
     statsVisibleIds: normalizeKnownIds(
       raw?.statsVisibleIds,
       STATS_IDS,

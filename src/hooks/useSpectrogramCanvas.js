@@ -58,6 +58,8 @@ export function useSpectrogramCanvas({
   selectedOffset,
   frozenSnaps,
   colormapLut,
+  minHz = 20,
+  maxHz = 20000,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
@@ -70,12 +72,23 @@ export function useSpectrogramCanvas({
     sel: -1,
     W: 0,
     H: 0,
+    minHz: 20,
+    maxHz: 20000,
     colormapLut: null,
   });
 
   useEffect(() => {
-    paramsRef.current = { oldestMs, newestMs, sampleMs, selectedOffset, frozenSnaps, colormapLut };
-  });
+    paramsRef.current = {
+      oldestMs,
+      newestMs,
+      sampleMs,
+      selectedOffset,
+      frozenSnaps,
+      colormapLut,
+      minHz,
+      maxHz,
+    };
+  }, [oldestMs, newestMs, sampleMs, selectedOffset, frozenSnaps, colormapLut, minHz, maxHz]);
 
   useEffect(() => {
     function draw() {
@@ -86,8 +99,16 @@ export function useSpectrogramCanvas({
       const H = canvas.height;
       if (W === 0 || H === 0) return;
 
-      const { oldestMs, newestMs, sampleMs, selectedOffset, frozenSnaps, colormapLut } =
-        paramsRef.current;
+      const {
+        oldestMs,
+        newestMs,
+        sampleMs,
+        selectedOffset,
+        frozenSnaps,
+        colormapLut,
+        minHz,
+        maxHz,
+      } = paramsRef.current;
       if (!colormapLut || colormapLut.length < 256 * 3) return;
       const snaps = frozenSnaps ?? snapRef.current;
       const len = snaps ? snaps.length : 0;
@@ -103,6 +124,8 @@ export function useSpectrogramCanvas({
         last.sel === selectedOffset &&
         last.W === W &&
         last.H === H &&
+        last.minHz === minHz &&
+        last.maxHz === maxHz &&
         last.colormapLut === colormapLut
       )
         return;
@@ -114,6 +137,8 @@ export function useSpectrogramCanvas({
         sel: selectedOffset,
         W,
         H,
+        minHz,
+        maxHz,
         colormapLut,
       };
 
@@ -128,11 +153,19 @@ export function useSpectrogramCanvas({
         ctx.clearRect(0, 0, W, H);
         return;
       }
-      if (cache.W !== W || cache.H !== H || !cache.yToBand) {
-        cache.yToBand = buildYToBand(bands, H);
+      if (
+        cache.W !== W ||
+        cache.H !== H ||
+        cache.minHz !== minHz ||
+        cache.maxHz !== maxHz ||
+        !cache.yToBand
+      ) {
+        cache.yToBand = buildYToBand(bands, H, minHz, maxHz);
         cache.imageData = new ImageData(W, H);
         cache.W = W;
         cache.H = H;
+        cache.minHz = minHz;
+        cache.maxHz = maxHz;
       }
 
       const { startIdx, endIdx } = inWindowRange(snaps, oldestMs, newestMs);

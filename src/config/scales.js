@@ -17,7 +17,10 @@ export function peakFrac(v) {
  * Normalized position from the top of the dial/plot: +3 dB → 0, -60 dB → 1.
  * Same (1 - frac) mapping as other meters for reuse across components.
  */
-export function peakFromTopFrac(v) {
+export function peakFromTopFrac(v, range = {}) {
+  if (Number.isFinite(range.min) && Number.isFinite(range.max)) {
+    return rangedFromTopFrac(v, range.min, range.max);
+  }
   return 1 - peakFrac(v);
 }
 
@@ -27,7 +30,17 @@ export const LOUDNESS_DB_MAX = 0;
 const LOUDNESS_DB_RNG = LOUDNESS_DB_MAX - LOUDNESS_DB_MIN;
 
 /** Loudness: from-top normalized position; -3 dB → 0, -64 dB → 1 on this axis. */
-export function loudnessFromTopFrac(v) {
+export function rangedFromTopFrac(v, min, max) {
+  const safeMin = Number.isFinite(min) ? min : 0;
+  const safeMax = Number.isFinite(max) && max > safeMin ? max : safeMin + 1;
+  const c = Math.max(safeMin, Math.min(safeMax, Number.isFinite(v) ? v : safeMin));
+  return 1 - (c - safeMin) / (safeMax - safeMin);
+}
+
+export function loudnessFromTopFrac(v, range = {}) {
+  if (Number.isFinite(range.min) && Number.isFinite(range.max)) {
+    return rangedFromTopFrac(v, range.min, range.max);
+  }
   const c = Math.max(
     LOUDNESS_DB_MIN,
     Math.min(LOUDNESS_DB_MAX, Number.isFinite(v) ? v : LOUDNESS_DB_MIN)
@@ -36,8 +49,12 @@ export function loudnessFromTopFrac(v) {
 }
 
 /** Loudness History y for SVG viewBox height 220 (must match App buildHistoryPath). */
-export function loudnessHistY(v, viewH = 220) {
-  return viewH * loudnessFromTopFrac(v);
+export function loudnessHistY(v, viewH = 220, range = {}) {
+  return viewH * loudnessFromTopFrac(v, range);
+}
+
+export function rangedHistY(v, viewH = 220, min, max) {
+  return viewH * rangedFromTopFrac(v, min, max);
 }
 
 /** Spectrum viewBox height 260; dB→y uses top/bottom padding so max dB does not hug the SVG edge */
@@ -46,7 +63,7 @@ export const SPEC_VIEW_H = 260;
 export const SPEC_VIEW_TOP_PAD = 10;
 /** Bottom padding inside viewBox (px) */
 export const SPEC_VIEW_BOTTOM_PAD = 4;
-export const SPEC_DB_MAX = -12;
+export const SPEC_DB_MAX = 0;
 export const SPEC_DB_RANGE = 84;
 export const SPEC_DB_MIN = SPEC_DB_MAX - SPEC_DB_RANGE;
 /** Plot height for dB→y (viewBox height minus vertical padding) */
@@ -66,8 +83,10 @@ export const SPECTRUM_SETTINGS = {
 
 function normalizeSpectrumRange(range = {}) {
   const yMaxDb = Number.isFinite(range.yMaxDb) ? range.yMaxDb : SPEC_DB_MAX;
-  const yRangeDb = Number.isFinite(range.yRangeDb) ? range.yRangeDb : SPEC_DB_RANGE;
-  return { yMaxDb, yRangeDb };
+  const yMinDb = Number.isFinite(range.yMinDb)
+    ? range.yMinDb
+    : yMaxDb - (Number.isFinite(range.yRangeDb) ? range.yRangeDb : SPEC_DB_RANGE);
+  return { yMaxDb, yMinDb, yRangeDb: Math.max(1, yMaxDb - yMinDb) };
 }
 
 export function spectrumDbToYViewBox(d, range = {}) {
@@ -90,6 +109,23 @@ const LOG_DEN = LOG20K - LOG20;
 export function freqToXFrac(f) {
   const ff = Math.max(20, Math.min(20000, f));
   return (Math.log10(ff) - LOG20) / LOG_DEN;
+}
+
+export function freqToFracInRange(f, minHz = 20, maxHz = 20000) {
+  const safeMin = Math.max(1, Number.isFinite(minHz) ? minHz : 20);
+  const safeMax = Math.max(safeMin * 1.001, Number.isFinite(maxHz) ? maxHz : 20000);
+  const ff = Math.max(safeMin, Math.min(safeMax, Number.isFinite(f) ? f : safeMin));
+  const logMin = Math.log10(safeMin);
+  const logMax = Math.log10(safeMax);
+  return (Math.log10(ff) - logMin) / (logMax - logMin);
+}
+
+export function rangedFreqToXFrac(f, minHz = 20, maxHz = 20000) {
+  return freqToFracInRange(f, minHz, maxHz);
+}
+
+export function rangedFreqToYFrac(f, minHz = 20, maxHz = 20000) {
+  return 1 - freqToFracInRange(f, minHz, maxHz);
 }
 
 const RTA_BANDS_PER_OCTAVE = {
@@ -202,3 +238,120 @@ export const FREQ_LABELS = [
   [10000, "10k"],
   [20000, "20k"],
 ];
+
+const FREQ_TICK_CANDIDATES = [
+  20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600,
+  2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000,
+];
+const ADAPTIVE_TICK_MIN_GAP_PX = 24;
+
+function formatDb(value) {
+  return `${Math.round(value)}`;
+}
+
+export function formatFreqLabel(hz) {
+  if (hz >= 1000) {
+    const k = Math.round((hz / 1000) * 10) / 10;
+    return `${k}k`;
+  }
+  return `${Math.round(hz)}`;
+}
+
+export function buildAdaptiveDbTicks(minDb, maxDb, axisPx = 300) {
+  if (!(maxDb > minDb)) return [{ v: maxDb, lb: formatDb(maxDb) }];
+  const maxTicks = Math.max(2, Math.floor(axisPx / 32));
+  const roundedMin = Math.round(minDb);
+  const roundedMax = Math.round(maxDb);
+  if (!(roundedMax > roundedMin)) {
+    return [{ v: roundedMax, lb: formatDb(roundedMax) }];
+  }
+  if (maxTicks <= 2) {
+    return [
+      { v: roundedMax, lb: formatDb(roundedMax) },
+      { v: roundedMin, lb: formatDb(roundedMin) },
+    ];
+  }
+  const step = Math.max(1, Math.ceil((roundedMax - roundedMin) / (maxTicks - 1)));
+  const ticks = [{ v: roundedMax, lb: formatDb(roundedMax) }];
+  for (let v = roundedMax - step; v > roundedMin; v -= step) {
+    ticks.push({ v, lb: formatDb(v) });
+  }
+  ticks.push({ v: roundedMin, lb: formatDb(roundedMin) });
+  return filterTicksByPixelGap(
+    ticks,
+    axisPx,
+    (tick) => rangedFromTopFrac(tick.v, roundedMin, roundedMax) * axisPx
+  );
+}
+
+export function buildAdaptiveFreqTicks(minHz, maxHz, axisPx = 500) {
+  if (!(maxHz > minHz)) return [{ v: maxHz, lb: formatFreqLabel(maxHz) }];
+  const maxTicks = Math.max(2, Math.floor(axisPx / 32));
+  const logMin = Math.log10(Math.max(1, minHz));
+  const logMax = Math.log10(Math.max(minHz * 1.001, maxHz));
+  const slotFrac = 1 / Math.max(1, maxTicks - 1);
+  const snapToleranceFrac = slotFrac * 0.35;
+  const reduced = [{ v: minHz, lb: formatFreqLabel(minHz) }];
+  const used = new Set([minHz, maxHz]);
+  const innerCandidates = FREQ_TICK_CANDIDATES.filter((value) => value > minHz && value < maxHz);
+  for (let slot = 1; slot < maxTicks - 1; slot += 1) {
+    const targetFrac = slot / (maxTicks - 1);
+    const rawValue = Math.pow(10, logMin + (logMax - logMin) * targetFrac);
+    const snapped = innerCandidates
+      .filter((value) => !used.has(value))
+      .map((value) => ({
+        value,
+        dist: Math.abs(freqToFracInRange(value, minHz, maxHz) - targetFrac),
+      }))
+      .sort((a, b) => a.dist - b.dist || a.value - b.value)[0];
+    const value = snapped && snapped.dist <= snapToleranceFrac ? snapped.value : rawValue;
+    reduced.push({ v: value, lb: formatFreqLabel(value) });
+    used.add(value);
+  }
+  reduced.push({ v: maxHz, lb: formatFreqLabel(maxHz) });
+  const spaced = filterTicksByPixelGap(
+    reduced.sort((a, b) => a.v - b.v),
+    axisPx,
+    (tick) => rangedFreqToYFrac(tick.v, minHz, maxHz) * axisPx
+  );
+  return dedupeAdjacentLabels(spaced);
+}
+
+/**
+ * Drops interior ticks whose formatted label repeats a neighbour (both endpoints kept).
+ * Narrow log ranges produce more pixel slots than distinct round labels, which otherwise
+ * renders runs like "1k, 1k, 1.1k, 1.1k"; collapse those to one tick per label.
+ */
+function dedupeAdjacentLabels(ticks) {
+  if (ticks.length <= 2) return ticks;
+  const kept = [ticks[0]];
+  for (const tick of ticks.slice(1, -1)) {
+    if (tick.lb !== kept.at(-1).lb) kept.push(tick);
+  }
+  const last = ticks.at(-1);
+  while (kept.length > 1 && kept.at(-1).lb === last.lb) kept.pop();
+  kept.push(last);
+  return kept;
+}
+
+function filterTicksByPixelGap(ticks, axisPx, topPxForTick) {
+  if (ticks.length <= 2) return ticks;
+  const minGapPx = Math.min(ADAPTIVE_TICK_MIN_GAP_PX, Math.max(0, axisPx / 2 - 1));
+  const first = ticks[0];
+  const last = ticks.at(-1);
+  const lastPx = topPxForTick(last);
+  const kept = [first];
+  const keptPx = [topPxForTick(first)];
+  for (const tick of ticks.slice(1, -1)) {
+    const tickPx = topPxForTick(tick);
+    const hasRoom =
+      Math.abs(tickPx - lastPx) >= minGapPx &&
+      keptPx.every((existingPx) => Math.abs(tickPx - existingPx) >= minGapPx);
+    if (hasRoom) {
+      kept.push(tick);
+      keptPx.push(tickPx);
+    }
+  }
+  kept.push(last);
+  return kept;
+}

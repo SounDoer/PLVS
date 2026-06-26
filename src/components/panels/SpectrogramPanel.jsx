@@ -1,10 +1,11 @@
-import { useRef, useMemo } from "react";
+import { useCallback, useRef, useMemo } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
-import { FREQ_LABELS, freqToXFrac } from "../../config/scales";
+import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
+import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import {
@@ -21,6 +22,7 @@ import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
+import { normalizePanelControls } from "../../lib/panelControls.js";
 
 const SPECTROGRAM_HELP = [
   "Left click - Select snapshot",
@@ -55,7 +57,40 @@ export function SpectrogramPanel({ compact = false }) {
     getSpectrogramSnapsForKey,
     snapshotSpectrumByKey,
     analysisStatus,
+    onPanelControlsChange,
   } = useAudioData();
+  const normalizedPanelControls = useMemo(
+    () => normalizePanelControls(panelControls),
+    [panelControls]
+  );
+  const spectrogramYAxis = useAxisInteraction({
+    axis: "y",
+    min: normalizedPanelControls.spectrogramYMinFreq,
+    max: normalizedPanelControls.spectrogramYMaxFreq,
+    absMin: 20,
+    absMax: 20000,
+    defaultMin: 20,
+    defaultMax: 20000,
+    minSpan: 1,
+    scale: "log",
+    onRangeChange: useCallback(
+      (newMin, newMax) => {
+        onPanelControlsChange?.(
+          normalizePanelControls({
+            ...normalizedPanelControls,
+            spectrogramYMinFreq: newMin,
+            spectrogramYMaxFreq: newMax,
+          })
+        );
+      },
+      [normalizedPanelControls, onPanelControlsChange]
+    ),
+  });
+  const spectrogramFreqTicks = buildAdaptiveFreqTicks(
+    normalizedPanelControls.spectrogramYMinFreq,
+    normalizedPanelControls.spectrogramYMaxFreq,
+    spectrogramYAxis.axisPx
+  );
   const isOverCap = analysisStatus === "overCap";
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -130,6 +165,8 @@ export function SpectrogramPanel({ compact = false }) {
     selectedOffset,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
     colormapLut,
+    minHz: normalizedPanelControls.spectrogramYMinFreq,
+    maxHz: normalizedPanelControls.spectrogramYMaxFreq,
   });
   const boundarySpan = newestMs - oldestMs;
   const {
@@ -157,7 +194,9 @@ export function SpectrogramPanel({ compact = false }) {
       oldestMs,
       newestMs,
       sampleMs,
-      markerNotes
+      markerNotes,
+      normalizedPanelControls.spectrogramYMinFreq,
+      normalizedPanelControls.spectrogramYMaxFreq
     );
   });
 
@@ -196,13 +235,16 @@ export function SpectrogramPanel({ compact = false }) {
         >
           {/* Y-axis frequency labels */}
           <div
+            ref={spectrogramYAxis.axisRef}
+            {...spectrogramYAxis.axisHandlers}
+            style={{ cursor: spectrogramYAxis.cursorStyle }}
             className={cn(
               W_SPECTRUM_Y_AXIS,
               "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
             )}
           >
             <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-              {FREQ_LABELS.map(([hz, label], i) => {
+              {spectrogramFreqTicks.map(({ v: hz, lb: label }, i) => {
                 if (i === 0) {
                   return (
                     <span key={hz} className={axisLabelClass("y", "end")}>
@@ -210,7 +252,7 @@ export function SpectrogramPanel({ compact = false }) {
                     </span>
                   );
                 }
-                if (i === FREQ_LABELS.length - 1) {
+                if (i === spectrogramFreqTicks.length - 1) {
                   return (
                     <span key={hz} className={axisLabelClass("y", "start")}>
                       {label}
@@ -221,7 +263,15 @@ export function SpectrogramPanel({ compact = false }) {
                   <span
                     key={hz}
                     className={axisLabelClass("y", "middle")}
-                    style={{ top: `${(1 - freqToXFrac(hz)) * 100}%` }}
+                    style={{
+                      top: `${
+                        rangedFreqToYFrac(
+                          hz,
+                          normalizedPanelControls.spectrogramYMinFreq,
+                          normalizedPanelControls.spectrogramYMaxFreq
+                        ) * 100
+                      }%`,
+                    }}
                   >
                     {label}
                   </span>

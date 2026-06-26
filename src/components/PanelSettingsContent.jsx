@@ -534,7 +534,7 @@ export function PanelSettingsContent({
     const effectiveSmoothingPercent = normalizedPanelControls.spectrumSmoothingPercent;
     const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
     const effectiveYMaxDb = normalizedPanelControls.spectrumYMaxDb;
-    const effectiveYRangeDb = normalizedPanelControls.spectrumYRangeDb;
+    const effectiveYMinDb = normalizedPanelControls.spectrumYMinDb;
     const { matchedOption, selectedOption } = getSelectedOption(
       spectrumOptions,
       effectiveSpectrumValueKey
@@ -671,9 +671,9 @@ export function PanelSettingsContent({
           <SettingsRow label="Y Max">
             <SettingsSlider
               ariaLabel="spectrum y max"
-              min={-48}
+              min={-120}
               max={0}
-              step={6}
+              step={1}
               value={effectiveYMaxDb}
               formatValue={(value) => `${value.toFixed(0)} dB`}
               onCommit={(value) => {
@@ -688,19 +688,19 @@ export function PanelSettingsContent({
           </SettingsRow>
         ) : null}
         {showDisplayControls ? (
-          <SettingsRow label="Y Range">
+          <SettingsRow label="Y Min">
             <SettingsSlider
-              ariaLabel="spectrum y range"
-              min={48}
-              max={120}
-              step={6}
-              value={effectiveYRangeDb}
+              ariaLabel="spectrum y min"
+              min={-120}
+              max={0}
+              step={1}
+              value={effectiveYMinDb}
               formatValue={(value) => `${value.toFixed(0)} dB`}
               onCommit={(value) => {
                 onPanelControlsChange?.(
                   normalizePanelControls({
                     ...normalizedPanelControls,
-                    spectrumYRangeDb: value,
+                    spectrumYMinDb: value,
                   })
                 );
               }}

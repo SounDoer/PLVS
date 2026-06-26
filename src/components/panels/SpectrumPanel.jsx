@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
@@ -10,15 +10,16 @@ import {
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
+import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
-  FREQ_LABELS,
-  buildSpectrumYTicks,
-  freqToXFrac,
+  buildAdaptiveDbTicks,
+  buildAdaptiveFreqTicks,
+  rangedFreqToXFrac,
   spectrumDbToTopFrac,
   spectrumDbToYViewBox,
 } from "../../config/scales";
@@ -44,14 +45,67 @@ export function SpectrumPanel({ compact = false }) {
     totalSamples,
     setSelectedOffset,
     captureCurrentSnapshot,
+    onPanelControlsChange,
   } = useAudioData();
-  const normalizedPanelControls = normalizePanelControls(panelControls);
+  const normalizedPanelControls = useMemo(
+    () => normalizePanelControls(panelControls),
+    [panelControls]
+  );
   const spectrumPeakHold = normalizedPanelControls.spectrumPeakHold;
   const spectrumRange = {
+    minHz: normalizedPanelControls.spectrumXMinFreq,
+    maxHz: normalizedPanelControls.spectrumXMaxFreq,
     yMaxDb: normalizedPanelControls.spectrumYMaxDb,
-    yRangeDb: normalizedPanelControls.spectrumYRangeDb,
+    yMinDb: normalizedPanelControls.spectrumYMinDb,
   };
-  const spectrumYTicks = buildSpectrumYTicks(spectrumRange);
+  const updatePanelControlsRange = useCallback(
+    (next) => {
+      onPanelControlsChange?.(normalizePanelControls({ ...normalizedPanelControls, ...next }));
+    },
+    [normalizedPanelControls, onPanelControlsChange]
+  );
+  const spectrumYAxis = useAxisInteraction({
+    axis: "y",
+    min: normalizedPanelControls.spectrumYMinDb,
+    max: normalizedPanelControls.spectrumYMaxDb,
+    absMin: -120,
+    absMax: 0,
+    defaultMin: -96,
+    defaultMax: 0,
+    minSpan: 12,
+    scale: "linear",
+    onRangeChange: useCallback(
+      (newMin, newMax) =>
+        updatePanelControlsRange({ spectrumYMinDb: newMin, spectrumYMaxDb: newMax }),
+      [updatePanelControlsRange]
+    ),
+  });
+  const spectrumXAxis = useAxisInteraction({
+    axis: "x",
+    min: normalizedPanelControls.spectrumXMinFreq,
+    max: normalizedPanelControls.spectrumXMaxFreq,
+    absMin: 20,
+    absMax: 20000,
+    defaultMin: 20,
+    defaultMax: 20000,
+    minSpan: 1,
+    scale: "log",
+    onRangeChange: useCallback(
+      (newMin, newMax) =>
+        updatePanelControlsRange({ spectrumXMinFreq: newMin, spectrumXMaxFreq: newMax }),
+      [updatePanelControlsRange]
+    ),
+  });
+  const spectrumYTicks = buildAdaptiveDbTicks(
+    normalizedPanelControls.spectrumYMinDb,
+    normalizedPanelControls.spectrumYMaxDb,
+    spectrumYAxis.axisPx
+  );
+  const spectrumFreqTicks = buildAdaptiveFreqTicks(
+    normalizedPanelControls.spectrumXMinFreq,
+    normalizedPanelControls.spectrumXMaxFreq,
+    spectrumXAxis.axisPx
+  );
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
@@ -106,13 +160,18 @@ export function SpectrumPanel({ compact = false }) {
   } = useChartHover((xFrac) => {
     const data = panelSpectrumData;
     if (!data?.bands?.length || !data?.dbList?.length) return null;
-    const nearestIdx = computeSpectrumHoverIndex(xFrac, data.bands);
+    const nearestIdx = computeSpectrumHoverIndex(
+      xFrac,
+      data.bands,
+      spectrumRange.minHz,
+      spectrumRange.maxHz
+    );
     const band = data.bands[nearestIdx];
     const db = data.dbList[nearestIdx];
     if (!band || !Number.isFinite(db)) return null;
     const dbB = data.dbListB?.[nearestIdx];
     return {
-      leftPct: freqToXFrac(band.fCenter) * 100,
+      leftPct: rangedFreqToXFrac(band.fCenter, spectrumRange.minHz, spectrumRange.maxHz) * 100,
       topPct: spectrumDbToTopFrac(db, spectrumRange) * 100,
       freqLabel: formatSpectrumFreq(band.fCenter),
       dbLabel: `${db.toFixed(1)} dB`,
@@ -175,6 +234,9 @@ export function SpectrumPanel({ compact = false }) {
           )}
         >
           <div
+            ref={spectrumYAxis.axisRef}
+            {...spectrumYAxis.axisHandlers}
+            style={{ cursor: spectrumYAxis.cursorStyle }}
             className={cn(
               W_SPECTRUM_Y_AXIS,
               "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
@@ -299,8 +361,9 @@ export function SpectrumPanel({ compact = false }) {
                         style={{ strokeOpacity: "var(--ui-spectrum-grid-opacity)" }}
                       />
                     ))}
-                    {FREQ_LABELS.map(([f]) => {
-                      const x = freqToXFrac(f) * 1000;
+                    {spectrumFreqTicks.map(({ v: f }) => {
+                      const x =
+                        rangedFreqToXFrac(f, spectrumRange.minHz, spectrumRange.maxHz) * 1000;
                       return (
                         <line
                           key={`sp-grid-v-${f}`}
@@ -437,9 +500,14 @@ export function SpectrumPanel({ compact = false }) {
           </div>
 
           <div />
-          <div className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}>
+          <div
+            ref={spectrumXAxis.axisRef}
+            {...spectrumXAxis.axisHandlers}
+            style={{ cursor: spectrumXAxis.cursorStyle }}
+            className={cn(CAPTION_TEXT, "relative h-[var(--ui-chart-x-axis-row-h)] w-full")}
+          >
             <div className="absolute inset-x-0 top-0 h-full">
-              {FREQ_LABELS.map(([f, lb], i) => {
+              {spectrumFreqTicks.map(({ v: f, lb }, i) => {
                 if (i === 0) {
                   return (
                     <span key={f} className={axisLabelClass("x", "start")}>
@@ -447,7 +515,7 @@ export function SpectrumPanel({ compact = false }) {
                     </span>
                   );
                 }
-                if (i === FREQ_LABELS.length - 1) {
+                if (i === spectrumFreqTicks.length - 1) {
                   return (
                     <span key={f} className={axisLabelClass("x", "end")}>
                       {lb}
@@ -458,7 +526,9 @@ export function SpectrumPanel({ compact = false }) {
                   <span
                     key={f}
                     className={axisLabelClass("x", "middle")}
-                    style={{ left: `${freqToXFrac(f) * 100}%` }}
+                    style={{
+                      left: `${rangedFreqToXFrac(f, spectrumRange.minHz, spectrumRange.maxHz) * 100}%`,
+                    }}
                   >
                     {lb}
                   </span>
