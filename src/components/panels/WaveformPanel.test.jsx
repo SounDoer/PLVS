@@ -4,6 +4,21 @@ import { render, screen } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { WaveformPanel } from "./WaveformPanel.jsx";
 
+const { sliceWaveformSubHistoryMock } = vi.hoisted(() => ({
+  sliceWaveformSubHistoryMock: vi.fn(() => ({
+    mins: [[], []],
+    maxes: [[], []],
+    bucketCount: 1,
+    fracPhase: 0,
+    firstBucket: -1,
+    lastBucket: -1,
+  })),
+}));
+
+vi.mock("../../math/waveformMath.js", () => ({
+  sliceWaveformSubHistory: sliceWaveformSubHistoryMock,
+}));
+
 const baseAudioData = {
   histSourceList: [],
   visibleSamples: 0,
@@ -36,6 +51,8 @@ function renderPanel(value = {}, props = {}) {
 }
 
 beforeEach(() => {
+  sliceWaveformSubHistoryMock.mockClear();
+
   class ResizeObserverStub {
     observe() {}
     disconnect() {}
@@ -89,5 +106,29 @@ describe("WaveformPanel", () => {
     renderPanel({}, { compact: true });
 
     expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
+  });
+
+  it("does not recompute waveform buckets for unrelated rerenders", () => {
+    const contextValue = { historyTimeTicks: ["14s", "11s", "7s", "4s", "0s"] };
+    const { rerender } = render(
+      <AudioDataContext.Provider value={{ ...baseAudioData, ...contextValue }}>
+        <WaveformPanel />
+      </AudioDataContext.Provider>
+    );
+    expect(sliceWaveformSubHistoryMock).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <AudioDataContext.Provider
+        value={{
+          ...baseAudioData,
+          ...contextValue,
+          historyTimeTicks: ["15s", "11s", "7s", "4s", "0s"],
+        }}
+      >
+        <WaveformPanel />
+      </AudioDataContext.Provider>
+    );
+
+    expect(sliceWaveformSubHistoryMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
@@ -7,6 +7,7 @@ import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
 import { useChartHover } from "../../hooks/useChartHover";
+import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { HelpPopover } from "../HelpPopover";
@@ -33,6 +34,86 @@ function cssLengthToPx(value) {
     return numeric * (Number.isFinite(rootFontSize) ? rootFontSize : 16);
   }
   return numeric;
+}
+
+function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiveOffsetSamples) {
+  const total = histSourceList.length;
+  if (total === 0) {
+    return { startIndex: -1, endIndex: -1, startRow: null, endRow: null };
+  }
+  const windowSamples = Math.max(1, visibleSamples);
+  const off = Math.max(0, Math.min(Math.max(0, total - 1), effectiveOffsetSamples));
+  const newestVisible = total - 1 - off;
+  const oldestVisible = newestVisible - windowSamples + 1;
+  const startIndex = Math.max(0, Math.floor(oldestVisible));
+  const endIndex = Math.min(total - 1, Math.ceil(newestVisible));
+  if (endIndex < startIndex) {
+    return { startIndex: -1, endIndex: -1, startRow: null, endRow: null };
+  }
+  return {
+    startIndex,
+    endIndex,
+    startRow: histSourceList[startIndex] ?? null,
+    endRow: histSourceList[endIndex] ?? null,
+  };
+}
+
+function drawWaveformCanvas(
+  canvas,
+  { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, selected }
+) {
+  if (!canvas || canvas.width === 0 || canvas.height === 0) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const style = getComputedStyle(document.documentElement);
+  const zeroLineColor =
+    style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
+  const strokeColor =
+    (selected
+      ? style.getPropertyValue("--ui-waveform-trace-snap").trim()
+      : style.getPropertyValue("--ui-waveform-trace").trim()) || "#fb923c";
+  const fillOpacity =
+    parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const cy = H / 2;
+  ctx.strokeStyle = zeroLineColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, cy);
+  ctx.lineTo(W, cy);
+  ctx.stroke();
+
+  if (firstBucket < 0 || !bucketCount || !mins?.length || !maxes?.length) return;
+
+  const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
+  ctx.beginPath();
+  for (let j = firstBucket; j <= lastBucket; j++) {
+    const x = xFor(j);
+    const y = cy - maxes[j] * cy;
+    if (j === firstBucket) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  for (let j = lastBucket; j >= firstBucket; j--) {
+    const x = xFor(j);
+    const y = cy - mins[j] * cy;
+    ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+
+  ctx.globalAlpha = fillOpacity;
+  ctx.fillStyle = strokeColor;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = window.devicePixelRatio || 1;
+  ctx.stroke();
 }
 
 export function WaveformPanel({ compact = false }) {
@@ -63,26 +144,60 @@ export function WaveformPanel({ compact = false }) {
   useEffect(() => {
     const el = lanesRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
+    let rafId = 0;
+
+    const measureWidth = () => {
+      rafId = 0;
       const dpr = window.devicePixelRatio || 1;
       const computedStyle = getComputedStyle(el);
       const axisWidthPx = cssLengthToPx(computedStyle.getPropertyValue(WAVEFORM_AXIS_WIDTH_VAR));
       const chartAxisGapPx = cssLengthToPx(computedStyle.getPropertyValue("--ui-chart-axis-gap"));
       const cssW = Math.max(0, el.clientWidth - axisWidthPx - chartAxisGapPx);
-      setCanvasW(Math.round(cssW * dpr));
+      const nextCanvasW = Math.round(cssW * dpr);
+      setCanvasW((prevCanvasW) => (prevCanvasW === nextCanvasW ? prevCanvasW : nextCanvasW));
+    };
+
+    const ro = new ResizeObserver(() => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(measureWidth);
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
   }, []);
 
+  const waveformSourceList = histSourceList ?? [];
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
   const labels = getPeakMeterChannelLabels(effectiveChannels, peakLabelContext ?? {});
-  const { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket } = sliceWaveformSubHistory(
-    histSourceList ?? [],
+  const waveformHistoryWindow = getWaveformHistoryWindowBounds(
+    waveformSourceList,
     visibleSamples ?? 0,
-    effectiveOffsetSamples ?? 0,
-    effectiveChannels,
-    canvasW
+    effectiveOffsetSamples ?? 0
+  );
+  const { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket } = useMemo(
+    () =>
+      sliceWaveformSubHistory(
+        waveformSourceList,
+        visibleSamples ?? 0,
+        effectiveOffsetSamples ?? 0,
+        effectiveChannels,
+        canvasW
+      ),
+    [
+      waveformSourceList,
+      visibleSamples,
+      effectiveOffsetSamples,
+      effectiveChannels,
+      canvasW,
+      waveformHistoryWindow.startIndex,
+      waveformHistoryWindow.endIndex,
+      waveformHistoryWindow.startRow,
+      waveformHistoryWindow.endRow,
+      waveformHistoryWindow.startRow?.timestampMs,
+      waveformHistoryWindow.endRow?.timestampMs,
+    ]
   );
 
   const {
@@ -261,81 +376,41 @@ function WaveformLane({
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+  const drawParamsRef = useRef(null);
+  const rafRef = useRef(0);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const ro = new ResizeObserver(() => {
+  const scheduleDraw = useCallback(() => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
       const canvas = canvasRef.current;
-      if (!canvas) return;
-      const dpr = window.devicePixelRatio || 1;
-      const w = Math.round(container.clientWidth * dpr);
-      const h = Math.round(container.clientHeight * dpr);
-      canvas.width = w;
-      canvas.height = h;
-      setCanvasSize({ w, h });
+      const drawParams = drawParamsRef.current;
+      if (!canvas || !drawParams) return;
+      drawWaveformCanvas(canvas, drawParams);
     });
-    ro.observe(container);
-    return () => ro.disconnect();
   }, []);
 
+  useCanvasSize(canvasRef, containerRef, scheduleDraw);
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || canvasSize.w === 0 || canvasSize.h === 0) return;
+    drawParamsRef.current = {
+      mins,
+      maxes,
+      bucketCount,
+      fracPhase,
+      firstBucket,
+      lastBucket,
+      selected,
+    };
+    scheduleDraw();
+  }, [mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, selected, scheduleDraw]);
 
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width;
-    const H = canvas.height;
-
-    const style = getComputedStyle(document.documentElement);
-    const zeroLineColor =
-      style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
-    const strokeColor =
-      (selected
-        ? style.getPropertyValue("--ui-waveform-trace-snap").trim()
-        : style.getPropertyValue("--ui-waveform-trace").trim()) || "#fb923c";
-    const fillOpacity =
-      parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
-
-    ctx.clearRect(0, 0, W, H);
-
-    const cy = H / 2;
-    ctx.strokeStyle = zeroLineColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, cy);
-    ctx.lineTo(W, cy);
-    ctx.stroke();
-
-    if (firstBucket < 0 || !bucketCount || !mins?.length) return;
-
-    const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
-    ctx.beginPath();
-    for (let j = firstBucket; j <= lastBucket; j++) {
-      const x = xFor(j);
-      const y = cy - maxes[j] * cy;
-      if (j === firstBucket) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    for (let j = lastBucket; j >= firstBucket; j--) {
-      const x = xFor(j);
-      const y = cy - mins[j] * cy;
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-
-    // Fill
-    ctx.globalAlpha = fillOpacity;
-    ctx.fillStyle = strokeColor;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // Stroke the envelope outline
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = window.devicePixelRatio || 1;
-    ctx.stroke();
-  }, [mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, canvasSize, selected]);
+  useEffect(
+    () => () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    },
+    []
+  );
 
   return (
     <div
