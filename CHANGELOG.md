@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-06-26
+
+### Added
+- Interactive zoom/pan axes with adaptive nice-number ticks
+- Spectrum hold smoothing
+- Chart help moved into panel toolbar
+- Refined panel range controls and axis viewport interactions
+- Live chart hover probe refresh
+
+### Fixed
+- Smooth waveform fullscreen interactions and reduce resize stalls
+- Sync package-lock.json version in bump script
+
 ## [0.5.1] - 2026-06-21
 
 ### Added
