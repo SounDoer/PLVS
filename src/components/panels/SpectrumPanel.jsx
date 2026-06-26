@@ -9,7 +9,6 @@ import {
   SNAPSHOT_NO_DATA_MESSAGE,
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
-import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
@@ -37,27 +36,6 @@ const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
 const CHART_WHEEL_PAN_SCALE = 0.5;
 const ACTIVE_PULSE_MS = 160;
-
-const SPECTRUM_HELP = [
-  {
-    title: "Inspect",
-    items: ["Hover - Inspect value", "Click - Capture snapshot", "Double-click - Return to live"],
-  },
-  {
-    title: "Viewport",
-    items: ["Mouse wheel - Zoom frequency", "Ctrl + wheel - Zoom dB", "Ctrl + drag - Pan viewport"],
-  },
-  {
-    title: "Axes",
-    items: [
-      "X axis wheel - Zoom frequency",
-      "X axis drag - Pan frequency",
-      "Y axis wheel - Zoom dB",
-      "Y axis drag - Pan dB",
-      "Double-click axis - Reset axis",
-    ],
-  },
-];
 
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
@@ -476,13 +454,6 @@ export function SpectrumPanel({ compact = false }) {
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      {!compact ? (
-        <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
-          <div className="pointer-events-auto">
-            <HelpPopover items={SPECTRUM_HELP} />
-          </div>
-        </div>
-      ) : null}
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(

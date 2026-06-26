@@ -11,7 +11,9 @@ import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { ALL_MODULE_IDS } from "./constants.js";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
+import { HelpPopover } from "../components/HelpPopover.jsx";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
+import { PANEL_HELP_BY_MODULE_ID } from "../components/panels/chartHelp.js";
 import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import {
   resolvePanelDefinition,
@@ -260,6 +262,7 @@ function FullscreenOverlay() {
   if (!def) return null;
   const { Component } = def;
   const fullscreenModuleId = resolvePanelModuleId(state, fullscreenId);
+  const helpItems = fullscreenModuleId ? PANEL_HELP_BY_MODULE_ID[fullscreenModuleId] : null;
   const panelControls = getPanelControls(state, fullscreenId);
   const isPinned = Boolean(state.pinnedPanelsById?.[fullscreenId]);
   const onPanelControlsChange = (nextPanelControls) =>
@@ -299,6 +302,7 @@ function FullscreenOverlay() {
             panelControls={panelControls}
             onPanelControlsChange={onPanelControlsChange}
           />
+          {helpItems ? <HelpPopover items={helpItems} /> : null}
           <button
             type="button"
             className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary opacity-100")}

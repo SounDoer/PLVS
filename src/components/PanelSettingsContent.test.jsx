@@ -12,6 +12,9 @@ import { SplitLayout } from "@/workspace/SplitLayout.jsx";
 import { WorkspaceProvider, useWorkspaceStore } from "@/workspace/WorkspaceContext.jsx";
 
 vi.mock("framer-motion", () => ({
+  motion: {
+    div: ({ children, ...props }) => <div {...props}>{children}</div>,
+  },
   Reorder: {
     Group: ({ children, role, "aria-label": ariaLabel, className }) => (
       <div role={role} aria-label={ariaLabel} className={className}>
@@ -22,6 +25,7 @@ vi.mock("framer-motion", () => ({
   },
   useDragControls: () => ({ start: () => {} }),
   useReducedMotion: () => false,
+  useSpring: () => ({ set: vi.fn() }),
 }));
 
 beforeEach(() => {
@@ -960,11 +964,35 @@ describe("PanelSettingsContent", () => {
             value={{
               compactPanels: true,
               panelControls: DEFAULT_PANEL_CONTROLS,
-              fmt: (value) => value.toFixed(1),
-              statsMetrics: [],
+              targetLufs: -23,
+              referenceLufs: -23,
+              hasHistoryData: false,
+              historyChartInteractive: false,
+              running: false,
+              setSelectedOffset: vi.fn(),
+              setStatus: vi.fn(),
+              holdHistoryHud: vi.fn(),
+              showHistoryHud: vi.fn(),
+              onHistoryWheel: vi.fn(),
+              onHistoryPointerDown: vi.fn(),
+              onHistoryPointerMove: vi.fn(),
+              onHistoryPointerUp: vi.fn(),
+              selectedOffset: -1,
+              showSelLine: false,
+              selLineX: 0,
+              isHistoryHudVisible: false,
+              clampedWindowSec: 30,
+              effectiveOffsetSec: 0,
+              historyTimeTicks: ["0s", "15s", "30s"],
+              histSourceList: [],
+              effectiveOffsetSamples: 0,
+              visibleSamples: 0,
             }}
           >
-            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
+            <LeafView
+              node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
+              path={[]}
+            />
           </AudioDataContext.Provider>
         </DragProvider>
       </WorkspaceProvider>
@@ -976,6 +1004,92 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByRole("button", { name: "Panel settings" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pin panel size" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Hide all in panel" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
+  });
+
+  it("places chart help in the LeafView header after panel settings", () => {
+    const { container } = render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              targetLufs: -23,
+              referenceLufs: -23,
+              hasHistoryData: false,
+              historyChartInteractive: false,
+              running: false,
+              setSelectedOffset: vi.fn(),
+              setStatus: vi.fn(),
+              holdHistoryHud: vi.fn(),
+              showHistoryHud: vi.fn(),
+              onHistoryWheel: vi.fn(),
+              onHistoryPointerDown: vi.fn(),
+              onHistoryPointerMove: vi.fn(),
+              onHistoryPointerUp: vi.fn(),
+              selectedOffset: -1,
+              showSelLine: false,
+              selLineX: 0,
+              isHistoryHudVisible: false,
+              clampedWindowSec: 30,
+              effectiveOffsetSec: 0,
+              historyTimeTicks: ["0s", "15s", "30s"],
+              histSourceList: [],
+              effectiveOffsetSamples: 0,
+              visibleSamples: 0,
+            }}
+          >
+            <LeafView
+              node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
+              path={[]}
+            />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    const labels = Array.from(
+      container.querySelector("[data-leaf-tabs]").querySelectorAll("button")
+    )
+      .map((button) => button.getAttribute("aria-label"))
+      .filter(Boolean);
+
+    expect(labels).toEqual([
+      "Panel settings",
+      "Shortcuts and gestures",
+      "Pin panel size",
+      "Fullscreen",
+      "Hide all in panel",
+    ]);
+  });
+
+  it("shows Level Meter Y-axis gestures in chart help", () => {
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <AudioDataContext.Provider
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              displayAudio: { peakDb: [-9.9, -10] },
+              peakLabelContext: { resolvedLayout: "stereo" },
+              fmt: (value) => value.toFixed(1),
+              hasTpMaxValue: false,
+            }}
+          >
+            <LeafView
+              node={{ type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" }}
+              path={[]}
+            />
+          </AudioDataContext.Provider>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts and gestures" }));
+
+    expect(screen.getByText("Y axis wheel - Zoom level")).toBeTruthy();
+    expect(screen.getByText("Y axis drag - Pan level")).toBeTruthy();
+    expect(screen.getByText("Double-click axis - Reset axis")).toBeTruthy();
   });
 
   it("passes compact panel mode into the active timeline panel body", () => {

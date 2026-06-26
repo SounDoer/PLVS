@@ -13,7 +13,6 @@ import {
   spectrogramTimeWindow,
   spectrogramDataBoundaryMarkers,
 } from "../../math/spectrogramTimeline";
-import { HelpPopover } from "../HelpPopover";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
@@ -29,37 +28,6 @@ import { normalizePanelControls } from "../../lib/panelControls.js";
 const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
 const ACTIVE_PULSE_MS = 160;
-
-const SPECTROGRAM_HELP = [
-  {
-    title: "Snapshot",
-    items: [
-      "Left click - Select snapshot",
-      "Left drag - Scrub timeline",
-      "Left double-click - Return to live",
-    ],
-  },
-  {
-    title: "Viewport",
-    items: [
-      "Mouse wheel - Zoom time",
-      "Ctrl + wheel - Zoom frequency",
-      "Ctrl + drag - Pan viewport",
-      "Right drag - Pan timeline",
-      "Right double-click - Reset timeline",
-    ],
-  },
-  {
-    title: "Axes",
-    items: [
-      "Time axis wheel - Zoom time",
-      "Time axis drag - Pan time",
-      "Y axis wheel - Zoom frequency",
-      "Y axis drag - Pan frequency",
-      "Double-click axis - Reset axis",
-    ],
-  },
-];
 
 export function SpectrogramPanel({ compact = false }) {
   const {
@@ -362,13 +330,6 @@ export function SpectrogramPanel({ compact = false }) {
         "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      {!compact ? (
-        <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
-          <div className="pointer-events-auto">
-            <HelpPopover items={SPECTROGRAM_HELP} />
-          </div>
-        </div>
-      ) : null}
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div
           className={cn(

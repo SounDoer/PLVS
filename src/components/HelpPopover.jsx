@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
 import { CircleHelp } from "lucide-react";
 
@@ -150,11 +150,9 @@ export function HelpPopover({ items }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
-          className="size-7 shrink-0 rounded-full text-muted-foreground opacity-50 hover:bg-transparent hover:text-foreground hover:opacity-100"
+          className={PANEL_HEADER_ACTION_BUTTON}
           aria-label="Shortcuts and gestures"
           onMouseEnter={() => {
             cancelClose();
@@ -162,12 +160,12 @@ export function HelpPopover({ items }) {
           }}
           onMouseLeave={scheduleClose}
         >
-          <CircleHelp className="size-4" aria-hidden />
-        </Button>
+          <CircleHelp size={12} aria-hidden />
+        </button>
       </PopoverTrigger>
       <PopoverContent
         side="bottom"
-        align="start"
+        align="end"
         sideOffset={6}
         onMouseEnter={cancelClose}
         onMouseLeave={scheduleClose}

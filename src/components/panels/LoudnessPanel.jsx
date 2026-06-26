@@ -2,7 +2,6 @@ import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
-import { HelpPopover } from "../HelpPopover";
 import { LoudnessHistoryChart } from "./LoudnessHistoryChart";
 import { buildHistoryPath, HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { useChartHover } from "../../hooks/useChartHover";
@@ -10,37 +9,6 @@ import { computeHistoryHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { loudnessHistY } from "../../config/scales";
 import { normalizePanelControls } from "../../lib/panelControls.js";
-
-const LOUDNESS_HELP = [
-  {
-    title: "Snapshot",
-    items: [
-      "Left click - Select snapshot",
-      "Left drag - Scrub timeline",
-      "Left double-click - Return to live",
-    ],
-  },
-  {
-    title: "Viewport",
-    items: [
-      "Mouse wheel - Zoom time",
-      "Ctrl + wheel - Zoom level",
-      "Ctrl + drag - Pan viewport",
-      "Right drag - Pan timeline",
-      "Right double-click - Reset timeline",
-    ],
-  },
-  {
-    title: "Axes",
-    items: [
-      "Time axis wheel - Zoom time",
-      "Time axis drag - Pan time",
-      "Y axis wheel - Zoom level",
-      "Y axis drag - Pan level",
-      "Double-click axis - Reset axis",
-    ],
-  },
-];
 
 export function LoudnessPanel({ compact = false }) {
   const historyTickSteps = HISTORY_TIME_TICK_STEPS;
@@ -139,13 +107,6 @@ export function LoudnessPanel({ compact = false }) {
         "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      {!compact ? (
-        <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
-          <div className="pointer-events-auto">
-            <HelpPopover items={LOUDNESS_HELP} />
-          </div>
-        </div>
-      ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
         <LoudnessHistoryChart
           targetLufs={targetLufs}

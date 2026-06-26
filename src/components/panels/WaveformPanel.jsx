@@ -11,35 +11,6 @@ import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
-import { HelpPopover } from "../HelpPopover";
-
-const WAVEFORM_HELP = [
-  {
-    title: "Snapshot",
-    items: [
-      "Left click - Select snapshot",
-      "Left drag - Scrub timeline",
-      "Left double-click - Return to live",
-    ],
-  },
-  {
-    title: "Viewport",
-    items: [
-      "Mouse wheel - Zoom time",
-      "Ctrl + drag - Pan timeline",
-      "Right drag - Pan timeline",
-      "Right double-click - Reset timeline",
-    ],
-  },
-  {
-    title: "Axes",
-    items: [
-      "Time axis wheel - Zoom time",
-      "Time axis drag - Pan time",
-      "Double-click time axis - Reset time",
-    ],
-  },
-];
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-axis-rail";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
@@ -251,13 +222,6 @@ export function WaveformPanel({ compact = false }) {
         "py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      {!compact ? (
-        <div className="pointer-events-none absolute right-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10">
-          <div className="pointer-events-auto">
-            <HelpPopover items={WAVEFORM_HELP} />
-          </div>
-        </div>
-      ) : null}
       {/* Channel lanes + interaction overlay */}
       <div ref={lanesRef} className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
         {Array.from({ length: effectiveChannels }, (_, ch) => (

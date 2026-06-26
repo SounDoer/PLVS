@@ -9,7 +9,9 @@ import {
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
+import { HelpPopover } from "../components/HelpPopover.jsx";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
+import { PANEL_HELP_BY_MODULE_ID } from "../components/panels/chartHelp.js";
 import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import {
   resolvePanelDefinition,
@@ -114,6 +116,7 @@ export function LeafView({ node, path, style }) {
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
   const ActiveComponent = activeTab ? resolvePanelDefinition(state, activeTab)?.Component : null;
   const activeModuleId = activeTab ? resolvePanelModuleId(state, activeTab) : null;
+  const helpItems = activeModuleId ? PANEL_HELP_BY_MODULE_ID[activeModuleId] : null;
   const panelControls = activeTab ? getPanelControls(state, activeTab) : null;
   const onPanelControlsChange = activeTab
     ? (nextPanelControls) => setPanelControlsForPanel(activeTab, nextPanelControls)
@@ -292,6 +295,7 @@ export function LeafView({ node, path, style }) {
               panelControls={panelControls ?? audioData?.panelControls}
               onPanelControlsChange={onPanelControlsChange}
             />
+            {helpItems ? <HelpPopover items={helpItems} /> : null}
             <button
               type="button"
               aria-label={isActivePinned ? "Unpin panel size" : "Pin panel size"}
@@ -330,7 +334,6 @@ export function LeafView({ node, path, style }) {
           </div>
         </div>
       )}
-
       {/* Panel body */}
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
         {ActiveComponent && (
