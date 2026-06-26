@@ -117,7 +117,7 @@ describe("LevelMeterPanel", () => {
     expect(marker.closest("[data-level-meter-y-axis]")?.className).not.toContain(
       "w-[var(--ui-w-axis-rail)]"
     );
-    const axisTick = screen.getByText("-18");
+    const axisTick = screen.getByText("-20");
     expect(axisTick.className).toContain("left-0");
     expect(axisTick.className).toContain("font-[family-name:var(--ui-font-mono)]");
     expect(axisTick.className).toContain("tabular-nums");
@@ -137,9 +137,9 @@ describe("LevelMeterPanel", () => {
 
     expect(screen.getByText("0").className).toContain("top-0");
     expect(screen.getByText("0").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-63").className).toContain("bottom-0");
-    expect(screen.getByText("-63").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("-18").className).toContain("-translate-y-1/2");
+    expect(screen.getByText("-64").className).toContain("bottom-0");
+    expect(screen.getByText("-64").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-20").className).toContain("-translate-y-1/2");
   });
 
   it("keeps peak axis endpoint labels inside the chart bounds", () => {
@@ -149,7 +149,7 @@ describe("LevelMeterPanel", () => {
     expect(screen.getByText("+3").className).not.toContain("-translate-y-1/2");
     expect(screen.getByText("-60").className).toContain("bottom-0");
     expect(screen.getByText("-60").className).not.toContain("-translate-y-1/2");
-    expect(screen.getByText("0").className).toContain("-translate-y-1/2");
+    expect(screen.getByText("-20").className).toContain("-translate-y-1/2");
   });
 
   it("does not render the value marker in Peak mode", () => {

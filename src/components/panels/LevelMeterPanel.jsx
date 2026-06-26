@@ -6,10 +6,8 @@ import { PANEL_METRIC_FOOTER, PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLa
 import {
   LOUDNESS_DB_MAX,
   LOUDNESS_DB_MIN,
-  LOUDNESS_TICKS,
   PEAK_DB_MAX,
   PEAK_DB_MIN,
-  PEAK_TICKS,
   buildAdaptiveDbTicks,
   rangedFromTopFrac,
 } from "../../config/scales";
@@ -154,13 +152,11 @@ export function LevelMeterPanel() {
       [isPeak, normalizedPanelControls, onPanelControlsChange]
     ),
   });
-  const isDefaultLevelMeterRange =
-    levelMeterYRange.min === modeDefaults.min && levelMeterYRange.max === modeDefaults.max;
-  const levelMeterTicks = isDefaultLevelMeterRange
-    ? isPeak
-      ? PEAK_TICKS
-      : LOUDNESS_TICKS
-    : buildAdaptiveDbTicks(levelMeterYRange.min, levelMeterYRange.max, levelMeterYAxis.axisPx);
+  const levelMeterTicks = buildAdaptiveDbTicks(
+    levelMeterYRange.min,
+    levelMeterYRange.max,
+    levelMeterYAxis.axisPx
+  );
 
   if (levelMeterMode !== "peak") {
     const levelValue = displayAudio?.[modeMeta.field];

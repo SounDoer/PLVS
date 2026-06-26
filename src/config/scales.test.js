@@ -153,12 +153,9 @@ describe("adaptive tick builders", () => {
     expect(ticks.length).toBeGreaterThan(2);
   });
 
-  it("keeps frequency tick count stable across zoom ranges with the same axis height", () => {
-    const axisPx = 850;
-    const full = buildAdaptiveFreqTicks(20, 20000, axisPx);
-    const zoomed = buildAdaptiveFreqTicks(211, 423, axisPx);
-
-    expect(zoomed.length).toBe(full.length);
+  it("uses the canonical 1-2-5 labels for the default frequency range", () => {
+    const labels = buildAdaptiveFreqTicks(20, 20000, 700).map((tick) => tick.lb);
+    expect(labels).toEqual(["20", "50", "100", "200", "500", "1k", "2k", "5k", "10k", "20k"]);
   });
 
   it("uses panel height to choose frequency tick count", () => {
@@ -171,7 +168,7 @@ describe("adaptive tick builders", () => {
   it("keeps reduced frequency ticks spread out on a short log axis", () => {
     const ticks = buildAdaptiveFreqTicks(20, 20000, 160);
 
-    expect(ticks.map((tick) => tick.v)).toEqual([20, 125, 630, 4000, 20000]);
+    expect(ticks.map((tick) => tick.v)).toEqual([20, 100, 500, 2000, 20000]);
   });
 
   it("does not repeat adjacent frequency labels on narrow zoomed ranges", () => {

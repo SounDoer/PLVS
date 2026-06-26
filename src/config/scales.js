@@ -239,14 +239,25 @@ export const FREQ_LABELS = [
   [20000, "20k"],
 ];
 
-const FREQ_TICK_CANDIDATES = [
-  20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600,
-  2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000,
-];
 const ADAPTIVE_TICK_MIN_GAP_PX = 24;
 
+/** dB step ladder (1-2-5 decade pattern); ticks land on multiples so 0 and round values always hit. */
+const DB_NICE_STEPS = [1, 2, 5, 10, 20, 50, 100];
+
+/**
+ * Frequency "nice number" tiers, coarse to fine. Each entry is the per-decade mantissa set, so the
+ * coarsest tier gives the classic 20/50/100/200/500/1k... pattern and finer tiers fill narrow zooms.
+ */
+const FREQ_NICE_TIERS = [
+  [1, 2, 5],
+  [1, 2, 3, 5],
+  [1, 1.5, 2, 3, 5, 7],
+  [1, 1.25, 1.6, 2, 2.5, 3.15, 4, 5, 6.3, 8],
+];
+
 function formatDb(value) {
-  return `${Math.round(value)}`;
+  const r = Math.round(value);
+  return r > 0 ? `+${r}` : `${r}`;
 }
 
 export function formatFreqLabel(hz) {
@@ -265,52 +276,60 @@ export function buildAdaptiveDbTicks(minDb, maxDb, axisPx = 300) {
   if (!(roundedMax > roundedMin)) {
     return [{ v: roundedMax, lb: formatDb(roundedMax) }];
   }
-  if (maxTicks <= 2) {
-    return [
-      { v: roundedMax, lb: formatDb(roundedMax) },
-      { v: roundedMin, lb: formatDb(roundedMin) },
-    ];
+  const span = roundedMax - roundedMin;
+  const step =
+    DB_NICE_STEPS.find(
+      (s) => Math.floor(roundedMax / s) - Math.ceil(roundedMin / s) + 1 <= maxTicks
+    ) ?? span;
+  // Endpoints are always labeled; interior ticks land on multiples of the chosen step (0 included).
+  const byValue = new Map([
+    [roundedMax, { v: roundedMax, lb: formatDb(roundedMax) }],
+    [roundedMin, { v: roundedMin, lb: formatDb(roundedMin) }],
+  ]);
+  for (let v = Math.ceil(roundedMin / step) * step; v < roundedMax; v += step) {
+    if (v > roundedMin && !byValue.has(v)) byValue.set(v, { v, lb: formatDb(v) });
   }
-  const step = Math.max(1, Math.ceil((roundedMax - roundedMin) / (maxTicks - 1)));
-  const ticks = [{ v: roundedMax, lb: formatDb(roundedMax) }];
-  for (let v = roundedMax - step; v > roundedMin; v -= step) {
-    ticks.push({ v, lb: formatDb(v) });
-  }
-  ticks.push({ v: roundedMin, lb: formatDb(roundedMin) });
+  const ticks = [...byValue.values()].sort((a, b) => b.v - a.v);
   return filterTicksByPixelGap(
     ticks,
     axisPx,
-    (tick) => rangedFromTopFrac(tick.v, roundedMin, roundedMax) * axisPx
+    (tick) => rangedFromTopFrac(tick.v, roundedMin, roundedMax) * axisPx,
+    // Always keep the 0 dB reference line (only an interior tick when the range crosses 0, e.g. peak +3).
+    (tick) => tick.v === 0
   );
+}
+
+function niceFreqsInRange(mantissas, minHz, maxHz) {
+  const out = [];
+  const startDecade = Math.floor(Math.log10(minHz));
+  const endDecade = Math.ceil(Math.log10(maxHz));
+  for (let decade = startDecade; decade <= endDecade; decade += 1) {
+    const base = 10 ** decade;
+    for (const mantissa of mantissas) {
+      const f = mantissa * base;
+      if (f > minHz && f < maxHz) out.push(f);
+    }
+  }
+  return out;
 }
 
 export function buildAdaptiveFreqTicks(minHz, maxHz, axisPx = 500) {
   if (!(maxHz > minHz)) return [{ v: maxHz, lb: formatFreqLabel(maxHz) }];
-  const maxTicks = Math.max(2, Math.floor(axisPx / 32));
-  const logMin = Math.log10(Math.max(1, minHz));
-  const logMax = Math.log10(Math.max(minHz * 1.001, maxHz));
-  const slotFrac = 1 / Math.max(1, maxTicks - 1);
-  const snapToleranceFrac = slotFrac * 0.35;
-  const reduced = [{ v: minHz, lb: formatFreqLabel(minHz) }];
-  const used = new Set([minHz, maxHz]);
-  const innerCandidates = FREQ_TICK_CANDIDATES.filter((value) => value > minHz && value < maxHz);
-  for (let slot = 1; slot < maxTicks - 1; slot += 1) {
-    const targetFrac = slot / (maxTicks - 1);
-    const rawValue = Math.pow(10, logMin + (logMax - logMin) * targetFrac);
-    const snapped = innerCandidates
-      .filter((value) => !used.has(value))
-      .map((value) => ({
-        value,
-        dist: Math.abs(freqToFracInRange(value, minHz, maxHz) - targetFrac),
-      }))
-      .sort((a, b) => a.dist - b.dist || a.value - b.value)[0];
-    const value = snapped && snapped.dist <= snapToleranceFrac ? snapped.value : rawValue;
-    reduced.push({ v: value, lb: formatFreqLabel(value) });
-    used.add(value);
+  const maxTicks = Math.max(2, Math.floor(axisPx / 40));
+  const minDesired = Math.max(3, Math.floor(maxTicks * 0.6));
+  // Pick the coarsest tier that reaches the desired density; fall through to the finest otherwise.
+  let chosen = niceFreqsInRange(FREQ_NICE_TIERS[0], minHz, maxHz);
+  for (const tier of FREQ_NICE_TIERS) {
+    chosen = niceFreqsInRange(tier, minHz, maxHz);
+    if (chosen.length + 2 >= minDesired) break;
   }
-  reduced.push({ v: maxHz, lb: formatFreqLabel(maxHz) });
+  const ticks = [
+    { v: minHz, lb: formatFreqLabel(minHz) },
+    ...chosen.map((f) => ({ v: f, lb: formatFreqLabel(f) })),
+    { v: maxHz, lb: formatFreqLabel(maxHz) },
+  ].sort((a, b) => a.v - b.v);
   const spaced = filterTicksByPixelGap(
-    reduced.sort((a, b) => a.v - b.v),
+    ticks,
     axisPx,
     (tick) => rangedFreqToYFrac(tick.v, minHz, maxHz) * axisPx
   );
@@ -334,7 +353,7 @@ function dedupeAdjacentLabels(ticks) {
   return kept;
 }
 
-function filterTicksByPixelGap(ticks, axisPx, topPxForTick) {
+function filterTicksByPixelGap(ticks, axisPx, topPxForTick, isProtected = () => false) {
   if (ticks.length <= 2) return ticks;
   const minGapPx = Math.min(ADAPTIVE_TICK_MIN_GAP_PX, Math.max(0, axisPx / 2 - 1));
   const first = ticks[0];
@@ -347,7 +366,7 @@ function filterTicksByPixelGap(ticks, axisPx, topPxForTick) {
     const hasRoom =
       Math.abs(tickPx - lastPx) >= minGapPx &&
       keptPx.every((existingPx) => Math.abs(tickPx - existingPx) >= minGapPx);
-    if (hasRoom) {
+    if (hasRoom || isProtected(tick)) {
       kept.push(tick);
       keptPx.push(tickPx);
     }
