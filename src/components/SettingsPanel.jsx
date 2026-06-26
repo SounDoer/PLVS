@@ -229,17 +229,17 @@ export function SettingsPanel({
               <SettingsBody>
                 {/* Behavior */}
                 <SettingsSection>
-                  <SettingsRow label="Open at login">
+                  <SettingsRow label="Open at Login">
                     <SettingsSwitch
-                      aria-label="Open at login"
+                      aria-label="Open at Login"
                       checked={autostartEnabled}
                       onCheckedChange={setAutostartEnabled}
                       disabled={!autostartReady}
                     />
                   </SettingsRow>
-                  <SettingsRow label="Close behavior">
+                  <SettingsRow label="Close Behavior">
                     <Select value={closeAction} onValueChange={setCloseAction}>
-                      <SelectTrigger aria-label="Close behavior" className={SELECT_TRIGGER_CLASS}>
+                      <SelectTrigger aria-label="Close Behavior" className={SELECT_TRIGGER_CLASS}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>

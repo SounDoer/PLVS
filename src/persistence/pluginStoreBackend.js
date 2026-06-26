@@ -20,21 +20,26 @@ export function createPluginStoreBackend() {
     }
     return storePromise;
   }
+  const pending = new Map();
   function persist(key, value) {
-    store()
+    const p = store()
       .then(async (s) => {
         await s.set(key, value);
         await s.save();
       })
       .catch(() => {});
+    pending.set(key, p);
+    return p;
   }
   function persistDelete(key) {
-    store()
+    const p = store()
       .then(async (s) => {
         await s.delete(key);
         await s.save();
       })
       .catch(() => {});
+    pending.set(key, p);
+    return p;
   }
 
   return {
@@ -49,6 +54,9 @@ export function createPluginStoreBackend() {
     remove(key) {
       cache.delete(key);
       persistDelete(key);
+    },
+    async flush(key) {
+      await pending.get(key);
     },
     subscribe() {
       // Single-window app; the file is only written by this process. No cross-context events.

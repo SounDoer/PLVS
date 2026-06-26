@@ -31,6 +31,10 @@ export function createDomainStore({ name, backend, migrate }) {
     patch(partial) {
       backend.set(name, { ...read(), ...partial });
     },
+    async persist(partial) {
+      backend.set(name, { ...read(), ...partial });
+      await backend.flush?.(name);
+    },
     subscribe(fn) {
       return backend.subscribe(name, fn);
     },

@@ -35,7 +35,7 @@ export function useCloseConfirm({ onHideWindow }) {
   async function handleConfirm(action, dontAskAgain) {
     setDialogOpen(false);
     if (dontAskAgain) {
-      settingsStore.patch({ closeAction: action });
+      await settingsStore.persist({ closeAction: action });
     }
     if (action === "tray") {
       await onHideWindow();

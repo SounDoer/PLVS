@@ -36,6 +36,11 @@ vi.mock("../persistence/index.js", () => {
       const prev = JSON.parse(localStorage.getItem("plvs:settings") ?? "{}");
       localStorage.setItem("plvs:settings", JSON.stringify({ ...prev, ...partial }));
     },
+    persist: (partial) => {
+      const prev = JSON.parse(localStorage.getItem("plvs:settings") ?? "{}");
+      localStorage.setItem("plvs:settings", JSON.stringify({ ...prev, ...partial }));
+      return Promise.resolve();
+    },
     subscribe: () => () => {},
   };
   return { settingsStore };

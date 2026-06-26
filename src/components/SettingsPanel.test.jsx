@@ -265,9 +265,9 @@ describe("SettingsPanel", () => {
     expect(toggle.disabled).toBe(false);
   });
 
-  it("renders Close behavior select with current value", () => {
+  it("renders Close Behavior select with current value", () => {
     render(<SettingsPanel {...BASE_PROPS} {...SYSTEM_PROPS} closeAction="tray" />);
-    expect(screen.getByLabelText("Close behavior")).toBeTruthy();
+    expect(screen.getByLabelText("Close Behavior")).toBeTruthy();
   });
 
   it("existing controls still render with new props absent (backwards compat)", () => {
