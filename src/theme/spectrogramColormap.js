@@ -1,4 +1,4 @@
-import { SPEC_DB_MAX, SPEC_DB_MIN } from "../config/scales.js";
+import { SPECTROGRAM_DB_MAX, SPECTROGRAM_DB_MIN } from "../config/scales.js";
 
 export const INFERNO_COLORMAP_STOPS = Object.freeze([
   [0, [0, 0, 4]],
@@ -55,7 +55,10 @@ export function buildSpectrogramLut(stops) {
 export function spectrogramColorFromLut(db, lut) {
   const safeLut = lut && lut.length >= 256 * 3 ? lut : buildSpectrogramLut(INFERNO_COLORMAP_STOPS);
   const t = Number.isFinite(db)
-    ? Math.max(0, Math.min(1, (db - SPEC_DB_MIN) / (SPEC_DB_MAX - SPEC_DB_MIN)))
+    ? Math.max(
+        0,
+        Math.min(1, (db - SPECTROGRAM_DB_MIN) / (SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN))
+      )
     : 0;
   const idx = Math.round(t * 255) * 3;
   return [safeLut[idx], safeLut[idx + 1], safeLut[idx + 2]];

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { SPEC_DB_MIN, SPEC_DB_MAX } from "../config/scales.js";
+import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
 
@@ -15,7 +15,7 @@ function paintImageData(
   colormapLut
 ) {
   const { data, width: W, height: H } = imageData;
-  const rng = SPEC_DB_MAX - SPEC_DB_MIN;
+  const rng = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
   data.fill(0);
 
   for (let i = startIdx; i <= endIdx; i++) {
@@ -31,8 +31,8 @@ function paintImageData(
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
     for (let y = 0; y < H; y++) {
-      const db = snap.dbList[yToBand[y]] ?? SPEC_DB_MIN;
-      const t = Math.max(0, Math.min(1, (db - SPEC_DB_MIN) / rng));
+      const db = snap.dbList[yToBand[y]] ?? SPECTROGRAM_DB_MIN;
+      const t = Math.max(0, Math.min(1, (db - SPECTROGRAM_DB_MIN) / rng));
       const lutIdx = Math.round(t * 255) * 3;
       const r = colormapLut[lutIdx];
       const g = colormapLut[lutIdx + 1];

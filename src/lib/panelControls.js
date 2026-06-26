@@ -23,7 +23,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumTiltDbPerOctave: 3,
   spectrumXMinFreq: 20,
   spectrumXMaxFreq: 20000,
-  spectrumYMaxDb: 0,
+  spectrumYMaxDb: -12,
   spectrumYMinDb: -96,
   spectrogramYMinFreq: 20,
   spectrogramYMaxFreq: 20000,

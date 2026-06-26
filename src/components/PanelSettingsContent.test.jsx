@@ -159,6 +159,55 @@ describe("PanelSettingsContent", () => {
     });
   });
 
+  it("commits the Level Meter Y range for the active mode", () => {
+    const onPanelControlsChange = vi.fn();
+    const { rerender } = render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.getByLabelText("level meter y range min").value).toBe("-60");
+    expect(screen.getByLabelText("level meter y range max").value).toBe("3");
+    fireEvent.change(screen.getByLabelText("level meter y range min"), {
+      target: { value: "-48" },
+    });
+    fireEvent.change(screen.getByLabelText("level meter y range max"), {
+      target: { value: "0" },
+    });
+    fireEvent.blur(screen.getByLabelText("level meter y range max"));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterYMinDb: -48,
+      levelMeterYMaxDb: 0,
+    });
+
+    rerender(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+    expect(screen.getByLabelText("level meter y range min").value).toBe("-64");
+    expect(screen.getByLabelText("level meter y range max").value).toBe("0");
+    fireEvent.change(screen.getByLabelText("level meter y range min"), {
+      target: { value: "-48" },
+    });
+    fireEvent.change(screen.getByLabelText("level meter y range max"), {
+      target: { value: "-6" },
+    });
+    fireEvent.blur(screen.getByLabelText("level meter y range max"));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "momentary",
+      loudnessYMinDb: -48,
+      loudnessYMaxDb: -6,
+    });
+  });
+
   it("selects Short-term from the Level Meter mode chip", () => {
     const onPanelControlsChange = vi.fn();
     render(
@@ -370,6 +419,37 @@ describe("PanelSettingsContent", () => {
     });
   });
 
+  it("commits Loudness Y range changes", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(
+      screen.getByText("Layers").compareDocumentPosition(screen.getByText("Y range")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByLabelText("loudness y range min").value).toBe("-64");
+    expect(screen.getByLabelText("loudness y range max").value).toBe("0");
+    fireEvent.change(screen.getByLabelText("loudness y range min"), {
+      target: { value: "-48" },
+    });
+    fireEvent.change(screen.getByLabelText("loudness y range max"), {
+      target: { value: "-12" },
+    });
+    fireEvent.blur(screen.getByLabelText("loudness y range max"));
+
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      loudnessYMinDb: -48,
+      loudnessYMaxDb: -12,
+    });
+  });
+
   it("renders stat rows in statsOrder", () => {
     render(
       <PanelSettingsContent
@@ -534,16 +614,21 @@ describe("PanelSettingsContent", () => {
     const peak = screen.getByText("Peak hold");
     const smoothing = screen.getByText("Smoothing");
     const tilt = screen.getByText("Tilt");
-    const yMax = screen.getByText("Y Max");
-    const yMin = screen.getByText("Y Min");
+    const xRange = screen.getByText("X range");
+    const yRange = screen.getByText("Y range");
     expect(peak.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(smoothing.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(tilt.compareDocumentPosition(yMax) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(yMax.compareDocumentPosition(yMin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tilt.compareDocumentPosition(xRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(xRange.compareDocumentPosition(yRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByLabelText("spectrum smoothing")).toBeTruthy();
     expect(screen.getByLabelText("spectrum tilt")).toBeTruthy();
-    expect(screen.getByLabelText("spectrum y max")).toBeTruthy();
-    expect(screen.getByLabelText("spectrum y min")).toBeTruthy();
+    expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
+    expect(screen.getByLabelText("spectrum x range max").value).toBe("20000");
+    expect(screen.getByLabelText("spectrum y range min").value).toBe("-96");
+    expect(screen.getByLabelText("spectrum y range max").value).toBe("-12");
+    expect(screen.getByLabelText("spectrum y range min").getAttribute("type")).toBe("text");
+    expect(screen.getByLabelText("spectrum y range max").getAttribute("type")).toBe("text");
+    expect(screen.getByLabelText("spectrum y range max").style.width).toBe("4.5ch");
     expect(screen.queryByText("50%")).toBeNull();
     expect(screen.queryByText("4.50 dB/oct")).toBeNull();
     expect(screen.queryByText("-12 dB")).toBeNull();
@@ -580,18 +665,11 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("3.00 dB/oct")).toBeTruthy();
     expect(screen.queryByText("Tilt: 3.00 dB/oct")).toBeNull();
 
-    const yMax = screen.getByLabelText("spectrum y max");
-    fireEvent.mouseEnter(yMax);
-    expect(screen.getByText("0 dB")).toBeTruthy();
-    fireEvent.mouseLeave(yMax);
-    expect(screen.queryByText("0 dB")).toBeNull();
-
-    const yMin = screen.getByLabelText("spectrum y min");
-    fireEvent.focus(yMin);
-    expect(screen.getByText("-96 dB")).toBeTruthy();
+    expect(screen.getByLabelText("spectrum y range min").value).toBe("-96");
+    expect(screen.getByLabelText("spectrum y range max").value).toBe("-12");
   });
 
-  it("commits spectrum display slider changes on release", () => {
+  it("commits spectrum display control changes", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -626,21 +704,55 @@ describe("PanelSettingsContent", () => {
       spectrumTiltDbPerOctave: 1.25,
     });
 
-    const yMax = screen.getByLabelText("spectrum y max");
-    fireEvent.change(yMax, { target: { value: "-24" } });
-    fireEvent.pointerUp(yMax);
+    const xMin = screen.getByLabelText("spectrum x range min");
+    const xMax = screen.getByLabelText("spectrum x range max");
+    fireEvent.change(xMin, { target: { value: "100" } });
+    fireEvent.change(xMax, { target: { value: "8000" } });
+    fireEvent.blur(xMax);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
-      spectrumYMaxDb: -24,
+      spectrumXMinFreq: 100,
+      spectrumXMaxFreq: 8000,
     });
 
-    const yMin = screen.getByLabelText("spectrum y min");
+    const yMin = screen.getByLabelText("spectrum y range min");
+    const yMax = screen.getByLabelText("spectrum y range max");
     fireEvent.change(yMin, { target: { value: "-84" } });
-    fireEvent.pointerUp(yMin);
+    fireEvent.change(yMax, { target: { value: "-24" } });
+    fireEvent.blur(yMax);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
       spectrumYMinDb: -84,
+      spectrumYMaxDb: -24,
     });
+  });
+
+  it("rounds range input display values and keeps enough room for negative digits", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumView="combined"
+        onSpectrumViewChange={vi.fn()}
+        spectrumPeakHold={false}
+        onSpectrumPeakHoldToggle={vi.fn()}
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          spectrumXMinFreq: 20.000001,
+          spectrumXMaxFreq: 19999.999999,
+          spectrumYMinDb: -64,
+          spectrumYMaxDb: 0,
+        }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
+    expect(screen.getByLabelText("spectrum x range max").value).toBe("20000");
+    expect(screen.getByLabelText("spectrum y range min").value).toBe("-64");
+    expect(screen.getByLabelText("spectrum y range min").style.width).toBe("4.5ch");
   });
 
   it("hides the Peak toggle on the spectrogram tab", () => {
@@ -657,7 +769,8 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByLabelText("peak hold")).toBeNull();
   });
 
-  it("hides spectrum display sliders on the spectrogram tab", () => {
+  it("shows only the Y range display control on the spectrogram tab", () => {
+    const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrogram"
@@ -665,13 +778,43 @@ describe("PanelSettingsContent", () => {
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
         spectrumValueKey="p-0-1"
         panelControls={DEFAULT_PANEL_CONTROLS}
-        onPanelControlsChange={vi.fn()}
+        onPanelControlsChange={onPanelControlsChange}
       />
     );
     expect(screen.queryByLabelText("spectrum smoothing")).toBeNull();
     expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
-    expect(screen.queryByLabelText("spectrum y max")).toBeNull();
-    expect(screen.queryByLabelText("spectrum y min")).toBeNull();
+    expect(screen.queryByLabelText("spectrum x range max")).toBeNull();
+    expect(screen.queryByLabelText("spectrum y range max")).toBeNull();
+    expect(screen.getByLabelText("spectrogram y range min").value).toBe("20");
+    expect(screen.getByLabelText("spectrogram y range max").value).toBe("20000");
+
+    fireEvent.change(screen.getByLabelText("spectrogram y range min"), {
+      target: { value: "100" },
+    });
+    fireEvent.change(screen.getByLabelText("spectrogram y range max"), {
+      target: { value: "8000" },
+    });
+    fireEvent.blur(screen.getByLabelText("spectrogram y range max"));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrogramYMinFreq: 100,
+      spectrogramYMaxFreq: 8000,
+    });
+  });
+
+  it("renders Spectrogram settings when only its range control is available", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="spectrogram"
+        channelCount={2}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Y range")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram y range min").value).toBe("20");
+    expect(screen.getByLabelText("spectrogram y range max").value).toBe("20000");
   });
 
   it("does not render loudness controls before panel controls are wired", () => {

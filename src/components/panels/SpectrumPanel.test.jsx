@@ -124,7 +124,7 @@ describe("SpectrumPanel", () => {
     expect(secondary).toBeTruthy();
   });
 
-  it("rebuilds the live curve with the default 0..-96 dB Y range", () => {
+  it("rebuilds the live curve with the default -12..-96 dB Y range", () => {
     const { container } = renderPanel(
       liveAudioData(
         liveResult({
@@ -395,8 +395,8 @@ describe("SpectrumPanel", () => {
   it("keeps dB axis endpoint labels inside the chart bounds", () => {
     const { container } = renderPanel(liveAudioData(liveResult()));
 
-    expect(screen.getByText("0").className).toContain("top-0");
-    expect(screen.getByText("0").className).not.toContain("-translate-y-1/2");
+    expect(screen.getByText("-12").className).toContain("top-0");
+    expect(screen.getByText("-12").className).not.toContain("-translate-y-1/2");
     expect(screen.getByText("-96").className).toContain("bottom-0");
     expect(screen.getByText("-96").className).not.toContain("-translate-y-1/2");
     expect(

@@ -45,4 +45,20 @@ describe("PanelSettingsMenu", () => {
 
     expect(container.firstChild).toBeNull();
   });
+
+  it("renders spectrogram settings trigger when only range controls are available", () => {
+    render(
+      <PanelSettingsMenu
+        activeTab="spectrogram"
+        channelCount={2}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+
+    expect(screen.getByLabelText("spectrogram y range min")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram y range max")).toBeTruthy();
+  });
 });

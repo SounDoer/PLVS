@@ -48,7 +48,13 @@ function hasPanelSettings({
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
     const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
-    return showView || showChannel || showPeak;
+    const showDisplayControls =
+      activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
+    const showSpectrogramRange =
+      activeTab === "spectrogram" &&
+      hasPanelControls &&
+      typeof onPanelControlsChange === "function";
+    return showView || showChannel || showPeak || showDisplayControls || showSpectrogramRange;
   }
 
   return (

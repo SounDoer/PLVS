@@ -77,7 +77,7 @@ describe("panelControls", () => {
       spectrumTiltDbPerOctave: 3,
       spectrumXMinFreq: 20,
       spectrumXMaxFreq: 20000,
-      spectrumYMaxDb: 0,
+      spectrumYMaxDb: -12,
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
@@ -182,7 +182,7 @@ describe("panelControls", () => {
       spectrumTiltDbPerOctave: 3,
       spectrumXMinFreq: 20,
       spectrumXMaxFreq: 20000,
-      spectrumYMaxDb: 0,
+      spectrumYMaxDb: -12,
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
@@ -255,8 +255,8 @@ describe("spectrum display controls normalization", () => {
     expect(DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent).toBe(25);
     expect(normalizePanelControls({}).spectrumTiltDbPerOctave).toBe(3);
     expect(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave).toBe(3);
-    expect(normalizePanelControls({}).spectrumYMaxDb).toBe(0);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumYMaxDb).toBe(0);
+    expect(normalizePanelControls({}).spectrumYMaxDb).toBe(-12);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumYMaxDb).toBe(-12);
     expect(normalizePanelControls({}).spectrumYMinDb).toBe(-96);
     expect(DEFAULT_PANEL_CONTROLS.spectrumYMinDb).toBe(-96);
     expect(normalizePanelControls({}).spectrumXMinFreq).toBe(20);
@@ -299,7 +299,7 @@ describe("spectrum display controls normalization", () => {
     expect(normalizePanelControls({ spectrumYMaxDb: -60 }).spectrumYMaxDb).toBe(-60);
     expect(normalizePanelControls({ spectrumYMaxDb: 6 }).spectrumYMaxDb).toBe(0);
     expect(normalizePanelControls({ spectrumYMaxDb: -24 }).spectrumYMaxDb).toBe(-24);
-    expect(normalizePanelControls({ spectrumYMaxDb: "-12" }).spectrumYMaxDb).toBe(0);
+    expect(normalizePanelControls({ spectrumYMaxDb: "-12" }).spectrumYMaxDb).toBe(-12);
     expect(normalizePanelControls({ spectrumYMinDb: -200 }).spectrumYMinDb).toBe(-120);
     expect(normalizePanelControls({ spectrumYMinDb: 6 }).spectrumYMinDb).toBe(-12);
     expect(normalizePanelControls({ spectrumYMinDb: -72 }).spectrumYMinDb).toBe(-72);

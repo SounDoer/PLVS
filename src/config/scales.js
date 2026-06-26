@@ -63,9 +63,11 @@ export const SPEC_VIEW_H = 260;
 export const SPEC_VIEW_TOP_PAD = 10;
 /** Bottom padding inside viewBox (px) */
 export const SPEC_VIEW_BOTTOM_PAD = 4;
-export const SPEC_DB_MAX = 0;
+export const SPEC_DB_MAX = -12;
 export const SPEC_DB_RANGE = 84;
 export const SPEC_DB_MIN = SPEC_DB_MAX - SPEC_DB_RANGE;
+export const SPECTROGRAM_DB_MAX = 0;
+export const SPECTROGRAM_DB_MIN = -84;
 /** Plot height for dB→y (viewBox height minus vertical padding) */
 export const SPEC_PLOT_H = SPEC_VIEW_H - SPEC_VIEW_TOP_PAD - SPEC_VIEW_BOTTOM_PAD;
 

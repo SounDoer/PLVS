@@ -113,6 +113,76 @@ function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommi
   );
 }
 
+function SettingsRangeInput({
+  minAriaLabel,
+  maxAriaLabel,
+  minValue,
+  maxValue,
+  step = 1,
+  onCommit,
+}) {
+  const formatDraftValue = (value) =>
+    Number.isFinite(value) ? String(Math.round(value)) : String(value ?? "");
+  const [draftMin, setDraftMin] = useState(formatDraftValue(minValue));
+  const [draftMax, setDraftMax] = useState(formatDraftValue(maxValue));
+
+  useEffect(() => {
+    setDraftMin(formatDraftValue(minValue));
+    setDraftMax(formatDraftValue(maxValue));
+  }, [minValue, maxValue]);
+
+  const commit = (nextMin = draftMin, nextMax = draftMax) => {
+    const parsedMin = Number(nextMin);
+    const parsedMax = Number(nextMax);
+    if (!Number.isFinite(parsedMin) || !Number.isFinite(parsedMax)) {
+      setDraftMin(formatDraftValue(minValue));
+      setDraftMax(formatDraftValue(maxValue));
+      return;
+    }
+    onCommit(parsedMin, parsedMax);
+  };
+
+  const commitOnEnter = (event) => {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    }
+  };
+  const minWidthCh = Math.min(7, Math.max(4.5, draftMin.length + 1.5));
+  const maxWidthCh = Math.min(7, Math.max(4.5, draftMax.length + 1.5));
+  const inputClass =
+    "h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[11px] tabular-nums text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring";
+
+  return (
+    <div className="flex min-w-0 items-center gap-0.5">
+      <input
+        aria-label={minAriaLabel}
+        type="text"
+        inputMode="decimal"
+        step={step}
+        value={draftMin}
+        onChange={(event) => setDraftMin(event.target.value)}
+        onBlur={() => commit()}
+        onKeyDown={commitOnEnter}
+        className={inputClass}
+        style={{ width: `${minWidthCh}ch` }}
+      />
+      <span className="text-muted-foreground/60">to</span>
+      <input
+        aria-label={maxAriaLabel}
+        type="text"
+        inputMode="decimal"
+        step={step}
+        value={draftMax}
+        onChange={(event) => setDraftMax(event.target.value)}
+        onBlur={() => commit()}
+        onKeyDown={commitOnEnter}
+        className={inputClass}
+        style={{ width: `${maxWidthCh}ch` }}
+      />
+    </div>
+  );
+}
+
 function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) {
   const DisclosureIcon = open ? ChevronUp : ChevronDown;
 
@@ -379,6 +449,13 @@ export function PanelSettingsContent({
       ) ?? LEVEL_METER_MODE_OPTIONS[0];
     const showValueMarkerToggle =
       selectedMode.id === "momentary" || selectedMode.id === "shortTerm";
+    const isPeakMode = selectedMode.id === "peak";
+    const levelMeterYMinDb = isPeakMode
+      ? normalizedPanelControls.levelMeterYMinDb
+      : normalizedPanelControls.loudnessYMinDb;
+    const levelMeterYMaxDb = isPeakMode
+      ? normalizedPanelControls.levelMeterYMaxDb
+      : normalizedPanelControls.loudnessYMaxDb;
 
     return (
       <SettingsGroup title="Level Meter">
@@ -416,6 +493,24 @@ export function PanelSettingsContent({
             />
           </SettingsRow>
         ) : null}
+        <SettingsRow label="Y range">
+          <SettingsRangeInput
+            minAriaLabel="level meter y range min"
+            maxAriaLabel="level meter y range max"
+            minValue={levelMeterYMinDb}
+            maxValue={levelMeterYMaxDb}
+            onCommit={(newMin, newMax) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  ...(isPeakMode
+                    ? { levelMeterYMinDb: newMin, levelMeterYMaxDb: newMax }
+                    : { loudnessYMinDb: newMin, loudnessYMaxDb: newMax }),
+                })
+              );
+            }}
+          />
+        </SettingsRow>
       </SettingsGroup>
     );
   }
@@ -515,6 +610,23 @@ export function PanelSettingsContent({
             ) : null}
           </div>
         </SettingsRow>
+        <SettingsRow label="Y range">
+          <SettingsRangeInput
+            minAriaLabel="loudness y range min"
+            maxAriaLabel="loudness y range max"
+            minValue={normalizedPanelControls.loudnessYMinDb}
+            maxValue={normalizedPanelControls.loudnessYMaxDb}
+            onCommit={(newMin, newMax) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  loudnessYMinDb: newMin,
+                  loudnessYMaxDb: newMax,
+                })
+              );
+            }}
+          />
+        </SettingsRow>
       </SettingsGroup>
     );
   }
@@ -550,7 +662,12 @@ export function PanelSettingsContent({
     const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
     const showDisplayControls =
       activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
-    if (!showView && !showChannel && !showPeak && !showDisplayControls) return null;
+    const showSpectrogramRange =
+      activeTab === "spectrogram" &&
+      hasPanelControls &&
+      typeof onPanelControlsChange === "function";
+    if (!showView && !showChannel && !showPeak && !showDisplayControls && !showSpectrogramRange)
+      return null;
 
     return (
       <SettingsGroup title={activeTab === "spectrum" ? "Spectrum" : "Spectrogram"}>
@@ -668,19 +785,18 @@ export function PanelSettingsContent({
           </SettingsRow>
         ) : null}
         {showDisplayControls ? (
-          <SettingsRow label="Y Max">
-            <SettingsSlider
-              ariaLabel="spectrum y max"
-              min={-120}
-              max={0}
-              step={1}
-              value={effectiveYMaxDb}
-              formatValue={(value) => `${value.toFixed(0)} dB`}
-              onCommit={(value) => {
+          <SettingsRow label="X range">
+            <SettingsRangeInput
+              minAriaLabel="spectrum x range min"
+              maxAriaLabel="spectrum x range max"
+              minValue={normalizedPanelControls.spectrumXMinFreq}
+              maxValue={normalizedPanelControls.spectrumXMaxFreq}
+              onCommit={(newMin, newMax) => {
                 onPanelControlsChange?.(
                   normalizePanelControls({
                     ...normalizedPanelControls,
-                    spectrumYMaxDb: value,
+                    spectrumXMinFreq: newMin,
+                    spectrumXMaxFreq: newMax,
                   })
                 );
               }}
@@ -688,19 +804,37 @@ export function PanelSettingsContent({
           </SettingsRow>
         ) : null}
         {showDisplayControls ? (
-          <SettingsRow label="Y Min">
-            <SettingsSlider
-              ariaLabel="spectrum y min"
-              min={-120}
-              max={0}
-              step={1}
-              value={effectiveYMinDb}
-              formatValue={(value) => `${value.toFixed(0)} dB`}
-              onCommit={(value) => {
+          <SettingsRow label="Y range">
+            <SettingsRangeInput
+              minAriaLabel="spectrum y range min"
+              maxAriaLabel="spectrum y range max"
+              minValue={effectiveYMinDb}
+              maxValue={effectiveYMaxDb}
+              onCommit={(newMin, newMax) => {
                 onPanelControlsChange?.(
                   normalizePanelControls({
                     ...normalizedPanelControls,
-                    spectrumYMinDb: value,
+                    spectrumYMinDb: newMin,
+                    spectrumYMaxDb: newMax,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showSpectrogramRange ? (
+          <SettingsRow label="Y range">
+            <SettingsRangeInput
+              minAriaLabel="spectrogram y range min"
+              maxAriaLabel="spectrogram y range max"
+              minValue={normalizedPanelControls.spectrogramYMinFreq}
+              maxValue={normalizedPanelControls.spectrogramYMaxFreq}
+              onCommit={(newMin, newMax) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrogramYMinFreq: newMin,
+                    spectrogramYMaxFreq: newMax,
                   })
                 );
               }}

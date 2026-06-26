@@ -53,18 +53,18 @@ describe("loudnessFromTopFrac", () => {
 });
 
 describe("spectrumDbToYViewBox", () => {
-  it("0 dB maps below viewBox top by SPEC_VIEW_TOP_PAD", () =>
-    expect(spectrumDbToYViewBox(0)).toBe(SPEC_VIEW_TOP_PAD));
-  it("-84 dB maps above viewBox bottom by SPEC_VIEW_BOTTOM_PAD", () => {
-    expect(spectrumDbToYViewBox(-84)).toBe(SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD);
+  it("-12 dB maps below viewBox top by SPEC_VIEW_TOP_PAD", () =>
+    expect(spectrumDbToYViewBox(-12)).toBe(SPEC_VIEW_TOP_PAD));
+  it("-96 dB maps above viewBox bottom by SPEC_VIEW_BOTTOM_PAD", () => {
+    expect(spectrumDbToYViewBox(-96)).toBe(SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD);
   });
-  it("clamps values above 0 dB", () => expect(spectrumDbToYViewBox(10)).toBe(SPEC_VIEW_TOP_PAD));
+  it("clamps values above -12 dB", () => expect(spectrumDbToYViewBox(10)).toBe(SPEC_VIEW_TOP_PAD));
   it("clamps values below -96 dB", () => {
     expect(spectrumDbToYViewBox(-200)).toBe(SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD);
   });
-  it("-42 dB maps to vertical midpoint of plot band", () => {
+  it("-54 dB maps to vertical midpoint of plot band", () => {
     const midY = SPEC_VIEW_TOP_PAD + (SPEC_VIEW_H - SPEC_VIEW_TOP_PAD - SPEC_VIEW_BOTTOM_PAD) / 2;
-    expect(spectrumDbToYViewBox(-42)).toBeCloseTo(midY);
+    expect(spectrumDbToYViewBox(-54)).toBeCloseTo(midY);
   });
   it("supports a custom display range", () => {
     expect(spectrumDbToYViewBox(-24, { yMaxDb: -24, yRangeDb: 60 })).toBe(SPEC_VIEW_TOP_PAD);
@@ -75,11 +75,11 @@ describe("spectrumDbToYViewBox", () => {
 });
 
 describe("spectrumDbToTopFrac", () => {
-  it("0 dB maps to fraction of viewBox height at top pad", () => {
-    expect(spectrumDbToTopFrac(0)).toBeCloseTo(SPEC_VIEW_TOP_PAD / SPEC_VIEW_H);
+  it("-12 dB maps to fraction of viewBox height at top pad", () => {
+    expect(spectrumDbToTopFrac(-12)).toBeCloseTo(SPEC_VIEW_TOP_PAD / SPEC_VIEW_H);
   });
-  it("-84 dB maps to fraction just below full height", () => {
-    expect(spectrumDbToTopFrac(-84)).toBeCloseTo(
+  it("-96 dB maps to fraction just below full height", () => {
+    expect(spectrumDbToTopFrac(-96)).toBeCloseTo(
       (SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD) / SPEC_VIEW_H
     );
   });

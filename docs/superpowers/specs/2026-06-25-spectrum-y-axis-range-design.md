@@ -1,7 +1,7 @@
 # Spectrum Y-axis range controls — design
 
 Date: 2026-06-25
-Status: Approved, pending implementation plan
+Status: Implemented
 
 ## Background
 
@@ -21,24 +21,22 @@ for users who want a tighter or wider view.
 
 ## Scope
 
-Change the Spectrum panel Y-axis display range and add two Spectrum-only panel settings:
+Change the Spectrum panel Y-axis display range and add a precise `Y range` endpoint control in
+panel settings. Also expose matching range endpoint controls for other non-time display axes:
 
-- `Y Max` — the dB value at the top of the Spectrum plot.
-- `Y Range` — the visible dB span below `Y Max`.
-
-The visible minimum is derived:
-
-```text
-Y Min = Y Max - Y Range
-```
+- Spectrum `X range` in Hz and `Y range` in dB.
+- Spectrogram `Y range` in Hz.
+- Loudness `Y range` in dB/LUFS display units.
+- Level Meter `Y range`, writing to peak-range controls in Peak mode and loudness-range controls
+  in M/ST modes.
 
 Out of scope:
 
 - Automatic Y-axis range detection.
 - Nonlinear/compressed Y-axis scaling.
-- Spectrogram range controls.
 - Rust FFT/DSP changes.
 - Changing the underlying dB values shown in hover readouts.
+- Time-axis range controls in panel settings.
 
 ## Product Semantics
 
@@ -47,9 +45,7 @@ Out of scope:
 The default Spectrum Y-axis range is:
 
 ```text
-Y Max = -12 dB
-Y Range = 84 dB
-Y Min = -96 dB
+Y range = -96 dB to -12 dB
 ```
 
 This removes the mostly unused `0..-12 dB` headroom from the default view while preserving enough
@@ -58,29 +54,21 @@ The bottom remains close to the current `-100 dB` floor, so low-level detail is 
 
 ### User Controls
 
-Add both controls to `Panel Settings > Spectrum`, below the existing `Tilt` control:
+Add two range controls to `Panel Settings > Spectrum`, below the existing `Tilt` control:
 
 1. `Peak hold`
 2. `Smoothing`
 3. `Tilt`
-4. `Y Max`
-5. `Y Range`
+4. `X range`
+5. `Y range`
 
-Control values:
+The range controls use two compact numeric endpoint fields rather than sliders, because the user
+intent is exact axis endpoint control.
 
-- `Y Max`
-  - Default: `-12 dB`
-  - Range: `-48..0 dB`
-  - Step: `6 dB`
-  - Display label: integer dB, e.g. `-12 dB`
-- `Y Range`
-  - Default: `84 dB`
-  - Range: `48..120 dB`
-  - Step: `6 dB`
-  - Display label: integer dB, e.g. `84 dB`
-
-The `6 dB` step keeps the controls aligned with common audio scale reading and avoids implying
-fine calibration precision for a display-only viewport.
+The same `Y range` endpoint pattern is available in Spectrogram, Loudness, and Level Meter panel
+settings. Spectrogram renders a settings panel even when this range is the only available setting.
+Loudness keeps `Layers` first and places `Y range` below it. Time range is intentionally omitted
+from panel settings.
 
 ## Data Model
 
@@ -88,11 +76,12 @@ Extend per-panel controls:
 
 ```text
 spectrumYMaxDb: -12
-spectrumYRangeDb: 84
+spectrumYMinDb: -96
 ```
 
-These values are normalized with defaults and clamped to their product ranges. They are persisted
-through the existing workspace `panelControlsById` path.
+These values are normalized with defaults and clamped to product ranges. They are persisted through
+the existing workspace `panelControlsById` path. Legacy `spectrumYRangeDb` input is accepted as a
+migration path and normalized into `spectrumYMinDb` / `spectrumYMaxDb`.
 
 These settings are frontend display controls only. They must not enter the Spectrum analysis request
 key and must not create additional Rust `SpectrumMeter` instances. Existing live and snapshot
@@ -144,9 +133,10 @@ the top and bottom values, even when the interior ticks are spaced every `12 dB`
 
 Add/adjust tests for:
 
-- `panelControls` defaults and clamping for `spectrumYMaxDb` and `spectrumYRangeDb`.
+- `panelControls` defaults and clamping for `spectrumYMinDb` and `spectrumYMaxDb`.
 - Spectrum request key generation proving Y-axis display settings are excluded.
 - Range-aware dB-to-Y mapping for the default `-12..-96 dB` range.
 - Tick generation for default and non-default ranges.
 - Spectrum panel rendering uses the selected range for labels/grid/hover positions.
-- Settings UI order: `Peak hold`, `Smoothing`, `Tilt`, `Y Max`, `Y Range`.
+- Settings UI order: `Peak hold`, `Smoothing`, `Tilt`, `X range`, `Y range`.
+- Settings UI range controls for Spectrogram, Loudness, and Level Meter.
