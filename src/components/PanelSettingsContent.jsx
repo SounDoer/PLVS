@@ -166,7 +166,7 @@ function SettingsRangeInput({
         className={inputClass}
         style={{ width: `${minWidthCh}ch` }}
       />
-      <span className="text-muted-foreground/60">to</span>
+      <span className="text-muted-foreground/60">-</span>
       <input
         aria-label={maxAriaLabel}
         type="text"
