@@ -172,6 +172,8 @@ pub struct MeterHistoryEntry {
   pub dialogue_percent: f64,
   /// Dialogue-gated loudness range (LU) as of this tick; `0.0` when gating off.
   pub dialogue_lra: f64,
+  /// Whether this tick's 100ms block was classified as active speech.
+  pub dialogue_active_now: bool,
   pub true_peak_l: f64,
   pub true_peak_r: f64,
   pub true_peak_max_dbtp: f64,
