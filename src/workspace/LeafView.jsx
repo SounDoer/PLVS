@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Maximize2, Pin, X } from "lucide-react";
+import { Maximize2, Pin, PinOff, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PANEL_HEADER_ACTION_BUTTON,
@@ -310,11 +310,11 @@ export function LeafView({ node, path, style }) {
               }
               className={cn(
                 PANEL_HEADER_ACTION_BUTTON,
-                (isActivePinned || slotPinnedByOther) && "text-primary opacity-100"
+                (isActivePinned || slotPinnedByOther) && "opacity-100"
               )}
               onClick={handlePinClick}
             >
-              <Pin size={12} fill={isActivePinned ? "currentColor" : "none"} />
+              {isActivePinned ? <PinOff size={12} /> : <Pin size={12} />}
             </button>
             <button
               type="button"
