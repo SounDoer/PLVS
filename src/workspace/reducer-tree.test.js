@@ -77,6 +77,80 @@ describe("RESIZE_CHILDREN", () => {
     expect(next.tree.children[0].sizes[1]).toBe(0.25);
     expect(next.tree.children[1]).toBe(root.children[1]);
   });
+
+  it("does not stretch a pinned panel's height when resizing an outer same-direction divider", () => {
+    // root(v)[ top(h)[ left(v)[stats, vector], spectrum ], loudness ]
+    const leftCol = split("v", [leaf(["stats"]), leaf(["vectorscope"])], [0.54, null]);
+    const top = split("h", [leftCol, leaf(["spectrum"])], [0.2, null]);
+    const root = split("v", [top, leaf(["loudness"])], [null, null]);
+    const s = state(root, { pinnedPanelsById: { stats: { width: 250, height: 150 } } });
+
+    // Drag the root v-divider: the whole top region grows to 600px.
+    const next = workspaceReducer(s, {
+      type: "RESIZE_CHILDREN",
+      payload: {
+        path: [],
+        aboveIdx: 0,
+        belowIdx: 1,
+        aboveSize: 0.66,
+        belowSize: 0.34,
+        direction: "v",
+        abovePx: 600,
+        belowPx: 300,
+      },
+    });
+
+    // stats keeps its own row height; it is not rewritten to the region height.
+    expect(next.pinnedPanelsById.stats.height).toBe(150);
+  });
+
+  it("updates a pinned panel's height when resizing its own enclosing divider", () => {
+    const leftCol = split("v", [leaf(["stats"]), leaf(["vectorscope"])], [null, null]);
+    const s = state(leftCol, { pinnedPanelsById: { stats: { width: 250, height: 150 } } });
+
+    // Drag the stats|vector divider directly: stats' row height becomes 210px.
+    const next = workspaceReducer(s, {
+      type: "RESIZE_CHILDREN",
+      payload: {
+        path: [],
+        aboveIdx: 0,
+        belowIdx: 1,
+        aboveSize: 0.6,
+        belowSize: 0.4,
+        direction: "v",
+        abovePx: 210,
+        belowPx: 140,
+      },
+    });
+
+    expect(next.pinnedPanelsById.stats.height).toBe(210);
+  });
+
+  it("does not rewrite a deeply nested pin when resizing an outer same-direction divider", () => {
+    // mid: v[ p3, sub: h[ vector*, p4 ] ] — vector's width is owned by sub (inner h-split).
+    const sub = split("h", [leaf(["vectorscope"]), leaf(["p4"])], [null, null]);
+    const mid = split("v", [leaf(["p3"]), sub], [null, null]);
+    const row = split("h", [mid, leaf(["p5"])], [null, null]);
+    const s = state(row, { pinnedPanelsById: { vectorscope: { width: 300, height: 200 } } });
+
+    // Drag the row's h-divider (mid | p5): the whole mid region width changes.
+    const next = workspaceReducer(s, {
+      type: "RESIZE_CHILDREN",
+      payload: {
+        path: [],
+        aboveIdx: 0,
+        belowIdx: 1,
+        aboveSize: 0.5,
+        belowSize: 0.2,
+        direction: "h",
+        abovePx: 900,
+        belowPx: 200,
+      },
+    });
+
+    // vector keeps its own width; it is not stretched to the region width.
+    expect(next.pinnedPanelsById.vectorscope.width).toBe(300);
+  });
 });
 
 // ---------------------------------------------------------------------------

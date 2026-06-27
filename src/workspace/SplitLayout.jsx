@@ -103,10 +103,14 @@ function getPinnedSizesForNode(node, state, dimension) {
       .map((id) => state.pinnedPanelsById[id]?.[dimension])
       .filter((size) => Number.isFinite(size) && size > 0);
   }
+  const consumesDimension =
+    (node.direction === "h" && dimension === "width") ||
+    (node.direction === "v" && dimension === "height");
+  if (consumesDimension) return [];
   return node.children.flatMap((child) => getPinnedSizesForNode(child, state, dimension));
 }
 
-function getPinnedSizeForNode(node, state, direction) {
+export function getPinnedSizeForNode(node, state, direction) {
   const dimension = direction === "h" ? "width" : "height";
   const sizes = getPinnedSizesForNode(node, state, dimension);
   return sizes.length > 0 ? Math.max(...sizes) : null;

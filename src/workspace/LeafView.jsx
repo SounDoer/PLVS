@@ -155,12 +155,23 @@ export function LeafView({ node, path, style }) {
   function getSplitSnapshots() {
     const snapshots = [];
     let childEl = leafRef.current;
+    // A pin locks the panel's width and height. Each dimension is consumed by the
+    // nearest ancestor split of the matching direction (nearest h-split for width,
+    // nearest v-split for height); ancestors further up in an already-consumed
+    // direction are unaffected, so we must not renormalize them — doing so starves
+    // their siblings (e.g. collapsing the whole top region under Loudness).
+    let consumedH = false;
+    let consumedV = false;
     for (let depth = path.length - 1; depth >= 0; depth--) {
       const splitEl = childEl?.parentElement;
       const parentPath = path.slice(0, depth);
       const parentNode = getNodeAtPath(state.tree, parentPath);
       if (!splitEl || parentNode?.type !== "split") break;
       const isH = parentNode.direction === "h";
+      childEl = splitEl;
+      if (isH ? consumedH : consumedV) continue;
+      if (isH) consumedH = true;
+      else consumedV = true;
       const childElements = Array.from(splitEl.children).filter(
         (el) => el.hasAttribute("data-leaf") || el.hasAttribute("data-split")
       );
@@ -179,7 +190,6 @@ export function LeafView({ node, path, style }) {
           };
         }),
       });
-      childEl = splitEl;
     }
     return snapshots;
   }

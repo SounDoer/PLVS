@@ -54,15 +54,26 @@ export function normalizePinnedPanelsById(panelsById, pinnedPanelsById) {
   );
 }
 
-function getPinnedPanelIdsInNode(node, pinnedPanelsById) {
+function getPinnedPanelIdsInNode(node, pinnedPanelsById, dimension) {
   if (!node || !pinnedPanelsById) return [];
   if (node.type === "leaf") return node.tabs.filter((id) => pinnedPanelsById[id]);
-  return node.children.flatMap((child) => getPinnedPanelIdsInNode(child, pinnedPanelsById));
+  // A pinned panel's height is owned by its nearest enclosing v-split (width by
+  // its nearest h-split). When a resize changes this node's size along `dimension`,
+  // a pinned panel nested past a same-direction split keeps its own pinned size and
+  // must not be rewritten — otherwise dragging an outer divider stretches the pin to
+  // the whole region and collapses its sibling.
+  const consumesDimension =
+    (node.direction === "h" && dimension === "width") ||
+    (node.direction === "v" && dimension === "height");
+  if (consumesDimension) return [];
+  return node.children.flatMap((child) =>
+    getPinnedPanelIdsInNode(child, pinnedPanelsById, dimension)
+  );
 }
 
 function updatePinnedDimensionForNode(pinnedPanelsById, node, dimension, px) {
   if (!Number.isFinite(px)) return pinnedPanelsById;
-  const ids = getPinnedPanelIdsInNode(node, pinnedPanelsById);
+  const ids = getPinnedPanelIdsInNode(node, pinnedPanelsById, dimension);
   if (ids.length === 0) return pinnedPanelsById;
   const next = { ...pinnedPanelsById };
   for (const id of ids) {
