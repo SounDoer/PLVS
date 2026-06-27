@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-06-27
+
+### Changed
+- Close confirmation dialog now uses a more compact layout
+- Pinned panel state now uses the PinOff icon instead of accent fill
+- Range endpoint labels now use `-` as the separator
+
+### Fixed
+- Persist the close dialog "don't ask again" setting reliably
+- Preserve dialogue-active state in snapshot playback history
+- Scope pinned panel size changes to the nearest matching-direction split
+
 ## [0.5.2] - 2026-06-26
 
 ### Added
