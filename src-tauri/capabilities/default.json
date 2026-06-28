@@ -16,6 +16,15 @@
         },
         {
           "url": "https://github.com/SounDoer/PLVS/releases/*"
+        },
+        {
+          "url": "https://github.com/snakers4/silero-vad"
+        },
+        {
+          "url": "https://github.com/FireRedTeam/FireRedVAD"
+        },
+        {
+          "url": "https://github.com/TEN-framework/ten-vad"
         }
       ]
     },

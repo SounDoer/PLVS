@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
+import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
 import { AudioDataContext } from "@/workspace/AudioDataContext.jsx";
@@ -33,6 +34,8 @@ vi.mock("@/ipc/openExternal.js", () => ({
 }));
 
 beforeEach(() => {
+  vi.clearAllMocks();
+
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
@@ -372,6 +375,10 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.getByText("Metrics")).toBeTruthy();
     expect(screen.getByText("VAD")).toBeTruthy();
+    expect(
+      screen.getByText("Metrics").compareDocumentPosition(screen.getByText("VAD")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(screen.getByText("Silero VAD")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Configure metrics" })).toBeNull();
     expect(screen.getByText("8 visible")).toBeTruthy();
@@ -412,6 +419,11 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByRole("button", { name: "Open Silero VAD official link" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open FireRedVAD official link" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open TEN VAD official link" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open TEN VAD official link" }));
+
+    expect(openExternalUrl).toHaveBeenCalledWith("https://github.com/TEN-framework/ten-vad");
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("option", { name: /TEN VAD/ }));
 

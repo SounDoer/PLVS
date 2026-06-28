@@ -312,7 +312,14 @@ function SettingsVadSelect({ selectedOption, options, value, onChange, open, onO
                   type="button"
                   aria-label={`Open ${option.label} official link`}
                   className="rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:bg-secondary/60 hover:text-foreground"
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onMouseDown={(event) => {
+                    event.stopPropagation();
+                  }}
                   onClick={(event) => {
+                    event.preventDefault();
                     event.stopPropagation();
                     void openExternalUrl(option.url);
                   }}
@@ -595,23 +602,6 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Stats">
-        <SettingsRow label="VAD" tooltip="Voice activity detector used by dialogue stats.">
-          <SettingsVadSelect
-            selectedOption={selectedVad}
-            options={DIALOGUE_VAD_ENGINE_OPTIONS}
-            value={selectedVad.id}
-            open={vadOpen}
-            onOpenChange={setVadOpen}
-            onChange={(dialogueVadEngine) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  dialogueVadEngine,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
         <SettingsRow label="Metrics" expanded={metricsOpen}>
           <div className="flex min-w-0 flex-1 flex-col">
             <InlineDetailTrigger
@@ -656,6 +646,23 @@ export function PanelSettingsContent({
               </div>
             ) : null}
           </div>
+        </SettingsRow>
+        <SettingsRow label="VAD" tooltip="Voice activity detector used by dialogue stats.">
+          <SettingsVadSelect
+            selectedOption={selectedVad}
+            options={DIALOGUE_VAD_ENGINE_OPTIONS}
+            value={selectedVad.id}
+            open={vadOpen}
+            onOpenChange={setVadOpen}
+            onChange={(dialogueVadEngine) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  dialogueVadEngine,
+                })
+              );
+            }}
+          />
         </SettingsRow>
       </SettingsGroup>
     );
