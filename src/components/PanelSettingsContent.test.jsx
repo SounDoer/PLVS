@@ -28,6 +28,10 @@ vi.mock("framer-motion", () => ({
   useSpring: () => ({ set: vi.fn() }),
 }));
 
+vi.mock("@/ipc/openExternal.js", () => ({
+  openExternalUrl: vi.fn(),
+}));
+
 beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,
@@ -367,6 +371,8 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.getByText("Metrics")).toBeTruthy();
+    expect(screen.getByText("VAD")).toBeTruthy();
+    expect(screen.getByText("Silero VAD")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Configure metrics" })).toBeNull();
     expect(screen.getByText("8 visible")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
@@ -383,6 +389,35 @@ describe("PanelSettingsContent", () => {
         "psr",
         "plr",
       ],
+    });
+  });
+
+  it("renders the Stats VAD selector with official links and updates the selected engine", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="stats"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.getByText("VAD")).toBeTruthy();
+    expect(screen.getByRole("tooltip").textContent).toContain("Voice activity detector");
+    fireEvent.click(screen.getByRole("button", { name: "dialogue vad" }));
+
+    expect(screen.getByRole("option", { name: /Silero VAD/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /FireRedVAD/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /TEN VAD/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Silero VAD official link" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open FireRedVAD official link" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open TEN VAD official link" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("option", { name: /TEN VAD/ }));
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      dialogueVadEngine: "ten",
     });
   });
 

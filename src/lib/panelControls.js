@@ -1,4 +1,5 @@
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
+import { DEFAULT_DIALOGUE_VAD_ENGINE, normalizeDialogueVadEngine } from "./dialogueVadEngines.js";
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -42,6 +43,7 @@ export const DEFAULT_PANEL_CONTROLS = {
     "plr",
   ],
   statsOrder: [...STATS_CANONICAL_ORDER],
+  dialogueVadEngine: DEFAULT_DIALOGUE_VAD_ENGINE,
   loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
 };
 
@@ -241,6 +243,7 @@ export function normalizePanelControls(raw) {
       DEFAULT_PANEL_CONTROLS.statsVisibleIds
     ),
     statsOrder: normalizeOrder(raw?.statsOrder, STATS_CANONICAL_ORDER),
+    dialogueVadEngine: normalizeDialogueVadEngine(raw?.dialogueVadEngine),
     loudnessHistoryVisibleLayerIds: normalizeKnownIds(
       raw?.loudnessHistoryVisibleLayerIds,
       LOUDNESS_HISTORY_LAYER_IDS,

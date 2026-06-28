@@ -26,11 +26,23 @@ const RESAMPLER_IN_CHUNK: usize = 1024;
 const SPEECH_THRESHOLD: f32 = 0.5;
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum VadEngineKind {
+  #[default]
   Silero,
   FireRed,
   Ten,
+}
+
+impl VadEngineKind {
+  pub fn from_key(key: &str) -> Option<Self> {
+    match key {
+      "silero" => Some(Self::Silero),
+      "firered" => Some(Self::FireRed),
+      "ten" => Some(Self::Ten),
+      _ => None,
+    }
+  }
 }
 
 impl VadDecision {
@@ -187,6 +199,7 @@ pub struct SpeechDetector {
 impl SpeechDetector {
   /// Builds the detector for a given capture sample rate. `None` if the VAD model or the
   /// resampler fails to initialise (caller then disables dialogue gating gracefully).
+  #[allow(dead_code)]
   pub fn new(source_rate: f64) -> Option<Self> {
     Self::new_with_engine(source_rate, VadEngineKind::Silero)
   }

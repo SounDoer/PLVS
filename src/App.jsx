@@ -73,9 +73,11 @@ import {
   setAnalysisRequests,
   setLoudnessWeights,
   setDialogueGating,
+  setDialogueVadEngine,
   writeProfileFile,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
+import { DEFAULT_DIALOGUE_VAD_ENGINE } from "./lib/dialogueVadEngines.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
 import {
   pickConfigurationProfileFile,
@@ -569,7 +571,19 @@ function AppContent() {
       }),
     [workspaceState]
   );
+  const dialogueVadEngine = useMemo(() => {
+    for (const panelId of workspaceState.panelOrder) {
+      const panel = workspaceState.panelsById[panelId];
+      if (panel?.moduleId !== "stats") continue;
+      const controls = getPanelControls(workspaceState, panelId);
+      if (controls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id))) {
+        return controls.dialogueVadEngine ?? DEFAULT_DIALOGUE_VAD_ENGINE;
+      }
+    }
+    return DEFAULT_DIALOGUE_VAD_ENGINE;
+  }, [workspaceState]);
   const dialogueGatingRef = useRef(dialogueGating);
+  const dialogueVadEngineRef = useRef(dialogueVadEngine);
   const channelAutoLabels = useMemo(
     () =>
       channelCount > 0
@@ -605,6 +619,12 @@ function AppContent() {
     if (!isTauri()) return;
     void setDialogueGating(dialogueGating);
   }, [dialogueGating]);
+
+  useEffect(() => {
+    dialogueVadEngineRef.current = dialogueVadEngine;
+    if (!isTauri()) return;
+    void setDialogueVadEngine(dialogueVadEngine);
+  }, [dialogueVadEngine]);
 
   useEffect(() => {
     if (!isTauri()) {
@@ -1335,6 +1355,7 @@ function AppContent() {
     defaultSampleRateRef,
     loudnessWeightsRef,
     dialogueGatingRef,
+    dialogueVadEngineRef,
     setAudio,
     setHistoryPathM: () => {},
     setHistoryPathST: () => {},

@@ -13,6 +13,7 @@ use super::device::DeviceInfo;
 use super::device_enum::is_loopback_capture;
 use super::device_enum::{build_device_list, resolve_device};
 
+use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::engine::MeterPipeline;
 use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload};
@@ -60,6 +61,7 @@ impl AudioCapture for CpalBackend {
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
+    dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     Ok(Box::new(CaptureSession::start(
       device_id,
@@ -68,6 +70,7 @@ impl AudioCapture for CpalBackend {
       channel_layout,
       loudness_weights,
       dialogue_gating,
+      dialogue_vad_engine,
     )?))
   }
 }
@@ -102,6 +105,7 @@ impl CaptureSession {
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
+    dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   ) -> Result<Self, String> {
     let (device, supported) = resolve_device(device_id)?;
     let sample_rate = supported.sample_rate();
@@ -128,6 +132,7 @@ impl CaptureSession {
           channel_layout,
           loudness_weights,
           dialogue_gating,
+          dialogue_vad_engine,
           dropped_chunks,
         })
       })
@@ -154,6 +159,7 @@ struct RunCaptureArgs {
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
+  dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   dropped_chunks: Arc<AtomicU64>,
 }
 
@@ -289,6 +295,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
+  dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
 ) {
@@ -309,7 +316,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   let mut recv_tick: u32 = 0;
   while let Ok(floats) = audio_rx.recv() {
     recv_tick = recv_tick.wrapping_add(1);
-    if recv_tick % 480 == 0 {
+    if recv_tick.is_multiple_of(480) {
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
       if dropped > 0 {
         log::warn!("cpal→meter queue dropped {dropped} audio chunks (callback backpressure)");
@@ -341,12 +348,14 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       .unwrap_or_else(|_| AnalysisRequests::default());
     let loudness_weights = loudness_weights.lock().map(|g| g.clone()).unwrap_or(None);
     let dialogue_gating = dialogue_gating.lock().map(|g| *g).unwrap_or(false);
+    let dialogue_vad_engine = dialogue_vad_engine.lock().map(|g| *g).unwrap_or_default();
     let frame = pipeline.push_pcm_f32_with_requests(
       &floats,
       layout,
       &requests,
       loudness_weights,
       dialogue_gating,
+      dialogue_vad_engine,
     );
     let mut should_stop = false;
     if let Some(mut f) = frame {
@@ -441,6 +450,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     channel_layout,
     loudness_weights,
     dialogue_gating,
+    dialogue_vad_engine,
     dropped_chunks,
   } = args;
   let dropped_for_callbacks = dropped_chunks.clone();
@@ -479,6 +489,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       channel_layout,
       loudness_weights,
       dialogue_gating,
+      dialogue_vad_engine,
       dropped_chunks,
       bridge_pool,
     );

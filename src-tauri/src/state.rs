@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
 use crate::audio::capture::AudioCaptureSession;
+use crate::dsp::speech::VadEngineKind;
 use crate::file_analysis::session::FileAnalysisSession;
 use crate::ipc::types::{AnalysisRequests, FrameSubscribers};
 
@@ -34,6 +35,8 @@ pub struct AppState {
   pub loudness_weights: Arc<Mutex<Option<Vec<f64>>>>,
   /// Dialogue gating enabled flag. Updated by UI.
   pub dialogue_gating_enabled: Arc<Mutex<bool>>,
+  /// VAD engine used by dialogue-gated stats.
+  pub dialogue_vad_engine: Arc<Mutex<VadEngineKind>>,
 }
 
 impl Default for AppState {
@@ -45,6 +48,7 @@ impl Default for AppState {
       analysis_requests: Arc::new(Mutex::new(AnalysisRequests::default())),
       loudness_weights: Arc::new(Mutex::new(None)),
       dialogue_gating_enabled: Arc::new(Mutex::new(false)),
+      dialogue_vad_engine: Arc::new(Mutex::new(VadEngineKind::default())),
     }
   }
 }

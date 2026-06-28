@@ -10,6 +10,7 @@ use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
 use symphonia::core::meta::MetadataOptions;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::dsp::speech::VadEngineKind;
 use crate::engine::{ChannelLayoutSetting, MeterPipeline};
 use crate::file_analysis::decode::audio_buffer_ref_to_interleaved_f32;
 use crate::file_analysis::probe::{
@@ -26,6 +27,7 @@ struct WorkerConfig {
   requests: AnalysisRequests,
   loudness_weights: Option<Vec<f64>>,
   dialogue_gating: bool,
+  dialogue_vad_engine: VadEngineKind,
 }
 
 fn snapshot_config(app: &AppHandle) -> WorkerConfig {
@@ -42,10 +44,15 @@ fn snapshot_config(app: &AppHandle) -> WorkerConfig {
     .as_ref()
     .and_then(|s| s.dialogue_gating_enabled.lock().ok().map(|g| *g))
     .unwrap_or(false);
+  let dialogue_vad_engine = state
+    .as_ref()
+    .and_then(|s| s.dialogue_vad_engine.lock().ok().map(|g| *g))
+    .unwrap_or_default();
   WorkerConfig {
     requests,
     loudness_weights,
     dialogue_gating,
+    dialogue_vad_engine,
   }
 }
 
@@ -201,6 +208,7 @@ fn analyze_file_core(
       &config.requests,
       config.loudness_weights.clone(),
       config.dialogue_gating,
+      config.dialogue_vad_engine,
       media_time_ms,
     ) {
       on_frame(frame)?;
@@ -342,6 +350,7 @@ mod tests {
       requests: AnalysisRequests::default(),
       loudness_weights: None,
       dialogue_gating: false,
+      dialogue_vad_engine: VadEngineKind::default(),
     }
   }
 

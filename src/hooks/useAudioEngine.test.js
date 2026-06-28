@@ -14,6 +14,7 @@ vi.mock("../ipc/commands.js", () => ({
   stopAudioCapture: vi.fn(),
   setLoudnessWeights: vi.fn(),
   setDialogueGating: vi.fn(),
+  setDialogueVadEngine: vi.fn(),
 }));
 
 import {
@@ -30,6 +31,7 @@ function useHarness(props) {
   const selectedOffsetRef = useRef(-1);
   const loudnessWeightsRef = useRef(null);
   const dialogueGatingRef = useRef(false);
+  const dialogueVadEngineRef = useRef("silero");
 
   useAudioEngine({
     running: true,
@@ -42,6 +44,7 @@ function useHarness(props) {
     selectedOffsetRef,
     loudnessWeightsRef,
     dialogueGatingRef,
+    dialogueVadEngineRef,
     ...props,
   });
 

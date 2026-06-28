@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ExternalLink, GripVertical } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -11,8 +11,10 @@ import {
   normalizePanelControls,
 } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
+import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
+import { openExternalUrl } from "@/ipc/openExternal.js";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-xs text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
@@ -40,11 +42,19 @@ function SettingsGroup({ children }) {
   return <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col gap-0.5">{children}</div>;
 }
 
-function SettingsRow({ label, children }) {
+function SettingsRow({ label, tooltip, children }) {
   return (
     <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-xs">
-      <span className="flex h-6 items-center whitespace-nowrap font-medium text-muted-foreground">
+      <span className="group relative flex h-6 items-center whitespace-nowrap font-medium text-muted-foreground">
         {label}
+        {tooltip ? (
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute bottom-full left-0 z-50 mb-1 hidden w-48 whitespace-normal rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-normal leading-snug text-popover-foreground shadow-sm group-hover:block"
+          >
+            {tooltip}
+          </span>
+        ) : null}
       </span>
       <div className="flex min-h-6 min-w-0 items-center justify-end">{children}</div>
     </div>
@@ -251,9 +261,67 @@ function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOp
                 onOpenChange(false);
               }}
             >
-              {opt.label}
+              {typeof opt.renderLabel === "function" ? opt.renderLabel(opt) : opt.label}
             </SettingsOptionRow>
           ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SettingsVadSelect({ selectedOption, options, value, onChange, open, onOpenChange }) {
+  return (
+    <div className="flex min-w-0 flex-col items-end">
+      <InlineDetailTrigger
+        ariaLabel="dialogue vad"
+        summary={selectedOption.label}
+        open={open}
+        onToggle={() => onOpenChange(!open)}
+        className="w-auto grid-cols-[auto_auto] gap-1.5 justify-self-end"
+      />
+      {open ? (
+        <div role="listbox" aria-label="dialogue vad" className={SETTINGS_DETAIL_SURFACE_CLASS}>
+          {options.map((option) => {
+            const checked = option.id === value;
+            return (
+              <div
+                key={option.id}
+                role="option"
+                aria-selected={checked}
+                tabIndex={0}
+                data-settings-option-row
+                className={cn(SETTINGS_CHOICE_ROW_CLASS, "cursor-default")}
+                onClick={() => {
+                  onChange(option.id);
+                  onOpenChange(false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onChange(option.id);
+                    onOpenChange(false);
+                  }
+                }}
+              >
+                <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS)}>
+                  {checked ? <Check aria-hidden="true" className="size-3" /> : null}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                <button
+                  type="button"
+                  aria-label={`Open ${option.label} official link`}
+                  className="rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:bg-secondary/60 hover:text-foreground"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void openExternalUrl(option.url);
+                  }}
+                >
+                  <ExternalLink aria-hidden="true" className="size-3" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </div>
@@ -438,6 +506,7 @@ export function PanelSettingsContent({
   const [spectrumChannelOpen, setSpectrumChannelOpen] = useState(false);
   const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
   const [vectorscopeChannelOpen, setVectorscopeChannelOpen] = useState(false);
+  const [vadOpen, setVadOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
@@ -519,9 +588,30 @@ export function PanelSettingsContent({
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);
+    const selectedVad =
+      DIALOGUE_VAD_ENGINE_OPTIONS.find(
+        (option) => option.id === normalizedPanelControls.dialogueVadEngine
+      ) ?? DIALOGUE_VAD_ENGINE_OPTIONS[0];
 
     return (
       <SettingsGroup title="Stats">
+        <SettingsRow label="VAD" tooltip="Voice activity detector used by dialogue stats.">
+          <SettingsVadSelect
+            selectedOption={selectedVad}
+            options={DIALOGUE_VAD_ENGINE_OPTIONS}
+            value={selectedVad.id}
+            open={vadOpen}
+            onOpenChange={setVadOpen}
+            onChange={(dialogueVadEngine) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  dialogueVadEngine,
+                })
+              );
+            }}
+          />
+        </SettingsRow>
         <SettingsRow label="Metrics" expanded={metricsOpen}>
           <div className="flex min-w-0 flex-1 flex-col">
             <InlineDetailTrigger

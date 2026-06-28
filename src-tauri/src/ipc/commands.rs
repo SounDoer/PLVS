@@ -9,6 +9,7 @@ use crate::audio::capture::AudioCapture;
 use crate::audio::cpal_backend;
 use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
+use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged,
@@ -107,6 +108,7 @@ pub fn audio_start(
   let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
   let loudness_weights = state.inner().loudness_weights.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
+  let dialogue_vad_engine = state.inner().dialogue_vad_engine.clone();
   let session = AudioCapture::start_session(
     &AppAudioBackend,
     &device_id,
@@ -115,6 +117,7 @@ pub fn audio_start(
     layout,
     loudness_weights,
     dialogue_gating,
+    dialogue_vad_engine,
   )?;
   {
     let mut source = state
@@ -258,6 +261,18 @@ pub(crate) fn apply_dialogue_gating(flag: &std::sync::Arc<std::sync::Mutex<bool>
   }
 }
 
+pub(crate) fn apply_dialogue_vad_engine(
+  engine: &std::sync::Arc<std::sync::Mutex<VadEngineKind>>,
+  key: &str,
+) -> Result<(), String> {
+  let kind = VadEngineKind::from_key(key).ok_or_else(|| format!("unknown VAD engine: {key}"))?;
+  let mut g = engine
+    .lock()
+    .map_err(|_| "dialogue vad engine lock poisoned".to_string())?;
+  *g = kind;
+  Ok(())
+}
+
 #[tauri::command]
 pub fn set_loudness_weights(
   weights: Option<Vec<f64>>,
@@ -279,6 +294,11 @@ pub fn set_loudness_weights(
 pub fn set_dialogue_gating(enabled: bool, state: State<'_, AppState>) -> Result<(), String> {
   apply_dialogue_gating(&state.inner().dialogue_gating_enabled, enabled);
   Ok(())
+}
+
+#[tauri::command]
+pub fn set_dialogue_vad_engine(engine: String, state: State<'_, AppState>) -> Result<(), String> {
+  apply_dialogue_vad_engine(&state.inner().dialogue_vad_engine, &engine)
 }
 
 /// UI heartbeat: records the highest frame `seq` the webview has finished processing. The capture
@@ -465,6 +485,24 @@ mod tests {
     assert!(*flag.lock().unwrap());
     super::apply_dialogue_gating(&flag, false);
     assert!(!*flag.lock().unwrap());
+  }
+
+  #[test]
+  fn set_dialogue_vad_engine_updates_shared_kind() {
+    let engine = std::sync::Arc::new(std::sync::Mutex::new(
+      crate::dsp::speech::VadEngineKind::Silero,
+    ));
+    super::apply_dialogue_vad_engine(&engine, "firered").unwrap();
+    assert_eq!(
+      *engine.lock().unwrap(),
+      crate::dsp::speech::VadEngineKind::FireRed
+    );
+    super::apply_dialogue_vad_engine(&engine, "ten").unwrap();
+    assert_eq!(
+      *engine.lock().unwrap(),
+      crate::dsp::speech::VadEngineKind::Ten
+    );
+    assert!(super::apply_dialogue_vad_engine(&engine, "unknown").is_err());
   }
 
   #[test]

@@ -111,8 +111,20 @@ describe("panelControls", () => {
         "truePeak",
         "correlation",
       ],
+      dialogueVadEngine: "silero",
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
     });
+  });
+
+  it("normalizes the dialogue VAD engine", () => {
+    expect(normalizePanelControls({}).dialogueVadEngine).toBe("silero");
+    expect(normalizePanelControls({ dialogueVadEngine: "firered" }).dialogueVadEngine).toBe(
+      "firered"
+    );
+    expect(normalizePanelControls({ dialogueVadEngine: "ten" }).dialogueVadEngine).toBe("ten");
+    expect(normalizePanelControls({ dialogueVadEngine: "unknown" }).dialogueVadEngine).toBe(
+      "silero"
+    );
   });
 
   it("defaults statsOrder to the full STATS_CANONICAL_ORDER", () => {
@@ -192,6 +204,7 @@ describe("panelControls", () => {
       levelMeterYMaxDb: 3,
       statsVisibleIds: ["momentary"],
       statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
+      dialogueVadEngine: "silero",
       loudnessHistoryVisibleLayerIds: ["ref"],
     });
   });

@@ -6,6 +6,7 @@ import {
   stopAudioCapture,
   setLoudnessWeights,
   setDialogueGating,
+  setDialogueVadEngine,
   ackFrames,
 } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
@@ -54,6 +55,7 @@ export function useAudioEngine({
   selectedOffsetRef,
   loudnessWeightsRef,
   dialogueGatingRef,
+  dialogueVadEngineRef,
   setAudio,
   setHistoryPathM,
   setHistoryPathST,
@@ -175,6 +177,10 @@ export function useAudioEngine({
 
           try {
             await setDialogueGating(dialogueGatingRef?.current ?? false);
+          } catch (_) {}
+
+          try {
+            await setDialogueVadEngine(dialogueVadEngineRef?.current ?? "silero");
           } catch (_) {}
 
           await startAudioCapture({

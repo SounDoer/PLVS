@@ -95,6 +95,11 @@ export function setDialogueGating(enabled) {
   return invoke("set_dialogue_gating", { enabled: !!enabled });
 }
 
+/** @param {"silero" | "firered" | "ten"} engine */
+export function setDialogueVadEngine(engine) {
+  return invoke("set_dialogue_vad_engine", { engine });
+}
+
 /** @param {string} path Local media path selected or dropped in the desktop app. */
 export function probeFileAnalysis(path) {
   return invoke("file_analysis_probe", { path });

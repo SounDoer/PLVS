@@ -5,6 +5,7 @@
 use tauri::AppHandle;
 
 use super::device::DeviceInfo;
+use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
@@ -35,5 +36,6 @@ pub trait AudioCapture: Send + Sync {
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
+    dialogue_vad_engine: std::sync::Arc<std::sync::Mutex<VadEngineKind>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String>;
 }

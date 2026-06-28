@@ -19,6 +19,7 @@ use super::cpal_backend::{
 };
 use super::device::DeviceInfo;
 use super::device_id;
+use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
@@ -152,6 +153,7 @@ fn run_macos_tap_worker(
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
+  dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   dropped_chunks: Arc<AtomicU64>,
 ) -> Result<(), String> {
   let (uid, sample_rate, channels) = resolve_tap_uid_channels_rate(&device_id)?;
@@ -171,6 +173,7 @@ fn run_macos_tap_worker(
       channel_layout,
       loudness_weights,
       dialogue_gating,
+      dialogue_vad_engine,
       dropped_for_thread,
       bridge_pool,
     );
@@ -251,6 +254,7 @@ impl MacosTapCaptureSession {
     channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
+    dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   ) -> Result<Self, String> {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let clear_peak_history = Arc::new(AtomicBool::new(false));
@@ -269,6 +273,7 @@ impl MacosTapCaptureSession {
           channel_layout,
           loudness_weights,
           dialogue_gating,
+          dialogue_vad_engine,
           dropped_chunks,
         )
       })
@@ -295,6 +300,7 @@ pub fn start_session(
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
+  dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
 ) -> Result<Box<dyn AudioCaptureSession>, String> {
   if is_macos_loopback_selection(device_id) {
     Ok(Box::new(MacosTapCaptureSession::start(
@@ -304,6 +310,7 @@ pub fn start_session(
       channel_layout,
       loudness_weights,
       dialogue_gating,
+      dialogue_vad_engine,
     )?))
   } else {
     CpalBackend.start_session(
@@ -313,6 +320,7 @@ pub fn start_session(
       channel_layout,
       loudness_weights,
       dialogue_gating,
+      dialogue_vad_engine,
     )
   }
 }

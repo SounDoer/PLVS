@@ -3,7 +3,7 @@
 use super::dialogue::DialogueIntegrator;
 use super::filters::{KWeightMono, KWeightStereo};
 use super::meter::{Meter, PcmContext};
-use super::speech::{downmix_to_mono, SpeechDetector};
+use super::speech::{downmix_to_mono, SpeechDetector, VadEngineKind};
 use crate::engine::ChannelLayoutSetting;
 
 const IBL_CAP: usize = 36_000;
@@ -165,6 +165,7 @@ pub struct LoudnessMeter {
   /// Speech detector for dialogue gating; lazily built on first gated push (`None` until then,
   /// or if model init fails).
   speech: Option<SpeechDetector>,
+  speech_kind: VadEngineKind,
   /// Dialogue-gated loudness accumulator.
   dialogue: DialogueIntegrator,
   /// Whether the most recent 100ms block was classified as speech.
@@ -200,6 +201,7 @@ impl LoudnessMeter {
       tp_wp: [0, 0],
       pending_block: None,
       speech: None,
+      speech_kind: VadEngineKind::default(),
       dialogue: DialogueIntegrator::new(),
       speech_now: false,
     }
@@ -862,8 +864,14 @@ impl Meter for LoudnessMeter {
     // Feed the speech sidechain continuously (downmixed mono) so its 16 kHz chunks keep
     // flowing regardless of which loudness path runs below.
     if ctx.dialogue_gating {
+      if ctx.dialogue_vad_engine != self.speech_kind {
+        self.dialogue.reset();
+        self.speech = None;
+        self.speech_kind = ctx.dialogue_vad_engine;
+        self.speech_now = false;
+      }
       if self.speech.is_none() {
-        self.speech = SpeechDetector::new(self.sample_rate);
+        self.speech = SpeechDetector::new_with_engine(self.sample_rate, self.speech_kind);
       }
       if let Some(det) = self.speech.as_mut() {
         let mono = downmix_to_mono(ctx.interleaved, ctx.channels);
@@ -991,6 +999,7 @@ mod tests {
       spectrum_channel: SpectrumChannelSel::default(),
       spectrum_view: crate::dsp::SpectrumView::default(),
       dialogue_gating: true,
+      dialogue_vad_engine: VadEngineKind::default(),
     }
   }
 

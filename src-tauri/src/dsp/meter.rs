@@ -1,6 +1,7 @@
 //! Shared `Meter` trait and `PcmContext` for all DSP metering modules.
 
 use crate::dsp::channel_sel::{SpectrumChannelSel, SpectrumView};
+use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 
 /// Context passed to every meter's [`Meter::push_pcm`] call.
@@ -15,6 +16,7 @@ pub struct PcmContext<'a> {
   pub spectrum_view: SpectrumView,
   /// When true, run the speech-activity sidechain and populate the dialogue-gated readouts.
   pub dialogue_gating: bool,
+  pub dialogue_vad_engine: VadEngineKind,
 }
 
 /// Uniform contract for DSP meters: ingest PCM and reset state.

@@ -111,7 +111,7 @@ impl StftAnalyzer {
     self.write = self.write.wrapping_add(1);
     self.filled = (self.filled + 1).min(self.size);
     self.ingested = self.ingested.wrapping_add(1);
-    if self.filled >= self.size && self.ingested % self.hop as u64 == 0 {
+    if self.filled >= self.size && self.ingested.is_multiple_of(self.hop as u64) {
       self.run_fft();
     }
   }

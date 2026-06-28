@@ -8,6 +8,7 @@ use super::cpal_backend::CpalBackend;
 use super::device::DeviceInfo;
 #[cfg(target_os = "macos")]
 use super::macos;
+use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
@@ -34,6 +35,7 @@ impl AudioCapture for AppAudioBackend {
     channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
     loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
+    dialogue_vad_engine: std::sync::Arc<std::sync::Mutex<VadEngineKind>>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     #[cfg(target_os = "macos")]
     {
@@ -44,6 +46,7 @@ impl AudioCapture for AppAudioBackend {
         channel_layout,
         loudness_weights,
         dialogue_gating,
+        dialogue_vad_engine,
       )
     }
     #[cfg(not(target_os = "macos"))]
@@ -55,6 +58,7 @@ impl AudioCapture for AppAudioBackend {
         channel_layout,
         loudness_weights,
         dialogue_gating,
+        dialogue_vad_engine,
       )
     }
   }

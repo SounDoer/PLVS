@@ -862,6 +862,7 @@ mod tests {
         spectrum_channel: SpectrumChannelSel::Pair(0, 1),
         spectrum_view: SpectrumView::Ms,
         dialogue_gating: false,
+        dialogue_vad_engine: crate::dsp::speech::VadEngineKind::default(),
       };
       m.push_pcm(&ctx);
     }

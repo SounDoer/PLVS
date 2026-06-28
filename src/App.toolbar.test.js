@@ -30,9 +30,11 @@ describe("App toolbar", () => {
     expect(commandsSource).toContain('return invoke("set_loudness_weights", { weights });');
   });
 
-  it("exposes a setDialogueGating IPC wrapper", () => {
+  it("exposes dialogue VAD IPC wrappers", () => {
     const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
     expect(commandsSource).toContain("export function setDialogueGating(enabled)");
+    expect(commandsSource).toContain("export function setDialogueVadEngine(engine)");
+    expect(commandsSource).toContain('invoke("set_dialogue_vad_engine"');
   });
 
   it("uses a slightly larger device icon to match neighboring toolbar glyphs visually", () => {
@@ -136,6 +138,12 @@ describe("App toolbar", () => {
 
     expect(syncBody).toContain("setDialogueGating(dialogueGating)");
     expect(syncBody).not.toContain("!running");
+    expect(appSource).toContain("const dialogueVadEngine = useMemo(() => {");
+    expect(appSource).toContain(
+      "return controls.dialogueVadEngine ?? DEFAULT_DIALOGUE_VAD_ENGINE;"
+    );
+    expect(appSource).toContain("dialogueVadEngineRef.current = dialogueVadEngine;");
+    expect(appSource).toContain("setDialogueVadEngine(dialogueVadEngine)");
   });
 
   it("keeps capture running when Clear resets the measurement window", () => {
