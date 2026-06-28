@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ExternalLink, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Pencil, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -145,6 +145,11 @@ export function SettingsPanel({
   deleteCustomTheme = () => {},
   activeIsCustom = false,
   themeControlsDisabled = false,
+  onExportConfiguration = () => {},
+  onImportConfiguration = () => {},
+  onResetConfiguration = () => {},
+  configurationBusy = false,
+  configurationStatus = "",
 }) {
   const reduceMotion = useReducedMotion();
   const isMac =
@@ -493,6 +498,50 @@ export function SettingsPanel({
                       Connect an input to label its channels.
                     </span>
                   )}
+                </SettingsSection>
+
+                <SettingsDivider />
+
+                {/* Configuration */}
+                <SettingsSection>
+                  <SettingsRow label="Configuration">
+                    <div className="flex items-center gap-1.5">
+                      <IconButton
+                        onClick={onExportConfiguration}
+                        disabled={configurationBusy}
+                        aria-label="Export configuration"
+                      >
+                        <Download className="size-3.5" />
+                      </IconButton>
+                      <IconButton
+                        onClick={onImportConfiguration}
+                        disabled={configurationBusy}
+                        aria-label="Import configuration"
+                      >
+                        <Upload className="size-3.5" />
+                      </IconButton>
+                      <InlineConfirm
+                        onConfirm={onResetConfiguration}
+                        confirmLabel="Confirm reset configuration"
+                        cancelLabel="Cancel reset configuration"
+                        trigger={(arm) => (
+                          <IconButton
+                            onClick={arm}
+                            disabled={configurationBusy}
+                            aria-label="Reset configuration"
+                            className="text-destructive/60 hover:text-destructive"
+                          >
+                            <RotateCcw className="size-3.5" />
+                          </IconButton>
+                        )}
+                      />
+                    </div>
+                  </SettingsRow>
+                  {configurationStatus ? (
+                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
+                      {configurationStatus}
+                    </div>
+                  ) : null}
                 </SettingsSection>
 
                 {/* Footer */}

@@ -13,6 +13,7 @@ vi.mock("@tauri-apps/plugin-store", () => ({
 
 describe("pluginStoreBackend", () => {
   beforeEach(() => {
+    vi.resetModules();
     saved.length = 0;
     globalThis.window = globalThis.window || {};
     window.__PLVS_INITIAL_STATE__ = {
@@ -55,5 +56,34 @@ describe("pluginStoreBackend", () => {
     expect(backend.get("plvs:settings")).toBeNull();
     await new Promise((r) => setTimeout(r, 0));
     expect(saved).toContainEqual(["__delete__", "plvs:settings"]);
+  });
+
+  it("can suspend queued persistence before profile import/reset", async () => {
+    const { createPluginStoreBackend, suspendPluginStorePersistence } =
+      await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    backend.set("plvs:settings", { referenceLufs: -18 });
+    suspendPluginStorePersistence();
+
+    await new Promise((r) => setTimeout(r, 0));
+    expect(saved).not.toContainEqual(["plvs:settings", { referenceLufs: -18 }]);
+
+    backend.set("plvs:settings", { referenceLufs: -12 });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(saved).not.toContainEqual(["plvs:settings", { referenceLufs: -12 }]);
+  });
+
+  it("flushes pending persistence before authoritative profile export", async () => {
+    const { createPluginStoreBackend, flushPluginStorePersistence } =
+      await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    backend.set("plvs:presets", { list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
+
+    await flushPluginStorePersistence();
+
+    expect(saved).toContainEqual([
+      "plvs:presets",
+      { list: [{ id: "p1", name: "Preset" }], activeId: "p1" },
+    ]);
   });
 });

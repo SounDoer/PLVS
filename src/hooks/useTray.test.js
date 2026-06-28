@@ -5,6 +5,8 @@ import { act } from "react";
 
 vi.mock("@tauri-apps/api/tray", () => ({
   TrayIcon: {
+    getById: vi.fn().mockResolvedValue(null),
+    removeById: vi.fn().mockResolvedValue(undefined),
     new: vi.fn().mockResolvedValue({ setMenu: vi.fn(), close: vi.fn() }),
   },
 }));
@@ -25,6 +27,7 @@ vi.mock("@tauri-apps/api/path", () => ({
 vi.mock("@tauri-apps/plugin-process", () => ({ exit: vi.fn() }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 
+import { closeTrayIcon, PLVS_TRAY_ID } from "../lib/trayIconLifecycle.js";
 import { useTray } from "./useTray.js";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Image } from "@tauri-apps/api/image";
@@ -43,6 +46,8 @@ const defaultProps = {
 describe("useTray", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    TrayIcon.getById.mockResolvedValue(null);
+    TrayIcon.removeById.mockResolvedValue(undefined);
     TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), close: vi.fn() });
   });
 
@@ -54,7 +59,7 @@ describe("useTray", () => {
     expect(resolveResource).toHaveBeenCalledWith("icons/tray-dark.png");
     expect(Image.fromPath).toHaveBeenCalledWith("/fake/tray.png");
     expect(TrayIcon.new).toHaveBeenCalledWith(
-      expect.objectContaining({ icon: { __type: "MockImage" } })
+      expect.objectContaining({ id: PLVS_TRAY_ID, icon: { __type: "MockImage" } })
     );
   });
 
@@ -72,6 +77,19 @@ describe("useTray", () => {
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     expect(TrayIcon.new).toHaveBeenCalledWith(expect.objectContaining({ iconAsTemplate: true }));
+  });
+
+  it("removes any existing singleton tray before creating a new one", async () => {
+    const existingClose = vi.fn();
+    TrayIcon.getById.mockResolvedValue({ close: existingClose });
+
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+
+    expect(TrayIcon.getById).toHaveBeenCalledWith(PLVS_TRAY_ID);
+    expect(existingClose).toHaveBeenCalledTimes(1);
+    expect(TrayIcon.removeById).toHaveBeenCalledWith(PLVS_TRAY_ID);
+    expect(TrayIcon.new).toHaveBeenCalledWith(expect.objectContaining({ id: PLVS_TRAY_ID }));
   });
 
   it("keeps the tray click action wired to the latest window toggle callback", async () => {
@@ -119,5 +137,20 @@ describe("useTray", () => {
     });
 
     expect(orphanClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the singleton tray before a profile reload", async () => {
+    const currentClose = vi.fn();
+    const existingClose = vi.fn();
+    TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), close: currentClose });
+    TrayIcon.getById.mockResolvedValue({ close: existingClose });
+
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    await closeTrayIcon();
+
+    expect(currentClose).toHaveBeenCalled();
+    expect(existingClose).toHaveBeenCalled();
+    expect(TrayIcon.removeById).toHaveBeenCalledWith(PLVS_TRAY_ID);
   });
 });

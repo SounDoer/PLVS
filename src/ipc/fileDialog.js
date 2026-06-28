@@ -1,6 +1,7 @@
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 
 const MEDIA_EXTENSIONS = ["wav", "aiff", "aif", "flac", "mp3", "mp4", "m4v", "mkv", "webm"];
+const PROFILE_EXTENSIONS = ["plvsconfig"];
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
 export async function pickMediaFile() {
@@ -8,6 +9,25 @@ export async function pickMediaFile() {
     multiple: false,
     directory: false,
     filters: [{ name: "Media", extensions: MEDIA_EXTENSIONS }],
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+/** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+export async function pickConfigurationProfileFile() {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: "PLVS Configuration", extensions: PROFILE_EXTENSIONS }],
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+/** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+export async function saveConfigurationProfileFile(defaultPath = "plvs-configuration.plvsconfig") {
+  const selected = await save({
+    defaultPath,
+    filters: [{ name: "PLVS Configuration", extensions: PROFILE_EXTENSIONS }],
   });
   return typeof selected === "string" ? selected : null;
 }

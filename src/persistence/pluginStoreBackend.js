@@ -9,6 +9,15 @@
  */
 const STORE_FILE = "plvs-settings.json";
 
+let writeEpoch = 0;
+let persistenceSuspended = false;
+const pendingWrites = new Set();
+
+export function suspendPluginStorePersistence() {
+  persistenceSuspended = true;
+  writeEpoch += 1;
+}
+
 export function createPluginStoreBackend() {
   const seed = (typeof window !== "undefined" && window.__PLVS_INITIAL_STATE__) || {};
   const cache = new Map(Object.entries(seed));
@@ -21,25 +30,35 @@ export function createPluginStoreBackend() {
     return storePromise;
   }
   const pending = new Map();
+  function trackPending(key, p) {
+    pending.set(key, p);
+    pendingWrites.add(p);
+    p.finally(() => pendingWrites.delete(p));
+    return p;
+  }
   function persist(key, value) {
+    if (persistenceSuspended) return Promise.resolve();
+    const epoch = writeEpoch;
     const p = store()
       .then(async (s) => {
+        if (epoch !== writeEpoch || persistenceSuspended) return;
         await s.set(key, value);
         await s.save();
       })
       .catch(() => {});
-    pending.set(key, p);
-    return p;
+    return trackPending(key, p);
   }
   function persistDelete(key) {
+    if (persistenceSuspended) return Promise.resolve();
+    const epoch = writeEpoch;
     const p = store()
       .then(async (s) => {
+        if (epoch !== writeEpoch || persistenceSuspended) return;
         await s.delete(key);
         await s.save();
       })
       .catch(() => {});
-    pending.set(key, p);
-    return p;
+    return trackPending(key, p);
   }
 
   return {
@@ -63,4 +82,8 @@ export function createPluginStoreBackend() {
       return () => {};
     },
   };
+}
+
+export async function flushPluginStorePersistence() {
+  await Promise.allSettled([...pendingWrites]);
 }

@@ -12,4 +12,9 @@ describe("default Tauri capabilities", () => {
     expect(capability.permissions).toContain("core:window:allow-set-decorations");
     expect(capability.permissions).toContain("core:window:allow-start-dragging");
   });
+
+  it("allows profile import/export dialogs", () => {
+    expect(capability.permissions).toContain("dialog:allow-open");
+    expect(capability.permissions).toContain("dialog:allow-save");
+  });
 });

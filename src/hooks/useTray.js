@@ -6,6 +6,12 @@ import { Image } from "@tauri-apps/api/image";
 import { resolveResource } from "@tauri-apps/api/path";
 import { exit } from "@tauri-apps/plugin-process";
 import { isTauri } from "../ipc/env.js";
+import {
+  clearCurrentTrayIcon,
+  closeTrayIcon,
+  PLVS_TRAY_ID,
+  setCurrentTrayIcon,
+} from "../lib/trayIconLifecycle.js";
 
 async function buildMenu({
   running,
@@ -101,7 +107,10 @@ export function useTray({
       const iconPath = await resolveResource(iconName);
       const icon = await Image.fromPath(iconPath);
 
+      await closeTrayIcon();
+      if (cancelled) return;
       const tray = await TrayIcon.new({
+        id: PLVS_TRAY_ID,
         icon,
         iconAsTemplate: true,
         tooltip: "PLVS",
@@ -117,6 +126,7 @@ export function useTray({
       if (cancelled) {
         tray.close();
       } else {
+        setCurrentTrayIcon(tray);
         trayRef.current = tray;
         // State (e.g. deviceName) may have changed while the tray was being created.
         // Rebuild the menu once with whatever is current to avoid showing stale values.
@@ -138,6 +148,7 @@ export function useTray({
     return () => {
       cancelled = true;
       trayRef.current?.close();
+      clearCurrentTrayIcon(trayRef.current);
       trayRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

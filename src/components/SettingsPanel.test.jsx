@@ -54,6 +54,37 @@ describe("SettingsPanel", () => {
     expect(document.body.querySelectorAll("[data-settings-row]").length).toBeGreaterThanOrEqual(5);
   });
 
+  it("renders configuration profile actions", () => {
+    const onExportConfiguration = vi.fn();
+    const onImportConfiguration = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        onExportConfiguration={onExportConfiguration}
+        onImportConfiguration={onImportConfiguration}
+        configurationStatus="Configuration exported"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Export configuration" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import configuration" }));
+
+    expect(onExportConfiguration).toHaveBeenCalledTimes(1);
+    expect(onImportConfiguration).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Configuration exported")).toBeTruthy();
+  });
+
+  it("confirms before resetting configuration", () => {
+    const onResetConfiguration = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} onResetConfiguration={onResetConfiguration} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset configuration" }));
+    expect(onResetConfiguration).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm reset configuration" }));
+    expect(onResetConfiguration).toHaveBeenCalledTimes(1);
+  });
+
   it("shows theme actions inline with the theme select for custom themes", () => {
     render(
       <SettingsPanel

@@ -3,6 +3,7 @@ mod dsp;
 mod engine;
 mod file_analysis;
 mod ipc;
+mod profile;
 mod state;
 mod window_state;
 
@@ -44,6 +45,11 @@ pub fn run() {
       ipc::commands::file_analysis_stop,
       ipc::commands::clear_audio_history,
       ipc::commands::get_engine_state,
+      profile::export_profile,
+      profile::import_profile,
+      profile::reset_profile,
+      profile::read_profile_file,
+      profile::write_profile_file,
       window_state::current_window_bounds,
       window_state::apply_window_bounds,
     ])

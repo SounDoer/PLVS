@@ -69,13 +69,25 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
+  readProfileFile,
   setAnalysisRequests,
   setLoudnessWeights,
   setDialogueGating,
+  writeProfileFile,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
-import { pickMediaFile } from "./ipc/fileDialog.js";
+import {
+  pickConfigurationProfileFile,
+  pickMediaFile,
+  saveConfigurationProfileFile,
+} from "./ipc/fileDialog.js";
+import {
+  exportProfile,
+  importProfile,
+  reloadAfterProfileChange,
+  resetProfile,
+} from "./persistence/profile.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
@@ -172,6 +184,8 @@ function AppContent() {
     setPanelOpacity,
   } = useSettings({ onClearRef });
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
+  const [configurationBusy, setConfigurationBusy] = useState(false);
+  const [configurationStatus, setConfigurationStatus] = useState("");
   const presets = usePresets({
     windowPinned: pinned,
     setWindowPinned: setPinned,
@@ -229,6 +243,74 @@ function AppContent() {
     const allowed = new Set(["default", ...(audioDevices || []).map((d) => d.id)]);
     return allowed.has(captureDeviceId) ? captureDeviceId : "default";
   }, [audioDevices, captureDeviceId]);
+
+  const exportConfiguration = useCallback(async () => {
+    if (configurationBusy) return;
+    setConfigurationBusy(true);
+    setConfigurationStatus("");
+    try {
+      const profile = await exportProfile();
+      const contents = `${JSON.stringify(profile, null, 2)}\n`;
+      if (isTauri()) {
+        const path = await saveConfigurationProfileFile("plvs-configuration.plvsconfig");
+        if (!path) {
+          setConfigurationStatus("");
+          return;
+        }
+        await writeProfileFile(path, contents);
+      } else {
+        const blob = new Blob([contents], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "plvs-configuration.plvsconfig";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      setConfigurationStatus("Configuration exported");
+    } catch (_) {
+      setConfigurationStatus("Export failed");
+    } finally {
+      setConfigurationBusy(false);
+    }
+  }, [configurationBusy]);
+
+  const importConfiguration = useCallback(async () => {
+    if (configurationBusy) return;
+    setConfigurationBusy(true);
+    setConfigurationStatus("");
+    try {
+      if (!isTauri()) {
+        setConfigurationStatus("Import is available in the desktop app");
+        return;
+      }
+      const path = await pickConfigurationProfileFile();
+      if (!path) {
+        setConfigurationStatus("");
+        return;
+      }
+      const raw = await readProfileFile(path);
+      await importProfile(JSON.parse(raw));
+      reloadAfterProfileChange();
+    } catch (_) {
+      setConfigurationStatus("Import failed");
+    } finally {
+      setConfigurationBusy(false);
+    }
+  }, [configurationBusy]);
+
+  const resetConfiguration = useCallback(async () => {
+    if (configurationBusy) return;
+    setConfigurationBusy(true);
+    setConfigurationStatus("");
+    try {
+      await resetProfile();
+      reloadAfterProfileChange();
+    } catch (_) {
+      setConfigurationStatus("Reset failed");
+      setConfigurationBusy(false);
+    }
+  }, [configurationBusy]);
 
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
 
@@ -1499,6 +1581,11 @@ function AppContent() {
           deleteCustomTheme={deleteCustomTheme}
           activeIsCustom={activeIsCustom}
           themeControlsDisabled={editor.isEditing}
+          onExportConfiguration={exportConfiguration}
+          onImportConfiguration={importConfiguration}
+          onResetConfiguration={resetConfiguration}
+          configurationBusy={configurationBusy}
+          configurationStatus={configurationStatus}
         />
 
         {editor.isEditing ? (

@@ -59,6 +59,26 @@ export function applyWindowBounds(bounds) {
   return invoke("apply_window_bounds", { bounds });
 }
 
+export function exportProfileCommand() {
+  return invoke("export_profile");
+}
+
+export function importProfileCommand(profile) {
+  return invoke("import_profile", { profile });
+}
+
+export function resetProfileCommand() {
+  return invoke("reset_profile");
+}
+
+export function readProfileFile(path) {
+  return invoke("read_profile_file", { path });
+}
+
+export function writeProfileFile(path, contents) {
+  return invoke("write_profile_file", { path, contents });
+}
+
 /**
  * @param {{ spectrum: Array<{ key: string; channel: object; view: string; smoothingPercent: number; tiltDbPerOctave: number }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
  */
