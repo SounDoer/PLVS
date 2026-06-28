@@ -5,6 +5,7 @@ mod file_analysis;
 mod ipc;
 mod profile;
 mod state;
+pub mod vad;
 mod window_state;
 
 use std::time::Duration;

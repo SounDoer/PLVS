@@ -9,6 +9,8 @@ use rubato::{
 };
 use voice_activity_detector::VoiceActivityDetector;
 
+use crate::vad::{VadBlockAggregator, VadDecision};
+
 /// All supported VAD engines consume mono 16 kHz audio; source audio is resampled once
 /// before engine-specific frame splitting.
 const VAD_RATE: usize = 16_000;
@@ -24,15 +26,6 @@ const SPEECH_THRESHOLD: f32 = 0.5;
 pub enum VadEngineKind {
   Silero,
   FireRed,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct VadDecision {
-  pub active: bool,
-  pub voice_probability: Option<f32>,
-  pub speech_probability: Option<f32>,
-  pub singing_probability: Option<f32>,
-  pub music_probability: Option<f32>,
 }
 
 impl VadDecision {
@@ -141,40 +134,6 @@ pub fn downmix_to_mono(interleaved: &[f32], channels: u16) -> Vec<f32> {
   mono
 }
 
-/// Accumulates per-chunk speech decisions within one 100ms loudness block and reports
-/// the majority verdict for that block.
-pub struct BlockVote {
-  speech: usize,
-  total: usize,
-}
-
-impl BlockVote {
-  pub fn new() -> Self {
-    Self {
-      speech: 0,
-      total: 0,
-    }
-  }
-
-  /// Record one VAD frame's speech/non-speech decision.
-  pub fn record(&mut self, decision: VadDecision) {
-    self.total += 1;
-    if decision.active {
-      self.speech += 1;
-    }
-  }
-
-  /// True when at least half of the recorded chunks were speech (false if none recorded).
-  pub fn is_speech_majority(&self) -> bool {
-    self.total > 0 && self.speech * 2 >= self.total
-  }
-
-  pub fn reset(&mut self) {
-    self.speech = 0;
-    self.total = 0;
-  }
-}
-
 /// Streaming speech detector: mono samples in, per-100ms-block speech verdict out.
 pub struct SpeechDetector {
   engine: Box<dyn DialogueVadEngine>,
@@ -183,8 +142,8 @@ pub struct SpeechDetector {
   in_buf: Vec<f32>,
   /// Resampled 16 kHz samples, accumulating toward the current engine's frame size.
   chunk_buf: Vec<f32>,
-  /// Votes for the in-progress 100ms loudness block.
-  vote: BlockVote,
+  /// Aggregates engine frames into the in-progress 100ms loudness block.
+  aggregator: VadBlockAggregator,
 }
 
 impl SpeechDetector {
@@ -205,7 +164,7 @@ impl SpeechDetector {
       resampler,
       in_buf: Vec::new(),
       chunk_buf: Vec::new(),
-      vote: BlockVote::new(),
+      aggregator: VadBlockAggregator::majority(),
     })
   }
 
@@ -240,23 +199,21 @@ impl SpeechDetector {
       while self.chunk_buf.len() >= frame_size {
         let chunk: Vec<f32> = self.chunk_buf.drain(..frame_size).collect();
         if let Some(decision) = self.engine.predict(chunk) {
-          self.vote.record(decision);
+          self.aggregator.record(decision);
         }
       }
     }
   }
 
-  /// Majority verdict for the block since the last call, then clears the block's votes.
+  /// 100ms block verdict since the last call, then clears the block's frame decisions.
   pub fn take_block_decision(&mut self) -> bool {
-    let decision = self.vote.is_speech_majority();
-    self.vote.reset();
-    decision
+    self.aggregator.take_decision()
   }
 
   pub fn reset(&mut self) {
     self.in_buf.clear();
     self.chunk_buf.clear();
-    self.vote.reset();
+    self.aggregator.reset();
     self.resampler.reset();
     self.engine.reset();
   }
@@ -272,54 +229,6 @@ mod tests {
     let interleaved = [1.0_f32, 0.0, 0.0, 1.0];
     let mono = downmix_to_mono(&interleaved, 2);
     assert_eq!(mono, vec![0.5, 0.5]);
-  }
-
-  #[test]
-  fn vote_is_speech_when_at_least_half_chunks_are_speech() {
-    let mut v = BlockVote::new();
-    v.record(VadDecision {
-      active: true,
-      ..VadDecision::default()
-    });
-    v.record(VadDecision {
-      active: true,
-      ..VadDecision::default()
-    });
-    v.record(VadDecision {
-      active: false,
-      ..VadDecision::default()
-    });
-    assert!(
-      v.is_speech_majority(),
-      "2 of 3 speech chunks should be a majority"
-    );
-  }
-
-  #[test]
-  fn vote_is_not_speech_when_minority_chunks_are_speech() {
-    let mut v = BlockVote::new();
-    v.record(VadDecision {
-      active: true,
-      ..VadDecision::default()
-    });
-    v.record(VadDecision {
-      active: false,
-      ..VadDecision::default()
-    });
-    v.record(VadDecision {
-      active: false,
-      ..VadDecision::default()
-    });
-    assert!(
-      !v.is_speech_majority(),
-      "1 of 3 speech chunks should not be a majority"
-    );
-  }
-
-  #[test]
-  fn vote_with_no_chunks_is_not_speech() {
-    let v = BlockVote::new();
-    assert!(!v.is_speech_majority());
   }
 
   #[test]

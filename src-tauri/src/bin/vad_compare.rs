@@ -4,6 +4,7 @@ use std::{
   process::Command,
 };
 
+use app_lib::vad::{VadBlockAggregator, VadDecision};
 use firered_vad::Vad as FireRedVad;
 use rubato::{
   Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
@@ -73,8 +74,7 @@ struct Detector<E: Engine> {
   resampler: SincFixedIn<f32>,
   in_buf: Vec<f32>,
   chunk_buf: Vec<f32>,
-  speech: usize,
-  total: usize,
+  aggregator: VadBlockAggregator,
 }
 
 impl<E: Engine> Detector<E> {
@@ -99,8 +99,7 @@ impl<E: Engine> Detector<E> {
       resampler,
       in_buf: Vec::new(),
       chunk_buf: Vec::new(),
-      speech: 0,
-      total: 0,
+      aggregator: VadBlockAggregator::majority(),
     }
   }
 
@@ -115,20 +114,17 @@ impl<E: Engine> Detector<E> {
       while self.chunk_buf.len() >= frame_size {
         let frame: Vec<f32> = self.chunk_buf.drain(..frame_size).collect();
         if let Some(active) = self.engine.predict(frame) {
-          self.total += 1;
-          if active {
-            self.speech += 1;
-          }
+          self.aggregator.record(VadDecision {
+            active,
+            ..VadDecision::default()
+          });
         }
       }
     }
   }
 
   fn take_block(&mut self) -> bool {
-    let active = self.total > 0 && self.speech * 2 >= self.total;
-    self.speech = 0;
-    self.total = 0;
-    active
+    self.aggregator.take_decision()
   }
 }
 

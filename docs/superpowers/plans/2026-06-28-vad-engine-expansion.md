@@ -46,6 +46,12 @@ Each engine adapter should expose:
 `DialogueIntegrator` should continue to consume only the final per-100 ms `active` decision until
 we intentionally add richer product semantics.
 
+The frame-to-block bridge is now `vad::VadBlockAggregator`. It is shared by the production
+`SpeechDetector` and the `vad_compare` diagnostic runner, so future aggregation changes are made in
+one place. The only implemented mode is `Majority`, preserving the original behavior:
+at least half of the VAD frames recorded during a 100 ms loudness block must be active for the block
+to count as dialogue.
+
 ## FireRedVAD spike
 
 Why first:
