@@ -20,3 +20,10 @@ decode audio tracks from media files in File mode.
   LGPL-2.1 relinking provision.
 
 FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
+
+## Other dependencies
+
+PLVS's remaining Rust and JavaScript dependencies are distributed under permissive licenses
+(predominantly MIT and Apache-2.0, with some BSD/ISC). A full snapshot of the dependency licensing,
+including how it was audited and why no copyleft obligations beyond FFmpeg apply, is in
+`docs/licenses-audit.md`.
