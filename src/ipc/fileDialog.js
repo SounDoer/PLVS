@@ -1,6 +1,25 @@
 import { open } from "@tauri-apps/plugin-dialog";
 
-const MEDIA_EXTENSIONS = ["wav", "aiff", "aif", "flac", "mp3", "mp4", "m4v", "mkv", "webm"];
+export const MEDIA_EXTENSIONS = [
+  "wav",
+  "aiff",
+  "aif",
+  "flac",
+  "mp3",
+  "m4a",
+  "aac",
+  "ogg",
+  "opus",
+  "mp4",
+  "m4v",
+  "mov",
+  "mkv",
+  "webm",
+  "avi",
+  "ts",
+  "m2ts",
+  "wmv",
+];
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
 export async function pickMediaFile() {
