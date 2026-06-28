@@ -149,7 +149,14 @@ describe("useFileAnalysisEngine", () => {
       summary: undefined,
     });
     expect(startFileAnalysis).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "C:/mix/final.wav", onFrame: expect.any(Function) })
+      expect.objectContaining({
+        path: "C:/mix/final.wav",
+        probe: expect.objectContaining({
+          path: "C:/mix/final.wav",
+          selectedTrack: expect.objectContaining({ sampleRateHz: 48000, channels: 2 }),
+        }),
+        onFrame: expect.any(Function),
+      })
     );
   });
 

@@ -148,6 +148,7 @@ export function useFileAnalysisEngine({
         });
         const channel = await startFileAnalysis({
           path: filePath,
+          probe: metadata,
           onFrame: (frame) => {
             if (mounted) applyFrame(frame);
           },

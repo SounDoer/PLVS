@@ -6,6 +6,9 @@ use std::thread::{self, JoinHandle};
 
 use tauri::{AppHandle, Emitter, Manager};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::{ChannelLayoutSetting, MeterPipeline};
 use crate::file_analysis::ffmpeg::decode::{build_decode_args, bytes_to_f32_le, parse_out_time_us};
@@ -13,8 +16,12 @@ use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::probe::probe_file;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, FileAnalysisCompletedPayload, FileAnalysisErrorPayload,
-  FileAnalysisProgressPayload, FileAnalysisSummaryMetrics, FrameSubscribers,
+  FileAnalysisProbeResult, FileAnalysisProgressPayload, FileAnalysisSummaryMetrics,
+  FrameSubscribers,
 };
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// Config read once at worker start. Mid-analysis chip changes do not retune the current run.
 struct WorkerConfig {
@@ -65,19 +72,24 @@ impl FileAnalysisSession {
 
   pub fn start(
     path: String,
+    probe: Option<FileAnalysisProbeResult>,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
   ) -> Result<Self, String> {
-    // The frontend already probed this path for UI metadata/duration; the worker probes once
-    // itself for the decode reader, so we do not re-probe here.
+    // The frontend normally passes the just-probed metadata so the worker can start ffmpeg without
+    // launching ffprobe a second time. If unavailable or stale, the worker falls back internally.
     let (stop_tx, stop_rx) = mpsc::channel();
     let worker_path = path.clone();
     let worker = thread::Builder::new()
       .name("file-analysis-worker".into())
       .spawn(move || {
-        if let Err(message) =
-          run_file_worker(worker_path.clone(), frame_subscribers, app.clone(), stop_rx)
-        {
+        if let Err(message) = run_file_worker(
+          worker_path.clone(),
+          probe,
+          frame_subscribers,
+          app.clone(),
+          stop_rx,
+        ) {
           let _ = app.emit(
             "file-analysis-error",
             FileAnalysisErrorPayload {
@@ -121,12 +133,16 @@ fn send_frame(
 /// when cancelled before completion, `Ok(Some((decoded_frames, summary)))` at end of stream.
 fn analyze_file_core(
   path: &str,
+  probe: Option<&FileAnalysisProbeResult>,
   config: &WorkerConfig,
   mut on_frame: impl FnMut(AudioFramePayload) -> Result<(), String>,
   mut on_progress: impl FnMut(FileAnalysisProgressPayload),
   should_stop: impl Fn() -> bool,
 ) -> Result<Option<(u64, FileAnalysisSummaryMetrics)>, String> {
-  let probe = probe_file(Path::new(path))?;
+  let probe = match probe {
+    Some(probe) if probe.path == path => probe.clone(),
+    _ => probe_file(Path::new(path))?,
+  };
   let track = &probe.selected_track;
   let sample_rate = track
     .sample_rate_hz
@@ -138,11 +154,16 @@ fn analyze_file_core(
 
   let ffmpeg = locate_sidecar("ffmpeg");
   let args = build_decode_args(path, track.index, channels, sample_rate);
-  let mut child = Command::new(&ffmpeg)
+  let mut command = Command::new(&ffmpeg);
+  command
     .args(&args)
     .stdout(Stdio::piped())
     .stderr(Stdio::piped())
-    .stdin(Stdio::null())
+    .stdin(Stdio::null());
+  #[cfg(windows)]
+  command.creation_flags(CREATE_NO_WINDOW);
+
+  let mut child = command
     .spawn()
     .map_err(|err| format!("FFmpeg component missing or unrunnable: {err}"))?;
 
@@ -250,6 +271,7 @@ fn analyze_file_core(
 
 fn run_file_worker(
   path: String,
+  probe: Option<FileAnalysisProbeResult>,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
   stop_rx: Receiver<()>,
@@ -258,6 +280,7 @@ fn run_file_worker(
   let mut seq = 0_u64;
   let outcome = analyze_file_core(
     &path,
+    probe.as_ref(),
     &config,
     |mut frame| {
       seq += 1;
@@ -376,6 +399,7 @@ mod tests {
     let mut frames_emitted = 0_u32;
     let outcome = analyze_file_core(
       &fixture.path_str(),
+      None,
       &default_config(),
       |_frame| {
         frames_emitted += 1;
@@ -413,6 +437,7 @@ mod tests {
 
     let outcome = analyze_file_core(
       &fixture.path_str(),
+      None,
       &default_config(),
       |_frame| Ok(()),
       |_progress| {},
@@ -435,6 +460,7 @@ mod tests {
 
     let err = analyze_file_core(
       "definitely/not/a/real/path.wav",
+      None,
       &default_config(),
       |_frame| Ok(()),
       |_progress| {},

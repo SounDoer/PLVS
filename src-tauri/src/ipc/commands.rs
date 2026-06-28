@@ -350,6 +350,7 @@ pub fn file_analysis_probe(path: String) -> Result<FileAnalysisProbeResult, Stri
 pub fn file_analysis_start(
   app: AppHandle,
   path: String,
+  probe: Option<FileAnalysisProbeResult>,
   on_frame: tauri::ipc::Channel<AudioFramePayload>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -381,7 +382,7 @@ pub fn file_analysis_start(
       .map_err(|_| "frame subscribers lock poisoned".to_string())?;
     *slot = Some(pool.clone());
   }
-  let session = crate::file_analysis::session::FileAnalysisSession::start(path, pool, app)?;
+  let session = crate::file_analysis::session::FileAnalysisSession::start(path, probe, pool, app)?;
   let mut source = state
     .inner()
     .source

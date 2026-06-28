@@ -5,6 +5,12 @@ use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::ffmpeg::probe::parse_ffprobe_json;
 use crate::ipc::types::FileAnalysisProbeResult;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 fn file_name_from_path(path: &Path) -> String {
   path
     .file_name()
@@ -18,16 +24,23 @@ pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, Str
   let path_str = path.to_string_lossy().to_string();
   let ffprobe = locate_sidecar("ffprobe");
 
-  let output = Command::new(&ffprobe)
+  let mut command = Command::new(&ffprobe);
+  command
     .args([
       "-v",
       "quiet",
+      "-select_streams",
+      "a",
       "-print_format",
       "json",
       "-show_streams",
       "-show_format",
     ])
-    .arg(&path_str)
+    .arg(&path_str);
+  #[cfg(windows)]
+  command.creation_flags(CREATE_NO_WINDOW);
+
+  let output = command
     .output()
     .map_err(|err| format!("FFmpeg component missing or unrunnable: {err}"))?;
 
