@@ -8,13 +8,81 @@ use rubato::{
 };
 use voice_activity_detector::VoiceActivityDetector;
 
-/// Silero operates at 16 kHz over fixed 512-sample (32 ms) chunks.
+/// All supported VAD engines consume mono 16 kHz audio; source audio is resampled once
+/// before engine-specific frame splitting.
 const VAD_RATE: usize = 16_000;
+/// Silero operates at 16 kHz over fixed 512-sample (32 ms) chunks.
 const VAD_CHUNK: usize = 512;
 /// Mono input frames fed to the resampler per call (must be fixed for `SincFixedIn`).
 const RESAMPLER_IN_CHUNK: usize = 1024;
 /// Speech probability at/above which a chunk counts as speech.
 const SPEECH_THRESHOLD: f32 = 0.5;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VadEngineKind {
+  Silero,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct VadDecision {
+  pub active: bool,
+  pub voice_probability: Option<f32>,
+  pub speech_probability: Option<f32>,
+  pub singing_probability: Option<f32>,
+  pub music_probability: Option<f32>,
+}
+
+impl VadDecision {
+  fn speech(probability: f32) -> Self {
+    Self {
+      active: probability >= SPEECH_THRESHOLD,
+      voice_probability: Some(probability),
+      speech_probability: Some(probability),
+      singing_probability: None,
+      music_probability: None,
+    }
+  }
+}
+
+pub trait DialogueVadEngine: Send {
+  fn kind(&self) -> VadEngineKind;
+  fn frame_size(&self) -> usize;
+  fn predict(&mut self, frame: Vec<f32>) -> VadDecision;
+  fn reset(&mut self);
+}
+
+struct SileroVadEngine {
+  vad: VoiceActivityDetector,
+}
+
+impl SileroVadEngine {
+  fn new() -> Option<Self> {
+    let vad = VoiceActivityDetector::builder()
+      .sample_rate(VAD_RATE as i64)
+      .chunk_size(VAD_CHUNK)
+      .build()
+      .ok()?;
+    Some(Self { vad })
+  }
+}
+
+impl DialogueVadEngine for SileroVadEngine {
+  fn kind(&self) -> VadEngineKind {
+    VadEngineKind::Silero
+  }
+
+  fn frame_size(&self) -> usize {
+    VAD_CHUNK
+  }
+
+  fn predict(&mut self, frame: Vec<f32>) -> VadDecision {
+    VadDecision::speech(self.vad.predict(frame))
+  }
+
+  fn reset(&mut self) {
+    self.vad.reset();
+  }
+}
 
 /// Average all channels of an interleaved frame buffer into a mono signal.
 pub fn downmix_to_mono(interleaved: &[f32], channels: u16) -> Vec<f32> {
@@ -47,10 +115,10 @@ impl BlockVote {
     }
   }
 
-  /// Record one VAD chunk's speech/non-speech decision.
-  pub fn record(&mut self, is_speech: bool) {
+  /// Record one VAD frame's speech/non-speech decision.
+  pub fn record(&mut self, decision: VadDecision) {
     self.total += 1;
-    if is_speech {
+    if decision.active {
       self.speech += 1;
     }
   }
@@ -68,11 +136,11 @@ impl BlockVote {
 
 /// Streaming speech detector: mono samples in, per-100ms-block speech verdict out.
 pub struct SpeechDetector {
-  vad: VoiceActivityDetector,
+  engine: Box<dyn DialogueVadEngine>,
   resampler: SincFixedIn<f32>,
   /// Mono samples at the source rate, accumulating toward `RESAMPLER_IN_CHUNK`.
   in_buf: Vec<f32>,
-  /// Resampled 16 kHz samples, accumulating toward `VAD_CHUNK`.
+  /// Resampled 16 kHz samples, accumulating toward the current engine's frame size.
   chunk_buf: Vec<f32>,
   /// Votes for the in-progress 100ms loudness block.
   vote: BlockVote,
@@ -82,14 +150,16 @@ impl SpeechDetector {
   /// Builds the detector for a given capture sample rate. `None` if the VAD model or the
   /// resampler fails to initialise (caller then disables dialogue gating gracefully).
   pub fn new(source_rate: f64) -> Option<Self> {
-    let vad = VoiceActivityDetector::builder()
-      .sample_rate(VAD_RATE as i64)
-      .chunk_size(VAD_CHUNK)
-      .build()
-      .ok()?;
+    Self::new_with_engine(source_rate, VadEngineKind::Silero)
+  }
+
+  pub fn new_with_engine(source_rate: f64, kind: VadEngineKind) -> Option<Self> {
+    let engine: Box<dyn DialogueVadEngine> = match kind {
+      VadEngineKind::Silero => Box::new(SileroVadEngine::new()?),
+    };
     let resampler = Self::build_resampler(source_rate)?;
     Some(Self {
-      vad,
+      engine,
       resampler,
       in_buf: Vec::new(),
       chunk_buf: Vec::new(),
@@ -115,8 +185,8 @@ impl SpeechDetector {
     .ok()
   }
 
-  /// Feed mono samples (source rate). Resamples to 16 kHz, runs the VAD over completed
-  /// 512-sample chunks, and records each chunk's speech decision into the current block.
+  /// Feed mono samples (source rate). Resamples to 16 kHz, runs the selected VAD over completed
+  /// engine-sized frames, and records each frame's speech decision into the current block.
   pub fn push_mono(&mut self, mono: &[f32]) {
     self.in_buf.extend_from_slice(mono);
     while self.in_buf.len() >= RESAMPLER_IN_CHUNK {
@@ -124,10 +194,11 @@ impl SpeechDetector {
       if let Ok(out) = self.resampler.process(&[block], None) {
         self.chunk_buf.extend_from_slice(&out[0]);
       }
-      while self.chunk_buf.len() >= VAD_CHUNK {
-        let chunk: Vec<f32> = self.chunk_buf.drain(..VAD_CHUNK).collect();
-        let probability = self.vad.predict(chunk);
-        self.vote.record(probability >= SPEECH_THRESHOLD);
+      let frame_size = self.engine.frame_size();
+      while self.chunk_buf.len() >= frame_size {
+        let chunk: Vec<f32> = self.chunk_buf.drain(..frame_size).collect();
+        let decision = self.engine.predict(chunk);
+        self.vote.record(decision);
       }
     }
   }
@@ -144,7 +215,7 @@ impl SpeechDetector {
     self.chunk_buf.clear();
     self.vote.reset();
     self.resampler.reset();
-    self.vad.reset();
+    self.engine.reset();
   }
 }
 
@@ -163,9 +234,18 @@ mod tests {
   #[test]
   fn vote_is_speech_when_at_least_half_chunks_are_speech() {
     let mut v = BlockVote::new();
-    v.record(true);
-    v.record(true);
-    v.record(false);
+    v.record(VadDecision {
+      active: true,
+      ..VadDecision::default()
+    });
+    v.record(VadDecision {
+      active: true,
+      ..VadDecision::default()
+    });
+    v.record(VadDecision {
+      active: false,
+      ..VadDecision::default()
+    });
     assert!(
       v.is_speech_majority(),
       "2 of 3 speech chunks should be a majority"
@@ -175,9 +255,18 @@ mod tests {
   #[test]
   fn vote_is_not_speech_when_minority_chunks_are_speech() {
     let mut v = BlockVote::new();
-    v.record(true);
-    v.record(false);
-    v.record(false);
+    v.record(VadDecision {
+      active: true,
+      ..VadDecision::default()
+    });
+    v.record(VadDecision {
+      active: false,
+      ..VadDecision::default()
+    });
+    v.record(VadDecision {
+      active: false,
+      ..VadDecision::default()
+    });
     assert!(
       !v.is_speech_majority(),
       "1 of 3 speech chunks should not be a majority"
@@ -188,6 +277,14 @@ mod tests {
   fn vote_with_no_chunks_is_not_speech() {
     let v = BlockVote::new();
     assert!(!v.is_speech_majority());
+  }
+
+  #[test]
+  fn silero_engine_reports_expected_frame_size() {
+    let d = SpeechDetector::new_with_engine(48_000.0, VadEngineKind::Silero)
+      .expect("silero detector builds from bundled model");
+    assert_eq!(d.engine.kind(), VadEngineKind::Silero);
+    assert_eq!(d.engine.frame_size(), VAD_CHUNK);
   }
 
   // Integration smoke test: exercises the full mono→resample→Silero→vote chain on real
