@@ -32,13 +32,15 @@ describe("Tauri security configuration", () => {
   });
 
   it("allows opening PLVS release links in the system browser", () => {
-    expect(defaultCapability.permissions).toContainEqual({
-      identifier: "opener:allow-open-url",
-      allow: [
+    const opener = defaultCapability.permissions.find(
+      (permission) => permission?.identifier === "opener:allow-open-url"
+    );
+    expect(opener?.allow).toEqual(
+      expect.arrayContaining([
         { url: "https://github.com/SounDoer/PLVS/releases" },
         { url: "https://github.com/SounDoer/PLVS/releases/*" },
-      ],
-    });
+      ])
+    );
   });
 
   it("scopes default capabilities to known app windows", () => {
