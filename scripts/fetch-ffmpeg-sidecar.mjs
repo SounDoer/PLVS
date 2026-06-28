@@ -5,7 +5,7 @@
 
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +23,16 @@ const ASSETS = {
     {
       name: "ffprobe-x86_64-pc-windows-msvc.exe",
       sha256: "411c157144e52430c189e3e30811b89fa4727befb67af27c868c055be206d21b",
+    },
+  ],
+  darwin: [
+    {
+      name: "ffmpeg-aarch64-apple-darwin",
+      sha256: "624621795ba3ccbe98b8e752333d2a38f069b3652481f5166cf2252d772676ce",
+    },
+    {
+      name: "ffprobe-aarch64-apple-darwin",
+      sha256: "c28b47f20d0e2e360ca835a1cc5ed4df36db71aa6b2d2bf4da4e487ff7cca01e",
     },
   ],
 };
@@ -52,6 +62,7 @@ async function ensureAsset({ name, sha256: expected }) {
     throw new Error(`checksum mismatch for ${name}\n  expected ${expected}\n  got      ${got}`);
   }
   await writeFile(dest, buf);
+  if (process.platform !== "win32") await chmod(dest, 0o755); // sidecars must be executable on Unix
   console.log(`✓ ${name} downloaded and verified (${buf.length} bytes)`);
 }
 

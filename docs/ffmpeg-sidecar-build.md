@@ -22,10 +22,12 @@ so it runs automatically before the desktop build/dev/release scripts (`npm run 
 npm run ffmpeg:fetch
 ```
 
-On platforms with no published binary yet (macOS/Linux this phase) it prints a warning and exits 0;
-the subsequent Tauri build will then fail on the missing `externalBin`, which is expected until those
-binaries are built. When you rebuild or bump the FFmpeg version, upload the new binaries to a new
-`ffmpeg-sidecar-<version>` release and update `TAG` + the SHA-256 values in the fetch script.
+Windows (`x86_64-pc-windows-msvc`) and macOS (`aarch64-apple-darwin`) binaries are published.
+PLVS does not ship a Linux app, so no Linux sidecar exists; `externalBin` is declared only in
+`tauri.windows.conf.json` / `tauri.macos.conf.json` (not the base config), so Linux builds — including
+the ubuntu CI fmt/clippy/test job — do not require a binary. When you bump the FFmpeg version, upload
+the new binaries to a new `ffmpeg-sidecar-<version>` release and update `TAG` + the SHA-256 values in
+the fetch script.
 
 The trimmed audio-only build is tiny: **~2 MB each** (ffmpeg + ffprobe), versus ~220 MB for a full
 prebuilt. No video decoders, encoders, filters, network, or x86 assembly are included.
@@ -131,8 +133,11 @@ ffmpeg.exe -nostdin -loglevel error -progress pipe:2 -i SAMPLE.mkv \
   -map 0:a:0 -vn -f f32le pipe:1 | wc -c                                  # > 0 bytes of PCM
 ```
 
-macOS / Linux binaries are built the same way (native toolchain, no winlibs/Git-Bash layer) and are
-deferred to a later phase.
+The macOS (`aarch64-apple-darwin`) binary is built on a CI runner — see
+`.github/workflows/build-ffmpeg-sidecar-macos.yml` — which compiles the same trimmed configuration on
+`macos-latest` (native clang/make, no winlibs/Git-Bash layer; drop `--target-os`/`--arch` and the
+`-static` link flag, add `-mmacosx-version-min`) and uploads the result to the release. PLVS ships no
+Linux app, so no Linux binary is built.
 
 ## Licensing (LGPL)
 
