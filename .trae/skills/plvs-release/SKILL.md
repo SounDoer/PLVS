@@ -560,6 +560,26 @@ tag — see the Step 7 warning).
 
 ---
 
+## FFmpeg Sidecar Dependency
+
+File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **not in git**;
+`scripts/fetch-ffmpeg-sidecar.mjs` downloads them (SHA-256 verified) from a dedicated
+`ffmpeg-sidecar-<ffmpeg-version>` release, and the `desktop:*` build scripts run it automatically.
+
+- **Normal releases need no action** — the Windows and macOS build jobs fetch the sidecars themselves
+  (`npm run ffmpeg:fetch` is wired into `desktop:release-nsis` / `desktop:release-dmg`).
+- **When bumping the FFmpeg version**, before releasing you must:
+  1. Rebuild the trimmed binaries — Windows locally, macOS via the `build-ffmpeg-sidecar-macos.yml`
+     workflow (`gh workflow run build-ffmpeg-sidecar-macos.yml`).
+  2. Upload them to a new `ffmpeg-sidecar-<version>` release.
+  3. Update `TAG` and the four SHA-256 values in `scripts/fetch-ffmpeg-sidecar.mjs`.
+
+  Full recipe: `docs/ffmpeg-sidecar-build.md`.
+- The sidecar `externalBin` is declared only in `tauri.windows.conf.json` / `tauri.macos.conf.json`,
+  so the Linux CI gate (PLVS ships no Linux app) does not require a binary.
+
+---
+
 ## Important Notes
 
 - **No code signing**: Users may see SmartScreen (Windows) or Gatekeeper (macOS) warnings

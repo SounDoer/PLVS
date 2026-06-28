@@ -39,6 +39,11 @@ NSIS installer + portable exe, then **replaces** the `dev` Pre-release so it
 always holds only the latest build. The verify/lint/test gate is skipped, so
 dev builds are fast but unverified — a green run only means it compiled.
 
+The build first runs `npm run ffmpeg:fetch` (wired into `desktop:release-nsis`), which downloads the
+SHA-256-pinned FFmpeg sidecar binaries from the `ffmpeg-sidecar-<version>` release into
+`src-tauri/binaries/` — needed because they are gitignored. This is automatic; see
+`docs/ffmpeg-sidecar-build.md` if a fetch ever fails.
+
 ## Steps
 
 ### 1. Confirm the branch and push it
