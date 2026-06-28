@@ -14,12 +14,20 @@ const sessions = [
     fileName: "scan.wav",
     state: "analyzing",
     progress: 0.42,
+    metadata: {
+      container: "wav",
+      selectedTrack: { index: 0, codec: "pcm", sampleRateHz: 48000, channels: 2 },
+    },
   },
   {
     id: "complete",
-    fileName: "final.wav",
+    fileName: "final.mov",
     state: "complete",
-    summary: { durationMs: 120_000 },
+    metadata: {
+      container: "mov,mp4,m4a,3gp,3g2,mj2",
+      selectedTrack: { index: 1, codec: "ac3", sampleRateHz: 48000, channels: 6 },
+    },
+    summary: { durationMs: 120_000, integratedLufs: -23.1, truePeakMaxDbtp: -1.0 },
   },
   {
     id: "error",
@@ -71,11 +79,14 @@ describe("FileAnalysisHistoryMenu", () => {
     expect(screen.getByText("Ready")).toBeTruthy();
     expect(screen.getByText("scan.wav")).toBeTruthy();
     expect(screen.getByText("42%")).toBeTruthy();
-    expect(screen.getByText("final.wav")).toBeTruthy();
+    expect(screen.getByText("WAV - PCM - Stereo")).toBeTruthy();
+    expect(screen.getByText("final.mov")).toBeTruthy();
     expect(screen.getByText("00:02:00")).toBeTruthy();
+    expect(screen.getByText("-23.1 LUFS - -1.0 dBTP")).toBeTruthy();
     expect(screen.getByText("broken.wav")).toBeTruthy();
     expect(screen.getByText("Error")).toBeTruthy();
-    expect(screen.getByLabelText("Active file final.wav")).toBeTruthy();
+    expect(screen.getByText("Unsupported codec")).toBeTruthy();
+    expect(screen.getByLabelText("Active file final.mov")).toBeTruthy();
     expect(screen.getByText("Analyzing")).toBeTruthy();
   });
 

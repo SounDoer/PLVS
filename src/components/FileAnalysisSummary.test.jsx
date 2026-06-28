@@ -26,6 +26,7 @@ describe("FileAnalysisSummary", () => {
               codec: "pcm",
               sampleRateHz: 48000,
               channels: 2,
+              language: "eng",
             },
           },
           summary: {
@@ -44,15 +45,24 @@ describe("FileAnalysisSummary", () => {
     );
 
     expect(screen.getByText("final.wav")).toBeTruthy();
+    expect(screen.getByText("Analyzed file")).toBeTruthy();
     expect(screen.getByText("Integrated")).toBeTruthy();
     expect(screen.getByText("-16.2 LUFS")).toBeTruthy();
     expect(screen.getByText("True Peak Max")).toBeTruthy();
     expect(screen.getByText("-1.0 dBTP")).toBeTruthy();
-    expect(screen.getByText("Track 0 · pcm · 48 kHz · 2 ch")).toBeTruthy();
+    expect(
+      screen.getByText("WAV - Audio track 0 - English - PCM - 48 kHz - Stereo - 00:03:00")
+    ).toBeTruthy();
   });
 
-  it("renders an error state", () => {
-    render(<FileAnalysisSummary fileSession={{ state: "error", error: "Unsupported codec" }} />);
+  it("renders an error state with a readable file-level title", () => {
+    render(
+      <FileAnalysisSummary
+        fileSession={{ state: "error", fileName: "clip.mov", error: "Unsupported codec" }}
+      />
+    );
+
+    expect(screen.getByText("Could not analyze clip.mov")).toBeTruthy();
     expect(screen.getByText("Unsupported codec")).toBeTruthy();
   });
 
@@ -104,6 +114,7 @@ describe("FileAnalysisSummary", () => {
     );
 
     expect(screen.getByText("current.wav")).toBeTruthy();
+    expect(screen.getByText("Analyzing file")).toBeTruthy();
     expect(screen.getByText("25%")).toBeTruthy();
     expect(screen.queryByText("Integrated")).toBeNull();
 

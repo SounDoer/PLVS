@@ -1,5 +1,6 @@
 import { RefreshCw, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatCompactSessionMetadata, formatPeakPair } from "@/lib/fileAnalysisDisplay";
 import { cn } from "@/lib/utils";
 import { formatClock } from "../hooks/useSessionTimer.js";
 
@@ -15,6 +16,14 @@ function statusLabel(session) {
   }
   if (session?.state === "error") return "Error";
   return "File";
+}
+
+function detailLabel(session) {
+  if (session?.state === "complete") {
+    return formatPeakPair(session.summary) ?? formatCompactSessionMetadata(session);
+  }
+  if (session?.state === "error") return session.error || "Analysis failed";
+  return formatCompactSessionMetadata(session);
 }
 
 export function FileAnalysisHistoryMenu({
@@ -57,6 +66,7 @@ export function FileAnalysisHistoryMenu({
           {fileSessions.map((session) => {
             const isActive = session.id === activeFileId;
             const isAnalyzing = session.id === analyzingFileId;
+            const detail = detailLabel(session);
             return (
               <div
                 key={session.id}
@@ -83,11 +93,23 @@ export function FileAnalysisHistoryMenu({
                       <span>{statusLabel(session)}</span>
                       {isAnalyzing ? (
                         <>
-                          <span aria-hidden="true">·</span>
+                          <span aria-hidden="true">-</span>
                           <span>Analyzing</span>
                         </>
                       ) : null}
                     </span>
+                    {detail ? (
+                      <span
+                        className={cn(
+                          "mt-0.5 block truncate text-[10px] tabular-nums",
+                          session.state === "error"
+                            ? "text-[color:var(--ui-signal-bad)]"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {detail}
+                      </span>
+                    ) : null}
                   </span>
                 </button>
                 <span className="flex shrink-0 items-center gap-0.5 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
