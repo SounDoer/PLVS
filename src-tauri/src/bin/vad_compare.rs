@@ -9,11 +9,14 @@ use firered_vad::Vad as FireRedVad;
 use rubato::{
   Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
+use ten_vad_rs::TenVad;
 use voice_activity_detector::VoiceActivityDetector;
 
 const VAD_RATE: usize = 16_000;
 const RESAMPLER_IN_CHUNK: usize = 1024;
 const SILERO_FRAME: usize = 512;
+const TEN_FRAME: usize = 256;
+const TEN_VAD_MODEL: &[u8] = include_bytes!("../../vendor/ten-vad-rs/ten-vad.onnx");
 
 trait Engine {
   fn frame_size(&self) -> usize;
@@ -66,6 +69,36 @@ impl Engine for FireRed {
   fn predict(&mut self, frame: Vec<f32>) -> Option<bool> {
     self.vad.push_samples(&frame).ok()?;
     self.vad.recent_frames().last().map(|f| f.is_speech())
+  }
+}
+
+struct Ten {
+  vad: TenVad,
+}
+
+impl Ten {
+  fn new() -> Self {
+    Self {
+      vad: TenVad::new_from_bytes(TEN_VAD_MODEL, VAD_RATE as u32).expect("TEN VAD should load"),
+    }
+  }
+}
+
+impl Engine for Ten {
+  fn frame_size(&self) -> usize {
+    TEN_FRAME
+  }
+
+  fn predict(&mut self, frame: Vec<f32>) -> Option<bool> {
+    let frame: Vec<i16> = frame
+      .into_iter()
+      .map(|sample| (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16)
+      .collect();
+    self
+      .vad
+      .process_frame(&frame)
+      .ok()
+      .map(|probability| probability >= 0.5)
   }
 }
 
@@ -239,6 +272,12 @@ fn main() {
     let (active, blocks) = run(Detector::new(FireRed::new(), audio.sample_rate), &audio);
     println!(
       "{name},{ext},FireRed,{active},{blocks},{:.1},{duration:.1}",
+      100.0 * active as f64 / blocks as f64
+    );
+
+    let (active, blocks) = run(Detector::new(Ten::new(), audio.sample_rate), &audio);
+    println!(
+      "{name},{ext},TEN,{active},{blocks},{:.1},{duration:.1}",
       100.0 * active as f64 / blocks as f64
     );
   }

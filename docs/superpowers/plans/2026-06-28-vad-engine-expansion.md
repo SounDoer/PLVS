@@ -104,10 +104,25 @@ Why second:
 - TEN VAD is attractive as a low-latency, very small real-time engine.
 - It may be easier to keep as a runtime-light option if its platform libraries package cleanly.
 
+Current dependency finding:
+
+- `ten-vad-rs = 0.1.7` is the preferred Rust path. It uses `ort = 2.0.0-rc.12` and
+  `ndarray = 0.17.2`, matching the dependency graph already needed by FireRed and the vendored
+  Silero wrapper.
+- The crate's embedded ONNX model is small: `ten-vad.onnx` is about `315 KB`.
+- The alternative `ten_vad = 0.1.0` crate was rejected for now because its Windows build expects
+  ONNX Runtime C headers via `ORT_ROOT`/`ONNXRUNTIME_DIR`, which would complicate PLVS packaging.
+- Mainline strategy: vendor `ten-vad.onnx` and its Apache-2.0 license under
+  `src-tauri/vendor/ten-vad-rs`, load it with `TenVad::new_from_bytes`, and keep `SpeechDetector`
+  defaulting to Silero.
+- `VadEngineKind::Ten` is implemented behind the same internal `DialogueVadEngine` adapter
+  interface. It uses 256-sample frames at 16 kHz and the same `0.5` active threshold before the
+  shared 100 ms majority aggregator.
+
 Spike checklist:
 
-- Start with a Rust wrapper or direct C ABI proof.
-- Confirm 16 kHz / 160 or 256 sample frame behavior.
+- Start with a Rust wrapper or direct C ABI proof. Done with `ten-vad-rs`.
+- Confirm 16 kHz / 160 or 256 sample frame behavior. Done: adapter uses 256 samples.
 - Verify dynamic-library packaging for Windows and macOS.
 - Compare latency and boundary stability against Silero and FireRed.
 
@@ -126,6 +141,14 @@ Spike checklist:
 - Benchmark Chinese speech fixtures separately from multilingual/media fixtures.
 - Watch false positives carefully; high recall is not automatically good for loudness metering.
 
+Current dependency finding:
+
+- The currently visible Rust crate path, `rlx-funasr = 0.2.9`, is `GPL-3.0-only`. Do not add it as
+  a mainline PLVS dependency unless we intentionally accept GPL obligations or isolate it behind a
+  separate process/plugin boundary.
+- FunASR should remain a design spike until we find a permissive runtime-only integration path, or
+  decide that an external optional component is acceptable.
+
 ## Validation
 
 Before exposing any engine choice to users, build a local fixture runner that reports per-engine:
@@ -141,13 +164,17 @@ Initial fixture comparison:
 - Added `cargo run --release --bin vad_compare -- <audio-dir>` as a diagnostic runner.
 - The runner reads `.f32` fixtures directly as 48 kHz stereo f32le, and decodes `.wav` fixtures
   through `ffmpeg` to the same 48 kHz stereo f32le format before comparison.
-- On the existing synthetic fixtures, Silero and FireRed are close:
-  - `speech_pure`: Silero `89.4%`, FireRed `86.1%`
-  - `noise_pure`: Silero `0.0%`, FireRed `0.0%`
-  - `mix_5050`: Silero `44.5%`, FireRed `43.5%`
-  - `mix_2080`: Silero `18.5%`, FireRed `17.8%`
-- On `小陈.wav` (Japanese speech), Silero under-detects heavily: Silero `16.8%`, FireRed `67.9%`.
-- On vocal music, FireRed is much more sensitive than Silero, which is useful evidence but also a
-  warning for dialogue loudness:
-  - `Midnight Highway Heartbeat - Vocal A.wav`: Silero `5.3%`, FireRed `77.7%`
-  - `Velvet in the Afternoon - Vocal A.wav`: Silero `47.2%`, FireRed `67.6%`
+- On the existing synthetic fixtures, Silero, FireRed, and TEN are close:
+  - `speech_pure`: Silero `89.4%`, FireRed `86.1%`, TEN `87.0%`
+  - `noise_pure`: Silero `0.0%`, FireRed `0.0%`, TEN `0.0%`
+  - `mix_5050`: Silero `44.5%`, FireRed `43.5%`, TEN `43.7%`
+  - `mix_2080`: Silero `18.5%`, FireRed `17.8%`, TEN `18.1%`
+- On `小陈.wav` (Japanese speech), Silero under-detects heavily: Silero `16.8%`,
+  FireRed `67.9%`, TEN `73.2%`.
+- On dialogue-like recordings, TEN is currently the most sensitive of the three:
+  - `vo test.wav`: Silero `78.0%`, FireRed `82.9%`, TEN `86.0%`
+  - `佩丽卡.wav`: Silero `78.4%`, FireRed `83.0%`, TEN `86.3%`
+- On vocal music, FireRed and TEN are much more sensitive than Silero, which is useful evidence but
+  also a warning for dialogue loudness:
+  - `Midnight Highway Heartbeat - Vocal A.wav`: Silero `5.3%`, FireRed `77.7%`, TEN `68.0%`
+  - `Velvet in the Afternoon - Vocal A.wav`: Silero `47.2%`, FireRed `67.6%`, TEN `61.3%`

@@ -6,7 +6,7 @@ authors = ["SounDoer"]
 license = "MIT"
 repository = "https://github.com/SounDoer/PLVS"
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.95"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -42,3 +42,4 @@ time = "=0.3.49"
 symphonia = { version = "0.5.5", features = ["aac", "alac", "flac", "isomp4", "mp3", "vorbis", "aiff", "wav", "mkv"] }
 tauri-plugin-dialog = "2.7.1"
 firered-vad = "0.1.0"
+ten-vad-rs = "0.1.7"
