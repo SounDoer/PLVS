@@ -106,6 +106,7 @@ describe("LevelMeterPanel", () => {
     expect(marker?.textContent).toBe("-22.4");
     expect(marker.className).toContain("text-primary");
     expect(marker.className).toContain("font-[family-name:var(--ui-font-mono)]");
+    expect(marker.className).toContain("text-[length:var(--ui-fs-display)]");
     expect(marker.className).toContain("tabular-nums");
     expect(marker.className).toContain("font-semibold");
     expect(marker.className).not.toContain("bg-primary");
@@ -118,9 +119,10 @@ describe("LevelMeterPanel", () => {
       "w-[var(--ui-w-axis-rail)]"
     );
     const axisTick = screen.getByText("-20");
-    expect(axisTick.className).toContain("left-0");
-    expect(axisTick.className).toContain("font-[family-name:var(--ui-font-mono)]");
-    expect(axisTick.className).toContain("tabular-nums");
+    expect(axisTick.className).toContain("right-0");
+    expect(axisTick.className).not.toContain("left-0");
+    expect(axisTick.className).not.toContain("font-[family-name:var(--ui-font-mono)]");
+    expect(axisTick.className).not.toContain("tabular-nums");
   });
 
   it("renders Short-term LUFS in Level Meter mode", () => {

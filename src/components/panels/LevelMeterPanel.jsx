@@ -3,6 +3,7 @@ import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PANEL_METRIC_FOOTER, PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
+import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
   LOUDNESS_DB_MAX,
   LOUDNESS_DB_MIN,
@@ -21,22 +22,22 @@ const LEVEL_MODE_META = {
   shortTerm: { label: "ST", unit: "LUFS", field: "shortTerm" },
 };
 
-const LEVEL_METER_Y_LABEL_POSITION = {
+const LEVEL_METER_VALUE_MARKER_POSITION = {
   start: "top-0",
   middle: "-translate-y-1/2",
   end: "bottom-0",
 };
 
-const LEVEL_METER_Y_LABEL_BASE =
-  "absolute left-0 whitespace-nowrap text-left font-[family-name:var(--ui-font-mono)] leading-none tabular-nums";
+const LEVEL_METER_VALUE_MARKER_BASE =
+  "absolute left-0 whitespace-nowrap text-left font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-display)] leading-none tabular-nums";
 const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[5ch]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
 const LEVEL_METER_GRID =
   "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
 
-function levelMeterYAxisLabelClass(position) {
-  return `${LEVEL_METER_Y_LABEL_BASE} ${LEVEL_METER_Y_LABEL_POSITION[position]}`;
+function levelMeterValueMarkerClass(position) {
+  return `${LEVEL_METER_VALUE_MARKER_BASE} ${LEVEL_METER_VALUE_MARKER_POSITION[position]}`;
 }
 
 function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
@@ -89,7 +90,7 @@ function CurrentValueMarker({ value, yRange }) {
       data-level-value-marker
       className={cn(
         "pointer-events-none z-10 font-semibold text-primary",
-        levelMeterYAxisLabelClass("middle")
+        levelMeterValueMarkerClass("middle")
       )}
       style={{ top: `${rangedFromTopFrac(value, yRange.min, yRange.max) * 100}%` }}
     >
@@ -189,14 +190,14 @@ export function LevelMeterPanel() {
                 {levelMeterTicks.map(({ v, lb }, i) => {
                   if (i === 0) {
                     return (
-                      <span key={v} className={levelMeterYAxisLabelClass("start")}>
+                      <span key={v} className={axisLabelClass("y", "start")}>
                         {lb}
                       </span>
                     );
                   }
                   if (i === levelMeterTicks.length - 1) {
                     return (
-                      <span key={v} className={levelMeterYAxisLabelClass("end")}>
+                      <span key={v} className={axisLabelClass("y", "end")}>
                         {lb}
                       </span>
                     );
@@ -204,7 +205,7 @@ export function LevelMeterPanel() {
                   return (
                     <span
                       key={v}
-                      className={levelMeterYAxisLabelClass("middle")}
+                      className={axisLabelClass("y", "middle")}
                       style={{
                         top: `${rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max) * 100}%`,
                       }}
@@ -300,14 +301,14 @@ export function LevelMeterPanel() {
               {levelMeterTicks.map(({ v, lb }, i) => {
                 if (i === 0) {
                   return (
-                    <span key={v} className={levelMeterYAxisLabelClass("start")}>
+                    <span key={v} className={axisLabelClass("y", "start")}>
                       {lb}
                     </span>
                   );
                 }
                 if (i === levelMeterTicks.length - 1) {
                   return (
-                    <span key={v} className={levelMeterYAxisLabelClass("end")}>
+                    <span key={v} className={axisLabelClass("y", "end")}>
                       {lb}
                     </span>
                   );
@@ -315,7 +316,7 @@ export function LevelMeterPanel() {
                 return (
                   <span
                     key={v}
-                    className={levelMeterYAxisLabelClass("middle")}
+                    className={axisLabelClass("y", "middle")}
                     style={{
                       top: `${rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max) * 100}%`,
                     }}
