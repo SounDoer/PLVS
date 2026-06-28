@@ -1,0 +1,4 @@
+# Sidecar binaries are produced out-of-band (see docs/ffmpeg-sidecar-build.md) and hosted as
+# GitHub Release assets, never committed.
+*
+!.gitignore

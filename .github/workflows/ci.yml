@@ -93,6 +93,11 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      # The Windows config declares the ffmpeg/ffprobe externalBin, so the crate will not compile
+      # without them present. Node is preinstalled on GitHub runners.
+      - name: Fetch ffmpeg sidecar binaries
+        run: node scripts/fetch-ffmpeg-sidecar.mjs
+
       - name: Format (rustfmt)
         working-directory: src-tauri
         run: cargo fmt --all -- --check

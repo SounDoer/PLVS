@@ -1,0 +1,93 @@
+# Builds the trimmed, LGPL FFmpeg ffmpeg/ffprobe sidecars for macOS (Apple Silicon,
+# aarch64-apple-darwin) and uploads them to the `ffmpeg-sidecar-7.1` release. Windows binaries are
+# built locally (see docs/ffmpeg-sidecar-build.md); macOS needs a Mac runner. One-shot per FFmpeg
+# version: runs on workflow_dispatch, and once automatically when this file is first pushed.
+name: Build FFmpeg sidecar (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["worktree-ffmpeg-file-decode"]
+    paths: [".github/workflows/build-ffmpeg-sidecar-macos.yml"]
+
+permissions:
+  contents: write
+
+env:
+  FFMPEG_VERSION: "7.1"
+  RELEASE_TAG: "ffmpeg-sidecar-7.1"
+  MIN_MACOS: "14.2"
+
+jobs:
+  build:
+    runs-on: macos-latest # Apple Silicon (arm64)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download FFmpeg source
+        run: |
+          curl -sL -o ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          tar -xf ffmpeg.tar.xz
+
+      - name: Configure + build (trimmed, LGPL, audio-only)
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: |
+          ./configure \
+            --disable-everything --disable-gpl --disable-nonfree \
+            --disable-doc --disable-avdevice --disable-postproc --disable-swscale \
+            --disable-network --disable-encoders --disable-muxers --disable-filters \
+            --disable-x86asm \
+            --enable-small --enable-static --disable-shared \
+            --enable-ffmpeg --enable-ffprobe \
+            --extra-cflags="-mmacosx-version-min=${MIN_MACOS}" \
+            --extra-ldflags="-mmacosx-version-min=${MIN_MACOS}" \
+            --enable-filter=aresample \
+            --enable-protocol=file,pipe \
+            --enable-demuxer=mov,matroska,wav,aiff,flac,mp3,ogg,aac,ac3,eac3,dts,w64 \
+            --enable-decoder=aac,aac_latm,ac3,eac3,dca,opus,vorbis,flac,mp3,alac,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,pcm_u8 \
+            --enable-encoder=pcm_f32le \
+            --enable-muxer=pcm_f32le
+          make -j"$(sysctl -n hw.ncpu)"
+          strip ffmpeg ffprobe
+
+      - name: Sanity-check decoders
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: ./ffmpeg -hide_banner -decoders | grep -E ' (ac3|eac3|dca|opus) '
+
+      # Prove the trimmed binary actually decodes to PCM (not just that the decoders are listed).
+      # A full ffmpeg from Homebrew synthesises one sample per codec; our `./ffmpeg` then decodes
+      # each through PLVS's exact pipeline and the step fails if any yields zero PCM bytes.
+      - name: Real decode test (must output PCM)
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: |
+          brew install ffmpeg
+          gen() { ffmpeg -nostdin -y -loglevel error -f lavfi -i "sine=frequency=1000:duration=1" "$@"; }
+          gen -c:a ac3            s_ac3.mka
+          gen -c:a eac3           s_eac3.mka
+          gen -c:a dca -strict -2 s_dts.mka
+          gen -c:a libopus        s_opus.mka
+          gen -c:a aac            s_aac.m4a
+          fail=0
+          for f in s_ac3.mka s_eac3.mka s_dts.mka s_opus.mka s_aac.m4a; do
+            bytes=$(./ffmpeg -nostdin -loglevel error -progress pipe:2 -i "$f" -map 0:a:0 -vn -f f32le pipe:1 | wc -c)
+            echo "$f -> $bytes PCM bytes"
+            [ "$bytes" -gt 0 ] || { echo "FAIL: $f produced no PCM"; fail=1; }
+          done
+          [ "$fail" -eq 0 ]
+
+      - name: Rename with target triple + checksums
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: |
+          cp ffmpeg  ffmpeg-aarch64-apple-darwin
+          cp ffprobe ffprobe-aarch64-apple-darwin
+          echo "### SHA-256 (pin these in scripts/fetch-ffmpeg-sidecar.mjs)"
+          shasum -a 256 ffmpeg-aarch64-apple-darwin ffprobe-aarch64-apple-darwin
+
+      - name: Upload to release
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${RELEASE_TAG}" \
+            ffmpeg-aarch64-apple-darwin ffprobe-aarch64-apple-darwin --clobber

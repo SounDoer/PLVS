@@ -1,22 +1,16 @@
-use std::fs::File;
+use std::io::Read;
 use std::path::Path;
+use std::process::{Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 
-use symphonia::core::codecs::DecoderOptions;
-use symphonia::core::errors::Error as SymphoniaError;
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
-use symphonia::core::meta::MetadataOptions;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::{ChannelLayoutSetting, MeterPipeline};
-use crate::file_analysis::decode::audio_buffer_ref_to_interleaved_f32;
-use crate::file_analysis::probe::{
-  duration_ms_from_symphonia, hint_from_path, select_first_decodable_track,
-  track_candidate_from_symphonia,
-};
+use crate::file_analysis::ffmpeg::decode::{build_decode_args, bytes_to_f32_le, parse_out_time_us};
+use crate::file_analysis::ffmpeg::locate::locate_sidecar;
+use crate::file_analysis::probe::probe_file;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, FileAnalysisCompletedPayload, FileAnalysisErrorPayload,
   FileAnalysisProgressPayload, FileAnalysisSummaryMetrics, FrameSubscribers,
@@ -123,9 +117,8 @@ fn send_frame(
   }
 }
 
-/// Pure decode -> pipeline -> summary core, with no `AppHandle`/event coupling so it can be tested
-/// against a deterministic fixture. Returns `Ok(None)` when `should_stop` cancels the run before
-/// completion, and `Ok(Some((decoded_frames, summary)))` once end-of-stream is reached.
+/// Decode `path` via the ffmpeg sidecar and feed PCM to the metering pipeline. Returns `Ok(None)`
+/// when cancelled before completion, `Ok(Some((decoded_frames, summary)))` at end of stream.
 fn analyze_file_core(
   path: &str,
   config: &WorkerConfig,
@@ -133,73 +126,72 @@ fn analyze_file_core(
   mut on_progress: impl FnMut(FileAnalysisProgressPayload),
   should_stop: impl Fn() -> bool,
 ) -> Result<Option<(u64, FileAnalysisSummaryMetrics)>, String> {
-  let file = File::open(path).map_err(|err| format!("Unable to open media file: {err}"))?;
-  let mss = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
-  let probed = symphonia::default::get_probe()
-    .format(
-      &hint_from_path(Path::new(path)),
-      mss,
-      &FormatOptions::default(),
-      &MetadataOptions::default(),
-    )
-    .map_err(|err| format!("Unsupported or unreadable media file: {err}"))?;
-
-  let mut format = probed.format;
-
-  // Reuse the shared selection rule so the worker decodes exactly the track the probe reported,
-  // never a non-null video track.
-  let candidates: Vec<_> = format
-    .tracks()
-    .iter()
-    .enumerate()
-    .map(|(index, track)| track_candidate_from_symphonia(index, track))
-    .collect();
-  let selected = select_first_decodable_track(&candidates)?;
-  let track = format
-    .tracks()
-    .get(selected.index as usize)
-    .ok_or_else(|| "Selected audio track is missing".to_string())?
-    .clone();
-  let track_id = track.id;
+  let probe = probe_file(Path::new(path))?;
+  let track = &probe.selected_track;
   let sample_rate = track
-    .codec_params
-    .sample_rate
+    .sample_rate_hz
     .ok_or_else(|| "Selected audio track has no sample rate".to_string())?;
   let channels = track
-    .codec_params
     .channels
-    .map(|c| c.count() as u16)
     .ok_or_else(|| "Selected audio track has no channel count".to_string())?;
-  let total_frames = track.codec_params.n_frames;
+  let duration_ms = probe.duration_ms;
 
-  let mut decoder = symphonia::default::get_codecs()
-    .make(&track.codec_params, &DecoderOptions::default())
-    .map_err(|err| format!("Unsupported audio codec: {err}"))?;
+  let ffmpeg = locate_sidecar("ffmpeg");
+  let args = build_decode_args(path, track.index, channels, sample_rate);
+  let mut child = Command::new(&ffmpeg)
+    .args(&args)
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .stdin(Stdio::null())
+    .spawn()
+    .map_err(|err| format!("FFmpeg component missing or unrunnable: {err}"))?;
+
+  let mut stdout = child.stdout.take().ok_or("ffmpeg stdout unavailable")?;
+  let stderr = child.stderr.take().ok_or("ffmpeg stderr unavailable")?;
+
+  // Progress: a reader thread parses `-progress` lines (out_time_us) off stderr and posts the
+  // latest media-time microseconds. The main loop reads it without blocking decode.
+  let latest_us = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+  let progress_us = latest_us.clone();
+  let stderr_thread = thread::spawn(move || {
+    use std::io::BufRead;
+    let reader = std::io::BufReader::new(stderr);
+    for line in reader.lines().map_while(Result::ok) {
+      if let Some(us) = parse_out_time_us(&line) {
+        progress_us.store(us, std::sync::atomic::Ordering::Relaxed);
+      }
+    }
+  });
 
   let mut pipeline = MeterPipeline::new_for_file(sample_rate, channels);
   let mut decoded_frames = 0_u64;
   let mut last_progress_emit_frames = 0_u64;
+  let mut carry: Vec<u8> = Vec::new();
+  let mut read_buf = [0_u8; 64 * 1024];
 
   loop {
     if should_stop() {
-      // User cancellation: stop without producing a completion/summary. The frontend's stop
-      // handler transitions the session back to a non-analyzing state.
+      let _ = child.kill();
+      let _ = child.wait();
+      let _ = stderr_thread.join();
       return Ok(None);
     }
-    let packet = match format.next_packet() {
-      Ok(packet) => packet,
-      Err(SymphoniaError::IoError(_)) => break,
-      Err(err) => return Err(format!("Unable to read media packet: {err}")),
-    };
-    if packet.track_id() != track_id {
+    let n = stdout
+      .read(&mut read_buf)
+      .map_err(|err| format!("Unable to read decoded audio: {err}"))?;
+    if n == 0 {
+      break;
+    }
+
+    // Stitch any byte that straddles two reads onto the front of this chunk.
+    carry.extend_from_slice(&read_buf[..n]);
+    let usable = carry.len() - (carry.len() % 4);
+    let pcm = bytes_to_f32_le(&carry[..usable]);
+    carry.drain(..usable);
+    if pcm.is_empty() {
       continue;
     }
-    let decoded = match decoder.decode(&packet) {
-      Ok(decoded) => decoded,
-      Err(SymphoniaError::DecodeError(_)) => continue,
-      Err(err) => return Err(format!("Unable to decode audio packet: {err}")),
-    };
-    let pcm = audio_buffer_ref_to_interleaved_f32(decoded)?;
+
     decoded_frames += (pcm.len() / channels.max(1) as usize) as u64;
     let media_time_ms = ((decoded_frames as f64 / sample_rate as f64) * 1000.0).round() as u64;
     if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
@@ -213,32 +205,37 @@ fn analyze_file_core(
     ) {
       on_frame(frame)?;
     }
-    // Emit progress about once per second of decoded media.
+
     if decoded_frames - last_progress_emit_frames >= sample_rate as u64 {
       last_progress_emit_frames = decoded_frames;
-      let progress = total_frames
-        .filter(|total| *total > 0)
-        .map(|total| (decoded_frames as f64 / total as f64).clamp(0.0, 1.0));
+      let out_us = latest_us.load(std::sync::atomic::Ordering::Relaxed);
+      let progress = duration_ms
+        .filter(|d| *d > 0)
+        .map(|d| ((out_us as f64 / 1000.0) / d as f64).clamp(0.0, 1.0));
       on_progress(FileAnalysisProgressPayload {
         path: path.to_string(),
         decoded_frames,
-        total_frames,
+        total_frames: None,
         progress,
       });
     }
   }
 
-  // Flush any buffered history ticks from the tail of the file before completion.
+  let status = child
+    .wait()
+    .map_err(|err| format!("ffmpeg did not exit cleanly: {err}"))?;
+  let _ = stderr_thread.join();
+  if !status.success() {
+    return Err("ffmpeg failed to decode the audio track".to_string());
+  }
+
   if let Some(frame) = pipeline.flush_file_batch(&config.requests) {
     on_frame(frame)?;
   }
 
-  // Authoritative whole-file metrics come from final pipeline state, not the last UI frame.
   let metrics = pipeline.summary_metrics();
-  // Reuse the probe's duration rule (prefers the container time base) so the summary duration
-  // matches the metadata the UI already showed, instead of recomputing a frames/sample-rate value.
   let summary = FileAnalysisSummaryMetrics {
-    duration_ms: duration_ms_from_symphonia(&track),
+    duration_ms,
     sample_rate_hz: sample_rate,
     channels,
     integrated_lufs: metrics.integrated_lufs,
@@ -292,7 +289,7 @@ mod tests {
   use std::f64::consts::PI;
   use std::sync::atomic::{AtomicU32, Ordering};
 
-  /// Write a minimal PCM16 little-endian WAV so symphonia can probe/decode a deterministic fixture
+  /// Write a minimal PCM16 little-endian WAV so ffmpeg can probe/decode a deterministic fixture
   /// without checking a binary asset into the repo.
   fn write_pcm16_wav(path: &Path, sample_rate: u32, channels: u16, samples: &[i16]) {
     let bytes_per_sample = 2_u32;
@@ -367,6 +364,11 @@ mod tests {
 
   #[test]
   fn analyzes_wav_fixture_end_to_end() {
+    if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
+      eprintln!("skipping: ffmpeg sidecar not present");
+      return;
+    }
+
     let sr = 48_000_u32;
     let frames = sr as usize; // one second
     let fixture = TempWav::new("sine", sr, 2, &sine_stereo(sr, frames, 0.5, 1_000.0));
@@ -401,6 +403,11 @@ mod tests {
 
   #[test]
   fn cancellation_returns_without_summary() {
+    if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
+      eprintln!("skipping: ffmpeg sidecar not present");
+      return;
+    }
+
     let sr = 48_000_u32;
     let fixture = TempWav::new("cancel", sr, 2, &sine_stereo(sr, sr as usize, 0.5, 1_000.0));
 
@@ -421,6 +428,11 @@ mod tests {
 
   #[test]
   fn missing_file_reports_visible_error() {
+    if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
+      eprintln!("skipping: ffmpeg sidecar not present");
+      return;
+    }
+
     let err = analyze_file_core(
       "definitely/not/a/real/path.wav",
       &default_config(),
@@ -429,6 +441,9 @@ mod tests {
       || false,
     )
     .expect_err("missing file should error");
-    assert!(err.contains("Unable to open media file"), "got: {err}");
+    assert!(
+      err.contains("Unsupported or unreadable media file") || err.contains("No audio track"),
+      "got: {err}"
+    );
   }
 }
