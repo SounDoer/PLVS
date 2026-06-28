@@ -7,12 +7,17 @@ license = "MIT"
 repository = "https://github.com/SounDoer/PLVS"
 edition = "2021"
 rust-version = "1.95"
+default-run = "plvs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "plvs"
+path = "src/main.rs"
 
 [build-dependencies]
 cc = "1.2.61"

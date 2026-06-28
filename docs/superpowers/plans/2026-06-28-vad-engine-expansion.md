@@ -46,9 +46,8 @@ Each engine adapter should expose:
 `DialogueIntegrator` should continue to consume only the final per-100 ms `active` decision until
 we intentionally add richer product semantics.
 
-The frame-to-block bridge is now `vad::VadBlockAggregator`. It is shared by the production
-`SpeechDetector` and the `vad_compare` diagnostic runner, so future aggregation changes are made in
-one place. The only implemented mode is `Majority`, preserving the original behavior:
+The frame-to-block bridge is now `vad::VadBlockAggregator`. The only implemented mode is
+`Majority`, preserving the original behavior:
 at least half of the VAD frames recorded during a 100 ms loudness block must be active for the block
 to count as dialogue.
 
@@ -161,10 +160,9 @@ Before exposing any engine choice to users, build a local fixture runner that re
 
 Initial fixture comparison:
 
-- Added `cargo run --release --bin vad_compare -- <audio-dir>` as a diagnostic runner.
-- The runner reads `.f32` fixtures directly as 48 kHz stereo f32le, and decodes `.wav` fixtures
-  through `ffmpeg` to the same 48 kHz stereo f32le format before comparison.
-- On the existing synthetic fixtures, Silero, FireRed, and TEN are close:
+- A temporary local comparison runner was used for the first spike and then removed from the
+  product crate after it interfered with Windows bundling.
+- On the existing synthetic fixtures, Silero, FireRed, and TEN were close:
   - `speech_pure`: Silero `89.4%`, FireRed `86.1%`, TEN `87.0%`
   - `noise_pure`: Silero `0.0%`, FireRed `0.0%`, TEN `0.0%`
   - `mix_5050`: Silero `44.5%`, FireRed `43.5%`, TEN `43.7%`

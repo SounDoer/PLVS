@@ -44,6 +44,9 @@ jobs:
       - name: Build Tauri bundle (NSIS + release binary for portable)
         run: npm run desktop:release-nsis
 
+      - name: Smoke test Windows installer
+        run: npm run desktop:verify-windows-installer
+
       - name: Stage dev installers (filename marked -dev.<short-sha>)
         id: stage
         shell: pwsh
