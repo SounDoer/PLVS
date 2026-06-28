@@ -27,9 +27,10 @@
     "rust:check": "npm run rust:fmt && npm run rust:clippy && npm run rust:test",
     "check": "npm run version:check && npm run format:check && npm run lint && npm test && npm run build && npm run rust:check",
     "tauri": "tauri",
-    "desktop": "tauri dev",
-    "desktop:build": "tauri build",
-    "desktop:release-nsis": "tauri build --bundles nsis",
+    "ffmpeg:fetch": "node scripts/fetch-ffmpeg-sidecar.mjs",
+    "desktop": "npm run ffmpeg:fetch && tauri dev",
+    "desktop:build": "npm run ffmpeg:fetch && tauri build",
+    "desktop:release-nsis": "npm run ffmpeg:fetch && tauri build --bundles nsis",
     "desktop:release-dmg": "tauri build --bundles dmg"
   },
   "simple-git-hooks": {

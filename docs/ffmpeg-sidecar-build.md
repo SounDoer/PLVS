@@ -8,6 +8,25 @@ The binaries are **not committed** to git (`src-tauri/binaries/.gitignore` ignor
 itself). They are produced out-of-band and hosted as GitHub Release assets; the bundle step pulls
 them into `src-tauri/binaries/`.
 
+## Fetching the published binaries
+
+The binaries live on a dedicated, version-pinned release (named after the FFmpeg version, not the
+app version): <https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1>.
+
+`scripts/fetch-ffmpeg-sidecar.mjs` downloads them into `src-tauri/binaries/` and verifies each
+against a pinned SHA-256. It is idempotent — a file already present with the right hash is skipped —
+so it runs automatically before the desktop build/dev/release scripts (`npm run desktop`,
+`desktop:build`, `desktop:release-nsis`) and can also be run on its own:
+
+```bash
+npm run ffmpeg:fetch
+```
+
+On platforms with no published binary yet (macOS/Linux this phase) it prints a warning and exits 0;
+the subsequent Tauri build will then fail on the missing `externalBin`, which is expected until those
+binaries are built. When you rebuild or bump the FFmpeg version, upload the new binaries to a new
+`ffmpeg-sidecar-<version>` release and update `TAG` + the SHA-256 values in the fetch script.
+
 The trimmed audio-only build is tiny: **~2 MB each** (ffmpeg + ffprobe), versus ~220 MB for a full
 prebuilt. No video decoders, encoders, filters, network, or x86 assembly are included.
 
