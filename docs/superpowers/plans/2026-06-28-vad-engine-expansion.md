@@ -129,3 +129,19 @@ Before exposing any engine choice to users, build a local fixture runner that re
 - dialogue integrated loudness
 - disagreement count versus annotated fixtures
 - per-content notes for speech, music, singing, and noisy mixed material
+
+Initial fixture comparison:
+
+- Added `cargo run --release --bin vad_compare -- <audio-dir>` as a diagnostic runner.
+- The runner reads `.f32` fixtures directly as 48 kHz stereo f32le, and decodes `.wav` fixtures
+  through `ffmpeg` to the same 48 kHz stereo f32le format before comparison.
+- On the existing synthetic fixtures, Silero and FireRed are close:
+  - `speech_pure`: Silero `89.4%`, FireRed `86.1%`
+  - `noise_pure`: Silero `0.0%`, FireRed `0.0%`
+  - `mix_5050`: Silero `44.5%`, FireRed `43.5%`
+  - `mix_2080`: Silero `18.5%`, FireRed `17.8%`
+- On `小陈.wav` (Japanese speech), Silero under-detects heavily: Silero `16.8%`, FireRed `67.9%`.
+- On vocal music, FireRed is much more sensitive than Silero, which is useful evidence but also a
+  warning for dialogue loudness:
+  - `Midnight Highway Heartbeat - Vocal A.wav`: Silero `5.3%`, FireRed `77.7%`
+  - `Velvet in the Afternoon - Vocal A.wav`: Silero `47.2%`, FireRed `67.6%`

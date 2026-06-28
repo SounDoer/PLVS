@@ -19,6 +19,7 @@ const RESAMPLER_IN_CHUNK: usize = 1024;
 /// Speech probability at/above which a chunk counts as speech.
 const SPEECH_THRESHOLD: f32 = 0.5;
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VadEngineKind {
   Silero,
@@ -46,6 +47,7 @@ impl VadDecision {
   }
 }
 
+#[allow(dead_code)]
 pub trait DialogueVadEngine: Send {
   fn kind(&self) -> VadEngineKind;
   fn frame_size(&self) -> usize;
