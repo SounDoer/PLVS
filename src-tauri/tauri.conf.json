@@ -19,10 +19,6 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "externalBin": [
-      "binaries/ffmpeg",
-      "binaries/ffprobe"
-    ],
     "macOS": {
       "minimumSystemVersion": "14.2"
     },
