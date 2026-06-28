@@ -55,6 +55,27 @@ jobs:
         working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
         run: ./ffmpeg -hide_banner -decoders | grep -E ' (ac3|eac3|dca|opus) '
 
+      # Prove the trimmed binary actually decodes to PCM (not just that the decoders are listed).
+      # A full ffmpeg from Homebrew synthesises one sample per codec; our `./ffmpeg` then decodes
+      # each through PLVS's exact pipeline and the step fails if any yields zero PCM bytes.
+      - name: Real decode test (must output PCM)
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: |
+          brew install ffmpeg
+          gen() { ffmpeg -nostdin -y -loglevel error -f lavfi -i "sine=frequency=1000:duration=1" "$@"; }
+          gen -c:a ac3            s_ac3.mka
+          gen -c:a eac3           s_eac3.mka
+          gen -c:a dca -strict -2 s_dts.mka
+          gen -c:a libopus        s_opus.mka
+          gen -c:a aac            s_aac.m4a
+          fail=0
+          for f in s_ac3.mka s_eac3.mka s_dts.mka s_opus.mka s_aac.m4a; do
+            bytes=$(./ffmpeg -nostdin -loglevel error -progress pipe:2 -i "$f" -map 0:a:0 -vn -f f32le pipe:1 | wc -c)
+            echo "$f -> $bytes PCM bytes"
+            [ "$bytes" -gt 0 ] || { echo "FAIL: $f produced no PCM"; fail=1; }
+          done
+          [ "$fail" -eq 0 ]
+
       - name: Rename with target triple + checksums
         working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
         run: |
