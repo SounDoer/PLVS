@@ -281,7 +281,7 @@ mod tests {
   use std::f64::consts::PI;
   use std::sync::atomic::{AtomicU32, Ordering};
 
-  /// Write a minimal PCM16 little-endian WAV so symphonia can probe/decode a deterministic fixture
+  /// Write a minimal PCM16 little-endian WAV so ffmpeg can probe/decode a deterministic fixture
   /// without checking a binary asset into the repo.
   fn write_pcm16_wav(path: &Path, sample_rate: u32, channels: u16, samples: &[i16]) {
     let bytes_per_sample = 2_u32;
