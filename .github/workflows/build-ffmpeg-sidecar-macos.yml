@@ -1,14 +1,12 @@
 # Builds the trimmed, LGPL FFmpeg ffmpeg/ffprobe sidecars for macOS (Apple Silicon,
 # aarch64-apple-darwin) and uploads them to the `ffmpeg-sidecar-7.1` release. Windows binaries are
 # built locally (see docs/ffmpeg-sidecar-build.md); macOS needs a Mac runner. One-shot per FFmpeg
-# version: runs on workflow_dispatch, and once automatically when this file is first pushed.
+# version: run it manually (workflow_dispatch) whenever the FFmpeg version is bumped, then re-pin the
+# resulting SHA-256s in scripts/fetch-ffmpeg-sidecar.mjs.
 name: Build FFmpeg sidecar (macOS)
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["worktree-ffmpeg-file-decode"]
-    paths: [".github/workflows/build-ffmpeg-sidecar-macos.yml"]
 
 permissions:
   contents: write
