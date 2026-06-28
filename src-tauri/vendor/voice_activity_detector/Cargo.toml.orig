@@ -1,0 +1,46 @@
+[package]
+name = "voice_activity_detector"
+version = "0.2.1"
+edition = "2021"
+authors = ["Nick Keenan <nkeenan38@gmail.com>"]
+description = "Voice Activity Detector using the Silero VAD model."
+license-file = "LICENSE"
+repository = "https://github.com/nkeenan38/voice_activity_detector"
+readme = "README.md"
+keywords = ["speech", "recognition", "voice", "activity", "detection"]
+categories = ["multimedia::audio"]
+resolver = "2"
+include = ["src/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
+
+[dependencies]
+futures = "0.3.31"
+ndarray = "0.16.1"
+pin-project = "1.1.10"
+thiserror = "^2"
+typed-builder = "0.20.1"
+
+# Lock the 'ort' dependency to exactly version 2.0.0-rc.10
+# Reason:
+# When specifying version = "2.0.0-rc.10" without the '=' sign,
+# Cargo treats it as a caret requirement (^2.0.0-rc.10), which includes pre-release versions like rc.10.
+# If a newer pre-release (e.g., 2.0.0-rc.11) exists, Cargo may auto-upgrade to it.
+# However, future rc releases may introduce changes that cause this project to fail to compile.
+# Using '=2.0.0-rc.10' ensures that Cargo installs exactly this version, avoiding unexpected breakage.
+[dependencies.ort]
+version = "=2.0.0-rc.10"
+features = ["ndarray"]
+
+# Similarly, lock 'ort-sys' to the same exact version.
+# This ensures consistency and prevents indirect upgrades that could lead to version mismatches or build issues.
+[dependencies.ort-sys]
+version = "=2.0.0-rc.10"
+
+[dev-dependencies]
+hound = "3.5.1"
+itertools = "0.14.0"
+tokio = { version = "1.44.1", features = ["test-util", "macros"] }
+tokio-stream = { version = "0.1.17", features = ["full"] }
+
+[features]
+async = []
+load-dynamic = ["ort/load-dynamic"]

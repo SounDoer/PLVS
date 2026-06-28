@@ -33,7 +33,7 @@ tauri-plugin-opener = "2.5.4"
 tauri-plugin-process = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
-voice_activity_detector = "0.2.1"
+voice_activity_detector = { path = "vendor/voice_activity_detector" }
 rubato = "0.16"
 # Pin: time 0.3.48 breaks a trait-coherence check in tauri-utils/cookie. The pre-commit hook
 # regenerates Cargo.lock (`cargo generate-lockfile`) whenever Cargo.toml changes, which would
@@ -41,3 +41,4 @@ rubato = "0.16"
 time = "=0.3.49"
 symphonia = { version = "0.5.5", features = ["aac", "alac", "flac", "isomp4", "mp3", "vorbis", "aiff", "wav", "mkv"] }
 tauri-plugin-dialog = "2.7.1"
+firered-vad = "0.1.0"

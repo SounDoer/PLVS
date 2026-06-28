@@ -70,15 +70,18 @@ Current dependency finding:
   `ort` dependency to `2.0.0-rc.12` also required changing its `ndarray` dependency to `0.17.2`.
   With both changes, a temporary binary successfully ran Silero and FireRed in the same process:
   Silero returned `0.044263` for a silent 512-sample frame, and FireRed returned 98 silence frames.
+- Mainline dependency strategy chosen for the first FireRed spike: `voice_activity_detector` is
+  vendored under `src-tauri/vendor/voice_activity_detector` with the same `ort rc.12` +
+  `ndarray 0.17.2` patch. `src-tauri` can now depend on both the patched Silero wrapper and
+  `firered-vad = 0.1.0`.
+- `VadEngineKind::FireRed` is implemented behind the same internal `DialogueVadEngine` adapter
+  interface. `SpeechDetector::new()` still defaults to Silero; FireRed is only exercised by
+  explicit internal construction/tests.
 
 Spike checklist:
 
 - Prefer a Rust/ONNX or NCNN path that does not require Python at runtime.
-- Keep `firered-vad` out of `src-tauri/Cargo.toml` until the ONNX runtime version strategy is chosen.
-- Decide between:
-  - replacing `voice_activity_detector` with a Silero path compatible with `ort rc.12`;
-  - vendoring/patching the small existing Silero wrapper to `ort rc.12` plus `ndarray 0.17.2`;
-  - keeping FireRed outside the hot path until a compatible crate version exists.
+- Keep FireRed out of user-facing settings until fixture comparison exists.
 - Confirm Windows and macOS packaging in Tauri.
 - Measure model/runtime size and startup cost.
 - Feed streaming 10 ms frames into the existing 100 ms block vote.

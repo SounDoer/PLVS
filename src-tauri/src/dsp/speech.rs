@@ -3,6 +3,7 @@
 //! Downmixes the input to mono, resamples to 16 kHz, runs the Silero VAD over fixed
 //! 512-sample chunks, and reports a per-100ms-block speech decision by majority vote.
 
+use firered_vad::Vad as FireRedVad;
 use rubato::{
   Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
@@ -21,6 +22,7 @@ const SPEECH_THRESHOLD: f32 = 0.5;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VadEngineKind {
   Silero,
+  FireRed,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -47,7 +49,7 @@ impl VadDecision {
 pub trait DialogueVadEngine: Send {
   fn kind(&self) -> VadEngineKind;
   fn frame_size(&self) -> usize;
-  fn predict(&mut self, frame: Vec<f32>) -> VadDecision;
+  fn predict(&mut self, frame: Vec<f32>) -> Option<VadDecision>;
   fn reset(&mut self);
 }
 
@@ -75,8 +77,45 @@ impl DialogueVadEngine for SileroVadEngine {
     VAD_CHUNK
   }
 
-  fn predict(&mut self, frame: Vec<f32>) -> VadDecision {
-    VadDecision::speech(self.vad.predict(frame))
+  fn predict(&mut self, frame: Vec<f32>) -> Option<VadDecision> {
+    Some(VadDecision::speech(self.vad.predict(frame)))
+  }
+
+  fn reset(&mut self) {
+    self.vad.reset();
+  }
+}
+
+struct FireRedVadEngine {
+  vad: FireRedVad,
+}
+
+impl FireRedVadEngine {
+  fn new() -> Option<Self> {
+    let vad = FireRedVad::bundled().ok()?;
+    Some(Self { vad })
+  }
+}
+
+impl DialogueVadEngine for FireRedVadEngine {
+  fn kind(&self) -> VadEngineKind {
+    VadEngineKind::FireRed
+  }
+
+  fn frame_size(&self) -> usize {
+    firered_vad::FrameResult::FRAME_SHIFT_SAMPLES as usize
+  }
+
+  fn predict(&mut self, frame: Vec<f32>) -> Option<VadDecision> {
+    self.vad.push_samples(&frame).ok()?;
+    let frame = self.vad.recent_frames().last()?;
+    Some(VadDecision {
+      active: frame.is_speech(),
+      voice_probability: Some(frame.smoothed_prob()),
+      speech_probability: Some(frame.smoothed_prob()),
+      singing_probability: None,
+      music_probability: None,
+    })
   }
 
   fn reset(&mut self) {
@@ -156,6 +195,7 @@ impl SpeechDetector {
   pub fn new_with_engine(source_rate: f64, kind: VadEngineKind) -> Option<Self> {
     let engine: Box<dyn DialogueVadEngine> = match kind {
       VadEngineKind::Silero => Box::new(SileroVadEngine::new()?),
+      VadEngineKind::FireRed => Box::new(FireRedVadEngine::new()?),
     };
     let resampler = Self::build_resampler(source_rate)?;
     Some(Self {
@@ -197,8 +237,9 @@ impl SpeechDetector {
       let frame_size = self.engine.frame_size();
       while self.chunk_buf.len() >= frame_size {
         let chunk: Vec<f32> = self.chunk_buf.drain(..frame_size).collect();
-        let decision = self.engine.predict(chunk);
-        self.vote.record(decision);
+        if let Some(decision) = self.engine.predict(chunk) {
+          self.vote.record(decision);
+        }
       }
     }
   }
@@ -287,6 +328,17 @@ mod tests {
     assert_eq!(d.engine.frame_size(), VAD_CHUNK);
   }
 
+  #[test]
+  fn firered_engine_reports_expected_frame_size() {
+    let d = SpeechDetector::new_with_engine(48_000.0, VadEngineKind::FireRed)
+      .expect("firered detector builds from bundled model");
+    assert_eq!(d.engine.kind(), VadEngineKind::FireRed);
+    assert_eq!(
+      d.engine.frame_size(),
+      firered_vad::FrameResult::FRAME_SHIFT_SAMPLES as usize
+    );
+  }
+
   // Integration smoke test: exercises the full mono→resample→Silero→vote chain on real
   // audio. Pure silence must come out as non-speech. The positive (speech→true) path needs
   // a real recording and is covered by manual verification per the design spec.
@@ -298,6 +350,18 @@ mod tests {
     assert!(
       !d.take_block_decision(),
       "pure silence must not be classified as speech"
+    );
+  }
+
+  #[test]
+  fn firered_silence_is_not_classified_as_speech() {
+    let mut d = SpeechDetector::new_with_engine(48_000.0, VadEngineKind::FireRed)
+      .expect("firered detector builds from bundled model");
+    let silence = vec![0.0_f32; 48_000]; // 1s of silence at 48 kHz
+    d.push_mono(&silence);
+    assert!(
+      !d.take_block_decision(),
+      "pure silence must not be classified as speech by FireRed"
     );
   }
 }
