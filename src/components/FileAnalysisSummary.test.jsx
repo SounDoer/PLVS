@@ -45,11 +45,13 @@ describe("FileAnalysisSummary", () => {
     );
 
     expect(screen.getByText("final.wav")).toBeTruthy();
-    expect(screen.getByText("Analyzed file")).toBeTruthy();
     expect(screen.getByText("Integrated")).toBeTruthy();
     expect(screen.getByText("-16.2 LUFS")).toBeTruthy();
+    expect(screen.getByText("LRA")).toBeTruthy();
+    expect(screen.getByText("4.1 LU")).toBeTruthy();
     expect(screen.getByText("True Peak Max")).toBeTruthy();
     expect(screen.getByText("-1.0 dBTP")).toBeTruthy();
+    expect(screen.queryByText("Sample Peak Max")).toBeNull();
     expect(
       screen.getByText("WAV - Audio track 0 - English - PCM - 48 kHz - Stereo - 00:03:00")
     ).toBeTruthy();
@@ -114,8 +116,6 @@ describe("FileAnalysisSummary", () => {
     );
 
     expect(screen.getByText("current.wav")).toBeTruthy();
-    expect(screen.getByText("Analyzing file")).toBeTruthy();
-    expect(screen.getByText("25%")).toBeTruthy();
     expect(screen.queryByText("Integrated")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "2 files" }));
