@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Smoke test file analysis with FFmpeg sidecars
+        run: npm run smoke:file-analysis
+
       - name: Build frontend (Vite)
         run: npm run build
 

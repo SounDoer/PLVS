@@ -94,5 +94,5 @@ console.log("Next steps:");
 console.log(`  1. Update CHANGELOG.md — add ## [${newVersion}] section`);
 console.log(`  2. git add -A && git commit -m "chore(release): bump version to ${newVersion}"`);
 console.log(`  3. git push`);
-console.log(`  4. node scripts/preflight-release.mjs`);
+console.log(`  4. npm run release:preflight`);
 console.log(`  5. git tag v${newVersion} && git push origin v${newVersion}`);

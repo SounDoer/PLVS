@@ -1,6 +1,6 @@
 ---
 name: "plvs-dev-build"
-description: "Builds an unofficial dev/preview installer for PLVS from the current branch and publishes it to a rolling GitHub Pre-release. Invoke when the user wants a dev build, preview build, or test installer — NOT for official releases (use plvs-release for those)."
+description: "Builds an unofficial dev/preview installer for PLVS from the current branch and publishes it to a rolling GitHub Pre-release. Invoke when user wants a dev build, preview build, or test installer - NOT for official releases (use plvs-release for those)."
 ---
 
 # PLVS Dev Build Skill
@@ -27,21 +27,33 @@ This skill is intentionally separate from `plvs-release`:
 | Git tag | none (rolling `dev` tag, auto-managed) | permanent `vX.Y.Z` |
 | GitHub Release | **Pre-release**, overwritten each build | normal Release, kept forever |
 | Platforms | **Windows only** | Windows + macOS |
-| Preflight gate | **skipped** (fast, unverified) | full `npm run check` gate |
+| Preflight gate | **skipped** (fast preview build) | `npm run release:preflight` before tagging |
+| Smoke gates | Windows file-analysis + installer smoke | Windows/macOS file-analysis + installer/DMG smoke |
 
 If the user means to ship a real version, stop and use `plvs-release` instead.
 
 ## How It Works
 
-The build runs in CI — workflow `.github/workflows/dev-build.yml`, triggered
-manually via `workflow_dispatch`. It checks out the ref you pass, builds the
-NSIS installer + portable exe, then **replaces** the `dev` Pre-release so it
-always holds only the latest build. The verify/lint/test gate is skipped, so
-dev builds are fast but unverified — a green run only means it compiled.
+The build runs in CI via `.github/workflows/dev-build.yml`, triggered manually
+with `workflow_dispatch`. It checks out the ref you pass, builds the NSIS
+installer + portable exe, then **replaces** the `dev` Pre-release so it always
+holds only the latest build.
 
-The build first runs `npm run ffmpeg:fetch` (wired into `desktop:release-nsis`), which downloads the
-SHA-256-pinned FFmpeg sidecar binaries from the `ffmpeg-sidecar-<version>` release into
-`src-tauri/binaries/` — needed because they are gitignored. This is automatic; see
+Dev builds skip the full verify/lint/test gate, so they are still faster than
+official releases. They are not fully verified, but they are not compile-only:
+
+- `npm run smoke:file-analysis` proves the real FFmpeg sidecar decode path.
+- `npm run desktop:verify-windows-installer` silently installs the NSIS output
+  and checks the app binary, FFmpeg / ffprobe sidecars, and no diagnostic
+  binary.
+
+A green dev build means the selected ref compiled, the real file-analysis
+sidecar path worked, and the Windows installer passed the package smoke.
+
+The build first runs `npm run ffmpeg:fetch` through the desktop build scripts.
+That downloads the SHA-256-pinned FFmpeg sidecar binaries from the
+`ffmpeg-sidecar-<version>` release into `src-tauri/binaries/`, which is needed
+because they are gitignored. This is automatic; see
 `docs/ffmpeg-sidecar-build.md` if a fetch ever fails.
 
 ## Steps
@@ -57,14 +69,14 @@ git status --porcelain           # warn if there are uncommitted changes
 git push                         # ensure origin has the commit to build
 ```
 
-If there are uncommitted changes, tell the user the dev build will reflect
-the **last pushed commit**, not their working tree — commit + push first, or
-proceed knowingly.
+If there are uncommitted changes, tell the user the dev build will reflect the
+**last pushed commit**, not their working tree. Commit + push first, or proceed
+knowingly.
 
 ### 2. Trigger the dev build
 
 ```bash
-git rev-parse --abbrev-ref HEAD                 # <branch>
+git rev-parse --abbrev-ref HEAD
 gh workflow run dev-build.yml --ref <branch>
 ```
 
@@ -72,19 +84,13 @@ gh workflow run dev-build.yml --ref <branch>
 
 ```bash
 gh run list --workflow=dev-build.yml --limit 1
-gh run watch <run-id>            # or open the Actions URL it prints
-```
-
-Treat the run as successful only by its **conclusion**, not by the tail of the
-log:
-
-```bash
+gh run watch <run-id>
 gh run view <run-id> --json conclusion -q .conclusion   # want: success
 ```
 
 The `conclusion` field is the source of truth. `gh run watch` can print a
 scary `Process completed with exit code 1` annotation on a run that still
-concludes `success` — it comes from the lenient "remove previous release"
+concludes `success`; it comes from the lenient "remove previous release"
 cleanup step exiting non-zero when there is no prior `dev` release to delete
 (first build, or right after a failed one). It does not mean the build failed.
 
@@ -93,7 +99,7 @@ cleanup step exiting non-zero when there is no prior `dev` release to delete
 On success, the installer is on the rolling Pre-release:
 
 ```bash
-gh release view dev --web        # opens it in the browser
+gh release view dev --web
 ```
 
 Give the user the page URL (`<repo>/releases/tag/dev`) and the asset names:
@@ -108,7 +114,7 @@ The `<short-sha>` lets a tester tell two dev builds apart even after download.
 ## Notes
 
 - **Rolling, single build only.** Each run overwrites the `dev` Pre-release;
-  earlier dev installers are gone. It's for "test the latest", not history.
+  earlier dev installers are gone. It is for "test the latest", not history.
 - **No version collision.** The version number in `package.json` is never
-  touched; the `-dev.<sha>` marker lives only in the artifact filenames.
-- **Unsigned**, like official builds — testers will see SmartScreen warnings.
+  touched; the `-dev.<sha>` marker lives only in artifact filenames.
+- **Unsigned**, like official builds. Testers will see SmartScreen warnings.

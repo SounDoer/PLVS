@@ -45,7 +45,7 @@ release/1.0          ●──●──●  ← tag v1.0.0 (and v1.0.1 hotfixes)
   the next version doesn't regress.
 
 No tooling changes are needed to adopt this: `release.yml` triggers on **tag
-push** (`refs/tags/v*`), branch-agnostic, and `preflight-release.mjs` does not
+push** (`refs/tags/v*`), branch-agnostic, and the release-state check does not
 enforce a branch. When the time comes, the only change is *where* you run the
 existing flow. Until then, ignore this section.
 
@@ -94,7 +94,7 @@ existing flow. Until then, ignore this section.
 │  - CHANGELOG entry exists                                       │
 │  - Git working tree clean                                       │
 │  - Tag does not exist                                           │
-│  - On main branch                                               │
+│  - Confirm the correct release branch/model                     │
 │  - Lint passes                                                  │
 │  - Tests pass                                                   │
 │  - Build passes                                                 │
@@ -319,22 +319,59 @@ Run comprehensive checks before pushing:
 
 | # | Check | Command | Failure Action |
 |---|-------|---------|----------------|
-| 1 | Version consistency | `npm run version:check` | Run `bump-version.mjs` |
-| 2 | CHANGELOG entry | Check `## [version]` exists | Update CHANGELOG |
-| 3 | Git working tree | `git status --porcelain` | Commit changes |
-| 4 | Tag not exists | `git tag` | Choose different version |
-| 5 | On main branch | `git branch --show-current` | Switch to main (post-1.0: the release branch — see Branching Model) |
-| 6 | Lint passes | `npm run lint` | Fix lint errors |
-| 7 | Tests pass | `npm test` | Fix failing tests |
-| 8 | Build passes | `npm run build` | Fix build errors |
+| 1 | Release state | `node scripts/check-release-state.mjs` | Fix version / CHANGELOG / git / tag state |
+| 2 | Full repository gate | `npm run check` | Fix format / lint / test / build / Rust errors |
 
-### Preflight Script
+Branch selection is a release-management decision from the Branching Model
+section. The automated preflight command does not enforce a branch name.
+
+### Complete Preflight Script
 
 ```bash
-node scripts/preflight-release.mjs
+npm run release:preflight
 ```
 
+This command runs the fast release-state checks first, then runs the full
+repository gate. Use it as the single local pre-tag command.
+
+`node scripts/check-release-state.mjs` is still available when you only need the
+fast version / CHANGELOG / git / tag check.
+
 ### Expected Output
+
+Current output is intentionally ASCII-only so it is readable in Windows
+PowerShell:
+
+```text
+== Release state ==
+
+Checking versions...
+  OK Versions consistent (0.2.0)
+
+Checking CHANGELOG...
+  OK CHANGELOG has [0.2.0] section
+
+Checking git status...
+  OK Working tree clean
+
+Checking tag...
+  OK Local tag v0.2.0 not yet created
+  OK Remote tag v0.2.0 not found on origin
+
+OK Ready for the full release gate for v0.2.0:
+   npm run release:preflight
+
+== Full repository check ==
+...
+
+OK Local release preflight passed.
+```
+
+Older versions of this skill showed the release-state check running lint,
+tests, and build directly. That is no longer accurate: the complete command is
+`npm run release:preflight`.
+
+<!-- legacy sample retained only for historical context; do not follow it
 
 ```
 Checking versions…
@@ -364,6 +401,7 @@ Running build…
 ✅ Ready to release v0.2.0:
    git push; git tag v0.2.0; git push origin v0.2.0
 ```
+-->
 
 > **Note:** In PowerShell 5, use `;` instead of `&&` for command chaining.
 
@@ -373,7 +411,7 @@ Running build…
 ❌ Fix the issues above before releasing.
 ```
 
-Do NOT proceed to Step 7. Fix issues and re-run preflight.
+Do NOT proceed to Step 7. Fix issues and re-run `npm run release:preflight`.
 
 ---
 
@@ -441,6 +479,17 @@ server-side, unskippable backstop: even a manual `git tag -f` cannot
 bypass it. The Step 6 preflight is the *fast local* layer; this gate is
 the *enforced* layer. Both are intentional (defense in depth) — do not
 remove the preflight just because the gate exists.
+
+### Smoke Gates
+
+The build jobs also run package-oriented smoke checks that `npm run check`
+cannot cover:
+
+| Gate | Platform | Checks |
+|------|----------|--------|
+| `npm run smoke:file-analysis` | Windows + macOS | Fetches FFmpeg sidecars, stages runtime names, and runs real file-analysis Rust tests |
+| `npm run desktop:verify-windows-installer` | Windows | Silent-installs NSIS output and checks app binary, FFmpeg / ffprobe sidecars, and no diagnostic binary |
+| `npm run desktop:verify-macos-dmg` | macOS | Mounts the DMG and checks the `.app`, main binary, FFmpeg / ffprobe sidecars, and no diagnostic binary |
 
 ### Build Matrix
 
@@ -555,7 +604,7 @@ tag — see the Step 7 warning).
 2. Fix issues locally
 3. Delete tag: `git push origin :refs/tags/vX.Y.Z`
 4. Amend commit or create new commit
-5. Re-run preflight
+5. Re-run `npm run release:preflight`
 6. Re-tag and push
 
 ---
@@ -594,10 +643,14 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 |---------|---------|
 | `npm run version:check` | Verify version consistency |
 | `node scripts/bump-version.mjs X.Y.Z` | Bump version |
-| `node scripts/preflight-release.mjs` | Pre-release checklist |
+| `node scripts/check-release-state.mjs` | Fast release-state checklist |
+| `npm run release:preflight` | Complete local pre-tag gate |
+| `npm run smoke:file-analysis` | Real FFmpeg sidecar file-analysis smoke |
 | `npm run lint` | Run linting |
 | `npm test` | Run tests |
 | `npm run build` | Build frontend |
 | `npm run check` | Full check (lint + test + build + rust) |
 | `npm run desktop:release-nsis` | Build Windows installer |
 | `npm run desktop:release-dmg` | Build macOS DMG |
+| `npm run desktop:verify-windows-installer` | Smoke-test Windows installer |
+| `npm run desktop:verify-macos-dmg` | Smoke-test macOS DMG |

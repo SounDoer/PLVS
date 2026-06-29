@@ -15,6 +15,13 @@ if (-not (Test-Path $appBinary)) {
   throw "Missing app binary: $appBinary"
 }
 
+foreach ($sidecar in @("ffmpeg.exe", "ffprobe.exe")) {
+  $sidecarPath = Join-Path $releaseDir $sidecar
+  if (-not (Test-Path $sidecarPath)) {
+    throw "Missing portable sidecar: $sidecarPath"
+  }
+}
+
 $diagnosticBinary = Join-Path $releaseDir "vad_compare.exe"
 if (Test-Path $diagnosticBinary) {
   throw "Diagnostic binary should not be produced by the app bundle build: $diagnosticBinary"
@@ -33,6 +40,14 @@ try {
   if (-not (Test-Path $installedApp)) {
     $files = Get-ChildItem $installRoot -File -Recurse | Select-Object -ExpandProperty FullName
     throw "Installed app binary missing: $installedApp`nInstalled files:`n$($files -join "`n")"
+  }
+
+  foreach ($sidecar in @("ffmpeg.exe", "ffprobe.exe")) {
+    $installedSidecar = Join-Path $installRoot $sidecar
+    if (-not (Test-Path $installedSidecar)) {
+      $files = Get-ChildItem $installRoot -File -Recurse | Select-Object -ExpandProperty FullName
+      throw "Installed sidecar missing: $installedSidecar`nInstalled files:`n$($files -join "`n")"
+    }
   }
 
   $installedDiagnostic = Join-Path $installRoot "vad_compare.exe"
