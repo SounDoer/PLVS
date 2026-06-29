@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-29
+
+### Added
+- File analysis now decodes through a bundled FFmpeg / ffprobe sidecar (replacing Symphonia), with wider file-picker format support.
+- Dialogue VAD engine selection — choose among multiple voice-activity-detection adapters for dialogue gating.
+- File-list popover gains a stop control and progress indicator; the pill follows the active file and disables analyze during background work.
+- Local configuration profiles in settings.
+- Trimmed file-mode summary region (filename, metadata, three delivery chips) and a clearer file-list trigger icon.
+
+### Changed
+- Optimized request-keyed file analysis; polished the file-analysis summary UI and aligned level-meter axis label styling.
+- Greyed-out transport action when it cannot run.
+
+### Fixed
+- Preserve history cadence during file analysis — the time axis no longer compresses on large FFmpeg read chunks.
+- Stop background analysis from driving the active file's panels.
+- Hide FFmpeg sidecars from the file picker and reuse probe metadata; keep the diagnostic binary out of Windows bundles.
+
 ## [0.5.3] - 2026-06-27
 
 ### Changed
