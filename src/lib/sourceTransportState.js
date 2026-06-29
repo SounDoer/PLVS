@@ -24,6 +24,7 @@ function deriveLiveState({ running, selectedOffset = -1, latestTimestampMs, elap
       actionLabel: "LIVE",
       chromeState: "snapshot",
       actionKind: "returnToLive",
+      primaryActionDisabled: false,
     };
   }
 
@@ -34,6 +35,7 @@ function deriveLiveState({ running, selectedOffset = -1, latestTimestampMs, elap
       actionLabel: "STOP",
       chromeState: "live",
       actionKind: "stopLive",
+      primaryActionDisabled: false,
     };
   }
 
@@ -43,6 +45,7 @@ function deriveLiveState({ running, selectedOffset = -1, latestTimestampMs, elap
     actionLabel: "START",
     chromeState: "ready",
     actionKind: "startLive",
+    primaryActionDisabled: false,
   };
 }
 

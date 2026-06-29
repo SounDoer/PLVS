@@ -111,9 +111,10 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
 
       <button
         type="button"
+        disabled={state.primaryActionDisabled}
         onClick={() => onPrimaryAction(state.actionKind)}
         className={cn(
-          "ml-1 flex h-full items-center gap-1.5 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "ml-1 flex h-full items-center gap-1.5 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40",
           chrome.action
         )}
       >

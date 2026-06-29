@@ -165,4 +165,28 @@ describe("SourceTransportCluster", () => {
     expect(screen.getByRole("menuitemradio", { name: "FILE", checked: true })).toBeTruthy();
     expect(screen.getByRole("menuitemradio", { name: "LIVE", checked: false })).toBeTruthy();
   });
+
+  it("disables the primary action when primaryActionDisabled is set", () => {
+    const onPrimaryAction = vi.fn();
+    render(
+      <SourceTransportCluster
+        state={{
+          sourceLabel: "File",
+          statusLabel: "00:02:00",
+          actionLabel: "REANALYZE",
+          chromeState: "ready",
+          actionKind: "reanalyzeFile",
+          primaryActionDisabled: true,
+        }}
+        sourceMode="file"
+        onSourceModeChange={vi.fn()}
+        onPrimaryAction={onPrimaryAction}
+      />
+    );
+
+    const action = screen.getByRole("button", { name: "REANALYZE" });
+    expect(action.disabled).toBe(true);
+    fireEvent.click(action);
+    expect(onPrimaryAction).not.toHaveBeenCalled();
+  });
 });
