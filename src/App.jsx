@@ -1118,7 +1118,9 @@ function AppContent() {
     setStatus("File analysis result");
   };
 
-  const onStopFile = () => {
+  const onStopFile = (id) => {
+    // Only one file analyzes at a time; ignore a stale id that no longer matches.
+    if (id && id !== fileHistory.analyzingFileId) return;
     void stopCurrentFileAnalysis();
   };
 
