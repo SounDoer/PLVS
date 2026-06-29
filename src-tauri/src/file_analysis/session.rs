@@ -33,6 +33,109 @@ struct WorkerConfig {
   dialogue_vad_engine: VadEngineKind,
 }
 
+fn file_pipeline_chunk_frames(sample_rate: u32) -> usize {
+  (sample_rate as usize / 10).max(1)
+}
+
+struct FilePcmHistoryChunker {
+  channels: usize,
+  sample_rate: u32,
+  chunk_samples: usize,
+  pending: Vec<f32>,
+  decoded_frames: u64,
+}
+
+impl FilePcmHistoryChunker {
+  fn new(sample_rate: u32, channels: u16) -> Self {
+    let channels = channels.max(1) as usize;
+    Self {
+      channels,
+      sample_rate,
+      chunk_samples: file_pipeline_chunk_frames(sample_rate) * channels,
+      pending: Vec::new(),
+      decoded_frames: 0,
+    }
+  }
+
+  fn decoded_frames(&self) -> u64 {
+    self.decoded_frames
+  }
+
+  #[allow(clippy::too_many_arguments)]
+  fn push_pcm(
+    &mut self,
+    pipeline: &mut MeterPipeline,
+    pcm: &[f32],
+    config: &WorkerConfig,
+    on_frame: &mut impl FnMut(AudioFramePayload) -> Result<(), String>,
+  ) -> Result<(), String> {
+    self.pending.extend_from_slice(pcm);
+    self.drain_ready_chunks(pipeline, config, on_frame)
+  }
+
+  fn flush(
+    &mut self,
+    pipeline: &mut MeterPipeline,
+    config: &WorkerConfig,
+    on_frame: &mut impl FnMut(AudioFramePayload) -> Result<(), String>,
+  ) -> Result<(), String> {
+    if self.pending.is_empty() {
+      return Ok(());
+    }
+    let usable_samples = self.pending.len() - (self.pending.len() % self.channels);
+    if usable_samples == 0 {
+      self.pending.clear();
+      return Ok(());
+    }
+    let chunk = self.pending[..usable_samples].to_vec();
+    self.pending.clear();
+    self.push_chunk(pipeline, &chunk, config, on_frame)
+  }
+
+  fn drain_ready_chunks(
+    &mut self,
+    pipeline: &mut MeterPipeline,
+    config: &WorkerConfig,
+    on_frame: &mut impl FnMut(AudioFramePayload) -> Result<(), String>,
+  ) -> Result<(), String> {
+    let mut consumed = 0_usize;
+    while self.pending.len().saturating_sub(consumed) >= self.chunk_samples {
+      let end = consumed + self.chunk_samples;
+      let chunk = self.pending[consumed..end].to_vec();
+      self.push_chunk(pipeline, &chunk, config, on_frame)?;
+      consumed = end;
+    }
+    if consumed > 0 {
+      self.pending.drain(..consumed);
+    }
+    Ok(())
+  }
+
+  fn push_chunk(
+    &mut self,
+    pipeline: &mut MeterPipeline,
+    chunk: &[f32],
+    config: &WorkerConfig,
+    on_frame: &mut impl FnMut(AudioFramePayload) -> Result<(), String>,
+  ) -> Result<(), String> {
+    self.decoded_frames += (chunk.len() / self.channels) as u64;
+    let media_time_ms =
+      ((self.decoded_frames as f64 / self.sample_rate as f64) * 1000.0).round() as u64;
+    if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
+      chunk,
+      ChannelLayoutSetting::Auto,
+      &config.requests,
+      config.loudness_weights.clone(),
+      config.dialogue_gating,
+      config.dialogue_vad_engine,
+      media_time_ms,
+    ) {
+      on_frame(frame)?;
+    }
+    Ok(())
+  }
+}
+
 fn snapshot_config(app: &AppHandle) -> WorkerConfig {
   let state = app.try_state::<crate::state::AppState>();
   let requests = state
@@ -187,8 +290,8 @@ fn analyze_file_core(
   });
 
   let mut pipeline = MeterPipeline::new_for_file(sample_rate, channels);
-  let mut decoded_frames = 0_u64;
   let mut last_progress_emit_frames = 0_u64;
+  let mut pcm_chunker = FilePcmHistoryChunker::new(sample_rate, channels);
   let mut carry: Vec<u8> = Vec::new();
   let mut pcm: Vec<f32> = Vec::new();
   let mut read_buf = [0_u8; 64 * 1024];
@@ -216,29 +319,17 @@ fn analyze_file_core(
       continue;
     }
 
-    decoded_frames += (pcm.len() / channels.max(1) as usize) as u64;
-    let media_time_ms = ((decoded_frames as f64 / sample_rate as f64) * 1000.0).round() as u64;
-    if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
-      &pcm,
-      ChannelLayoutSetting::Auto,
-      &config.requests,
-      config.loudness_weights.clone(),
-      config.dialogue_gating,
-      config.dialogue_vad_engine,
-      media_time_ms,
-    ) {
-      on_frame(frame)?;
-    }
+    pcm_chunker.push_pcm(&mut pipeline, &pcm, config, &mut on_frame)?;
 
-    if decoded_frames - last_progress_emit_frames >= sample_rate as u64 {
-      last_progress_emit_frames = decoded_frames;
+    if pcm_chunker.decoded_frames() - last_progress_emit_frames >= sample_rate as u64 {
+      last_progress_emit_frames = pcm_chunker.decoded_frames();
       let out_us = latest_us.load(std::sync::atomic::Ordering::Relaxed);
       let progress = duration_ms
         .filter(|d| *d > 0)
         .map(|d| ((out_us as f64 / 1000.0) / d as f64).clamp(0.0, 1.0));
       on_progress(FileAnalysisProgressPayload {
         path: path.to_string(),
-        decoded_frames,
+        decoded_frames: pcm_chunker.decoded_frames(),
         total_frames: None,
         progress,
       });
@@ -252,6 +343,8 @@ fn analyze_file_core(
   if !status.success() {
     return Err("ffmpeg failed to decode the audio track".to_string());
   }
+
+  pcm_chunker.flush(&mut pipeline, config, &mut on_frame)?;
 
   if let Some(frame) = pipeline.flush_file_batch(&config.requests) {
     on_frame(frame)?;
@@ -269,7 +362,7 @@ fn analyze_file_core(
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     dialogue_integrated: metrics.dialogue_integrated,
   };
-  Ok(Some((decoded_frames, summary)))
+  Ok(Some((pcm_chunker.decoded_frames(), summary)))
 }
 
 fn run_file_worker(
@@ -386,6 +479,70 @@ mod tests {
       samples.push(value);
     }
     samples
+  }
+
+  fn sine_stereo_f32(sample_rate: u32, frames: usize, amplitude: f64, hz: f64) -> Vec<f32> {
+    let mut samples = Vec::with_capacity(frames * 2);
+    for n in 0..frames {
+      let phase = 2.0 * PI * hz * n as f64 / sample_rate as f64;
+      let value = (amplitude * phase.sin()) as f32;
+      samples.push(value);
+      samples.push(value);
+    }
+    samples
+  }
+
+  #[test]
+  fn file_pcm_chunker_keeps_history_at_ten_hz_for_ffmpeg_read_chunks() {
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let frames = sr as usize * 2;
+    let pcm = sine_stereo_f32(sr, frames, 0.25, 440.0);
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let mut chunker = FilePcmHistoryChunker::new(sr, channels);
+    let config = default_config();
+    let mut loudness_ticks = 0_usize;
+    let mut visual_ticks = 0_usize;
+    let mut last_ts = 0_u64;
+    let mut on_frame = |frame: AudioFramePayload| {
+      for entry in &frame.loudness_hist_batch {
+        assert!(
+          entry.timestamp_ms >= last_ts,
+          "history timestamps must be non-decreasing"
+        );
+        last_ts = entry.timestamp_ms;
+      }
+      loudness_ticks += frame.loudness_hist_batch.len();
+      visual_ticks += frame.visual_hist_batch.len();
+      Ok(())
+    };
+
+    // Matches the worker's 64 KiB stdout reads: 16,384 f32 samples = ~170 ms stereo @ 48 kHz.
+    for chunk in pcm.chunks((64 * 1024) / 4) {
+      chunker
+        .push_pcm(&mut pipeline, chunk, &config, &mut on_frame)
+        .expect("push pcm");
+    }
+    chunker
+      .flush(&mut pipeline, &config, &mut on_frame)
+      .expect("flush pcm");
+    if let Some(frame) = pipeline.flush_file_batch(&config.requests) {
+      on_frame(frame).expect("flush frame");
+    }
+
+    assert_eq!(chunker.decoded_frames(), frames as u64);
+    assert!(
+      loudness_ticks >= 19,
+      "2s file-mode history should be ~20 loudness ticks, got {loudness_ticks}"
+    );
+    assert!(
+      visual_ticks >= 19,
+      "2s file-mode history should be ~20 visual ticks, got {visual_ticks}"
+    );
+    assert!(
+      last_ts >= 1_900,
+      "ticks should span the full media timeline, last={last_ts}"
+    );
   }
 
   #[test]
