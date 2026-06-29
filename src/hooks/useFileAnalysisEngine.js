@@ -44,6 +44,7 @@ export function useFileAnalysisEngine({
   setHistoryPathST,
   setSelectedOffset,
   setStatus,
+  shouldDriveDisplay,
 }) {
   const activePathRef = useRef(null);
 
@@ -145,6 +146,7 @@ export function useFileAnalysisEngine({
           setHistoryPathM,
           setHistoryPathST,
           ackFrames: () => {},
+          shouldDriveDisplay,
         });
         const channel = await startFileAnalysis({
           path: filePath,

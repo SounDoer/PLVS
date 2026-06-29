@@ -398,6 +398,14 @@ function AppContent() {
   if (emptyFileIntakeRef.current === null) emptyFileIntakeRef.current = new FrameIntake();
   const fileDisplayIntake = activeFileSession?.intake ?? emptyFileIntakeRef.current;
   const fileAnalysisIntake = analyzingFileSession?.intake ?? emptyFileIntakeRef.current;
+  // The file frame pump drives the shared live `audio` display only while the analyzing session is
+  // the one being shown. Switching to another file freezes that session's panels (its intake still
+  // fills in the background) instead of letting the in-progress analysis hijack the meters.
+  const fileDisplayActiveRef = useRef(false);
+  fileDisplayActiveRef.current =
+    sourceMode === "file" &&
+    fileHistory.analyzingFileId != null &&
+    fileHistory.analyzingFileId === fileHistory.activeFileId;
   const intakeRef = useRef(liveIntakeRef.current);
   intakeRef.current = sourceMode === "file" ? fileDisplayIntake : liveIntakeRef.current;
   const frequencyMarkerRef = useMemo(
@@ -993,6 +1001,7 @@ function AppContent() {
     setHistoryPathST: () => {},
     setSelectedOffset,
     setStatus,
+    shouldDriveDisplay: () => fileDisplayActiveRef.current,
   });
 
   const stopCurrentFileAnalysis = useCallback(async () => {

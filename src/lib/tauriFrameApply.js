@@ -21,6 +21,10 @@ export function buildTauriFrameApply({
   setHistoryPathM,
   setHistoryPathST,
   ackFrames,
+  // Gate the shared live-display write so a background analysis (one whose session is not the
+  // active/displayed one) keeps filling its own intake and acking the bridge without hijacking the
+  // shared `audio` state that the non-scrub panels render from. Defaults to always-on for live mode.
+  shouldDriveDisplay = () => true,
 }) {
   const applyFrame = (f) => {
     frameRef.current += 1;
@@ -42,6 +46,8 @@ export function buildTauriFrameApply({
       SPECTRUM_SETTINGS.freeze,
       visualMaxSamples
     );
+
+    if (!shouldDriveDisplay()) return;
 
     setAudio((prev) => ({
       ...prev,

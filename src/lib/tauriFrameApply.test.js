@@ -74,6 +74,30 @@ describe("buildTauriFrameApply", () => {
     expect(ackFrames).not.toHaveBeenCalled();
   });
 
+  it("freezes the live display when shouldDriveDisplay is false but still ingests and acks", () => {
+    const setAudio = vi.fn();
+    const ackFrames = vi.fn();
+    const pushFrame = vi.fn();
+    const { applyFrame } = buildTauriFrameApply(
+      makeOptions({
+        setAudio,
+        ackFrames,
+        intake: { pushFrame, pushVisualHistRow() {} },
+        shouldDriveDisplay: () => false,
+      })
+    );
+
+    for (let i = 1; i <= 6; i++) {
+      applyFrame({ peakDb: [], peakHoldDb: [], seq: i });
+    }
+
+    // Display is frozen for the inactive (background) session...
+    expect(setAudio).not.toHaveBeenCalled();
+    // ...but the analyzing session's intake keeps filling and the bridge keeps draining.
+    expect(pushFrame).toHaveBeenCalledTimes(6);
+    expect(ackFrames).toHaveBeenCalledWith(6);
+  });
+
   it("propagates per-key spectrum/vectorscope live results into audio state", () => {
     let audioState = { spectrumResultsByKey: {}, vectorscopeResultsByKey: {} };
     const setAudio = (updater) => {
