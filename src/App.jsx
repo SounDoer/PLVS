@@ -1118,6 +1118,10 @@ function AppContent() {
     setStatus("File analysis result");
   };
 
+  const onStopFile = () => {
+    void stopCurrentFileAnalysis();
+  };
+
   const onReanalyzeFile = (id) => {
     const entry = fileHistory.sessionsById[id];
     reanalyzeActiveFile(entry);
@@ -1523,6 +1527,7 @@ function AppContent() {
                 onReanalyzeFile={onReanalyzeFile}
                 onRemoveFile={onRemoveFile}
                 onClearAllFiles={onClearAllFiles}
+                onStopFile={onStopFile}
               />
             </div>
           ) : null}
