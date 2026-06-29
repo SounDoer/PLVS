@@ -15,7 +15,13 @@ const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 
 function run(label, command, args) {
   console.log(`\n== ${label} ==`);
-  const result = spawnSync(command, args, { cwd: root, stdio: "inherit" });
+  // shell:true is required on Windows + Node >= 20.12/22: spawning a .cmd shim
+  // (npm.cmd) without it now fails with EINVAL (CVE-2024-27980 hardening).
+  const result = spawnSync(command, args, { cwd: root, stdio: "inherit", shell: true });
+  if (result.error) {
+    console.error(`Failed to run "${label}": ${result.error.message}`);
+    process.exit(1);
+  }
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
