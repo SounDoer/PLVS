@@ -19,6 +19,7 @@ export function FileAnalysisSummary({
   onReanalyzeFile,
   onRemoveFile,
   onClearAllFiles,
+  onStopFile,
 }) {
   const historyMenu = (
     <FileAnalysisHistoryMenu
@@ -29,6 +30,7 @@ export function FileAnalysisSummary({
       onReanalyzeFile={onReanalyzeFile}
       onRemoveFile={onRemoveFile}
       onClearAllFiles={onClearAllFiles}
+      onStopFile={onStopFile}
     />
   );
 

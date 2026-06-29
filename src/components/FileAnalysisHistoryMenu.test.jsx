@@ -43,6 +43,7 @@ function renderMenu(props = {}) {
     onReanalyzeFile: vi.fn(),
     onRemoveFile: vi.fn(),
     onClearAllFiles: vi.fn(),
+    onStopFile: vi.fn(),
   };
 
   render(
@@ -78,7 +79,7 @@ describe("FileAnalysisHistoryMenu", () => {
     expect(screen.getByText("ready.wav")).toBeTruthy();
     expect(screen.getByText("Ready")).toBeTruthy();
     expect(screen.getByText("scan.wav")).toBeTruthy();
-    expect(screen.getByText("42%")).toBeTruthy();
+    expect(screen.getAllByText("42%").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("WAV - PCM - Stereo")).toBeTruthy();
     expect(screen.getByText("final.mov")).toBeTruthy();
     expect(screen.getByText("00:02:00")).toBeTruthy();
@@ -102,5 +103,27 @@ describe("FileAnalysisHistoryMenu", () => {
     expect(handlers.onReanalyzeFile).toHaveBeenCalledWith("ready");
     expect(handlers.onRemoveFile).toHaveBeenCalledWith("ready");
     expect(handlers.onClearAllFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a progress indicator on the trigger while a file analyzes", () => {
+    render(
+      <FileAnalysisHistoryMenu
+        fileSessions={sessions}
+        activeFileId="complete"
+        analyzingFileId="analyzing"
+      />
+    );
+
+    // Accessible name stays the plain count; the percentage is decorative.
+    expect(screen.getByRole("button", { name: "4 files" })).toBeTruthy();
+    expect(screen.getByText("42%")).toBeTruthy();
+  });
+
+  it("stops the analyzing entry without removing it", () => {
+    const handlers = renderMenu();
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop analyzing scan.wav" }));
+    expect(handlers.onStopFile).toHaveBeenCalledWith("analyzing");
+    expect(handlers.onRemoveFile).not.toHaveBeenCalled();
   });
 });
