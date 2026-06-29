@@ -107,7 +107,7 @@ describe("deriveSourceTransportState", () => {
     });
   });
 
-  it("shows analyzing progress from a separate analyzing file session", () => {
+  it("reflects the active file (not the background analysis) and disables reanalyze", () => {
     expect(
       deriveSourceTransportState({
         sourceMode: "file",
@@ -124,10 +124,29 @@ describe("deriveSourceTransportState", () => {
       })
     ).toMatchObject({
       sourceLabel: "File",
-      statusLabel: "37%",
-      actionLabel: "STOP",
-      chromeState: "live",
-      actionKind: "stopFileAnalysis",
+      statusLabel: "00:02:00",
+      actionLabel: "REANALYZE",
+      chromeState: "ready",
+      actionKind: "reanalyzeFile",
+      primaryActionDisabled: true,
+    });
+  });
+
+  it("disables analyze for a ready active file while another file analyzes", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "file",
+        fileSession: { state: "ready", fileName: "queued.wav" },
+        analyzingFileSession: {
+          state: "analyzing",
+          fileName: "background.wav",
+          progress: 0.5,
+        },
+      })
+    ).toMatchObject({
+      actionLabel: "ANALYZE",
+      actionKind: "analyzeFile",
+      primaryActionDisabled: true,
     });
   });
 

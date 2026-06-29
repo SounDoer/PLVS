@@ -53,8 +53,10 @@ function deriveFileState({
   analyzingFileSession = null,
 }) {
   const state = fileSession.state ?? "empty";
-  const analyzingSession = analyzingFileSession ?? (state === "analyzing" ? fileSession : null);
-  const analyzingState = analyzingSession?.state ?? "empty";
+  // A background analysis is one running on a file other than the active one.
+  // When the active file is itself analyzing, `state === "analyzing"` covers it below.
+  const backgroundAnalysisActive =
+    analyzingFileSession?.state === "analyzing" && state !== "analyzing";
 
   if (selectedOffset >= 0 && Number.isFinite(selectedMediaTimeMs)) {
     return {
@@ -63,16 +65,18 @@ function deriveFileState({
       actionLabel: "RESULT",
       chromeState: "snapshot",
       actionKind: "returnToFileResult",
+      primaryActionDisabled: false,
     };
   }
 
-  if (analyzingState === "analyzing") {
+  if (state === "analyzing") {
     return {
       sourceLabel: "File",
-      statusLabel: formatProgress(analyzingSession.progress),
+      statusLabel: formatProgress(fileSession.progress),
       actionLabel: "STOP",
       chromeState: "live",
       actionKind: "stopFileAnalysis",
+      primaryActionDisabled: false,
     };
   }
 
@@ -84,6 +88,7 @@ function deriveFileState({
       actionLabel: "REANALYZE",
       chromeState: "ready",
       actionKind: "reanalyzeFile",
+      primaryActionDisabled: backgroundAnalysisActive,
     };
   }
 
@@ -94,6 +99,7 @@ function deriveFileState({
       actionLabel: "ANALYZE",
       chromeState: "ready",
       actionKind: "analyzeFile",
+      primaryActionDisabled: backgroundAnalysisActive,
     };
   }
 
@@ -103,6 +109,7 @@ function deriveFileState({
     actionLabel: "ANALYZE",
     chromeState: "ready",
     actionKind: "chooseFile",
+    primaryActionDisabled: backgroundAnalysisActive,
   };
 }
 
