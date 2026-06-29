@@ -203,14 +203,7 @@ impl SpectrumMeter {
     self.post_process_for(&self.bank)
   }
 
-  /// Returns `(smooth_db, peak_db)` for SVG paths on the frontend, or `None` until the bank is ready.
-  pub fn push_interleaved(
-    &mut self,
-    interleaved: &[f32],
-    channels: u16,
-    now_sec: f64,
-  ) -> Option<(Vec<f64>, Vec<f64>)> {
-    let ch = channels.max(1) as usize;
+  fn reset_primary_bank_for_input_channels(&mut self, ch: usize) {
     if self.last_input_channels != ch {
       self.bank = MultiResBank::new(self.sample_rate, self.min_hz, self.max_hz);
       self
@@ -220,18 +213,9 @@ impl SpectrumMeter {
       self.smooth_db.clear();
       self.peak_db.clear();
     }
-    let frames = interleaved.len() / ch;
-    for i in 0..frames {
-      let base = i * ch;
-      // Mono → that sample; stereo (and any stray >2 call) → average of the first two channels.
-      // Production never calls this with >2 channels: those route through push_selected.
-      let s = if ch == 1 {
-        interleaved[base]
-      } else {
-        0.5 * (interleaved[base] + interleaved[base + 1])
-      };
-      self.bank.push_sample(s);
-    }
+  }
+
+  fn finish_primary_push(&mut self, now_sec: f64) -> Option<(Vec<f64>, Vec<f64>)> {
     if !self.bank.ready() {
       return None;
     }
@@ -257,17 +241,40 @@ impl SpectrumMeter {
     Some((self.smooth_db.clone(), self.peak_db.clone()))
   }
 
-  pub fn push_mono_duplex(&mut self, mono: &[f32], now_sec: f64) -> Option<(Vec<f64>, Vec<f64>)> {
-    let mut tmp = Vec::with_capacity(mono.len() * 2);
-    for &s in mono {
-      tmp.push(s);
-      tmp.push(s);
+  /// Returns `(smooth_db, peak_db)` for SVG paths on the frontend, or `None` until the bank is ready.
+  #[cfg(test)]
+  pub fn push_interleaved(
+    &mut self,
+    interleaved: &[f32],
+    channels: u16,
+    now_sec: f64,
+  ) -> Option<(Vec<f64>, Vec<f64>)> {
+    let ch = channels.max(1) as usize;
+    self.reset_primary_bank_for_input_channels(ch);
+    let frames = interleaved.len() / ch;
+    for i in 0..frames {
+      let base = i * ch;
+      // Mono → that sample; stereo (and any stray >2 call) → average of the first two channels.
+      // Production never calls this with >2 channels: those route through push_selected.
+      let s = if ch == 1 {
+        interleaved[base]
+      } else {
+        0.5 * (interleaved[base] + interleaved[base + 1])
+      };
+      self.bank.push_sample(s);
     }
-    self.push_interleaved(&tmp, 2, now_sec)
+    self.finish_primary_push(now_sec)
+  }
+
+  pub fn push_mono_duplex(&mut self, mono: &[f32], now_sec: f64) -> Option<(Vec<f64>, Vec<f64>)> {
+    self.reset_primary_bank_for_input_channels(2);
+    for &s in mono {
+      self.bank.push_sample(s);
+    }
+    self.finish_primary_push(now_sec)
   }
 
   /// Spectrum analysis on a specific channel pair or single channel.
-  /// Synthesizes a 2-ch stereo buffer and delegates to `push_interleaved`.
   /// Returns `Option<(smooth_db, peak_db)>` — same shape as `push_interleaved`.
   pub fn push_selected(
     &mut self,
@@ -277,26 +284,24 @@ impl SpectrumMeter {
     sel: SpectrumChannelSel,
   ) -> Option<(Vec<f64>, Vec<f64>)> {
     let ch = channels.max(1) as usize;
+    self.reset_primary_bank_for_input_channels(2);
     let frames = interleaved.len() / ch;
-    let mut stereo = Vec::with_capacity(frames * 2);
     for i in 0..frames {
       let base = i * ch;
-      let (l, r) = match sel {
+      let s = match sel {
         SpectrumChannelSel::Pair(x, y) => {
           let xi = (x as usize).min(ch - 1);
           let yi = (y as usize).min(ch - 1);
-          (interleaved[base + xi], interleaved[base + yi])
+          0.5 * (interleaved[base + xi] + interleaved[base + yi])
         }
         SpectrumChannelSel::Single(c) => {
           let ci = (c as usize).min(ch - 1);
-          let s = interleaved[base + ci];
-          (s, s)
+          interleaved[base + ci]
         }
       };
-      stereo.push(l);
-      stereo.push(r);
+      self.bank.push_sample(s);
     }
-    self.push_interleaved(&stereo, 2, now_sec)
+    self.finish_primary_push(now_sec)
   }
 
   /// Drive the spectrum for a selected pair under a given view.

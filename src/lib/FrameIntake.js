@@ -179,28 +179,22 @@ export class FrameIntake {
    * Process a live audio frame.
    * @param {object} frame AudioFramePayload from Tauri
    * @param {number} histMaxSamples ring capacity
-   * @param {number} defaultSampleRate for spectrum band calc
-   * @param {boolean} [freezeSpectrum] skip live spectrum update when true
+   * @param {number} defaultSampleRate retained for call-site compatibility
+   * @param {boolean} [freezeSpectrum] retained for call-site compatibility
    * @param {number} [visualMaxSamples] when >0, also ingest visual history ticks/batches
    */
   pushFrame(
     frame,
     histMaxSamples,
-    defaultSampleRate,
-    freezeSpectrum = false,
+    _defaultSampleRate,
+    _freezeSpectrum = false,
     visualMaxSamples = 0
   ) {
-    if (frame.spectrumBandCentersHz?.length) {
-      this._lastSpectrumCenters = frame.spectrumBandCentersHz;
-    }
-    if (!freezeSpectrum) {
-      this._spectrumData = buildSpectrumDataSnapshot(frame, { defaultSampleRate });
-    }
     const loudnessTicks = frame.loudnessHistTick
       ? [frame.loudnessHistTick]
       : (frame.loudnessHistBatch ?? []);
     for (const tick of loudnessTicks) {
-      this.pushHistRow(tick, histMaxSamples, defaultSampleRate);
+      this.pushHistRow(tick, histMaxSamples, _defaultSampleRate);
     }
     if (visualMaxSamples > 0) {
       const visualTicks = frame.visualHistTick

@@ -36,11 +36,21 @@ pub fn parse_out_time_us(line: &str) -> Option<u64> {
 
 /// Convert a little-endian f32 byte slice to samples, dropping any trailing partial sample. The
 /// caller is responsible for carrying the remainder bytes (`len % 4`) into the next read.
-pub fn bytes_to_f32_le(bytes: &[u8]) -> Vec<f32> {
-  bytes
-    .chunks_exact(4)
-    .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-    .collect()
+pub fn bytes_to_f32_le_into(bytes: &[u8], out: &mut Vec<f32>) {
+  out.clear();
+  out.reserve(bytes.len() / 4);
+  out.extend(
+    bytes
+      .chunks_exact(4)
+      .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])),
+  );
+}
+
+#[cfg(test)]
+fn bytes_to_f32_le(bytes: &[u8]) -> Vec<f32> {
+  let mut out = Vec::with_capacity(bytes.len() / 4);
+  bytes_to_f32_le_into(bytes, &mut out);
+  out
 }
 
 #[cfg(test)]
@@ -79,5 +89,13 @@ mod tests {
     // 5 bytes: one full f32 + 1 leftover byte the caller must carry over.
     let bytes = [0x00, 0x00, 0x80, 0x3F, 0xAB];
     assert_eq!(bytes_to_f32_le(&bytes), vec![1.0]);
+  }
+
+  #[test]
+  fn converts_into_reused_buffer() {
+    let bytes = [0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x80, 0xBF];
+    let mut out = vec![99.0];
+    bytes_to_f32_le_into(&bytes, &mut out);
+    assert_eq!(out, vec![1.0, -1.0]);
   }
 }

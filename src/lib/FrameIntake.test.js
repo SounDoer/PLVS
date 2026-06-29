@@ -18,13 +18,8 @@ function makeRow(overrides = {}) {
     samplePeakMaxL: -3,
     samplePeakMaxR: -3.5,
     correlation: 0.9,
-    vectorscopePath: "M 10 10",
     vectorscopePairX: 0,
     vectorscopePairY: 1,
-    spectrumPath: "M 0 130",
-    spectrumPeakPath: "",
-    spectrumBandCentersHz: [],
-    spectrumSmoothDb: [],
     ...overrides,
   };
 }
@@ -45,10 +40,6 @@ function makeFrame(overrides = {}) {
     correlation: 0.9,
     vectorscopePairX: 0,
     vectorscopePairY: 1,
-    spectrumPath: "M 0 130",
-    spectrumPeakPath: "",
-    spectrumBandCentersHz: [],
-    spectrumSmoothDb: [],
     loudnessHistTick: null,
     ...overrides,
   };

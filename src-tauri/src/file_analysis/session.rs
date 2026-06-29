@@ -11,7 +11,9 @@ use std::os::windows::process::CommandExt;
 
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::{ChannelLayoutSetting, MeterPipeline};
-use crate::file_analysis::ffmpeg::decode::{build_decode_args, bytes_to_f32_le, parse_out_time_us};
+use crate::file_analysis::ffmpeg::decode::{
+  build_decode_args, bytes_to_f32_le_into, parse_out_time_us,
+};
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::probe::probe_file;
 use crate::ipc::types::{
@@ -188,6 +190,7 @@ fn analyze_file_core(
   let mut decoded_frames = 0_u64;
   let mut last_progress_emit_frames = 0_u64;
   let mut carry: Vec<u8> = Vec::new();
+  let mut pcm: Vec<f32> = Vec::new();
   let mut read_buf = [0_u8; 64 * 1024];
 
   loop {
@@ -207,7 +210,7 @@ fn analyze_file_core(
     // Stitch any byte that straddles two reads onto the front of this chunk.
     carry.extend_from_slice(&read_buf[..n]);
     let usable = carry.len() - (carry.len() % 4);
-    let pcm = bytes_to_f32_le(&carry[..usable]);
+    bytes_to_f32_le_into(&carry[..usable], &mut pcm);
     carry.drain(..usable);
     if pcm.is_empty() {
       continue;

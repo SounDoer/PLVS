@@ -116,11 +116,8 @@ pub struct MeterPipeline {
   sample_rate: f64,
   channels: u16,
   loudness: LoudnessMeter,
-  spectrum: SpectrumMeter,
-  vectorscope: VectorscopeMeter,
   spectrum_by_key: HashMap<String, SpectrumMeter>,
   vectorscope_by_key: HashMap<String, VectorscopeMeter>,
-  last_spectrum_request: Option<(SpectrumChannelSel, SpectrumView)>,
   last_loudness_weights: Option<Vec<f64>>,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
@@ -184,11 +181,8 @@ impl MeterPipeline {
       sample_rate: sr,
       channels,
       loudness: LoudnessMeter::new(sr),
-      spectrum: SpectrumMeter::new(sr),
-      vectorscope: VectorscopeMeter::new(),
       spectrum_by_key: HashMap::new(),
       vectorscope_by_key: HashMap::new(),
-      last_spectrum_request: None,
       last_loudness_weights: None,
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
@@ -243,8 +237,6 @@ impl MeterPipeline {
     self.sample_peak_max_l = f64::NEG_INFINITY;
     self.sample_peak_max_r = f64::NEG_INFINITY;
     self.loudness.reset();
-    self.spectrum.reset();
-    self.vectorscope.reset();
     for meter in self.spectrum_by_key.values_mut() {
       meter.reset();
     }
@@ -304,31 +296,6 @@ impl MeterPipeline {
       sample_peak_max_r_db: self.sample_peak_max_r,
       dialogue_integrated,
     }
-  }
-
-  /// Process one PCM chunk from capture. Returns the frame payload when ready to send on IPC.
-  #[allow(dead_code)]
-  #[allow(clippy::too_many_arguments)]
-  pub fn push_pcm_f32(
-    &mut self,
-    interleaved: &[f32],
-    vectorscope_pair: (u16, u16),
-    channel_layout: ChannelLayoutSetting,
-    spectrum_channel: SpectrumChannelSel,
-    spectrum_view: SpectrumView,
-    loudness_weights: Option<Vec<f64>>,
-    dialogue_gating: bool,
-    dialogue_vad_engine: VadEngineKind,
-  ) -> Option<AudioFramePayload> {
-    self.push_pcm_f32_optional(
-      interleaved,
-      Some(vectorscope_pair),
-      channel_layout,
-      Some((spectrum_channel, spectrum_view)),
-      loudness_weights,
-      dialogue_gating,
-      dialogue_vad_engine,
-    )
   }
 
   pub fn push_pcm_f32_with_requests(
@@ -427,15 +394,15 @@ impl MeterPipeline {
       .vectorscope
       .first()
       .map(|request| (request.x, request.y));
-    let spectrum_request = analysis_requests
-      .spectrum
-      .first()
-      .map(spectrum_request_selection);
+    let primary_vectorscope_summary = analysis_requests.vectorscope.first().and_then(|request| {
+      vectorscope_results_by_key
+        .get(&request.key)
+        .map(|result| (result.pair_x, result.pair_y, result.correlation))
+    });
     let mut frame = self.push_pcm_f32_optional(
       interleaved,
-      vectorscope_pair,
       channel_layout,
-      spectrum_request,
+      primary_vectorscope_summary.or_else(|| vectorscope_pair.map(|(x, y)| (x, y, 0.0))),
       loudness_weights,
       dialogue_gating,
       dialogue_vad_engine,
@@ -565,16 +532,17 @@ impl MeterPipeline {
   fn push_pcm_f32_optional(
     &mut self,
     interleaved: &[f32],
-    vectorscope_pair: Option<(u16, u16)>,
     channel_layout: ChannelLayoutSetting,
-    spectrum_request: Option<(SpectrumChannelSel, SpectrumView)>,
+    vectorscope_summary: Option<(u16, u16, f64)>,
     loudness_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
     dialogue_vad_engine: VadEngineKind,
   ) -> Option<AudioFramePayload> {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
-    let (pair_x, pair_y) = vectorscope_pair.unwrap_or((0, 1));
+    let (pair_x, pair_y) = vectorscope_summary
+      .map(|(x, y, _)| (x, y))
+      .unwrap_or((0, 1));
 
     if dialogue_gating != self.last_dialogue_gating {
       self.loudness.reset_dialogue();
@@ -614,11 +582,6 @@ impl MeterPipeline {
       loudness_layout_meta(ch, effective_layout)
     };
 
-    if spectrum_request != self.last_spectrum_request {
-      self.spectrum.reset();
-      self.last_spectrum_request = spectrum_request;
-    }
-
     // --- PCM intake: uniform push through Meter trait ---
     let ctx = PcmContext {
       interleaved,
@@ -627,22 +590,12 @@ impl MeterPipeline {
       channel_layout: effective_layout,
       loudness_weights,
       vectorscope_pair: (pair_x, pair_y),
-      spectrum_channel: spectrum_request
-        .map(|request| request.0)
-        .unwrap_or_default(),
-      spectrum_view: spectrum_request
-        .map(|request| request.1)
-        .unwrap_or_default(),
+      spectrum_channel: SpectrumChannelSel::default(),
+      spectrum_view: SpectrumView::default(),
       dialogue_gating,
       dialogue_vad_engine,
     };
     self.loudness.push_pcm(&ctx);
-    if spectrum_request.is_some() {
-      self.spectrum.push_pcm(&ctx);
-    }
-    if vectorscope_pair.is_some() {
-      self.vectorscope.push_pcm(&ctx);
-    }
 
     // --- Apply loudness block if a new one arrived ---
     if let Some(lb) = self.loudness.take_block() {
@@ -758,13 +711,11 @@ impl MeterPipeline {
       ),
     };
 
-    // Top-level correlation scalar (first vectorscope request's pair); per-key paths/curves live in
-    // the by-key result maps assembled by push_pcm_f32_with_requests.
-    let corr = if vectorscope_pair.is_some() {
-      self.vectorscope.get_output().0
-    } else {
-      0.0
-    };
+    // Top-level correlation is the shared scalar read by stats/snapshots. In request-keyed mode it
+    // is derived from the first vectorscope request instead of recomputing a legacy vectorscope.
+    let corr = vectorscope_summary
+      .map(|(_, _, correlation)| correlation)
+      .unwrap_or(0.0);
 
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let peak_hold_db = peak_db.clone();
@@ -863,11 +814,9 @@ impl MeterPipeline {
         self.visual_waveform_min_acc.fill(f32::INFINITY);
         self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
 
-        let visual_corr = if vectorscope_pair.is_some() {
-          self.vectorscope.get_history_pairs(VS_HISTORY_POINTS).0
-        } else {
-          0.0
-        };
+        let visual_corr = vectorscope_summary
+          .map(|(_, _, correlation)| correlation)
+          .unwrap_or(0.0);
 
         Some(VisualHistEntry {
           timestamp_ms: self.timestamp_ms(),
@@ -959,11 +908,9 @@ impl MeterPipeline {
         .iter()
         .map(|&v| if v.is_finite() { v } else { 0.0 })
         .collect();
-      let visual_corr = if vectorscope_pair.is_some() {
-        self.vectorscope.get_history_pairs(VS_HISTORY_POINTS).0
-      } else {
-        0.0
-      };
+      let visual_corr = vectorscope_summary
+        .map(|(_, _, correlation)| correlation)
+        .unwrap_or(0.0);
       let mut visual_batch = Vec::new();
       for ts in std::mem::take(&mut self.pending_file_visual_queue) {
         visual_batch.push(VisualHistEntry {
@@ -1065,7 +1012,6 @@ impl MeterPipeline {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::dsp::SpectrumChannelSel;
 
   #[test]
   fn file_mode_frame_uses_supplied_media_time() {
@@ -1172,41 +1118,90 @@ mod tests {
     pcm
   }
 
+  fn push_pcm_no_requests(
+    pipeline: &mut MeterPipeline,
+    interleaved: &[f32],
+    channel_layout: ChannelLayoutSetting,
+    loudness_weights: Option<Vec<f64>>,
+    dialogue_gating: bool,
+  ) -> Option<AudioFramePayload> {
+    pipeline.push_pcm_f32_with_requests(
+      interleaved,
+      channel_layout,
+      &AnalysisRequests::default(),
+      loudness_weights,
+      dialogue_gating,
+      VadEngineKind::default(),
+    )
+  }
+
   #[test]
   fn changing_spectrum_channel_resets_frequency_meter() {
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
     let sr = 48_000_u32;
     let channels = 6_u16;
     let mut pipeline = MeterPipeline::new(sr, channels);
     let pcm_lr = tone_on_channel(4096 * 8, channels as usize, sr as f64, 1000.0, 0);
     let pcm_c_short = tone_on_channel(256, channels as usize, sr as f64, 500.0, 2);
+    let lr_key = "spectrum:pair:0:1:combined:sm50:tilt450".to_string();
+    let c_key = "spectrum:single:2:combined:sm50:tilt450".to_string();
+    let requests_lr = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: lr_key.clone(),
+        channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+        view: "combined".to_string(),
+        smoothing_percent: 50.0,
+        tilt_db_per_octave: 4.5,
+      }],
+      vectorscope: vec![],
+    };
+    let requests_c = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: c_key.clone(),
+        channel: SpectrumAnalysisChannel::Single { ch: 2 },
+        view: "combined".to_string(),
+        smoothing_percent: 50.0,
+        tilt_db_per_octave: 4.5,
+      }],
+      vectorscope: vec![],
+    };
 
-    let _ = pipeline.push_pcm_f32(
+    let _ = pipeline.push_pcm_f32_with_requests(
       &pcm_lr,
-      (0, 1),
       ChannelLayoutSetting::Auto,
-      SpectrumChannelSel::Pair(0, 1),
-      SpectrumView::default(),
+      &requests_lr,
       None,
       false,
       VadEngineKind::default(),
     );
-    let (_, before_change, _) = pipeline.spectrum.last_output();
+    let (_, before_change, _) = pipeline
+      .spectrum_by_key
+      .get(&lr_key)
+      .expect("L/R spectrum meter")
+      .last_output();
     assert!(
       !before_change.is_empty(),
       "spectrum should produce output before the channel change"
     );
 
-    let _ = pipeline.push_pcm_f32(
+    let _ = pipeline.push_pcm_f32_with_requests(
       &pcm_c_short,
-      (0, 1),
       ChannelLayoutSetting::Auto,
-      SpectrumChannelSel::Single(2),
-      SpectrumView::default(),
+      &requests_c,
       None,
       false,
       VadEngineKind::default(),
     );
-    let (_, immediately_after_change, _) = pipeline.spectrum.last_output();
+    assert!(
+      !pipeline.spectrum_by_key.contains_key(&lr_key),
+      "inactive L/R spectrum meter should be pruned after the request key changes"
+    );
+    let (_, immediately_after_change, _) = pipeline
+      .spectrum_by_key
+      .get(&c_key)
+      .expect("C spectrum meter")
+      .last_output();
     assert!(
       immediately_after_change.is_empty(),
       "spectrum output should be reset immediately after selecting a new channel"
@@ -1215,24 +1210,34 @@ mod tests {
 
   #[test]
   fn vectorscope_pair_selects_requested_channels() {
+    use crate::ipc::types::VectorscopeAnalysisRequest;
+
     // 3 channels, 2 frames:
     // frame0: [0.1, 0.2, 0.3]
     // frame1: [1.1, 1.2, 1.3]
     let pcm = vec![0.1_f32, 0.2, 0.3, 1.1, 1.2, 1.3];
     let mut p = MeterPipeline::new(48_000, 3);
-    let _ = p.push_pcm_f32(
+    let key = "vectorscope:pair:2:0".to_string();
+    let requests = AnalysisRequests {
+      spectrum: vec![],
+      vectorscope: vec![VectorscopeAnalysisRequest {
+        key: key.clone(),
+        x: 2,
+        y: 0,
+      }],
+    };
+    let _ = p.push_pcm_f32_with_requests(
       &pcm,
-      (2, 0),
       crate::engine::ChannelLayoutSetting::Auto,
-      crate::dsp::SpectrumChannelSel::default(),
-      crate::dsp::SpectrumView::default(),
+      &requests,
       None,
       false,
       VadEngineKind::default(),
     );
+    let meter = p.vectorscope_by_key.get(&key).expect("vectorscope meter");
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
-    assert_eq!(p.vectorscope.vs_l.back().copied().unwrap_or_default(), 1.3);
-    assert_eq!(p.vectorscope.vs_r.back().copied().unwrap_or_default(), 1.1);
+    assert_eq!(meter.vs_l.back().copied().unwrap_or_default(), 1.3);
+    assert_eq!(meter.vs_r.back().copied().unwrap_or_default(), 1.1);
   }
 
   #[test]
@@ -1582,15 +1587,12 @@ mod tests {
     let mut pipeline = MeterPipeline::new(sr, channels);
     let frames = 4_800usize;
     let pcm = vec![0.1_f32; frames * channels as usize];
-    let frame = pipeline.push_pcm_f32(
+    let frame = push_pcm_no_requests(
+      &mut pipeline,
       &pcm,
-      (0, 1),
       ChannelLayoutSetting::Auto,
-      SpectrumChannelSel::default(),
-      SpectrumView::default(),
       Some(vec![1.0, 1.0, 0.0]),
       false,
-      VadEngineKind::default(),
     );
     let frame = frame.expect("100ms chunk should emit a frame");
     assert_eq!(frame.loudness_layout, "custom");
@@ -1618,15 +1620,12 @@ mod tests {
     for _ in 0..40 {
       pipeline.last_frame_emit =
         Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
-      if let Some(frame) = pipeline.push_pcm_f32(
+      if let Some(frame) = push_pcm_no_requests(
+        &mut pipeline,
         &quiet,
-        (0, 1),
         ChannelLayoutSetting::Auto,
-        SpectrumChannelSel::default(),
-        SpectrumView::default(),
         None,
         false,
-        VadEngineKind::default(),
       ) {
         quiet_frame = Some(frame);
       }
@@ -1639,15 +1638,12 @@ mod tests {
     for _ in 0..40 {
       pipeline.last_frame_emit =
         Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
-      if let Some(frame) = pipeline.push_pcm_f32(
+      if let Some(frame) = push_pcm_no_requests(
+        &mut pipeline,
         &louder,
-        (0, 1),
         ChannelLayoutSetting::Auto,
-        SpectrumChannelSel::default(),
-        SpectrumView::default(),
         None,
         false,
-        VadEngineKind::default(),
       ) {
         louder_frame = Some(frame);
       }
@@ -1792,16 +1788,8 @@ mod tests {
     // Feed 5 脳 200ms = 1s to guarantee history ticks are emitted on the frame stream
     let mut entries = Vec::new();
     for _ in 0..5 {
-      let frame = pipeline.push_pcm_f32(
-        &pcm,
-        (0, 1),
-        ChannelLayoutSetting::Auto,
-        SpectrumChannelSel::default(),
-        SpectrumView::default(),
-        None,
-        false,
-        VadEngineKind::default(),
-      );
+      let frame =
+        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false);
       if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
         entries.push(tick);
       }
@@ -1850,16 +1838,8 @@ mod tests {
 
     let mut entries = Vec::new();
     for _ in 0..5 {
-      let frame = pipeline.push_pcm_f32(
-        &pcm,
-        (0, 1),
-        ChannelLayoutSetting::Auto,
-        SpectrumChannelSel::default(),
-        SpectrumView::default(),
-        None,
-        false,
-        VadEngineKind::default(),
-      );
+      let frame =
+        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false);
       if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
         entries.push(tick);
       }
@@ -1903,37 +1883,10 @@ mod tests {
         [s, s]
       })
       .collect();
-    let _ = p.push_pcm_f32(
-      &tone,
-      (0, 1),
-      ChannelLayoutSetting::Auto,
-      SpectrumChannelSel::default(),
-      SpectrumView::default(),
-      None,
-      true,
-      VadEngineKind::default(),
-    );
-    let _ = p.push_pcm_f32(
-      &tone,
-      (0, 1),
-      ChannelLayoutSetting::Auto,
-      SpectrumChannelSel::default(),
-      SpectrumView::default(),
-      None,
-      false,
-      VadEngineKind::default(),
-    );
+    let _ = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, true);
+    let _ = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, false);
     p.last_frame_emit = Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
-    let frame = p.push_pcm_f32(
-      &tone,
-      (0, 1),
-      ChannelLayoutSetting::Auto,
-      SpectrumChannelSel::default(),
-      SpectrumView::default(),
-      None,
-      true,
-      VadEngineKind::default(),
-    );
+    let frame = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, true);
     let block = frame.expect("frame");
     assert_eq!(block.dialogue_percent, 0.0);
     assert!(!block.dialogue_integrated.is_finite());
@@ -1947,16 +1900,9 @@ mod tests {
     let silence = vec![0.0_f32; frames * 2];
     let mut seen = false;
     for _ in 0..3 {
-      if let Some(f) = p.push_pcm_f32(
-        &silence,
-        (0, 1),
-        ChannelLayoutSetting::Auto,
-        SpectrumChannelSel::default(),
-        SpectrumView::default(),
-        None,
-        true,
-        VadEngineKind::default(),
-      ) {
+      if let Some(f) =
+        push_pcm_no_requests(&mut p, &silence, ChannelLayoutSetting::Auto, None, true)
+      {
         assert!(!f.dialogue_active_now, "silence must not be active speech");
         assert_eq!(f.dialogue_lra, 0.0, "no speech yet 鈫?dialogue lra 0.0");
         seen = true;
@@ -1984,16 +1930,9 @@ mod tests {
 
     let mut loudness_layout_seen = None;
     for _ in 0..5 {
-      if let Some(f) = pipeline.push_pcm_f32(
-        &pcm,
-        (0, 1),
-        ChannelLayoutSetting::Auto,
-        crate::dsp::SpectrumChannelSel::default(),
-        crate::dsp::SpectrumView::default(),
-        None,
-        false,
-        VadEngineKind::default(),
-      ) {
+      if let Some(f) =
+        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false)
+      {
         loudness_layout_seen = Some(f.loudness_layout.clone());
         break;
       }
