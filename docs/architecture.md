@@ -159,6 +159,21 @@ PLVS/
 
 PCM 帧 → 并行 DSP → 打包 `MeteringFrame` → Channel（~60Hz）推前端；慢速响度 / 状态 → Event（~2Hz）广播。
 
+#### History cadence（节奏分层）
+
+**核心契约：源 chunk 大小可以影响 CPU 批处理，但绝不决定 history 时长。** 三种节奏各司其职，别混用：
+
+| 节奏           | 周期            | 来源                              | 前端契约                       |
+| -------------- | --------------- | --------------------------------- | ------------------------------ |
+| main history   | 100 ms（~10Hz） | `MeterHistoryEntry`，每 100 ms 一行 | `HIST_SAMPLE_SEC = 0.1`（index-grid 定位） |
+| visual history | 40 ms（~25Hz）  | `VisualHistEntry` / `VISUAL_EMIT_MS` | `VISUAL_HIST_SAMPLE_SEC = 0.04`（spectrogram 按 timestamp 定位） |
+| UI frame       | 交付节奏        | `FRAME_EMIT_MS = 16`，仅 UI 投递 + 背压 | 不是分析节奏，不得用来定义 history 行数 |
+
+- **`HIST_EMIT_MS = 95`** 是 live 的 wall-clock **容差门**（允许名义 100 ms 块在略低于 100 ms 时也能发），不是语义周期。
+- **File 模式**：`FilePcmHistoryChunker`（`file_analysis/session.rs`）把任意大小的 ffmpeg PCM 整流成每次一个 100 ms 块喂给 pipeline，使 history 行数只由媒体时长决定。设计见 [`specs/2026-06-29-sample-clocked-history-cadence-design.md`](superpowers/specs/2026-06-29-sample-clocked-history-cadence-design.md)。
+- **已知限制**：file 模式 visual history 被 100 ms 块卡在 ~10Hz（live 为 ~25Hz）。因 spectrogram 按 timestamp 贴帧，时间轴仍正确，只是分辨率更粗。
+- **Live 不走 chunker**：采集源在 realtime-safe 回调线程，不能做 chunker 的 buffer 分配；live 与 file 共享上述**契约**，但不共享代码路径。
+
 ---
 
 ## 5. 前后端通信（IPC）

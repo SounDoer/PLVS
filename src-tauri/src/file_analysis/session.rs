@@ -545,6 +545,103 @@ mod tests {
     );
   }
 
+  /// Drive the chunker over `pcm` split into `chunk_samples`-sized source reads, then flush.
+  /// Returns (decoded_frames, loudness_ticks, visual_ticks, last_timestamp_ms).
+  fn run_chunker(
+    pcm: &[f32],
+    sr: u32,
+    channels: u16,
+    chunk_samples: usize,
+  ) -> (u64, usize, usize, u64) {
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let mut chunker = FilePcmHistoryChunker::new(sr, channels);
+    let config = default_config();
+    let mut loudness_ticks = 0_usize;
+    let mut visual_ticks = 0_usize;
+    let mut last_ts = 0_u64;
+    {
+      let mut on_frame = |frame: AudioFramePayload| {
+        loudness_ticks += frame.loudness_hist_batch.len();
+        visual_ticks += frame.visual_hist_batch.len();
+        if let Some(entry) = frame.loudness_hist_batch.last() {
+          last_ts = entry.timestamp_ms;
+        }
+        Ok(())
+      };
+      for chunk in pcm.chunks(chunk_samples.max(1)) {
+        chunker
+          .push_pcm(&mut pipeline, chunk, &config, &mut on_frame)
+          .expect("push pcm");
+      }
+      chunker
+        .flush(&mut pipeline, &config, &mut on_frame)
+        .expect("flush pcm");
+      if let Some(frame) = pipeline.flush_file_batch(&config.requests) {
+        on_frame(frame).expect("flush frame");
+      }
+    }
+    (
+      chunker.decoded_frames(),
+      loudness_ticks,
+      visual_ticks,
+      last_ts,
+    )
+  }
+
+  #[test]
+  fn file_pcm_chunker_history_row_count_is_chunk_size_invariant() {
+    // The cadence contract: source read size may change CPU batching, never history duration.
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let frames = sr as usize * 2; // exactly 2 s
+    let pcm = sine_stereo_f32(sr, frames, 0.25, 440.0);
+
+    // 64 KiB ffmpeg-style reads (~170 ms) vs tiny 32-frame reads (~0.67 ms).
+    let big = run_chunker(&pcm, sr, channels, (64 * 1024) / 4);
+    let small = run_chunker(&pcm, sr, channels, 32 * channels as usize);
+
+    assert_eq!(big.0, frames as u64, "big-chunk decoded frame count");
+    assert_eq!(
+      big.0, small.0,
+      "decoded frame count must not depend on source chunk size"
+    );
+    assert_eq!(
+      big.1, small.1,
+      "main history row count must not depend on source chunk size ({} vs {})",
+      big.1, small.1
+    );
+    assert_eq!(
+      big.2, small.2,
+      "visual history row count must not depend on source chunk size"
+    );
+  }
+
+  #[test]
+  fn file_pcm_chunker_partial_tail_preserves_decoded_duration() {
+    // A sub-100 ms tail must count toward decoded duration but must not create a partial main row.
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let period = sr as usize / 10; // 4800 frames = 100 ms
+    let frames = sr as usize * 2 + period / 2; // 2 s + 50 ms tail
+    let pcm = sine_stereo_f32(sr, frames, 0.25, 440.0);
+
+    let (decoded, loudness_ticks, _visual_ticks, last_ts) =
+      run_chunker(&pcm, sr, channels, (64 * 1024) / 4);
+
+    assert_eq!(
+      decoded, frames as u64,
+      "tail must be counted in decoded frames"
+    );
+    assert_eq!(
+      loudness_ticks, 20,
+      "the 50 ms tail must not close a 21st main block, got {loudness_ticks}"
+    );
+    assert!(
+      last_ts <= frames as u64 * 1000 / sr as u64,
+      "last history timestamp must stay within media duration, got {last_ts}"
+    );
+  }
+
   #[test]
   fn analyzes_wav_fixture_end_to_end() {
     if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
