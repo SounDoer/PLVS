@@ -27,7 +27,7 @@ const sessions = [
       container: "mov,mp4,m4a,3gp,3g2,mj2",
       selectedTrack: { index: 1, codec: "ac3", sampleRateHz: 48000, channels: 6 },
     },
-    summary: { durationMs: 120_000, integratedLufs: -23.1, truePeakMaxDbtp: -1.0 },
+    summary: { durationMs: 120_000, integratedLufs: -23.1, lra: 5.0, truePeakMaxDbtp: -1.0 },
   },
   {
     id: "error",
@@ -83,12 +83,11 @@ describe("FileAnalysisHistoryMenu", () => {
     expect(screen.getByText("WAV - PCM - Stereo")).toBeTruthy();
     expect(screen.getByText("final.mov")).toBeTruthy();
     expect(screen.getByText("00:02:00")).toBeTruthy();
-    expect(screen.getByText("-23.1 LUFS - -1.0 dBTP")).toBeTruthy();
+    expect(screen.getByText("-23.1 LUFS - 5.0 LU - -1.0 dBTP")).toBeTruthy();
     expect(screen.getByText("broken.wav")).toBeTruthy();
     expect(screen.getByText("Error")).toBeTruthy();
     expect(screen.getByText("Unsupported codec")).toBeTruthy();
     expect(screen.getByLabelText("Active file final.mov")).toBeTruthy();
-    expect(screen.getByText("Analyzing")).toBeTruthy();
   });
 
   it("calls select, reanalyze, remove, and clear all callbacks", () => {

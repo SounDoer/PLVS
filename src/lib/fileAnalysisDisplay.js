@@ -132,12 +132,13 @@ export function formatMetric(value, suffix) {
   return Number.isFinite(value) ? `${value.toFixed(1)} ${suffix}` : `-- ${suffix}`;
 }
 
-export function formatPeakPair(summary = {}) {
+export function formatDeliveryTriple(summary = {}) {
   if (!Number.isFinite(summary.integratedLufs) && !Number.isFinite(summary.truePeakMaxDbtp)) {
     return null;
   }
   return joinParts([
     formatMetric(summary.integratedLufs, "LUFS"),
+    formatMetric(summary.lra, "LU"),
     formatMetric(summary.truePeakMaxDbtp, "dBTP"),
   ]);
 }

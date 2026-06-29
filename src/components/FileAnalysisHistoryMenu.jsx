@@ -1,6 +1,6 @@
-import { RefreshCw, Square, Trash2 } from "lucide-react";
+import { FileStack, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatCompactSessionMetadata, formatPeakPair } from "@/lib/fileAnalysisDisplay";
+import { formatCompactSessionMetadata, formatDeliveryTriple } from "@/lib/fileAnalysisDisplay";
 import { cn } from "@/lib/utils";
 import { formatClock } from "../hooks/useSessionTimer.js";
 
@@ -20,7 +20,7 @@ function statusLabel(session) {
 
 function detailLabel(session) {
   if (session?.state === "complete") {
-    return formatPeakPair(session.summary) ?? formatCompactSessionMetadata(session);
+    return formatDeliveryTriple(session.summary) ?? formatCompactSessionMetadata(session);
   }
   if (session?.state === "error") return session.error || "Analysis failed";
   return formatCompactSessionMetadata(session);
@@ -56,11 +56,11 @@ export function FileAnalysisHistoryMenu({
           aria-label={countLabel}
           className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/70 bg-background/35 px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <span>{countLabel}</span>
+          <FileStack className="size-3.5" aria-hidden="true" />
+          <span className="tabular-nums">{count}</span>
           {analyzingPct != null ? (
             <span aria-hidden="true" className="text-[10px] tabular-nums text-muted-foreground">
-              <span aria-hidden="true">· </span>
-              <span>{`${analyzingPct}%`}</span>
+              {`${analyzingPct}%`}
             </span>
           ) : null}
         </button>
@@ -108,12 +108,6 @@ export function FileAnalysisHistoryMenu({
                     </span>
                     <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
                       <span>{statusLabel(session)}</span>
-                      {isAnalyzing ? (
-                        <>
-                          <span aria-hidden="true">-</span>
-                          <span>Analyzing</span>
-                        </>
-                      ) : null}
                     </span>
                     {detail ? (
                       <span
