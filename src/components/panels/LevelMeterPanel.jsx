@@ -18,8 +18,8 @@ import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
-  momentary: { label: "Momentary", unit: "LUFS", field: "momentary" },
-  shortTerm: { label: "Short-term", unit: "LUFS", field: "shortTerm" },
+  momentary: { label: "Momentary", meterLabel: "M", unit: "LUFS", field: "momentary" },
+  shortTerm: { label: "Short-term", meterLabel: "ST", unit: "LUFS", field: "shortTerm" },
 };
 
 const LEVEL_METER_VALUE_MARKER_POSITION = {
@@ -253,7 +253,7 @@ export function LevelMeterPanel() {
                   data-level-mode-label
                   className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
                 >
-                  {modeMeta.label}
+                  {modeMeta.meterLabel ?? modeMeta.label}
                 </div>
               </div>
             </div>

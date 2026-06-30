@@ -100,7 +100,8 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
 
     expect(screen.getAllByText("-22.4").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Momentary").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("M").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Momentary")).toBeNull();
     expect(screen.queryByText("LUFS")).toBeNull();
     expect(screen.queryByText("TP Max")).toBeNull();
     const marker = container.querySelector("[data-level-value-marker]");
@@ -137,7 +138,8 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
 
     expect(screen.getAllByText("-18.6").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Short-term").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ST").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Short-term")).toBeNull();
     expect(screen.queryByText("LUFS")).toBeNull();
     expect(container.querySelector("[data-level-value-marker]")?.textContent).toBe("-18.6");
   });
