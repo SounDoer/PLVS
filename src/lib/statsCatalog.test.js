@@ -37,7 +37,7 @@ describe("statsCatalog", () => {
     }
   });
 
-  it("uses dBTP for True Peak and an empty unit for Correlation", () => {
+  it("uses dBTP for True Peak Max and an empty unit for Correlation", () => {
     expect(STATS_META.truePeak.unit).toBe("dBTP");
     expect(STATS_META.correlation.unit).toBe("");
   });
@@ -45,7 +45,7 @@ describe("statsCatalog", () => {
   it("derives STATS_OPTIONS in canonical order with id/label/hint", () => {
     expect(STATS_OPTIONS.map((o) => o.id)).toEqual(STATS_CANONICAL_ORDER);
     const truePeak = STATS_OPTIONS.find((o) => o.id === "truePeak");
-    expect(truePeak.label).toBe("True Peak");
+    expect(truePeak.label).toBe("True Peak Max");
     expect(truePeak.hint.length).toBeGreaterThan(0);
   });
 
@@ -55,7 +55,7 @@ describe("statsCatalog", () => {
     expect(dialogueOffsetText(-Infinity, -20)).toBe("-");
   });
 
-  it("builds a single metrics array including True Peak and Correlation", () => {
+  it("builds a single metrics array including True Peak Max and Correlation", () => {
     const metrics = buildStatsMetrics({
       momentary: -20,
       shortTerm: -18,

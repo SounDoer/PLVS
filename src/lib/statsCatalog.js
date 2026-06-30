@@ -40,7 +40,7 @@ export const STATS_META = {
     hint: "Dialogue loudness relative to the overall mix",
   },
   truePeak: {
-    label: "True Peak",
+    label: "True Peak Max",
     unit: "dBTP",
     hint: "Highest inter-sample (true) peak level reached so far",
   },
