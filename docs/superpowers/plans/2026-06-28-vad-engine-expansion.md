@@ -127,26 +127,58 @@ Spike checklist:
 
 ## FunASR FSMN-VAD spike
 
+**Decision (2026-06-30): deferred. Not integrating for now.** Kept as a design note below so a
+future revisit does not re-derive the same blockers.
+
 Why third:
 
 - FunASR FSMN-VAD may be useful for Chinese/ASR-style segmentation.
 - It is also likely to prefer recall over precision, which can inflate dialogue loudness if it
   over-predicts speech in music or noise.
 
-Spike checklist:
+Why deferred (the two hard blockers):
+
+1. **Not a drop-in same-shape engine.** Silero, FireRed, and TEN all consume raw 16 kHz `f32`
+   samples directly, which is why they share the `DialogueVadEngine` / `predict(Vec<f32>)`
+   contract and `SpeechDetector`'s fixed-size chunk loop. FSMN-VAD's ONNX does **not** take raw
+   PCM. It expects an upstream feature frontend that FunASR keeps outside the model (`WavFrontend`
+   in their Python/C++ runtime): 80-dim fbank + LFR (low-frame-rate splice) + CMVN normalization
+   using a bundled `am.mvn` stats file. None of that exists in Rust here. Integrating FunASR means
+   re-implementing a small ASR-style feature frontend plus FSMN streaming state — substantially
+   more work than the other three engines combined, and it does not fit the current
+   `predict(Vec<f32>)` interface cleanly (the engine would need to own its own buffering / bypass
+   the shared equal-size chunk loop).
+2. **License.** The visible Rust crate `rlx-funasr = 0.2.9` is `GPL-3.0-only`; linking it into the
+   Tauri app would impose GPL on all of PLVS, which is unacceptable for distribution. The model
+   weights themselves are under the FunASR Model License (commercial use allowed, attribution
+   required), so the only clean path is ONNX-only via the `ort rc.12` already in the graph — but
+   that still requires writing the fbank/LFR/CMVN frontend from blocker #1.
+
+Cost/benefit note:
+
+- FSMN-VAD's main draw is Chinese / ASR-style sensitivity, but the existing fixture data shows TEN
+  (and FireRed) already cover that gap where Silero fails — e.g. Japanese `小陈.wav`: Silero
+  `16.8%` vs TEN `73.2%` / FireRed `67.9%`. Combined with FSMN's recall bias (risk of inflating
+  dialogue loudness on vocal music / noise), the cost of building a bespoke frontend is hard to
+  justify until a concrete case appears that TEN/FireRed demonstrably cannot handle.
+
+If revisited, the only acceptable mainline path:
+
+- ONNX/runtime-only via the existing `ort rc.12` (no Python, no GPL crate).
+- Vendor the FSMN-VAD onnx + `am.mvn` + the FunASR Model License under `src-tauri/vendor/funasr-vad/`,
+  mirroring the TEN vendoring pattern.
+- Implement and unit-test the fbank + LFR + CMVN frontend and FSMN streaming chunk inference
+  separately from `speech.rs`'s uniform chunk loop, then reduce to per-100 ms block decisions for
+  the shared `VadBlockAggregator`.
+- Trigger condition for revisiting: a specific Chinese/segmentation case that TEN and FireRed
+  measurably fail on.
+
+Original spike checklist (kept for reference):
 
 - Prefer ONNX/runtime-only integration over Python.
 - Confirm whether streaming chunks can be reduced cleanly to per-frame/per-block probabilities.
 - Benchmark Chinese speech fixtures separately from multilingual/media fixtures.
 - Watch false positives carefully; high recall is not automatically good for loudness metering.
-
-Current dependency finding:
-
-- The currently visible Rust crate path, `rlx-funasr = 0.2.9`, is `GPL-3.0-only`. Do not add it as
-  a mainline PLVS dependency unless we intentionally accept GPL obligations or isolate it behind a
-  separate process/plugin boundary.
-- FunASR should remain a design spike until we find a permissive runtime-only integration path, or
-  decide that an external optional component is acceptable.
 
 ## Validation
 
