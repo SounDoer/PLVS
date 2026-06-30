@@ -32,7 +32,7 @@ function hasPairSignal(peakDb, x, y) {
 
 function correlationMarkerClass(value) {
   const corr = clampCorrelation(value);
-  if (corr === null) return "bg-muted-foreground";
+  if (corr === null) return "bg-[color:var(--muted-foreground)]";
   if (corr < 0) return "bg-[color:var(--ui-signal-bad)]";
   if (corr < 0.35) return "bg-[color:var(--ui-signal-warn)]";
   return "bg-[color:var(--ui-signal-good)]";
@@ -217,10 +217,10 @@ export function VectorscopePanel() {
           aria-hidden
         >
           <div className="absolute inset-x-0 bottom-0 h-2.5">
-            <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-muted-foreground/25" />
-            <div className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-muted-foreground" />
-            <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground" />
-            <div className="absolute right-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-muted-foreground" />
+            <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-[color:color-mix(in_srgb,var(--muted-foreground)_25%,transparent)]" />
+            <div className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
+            <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
+            <div className="absolute right-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
           </div>
           {canPlaceCorrelationMarker && (
             <div

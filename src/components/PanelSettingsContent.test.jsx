@@ -111,7 +111,7 @@ describe("PanelSettingsContent", () => {
     const peakOption = screen.getByRole("option", { name: "Peak" });
     expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain("size-3");
     expect(peakOption.querySelector("svg")?.className.baseVal).toContain("size-3");
-    const momentaryOption = screen.getByRole("option", { name: "M" });
+    const momentaryOption = screen.getByRole("option", { name: "Momentary" });
     expect(modeRow?.contains(momentaryOption)).toBe(true);
     expect(momentaryOption.getAttribute("data-settings-option-row")).toBe("true");
     expect(momentaryOption.querySelector("[data-settings-option-check]")?.className).toContain(
@@ -125,7 +125,7 @@ describe("PanelSettingsContent", () => {
     });
   });
 
-  it("hides the Level Meter value marker switch in Peak mode", () => {
+  it("shows the TP Max switch and hides the value marker switch in Peak mode", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -135,11 +135,21 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.queryByText("Value marker")).toBeNull();
-    expect(screen.queryByRole("switch", { name: "level meter value marker" })).toBeNull();
+    expect(screen.queryByText("Floating value")).toBeNull();
+    expect(screen.queryByRole("switch", { name: "level meter floating value" })).toBeNull();
+    expect(screen.getByText("TP Max")).toBeTruthy();
+    const switchButton = screen.getByRole("switch", { name: "level meter TP Max" });
+    expect(switchButton.getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(switchButton);
+
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterTpMaxMarker: false,
+    });
   });
 
-  it("renders the Level Meter value marker switch for Momentary and updates it", () => {
+  it("renders the Level Meter floating value switch for Momentary and updates it", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -149,8 +159,9 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.getByText("Value marker")).toBeTruthy();
-    const switchButton = screen.getByRole("switch", { name: "level meter value marker" });
+    expect(screen.getByText("Floating value")).toBeTruthy();
+    expect(screen.queryByText("TP Max")).toBeNull();
+    const switchButton = screen.getByRole("switch", { name: "level meter floating value" });
     expect(switchButton.getAttribute("aria-checked")).toBe("true");
     expect(switchButton.className).toContain("h-4");
     expect(switchButton.className).toContain("w-7");
@@ -226,7 +237,7 @@ describe("PanelSettingsContent", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
-    fireEvent.click(screen.getByRole("option", { name: "ST" }));
+    fireEvent.click(screen.getByRole("option", { name: "Short-term" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,

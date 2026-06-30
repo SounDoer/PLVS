@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { PANEL_METRIC_FOOTER, PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
+import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
   LOUDNESS_DB_MAX,
@@ -18,8 +18,8 @@ import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
-  momentary: { label: "M", unit: "LUFS", field: "momentary" },
-  shortTerm: { label: "ST", unit: "LUFS", field: "shortTerm" },
+  momentary: { label: "Momentary", unit: "LUFS", field: "momentary" },
+  shortTerm: { label: "Short-term", unit: "LUFS", field: "shortTerm" },
 };
 
 const LEVEL_METER_VALUE_MARKER_POSITION = {
@@ -82,15 +82,16 @@ function formatLevelValue(value) {
   return Number.isFinite(value) ? value.toFixed(1) : "-";
 }
 
-function CurrentValueMarker({ value, yRange }) {
-  if (!Number.isFinite(value) || value < yRange.min) return null;
+function AxisValueMarker({ value, yRange, dataAttribute = "data-level-value-marker", className }) {
+  if (!Number.isFinite(value) || value < yRange.min || value > yRange.max) return null;
 
   return (
     <span
-      data-level-value-marker
+      {...{ [dataAttribute]: "" }}
       className={cn(
         "pointer-events-none z-10 font-semibold text-primary",
-        levelMeterValueMarkerClass("middle")
+        levelMeterValueMarkerClass("middle"),
+        className
       )}
       style={{ top: `${rangedFromTopFrac(value, yRange.min, yRange.max) * 100}%` }}
     >
@@ -106,7 +107,6 @@ export function LevelMeterPanel() {
     fmt,
     hasTpMaxValue,
     panelControls,
-    tpMaxText,
     onPanelControlsChange,
   } = useAudioData();
   const normalizedPanelControls = useMemo(
@@ -115,6 +115,7 @@ export function LevelMeterPanel() {
   );
   const levelMeterMode = normalizedPanelControls.levelMeterMode;
   const showLevelValueMarker = normalizedPanelControls.levelMeterValueMarker;
+  const showTpMaxMarkerSetting = normalizedPanelControls.levelMeterTpMaxMarker;
   const modeMeta = LEVEL_MODE_META[levelMeterMode] ?? LEVEL_MODE_META.peak;
   const isPeak = levelMeterMode === "peak";
   // Peak mode keeps its own dBFS range; the loudness-family modes (M/ST) share the
@@ -215,12 +216,12 @@ export function LevelMeterPanel() {
                   );
                 })}
                 {showMarker ? (
-                  <CurrentValueMarker value={levelValue} yRange={levelMeterYRange} />
+                  <AxisValueMarker value={levelValue} yRange={levelMeterYRange} />
                 ) : null}
               </div>
             </div>
             <div data-level-meter-bar-region className="grid grid-cols-[minmax(0,1fr)]">
-              <div className="relative h-full min-h-0 p-0">
+              <div className="@container relative h-full min-h-0 p-0">
                 <div
                   data-level-meter-bar-fill
                   className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
@@ -239,7 +240,10 @@ export function LevelMeterPanel() {
                 </div>
                 <div
                   data-level-value
-                  className="@max-[220px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center text-[length:var(--ui-fs-display)]"
+                  className={cn(
+                    "@max-[48px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] justify-center text-[length:var(--ui-fs-display)]",
+                    showMarker ? "hidden" : "flex"
+                  )}
                 >
                   <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
                     {formatLevelValue(levelValue)}
@@ -247,25 +251,11 @@ export function LevelMeterPanel() {
                 </div>
                 <div
                   data-level-mode-label
-                  className="@max-[220px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
+                  className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
                 >
                   {modeMeta.label}
                 </div>
               </div>
-            </div>
-          </div>
-          <div data-level-meter-footer className={PANEL_METRIC_FOOTER}>
-            <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
-              <span className="text-muted-foreground">{modeMeta.label}</span>
-              <span
-                className={cn(
-                  "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold",
-                  Number.isFinite(levelValue) ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
-                {formatLevelValue(levelValue)}
-              </span>
-              <span className="text-muted-foreground">{modeMeta.unit}</span>
             </div>
           </div>
         </div>
@@ -274,6 +264,8 @@ export function LevelMeterPanel() {
   }
 
   const channels = getPeakChannels(displayAudio, peakLabelContext);
+  const showTpMaxMarker = showTpMaxMarkerSetting && hasTpMaxValue;
+  const peakYAxisWidthClass = showTpMaxMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
   return (
     <div
       className={cn(
@@ -289,7 +281,7 @@ export function LevelMeterPanel() {
             {...levelMeterYAxis.axisHandlers}
             style={{ cursor: levelMeterYAxis.cursorStyle }}
             className={cn(
-              W_PEAK_TICKS,
+              peakYAxisWidthClass,
               "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
               levelMeterYAxis.isActive && "text-foreground"
             )}
@@ -325,6 +317,14 @@ export function LevelMeterPanel() {
                   </span>
                 );
               })}
+              {showTpMaxMarker ? (
+                <AxisValueMarker
+                  value={displayAudio?.tpMax}
+                  yRange={levelMeterYRange}
+                  dataAttribute="data-level-tp-max-marker"
+                  className="text-[color:var(--ui-signal-tp-max)]"
+                />
+              ) : null}
             </div>
           </div>
           <div
@@ -336,7 +336,7 @@ export function LevelMeterPanel() {
             }}
           >
             {channels.map((c, idx) => (
-              <div key={`${idx}-${c.label}`} className="relative h-full min-h-0 p-0">
+              <div key={`${idx}-${c.label}`} className="@container relative h-full min-h-0 p-0">
                 <div
                   data-level-meter-bar-fill
                   className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
@@ -348,7 +348,7 @@ export function LevelMeterPanel() {
                 </div>
                 <div
                   data-peak-value
-                  className="@max-[220px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center text-[length:var(--ui-fs-display)]"
+                  className="@max-[48px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center text-[length:var(--ui-fs-display)]"
                 >
                   <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
                     {fmt(c.valueDb)}
@@ -356,26 +356,12 @@ export function LevelMeterPanel() {
                 </div>
                 <div
                   data-peak-channel-label
-                  className="@max-[220px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
+                  className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
                 >
                   {c.label}
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-        <div data-level-meter-footer className={PANEL_METRIC_FOOTER}>
-          <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
-            <span className="text-muted-foreground">TP Max</span>
-            <span
-              className={
-                hasTpMaxValue
-                  ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-signal-tp-max)]"
-                  : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
-              }
-            >
-              {tpMaxText}
-            </span>
           </div>
         </div>
       </div>

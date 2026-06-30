@@ -554,15 +554,31 @@ export function PanelSettingsContent({
           />
         </SettingsRow>
         {showValueMarkerToggle ? (
-          <SettingsRow label="Value marker">
+          <SettingsRow label="Floating value">
             <SettingsSwitch
-              aria-label="level meter value marker"
+              aria-label="level meter floating value"
               checked={normalizedPanelControls.levelMeterValueMarker}
               onCheckedChange={(checked) => {
                 onPanelControlsChange(
                   normalizePanelControls({
                     ...normalizedPanelControls,
                     levelMeterValueMarker: checked,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {isPeakMode ? (
+          <SettingsRow label="TP Max">
+            <SettingsSwitch
+              aria-label="level meter TP Max"
+              checked={normalizedPanelControls.levelMeterTpMaxMarker}
+              onCheckedChange={(checked) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    levelMeterTpMaxMarker: checked,
                   })
                 );
               }}

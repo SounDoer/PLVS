@@ -9,13 +9,14 @@ export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
 
 export const LEVEL_METER_MODE_OPTIONS = [
   { id: "peak", label: "Peak" },
-  { id: "momentary", label: "M" },
-  { id: "shortTerm", label: "ST" },
+  { id: "momentary", label: "Momentary" },
+  { id: "shortTerm", label: "Short-term" },
 ];
 
 export const DEFAULT_PANEL_CONTROLS = {
   levelMeterMode: "peak",
   levelMeterValueMarker: true,
+  levelMeterTpMaxMarker: true,
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
@@ -150,6 +151,10 @@ function normalizeLevelMeterValueMarker(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterValueMarker;
 }
 
+function normalizeLevelMeterTpMaxMarker(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterTpMaxMarker;
+}
+
 function normalizeKnownIds(raw, knownIds, fallback) {
   if (!Array.isArray(raw)) return [...fallback];
 
@@ -221,6 +226,7 @@ export function normalizePanelControls(raw) {
   return {
     levelMeterMode: normalizeLevelMeterMode(raw?.levelMeterMode),
     levelMeterValueMarker: normalizeLevelMeterValueMarker(raw?.levelMeterValueMarker),
+    levelMeterTpMaxMarker: normalizeLevelMeterTpMaxMarker(raw?.levelMeterTpMaxMarker),
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),

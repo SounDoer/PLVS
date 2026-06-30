@@ -23,6 +23,7 @@
  *   spectrumPeakHold: boolean,
  *   levelMeterMode: string,
  *   levelMeterValueMarker: boolean,
+ *   levelMeterTpMaxMarker: boolean,
  *   statsVisibleIds: string[],
  *   statsOrder: string[],
  *   loudnessHistoryVisibleLayerIds: string[],
