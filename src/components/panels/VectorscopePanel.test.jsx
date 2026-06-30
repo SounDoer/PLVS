@@ -56,25 +56,89 @@ describe("VectorscopePanel", () => {
     expect(trace?.getAttribute("d")).toBe(path);
   });
 
-  it("mirrors the neighbouring x-axis row with the correlation footer when it is visible", () => {
+  it("renders a persistent correlation rail instead of the numeric footer", () => {
     const { container } = renderPanel({ selectedOffset: -1, panelControls: {} });
 
-    const footer = container.querySelector("[data-vectorscope-footer]");
+    const rail = container.querySelector("[data-vectorscope-correlation-rail]");
 
-    // Footer matches an x-axis row: same height, same axis gap above it, axis font.
-    expect(footer?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
-    expect(footer?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
-    expect(footer?.className).toContain("text-[length:var(--ui-fs-axis)]");
-    expect(footer?.className).not.toContain("text-[length:var(--ui-fs-display)]");
+    expect(rail).toBeTruthy();
+    expect(rail?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
+    expect(rail?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
+    expect(container.querySelector("[data-vectorscope-footer]")).toBeNull();
   });
 
-  it("collapses the correlation footer in narrow panes so the chart area fills full height", () => {
+  it("does not auto-hide the correlation rail in narrow panes", () => {
     const { container } = renderPanel({ selectedOffset: -1, panelControls: {} });
 
-    const footer = container.querySelector("[data-vectorscope-footer]");
+    const rail = container.querySelector("[data-vectorscope-correlation-rail]");
 
-    // display:none collapses the footer box and its top margin, so the centered
-    // square's content column expands to the neighbours' x-axis bottom.
-    expect(footer?.className).toContain("@max-[220px]:hidden");
+    expect(rail?.className).not.toContain("@max-[220px]:hidden");
+  });
+
+  it("places the rail marker from correlation when the selected pair has signal", () => {
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 } },
+      displayAudio: {
+        peakDb: [-12, -18],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": { path: "M 0 0 L 100 100", correlation: 0.5, pairX: 0, pairY: 1 },
+        },
+      },
+    });
+
+    const marker = container.querySelector("[data-vectorscope-correlation-marker]");
+    expect(marker).toBeTruthy();
+    expect(marker?.getAttribute("style")).toContain("left: 75%");
+  });
+
+  it("smooths the live marker position but leaves snapshot markers immediate", () => {
+    const live = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 } },
+      displayAudio: {
+        peakDb: [-12, -18],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": { path: "M 0 0 L 100 100", correlation: 0.5, pairX: 0, pairY: 1 },
+        },
+      },
+    });
+    expect(
+      live.container.querySelector("[data-vectorscope-correlation-marker]")?.className
+    ).toContain("transition-[left]");
+
+    const snapshot = renderPanel({
+      selectedOffset: 2,
+      displayAudio: { peakDb: [-12, -18] },
+      resolveVectorscopeSnapshotForKey: () => ({
+        missing: false,
+        path: "M 0 0 L 100 100",
+        correlation: 0.5,
+        hasSignal: true,
+      }),
+    });
+    expect(
+      snapshot.container.querySelector("[data-vectorscope-correlation-marker]")?.className
+    ).not.toContain("transition-[left]");
+  });
+
+  it("treats no-signal correlation as indeterminate instead of placing the rail marker at zero", () => {
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 } },
+      displayAudio: {
+        peakDb: [-Infinity, -Infinity],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": {
+            path: "M 130 130 L 130 130",
+            correlation: 0,
+            pairX: 0,
+            pairY: 1,
+          },
+        },
+      },
+    });
+
+    expect(container.querySelector("[data-vectorscope-correlation-marker]")).toBeNull();
   });
 });

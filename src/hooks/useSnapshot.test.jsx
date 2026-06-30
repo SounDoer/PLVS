@@ -103,4 +103,31 @@ describe("useSnapshot", () => {
       data: null,
     });
   });
+
+  it("returns vectorscope snapshot signal presence from stored pairs", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    intake.snapshotVisualVectorscopeByKey = () => ({
+      "vectorscope:pair:0:1": [
+        {
+          timestampMs: 1000,
+          pairs: [0.25, -0.25],
+          correlation: 0.5,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const snap = result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1");
+    expect(snap.missing).toBe(false);
+    expect(snap.hasSignal).toBe(true);
+    expect(snap.correlation).toBe(0.5);
+  });
 });

@@ -50,6 +50,7 @@ export function buildThemeTokens(theme) {
     "--ui-signal-tp-max": signal.bad,
     "--ui-signal-bad": signal.bad,
     "--ui-signal-warn": signal.warn,
+    "--ui-signal-good": signal.good,
     "--ui-meter-gradient-top": signal.bad,
     "--ui-meter-gradient-mid": signal.warn,
     "--ui-meter-gradient-bottom": signal.good,

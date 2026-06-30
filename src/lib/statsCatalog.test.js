@@ -86,4 +86,10 @@ describe("statsCatalog", () => {
     const correlation = metrics.find((m) => m.id === "correlation");
     expect(correlation.value).toBe("-");
   });
+
+  it("shows a dash for Correlation when there is no audio signal", () => {
+    const metrics = buildStatsMetrics({ peakDb: [-Infinity, -120], correlation: 0 });
+    const correlation = metrics.find((m) => m.id === "correlation");
+    expect(correlation.value).toBe("-");
+  });
 });

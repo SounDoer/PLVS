@@ -4,6 +4,16 @@ import { buildVectorscopeSvgFromPairs } from "../math/vectorscopeMath.js";
 import { buildSpectrumSvgFromBandsAndDb } from "../math/spectrumMath.js";
 import { resolveSnapshot, resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
 
+const VECTORSCOPE_SIGNAL_FLOOR = 10 ** (-90 / 20);
+
+function vectorscopePairsHaveSignal(pairs) {
+  if (!pairs?.length) return false;
+  for (const sample of pairs) {
+    if (Number.isFinite(sample) && Math.abs(sample) > VECTORSCOPE_SIGNAL_FLOOR) return true;
+  }
+  return false;
+}
+
 function freezeSnapshot(intake) {
   return {
     loudness: [...intake.getLoudnessHistory()],
@@ -74,10 +84,12 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     );
     if (missing) return { missing: true, path: "", correlation: -Infinity };
     const snap = entries[index];
+    const pairs = snap?.pairs ?? [];
     return {
       missing: false,
-      path: buildVectorscopeSvgFromPairs(snap?.pairs ?? []),
+      path: buildVectorscopeSvgFromPairs(pairs),
       correlation: Number.isFinite(snap?.correlation) ? snap.correlation : -Infinity,
+      hasSignal: vectorscopePairsHaveSignal(pairs),
     };
   };
 

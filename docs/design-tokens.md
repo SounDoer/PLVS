@@ -117,6 +117,7 @@ Values that carry a pass/warn/fail meaning — not brand-derived.
 | `--ui-signal-tp-max`      | `#f97373` | TP MAX value text when exceeded |
 | `--ui-signal-bad`         | `#f97373` | General error / clip state      |
 | `--ui-signal-warn`        | `#fbbf24` | General warning state           |
+| `--ui-signal-good`        | `#34d399` | General safe / healthy state    |
 
 ### Component: Spectrogram Colormap
 

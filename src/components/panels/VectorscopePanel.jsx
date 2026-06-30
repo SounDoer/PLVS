@@ -2,13 +2,41 @@ import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, PANEL_METRIC_FOOTER, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
+import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
   SnapshotEmptyState,
   SNAPSHOT_NO_DATA_MESSAGE,
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
+
+const CORRELATION_SIGNAL_FLOOR_DB = -90;
+
+function clampCorrelation(value) {
+  if (!Number.isFinite(value)) return null;
+  return Math.max(-1, Math.min(1, value));
+}
+
+function correlationMarkerLeft(value) {
+  const corr = clampCorrelation(value);
+  if (corr === null) return "50%";
+  return `${((corr + 1) / 2) * 100}%`;
+}
+
+function hasPairSignal(peakDb, x, y) {
+  if (!Array.isArray(peakDb)) return false;
+  const lx = Number.isFinite(peakDb[x]) ? peakDb[x] : -Infinity;
+  const ly = Number.isFinite(peakDb[y]) ? peakDb[y] : -Infinity;
+  return Math.max(lx, ly) > CORRELATION_SIGNAL_FLOOR_DB;
+}
+
+function correlationMarkerClass(value) {
+  const corr = clampCorrelation(value);
+  if (corr === null) return "bg-muted-foreground";
+  if (corr < 0) return "bg-[color:var(--ui-signal-bad)]";
+  if (corr < 0.35) return "bg-[color:var(--ui-signal-warn)]";
+  return "bg-[color:var(--ui-signal-good)]";
+}
 
 export function VectorscopePanel() {
   const {
@@ -67,6 +95,11 @@ export function VectorscopePanel() {
   const py = Number.isFinite(panelPairY) ? Math.max(0, Math.floor(Number(panelPairY))) : 1;
   const axisXLabel = stripLabels[px] ?? `Ch ${px + 1}`;
   const axisYLabel = stripLabels[py] ?? `Ch ${py + 1}`;
+  const hasCorrelationSignal = isSnapshot
+    ? snapResolved?.hasSignal === true
+    : hasPairSignal(displayAudio?.peakDb, px, py);
+  const canPlaceCorrelationMarker =
+    hasCorrelationSignal && clampCorrelation(panelCorrelation) !== null;
   if (isOverCap || snapshotMissing) {
     return (
       <div
@@ -172,18 +205,34 @@ export function VectorscopePanel() {
           </span>
         </div>
       </div>
-      <div data-vectorscope-footer className={PANEL_METRIC_FOOTER}>
-        <div className="flex items-baseline gap-[var(--ui-metric-inline-gap)]">
-          <span className="text-muted-foreground">Correlation</span>
-          <span
-            className={
-              Number.isFinite(panelCorrelation)
-                ? "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-[color:var(--ui-signal-tp-max)]"
-                : "font-[family-name:var(--ui-font-mono)] tabular-nums font-semibold text-muted-foreground"
-            }
-          >
-            {Number.isFinite(panelCorrelation) ? panelCorrelation.toFixed(2) : "-"}
-          </span>
+      <div
+        data-vectorscope-correlation-rail
+        className="mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
+      >
+        <div
+          className={cn(
+            "relative h-full w-full",
+            hasCorrelationSignal ? "opacity-100" : "opacity-30"
+          )}
+          aria-hidden
+        >
+          <div className="absolute inset-x-0 bottom-0 h-2.5">
+            <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-muted-foreground/25" />
+            <div className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-muted-foreground" />
+            <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground" />
+            <div className="absolute right-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-muted-foreground" />
+          </div>
+          {canPlaceCorrelationMarker && (
+            <div
+              data-vectorscope-correlation-marker
+              className={cn(
+                "absolute bottom-0 h-3 w-0.5 -translate-x-1/2 rounded-full shadow-[0_0_0_1px_color-mix(in_srgb,var(--background)_72%,transparent),0_0_8px_currentColor]",
+                !isSnapshot && "transition-[left] duration-100 ease-out",
+                correlationMarkerClass(panelCorrelation)
+              )}
+              style={{ left: correlationMarkerLeft(panelCorrelation) }}
+            />
+          )}
         </div>
       </div>
     </div>

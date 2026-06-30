@@ -1,5 +1,7 @@
 import { fmtMetric } from "../math/formatMath";
 
+const CORRELATION_SIGNAL_FLOOR_DB = -90;
+
 export const STATS_META = {
   momentary: { label: "Momentary", unit: "LUFS", hint: "Loudness over a 400ms window" },
   shortTerm: { label: "Short-term", unit: "LUFS", hint: "Loudness over a 3s window" },
@@ -78,9 +80,19 @@ export function dialogueOffsetText(dialogueIntegrated, integrated) {
   return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
 }
 
-// Correlation is bounded to [-1, +1], so it only needs a finite check (no
-// floor/ceil clamping like fmtMetric) and a fixed 2-decimal precision.
-function fmtCorrelation(v) {
+function hasCorrelationSignal(displayAudio) {
+  const peakDb = displayAudio?.peakDb;
+  if (Array.isArray(peakDb)) {
+    return peakDb.some((v) => Number.isFinite(v) && v > CORRELATION_SIGNAL_FLOOR_DB);
+  }
+  return true;
+}
+
+// Correlation is bounded to [-1, +1], so finite values only need fixed 2-decimal
+// precision, but silence/near-silence is indeterminate rather than "0.00".
+function fmtCorrelation(displayAudio) {
+  if (!hasCorrelationSignal(displayAudio)) return "-";
+  const v = displayAudio?.correlation;
   return Number.isFinite(v) ? v.toFixed(2) : "-";
 }
 
@@ -115,7 +127,7 @@ export function buildStatsMetrics(displayAudio) {
     dialogueRange: fmtMetric(displayAudio.dialogueLra),
     dialogueOffset: dialogueOffsetText(displayAudio.dialogueIntegrated, displayAudio.integrated),
     truePeak: fmtMetric(displayAudio.tpMax),
-    correlation: fmtCorrelation(displayAudio.correlation),
+    correlation: fmtCorrelation(displayAudio),
   };
 
   return STATS_CANONICAL_ORDER.map((id) => ({

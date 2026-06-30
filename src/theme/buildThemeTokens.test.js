@@ -46,6 +46,7 @@ describe("buildThemeTokens", () => {
       "--ui-signal-tp-max",
       "--ui-signal-bad",
       "--ui-signal-warn",
+      "--ui-signal-good",
       "--ui-meter-gradient-top",
       "--ui-meter-gradient-mid",
       "--ui-meter-gradient-bottom",
@@ -82,6 +83,7 @@ describe("buildThemeTokens", () => {
     expect(t["--ui-signal-tp-max"]).toBe(signal.bad);
     expect(t["--ui-signal-bad"]).toBe(signal.bad);
     expect(t["--ui-signal-warn"]).toBe(signal.warn);
+    expect(t["--ui-signal-good"]).toBe(signal.good);
   });
 
   it("bridges accent onto the shell brand tokens --primary and --ring", () => {

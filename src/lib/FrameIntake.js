@@ -68,6 +68,22 @@ function snapshotFloat32Array(values) {
   return Float32Array.from(values);
 }
 
+function linearPeakToDb(v) {
+  return Number.isFinite(v) && v > 0 ? 20 * Math.log10(v) : -Infinity;
+}
+
+function peakDbFromWaveformExtents(minValues, maxValues) {
+  const n = Math.max(minValues?.length ?? 0, maxValues?.length ?? 0);
+  if (n === 0) return EMPTY_ARRAY;
+  const out = new Array(n);
+  for (let i = 0; i < n; i += 1) {
+    const lo = Number.isFinite(minValues?.[i]) ? Math.abs(minValues[i]) : 0;
+    const hi = Number.isFinite(maxValues?.[i]) ? Math.abs(maxValues[i]) : 0;
+    out[i] = linearPeakToDb(Math.max(lo, hi));
+  }
+  return out;
+}
+
 /**
  * Compute spectrum display data from a frame or history row.
  * @param {object} row
@@ -107,6 +123,7 @@ function buildAudioSnap(row) {
     sampleR: Number.isFinite(row.sampleRDb) ? row.sampleRDb : -Infinity,
     samplePeakMaxL: Number.isFinite(row.samplePeakMaxL) ? row.samplePeakMaxL : -Infinity,
     samplePeakMaxR: Number.isFinite(row.samplePeakMaxR) ? row.samplePeakMaxR : -Infinity,
+    peakDb: peakDbFromWaveformExtents(row.waveformMin, row.waveformMax),
     correlation: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
     vectorscopePairX: Number.isFinite(row.vectorscopePairX) ? row.vectorscopePairX : 0,
     vectorscopePairY: Number.isFinite(row.vectorscopePairY) ? row.vectorscopePairY : 1,

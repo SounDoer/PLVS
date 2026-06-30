@@ -227,6 +227,18 @@ describe("FrameIntake", () => {
     expect(snap.vectorscopePairY).toBe(3);
   });
 
+  it("derives snapshot peakDb from history waveform extents", () => {
+    const intake = new FrameIntake();
+    intake.pushHistRow(
+      makeRow({ waveformMin: [-0.5, -0.25], waveformMax: [0.25, 0.75] }),
+      HIST_MAX
+    );
+
+    const snap = intake.getAudioSnap()[0];
+    expect(snap.peakDb[0]).toBeCloseTo(-6.0206, 4);
+    expect(snap.peakDb[1]).toBeCloseTo(-2.4988, 4);
+  });
+
   it("pushFrame with visualHistBatch ingests all entries into the visual ring in order", () => {
     const intake = new FrameIntake();
     const batch = [
