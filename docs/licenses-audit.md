@@ -2,7 +2,8 @@
 
 A snapshot of PLVS's dependency licensing. PLVS itself is **MIT** (`LICENSE`).
 
-**Snapshot date:** 2026-06-28 (after replacing Symphonia with a bundled FFmpeg sidecar).
+**Snapshot date:** 2026-06-28 (after replacing Symphonia with a bundled FFmpeg sidecar); updated
+2026-06-30 to record the bundled dialogue VAD engines (Silero, TEN VAD, FireRedVAD).
 
 ## Verdict
 
@@ -38,7 +39,9 @@ variants (BSD, Zlib, Unicode-3.0, ISC, CC0). Items worth recording:
 |---|---|---|
 | `cssparser`, `cssparser-macros`, `dtoa-short`, `option-ext`, `selectors` | **MPL-2.0** | File-level copyleft from the Tauri HTML/CSS stack. We do not modify these files → no obligation. |
 | `r-efi` | `Apache-2.0 OR LGPL-2.1-or-later OR MIT` | Disjunctive (`OR`) — we take **MIT**; the LGPL option is irrelevant. |
-| `voice_activity_detector` | reported as "Custom License File" | The file is standard **MIT** (© 2024 Nicholas Keenan). The bundled Silero VAD model is also MIT. |
+| `voice_activity_detector` (Silero) | reported as "Custom License File" | The file is standard **MIT** (© 2024 Nicholas Keenan). Bundled Silero VAD model is also **MIT**. Shipped — attributed in `THIRD-PARTY-NOTICES.md`. |
+| `ten-vad-rs` + bundled `ten-vad.onnx` | **Apache-2.0** | TEN VAD model (TEN-framework/ten-vad) embedded in the app. Shipped — attributed in `THIRD-PARTY-NOTICES.md`. |
+| `firered-vad` + bundled model | crate **MIT OR Apache-2.0**; model **Apache-2.0** | FireRedVAD model (FireRedTeam/FireRedVAD, © Xiaohongshu) embedded via the crate. Shipped — attributed in `THIRD-PARTY-NOTICES.md`. |
 | **FFmpeg** (bundled sidecar) | **LGPL-2.1** | Shipped. Handled via `THIRD-PARTY-NOTICES.md` + replaceable sidecar binary. |
 
 No GPL / AGPL present.
@@ -67,6 +70,8 @@ shipped** in the desktop bundle:
 
 - [x] FFmpeg (LGPL-2.1): attribution + source pointer + replaceable component — see
       `THIRD-PARTY-NOTICES.md`.
+- [x] Bundled VAD models — Silero (MIT), TEN VAD (Apache-2.0), FireRedVAD (Apache-2.0): attribution +
+      upstream pointer + Apache-2.0 license pointer — see `THIRD-PARTY-NOTICES.md`.
 - [ ] Optional good practice: aggregate the permissive (MIT/Apache/BSD) license texts into the
       distribution. Can be automated later with `cargo-about` (Rust) if desired.
 - [ ] Optional CI guard: `cargo-deny check licenses` to fail the build if a GPL/AGPL dependency is
