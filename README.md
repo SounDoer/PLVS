@@ -8,7 +8,7 @@
 [![Downloads](https://img.shields.io/github/downloads/SounDoer/PLVS/total?style=flat-square)](https://github.com/SounDoer/PLVS/releases)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/SounDoer/PLVS/main/landing/assets/screenshot-hero.webp" alt="PLVS dashboard showing peak, loudness, spectrogram, spectrum, and vectorscope meters" width="100%"/>
+  <img src="https://raw.githubusercontent.com/SounDoer/PLVS/main/landing/assets/screenshot-hero.webp" alt="PLVS dashboard showing level, loudness, spectrum, spectrogram, vectorscope, and waveform meters" width="100%"/>
 </p>
 
 ---
@@ -19,12 +19,13 @@ PLVS (reads as *"plus"*) is a **read-only, real-time audio meter** built for **s
 
 It can also work offline in **file mode**: drop in a local audio file and scrub through its full metering history across every meter.
 
-It combines six meter types in a single desktop app:
+It combines seven metering panels in a single desktop app:
 
-| Meter | What it shows |
+| Panel | What it shows |
 |-------|---------------|
-| **Peak** | Per-channel sample-peak meters (dBFS) |
-| **Loudness** | LUFS — Momentary, Short-term, Integrated, LRA (ITU-R BS.1770, EBU R128), plus optional dialogue-gated readouts |
+| **Level Meter** | Per-channel level bars, switchable between sample Peak (dBFS) and Momentary / Short-term loudness (LUFS) |
+| **Loudness** | Momentary & Short-term LUFS history curves (ITU-R BS.1770, EBU R128) with a configurable reference overlay |
+| **Stats** | Configurable numeric readouts — Integrated, LRA, max values, dynamics, plus optional dialogue-gated metrics; reorderable |
 | **Spectrum** | FFT-based real-time analyzer with per-band dBFS |
 | **Spectrogram** | Scrolling time-frequency waterfall |
 | **Vectorscope** | Stereo phase / correlation with configurable channel pairs |
@@ -43,7 +44,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 - **Interactive charts** — zoom, pan, and scrub every chart with adaptive tick labels and a live hover probe.
 - **Session history & snapshots** — scroll back through the loudness timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
 - **Configurable loudness reference** — set a target LUFS value overlaid on the loudness chart.
-- **Dialogue-gated loudness** *(optional)* — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by an on-device voice-activity-detection engine ([Silero VAD](https://github.com/snakers4/silero-vad) by default, with selectable alternatives); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
+- **Dialogue-gated loudness** *(optional)* — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by a selectable on-device voice-activity-detection engine (see [Acknowledgements](#acknowledgements)); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
 - **Flexible layout & theming** — drag dividers, resize panels, open multiple instances of the same meter, and switch between presets from the toolbar. Includes a theme editor and several built-in themes, plus transparent-window and per-panel opacity controls.
 - **System integration** — system tray, always-on-top window pinning, open-at-login, and customizable global keyboard shortcuts.
 - **Privacy-first** — audio stays on device. No telemetry, no accounts, no network calls except update checks.
@@ -51,7 +52,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 ## Limitations
 
 - **ASIO is not supported on Windows.** ASIO drivers bypass the Windows audio mixer entirely, so WASAPI loopback capture cannot intercept the signal. If you are using a DAW (e.g. REAPER, Ableton Live), set the DAW's audio system to **WASAPI** to allow PLVS to capture its output. For setups that require ASIO, routing through a virtual audio cable (e.g. VB-Cable) to a WASAPI-visible device is a workable alternative.
-- **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses an on-device open-source VAD engine ([Silero VAD](https://github.com/snakers4/silero-vad) by default) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
+- **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses an on-device open-source VAD engine (Silero VAD by default) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
 
 ---
 
@@ -166,7 +167,10 @@ Contributions are welcome. Before submitting a PR, please read [CONTRIBUTING.md]
 
 PLVS stands on the shoulders of excellent open-source work. In particular:
 
-- [**Silero VAD**](https://github.com/snakers4/silero-vad) — the voice activity detection model used for dialogue-gated loudness. The model is bundled via the [`voice_activity_detector`](https://github.com/nkeenan38/voice_activity_detector) crate (MIT).
+- **Voice activity detection** — dialogue-gated loudness can run on any of three selectable on-device VAD engines:
+  - [**Silero VAD**](https://github.com/snakers4/silero-vad) *(default)* — bundled via the [`voice_activity_detector`](https://github.com/nkeenan38/voice_activity_detector) crate (MIT).
+  - [**FireRedVAD**](https://github.com/FireRedTeam/FireRedVAD)
+  - [**TEN VAD**](https://github.com/TEN-framework/ten-vad)
 - [**CPAL**](https://github.com/RustAudio/cpal) — cross-platform audio capture (Apache-2.0).
 - [**RustFFT**](https://github.com/ejmahler/RustFFT) & [**RealFFT**](https://github.com/HEnquist/realfft) — the FFT engine behind the spectrum and spectrogram (MIT / Apache-2.0).
 - [**Rubato**](https://github.com/HEnquist/rubato) — sample-rate conversion (MIT).
