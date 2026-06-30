@@ -226,7 +226,7 @@ export function VectorscopePanel() {
             <div
               data-vectorscope-correlation-marker
               className={cn(
-                "absolute bottom-0 h-3 w-0.5 -translate-x-1/2 rounded-full shadow-[0_0_0_1px_color-mix(in_srgb,var(--background)_72%,transparent),0_0_8px_currentColor]",
+                "absolute bottom-0 h-3 w-0.5 -translate-x-1/2 rounded-full",
                 !isSnapshot && "transition-[left] duration-100 ease-out",
                 correlationMarkerClass(panelCorrelation)
               )}

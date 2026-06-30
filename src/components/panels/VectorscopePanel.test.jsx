@@ -90,6 +90,8 @@ describe("VectorscopePanel", () => {
     const marker = container.querySelector("[data-vectorscope-correlation-marker]");
     expect(marker).toBeTruthy();
     expect(marker?.getAttribute("style")).toContain("left: 75%");
+    expect(marker?.className).not.toContain("currentColor");
+    expect(marker?.className).not.toContain("shadow-[");
   });
 
   it("smooths the live marker position but leaves snapshot markers immediate", () => {
