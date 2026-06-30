@@ -97,11 +97,12 @@ export function LoudnessPanel({ compact = false }) {
             effectiveOffsetSamples,
             visibleSamples,
             HIST_SAMPLE_SEC,
-            loudnessYRange
+            loudnessYRange,
+            loudnessHistoryVisibleLayerIds
           )
         : null,
     selectedOffset < 0
-      ? `${totalSamples ?? 0}:${effectiveOffsetSamples}:${visibleSamples}:${loudnessYMinDb}:${loudnessYMaxDb}`
+      ? `${totalSamples ?? 0}:${effectiveOffsetSamples}:${visibleSamples}:${loudnessYMinDb}:${loudnessYMaxDb}:${loudnessHistoryVisibleLayerIds.join(",")}`
       : null
   );
 

@@ -91,6 +91,16 @@ describe("computeHistoryHoverPoint", () => {
     expect(typeof r.momentary).toBe("number");
     expect(typeof r.shortTerm).toBe("number");
   });
+
+  it("uses momentary as the y guide when it is the only visible curve", () => {
+    const r = computeHistoryHoverPoint(0, samples, 0, 3, 0.1, {}, ["momentary"]);
+    expect(r.topPct).toBeCloseTo((23 / 64) * 100);
+  });
+
+  it("uses the first visible curve in option order as the y guide", () => {
+    const r = computeHistoryHoverPoint(0, samples, 0, 3, 0.1, {}, ["shortTerm", "momentary"]);
+    expect(r.topPct).toBeCloseTo((23 / 64) * 100);
+  });
 });
 
 describe("computeSpectrumHoverIndex", () => {

@@ -1,4 +1,5 @@
 import { loudnessFromTopFrac, rangedFreqToXFrac } from "../config/scales";
+import { LOUDNESS_HISTORY_LAYER_OPTIONS } from "../lib/panelControls.js";
 import { hzFromFrac } from "./spectrogramMath.js";
 import { inWindowRange } from "./spectrogramTimeline.js";
 
@@ -32,6 +33,22 @@ export function formatSpectrumFreq(freq) {
 }
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const HISTORY_HOVER_Y_READERS = {
+  momentary: (point) => point.m,
+  shortTerm: (point) => point.st,
+};
+
+function resolveHistoryHoverYValue(point, visibleLayerIds) {
+  const visible = new Set(Array.isArray(visibleLayerIds) ? visibleLayerIds : []);
+  for (const { id } of LOUDNESS_HISTORY_LAYER_OPTIONS) {
+    if (!visible.has(id)) continue;
+    const readValue = HISTORY_HOVER_Y_READERS[id];
+    if (!readValue) continue;
+    const value = readValue(point);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
 
 /**
  * Maps a frequency in Hz to a musical note name (A4 = 440 Hz reference).
@@ -58,6 +75,7 @@ export function freqToNote(freq) {
  * @param {number} effectiveOffsetSamples
  * @param {number} visibleSamples
  * @param {number} sampleSec
+ * @param {string[]} visibleLayerIds
  * @returns {{ leftPct: number, topPct: number|null, momentary: number|null, shortTerm: number|null, offsetLabel: string } | null}
  */
 export function computeHistoryHoverPoint(
@@ -66,7 +84,8 @@ export function computeHistoryHoverPoint(
   effectiveOffsetSamples,
   visibleSamples,
   sampleSec,
-  yRange = {}
+  yRange = {},
+  visibleLayerIds = []
 ) {
   if (!histSourceList.length) return null;
   const normalized = 1 - xFrac;
@@ -78,7 +97,7 @@ export function computeHistoryHoverPoint(
   const point = histSourceList[hoverIndex];
   if (!point) return null;
   const offsetSec = Math.max(0, (histSourceList.length - 1 - hoverIndex) * sampleSec);
-  const yValue = Number.isFinite(point.st) ? point.st : point.m;
+  const yValue = resolveHistoryHoverYValue(point, visibleLayerIds);
   return {
     leftPct: xFrac * 100,
     topPct: Number.isFinite(yValue) ? loudnessFromTopFrac(yValue, yRange) * 100 : null,
