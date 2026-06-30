@@ -32,9 +32,32 @@ describe("statsCatalog", () => {
       expect(STATS_META[id]).toBeTruthy();
       expect(typeof STATS_META[id].label).toBe("string");
       expect(STATS_META[id].label.length).toBeGreaterThan(0);
+      expect(typeof STATS_META[id].shortLabel).toBe("string");
+      expect(STATS_META[id].shortLabel.length).toBeGreaterThan(0);
       expect(typeof STATS_META[id].hint).toBe("string");
       expect(STATS_META[id].hint.length).toBeGreaterThan(0);
     }
+  });
+
+  it("defines the agreed medium-width short labels", () => {
+    expect(
+      Object.fromEntries(STATS_CANONICAL_ORDER.map((id) => [id, STATS_META[id].shortLabel]))
+    ).toEqual({
+      momentary: "M",
+      shortTerm: "ST",
+      integrated: "I",
+      momentaryMax: "M Max",
+      shortTermMax: "ST Max",
+      lra: "LRA",
+      psr: "PSR",
+      plr: "PLR",
+      dialogueCoverage: "Dlg Cov",
+      dialogueIntegrated: "Dlg I",
+      dialogueRange: "Dlg LRA",
+      dialogueOffset: "Dlg Offset",
+      truePeak: "TP Max",
+      correlation: "Corr",
+    });
   });
 
   it("uses dBTP for True Peak Max and an empty unit for Correlation", () => {

@@ -3,49 +3,87 @@ import { fmtMetric } from "../math/formatMath";
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 
 export const STATS_META = {
-  momentary: { label: "Momentary", unit: "LUFS", hint: "Loudness over a 400ms window" },
-  shortTerm: { label: "Short-term", unit: "LUFS", hint: "Loudness over a 3s window" },
+  momentary: {
+    label: "Momentary",
+    shortLabel: "M",
+    unit: "LUFS",
+    hint: "Loudness over a 400ms window",
+  },
+  shortTerm: {
+    label: "Short-term",
+    shortLabel: "ST",
+    unit: "LUFS",
+    hint: "Loudness over a 3s window",
+  },
   integrated: {
     label: "Integrated",
+    shortLabel: "I",
     unit: "LUFS",
     hint: "Loudness over the whole program, gated below −70 LUFS",
   },
   momentaryMax: {
     label: "Momentary Max",
+    shortLabel: "M Max",
     unit: "LUFS",
     hint: "Highest Momentary (400ms) loudness reached so far",
   },
   shortTermMax: {
     label: "Short-term Max",
+    shortLabel: "ST Max",
     unit: "LUFS",
     hint: "Highest Short-term (3s) loudness reached so far",
   },
-  lra: { label: "Loudness Range", unit: "LU", hint: "LRA, loudness range over the whole program" },
-  psr: { label: "Short-term Dynamics", unit: "dB", hint: "PSR, Peak to Short-term loudness Ratio" },
-  plr: { label: "Integrated Dynamics", unit: "dB", hint: "PLR, Peak to Loudness Ratio" },
+  lra: {
+    label: "Loudness Range",
+    shortLabel: "LRA",
+    unit: "LU",
+    hint: "LRA, loudness range over the whole program",
+  },
+  psr: {
+    label: "Short-term Dynamics",
+    shortLabel: "PSR",
+    unit: "dB",
+    hint: "PSR, Peak to Short-term loudness Ratio",
+  },
+  plr: {
+    label: "Integrated Dynamics",
+    shortLabel: "PLR",
+    unit: "dB",
+    hint: "PLR, Peak to Loudness Ratio",
+  },
   dialogueCoverage: {
     label: "Dialogue Coverage",
+    shortLabel: "Dlg Cov",
     unit: "%",
     hint: "Share of time dialogue is detected",
   },
   dialogueIntegrated: {
     label: "Dialogue Integrated",
+    shortLabel: "Dlg I",
     unit: "LUFS",
     hint: "Loudness over dialogue only",
   },
-  dialogueRange: { label: "Dialogue Range", unit: "LU", hint: "Loudness range over dialogue only" },
+  dialogueRange: {
+    label: "Dialogue Range",
+    shortLabel: "Dlg LRA",
+    unit: "LU",
+    hint: "Loudness range over dialogue only",
+  },
   dialogueOffset: {
     label: "Dialogue Offset",
+    shortLabel: "Dlg Offset",
     unit: "LU",
     hint: "Dialogue loudness relative to the overall mix",
   },
   truePeak: {
     label: "True Peak Max",
+    shortLabel: "TP Max",
     unit: "dBTP",
     hint: "Highest inter-sample (true) peak level reached so far",
   },
   correlation: {
     label: "Correlation",
+    shortLabel: "Corr",
     unit: "",
     hint: "Phase correlation of the stereo pair (+1 in phase, −1 out of phase)",
   },

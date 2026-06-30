@@ -8,6 +8,7 @@ const statsMetrics = [
   {
     id: "momentary",
     label: "Momentary",
+    shortLabel: "M",
     value: "-20.0",
     unit: "LUFS",
     hint: "Loudness over a 400ms window",
@@ -15,6 +16,7 @@ const statsMetrics = [
   {
     id: "shortTerm",
     label: "Short-term",
+    shortLabel: "ST",
     value: "-18.0",
     unit: "LUFS",
     hint: "Loudness over a 3s window",
@@ -22,6 +24,7 @@ const statsMetrics = [
   {
     id: "integrated",
     label: "Integrated",
+    shortLabel: "I",
     value: "-19.0",
     unit: "LUFS",
     hint: "Loudness over the whole program, gated below −70 LUFS",
@@ -29,6 +32,7 @@ const statsMetrics = [
   {
     id: "lra",
     label: "Loudness Range",
+    shortLabel: "LRA",
     value: "3.0",
     unit: "LU",
     hint: "LRA, loudness range over the whole program",
@@ -36,6 +40,7 @@ const statsMetrics = [
   {
     id: "psr",
     label: "Short-term Dynamics",
+    shortLabel: "PSR",
     value: "7.0",
     unit: "dB",
     hint: "PSR, Peak to Short-term loudness Ratio",
@@ -43,6 +48,7 @@ const statsMetrics = [
   {
     id: "plr",
     label: "Integrated Dynamics",
+    shortLabel: "PLR",
     value: "8.0",
     unit: "dB",
     hint: "PLR, Peak to Loudness Ratio",
@@ -106,7 +112,7 @@ describe("StatsPanel", () => {
   it("keeps stats rows tight with horizontal padding only", () => {
     renderPanel(["momentary"]);
 
-    const row = screen.getByText("Momentary").parentElement;
+    const row = screen.getByText("Momentary").parentElement?.parentElement;
 
     expect(row?.className).toContain("gap-[var(--ui-metric-row-gap)]");
     expect(row?.className).toContain("px-[var(--ui-metric-row-pad-x)]");
@@ -114,17 +120,22 @@ describe("StatsPanel", () => {
     expect(row?.className).not.toContain("rounded-[var(--ui-radius-metric-row)]");
   });
 
-  it("hides metric units before abbreviating labels in narrow panes", () => {
+  it("abbreviates metric labels at medium pane widths and hides units only later", () => {
     const { container } = renderPanel(["momentary"]);
 
     const panel = container.firstElementChild;
+    const fullLabel = screen.getByText("Momentary");
+    const shortLabel = screen.getByText("M");
     const value = screen.getByText("-20.0");
     const unit = screen.getByText("LUFS");
 
     expect(panel?.className).toContain("@container");
+    expect(fullLabel.className).toContain("@max-[240px]:hidden");
+    expect(shortLabel.className).toContain("hidden");
+    expect(shortLabel.className).toContain("@max-[240px]:inline");
     expect(value.className).toContain("shrink-0");
     expect(value.getAttribute("style")).toContain("width: 5.5ch");
-    expect(unit.className).toContain("@max-[200px]:hidden");
+    expect(unit.className).toContain("@max-[180px]:hidden");
   });
 
   it("shows an active speaking-now dot when dialogueCoverage is visible and dialogueActiveNow is true", () => {

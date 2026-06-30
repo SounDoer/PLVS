@@ -8,7 +8,7 @@ const METRIC_ROW_LAYOUT =
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
-function MetricRow({ id, label, value, unit, active, hint }) {
+function MetricRow({ id, label, shortLabel, value, unit, active, hint }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.stats.metrics;
   const labelClass =
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-tight text-muted-foreground";
@@ -17,7 +17,7 @@ function MetricRow({ id, label, value, unit, active, hint }) {
     "shrink-0 text-right text-[length:var(--ui-fs-metric-value)] font-semibold leading-none text-foreground"
   );
   const unitClass =
-    "@max-[200px]:hidden shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
+    "@max-[180px]:hidden shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
   const content = (
     <>
       {id === "dialogueCoverage" && (
@@ -30,7 +30,10 @@ function MetricRow({ id, label, value, unit, active, hint }) {
           )}
         />
       )}
-      <span className={labelClass}>{label}</span>
+      <span className={labelClass} title={label}>
+        <span className="@max-[240px]:hidden">{label}</span>
+        <span className="hidden @max-[240px]:inline">{shortLabel ?? label}</span>
+      </span>
       <span className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
         {value}
       </span>
