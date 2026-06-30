@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-06-30
+
+### Changed
+- Tightened narrow-panel metric labels in Stats and Level Meter panels.
+- Polished Level Meter markers and mode labels.
+- Replaced the vectorscope correlation footer with a rail and removed the marker glow.
+
+### Fixed
+- Corrected loudness hover guide layer selection.
+
 ## [0.6.0] - 2026-06-29
 
 ### Added
