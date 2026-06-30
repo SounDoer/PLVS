@@ -1,6 +1,6 @@
 # PLVS
 
-**Real-time audio metering for any sound playing on your machine — no routing, no plugin slots required. Free & open source.**
+**A real-time metering workspace for any sound playing on your machine. Also analyzes local audio files. Free & open source.**
 
 [![Latest Release](https://img.shields.io/github/v/release/SounDoer/PLVS?label=latest&style=flat-square)](https://github.com/SounDoer/PLVS/releases)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
@@ -16,6 +16,8 @@
 ## What is PLVS?
 
 PLVS (reads as *"plus"*) is a **read-only, real-time audio meter** built for **sound designers and mix engineers**. It watches audio playing on your machine — no DAW routing, no virtual cables, no plugin slots required.
+
+It can also work offline in **file mode**: drop in a local audio file and scrub through its full metering history across every meter.
 
 It combines six meter types in a single desktop app:
 
@@ -35,17 +37,21 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 ## Features
 
 - **No routing required** — monitors any audio playing on your machine. Windows uses WASAPI loopback; macOS uses the native audio tap.
+- **File analysis mode** — drop in a local audio file to meter it offline: probe metadata, decode through a bundled FFmpeg sidecar (wide format support), and scrub through the full session history across every meter.
 - **Multichannel** — auto-detects mono, stereo, 5.1, and 7.1 with proper per-channel metering and BS.1770 weighting.
+- **Detailed spectrum analysis** — multi-resolution FFT analyzer with M/S and L/R overlays, peak-hold, log-frequency grid, and musical note names on hover.
+- **Interactive charts** — zoom, pan, and scrub every chart with adaptive tick labels and a live hover probe.
 - **Session history & snapshots** — scroll back through the loudness timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
 - **Configurable loudness reference** — set a target LUFS value overlaid on the loudness chart.
-- **Dialogue-gated loudness** *(optional)* — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by an on-device [Silero VAD](https://github.com/snakers4/silero-vad); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
-- **Flexible layout** — drag dividers, resize panels, switch between built-in presets. Multiple themes included.
+- **Dialogue-gated loudness** *(optional)* — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by an on-device voice-activity-detection engine ([Silero VAD](https://github.com/snakers4/silero-vad) by default, with selectable alternatives); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
+- **Flexible layout & theming** — drag dividers, resize panels, open multiple instances of the same meter, and switch between presets from the toolbar. Includes a theme editor and several built-in themes, plus transparent-window and per-panel opacity controls.
+- **System integration** — system tray, always-on-top window pinning, open-at-login, and customizable global keyboard shortcuts.
 - **Privacy-first** — audio stays on device. No telemetry, no accounts, no network calls except update checks.
 
 ## Limitations
 
 - **ASIO is not supported on Windows.** ASIO drivers bypass the Windows audio mixer entirely, so WASAPI loopback capture cannot intercept the signal. If you are using a DAW (e.g. REAPER, Ableton Live), set the DAW's audio system to **WASAPI** to allow PLVS to capture its output. For setups that require ASIO, routing through a virtual audio cable (e.g. VB-Cable) to a WASAPI-visible device is a workable alternative.
-- **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses the open-source [Silero VAD](https://github.com/snakers4/silero-vad) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
+- **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses an on-device open-source VAD engine ([Silero VAD](https://github.com/snakers4/silero-vad) by default) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
 
 ---
 
@@ -93,6 +99,7 @@ The installer is not code-signed. If SmartScreen blocks it, click **More info** 
 3. **Press Start** to begin monitoring.
 4. **Arrange panels** by dragging dividers and choosing a layout preset from the toolbar.
 5. **Click any point** on the loudness history chart to freeze a snapshot across all meters.
+6. **Analyze a file** *(optional)* — open a local audio file from the toolbar to meter it offline and scrub through its history.
 
 ---
 
