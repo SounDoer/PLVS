@@ -73,8 +73,8 @@ PLVS/
 │   ├── uiPreferences.js          # Re-export of UI_PREFERENCES
 │   │
 │   ├── components/
-│   │   ├── panels/               # PeakPanel, LoudnessPanel, LoudnessStatsPanel,
-│   │   │                         # SpectrumPanel, SpectrogramPanel, VectorscopePanel
+│   │   ├── panels/               # LevelMeterPanel, LoudnessPanel, StatsPanel, SpectrumPanel,
+│   │   │                         # SpectrogramPanel, VectorscopePanel, WaveformPanel
 │   │   └── ui/                   # shadcn/ui components (Button, Dialog, Select…)
 │   │
 │   ├── config/
@@ -88,6 +88,8 @@ PLVS/
 │   │   ├── commands.js           # all invoke() calls
 │   │   ├── events.js             # listen + Channel subscriptions
 │   │   ├── capturePrefs.js       # device preference (Tauri store + localStorage)
+│   │   ├── fileDialog.js         # file-mode open dialog (File analysis)
+│   │   ├── openExternal.js       # open release/update links in system browser
 │   │   ├── env.js                # isTauri() helper
 │   │   └── types.js              # shared IPC type definitions
 │   │
@@ -128,9 +130,10 @@ PLVS/
 │   ├── capabilities/default.json # Tauri 2 permission declarations
 │   ├── native/macos/tap_bridge.m # Core Audio process tap (macOS build only)
 │   └── src/
-│       ├── main.rs / state.rs
+│       ├── main.rs / lib.rs / state.rs / profile.rs / vad.rs / window_state.rs
 │       ├── audio/                # capture layer: cpal_backend, platform_backend, macos/
-│       ├── dsp/                  # peak, loudness, spectrum, vectorscope, filters
+│       ├── dsp/                  # peak, loudness, spectrum, spectrum_bank, vectorscope, speech (VAD), dialogue, filters
+│       ├── file_analysis/        # File mode: ffmpeg probe/decode + session history
 │       ├── engine/meter_pipeline.rs  # PCM → metering frames → Channel/Event push
 │       └── ipc/                  # commands.rs, events.rs, types.rs
 │
