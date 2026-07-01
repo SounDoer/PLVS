@@ -311,6 +311,8 @@ function FullscreenOverlay() {
             onSpectrumPeakHoldToggle={noop}
             panelControls={panelControls}
             onPanelControlsChange={onPanelControlsChange}
+            referenceLufs={audioData?.referenceLufs}
+            setReferenceLufs={audioData?.setReferenceLufs}
           />
           {helpItems ? <HelpPopover items={helpItems} /> : null}
           <button

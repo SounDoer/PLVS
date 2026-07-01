@@ -1413,6 +1413,7 @@ function AppContent() {
     historyYAxisTicks,
     targetLufs,
     referenceLufs,
+    setReferenceLufs,
     hasHistoryData,
     historyChartInteractive,
     displayHistoryPathM,
@@ -1586,8 +1587,6 @@ function AppContent() {
           fixedThemeSelectValue={fixedThemeSelectValue}
           setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
           themeSelectOptions={themeSelectOptions}
-          referenceLufs={referenceLufs}
-          setReferenceLufs={setReferenceLufs}
           channelCount={channelCount}
           channelLabelTokens={channelLabelTokens}
           channelLabelHasOverride={!!channelLabelOverride}

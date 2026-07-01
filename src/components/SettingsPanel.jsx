@@ -47,9 +47,6 @@ const SWITCH_CLASS =
 const SWITCH_THUMB_CLASS =
   "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
 
-const NUMBER_INPUT_CLASS =
-  "flex h-6 w-14 rounded-md border border-transparent bg-transparent px-1.5 py-0 text-center font-mono text-[length:var(--ui-fs-display)] tabular-nums transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
-
 const ICON_BTN_CLASS =
   "rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
@@ -113,8 +110,6 @@ export function SettingsPanel({
   fixedThemeSelectValue,
   setFixedThemeIdFromPicker,
   themeSelectOptions,
-  referenceLufs,
-  setReferenceLufs,
   appVersion,
   latestVersion,
   releaseUrl,
@@ -157,22 +152,6 @@ export function SettingsPanel({
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
   const closingIntentRef = useRef(false);
-  const [refLufsInput, setRefLufsInput] = useState(String(referenceLufs));
-  useEffect(() => {
-    setRefLufsInput(String(referenceLufs));
-  }, [referenceLufs]);
-  const commitRefLufs = () => {
-    if (refLufsInput.trim() === "") {
-      setRefLufsInput(String(referenceLufs));
-      return;
-    }
-    const n = Number(refLufsInput);
-    if (Number.isFinite(n) && n >= -70 && n <= 0) {
-      setReferenceLufs(n);
-    } else {
-      setRefLufsInput(String(referenceLufs));
-    }
-  };
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
   let updateStatusText = "Checking updates";
@@ -407,33 +386,6 @@ export function SettingsPanel({
                       </IconButton>
                     </div>
                   ) : null}
-                </SettingsSection>
-
-                <SettingsDivider />
-
-                {/* Loudness reference */}
-                <SettingsSection>
-                  <SettingsRow label="Loudness Ref">
-                    <div className="flex items-center gap-1 shrink-0">
-                      <input
-                        aria-label="Loudness reference"
-                        type="number"
-                        min={-70}
-                        max={0}
-                        step={1}
-                        value={refLufsInput}
-                        onChange={(e) => setRefLufsInput(e.target.value)}
-                        onBlur={commitRefLufs}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") e.currentTarget.blur();
-                        }}
-                        className={NUMBER_INPUT_CLASS}
-                      />
-                      <span className="text-[length:var(--ui-fs-axis)] text-muted-foreground/60 shrink-0">
-                        LUFS
-                      </span>
-                    </div>
-                  </SettingsRow>
                 </SettingsSection>
 
                 <SettingsDivider />

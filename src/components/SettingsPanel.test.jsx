@@ -21,8 +21,6 @@ const BASE_PROPS = {
   fixedThemeSelectValue: "",
   setFixedThemeIdFromPicker: vi.fn(),
   themeSelectOptions: THEME_SELECT_OPTIONS,
-  referenceLufs: -23,
-  setReferenceLufs: vi.fn(),
   channelCount: 0,
   channelLabelTokens: [],
   channelLabelHasOverride: false,
@@ -33,7 +31,6 @@ const BASE_PROPS = {
 describe("SettingsPanel", () => {
   it("renders core controls when open in system mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
-    expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
     expect(screen.queryByLabelText("Theme")).toBeNull();
   });
@@ -159,39 +156,6 @@ describe("SettingsPanel", () => {
     expect(screen.queryByText("Spectrum channel")).toBeNull();
   });
 
-  it("does not call setReferenceLufs while editing (commits on blur)", () => {
-    const setReferenceLufs = vi.fn();
-    render(
-      <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
-    );
-    const input = screen.getByLabelText("Loudness reference");
-    fireEvent.change(input, { target: { value: "" } });
-    expect(setReferenceLufs).not.toHaveBeenCalled();
-  });
-
-  it("commits a valid value on blur", () => {
-    const setReferenceLufs = vi.fn();
-    render(
-      <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
-    );
-    const input = screen.getByLabelText("Loudness reference");
-    fireEvent.change(input, { target: { value: "-14" } });
-    fireEvent.blur(input);
-    expect(setReferenceLufs).toHaveBeenCalledWith(-14);
-  });
-
-  it("reverts to the prop value on blur when the input is empty or invalid", () => {
-    const setReferenceLufs = vi.fn();
-    render(
-      <SettingsPanel {...BASE_PROPS} referenceLufs={-23} setReferenceLufs={setReferenceLufs} />
-    );
-    const input = screen.getByLabelText("Loudness reference");
-    fireEvent.change(input, { target: { value: "" } });
-    fireEvent.blur(input);
-    expect(setReferenceLufs).not.toHaveBeenCalled();
-    expect(input.value).toBe("-23");
-  });
-
   it("shows the current app version in settings", () => {
     render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" />);
     expect(screen.getByText("v0.0.17")).toBeTruthy();
@@ -303,7 +267,6 @@ describe("SettingsPanel", () => {
 
   it("existing controls still render with new props absent (backwards compat)", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.getByLabelText("Loudness reference")).toBeTruthy();
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
   });
 

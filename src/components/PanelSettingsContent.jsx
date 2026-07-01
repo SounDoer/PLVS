@@ -193,6 +193,47 @@ function SettingsRangeInput({
   );
 }
 
+function SettingsLufsInput({ value, onCommit }) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    if (draft.trim() === "") {
+      setDraft(String(value));
+      return;
+    }
+    const parsed = Number(draft);
+    if (Number.isFinite(parsed) && parsed >= -70 && parsed <= 0) {
+      onCommit(parsed);
+    } else {
+      setDraft(String(value));
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <input
+        aria-label="Loudness reference"
+        type="number"
+        min={-70}
+        max={0}
+        step={1}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+        className="h-6 w-14 rounded-md border border-transparent bg-transparent px-1.5 py-0 text-center font-[family-name:var(--ui-font-mono)] text-xs tabular-nums text-popover-foreground transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      />
+      <span className="text-muted-foreground/60 shrink-0">LUFS</span>
+    </div>
+  );
+}
+
 function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) {
   const DisclosureIcon = open ? ChevronUp : ChevronDown;
 
@@ -506,6 +547,8 @@ export function PanelSettingsContent({
   onSpectrumPeakHoldToggle,
   panelControls,
   onPanelControlsChange,
+  referenceLufs,
+  setReferenceLufs,
 }) {
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
@@ -691,6 +734,11 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Loudness">
+        {typeof setReferenceLufs === "function" ? (
+          <SettingsRow label="Ref">
+            <SettingsLufsInput value={referenceLufs} onCommit={setReferenceLufs} />
+          </SettingsRow>
+        ) : null}
         <SettingsRow label="Layers" expanded={layersOpen}>
           <div className="flex min-w-0 flex-1 flex-col">
             <InlineDetailTrigger

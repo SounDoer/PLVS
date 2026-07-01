@@ -444,6 +444,44 @@ describe("PanelSettingsContent", () => {
     });
   });
 
+  it("renders the loudness reference input before Layers and commits on blur", () => {
+    const onPanelControlsChange = vi.fn();
+    const setReferenceLufs = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+        referenceLufs={-23}
+        setReferenceLufs={setReferenceLufs}
+      />
+    );
+
+    expect(
+      screen
+        .getByLabelText("Loudness reference")
+        .compareDocumentPosition(screen.getByText("Layers")) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    const input = screen.getByLabelText("Loudness reference");
+    expect(input.value).toBe("-23");
+    fireEvent.change(input, { target: { value: "-14" } });
+    fireEvent.blur(input);
+    expect(setReferenceLufs).toHaveBeenCalledWith(-14);
+  });
+
+  it("does not render the loudness reference input when setReferenceLufs is not provided", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByLabelText("Loudness reference")).toBeNull();
+  });
+
   it("renders Loudness layers as an inline labeled detail and toggles layer ids", () => {
     const onPanelControlsChange = vi.fn();
     render(
