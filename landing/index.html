@@ -1,752 +1,1088 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PLVS</title>
-  <meta name="description" content="Free, open-source real-time audio metering for Windows & macOS. Peak, Loudness, Vectorscope, Spectrum, Spectrogram & Waveform.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-  <style>
-    /* ── Design tokens (docs/design-tokens.md) ── */
-    :root {
-      --background:        #131110;
-      --foreground:        #f5f0ea;
-      --card:              #1e1b17;
-      --muted-foreground:  #9e9488;
-      --primary:           #fb923c;
-      --primary-fg:        #131110;
-      --border:            rgba(255, 255, 255, 0.09);
-      --radius:            0.625rem;
-      --font-sans:         "Inter", system-ui, sans-serif;
-      --font-mono:         "JetBrains Mono", ui-monospace, monospace;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PLVS</title>
+    <meta
+      name="description"
+      content="Free and open-source real-time audio metering for Windows and macOS."
+    />
+    <style>
+      :root {
+        --page: #070707;
+        --ink: #f2f2f2;
+        --muted: #898989;
+        --soft: #5e5e5e;
+        --line: rgba(242, 242, 242, 0.11);
+        --panel: #151515;
+        --panel-muted: #232323;
+        --accent: #fb923c;
+        --accent-ink: #070707;
+        --dark: #0d0f0f;
+        --dark-line: rgba(255, 255, 255, 0.12);
+        --radius: 14px;
+        --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+      }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-    html { scroll-behavior: smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
 
-    body {
-      background: var(--background);
-      color: var(--foreground);
-      font-family: var(--font-sans);
-      font-size: 15px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+      }
 
-    /* Grain overlay */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 9999;
-      opacity: 0.032;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-size: 220px 220px;
-    }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
 
-    .page {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 0 40px;
-    }
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
 
-    /* ── HERO ── */
-    .hero {
-      padding: 52px 0 36px;
-      border-bottom: none;
-    }
+      .site-shell {
+        min-height: 100dvh;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(251, 146, 60, 0.08), rgba(251, 146, 60, 0) 480px),
+          radial-gradient(circle at 70% -20%, rgba(251, 146, 60, 0.16), transparent 38%),
+          radial-gradient(circle at 8% 8%, rgba(56, 189, 248, 0.08), transparent 28%), var(--page);
+      }
 
-    .hero > * {
-      opacity: 0;
-      transform: translateY(14px);
-      animation: reveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
-    .hero-logo    { animation-delay: 0.0s; }
-    .hero-tagline { animation-delay: 0.08s; }
-    .hero-modules { animation-delay: 0.15s; }
-    .hero-btns    { animation-delay: 0.22s; }
+      .nav,
+      .section,
+      .footer {
+        width: min(100% - 40px, 1400px);
+        margin: 0 auto;
+      }
 
-    @keyframes reveal {
-      to { opacity: 1; transform: translateY(0); }
-    }
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 76px;
+      }
 
-    .hero-logo {
-      font-family: var(--font-mono);
-      font-size: 52px;
-      font-weight: 800;
-      letter-spacing: 0.18em;
-      color: var(--foreground);
-      line-height: 1;
-      display: flex;
-      align-items: baseline;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-    .hero-logo-note {
-      font-size: 12px;
-      font-weight: 400;
-      font-style: italic;
-      color: rgba(158, 148, 136, 0.38);
-      letter-spacing: 0.06em;
-    }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: 0.01em;
+      }
 
-    .hero-tagline {
-      font-size: 17px;
-      color: var(--muted-foreground);
-      margin-bottom: 8px;
-    }
+      .brand-mark {
+        width: 29px;
+        height: 29px;
+        display: block;
+      }
 
-    .hero-modules {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      color: var(--primary);
-      letter-spacing: 0.06em;
-      margin-bottom: 20px;
-    }
-    .hero-modules .sep {
-      color: rgba(251, 146, 60, 0.28);
-      margin: 0 8px;
-    }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 13px;
+        font-weight: 560;
+      }
 
-    /* ── PLATFORM CARDS ── */
-    .hero-btns {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
+      .nav-links a {
+        transition: color 160ms ease;
+      }
 
-    .platform-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
+      .nav-links a:hover {
+        color: var(--accent);
+      }
 
-    .platform-card.active {
-      border-color: rgba(251, 146, 60, 0.2);
-      background: rgba(251, 146, 60, 0.025);
-    }
-
-    .platform-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .platform-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--foreground);
-      letter-spacing: 0.01em;
-    }
-
-    .platform-os-tag {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.05em;
-      color: rgba(158, 148, 136, 0.4);
-    }
-
-    .platform-card.active .platform-os-tag {
-      color: rgba(251, 146, 60, 0.5);
-    }
-
-    .platform-specs {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .spec-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      padding: 5px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .spec-row:first-child { padding-top: 0; }
-    .spec-row:last-child  { border-bottom: none; padding-bottom: 0; }
-
-    .spec-key {
-      font-size: 11px;
-      color: rgba(158, 148, 136, 0.44);
-    }
-
-    .spec-val {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--muted-foreground);
-    }
-
-    .platform-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .btn {
-      font-family: var(--font-sans);
-      font-size: 13.5px;
-      font-weight: 600;
-      padding: 10px 22px;
-      border-radius: var(--radius);
-      border: none;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-      text-align: center;
-      transition: opacity 0.15s ease, transform 0.12s ease;
-      white-space: nowrap;
-    }
-    .btn:hover  { opacity: 0.88; transform: translateY(-1px); }
-    .btn:active { opacity: 1;    transform: translateY(0); }
-
-    .btn-primary   { background: var(--primary); color: var(--primary-fg); }
-    .btn-secondary {
-      background: transparent;
-      color: var(--foreground);
-      border: 1px solid var(--border);
-      font-weight: 500;
-    }
-    .btn-secondary:hover { border-color: rgba(255, 255, 255, 0.2); }
-
-    .portable-link {
-      display: block;
-      text-align: center;
-      font-size: 12px;
-      color: var(--muted-foreground);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-    .portable-link:hover { color: var(--foreground); }
-
-    .install-warning {
-      display: flex;
-      gap: 7px;
-      align-items: flex-start;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .warn-badge {
-      font-family: var(--font-mono);
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      color: rgba(251, 146, 60, 0.5);
-      background: rgba(251, 146, 60, 0.07);
-      border: 1px solid rgba(251, 146, 60, 0.14);
-      border-radius: 3px;
-      padding: 1px 5px;
-      flex-shrink: 0;
-      margin-top: 1px;
-      line-height: 1.5;
-    }
-
-    .warn-text {
-      font-size: 11px;
-      color: rgba(158, 148, 136, 0.42);
-      line-height: 1.55;
-    }
-
-    .cmd-block {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-top: 6px;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 5px;
-      padding: 7px 10px;
-    }
-
-    .cmd-text {
-      font-family: var(--font-mono);
-      font-size: 10.5px;
-      color: var(--muted-foreground);
-      user-select: all;
-    }
-
-    .cmd-copy {
-      font-family: var(--font-mono);
-      font-size: 9px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: rgba(158, 148, 136, 0.4);
-      background: none;
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 3px;
-      padding: 2px 6px;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: color 0.15s, border-color 0.15s;
-    }
-    .cmd-copy:hover { color: var(--muted-foreground); border-color: rgba(255, 255, 255, 0.18); }
-
-    /* ── SCREENSHOT ── */
-    .screenshot-section {
-      padding: 24px 0;
-      border-bottom: none;
-    }
-
-    .screenshot-frame {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .screenshot-body {
-      position: relative;
-      line-height: 0;
-    }
-    .screenshot-image {
-      display: none;
-      width: 100%;
-      height: auto;
-    }
-    .screenshot-image.is-active {
-      display: block;
-    }
-    .carousel-control {
-      position: absolute;
-      top: 50%;
-      width: 34px;
-      height: 34px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 999px;
-      background: rgba(19, 17, 16, 0.72);
-      color: rgba(245, 240, 234, 0.82);
-      cursor: pointer;
-      font-family: var(--font-mono);
-      font-size: 17px;
-      line-height: 1;
-      transform: translateY(-50%);
-      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-    }
-    .carousel-control:hover {
-      background: rgba(30, 27, 23, 0.9);
-      border-color: rgba(251, 146, 60, 0.32);
-      color: var(--foreground);
-    }
-    .carousel-control.prev { left: 12px; }
-    .carousel-control.next { right: 12px; }
-    .carousel-dots {
-      position: absolute;
-      left: 50%;
-      bottom: 12px;
-      display: flex;
-      gap: 7px;
-      transform: translateX(-50%);
-    }
-    .carousel-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: rgba(245, 240, 234, 0.28);
-      transition: background 0.15s ease, transform 0.15s ease;
-    }
-    .carousel-dot.is-active {
-      background: var(--primary);
-      transform: scale(1.18);
-    }
-
-    /* ── SECTION LABEL ── */
-    .section-label {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--primary);
-      margin-bottom: 32px;
-    }
-
-    /* ── FEATURES ── */
-    .features-section {
-      padding: 40px 0;
-      border-bottom: none;
-    }
-
-    .feature-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 52px;
-      align-items: center;
-      margin-bottom: 36px;
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-                  transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .feature-row:last-child { margin-bottom: 0; }
-    .feature-row.in-view   { opacity: 1; transform: translateY(0); }
-
-    .feature-row.reverse .feature-visual { order: 2; }
-    .feature-row.reverse .feature-text   { order: 1; }
-
-    .feature-visual {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      aspect-ratio: 16 / 10;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    .feature-image {
-      display: block;
-      width: 100%;
-      height: 100%;
-      padding: 10px;
-      object-fit: contain;
-      object-position: center;
-    }
-
-    .feature-kicker {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--primary);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-    .feature-title {
-      font-size: 21px;
-      font-weight: 700;
-      color: var(--foreground);
-      line-height: 1.25;
-      letter-spacing: -0.012em;
-      margin-bottom: 14px;
-    }
-    .feature-desc {
-      font-size: 14px;
-      color: var(--muted-foreground);
-      line-height: 1.75;
-    }
-
-    /* ── RELEASE UPDATES ── */
-    .subscribe-section {
-      padding: 28px 0 12px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 16px;
-    }
-
-    .subscribe-label {
-      font-size: 13px;
-      color: var(--muted-foreground);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    /* ── FOOTER ── */
-    .footer {
-      padding: 12px 0 28px;
-      display: flex;
-      gap: 20px;
-      align-items: center;
-      justify-content: flex-end;
-    }
-    .footer-text {
-      font-size: 12px;
-      color: rgba(158, 148, 136, 0.36);
-    }
-    .footer-link {
-      font-size: 12px;
-      color: var(--muted-foreground);
-      text-decoration: none;
-      border-bottom: 1px solid rgba(158, 148, 136, 0.28);
-      transition: color 0.15s, border-color 0.15s;
-    }
-    .footer-link:hover { color: var(--foreground); border-color: rgba(255,255,255,0.35); }
-
-    @media (max-width: 720px) {
-      .page {
-        padding: 0 20px;
+      .nav-download {
+        color: var(--ink);
       }
 
       .hero {
-        padding-top: 36px;
+        padding: 64px 0 0;
       }
 
-      .hero-logo {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-        font-size: 42px;
+      .hero-copy {
+        max-width: 1420px;
       }
 
-      .hero-btns,
-      .feature-row {
-        grid-template-columns: 1fr;
+      .eyebrow {
+        margin: 0 0 22px;
+        color: rgba(251, 146, 60, 0.82);
+        font-size: 14px;
+        font-weight: 560;
+        letter-spacing: 0.01em;
       }
 
-      .feature-row {
-        gap: 18px;
-        margin-bottom: 32px;
+      .hero-title {
+        max-width: 1400px;
+        margin: 0;
+        font-size: clamp(52px, 5.55vw, 88px);
+        line-height: 0.98;
+        letter-spacing: -0.045em;
+        font-weight: 720;
       }
 
-      .feature-row.reverse .feature-visual,
-      .feature-row.reverse .feature-text {
-        order: initial;
+      .hero-subtitle {
+        max-width: 1060px;
+        margin: 28px 0 0;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: clamp(19px, 2vw, 25px);
+        line-height: 1.36;
+        letter-spacing: -0.018em;
       }
 
-      .features-section {
-        padding: 32px 0;
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        margin-top: 38px;
       }
 
-      .subscribe-section {
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 20px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 660;
+        line-height: 1;
+        white-space: nowrap;
+        transition:
+          transform 150ms ease,
+          border-color 150ms ease,
+          background 150ms ease,
+          color 150ms ease;
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+
+      .btn-primary:hover {
+        background: #ffad68;
+      }
+
+      .btn-secondary {
+        border-color: var(--line);
+        background: rgba(255, 255, 255, 0.035);
+        color: var(--ink);
+      }
+
+      .btn-secondary:hover {
+        border-color: rgba(251, 146, 60, 0.42);
+        background: rgba(251, 146, 60, 0.08);
+      }
+
+      .hero-note {
+        flex-basis: 100%;
+        margin: 0;
+        color: rgba(242, 242, 242, 0.48);
+        font-size: 13px;
+        font-weight: 520;
+      }
+
+      .shot {
+        position: relative;
+        overflow: hidden;
+        margin: 0;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)), #111111;
+        box-shadow: 0 44px 120px rgba(0, 0, 0, 0.42);
+        isolation: isolate;
+      }
+
+      .shot::before,
+      .shot::after {
+        content: "";
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .shot::before {
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(251, 146, 60, 0.1) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(242, 242, 242, 0.05) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 82%);
+      }
+
+      .shot::after {
+        inset: 18px;
+        border: 1px solid rgba(242, 242, 242, 0.1);
+        border-radius: 7px;
+        background:
+          linear-gradient(90deg, rgba(251, 146, 60, 0.34) 0 12%, transparent 12%),
+          linear-gradient(180deg, rgba(242, 242, 242, 0.08) 0 1px, transparent 1px);
+        background-size:
+          100% 100%,
+          100% 48px;
+        opacity: 0.5;
+      }
+
+      .shot.has-image {
+        background: #090909;
+      }
+
+      .shot.has-image::before,
+      .shot.has-image::after {
+        display: none;
+      }
+
+      .shot img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .hero-shot {
+        width: min(100%, 1520px);
+        margin: 42px auto 0;
+        aspect-ratio: 2560 / 1351;
+        border-radius: 10px;
+      }
+
+      .hero-shot img {
+        object-fit: contain;
+      }
+
+      .principles {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        padding: 44px 0 34px;
+      }
+
+      .principle {
+        min-height: 96px;
+        padding: 0 26px;
+        border-left: 1px solid var(--line);
+      }
+
+      .principle:first-child {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      .principle h2 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        font-weight: 680;
+      }
+
+      .principle p {
+        max-width: 340px;
+        margin: 12px 0 0;
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 16px;
+        line-height: 1.48;
+        letter-spacing: -0.01em;
+      }
+
+      .features {
+        padding: 14px 0 34px;
+      }
+
+      .feature {
+        display: grid;
+        grid-template-columns: minmax(260px, 0.74fr) minmax(0, 1.26fr);
+        gap: 48px;
+        align-items: center;
+        padding: 50px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .feature:nth-child(2) {
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 0.82fr);
+      }
+
+      .feature:nth-child(2) .feature-copy {
+        order: 2;
+      }
+
+      .feature:nth-child(2) .feature-visual {
+        order: 1;
+        display: grid;
+        gap: 14px;
+      }
+
+      .feature h2 {
+        max-width: 520px;
+        margin: 0;
+        font-size: clamp(36px, 4.4vw, 62px);
+        line-height: 1.02;
+        letter-spacing: -0.045em;
+        font-weight: 700;
+      }
+
+      .feature p {
+        max-width: 470px;
+        margin: 22px 0 0;
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 18px;
+        line-height: 1.5;
+        letter-spacing: -0.015em;
+      }
+
+      .feature-points {
+        display: grid;
+        gap: 0;
+        max-width: 500px;
+        margin: 28px 0 0;
+        padding: 0;
+        list-style: none;
+        border-top: 1px solid rgba(242, 242, 242, 0.08);
+      }
+
+      .feature-points li {
+        position: relative;
+        padding: 12px 0 12px 18px;
+        border-bottom: 1px solid rgba(242, 242, 242, 0.08);
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 18px;
+        line-height: 1.5;
+        letter-spacing: -0.015em;
+      }
+
+      .feature-points li::before {
+        content: "";
+        position: absolute;
+        top: 1.5em;
+        left: 0;
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      .feature-visual .shot {
+        width: 100%;
+        aspect-ratio: 16 / 10;
+      }
+
+      .feature:first-child .shot {
+        aspect-ratio: 2560 / 1351;
+      }
+
+      .feature:first-child .shot img {
+        object-fit: contain;
+      }
+
+      .feature:nth-child(2) .shot {
+        aspect-ratio: 3.35 / 1;
+      }
+
+      .feature:nth-child(3) .feature-visual {
+        display: block;
+      }
+
+      .feature:nth-child(3) .shot:first-child {
+        aspect-ratio: 16 / 8.45;
+      }
+
+      .file-note {
+        display: grid;
+        grid-template-columns: minmax(300px, 0.8fr) minmax(360px, 1fr);
+        gap: 76px;
+        align-items: baseline;
+        max-width: 1180px;
+        margin: 28px auto 96px;
+        padding: 34px 0 36px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .file-note h2 {
+        margin: 0;
+        font-size: clamp(28px, 2.45vw, 38px);
+        line-height: 1.08;
+        letter-spacing: -0.035em;
+      }
+
+      .file-note p {
+        max-width: 560px;
+        margin: 0;
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 17px;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+      }
+
+      .download-section {
+        width: 100%;
+        background: var(--dark);
+        color: #f4f7f4;
+        padding: 76px 0 44px;
+      }
+
+      .download-inner {
+        width: min(100% - 40px, 1400px);
+        margin: 0 auto;
+      }
+
+      .download-header {
+        display: block;
+        margin-bottom: 28px;
+      }
+
+      .download-header h2 {
+        margin: 0;
+        font-size: clamp(40px, 5vw, 76px);
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        font-weight: 720;
+      }
+
+      .platform-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
         align-items: stretch;
+      }
+
+      .platform-card {
+        display: flex;
         flex-direction: column;
+        min-height: 0;
+        padding: 20px 24px 18px;
+        border: 1px solid var(--dark-line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.045);
+      }
+
+      .platform-card.active {
+        border-color: rgba(251, 146, 60, 0.42);
+        background: rgba(251, 146, 60, 0.075);
+      }
+
+      .platform-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .platform-name {
+        display: block;
+        font-size: 22px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        font-weight: 680;
+      }
+
+      .platform-os-tag {
+        color: rgba(242, 242, 242, 0.48);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.4;
+        text-align: right;
+      }
+
+      .platform-actions {
+        display: flex;
+        flex-wrap: wrap;
         gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .download-section .btn-primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+
+      .download-section .btn-secondary {
+        border-color: rgba(242, 242, 242, 0.16);
+        background: rgba(255, 255, 255, 0.035);
+        color: var(--ink);
+      }
+
+      .portable-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        color: rgba(242, 242, 242, 0.64);
+        font-size: 14px;
+        font-weight: 560;
+        transition: color 150ms ease;
+      }
+
+      .portable-link:hover {
+        color: #f4f7f4;
+      }
+
+      .install-warning {
+        margin: 0 0 14px;
+        padding: 12px 0 0;
+        border-top: 1px solid rgba(242, 242, 242, 0.08);
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .platform-card.windows-card .install-warning {
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .cmd-block {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        margin-top: 8px;
+        padding: 8px 10px;
+        border: 1px solid rgba(242, 242, 242, 0.1);
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.24);
+      }
+
+      .cmd-text {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        color: rgba(242, 242, 242, 0.74);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .cmd-copy {
+        flex: 0 0 auto;
+        min-height: 28px;
+        padding: 0 10px;
+        border: 1px solid rgba(242, 242, 242, 0.14);
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(242, 242, 242, 0.62);
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        transition:
+          border-color 150ms ease,
+          color 150ms ease;
+      }
+
+      .cmd-copy:hover {
+        border-color: rgba(242, 242, 242, 0.32);
+        color: #f4f7f4;
+      }
+
+      .platform-specs {
+        margin-top: 0;
+        border-top: 1px solid rgba(242, 242, 242, 0.08);
+      }
+
+      .spec-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(242, 242, 242, 0.08);
+      }
+
+      .spec-row:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .spec-key {
+        color: rgba(242, 242, 242, 0.42);
+        font-size: 13px;
+      }
+
+      .spec-val {
+        color: rgba(242, 242, 242, 0.72);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        text-align: right;
       }
 
       .footer {
-        justify-content: flex-start;
-        flex-wrap: wrap;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 24px;
+        padding: 22px 0 0;
+        color: rgba(242, 242, 242, 0.48);
+        font-size: 13px;
       }
-    }
-  </style>
-</head>
-<body>
 
-<div class="page">
+      .footer-links {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="hero-logo">
-      PLVS
-      <span class="hero-logo-note">reads as "plus"</span>
-    </div>
-    <p class="hero-modules">
-      Peak<span class="sep">·</span>Loudness<span class="sep">·</span>Vectorscope<span class="sep">·</span>Spectrum<span class="sep">·</span>Spectrogram<span class="sep">·</span>Waveform
-    </p>
-    <p class="hero-tagline">Free, open-source real-time audio metering for Windows &amp; macOS</p>
-    <div class="screenshot-section" data-carousel-interval="5000">
-      <div class="screenshot-frame">
-        <div class="screenshot-body">
-          <img class="screenshot-image is-active" src="assets/screenshot-hero.webp" alt="PLVS dashboard showing peak, loudness, spectrogram, spectrum, and vectorscope meters">
-          <img class="screenshot-image" src="assets/screenshot-hero-01.webp" alt="PLVS dashboard with warm orange meters and spectrum view">
-          <img class="screenshot-image" src="assets/screenshot-hero-02.webp" alt="PLVS spectrogram dashboard in warm orange and magenta colors">
-          <button class="carousel-control prev" type="button" data-carousel-prev aria-label="Previous screenshot">‹</button>
-          <button class="carousel-control next" type="button" data-carousel-next aria-label="Next screenshot">›</button>
-          <div class="carousel-dots" aria-hidden="true">
-            <span class="carousel-dot is-active"></span>
-            <span class="carousel-dot"></span>
-            <span class="carousel-dot"></span>
-          </div>
+      .footer a:hover {
+        color: #f4f7f4;
+      }
+
+      .release-note {
+        margin-right: auto;
+        color: rgba(242, 242, 242, 0.38);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+
+      @media (max-width: 920px) {
+        .nav,
+        .section,
+        .footer,
+        .download-inner {
+          width: min(100% - 28px, 1400px);
+        }
+
+        .nav {
+          min-height: 68px;
+        }
+
+        .nav-links {
+          gap: 16px;
+        }
+
+        .hero {
+          padding-top: 58px;
+        }
+
+        .hero-title {
+          max-width: 900px;
+        }
+
+        .principles,
+        .feature,
+        .feature:nth-child(2),
+        .file-note,
+        .platform-grid,
+        .download-header {
+          grid-template-columns: 1fr;
+        }
+
+        .principles {
+          padding: 42px 0 30px;
+        }
+
+        .principle,
+        .principle:first-child {
+          min-height: 0;
+          padding: 18px 0;
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+
+        .feature,
+        .feature:nth-child(2) {
+          gap: 28px;
+          padding: 44px 0;
+        }
+
+        .feature:nth-child(2) .feature-copy,
+        .feature:nth-child(2) .feature-visual {
+          order: initial;
+        }
+
+        .feature:nth-child(3) .feature-visual {
+          grid-template-columns: 1fr;
+        }
+
+        .feature:nth-child(3) .shot:last-child {
+          margin-bottom: 0;
+        }
+
+        .file-note {
+          gap: 18px;
+          margin-bottom: 66px;
+        }
+
+        .download-header {
+          display: block;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .nav-links a:not(.nav-download) {
+          display: none;
+        }
+
+        .hero {
+          padding-top: 42px;
+        }
+
+        .hero-title {
+          font-size: clamp(43px, 14.2vw, 56px);
+        }
+
+        .hero-subtitle {
+          max-width: 360px;
+          margin-top: 22px;
+          font-size: 19px;
+        }
+
+        .hero-actions {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+          margin-top: 30px;
+        }
+
+        .hero-note {
+          display: none;
+        }
+
+        .btn {
+          width: 100%;
+        }
+
+        .hero-shot {
+          margin-top: 48px;
+          aspect-ratio: 2560 / 1351;
+          border-radius: 10px;
+        }
+
+        .feature h2 {
+          font-size: 38px;
+        }
+
+        .feature p,
+        .file-note p {
+          font-size: 16px;
+        }
+
+        .platform-card {
+          min-height: 0;
+          padding: 20px;
+        }
+
+        .install-warning {
+          min-height: 0;
+        }
+
+        .platform-actions {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .portable-link {
+          justify-content: center;
+        }
+
+        .footer {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .release-note {
+          margin-right: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="site-shell">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="#">
+          <img class="brand-mark" src="assets/app-icon.svg" alt="" aria-hidden="true" />
+        </a>
+        <div class="nav-links">
+          <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
+            >Releases</a
+          >
+          <a class="nav-download" href="#download">Download</a>
         </div>
-      </div>
+      </nav>
+
+      <main>
+        <section class="section hero">
+          <div class="hero-copy">
+            <p class="eyebrow">PLVS, read as plus. Free and open-source.</p>
+            <h1 class="hero-title">Real-time audio metering for listening closely.</h1>
+            <p class="hero-subtitle">
+              A desktop companion that keeps your audio's level, shape, and movement in view.
+            </p>
+            <div class="hero-actions" id="hero-actions">
+              <a class="btn btn-primary" href="https://github.com/SounDoer/PLVS/releases"
+                >Download for Windows</a
+              >
+              <a class="btn btn-secondary" href="https://github.com/SounDoer/PLVS/releases"
+                >Download for macOS</a
+              >
+            </div>
+          </div>
+          <figure class="shot hero-shot has-image">
+            <img src="assets/landing-hero.webp" alt="PLVS workspace with live metering panels." />
+          </figure>
+        </section>
+
+        <section class="section principles" aria-label="Product principles">
+          <article class="principle">
+            <h2>Stays visible</h2>
+            <p>Keep metering in view while your main workspace stays focused.</p>
+          </article>
+          <article class="principle">
+            <h2>Reads clearly</h2>
+            <p>Level, shape, motion, and balance remain easy to scan.</p>
+          </article>
+          <article class="principle">
+            <h2>Fits the session</h2>
+            <p>Arrange the workspace around the signal you need to watch.</p>
+          </article>
+        </section>
+
+        <section class="section features" aria-label="Core workflow">
+          <article class="feature">
+            <div class="feature-copy">
+              <h2>Watch the live signal</h2>
+              <p>Level, spectrum, and spatial detail moving in real time.</p>
+              <ul class="feature-points">
+                <li>Rich session metrics for loudness, dynamics, true peak, and correlation</li>
+                <li>Stereo and multichannel metering with channel-aware labels</li>
+                <li>System output monitoring without virtual audio routing</li>
+              </ul>
+            </div>
+            <div class="feature-visual">
+              <figure class="shot has-image">
+                <img
+                  src="assets/landing-live.webp"
+                  alt="Live PLVS meters showing level, spectrum, spectrogram, and vectorscope."
+                />
+              </figure>
+            </div>
+          </article>
+
+          <article class="feature">
+            <div class="feature-copy">
+              <h2>Look back without losing context</h2>
+              <p>Visual history for inspecting moments and returning to live metering.</p>
+              <ul class="feature-points">
+                <li>Up to two hours of visual history for long listening sessions</li>
+                <li>Click a moment to inspect the full meter state at that point</li>
+                <li>Return to live metering without losing the session view</li>
+              </ul>
+            </div>
+            <div class="feature-visual">
+              <figure class="shot has-image">
+                <img
+                  src="assets/landing-history.webp"
+                  alt="PLVS visual history view with a selected moment."
+                />
+              </figure>
+              <figure class="shot has-image">
+                <img
+                  src="assets/landing-history-spectrum.webp"
+                  alt="PLVS spectrum history view with an inspected frequency point."
+                />
+              </figure>
+            </div>
+          </article>
+
+          <article class="feature">
+            <div class="feature-copy">
+              <h2>Shape the view around the workspace</h2>
+              <p>Flexible layouts, compact controls, and focus-ready views.</p>
+              <ul class="feature-points">
+                <li>Rearrange and resize panels into a workspace that matches the session</li>
+                <li>Save presets for different listening or review setups</li>
+                <li>
+                  Keep PLVS visible with compact panels, transparency, pinning, and focus view
+                </li>
+              </ul>
+            </div>
+            <div class="feature-visual">
+              <figure class="shot has-image">
+                <img
+                  src="assets/landing-workspace.webp"
+                  alt="Custom PLVS workspace layout with compact metering panels."
+                />
+              </figure>
+            </div>
+          </article>
+        </section>
+
+        <section class="section file-note" aria-label="File inspection">
+          <h2>File inspection, when needed</h2>
+          <p>Open a local audio file and inspect it with the same meter workspace.</p>
+        </section>
+      </main>
+
+      <section class="download-section" id="download">
+        <div class="download-inner">
+          <div class="download-header">
+            <h2>Download PLVS</h2>
+          </div>
+
+          <div class="platform-grid" id="platform-grid">
+            <!-- Populated by JS after GitHub API fetch -->
+          </div>
+
+          <footer class="footer">
+            <span class="release-note">Release links fall back to GitHub.</span>
+            <div class="footer-links">
+              <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
+              <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
+                >Releases</a
+              >
+              <span id="footer-version">Latest release</span>
+            </div>
+          </footer>
+        </div>
+      </section>
     </div>
-    <div class="hero-btns" id="hero-btns">
-      <!-- Populated by JS after GitHub API fetch -->
-    </div>
-  </section>
 
-  <!-- FEATURES -->
-  <section class="features-section">
-    <div class="feature-row">
-      <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-system-audio.webp" alt="PLVS audio device selector with system output and input capture devices">
-      </div>
-      <div class="feature-text">
-        <div class="feature-kicker">System Audio</div>
-        <h3 class="feature-title">Native system audio capture</h3>
-        <p class="feature-desc">Monitor any audio playing on your machine — no virtual audio cable required. Windows uses WASAPI loopback, macOS uses the native audio tap.</p>
-      </div>
-    </div>
+    <script>
+      const REPO = "SounDoer/PLVS";
+      const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
+      const FALLBACK = "Latest release";
 
-    <div class="feature-row reverse">
-      <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-history.webp" alt="PLVS loudness history chart with a selected snapshot point">
-      </div>
-      <div class="feature-text">
-        <div class="feature-kicker">History</div>
-        <h3 class="feature-title">Session history &amp; snapshots</h3>
-        <p class="feature-desc">Scroll back through the loudness history timeline. Click any moment to freeze all meters at that snapshot — then return to live with one click.</p>
-      </div>
-    </div>
+      async function loadRelease() {
+        let version = FALLBACK,
+          urls = {};
+        try {
+          const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+          if (res.ok) {
+            const { tag_name, assets } = await res.json();
+            version = tag_name;
+            urls = {
+              mac: assets.find((a) => a.name.endsWith(".dmg") && a.name.includes("aarch64"))
+                ?.browser_download_url,
+              winInstall: assets.find(
+                (a) => a.name.endsWith(".exe") && !a.name.toLowerCase().includes("portable")
+              )?.browser_download_url,
+              winPortable: assets.find(
+                (a) => a.name.endsWith(".exe") && a.name.toLowerCase().includes("portable")
+              )?.browser_download_url,
+            };
+          }
+        } catch (_) {
+          /* use fallback */
+        }
 
-    <div class="feature-row">
-      <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-multichannel.webp" alt="PLVS multichannel peak meters for surround audio channels">
-      </div>
-      <div class="feature-text">
-        <div class="feature-kicker">Multichannel</div>
-        <h3 class="feature-title">Multichannel support</h3>
-        <p class="feature-desc">Works with stereo and surround formats. Automatic channel layout detection with proper per-channel metering and ITU-R BS.1770 loudness for multichannel sources.</p>
-      </div>
-    </div>
-
-    <div class="feature-row reverse">
-      <div class="feature-visual">
-        <img class="feature-image" src="assets/screenshot-appearance.webp" alt="PLVS modules and presets menu for arranging the workspace">
-      </div>
-      <div class="feature-text">
-        <div class="feature-kicker">Appearance</div>
-        <h3 class="feature-title">Fully flexible layout</h3>
-        <p class="feature-desc">Drag any divider to resize panels and rearrange your workspace with split-tree layout. Switch between dark and light themes to match your environment.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- RELEASE UPDATES -->
-  <div class="subscribe-section">
-    <span class="subscribe-label">Get notified of new releases</span>
-    <a class="footer-link" href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener">Follow GitHub Releases</a>
-  </div>
-
-  <!-- FOOTER -->
-  <footer class="footer">
-    <a class="footer-link" href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
-    <span class="footer-text">MIT License</span>
-    <span class="footer-text" id="footer-version">Latest release</span>
-  </footer>
-
-</div>
-
-<script>
-  // ── GitHub Releases: auto-fetch latest version + download URLs ──
-  const REPO = 'SounDoer/PLVS';
-  const RELEASES_URL = 'https://github.com/SounDoer/PLVS/releases';
-  const FALLBACK = 'Latest release';
-
-  async function loadRelease() {
-    let version = FALLBACK, urls = {};
-    try {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
-      if (res.ok) {
-        const { tag_name, assets } = await res.json();
-        version = tag_name;
-        urls = {
-          mac:         assets.find(a => a.name.endsWith('.dmg') && a.name.includes('aarch64'))?.browser_download_url,
-          winInstall:  assets.find(a => a.name.endsWith('.exe') && !a.name.toLowerCase().includes('portable'))?.browser_download_url,
-          winPortable: assets.find(a => a.name.endsWith('.exe') &&  a.name.toLowerCase().includes('portable'))?.browser_download_url,
-        };
+        document.getElementById("footer-version").textContent = version;
+        renderHeroActions(urls);
+        renderPlatformCards(urls);
       }
-    } catch (_) { /* use fallback */ }
 
-    document.getElementById('footer-version').textContent = version;
-    renderButtons(version, urls);
-  }
+      function isMacPlatform() {
+        return /Mac/.test(navigator.platform) || /Mac/.test(navigator.userAgent);
+      }
 
-  function renderButtons(version, urls) {
-    const isMac = /Mac/.test(navigator.platform) || /Mac/.test(navigator.userAgent);
-    const winInstallUrl = urls.winInstall || RELEASES_URL;
-    const winPortableUrl = urls.winPortable || RELEASES_URL;
-    const macUrl = urls.mac || RELEASES_URL;
-    const winInstallLabel = urls.winInstall ? 'Download Installer' : 'View Releases';
-    const winPortableLabel = urls.winPortable ? 'Portable version' : 'All releases';
-    const macLabel = urls.mac ? 'Download for macOS' : 'View Releases';
+      function renderHeroActions(urls) {
+        const isMac = isMacPlatform();
+        const winInstallUrl = urls.winInstall || RELEASES_URL;
+        const macUrl = urls.mac || RELEASES_URL;
+        const winButton = `<a class="btn ${isMac ? "btn-secondary" : "btn-primary"}" href="${winInstallUrl}">Download for Windows</a>`;
+        const macButton = `<a class="btn ${isMac ? "btn-primary" : "btn-secondary"}" href="${macUrl}">Download for macOS</a>`;
+        document.getElementById("hero-actions").innerHTML = `
+      ${isMac ? macButton + winButton : winButton + macButton}
+    `;
+      }
 
-    const winCard = `
-      <div class="platform-card${!isMac ? ' active' : ''}">
+      function renderPlatformCards(urls) {
+        const isMac = isMacPlatform();
+        const winInstallUrl = urls.winInstall || RELEASES_URL;
+        const winPortableUrl = urls.winPortable || RELEASES_URL;
+        const macUrl = urls.mac || RELEASES_URL;
+        const winInstallLabel = urls.winInstall ? "Download Installer" : "View Releases";
+        const winPortableLabel = urls.winPortable ? "Portable version" : "All releases";
+        const macLabel = urls.mac ? "Download for macOS" : "View Releases";
+
+        const winCard = `
+      <div class="platform-card windows-card${!isMac ? " active" : ""}">
         <div class="platform-header">
           <span class="platform-name">Windows</span>
-          <span class="platform-os-tag">10 / 11 · x64</span>
+          <span class="platform-os-tag">10 / 11, x64</span>
         </div>
         <div class="platform-actions">
-          <a class="btn ${!isMac ? 'btn-primary' : 'btn-secondary'}" href="${winInstallUrl}">${winInstallLabel}</a>
+          <a class="btn ${!isMac ? "btn-primary" : "btn-secondary"}" href="${winInstallUrl}">${winInstallLabel}</a>
           <a class="portable-link" href="${winPortableUrl}">${winPortableLabel}</a>
         </div>
-        <div class="install-warning">
-          <span class="warn-badge">!</span>
-          <span class="warn-text">If SmartScreen blocks — More info → Run anyway</span>
-        </div>
+        <p class="install-warning">If SmartScreen appears, choose More info, then Run anyway.</p>
         <div class="platform-specs">
           <div class="spec-row"><span class="spec-key">Installer</span><span class="spec-val">NSIS .exe</span></div>
+          <div class="spec-row"><span class="spec-key">Portable</span><span class="spec-val">.exe build</span></div>
           <div class="spec-row"><span class="spec-key">System audio</span><span class="spec-val">WASAPI loopback</span></div>
         </div>
       </div>`;
 
-    const macCard = `
-      <div class="platform-card${isMac ? ' active' : ''}">
+        const macCard = `
+      <div class="platform-card${isMac ? " active" : ""}">
         <div class="platform-header">
           <span class="platform-name">macOS</span>
           <span class="platform-os-tag">Apple Silicon</span>
         </div>
         <div class="platform-actions">
-          <a class="btn ${isMac ? 'btn-primary' : 'btn-secondary'}" href="${macUrl}">${macLabel}</a>
+          <a class="btn ${isMac ? "btn-primary" : "btn-secondary"}" href="${macUrl}">${macLabel}</a>
         </div>
         <div class="install-warning">
-          <span class="warn-badge">!</span>
-          <span class="warn-text">First launch: if macOS blocks the app —
-            <div class="cmd-block">
-              <span class="cmd-text">xattr -cr /Applications/PLVS.app</span>
-              <button class="cmd-copy" onclick="navigator.clipboard.writeText('xattr -cr /Applications/PLVS.app').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='copy',1500)})">copy</button>
-            </div>
-          </span>
+          If macOS blocks the first launch, remove the quarantine attribute:
+          <div class="cmd-block">
+            <span class="cmd-text">xattr -cr /Applications/PLVS.app</span>
+            <button class="cmd-copy" type="button" onclick="copyMacCommand(this)">copy</button>
+          </div>
         </div>
         <div class="platform-specs">
-          <div class="spec-row"><span class="spec-key">Installer</span><span class="spec-val">DMG (aarch64)</span></div>
-          <div class="spec-row"><span class="spec-key">System audio</span><span class="spec-val">macOS 14.2+</span></div>
+          <div class="spec-row"><span class="spec-key">Installer</span><span class="spec-val">DMG, aarch64</span></div>
+          <div class="spec-row"><span class="spec-key">Minimum macOS</span><span class="spec-val">14.2+</span></div>
+          <div class="spec-row"><span class="spec-key">System audio</span><span class="spec-val">Native tap</span></div>
         </div>
       </div>`;
 
-    document.getElementById('hero-btns').innerHTML = isMac
-      ? macCard + winCard
-      : winCard + macCard;
-  }
+        document.getElementById("platform-grid").innerHTML = isMac
+          ? macCard + winCard
+          : winCard + macCard;
+      }
 
-  loadRelease();
+      function copyMacCommand(button) {
+        navigator.clipboard.writeText("xattr -cr /Applications/PLVS.app").then(() => {
+          button.textContent = "copied";
+          window.setTimeout(() => {
+            button.textContent = "copy";
+          }, 1500);
+        });
+      }
 
-  // ── Hero screenshot carousel ──
-  const carousel = document.querySelector('[data-carousel-interval]');
-  if (carousel) {
-    const intervalMs = Number(carousel.dataset.carouselInterval);
-    const slides = Array.from(carousel.querySelectorAll('.screenshot-image'));
-    const dots = Array.from(carousel.querySelectorAll('.carousel-dot'));
-    let activeIndex = 0;
-    let timerId;
-
-    function showSlide(index) {
-      activeIndex = (index + slides.length) % slides.length;
-      slides.forEach((slide, slideIndex) => {
-        slide.classList.toggle('is-active', slideIndex === activeIndex);
-      });
-      dots.forEach((dot, dotIndex) => {
-        dot.classList.toggle('is-active', dotIndex === activeIndex);
-      });
-    }
-
-    function startCarousel() {
-      window.clearInterval(timerId);
-      timerId = window.setInterval(() => showSlide(activeIndex + 1), intervalMs);
-    }
-
-    carousel.querySelector('[data-carousel-prev]').addEventListener('click', () => {
-      showSlide(activeIndex - 1);
-      startCarousel();
-    });
-    carousel.querySelector('[data-carousel-next]').addEventListener('click', () => {
-      showSlide(activeIndex + 1);
-      startCarousel();
-    });
-    startCarousel();
-  }
-
-  // ── Scroll-triggered feature rows ──
-  const io = new IntersectionObserver(
-    entries => entries.forEach(e => {
-      if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); }
-    }),
-    { threshold: 0.12 }
-  );
-  document.querySelectorAll('.feature-row').forEach(el => io.observe(el));
-</script>
-
-</body>
+      loadRelease();
+    </script>
+  </body>
 </html>
