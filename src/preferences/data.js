@@ -44,11 +44,6 @@ export const UI_PREFERENCES = {
       chartInsetTop: 0.2,
       chartInsetBottom: 0,
     },
-    mainColumn: {
-      initialPx: 270,
-      dragMinPx: 240,
-      dragMaxPx: 360,
-    },
     leftSplit: {
       initialRatio: 0.6,
       dragMinRatio: 0.5,

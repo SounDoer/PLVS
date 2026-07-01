@@ -95,7 +95,7 @@ pub fn run() {
       let builder = builder.transparent(true);
 
       let window = builder
-        .inner_size(1280.0, 860.0)
+        .inner_size(1280.0, 960.0)
         .initialization_script(&init_script)
         .build()
         .map_err(|e| format!("window build: {e}"))?;
