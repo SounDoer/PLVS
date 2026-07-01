@@ -28,8 +28,8 @@ const SPEECH_THRESHOLD: f32 = 0.5;
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum VadEngineKind {
-  #[default]
   Silero,
+  #[default]
   FireRed,
   Ten,
 }

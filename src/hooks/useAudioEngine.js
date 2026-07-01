@@ -180,7 +180,7 @@ export function useAudioEngine({
           } catch (_) {}
 
           try {
-            await setDialogueVadEngine(dialogueVadEngineRef?.current ?? "silero");
+            await setDialogueVadEngine(dialogueVadEngineRef?.current ?? "firered");
           } catch (_) {}
 
           await startAudioCapture({

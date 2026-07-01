@@ -112,19 +112,19 @@ describe("panelControls", () => {
         "truePeak",
         "correlation",
       ],
-      dialogueVadEngine: "silero",
+      dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
     });
   });
 
   it("normalizes the dialogue VAD engine", () => {
-    expect(normalizePanelControls({}).dialogueVadEngine).toBe("silero");
-    expect(normalizePanelControls({ dialogueVadEngine: "firered" }).dialogueVadEngine).toBe(
-      "firered"
+    expect(normalizePanelControls({}).dialogueVadEngine).toBe("firered");
+    expect(normalizePanelControls({ dialogueVadEngine: "silero" }).dialogueVadEngine).toBe(
+      "silero"
     );
     expect(normalizePanelControls({ dialogueVadEngine: "ten" }).dialogueVadEngine).toBe("ten");
     expect(normalizePanelControls({ dialogueVadEngine: "unknown" }).dialogueVadEngine).toBe(
-      "silero"
+      "firered"
     );
   });
 
@@ -206,7 +206,7 @@ describe("panelControls", () => {
       levelMeterYMaxDb: 3,
       statsVisibleIds: ["momentary"],
       statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
-      dialogueVadEngine: "silero",
+      dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["ref"],
     });
   });

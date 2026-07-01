@@ -390,7 +390,7 @@ describe("PanelSettingsContent", () => {
       screen.getByText("Metrics").compareDocumentPosition(screen.getByText("VAD")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(screen.getByText("Silero VAD")).toBeTruthy();
+    expect(screen.getByText("FireRedVAD")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Configure metrics" })).toBeNull();
     expect(screen.getByText("8 visible")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
