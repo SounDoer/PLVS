@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PLVS Docs</title>
+    <meta
+      name="description"
+      content="How to use PLVS: signal sources, meter panels, workspace, and settings."
+    />
+    <style>
+      :root {
+        --page: #070707;
+        --ink: #f2f2f2;
+        --muted: #898989;
+        --soft: #5e5e5e;
+        --line: rgba(242, 242, 242, 0.11);
+        --panel: #151515;
+        --panel-muted: #232323;
+        --accent: #fb923c;
+        --accent-ink: #070707;
+        --radius: 14px;
+        --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 76px;
+        width: min(100% - 40px, 1400px);
+        margin: 0 auto;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: 0.01em;
+      }
+
+      .brand-mark {
+        width: 29px;
+        height: 29px;
+        display: block;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 13px;
+        font-weight: 560;
+      }
+
+      .nav-links a {
+        transition: color 160ms ease;
+      }
+
+      .nav-links a:hover {
+        color: var(--accent);
+      }
+
+      .docs-layout {
+        display: flex;
+        align-items: flex-start;
+        gap: 48px;
+        width: min(100% - 40px, 1400px);
+        margin: 0 auto;
+        padding: 48px 0 96px;
+      }
+
+      .docs-sidebar {
+        flex: 0 0 220px;
+        position: sticky;
+        top: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .docs-sidebar a {
+        padding: 8px 12px;
+        border-radius: 8px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 14px;
+        font-weight: 560;
+        transition:
+          color 150ms ease,
+          background 150ms ease;
+      }
+
+      .docs-sidebar a:hover {
+        color: var(--ink);
+      }
+
+      .docs-sidebar a.active {
+        color: var(--ink);
+        background: rgba(251, 146, 60, 0.1);
+      }
+
+      .docs-content {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 760px;
+      }
+
+      .docs-section {
+        padding: 40px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .docs-section:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .docs-section h2 {
+        margin: 0 0 8px;
+        font-size: clamp(26px, 3vw, 34px);
+        line-height: 1.15;
+        letter-spacing: -0.03em;
+        font-weight: 700;
+      }
+
+      .docs-section > p:first-of-type {
+        margin: 0 0 24px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      .docs-item {
+        padding: 16px 0;
+        border-top: 1px solid rgba(242, 242, 242, 0.08);
+      }
+
+      .docs-item:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .docs-item h3 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        font-weight: 640;
+        letter-spacing: -0.01em;
+      }
+
+      .docs-item p {
+        margin: 0;
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .docs-section code {
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+
+      .docs-faq details {
+        padding: 14px 0;
+        border-top: 1px solid rgba(242, 242, 242, 0.08);
+      }
+
+      .docs-faq details:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .docs-faq summary {
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 620;
+      }
+
+      .docs-faq summary::marker {
+        color: var(--accent);
+      }
+
+      .docs-faq p {
+        margin: 10px 0 0;
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      @media (max-width: 880px) {
+        .nav {
+          width: min(100% - 28px, 1400px);
+        }
+
+        .docs-layout {
+          flex-direction: column;
+          width: min(100% - 28px, 1400px);
+          gap: 20px;
+        }
+
+        .docs-sidebar {
+          position: static;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          width: 100%;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .docs-sidebar a {
+          flex: 0 0 auto;
+          white-space: nowrap;
+        }
+
+        .docs-content {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="../index.html">
+        <img class="brand-mark" src="../assets/app-icon.svg" alt="" aria-hidden="true" />
+        PLVS
+      </a>
+      <div class="nav-links">
+        <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
+          >Releases</a
+        >
+        <a href="../index.html#download">Download</a>
+      </div>
+    </nav>
+
+    <div class="docs-layout">
+      <nav class="docs-sidebar" aria-label="Docs sections">
+        <a href="#getting-started">Getting Started</a>
+        <a href="#signal-source">Signal Source</a>
+        <a href="#panels">Panels</a>
+        <a href="#dialogue-gated-loudness">Dialogue-Gated Loudness</a>
+        <a href="#multichannel">Multichannel</a>
+        <a href="#workspace">Workspace</a>
+        <a href="#file-mode">File Mode</a>
+        <a href="#system-settings">System Settings</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <main class="docs-content">
+        <section class="docs-section" id="getting-started"></section>
+        <section class="docs-section" id="signal-source"></section>
+        <section class="docs-section" id="panels"></section>
+        <section class="docs-section" id="dialogue-gated-loudness"></section>
+        <section class="docs-section" id="multichannel"></section>
+        <section class="docs-section" id="workspace"></section>
+        <section class="docs-section" id="file-mode"></section>
+        <section class="docs-section" id="system-settings"></section>
+        <section class="docs-section" id="faq"></section>
+      </main>
+    </div>
+
+    <script>
+      const sections = document.querySelectorAll(".docs-section");
+      const links = document.querySelectorAll(".docs-sidebar a");
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            for (const link of links) {
+              link.classList.toggle("active", link.getAttribute("href") === `#${entry.target.id}`);
+            }
+          }
+        },
+        { rootMargin: "-40% 0px -50% 0px" }
+      );
+
+      for (const section of sections) observer.observe(section);
+    </script>
+  </body>
+</html>
