@@ -83,7 +83,8 @@ No changes to the deploy workflow are needed — `deploy-landing.yml` already up
 
 - Desktop: fixed left sidebar listing all 9 section anchors, current section highlighted on scroll (simple `IntersectionObserver`, no framework).
 - Mobile/narrow: sidebar collapses to a horizontal scrollable pill list or a dropdown, consistent with how `landing/index.html` already adapts its nav at narrow widths.
-- Landing page top nav gets one new entry: `Docs` → `landing/docs/index.html`.
+- **Entry point (landing → docs):** landing page top nav gets one new entry: `Docs` → `landing/docs/index.html`.
+- **Return path (docs → landing):** `landing/docs/index.html` reuses the same top nav bar component/markup as the landing page; the logo/wordmark on the left of that nav links back to `../index.html`. No separate "Back" button — clicking the logo is the return path, consistent with standard docs-site conventions.
 
 ---
 
