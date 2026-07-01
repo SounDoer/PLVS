@@ -27,6 +27,10 @@ describe("landing page hero", () => {
   test("uses the packaged PLVS app icon in the navigation", () => {
     expect(html).toContain('src="assets/app-icon.svg"');
   });
+
+  test("links to the docs subpage from the nav", () => {
+    expect(html).toContain('href="docs/"');
+  });
 });
 
 describe("landing page visual theme", () => {
