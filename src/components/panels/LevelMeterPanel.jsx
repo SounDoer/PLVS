@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,8 @@ const LEVEL_METER_VALUE_MARKER_BASE =
 const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[5ch]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
+const PLAYBACK_SIGNAL_FLOOR_DB = -70;
+const PLAYBACK_SILENCE_HOLD_MS = 350;
 const LEVEL_METER_GRID =
   "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
 
@@ -81,6 +83,70 @@ function AnimatedPeakFill({ dbValue, yRange }) {
 
 function formatLevelValue(value) {
   return Number.isFinite(value) ? value.toFixed(1) : "-";
+}
+
+function hasPlaybackSignal(displayAudio) {
+  const peakDb = displayAudio?.peakDb;
+  if (Array.isArray(peakDb)) {
+    return peakDb.some((v) => Number.isFinite(v) && v > PLAYBACK_SIGNAL_FLOOR_DB);
+  }
+  return false;
+}
+
+function usePlaybackMaxReadout({ enabled, mode, value, displayAudio }) {
+  const [playbackMax, setPlaybackMax] = useState(-Infinity);
+  const trackerRef = useRef({
+    mode,
+    active: false,
+    silentSince: null,
+    playbackMax: -Infinity,
+  });
+
+  const signalKey = Array.isArray(displayAudio?.peakDb) ? displayAudio.peakDb.join("|") : "";
+
+  useEffect(() => {
+    const tracker = trackerRef.current;
+    if (tracker.mode !== mode) {
+      tracker.mode = mode;
+      tracker.active = false;
+      tracker.silentSince = null;
+      tracker.playbackMax = -Infinity;
+      setPlaybackMax(-Infinity);
+    }
+
+    if (!enabled) {
+      tracker.active = false;
+      tracker.silentSince = null;
+      tracker.playbackMax = -Infinity;
+      setPlaybackMax(-Infinity);
+      return;
+    }
+
+    const now = Date.now();
+    const audible = hasPlaybackSignal(displayAudio);
+    const silenceElapsed =
+      tracker.silentSince != null && now - tracker.silentSince >= PLAYBACK_SILENCE_HOLD_MS;
+
+    if (audible) {
+      const startsNewPlayback = !tracker.active || silenceElapsed;
+      tracker.active = true;
+      tracker.silentSince = null;
+      const nextMax = startsNewPlayback
+        ? value
+        : Number.isFinite(value)
+          ? Math.max(tracker.playbackMax, value)
+          : tracker.playbackMax;
+      tracker.playbackMax = Number.isFinite(nextMax) ? nextMax : -Infinity;
+      setPlaybackMax(tracker.playbackMax);
+      return;
+    }
+
+    if (tracker.active && tracker.silentSince == null) {
+      tracker.silentSince = now;
+    }
+  }, [displayAudio, enabled, mode, signalKey, value]);
+
+  return playbackMax;
 }
 
 function AxisValueMarker({
@@ -145,6 +211,7 @@ export function LevelMeterPanel() {
     [panelControls]
   );
   const levelMeterMode = normalizedPanelControls.levelMeterMode;
+  const showPlaybackMax = normalizedPanelControls.levelMeterPlaybackMax;
   const showLevelValueMarker = normalizedPanelControls.levelMeterValueMarker;
   const showTpMaxMarkerSetting = normalizedPanelControls.levelMeterTpMaxMarker;
   const modeMeta = LEVEL_MODE_META[levelMeterMode] ?? LEVEL_MODE_META.peak;
@@ -190,10 +257,17 @@ export function LevelMeterPanel() {
     levelMeterYRange.max,
     levelMeterYAxis.axisPx
   );
+  const liveLevelValue = displayAudio?.[modeMeta.field];
+  const playbackMaxValue = usePlaybackMaxReadout({
+    enabled: !isPeak && showPlaybackMax,
+    mode: levelMeterMode,
+    value: liveLevelValue,
+    displayAudio,
+  });
 
   if (levelMeterMode !== "peak") {
-    const levelValue = displayAudio?.[modeMeta.field];
-    const showMarker = showLevelValueMarker && Number.isFinite(levelValue);
+    const readoutValue = showPlaybackMax ? playbackMaxValue : liveLevelValue;
+    const showMarker = showLevelValueMarker && Number.isFinite(readoutValue);
     const yAxisWidthClass = showMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
     return (
       <div
@@ -247,7 +321,7 @@ export function LevelMeterPanel() {
                   );
                 })}
                 {showMarker ? (
-                  <AxisValueMarker value={levelValue} yRange={levelMeterYRange} />
+                  <AxisValueMarker value={readoutValue} yRange={levelMeterYRange} />
                 ) : null}
               </div>
             </div>
@@ -255,13 +329,14 @@ export function LevelMeterPanel() {
               <div className="@container relative h-full min-h-0 p-0">
                 <div
                   data-level-meter-bar-fill
+                  data-level-meter-fill-value={formatLevelValue(liveLevelValue)}
                   className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
                   style={{
                     "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X,
                   }}
                 >
                   <AnimatedLevelFill
-                    value={levelValue}
+                    value={liveLevelValue}
                     min={levelMeterYRange.min}
                     max={levelMeterYRange.max}
                     fromTopFrac={(v) =>
@@ -277,7 +352,7 @@ export function LevelMeterPanel() {
                   )}
                 >
                   <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
-                    {formatLevelValue(levelValue)}
+                    {formatLevelValue(readoutValue)}
                   </span>
                 </div>
                 <div

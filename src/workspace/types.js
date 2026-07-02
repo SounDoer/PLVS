@@ -22,6 +22,7 @@
  *   spectrumView: string,
  *   spectrumPeakHold: boolean,
  *   levelMeterMode: string,
+ *   levelMeterPlaybackMax: boolean,
  *   levelMeterValueMarker: boolean,
  *   levelMeterTpMaxMarker: boolean,
  *   statsVisibleIds: string[],

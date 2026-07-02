@@ -136,7 +136,9 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.queryByText("Floating value")).toBeNull();
+    expect(screen.queryByText("Playback max")).toBeNull();
     expect(screen.queryByRole("switch", { name: "level meter floating value" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "level meter playback max" })).toBeNull();
     expect(screen.getByText("TP Max")).toBeTruthy();
     const switchButton = screen.getByRole("switch", { name: "level meter TP Max" });
     expect(switchButton.getAttribute("aria-checked")).toBe("true");
@@ -149,7 +151,7 @@ describe("PanelSettingsContent", () => {
     });
   });
 
-  it("renders the Level Meter floating value switch for Momentary and updates it", () => {
+  it("renders the Level Meter playback max and floating value switches for Momentary", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -159,14 +161,28 @@ describe("PanelSettingsContent", () => {
       />
     );
 
+    const playbackMaxLabel = screen.getByText("Playback max");
+    const floatingValueLabel = screen.getByText("Floating value");
+    expect(playbackMaxLabel.compareDocumentPosition(floatingValueLabel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
     expect(screen.getByText("Floating value")).toBeTruthy();
     expect(screen.queryByText("TP Max")).toBeNull();
+    const playbackMaxSwitch = screen.getByRole("switch", { name: "level meter playback max" });
+    expect(playbackMaxSwitch.getAttribute("aria-checked")).toBe("false");
     const switchButton = screen.getByRole("switch", { name: "level meter floating value" });
     expect(switchButton.getAttribute("aria-checked")).toBe("true");
     expect(switchButton.className).toContain("h-4");
     expect(switchButton.className).toContain("w-7");
     expect(switchButton.className).toContain("data-[state=checked]:bg-primary");
     expect(switchButton.querySelector("[data-slot='switch-thumb']")?.className).toContain("size-3");
+
+    fireEvent.click(playbackMaxSwitch);
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "momentary",
+      levelMeterPlaybackMax: true,
+    });
 
     fireEvent.click(switchButton);
 

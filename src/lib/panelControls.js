@@ -16,6 +16,7 @@ export const LEVEL_METER_MODE_OPTIONS = [
 
 export const DEFAULT_PANEL_CONTROLS = {
   levelMeterMode: "peak",
+  levelMeterPlaybackMax: false,
   levelMeterValueMarker: true,
   levelMeterTpMaxMarker: true,
   vectorscopePair: { x: 0, y: 1 },
@@ -153,6 +154,10 @@ function normalizeLevelMeterValueMarker(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterValueMarker;
 }
 
+function normalizeLevelMeterPlaybackMax(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterPlaybackMax;
+}
+
 function normalizeLevelMeterTpMaxMarker(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterTpMaxMarker;
 }
@@ -227,6 +232,7 @@ export function normalizePanelControls(raw) {
   });
   return {
     levelMeterMode: normalizeLevelMeterMode(raw?.levelMeterMode),
+    levelMeterPlaybackMax: normalizeLevelMeterPlaybackMax(raw?.levelMeterPlaybackMax),
     levelMeterValueMarker: normalizeLevelMeterValueMarker(raw?.levelMeterValueMarker),
     levelMeterTpMaxMarker: normalizeLevelMeterTpMaxMarker(raw?.levelMeterTpMaxMarker),
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),

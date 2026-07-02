@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 
-function renderPanel(value = {}) {
-  return render(
+function panel(value = {}) {
+  return (
     <AudioDataContext.Provider
       value={{
         displayAudio: { peakDb: [-9.9, -10], momentary: -22.4, shortTerm: -18.6, tpMax: -1 },
@@ -21,6 +21,15 @@ function renderPanel(value = {}) {
     </AudioDataContext.Provider>
   );
 }
+
+function renderPanel(value = {}) {
+  return render(panel(value));
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("LevelMeterPanel", () => {
   it("renders peak values in fixed-width nowrap slots separate from channel labels", () => {
@@ -204,6 +213,95 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-value]")?.className).toContain("flex");
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
       "w-[var(--ui-w-axis-rail)]"
+    );
+  });
+
+  it("uses playback max as the readout source without changing the live bar fill", async () => {
+    const { container, rerender } = renderPanel({
+      displayAudio: { peakDb: [-18, -18], momentary: -30 },
+      panelControls: {
+        levelMeterMode: "momentary",
+        levelMeterPlaybackMax: true,
+        levelMeterValueMarker: false,
+      },
+    });
+
+    await waitFor(() =>
+      expect(container.querySelector("[data-level-value]")?.textContent).toBe("-30.0")
+    );
+    expect(
+      container.querySelector("[data-level-meter-bar-fill]")?.dataset.levelMeterFillValue
+    ).toBe("-30.0");
+
+    rerender(
+      panel({
+        displayAudio: { peakDb: [-18, -18], momentary: -34 },
+        panelControls: {
+          levelMeterMode: "momentary",
+          levelMeterPlaybackMax: true,
+          levelMeterValueMarker: false,
+        },
+      })
+    );
+
+    await waitFor(() =>
+      expect(container.querySelector("[data-level-value]")?.textContent).toBe("-30.0")
+    );
+    expect(
+      container.querySelector("[data-level-meter-bar-fill]")?.dataset.levelMeterFillValue
+    ).toBe("-34.0");
+  });
+
+  it("uses playback max as the shared readout source for floating value", async () => {
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-18, -18], momentary: -30 },
+      panelControls: {
+        levelMeterMode: "momentary",
+        levelMeterPlaybackMax: true,
+        levelMeterValueMarker: true,
+      },
+    });
+
+    await waitFor(() =>
+      expect(container.querySelector("[data-level-value-marker]")?.textContent).toBe("-30.0")
+    );
+    expect(container.querySelector("[data-level-value]")?.className).toContain("hidden");
+  });
+
+  it("replaces playback max when a new lower playback starts", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+
+    const controls = {
+      levelMeterMode: "momentary",
+      levelMeterPlaybackMax: true,
+      levelMeterValueMarker: false,
+    };
+    const { container, rerender } = renderPanel({
+      displayAudio: { peakDb: [-18, -18], momentary: -20 },
+      panelControls: controls,
+    });
+
+    await waitFor(() =>
+      expect(container.querySelector("[data-level-value]")?.textContent).toBe("-20.0")
+    );
+
+    nowSpy.mockReturnValue(100);
+    rerender(
+      panel({
+        displayAudio: { peakDb: [-Infinity, -Infinity], momentary: -Infinity },
+        panelControls: controls,
+      })
+    );
+    nowSpy.mockReturnValue(500);
+    rerender(
+      panel({
+        displayAudio: { peakDb: [-30, -30], momentary: -35 },
+        panelControls: controls,
+      })
+    );
+
+    await waitFor(() =>
+      expect(container.querySelector("[data-level-value]")?.textContent).toBe("-35.0")
     );
   });
 });
