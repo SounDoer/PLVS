@@ -1,6 +1,7 @@
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
@@ -108,13 +109,10 @@ function AddPanelControl() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="mt-1 flex h-7 w-full items-center justify-center gap-1.5 rounded border border-border/70 bg-transparent px-2 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
+        <Button variant="secondary" size="sm" className="h-7 min-w-0 flex-1 px-2 text-xs">
           <Plus className="size-3.5" />
           Add Panel
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-max min-w-44 max-w-[92vw] p-1">
         {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => (
@@ -158,8 +156,8 @@ export function ModulesPopoverContent() {
           <p className="px-2 py-1.5 text-xs text-muted-foreground">No panels</p>
         ) : null}
       </div>
-      <AddPanelControl />
-      <div className="mt-1 flex justify-end">
+      <div className="mt-1 flex items-center gap-1 border-t border-border/30 pt-1">
+        <AddPanelControl />
         <InlineConfirm
           onConfirm={resetWorkspace}
           confirmLabel="Confirm reset layout"
@@ -168,10 +166,11 @@ export function ModulesPopoverContent() {
             <button
               type="button"
               aria-label="Reset layout"
+              title="Reset layout"
               onClick={arm}
-              className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              Reset
+              <RotateCcw className="size-3.5" />
             </button>
           )}
         />
