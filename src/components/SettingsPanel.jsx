@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Download, ExternalLink, Pencil, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ExternalLink, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +55,9 @@ const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 
 const FOOTER_LINK_CLASS =
   "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground/60 transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-40";
+
+const CONFIG_TEXT_BTN_CLASS =
+  "h-auto bg-transparent px-0 py-0 text-[length:var(--ui-fs-display)] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
 function SettingsBody({ children }) {
   return (
@@ -366,7 +369,6 @@ export function SettingsPanel({
                             trigger={(arm) => (
                               <IconButton
                                 disabled={themeControlsDisabled}
-                                className="text-destructive/60 hover:text-destructive"
                                 onClick={arm}
                                 aria-label="Delete theme"
                               >
@@ -465,21 +467,25 @@ export function SettingsPanel({
                 {/* Configuration */}
                 <SettingsSection>
                   <SettingsRow label="Configuration">
-                    <div className="flex items-center gap-1.5">
-                      <IconButton
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
                         onClick={onExportConfiguration}
                         disabled={configurationBusy}
                         aria-label="Export configuration"
+                        className={CONFIG_TEXT_BTN_CLASS}
                       >
-                        <Download className="size-3.5" />
-                      </IconButton>
-                      <IconButton
+                        Export
+                      </button>
+                      <button
+                        type="button"
                         onClick={onImportConfiguration}
                         disabled={configurationBusy}
                         aria-label="Import configuration"
+                        className={CONFIG_TEXT_BTN_CLASS}
                       >
-                        <Upload className="size-3.5" />
-                      </IconButton>
+                        Import
+                      </button>
                       <InlineConfirm
                         onConfirm={onResetConfiguration}
                         confirmLabel="Confirm reset configuration"
@@ -489,7 +495,7 @@ export function SettingsPanel({
                             onClick={arm}
                             disabled={configurationBusy}
                             aria-label="Reset configuration"
-                            className="text-destructive/60 hover:text-destructive"
+                            className="hover:text-destructive focus-visible:text-destructive"
                           >
                             <RotateCcw className="size-3.5" />
                           </IconButton>

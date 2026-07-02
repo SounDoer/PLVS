@@ -63,6 +63,8 @@ describe("SettingsPanel", () => {
       />
     );
 
+    expect(screen.getByText("Export")).toBeTruthy();
+    expect(screen.getByText("Import")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Export configuration" }));
     fireEvent.click(screen.getByRole("button", { name: "Import configuration" }));
 
@@ -272,7 +274,7 @@ describe("SettingsPanel", () => {
 
   it("renders the keyboard shortcuts reference rows", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.getByText("Start / Stop")).toBeTruthy();
+    expect(screen.queryByText("Start / Stop")).toBeNull();
     expect(screen.queryByText("Fullscreen Panel")).toBeNull();
     expect(screen.queryByText("Exit Fullscreen")).toBeNull();
   });
