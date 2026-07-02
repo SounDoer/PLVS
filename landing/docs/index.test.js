@@ -61,3 +61,11 @@ describe("docs page content", () => {
     expect(html).toContain("isn't implemented yet");
   });
 });
+
+describe("docs page responsive layout", () => {
+  test("collapses the top nav to just Download below 620px, like the landing page", () => {
+    expect(html).toContain("@media (max-width: 620px)");
+    expect(html).toMatch(/\.nav-links a:not\(\.nav-download\)\s*\{[\s\S]*display:\s*none/);
+    expect(html).toContain('<a class="nav-download" href="../index.html#download">Download</a>');
+  });
+});

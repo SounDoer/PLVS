@@ -96,6 +96,10 @@
         color: var(--accent);
       }
 
+      .nav-download {
+        color: var(--ink);
+      }
+
       .docs-layout {
         display: flex;
         align-items: flex-start;
@@ -254,6 +258,12 @@
           max-width: 100%;
         }
       }
+
+      @media (max-width: 620px) {
+        .nav-links a:not(.nav-download) {
+          display: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -267,7 +277,7 @@
         <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
           >Releases</a
         >
-        <a href="../index.html#download">Download</a>
+        <a class="nav-download" href="../index.html#download">Download</a>
       </div>
     </nav>
 
