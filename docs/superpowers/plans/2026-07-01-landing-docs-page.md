@@ -1,0 +1,899 @@
+# Landing Page `/docs` Subpage Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Add a `landing/docs/index.html` subpage to the existing static landing site, documenting PLVS features and operations, reachable from and returning to the landing homepage.
+
+**Architecture:** Hand-written static HTML/CSS file (no build step), matching the existing `landing/index.html` pattern exactly: inline `<style>`, inline `<script>`, deployed as-is via the existing `deploy-landing.yml` GitHub Pages workflow (no workflow changes needed since it already uploads the whole `landing/` directory). Nine anchor-linked sections, a sticky sidebar on desktop that collapses to a horizontal scroll strip on narrow viewports, and a small `IntersectionObserver` script to highlight the active section in the sidebar.
+
+**Tech Stack:** Plain HTML/CSS/JS (ES2020, no dependencies), Vitest for the two content-assertion test files (following the existing `landing/index.test.js` pattern).
+
+---
+
+## File Structure
+
+- **Modify:** `landing/index.html` — add one `Docs` link to the existing `.nav-links` list (line ~827-833).
+- **Modify:** `landing/index.test.js` — add one assertion that the new `Docs` nav link exists.
+- **Create:** `landing/docs/index.html` — the docs page itself (nav + sidebar + 9 content sections + footer + active-section script).
+- **Create:** `landing/docs/index.test.js` — content assertions for the new page, mirroring `landing/index.test.js`.
+
+No changes to `.github/workflows/deploy-landing.yml` — it already publishes everything under `landing/`.
+
+---
+
+### Task 1: Add the "Docs" entry point to the landing page nav
+
+**Files:**
+- Modify: `landing/index.html:827-833`
+- Modify: `landing/index.test.js`
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `landing/index.test.js` (inside the existing `describe("landing page hero", ...)` block, as a new `test`):
+
+```javascript
+  test("links to the docs subpage from the nav", () => {
+    expect(html).toContain('href="docs/"');
+  });
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run landing/index.test.js`
+Expected: FAIL — `expected ... to contain 'href="docs/"'`
+
+- [ ] **Step 3: Add the nav link**
+
+In `landing/index.html`, change:
+
+```html
+        <div class="nav-links">
+          <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
+            >Releases</a
+          >
+          <a class="nav-download" href="#download">Download</a>
+        </div>
+```
+
+to:
+
+```html
+        <div class="nav-links">
+          <a href="docs/">Docs</a>
+          <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
+            >Releases</a
+          >
+          <a class="nav-download" href="#download">Download</a>
+        </div>
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run landing/index.test.js`
+Expected: PASS (all tests in the file, including the new one)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add landing/index.html landing/index.test.js
+git commit -m "feat: link to the docs subpage from the landing nav"
+```
+
+---
+
+### Task 2: Create the docs page skeleton, styles, and navigation
+
+**Files:**
+- Create: `landing/docs/index.html`
+
+This task creates the full page shell — head/styles, nav (with a working back-link to the homepage), sidebar, responsive rules, and the active-section-highlight script — with all 9 `<section>` elements present but empty placeholders for their inner copy (filled in Task 3). Because this is scaffolding rather than a placeholder *requirement description*, the empty sections are real, valid HTML (just content-free) — Task 3 fills them with real copy in the same file.
+
+- [ ] **Step 1: Create `landing/docs/index.html`**
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PLVS Docs</title>
+    <meta
+      name="description"
+      content="How to use PLVS: signal sources, meter panels, workspace, and settings."
+    />
+    <style>
+      :root {
+        --page: #070707;
+        --ink: #f2f2f2;
+        --muted: #898989;
+        --soft: #5e5e5e;
+        --line: rgba(242, 242, 242, 0.11);
+        --panel: #151515;
+        --panel-muted: #232323;
+        --accent: #fb923c;
+        --accent-ink: #070707;
+        --radius: 14px;
+        --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 76px;
+        width: min(100% - 40px, 1400px);
+        margin: 0 auto;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: 0.01em;
+      }
+
+      .brand-mark {
+        width: 29px;
+        height: 29px;
+        display: block;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 13px;
+        font-weight: 560;
+      }
+
+      .nav-links a {
+        transition: color 160ms ease;
+      }
+
+      .nav-links a:hover {
+        color: var(--accent);
+      }
+
+      .docs-layout {
+        display: flex;
+        align-items: flex-start;
+        gap: 48px;
+        width: min(100% - 40px, 1400px);
+        margin: 0 auto;
+        padding: 48px 0 96px;
+      }
+
+      .docs-sidebar {
+        flex: 0 0 220px;
+        position: sticky;
+        top: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .docs-sidebar a {
+        padding: 8px 12px;
+        border-radius: 8px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 14px;
+        font-weight: 560;
+        transition:
+          color 150ms ease,
+          background 150ms ease;
+      }
+
+      .docs-sidebar a:hover {
+        color: var(--ink);
+      }
+
+      .docs-sidebar a.active {
+        color: var(--ink);
+        background: rgba(251, 146, 60, 0.1);
+      }
+
+      .docs-content {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 760px;
+      }
+
+      .docs-section {
+        padding: 40px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .docs-section:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .docs-section h2 {
+        margin: 0 0 8px;
+        font-size: clamp(26px, 3vw, 34px);
+        line-height: 1.15;
+        letter-spacing: -0.03em;
+        font-weight: 700;
+      }
+
+      .docs-section > p:first-of-type {
+        margin: 0 0 24px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 16px;
+        line-height: 1.55;
+      }
+
+      .docs-item {
+        padding: 16px 0;
+        border-top: 1px solid rgba(242, 242, 242, 0.08);
+      }
+
+      .docs-item:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .docs-item h3 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        font-weight: 640;
+        letter-spacing: -0.01em;
+      }
+
+      .docs-item p {
+        margin: 0;
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .docs-section code {
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+
+      .docs-faq details {
+        padding: 14px 0;
+        border-top: 1px solid rgba(242, 242, 242, 0.08);
+      }
+
+      .docs-faq details:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .docs-faq summary {
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 620;
+      }
+
+      .docs-faq summary::marker {
+        color: var(--accent);
+      }
+
+      .docs-faq p {
+        margin: 10px 0 0;
+        color: rgba(242, 242, 242, 0.58);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      @media (max-width: 880px) {
+        .nav {
+          width: min(100% - 28px, 1400px);
+        }
+
+        .docs-layout {
+          flex-direction: column;
+          width: min(100% - 28px, 1400px);
+          gap: 20px;
+        }
+
+        .docs-sidebar {
+          position: static;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          width: 100%;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .docs-sidebar a {
+          flex: 0 0 auto;
+          white-space: nowrap;
+        }
+
+        .docs-content {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="../index.html">
+        <img class="brand-mark" src="../assets/app-icon.svg" alt="" aria-hidden="true" />
+        PLVS
+      </a>
+      <div class="nav-links">
+        <a href="https://github.com/SounDoer/PLVS" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/SounDoer/PLVS/releases" target="_blank" rel="noopener"
+          >Releases</a
+        >
+        <a href="../index.html#download">Download</a>
+      </div>
+    </nav>
+
+    <div class="docs-layout">
+      <nav class="docs-sidebar" aria-label="Docs sections">
+        <a href="#getting-started">Getting Started</a>
+        <a href="#signal-source">Signal Source</a>
+        <a href="#panels">Panels</a>
+        <a href="#dialogue-gated-loudness">Dialogue-Gated Loudness</a>
+        <a href="#multichannel">Multichannel</a>
+        <a href="#workspace">Workspace</a>
+        <a href="#file-mode">File Mode</a>
+        <a href="#system-settings">System Settings</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <main class="docs-content">
+        <section class="docs-section" id="getting-started"></section>
+        <section class="docs-section" id="signal-source"></section>
+        <section class="docs-section" id="panels"></section>
+        <section class="docs-section" id="dialogue-gated-loudness"></section>
+        <section class="docs-section" id="multichannel"></section>
+        <section class="docs-section" id="workspace"></section>
+        <section class="docs-section" id="file-mode"></section>
+        <section class="docs-section" id="system-settings"></section>
+        <section class="docs-section" id="faq"></section>
+      </main>
+    </div>
+
+    <script>
+      const sections = document.querySelectorAll(".docs-section");
+      const links = document.querySelectorAll(".docs-sidebar a");
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            for (const link of links) {
+              link.classList.toggle("active", link.getAttribute("href") === `#${entry.target.id}`);
+            }
+          }
+        },
+        { rootMargin: "-40% 0px -50% 0px" }
+      );
+
+      for (const section of sections) observer.observe(section);
+    </script>
+  </body>
+</html>
+```
+
+- [ ] **Step 2: Verify the file opens without console errors**
+
+Open `landing/docs/index.html` directly in a browser (double-click or `start landing/docs/index.html` on Windows). Confirm: nav renders, sidebar links are visible, clicking a sidebar link scrolls smoothly to the (currently empty) section, no JS errors in the console.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add landing/docs/index.html
+git commit -m "feat: scaffold the docs subpage shell, nav, and sidebar"
+```
+
+---
+
+### Task 3: Fill in the docs content
+
+**Files:**
+- Modify: `landing/docs/index.html`
+
+Replace each empty `<section>` from Task 2 with its full content. Do this as one edit per section so mistakes are easy to isolate.
+
+- [ ] **Step 1: Getting Started**
+
+Replace:
+```html
+        <section class="docs-section" id="getting-started"></section>
+```
+with:
+```html
+        <section class="docs-section" id="getting-started">
+          <h2>Getting Started</h2>
+          <p>Install PLVS and get through the first launch.</p>
+          <div class="docs-item">
+            <h3>Windows</h3>
+            <p>
+              Download the installer from
+              <a href="https://github.com/SounDoer/PLVS/releases">GitHub Releases</a> and run it,
+              or use the portable build if you'd rather not install. PLVS isn't code-signed yet,
+              so Windows SmartScreen may warn on first run — choose
+              <strong>More info</strong>, then <strong>Run anyway</strong>.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>macOS</h3>
+            <p>
+              Download the DMG from
+              <a href="https://github.com/SounDoer/PLVS/releases">GitHub Releases</a> and drag
+              PLVS into Applications. The build isn't notarized, so Gatekeeper blocks the first
+              launch — remove the quarantine attribute once:
+              <code>xattr -cr /Applications/PLVS.app</code>. Requires macOS 14.2 or later for
+              system audio capture.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>First launch</h3>
+            <p>
+              PLVS never starts capturing audio on its own. Pick a signal source (see
+              <a href="#signal-source">Signal Source</a>) and press Start when you're ready to
+              monitor.
+            </p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 2: Signal Source**
+
+Replace:
+```html
+        <section class="docs-section" id="signal-source"></section>
+```
+with:
+```html
+        <section class="docs-section" id="signal-source">
+          <h2>Signal Source</h2>
+          <p>
+            One dropdown covers every kind of input — you pick a signal, not an underlying API.
+          </p>
+          <div class="docs-item">
+            <h3>Automatic</h3>
+            <p>Binds to your system's current default output. Good default for most sessions.</p>
+          </div>
+          <div class="docs-item">
+            <h3>System playback</h3>
+            <p>
+              Monitor whatever your system is currently playing, with no virtual audio routing.
+              On Windows this uses WASAPI loopback; on macOS it uses the native system-audio tap
+              available on macOS 14.2 and later.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Physical input</h3>
+            <p>
+              Monitor a microphone or line input directly. On Windows this goes through WASAPI;
+              on macOS it goes through cpal.
+            </p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 3: Panels**
+
+Replace:
+```html
+        <section class="docs-section" id="panels"></section>
+```
+with:
+```html
+        <section class="docs-section" id="panels">
+          <h2>Panels</h2>
+          <p>Seven meter panels, all reading the same live signal at once.</p>
+          <div class="docs-item">
+            <h3>Level Meter</h3>
+            <p>
+              Peak or loudness display, switchable, shown per channel so you can spot an
+              imbalance at a glance.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Loudness</h3>
+            <p>
+              LUFS readings (integrated, short-term, momentary) following ITU-R BS.1770
+              measurement with EBU R128 production/gating conventions.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Stats</h3>
+            <p>A compact numeric summary of the key metrics from the other panels.</p>
+          </div>
+          <div class="docs-item">
+            <h3>Spectrum</h3>
+            <p>
+              An FFT-based real-time analyzer using a fixed reference view: per-band level in the
+              dBFS domain, aligned with common DAW practice rather than IEC 61260 filter-bank
+              metrology.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Spectrogram</h3>
+            <p>A scrolling time-frequency view, colored using your active theme's colormap.</p>
+          </div>
+          <div class="docs-item">
+            <h3>Vectorscope</h3>
+            <p>
+              Correlation between a pair of channels, defaulting to Front L/R. Pick a different
+              pair from the panel's controls when it's available.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Waveform</h3>
+            <p>A time-domain view of the live signal.</p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 4: Dialogue-Gated Loudness**
+
+Replace:
+```html
+        <section class="docs-section" id="dialogue-gated-loudness"></section>
+```
+with:
+```html
+        <section class="docs-section" id="dialogue-gated-loudness">
+          <h2>Dialogue-Gated Loudness</h2>
+          <p>
+            An optional mode that limits loudness measurement to speech, using an on-device voice
+            activity detector — no audio leaves your machine.
+          </p>
+          <div class="docs-item">
+            <h3>Choosing a VAD engine</h3>
+            <p>
+              Silero is the default; FireRedVAD and TEN VAD are available as alternatives from
+              the same setting.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Reading the output</h3>
+            <p>
+              Four metrics: <strong>Coverage</strong> (how much of the session was classified as
+              speech), <strong>Range</strong> and <strong>Offset</strong> (loudness spread and
+              deviation within speech), and <strong>Active</strong> (whether gating is currently
+              engaged).
+            </p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 5: Multichannel**
+
+Replace:
+```html
+        <section class="docs-section" id="multichannel"></section>
+```
+with:
+```html
+        <section class="docs-section" id="multichannel">
+          <h2>Multichannel</h2>
+          <p>PLVS follows your source's layout automatically, with a manual override when needed.</p>
+          <div class="docs-item">
+            <h3>Automatic layout detection</h3>
+            <p>Mono, stereo, 5.1, and 7.1 are recognized automatically from the input.</p>
+          </div>
+          <div class="docs-item">
+            <h3>Manual presets</h3>
+            <p>
+              If detection doesn't match your setup, force Stereo, 5.1, or 7.1 from Settings.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Per-panel behavior</h3>
+            <p>
+              Level Meter shows every channel individually. Loudness computes the proper
+              multichannel (L1) path for the detected or selected layout. Spectrum and
+              Vectorscope let you choose which channel or channel pair to view.
+            </p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 6: Workspace**
+
+Replace:
+```html
+        <section class="docs-section" id="workspace"></section>
+```
+with:
+```html
+        <section class="docs-section" id="workspace">
+          <h2>Workspace</h2>
+          <p>Arrange panels into the layout your session needs.</p>
+          <div class="docs-item">
+            <h3>Split layout</h3>
+            <p>
+              Drag panel edges to resize, and split or merge panes to change which meters are
+              visible at once.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Persistence</h3>
+            <p>Your layout is remembered and restored the next time you open PLVS.</p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 7: File Mode**
+
+Replace:
+```html
+        <section class="docs-section" id="file-mode"></section>
+```
+with:
+```html
+        <section class="docs-section" id="file-mode">
+          <h2>File Mode</h2>
+          <p>Inspect a local audio file offline, using the same meter panels as live monitoring.</p>
+          <div class="docs-item">
+            <h3>Opening a file</h3>
+            <p>
+              PLVS reads file metadata with ffprobe and decodes audio with a bundled FFmpeg — no
+              external tools to install.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Scrubbing</h3>
+            <p>
+              Move through the file's timeline and every panel updates to match, exactly like
+              live monitoring. Analysis stays read-only and local to the current session.
+            </p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 8: System Settings**
+
+Replace:
+```html
+        <section class="docs-section" id="system-settings"></section>
+```
+with:
+```html
+        <section class="docs-section" id="system-settings">
+          <h2>System Settings</h2>
+          <p>Everything for making PLVS fit into how you work day to day.</p>
+          <div class="docs-item">
+            <h3>Tray &amp; Autostart</h3>
+            <p>
+              Choose whether closing the window sends PLVS to the tray or quits it, and whether
+              it launches automatically at login.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Shortcuts</h3>
+            <p>
+              Built-in shortcuts cover common actions. You can also record a custom global
+              shortcut for Clear, which works even when PLVS isn't focused.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Themes</h3>
+            <p>
+              Light and Dark ship built in, and PLVS follows your system theme by default. The
+              theme editor lets you build and save a custom theme, including the spectrogram
+              colormap.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Configuration Export/Import</h3>
+            <p>
+              Export your current settings and workspace layout to a file, import a previously
+              exported file to restore them, or reset everything back to defaults. This exports
+              app configuration, not audio measurement data.
+            </p>
+          </div>
+        </section>
+```
+
+- [ ] **Step 9: FAQ / Known Limitations**
+
+Replace:
+```html
+        <section class="docs-section" id="faq"></section>
+```
+with:
+```html
+        <section class="docs-section" id="faq">
+          <h2>FAQ &amp; Known Limitations</h2>
+          <p>What PLVS intentionally does not do, and why.</p>
+          <div class="docs-faq">
+            <details>
+              <summary>Does PLVS process or change my audio?</summary>
+              <p>
+                No. PLVS is read-only monitoring — it never adds effects, EQ, or rerouting, and it
+                never changes what you hear.
+              </p>
+            </details>
+            <details>
+              <summary>Can I export the metered data, like CSV or screenshots?</summary>
+              <p>
+                Not yet. Configuration (settings and layout) can be exported and imported, but
+                exporting measurement data itself isn't implemented yet.
+              </p>
+            </details>
+            <details>
+              <summary>Is there a Linux build?</summary>
+              <p>No, and there's no near-term plan for one.</p>
+            </details>
+            <details>
+              <summary>Is PLVS available as a plugin (VST/AU/AAX)?</summary>
+              <p>No. PLVS is a standalone desktop app only.</p>
+            </details>
+            <details>
+              <summary>Why does my OS warn me when I first open PLVS?</summary>
+              <p>
+                PLVS builds aren't code-signed (Windows) or notarized (macOS) yet, so SmartScreen
+                and Gatekeeper show their standard first-run warnings. See
+                <a href="#getting-started">Getting Started</a> for how to get past them.
+              </p>
+            </details>
+            <details>
+              <summary>Does PLVS send my audio anywhere?</summary>
+              <p>
+                No. All audio and metering data stays on your device, and there's no default
+                telemetry.
+              </p>
+            </details>
+          </div>
+        </section>
+```
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add landing/docs/index.html
+git commit -m "docs: write the docs subpage content"
+```
+
+---
+
+### Task 4: Add content tests for the docs page
+
+**Files:**
+- Create: `landing/docs/index.test.js`
+
+- [ ] **Step 1: Write the test file**
+
+```javascript
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+import { describe, expect, test } from "vitest";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const html = readFileSync(join(currentDir, "index.html"), "utf8");
+
+describe("docs page navigation", () => {
+  test("links the brand back to the landing page", () => {
+    expect(html).toContain('<a class="brand" href="../index.html">');
+  });
+
+  test("has a sidebar link for every section", () => {
+    const sectionIds = [
+      "getting-started",
+      "signal-source",
+      "panels",
+      "dialogue-gated-loudness",
+      "multichannel",
+      "workspace",
+      "file-mode",
+      "system-settings",
+      "faq",
+    ];
+    for (const id of sectionIds) {
+      expect(html).toContain(`href="#${id}"`);
+      expect(html).toContain(`id="${id}"`);
+    }
+  });
+});
+
+describe("docs page content", () => {
+  test("documents the unsigned/unnotarized first-run warnings", () => {
+    expect(html).toContain("SmartScreen");
+    expect(html).toContain("Gatekeeper");
+    expect(html).toContain("xattr -cr /Applications/PLVS.app");
+  });
+
+  test("documents the signal source dropdown", () => {
+    expect(html).toContain("Automatic");
+    expect(html).toContain("WASAPI loopback");
+  });
+
+  test("lists all seven meter panels", () => {
+    for (const panel of [
+      "Level Meter",
+      "Loudness",
+      "Stats",
+      "Spectrum",
+      "Spectrogram",
+      "Vectorscope",
+      "Waveform",
+    ]) {
+      expect(html).toContain(panel);
+    }
+  });
+
+  test("does not claim unimplemented audio data export", () => {
+    expect(html).toContain("isn't implemented yet");
+  });
+});
+```
+
+- [ ] **Step 2: Run the tests**
+
+Run: `npx vitest run landing/docs/index.test.js`
+Expected: PASS — all tests green
+
+- [ ] **Step 3: Run the full landing test suite to check for regressions**
+
+Run: `npx vitest run landing/`
+Expected: PASS — both `landing/index.test.js` and `landing/docs/index.test.js` green
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add landing/docs/index.test.js
+git commit -m "test: add content assertions for the docs subpage"
+```
+
+---
+
+### Task 5: Full-suite verification and manual check
+
+**Files:** none (verification only)
+
+- [ ] **Step 1: Run the full project check**
+
+Run: `npm run check`
+Expected: PASS (lint, test, build, version check, Rust fmt/clippy/test all green — this task touches no Rust or app-frontend code, so only the JS lint/test/build stages are relevant, but running the full command matches project convention per `CLAUDE.md`)
+
+- [ ] **Step 2: Manually verify in a browser**
+
+Open `landing/index.html`, click the new "Docs" nav link, confirm it lands on `landing/docs/index.html`. On the docs page: click through each sidebar link and confirm smooth-scroll to the right section, confirm the sidebar highlights the section currently in view, click the PLVS logo and confirm it returns to `landing/index.html`. Resize the window below ~880px and confirm the sidebar collapses into a horizontal scroll strip.
+
+- [ ] **Step 3: No commit needed** — this task is verification-only; if any issue is found, fix it as part of the relevant earlier task's files and commit there.
