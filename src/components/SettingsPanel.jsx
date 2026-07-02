@@ -525,7 +525,6 @@ export function SettingsPanel({
                             "min-w-0 truncate",
                             hasUpdate ? "text-primary" : "text-muted-foreground/60"
                           )}
-                          title={updateStatusText}
                         >
                           {updateStatusText}
                         </span>

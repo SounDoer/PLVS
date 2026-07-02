@@ -30,7 +30,7 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint }) {
           )}
         />
       )}
-      <span className={labelClass} title={label}>
+      <span className={labelClass}>
         <span className="@max-[240px]:hidden">{label}</span>
         <span className="hidden @max-[240px]:inline">{shortLabel ?? label}</span>
       </span>

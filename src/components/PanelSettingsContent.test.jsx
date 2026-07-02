@@ -1036,7 +1036,12 @@ describe("PanelSettingsContent", () => {
     expect(leaves[0].style.flex).toBe("0 0 360px");
     const slotPinButton = screen
       .getAllByRole("button", { name: "Pin panel size" })
-      .find((button) => button.title.includes("locked by Spectrum"));
+      .find((button) => {
+        fireEvent.mouseEnter(button);
+        const isLocked = Boolean(screen.queryByText(/locked by Spectrum/));
+        fireEvent.mouseLeave(button);
+        return isLocked;
+      });
     expect(slotPinButton).toBeTruthy();
   });
 

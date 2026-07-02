@@ -10,6 +10,7 @@ import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
+import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
 import { PANEL_HELP_BY_MODULE_ID } from "../components/panels/chartHelp.js";
 import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
@@ -307,25 +308,28 @@ export function LeafView({ node, path, style }) {
               onPanelControlsChange={onPanelControlsChange}
             />
             {helpItems ? <HelpPopover items={helpItems} /> : null}
-            <button
-              type="button"
-              aria-label={isActivePinned ? "Unpin panel size" : "Pin panel size"}
-              aria-pressed={isActivePinned}
-              title={
+            <HoverTip
+              tip={
                 slotPinnedByOther
                   ? `Slot size locked by ${slotPinnedTitle}`
                   : isActivePinned
                     ? "Unpin panel size"
                     : "Pin panel size"
               }
-              className={cn(
-                PANEL_HEADER_ACTION_BUTTON,
-                (isActivePinned || slotPinnedByOther) && "opacity-100"
-              )}
-              onClick={handlePinClick}
             >
-              {isActivePinned ? <PinOff size={12} /> : <Pin size={12} />}
-            </button>
+              <button
+                type="button"
+                aria-label={isActivePinned ? "Unpin panel size" : "Pin panel size"}
+                aria-pressed={isActivePinned}
+                className={cn(
+                  PANEL_HEADER_ACTION_BUTTON,
+                  (isActivePinned || slotPinnedByOther) && "opacity-100"
+                )}
+                onClick={handlePinClick}
+              >
+                {isActivePinned ? <PinOff size={12} /> : <Pin size={12} />}
+              </button>
+            </HoverTip>
             <button
               type="button"
               aria-label="Fullscreen"

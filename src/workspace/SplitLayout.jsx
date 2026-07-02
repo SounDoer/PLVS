@@ -11,6 +11,7 @@ import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
+import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
 import { PANEL_HELP_BY_MODULE_ID } from "../components/panels/chartHelp.js";
 import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
@@ -312,17 +313,22 @@ function FullscreenOverlay() {
             onPanelControlsChange={onPanelControlsChange}
           />
           {helpItems ? <HelpPopover items={helpItems} /> : null}
-          <button
-            type="button"
-            className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary opacity-100")}
-            onClick={() => isPinned && setPanelPinned(fullscreenId, null)}
-            aria-label={isPinned ? "Unpin panel size" : "Panel size pin unavailable in fullscreen"}
-            aria-pressed={isPinned}
-            title={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
-            disabled={!isPinned}
+          <HoverTip
+            tip={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
           >
-            <Pin size={12} fill={isPinned ? "currentColor" : "none"} />
-          </button>
+            <button
+              type="button"
+              className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary opacity-100")}
+              onClick={() => isPinned && setPanelPinned(fullscreenId, null)}
+              aria-label={
+                isPinned ? "Unpin panel size" : "Panel size pin unavailable in fullscreen"
+              }
+              aria-pressed={isPinned}
+              disabled={!isPinned}
+            >
+              <Pin size={12} fill={isPinned ? "currentColor" : "none"} />
+            </button>
+          </HoverTip>
           <button
             type="button"
             className={PANEL_HEADER_ACTION_BUTTON}
