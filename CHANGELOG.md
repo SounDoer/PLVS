@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-07-02
+
+### Added
+- Level Meter playback max readout with per-metric TP Max reset.
+- Landing-site docs entry and newsletter subscribe form.
+
+### Changed
+- FireRedVAD is now the default dialogue VAD engine.
+- Loudness reference control now lives in Loudness panel settings.
+- Landing page visuals, copy, and docs navigation were refreshed.
+- Level Meter TP Max marker and readout toggles now default off.
+
+### Fixed
+- Disabled the spacebar start / stop shortcut.
+- Preset edits now preserve the active preset id and track panel divergence.
+- Settings, modules popover, shortcut rows, and small-screen docs navigation were polished.
+- Replaced stray native title tooltips with HoverTip.
+
 ## [0.6.1] - 2026-06-30
 
 ### Changed
