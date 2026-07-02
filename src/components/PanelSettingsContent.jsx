@@ -596,7 +596,10 @@ export function PanelSettingsContent({
         </SettingsRow>
         {showValueMarkerToggle ? (
           <>
-            <SettingsRow label="Playback max">
+            <SettingsRow
+              label="Playback max"
+              tooltip="Show the latest playback max as the readout while the bar stays live."
+            >
               <SettingsSwitch
                 aria-label="level meter playback max"
                 checked={normalizedPanelControls.levelMeterPlaybackMax}

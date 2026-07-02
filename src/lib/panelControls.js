@@ -17,7 +17,7 @@ export const LEVEL_METER_MODE_OPTIONS = [
 export const DEFAULT_PANEL_CONTROLS = {
   levelMeterMode: "peak",
   levelMeterPlaybackMax: false,
-  levelMeterValueMarker: true,
+  levelMeterValueMarker: false,
   levelMeterTpMaxMarker: true,
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },

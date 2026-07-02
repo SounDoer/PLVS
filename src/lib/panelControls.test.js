@@ -69,7 +69,7 @@ describe("panelControls", () => {
     expect(DEFAULT_PANEL_CONTROLS).toEqual({
       levelMeterMode: "peak",
       levelMeterPlaybackMax: false,
-      levelMeterValueMarker: true,
+      levelMeterValueMarker: false,
       levelMeterTpMaxMarker: true,
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
@@ -194,7 +194,7 @@ describe("panelControls", () => {
     ).toEqual({
       levelMeterMode: "peak",
       levelMeterPlaybackMax: false,
-      levelMeterValueMarker: true,
+      levelMeterValueMarker: false,
       levelMeterTpMaxMarker: true,
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "single", ch: 3 },
@@ -232,7 +232,7 @@ describe("panelControls", () => {
   });
 
   it("normalizes the level meter value marker toggle", () => {
-    expect(normalizePanelControls({}).levelMeterValueMarker).toBe(true);
+    expect(normalizePanelControls({}).levelMeterValueMarker).toBe(false);
     expect(normalizePanelControls({ levelMeterValueMarker: true }).levelMeterValueMarker).toBe(
       true
     );
@@ -240,7 +240,7 @@ describe("panelControls", () => {
       false
     );
     expect(normalizePanelControls({ levelMeterValueMarker: "yes" }).levelMeterValueMarker).toBe(
-      true
+      false
     );
   });
 

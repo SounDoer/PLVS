@@ -106,7 +106,9 @@ describe("LevelMeterPanel", () => {
   });
 
   it("renders Momentary LUFS in Level Meter mode", () => {
-    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
+    });
 
     expect(screen.getAllByText("-22.4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("M").length).toBeGreaterThan(0);
@@ -144,7 +146,9 @@ describe("LevelMeterPanel", () => {
   });
 
   it("renders Short-term LUFS in Level Meter mode", () => {
-    const { container } = renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "shortTerm", levelMeterValueMarker: true },
+    });
 
     expect(screen.getAllByText("-18.6").length).toBeGreaterThan(0);
     expect(screen.getAllByText("ST").length).toBeGreaterThan(0);
@@ -198,7 +202,7 @@ describe("LevelMeterPanel", () => {
   it("hides the value marker when the value is below the loudness scale minimum", () => {
     const { container } = renderPanel({
       displayAudio: { momentary: -819.1 },
-      panelControls: { levelMeterMode: "momentary" },
+      panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
     });
 
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();

@@ -163,6 +163,9 @@ describe("PanelSettingsContent", () => {
 
     const playbackMaxLabel = screen.getByText("Playback max");
     const floatingValueLabel = screen.getByText("Floating value");
+    expect(
+      screen.getByText("Show the latest playback max as the readout while the bar stays live.")
+    ).toBeTruthy();
     expect(playbackMaxLabel.compareDocumentPosition(floatingValueLabel)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
@@ -171,7 +174,7 @@ describe("PanelSettingsContent", () => {
     const playbackMaxSwitch = screen.getByRole("switch", { name: "level meter playback max" });
     expect(playbackMaxSwitch.getAttribute("aria-checked")).toBe("false");
     const switchButton = screen.getByRole("switch", { name: "level meter floating value" });
-    expect(switchButton.getAttribute("aria-checked")).toBe("true");
+    expect(switchButton.getAttribute("aria-checked")).toBe("false");
     expect(switchButton.className).toContain("h-4");
     expect(switchButton.className).toContain("w-7");
     expect(switchButton.className).toContain("data-[state=checked]:bg-primary");
@@ -189,7 +192,7 @@ describe("PanelSettingsContent", () => {
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
       levelMeterMode: "momentary",
-      levelMeterValueMarker: false,
+      levelMeterValueMarker: true,
     });
   });
 
