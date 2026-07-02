@@ -816,6 +816,44 @@
           margin-right: 0;
         }
       }
+      .subscribe {
+        max-width: 32rem;
+        margin: 0 auto;
+      }
+      .subscribe-form {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .subscribe-form input[type="email"] {
+        flex: 1;
+        padding: 0.7rem 0.9rem;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink);
+        font: inherit;
+      }
+      .subscribe-form button {
+        padding: 0.7rem 1.1rem;
+        border-radius: var(--radius);
+        border: none;
+        background: var(--accent);
+        color: var(--accent-ink);
+        font: inherit;
+        cursor: pointer;
+      }
+      .subscribe-honeypot {
+        position: absolute;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+      .subscribe-status {
+        margin-top: 0.6rem;
+        color: var(--muted);
+        min-height: 1.2em;
+      }
     </style>
   </head>
   <body>
@@ -945,6 +983,48 @@
           <h2>File inspection, when needed</h2>
           <p>Open a local audio file and inspect it with the same meter workspace.</p>
         </section>
+
+        <section class="section subscribe" id="subscribe" aria-label="Newsletter subscription">
+          <h2>Stay in the loop</h2>
+          <p>Get an email when a new PLVS release ships. No spam, unsubscribe anytime.</p>
+          <form class="subscribe-form" id="subscribe-form">
+            <input type="email" name="email" required placeholder="you@example.com" aria-label="Email address" />
+            <div class="subscribe-honeypot" aria-hidden="true">
+              <label>Leave this empty<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+            </div>
+            <button type="submit">Subscribe</button>
+          </form>
+          <p class="subscribe-status" id="subscribe-status" role="status"></p>
+        </section>
+        <script>
+          (function () {
+            var form = document.getElementById("subscribe-form");
+            var status = document.getElementById("subscribe-status");
+            if (!form) return;
+            form.addEventListener("submit", function (event) {
+              event.preventDefault();
+              status.textContent = "Sending...";
+              var data = new FormData(form);
+              fetch("https://list.plvs.soundoer.com/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: data.get("email"),
+                  website: data.get("website"),
+                }),
+              })
+                .then(function (res) {
+                  if (res.status === 400) throw new Error("Please enter a valid email address.");
+                  if (!res.ok) throw new Error("Something went wrong. Please try again later.");
+                  form.reset();
+                  status.textContent = "Check your inbox to confirm your subscription.";
+                })
+                .catch(function (err) {
+                  status.textContent = err.message;
+                });
+            });
+          })();
+        </script>
       </main>
 
       <section class="download-section" id="download">

@@ -145,3 +145,17 @@ describe("landing page responsive layout", () => {
     expect(html).toMatch(/\.hero-actions\s*\{[\s\S]*grid-template-columns:\s*1fr/s);
   });
 });
+
+describe("landing page subscribe form", () => {
+  test("posts to the newsletter service with a honeypot field", () => {
+    expect(html).toContain('id="subscribe-form"');
+    expect(html).toContain("https://list.plvs.soundoer.com/subscribe");
+    expect(html).toContain('name="email"');
+    expect(html).toContain('name="website"');
+    expect(html).toContain("subscribe-honeypot");
+  });
+
+  test("keeps the double opt-in expectation in the copy", () => {
+    expect(html).toContain("Check your inbox to confirm");
+  });
+});
