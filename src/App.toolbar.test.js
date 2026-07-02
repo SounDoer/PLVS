@@ -207,6 +207,10 @@ describe("App toolbar", () => {
     expect(appSource).toContain("showFocusControls");
   });
 
+  it("does not wire Space to Start/Stop", () => {
+    expect(appSource).not.toContain('e.code === "Space"');
+  });
+
   it("suppresses the native WebView context menu globally", () => {
     expect(appSource).toContain("preventNativeContextMenu");
     expect(appSource).toContain('window.addEventListener("contextmenu", preventNativeContextMenu)');

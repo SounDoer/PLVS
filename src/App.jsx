@@ -1336,7 +1336,6 @@ function AppContent() {
   useEffect(() => {
     const onKeyDown = (e) => {
       const {
-        onStartClick: start,
         clearAll: clear,
         running: isRunning,
         showClock: hasClock,
@@ -1348,11 +1347,6 @@ function AppContent() {
       const tag = document.activeElement?.tagName ?? "";
       const editable =
         tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
-      if (e.code === "Space" && !editable && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        start();
-        return;
-      }
       if (eventMatchesAccelerator(e, clearCombo)) {
         e.preventDefault();
         if (isRunning || hasClock) clear();
