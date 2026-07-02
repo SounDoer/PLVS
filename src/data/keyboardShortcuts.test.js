@@ -3,11 +3,7 @@ import { KEYBOARD_SHORTCUTS, reservedComboConflict } from "./keyboardShortcuts.j
 
 describe("KEYBOARD_SHORTCUTS", () => {
   it("lists the read-only shortcuts with startStop last and no clear row", () => {
-    expect(KEYBOARD_SHORTCUTS.map((s) => s.id)).toEqual([
-      "fullscreen",
-      "exitFullscreen",
-      "startStop",
-    ]);
+    expect(KEYBOARD_SHORTCUTS.map((s) => s.id)).toEqual(["startStop"]);
   });
   it("each row has a label and keys", () => {
     for (const s of KEYBOARD_SHORTCUTS) {

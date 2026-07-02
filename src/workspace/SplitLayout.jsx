@@ -9,7 +9,6 @@ import {
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
-import { ALL_MODULE_IDS } from "./constants.js";
 import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
@@ -373,19 +372,6 @@ function SplitContent() {
       if (e.target.matches('input, textarea, select, [contenteditable="true"]')) return;
       const { state: s, setFullscreen: full } = shortcutRef.current;
 
-      const digit = parseInt(e.key, 10);
-      const isDigit = digit >= 1 && digit <= ALL_MODULE_IDS.length;
-
-      if (isDigit && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        e.preventDefault();
-        const moduleId = ALL_MODULE_IDS[digit - 1];
-        const panelId =
-          s.panelOrder.find((id) => resolvePanelModuleId(s, id) === moduleId && s.panelsById[id]) ??
-          null;
-        if (!panelId) return;
-        full(s.fullscreenId === panelId ? null : panelId);
-        return;
-      }
       if (e.key === "Escape" && s.fullscreenId) {
         full(null);
       }

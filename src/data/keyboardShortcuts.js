@@ -1,11 +1,7 @@
 import { isValidAccelerator } from "../lib/accelerator.js";
 
 /** Read-only reference list of the app's existing keyboard shortcuts. */
-export const KEYBOARD_SHORTCUTS = [
-  { id: "fullscreen", label: "Fullscreen Panel", keys: "1 – 6" },
-  { id: "exitFullscreen", label: "Exit Fullscreen", keys: "Escape" },
-  { id: "startStop", label: "Start / Stop", keys: "Space" },
-];
+export const KEYBOARD_SHORTCUTS = [{ id: "startStop", label: "Start / Stop", keys: "Space" }];
 
 /** In-app shortcuts that are real (modifier-bearing) accelerators a custom combo could shadow. */
 const RESERVED = KEYBOARD_SHORTCUTS.filter((s) => isValidAccelerator(s.keys));

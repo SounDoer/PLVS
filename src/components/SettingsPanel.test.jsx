@@ -273,7 +273,8 @@ describe("SettingsPanel", () => {
   it("renders the keyboard shortcuts reference rows", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
     expect(screen.getByText("Start / Stop")).toBeTruthy();
-    expect(screen.getByText("Exit Fullscreen")).toBeTruthy();
+    expect(screen.queryByText("Fullscreen Panel")).toBeNull();
+    expect(screen.queryByText("Exit Fullscreen")).toBeNull();
   });
 
   it("renders the editable Clear row with capture and global toggle", () => {
