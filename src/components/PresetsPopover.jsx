@@ -87,6 +87,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
         <div className="grid gap-0.5 p-1">
           {presets.list.map((preset) => {
             const isActive = preset.id === presets.activeId;
+            const isDirty = isActive && presets.dirty === true;
             const isEditing = preset.id === editingId;
             return (
               <div key={preset.id} className="group">
@@ -130,13 +131,20 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
                       className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <span
-                        aria-label={isActive ? `Active preset ${preset.name}` : undefined}
+                        aria-label={
+                          isActive
+                            ? `Active preset ${preset.name}${isDirty ? " (modified)" : ""}`
+                            : undefined
+                        }
                         className={cn(
                           "size-1.5 shrink-0 rounded-full",
                           isActive ? "bg-primary" : "bg-muted-foreground/20"
                         )}
                       />
-                      <span className="min-w-0 flex-1 truncate text-foreground">{preset.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-foreground">
+                        {preset.name}
+                        {isDirty ? " *" : ""}
+                      </span>
                     </button>
                     <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <button

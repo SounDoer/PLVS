@@ -196,7 +196,7 @@ describe("useSettings", () => {
     });
   });
 
-  it("persists Focus View toggles and clears the active preset", () => {
+  it("persists Focus View toggles and marks the active preset dirty", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const { result } = renderHook(() => useSettings());
 
@@ -209,7 +209,8 @@ describe("useSettings", () => {
       compactPanels: false,
       borderless: false,
     });
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
 
     act(() => {
       result.current.setCompactPanels(true);

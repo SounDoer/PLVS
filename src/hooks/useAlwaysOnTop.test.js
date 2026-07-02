@@ -99,7 +99,7 @@ describe("useAlwaysOnTop", () => {
     expect(mockSetAlwaysOnTop).toHaveBeenCalledWith(true);
   });
 
-  it("clears the active preset when pin state changes", () => {
+  it("marks the active preset dirty when pin state changes", () => {
     localStorage.setItem(
       "plvs:presets",
       JSON.stringify({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" })
@@ -108,6 +108,8 @@ describe("useAlwaysOnTop", () => {
 
     act(() => result.current.setPinned(true));
 
-    expect(JSON.parse(localStorage.getItem("plvs:presets")).activeId).toBeNull();
+    const stored = JSON.parse(localStorage.getItem("plvs:presets"));
+    expect(stored.activeId).toBe("p1");
+    expect(stored.dirty).toBe(true);
   });
 });

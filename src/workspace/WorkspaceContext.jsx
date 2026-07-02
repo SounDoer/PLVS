@@ -63,43 +63,43 @@ export function WorkspaceProvider({ children }) {
   const [hoveredPanelId, setHoveredPanelId] = useState(null);
   const actions = useMemo(() => {
     const bound = bindWorkspaceActions(dispatch);
-    const clearActivePreset = () => presetsStore.patch({ activeId: null });
+    const markPresetDirty = () => presetsStore.patch({ dirty: true });
     return {
       ...bound,
       setTree: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.setTree(...args);
       },
       moveTab: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.moveTab(...args);
       },
       resizeChildren: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.resizeChildren(...args);
       },
       addPanel: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.addPanel(...args);
       },
       removePanel: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.removePanel(...args);
       },
       renamePanel: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.renamePanel(...args);
       },
       setPanelPinned: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.setPanelPinned(...args);
       },
       setPanelControlsForPanel: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.setPanelControlsForPanel(...args);
       },
       resetWorkspace: (...args) => {
-        clearActivePreset();
+        markPresetDirty();
         bound.resetWorkspace(...args);
       },
     };

@@ -88,8 +88,8 @@ export function useSettings({ onClearRef } = {}) {
     return isKnownThemeId(themeId, customThemes) ? themeId : resolvedThemeId;
   }, [appearance, themeId, resolvedThemeId, customThemes]);
 
-  function clearActivePreset() {
-    presetsStore.patch({ activeId: null });
+  function markPresetDirty() {
+    presetsStore.patch({ dirty: true });
   }
 
   function setAppearance(nextAppearance) {
@@ -129,7 +129,7 @@ export function useSettings({ onClearRef } = {}) {
   function setFocusView(nextFocusView) {
     const next = normalizeSettingsFocusView(nextFocusView);
     settingsStore.patch({ focusView: next });
-    clearActivePreset();
+    markPresetDirty();
     setFocusViewState(next);
   }
 
@@ -148,7 +148,7 @@ export function useSettings({ onClearRef } = {}) {
   function setPanelOpacity(value) {
     const next = normalizePanelOpacity(value);
     settingsStore.patch({ panelOpacity: next });
-    clearActivePreset();
+    markPresetDirty();
     setPanelOpacityState(next);
   }
 

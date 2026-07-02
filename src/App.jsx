@@ -208,7 +208,7 @@ function AppContent() {
     let unlisten = null;
     onWindowBoundsChanged(() => {
       if (Date.now() < suppressPresetDivergenceUntilRef.current) return;
-      presets.clearActive();
+      presets.markDirty();
     }).then((fn) => {
       if (disposed) {
         fn();
@@ -220,7 +220,7 @@ function AppContent() {
       disposed = true;
       if (unlisten) unlisten();
     };
-  }, [presets.clearActive]);
+  }, [presets.markDirty]);
 
   const {
     audioDevices,
@@ -773,8 +773,8 @@ function AppContent() {
   const footerDeviceLabel = deviceDisplay
     ? deviceDisplay.secondary || deviceDisplay.primary
     : "Not connected";
-  const activePresetName =
-    presets.list.find((preset) => preset.id === presets.activeId)?.name ?? "-";
+  const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
+  const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : "-";
   const focusViewActive =
     pinned ||
     focusView.autoHideControls ||

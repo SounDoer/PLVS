@@ -9,7 +9,7 @@ import { presetsStore, settingsStore } from "../persistence/index.js";
 import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 
-const EMPTY_PRESETS = { list: [], activeId: null };
+const EMPTY_PRESETS = { list: [], activeId: null, dirty: false };
 
 function clone(value) {
   if (typeof structuredClone === "function") return structuredClone(value);
@@ -21,7 +21,8 @@ function normalizePresets(raw) {
   const list = (Array.isArray(raw.list) ? raw.list : []).filter(hasKnownModulesOnly);
   const rawActiveId = typeof raw.activeId === "string" ? raw.activeId : null;
   const activeId = list.some((preset) => preset.id === rawActiveId) ? rawActiveId : null;
-  return { list, activeId };
+  const dirty = activeId !== null && raw.dirty === true;
+  return { list, activeId, dirty };
 }
 
 async function readWindowBounds() {
@@ -76,7 +77,11 @@ export function usePresets({
   }, []);
 
   const clearActive = useCallback(() => {
-    write({ activeId: null });
+    write({ activeId: null, dirty: false });
+  }, [write]);
+
+  const markDirty = useCallback(() => {
+    write({ dirty: true });
   }, [write]);
 
   const captureSnapshot = useCallback(async () => {
@@ -120,7 +125,7 @@ export function usePresets({
         ...snapshot,
       };
       const current = normalizePresets(presetsStore.read());
-      write({ list: [...current.list, preset], activeId: preset.id });
+      write({ list: [...current.list, preset], activeId: preset.id, dirty: false });
       return preset;
     },
     [captureSnapshot, write]
@@ -158,7 +163,7 @@ export function usePresets({
       if (typeof preset.panelOpacity === "number") {
         setPanelOpacity(preset.panelOpacity);
       }
-      write({ activeId: id });
+      write({ activeId: id, dirty: false });
       return true;
     },
     [
@@ -182,6 +187,7 @@ export function usePresets({
       write({
         list: current.list.map((p) => (p.id === id ? updated : p)),
         activeId: id,
+        dirty: false,
       });
       return updated;
     },
@@ -216,13 +222,26 @@ export function usePresets({
     () => ({
       list: presets.list,
       activeId: presets.activeId,
+      dirty: presets.dirty,
       save,
       apply,
       update,
       rename,
       remove,
       clearActive,
+      markDirty,
     }),
-    [apply, clearActive, presets.activeId, presets.list, remove, rename, save, update]
+    [
+      apply,
+      clearActive,
+      markDirty,
+      presets.activeId,
+      presets.dirty,
+      presets.list,
+      remove,
+      rename,
+      save,
+      update,
+    ]
   );
 }

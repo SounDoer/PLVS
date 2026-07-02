@@ -135,53 +135,60 @@ describe("WorkspaceContext active preset divergence", () => {
     return actions;
   }
 
-  it("clears presets.activeId on manual setTree", () => {
+  it("marks presets dirty on manual setTree", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.setTree(leaf(["levelMeter"])));
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("clears presets.activeId on manual moveTab", () => {
+  it("marks presets dirty on manual moveTab", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.moveTab("levelMeter", { targetPath: [1, 0], zone: "tabs", tabIndex: 0 }));
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("clears presets.activeId on manual addPanel", () => {
+  it("marks presets dirty on manual addPanel", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.addPanel("levelMeter"));
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("clears presets.activeId on manual resetWorkspace", () => {
+  it("marks presets dirty on manual resetWorkspace", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.resetWorkspace());
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("clears presets.activeId on manual removePanel", () => {
+  it("marks presets dirty on manual removePanel", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.removePanel("levelMeter"));
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("clears presets.activeId on manual renamePanel", () => {
+  it("marks presets dirty on manual renamePanel", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.renamePanel("levelMeter", "Main Meter"));
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("clears presets.activeId on manual panel pin changes", () => {
+  it("marks presets dirty on manual panel pin changes", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();
     act(() => actions.setPanelPinned("spectrum", { width: 640, height: 260 }));
-    expect(presetsStore.read().activeId).toBeNull();
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
   it("does not clear presets.activeId when applying setView", () => {

@@ -82,6 +82,25 @@ describe("PresetsPopoverContent", () => {
     expect(screen.queryByLabelText("Active preset Focus")).toBeNull();
   });
 
+  it("marks the active preset as modified when dirty", () => {
+    render(
+      <PresetsPopoverContent
+        presets={{
+          ...NOOP_PRESETS,
+          list: [
+            { id: "a", name: "Focus" },
+            { id: "b", name: "Mix" },
+          ],
+          activeId: "b",
+          dirty: true,
+        }}
+      />
+    );
+    expect(screen.getByLabelText("Active preset Mix (modified)")).toBeTruthy();
+    expect(screen.getByText("Mix *")).toBeTruthy();
+    expect(screen.getByText("Focus")).toBeTruthy();
+  });
+
   it("applies a preset when the row is clicked", () => {
     const apply = vi.fn();
     render(

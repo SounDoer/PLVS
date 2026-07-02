@@ -16,7 +16,7 @@ export function useAlwaysOnTop() {
   const setWindowPinned = useCallback((nextPinned) => {
     const next = nextPinned === true;
     settingsStore.patch({ windowPinned: next });
-    presetsStore.patch({ activeId: null });
+    presetsStore.patch({ dirty: true });
     setPinned(next);
   }, []);
 
