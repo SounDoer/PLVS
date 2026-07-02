@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act, render } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
-import { presetsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore } from "../persistence/index.js";
 
 function Probe({ onState }) {
   const { state } = useWorkspaceStore();
@@ -69,6 +69,30 @@ describe("WorkspaceContext fullscreenId", () => {
       </WorkspaceProvider>
     );
     expect(captured.pinnedPanelsById).toEqual({});
+  });
+
+  it("seeds missing loudness reference controls from legacy settings", () => {
+    settingsStore.patch({ referenceLufs: -14 });
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        ...DEFAULT_WORKSPACE_STATE,
+        panelControlsById: {
+          ...DEFAULT_WORKSPACE_STATE.panelControlsById,
+          loudness: {
+            ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
+            loudnessReferenceLufs: undefined,
+          },
+        },
+      })
+    );
+    let captured = null;
+    render(
+      <WorkspaceProvider>
+        <Probe onState={(s) => (captured = s)} />
+      </WorkspaceProvider>
+    );
+    expect(captured.panelControlsById.loudness.loudnessReferenceLufs).toBe(-14);
   });
 });
 

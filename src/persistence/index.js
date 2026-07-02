@@ -25,7 +25,11 @@ export const workspaceStore = createDomainStore({
   backend,
   migrate: migrateWorkspace,
 });
-export const presetsStore = createDomainStore({ name: "plvs:presets", backend });
+export const presetsStore = createDomainStore({
+  name: "plvs:presets",
+  backend,
+  notifySameContext: true,
+});
 export const themesStore = createDomainStore({ name: "plvs:themes", backend });
 
 /** Whole-app snapshot of every persisted domain (foundation for problem #5). */

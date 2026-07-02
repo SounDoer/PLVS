@@ -547,8 +547,6 @@ export function PanelSettingsContent({
   onSpectrumPeakHoldToggle,
   panelControls,
   onPanelControlsChange,
-  referenceLufs,
-  setReferenceLufs,
 }) {
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
@@ -734,11 +732,19 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Loudness">
-        {typeof setReferenceLufs === "function" ? (
-          <SettingsRow label="Ref">
-            <SettingsLufsInput value={referenceLufs} onCommit={setReferenceLufs} />
-          </SettingsRow>
-        ) : null}
+        <SettingsRow label="Ref">
+          <SettingsLufsInput
+            value={normalizedPanelControls.loudnessReferenceLufs}
+            onCommit={(loudnessReferenceLufs) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  loudnessReferenceLufs,
+                })
+              );
+            }}
+          />
+        </SettingsRow>
         <SettingsRow label="Layers" expanded={layersOpen}>
           <div className="flex min-w-0 flex-1 flex-col">
             <InlineDetailTrigger

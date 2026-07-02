@@ -3,22 +3,56 @@ import { bindWorkspaceActions, normalizePinnedPanelsById, workspaceReducer } fro
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { normalizePanelControlsById } from "./panelControlInstances.js";
 import { hasKnownModulesOnly } from "./panelInstances.js";
-import { presetsStore, workspaceStore } from "../persistence/index.js";
+import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
+import { normalizeReferenceLufs } from "../settings/defaults.js";
 
 const WorkspaceContext = createContext(null);
 
+function normalizeWorkspacePanelControls(panelsById, panelControlsById, referenceFallback) {
+  const normalized = normalizePanelControlsById(panelsById, panelControlsById);
+  const fallback = normalizeReferenceLufs(referenceFallback);
+  for (const [id, panel] of Object.entries(panelsById ?? {})) {
+    if (panel?.moduleId !== "loudness") continue;
+    if (panelControlsById?.[id]?.loudnessReferenceLufs != null) continue;
+    normalized[id] = {
+      ...normalized[id],
+      loudnessReferenceLufs: fallback,
+    };
+  }
+  return normalized;
+}
+
 function initState() {
   const parsed = workspaceStore.read();
+  const legacyReferenceLufs = normalizeReferenceLufs(settingsStore.read().referenceLufs);
   if (!parsed.tree || !parsed.panelsById || !Array.isArray(parsed.panelOrder)) {
-    return DEFAULT_WORKSPACE_STATE;
+    return {
+      ...DEFAULT_WORKSPACE_STATE,
+      panelControlsById: normalizeWorkspacePanelControls(
+        DEFAULT_WORKSPACE_STATE.panelsById,
+        DEFAULT_WORKSPACE_STATE.panelControlsById,
+        legacyReferenceLufs
+      ),
+    };
   }
   if (!hasKnownModulesOnly(parsed)) {
-    return DEFAULT_WORKSPACE_STATE;
+    return {
+      ...DEFAULT_WORKSPACE_STATE,
+      panelControlsById: normalizeWorkspacePanelControls(
+        DEFAULT_WORKSPACE_STATE.panelsById,
+        DEFAULT_WORKSPACE_STATE.panelControlsById,
+        legacyReferenceLufs
+      ),
+    };
   }
   return {
     ...DEFAULT_WORKSPACE_STATE,
     ...parsed,
-    panelControlsById: normalizePanelControlsById(parsed.panelsById, parsed.panelControlsById),
+    panelControlsById: normalizeWorkspacePanelControls(
+      parsed.panelsById,
+      parsed.panelControlsById,
+      legacyReferenceLufs
+    ),
     pinnedPanelsById: normalizePinnedPanelsById(parsed.panelsById, parsed.pinnedPanelsById),
     fullscreenId: null, // transient view state: never restored across launches
   };

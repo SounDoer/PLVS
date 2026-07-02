@@ -123,6 +123,7 @@ describe("usePresets", () => {
     mocks.isTauri.mockReturnValue(true);
     const setWindowPinned = vi.fn();
     const setFocusView = vi.fn();
+    const suppressPresetDivergence = vi.fn();
     presetsStore.patch({
       list: [
         {
@@ -140,7 +141,12 @@ describe("usePresets", () => {
       ],
       activeId: null,
     });
-    const { result } = renderPresetHook({ windowPinned: false, setWindowPinned, setFocusView });
+    const { result } = renderPresetHook({
+      windowPinned: false,
+      setWindowPinned,
+      setFocusView,
+      suppressPresetDivergence,
+    });
     await act(async () => {
       await result.current.presets.apply("p1");
     });
@@ -155,6 +161,7 @@ describe("usePresets", () => {
       height: 200,
       isMaximized: false,
     });
+    expect(suppressPresetDivergence).toHaveBeenCalledTimes(1);
     expect(setWindowPinned).toHaveBeenCalledWith(true);
     expect(setFocusView).toHaveBeenCalledWith({
       autoHideControls: true,
@@ -185,6 +192,73 @@ describe("usePresets", () => {
     });
     expect(setFocusView).not.toHaveBeenCalled();
     expect(presetsStore.read().activeId).toBe("p1");
+  });
+
+  it("preserves the current loudness reference when applying an older preset", async () => {
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Preset",
+          tree: leaf(["loudness"]),
+          panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
+          panelOrder: ["loudness"],
+          panelControlsById: {
+            loudness: {
+              ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
+              loudnessReferenceLufs: undefined,
+            },
+          },
+        },
+      ],
+      activeId: null,
+    });
+    const { result } = renderPresetHook();
+    act(() => {
+      result.current.workspace.setPanelControlsForPanel("loudness", {
+        ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
+        loudnessReferenceLufs: -18,
+      });
+    });
+
+    await act(async () => {
+      await result.current.presets.apply("p1");
+    });
+
+    expect(result.current.workspace.state.panelControlsById.loudness.loudnessReferenceLufs).toBe(
+      -18
+    );
+  });
+
+  it("round-trips loudness reference through panel controls", async () => {
+    const { result } = renderPresetHook();
+    act(() => {
+      result.current.workspace.setPanelControlsForPanel("loudness", {
+        ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
+        loudnessReferenceLufs: -14,
+      });
+    });
+
+    await act(async () => {
+      await result.current.presets.save("Streaming");
+    });
+
+    const savedId = presetsStore.read().list[0].id;
+    expect(presetsStore.read().list[0].panelControlsById.loudness.loudnessReferenceLufs).toBe(-14);
+
+    act(() => {
+      result.current.workspace.setPanelControlsForPanel("loudness", {
+        ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
+        loudnessReferenceLufs: -23,
+      });
+    });
+    await act(async () => {
+      await result.current.presets.apply(savedId);
+    });
+
+    expect(result.current.workspace.state.panelControlsById.loudness.loudnessReferenceLufs).toBe(
+      -14
+    );
   });
 
   it("leaves activeId null when window apply fails", async () => {

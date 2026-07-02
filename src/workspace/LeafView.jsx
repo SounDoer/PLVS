@@ -305,8 +305,6 @@ export function LeafView({ node, path, style }) {
               onSpectrumPeakHoldToggle={noop}
               panelControls={panelControls ?? audioData?.panelControls}
               onPanelControlsChange={onPanelControlsChange}
-              referenceLufs={audioData?.referenceLufs}
-              setReferenceLufs={audioData?.setReferenceLufs}
             />
             {helpItems ? <HelpPopover items={helpItems} /> : null}
             <button

@@ -13,8 +13,6 @@ import { normalizePanelControls } from "../../lib/panelControls.js";
 export function LoudnessPanel({ compact = false }) {
   const historyTickSteps = HISTORY_TIME_TICK_STEPS;
   const {
-    targetLufs,
-    referenceLufs,
     hasHistoryData,
     historyChartInteractive,
     running,
@@ -49,6 +47,8 @@ export function LoudnessPanel({ compact = false }) {
   );
   const loudnessYMinDb = normalizedPanelControls.loudnessYMinDb;
   const loudnessYMaxDb = normalizedPanelControls.loudnessYMaxDb;
+  const referenceLufs = normalizedPanelControls.loudnessReferenceLufs;
+  const targetLufs = referenceLufs;
   const loudnessYRange = useMemo(
     () => ({ min: loudnessYMinDb, max: loudnessYMaxDb }),
     [loudnessYMinDb, loudnessYMaxDb]

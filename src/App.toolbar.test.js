@@ -273,6 +273,15 @@ describe("App toolbar", () => {
     expect(commandsSource).toContain('return invoke("file_analysis_stop");');
   });
 
+  it("clears active presets on manual window bounds changes", () => {
+    const eventsSource = readFileSync(join(currentDir, "ipc", "events.js"), "utf8");
+    expect(eventsSource).toContain("export async function onWindowBoundsChanged");
+    expect(eventsSource).toContain('listen("window-bounds-changed"');
+    expect(appSource).toContain("onWindowBoundsChanged(() => {");
+    expect(appSource).toContain("presets.clearActive();");
+    expect(appSource).toContain("suppressPresetDivergenceUntilRef");
+  });
+
   it("renders the source-aware transport cluster instead of separate status and transport controls", () => {
     expect(existsSync(appHeaderPath)).toBe(true);
 

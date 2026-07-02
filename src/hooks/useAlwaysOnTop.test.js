@@ -23,7 +23,15 @@ vi.mock("../persistence/index.js", () => {
     },
     subscribe: () => () => {},
   };
-  return { settingsStore };
+  const presetsStore = {
+    read: () => JSON.parse(localStorage.getItem("plvs:presets") ?? "{}"),
+    patch: (partial) => {
+      const prev = JSON.parse(localStorage.getItem("plvs:presets") ?? "{}");
+      localStorage.setItem("plvs:presets", JSON.stringify({ ...prev, ...partial }));
+    },
+    subscribe: () => () => {},
+  };
+  return { presetsStore, settingsStore };
 });
 
 describe("useAlwaysOnTop", () => {
@@ -89,5 +97,17 @@ describe("useAlwaysOnTop", () => {
     expect(result.current.pinned).toBe(true);
     expect(JSON.parse(localStorage.getItem("plvs:settings")).windowPinned).toBe(true);
     expect(mockSetAlwaysOnTop).toHaveBeenCalledWith(true);
+  });
+
+  it("clears the active preset when pin state changes", () => {
+    localStorage.setItem(
+      "plvs:presets",
+      JSON.stringify({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" })
+    );
+    const { result } = renderHook(() => useAlwaysOnTop());
+
+    act(() => result.current.setPinned(true));
+
+    expect(JSON.parse(localStorage.getItem("plvs:presets")).activeId).toBeNull();
   });
 });

@@ -5,7 +5,8 @@ import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { normalizePinnedPanelsById } from "../workspace/reducer.js";
-import { presetsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore } from "../persistence/index.js";
+import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 
 const EMPTY_PRESETS = { list: [], activeId: null };
@@ -32,6 +33,23 @@ async function readWindowBounds() {
   }
 }
 
+function normalizePresetPanelControls(preset, currentWorkspaceState) {
+  const rawControls = preset.panelControlsById ?? {};
+  const normalized = normalizePanelControlsById(preset.panelsById, rawControls);
+  const legacyReferenceLufs = normalizeReferenceLufs(settingsStore.read().referenceLufs);
+  for (const [id, panel] of Object.entries(preset.panelsById ?? {})) {
+    if (panel?.moduleId !== "loudness") continue;
+    if (rawControls?.[id]?.loudnessReferenceLufs != null) continue;
+    const currentReference =
+      currentWorkspaceState.panelControlsById?.[id]?.loudnessReferenceLufs ?? legacyReferenceLufs;
+    normalized[id] = {
+      ...normalized[id],
+      loudnessReferenceLufs: normalizeReferenceLufs(currentReference),
+    };
+  }
+  return normalized;
+}
+
 export function usePresets({
   windowPinned = false,
   setWindowPinned = () => {},
@@ -39,6 +57,7 @@ export function usePresets({
   setFocusView = () => {},
   panelOpacity = 100,
   setPanelOpacity = () => {},
+  suppressPresetDivergence = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
@@ -55,6 +74,10 @@ export function usePresets({
     presetsStore.patch(next);
     setPresets(normalizePresets(presetsStore.read()));
   }, []);
+
+  const clearActive = useCallback(() => {
+    write({ activeId: null });
+  }, [write]);
 
   const captureSnapshot = useCallback(async () => {
     const windowBounds = await readWindowBounds();
@@ -108,11 +131,14 @@ export function usePresets({
       const current = normalizePresets(presetsStore.read());
       const preset = current.list.find((p) => p.id === id);
       if (!preset) return false;
+      if (preset.windowBounds && isTauri()) {
+        suppressPresetDivergence();
+      }
       setView({
         tree: clone(preset.tree),
         panelsById: clone(preset.panelsById),
         panelOrder: [...preset.panelOrder],
-        panelControlsById: normalizePanelControlsById(preset.panelsById, preset.panelControlsById),
+        panelControlsById: normalizePresetPanelControls(preset, workspaceState),
         pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
       });
       if (preset.windowBounds && isTauri()) {
@@ -135,7 +161,15 @@ export function usePresets({
       write({ activeId: id });
       return true;
     },
-    [setView, setWindowPinned, setFocusView, setPanelOpacity, write]
+    [
+      setView,
+      setWindowPinned,
+      setFocusView,
+      setPanelOpacity,
+      suppressPresetDivergence,
+      workspaceState,
+      write,
+    ]
   );
 
   const update = useCallback(
@@ -187,7 +221,8 @@ export function usePresets({
       update,
       rename,
       remove,
+      clearActive,
     }),
-    [apply, presets.activeId, presets.list, remove, rename, save, update]
+    [apply, clearActive, presets.activeId, presets.list, remove, rename, save, update]
   );
 }

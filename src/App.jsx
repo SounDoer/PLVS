@@ -90,6 +90,7 @@ import {
   reloadAfterProfileChange,
   resetProfile,
 } from "./persistence/profile.js";
+import { onWindowBoundsChanged } from "./ipc/events.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
@@ -153,8 +154,6 @@ function AppContent() {
     setFixedThemeIdFromPicker,
     themeSelectOptions,
     resolvedThemeId,
-    referenceLufs,
-    setReferenceLufs,
     closeAction,
     setCloseAction,
     autostartEnabled,
@@ -186,6 +185,10 @@ function AppContent() {
     setPanelOpacity,
   } = useSettings({ onClearRef });
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
+  const suppressPresetDivergenceUntilRef = useRef(Date.now() + 1500);
+  const suppressPresetDivergence = useCallback((durationMs = 1500) => {
+    suppressPresetDivergenceUntilRef.current = Date.now() + durationMs;
+  }, []);
   const [configurationBusy, setConfigurationBusy] = useState(false);
   const [configurationStatus, setConfigurationStatus] = useState("");
   const presets = usePresets({
@@ -195,8 +198,29 @@ function AppContent() {
     setFocusView,
     panelOpacity,
     setPanelOpacity,
+    suppressPresetDivergence,
   });
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless);
+
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    let disposed = false;
+    let unlisten = null;
+    onWindowBoundsChanged(() => {
+      if (Date.now() < suppressPresetDivergenceUntilRef.current) return;
+      presets.clearActive();
+    }).then((fn) => {
+      if (disposed) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
+    });
+    return () => {
+      disposed = true;
+      if (unlisten) unlisten();
+    };
+  }, [presets.clearActive]);
 
   const {
     audioDevices,
@@ -340,6 +364,14 @@ function AppContent() {
     return normalizePanelControls(
       firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
     );
+  }, [workspaceState]);
+  const referenceLufs = useMemo(() => {
+    const loudnessPanelId = workspaceState.panelOrder.find(
+      (id) => workspaceState.panelsById[id]?.moduleId === "loudness"
+    );
+    return normalizePanelControls(
+      loudnessPanelId ? getPanelControls(workspaceState, loudnessPanelId) : undefined
+    ).loudnessReferenceLufs;
   }, [workspaceState]);
   const derivedAnalysisRequests = useMemo(
     () => deriveAnalysisRequests(workspaceState),
@@ -1413,7 +1445,6 @@ function AppContent() {
     historyYAxisTicks,
     targetLufs,
     referenceLufs,
-    setReferenceLufs,
     hasHistoryData,
     historyChartInteractive,
     displayHistoryPathM,

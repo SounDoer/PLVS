@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_store::{Store, StoreExt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -209,6 +209,7 @@ pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     serde_json::to_value(bounds).unwrap_or_default(),
   );
   let _ = store.save();
+  let _ = window.app_handle().emit("window-bounds-changed", bounds);
   let _: Arc<Store<R>> = store; // keep the Arc type explicit for readers
 }
 

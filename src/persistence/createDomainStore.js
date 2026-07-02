@@ -17,29 +17,44 @@
  *     subscribe: (key: string, fn: () => void) => () => void,
  *   },
  *   migrate?: (raw: object, version: number) => object,
+ *   notifySameContext?: boolean,
  * }} opts
  */
-export function createDomainStore({ name, backend, migrate }) {
+export function createDomainStore({ name, backend, migrate, notifySameContext = false }) {
+  const listeners = new Set();
+
   function read() {
     const raw = backend.get(name);
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
     const version = typeof raw.version === "number" ? raw.version : 0;
     return migrate ? migrate(raw, version) : raw;
   }
+  function notify() {
+    if (!notifySameContext) return;
+    listeners.forEach((fn) => fn());
+  }
   return {
     read,
     patch(partial) {
       backend.set(name, { ...read(), ...partial });
+      notify();
     },
     async persist(partial) {
       backend.set(name, { ...read(), ...partial });
+      notify();
       await backend.flush?.(name);
     },
     subscribe(fn) {
-      return backend.subscribe(name, fn);
+      listeners.add(fn);
+      const unsubscribeBackend = backend.subscribe(name, fn);
+      return () => {
+        listeners.delete(fn);
+        unsubscribeBackend();
+      };
     },
     reset() {
       backend.remove(name);
+      notify();
     },
     export() {
       return read();

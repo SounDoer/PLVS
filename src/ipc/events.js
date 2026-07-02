@@ -40,6 +40,13 @@ export async function onMeterHistoryCleared(handler) {
   });
 }
 
+/** @param {() => void} handler @returns {Promise<() => void>} */
+export async function onWindowBoundsChanged(handler) {
+  return listen("window-bounds-changed", () => {
+    handler();
+  });
+}
+
 function unwrapEventPayload(event) {
   return event?.payload ?? event;
 }

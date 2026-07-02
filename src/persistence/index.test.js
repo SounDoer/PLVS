@@ -34,6 +34,30 @@ describe("persistence index", () => {
     });
   });
 
+  it("notifies same-window subscribers on patch", () => {
+    let calls = 0;
+    const unsubscribe = presetsStore.subscribe(() => {
+      calls += 1;
+    });
+
+    presetsStore.patch({ list: [], activeId: null });
+
+    unsubscribe();
+    expect(calls).toBe(1);
+  });
+
+  it("does not notify settings subscribers for same-window patch", () => {
+    let calls = 0;
+    const unsubscribe = settingsStore.subscribe(() => {
+      calls += 1;
+    });
+
+    settingsStore.patch({ referenceLufs: -18 });
+
+    unsubscribe();
+    expect(calls).toBe(0);
+  });
+
   it("themesStore persists under plvs:themes", () => {
     themesStore.patch({ themes: {}, order: [] });
     expect(JSON.parse(localStorage.getItem("plvs:themes"))).toEqual({
