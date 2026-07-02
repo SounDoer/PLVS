@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Download, ExternalLink, Pencil, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -373,17 +374,24 @@ export function SettingsPanel({
                               </IconButton>
                             )}
                           />
-                          <div className="h-3 w-px shrink-0 bg-border" />
                         </>
                       ) : null}
-                      <IconButton
+                    </div>
+                  ) : null}
+                  {appearance === "fixed" ? (
+                    <div className="px-1.5 py-0.5">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
                         disabled={themeControlsDisabled}
                         onClick={createCustomTheme}
                         aria-label="New theme"
-                        className="text-foreground/60 hover:text-foreground"
+                        className="h-7 w-full px-2 text-[length:var(--ui-fs-display)]"
                       >
                         <Plus className="size-3.5" />
-                      </IconButton>
+                        New Theme
+                      </Button>
                     </div>
                   ) : null}
                 </SettingsSection>
