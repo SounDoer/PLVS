@@ -22,19 +22,14 @@ function getTipPosition(anchor, side) {
 }
 
 /**
- * Wraps children with a hover-reveal text tip (custom CSS, themed via tokens).
- * The tip is portaled to the document body and fixed-positioned so it does not
- * affect scrollable ancestors or the children's accessible name.
+ * Low-level hover-reveal tip: manages the anchor ref, show/hide handlers, and the
+ * portal-rendered tip node, without imposing a wrapper element. Use this when the tip's
+ * anchor must be an existing element with its own positioning/layout (e.g. an
+ * absolutely-positioned marker); otherwise prefer the `HoverTip` wrapper component below.
  *
- * @param {{
- *   tip?: string,
- *   side?: "bottom" | "right",
- *   children: import("react").ReactNode,
- *   className?: string,
- *   tipClassName?: string,
- * }} props
+ * @param {{ tip?: string, side?: "bottom" | "right", tipClassName?: string }} [opts]
  */
-export function HoverTip({ tip, side = "bottom", children, className, tipClassName }) {
+export function useHoverTip({ tip, side = "bottom", tipClassName } = {}) {
   const anchorRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState(null);
@@ -87,6 +82,25 @@ export function HoverTip({ tip, side = "bottom", children, className, tipClassNa
           document.body
         )
       : null;
+
+  return { anchorRef, showTip, hideTip, tipNode };
+}
+
+/**
+ * Wraps children with a hover-reveal text tip (custom CSS, themed via tokens).
+ * The tip is portaled to the document body and fixed-positioned so it does not
+ * affect scrollable ancestors or the children's accessible name.
+ *
+ * @param {{
+ *   tip?: string,
+ *   side?: "bottom" | "right",
+ *   children: import("react").ReactNode,
+ *   className?: string,
+ *   tipClassName?: string,
+ * }} props
+ */
+export function HoverTip({ tip, side = "bottom", children, className, tipClassName }) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, side, tipClassName });
 
   return (
     <div

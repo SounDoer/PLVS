@@ -46,6 +46,7 @@ pub fn run() {
       ipc::commands::file_analysis_start,
       ipc::commands::file_analysis_stop,
       ipc::commands::clear_audio_history,
+      ipc::commands::reset_true_peak_max,
       ipc::commands::get_engine_state,
       profile::export_profile,
       profile::import_profile,

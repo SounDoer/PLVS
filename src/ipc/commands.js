@@ -46,6 +46,11 @@ export function clearAudioHistory() {
   return invoke("clear_audio_history");
 }
 
+/** Resets only the native True Peak Max hold (per-metric reset, e.g. double-click on the TP Max marker). */
+export function resetTruePeakMax() {
+  return invoke("reset_true_peak_max");
+}
+
 /** @returns {Promise<"running" | "stopped">} */
 export function getEngineState() {
   return invoke("get_engine_state");

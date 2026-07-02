@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useHoverTip } from "@/components/HoverTip";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
@@ -82,20 +83,49 @@ function formatLevelValue(value) {
   return Number.isFinite(value) ? value.toFixed(1) : "-";
 }
 
-function AxisValueMarker({ value, yRange, dataAttribute = "data-level-value-marker", className }) {
+function AxisValueMarker({
+  value,
+  yRange,
+  dataAttribute = "data-level-value-marker",
+  className,
+  onReset,
+  resetLabel,
+}) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+    tip: onReset ? resetLabel : undefined,
+    side: "bottom",
+  });
   if (!Number.isFinite(value) || value < yRange.min || value > yRange.max) return null;
+
+  // Stops the click from reaching the y-axis drag/zoom handlers underneath.
+  const stopAxisInteraction = onReset ? (e) => e.stopPropagation() : undefined;
 
   return (
     <span
       {...{ [dataAttribute]: "" }}
+      ref={onReset ? anchorRef : undefined}
       className={cn(
-        "pointer-events-none z-10 font-semibold text-primary",
+        onReset ? "pointer-events-auto cursor-pointer" : "pointer-events-none",
+        "z-10 font-semibold text-primary",
         levelMeterValueMarkerClass("middle"),
         className
       )}
       style={{ top: `${rangedFromTopFrac(value, yRange.min, yRange.max) * 100}%` }}
+      onMouseDown={stopAxisInteraction}
+      onDoubleClick={stopAxisInteraction}
+      onClick={
+        onReset
+          ? (e) => {
+              e.stopPropagation();
+              onReset(e);
+            }
+          : undefined
+      }
+      onMouseEnter={onReset ? showTip : undefined}
+      onMouseLeave={onReset ? hideTip : undefined}
     >
       {formatLevelValue(value)}
+      {onReset ? tipNode : null}
     </span>
   );
 }
@@ -108,6 +138,7 @@ export function LevelMeterPanel() {
     hasTpMaxValue,
     panelControls,
     onPanelControlsChange,
+    onResetTpMax,
   } = useAudioData();
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
@@ -323,6 +354,8 @@ export function LevelMeterPanel() {
                   yRange={levelMeterYRange}
                   dataAttribute="data-level-tp-max-marker"
                   className="text-[color:var(--ui-signal-tp-max)]"
+                  onReset={onResetTpMax}
+                  resetLabel="Click to reset TP Max"
                 />
               ) : null}
             </div>

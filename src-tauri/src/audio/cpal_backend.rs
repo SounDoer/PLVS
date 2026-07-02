@@ -79,6 +79,7 @@ pub(crate) struct CaptureSession {
   stop_tx: std::sync::mpsc::Sender<()>,
   join: Option<JoinHandle<Result<(), String>>>,
   clear_peak_history: Arc<AtomicBool>,
+  reset_tp_max: Arc<AtomicBool>,
 }
 
 impl Drop for CaptureSession {
@@ -93,6 +94,10 @@ impl Drop for CaptureSession {
 impl AudioCaptureSession for CaptureSession {
   fn request_clear_peak_history(&self) {
     self.clear_peak_history.store(true, Ordering::Release);
+  }
+
+  fn request_reset_true_peak_max(&self) {
+    self.reset_tp_max.store(true, Ordering::Release);
   }
 }
 
@@ -113,6 +118,8 @@ impl CaptureSession {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let clear_peak_history = Arc::new(AtomicBool::new(false));
     let clear_worker = clear_peak_history.clone();
+    let reset_tp_max = Arc::new(AtomicBool::new(false));
+    let reset_tp_max_worker = reset_tp_max.clone();
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
 
@@ -129,6 +136,7 @@ impl CaptureSession {
           app,
           stop_rx,
           clear_peak_history: clear_worker,
+          reset_tp_max: reset_tp_max_worker,
           channel_layout,
           loudness_weights,
           dialogue_gating,
@@ -142,6 +150,7 @@ impl CaptureSession {
       stop_tx,
       join: Some(join),
       clear_peak_history,
+      reset_tp_max,
     })
   }
 }
@@ -156,6 +165,7 @@ struct RunCaptureArgs {
   app: tauri::AppHandle,
   stop_rx: std::sync::mpsc::Receiver<()>,
   clear_peak_history: Arc<AtomicBool>,
+  reset_tp_max: Arc<AtomicBool>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
@@ -292,6 +302,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   frame_subscribers: crate::ipc::types::FrameSubscribers,
   app: tauri::AppHandle,
   clear_peak_history: Arc<AtomicBool>,
+  reset_tp_max: Arc<AtomicBool>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
@@ -337,6 +348,10 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     if clear_peak_history.load(Ordering::Acquire) {
       clear_peak_history.store(false, Ordering::Release);
       pipeline.clear_peak_and_history();
+    }
+    if reset_tp_max.load(Ordering::Acquire) {
+      reset_tp_max.store(false, Ordering::Release);
+      pipeline.reset_true_peak_max();
     }
     let layout = channel_layout
       .lock()
@@ -447,6 +462,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     app,
     stop_rx,
     clear_peak_history,
+    reset_tp_max,
     channel_layout,
     loudness_weights,
     dialogue_gating,
@@ -486,6 +502,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       frame_subscribers,
       app,
       clear_peak_history,
+      reset_tp_max,
       channel_layout,
       loudness_weights,
       dialogue_gating,

@@ -70,6 +70,7 @@ import { isTauri } from "./ipc/env.js";
 import {
   clearAudioHistory,
   readProfileFile,
+  resetTruePeakMax,
   setAnalysisRequests,
   setLoudnessWeights,
   setDialogueGating,
@@ -1100,6 +1101,15 @@ function AppContent() {
   };
   onClearRef.current = clearAll;
 
+  const resetTpMax = async () => {
+    if (isTauri()) {
+      try {
+        await resetTruePeakMax();
+      } catch (_) {}
+    }
+    setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
+  };
+
   const beginFileAnalysis = useCallback(
     (path) => {
       if (!path) return;
@@ -1421,6 +1431,7 @@ function AppContent() {
     fmt,
     hasTpMaxValue,
     tpMaxText,
+    onResetTpMax: resetTpMax,
     // Vectorscope
     vsGridDiagInset,
     vsGridDiagFar,

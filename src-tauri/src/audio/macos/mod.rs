@@ -150,6 +150,7 @@ fn run_macos_tap_worker(
   app: AppHandle,
   stop_rx: std::sync::mpsc::Receiver<()>,
   clear_peak_history: Arc<AtomicBool>,
+  reset_tp_max: Arc<AtomicBool>,
   channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
@@ -161,6 +162,7 @@ fn run_macos_tap_worker(
   let bridge_pool = pcm_pool.clone();
   let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(64);
   let clear_for_thread = clear_peak_history.clone();
+  let reset_tp_max_for_thread = reset_tp_max.clone();
   let dropped_for_thread = dropped_chunks.clone();
   let bridge = std::thread::spawn(move || {
     run_meter_pipeline_bridge_thread(
@@ -170,6 +172,7 @@ fn run_macos_tap_worker(
       frame_subscribers,
       app,
       clear_for_thread,
+      reset_tp_max_for_thread,
       channel_layout,
       loudness_weights,
       dialogue_gating,
@@ -229,6 +232,7 @@ pub(crate) struct MacosTapCaptureSession {
   stop_tx: std::sync::mpsc::Sender<()>,
   join: Option<JoinHandle<Result<(), String>>>,
   clear_peak_history: Arc<AtomicBool>,
+  reset_tp_max: Arc<AtomicBool>,
 }
 
 impl Drop for MacosTapCaptureSession {
@@ -243,6 +247,10 @@ impl Drop for MacosTapCaptureSession {
 impl AudioCaptureSession for MacosTapCaptureSession {
   fn request_clear_peak_history(&self) {
     self.clear_peak_history.store(true, Ordering::Release);
+  }
+
+  fn request_reset_true_peak_max(&self) {
+    self.reset_tp_max.store(true, Ordering::Release);
   }
 }
 
@@ -259,6 +267,8 @@ impl MacosTapCaptureSession {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let clear_peak_history = Arc::new(AtomicBool::new(false));
     let clear_worker = clear_peak_history.clone();
+    let reset_tp_max = Arc::new(AtomicBool::new(false));
+    let reset_tp_max_worker = reset_tp_max.clone();
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
     let join = std::thread::Builder::new()
@@ -270,6 +280,7 @@ impl MacosTapCaptureSession {
           app,
           stop_rx,
           clear_worker,
+          reset_tp_max_worker,
           channel_layout,
           loudness_weights,
           dialogue_gating,
@@ -282,6 +293,7 @@ impl MacosTapCaptureSession {
       stop_tx,
       join: Some(join),
       clear_peak_history,
+      reset_tp_max,
     })
   }
 }

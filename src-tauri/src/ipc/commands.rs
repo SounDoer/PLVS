@@ -429,6 +429,22 @@ pub fn clear_audio_history(app: AppHandle, state: State<'_, AppState>) -> Result
   Ok(())
 }
 
+/// Reset only the session True Peak Max hold on the capture thread, leaving momentary/
+/// short-term/sample-peak maxima untouched (per-metric reset, e.g. click on the TP Max
+/// marker).
+#[tauri::command]
+pub fn reset_true_peak_max(state: State<'_, AppState>) -> Result<(), String> {
+  let g = state
+    .inner()
+    .source
+    .lock()
+    .map_err(|_| "state lock poisoned".to_string())?;
+  if let EngineSource::Live(sess) = &*g {
+    sess.request_reset_true_peak_max();
+  }
+  Ok(())
+}
+
 /// `running` or `stopped`.
 #[tauri::command]
 pub fn get_engine_state(state: State<'_, AppState>) -> Result<String, String> {

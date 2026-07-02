@@ -259,6 +259,13 @@ impl MeterPipeline {
     self.last_visual_media_ms = None;
   }
 
+  /// Resets only the session True Peak Max hold, leaving momentary/short-term/sample-peak
+  /// maxima and history accumulators untouched (per-metric reset, e.g. click on the TP Max
+  /// marker).
+  pub fn reset_true_peak_max(&mut self) {
+    self.tp_max_db = f64::NEG_INFINITY;
+  }
+
   /// Create a pipeline configured for offline file analysis. Timestamps on emitted frames and
   /// history ticks are driven by the caller-supplied media time rather than wall-clock elapsed.
   pub fn new_for_file(sample_rate: u32, channels: u16) -> Self {

@@ -21,6 +21,7 @@ pub struct PcmFrame {
 /// One active capture session; removing it from `AppState` and dropping it stops the stream.
 pub trait AudioCaptureSession: Send {
   fn request_clear_peak_history(&self);
+  fn request_reset_true_peak_max(&self);
 }
 
 /// List devices + start capture; returns a session as a trait object to avoid circular deps between `capture` and concrete backends.
