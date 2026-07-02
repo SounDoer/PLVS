@@ -1,6 +1,6 @@
 # PLVS
 
-**A real-time metering workspace for any sound playing on your machine. Also analyzes local audio files. Free & open source.**
+**Real-time audio metering for listening closely. Free & open source.**
 
 [![Latest Release](https://img.shields.io/github/v/release/SounDoer/PLVS?label=latest&style=flat-square)](https://github.com/SounDoer/PLVS/releases)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
@@ -8,14 +8,17 @@
 [![Downloads](https://img.shields.io/github/downloads/SounDoer/PLVS/total?style=flat-square)](https://github.com/SounDoer/PLVS/releases)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/SounDoer/PLVS/main/landing/assets/screenshot-hero.webp" alt="PLVS dashboard showing level, loudness, spectrum, spectrogram, vectorscope, and waveform meters" width="100%"/>
+  <img src="https://raw.githubusercontent.com/SounDoer/PLVS/main/landing/assets/landing-hero.webp" alt="PLVS workspace with live metering panels" width="100%"/>
 </p>
 
 ---
 
 ## What is PLVS?
 
-PLVS (reads as *"plus"*) is a **read-only, real-time audio meter** built for **sound designers and mix engineers**. It watches audio playing on your machine — no DAW routing, no virtual cables, no plugin slots required.
+PLVS (reads as *"plus"*) is a **read-only desktop companion** built for **sound designers and mix engineers**. It keeps your audio's level, shape, and movement in view while you work — no DAW routing, no virtual cables, no plugin slots required.
+
+- [**Website**](https://plvs.soundoer.com)
+- [**User Docs**](https://plvs.soundoer.com/docs/)
 
 It can also work offline in **file mode**: drop in a local audio file and scrub through its full metering history across every meter.
 
