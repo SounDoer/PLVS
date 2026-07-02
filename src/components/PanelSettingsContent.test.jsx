@@ -141,13 +141,13 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByRole("switch", { name: "level meter playback max" })).toBeNull();
     expect(screen.getByText("TP Max")).toBeTruthy();
     const switchButton = screen.getByRole("switch", { name: "level meter TP Max" });
-    expect(switchButton.getAttribute("aria-checked")).toBe("true");
+    expect(switchButton.getAttribute("aria-checked")).toBe("false");
 
     fireEvent.click(switchButton);
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
-      levelMeterTpMaxMarker: false,
+      levelMeterTpMaxMarker: true,
     });
   });
 

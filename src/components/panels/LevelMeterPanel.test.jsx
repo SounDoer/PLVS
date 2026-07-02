@@ -178,7 +178,9 @@ describe("LevelMeterPanel", () => {
   });
 
   it("renders the TP Max marker in Peak mode without a unit", () => {
-    const { container } = renderPanel();
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
 
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();
     const marker = container.querySelector("[data-level-tp-max-marker]");
@@ -188,10 +190,8 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
   });
 
-  it("hides the TP Max marker when the panel setting is off", () => {
-    const { container } = renderPanel({
-      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: false },
-    });
+  it("hides the TP Max marker by default", () => {
+    const { container } = renderPanel();
 
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(

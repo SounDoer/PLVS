@@ -18,7 +18,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   levelMeterMode: "peak",
   levelMeterPlaybackMax: false,
   levelMeterValueMarker: false,
-  levelMeterTpMaxMarker: true,
+  levelMeterTpMaxMarker: false,
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
