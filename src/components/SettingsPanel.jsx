@@ -54,7 +54,7 @@ const ICON_BTN_CLASS =
 const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 
 const FOOTER_LINK_CLASS =
-  "h-auto px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground/60 transition-colors hover:text-foreground cursor-pointer bg-transparent border-none outline-none";
+  "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground/60 transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-40";
 
 function SettingsBody({ children }) {
   return (
@@ -155,11 +155,11 @@ export function SettingsPanel({
   const closingIntentRef = useRef(false);
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
-  let updateStatusText = "Checking updates";
+  let updateStatusText = "Checking...";
   if (updateStatus === "unavailable") {
-    updateStatusText = "Update check unavailable";
+    updateStatusText = "Update unavailable";
   } else if (!updateCheckDisabled && latestVersion) {
-    updateStatusText = hasUpdate ? `Update available: v${latestVersion}` : "Up to date";
+    updateStatusText = hasUpdate ? `v${latestVersion} available` : "Up to date";
   }
 
   useLayoutEffect(() => {
@@ -508,36 +508,43 @@ export function SettingsPanel({
                 {appVersion ? (
                   <>
                     <SettingsDivider />
-                    <div className="flex min-w-0 items-center justify-end gap-1.5 px-1.5 text-[length:var(--ui-fs-metric-meta)]">
-                      <span className="font-mono tabular-nums text-muted-foreground/60">
-                        v{appVersion}
-                      </span>
-                      <span className="text-muted-foreground/30">·</span>
-                      <span className={hasUpdate ? "text-primary" : "text-muted-foreground/60"}>
-                        {updateStatusText}
-                      </span>
-                      <span className="text-muted-foreground/30">·</span>
-                      <button
-                        type="button"
-                        className={FOOTER_LINK_CLASS}
-                        disabled={updateCheckDisabled}
-                        onClick={onCheckForUpdate}
-                      >
-                        Check Again
-                      </button>
-                      <span className="text-muted-foreground/30">·</span>
-                      <button
-                        type="button"
-                        className={cn(
-                          FOOTER_LINK_CLASS,
-                          "inline-flex items-center gap-1",
-                          hasUpdate && "text-primary hover:text-primary"
-                        )}
-                        onClick={() => openReleaseUrl(effectiveReleaseUrl)}
-                      >
-                        Releases
-                        <ExternalLink className="size-3" />
-                      </button>
+                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[length:var(--ui-fs-metric-meta)]">
+                      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+                        <span className="shrink-0 font-mono tabular-nums text-muted-foreground/60">
+                          v{appVersion}
+                        </span>
+                        <span className="shrink-0 text-muted-foreground/30">/</span>
+                        <span
+                          className={cn(
+                            "min-w-0 truncate",
+                            hasUpdate ? "text-primary" : "text-muted-foreground/60"
+                          )}
+                          title={updateStatusText}
+                        >
+                          {updateStatusText}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          className={FOOTER_LINK_CLASS}
+                          disabled={updateCheckDisabled}
+                          onClick={onCheckForUpdate}
+                        >
+                          Check
+                        </button>
+                        <button
+                          type="button"
+                          className={cn(
+                            FOOTER_LINK_CLASS,
+                            hasUpdate && "text-primary hover:text-primary"
+                          )}
+                          onClick={() => openReleaseUrl(effectiveReleaseUrl)}
+                        >
+                          Releases
+                          <ExternalLink className="size-3" />
+                        </button>
+                      </div>
                     </div>
                   </>
                 ) : null}

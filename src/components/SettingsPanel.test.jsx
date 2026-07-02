@@ -159,7 +159,7 @@ describe("SettingsPanel", () => {
   it("shows the current app version in settings", () => {
     render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" />);
     expect(screen.getByText("v0.0.17")).toBeTruthy();
-    expect(screen.getByText("Checking updates")).toBeTruthy();
+    expect(screen.getByText("Checking...")).toBeTruthy();
     expect(screen.getByText("Releases")).toBeTruthy();
   });
 
@@ -174,7 +174,7 @@ describe("SettingsPanel", () => {
       />
     );
 
-    expect(screen.getByText("Update check unavailable")).toBeTruthy();
+    expect(screen.getByText("Update unavailable")).toBeTruthy();
     fireEvent.click(screen.getByText("Releases"));
     expect(openReleaseUrl).toHaveBeenCalledWith("https://github.com/SounDoer/PLVS/releases");
   });
@@ -191,7 +191,7 @@ describe("SettingsPanel", () => {
       />
     );
 
-    fireEvent.click(screen.getByText("Check Again"));
+    fireEvent.click(screen.getByText("Check"));
     expect(onCheckForUpdate).toHaveBeenCalledTimes(1);
   });
 
@@ -225,7 +225,7 @@ describe("SettingsPanel", () => {
       />
     );
 
-    expect(screen.getByText("Update available: v0.1.10")).toBeTruthy();
+    expect(screen.getByText("v0.1.10 available")).toBeTruthy();
     fireEvent.click(screen.getByText("Releases"));
 
     expect(openReleaseUrl).toHaveBeenCalledWith(releaseUrl);
