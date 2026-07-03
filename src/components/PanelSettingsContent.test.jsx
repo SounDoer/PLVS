@@ -98,7 +98,8 @@ describe("PanelSettingsContent", () => {
     expect(modeRow?.className).not.toContain("grid-cols-[4.75rem");
     expect(modeRow?.className).not.toContain("min-h-7");
     expect(modeRow?.className).not.toContain("gap-4");
-    expect(container.firstChild?.className).toContain("w-max");
+    expect(container.firstChild?.className).toContain("w-full");
+    expect(container.firstChild?.className).toContain("max-w-full");
     expect(container.firstChild?.className).not.toContain("w-[17rem]");
     expect(screen.getByText("Peak")).toBeTruthy();
 
@@ -356,6 +357,33 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(screen.getByRole("option", { name: "L/C" }));
 
     expect(onVectorscopeChange).toHaveBeenCalledWith({ x: 0, y: 2 });
+  });
+
+  it("keeps vectorscope all-pairs options collapsed until opened", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="vectorscope"
+        channelCount={6}
+        vectorscopeOptions={[
+          { key: "0-1", label: "L/R", x: 0, y: 1, group: "Common" },
+          { key: "0-2", label: "L/C", x: 0, y: 2, group: "Common" },
+          { key: "0-3", label: "L/LFE", x: 0, y: 3, group: "All pairs" },
+        ]}
+        vectorscopeValueKey="0-1"
+        vectorscopeDisplayLabel="L/R"
+        onVectorscopeChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "vectorscope channel" }));
+
+    expect(screen.getByRole("option", { name: "L/C" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All pairs" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "L/LFE" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "All pairs" }));
+
+    expect(screen.getByRole("option", { name: "L/LFE" })).toBeTruthy();
   });
 
   it("falls back to the first spectrum option when the value key is stale", () => {

@@ -57,6 +57,9 @@ pub struct SpectrumFrameResult {
 pub struct VectorscopeFrameResult {
   pub path: String,
   pub correlation: f64,
+  pub side_to_mid_db: f64,
+  pub mid_energy: f64,
+  pub side_energy: f64,
   pub pair_x: u16,
   pub pair_y: u16,
 }
@@ -182,6 +185,7 @@ pub struct MeterHistoryEntry {
   pub sample_peak_max_l: f64,
   pub sample_peak_max_r: f64,
   pub correlation: f64,
+  pub side_to_mid_db: f64,
   pub vectorscope_pair_x: u16,
   pub vectorscope_pair_y: u16,
   /// Loudness layout semantics for this entry (e.g. `stereo`, `5.1`, `unknown`).
@@ -216,6 +220,9 @@ pub struct VectorscopeVisualEntry {
   /// Lissajous pairs: interleaved [x0,y0, x1,y1, …] for the subsampled points.
   pub pairs: Vec<f32>,
   pub correlation: f64,
+  pub side_to_mid_db: f64,
+  pub mid_energy: f64,
+  pub side_energy: f64,
 }
 
 /// Visual history snapshot at ~25 Hz, independent of loudness tick.
@@ -229,6 +236,7 @@ pub struct VisualHistEntry {
   pub waveform_max: Vec<f32>,
   /// Pearson correlation coefficient [-1, 1].
   pub correlation: f64,
+  pub side_to_mid_db: f64,
   /// Request-keyed spectrum samples for snapshot history. Only active request keys appear in a
   /// given tick; the frontend retains per-key history rings so inactive requests stay scrubbable.
   pub spectrum_by_key: HashMap<String, SpectrumVisualEntry>,
@@ -254,6 +262,7 @@ pub struct AudioFramePayload {
   pub sample_l_db: f64,
   pub sample_r_db: f64,
   pub correlation: f64,
+  pub side_to_mid_db: f64,
   pub vectorscope_pair_x: u16,
   pub vectorscope_pair_y: u16,
   /// Request-keyed Spectrum/Spectrogram live results, one entry per active analysis request key.

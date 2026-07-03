@@ -13,9 +13,11 @@ describe("buildVectorscopePairOptions", () => {
 
   test("builds unique x<y pairs with peak-style labels", () => {
     const opts = buildVectorscopePairOptions(4);
-    expect(opts.map((o) => o.key)).toEqual(["0-1", "0-2", "0-3", "1-2", "1-3", "2-3"]);
+    expect(opts.map((o) => o.key)).toEqual(["0-1", "2-3", "0-2", "0-3", "1-2", "1-3"]);
     expect(opts[0].label).toBe("L/R");
-    expect(opts.at(-1)?.label).toBe("Ls/Rs");
+    expect(opts[1].label).toBe("Ls/Rs");
+    expect(opts[0].group).toBe("Common");
+    expect(opts[2].group).toBe("All pairs");
   });
 
   test("uses 5.1 strip names for six channels", () => {
@@ -40,7 +42,9 @@ describe("formatVectorscopePairLabel", () => {
 });
 
 test("idle UI can use stereo pair list: n=2 yields L/R", () => {
-  expect(buildVectorscopePairOptions(2).map((o) => o.key)).toEqual(["0-1"]);
+  expect(buildVectorscopePairOptions(2)).toEqual([
+    { x: 0, y: 1, key: "0-1", label: "L/R", group: undefined },
+  ]);
   expect(buildVectorscopePairOptions(0)).toEqual([]);
 });
 

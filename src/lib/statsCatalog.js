@@ -87,6 +87,12 @@ export const STATS_META = {
     unit: "",
     hint: "Phase correlation of the stereo pair (+1 in phase, −1 out of phase)",
   },
+  sideToMid: {
+    label: "Side/Mid",
+    shortLabel: "S/M",
+    unit: "dB",
+    hint: "Side energy relative to Mid energy for the selected stereo pair",
+  },
 };
 
 export const STATS_CANONICAL_ORDER = [
@@ -104,6 +110,7 @@ export const STATS_CANONICAL_ORDER = [
   "dialogueOffset",
   "truePeak",
   "correlation",
+  "sideToMid",
 ];
 
 export const STATS_OPTIONS = STATS_CANONICAL_ORDER.map((id) => ({
@@ -132,6 +139,12 @@ function fmtCorrelation(displayAudio) {
   if (!hasCorrelationSignal(displayAudio)) return "-";
   const v = displayAudio?.correlation;
   return Number.isFinite(v) ? v.toFixed(2) : "-";
+}
+
+function fmtSideToMid(displayAudio) {
+  if (!hasCorrelationSignal(displayAudio)) return "-";
+  const v = displayAudio?.sideToMidDb;
+  return Number.isFinite(v) ? v.toFixed(1) : "-";
 }
 
 /**
@@ -166,6 +179,7 @@ export function buildStatsMetrics(displayAudio) {
     dialogueOffset: dialogueOffsetText(displayAudio.dialogueIntegrated, displayAudio.integrated),
     truePeak: fmtMetric(displayAudio.tpMax),
     correlation: fmtCorrelation(displayAudio),
+    sideToMid: fmtSideToMid(displayAudio),
   };
 
   return STATS_CANONICAL_ORDER.map((id) => ({

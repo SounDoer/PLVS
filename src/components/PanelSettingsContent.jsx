@@ -25,10 +25,10 @@ const SETTINGS_VALUE_IDLE_CLASS =
 const SETTINGS_VALUE_OPEN_CLASS = "border-primary/55 bg-secondary/30 text-foreground";
 
 const SETTINGS_DETAIL_SURFACE_CLASS =
-  "mt-1 overflow-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
+  "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
 
 const SETTINGS_CHOICE_ROW_CLASS =
-  "flex w-full items-center gap-1.5 whitespace-nowrap rounded-sm px-1.5 py-0.5 text-left text-xs text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
+  "flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-left text-xs text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
 
@@ -39,7 +39,7 @@ const SETTINGS_SWITCH_THUMB_CLASS =
   "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
 
 function SettingsGroup({ children }) {
-  return <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col gap-0.5">{children}</div>;
+  return <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5">{children}</div>;
 }
 
 function SettingsRow({ label, tooltip, children }) {
@@ -274,12 +274,24 @@ function SettingsOptionRow({
       <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS, checkClassName)}>
         {checked ? <Check aria-hidden="true" className="size-3" /> : null}
       </span>
-      {children}
+      <span className="min-w-0 flex-1 truncate">{children}</span>
     </button>
   );
 }
 
-function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOpenChange }) {
+function SettingsSelect({
+  label,
+  ariaLabel,
+  options,
+  value,
+  onChange,
+  open,
+  onOpenChange,
+  collapsedGroups = [],
+}) {
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const collapsedGroupSet = new Set(collapsedGroups);
+
   return (
     <div className="flex min-w-0 flex-col items-end">
       <InlineDetailTrigger
@@ -291,20 +303,56 @@ function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOp
       />
       {open ? (
         <div role="listbox" aria-label={ariaLabel} className={SETTINGS_DETAIL_SURFACE_CLASS}>
-          {options.map((opt) => (
-            <SettingsOptionRow
-              key={opt.key ?? opt.id}
-              role="option"
-              aria-selected={(opt.key ?? opt.id) === value}
-              checked={(opt.key ?? opt.id) === value}
-              onClick={() => {
-                onChange(opt.key ?? opt.id);
-                onOpenChange(false);
-              }}
-            >
-              {typeof opt.renderLabel === "function" ? opt.renderLabel(opt) : opt.label}
-            </SettingsOptionRow>
-          ))}
+          {options.map((opt, index) => {
+            const optionKey = opt.key ?? opt.id;
+            const previousGroup = index > 0 ? options[index - 1]?.group : null;
+            const showGroup = opt.group && opt.group !== previousGroup;
+            const groupCollapsed =
+              opt.group && collapsedGroupSet.has(opt.group) && expandedGroups[opt.group] !== true;
+            return (
+              <div key={optionKey}>
+                {showGroup ? (
+                  collapsedGroupSet.has(opt.group) ? (
+                    <button
+                      type="button"
+                      aria-expanded={!groupCollapsed}
+                      onClick={() =>
+                        setExpandedGroups((current) => ({
+                          ...current,
+                          [opt.group]: current[opt.group] !== true,
+                        }))
+                      }
+                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-sm px-2 pb-0.5 pt-1 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 outline-none transition-colors hover:bg-secondary/35 hover:text-muted-foreground"
+                    >
+                      <span className="min-w-0 truncate">{opt.group}</span>
+                      {groupCollapsed ? (
+                        <ChevronDown aria-hidden="true" className="size-3 shrink-0" />
+                      ) : (
+                        <ChevronUp aria-hidden="true" className="size-3 shrink-0" />
+                      )}
+                    </button>
+                  ) : (
+                    <div className="min-w-0 truncate px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+                      {opt.group}
+                    </div>
+                  )
+                ) : null}
+                {groupCollapsed ? null : (
+                  <SettingsOptionRow
+                    role="option"
+                    aria-selected={optionKey === value}
+                    checked={optionKey === value}
+                    onClick={() => {
+                      onChange(optionKey);
+                      onOpenChange(false);
+                    }}
+                  >
+                    {typeof opt.renderLabel === "function" ? opt.renderLabel(opt) : opt.label}
+                  </SettingsOptionRow>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </div>
@@ -1031,8 +1079,6 @@ export function PanelSettingsContent({
     );
   }
 
-  if (!Number.isFinite(channelCount) || channelCount <= 2) return null;
-
   if (activeTab === "vectorscope" && vectorscopeOptions.length > 0) {
     const hasPanelControls = panelControls != null;
     const normalizedPanelControls = normalizePanelControls(panelControls);
@@ -1059,6 +1105,7 @@ export function PanelSettingsContent({
             value={selectedOption.key}
             open={vectorscopeChannelOpen}
             onOpenChange={setVectorscopeChannelOpen}
+            collapsedGroups={["All pairs"]}
             onChange={(key) => {
               const opt = vectorscopeOptions.find((o) => o.key === key);
               if (opt && typeof onVectorscopeChange === "function") {
@@ -1070,6 +1117,20 @@ export function PanelSettingsContent({
                 );
                 onVectorscopeChange({ x: opt.x, y: opt.y });
               }
+            }}
+          />
+        </SettingsRow>
+        <SettingsRow label="M/S energy">
+          <SettingsSwitch
+            aria-label="vectorscope m/s energy"
+            checked={normalizedPanelControls.vectorscopeEnergyCross}
+            onCheckedChange={(checked) => {
+              onPanelControlsChange?.(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  vectorscopeEnergyCross: checked,
+                })
+              );
             }}
           />
         </SettingsRow>

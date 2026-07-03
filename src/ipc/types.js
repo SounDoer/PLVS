@@ -13,6 +13,7 @@
  * @property {number} samplePeakMaxL
  * @property {number} samplePeakMaxR
  * @property {number} correlation
+ * @property {number} sideToMidDb
  * @property {number[]} waveformMin
  * @property {number[]} waveformMax
  * @property {Float32Array|number[]} waveformSubPairs flat, stride 2*channelCount: [minCh0,maxCh0,...] per sub-block
@@ -37,6 +38,7 @@
  * @property {number} sampleLDb
  * @property {number} sampleRDb
  * @property {number} correlation
+ * @property {number} sideToMidDb
  * @property {number} vectorscopePairX
  * @property {number} vectorscopePairY
  * @property {Record<string, SpectrumFrameResult>} spectrumResultsByKey
@@ -57,6 +59,9 @@
  * @typedef {object} VectorscopeVisualEntry
  * @property {number[]} pairs
  * @property {number} correlation
+ * @property {number} sideToMidDb
+ * @property {number} midEnergy
+ * @property {number} sideEnergy
  */
 
 /**
@@ -65,6 +70,7 @@
  * @property {number[]} waveformMin
  * @property {number[]} waveformMax
  * @property {number} correlation
+ * @property {number} sideToMidDb
  * @property {Record<string, SpectrumVisualEntry>} spectrumByKey
  * @property {Record<string, VectorscopeVisualEntry>} vectorscopeByKey
  */
@@ -84,6 +90,9 @@
  * @typedef {object} VectorscopeFrameResult
  * @property {string} path
  * @property {number} correlation
+ * @property {number} sideToMidDb
+ * @property {number} midEnergy
+ * @property {number} sideEnergy
  * @property {number} pairX
  * @property {number} pairY
  */

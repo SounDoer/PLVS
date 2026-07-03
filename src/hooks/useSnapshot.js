@@ -89,6 +89,9 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       missing: false,
       path: buildVectorscopeSvgFromPairs(pairs),
       correlation: Number.isFinite(snap?.correlation) ? snap.correlation : -Infinity,
+      sideToMidDb: Number.isFinite(snap?.sideToMidDb) ? snap.sideToMidDb : -Infinity,
+      midEnergy: Number.isFinite(snap?.midEnergy) ? snap.midEnergy : 0,
+      sideEnergy: Number.isFinite(snap?.sideEnergy) ? snap.sideEnergy : 0,
       hasSignal: vectorscopePairsHaveSignal(pairs),
     };
   };

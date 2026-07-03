@@ -60,10 +60,19 @@ describe("VectorscopePanel", () => {
     const { container } = renderPanel({ selectedOffset: -1, panelControls: {} });
 
     const rail = container.querySelector("[data-vectorscope-correlation-rail]");
+    const axis = container.querySelector("[data-vectorscope-correlation-axis]");
 
     expect(rail).toBeTruthy();
-    expect(rail?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
+    expect(axis).toBeTruthy();
+    expect(screen.getByText("-1")).toBeTruthy();
+    expect(screen.getByText("0")).toBeTruthy();
+    expect(screen.getByText("+1")).toBeTruthy();
+    expect(rail?.className).toContain("h-3");
     expect(rail?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
+    expect(axis?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
+    expect(axis?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
+    expect(axis?.innerHTML).toContain("absolute top-0 whitespace-nowrap");
+    expect(screen.getByText("0").getAttribute("style")).toContain("left: 50%");
     expect(container.querySelector("[data-vectorscope-footer]")).toBeNull();
   });
 
@@ -142,5 +151,49 @@ describe("VectorscopePanel", () => {
     });
 
     expect(container.querySelector("[data-vectorscope-correlation-marker]")).toBeNull();
+  });
+
+  it("keeps the M/S energy cross hidden by default", () => {
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 } },
+      displayAudio: {
+        peakDb: [-12, -18],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": {
+            path: "M 0 0 L 100 100",
+            correlation: 0.5,
+            midEnergy: 0.4,
+            sideEnergy: 0.2,
+            pairX: 0,
+            pairY: 1,
+          },
+        },
+      },
+    });
+
+    expect(container.querySelector("[data-vectorscope-energy-cross]")).toBeNull();
+  });
+
+  it("shows the M/S energy cross when enabled", () => {
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeEnergyCross: true },
+      displayAudio: {
+        peakDb: [-12, -18],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": {
+            path: "M 0 0 L 100 100",
+            correlation: 0.5,
+            midEnergy: 0.4,
+            sideEnergy: 0.2,
+            pairX: 0,
+            pairY: 1,
+          },
+        },
+      },
+    });
+
+    expect(container.querySelector("[data-vectorscope-energy-cross]")).toBeTruthy();
   });
 });

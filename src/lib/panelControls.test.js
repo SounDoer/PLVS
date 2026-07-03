@@ -42,6 +42,7 @@ describe("panelControls", () => {
       "dialogueOffset",
       "truePeak",
       "correlation",
+      "sideToMid",
     ]);
     expect(LOUDNESS_HISTORY_LAYER_OPTIONS.map((o) => o.id)).toEqual([
       "momentary",
@@ -72,6 +73,7 @@ describe("panelControls", () => {
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
+      vectorscopeEnergyCross: false,
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumPeakHold: false,
@@ -113,6 +115,7 @@ describe("panelControls", () => {
         "dialogueOffset",
         "truePeak",
         "correlation",
+        "sideToMid",
       ],
       dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
@@ -151,6 +154,7 @@ describe("panelControls", () => {
       "dialogueOffset",
       "truePeak",
       "correlation",
+      "sideToMid",
     ]);
   });
 
@@ -173,6 +177,7 @@ describe("panelControls", () => {
       "dialogueOffset",
       "truePeak",
       "correlation",
+      "sideToMid",
     ]);
   });
 
@@ -197,6 +202,7 @@ describe("panelControls", () => {
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
+      vectorscopeEnergyCross: false,
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumPeakHold: false,

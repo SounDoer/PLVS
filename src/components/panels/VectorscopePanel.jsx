@@ -2,6 +2,7 @@ import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
+import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
@@ -11,6 +12,7 @@ import {
 } from "./SnapshotEmptyState.jsx";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
+const ENERGY_FLOOR_DB = -60;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -36,6 +38,12 @@ function correlationMarkerClass(value) {
   if (corr < 0) return "bg-[color:var(--ui-signal-bad)]";
   if (corr < 0.35) return "bg-[color:var(--ui-signal-warn)]";
   return "bg-[color:var(--ui-signal-good)]";
+}
+
+function energyArmPct(value) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const db = 20 * Math.log10(value);
+  return Math.max(0, Math.min(42, ((db - ENERGY_FLOOR_DB) / Math.abs(ENERGY_FLOOR_DB)) * 42));
 }
 
 export function VectorscopePanel() {
@@ -66,18 +74,29 @@ export function VectorscopePanel() {
     x: pairX,
     y: pairY,
   };
+  const showEnergyCross = normalizePanelControls(panelControls).vectorscopeEnergyCross === true;
   let panelVectorPath;
   let panelCorrelation;
+  let panelMidEnergy = 0;
+  let panelSideEnergy = 0;
   let panelPairX;
   let panelPairY;
   if (isSnapshot) {
     panelVectorPath = snapResolved?.path ?? "";
     panelCorrelation = snapResolved?.correlation ?? correlation;
+    panelMidEnergy = Number.isFinite(snapResolved?.midEnergy) ? snapResolved.midEnergy : 0;
+    panelSideEnergy = Number.isFinite(snapResolved?.sideEnergy) ? snapResolved.sideEnergy : 0;
     panelPairX = controlPair.x;
     panelPairY = controlPair.y;
   } else if (liveVectorscopeResult) {
     panelVectorPath = liveVectorscopeResult.path;
     panelCorrelation = liveVectorscopeResult.correlation;
+    panelMidEnergy = Number.isFinite(liveVectorscopeResult.midEnergy)
+      ? liveVectorscopeResult.midEnergy
+      : 0;
+    panelSideEnergy = Number.isFinite(liveVectorscopeResult.sideEnergy)
+      ? liveVectorscopeResult.sideEnergy
+      : 0;
     panelPairX = liveVectorscopeResult.pairX;
     panelPairY = liveVectorscopeResult.pairY;
   } else {
@@ -100,6 +119,10 @@ export function VectorscopePanel() {
     : hasPairSignal(displayAudio?.peakDb, px, py);
   const canPlaceCorrelationMarker =
     hasCorrelationSignal && clampCorrelation(panelCorrelation) !== null;
+  const midArmPct = energyArmPct(panelMidEnergy);
+  const sideArmPct = energyArmPct(panelSideEnergy);
+  const canShowEnergyCross =
+    showEnergyCross && hasCorrelationSignal && (midArmPct > 0 || sideArmPct > 0);
   if (isOverCap || snapshotMissing) {
     return (
       <div
@@ -159,6 +182,35 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
+              {canShowEnergyCross && (
+                <g
+                  data-vectorscope-energy-cross
+                  stroke={
+                    selectedOffset >= 0
+                      ? "var(--ui-vectorscope-trace-snap)"
+                      : "var(--ui-vectorscope-trace)"
+                  }
+                  strokeLinecap="round"
+                  opacity="0.28"
+                >
+                  <line
+                    x1={130 - sideArmPct}
+                    y1="130"
+                    x2={130 + sideArmPct}
+                    y2="130"
+                    strokeWidth="1.2"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <line
+                    x1="130"
+                    y1={130 - midArmPct}
+                    x2="130"
+                    y2={130 + midArmPct}
+                    strokeWidth="1.2"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
+              )}
               {panelVectorPath && (
                 <>
                   <path
@@ -207,7 +259,7 @@ export function VectorscopePanel() {
       </div>
       <div
         data-vectorscope-correlation-rail
-        className="mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
+        className="mt-[var(--ui-chart-axis-gap)] h-3 shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
       >
         <div
           className={cn(
@@ -216,7 +268,7 @@ export function VectorscopePanel() {
           )}
           aria-hidden
         >
-          <div className="absolute inset-x-0 bottom-0 h-2.5">
+          <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2">
             <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-[color:color-mix(in_srgb,var(--muted-foreground)_25%,transparent)]" />
             <div className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
             <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
@@ -226,13 +278,28 @@ export function VectorscopePanel() {
             <div
               data-vectorscope-correlation-marker
               className={cn(
-                "absolute bottom-0 h-3 w-0.5 -translate-x-1/2 rounded-full",
+                "absolute top-1/2 h-3 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full",
                 !isSnapshot && "transition-[left] duration-100 ease-out",
                 correlationMarkerClass(panelCorrelation)
               )}
               style={{ left: correlationMarkerLeft(panelCorrelation) }}
             />
           )}
+        </div>
+      </div>
+      <div
+        data-vectorscope-correlation-axis
+        className="mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
+      >
+        <div
+          className="relative h-full text-[length:var(--ui-fs-axis)] text-muted-foreground"
+          aria-hidden
+        >
+          <span className={axisLabelClass("x", "start")}>-1</span>
+          <span className={axisLabelClass("x", "middle")} style={{ left: "50%" }}>
+            0
+          </span>
+          <span className={axisLabelClass("x", "end")}>+1</span>
         </div>
       </div>
     </div>

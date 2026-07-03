@@ -24,6 +24,7 @@ describe("statsCatalog", () => {
       "dialogueOffset",
       "truePeak",
       "correlation",
+      "sideToMid",
     ]);
   });
 
@@ -57,6 +58,7 @@ describe("statsCatalog", () => {
       dialogueOffset: "Dlg Offset",
       truePeak: "TP Max",
       correlation: "Corr",
+      sideToMid: "S/M",
     });
   });
 
@@ -91,6 +93,7 @@ describe("statsCatalog", () => {
       dialogueIntegrated: -21,
       dialogueLra: 2,
       correlation: 0.85,
+      sideToMidDb: -14.2,
     });
     const byId = Object.fromEntries(metrics.map((m) => [m.id, m]));
 
@@ -99,6 +102,8 @@ describe("statsCatalog", () => {
     expect(byId.truePeak.unit).toBe("dBTP");
     expect(byId.correlation.value).toBe("0.85");
     expect(byId.correlation.unit).toBe("");
+    expect(byId.sideToMid.value).toBe("-14.2");
+    expect(byId.sideToMid.unit).toBe("dB");
     // PSR = tpMax - shortTerm = -1 - (-18) = 17.0
     expect(byId.psr.value).toBe("17.0");
     expect(byId.dialogueCoverage.value).toBe("62");

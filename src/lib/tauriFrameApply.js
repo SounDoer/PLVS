@@ -74,6 +74,7 @@ export function buildTauriFrameApply({
         ? Math.max(prev.samplePeakMaxR, f.sampleRDb)
         : prev.samplePeakMaxR,
       correlation: Number.isFinite(f.correlation) ? f.correlation : -Infinity,
+      sideToMidDb: Number.isFinite(f.sideToMidDb) ? f.sideToMidDb : -Infinity,
       vectorscopePairX: Number.isFinite(f.vectorscopePairX)
         ? f.vectorscopePairX
         : (prev.vectorscopePairX ?? 0),

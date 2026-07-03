@@ -10,14 +10,43 @@ export function buildVectorscopePairOptions(channelCount, labelCtx = {}) {
   const out = [];
   if (n < 2) return out;
   const labels = getPeakMeterChannelLabels(n, labelCtx);
+  const indexByLabel = new Map(labels.map((label, index) => [label, index]));
+  const commonPairs = [
+    ["L", "R"],
+    ["Ls", "Rs"],
+    ["Lb", "Rb"],
+    ["L", "C"],
+    ["R", "C"],
+  ];
+  const commonKeys = new Set();
+  if (n > 2) {
+    for (const [left, right] of commonPairs) {
+      const x = indexByLabel.get(left);
+      const y = indexByLabel.get(right);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        commonKeys.add(`${Math.min(x, y)}-${Math.max(x, y)}`);
+      }
+    }
+  }
   for (let x = 0; x < n; x += 1) {
     for (let y = x + 1; y < n; y += 1) {
       const lx = labels[x] ?? `Ch ${x + 1}`;
       const ly = labels[y] ?? `Ch ${y + 1}`;
-      out.push({ x, y, key: `${x}-${y}`, label: `${lx}/${ly}` });
+      const key = `${x}-${y}`;
+      out.push({
+        x,
+        y,
+        key,
+        label: `${lx}/${ly}`,
+        group: n > 2 ? (commonKeys.has(key) ? "Common" : "All pairs") : undefined,
+      });
     }
   }
-  return out;
+  return out.sort((a, b) => {
+    const ag = a.group === "Common" ? 0 : 1;
+    const bg = b.group === "Common" ? 0 : 1;
+    return ag - bg || a.x - b.x || a.y - b.y;
+  });
 }
 
 /**

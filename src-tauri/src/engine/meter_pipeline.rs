@@ -385,12 +385,15 @@ impl MeterPipeline {
         dialogue_vad_engine,
       };
       meter.push_pcm(&ctx);
-      let (correlation, path) = meter.get_output();
+      let (metrics, path) = meter.get_output();
       vectorscope_results_by_key.insert(
         request.key.clone(),
         VectorscopeFrameResult {
           path,
-          correlation,
+          correlation: metrics.correlation,
+          side_to_mid_db: metrics.side_to_mid_db,
+          mid_energy: metrics.mid_energy,
+          side_energy: metrics.side_energy,
           pair_x: request.x,
           pair_y: request.y,
         },
@@ -402,14 +405,20 @@ impl MeterPipeline {
       .first()
       .map(|request| (request.x, request.y));
     let primary_vectorscope_summary = analysis_requests.vectorscope.first().and_then(|request| {
-      vectorscope_results_by_key
-        .get(&request.key)
-        .map(|result| (result.pair_x, result.pair_y, result.correlation))
+      vectorscope_results_by_key.get(&request.key).map(|result| {
+        (
+          result.pair_x,
+          result.pair_y,
+          result.correlation,
+          result.side_to_mid_db,
+        )
+      })
     });
     let mut frame = self.push_pcm_f32_optional(
       interleaved,
       channel_layout,
-      primary_vectorscope_summary.or_else(|| vectorscope_pair.map(|(x, y)| (x, y, 0.0))),
+      primary_vectorscope_summary
+        .or_else(|| vectorscope_pair.map(|(x, y)| (x, y, 0.0, f64::NEG_INFINITY))),
       loudness_weights,
       dialogue_gating,
       dialogue_vad_engine,
@@ -452,10 +461,16 @@ impl MeterPipeline {
       .iter()
       .filter_map(|request| {
         self.vectorscope_by_key.get_mut(&request.key).map(|meter| {
-          let (correlation, pairs) = meter.get_history_pairs(VS_HISTORY_POINTS);
+          let (metrics, pairs) = meter.get_history_pairs(VS_HISTORY_POINTS);
           (
             request.key.clone(),
-            VectorscopeVisualEntry { pairs, correlation },
+            VectorscopeVisualEntry {
+              pairs,
+              correlation: metrics.correlation,
+              side_to_mid_db: metrics.side_to_mid_db,
+              mid_energy: metrics.mid_energy,
+              side_energy: metrics.side_energy,
+            },
           )
         })
       })
@@ -540,7 +555,7 @@ impl MeterPipeline {
     &mut self,
     interleaved: &[f32],
     channel_layout: ChannelLayoutSetting,
-    vectorscope_summary: Option<(u16, u16, f64)>,
+    vectorscope_summary: Option<(u16, u16, f64, f64)>,
     loudness_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
     dialogue_vad_engine: VadEngineKind,
@@ -548,7 +563,7 @@ impl MeterPipeline {
     let now_sec = self.t0.elapsed().as_secs_f64();
     let ch = self.channels.max(1);
     let (pair_x, pair_y) = vectorscope_summary
-      .map(|(x, y, _)| (x, y))
+      .map(|(x, y, _, _)| (x, y))
       .unwrap_or((0, 1));
 
     if dialogue_gating != self.last_dialogue_gating {
@@ -721,8 +736,11 @@ impl MeterPipeline {
     // Top-level correlation is the shared scalar read by stats/snapshots. In request-keyed mode it
     // is derived from the first vectorscope request instead of recomputing a legacy vectorscope.
     let corr = vectorscope_summary
-      .map(|(_, _, correlation)| correlation)
+      .map(|(_, _, correlation, _)| correlation)
       .unwrap_or(0.0);
+    let side_to_mid_db = vectorscope_summary
+      .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
+      .unwrap_or(f64::NEG_INFINITY);
 
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let peak_hold_db = peak_db.clone();
@@ -786,6 +804,7 @@ impl MeterPipeline {
         sample_peak_max_l: self.sample_peak_max_l,
         sample_peak_max_r: self.sample_peak_max_r,
         correlation: corr,
+        side_to_mid_db,
         vectorscope_pair_x: pair_x,
         vectorscope_pair_y: pair_y,
         loudness_layout: loudness_layout.clone(),
@@ -822,14 +841,18 @@ impl MeterPipeline {
         self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
 
         let visual_corr = vectorscope_summary
-          .map(|(_, _, correlation)| correlation)
+          .map(|(_, _, correlation, _)| correlation)
           .unwrap_or(0.0);
+        let visual_side_to_mid_db = vectorscope_summary
+          .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
+          .unwrap_or(f64::NEG_INFINITY);
 
         Some(VisualHistEntry {
           timestamp_ms: self.timestamp_ms(),
           waveform_min: visual_waveform_min,
           waveform_max: visual_waveform_max,
           correlation: visual_corr,
+          side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
           vectorscope_by_key: HashMap::new(),
         })
@@ -894,6 +917,7 @@ impl MeterPipeline {
           sample_peak_max_l: self.sample_peak_max_l,
           sample_peak_max_r: self.sample_peak_max_r,
           correlation: corr,
+          side_to_mid_db,
           vectorscope_pair_x: pair_x,
           vectorscope_pair_y: pair_y,
           loudness_layout: loudness_layout.clone(),
@@ -916,8 +940,11 @@ impl MeterPipeline {
         .map(|&v| if v.is_finite() { v } else { 0.0 })
         .collect();
       let visual_corr = vectorscope_summary
-        .map(|(_, _, correlation)| correlation)
+        .map(|(_, _, correlation, _)| correlation)
         .unwrap_or(0.0);
+      let visual_side_to_mid_db = vectorscope_summary
+        .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
+        .unwrap_or(f64::NEG_INFINITY);
       let mut visual_batch = Vec::new();
       for ts in std::mem::take(&mut self.pending_file_visual_queue) {
         visual_batch.push(VisualHistEntry {
@@ -925,6 +952,7 @@ impl MeterPipeline {
           waveform_min: visual_waveform_min.clone(),
           waveform_max: visual_waveform_max.clone(),
           correlation: visual_corr,
+          side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
           vectorscope_by_key: HashMap::new(),
         });
@@ -954,6 +982,7 @@ impl MeterPipeline {
       sample_l_db: sl,
       sample_r_db: sr,
       correlation: corr,
+      side_to_mid_db,
       vectorscope_pair_x: pair_x,
       vectorscope_pair_y: pair_y,
       spectrum_results_by_key: HashMap::new(),

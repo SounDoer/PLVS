@@ -125,6 +125,7 @@ function buildAudioSnap(row) {
     samplePeakMaxR: Number.isFinite(row.samplePeakMaxR) ? row.samplePeakMaxR : -Infinity,
     peakDb: peakDbFromWaveformExtents(row.waveformMin, row.waveformMax),
     correlation: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
+    sideToMidDb: Number.isFinite(row.sideToMidDb) ? row.sideToMidDb : -Infinity,
     vectorscopePairX: Number.isFinite(row.vectorscopePairX) ? row.vectorscopePairX : 0,
     vectorscopePairY: Number.isFinite(row.vectorscopePairY) ? row.vectorscopePairY : 1,
   };
@@ -305,6 +306,9 @@ export class FrameIntake {
         ring.push({
           pairs: snapshotNumericArray(entry.pairs),
           correlation: Number.isFinite(entry.correlation) ? entry.correlation : -Infinity,
+          sideToMidDb: Number.isFinite(entry.sideToMidDb) ? entry.sideToMidDb : -Infinity,
+          midEnergy: Number.isFinite(entry.midEnergy) ? entry.midEnergy : 0,
+          sideEnergy: Number.isFinite(entry.sideEnergy) ? entry.sideEnergy : 0,
           timestampMs,
         });
       }

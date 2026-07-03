@@ -409,6 +409,7 @@ function AppContent() {
     sampleR: -Infinity,
     samplePeak: -Infinity,
     correlation: -Infinity,
+    sideToMidDb: -Infinity,
     vectorscopePairX: 0,
     vectorscopePairY: 1,
     spectrumResultsByKey: {},

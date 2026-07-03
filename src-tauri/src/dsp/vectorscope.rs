@@ -6,6 +6,14 @@ use super::meter::{Meter, PcmContext};
 
 const VS_CAP: usize = 4096;
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VectorscopeMetrics {
+  pub correlation: f64,
+  pub side_to_mid_db: f64,
+  pub mid_energy: f64,
+  pub side_energy: f64,
+}
+
 pub struct VectorscopeMeter {
   extent_hold: f64,
   pub(crate) vs_l: VecDeque<f32>,
@@ -52,10 +60,10 @@ impl VectorscopeMeter {
     }
   }
 
-  /// Flatten the ring buffers and compute `(correlation, svg_path_d)`.
-  pub fn get_output(&mut self) -> (f64, String) {
+  /// Flatten the ring buffers and compute `(metrics, svg_path_d)`.
+  pub fn get_output(&mut self) -> (VectorscopeMetrics, String) {
     if self.vs_l.is_empty() {
-      return (0.0, String::new());
+      return (VectorscopeMetrics::default(), String::new());
     }
     self.vs_flat_l.clear();
     self.vs_flat_r.clear();
@@ -67,9 +75,9 @@ impl VectorscopeMeter {
   /// Returns interleaved [L0, R0, L1, R1, …] subsampled to `n` points,
   /// and the Pearson correlation coefficient.
   /// Used for visual history storage (no SVG allocation).
-  pub fn get_history_pairs(&mut self, n: usize) -> (f64, Vec<f32>) {
+  pub fn get_history_pairs(&mut self, n: usize) -> (VectorscopeMetrics, Vec<f32>) {
     if self.vs_l.is_empty() || n == 0 {
-      return (0.0, Vec::new());
+      return (VectorscopeMetrics::default(), Vec::new());
     }
     self.vs_flat_l.clear();
     self.vs_flat_r.clear();
@@ -82,7 +90,10 @@ impl VectorscopeMeter {
     let mut sum_l = 0.0_f64;
     let mut sum_r = 0.0_f64;
     let mut sum_lr = 0.0_f64;
+    let mut sum_mid = 0.0_f64;
+    let mut sum_side = 0.0_f64;
     let mut pairs = Vec::with_capacity(n * 2);
+    let inv_sqrt2 = std::f64::consts::FRAC_1_SQRT_2;
 
     for i in 0..n {
       let idx = ((i as f64 * step) as usize).min(len - 1);
@@ -91,23 +102,24 @@ impl VectorscopeMeter {
       sum_l += l * l;
       sum_r += r * r;
       sum_lr += l * r;
+      let side = (r - l) * inv_sqrt2;
+      let mid = (l + r) * inv_sqrt2;
+      sum_mid += mid * mid;
+      sum_side += side * side;
       pairs.push(self.vs_flat_l[idx]);
       pairs.push(self.vs_flat_r[idx]);
     }
 
-    let corr_den = (sum_l * sum_r).sqrt();
-    let corr = if corr_den > 1e-9 {
-      (sum_lr / corr_den).clamp(-1.0, 1.0)
-    } else {
-      0.0
-    };
-    (corr, pairs)
+    (
+      metrics_from_sums(sum_l, sum_r, sum_lr, sum_mid, sum_side, n),
+      pairs,
+    )
   }
 
-  /// Returns `(correlation, svg_path_d)` using the same geometry as the browser tick.
-  fn process(&mut self, l: &[f32], r: &[f32]) -> (f64, String) {
+  /// Returns `(metrics, svg_path_d)` using the same geometry as the browser tick.
+  fn process(&mut self, l: &[f32], r: &[f32]) -> (VectorscopeMetrics, String) {
     if l.is_empty() || r.is_empty() {
-      return (0.0, String::new());
+      return (VectorscopeMetrics::default(), String::new());
     }
     let n = l.len().min(r.len());
     let inv_sqrt2 = std::f64::consts::FRAC_1_SQRT_2;
@@ -138,7 +150,10 @@ impl VectorscopeMeter {
     let mut sum_l = 0.0_f64;
     let mut sum_r = 0.0_f64;
     let mut sum_lr = 0.0_f64;
+    let mut sum_mid = 0.0_f64;
+    let mut sum_side = 0.0_f64;
     let mut vec_pts: Vec<String> = Vec::new();
+    let mut point_count = 0usize;
     i = 0;
     while i < n {
       let lf = l[i].clamp(-1.0, 1.0) as f64;
@@ -148,23 +163,55 @@ impl VectorscopeMeter {
       sum_lr += lf * rf;
       let side = (rf - lf) * inv_sqrt2;
       let mid = (lf + rf) * inv_sqrt2;
+      sum_mid += mid * mid;
+      sum_side += side * side;
       let x = vs_half + side * eff_plot_radius;
       let y = vs_half - mid * eff_plot_radius;
       vec_pts.push(format!("{x:.2} {y:.2}"));
+      point_count += 1;
       i += 6;
     }
-    let corr_den = (sum_l * sum_r).sqrt();
-    let corr = if corr_den > 1e-9 {
-      (sum_lr / corr_den).clamp(-1.0, 1.0)
-    } else {
-      0.0
-    };
+    let metrics = metrics_from_sums(sum_l, sum_r, sum_lr, sum_mid, sum_side, point_count);
     let vp = if vec_pts.is_empty() {
       String::new()
     } else {
       format!("M {}", vec_pts.join(" L "))
     };
-    (corr, vp)
+    (metrics, vp)
+  }
+}
+
+fn metrics_from_sums(
+  sum_l: f64,
+  sum_r: f64,
+  sum_lr: f64,
+  sum_mid: f64,
+  sum_side: f64,
+  n: usize,
+) -> VectorscopeMetrics {
+  let corr_den = (sum_l * sum_r).sqrt();
+  let correlation = if corr_den > 1e-9 {
+    (sum_lr / corr_den).clamp(-1.0, 1.0)
+  } else {
+    0.0
+  };
+  let denom = n.max(1) as f64;
+  let mid_energy = (sum_mid / denom).sqrt();
+  let side_energy = (sum_side / denom).sqrt();
+  let side_to_mid_db = if mid_energy > 1e-9 && side_energy > 1e-9 {
+    (20.0 * (side_energy / mid_energy).log10()).clamp(-48.0, 48.0)
+  } else if side_energy > 1e-9 {
+    48.0
+  } else if mid_energy > 1e-9 {
+    -48.0
+  } else {
+    f64::NEG_INFINITY
+  };
+  VectorscopeMetrics {
+    correlation,
+    side_to_mid_db,
+    mid_energy,
+    side_energy,
   }
 }
 
@@ -200,8 +247,8 @@ mod tests {
   #[test]
   fn empty_gives_zero_corr_and_empty_path() {
     let mut vs = VectorscopeMeter::new();
-    let (corr, path) = vs.get_output();
-    assert_eq!(corr, 0.0);
+    let (metrics, path) = vs.get_output();
+    assert_eq!(metrics.correlation, 0.0);
     assert!(path.is_empty());
   }
 
@@ -210,8 +257,12 @@ mod tests {
     let signal: Vec<f32> = (0..48).map(|i| (i as f32 * 0.02).sin() * 0.5).collect();
     let mut vs = VectorscopeMeter::new();
     vs.feed_mono(&signal); // mono uses same signal for both channels
-    let (corr, path) = vs.get_output();
-    assert!((corr - 1.0).abs() < 1e-6, "expected corr≈1.0, got {corr}");
+    let (metrics, path) = vs.get_output();
+    assert!(
+      (metrics.correlation - 1.0).abs() < 1e-6,
+      "expected corr near 1.0, got {}",
+      metrics.correlation
+    );
     assert!(
       path.starts_with('M'),
       "expected SVG path starting with M, got: {path}"
@@ -226,8 +277,12 @@ mod tests {
     let interleaved: Vec<f32> = l.iter().zip(r.iter()).flat_map(|(&a, &b)| [a, b]).collect();
     let mut vs = VectorscopeMeter::new();
     vs.feed_interleaved(&interleaved, 2, 0, 1);
-    let (corr, _) = vs.get_output();
-    assert!((corr + 1.0).abs() < 1e-6, "expected corr≈-1.0, got {corr}");
+    let (metrics, _) = vs.get_output();
+    assert!(
+      (metrics.correlation + 1.0).abs() < 1e-6,
+      "expected corr near -1.0, got {}",
+      metrics.correlation
+    );
   }
 
   #[test]
@@ -236,8 +291,8 @@ mod tests {
     let mut vs = VectorscopeMeter::new();
     vs.feed_mono(&loud);
     vs.reset();
-    let (corr, path) = vs.get_output();
-    assert_eq!(corr, 0.0);
+    let (metrics, path) = vs.get_output();
+    assert_eq!(metrics.correlation, 0.0);
     assert!(path.is_empty());
   }
 
@@ -249,7 +304,7 @@ mod tests {
     let r: Vec<f32> = (0..1000).map(|i| (i as f32 * 0.001).cos()).collect();
     let interleaved: Vec<f32> = l.iter().zip(r.iter()).flat_map(|(&a, &b)| [a, b]).collect();
     vm.feed_interleaved(&interleaved, 2, 0, 1);
-    let (_corr, pairs) = vm.get_history_pairs(200);
+    let (_metrics, pairs) = vm.get_history_pairs(200);
     assert_eq!(pairs.len(), 400, "200 pairs = 400 f32 values");
   }
 }
