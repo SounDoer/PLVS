@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-07-03
+
+### Added
+- In-app feedback entry in Settings with a feedback dialog and submission client.
+- Docs link in the Settings footer.
+- Latest-edge hint on the timeline.
+
+### Changed
+- Enhanced vectorscope stereo metrics and aligned the correlation axis styling.
+- Polished panel help and the loudness HUD.
+- Kept panel resizing local when pinned sizes are active.
+- Softened landing-page typography.
+
+### Removed
+- Removed vectorscope display toggles.
+
+### Fixed
+- Mounted the feedback dialog outside the Settings sheet so it opens correctly.
+- Reserved Level Meter TP Max marker axis width.
+- Matched Level Meter M / ST sentinel readouts to Stats formatting.
+
 ## [0.6.2] - 2026-07-02
 
 ### Added
