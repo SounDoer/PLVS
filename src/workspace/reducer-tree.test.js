@@ -65,6 +65,39 @@ describe("RESIZE_CHILDREN", () => {
     expect(next.tree.sizes[1]).toBe(0.3);
   });
 
+  it("keeps non-adjacent visible children stable when resizing a divider", () => {
+    const root = split(
+      "v",
+      [leaf(["levelMeter"]), leaf(["loudness"]), leaf(["spectrum"]), leaf(["stats"])],
+      [0.25, 0.25, 0.25, 0.25]
+    );
+    const s = state(root);
+    const next = workspaceReducer(s, {
+      type: "RESIZE_CHILDREN",
+      payload: {
+        path: [],
+        aboveIdx: 1,
+        belowIdx: 2,
+        aboveSize: 250 / 800,
+        belowSize: 150 / 800,
+        direction: "v",
+        abovePx: 250,
+        belowPx: 150,
+        childSizesPx: [
+          { childIdx: 0, sizePx: 200 },
+          { childIdx: 1, sizePx: 250 },
+          { childIdx: 2, sizePx: 150 },
+          { childIdx: 3, sizePx: 200 },
+        ],
+      },
+    });
+
+    expect(next.tree.sizes[0]).toBeCloseTo(200 / 800);
+    expect(next.tree.sizes[1]).toBeCloseTo(250 / 800);
+    expect(next.tree.sizes[2]).toBeCloseTo(150 / 800);
+    expect(next.tree.sizes[3]).toBeCloseTo(200 / 800);
+  });
+
   it("updates sizes in a nested SplitNode", () => {
     const inner = split("h", [leaf(["levelMeter"]), leaf(["loudness"])], [0.4, 0.4]);
     const root = split("v", [inner, leaf(["spectrum"])]);
@@ -124,6 +157,41 @@ describe("RESIZE_CHILDREN", () => {
     });
 
     expect(next.pinnedPanelsById.stats.height).toBe(210);
+  });
+
+  it("keeps non-adjacent siblings stable when resizing a pinned panel", () => {
+    const root = split(
+      "v",
+      [leaf(["levelMeter"]), leaf(["loudness"]), leaf(["spectrum"]), leaf(["stats"])],
+      [200 / 600, 200 / 600, null, 200 / 600]
+    );
+    const s = state(root, { pinnedPanelsById: { spectrum: { width: 300, height: 200 } } });
+
+    const next = workspaceReducer(s, {
+      type: "RESIZE_CHILDREN",
+      payload: {
+        path: [],
+        aboveIdx: 2,
+        belowIdx: 3,
+        aboveSize: 250 / 800,
+        belowSize: 150 / 800,
+        direction: "v",
+        abovePx: 250,
+        belowPx: 150,
+        childSizesPx: [
+          { childIdx: 0, sizePx: 200 },
+          { childIdx: 1, sizePx: 200 },
+          { childIdx: 2, sizePx: 250 },
+          { childIdx: 3, sizePx: 150 },
+        ],
+      },
+    });
+
+    expect(next.pinnedPanelsById.spectrum.height).toBe(250);
+    expect(next.tree.sizes[0]).toBeCloseTo(200 / 550);
+    expect(next.tree.sizes[1]).toBeCloseTo(200 / 550);
+    expect(next.tree.sizes[2]).toBeNull();
+    expect(next.tree.sizes[3]).toBeCloseTo(150 / 550);
   });
 
   it("does not rewrite a deeply nested pin when resizing an outer same-direction divider", () => {

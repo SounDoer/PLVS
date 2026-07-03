@@ -71,6 +71,14 @@ function getPinnedPanelIdsInNode(node, pinnedPanelsById, dimension) {
   );
 }
 
+function getPinnedSizeInNode(node, pinnedPanelsById, dimension) {
+  const ids = getPinnedPanelIdsInNode(node, pinnedPanelsById, dimension);
+  const sizes = ids
+    .map((id) => pinnedPanelsById[id]?.[dimension])
+    .filter((size) => Number.isFinite(size) && size > 0);
+  return sizes.length > 0 ? Math.max(...sizes) : null;
+}
+
 function updatePinnedDimensionForNode(pinnedPanelsById, node, dimension, px) {
   if (!Number.isFinite(px)) return pinnedPanelsById;
   const ids = getPinnedPanelIdsInNode(node, pinnedPanelsById, dimension);
@@ -80,6 +88,42 @@ function updatePinnedDimensionForNode(pinnedPanelsById, node, dimension, px) {
     next[id] = { ...next[id], [dimension]: Math.max(0, px) };
   }
   return next;
+}
+
+function applyResizeSnapshotToSizes(sizes, node, pinnedPanelsById, dimension, childSizesPx) {
+  if (!Array.isArray(childSizesPx)) return sizes;
+  const visibleChildren = childSizesPx.filter(
+    (child) => Number.isInteger(child?.childIdx) && Number.isFinite(child?.sizePx)
+  );
+  const contentPx = visibleChildren.reduce((sum, child) => sum + Math.max(0, child.sizePx), 0);
+  if (contentPx <= 0) return sizes;
+
+  const pinnedTotalPx = visibleChildren.reduce((sum, child) => {
+    const pinnedPx = getPinnedSizeInNode(
+      node.children[child.childIdx],
+      pinnedPanelsById,
+      dimension
+    );
+    return Number.isFinite(pinnedPx) && pinnedPx > 0 ? sum + pinnedPx : sum;
+  }, 0);
+  const availablePx = contentPx - pinnedTotalPx;
+  if (availablePx <= 0) return sizes;
+
+  const nextSizes = [...sizes];
+  for (const child of visibleChildren) {
+    if (child.childIdx < 0 || child.childIdx >= nextSizes.length) continue;
+    const pinnedPx = getPinnedSizeInNode(
+      node.children[child.childIdx],
+      pinnedPanelsById,
+      dimension
+    );
+    if (Number.isFinite(pinnedPx) && pinnedPx > 0) {
+      nextSizes[child.childIdx] = node.sizes[child.childIdx];
+      continue;
+    }
+    nextSizes[child.childIdx] = Math.max(0, child.sizePx) / availablePx;
+  }
+  return nextSizes;
 }
 
 function applySplitSnapshots(tree, splitSnapshots) {
@@ -126,8 +170,17 @@ export function workspaceReducer(state, action) {
 
     case "RESIZE_CHILDREN": {
       if (!state.tree) return state;
-      const { path, aboveIdx, belowIdx, aboveSize, belowSize, direction, abovePx, belowPx } =
-        action.payload;
+      const {
+        path,
+        aboveIdx,
+        belowIdx,
+        aboveSize,
+        belowSize,
+        direction,
+        abovePx,
+        belowPx,
+        childSizesPx,
+      } = action.payload;
       const actualBelowIdx = belowIdx ?? aboveIdx + 1;
       let pinnedPanelsById = state.pinnedPanelsById ?? {};
       const newTree = updateNode(state.tree, path, (node) => {
@@ -148,6 +201,16 @@ export function workspaceReducer(state, action) {
             dimension,
             belowPx
           );
+          return {
+            ...node,
+            sizes: applyResizeSnapshotToSizes(
+              sizes,
+              node,
+              pinnedPanelsById,
+              dimension,
+              childSizesPx
+            ),
+          };
         }
         return { ...node, sizes };
       });

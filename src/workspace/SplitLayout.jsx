@@ -128,6 +128,7 @@ function SplitDivider({
   aboveNode,
   belowNode,
   dividerCount,
+  visibleChildIndices,
 }) {
   const { state, resizeChildren } = useWorkspaceStore();
   const ref = useRef(null);
@@ -140,8 +141,18 @@ function SplitDivider({
     if (!aboveEl || !belowEl) return;
 
     const containerEl = ref.current.parentElement;
+    const childElements = Array.from(containerEl.children).filter(
+      (el) => el.hasAttribute("data-leaf") || el.hasAttribute("data-split")
+    );
     const startAbovePx = isH ? aboveEl.offsetWidth : aboveEl.offsetHeight;
     const startBelowPx = isH ? belowEl.offsetWidth : belowEl.offsetHeight;
+    const startChildSizesPx = visibleChildIndices.map((childIdx, renderIdx) => {
+      const el = childElements[renderIdx];
+      return {
+        childIdx,
+        sizePx: isH ? el?.offsetWidth || 0 : el?.offsetHeight || 0,
+      };
+    });
     const containerPx = isH ? containerEl.clientWidth : containerEl.clientHeight;
     const dividerPx = isH ? ref.current.offsetWidth : ref.current.offsetHeight;
     const contentPx = containerPx - dividerCount * dividerPx;
@@ -167,6 +178,15 @@ function SplitDivider({
           direction,
           abovePx: startAbovePx + clampedDelta,
           belowPx: startBelowPx - clampedDelta,
+          childSizesPx: startChildSizesPx.map((child) => {
+            if (child.childIdx === aboveIdx) {
+              return { ...child, sizePx: startAbovePx + clampedDelta };
+            }
+            if (child.childIdx === belowIdx) {
+              return { ...child, sizePx: startBelowPx - clampedDelta };
+            }
+            return child;
+          }),
         }
       );
     }
@@ -242,6 +262,7 @@ function SplitView({ node, path, style }) {
                 aboveNode={node.children[aboveChildIdx]}
                 belowNode={child}
                 dividerCount={dividerCount}
+                visibleChildIndices={visibleChildIndices}
               />
             )}
             <SplitView node={child} path={[...path, childIdx]} style={childStyle} />
