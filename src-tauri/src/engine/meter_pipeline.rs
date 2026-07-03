@@ -7,6 +7,7 @@ use crate::dsp::loudness::LoudnessBlock;
 use crate::dsp::paths::spectrum_paths_from_bands;
 use crate::dsp::peak::{
   sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
+  RmsWindow,
 };
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::{
@@ -27,6 +28,7 @@ const VISUAL_EMIT_MS: u128 = 40;
 const VS_HISTORY_POINTS: usize = 200;
 /// PCM samples per waveform sub-block. ~19 sub-blocks per ~100ms tick @48kHz.
 const SUBBLOCK_SAMPLES: usize = 256;
+const RMS_WINDOW_MS: u32 = 400;
 
 fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> (String, bool) {
   let ch = channels.max(1);
@@ -125,6 +127,7 @@ pub struct MeterPipeline {
   tp_max_db: f64,
   sample_peak_max_l: f64,
   sample_peak_max_r: f64,
+  rms_window: RmsWindow,
   t0: Instant,
   last_frame_emit: Instant,
   last_hist_emit: Instant,
@@ -155,7 +158,7 @@ pub struct MeterPipeline {
   /// timestamps with the supplied media time.
   current_media_time_ms: Option<u64>,
   /// File mode: queued (momentary_lufs, short_term_lufs, media_time_ms) between frame emits.
-  pending_file_loudness_queue: Vec<(f64, f64, u64)>,
+  pending_file_loudness_queue: Vec<(f64, f64, u64, Vec<f64>)>,
   /// File mode: queued visual tick media timestamps between frame emits.
   pending_file_visual_queue: Vec<u64>,
   /// File mode: media time (ms) of the last queued loudness tick; gates tick cadence by media time
@@ -190,6 +193,7 @@ impl MeterPipeline {
       tp_max_db: f64::NEG_INFINITY,
       sample_peak_max_l: f64::NEG_INFINITY,
       sample_peak_max_r: f64::NEG_INFINITY,
+      rms_window: RmsWindow::new(sample_rate, channels, RMS_WINDOW_MS),
       t0: Instant::now(),
       last_frame_emit: Instant::now(),
       last_hist_emit: Instant::now() - std::time::Duration::from_millis(200),
@@ -236,6 +240,7 @@ impl MeterPipeline {
     self.tp_max_db = f64::NEG_INFINITY;
     self.sample_peak_max_l = f64::NEG_INFINITY;
     self.sample_peak_max_r = f64::NEG_INFINITY;
+    self.rms_window.reset();
     self.loudness.reset();
     for meter in self.spectrum_by_key.values_mut() {
       meter.reset();
@@ -618,6 +623,7 @@ impl MeterPipeline {
       dialogue_vad_engine,
     };
     self.loudness.push_pcm(&ctx);
+    self.rms_window.push_interleaved(interleaved, ch);
 
     // --- Apply loudness block if a new one arrived ---
     if let Some(lb) = self.loudness.take_block() {
@@ -743,6 +749,7 @@ impl MeterPipeline {
       .unwrap_or(f64::NEG_INFINITY);
 
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
+    let rms_db = self.rms_window.db_per_channel();
     let peak_hold_db = peak_db.clone();
 
     let dialogue_integrated = lb
@@ -786,6 +793,7 @@ impl MeterPipeline {
       }
       let entry = MeterHistoryEntry {
         timestamp_ms: self.timestamp_ms(),
+        rms_db: rms_db.clone(),
         lufs_momentary: m,
         lufs_short_term: st,
         lufs_m_max: self.m_max,
@@ -896,9 +904,10 @@ impl MeterPipeline {
       }
 
       let mut loudness_batch = Vec::new();
-      for (m, st, ts) in std::mem::take(&mut self.pending_file_loudness_queue) {
+      for (m, st, ts, rms_db_for_tick) in std::mem::take(&mut self.pending_file_loudness_queue) {
         loudness_batch.push(MeterHistoryEntry {
           timestamp_ms: ts,
+          rms_db: rms_db_for_tick,
           lufs_momentary: m,
           lufs_short_term: st,
           lufs_m_max: self.m_max,
@@ -969,6 +978,7 @@ impl MeterPipeline {
 
     let frame = AudioFramePayload {
       peak_db,
+      rms_db,
       peak_hold_db,
       true_peak_max_dbtp: self.tp_max_db,
       lufs_momentary: lm,
@@ -1031,9 +1041,12 @@ impl MeterPipeline {
         return;
       }
       self.last_hist_media_ms = Some(ts);
-      self
-        .pending_file_loudness_queue
-        .push((lb.momentary, lb.short_term, ts));
+      self.pending_file_loudness_queue.push((
+        lb.momentary,
+        lb.short_term,
+        ts,
+        self.rms_window.db_per_channel(),
+      ));
       return;
     }
     let now = Instant::now();

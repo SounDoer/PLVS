@@ -163,6 +163,8 @@ pub struct FileAnalysisErrorPayload {
 #[serde(rename_all = "camelCase")]
 pub struct MeterHistoryEntry {
   pub timestamp_ms: u64,
+  /// Per-channel unweighted 400ms sliding-window sample RMS in dBFS.
+  pub rms_db: Vec<f64>,
   pub lufs_momentary: f64,
   pub lufs_short_term: f64,
   pub lufs_m_max: f64,
@@ -249,6 +251,8 @@ pub struct VisualHistEntry {
 #[serde(rename_all = "camelCase")]
 pub struct AudioFramePayload {
   pub peak_db: Vec<f64>,
+  /// Per-channel unweighted 400ms sliding-window sample RMS in dBFS.
+  pub rms_db: Vec<f64>,
   pub peak_hold_db: Vec<f64>,
   pub true_peak_max_dbtp: f64,
   pub lufs_momentary: f64,

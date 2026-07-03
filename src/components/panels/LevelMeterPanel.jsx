@@ -20,6 +20,7 @@ import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
+  rms: { label: "RMS", unit: "dBFS", field: "rmsDb" },
   momentary: { label: "Momentary", meterLabel: "M", unit: "LUFS", field: "momentary" },
   shortTerm: { label: "Short-term", meterLabel: "ST", unit: "LUFS", field: "shortTerm" },
 };
@@ -94,6 +95,13 @@ function hasPlaybackSignal(displayAudio) {
   return false;
 }
 
+function hasValueSignal(values) {
+  if (Array.isArray(values)) {
+    return values.some((v) => Number.isFinite(v) && v > PLAYBACK_SIGNAL_FLOOR_DB);
+  }
+  return Number.isFinite(values) && values > PLAYBACK_SIGNAL_FLOOR_DB;
+}
+
 function usePlaybackMaxReadout({ enabled, mode, value, displayAudio }) {
   const [playbackMax, setPlaybackMax] = useState(-Infinity);
   const trackerRef = useRef({
@@ -150,6 +158,73 @@ function usePlaybackMaxReadout({ enabled, mode, value, displayAudio }) {
   return playbackMax;
 }
 
+function usePlaybackMaxChannels({ enabled, mode, values }) {
+  const [playbackMax, setPlaybackMax] = useState([]);
+  const trackerRef = useRef({
+    mode,
+    active: false,
+    silentSince: null,
+    playbackMax: [],
+  });
+
+  const valuesKey = Array.isArray(values) ? values.join("|") : "";
+
+  useEffect(() => {
+    const tracker = trackerRef.current;
+    if (tracker.mode !== mode) {
+      tracker.mode = mode;
+      tracker.active = false;
+      tracker.silentSince = null;
+      tracker.playbackMax = [];
+      setPlaybackMax([]);
+    }
+
+    if (!enabled) {
+      tracker.active = false;
+      tracker.silentSince = null;
+      tracker.playbackMax = [];
+      setPlaybackMax([]);
+      return;
+    }
+
+    const now = Date.now();
+    const hasSignal = hasValueSignal(values);
+    const silenceElapsed =
+      tracker.silentSince != null && now - tracker.silentSince >= PLAYBACK_SILENCE_HOLD_MS;
+    if (hasSignal) {
+      const startsNewPlayback = !tracker.active || silenceElapsed;
+      tracker.active = true;
+      tracker.silentSince = null;
+      const next = values.map((value, index) => {
+        if (startsNewPlayback) {
+          return Number.isFinite(value) ? value : -Infinity;
+        }
+        const previous = Number.isFinite(tracker.playbackMax[index])
+          ? tracker.playbackMax[index]
+          : -Infinity;
+        return Number.isFinite(value) ? Math.max(previous, value) : previous;
+      });
+      const changed =
+        next.length !== tracker.playbackMax.length ||
+        next.some((value, index) => !Object.is(value, tracker.playbackMax[index]));
+      tracker.playbackMax = next;
+      if (changed) setPlaybackMax(next);
+      return;
+    } else if (tracker.active) {
+      if (tracker.silentSince == null) {
+        tracker.silentSince = now;
+      } else if (silenceElapsed) {
+        tracker.active = false;
+        tracker.silentSince = null;
+        tracker.playbackMax = [];
+        setPlaybackMax([]);
+      }
+    }
+  }, [enabled, mode, valuesKey]);
+
+  return playbackMax;
+}
+
 function AxisValueMarker({
   value,
   yRange,
@@ -201,7 +276,6 @@ export function LevelMeterPanel() {
   const {
     displayAudio,
     peakLabelContext,
-    fmt,
     hasTpMaxValue,
     panelControls,
     onPanelControlsChange,
@@ -217,12 +291,14 @@ export function LevelMeterPanel() {
   const showTpMaxMarkerSetting = normalizedPanelControls.levelMeterTpMaxMarker;
   const modeMeta = LEVEL_MODE_META[levelMeterMode] ?? LEVEL_MODE_META.peak;
   const isPeak = levelMeterMode === "peak";
-  // Peak mode keeps its own dBFS range; the loudness-family modes (M/ST) share the
+  const isRms = levelMeterMode === "rms";
+  const isPeakFamily = isPeak || isRms;
+  // Peak-family modes keep their own dBFS range; the loudness-family modes (M/ST) share the
   // LoudnessPanel's LUFS Y range so zooming one rescales the other.
-  const modeDefaults = isPeak
+  const modeDefaults = isPeakFamily
     ? { min: PEAK_DB_MIN, max: PEAK_DB_MAX }
     : { min: LOUDNESS_DB_MIN, max: LOUDNESS_DB_MAX };
-  const levelMeterYRange = isPeak
+  const levelMeterYRange = isPeakFamily
     ? {
         min: normalizedPanelControls.levelMeterYMinDb,
         max: normalizedPanelControls.levelMeterYMaxDb,
@@ -243,14 +319,14 @@ export function LevelMeterPanel() {
     scale: "linear",
     onRangeChange: useCallback(
       (newMin, newMax) => {
-        const rangeKeys = isPeak
+        const rangeKeys = isPeakFamily
           ? { levelMeterYMinDb: newMin, levelMeterYMaxDb: newMax }
           : { loudnessYMinDb: newMin, loudnessYMaxDb: newMax };
         onPanelControlsChange?.(
           normalizePanelControls({ ...normalizedPanelControls, ...rangeKeys })
         );
       },
-      [isPeak, normalizedPanelControls, onPanelControlsChange]
+      [isPeakFamily, normalizedPanelControls, onPanelControlsChange]
     ),
   });
   const levelMeterTicks = buildAdaptiveDbTicks(
@@ -260,13 +336,20 @@ export function LevelMeterPanel() {
   );
   const liveLevelValue = displayAudio?.[modeMeta.field];
   const playbackMaxValue = usePlaybackMaxReadout({
-    enabled: !isPeak && showPlaybackMax,
+    enabled: !isPeakFamily && showPlaybackMax,
     mode: levelMeterMode,
     value: liveLevelValue,
     displayAudio,
   });
+  const channels = getPeakChannels(displayAudio, peakLabelContext, isRms ? "rmsDb" : "peakDb");
+  const channelValues = useMemo(() => channels.map((channel) => channel.valueDb), [channels]);
+  const rmsPlaybackMaxValues = usePlaybackMaxChannels({
+    enabled: isRms && showPlaybackMax,
+    mode: levelMeterMode,
+    values: channelValues,
+  });
 
-  if (levelMeterMode !== "peak") {
+  if (!isPeakFamily) {
     const readoutValue = showPlaybackMax ? playbackMaxValue : liveLevelValue;
     const showMarker = showLevelValueMarker && Number.isFinite(readoutValue);
     const yAxisWidthClass = showMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
@@ -370,11 +453,9 @@ export function LevelMeterPanel() {
     );
   }
 
-  const channels = getPeakChannels(displayAudio, peakLabelContext);
-  const showTpMaxMarker = showTpMaxMarkerSetting && hasTpMaxValue;
-  const peakYAxisWidthClass = showTpMaxMarkerSetting
-    ? LEVEL_METER_Y_AXIS_WITH_MARKER
-    : W_PEAK_TICKS;
+  const showTpMaxMarker = isPeak && showTpMaxMarkerSetting && hasTpMaxValue;
+  const peakYAxisWidthClass =
+    isPeak && showTpMaxMarkerSetting ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
   return (
     <div
       className={cn(
@@ -446,33 +527,40 @@ export function LevelMeterPanel() {
               "--ui-level-meter-channel-gap": LEVEL_METER_CHANNEL_GAP,
             }}
           >
-            {channels.map((c, idx) => (
-              <div key={`${idx}-${c.label}`} className="@container relative h-full min-h-0 p-0">
-                <div
-                  data-level-meter-bar-fill
-                  className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
-                  style={{
-                    "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X,
-                  }}
-                >
-                  <AnimatedPeakFill dbValue={c.valueDb} yRange={levelMeterYRange} />
+            {channels.map((c, idx) => {
+              const readoutValue =
+                isRms && showPlaybackMax && Number.isFinite(rmsPlaybackMaxValues[idx])
+                  ? rmsPlaybackMaxValues[idx]
+                  : c.valueDb;
+              return (
+                <div key={`${idx}-${c.label}`} className="@container relative h-full min-h-0 p-0">
+                  <div
+                    data-level-meter-bar-fill
+                    data-level-meter-fill-value={formatLevelValue(c.valueDb)}
+                    className="absolute inset-x-[var(--ui-level-meter-bar-inset-x)] bottom-[var(--ui-chart-inset-bottom)] top-[var(--ui-chart-inset-top)]"
+                    style={{
+                      "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X,
+                    }}
+                  >
+                    <AnimatedPeakFill dbValue={c.valueDb} yRange={levelMeterYRange} />
+                  </div>
+                  <div
+                    data-peak-value
+                    className="@max-[48px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center text-[length:var(--ui-fs-display)]"
+                  >
+                    <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
+                      {formatLevelValue(readoutValue)}
+                    </span>
+                  </div>
+                  <div
+                    data-peak-channel-label
+                    className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
+                  >
+                    {c.label}
+                  </div>
                 </div>
-                <div
-                  data-peak-value
-                  className="@max-[48px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center text-[length:var(--ui-fs-display)]"
-                >
-                  <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
-                    {fmt(c.valueDb)}
-                  </span>
-                </div>
-                <div
-                  data-peak-channel-label
-                  className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
-                >
-                  {c.label}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

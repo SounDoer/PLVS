@@ -612,13 +612,18 @@ export function PanelSettingsContent({
       LEVEL_METER_MODE_OPTIONS.find(
         (option) => option.id === normalizedPanelControls.levelMeterMode
       ) ?? LEVEL_METER_MODE_OPTIONS[0];
+    const showPlaybackMaxToggle =
+      selectedMode.id === "rms" ||
+      selectedMode.id === "momentary" ||
+      selectedMode.id === "shortTerm";
     const showValueMarkerToggle =
       selectedMode.id === "momentary" || selectedMode.id === "shortTerm";
     const isPeakMode = selectedMode.id === "peak";
-    const levelMeterYMinDb = isPeakMode
+    const isPeakFamilyMode = selectedMode.id === "peak" || selectedMode.id === "rms";
+    const levelMeterYMinDb = isPeakFamilyMode
       ? normalizedPanelControls.levelMeterYMinDb
       : normalizedPanelControls.loudnessYMinDb;
-    const levelMeterYMaxDb = isPeakMode
+    const levelMeterYMaxDb = isPeakFamilyMode
       ? normalizedPanelControls.levelMeterYMaxDb
       : normalizedPanelControls.loudnessYMaxDb;
 
@@ -642,7 +647,7 @@ export function PanelSettingsContent({
             }}
           />
         </SettingsRow>
-        {showValueMarkerToggle ? (
+        {showPlaybackMaxToggle ? (
           <>
             <SettingsRow
               label="Playback max"
@@ -661,20 +666,22 @@ export function PanelSettingsContent({
                 }}
               />
             </SettingsRow>
-            <SettingsRow label="Floating value">
-              <SettingsSwitch
-                aria-label="level meter floating value"
-                checked={normalizedPanelControls.levelMeterValueMarker}
-                onCheckedChange={(checked) => {
-                  onPanelControlsChange(
-                    normalizePanelControls({
-                      ...normalizedPanelControls,
-                      levelMeterValueMarker: checked,
-                    })
-                  );
-                }}
-              />
-            </SettingsRow>
+            {showValueMarkerToggle ? (
+              <SettingsRow label="Floating value">
+                <SettingsSwitch
+                  aria-label="level meter floating value"
+                  checked={normalizedPanelControls.levelMeterValueMarker}
+                  onCheckedChange={(checked) => {
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        levelMeterValueMarker: checked,
+                      })
+                    );
+                  }}
+                />
+              </SettingsRow>
+            ) : null}
           </>
         ) : null}
         {isPeakMode ? (

@@ -1,6 +1,7 @@
 /**
  * @typedef {object} MeterHistoryEntry
  * @property {number} timestampMs
+ * @property {number[]} rmsDb
  * @property {number} lufsMomentary
  * @property {number} lufsShortTerm
  * @property {number} integrated
@@ -25,6 +26,7 @@
 /**
  * @typedef {object} AudioFramePayload
  * @property {number[]} peakDb
+ * @property {number[]} rmsDb
  * @property {number[]} peakHoldDb
  * @property {number} truePeakMaxDbtp
  * @property {number} lufsMomentary

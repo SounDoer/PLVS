@@ -8,7 +8,13 @@ function panel(value = {}) {
   return (
     <AudioDataContext.Provider
       value={{
-        displayAudio: { peakDb: [-9.9, -10], momentary: -22.4, shortTerm: -18.6, tpMax: -1 },
+        displayAudio: {
+          peakDb: [-9.9, -10],
+          rmsDb: [-18.2, -19.4],
+          momentary: -22.4,
+          shortTerm: -18.6,
+          tpMax: -1,
+        },
         peakLabelContext: { resolvedLayout: "stereo" },
         fmt: (v) => (Number.isFinite(v) ? v.toFixed(1) : "-"),
         hasTpMaxValue: true,
@@ -157,6 +163,46 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-value-marker]")?.textContent).toBe("-18.6");
   });
 
+  it("renders RMS as per-channel bars with channel labels and the Peak-family y-axis", () => {
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "rms" },
+    });
+
+    expect(screen.getByText("-18.2")).toBeTruthy();
+    expect(screen.getByText("-19.4")).toBeTruthy();
+    expect(screen.getByText("L")).toBeTruthy();
+    expect(screen.getByText("R")).toBeTruthy();
+    expect(screen.queryByText("RMS")).toBeNull();
+    expect(screen.getByText("+3").className).toContain("top-0");
+    expect(screen.getByText("-60").className).toContain("bottom-0");
+    expect(container.querySelector("[data-level-mode-label]")).toBeNull();
+    expect(container.querySelector("[data-level-meter-channel-grid]")).toBeTruthy();
+  });
+
+  it("floors extremely low RMS readouts instead of showing numeric residue", () => {
+    renderPanel({
+      displayAudio: { peakDb: [-Infinity, -Infinity], rmsDb: [-Infinity, -143.2] },
+      panelControls: { levelMeterMode: "rms" },
+    });
+
+    expect(screen.queryByText("-143.2")).toBeNull();
+    expect(screen.getAllByText("-").length).toBeGreaterThan(0);
+  });
+
+  it("does not carry the Peak TP Max marker into RMS mode", () => {
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "rms", levelMeterTpMaxMarker: true },
+    });
+
+    expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
+    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
+      "w-[var(--ui-w-axis-rail)]"
+    );
+    expect(container.querySelector("[data-level-meter-y-axis]")?.className).not.toContain(
+      "w-[5ch]"
+    );
+  });
+
   it("keeps LUFS axis endpoint labels inside the chart bounds", () => {
     renderPanel({ panelControls: { levelMeterMode: "shortTerm" } });
 
@@ -293,6 +339,95 @@ describe("LevelMeterPanel", () => {
       expect(container.querySelector("[data-level-value-marker]")?.textContent).toBe("-30.0")
     );
     expect(container.querySelector("[data-level-value]")?.className).toContain("hidden");
+  });
+
+  it("uses per-channel RMS playback max readouts while keeping live bar values", async () => {
+    const controls = {
+      levelMeterMode: "rms",
+      levelMeterPlaybackMax: true,
+    };
+    const { container, rerender } = renderPanel({
+      displayAudio: { peakDb: [-12, -12], rmsDb: [-20, -24] },
+      panelControls: controls,
+    });
+
+    await waitFor(() => expect(screen.getByText("-20.0")).toBeTruthy());
+    expect(screen.getByText("-24.0")).toBeTruthy();
+
+    rerender(
+      panel({
+        displayAudio: { peakDb: [-12, -12], rmsDb: [-26, -18] },
+        panelControls: controls,
+      })
+    );
+
+    await waitFor(() => expect(screen.getByText("-20.0")).toBeTruthy());
+    expect(screen.getByText("-18.0")).toBeTruthy();
+    const fills = [...container.querySelectorAll("[data-level-meter-bar-fill]")];
+    expect(fills).toHaveLength(2);
+    expect(fills[0].dataset.levelMeterFillValue).toBe("-26.0");
+    expect(fills[1].dataset.levelMeterFillValue).toBe("-18.0");
+  });
+
+  it("tracks RMS playback max from RMS values even when peak signal is below the playback gate", async () => {
+    const controls = {
+      levelMeterMode: "rms",
+      levelMeterPlaybackMax: true,
+    };
+    const { container, rerender } = renderPanel({
+      displayAudio: { peakDb: [-120, -120], rmsDb: [-20, -24] },
+      panelControls: controls,
+    });
+
+    await waitFor(() => expect(screen.getByText("-20.0")).toBeTruthy());
+
+    rerender(
+      panel({
+        displayAudio: { peakDb: [-120, -120], rmsDb: [-26, -18] },
+        panelControls: controls,
+      })
+    );
+
+    await waitFor(() => expect(screen.getByText("-20.0")).toBeTruthy());
+    expect(screen.getByText("-18.0")).toBeTruthy();
+    const fills = [...container.querySelectorAll("[data-level-meter-bar-fill]")];
+    expect(fills[0].dataset.levelMeterFillValue).toBe("-26.0");
+    expect(fills[1].dataset.levelMeterFillValue).toBe("-18.0");
+  });
+
+  it("replaces RMS playback max when a new lower playback starts", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+    const controls = {
+      levelMeterMode: "rms",
+      levelMeterPlaybackMax: true,
+    };
+    const { container, rerender } = renderPanel({
+      displayAudio: { peakDb: [-12, -12], rmsDb: [-18, -20] },
+      panelControls: controls,
+    });
+
+    await waitFor(() => expect(screen.getByText("-18.0")).toBeTruthy());
+
+    nowSpy.mockReturnValue(100);
+    rerender(
+      panel({
+        displayAudio: { peakDb: [-Infinity, -Infinity], rmsDb: [-Infinity, -Infinity] },
+        panelControls: controls,
+      })
+    );
+    nowSpy.mockReturnValue(500);
+    rerender(
+      panel({
+        displayAudio: { peakDb: [-24, -24], rmsDb: [-32, -36] },
+        panelControls: controls,
+      })
+    );
+
+    await waitFor(() => expect(screen.getByText("-32.0")).toBeTruthy());
+    expect(screen.getByText("-36.0")).toBeTruthy();
+    const fills = [...container.querySelectorAll("[data-level-meter-bar-fill]")];
+    expect(fills[0].dataset.levelMeterFillValue).toBe("-32.0");
+    expect(fills[1].dataset.levelMeterFillValue).toBe("-36.0");
   });
 
   it("replaces playback max when a new lower playback starts", async () => {

@@ -391,6 +391,7 @@ function AppContent() {
   const spectrumPeakHoldUi = normalizedPanelControls.spectrumPeakHold;
   const [audio, setAudio] = useState({
     peakDb: [],
+    rmsDb: [],
     peakHoldDb: [],
     momentary: -Infinity,
     shortTerm: -Infinity,
@@ -965,6 +966,9 @@ function AppContent() {
   // File (whose ring must be preserved to restore the previous analysis).
   const clearMeterDisplayState = () => {
     setAudio({
+      peakDb: [],
+      rmsDb: [],
+      peakHoldDb: [],
       momentary: -Infinity,
       shortTerm: -Infinity,
       integrated: -Infinity,

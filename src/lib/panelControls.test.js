@@ -26,7 +26,12 @@ describe("panelControls", () => {
   });
 
   it("defines stable stats and layer option ids", () => {
-    expect(LEVEL_METER_MODE_OPTIONS.map((o) => o.id)).toEqual(["peak", "momentary", "shortTerm"]);
+    expect(LEVEL_METER_MODE_OPTIONS.map((o) => o.id)).toEqual([
+      "peak",
+      "rms",
+      "momentary",
+      "shortTerm",
+    ]);
     expect(STATS_OPTIONS.map((o) => o.id)).toEqual([
       "momentary",
       "shortTerm",
@@ -231,6 +236,7 @@ describe("panelControls", () => {
     expect(normalizePanelControls({ levelMeterMode: "shortTerm" }).levelMeterMode).toBe(
       "shortTerm"
     );
+    expect(normalizePanelControls({ levelMeterMode: "rms" }).levelMeterMode).toBe("rms");
     expect(normalizePanelControls({}).levelMeterMode).toBe("peak");
     expect(normalizePanelControls({ levelMeterMode: "integrated" }).levelMeterMode).toBe("peak");
   });

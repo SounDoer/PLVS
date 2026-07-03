@@ -124,6 +124,7 @@ function buildAudioSnap(row) {
     samplePeakMaxL: Number.isFinite(row.samplePeakMaxL) ? row.samplePeakMaxL : -Infinity,
     samplePeakMaxR: Number.isFinite(row.samplePeakMaxR) ? row.samplePeakMaxR : -Infinity,
     peakDb: peakDbFromWaveformExtents(row.waveformMin, row.waveformMax),
+    rmsDb: snapshotNumericArray(row.rmsDb),
     correlation: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
     sideToMidDb: Number.isFinite(row.sideToMidDb) ? row.sideToMidDb : -Infinity,
     vectorscopePairX: Number.isFinite(row.vectorscopePairX) ? row.vectorscopePairX : 0,

@@ -10,6 +10,7 @@ export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
 
 export const LEVEL_METER_MODE_OPTIONS = [
   { id: "peak", label: "Peak" },
+  { id: "rms", label: "RMS" },
   { id: "momentary", label: "Momentary" },
   { id: "shortTerm", label: "Short-term" },
 ];

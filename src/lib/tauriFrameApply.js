@@ -52,6 +52,7 @@ export function buildTauriFrameApply({
     setAudio((prev) => ({
       ...prev,
       peakDb: Array.isArray(f.peakDb) ? f.peakDb : prev.peakDb,
+      rmsDb: Array.isArray(f.rmsDb) ? f.rmsDb : (prev.rmsDb ?? []),
       peakHoldDb: Array.isArray(f.peakHoldDb) ? f.peakHoldDb : prev.peakHoldDb,
       momentary: m,
       shortTerm: st,

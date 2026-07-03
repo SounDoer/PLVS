@@ -112,6 +112,7 @@ describe("PanelSettingsContent", () => {
     const peakOption = screen.getByRole("option", { name: "Peak" });
     expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain("size-3");
     expect(peakOption.querySelector("svg")?.className.baseVal).toContain("size-3");
+    expect(screen.getByRole("option", { name: "RMS" })).toBeTruthy();
     const momentaryOption = screen.getByRole("option", { name: "Momentary" });
     expect(modeRow?.contains(momentaryOption)).toBe(true);
     expect(momentaryOption.getAttribute("data-settings-option-row")).toBe("true");
@@ -197,6 +198,23 @@ describe("PanelSettingsContent", () => {
     });
   });
 
+  it("renders RMS as a Peak-family mode with playback max but no floating value", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "rms" }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.getByText("Playback max")).toBeTruthy();
+    expect(screen.queryByText("Floating value")).toBeNull();
+    expect(screen.queryByText("TP Max")).toBeNull();
+    expect(screen.getByLabelText("level meter y range min").value).toBe("-60");
+    expect(screen.getByLabelText("level meter y range max").value).toBe("3");
+  });
+
   it("commits the Level Meter Y range for the active mode", () => {
     const onPanelControlsChange = vi.fn();
     const { rerender } = render(
@@ -221,6 +239,21 @@ describe("PanelSettingsContent", () => {
       levelMeterYMinDb: -48,
       levelMeterYMaxDb: 0,
     });
+
+    rerender(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          levelMeterMode: "rms",
+          levelMeterYMinDb: -48,
+          levelMeterYMaxDb: 0,
+        }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+    expect(screen.getByLabelText("level meter y range min").value).toBe("-48");
+    expect(screen.getByLabelText("level meter y range max").value).toBe("0");
 
     rerender(
       <PanelSettingsContent

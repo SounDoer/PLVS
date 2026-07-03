@@ -1,4 +1,76 @@
-//! Block sample peaks (dBFS) from interleaved PCM.
+//! Block sample peaks and sample RMS (dBFS) from interleaved PCM.
+
+pub struct RmsWindow {
+  channels: usize,
+  window_frames: usize,
+  squares: Vec<f64>,
+  sums: Vec<f64>,
+  next_frame: usize,
+  filled_frames: usize,
+}
+
+impl RmsWindow {
+  pub fn new(sample_rate: u32, channels: u16, window_ms: u32) -> Self {
+    let channels = channels.max(1) as usize;
+    let window_frames = ((sample_rate as u64 * window_ms as u64) / 1000).max(1) as usize;
+    Self {
+      channels,
+      window_frames,
+      squares: vec![0.0; channels * window_frames],
+      sums: vec![0.0; channels],
+      next_frame: 0,
+      filled_frames: 0,
+    }
+  }
+
+  pub fn reset(&mut self) {
+    self.squares.fill(0.0);
+    self.sums.fill(0.0);
+    self.next_frame = 0;
+    self.filled_frames = 0;
+  }
+
+  pub fn push_interleaved(&mut self, interleaved: &[f32], channels: u16) {
+    let ch = channels.max(1) as usize;
+    if ch != self.channels {
+      return;
+    }
+
+    let frames = interleaved.len() / ch;
+    for frame in 0..frames {
+      let slot = self.next_frame * self.channels;
+      let input = frame * ch;
+      for c in 0..self.channels {
+        let old = self.squares[slot + c];
+        let sample = interleaved[input + c] as f64;
+        let square = sample * sample;
+        self.squares[slot + c] = square;
+        self.sums[c] += square - old;
+      }
+      self.next_frame = (self.next_frame + 1) % self.window_frames;
+      self.filled_frames = (self.filled_frames + 1).min(self.window_frames);
+    }
+  }
+
+  pub fn db_per_channel(&self) -> Vec<f64> {
+    if self.filled_frames == 0 {
+      return vec![f64::NEG_INFINITY; self.channels];
+    }
+    let denom = self.filled_frames as f64;
+    self
+      .sums
+      .iter()
+      .map(|sum| {
+        let rms = (sum / denom).sqrt();
+        if rms > 0.0 {
+          20.0 * rms.log10()
+        } else {
+          f64::NEG_INFINITY
+        }
+      })
+      .collect()
+  }
+}
 
 /// Interleaved PCM: `channels` samples per frame; peak meters use **first two channels per frame** (v1.0 stereo-style; `channels==1` uses the mono path).
 pub fn sample_peak_db_interleaved(interleaved: &[f32], channels: u16) -> (f64, f64) {
@@ -139,5 +211,23 @@ mod tests {
     assert!((v[1] - e1).abs() < 1e-5);
     assert!((v[2] - e2).abs() < 1e-5);
     assert!((v[3] - e3).abs() < 1e-5);
+  }
+
+  #[test]
+  fn rms_window_reports_per_channel_unweighted_rms() {
+    let mut rms = RmsWindow::new(10, 2, 400);
+    rms.push_interleaved(&[1.0, 0.5, -1.0, -0.5, 1.0, 0.5, -1.0, -0.5], 2);
+    let db = rms.db_per_channel();
+    assert_eq!(db.len(), 2);
+    assert!((db[0] - 0.0).abs() < 1e-8);
+    assert!((db[1] - (20.0 * 0.5_f64.log10())).abs() < 1e-8);
+  }
+
+  #[test]
+  fn rms_window_slides_over_recent_frames() {
+    let mut rms = RmsWindow::new(10, 1, 400);
+    rms.push_interleaved(&[1.0, 1.0, 1.0, 1.0], 1);
+    rms.push_interleaved(&[0.0, 0.0, 0.0, 0.0], 1);
+    assert_eq!(rms.db_per_channel()[0], f64::NEG_INFINITY);
   }
 }
