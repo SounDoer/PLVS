@@ -20,6 +20,7 @@ import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
+const DOCS_URL = "https://plvs.soundoer.com/docs/";
 
 const SHEET_CLASS =
   "w-full gap-0 overflow-y-auto border-border bg-card/95 p-[var(--ui-drawer-pad)] backdrop-blur-[24px] sm:max-w-sm";
@@ -120,7 +121,7 @@ export function SettingsPanel({
   hasUpdate = false,
   updateStatus = latestVersion ? "ok" : "checking",
   onCheckForUpdate = () => {},
-  openReleaseUrl = () => {},
+  openExternalUrl = () => {},
   autostartEnabled = false,
   setAutostartEnabled = () => {},
   autostartReady = false,
@@ -511,44 +512,25 @@ export function SettingsPanel({
                   ) : null}
                 </SettingsSection>
 
-                <SettingsDivider />
-
-                {/* Feedback */}
-                <SettingsSection>
-                  <SettingsRow label="Feedback">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={onOpenFeedback}
-                      aria-label="Send feedback"
-                      className="h-7 px-2 text-[length:var(--ui-fs-display)]"
-                    >
-                      Send Feedback
-                    </Button>
-                  </SettingsRow>
-                </SettingsSection>
-
                 {/* Footer */}
                 {appVersion ? (
                   <>
                     <SettingsDivider />
-                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-1.5 text-[length:var(--ui-fs-metric-meta)]">
-                      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+                    <div className="flex flex-col gap-1 px-1.5 text-[length:var(--ui-fs-metric-meta)]">
+                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         <span className="shrink-0 font-mono tabular-nums text-muted-foreground/60">
                           v{appVersion}
                         </span>
-                        <span className="shrink-0 text-muted-foreground/30">/</span>
+                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
                         <span
                           className={cn(
-                            "min-w-0 truncate",
+                            "truncate",
                             hasUpdate ? "text-primary" : "text-muted-foreground/60"
                           )}
                         >
                           {updateStatusText}
                         </span>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
                         <button
                           type="button"
                           className={FOOTER_LINK_CLASS}
@@ -557,16 +539,35 @@ export function SettingsPanel({
                         >
                           Check
                         </button>
+                      </div>
+                      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                         <button
                           type="button"
                           className={cn(
                             FOOTER_LINK_CLASS,
                             hasUpdate && "text-primary hover:text-primary"
                           )}
-                          onClick={() => openReleaseUrl(effectiveReleaseUrl)}
+                          onClick={() => openExternalUrl(effectiveReleaseUrl)}
                         >
                           Releases
                           <ExternalLink className="size-3" />
+                        </button>
+                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <button
+                          type="button"
+                          className={FOOTER_LINK_CLASS}
+                          onClick={() => openExternalUrl(DOCS_URL)}
+                        >
+                          Docs
+                          <ExternalLink className="size-3" />
+                        </button>
+                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <button
+                          type="button"
+                          className={FOOTER_LINK_CLASS}
+                          onClick={onOpenFeedback}
+                        >
+                          Feedback
                         </button>
                       </div>
                     </div>

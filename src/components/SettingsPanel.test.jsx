@@ -166,19 +166,27 @@ describe("SettingsPanel", () => {
   });
 
   it("keeps release link visible when update check fails", () => {
-    const openReleaseUrl = vi.fn();
+    const openExternalUrl = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
         appVersion="0.0.17"
         updateStatus="unavailable"
-        openReleaseUrl={openReleaseUrl}
+        openExternalUrl={openExternalUrl}
       />
     );
 
     expect(screen.getByText("Update unavailable")).toBeTruthy();
     fireEvent.click(screen.getByText("Releases"));
-    expect(openReleaseUrl).toHaveBeenCalledWith("https://github.com/SounDoer/PLVS/releases");
+    expect(openExternalUrl).toHaveBeenCalledWith("https://github.com/SounDoer/PLVS/releases");
+  });
+
+  it("opens the docs URL from the footer", () => {
+    const openExternalUrl = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" openExternalUrl={openExternalUrl} />);
+
+    fireEvent.click(screen.getByText("Docs"));
+    expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/docs/");
   });
 
   it("calls onCheckForUpdate from the version row", () => {
@@ -214,7 +222,7 @@ describe("SettingsPanel", () => {
   });
 
   it("opens the release URL through the provided handler", () => {
-    const openReleaseUrl = vi.fn();
+    const openExternalUrl = vi.fn();
     const releaseUrl = "https://github.com/SounDoer/PLVS/releases/tag/v0.1.10";
     render(
       <SettingsPanel
@@ -223,14 +231,14 @@ describe("SettingsPanel", () => {
         latestVersion="0.1.10"
         releaseUrl={releaseUrl}
         hasUpdate={true}
-        openReleaseUrl={openReleaseUrl}
+        openExternalUrl={openExternalUrl}
       />
     );
 
     expect(screen.getByText("v0.1.10 available")).toBeTruthy();
     fireEvent.click(screen.getByText("Releases"));
 
-    expect(openReleaseUrl).toHaveBeenCalledWith(releaseUrl);
+    expect(openExternalUrl).toHaveBeenCalledWith(releaseUrl);
   });
 
   const SYSTEM_PROPS = {
@@ -307,11 +315,11 @@ describe("SettingsPanel", () => {
     );
   });
 
-  it("calls onOpenFeedback when the Feedback section button is clicked", () => {
+  it("calls onOpenFeedback when the footer's Feedback link is clicked", () => {
     const onOpenFeedback = vi.fn();
-    render(<SettingsPanel {...BASE_PROPS} onOpenFeedback={onOpenFeedback} />);
+    render(<SettingsPanel {...BASE_PROPS} appVersion="0.1.10" onOpenFeedback={onOpenFeedback} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    fireEvent.click(screen.getByRole("button", { name: "Feedback" }));
     expect(onOpenFeedback).toHaveBeenCalledTimes(1);
   });
 });

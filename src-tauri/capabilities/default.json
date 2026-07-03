@@ -25,6 +25,12 @@
         },
         {
           "url": "https://github.com/TEN-framework/ten-vad"
+        },
+        {
+          "url": "https://plvs.soundoer.com/docs/"
+        },
+        {
+          "url": "https://plvs.soundoer.com/docs/*"
         }
       ]
     },

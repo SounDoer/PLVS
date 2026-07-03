@@ -1636,7 +1636,7 @@ function AppContent() {
           hasUpdate={updateInfo?.hasUpdate}
           updateStatus={updateInfo?.status}
           onCheckForUpdate={refreshUpdateCheck}
-          openReleaseUrl={openExternalUrl}
+          openExternalUrl={openExternalUrl}
           autostartEnabled={autostartEnabled}
           setAutostartEnabled={setAutostartEnabled}
           autostartReady={autostartReady}
