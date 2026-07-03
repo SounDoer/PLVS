@@ -32,6 +32,7 @@ import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ThemeEditor } from "./components/ThemeEditor";
+import { FeedbackDialog } from "./components/FeedbackDialog.jsx";
 import { AppHeader } from "./components/AppHeader.jsx";
 import { FileAnalysisSummary } from "./components/FileAnalysisSummary.jsx";
 import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
@@ -146,6 +147,7 @@ function AppContent() {
     setPanelControlsForPanel,
   } = useWorkspaceStore();
   const onClearRef = useRef(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const {
     settingsOpen,
     setSettingsOpen,
@@ -1658,7 +1660,13 @@ function AppContent() {
           onResetConfiguration={resetConfiguration}
           configurationBusy={configurationBusy}
           configurationStatus={configurationStatus}
+          onOpenFeedback={() => {
+            setSettingsOpen(false);
+            setFeedbackOpen(true);
+          }}
         />
+
+        {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
 
         {editor.isEditing ? (
           <ThemeEditor

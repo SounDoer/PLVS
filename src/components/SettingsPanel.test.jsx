@@ -307,19 +307,12 @@ describe("SettingsPanel", () => {
     );
   });
 
-  it("opens the feedback dialog from the Feedback section", () => {
-    render(<SettingsPanel {...BASE_PROPS} />);
-    expect(screen.queryByRole("dialog", { name: "Send feedback" })).toBeNull();
+  it("calls onOpenFeedback when the Feedback section button is clicked", () => {
+    const onOpenFeedback = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} onOpenFeedback={onOpenFeedback} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
-    expect(screen.getByRole("dialog", { name: "Send feedback" })).toBeTruthy();
-  });
-
-  it("closes the feedback dialog on cancel", () => {
-    render(<SettingsPanel {...BASE_PROPS} />);
-    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByRole("dialog", { name: "Send feedback" })).toBeNull();
+    expect(onOpenFeedback).toHaveBeenCalledTimes(1);
   });
 });
 
