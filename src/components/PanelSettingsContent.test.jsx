@@ -1357,7 +1357,7 @@ describe("PanelSettingsContent", () => {
     ]);
   });
 
-  it("shows Level Meter Y-axis gestures in chart help", () => {
+  it("shows Level Meter marker and Y-axis gestures in chart help", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
@@ -1384,6 +1384,12 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Y axis wheel - Zoom level")).toBeTruthy();
     expect(screen.getByText("Y axis drag - Pan level")).toBeTruthy();
     expect(screen.getByText("Double-click axis - Reset axis")).toBeTruthy();
+    expect(screen.getByText("TP Max marker click - Reset TP Max")).toBeTruthy();
+    expect(
+      screen
+        .getByText("Double-click axis - Reset axis")
+        .compareDocumentPosition(screen.getByText("TP Max marker click - Reset TP Max"))
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("passes compact panel mode into the active timeline panel body", () => {

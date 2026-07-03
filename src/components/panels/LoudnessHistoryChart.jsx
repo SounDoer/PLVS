@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
-import { fmtSec } from "../../math/formatMath";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import {
@@ -17,9 +16,6 @@ const CHART_ZOOM_OUT_FACTOR = 1.18;
 const ACTIVE_PULSE_MS = 160;
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
-
-const LOUDNESS_HUD_BOX =
-  "rounded border border-border bg-secondary px-2 py-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground";
 
 const LOUDNESS_HUD_BOX_POPOVER =
   "rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm";
@@ -49,9 +45,6 @@ export function LoudnessHistoryChart({
   selectedOffset,
   showSelLine,
   selLineX,
-  isHistoryHudVisible,
-  clampedWindowSec,
-  effectiveOffsetSec,
   historyHover,
   historyTimeTicks,
   historyTickSteps,
@@ -411,7 +404,7 @@ export function LoudnessHistoryChart({
           ) : null}
         </svg>
 
-        {/* Overlays: hover crosshair, HUD boxes */}
+        {/* Overlays: hover crosshair and inspect HUD */}
         <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
           {!hasSelectedLayer ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[length:var(--ui-fs-axis)] text-muted-foreground">
@@ -430,18 +423,6 @@ export function LoudnessHistoryChart({
               style={{ top: `${historyHover.topPct}%` }}
             />
           ) : null}
-          {isHistoryHudVisible && (
-            <div
-              className={cn(
-                "absolute bottom-[var(--ui-chart-hud-inset)] right-[var(--ui-chart-hud-inset)]",
-                LOUDNESS_HUD_BOX
-              )}
-            >
-              <span className={METRIC_NUMERIC}>Window {fmtSec(clampedWindowSec)}</span>
-              {" | "}
-              <span className={METRIC_NUMERIC}>Offset {fmtSec(effectiveOffsetSec)}</span>
-            </div>
-          )}
           {historyHover ? (
             <div
               className={cn(

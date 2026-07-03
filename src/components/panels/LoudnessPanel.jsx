@@ -30,9 +30,6 @@ export function LoudnessPanel({ compact = false }) {
     selectedOffset,
     showSelLine,
     selLineX,
-    isHistoryHudVisible,
-    clampedWindowSec,
-    effectiveOffsetSec,
     historyTimeTicks,
     histSourceList,
     effectiveOffsetSamples,
@@ -138,9 +135,6 @@ export function LoudnessPanel({ compact = false }) {
           selectedOffset={selectedOffset}
           showSelLine={showSelLine}
           selLineX={selLineX}
-          isHistoryHudVisible={isHistoryHudVisible}
-          clampedWindowSec={clampedWindowSec}
-          effectiveOffsetSec={effectiveOffsetSec}
           historyHover={historyHover}
           historyTimeTicks={historyTimeTicks}
           historyTickSteps={historyTickSteps}

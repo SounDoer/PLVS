@@ -7,6 +7,10 @@ export const LEVEL_METER_HELP = [
       "Double-click axis - Reset axis",
     ],
   },
+  {
+    title: "Markers",
+    items: ["TP Max marker click - Reset TP Max"],
+  },
 ];
 
 export const LOUDNESS_HELP = [
