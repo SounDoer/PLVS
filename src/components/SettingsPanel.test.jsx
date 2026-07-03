@@ -306,6 +306,21 @@ describe("SettingsPanel", () => {
       "ring-destructive"
     );
   });
+
+  it("opens the feedback dialog from the Feedback section", () => {
+    render(<SettingsPanel {...BASE_PROPS} />);
+    expect(screen.queryByRole("dialog", { name: "Send feedback" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    expect(screen.getByRole("dialog", { name: "Send feedback" })).toBeTruthy();
+  });
+
+  it("closes the feedback dialog on cancel", () => {
+    render(<SettingsPanel {...BASE_PROPS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog", { name: "Send feedback" })).toBeNull();
+  });
 });
 
 describe("SettingsPanel — Channel labels", () => {

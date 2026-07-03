@@ -18,6 +18,8 @@ import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
+import { createPortal } from "react-dom";
+import { FeedbackDialog } from "./FeedbackDialog.jsx";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 
@@ -155,6 +157,7 @@ export function SettingsPanel({
     typeof navigator !== "undefined" &&
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const closingIntentRef = useRef(false);
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
@@ -509,6 +512,30 @@ export function SettingsPanel({
                     </div>
                   ) : null}
                 </SettingsSection>
+
+                <SettingsDivider />
+
+                {/* Feedback */}
+                <SettingsSection>
+                  <SettingsRow label="Feedback">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setFeedbackOpen(true)}
+                      aria-label="Send feedback"
+                      className="h-7 px-2 text-[length:var(--ui-fs-display)]"
+                    >
+                      Send Feedback
+                    </Button>
+                  </SettingsRow>
+                </SettingsSection>
+                {feedbackOpen
+                  ? createPortal(
+                      <FeedbackDialog onClose={() => setFeedbackOpen(false)} />,
+                      document.body
+                    )
+                  : null}
 
                 {/* Footer */}
                 {appVersion ? (
