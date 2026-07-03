@@ -221,6 +221,16 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();
   });
 
+  it("formats out-of-range Momentary loudness like Stats instead of printing the raw sentinel", () => {
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-80, -80], momentary: -819.1 },
+      panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: false },
+    });
+
+    expect(container.querySelector("[data-level-value]")?.textContent).toBe("-");
+    expect(screen.queryByText("-819.1")).toBeNull();
+  });
+
   it("hides the value marker when the panel setting is off", () => {
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: false },

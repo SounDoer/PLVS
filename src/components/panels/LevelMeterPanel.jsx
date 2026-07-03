@@ -14,6 +14,7 @@ import {
   rangedFromTopFrac,
 } from "../../config/scales";
 import { getPeakChannels } from "../../math/peakChannelMath";
+import { fmtMetric } from "../../math/formatMath";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 
@@ -82,7 +83,7 @@ function AnimatedPeakFill({ dbValue, yRange }) {
 }
 
 function formatLevelValue(value) {
-  return Number.isFinite(value) ? value.toFixed(1) : "-";
+  return fmtMetric(value);
 }
 
 function hasPlaybackSignal(displayAudio) {
