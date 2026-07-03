@@ -1120,20 +1120,6 @@ export function PanelSettingsContent({
             }}
           />
         </SettingsRow>
-        <SettingsRow label="M/S energy">
-          <SettingsSwitch
-            aria-label="vectorscope m/s energy"
-            checked={normalizedPanelControls.vectorscopeEnergyCross}
-            onCheckedChange={(checked) => {
-              onPanelControlsChange?.(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  vectorscopeEnergyCross: checked,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
       </SettingsGroup>
     );
   }

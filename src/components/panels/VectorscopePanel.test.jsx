@@ -153,29 +153,7 @@ describe("VectorscopePanel", () => {
     expect(container.querySelector("[data-vectorscope-correlation-marker]")).toBeNull();
   });
 
-  it("keeps the M/S energy cross hidden by default", () => {
-    const { container } = renderPanel({
-      selectedOffset: -1,
-      panelControls: { vectorscopePair: { x: 0, y: 1 } },
-      displayAudio: {
-        peakDb: [-12, -18],
-        vectorscopeResultsByKey: {
-          "vectorscope:pair:0:1": {
-            path: "M 0 0 L 100 100",
-            correlation: 0.5,
-            midEnergy: 0.4,
-            sideEnergy: 0.2,
-            pairX: 0,
-            pairY: 1,
-          },
-        },
-      },
-    });
-
-    expect(container.querySelector("[data-vectorscope-energy-cross]")).toBeNull();
-  });
-
-  it("shows the M/S energy cross when enabled", () => {
+  it("does not render the removed M/S energy cross", () => {
     const { container } = renderPanel({
       selectedOffset: -1,
       panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeEnergyCross: true },
@@ -194,6 +172,26 @@ describe("VectorscopePanel", () => {
       },
     });
 
-    expect(container.querySelector("[data-vectorscope-energy-cross]")).toBeTruthy();
+    expect(container.querySelector("[data-vectorscope-energy-cross]")).toBeNull();
+  });
+
+  it("does not render the removed trace hold layer", () => {
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeTraceHold: true },
+      displayAudio: {
+        peakDb: [-12, -18],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": {
+            path: "M 0 0 L 100 100",
+            correlation: 0.5,
+            pairX: 0,
+            pairY: 1,
+          },
+        },
+      },
+    });
+
+    expect(container.querySelector("[data-vectorscope-trace-hold]")).toBeNull();
   });
 });

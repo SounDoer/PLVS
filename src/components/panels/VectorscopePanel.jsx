@@ -12,7 +12,6 @@ import {
 } from "./SnapshotEmptyState.jsx";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
-const ENERGY_FLOOR_DB = -60;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -40,12 +39,6 @@ function correlationMarkerClass(value) {
   return "bg-[color:var(--ui-signal-good)]";
 }
 
-function energyArmPct(value) {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  const db = 20 * Math.log10(value);
-  return Math.max(0, Math.min(42, ((db - ENERGY_FLOOR_DB) / Math.abs(ENERGY_FLOOR_DB)) * 42));
-}
-
 export function VectorscopePanel() {
   const {
     vsGridDiagInset,
@@ -69,34 +62,24 @@ export function VectorscopePanel() {
   const liveVectorscopeResult = isSnapshot
     ? null
     : displayAudio?.vectorscopeResultsByKey?.[vectorscopeKey];
+  const normalizedPanelControls = normalizePanelControls(panelControls);
   // The panel's own pair (snapshot/pending fall back to its per-instance controls, not the global).
-  const controlPair = normalizePanelControls(panelControls).vectorscopePair ?? {
+  const controlPair = normalizedPanelControls.vectorscopePair ?? {
     x: pairX,
     y: pairY,
   };
-  const showEnergyCross = normalizePanelControls(panelControls).vectorscopeEnergyCross === true;
   let panelVectorPath;
   let panelCorrelation;
-  let panelMidEnergy = 0;
-  let panelSideEnergy = 0;
   let panelPairX;
   let panelPairY;
   if (isSnapshot) {
     panelVectorPath = snapResolved?.path ?? "";
     panelCorrelation = snapResolved?.correlation ?? correlation;
-    panelMidEnergy = Number.isFinite(snapResolved?.midEnergy) ? snapResolved.midEnergy : 0;
-    panelSideEnergy = Number.isFinite(snapResolved?.sideEnergy) ? snapResolved.sideEnergy : 0;
     panelPairX = controlPair.x;
     panelPairY = controlPair.y;
   } else if (liveVectorscopeResult) {
     panelVectorPath = liveVectorscopeResult.path;
     panelCorrelation = liveVectorscopeResult.correlation;
-    panelMidEnergy = Number.isFinite(liveVectorscopeResult.midEnergy)
-      ? liveVectorscopeResult.midEnergy
-      : 0;
-    panelSideEnergy = Number.isFinite(liveVectorscopeResult.sideEnergy)
-      ? liveVectorscopeResult.sideEnergy
-      : 0;
     panelPairX = liveVectorscopeResult.pairX;
     panelPairY = liveVectorscopeResult.pairY;
   } else {
@@ -119,10 +102,7 @@ export function VectorscopePanel() {
     : hasPairSignal(displayAudio?.peakDb, px, py);
   const canPlaceCorrelationMarker =
     hasCorrelationSignal && clampCorrelation(panelCorrelation) !== null;
-  const midArmPct = energyArmPct(panelMidEnergy);
-  const sideArmPct = energyArmPct(panelSideEnergy);
-  const canShowEnergyCross =
-    showEnergyCross && hasCorrelationSignal && (midArmPct > 0 || sideArmPct > 0);
+
   if (isOverCap || snapshotMissing) {
     return (
       <div
@@ -182,35 +162,6 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
-              {canShowEnergyCross && (
-                <g
-                  data-vectorscope-energy-cross
-                  stroke={
-                    selectedOffset >= 0
-                      ? "var(--ui-vectorscope-trace-snap)"
-                      : "var(--ui-vectorscope-trace)"
-                  }
-                  strokeLinecap="round"
-                  opacity="0.28"
-                >
-                  <line
-                    x1={130 - sideArmPct}
-                    y1="130"
-                    x2={130 + sideArmPct}
-                    y2="130"
-                    strokeWidth="1.2"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <line
-                    x1="130"
-                    y1={130 - midArmPct}
-                    x2="130"
-                    y2={130 + midArmPct}
-                    strokeWidth="1.2"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </g>
-              )}
               {panelVectorPath && (
                 <>
                   <path

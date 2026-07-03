@@ -386,6 +386,22 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByRole("option", { name: "L/LFE" })).toBeTruthy();
   });
 
+  it("does not show removed vectorscope display switches", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="vectorscope"
+        channelCount={2}
+        vectorscopeOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        vectorscopeValueKey="0-1"
+        vectorscopeDisplayLabel="L/R"
+        onVectorscopeChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole("switch", { name: "vectorscope trace hold" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "vectorscope m/s energy" })).toBeNull();
+  });
+
   it("falls back to the first spectrum option when the value key is stale", () => {
     render(
       <PanelSettingsContent

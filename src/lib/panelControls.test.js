@@ -73,7 +73,6 @@ describe("panelControls", () => {
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
-      vectorscopeEnergyCross: false,
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumPeakHold: false,
@@ -202,7 +201,6 @@ describe("panelControls", () => {
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
-      vectorscopeEnergyCross: false,
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumPeakHold: false,
@@ -274,6 +272,18 @@ describe("panelControls", () => {
     expect(normalizePanelControls({ levelMeterTpMaxMarker: "yes" }).levelMeterTpMaxMarker).toBe(
       false
     );
+  });
+
+  it("drops removed vectorscope display toggles", () => {
+    const normalized = normalizePanelControls({
+      vectorscopeTraceHold: true,
+      vectorscopeEnergyCross: true,
+    });
+
+    expect(DEFAULT_PANEL_CONTROLS).not.toHaveProperty("vectorscopeTraceHold");
+    expect(DEFAULT_PANEL_CONTROLS).not.toHaveProperty("vectorscopeEnergyCross");
+    expect(normalized).not.toHaveProperty("vectorscopeTraceHold");
+    expect(normalized).not.toHaveProperty("vectorscopeEnergyCross");
   });
 });
 

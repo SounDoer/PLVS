@@ -20,7 +20,6 @@ export const DEFAULT_PANEL_CONTROLS = {
   levelMeterValueMarker: false,
   levelMeterTpMaxMarker: false,
   vectorscopePair: { x: 0, y: 1 },
-  vectorscopeEnergyCross: false,
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
   spectrumPeakHold: false,
@@ -86,10 +85,6 @@ function normalizeSpectrumView(raw) {
 
 function normalizeSpectrumPeakHold(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakHold;
-}
-
-function normalizeVectorscopeEnergyCross(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.vectorscopeEnergyCross;
 }
 
 function clampNumber(raw, min, max, fallback) {
@@ -241,7 +236,6 @@ export function normalizePanelControls(raw) {
     levelMeterValueMarker: normalizeLevelMeterValueMarker(raw?.levelMeterValueMarker),
     levelMeterTpMaxMarker: normalizeLevelMeterTpMaxMarker(raw?.levelMeterTpMaxMarker),
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
-    vectorscopeEnergyCross: normalizeVectorscopeEnergyCross(raw?.vectorscopeEnergyCross),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
     spectrumPeakHold: normalizeSpectrumPeakHold(raw?.spectrumPeakHold),
