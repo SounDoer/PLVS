@@ -289,12 +289,12 @@ export function VectorscopePanel() {
       </div>
       <div
         data-vectorscope-correlation-axis
-        className="mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
+        className={cn(
+          CAPTION_TEXT,
+          "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
+        )}
       >
-        <div
-          className="relative h-full text-[length:var(--ui-fs-axis)] text-muted-foreground"
-          aria-hidden
-        >
+        <div className="relative h-full w-full" aria-hidden>
           <span className={axisLabelClass("x", "start")}>-1</span>
           <span className={axisLabelClass("x", "middle")} style={{ left: "50%" }}>
             0
