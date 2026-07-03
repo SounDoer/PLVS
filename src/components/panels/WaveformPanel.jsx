@@ -11,6 +11,7 @@ import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
+import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-axis-rail";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
@@ -260,6 +261,11 @@ function WaveformPanelContent({ compact, audioData }) {
             selected={selectedOffset >= 0}
           />
         ))}
+
+        <TimelineLatestEdgeHint
+          active={(effectiveOffsetSamples ?? 0) > 0}
+          className="left-[calc(var(--ui-w-axis-rail)+var(--ui-chart-axis-gap))] w-auto"
+        />
 
         {/* Hover crosshair + popover 鈥?pointer-events-none so interaction overlay stays active */}
         {waveformHover && (

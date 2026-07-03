@@ -107,6 +107,17 @@ describe("WaveformPanel", () => {
     );
   });
 
+  it("aligns the latest-edge hint with the waveform chart area", () => {
+    const { container } = renderPanel({ effectiveOffsetSamples: 12 });
+
+    const hint = container.querySelector("[data-timeline-latest-edge-hint]");
+    expect(hint).toBeTruthy();
+    expect(hint?.className).toContain(
+      "left-[calc(var(--ui-w-axis-rail)+var(--ui-chart-axis-gap))]"
+    );
+    expect(screen.queryByText(/Latest/i)).toBeNull();
+  });
+
   it("updates the chart cursor when ctrl is pressed while hovering", () => {
     const { container } = renderPanel({ historyChartInteractive: true });
     const chart = container.querySelector("[data-waveform-interaction-overlay]");

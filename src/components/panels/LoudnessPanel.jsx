@@ -31,6 +31,7 @@ export function LoudnessPanel({ compact = false }) {
     showSelLine,
     selLineX,
     historyTimeTicks,
+    effectiveOffsetSec,
     histSourceList,
     effectiveOffsetSamples,
     visibleSamples,
@@ -138,6 +139,7 @@ export function LoudnessPanel({ compact = false }) {
           historyHover={historyHover}
           historyTimeTicks={historyTimeTicks}
           historyTickSteps={historyTickSteps}
+          showLatestEdgeHint={effectiveOffsetSec > 0}
           referenceLufs={referenceLufs}
           onHistoryHoverMove={onHistoryHoverMove}
           onHistoryHoverLeave={onHistoryHoverLeave}

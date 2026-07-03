@@ -197,6 +197,29 @@ describe("LoudnessHistoryChart", () => {
     expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });
 
+  it("shows the latest-edge visual hint without adding label text", () => {
+    const { container, rerender } = render(
+      <LoudnessHistoryChart
+        {...baseProps}
+        showLatestEdgeHint
+        loudnessHistoryVisibleLayerIds={["momentary"]}
+      />
+    );
+
+    expect(container.querySelector("[data-timeline-latest-edge-hint]")).toBeTruthy();
+    expect(screen.queryByText(/Latest/i)).toBeNull();
+
+    rerender(
+      <LoudnessHistoryChart
+        {...baseProps}
+        showLatestEdgeHint={false}
+        loudnessHistoryVisibleLayerIds={["momentary"]}
+      />
+    );
+
+    expect(container.querySelector("[data-timeline-latest-edge-hint]")).toBeNull();
+  });
+
   it("keeps the hover HUD compact without trace swatches", () => {
     render(
       <LoudnessHistoryChart

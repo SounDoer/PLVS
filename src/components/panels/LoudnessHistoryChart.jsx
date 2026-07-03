@@ -5,6 +5,7 @@ import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
+import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import {
   computeLinearPan,
   computeLinearZoom,
@@ -48,6 +49,7 @@ export function LoudnessHistoryChart({
   historyHover,
   historyTimeTicks,
   historyTickSteps,
+  showLatestEdgeHint = false,
   referenceLufs,
   onHistoryHoverMove,
   onHistoryHoverLeave,
@@ -406,6 +408,7 @@ export function LoudnessHistoryChart({
 
         {/* Overlays: hover crosshair and inspect HUD */}
         <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
+          <TimelineLatestEdgeHint active={showLatestEdgeHint} />
           {!hasSelectedLayer ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[length:var(--ui-fs-axis)] text-muted-foreground">
               No layers selected
