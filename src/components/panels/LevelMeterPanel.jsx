@@ -371,7 +371,9 @@ export function LevelMeterPanel() {
 
   const channels = getPeakChannels(displayAudio, peakLabelContext);
   const showTpMaxMarker = showTpMaxMarkerSetting && hasTpMaxValue;
-  const peakYAxisWidthClass = showTpMaxMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
+  const peakYAxisWidthClass = showTpMaxMarkerSetting
+    ? LEVEL_METER_Y_AXIS_WITH_MARKER
+    : W_PEAK_TICKS;
   return (
     <div
       className={cn(
