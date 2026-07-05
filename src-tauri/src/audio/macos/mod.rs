@@ -144,7 +144,7 @@ fn resolve_tap_uid_channels_rate(device_id: &str) -> Result<(String, u32, u16), 
   Err(format!("not a loopback device id: {device_id}"))
 }
 
-fn run_macos_tap_worker(
+struct MacosTapWorkerArgs {
   device_id: String,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
@@ -156,7 +156,23 @@ fn run_macos_tap_worker(
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   dropped_chunks: Arc<AtomicU64>,
-) -> Result<(), String> {
+}
+
+fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
+  let MacosTapWorkerArgs {
+    device_id,
+    frame_subscribers,
+    app,
+    stop_rx,
+    clear_peak_history,
+    reset_tp_max,
+    channel_layout,
+    loudness_weights,
+    dialogue_gating,
+    dialogue_vad_engine,
+    dropped_chunks,
+  } = args;
+
   let (uid, sample_rate, channels) = resolve_tap_uid_channels_rate(&device_id)?;
   let pcm_pool = PcmBufferPool::new(64, pooled_pcm_buffer_capacity(sample_rate, channels));
   let bridge_pool = pcm_pool.clone();
@@ -274,19 +290,19 @@ impl MacosTapCaptureSession {
     let join = std::thread::Builder::new()
       .name("capture".into())
       .spawn(move || {
-        run_macos_tap_worker(
+        run_macos_tap_worker(MacosTapWorkerArgs {
           device_id,
           frame_subscribers,
           app,
           stop_rx,
-          clear_worker,
-          reset_tp_max_worker,
+          clear_peak_history: clear_worker,
+          reset_tp_max: reset_tp_max_worker,
           channel_layout,
           loudness_weights,
           dialogue_gating,
           dialogue_vad_engine,
           dropped_chunks,
-        )
+        })
       })
       .map_err(|e| e.to_string())?;
     Ok(MacosTapCaptureSession {

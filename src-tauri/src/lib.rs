@@ -92,7 +92,7 @@ pub fn run() {
         .title("PLVS")
         .resizable(true)
         .visible(false);
-      #[cfg(target_os = "windows")]
+      #[cfg(any(target_os = "windows", target_os = "macos"))]
       let builder = builder.transparent(true);
 
       let window = builder
