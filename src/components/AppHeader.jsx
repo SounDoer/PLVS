@@ -78,6 +78,8 @@ export function AppHeader({
   setBorderless,
   panelOpacity,
   setPanelOpacity,
+  glassEnabled,
+  setGlassEnabled,
   presets,
   setSettingsOpen,
 }) {
@@ -214,6 +216,8 @@ export function AppHeader({
               setBorderless={setBorderless}
               panelOpacity={panelOpacity}
               setPanelOpacity={setPanelOpacity}
+              glassEnabled={glassEnabled}
+              setGlassEnabled={setGlassEnabled}
             />
           </PopoverContent>
         </Popover>
