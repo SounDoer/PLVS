@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-07-05
+
+### Added
+- RMS mode for the Level Meter panel.
+- macOS Glass effect support with a Views switch, settings persistence, and preset capture / apply support.
+
+### Changed
+- Polished range slider styling and moved the Glass switch below the Opacity slider.
+
+### Fixed
+- Kept macOS vibrancy setup idempotent and macOS-only, with Glass disabled on Windows.
+- Corrected transparent window opacity and reduced Acrylic tint interference.
+
 ## [0.6.3] - 2026-07-03
 
 ### Added
