@@ -58,6 +58,8 @@ export function usePresets({
   setFocusView = () => {},
   panelOpacity = 100,
   setPanelOpacity = () => {},
+  glassEnabled = false,
+  setGlassEnabled = () => {},
   suppressPresetDivergence = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
@@ -101,12 +103,14 @@ export function usePresets({
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
       panelOpacity,
+      glassEnabled,
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
   }, [
     windowPinned,
     focusView,
     panelOpacity,
+    glassEnabled,
     workspaceState.panelControlsById,
     workspaceState.panelOrder,
     workspaceState.panelsById,
@@ -163,6 +167,9 @@ export function usePresets({
       if (typeof preset.panelOpacity === "number") {
         setPanelOpacity(preset.panelOpacity);
       }
+      if (typeof preset.glassEnabled === "boolean") {
+        setGlassEnabled(preset.glassEnabled);
+      }
       write({ activeId: id, dirty: false });
       return true;
     },
@@ -171,6 +178,7 @@ export function usePresets({
       setWindowPinned,
       setFocusView,
       setPanelOpacity,
+      setGlassEnabled,
       suppressPresetDivergence,
       workspaceState,
       write,

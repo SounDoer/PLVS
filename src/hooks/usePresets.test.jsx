@@ -380,6 +380,43 @@ describe("usePresets", () => {
     expect(setPanelOpacity).not.toHaveBeenCalled();
   });
 
+  it("captures and restores glassEnabled in presets", async () => {
+    const setGlassEnabled = vi.fn();
+    const { result } = renderPresetHook({ glassEnabled: true, setGlassEnabled });
+    await act(async () => {
+      await result.current.presets.save("WithGlass");
+    });
+    const saved = presetsStore.read().list[0];
+    expect(saved.glassEnabled).toBe(true);
+
+    await act(async () => {
+      await result.current.presets.apply(saved.id);
+    });
+    expect(setGlassEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it("does not call setGlassEnabled when applying an older preset without glassEnabled", async () => {
+    const setGlassEnabled = vi.fn();
+    presetsStore.patch({
+      list: [
+        {
+          id: "p-old-glass",
+          name: "OldGlass",
+          tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+        },
+      ],
+      activeId: null,
+      dirty: false,
+    });
+    const { result } = renderPresetHook({ setGlassEnabled });
+    await act(async () => {
+      await result.current.presets.apply("p-old-glass");
+    });
+    expect(setGlassEnabled).not.toHaveBeenCalled();
+  });
+
   it("renames and removes presets", () => {
     presetsStore.patch({
       list: [
