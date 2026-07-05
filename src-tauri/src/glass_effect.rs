@@ -1,7 +1,9 @@
 #[cfg(target_os = "windows")]
 use window_vibrancy::{apply_acrylic, clear_acrylic};
 #[cfg(target_os = "macos")]
-use window_vibrancy::{apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
+use window_vibrancy::{
+  apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
+};
 
 /// Applies (or clears) an OS-level frosted-glass effect on the transparent area created by
 /// `panelOpacity`. `dark` selects a tint/material matching the app's currently resolved theme.
@@ -16,7 +18,11 @@ pub fn set_glass_effect<R: tauri::Runtime>(
   #[cfg(target_os = "windows")]
   {
     if enabled {
-      let tint = if dark { (18, 18, 18, 125) } else { (240, 240, 240, 125) };
+      let tint = if dark {
+        (18, 18, 18, 125)
+      } else {
+        (240, 240, 240, 125)
+      };
       apply_acrylic(&window, Some(tint)).map_err(|e| format!("apply_acrylic: {e}"))?;
     } else {
       clear_acrylic(&window).map_err(|e| format!("clear_acrylic: {e}"))?;
