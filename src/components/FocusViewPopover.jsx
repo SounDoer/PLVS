@@ -1,5 +1,5 @@
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
-import { DEFAULT_PANEL_OPACITY } from "@/settings/defaults.js";
+import { DEFAULT_PANEL_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
@@ -23,6 +23,8 @@ export function FocusViewPopoverContent({
   setBorderless = () => {},
   panelOpacity = DEFAULT_PANEL_OPACITY,
   setPanelOpacity = () => {},
+  glassEnabled = DEFAULT_GLASS_ENABLED,
+  setGlassEnabled = () => {},
 }) {
   const normalized = normalizeFocusView(focusView);
 
@@ -54,6 +56,12 @@ export function FocusViewPopoverContent({
         label="Auto-hide Controls"
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
+      />
+      <FocusSwitch
+        id="focus-view-glass"
+        label="Glass"
+        checked={glassEnabled === true}
+        onCheckedChange={setGlassEnabled}
       />
       <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
         <Label htmlFor="panel-opacity" className="min-w-0 text-xs font-normal text-foreground">

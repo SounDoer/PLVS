@@ -13,6 +13,7 @@ describe("FocusViewPopoverContent", () => {
     expect(screen.getByRole("switch", { name: "Auto-hide Controls" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Compact Panels" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Hide Chrome" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Glass" })).toBeTruthy();
   });
 
   it("orders Views switches from window behaviour to content density", () => {
@@ -23,6 +24,7 @@ describe("FocusViewPopoverContent", () => {
       "focus-view-compact-panels",
       "focus-view-borderless",
       "focus-view-auto-hide-controls",
+      "focus-view-glass",
     ]);
   });
 
@@ -30,6 +32,7 @@ describe("FocusViewPopoverContent", () => {
     render(
       <FocusViewPopoverContent
         focusView={{ autoHideControls: true, compactPanels: false, borderless: false }}
+        glassEnabled={true}
       />
     );
 
@@ -45,6 +48,9 @@ describe("FocusViewPopoverContent", () => {
     expect(screen.getByRole("switch", { name: "Hide Chrome" }).getAttribute("data-state")).toBe(
       "unchecked"
     );
+    expect(screen.getByRole("switch", { name: "Glass" }).getAttribute("data-state")).toBe(
+      "checked"
+    );
   });
 
   it("routes switch changes to callers", () => {
@@ -52,6 +58,7 @@ describe("FocusViewPopoverContent", () => {
     const setAutoHideControls = vi.fn();
     const setCompactPanels = vi.fn();
     const setBorderless = vi.fn();
+    const setGlassEnabled = vi.fn();
     render(
       <FocusViewPopoverContent
         pinned={false}
@@ -60,6 +67,8 @@ describe("FocusViewPopoverContent", () => {
         setAutoHideControls={setAutoHideControls}
         setCompactPanels={setCompactPanels}
         setBorderless={setBorderless}
+        glassEnabled={false}
+        setGlassEnabled={setGlassEnabled}
       />
     );
 
@@ -67,10 +76,12 @@ describe("FocusViewPopoverContent", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Auto-hide Controls" }));
     fireEvent.click(screen.getByRole("switch", { name: "Compact Panels" }));
     fireEvent.click(screen.getByRole("switch", { name: "Hide Chrome" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Glass" }));
 
     expect(setPinned).toHaveBeenCalledWith(true);
     expect(setAutoHideControls).toHaveBeenCalledWith(true);
     expect(setCompactPanels).toHaveBeenCalledWith(true);
     expect(setBorderless).toHaveBeenCalledWith(true);
+    expect(setGlassEnabled).toHaveBeenCalledWith(true);
   });
 });
