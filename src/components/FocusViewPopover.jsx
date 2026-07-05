@@ -27,6 +27,9 @@ export function FocusViewPopoverContent({
   setGlassEnabled = () => {},
 }) {
   const normalized = normalizeFocusView(focusView);
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /Mac/i.test(navigator.platform || navigator.userAgent || "");
 
   return (
     <div className="grid gap-1">
@@ -57,12 +60,14 @@ export function FocusViewPopoverContent({
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
       />
-      <FocusSwitch
-        id="focus-view-glass"
-        label="Glass"
-        checked={glassEnabled === true}
-        onCheckedChange={setGlassEnabled}
-      />
+      {isMac ? (
+        <FocusSwitch
+          id="focus-view-glass"
+          label="Glass"
+          checked={glassEnabled === true}
+          onCheckedChange={setGlassEnabled}
+        />
+      ) : null}
       <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
         <Label htmlFor="panel-opacity" className="min-w-0 text-xs font-normal text-foreground">
           Opacity

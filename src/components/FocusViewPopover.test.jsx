@@ -1,10 +1,24 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { FocusViewPopoverContent } from "./FocusViewPopover.jsx";
 
+function mockPlatform(platform) {
+  vi.spyOn(window.navigator, "platform", "get").mockReturnValue(platform);
+}
+
 describe("FocusViewPopoverContent", () => {
+  beforeEach(() => {
+    // Glass is macOS-only (see glass_effect.rs); default to Mac so existing assertions
+    // exercise the switch, with a dedicated test below for the Windows/other-platform case.
+    mockPlatform("MacIntel");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders Views switches", () => {
     render(<FocusViewPopoverContent />);
 
@@ -25,6 +39,19 @@ describe("FocusViewPopoverContent", () => {
       "focus-view-borderless",
       "focus-view-auto-hide-controls",
       "focus-view-glass",
+    ]);
+  });
+
+  it("hides the Glass switch outside macOS", () => {
+    mockPlatform("Win32");
+    render(<FocusViewPopoverContent />);
+
+    expect(screen.queryByRole("switch", { name: "Glass" })).toBeNull();
+    expect(screen.getAllByRole("switch").map((node) => node.id)).toEqual([
+      "focus-view-always-on-top",
+      "focus-view-compact-panels",
+      "focus-view-borderless",
+      "focus-view-auto-hide-controls",
     ]);
   });
 
