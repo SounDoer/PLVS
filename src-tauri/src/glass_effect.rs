@@ -18,10 +18,13 @@ pub fn set_glass_effect<R: tauri::Runtime>(
   #[cfg(target_os = "windows")]
   {
     if enabled {
+      // Acrylic's API always composites a tint alongside the blur — there is no
+      // pure-blur-zero-tint mode. Alpha 1 is the practical minimum that still keeps the
+      // blur active on Windows without adding a visible gray/white wash on top of it.
       let tint = if dark {
-        (18, 18, 18, 125)
+        (18, 18, 18, 1)
       } else {
-        (240, 240, 240, 125)
+        (240, 240, 240, 1)
       };
       apply_acrylic(&window, Some(tint)).map_err(|e| format!("apply_acrylic: {e}"))?;
     } else {
