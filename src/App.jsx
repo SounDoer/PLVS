@@ -98,6 +98,7 @@ import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
+import { useGlassEffect } from "./hooks/useGlassEffect.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
@@ -186,6 +187,8 @@ function AppContent() {
     activeIsCustom,
     panelOpacity,
     setPanelOpacity,
+    glassEnabled,
+    setGlassEnabled,
   } = useSettings({ onClearRef });
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
   const suppressPresetDivergenceUntilRef = useRef(Date.now() + 1500);
@@ -201,6 +204,8 @@ function AppContent() {
     setFocusView,
     panelOpacity,
     setPanelOpacity,
+    glassEnabled,
+    setGlassEnabled,
     suppressPresetDivergence,
   });
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless);
@@ -342,6 +347,7 @@ function AppContent() {
   }, [configurationBusy]);
 
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
+  useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
   const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } =
     useSessionTimer();
@@ -1558,6 +1564,8 @@ function AppContent() {
               setBorderless={setBorderless}
               panelOpacity={panelOpacity}
               setPanelOpacity={setPanelOpacity}
+              glassEnabled={glassEnabled}
+              setGlassEnabled={setGlassEnabled}
               presets={presets}
               setSettingsOpen={setSettingsOpen}
             />
