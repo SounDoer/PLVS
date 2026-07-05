@@ -4,6 +4,7 @@ import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 export const DEFAULT_REFERENCE_LUFS = LOUDNESS_DEFAULT_REFERENCE_LUFS;
 export const DEFAULT_CLOSE_ACTION = "ask";
 export const DEFAULT_PANEL_OPACITY = 100;
+export const DEFAULT_GLASS_ENABLED = false;
 export const DEFAULT_THEME_EDITOR_POS = Object.freeze({ x: 80, y: 80 });
 
 export function normalizeReferenceLufs(raw) {
@@ -33,4 +34,8 @@ export function normalizePanelOpacity(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n)) return DEFAULT_PANEL_OPACITY;
   return Math.round(Math.max(0, Math.min(100, n)));
+}
+
+export function normalizeGlassEnabled(raw) {
+  return raw === true;
 }

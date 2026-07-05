@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CLOSE_ACTION,
+  DEFAULT_GLASS_ENABLED,
   DEFAULT_PANEL_OPACITY,
   DEFAULT_REFERENCE_LUFS,
   DEFAULT_THEME_EDITOR_POS,
   normalizeCloseAction,
+  normalizeGlassEnabled,
   normalizePanelOpacity,
   normalizeReferenceLufs,
   normalizeThemeEditorPos,
@@ -53,5 +55,15 @@ describe("settings defaults", () => {
     expect(normalizePanelOpacity(50)).toBe(50);
     expect(normalizePanelOpacity(100)).toBe(100);
     expect(normalizePanelOpacity("abc")).toBe(DEFAULT_PANEL_OPACITY);
+  });
+
+  it("normalizes glass enabled", () => {
+    expect(DEFAULT_GLASS_ENABLED).toBe(false);
+    expect(normalizeGlassEnabled(true)).toBe(true);
+    expect(normalizeGlassEnabled(false)).toBe(false);
+    expect(normalizeGlassEnabled(null)).toBe(false);
+    expect(normalizeGlassEnabled(undefined)).toBe(false);
+    expect(normalizeGlassEnabled("true")).toBe(false);
+    expect(normalizeGlassEnabled(1)).toBe(false);
   });
 });
