@@ -89,6 +89,73 @@ body {
   opacity: var(--panel-opacity-meter, 1);
 }
 
+.plvs-range {
+  --range-pct: 100%;
+  --range-track: var(--input);
+  --range-thumb: var(--background);
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.plvs-range:focus-visible {
+  outline: none;
+}
+
+.plvs-range::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--primary) 0%,
+    var(--primary) var(--range-pct),
+    var(--range-track) var(--range-pct),
+    var(--range-track) 100%
+  );
+}
+
+.plvs-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.25rem;
+  border: 2px solid var(--primary);
+  border-radius: 9999px;
+  background-color: var(--range-thumb);
+}
+
+.plvs-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
+}
+
+.plvs-range::-moz-range-track {
+  height: 0.5rem;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--range-track);
+}
+
+.plvs-range::-moz-range-progress {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.plvs-range::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--primary);
+  border-radius: 9999px;
+  background-color: var(--range-thumb);
+}
+
+.plvs-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
+}
+
 /* LIVE (history snapshot) pulse on header primary control — see App.jsx */
 /* Fallback: opacity-only pulse for engines that don't support color-mix() */
 @keyframes live-snap-pulse-blink {

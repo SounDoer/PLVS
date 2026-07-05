@@ -79,10 +79,17 @@ function SettingsSwitch(props) {
   );
 }
 
+function rangePercent(value, min, max) {
+  const span = max - min;
+  if (!Number.isFinite(value) || !Number.isFinite(span) || span <= 0) return 0;
+  return Math.max(0, Math.min(100, ((value - min) / span) * 100));
+}
+
 function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommit }) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [draftValue, setDraftValue] = useState(value);
   const displayValue = formatValue(draftValue);
+  const draftPercent = rangePercent(draftValue, min, max);
 
   useEffect(() => {
     setDraftValue(value);
@@ -109,7 +116,8 @@ function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommi
         onChange={(event) => setDraftValue(Number(event.target.value))}
         onPointerUp={(event) => commit(event.currentTarget.value)}
         onKeyUp={(event) => commit(event.currentTarget.value)}
-        className="h-6 w-16 accent-primary opacity-75 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+        className="plvs-range w-16 opacity-75 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+        style={{ "--range-pct": `${draftPercent}%` }}
       />
       {tooltipOpen ? (
         <span

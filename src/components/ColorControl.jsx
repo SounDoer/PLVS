@@ -56,7 +56,8 @@ export function ColorControl({ label, value, onChange }) {
             step="0.01"
             value={alpha}
             onInput={(e) => emit(hex, parseFloat(e.target.value))}
-            className="flex-1"
+            className="plvs-range flex-1"
+            style={{ "--range-pct": `${Math.max(0, Math.min(100, alpha * 100))}%` }}
           />
         </div>
       </PopoverContent>

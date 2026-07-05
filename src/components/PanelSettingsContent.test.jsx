@@ -812,8 +812,14 @@ describe("PanelSettingsContent", () => {
     expect(smoothing.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(tilt.compareDocumentPosition(xRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(xRange.compareDocumentPosition(yRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByLabelText("spectrum smoothing")).toBeTruthy();
-    expect(screen.getByLabelText("spectrum tilt")).toBeTruthy();
+    const smoothingSlider = screen.getByLabelText("spectrum smoothing");
+    const tiltSlider = screen.getByLabelText("spectrum tilt");
+    expect(smoothingSlider).toBeTruthy();
+    expect(tiltSlider).toBeTruthy();
+    expect(smoothingSlider.classList.contains("plvs-range")).toBe(true);
+    expect(smoothingSlider.style.getPropertyValue("--range-pct")).toBe("25%");
+    expect(tiltSlider.classList.contains("plvs-range")).toBe(true);
+    expect(tiltSlider.style.getPropertyValue("--range-pct")).toBe("50%");
     expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
     expect(screen.getByLabelText("spectrum x range max").value).toBe("20000");
     expect(screen.getByLabelText("spectrum y range min").value).toBe("-96");

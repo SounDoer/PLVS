@@ -73,7 +73,8 @@ export function FocusViewPopoverContent({
           step={1}
           value={panelOpacity}
           onInput={(e) => setPanelOpacity(Number(e.target.value))}
-          className="h-4 w-20 accent-primary"
+          className="plvs-range w-20"
+          style={{ "--range-pct": `${panelOpacity}%` }}
         />
       </div>
       {isMac ? (

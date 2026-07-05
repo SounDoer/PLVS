@@ -80,6 +80,15 @@ describe("FocusViewPopoverContent", () => {
     );
   });
 
+  it("uses the custom opacity range style", () => {
+    render(<FocusViewPopoverContent panelOpacity={42} />);
+
+    const opacityRange = screen.getByRole("slider", { name: "Panel opacity" });
+
+    expect(opacityRange.classList.contains("plvs-range")).toBe(true);
+    expect(opacityRange.style.getPropertyValue("--range-pct")).toBe("42%");
+  });
+
   it("routes switch changes to callers", () => {
     const setPinned = vi.fn();
     const setAutoHideControls = vi.fn();
