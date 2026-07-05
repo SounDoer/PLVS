@@ -60,14 +60,6 @@ export function FocusViewPopoverContent({
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
       />
-      {isMac ? (
-        <FocusSwitch
-          id="focus-view-glass"
-          label="Glass"
-          checked={glassEnabled === true}
-          onCheckedChange={setGlassEnabled}
-        />
-      ) : null}
       <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
         <Label htmlFor="panel-opacity" className="min-w-0 text-xs font-normal text-foreground">
           Opacity
@@ -84,6 +76,14 @@ export function FocusViewPopoverContent({
           className="h-4 w-20 accent-primary"
         />
       </div>
+      {isMac ? (
+        <FocusSwitch
+          id="focus-view-glass"
+          label="Glass"
+          checked={glassEnabled === true}
+          onCheckedChange={setGlassEnabled}
+        />
+      ) : null}
     </div>
   );
 }
