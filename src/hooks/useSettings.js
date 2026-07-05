@@ -23,6 +23,7 @@ import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 import {
   DEFAULT_CLOSE_ACTION,
   normalizeCloseAction,
+  normalizeGlassEnabled,
   normalizePanelOpacity,
   normalizeReferenceLufs,
   normalizeSettingsFocusView,
@@ -50,6 +51,9 @@ export function useSettings({ onClearRef } = {}) {
   );
   const [panelOpacity, setPanelOpacityState] = useState(() =>
     normalizePanelOpacity(settingsStore.read().panelOpacity)
+  );
+  const [glassEnabled, setGlassEnabledState] = useState(() =>
+    normalizeGlassEnabled(settingsStore.read().glassEnabled)
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
@@ -152,6 +156,13 @@ export function useSettings({ onClearRef } = {}) {
     setPanelOpacityState(next);
   }
 
+  function setGlassEnabled(value) {
+    const next = normalizeGlassEnabled(value);
+    settingsStore.patch({ glassEnabled: next });
+    markPresetDirty();
+    setGlassEnabledState(next);
+  }
+
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setSystemPrefersDark(mq.matches);
@@ -172,8 +183,16 @@ export function useSettings({ onClearRef } = {}) {
       themeId: appearance === "system" ? null : fixedThemeSelectValue,
       channelLabelOverrides,
       panelOpacity,
+      glassEnabled,
     });
-  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides, panelOpacity]);
+  }, [
+    referenceLufs,
+    appearance,
+    fixedThemeSelectValue,
+    channelLabelOverrides,
+    panelOpacity,
+    glassEnabled,
+  ]);
 
   useEffect(
     () =>
@@ -187,6 +206,7 @@ export function useSettings({ onClearRef } = {}) {
           sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
         );
         setPanelOpacityState(normalizePanelOpacity(settingsStore.read().panelOpacity));
+        setGlassEnabledState(normalizeGlassEnabled(settingsStore.read().glassEnabled));
       }),
     []
   );
@@ -255,6 +275,8 @@ export function useSettings({ onClearRef } = {}) {
     setBorderless,
     panelOpacity,
     setPanelOpacity,
+    glassEnabled,
+    setGlassEnabled,
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
