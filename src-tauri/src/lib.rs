@@ -2,6 +2,7 @@ mod audio;
 mod dsp;
 mod engine;
 mod file_analysis;
+mod glass_effect;
 mod ipc;
 mod profile;
 mod state;
@@ -55,6 +56,7 @@ pub fn run() {
       profile::write_profile_file,
       window_state::current_window_bounds,
       window_state::apply_window_bounds,
+      glass_effect::set_glass_effect,
     ])
     .setup(|app| {
       #[cfg(debug_assertions)]
