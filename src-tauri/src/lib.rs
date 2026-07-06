@@ -55,6 +55,7 @@ pub fn run() {
       profile::reset_profile,
       profile::read_profile_file,
       profile::write_profile_file,
+      profile::write_text_file,
       window_state::current_window_bounds,
       window_state::apply_window_bounds,
       glass_effect::set_glass_effect,

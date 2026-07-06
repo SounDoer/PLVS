@@ -136,11 +136,15 @@ pub struct FileAnalysisSummaryMetrics {
   pub channels: u16,
   pub integrated_lufs: f64,
   pub lra: f64,
+  pub m_max_lufs: f64,
+  pub st_max_lufs: f64,
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   /// Dialogue-gated integrated loudness; `NEG_INFINITY` when gating was off.
   pub dialogue_integrated: f64,
+  /// Dialogue-gated loudness range; `0.0` when gating was off or insufficient speech.
+  pub dialogue_lra: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -4,8 +4,13 @@
  * @property {number[]} rmsDb
  * @property {number} lufsMomentary
  * @property {number} lufsShortTerm
+ * @property {number} lufsMMax
+ * @property {number} lufsStMax
  * @property {number} integrated
  * @property {number} lra
+ * @property {number} dialogueIntegrated
+ * @property {number} dialogueLra
+ * @property {number} dialoguePercent
  * @property {number} truePeakL
  * @property {number} truePeakR
  * @property {number} truePeakMaxDbtp

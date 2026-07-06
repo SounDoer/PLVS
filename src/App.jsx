@@ -77,6 +77,7 @@ import {
   setDialogueGating,
   setDialogueVadEngine,
   writeProfileFile,
+  writeTextFile,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE } from "./lib/dialogueVadEngines.js";
@@ -85,6 +86,7 @@ import {
   pickConfigurationProfileFile,
   pickMediaFile,
   saveConfigurationProfileFile,
+  saveFileAnalysisReportFile,
 } from "./ipc/fileDialog.js";
 import {
   exportProfile,
@@ -100,6 +102,11 @@ import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { useGlassEffect } from "./hooks/useGlassEffect.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
+import {
+  buildFileAnalysisReport,
+  defaultFileAnalysisReportName,
+  stringifyFileAnalysisReport,
+} from "./lib/fileAnalysisReport.js";
 import packageInfo from "../package.json";
 
 // Live and file sessions share bounded display history. File-mode summary metrics are authoritative
@@ -677,6 +684,16 @@ function AppContent() {
     void setDialogueVadEngine(dialogueVadEngine);
   }, [dialogueVadEngine]);
 
+  const currentFileAnalysisSettings = useCallback(
+    () => ({
+      dialogue: {
+        enabled: dialogueGating,
+        engine: dialogueGating ? dialogueVadEngine : null,
+      },
+    }),
+    [dialogueGating, dialogueVadEngine]
+  );
+
   useEffect(() => {
     if (!isTauri()) {
       lastSentAnalysisRequestsKeyRef.current = "";
@@ -1135,6 +1152,7 @@ function AppContent() {
       fileEntrySeqRef.current = runId;
       const sessionId = `file-analysis-${Date.now()}-${runId}`;
       const intake = new FrameIntake();
+      const analysisSettings = currentFileAnalysisSettings();
 
       setSelectedOffset(-1);
       selectedOffsetRef.current = -1;
@@ -1144,13 +1162,15 @@ function AppContent() {
             id: sessionId,
             path,
             intake,
+            analysisSettings,
           }),
-          sessionId
+          sessionId,
+          { analysisSettings }
         )
       );
       setFileRunRequest({ sessionId, filePath: path, runId });
     },
-    [fileHistory.analyzingFileId, setSelectedOffset]
+    [currentFileAnalysisSettings, fileHistory.analyzingFileId, setSelectedOffset]
   );
 
   const reanalyzeActiveFile = useCallback(
@@ -1166,13 +1186,44 @@ function AppContent() {
 
       const runId = fileEntrySeqRef.current + 1;
       fileEntrySeqRef.current = runId;
+      const analysisSettings = currentFileAnalysisSettings();
       setSelectedOffset(-1);
       selectedOffsetRef.current = -1;
-      setFileHistory((history) => startFileAnalysisEntry(history, entry.id));
+      setFileHistory((history) => startFileAnalysisEntry(history, entry.id, { analysisSettings }));
       setFileRunRequest({ sessionId: entry.id, filePath: entry.path, runId });
     },
-    [fileHistory.analyzingFileId, setSelectedOffset]
+    [currentFileAnalysisSettings, fileHistory.analyzingFileId, setSelectedOffset]
   );
+
+  const exportFileAnalysisReport = useCallback(async () => {
+    if (fileSession.state !== "complete") {
+      setStatus("Choose a completed file analysis to export");
+      return;
+    }
+
+    try {
+      const report = buildFileAnalysisReport(fileSession, { appVersion: APP_VERSION });
+      const contents = stringifyFileAnalysisReport(report);
+      const defaultName = defaultFileAnalysisReportName(fileSession);
+
+      if (isTauri()) {
+        const path = await saveFileAnalysisReportFile(defaultName);
+        if (!path) return;
+        await writeTextFile(path, contents);
+      } else {
+        const blob = new Blob([contents], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = defaultName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      setStatus("File analysis report exported");
+    } catch (_) {
+      setStatus("Report export failed");
+    }
+  }, [fileSession]);
 
   const onSelectFile = (id) => {
     setSelectedOffset(-1);
@@ -1591,6 +1642,7 @@ function AppContent() {
                 onRemoveFile={onRemoveFile}
                 onClearAllFiles={onClearAllFiles}
                 onStopFile={onStopFile}
+                onExportReport={exportFileAnalysisReport}
               />
             </div>
           ) : null}

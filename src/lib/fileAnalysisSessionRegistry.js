@@ -98,6 +98,7 @@ export function addFileEntry(history, options) {
     analyzedAt: null,
     decodedFrames: 0,
     runId: 0,
+    analysisSettings: options.analysisSettings ?? null,
   };
 
   return applyRetention(
@@ -129,7 +130,7 @@ export function updateFileEntry(history, id, updater) {
   return replaceEntry(history, id, updatedEntry);
 }
 
-export function startFileAnalysisEntry(history, id) {
+export function startFileAnalysisEntry(history, id, options = {}) {
   const entry = history.sessionsById[id];
   if (!entry) return history;
   return createHistory({
@@ -144,6 +145,7 @@ export function startFileAnalysisEntry(history, id) {
       analyzedAt: null,
       decodedFrames: 0,
       runId: (entry.runId ?? 0) + 1,
+      analysisSettings: options.analysisSettings ?? entry.analysisSettings ?? null,
     }),
     activeFileId: id,
     analyzingFileId: id,

@@ -202,6 +202,11 @@ pub fn write_profile_file(path: String, contents: String) -> Result<(), String> 
   fs::write(path, contents).map_err(|e| format!("write profile file: {e}"))
 }
 
+#[tauri::command]
+pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
+  fs::write(path, contents).map_err(|e| format!("write text file: {e}"))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

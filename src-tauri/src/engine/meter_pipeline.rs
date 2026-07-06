@@ -171,10 +171,13 @@ pub struct MeterPipeline {
 pub struct PipelineSummary {
   pub integrated_lufs: f64,
   pub lra: f64,
+  pub m_max_lufs: f64,
+  pub st_max_lufs: f64,
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   pub dialogue_integrated: f64,
+  pub dialogue_lra: f64,
 }
 
 impl MeterPipeline {
@@ -296,17 +299,20 @@ impl MeterPipeline {
   }
 
   pub fn summary_metrics(&self) -> PipelineSummary {
-    let (integrated_lufs, lra, dialogue_integrated) = match &self.last_loudness {
-      Some(l) => (l.integrated, l.lra, l.dialogue_integrated),
-      None => (f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY),
+    let (integrated_lufs, lra, dialogue_integrated, dialogue_lra) = match &self.last_loudness {
+      Some(l) => (l.integrated, l.lra, l.dialogue_integrated, l.dialogue_lra),
+      None => (f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY, 0.0),
     };
     PipelineSummary {
       integrated_lufs,
       lra,
+      m_max_lufs: self.m_max,
+      st_max_lufs: self.st_max,
       true_peak_max_dbtp: self.tp_max_db,
       sample_peak_max_l_db: self.sample_peak_max_l,
       sample_peak_max_r_db: self.sample_peak_max_r,
       dialogue_integrated,
+      dialogue_lra,
     }
   }
 

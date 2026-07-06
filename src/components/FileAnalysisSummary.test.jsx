@@ -14,8 +14,10 @@ const menuProps = {
 
 describe("FileAnalysisSummary", () => {
   it("renders completed file metadata and authoritative delivery metrics", () => {
+    const onExportReport = vi.fn();
     render(
       <FileAnalysisSummary
+        onExportReport={onExportReport}
         fileSession={{
           state: "complete",
           fileName: "final.wav",
@@ -55,6 +57,9 @@ describe("FileAnalysisSummary", () => {
     expect(
       screen.getByText("WAV - Audio track 0 - English - PCM - 48 kHz - Stereo - 00:03:00")
     ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Export Report..." }));
+    expect(onExportReport).toHaveBeenCalledTimes(1);
   });
 
   it("renders an error state with a readable file-level title", () => {
@@ -117,6 +122,7 @@ describe("FileAnalysisSummary", () => {
 
     expect(screen.getByText("current.wav")).toBeTruthy();
     expect(screen.queryByText("Integrated")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Export Report..." })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "2 files" }));
     fireEvent.click(screen.getByRole("button", { name: "Show file done.wav" }));

@@ -84,6 +84,10 @@ export function writeProfileFile(path, contents) {
   return invoke("write_profile_file", { path, contents });
 }
 
+export function writeTextFile(path, contents) {
+  return invoke("write_text_file", { path, contents });
+}
+
 /**
  * @param {{ spectrum: Array<{ key: string; channel: object; view: string; smoothingPercent: number; tiltDbPerOctave: number }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
  */

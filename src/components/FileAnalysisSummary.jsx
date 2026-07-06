@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 import { formatMetric, formatSessionMetadataLine } from "@/lib/fileAnalysisDisplay";
@@ -20,6 +21,7 @@ export function FileAnalysisSummary({
   onRemoveFile,
   onClearAllFiles,
   onStopFile,
+  onExportReport,
 }) {
   const historyMenu = (
     <FileAnalysisHistoryMenu
@@ -84,6 +86,16 @@ export function FileAnalysisSummary({
           <MetricChip label="LRA" value={formatMetric(summary.lra, "LU")} />
           <MetricChip label="True Peak Max" value={formatMetric(summary.truePeakMaxDbtp, "dBTP")} />
         </dl>
+      ) : null}
+      {isComplete ? (
+        <button
+          type="button"
+          onClick={() => onExportReport?.()}
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/70 bg-background/35 px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Download className="size-3.5" aria-hidden="true" />
+          <span>Export Report...</span>
+        </button>
       ) : null}
       {isComplete && fileSession?.historyTruncated ? (
         <p className="min-w-0 text-xs text-[color:var(--ui-signal-warn)]">

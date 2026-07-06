@@ -357,10 +357,13 @@ fn analyze_file_core(
     channels,
     integrated_lufs: metrics.integrated_lufs,
     lra: metrics.lra,
+    m_max_lufs: metrics.m_max_lufs,
+    st_max_lufs: metrics.st_max_lufs,
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     dialogue_integrated: metrics.dialogue_integrated,
+    dialogue_lra: metrics.dialogue_lra,
   };
   Ok(Some((pcm_chunker.decoded_frames(), summary)))
 }
@@ -680,6 +683,9 @@ mod tests {
       summary.sample_peak_max_l_db
     );
     assert!(summary.integrated_lufs.is_finite());
+    assert!(summary.m_max_lufs.is_finite());
+    assert!(summary.st_max_lufs.is_finite());
+    assert_eq!(summary.dialogue_lra, 0.0);
   }
 
   #[test]
