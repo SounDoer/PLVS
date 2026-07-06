@@ -1,5 +1,6 @@
 mod audio;
 pub mod cli_analyze;
+pub mod cli_analyze_batch;
 pub mod doctor;
 mod dsp;
 mod engine;
