@@ -7,7 +7,7 @@ use std::{
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::file_analysis::ffmpeg::locate::locate_sidecar;
+use crate::sidecar::locate_sidecar;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -466,9 +466,7 @@ mod tests {
         .as_nanos()
     ));
     fs::create_dir_all(&dir).unwrap();
-    let sidecar_path = dir.join(crate::file_analysis::ffmpeg::locate::sidecar_binary_name(
-      "ffmpeg",
-    ));
+    let sidecar_path = dir.join(crate::sidecar::sidecar_binary_name("ffmpeg"));
 
     let result = check_sidecar_at("ffmpeg", sidecar_path.clone());
 

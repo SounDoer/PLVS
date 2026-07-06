@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::ipc::types::{FileAnalysisProbeResult, FileAudioTrackMetadata};
+use crate::file_analysis::types::{FileAnalysisProbeResult, FileAudioTrackMetadata};
 
 #[derive(Deserialize)]
 struct ProbeRoot {

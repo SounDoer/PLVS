@@ -10,6 +10,7 @@ pub mod peak;
 pub mod spectrum;
 pub mod spectrum_bank;
 pub mod speech;
+pub mod summary_meter;
 pub mod vectorscope;
 
 pub use channel_sel::{SpectrumChannelSel, SpectrumView};

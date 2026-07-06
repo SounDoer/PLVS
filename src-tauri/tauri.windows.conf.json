@@ -4,7 +4,6 @@
     "externalBin": ["binaries/ffmpeg", "binaries/ffprobe"],
     "windows": {
       "nsis": {
-        "installerHooks": "nsis/path-hooks.nsh",
         "installMode": "currentUser"
       }
     }

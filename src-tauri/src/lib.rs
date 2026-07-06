@@ -7,6 +7,7 @@ mod file_analysis;
 mod glass_effect;
 mod ipc;
 mod profile;
+mod sidecar;
 mod state;
 pub mod vad;
 mod window_state;

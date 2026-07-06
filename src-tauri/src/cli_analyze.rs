@@ -1,7 +1,7 @@
 use serde::Serialize;
 
-use crate::file_analysis::session::{analyze_file_to_summary, FileAnalysisSummaryRun};
-use crate::ipc::types::{
+use crate::file_analysis::summary::{analyze_file_to_summary, FileAnalysisSummaryRun};
+use crate::file_analysis::types::{
   FileAnalysisProbeResult, FileAnalysisSummaryMetrics, FileAudioTrackMetadata,
 };
 

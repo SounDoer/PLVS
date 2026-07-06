@@ -16,10 +16,10 @@ use crate::file_analysis::ffmpeg::decode::{
 };
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::probe::probe_file;
+use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, FileAnalysisCompletedPayload, FileAnalysisErrorPayload,
-  FileAnalysisProbeResult, FileAnalysisProgressPayload, FileAnalysisSummaryMetrics,
-  FrameSubscribers,
+  FileAnalysisProgressPayload, FrameSubscribers,
 };
 
 #[cfg(windows)]
@@ -33,13 +33,7 @@ struct WorkerConfig {
   dialogue_vad_engine: VadEngineKind,
 }
 
-#[derive(Debug, Clone)]
-pub struct FileAnalysisSummaryRun {
-  pub probe: FileAnalysisProbeResult,
-  pub decoded_frames: u64,
-  pub summary: FileAnalysisSummaryMetrics,
-}
-
+#[cfg(test)]
 fn default_file_worker_config() -> WorkerConfig {
   WorkerConfig {
     requests: AnalysisRequests::default(),
@@ -384,27 +378,6 @@ fn analyze_file_core(
   Ok(Some((pcm_chunker.decoded_frames(), summary)))
 }
 
-pub fn analyze_file_to_summary(path: &str) -> Result<FileAnalysisSummaryRun, String> {
-  let probe = probe_file(Path::new(path))?;
-  let config = default_file_worker_config();
-  let outcome = analyze_file_core(
-    path,
-    Some(&probe),
-    &config,
-    |_frame| Ok(()),
-    |_progress| {},
-    || false,
-  )?;
-  let Some((decoded_frames, summary)) = outcome else {
-    return Err("file analysis was cancelled".to_string());
-  };
-  Ok(FileAnalysisSummaryRun {
-    probe,
-    decoded_frames,
-    summary,
-  })
-}
-
 fn run_file_worker(
   path: String,
   probe: Option<FileAnalysisProbeResult>,
@@ -445,6 +418,7 @@ fn run_file_worker(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::file_analysis::summary::analyze_file_to_summary;
   use std::f64::consts::PI;
   use std::sync::atomic::{AtomicU32, Ordering};
 

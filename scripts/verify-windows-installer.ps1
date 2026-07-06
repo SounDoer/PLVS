@@ -164,23 +164,8 @@ try {
   }
 
   $userPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
-  if (-not (Test-PathContainsEntry $userPath $installRoot)) {
-    throw "Installed directory was not added to the user PATH: $installRoot"
-  }
-
-  $previousProcessPath = $env:Path
-  try {
-    $env:Path = "$userPath;$previousProcessPath"
-    $pathDoctorOutput = & plvs-cli doctor --json
-    if ($LASTEXITCODE -ne 0) {
-      throw "PATH-discovered CLI doctor failed with exit code $LASTEXITCODE`n$pathDoctorOutput"
-    }
-    $pathDoctor = $pathDoctorOutput | ConvertFrom-Json
-    if ($pathDoctor.app.executablePath -ne $installedCli) {
-      throw "PATH-discovered CLI resolved unexpected executable: $($pathDoctor.app.executablePath)"
-    }
-  } finally {
-    $env:Path = $previousProcessPath
+  if (Test-PathContainsEntry $userPath $installRoot) {
+    throw "Installer should not add installed directory to the user PATH: $installRoot"
   }
 
   $uninstaller = Join-Path $installRoot "uninstall.exe"

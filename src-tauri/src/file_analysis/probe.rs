@@ -3,7 +3,7 @@ use std::process::Command;
 
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::ffmpeg::probe::parse_ffprobe_json;
-use crate::ipc::types::FileAnalysisProbeResult;
+use crate::file_analysis::types::FileAnalysisProbeResult;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
