@@ -1,7 +1,13 @@
 /** @vitest-environment jsdom */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const source = readFileSync(join(currentDir, "FileAnalysisHistoryMenu.jsx"), "utf8");
 
 const sessions = [
   {
@@ -61,6 +67,16 @@ function renderMenu(props = {}) {
 }
 
 describe("FileAnalysisHistoryMenu", () => {
+  it("routes the trigger surface through panel opacity", () => {
+    expect(source).toContain(
+      "color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header)"
+    );
+    expect(source).toContain(
+      "color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header)"
+    );
+    expect(source).not.toContain("bg-background/35");
+  });
+
   it("shows a compact trigger count", () => {
     render(
       <FileAnalysisHistoryMenu

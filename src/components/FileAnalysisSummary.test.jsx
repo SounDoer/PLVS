@@ -1,7 +1,13 @@
 /** @vitest-environment jsdom */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const source = readFileSync(join(currentDir, "FileAnalysisSummary.jsx"), "utf8");
 
 const menuProps = {
   fileSessions: [
@@ -13,6 +19,28 @@ const menuProps = {
 };
 
 describe("FileAnalysisSummary", () => {
+  it("routes the file-mode summary shell through panel opacity", () => {
+    expect(source).toContain("var(--card)_var(--panel-opacity-header)");
+    expect(source).toContain("var(--border)_var(--panel-opacity-header)");
+    expect(source).not.toContain("border-border bg-card/55");
+  });
+
+  it("routes actionable file summary surfaces through panel opacity", () => {
+    expect(source).toContain(
+      "color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header)"
+    );
+    expect(source).toContain(
+      "color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header)"
+    );
+    expect(source).not.toContain("bg-background/35");
+  });
+
+  it("renders delivery metrics as text pairs rather than framed chips", () => {
+    expect(source).toContain("function MetricPair");
+    expect(source).toContain("items-baseline gap-x-4 gap-y-1");
+    expect(source).not.toContain("function MetricChip");
+  });
+
   it("renders completed file metadata and authoritative delivery metrics", () => {
     const onExportReport = vi.fn();
     render(
