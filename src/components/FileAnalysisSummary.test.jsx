@@ -58,7 +58,7 @@ describe("FileAnalysisSummary", () => {
       screen.getByText("WAV - Audio track 0 - English - PCM - 48 kHz - Stereo - 00:03:00")
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Export Report..." }));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     expect(onExportReport).toHaveBeenCalledTimes(1);
   });
 
@@ -122,7 +122,7 @@ describe("FileAnalysisSummary", () => {
 
     expect(screen.getByText("current.wav")).toBeTruthy();
     expect(screen.queryByText("Integrated")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Export Report..." })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "2 files" }));
     fireEvent.click(screen.getByRole("button", { name: "Show file done.wav" }));

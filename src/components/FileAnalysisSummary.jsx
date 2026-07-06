@@ -94,7 +94,7 @@ export function FileAnalysisSummary({
           className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/70 bg-background/35 px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <Download className="size-3.5" aria-hidden="true" />
-          <span>Export Report...</span>
+          <span>Export</span>
         </button>
       ) : null}
       {isComplete && fileSession?.historyTruncated ? (
