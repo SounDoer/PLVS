@@ -33,6 +33,22 @@ struct WorkerConfig {
   dialogue_vad_engine: VadEngineKind,
 }
 
+#[derive(Debug, Clone)]
+pub struct FileAnalysisSummaryRun {
+  pub probe: FileAnalysisProbeResult,
+  pub decoded_frames: u64,
+  pub summary: FileAnalysisSummaryMetrics,
+}
+
+fn default_file_worker_config() -> WorkerConfig {
+  WorkerConfig {
+    requests: AnalysisRequests::default(),
+    loudness_weights: None,
+    dialogue_gating: false,
+    dialogue_vad_engine: VadEngineKind::default(),
+  }
+}
+
 fn file_pipeline_chunk_frames(sample_rate: u32) -> usize {
   (sample_rate as usize / 10).max(1)
 }
@@ -368,6 +384,27 @@ fn analyze_file_core(
   Ok(Some((pcm_chunker.decoded_frames(), summary)))
 }
 
+pub fn analyze_file_to_summary(path: &str) -> Result<FileAnalysisSummaryRun, String> {
+  let probe = probe_file(Path::new(path))?;
+  let config = default_file_worker_config();
+  let outcome = analyze_file_core(
+    path,
+    Some(&probe),
+    &config,
+    |_frame| Ok(()),
+    |_progress| {},
+    || false,
+  )?;
+  let Some((decoded_frames, summary)) = outcome else {
+    return Err("file analysis was cancelled".to_string());
+  };
+  Ok(FileAnalysisSummaryRun {
+    probe,
+    decoded_frames,
+    summary,
+  })
+}
+
 fn run_file_worker(
   path: String,
   probe: Option<FileAnalysisProbeResult>,
@@ -465,12 +502,7 @@ mod tests {
   }
 
   fn default_config() -> WorkerConfig {
-    WorkerConfig {
-      requests: AnalysisRequests::default(),
-      loudness_weights: None,
-      dialogue_gating: false,
-      dialogue_vad_engine: VadEngineKind::default(),
-    }
+    default_file_worker_config()
   }
 
   fn sine_stereo(sample_rate: u32, frames: usize, amplitude: f64, hz: f64) -> Vec<i16> {
@@ -686,6 +718,29 @@ mod tests {
     assert!(summary.m_max_lufs.is_finite());
     assert!(summary.st_max_lufs.is_finite());
     assert_eq!(summary.dialogue_lra, 0.0);
+  }
+
+  #[test]
+  fn analyzes_wav_fixture_to_summary() {
+    if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
+      eprintln!("skipping: ffmpeg sidecar not present");
+      return;
+    }
+
+    let sr = 48_000_u32;
+    let frames = sr as usize; // one second
+    let fixture = TempWav::new("summary", sr, 2, &sine_stereo(sr, frames, 0.5, 1_000.0));
+
+    let result = analyze_file_to_summary(&fixture.path_str()).expect("analysis should succeed");
+
+    assert_eq!(
+      result.probe.file_name,
+      fixture.path.file_name().unwrap().to_string_lossy()
+    );
+    assert_eq!(result.decoded_frames, frames as u64);
+    assert_eq!(result.summary.sample_rate_hz, sr);
+    assert_eq!(result.summary.channels, 2);
+    assert_eq!(result.summary.duration_ms, Some(1_000));
   }
 
   #[test]
