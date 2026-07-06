@@ -297,6 +297,10 @@ fn check_writable_dir(id: &str, ok_title: &str, error_title: &str, path: &Path) 
 
 fn check_sidecar(stem: &str) -> DoctorCheck {
   let path = locate_sidecar(stem);
+  check_sidecar_at(stem, path)
+}
+
+fn check_sidecar_at(stem: &str, path: PathBuf) -> DoctorCheck {
   let path_text = path_to_string(path.clone());
   let exists = path.exists();
 
@@ -426,6 +430,56 @@ mod tests {
     assert_eq!(result.status, DoctorStatus::Ok);
     assert!(dir.exists());
     assert!(!dir.join(DOCTOR_WRITE_TEST_FILE).exists());
+    fs::remove_dir_all(dir).unwrap();
+  }
+
+  #[test]
+  fn writable_dir_check_reports_error_when_path_is_file() {
+    let dir = env::temp_dir().join(format!(
+      "plvs-doctor-test-{}",
+      SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+    ));
+    fs::create_dir_all(&dir).unwrap();
+    let file_path = dir.join("not-a-directory");
+    fs::write(&file_path, b"plvs doctor").unwrap();
+
+    let result = check_writable_dir("test-dir", "OK", "Error", &file_path);
+
+    assert_eq!(result.status, DoctorStatus::Error);
+    assert_eq!(result.severity, DoctorStatus::Error);
+    assert_eq!(result.details["exists"], true);
+    assert_eq!(result.details["writable"], false);
+
+    fs::remove_dir_all(dir).unwrap();
+  }
+
+  #[test]
+  fn sidecar_check_reports_warning_for_missing_sidecar_path() {
+    let dir = env::temp_dir().join(format!(
+      "plvs-doctor-test-{}",
+      SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+    ));
+    fs::create_dir_all(&dir).unwrap();
+    let sidecar_path = dir.join(crate::file_analysis::ffmpeg::locate::sidecar_binary_name(
+      "ffmpeg",
+    ));
+
+    let result = check_sidecar_at("ffmpeg", sidecar_path.clone());
+
+    assert_eq!(result.id, "ffmpeg-sidecar");
+    assert_eq!(result.status, DoctorStatus::Warning);
+    assert_eq!(result.severity, DoctorStatus::Warning);
+    assert_eq!(result.details["path"], path_to_string(sidecar_path));
+    assert_eq!(result.details["exists"], false);
+    assert_eq!(result.details["runnable"], false);
+    assert_eq!(result.details["fileAnalysisAvailable"], false);
+
     fs::remove_dir_all(dir).unwrap();
   }
 }

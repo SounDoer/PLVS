@@ -81,7 +81,7 @@ cargo test --manifest-path src-tauri/Cargo.toml doctor
   - `config-directory-writable`, failure severity `error`;
   - `data-directory-writable`, failure severity `error`.
 - [x] Add unit tests for the writable-dir helper using a temporary directory.
-- [ ] Add a test for unwritable/invalid-path behavior where it is practical without platform-specific flakiness.
+- [x] Add a test for unwritable/invalid-path behavior where it is practical without platform-specific flakiness.
 
 **Verification:**
 
@@ -118,8 +118,8 @@ cargo test --manifest-path src-tauri/Cargo.toml doctor
 - [x] Add sidecar checks:
   - `ffmpeg-sidecar`, failure severity `warning`;
   - `ffprobe-sidecar`, failure severity `warning`.
-- [ ] Unit-test sidecar path/status construction with `PLVS_FFMPEG_DIR` pointing at a temporary directory.
-- [ ] Keep tests that execute real sidecars conditional/skippable if the binaries are not present.
+- [x] Unit-test sidecar path/status construction with a temporary path, without mutating process-wide environment state.
+- [x] Keep tests that execute real sidecars conditional/skippable if the binaries are not present.
 
 **Verification:**
 
