@@ -6,6 +6,7 @@ use app_lib::cli_analyze_batch::{
   read_manifest, run_analyze_batch, CliAnalyzeBatchStatus, DEFAULT_BATCH_CONCURRENCY,
   MAX_BATCH_CONCURRENCY,
 };
+use app_lib::cli_report::render_markdown_report;
 use app_lib::doctor::{run_doctor, DoctorStatus};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +26,10 @@ enum CliCommand {
     concurrency: usize,
     out: Option<String>,
   },
+  ReportMarkdown {
+    input: String,
+    out: Option<String>,
+  },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,6 +38,7 @@ enum HelpTopic {
   Doctor,
   Analyze,
   AnalyzeBatch,
+  Report,
 }
 
 fn parse_args(args: &[String]) -> Result<CliCommand, String> {
@@ -43,9 +49,10 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
     [command, rest @ ..] if command == "analyze" => parse_analyze_args(rest),
     [command, rest @ ..] if command == "analyze-batch" => parse_analyze_batch_args(rest),
+    [command, rest @ ..] if command == "report" => parse_report_args(rest),
     [command, topic] if command == "help" => parse_help_topic(topic),
     [command, ..] if command == "help" => {
-      Err("Usage: plvs-cli help [doctor|analyze|analyze-batch]".to_string())
+      Err("Usage: plvs-cli help [doctor|analyze|analyze-batch|report]".to_string())
     }
     [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
     [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
@@ -148,6 +155,7 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
     "analyze" => Ok(CliCommand::Help(HelpTopic::Analyze)),
     "analyze-batch" => Ok(CliCommand::Help(HelpTopic::AnalyzeBatch)),
+    "report" => Ok(CliCommand::Help(HelpTopic::Report)),
     _ => Err(format!("Unknown help topic: {topic}")),
   }
 }
@@ -230,6 +238,60 @@ fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
   })
 }
 
+fn parse_report_args(args: &[String]) -> Result<CliCommand, String> {
+  if args.iter().any(|arg| is_help_flag(arg)) {
+    return Ok(CliCommand::Help(HelpTopic::Report));
+  }
+
+  let mut format = None;
+  let mut out = None;
+  let mut positionals = Vec::new();
+  let mut index = 0;
+
+  while index < args.len() {
+    match args[index].as_str() {
+      "--format" => {
+        let Some(value) = args.get(index + 1) else {
+          return Err("Missing value for --format".to_string());
+        };
+        if value.starts_with("--") {
+          return Err("Missing value for --format".to_string());
+        }
+        format = Some(value.clone());
+        index += 2;
+      }
+      "--out" => {
+        let Some(path) = args.get(index + 1) else {
+          return Err("Missing value for --out".to_string());
+        };
+        if path.starts_with("--") {
+          return Err("Missing value for --out".to_string());
+        }
+        out = Some(path.clone());
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value => {
+        positionals.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+
+  if format.as_deref() != Some("markdown") {
+    return Err(
+      "Usage: plvs-cli report <analysis.json> --format markdown [--out <file>]".to_string(),
+    );
+  }
+  match positionals.as_slice() {
+    [input] => Ok(CliCommand::ReportMarkdown {
+      input: input.clone(),
+      out,
+    }),
+    _ => Err("Usage: plvs-cli report <analysis.json> --format markdown [--out <file>]".to_string()),
+  }
+}
+
 fn emit_json(json: &str, out: Option<&str>, command: &str) -> Result<(), String> {
   if let Some(path) = out {
     fs::write(path, format!("{json}\n"))
@@ -239,10 +301,18 @@ fn emit_json(json: &str, out: Option<&str>, command: &str) -> Result<(), String>
   Ok(())
 }
 
+fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String> {
+  if let Some(path) = out {
+    fs::write(path, text).map_err(|err| format!("Failed to write {command} output: {err}"))?;
+  }
+  print!("{text}");
+  Ok(())
+}
+
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor --json [--out <file>]\n  plvs-cli analyze <path> --json [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n\nAgent usage:\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same JSON that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with analysis/report errors\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI\n\nUsage:\n  plvs-cli doctor --json [--out <file>]\n  plvs-cli analyze <path> --json [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with analysis/report errors\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Doctor => {
       "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor --json [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nJSON is written to stdout. With --out, the same JSON is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
@@ -252,6 +322,9 @@ fn help_text(topic: HelpTopic) -> &'static str {
     }
     HelpTopic::AnalyzeBatch => {
       "PLVS CLI - analyze-batch\n\nUsage:\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n\nManifest format:\n  {\"files\":[\"C:\\\\media\\\\a.wav\",\"C:\\\\media\\\\b.wav\"]}\n\nRules:\n  Do not mix positional paths with --manifest.\n  Results preserve input order.\n  JSON is written to stdout. With --out, the same JSON is also written to a file.\n  --concurrency defaults to 2 and may be 1 through 8.\n\nExit codes:\n  0  all files analyzed successfully\n  1  at least one file produced an error report\n  2  invalid usage or CLI failure before a valid report"
+    }
+    HelpTopic::Report => {
+      "PLVS CLI - report\n\nUsage:\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nReads JSON produced by analyze or analyze-batch and renders a human-readable Markdown table.\nMarkdown is written to stdout. With --out, the same Markdown is also written to a file.\n\nExit codes:\n  0  report rendered successfully\n  2  invalid usage, unreadable input, unsupported JSON, or output write failure"
     }
   }
 }
@@ -356,6 +429,27 @@ fn main() -> ExitCode {
         CliAnalyzeBatchStatus::Warning | CliAnalyzeBatchStatus::Error => ExitCode::from(1),
       }
     }
+    CliCommand::ReportMarkdown { input, out } => {
+      let contents = match fs::read_to_string(&input) {
+        Ok(contents) => contents,
+        Err(err) => {
+          eprintln!("Failed to read report input: {err}");
+          return ExitCode::from(2);
+        }
+      };
+      let markdown = match render_markdown_report(&contents) {
+        Ok(markdown) => markdown,
+        Err(err) => {
+          eprintln!("{err}");
+          return ExitCode::from(2);
+        }
+      };
+      if let Err(err) = emit_text(&markdown, out.as_deref(), "report") {
+        eprintln!("{err}");
+        return ExitCode::from(2);
+      }
+      ExitCode::SUCCESS
+    }
   }
 }
 
@@ -425,6 +519,10 @@ mod tests {
     assert_eq!(
       parse_args(&args(&["analyze-batch", "--help"])),
       Ok(CliCommand::Help(HelpTopic::AnalyzeBatch))
+    );
+    assert_eq!(
+      parse_args(&args(&["report", "--help"])),
+      Ok(CliCommand::Help(HelpTopic::Report))
     );
   }
 
@@ -560,5 +658,29 @@ mod tests {
       "nope",
     ]))
     .is_err());
+  }
+
+  #[test]
+  fn parses_report_markdown() {
+    assert_eq!(
+      parse_args(&args(&[
+        "report",
+        "results.json",
+        "--format",
+        "markdown",
+        "--out",
+        "report.md",
+      ])),
+      Ok(CliCommand::ReportMarkdown {
+        input: "results.json".to_string(),
+        out: Some("report.md".to_string()),
+      })
+    );
+  }
+
+  #[test]
+  fn rejects_report_without_markdown_format() {
+    assert!(parse_args(&args(&["report", "results.json"])).is_err());
+    assert!(parse_args(&args(&["report", "results.json", "--format", "json"])).is_err());
   }
 }
