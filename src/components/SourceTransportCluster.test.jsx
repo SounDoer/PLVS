@@ -27,13 +27,36 @@ describe("SourceTransportCluster", () => {
   });
 
   it("uses semantic borders instead of hard-coded white tints", () => {
-    expect(source).toContain("border-border");
+    expect(source).toContain("var(--border)");
     expect(source).not.toContain("border-white/");
   });
 
   it("keeps a solid primary accent for the ready action segment", () => {
-    expect(source).toContain("bg-primary text-primary-foreground");
+    expect(source).toContain("bg-primary text-foreground");
     expect(source).not.toContain("bg-primary/15 text-primary");
+    expect(source).not.toContain("text-primary-foreground");
+    expect(source).not.toContain("text-white");
+    expect(source).not.toContain("var(--primary)_12%,transparent");
+  });
+
+  it("keeps ready chrome readable at minimum panel opacity", () => {
+    expect(source).toContain("var(--secondary)_55%,transparent");
+    expect(source).toContain("var(--border)_70%,transparent");
+    expect(source).not.toContain("var(--primary)_var(--panel-opacity-control)");
+    expect(source).not.toContain("var(--secondary)_var(--panel-opacity-control)");
+  });
+
+  it("keeps live and snapshot chrome readable at minimum panel opacity", () => {
+    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-bad)_8%,transparent)");
+    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-bad)_12%,transparent)");
+    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-warn)_8%,transparent)");
+    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-warn)_12%,transparent)");
+    expect(source).not.toContain(
+      "var(--ui-signal-bad)_8%,transparent)_var(--panel-opacity-control)"
+    );
+    expect(source).not.toContain(
+      "var(--ui-signal-warn)_8%,transparent)_var(--panel-opacity-control)"
+    );
   });
 
   it("uses compact header control sizing", () => {
