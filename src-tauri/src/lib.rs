@@ -1,4 +1,5 @@
 mod audio;
+pub mod doctor;
 mod dsp;
 mod engine;
 mod file_analysis;

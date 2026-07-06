@@ -1,0 +1,431 @@
+use std::{
+  env, fs,
+  path::{Path, PathBuf},
+  process::Command,
+};
+
+use serde::Serialize;
+use serde_json::{json, Value};
+
+use crate::file_analysis::ffmpeg::locate::locate_sidecar;
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+const APP_ID: &str = "com.soundoer.plvs";
+const DOCTOR_WRITE_TEST_FILE: &str = ".plvs-doctor-write-test";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DoctorStatus {
+  Ok,
+  Warning,
+  Error,
+  Skipped,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorSummary {
+  pub ok: u32,
+  pub warning: u32,
+  pub error: u32,
+  pub skipped: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorAppInfo {
+  pub name: String,
+  pub version: String,
+  pub executable_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorPlatformInfo {
+  pub os: String,
+  pub arch: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorPaths {
+  pub config_dir: Option<String>,
+  pub data_dir: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorCheck {
+  pub id: String,
+  pub status: DoctorStatus,
+  pub severity: DoctorStatus,
+  pub title: String,
+  pub details: Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorReport {
+  pub schema_version: u32,
+  pub status: DoctorStatus,
+  pub summary: DoctorSummary,
+  pub app: DoctorAppInfo,
+  pub platform: DoctorPlatformInfo,
+  pub paths: DoctorPaths,
+  pub checks: Vec<DoctorCheck>,
+}
+
+pub fn run_doctor() -> DoctorReport {
+  let app = collect_app_info();
+  let platform = collect_platform_info();
+  let paths = resolve_runtime_paths();
+
+  let mut checks = vec![
+    info_check(
+      "app-info",
+      "Application information was collected",
+      json!({
+        "name": app.name,
+        "version": app.version,
+        "executablePath": app.executable_path,
+      }),
+    ),
+    info_check(
+      "platform-info",
+      "Platform information was collected",
+      json!({
+        "os": platform.os,
+        "arch": platform.arch,
+      }),
+    ),
+  ];
+
+  checks.push(check_optional_writable_dir(
+    "config-directory-writable",
+    "Configuration directory is writable",
+    "Configuration directory is not writable",
+    paths.config_dir.as_deref(),
+  ));
+  checks.push(check_optional_writable_dir(
+    "data-directory-writable",
+    "Data directory is writable",
+    "Data directory is not writable",
+    paths.data_dir.as_deref(),
+  ));
+  checks.push(check_sidecar("ffmpeg"));
+  checks.push(check_sidecar("ffprobe"));
+
+  let (status, summary) = aggregate_status(&checks);
+  DoctorReport {
+    schema_version: 1,
+    status,
+    summary,
+    app,
+    platform,
+    paths,
+    checks,
+  }
+}
+
+pub fn aggregate_status(checks: &[DoctorCheck]) -> (DoctorStatus, DoctorSummary) {
+  let mut summary = DoctorSummary {
+    ok: 0,
+    warning: 0,
+    error: 0,
+    skipped: 0,
+  };
+
+  for check in checks {
+    match check.status {
+      DoctorStatus::Ok => summary.ok += 1,
+      DoctorStatus::Warning => summary.warning += 1,
+      DoctorStatus::Error => summary.error += 1,
+      DoctorStatus::Skipped => summary.skipped += 1,
+    }
+  }
+
+  let status = if summary.error > 0 {
+    DoctorStatus::Error
+  } else if summary.warning > 0 {
+    DoctorStatus::Warning
+  } else {
+    DoctorStatus::Ok
+  };
+  (status, summary)
+}
+
+fn collect_app_info() -> DoctorAppInfo {
+  DoctorAppInfo {
+    name: "PLVS".to_string(),
+    version: env!("CARGO_PKG_VERSION").to_string(),
+    executable_path: env::current_exe().ok().map(path_to_string),
+  }
+}
+
+fn collect_platform_info() -> DoctorPlatformInfo {
+  DoctorPlatformInfo {
+    os: env::consts::OS.to_string(),
+    arch: env::consts::ARCH.to_string(),
+  }
+}
+
+fn resolve_runtime_paths() -> DoctorPaths {
+  DoctorPaths {
+    config_dir: resolve_config_dir().map(path_to_string),
+    data_dir: resolve_data_dir().map(path_to_string),
+  }
+}
+
+#[cfg(windows)]
+fn resolve_config_dir() -> Option<PathBuf> {
+  env::var_os("APPDATA").map(|base| PathBuf::from(base).join(APP_ID))
+}
+
+#[cfg(windows)]
+fn resolve_data_dir() -> Option<PathBuf> {
+  env::var_os("LOCALAPPDATA").map(|base| PathBuf::from(base).join(APP_ID))
+}
+
+#[cfg(target_os = "macos")]
+fn resolve_config_dir() -> Option<PathBuf> {
+  env::var_os("HOME").map(|base| {
+    PathBuf::from(base)
+      .join("Library")
+      .join("Application Support")
+      .join(APP_ID)
+  })
+}
+
+#[cfg(target_os = "macos")]
+fn resolve_data_dir() -> Option<PathBuf> {
+  env::var_os("HOME").map(|base| {
+    PathBuf::from(base)
+      .join("Library")
+      .join("Logs")
+      .join(APP_ID)
+  })
+}
+
+#[cfg(all(not(windows), not(target_os = "macos")))]
+fn resolve_config_dir() -> Option<PathBuf> {
+  env::var_os("XDG_CONFIG_HOME")
+    .map(PathBuf::from)
+    .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
+    .map(|base| base.join(APP_ID))
+}
+
+#[cfg(all(not(windows), not(target_os = "macos")))]
+fn resolve_data_dir() -> Option<PathBuf> {
+  env::var_os("XDG_DATA_HOME")
+    .map(PathBuf::from)
+    .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".local").join("share")))
+    .map(|base| base.join(APP_ID))
+}
+
+fn info_check(id: &str, title: &str, details: Value) -> DoctorCheck {
+  DoctorCheck {
+    id: id.to_string(),
+    status: DoctorStatus::Ok,
+    severity: DoctorStatus::Ok,
+    title: title.to_string(),
+    details,
+  }
+}
+
+fn check_optional_writable_dir(
+  id: &str,
+  ok_title: &str,
+  error_title: &str,
+  path: Option<&str>,
+) -> DoctorCheck {
+  let Some(path) = path else {
+    return DoctorCheck {
+      id: id.to_string(),
+      status: DoctorStatus::Error,
+      severity: DoctorStatus::Error,
+      title: error_title.to_string(),
+      details: json!({
+        "path": Value::Null,
+        "exists": false,
+        "writable": false,
+        "error": "runtime directory could not be resolved",
+      }),
+    };
+  };
+  check_writable_dir(id, ok_title, error_title, Path::new(path))
+}
+
+fn check_writable_dir(id: &str, ok_title: &str, error_title: &str, path: &Path) -> DoctorCheck {
+  let path_text = path_to_string(path.to_path_buf());
+  let result = fs::create_dir_all(path).and_then(|_| {
+    let test_file = path.join(DOCTOR_WRITE_TEST_FILE);
+    fs::write(&test_file, b"plvs doctor write test")?;
+    fs::remove_file(test_file)
+  });
+
+  match result {
+    Ok(()) => DoctorCheck {
+      id: id.to_string(),
+      status: DoctorStatus::Ok,
+      severity: DoctorStatus::Error,
+      title: ok_title.to_string(),
+      details: json!({
+        "path": path_text,
+        "exists": path.exists(),
+        "writable": true,
+      }),
+    },
+    Err(err) => DoctorCheck {
+      id: id.to_string(),
+      status: DoctorStatus::Error,
+      severity: DoctorStatus::Error,
+      title: error_title.to_string(),
+      details: json!({
+        "path": path_text,
+        "exists": path.exists(),
+        "writable": false,
+        "error": err.to_string(),
+      }),
+    },
+  }
+}
+
+fn check_sidecar(stem: &str) -> DoctorCheck {
+  let path = locate_sidecar(stem);
+  let path_text = path_to_string(path.clone());
+  let exists = path.exists();
+
+  let mut runnable = false;
+  let mut version_line: Option<String> = None;
+  let mut error: Option<String> = None;
+
+  if exists {
+    let mut command = Command::new(&path);
+    command.arg("-version");
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
+
+    match command.output() {
+      Ok(output) if output.status.success() => {
+        runnable = true;
+        version_line = String::from_utf8_lossy(&output.stdout)
+          .lines()
+          .next()
+          .map(|line| line.trim().to_string())
+          .filter(|line| !line.is_empty());
+      }
+      Ok(output) => {
+        error = Some(format!("sidecar exited with status {}", output.status));
+      }
+      Err(err) => {
+        error = Some(err.to_string());
+      }
+    }
+  } else {
+    error = Some("sidecar file does not exist".to_string());
+  }
+
+  let ok = exists && runnable;
+  DoctorCheck {
+    id: format!("{stem}-sidecar"),
+    status: if ok {
+      DoctorStatus::Ok
+    } else {
+      DoctorStatus::Warning
+    },
+    severity: DoctorStatus::Warning,
+    title: if ok {
+      format!("{stem} sidecar is available")
+    } else {
+      format!("{stem} sidecar is unavailable")
+    },
+    details: json!({
+      "path": path_text,
+      "exists": exists,
+      "runnable": runnable,
+      "version": version_line,
+      "fileAnalysisAvailable": ok,
+      "error": error,
+    }),
+  }
+}
+
+fn path_to_string(path: PathBuf) -> String {
+  path.to_string_lossy().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::time::{SystemTime, UNIX_EPOCH};
+
+  fn check(status: DoctorStatus) -> DoctorCheck {
+    DoctorCheck {
+      id: "test".to_string(),
+      status,
+      severity: status,
+      title: "Test".to_string(),
+      details: json!({}),
+    }
+  }
+
+  #[test]
+  fn aggregation_reports_ok_when_all_checks_are_ok() {
+    let (status, summary) = aggregate_status(&[check(DoctorStatus::Ok)]);
+    assert_eq!(status, DoctorStatus::Ok);
+    assert_eq!(summary.ok, 1);
+    assert_eq!(summary.warning, 0);
+    assert_eq!(summary.error, 0);
+    assert_eq!(summary.skipped, 0);
+  }
+
+  #[test]
+  fn aggregation_reports_warning_without_errors() {
+    let (status, summary) =
+      aggregate_status(&[check(DoctorStatus::Ok), check(DoctorStatus::Warning)]);
+    assert_eq!(status, DoctorStatus::Warning);
+    assert_eq!(summary.ok, 1);
+    assert_eq!(summary.warning, 1);
+  }
+
+  #[test]
+  fn aggregation_reports_error_when_any_check_errors() {
+    let (status, summary) = aggregate_status(&[
+      check(DoctorStatus::Ok),
+      check(DoctorStatus::Warning),
+      check(DoctorStatus::Error),
+    ]);
+    assert_eq!(status, DoctorStatus::Error);
+    assert_eq!(summary.error, 1);
+  }
+
+  #[test]
+  fn aggregation_counts_skipped_without_affecting_status() {
+    let (status, summary) =
+      aggregate_status(&[check(DoctorStatus::Ok), check(DoctorStatus::Skipped)]);
+    assert_eq!(status, DoctorStatus::Ok);
+    assert_eq!(summary.ok, 1);
+    assert_eq!(summary.skipped, 1);
+  }
+
+  #[test]
+  fn writable_dir_check_creates_and_removes_probe_file() {
+    let dir = env::temp_dir().join(format!(
+      "plvs-doctor-test-{}",
+      SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+    ));
+    let result = check_writable_dir("test-dir", "OK", "Error", &dir);
+    assert_eq!(result.status, DoctorStatus::Ok);
+    assert!(dir.exists());
+    assert!(!dir.join(DOCTOR_WRITE_TEST_FILE).exists());
+    fs::remove_dir_all(dir).unwrap();
+  }
+}

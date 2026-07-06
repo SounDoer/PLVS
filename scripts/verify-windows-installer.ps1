@@ -15,6 +15,11 @@ if (-not (Test-Path $appBinary)) {
   throw "Missing app binary: $appBinary"
 }
 
+$cliBinary = Join-Path $releaseDir "plvs-cli.exe"
+if (-not (Test-Path $cliBinary)) {
+  throw "Missing CLI binary: $cliBinary"
+}
+
 foreach ($sidecar in @("ffmpeg.exe", "ffprobe.exe")) {
   $sidecarPath = Join-Path $releaseDir $sidecar
   if (-not (Test-Path $sidecarPath)) {
@@ -42,6 +47,12 @@ try {
     throw "Installed app binary missing: $installedApp`nInstalled files:`n$($files -join "`n")"
   }
 
+  $installedCli = Join-Path $installRoot "plvs-cli.exe"
+  if (-not (Test-Path $installedCli)) {
+    $files = Get-ChildItem $installRoot -File -Recurse | Select-Object -ExpandProperty FullName
+    throw "Installed CLI binary missing: $installedCli`nInstalled files:`n$($files -join "`n")"
+  }
+
   foreach ($sidecar in @("ffmpeg.exe", "ffprobe.exe")) {
     $installedSidecar = Join-Path $installRoot $sidecar
     if (-not (Test-Path $installedSidecar)) {
@@ -54,10 +65,31 @@ try {
   if (Test-Path $installedDiagnostic) {
     throw "Installer included diagnostic binary: $installedDiagnostic"
   }
+
+  $doctorOutput = & $installedCli doctor --json
+  if ($LASTEXITCODE -ne 0) {
+    throw "Installed CLI doctor failed with exit code $LASTEXITCODE`n$doctorOutput"
+  }
+  $doctor = $doctorOutput | ConvertFrom-Json
+  if ($doctor.schemaVersion -ne 1) {
+    throw "Installed CLI doctor returned unexpected schema version: $($doctor.schemaVersion)"
+  }
 } finally {
   $uninstaller = Join-Path $installRoot "uninstall.exe"
   if (Test-Path $uninstaller) {
     Start-Process -FilePath $uninstaller -ArgumentList "/S" -Wait -WindowStyle Hidden
+  }
+  foreach ($registryKey in @(
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\PLVS",
+    "HKCU:\Software\soundoer\PLVS"
+  )) {
+    if (Test-Path $registryKey) {
+      $entry = Get-ItemProperty $registryKey -ErrorAction SilentlyContinue
+      $location = ($entry.InstallLocation -as [string]).Trim('"')
+      if ($location -eq $installRoot -or $location -like "*plvs-installer-smoke-*") {
+        Remove-Item -LiteralPath $registryKey -Recurse -Force -ErrorAction SilentlyContinue
+      }
+    }
   }
   Remove-Item -LiteralPath $installRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
