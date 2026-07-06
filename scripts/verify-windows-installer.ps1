@@ -1,5 +1,88 @@
 $ErrorActionPreference = "Stop"
 
+function Normalize-PathEntry([string]$PathEntry) {
+  if (-not $PathEntry) {
+    return ""
+  }
+  return $PathEntry.Trim().TrimEnd('\')
+}
+
+function Test-PathContainsEntry([string]$PathValue, [string]$Entry) {
+  $needle = Normalize-PathEntry $Entry
+  foreach ($part in ($PathValue -split ';')) {
+    if ((Normalize-PathEntry $part) -ieq $needle) {
+      return $true
+    }
+  }
+  return $false
+}
+
+function Get-RegistryDefaultValue([string]$SubKey) {
+  $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($SubKey)
+  if (-not $key) {
+    return $null
+  }
+  try {
+    return $key.GetValue("", $null)
+  } finally {
+    $key.Close()
+  }
+}
+
+function Get-RegistryNamedValue([string]$SubKey, [string]$Name) {
+  $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($SubKey)
+  if (-not $key) {
+    return $null
+  }
+  try {
+    return $key.GetValue($Name, $null)
+  } finally {
+    $key.Close()
+  }
+}
+
+function Set-RegistryDefaultValue([string]$SubKey, $Value) {
+  if ($null -eq $Value) {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($SubKey, $true)
+    if ($key) {
+      try {
+        $key.DeleteValue("", $false)
+      } finally {
+        $key.Close()
+      }
+    }
+    return
+  }
+
+  $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($SubKey)
+  try {
+    $key.SetValue("", $Value, [Microsoft.Win32.RegistryValueKind]::String)
+  } finally {
+    $key.Close()
+  }
+}
+
+function Set-RegistryNamedValue([string]$SubKey, [string]$Name, $Value) {
+  if ($null -eq $Value) {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($SubKey, $true)
+    if ($key) {
+      try {
+        $key.DeleteValue($Name, $false)
+      } finally {
+        $key.Close()
+      }
+    }
+    return
+  }
+
+  $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($SubKey)
+  try {
+    $key.SetValue($Name, $Value)
+  } finally {
+    $key.Close()
+  }
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $releaseDir = Join-Path $repoRoot "src-tauri\target\release"
 $installer = Get-ChildItem (Join-Path $releaseDir "bundle\nsis") -Filter "*.exe" |
@@ -34,6 +117,11 @@ if (Test-Path $diagnosticBinary) {
 
 $installRoot = Join-Path $env:TEMP ("plvs-installer-smoke-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force $installRoot | Out-Null
+$originalUserPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
+$nsisInstallDirSubKey = "Software\soundoer\PLVS"
+$originalNsisInstallDir = Get-RegistryDefaultValue $nsisInstallDirSubKey
+$originalNsisInstallerLanguage = Get-RegistryNamedValue $nsisInstallDirSubKey "Installer Language"
+$uninstalled = $false
 
 try {
   $proc = Start-Process -FilePath $installer.FullName -ArgumentList @("/S", "/D=$installRoot") -Wait -PassThru -WindowStyle Hidden
@@ -74,9 +162,40 @@ try {
   if ($doctor.schemaVersion -ne 1) {
     throw "Installed CLI doctor returned unexpected schema version: $($doctor.schemaVersion)"
   }
-} finally {
+
+  $userPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
+  if (-not (Test-PathContainsEntry $userPath $installRoot)) {
+    throw "Installed directory was not added to the user PATH: $installRoot"
+  }
+
+  $previousProcessPath = $env:Path
+  try {
+    $env:Path = "$userPath;$previousProcessPath"
+    $pathDoctorOutput = & plvs-cli doctor --json
+    if ($LASTEXITCODE -ne 0) {
+      throw "PATH-discovered CLI doctor failed with exit code $LASTEXITCODE`n$pathDoctorOutput"
+    }
+    $pathDoctor = $pathDoctorOutput | ConvertFrom-Json
+    if ($pathDoctor.app.executablePath -ne $installedCli) {
+      throw "PATH-discovered CLI resolved unexpected executable: $($pathDoctor.app.executablePath)"
+    }
+  } finally {
+    $env:Path = $previousProcessPath
+  }
+
   $uninstaller = Join-Path $installRoot "uninstall.exe"
   if (Test-Path $uninstaller) {
+    Start-Process -FilePath $uninstaller -ArgumentList "/S" -Wait -WindowStyle Hidden
+    $uninstalled = $true
+  }
+
+  $userPathAfterUninstall = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
+  if (Test-PathContainsEntry $userPathAfterUninstall $installRoot) {
+    throw "Uninstaller did not remove installed directory from user PATH: $installRoot"
+  }
+} finally {
+  $uninstaller = Join-Path $installRoot "uninstall.exe"
+  if ((-not $uninstalled) -and (Test-Path $uninstaller)) {
     Start-Process -FilePath $uninstaller -ArgumentList "/S" -Wait -WindowStyle Hidden
   }
   foreach ($registryKey in @(
@@ -85,13 +204,22 @@ try {
   )) {
     if (Test-Path $registryKey) {
       $entry = Get-ItemProperty $registryKey -ErrorAction SilentlyContinue
+      $defaultValue = (Get-Item -LiteralPath $registryKey).GetValue("", $null)
       $location = ($entry.InstallLocation -as [string]).Trim('"')
-      if ($location -eq $installRoot -or $location -like "*plvs-installer-smoke-*") {
+      if (
+        $location -eq $installRoot -or
+        $location -like "*plvs-installer-smoke-*" -or
+        $defaultValue -eq $installRoot -or
+        $defaultValue -like "*plvs-installer-smoke-*"
+      ) {
         Remove-Item -LiteralPath $registryKey -Recurse -Force -ErrorAction SilentlyContinue
       }
     }
   }
   Remove-Item -LiteralPath $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+  [Environment]::SetEnvironmentVariable("Path", $originalUserPath, [EnvironmentVariableTarget]::User)
+  Set-RegistryDefaultValue $nsisInstallDirSubKey $originalNsisInstallDir
+  Set-RegistryNamedValue $nsisInstallDirSubKey "Installer Language" $originalNsisInstallerLanguage
 }
 
 Write-Host "Windows installer smoke check passed: $($installer.FullName)"
