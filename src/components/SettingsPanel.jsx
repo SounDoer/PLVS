@@ -121,6 +121,9 @@ export function SettingsPanel({
   hasUpdate = false,
   updateStatus = latestVersion ? "ok" : "checking",
   onCheckForUpdate = () => {},
+  installStatus = "idle",
+  onInstallUpdate = () => {},
+  onRestartToApply = () => {},
   openExternalUrl = () => {},
   autostartEnabled = false,
   setAutostartEnabled = () => {},
@@ -166,6 +169,12 @@ export function SettingsPanel({
   let updateStatusText = "Checking...";
   if (updateStatus === "unavailable") {
     updateStatusText = "Update unavailable";
+  } else if (installStatus === "installing") {
+    updateStatusText = "Installing update...";
+  } else if (installStatus === "ready") {
+    updateStatusText = "Ready to restart";
+  } else if (installStatus === "error") {
+    updateStatusText = "Update failed";
   } else if (!updateCheckDisabled && latestVersion) {
     updateStatusText = hasUpdate ? `v${latestVersion} available` : "Up to date";
   }
@@ -577,6 +586,35 @@ export function SettingsPanel({
                         >
                           Check
                         </button>
+                        {hasUpdate && installStatus !== "ready" ? (
+                          <>
+                            <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                            <button
+                              type="button"
+                              className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
+                              disabled={installStatus === "installing"}
+                              onClick={onInstallUpdate}
+                            >
+                              {installStatus === "installing"
+                                ? "Installing…"
+                                : installStatus === "error"
+                                  ? "Retry Update"
+                                  : "Update"}
+                            </button>
+                          </>
+                        ) : null}
+                        {installStatus === "ready" ? (
+                          <>
+                            <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                            <button
+                              type="button"
+                              className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
+                              onClick={onRestartToApply}
+                            >
+                              Restart
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                       <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                         <button

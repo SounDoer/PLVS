@@ -283,6 +283,64 @@ describe("SettingsPanel", () => {
     expect(openExternalUrl).toHaveBeenCalledWith(releaseUrl);
   });
 
+  it("shows an Update button when hasUpdate is true and calls onInstallUpdate", () => {
+    const onInstallUpdate = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.1.9"
+        latestVersion="0.1.10"
+        hasUpdate={true}
+        installStatus="idle"
+        onInstallUpdate={onInstallUpdate}
+      />
+    );
+
+    const updateButton = screen.getByText("Update");
+    fireEvent.click(updateButton);
+    expect(onInstallUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not show an Update button when there is no update", () => {
+    render(
+      <SettingsPanel {...BASE_PROPS} appVersion="0.1.10" latestVersion="0.1.10" hasUpdate={false} />
+    );
+
+    expect(screen.queryByText("Update")).toBeNull();
+  });
+
+  it("disables the Update button and shows progress while installing", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.1.9"
+        latestVersion="0.1.10"
+        hasUpdate={true}
+        installStatus="installing"
+      />
+    );
+
+    expect(screen.getByText("Installing…").closest("button").disabled).toBe(true);
+  });
+
+  it("shows a Restart button once the update is ready and calls onRestartToApply", () => {
+    const onRestartToApply = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.1.9"
+        latestVersion="0.1.10"
+        hasUpdate={true}
+        installStatus="ready"
+        onRestartToApply={onRestartToApply}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Restart"));
+    expect(onRestartToApply).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Update")).toBeNull();
+  });
+
   const SYSTEM_PROPS = {
     autostartEnabled: false,
     setAutostartEnabled: vi.fn(),

@@ -101,6 +101,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
+import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
 import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { useGlassEffect } from "./hooks/useGlassEffect.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
@@ -475,7 +476,8 @@ function AppContent() {
     spectrumResultsByKey: {},
     vectorscopeResultsByKey: {},
   });
-  const { updateInfo, refreshUpdateCheck } = useUpdateCheck(APP_VERSION);
+  const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
+  const { installStatus, install, restartToApply } = useApplyUpdate();
   const [focusControlsVisible, setFocusControlsVisible] = useState(false);
   const [focusControlsHeld, setFocusControlsHeld] = useState(false);
   const focusControlsHideTimerRef = useRef(0);
@@ -1747,6 +1749,9 @@ function AppContent() {
           hasUpdate={updateInfo?.hasUpdate}
           updateStatus={updateInfo?.status}
           onCheckForUpdate={refreshUpdateCheck}
+          installStatus={installStatus}
+          onInstallUpdate={() => install(updateInfo?.update)}
+          onRestartToApply={restartToApply}
           openExternalUrl={openExternalUrl}
           autostartEnabled={autostartEnabled}
           setAutostartEnabled={setAutostartEnabled}
