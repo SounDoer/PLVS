@@ -59,6 +59,11 @@ describe("Tauri security configuration", () => {
     expect(tauriWindowsConfig.bundle.windows.nsis.installMode).toBe("currentUser");
   });
 
+  it("uses the PLVS icon for the Windows installer and uninstaller", () => {
+    expect(tauriWindowsConfig.bundle.windows.nsis.installerIcon).toBe("icons/icon.ico");
+    expect(tauriWindowsConfig.bundle.windows.nsis.uninstallerIcon).toBe("icons/icon.ico");
+  });
+
   it("keeps desktop shortcut creation opt-in on the NSIS finish page", () => {
     expect(tauriWindowsConfig.bundle.windows.nsis.installerHooks).toBe("nsis/installer-hooks.nsh");
     expect(nsisInstallerHooks).toContain("MUI_FINISHPAGE_SHOWREADME_NOTCHECKED");
