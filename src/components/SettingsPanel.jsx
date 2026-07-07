@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ExternalLink, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, RotateCcw, Terminal, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -150,6 +150,9 @@ export function SettingsPanel({
   onResetConfiguration = () => {},
   configurationBusy = false,
   configurationStatus = "",
+  cliPathStatus = undefined,
+  cliPathBusy = false,
+  onSetCliPathEnabled = () => {},
   onOpenFeedback = () => {},
 }) {
   const reduceMotion = useReducedMotion();
@@ -166,6 +169,12 @@ export function SettingsPanel({
   } else if (!updateCheckDisabled && latestVersion) {
     updateStatusText = hasUpdate ? `v${latestVersion} available` : "Up to date";
   }
+  const showCliPath = cliPathStatus !== undefined;
+  const cliPathSupported = !!cliPathStatus?.supported;
+  const cliPathInstalled = !!cliPathStatus?.installed;
+  const cliPathOnPath = !!cliPathStatus?.onPath;
+  const cliPathDisabled = cliPathBusy || !cliPathSupported || !cliPathInstalled;
+  const cliPathMessage = cliPathStatus?.message ?? "Checking command line tools...";
 
   useLayoutEffect(() => {
     if (settingsOpen) {
@@ -511,6 +520,35 @@ export function SettingsPanel({
                     </div>
                   ) : null}
                 </SettingsSection>
+
+                {showCliPath ? (
+                  <>
+                    <SettingsDivider />
+
+                    {/* Command line */}
+                    <SettingsSection>
+                      <SettingsRow label="Command Line">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={cliPathDisabled}
+                          aria-label={
+                            cliPathOnPath ? "Remove PLVS from user PATH" : "Add PLVS to user PATH"
+                          }
+                          onClick={() => onSetCliPathEnabled(!cliPathOnPath)}
+                          className="h-7 px-2 text-[length:var(--ui-fs-display)]"
+                        >
+                          <Terminal className="size-3.5" />
+                          {cliPathOnPath ? "Remove PATH" : "Add PATH"}
+                        </Button>
+                      </SettingsRow>
+                      <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
+                        {cliPathMessage}
+                      </div>
+                    </SettingsSection>
+                  </>
+                ) : null}
 
                 {/* Footer */}
                 {appVersion ? (

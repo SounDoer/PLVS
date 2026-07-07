@@ -73,6 +73,48 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("Configuration exported")).toBeTruthy();
   });
 
+  it("renders command line PATH setup as an explicit action", () => {
+    const onSetCliPathEnabled = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        cliPathStatus={{
+          supported: true,
+          installed: true,
+          onPath: false,
+          message: "Add PLVS to user PATH to call plvs-cli from new terminals.",
+        }}
+        onSetCliPathEnabled={onSetCliPathEnabled}
+      />
+    );
+
+    expect(screen.getByText("Command Line")).toBeTruthy();
+    expect(
+      screen.getByText("Add PLVS to user PATH to call plvs-cli from new terminals.")
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add PLVS to user PATH" }));
+    expect(onSetCliPathEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it("renders command line PATH removal when already configured", () => {
+    const onSetCliPathEnabled = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        cliPathStatus={{
+          supported: true,
+          installed: true,
+          onPath: true,
+          message: "Available in new terminals.",
+        }}
+        onSetCliPathEnabled={onSetCliPathEnabled}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove PLVS from user PATH" }));
+    expect(onSetCliPathEnabled).toHaveBeenCalledWith(false);
+  });
+
   it("confirms before resetting configuration", () => {
     const onResetConfiguration = vi.fn();
     render(<SettingsPanel {...BASE_PROPS} onResetConfiguration={onResetConfiguration} />);

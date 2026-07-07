@@ -1,6 +1,7 @@
 mod audio;
 pub mod cli_analyze;
 pub mod cli_analyze_batch;
+mod cli_path;
 pub mod cli_report;
 pub mod doctor;
 mod dsp;
@@ -60,6 +61,8 @@ pub fn run() {
       profile::read_profile_file,
       profile::write_profile_file,
       profile::write_text_file,
+      cli_path::cli_path_status,
+      cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
       window_state::apply_window_bounds,
       glass_effect::set_glass_effect,

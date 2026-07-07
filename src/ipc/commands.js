@@ -88,6 +88,14 @@ export function writeTextFile(path, contents) {
   return invoke("write_text_file", { path, contents });
 }
 
+export function cliPathStatusCommand() {
+  return invoke("cli_path_status");
+}
+
+export function setCliPathEnabledCommand(enabled) {
+  return invoke("set_cli_path_enabled", { enabled });
+}
+
 /**
  * @param {{ spectrum: Array<{ key: string; channel: object; view: string; smoothingPercent: number; tiltDbPerOctave: number }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
  */
