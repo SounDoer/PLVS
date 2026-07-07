@@ -1,4 +1,5 @@
 use serde::Serialize;
+#[cfg(windows)]
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize)]
