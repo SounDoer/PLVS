@@ -126,7 +126,7 @@ jobs:
           $descriptor = @{
             platform  = "windows-x86_64"
             url       = "https://github.com/SounDoer/PLVS/releases/download/${{ github.ref_name }}/$zipName"
-            signature = Get-Content $sig.FullName -Raw
+            signature = (Get-Content $sig.FullName -Raw).Trim()
           }
           $descriptor | ConvertTo-Json | Set-Content updater-windows.json
           Copy-Item $zip $zipName
@@ -213,6 +213,7 @@ jobs:
           if [ -z "$sig" ]; then echo "No .app.tar.gz.sig found — updater signing did not run" >&2; exit 1; fi
           tarball="${sig%.sig}"
           tarballName=$(basename "$tarball")
+          # $(...) strips trailing newlines, matching the explicit .Trim() used on Windows.
           signature=$(cat "$sig")
           node -e "
             const fs = require('fs');
