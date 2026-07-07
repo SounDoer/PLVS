@@ -1,3 +1,4 @@
+import { useMemo, useRef } from "react";
 import { useAudioData } from "../../workspace/AudioDataContext.jsx";
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
@@ -12,6 +13,7 @@ import {
 } from "./SnapshotEmptyState.jsx";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
+const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -37,6 +39,11 @@ function correlationMarkerClass(value) {
   if (corr < 0) return "bg-[color:var(--ui-signal-bad)]";
   if (corr < 0.35) return "bg-[color:var(--ui-signal-warn)]";
   return "bg-[color:var(--ui-signal-good)]";
+}
+
+function smoothCorrelation(previous, next) {
+  if (previous === null || next === null) return next;
+  return previous + (next - previous) * LIVE_CORRELATION_DISPLAY_ALPHA;
 }
 
 export function VectorscopePanel() {
@@ -102,6 +109,20 @@ export function VectorscopePanel() {
     : hasPairSignal(displayAudio?.peakDb, px, py);
   const canPlaceCorrelationMarker =
     hasCorrelationSignal && clampCorrelation(panelCorrelation) !== null;
+  const liveCorrelationDisplayRef = useRef(null);
+  const displayCorrelation = useMemo(() => {
+    const rawCorrelation = canPlaceCorrelationMarker ? clampCorrelation(panelCorrelation) : null;
+    if (isSnapshot || rawCorrelation === null) {
+      liveCorrelationDisplayRef.current = rawCorrelation;
+      return rawCorrelation;
+    }
+    const smoothedCorrelation = smoothCorrelation(
+      liveCorrelationDisplayRef.current,
+      rawCorrelation
+    );
+    liveCorrelationDisplayRef.current = smoothedCorrelation;
+    return smoothedCorrelation;
+  }, [canPlaceCorrelationMarker, isSnapshot, panelCorrelation]);
 
   if (isOverCap || snapshotMissing) {
     return (
@@ -225,7 +246,7 @@ export function VectorscopePanel() {
             <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
             <div className="absolute right-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
           </div>
-          {canPlaceCorrelationMarker && (
+          {displayCorrelation !== null && (
             <div
               data-vectorscope-correlation-marker
               className={cn(
@@ -233,7 +254,7 @@ export function VectorscopePanel() {
                 !isSnapshot && "transition-[left] duration-100 ease-out",
                 correlationMarkerClass(panelCorrelation)
               )}
-              style={{ left: correlationMarkerLeft(panelCorrelation) }}
+              style={{ left: correlationMarkerLeft(displayCorrelation) }}
             />
           )}
         </div>

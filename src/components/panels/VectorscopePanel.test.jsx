@@ -104,19 +104,40 @@ describe("VectorscopePanel", () => {
   });
 
   it("smooths the live marker position but leaves snapshot markers immediate", () => {
-    const live = renderPanel({
+    const { container, rerender } = renderPanel({
       selectedOffset: -1,
       panelControls: { vectorscopePair: { x: 0, y: 1 } },
       displayAudio: {
         peakDb: [-12, -18],
         vectorscopeResultsByKey: {
-          "vectorscope:pair:0:1": { path: "M 0 0 L 100 100", correlation: 0.5, pairX: 0, pairY: 1 },
+          "vectorscope:pair:0:1": { path: "M 0 0 L 100 100", correlation: -1, pairX: 0, pairY: 1 },
         },
       },
     });
-    expect(
-      live.container.querySelector("[data-vectorscope-correlation-marker]")?.className
-    ).toContain("transition-[left]");
+    rerender(
+      <AudioDataContext.Provider
+        value={{
+          selectedOffset: -1,
+          panelControls: { vectorscopePair: { x: 0, y: 1 } },
+          displayAudio: {
+            peakDb: [-12, -18],
+            vectorscopeResultsByKey: {
+              "vectorscope:pair:0:1": {
+                path: "M 0 0 L 100 100",
+                correlation: 1,
+                pairX: 0,
+                pairY: 1,
+              },
+            },
+          },
+        }}
+      >
+        <VectorscopePanel />
+      </AudioDataContext.Provider>
+    );
+    const liveMarker = container.querySelector("[data-vectorscope-correlation-marker]");
+    expect(liveMarker?.className).toContain("transition-[left]");
+    expect(liveMarker?.getAttribute("style")).toContain("left: 25%");
 
     const snapshot = renderPanel({
       selectedOffset: 2,
