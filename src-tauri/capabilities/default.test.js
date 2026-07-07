@@ -17,4 +17,8 @@ describe("default Tauri capabilities", () => {
     expect(capability.permissions).toContain("dialog:allow-open");
     expect(capability.permissions).toContain("dialog:allow-save");
   });
+
+  it("allows the updater plugin to check and install updates", () => {
+    expect(capability.permissions).toContain("updater:default");
+  });
 });
