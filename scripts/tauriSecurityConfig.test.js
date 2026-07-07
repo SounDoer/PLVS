@@ -8,6 +8,10 @@ const tauriConfig = JSON.parse(
 const tauriWindowsConfig = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "tauri.windows.conf.json"), "utf8")
 );
+const nsisInstallerHooks = readFileSync(
+  join(process.cwd(), "src-tauri", "nsis", "installer-hooks.nsh"),
+  "utf8"
+);
 const defaultCapability = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "capabilities", "default.json"), "utf8")
 );
@@ -51,8 +55,12 @@ describe("Tauri security configuration", () => {
     expect(defaultCapability.windows).not.toContain("*");
   });
 
-  it("keeps the Windows installer current-user scoped without PATH hooks", () => {
+  it("keeps the Windows installer current-user scoped", () => {
     expect(tauriWindowsConfig.bundle.windows.nsis.installMode).toBe("currentUser");
-    expect(tauriWindowsConfig.bundle.windows.nsis).not.toHaveProperty("installerHooks");
+  });
+
+  it("keeps desktop shortcut creation opt-in on the NSIS finish page", () => {
+    expect(tauriWindowsConfig.bundle.windows.nsis.installerHooks).toBe("nsis/installer-hooks.nsh");
+    expect(nsisInstallerHooks).toContain("MUI_FINISHPAGE_SHOWREADME_NOTCHECKED");
   });
 });
