@@ -21,26 +21,29 @@ describe("useUpdateCheck", () => {
   it("checks for updates on mount", async () => {
     checkForUpdate.mockResolvedValue({
       latestVersion: "0.2.4",
-      releaseUrl: "https://github.com/SounDoer/PLVS/releases/tag/v0.2.4",
+      releaseUrl: "https://github.com/SounDoer/PLVS/releases/latest",
       hasUpdate: true,
+      update: { version: "0.2.4" },
     });
 
-    const { result } = renderHook(() => useUpdateCheck("0.2.3"));
+    const { result } = renderHook(() => useUpdateCheck());
 
     expect(result.current.isCheckingForUpdate).toBe(true);
     await waitFor(() => expect(result.current.updateInfo.status).toBe("ok"));
-    expect(checkForUpdate).toHaveBeenCalledWith("0.2.3");
+    expect(checkForUpdate).toHaveBeenCalledWith();
     expect(result.current.updateInfo.hasUpdate).toBe(true);
+    expect(result.current.updateInfo.update).toEqual({ version: "0.2.4" });
   });
 
   it("exposes a manual refresh that returns to checking while the request is pending", async () => {
     checkForUpdate.mockResolvedValueOnce({
-      latestVersion: "0.2.3",
-      releaseUrl: "https://github.com/SounDoer/PLVS/releases/tag/v0.2.3",
+      latestVersion: null,
+      releaseUrl: "https://github.com/SounDoer/PLVS/releases/latest",
       hasUpdate: false,
+      update: null,
     });
 
-    const { result } = renderHook(() => useUpdateCheck("0.2.3", 0));
+    const { result } = renderHook(() => useUpdateCheck(0));
     await waitFor(() => expect(result.current.updateInfo.status).toBe("ok"));
 
     let resolveRefresh;
@@ -60,8 +63,9 @@ describe("useUpdateCheck", () => {
     await act(async () => {
       resolveRefresh({
         latestVersion: "0.2.4",
-        releaseUrl: "https://github.com/SounDoer/PLVS/releases/tag/v0.2.4",
+        releaseUrl: "https://github.com/SounDoer/PLVS/releases/latest",
         hasUpdate: true,
+        update: { version: "0.2.4" },
       });
     });
 
@@ -71,12 +75,13 @@ describe("useUpdateCheck", () => {
   it("checks again on the 12 hour interval", async () => {
     vi.useFakeTimers();
     checkForUpdate.mockResolvedValue({
-      latestVersion: "0.2.3",
-      releaseUrl: "https://github.com/SounDoer/PLVS/releases/tag/v0.2.3",
+      latestVersion: null,
+      releaseUrl: "https://github.com/SounDoer/PLVS/releases/latest",
       hasUpdate: false,
+      update: null,
     });
 
-    renderHook(() => useUpdateCheck("0.2.3"));
+    renderHook(() => useUpdateCheck());
     await act(async () => {});
     expect(checkForUpdate).toHaveBeenCalledTimes(1);
 

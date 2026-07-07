@@ -3,7 +3,7 @@ import { checkForUpdate } from "@/lib/updateCheck.js";
 
 export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
-export function useUpdateCheck(currentVersion, intervalMs = UPDATE_CHECK_INTERVAL_MS) {
+export function useUpdateCheck(intervalMs = UPDATE_CHECK_INTERVAL_MS) {
   const [updateInfo, setUpdateInfo] = useState({ status: "checking" });
   const mountedRef = useRef(false);
   const inFlightRef = useRef(false);
@@ -15,14 +15,14 @@ export function useUpdateCheck(currentVersion, intervalMs = UPDATE_CHECK_INTERVA
     setUpdateInfo((current) => ({ ...current, status: "checking" }));
 
     try {
-      const info = await checkForUpdate(currentVersion);
+      const info = await checkForUpdate();
       if (mountedRef.current) {
         setUpdateInfo(info ? { ...info, status: "ok" } : { status: "unavailable" });
       }
     } finally {
       inFlightRef.current = false;
     }
-  }, [currentVersion]);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
