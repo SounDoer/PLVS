@@ -1,58 +1,28 @@
 /**
- * Lightweight update checker using GitHub Releases API.
- * No tauri-plugin-updater required.
+ * Update check backed by tauri-plugin-updater, comparing against the signed
+ * latest.json manifest published with each GitHub Release.
  */
+import { check } from "@tauri-apps/plugin-updater";
 
-const GITHUB_API_URL = "https://api.github.com/repos/SounDoer/PLVS/releases/latest";
+export const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases/latest";
 
 /**
- * Compare two semantic version strings.
- * Returns:
- *   > 0  if a > b  (a is newer)
- *   < 0  if a < b  (b is newer)
- *    0   if equal
+ * Check for an update.
+ * Returns { hasUpdate, latestVersion, releaseUrl, update } where `update` is
+ * the raw plugin handle (needed to actually install it), or null on failure.
  */
-export function compareVersions(a, b) {
-  const parse = (v) =>
-    String(v)
-      .replace(/^v/i, "")
-      .split(".")
-      .map((n) => parseInt(n, 10) || 0);
-
-  const aa = parse(a);
-  const bb = parse(b);
-  const len = Math.max(aa.length, bb.length);
-
-  for (let i = 0; i < len; i++) {
-    const x = aa[i] ?? 0;
-    const y = bb[i] ?? 0;
-    if (x !== y) return x - y;
-  }
-  return 0;
-}
-
-/**
- * Fetch the latest release info from GitHub.
- * Returns { latestVersion, releaseUrl, hasUpdate } or null on failure.
- *
- * @param {string} currentVersion - e.g. "0.1.3"
- */
-export async function checkForUpdate(currentVersion) {
+export async function checkForUpdate() {
   try {
-    const res = await fetch(GITHUB_API_URL, {
-      headers: { Accept: "application/vnd.github+json" },
-    });
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const latestVersion = String(data.tag_name ?? "").replace(/^v/i, "");
-    const releaseUrl = data.html_url ?? "https://github.com/SounDoer/PLVS/releases/latest";
-
-    if (!latestVersion) return null;
-
-    const hasUpdate = compareVersions(latestVersion, currentVersion) > 0;
-
-    return { latestVersion, releaseUrl, hasUpdate };
+    const update = await check();
+    if (!update) {
+      return { hasUpdate: false, latestVersion: null, releaseUrl: RELEASES_URL, update: null };
+    }
+    return {
+      hasUpdate: true,
+      latestVersion: update.version,
+      releaseUrl: RELEASES_URL,
+      update,
+    };
   } catch {
     return null;
   }
