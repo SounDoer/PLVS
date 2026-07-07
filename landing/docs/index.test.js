@@ -21,6 +21,7 @@ describe("docs page navigation", () => {
       "multichannel",
       "workspace",
       "file-mode",
+      "cli",
       "system-settings",
       "faq",
     ];
@@ -59,6 +60,13 @@ describe("docs page content", () => {
 
   test("does not claim unimplemented audio data export", () => {
     expect(html).toContain("isn't implemented yet");
+  });
+
+  test("documents the installed CLI workflow", () => {
+    expect(html).toContain("plvs-cli doctor --json");
+    expect(html).toContain('plvs-cli analyze "C:\\path\\file.wav" --json');
+    expect(html).toContain("plvs-cli report analysis.json --format markdown");
+    expect(html).toContain("--out &lt;file&gt;");
   });
 });
 

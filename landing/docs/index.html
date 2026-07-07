@@ -290,6 +290,7 @@
         <a href="#multichannel">Multichannel</a>
         <a href="#workspace">Workspace</a>
         <a href="#file-mode">File Mode</a>
+        <a href="#cli">CLI</a>
         <a href="#system-settings">System Settings</a>
         <a href="#faq">FAQ</a>
       </nav>
@@ -302,21 +303,20 @@
             <h3>Windows</h3>
             <p>
               Download the installer from
-              <a href="https://github.com/SounDoer/PLVS/releases">GitHub Releases</a> and run it,
-              or use the portable build if you'd rather not install. PLVS isn't code-signed yet,
-              so Windows SmartScreen may warn on first run — choose
-              <strong>More info</strong>, then <strong>Run anyway</strong>.
+              <a href="https://github.com/SounDoer/PLVS/releases">GitHub Releases</a> and run it, or
+              use the portable build if you'd rather not install. PLVS isn't code-signed yet, so
+              Windows SmartScreen may warn on first run — choose <strong>More info</strong>, then
+              <strong>Run anyway</strong>.
             </p>
           </div>
           <div class="docs-item">
             <h3>macOS</h3>
             <p>
               Download the DMG from
-              <a href="https://github.com/SounDoer/PLVS/releases">GitHub Releases</a> and drag
-              PLVS into Applications. The build isn't notarized, so Gatekeeper blocks the first
-              launch — remove the quarantine attribute once:
-              <code>xattr -cr /Applications/PLVS.app</code>. Requires macOS 14.2 or later for
-              system audio capture.
+              <a href="https://github.com/SounDoer/PLVS/releases">GitHub Releases</a> and drag PLVS
+              into Applications. The build isn't notarized, so Gatekeeper blocks the first launch —
+              remove the quarantine attribute once: <code>xattr -cr /Applications/PLVS.app</code>.
+              Requires macOS 14.2 or later for system audio capture.
             </p>
           </div>
           <div class="docs-item">
@@ -330,9 +330,7 @@
         </section>
         <section class="docs-section" id="signal-source">
           <h2>Signal Source</h2>
-          <p>
-            One dropdown covers every kind of input — you pick a signal, not an underlying API.
-          </p>
+          <p>One dropdown covers every kind of input — you pick a signal, not an underlying API.</p>
           <div class="docs-item">
             <h3>Automatic</h3>
             <p>Binds to your system's current default output. Good default for most sessions.</p>
@@ -340,16 +338,16 @@
           <div class="docs-item">
             <h3>System playback</h3>
             <p>
-              Monitor whatever your system is currently playing, with no virtual audio routing.
-              On Windows this uses WASAPI loopback; on macOS it uses the native system-audio tap
+              Monitor whatever your system is currently playing, with no virtual audio routing. On
+              Windows this uses WASAPI loopback; on macOS it uses the native system-audio tap
               available on macOS 14.2 and later.
             </p>
           </div>
           <div class="docs-item">
             <h3>Physical input</h3>
             <p>
-              Monitor a microphone or line input directly. On Windows this goes through WASAPI;
-              on macOS it goes through cpal.
+              Monitor a microphone or line input directly. On Windows this goes through WASAPI; on
+              macOS it goes through cpal.
             </p>
           </div>
         </section>
@@ -359,15 +357,15 @@
           <div class="docs-item">
             <h3>Level Meter</h3>
             <p>
-              Peak or loudness display, switchable, shown per channel so you can spot an
-              imbalance at a glance.
+              Peak or loudness display, switchable, shown per channel so you can spot an imbalance
+              at a glance.
             </p>
           </div>
           <div class="docs-item">
             <h3>Loudness</h3>
             <p>
-              LUFS readings (integrated, short-term, momentary) following ITU-R BS.1770
-              measurement with EBU R128 production/gating conventions.
+              LUFS readings (integrated, short-term, momentary) following ITU-R BS.1770 measurement
+              with EBU R128 production/gating conventions.
             </p>
           </div>
           <div class="docs-item">
@@ -389,8 +387,8 @@
           <div class="docs-item">
             <h3>Vectorscope</h3>
             <p>
-              Correlation between a pair of channels, defaulting to Front L/R. Pick a different
-              pair from the panel's controls when it's available.
+              Correlation between a pair of channels, defaulting to Front L/R. Pick a different pair
+              from the panel's controls when it's available.
             </p>
           </div>
           <div class="docs-item">
@@ -407,8 +405,8 @@
           <div class="docs-item">
             <h3>Choosing a VAD engine</h3>
             <p>
-              Silero is the default; FireRedVAD and TEN VAD are available as alternatives from
-              the same setting.
+              Silero is the default; FireRedVAD and TEN VAD are available as alternatives from the
+              same setting.
             </p>
           </div>
           <div class="docs-item">
@@ -423,23 +421,23 @@
         </section>
         <section class="docs-section" id="multichannel">
           <h2>Multichannel</h2>
-          <p>PLVS follows your source's layout automatically, with a manual override when needed.</p>
+          <p>
+            PLVS follows your source's layout automatically, with a manual override when needed.
+          </p>
           <div class="docs-item">
             <h3>Automatic layout detection</h3>
             <p>Mono, stereo, 5.1, and 7.1 are recognized automatically from the input.</p>
           </div>
           <div class="docs-item">
             <h3>Manual presets</h3>
-            <p>
-              If detection doesn't match your setup, force Stereo, 5.1, or 7.1 from Settings.
-            </p>
+            <p>If detection doesn't match your setup, force Stereo, 5.1, or 7.1 from Settings.</p>
           </div>
           <div class="docs-item">
             <h3>Per-panel behavior</h3>
             <p>
               Level Meter shows every channel individually. Loudness computes the proper
-              multichannel (L1) path for the detected or selected layout. Spectrum and
-              Vectorscope let you choose which channel or channel pair to view.
+              multichannel (L1) path for the detected or selected layout. Spectrum and Vectorscope
+              let you choose which channel or channel pair to view.
             </p>
           </div>
         </section>
@@ -471,8 +469,41 @@
           <div class="docs-item">
             <h3>Scrubbing</h3>
             <p>
-              Move through the file's timeline and every panel updates to match, exactly like
-              live monitoring. Analysis stays read-only and local to the current session.
+              Move through the file's timeline and every panel updates to match, exactly like live
+              monitoring. Analysis stays read-only and local to the current session.
+            </p>
+          </div>
+        </section>
+        <section class="docs-section" id="cli">
+          <h2>CLI</h2>
+          <p>
+            Installed builds include <code>plvs-cli</code> for agents, support workflows, and
+            terminal automation that need PLVS analysis without opening the desktop UI.
+          </p>
+          <div class="docs-item">
+            <h3>Runtime check</h3>
+            <p>
+              Run <code>plvs-cli doctor --json</code> to verify the installed runtime and bundled
+              FFmpeg sidecars. Windows installer builds add <code>plvs-cli</code> to the current
+              user's PATH; portable builds may require the full executable path.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>File analysis</h3>
+            <p>
+              Use <code>plvs-cli analyze "C:\path\file.wav" --json</code> for one local media file,
+              or <code>plvs-cli analyze-batch "a.wav" "b.wav" --json</code> for multiple files.
+              Batch mode also supports a JSON manifest when paths are generated or need to be
+              reproducible.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Reports</h3>
+            <p>
+              Analysis commands write machine-readable JSON. Use
+              <code>plvs-cli report analysis.json --format markdown</code> when you need a
+              human-readable Markdown table. With <code>--out &lt;file&gt;</code>, stdout stays
+              intact and the same output is also written to disk.
             </p>
           </div>
         </section>
@@ -482,31 +513,30 @@
           <div class="docs-item">
             <h3>Tray &amp; Autostart</h3>
             <p>
-              Choose whether closing the window sends PLVS to the tray or quits it, and whether
-              it launches automatically at login.
+              Choose whether closing the window sends PLVS to the tray or quits it, and whether it
+              launches automatically at login.
             </p>
           </div>
           <div class="docs-item">
             <h3>Shortcuts</h3>
             <p>
-              Built-in shortcuts cover common actions. You can also record a custom global
-              shortcut for Clear, which works even when PLVS isn't focused.
+              Built-in shortcuts cover common actions. You can also record a custom global shortcut
+              for Clear, which works even when PLVS isn't focused.
             </p>
           </div>
           <div class="docs-item">
             <h3>Themes</h3>
             <p>
-              Light and Dark ship built in, and PLVS follows your system theme by default. The
-              theme editor lets you build and save a custom theme, including the spectrogram
-              colormap.
+              Light and Dark ship built in, and PLVS follows your system theme by default. The theme
+              editor lets you build and save a custom theme, including the spectrogram colormap.
             </p>
           </div>
           <div class="docs-item">
             <h3>Configuration Export/Import</h3>
             <p>
               Export your current settings and workspace layout to a file, import a previously
-              exported file to restore them, or reset everything back to defaults. This exports
-              app configuration, not audio measurement data.
+              exported file to restore them, or reset everything back to defaults. This exports app
+              configuration, not audio measurement data.
             </p>
           </div>
         </section>
