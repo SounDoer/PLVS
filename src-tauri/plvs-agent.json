@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "productName": "PLVS",
+  "identifier": "com.soundoer.plvs",
+  "version": "0.6.4",
+  "cli": {
+    "relativePath": "Contents/MacOS/plvs-cli",
+    "doctor": [
+      "doctor",
+      "--json"
+    ]
+  }
+}

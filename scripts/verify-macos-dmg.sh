@@ -40,6 +40,22 @@ if [[ ! -x "$cli_binary" ]]; then
   exit 1
 fi
 
+agent_manifest="$app/Contents/Resources/plvs-agent.json"
+if [[ ! -f "$agent_manifest" ]]; then
+  echo "Missing agent discovery manifest: $agent_manifest" >&2
+  exit 1
+fi
+if ! grep -q '"relativePath": "Contents/MacOS/plvs-cli"' "$agent_manifest"; then
+  echo "Agent discovery manifest does not point to plvs-cli" >&2
+  cat "$agent_manifest" >&2
+  exit 1
+fi
+if ! grep -q '"doctor"' "$agent_manifest" || ! grep -q '"--json"' "$agent_manifest"; then
+  echo "Agent discovery manifest does not include doctor --json" >&2
+  cat "$agent_manifest" >&2
+  exit 1
+fi
+
 for sidecar in ffmpeg ffprobe; do
   path="$app/Contents/MacOS/$sidecar"
   if [[ ! -x "$path" ]]; then

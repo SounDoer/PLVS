@@ -93,6 +93,7 @@ function Assert-NoUnexpectedExe([string]$Directory, [string[]]$AllowedNames, [st
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$packageVersion = (Get-Content (Join-Path $repoRoot "package.json") -Raw | ConvertFrom-Json).version
 $releaseDir = Join-Path $repoRoot "src-tauri\target\release"
 $installer = Get-ChildItem (Join-Path $releaseDir "bundle\nsis") -Filter "*.exe" |
   Sort-Object LastWriteTime -Descending |
@@ -127,6 +128,12 @@ $originalUserPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVa
 $nsisInstallDirSubKey = "Software\soundoer\PLVS"
 $originalNsisInstallDir = Get-RegistryDefaultValue $nsisInstallDirSubKey
 $originalNsisInstallerLanguage = Get-RegistryNamedValue $nsisInstallDirSubKey "Installer Language"
+$agentDiscoverySubKey = "Software\SounDoer\PLVS"
+$agentDiscoveryValueNames = @("ProductName", "Identifier", "Version", "InstallDir", "CliPath")
+$originalAgentDiscoveryValues = @{}
+foreach ($name in $agentDiscoveryValueNames) {
+  $originalAgentDiscoveryValues[$name] = Get-RegistryNamedValue $agentDiscoverySubKey $name
+}
 $uninstalled = $false
 
 try {
@@ -171,6 +178,26 @@ try {
     throw "Installer should not add installed directory to the user PATH: $installRoot"
   }
 
+  $discovery = Get-ItemProperty "HKCU:\$agentDiscoverySubKey" -ErrorAction SilentlyContinue
+  if (-not $discovery) {
+    throw "Missing PLVS agent discovery registry key: HKCU:\$agentDiscoverySubKey"
+  }
+  if ($discovery.ProductName -ne "PLVS") {
+    throw "Unexpected PLVS discovery ProductName: $($discovery.ProductName)"
+  }
+  if ($discovery.Identifier -ne "com.soundoer.plvs") {
+    throw "Unexpected PLVS discovery Identifier: $($discovery.Identifier)"
+  }
+  if ($discovery.Version -ne $packageVersion) {
+    throw "Unexpected PLVS discovery Version: $($discovery.Version)"
+  }
+  if ($discovery.InstallDir -ne $installRoot) {
+    throw "Unexpected PLVS discovery InstallDir: $($discovery.InstallDir)"
+  }
+  if ($discovery.CliPath -ne $installedCli) {
+    throw "Unexpected PLVS discovery CliPath: $($discovery.CliPath)"
+  }
+
   $uninstaller = Join-Path $installRoot "uninstall.exe"
   if (Test-Path $uninstaller) {
     Start-Process -FilePath $uninstaller -ArgumentList "/S" -Wait -WindowStyle Hidden
@@ -180,6 +207,11 @@ try {
   $userPathAfterUninstall = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
   if (Test-PathContainsEntry $userPathAfterUninstall $installRoot) {
     throw "Uninstaller did not remove installed directory from user PATH: $installRoot"
+  }
+
+  $discoveryAfterUninstall = Get-ItemProperty "HKCU:\$agentDiscoverySubKey" -ErrorAction SilentlyContinue
+  if ($discoveryAfterUninstall -and $discoveryAfterUninstall.InstallDir -eq $installRoot) {
+    throw "Uninstaller did not remove PLVS agent discovery registry key: HKCU:\$agentDiscoverySubKey"
   }
 } finally {
   $uninstaller = Join-Path $installRoot "uninstall.exe"
@@ -208,6 +240,16 @@ try {
   [Environment]::SetEnvironmentVariable("Path", $originalUserPath, [EnvironmentVariableTarget]::User)
   Set-RegistryDefaultValue $nsisInstallDirSubKey $originalNsisInstallDir
   Set-RegistryNamedValue $nsisInstallDirSubKey "Installer Language" $originalNsisInstallerLanguage
+  foreach ($name in $agentDiscoveryValueNames) {
+    Set-RegistryNamedValue $agentDiscoverySubKey $name $originalAgentDiscoveryValues[$name]
+  }
+  $agentKey = Get-Item "HKCU:\$agentDiscoverySubKey" -ErrorAction SilentlyContinue
+  if ($agentKey) {
+    $remainingValues = $agentKey.GetValueNames() | Where-Object { $agentDiscoveryValueNames -notcontains $_ }
+    if (($remainingValues.Count -eq 0) -and ($originalAgentDiscoveryValues.Values | Where-Object { $null -ne $_ }).Count -eq 0) {
+      Remove-Item -LiteralPath "HKCU:\$agentDiscoverySubKey" -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
 }
 
 Write-Host "Windows installer smoke check passed: $($installer.FullName)"

@@ -32,6 +32,7 @@
       "icons/icon.ico"
     ],
     "resources": [
+      "plvs-agent.json",
       "icons/tray-dark.png",
       "icons/tray-light.png"
     ]

@@ -12,6 +12,13 @@ const nsisInstallerHooks = readFileSync(
   join(process.cwd(), "src-tauri", "nsis", "installer-hooks.nsh"),
   "utf8"
 );
+const nsisAgentDiscovery = readFileSync(
+  join(process.cwd(), "src-tauri", "nsis", "agent-discovery.nsh"),
+  "utf8"
+);
+const agentManifest = JSON.parse(
+  readFileSync(join(process.cwd(), "src-tauri", "plvs-agent.json"), "utf8")
+);
 const defaultCapability = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "capabilities", "default.json"), "utf8")
 );
@@ -67,5 +74,31 @@ describe("Tauri security configuration", () => {
   it("keeps desktop shortcut creation opt-in on the NSIS finish page", () => {
     expect(tauriWindowsConfig.bundle.windows.nsis.installerHooks).toBe("nsis/installer-hooks.nsh");
     expect(nsisInstallerHooks).toContain("MUI_FINISHPAGE_SHOWREADME_NOTCHECKED");
+  });
+
+  it("ships an agent discovery manifest as a macOS bundle resource", () => {
+    expect(tauriConfig.bundle.resources).toContain("plvs-agent.json");
+    expect(agentManifest).toMatchObject({
+      schemaVersion: 1,
+      productName: "PLVS",
+      identifier: tauriConfig.identifier,
+      version: tauriConfig.version,
+      cli: {
+        relativePath: "Contents/MacOS/plvs-cli",
+        doctor: ["doctor", "--json"],
+      },
+    });
+  });
+
+  it("writes installed CLI discovery to current-user Windows registry", () => {
+    expect(nsisInstallerHooks).toContain("BEGIN GENERATED PLVS AGENT DISCOVERY");
+    expect(nsisInstallerHooks).toContain(`!define PLVS_AGENT_VERSION "${tauriConfig.version}"`);
+    expect(nsisInstallerHooks).toContain('!define PLVS_AGENT_REG_KEY "Software\\SounDoer\\PLVS"');
+    expect(nsisInstallerHooks).toContain("NSIS_HOOK_POSTINSTALL");
+    expect(nsisInstallerHooks).toContain('WriteRegStr HKCU "${PLVS_AGENT_REG_KEY}" "CliPath"');
+    expect(nsisInstallerHooks).toContain("NSIS_HOOK_POSTUNINSTALL");
+    expect(nsisInstallerHooks).toContain('DeleteRegKey HKCU "${PLVS_AGENT_REG_KEY}"');
+    expect(nsisAgentDiscovery).toContain(`!define PLVS_AGENT_VERSION "${tauriConfig.version}"`);
+    expect(nsisAgentDiscovery).toContain('!define PLVS_AGENT_REG_KEY "Software\\SounDoer\\PLVS"');
   });
 });

@@ -6,13 +6,61 @@ The CLI is read-only. It does not route, process, or modify audio.
 
 ## Install Location
 
-Windows installer builds place `plvs-cli.exe` next to the desktop app binary and add the install directory to the current user's `PATH`, so a fresh terminal can run:
+Installed builds place the CLI next to the desktop app binary.
+
+Windows:
+
+```powershell
+$env:LOCALAPPDATA\PLVS\plvs-cli.exe
+```
+
+macOS:
+
+```bash
+/Applications/PLVS.app/Contents/MacOS/plvs-cli
+~/Applications/PLVS.app/Contents/MacOS/plvs-cli
+```
+
+When PATH setup is enabled from Settings on Windows, a fresh terminal can also run:
 
 ```powershell
 plvs-cli --help
 ```
 
 Portable builds may require calling the executable by its full path.
+
+## Agent Discovery
+
+Agents should not assume `plvs-cli` is on `PATH`. Use this discovery order:
+
+1. Try `plvs-cli` from `PATH`.
+2. On Windows, read the installed CLI record:
+
+```powershell
+$plvs = Get-ItemProperty HKCU:\Software\SounDoer\PLVS -ErrorAction SilentlyContinue
+& $plvs.CliPath doctor --json
+```
+
+3. On Windows, fall back to the default install path:
+
+```powershell
+& "$env:LOCALAPPDATA\PLVS\plvs-cli.exe" doctor --json
+```
+
+4. On macOS, inspect the app bundle manifest:
+
+```bash
+cat /Applications/PLVS.app/Contents/Resources/plvs-agent.json
+/Applications/PLVS.app/Contents/MacOS/plvs-cli doctor --json
+```
+
+5. On macOS, fall back to the user Applications folder:
+
+```bash
+~/Applications/PLVS.app/Contents/MacOS/plvs-cli doctor --json
+```
+
+Always run `doctor --json` first to verify that the installed runtime and sidecars are usable.
 
 ## Commands
 
