@@ -51,8 +51,8 @@ describe("Tauri security configuration", () => {
     expect(defaultCapability.windows).not.toContain("*");
   });
 
-  it("keeps the Windows CLI PATH hook current-user scoped", () => {
+  it("keeps the Windows installer current-user scoped without PATH hooks", () => {
     expect(tauriWindowsConfig.bundle.windows.nsis.installMode).toBe("currentUser");
-    expect(tauriWindowsConfig.bundle.windows.nsis.installerHooks).toBe("nsis/path-hooks.nsh");
+    expect(tauriWindowsConfig.bundle.windows.nsis).not.toHaveProperty("installerHooks");
   });
 });
