@@ -85,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Preserve history cadence during file analysis — the time axis no longer compresses on large FFmpeg read chunks.
 - Stop background analysis from driving the active file's panels.
-- Hide FFmpeg sidecars from the file picker and reuse probe metadata; keep the diagnostic binary out of Windows bundles.
+- Hide FFmpeg sidecars from the file picker, reuse probe metadata, and reject unexpected Windows bundle executables.
 
 ## [0.5.3] - 2026-06-27
 

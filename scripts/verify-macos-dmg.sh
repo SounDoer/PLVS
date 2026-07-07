@@ -48,8 +48,15 @@ for sidecar in ffmpeg ffprobe; do
   fi
 done
 
-if find "$app/Contents/MacOS" -maxdepth 1 -name 'vad_compare*' | grep -q .; then
-  echo "Diagnostic binary should not be bundled in the app" >&2
+unexpected_binaries="$(find "$app/Contents/MacOS" -maxdepth 1 -type f \
+  ! -name plvs \
+  ! -name plvs-cli \
+  ! -name ffmpeg \
+  ! -name ffprobe \
+  -print)"
+if [[ -n "$unexpected_binaries" ]]; then
+  echo "App bundle contains unexpected executable(s):" >&2
+  echo "$unexpected_binaries" >&2
   exit 1
 fi
 

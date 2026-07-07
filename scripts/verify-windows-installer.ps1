@@ -83,6 +83,15 @@ function Set-RegistryNamedValue([string]$SubKey, [string]$Name, $Value) {
   }
 }
 
+function Assert-NoUnexpectedExe([string]$Directory, [string[]]$AllowedNames, [string]$Context) {
+  $unexpected = Get-ChildItem -LiteralPath $Directory -File -Filter "*.exe" |
+    Where-Object { $AllowedNames -notcontains $_.Name }
+  if ($unexpected) {
+    $names = $unexpected | Select-Object -ExpandProperty Name
+    throw "$Context contains unexpected executable(s): $($names -join ', ')"
+  }
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $releaseDir = Join-Path $repoRoot "src-tauri\target\release"
 $installer = Get-ChildItem (Join-Path $releaseDir "bundle\nsis") -Filter "*.exe" |
@@ -110,10 +119,7 @@ foreach ($sidecar in @("ffmpeg.exe", "ffprobe.exe")) {
   }
 }
 
-$diagnosticBinary = Join-Path $releaseDir "vad_compare.exe"
-if (Test-Path $diagnosticBinary) {
-  throw "Diagnostic binary should not be produced by the app bundle build: $diagnosticBinary"
-}
+Assert-NoUnexpectedExe $releaseDir @("plvs.exe", "plvs-cli.exe", "ffmpeg.exe", "ffprobe.exe") "Release directory"
 
 $installRoot = Join-Path $env:TEMP ("plvs-installer-smoke-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force $installRoot | Out-Null
@@ -149,10 +155,7 @@ try {
     }
   }
 
-  $installedDiagnostic = Join-Path $installRoot "vad_compare.exe"
-  if (Test-Path $installedDiagnostic) {
-    throw "Installer included diagnostic binary: $installedDiagnostic"
-  }
+  Assert-NoUnexpectedExe $installRoot @("plvs.exe", "plvs-cli.exe", "ffmpeg.exe", "ffprobe.exe", "uninstall.exe") "Install directory"
 
   $doctorOutput = & $installedCli doctor --json
   if ($LASTEXITCODE -ne 0) {
