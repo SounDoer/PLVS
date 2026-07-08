@@ -142,7 +142,7 @@ npm run desktop        # start dev build with hot reload
 npm test               # unit tests (Vitest)
 npm run lint           # ESLint
 npm run build          # build frontend to dist/
-npm run desktop:build  # full Tauri release build
+npm run desktop:build  # local Tauri release build, without updater artifacts
 npm run desktop:release-nsis  # Windows NSIS installer
 npm run desktop:release-dmg   # macOS DMG
 npm run check          # full pre-merge check (format + lint + test + build)

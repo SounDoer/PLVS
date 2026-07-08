@@ -5,6 +5,7 @@
  * @param {number} effectiveOffsetSamples
  * @param {number} visibleSamples
  * @param {number} sampleSec
+ * @param {number} [totalSamples]
  * @returns {number}
  */
 export function computeSelectionOffset(
@@ -12,13 +13,17 @@ export function computeSelectionOffset(
   rect,
   effectiveOffsetSamples,
   visibleSamples,
-  sampleSec
+  sampleSec,
+  totalSamples = Infinity
 ) {
   const width = Math.max(1, rect.width);
   const x = Math.max(0, Math.min(width, clientX - rect.left));
   const normalized = 1 - x / width;
   const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
-  return Math.round(fromEndSamples) * sampleSec;
+  const maxFromEndSamples = Number.isFinite(totalSamples)
+    ? Math.max(0, totalSamples - 1)
+    : Infinity;
+  return Math.round(Math.min(fromEndSamples, maxFromEndSamples)) * sampleSec;
 }
 
 /**

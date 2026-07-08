@@ -25,6 +25,13 @@ function hasTimestampEntries(entries) {
   return lengthOf(entries) > 0 && Number.isFinite(timestampAt(entries, 0));
 }
 
+function clampTimestampToEntries(entries, timestampMs) {
+  if (!hasTimestampEntries(entries) || !Number.isFinite(timestampMs)) return timestampMs;
+  const first = timestampAt(entries, 0);
+  const last = timestampAt(entries, lengthOf(entries) - 1);
+  return Math.max(first, Math.min(last, timestampMs));
+}
+
 export function nearestTimestampIndex(entries, targetMs) {
   if (!hasTimestampEntries(entries) || !Number.isFinite(targetMs)) return -1;
   let bestIdx = 0;
@@ -88,10 +95,11 @@ export function resolveSnapshot(view) {
     liveAudio,
   } = view;
 
-  const targetTimestampMs =
+  const rawTargetTimestampMs =
     selectedOffset >= 0 && hasTimestampEntries(histSourceList)
       ? histSourceList[histSourceList.length - 1].timestampMs - selectedOffset * 1000
       : null;
+  const targetTimestampMs = clampTimestampToEntries(histSourceList, rawTargetTimestampMs);
 
   const selectedHistSteps =
     selectedOffset >= 0 ? Math.max(0, Math.round(selectedOffset / sampleSec)) : -1;

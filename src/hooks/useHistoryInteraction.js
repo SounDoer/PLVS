@@ -71,10 +71,17 @@ export function useHistoryInteraction({
   const updateSelectionFromClientX = useCallback(
     (clientX, rect) => {
       setSelectedOffset(
-        computeSelectionOffset(clientX, rect, effectiveOffsetSamples, visibleSamples, sampleSec)
+        computeSelectionOffset(
+          clientX,
+          rect,
+          effectiveOffsetSamples,
+          visibleSamples,
+          sampleSec,
+          totalSamples
+        )
       );
     },
-    [effectiveOffsetSamples, visibleSamples, setSelectedOffset, sampleSec]
+    [effectiveOffsetSamples, visibleSamples, setSelectedOffset, sampleSec, totalSamples]
   );
 
   const onHistoryPointerDown = useCallback(

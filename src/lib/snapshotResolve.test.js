@@ -115,6 +115,21 @@ describe("resolveSnapshot", () => {
     // newest hist ts 30_000 - 1s = 29_000
     expect(r.targetTimestampMs).toBe(29_000);
   });
+
+  it("clamps a too-old selected target to the earliest shared history sample", () => {
+    const r = resolveSnapshot(
+      baseView({
+        selectedOffset: 5,
+        histSourceList: [{ timestampMs: 10_000 }, { timestampMs: 10_100 }],
+        audioList: [{ correlation: 0.1 }, { correlation: 0.2 }],
+        corrList: [0.1, 0.2],
+      })
+    );
+
+    expect(r.targetTimestampMs).toBe(10_000);
+    expect(r.snapIdx).toBe(0);
+    expect(r.displayAudio).toEqual({ correlation: 0.1 });
+  });
 });
 
 describe("resolveKeyedVisualIndex", () => {

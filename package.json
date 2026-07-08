@@ -32,7 +32,7 @@
     "tauri": "tauri",
     "ffmpeg:fetch": "node scripts/fetch-ffmpeg-sidecar.mjs",
     "desktop": "npm run ffmpeg:fetch && tauri dev",
-    "desktop:build": "npm run ffmpeg:fetch && tauri build",
+    "desktop:build": "npm run ffmpeg:fetch && tauri build --config src-tauri/tauri.local-build.conf.json",
     "desktop:release-nsis": "npm run ffmpeg:fetch && tauri build --bundles nsis",
     "desktop:release-dmg": "npm run ffmpeg:fetch && tauri build --bundles dmg,app",
     "desktop:verify-windows-installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-windows-installer.ps1",

@@ -38,6 +38,11 @@ describe("computeSelectionOffset", () => {
     const exactRight = computeSelectionOffset(600, r, 0, 100, 0.1);
     expect(atRight).toBe(exactRight);
   });
+
+  it("clamps selection to the oldest available sample when the viewport extends before history", () => {
+    const r = rect(0, 600);
+    expect(computeSelectionOffset(0, r, 0, 100, 0.1, 10)).toBeCloseTo(0.9);
+  });
 });
 
 describe("computePanOffset", () => {
