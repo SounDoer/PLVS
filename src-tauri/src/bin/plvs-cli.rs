@@ -1,686 +1,83 @@
-use std::fs;
-use std::process::ExitCode;
+//! Thin forwarder for the agent-facing CLI. The actual implementation lives in
+//! the main `plvs` binary behind the internal `--cli` flag (src/cli_main.rs);
+//! this keeps the `plvs-cli` executable name, path, and usage stable for the
+//! agent discovery surface (plvs-agent.json, registry CliPath, PATH toggle)
+//! while the engine (ONNX runtime, VAD models, DSP) ships only once.
+//!
+//! IMPORTANT: this binary must not reference `app_lib`, or the full engine gets
+//! statically linked right back into it.
 
-use app_lib::cli_analyze::{run_analyze, CliAnalyzeStatus};
-use app_lib::cli_analyze_batch::{
-  read_manifest, run_analyze_batch, CliAnalyzeBatchStatus, DEFAULT_BATCH_CONCURRENCY,
-  MAX_BATCH_CONCURRENCY,
-};
-use app_lib::cli_report::render_markdown_report;
-use app_lib::doctor::{run_doctor, DoctorStatus};
+use std::io;
+use std::path::PathBuf;
+use std::process::{Command, ExitCode, Stdio};
+use std::thread;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum CliCommand {
-  Help(HelpTopic),
-  Version,
-  DoctorJson {
-    out: Option<String>,
-  },
-  AnalyzeJson {
-    path: String,
-    out: Option<String>,
-  },
-  AnalyzeBatchJson {
-    paths: Vec<String>,
-    manifest: Option<String>,
-    concurrency: usize,
-    out: Option<String>,
-  },
-  ReportMarkdown {
-    input: String,
-    out: Option<String>,
-  },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HelpTopic {
-  Root,
-  Doctor,
-  Analyze,
-  AnalyzeBatch,
-  Report,
-}
-
-fn parse_args(args: &[String]) -> Result<CliCommand, String> {
-  match args {
-    [flag] if flag == "--help" || flag == "-h" || flag == "help" => {
-      Ok(CliCommand::Help(HelpTopic::Root))
-    }
-    [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
-    [command, rest @ ..] if command == "analyze" => parse_analyze_args(rest),
-    [command, rest @ ..] if command == "analyze-batch" => parse_analyze_batch_args(rest),
-    [command, rest @ ..] if command == "report" => parse_report_args(rest),
-    [command, topic] if command == "help" => parse_help_topic(topic),
-    [command, ..] if command == "help" => {
-      Err("Usage: plvs-cli help [doctor|analyze|analyze-batch|report]".to_string())
-    }
-    [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
-    [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
-    [command, ..] => Err(format!("Unknown command: {command}")),
-    [] => Err("Missing command. Try: plvs-cli --help".to_string()),
+fn host_binary_path() -> Result<PathBuf, String> {
+  let own_path =
+    std::env::current_exe().map_err(|err| format!("Failed to locate plvs-cli: {err}"))?;
+  let dir = own_path
+    .parent()
+    .ok_or_else(|| "plvs-cli has no parent directory".to_string())?;
+  let name = if cfg!(windows) { "plvs.exe" } else { "plvs" };
+  let host = dir.join(name);
+  if !host.is_file() {
+    return Err(format!(
+      "The PLVS application binary was not found next to plvs-cli: {}",
+      host.display()
+    ));
   }
-}
-
-fn parse_doctor_args(args: &[String]) -> Result<CliCommand, String> {
-  if args.iter().any(|arg| is_help_flag(arg)) {
-    return Ok(CliCommand::Help(HelpTopic::Doctor));
-  }
-
-  let options = parse_json_output_options(args)?;
-  if !options.has_json {
-    return Err("The doctor command currently requires --json.".to_string());
-  }
-  if !options.positionals.is_empty() {
-    return Err("Usage: plvs-cli doctor --json [--out <file>]".to_string());
-  }
-
-  Ok(CliCommand::DoctorJson { out: options.out })
-}
-
-fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
-  if args.iter().any(|arg| is_help_flag(arg)) {
-    return Ok(CliCommand::Help(HelpTopic::Analyze));
-  }
-
-  let options = parse_json_output_options(args)?;
-  if !options.has_json {
-    return Err(
-      "Usage: plvs-cli analyze <path> --json [--out <file>]\nFor multiple files, use: plvs-cli analyze-batch <paths...> --json"
-        .to_string(),
-    );
-  }
-
-  match options.positionals.as_slice() {
-    [path] if !path.starts_with("--") => Ok(CliCommand::AnalyzeJson {
-      path: path.clone(),
-      out: options.out,
-    }),
-    _ => Err(
-      "Usage: plvs-cli analyze <path> --json [--out <file>]\nFor multiple files, use: plvs-cli analyze-batch <paths...> --json"
-        .to_string(),
-    ),
-  }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct JsonOutputOptions {
-  has_json: bool,
-  out: Option<String>,
-  positionals: Vec<String>,
-}
-
-fn parse_json_output_options(args: &[String]) -> Result<JsonOutputOptions, String> {
-  let mut has_json = false;
-  let mut out = None;
-  let mut positionals = Vec::new();
-  let mut index = 0;
-
-  while index < args.len() {
-    match args[index].as_str() {
-      "--json" => {
-        has_json = true;
-        index += 1;
-      }
-      "--out" => {
-        let Some(path) = args.get(index + 1) else {
-          return Err("Missing value for --out".to_string());
-        };
-        if path.starts_with("--") {
-          return Err("Missing value for --out".to_string());
-        }
-        out = Some(path.clone());
-        index += 2;
-      }
-      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
-      value => {
-        positionals.push(value.to_string());
-        index += 1;
-      }
-    }
-  }
-
-  Ok(JsonOutputOptions {
-    has_json,
-    out,
-    positionals,
-  })
-}
-
-fn is_help_flag(value: &str) -> bool {
-  value == "--help" || value == "-h"
-}
-
-fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
-  match topic {
-    "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
-    "analyze" => Ok(CliCommand::Help(HelpTopic::Analyze)),
-    "analyze-batch" => Ok(CliCommand::Help(HelpTopic::AnalyzeBatch)),
-    "report" => Ok(CliCommand::Help(HelpTopic::Report)),
-    _ => Err(format!("Unknown help topic: {topic}")),
-  }
-}
-
-fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
-  if args.iter().any(|arg| is_help_flag(arg)) {
-    return Ok(CliCommand::Help(HelpTopic::AnalyzeBatch));
-  }
-
-  let mut paths = Vec::new();
-  let mut manifest = None;
-  let mut has_json = false;
-  let mut out = None;
-  let mut concurrency = DEFAULT_BATCH_CONCURRENCY;
-  let mut index = 0;
-
-  while index < args.len() {
-    match args[index].as_str() {
-      "--json" => {
-        has_json = true;
-        index += 1;
-      }
-      "--out" => {
-        let Some(path) = args.get(index + 1) else {
-          return Err("Missing value for --out".to_string());
-        };
-        if path.starts_with("--") {
-          return Err("Missing value for --out".to_string());
-        }
-        out = Some(path.clone());
-        index += 2;
-      }
-      "--manifest" => {
-        let Some(path) = args.get(index + 1) else {
-          return Err("Missing value for --manifest".to_string());
-        };
-        if path.starts_with("--") {
-          return Err("Missing value for --manifest".to_string());
-        }
-        manifest = Some(path.clone());
-        index += 2;
-      }
-      "--concurrency" => {
-        let Some(value) = args.get(index + 1) else {
-          return Err("Missing value for --concurrency".to_string());
-        };
-        concurrency = value
-          .parse::<usize>()
-          .map_err(|_| "The --concurrency value must be a positive integer".to_string())?;
-        if concurrency == 0 || concurrency > MAX_BATCH_CONCURRENCY {
-          return Err(format!(
-            "The --concurrency value must be between 1 and {MAX_BATCH_CONCURRENCY}"
-          ));
-        }
-        index += 2;
-      }
-      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
-      value => {
-        paths.push(value.to_string());
-        index += 1;
-      }
-    }
-  }
-
-  if !has_json {
-    return Err("The analyze-batch command currently requires --json.".to_string());
-  }
-  if manifest.is_some() && !paths.is_empty() {
-    return Err("Do not mix positional paths with --manifest.".to_string());
-  }
-  if manifest.is_none() && paths.is_empty() {
-    return Err("Usage: plvs-cli analyze-batch <paths...> --json [--out <file>]".to_string());
-  }
-
-  Ok(CliCommand::AnalyzeBatchJson {
-    paths,
-    manifest,
-    concurrency,
-    out,
-  })
-}
-
-fn parse_report_args(args: &[String]) -> Result<CliCommand, String> {
-  if args.iter().any(|arg| is_help_flag(arg)) {
-    return Ok(CliCommand::Help(HelpTopic::Report));
-  }
-
-  let mut format = None;
-  let mut out = None;
-  let mut positionals = Vec::new();
-  let mut index = 0;
-
-  while index < args.len() {
-    match args[index].as_str() {
-      "--format" => {
-        let Some(value) = args.get(index + 1) else {
-          return Err("Missing value for --format".to_string());
-        };
-        if value.starts_with("--") {
-          return Err("Missing value for --format".to_string());
-        }
-        format = Some(value.clone());
-        index += 2;
-      }
-      "--out" => {
-        let Some(path) = args.get(index + 1) else {
-          return Err("Missing value for --out".to_string());
-        };
-        if path.starts_with("--") {
-          return Err("Missing value for --out".to_string());
-        }
-        out = Some(path.clone());
-        index += 2;
-      }
-      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
-      value => {
-        positionals.push(value.to_string());
-        index += 1;
-      }
-    }
-  }
-
-  if format.as_deref() != Some("markdown") {
-    return Err(
-      "Usage: plvs-cli report <analysis.json> --format markdown [--out <file>]".to_string(),
-    );
-  }
-  match positionals.as_slice() {
-    [input] => Ok(CliCommand::ReportMarkdown {
-      input: input.clone(),
-      out,
-    }),
-    _ => Err("Usage: plvs-cli report <analysis.json> --format markdown [--out <file>]".to_string()),
-  }
-}
-
-fn emit_json(json: &str, out: Option<&str>, command: &str) -> Result<(), String> {
-  if let Some(path) = out {
-    fs::write(path, format!("{json}\n"))
-      .map_err(|err| format!("Failed to write {command} output: {err}"))?;
-  }
-  println!("{json}");
-  Ok(())
-}
-
-fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String> {
-  if let Some(path) = out {
-    fs::write(path, text).map_err(|err| format!("Failed to write {command} output: {err}"))?;
-  }
-  print!("{text}");
-  Ok(())
-}
-
-fn help_text(topic: HelpTopic) -> &'static str {
-  match topic {
-    HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor --json [--out <file>]\n  plvs-cli analyze <path> --json [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with analysis/report errors\n  2  invalid usage or CLI failure before a valid report"
-    }
-    HelpTopic::Doctor => {
-      "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor --json [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nJSON is written to stdout. With --out, the same JSON is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
-    }
-    HelpTopic::Analyze => {
-      "PLVS CLI - analyze\n\nUsage:\n  plvs-cli analyze <path> --json [--out <file>]\n\nAnalyzes exactly one local media file without launching the desktop UI.\nJSON is written to stdout. With --out, the same JSON is also written to a file.\nFor multiple files, use analyze-batch.\n\nExit codes:\n  0  file analyzed successfully\n  1  analysis completed with an error report\n  2  invalid usage or CLI failure before a valid report"
-    }
-    HelpTopic::AnalyzeBatch => {
-      "PLVS CLI - analyze-batch\n\nUsage:\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n\nManifest format:\n  {\"files\":[\"C:\\\\media\\\\a.wav\",\"C:\\\\media\\\\b.wav\"]}\n\nRules:\n  Do not mix positional paths with --manifest.\n  Results preserve input order.\n  JSON is written to stdout. With --out, the same JSON is also written to a file.\n  --concurrency defaults to 2 and may be 1 through 8.\n\nExit codes:\n  0  all files analyzed successfully\n  1  at least one file produced an error report\n  2  invalid usage or CLI failure before a valid report"
-    }
-    HelpTopic::Report => {
-      "PLVS CLI - report\n\nUsage:\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nReads JSON produced by analyze or analyze-batch and renders a human-readable Markdown table.\nMarkdown is written to stdout. With --out, the same Markdown is also written to a file.\n\nExit codes:\n  0  report rendered successfully\n  2  invalid usage, unreadable input, unsupported JSON, or output write failure"
-    }
-  }
+  Ok(host)
 }
 
 fn main() -> ExitCode {
-  let args: Vec<String> = std::env::args().skip(1).collect();
-  let command = match parse_args(&args) {
-    Ok(command) => command,
+  let host = match host_binary_path() {
+    Ok(path) => path,
     Err(err) => {
       eprintln!("{err}");
       return ExitCode::from(2);
     }
   };
 
-  match command {
-    CliCommand::Help(topic) => {
-      println!("{}", help_text(topic));
-      ExitCode::SUCCESS
+  // Pipe the host's stdout/stderr and relay them ourselves: a GUI-subsystem
+  // process cannot write to inherited console handles, so output would vanish
+  // when plvs-cli is invoked from an interactive terminal. Relaying through
+  // this console-subsystem process works for terminals and pipes alike.
+  // The host's exit code is forwarded unchanged (0/1/2 contract).
+  let mut child = match Command::new(&host)
+    .arg("--cli")
+    .args(std::env::args_os().skip(1))
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+  {
+    Ok(child) => child,
+    Err(err) => {
+      eprintln!("Failed to launch {}: {err}", host.display());
+      return ExitCode::from(2);
     }
-    CliCommand::Version => {
-      println!("PLVS {}", env!("CARGO_PKG_VERSION"));
-      ExitCode::SUCCESS
+  };
+
+  let mut child_stdout = child.stdout.take().expect("stdout was piped");
+  let mut child_stderr = child.stderr.take().expect("stderr was piped");
+  let stdout_relay = thread::spawn(move || {
+    let _ = io::copy(&mut child_stdout, &mut io::stdout());
+  });
+  let stderr_relay = thread::spawn(move || {
+    let _ = io::copy(&mut child_stderr, &mut io::stderr());
+  });
+
+  let status = child.wait();
+  let _ = stdout_relay.join();
+  let _ = stderr_relay.join();
+
+  match status {
+    Ok(status) => match status.code() {
+      Some(code) if (0..=255).contains(&code) => ExitCode::from(code as u8),
+      _ => ExitCode::from(2),
+    },
+    Err(err) => {
+      eprintln!("Failed to wait for {}: {err}", host.display());
+      ExitCode::from(2)
     }
-    CliCommand::DoctorJson { out } => {
-      let report = run_doctor();
-      match serde_json::to_string(&report) {
-        Ok(json) => {
-          if let Err(err) = emit_json(&json, out.as_deref(), "doctor") {
-            eprintln!("{err}");
-            return ExitCode::from(2);
-          }
-        }
-        Err(err) => {
-          eprintln!("Failed to serialize doctor report: {err}");
-          return ExitCode::from(2);
-        }
-      }
-
-      match report.status {
-        DoctorStatus::Error => ExitCode::from(1),
-        DoctorStatus::Ok | DoctorStatus::Warning | DoctorStatus::Skipped => ExitCode::SUCCESS,
-      }
-    }
-    CliCommand::AnalyzeJson { path, out } => {
-      let report = run_analyze(&path);
-      let status = report.status();
-      match serde_json::to_string(&report) {
-        Ok(json) => {
-          if let Err(err) = emit_json(&json, out.as_deref(), "analyze") {
-            eprintln!("{err}");
-            return ExitCode::from(2);
-          }
-        }
-        Err(err) => {
-          eprintln!("Failed to serialize analyze report: {err}");
-          return ExitCode::from(2);
-        }
-      }
-
-      match status {
-        CliAnalyzeStatus::Ok => ExitCode::SUCCESS,
-        CliAnalyzeStatus::Error => ExitCode::from(1),
-      }
-    }
-    CliCommand::AnalyzeBatchJson {
-      paths,
-      manifest,
-      concurrency,
-      out,
-    } => {
-      let paths = match manifest {
-        Some(path) => match read_manifest(std::path::Path::new(&path)) {
-          Ok(paths) if !paths.is_empty() => paths,
-          Ok(_) => {
-            eprintln!("The analyze-batch manifest must include at least one file.");
-            return ExitCode::from(2);
-          }
-          Err(err) => {
-            eprintln!("{err}");
-            return ExitCode::from(2);
-          }
-        },
-        None => paths,
-      };
-      let report = run_analyze_batch(paths, concurrency);
-      let status = report.status;
-      match serde_json::to_string(&report) {
-        Ok(json) => {
-          if let Err(err) = emit_json(&json, out.as_deref(), "analyze-batch") {
-            eprintln!("{err}");
-            return ExitCode::from(2);
-          }
-        }
-        Err(err) => {
-          eprintln!("Failed to serialize analyze-batch report: {err}");
-          return ExitCode::from(2);
-        }
-      }
-
-      match status {
-        CliAnalyzeBatchStatus::Ok => ExitCode::SUCCESS,
-        CliAnalyzeBatchStatus::Warning | CliAnalyzeBatchStatus::Error => ExitCode::from(1),
-      }
-    }
-    CliCommand::ReportMarkdown { input, out } => {
-      let contents = match fs::read_to_string(&input) {
-        Ok(contents) => contents,
-        Err(err) => {
-          eprintln!("Failed to read report input: {err}");
-          return ExitCode::from(2);
-        }
-      };
-      let markdown = match render_markdown_report(&contents) {
-        Ok(markdown) => markdown,
-        Err(err) => {
-          eprintln!("{err}");
-          return ExitCode::from(2);
-        }
-      };
-      if let Err(err) = emit_text(&markdown, out.as_deref(), "report") {
-        eprintln!("{err}");
-        return ExitCode::from(2);
-      }
-      ExitCode::SUCCESS
-    }
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  fn args(values: &[&str]) -> Vec<String> {
-    values.iter().map(|value| value.to_string()).collect()
-  }
-
-  #[test]
-  fn parses_doctor_json() {
-    assert_eq!(
-      parse_args(&args(&["doctor", "--json"])),
-      Ok(CliCommand::DoctorJson { out: None })
-    );
-  }
-
-  #[test]
-  fn parses_doctor_out() {
-    assert_eq!(
-      parse_args(&args(&["doctor", "--json", "--out", "doctor.json"])),
-      Ok(CliCommand::DoctorJson {
-        out: Some("doctor.json".to_string())
-      })
-    );
-  }
-
-  #[test]
-  fn rejects_doctor_without_json() {
-    assert!(parse_args(&args(&["doctor"])).is_err());
-  }
-
-  #[test]
-  fn rejects_unknown_command() {
-    assert!(parse_args(&args(&["render", "mix.wav", "--json"])).is_err());
-  }
-
-  #[test]
-  fn parses_root_help() {
-    assert_eq!(
-      parse_args(&args(&["--help"])),
-      Ok(CliCommand::Help(HelpTopic::Root))
-    );
-    assert_eq!(
-      parse_args(&args(&["help"])),
-      Ok(CliCommand::Help(HelpTopic::Root))
-    );
-  }
-
-  #[test]
-  fn parses_version() {
-    assert_eq!(parse_args(&args(&["--version"])), Ok(CliCommand::Version));
-  }
-
-  #[test]
-  fn parses_command_help() {
-    assert_eq!(
-      parse_args(&args(&["doctor", "--help"])),
-      Ok(CliCommand::Help(HelpTopic::Doctor))
-    );
-    assert_eq!(
-      parse_args(&args(&["analyze", "--help"])),
-      Ok(CliCommand::Help(HelpTopic::Analyze))
-    );
-    assert_eq!(
-      parse_args(&args(&["analyze-batch", "--help"])),
-      Ok(CliCommand::Help(HelpTopic::AnalyzeBatch))
-    );
-    assert_eq!(
-      parse_args(&args(&["report", "--help"])),
-      Ok(CliCommand::Help(HelpTopic::Report))
-    );
-  }
-
-  #[test]
-  fn parses_analyze_json() {
-    assert_eq!(
-      parse_args(&args(&["analyze", "mix.wav", "--json"])),
-      Ok(CliCommand::AnalyzeJson {
-        path: "mix.wav".to_string(),
-        out: None
-      })
-    );
-  }
-
-  #[test]
-  fn parses_analyze_out() {
-    assert_eq!(
-      parse_args(&args(&[
-        "analyze", "mix.wav", "--json", "--out", "mix.json",
-      ])),
-      Ok(CliCommand::AnalyzeJson {
-        path: "mix.wav".to_string(),
-        out: Some("mix.json".to_string())
-      })
-    );
-  }
-
-  #[test]
-  fn rejects_analyze_without_json() {
-    assert!(parse_args(&args(&["analyze", "mix.wav"])).is_err());
-  }
-
-  #[test]
-  fn rejects_analyze_with_flag_like_path() {
-    assert!(parse_args(&args(&["analyze", "--bogus", "--json"])).is_err());
-  }
-
-  #[test]
-  fn rejects_analyze_with_extra_args() {
-    assert!(parse_args(&args(&["analyze", "mix.wav", "--json", "--extra"])).is_err());
-  }
-
-  #[test]
-  fn parses_analyze_batch_paths() {
-    assert_eq!(
-      parse_args(&args(&[
-        "analyze-batch",
-        "a.wav",
-        "b.wav",
-        "--json",
-        "--concurrency",
-        "4",
-      ])),
-      Ok(CliCommand::AnalyzeBatchJson {
-        paths: vec!["a.wav".to_string(), "b.wav".to_string()],
-        manifest: None,
-        concurrency: 4,
-        out: None,
-      })
-    );
-  }
-
-  #[test]
-  fn parses_analyze_batch_out() {
-    assert_eq!(
-      parse_args(&args(&[
-        "analyze-batch",
-        "a.wav",
-        "b.wav",
-        "--json",
-        "--out",
-        "batch.json",
-      ])),
-      Ok(CliCommand::AnalyzeBatchJson {
-        paths: vec!["a.wav".to_string(), "b.wav".to_string()],
-        manifest: None,
-        concurrency: DEFAULT_BATCH_CONCURRENCY,
-        out: Some("batch.json".to_string()),
-      })
-    );
-  }
-
-  #[test]
-  fn parses_analyze_batch_manifest() {
-    assert_eq!(
-      parse_args(&args(&[
-        "analyze-batch",
-        "--manifest",
-        "files.json",
-        "--json",
-      ])),
-      Ok(CliCommand::AnalyzeBatchJson {
-        paths: vec![],
-        manifest: Some("files.json".to_string()),
-        concurrency: DEFAULT_BATCH_CONCURRENCY,
-        out: None,
-      })
-    );
-  }
-
-  #[test]
-  fn rejects_analyze_batch_without_json() {
-    assert!(parse_args(&args(&["analyze-batch", "a.wav"])).is_err());
-  }
-
-  #[test]
-  fn rejects_analyze_batch_mixed_inputs() {
-    assert!(parse_args(&args(&[
-      "analyze-batch",
-      "a.wav",
-      "--manifest",
-      "files.json",
-      "--json",
-    ]))
-    .is_err());
-  }
-
-  #[test]
-  fn rejects_analyze_batch_bad_concurrency() {
-    assert!(parse_args(&args(&[
-      "analyze-batch",
-      "a.wav",
-      "--json",
-      "--concurrency",
-      "0",
-    ]))
-    .is_err());
-    assert!(parse_args(&args(&[
-      "analyze-batch",
-      "a.wav",
-      "--json",
-      "--concurrency",
-      "nope",
-    ]))
-    .is_err());
-  }
-
-  #[test]
-  fn parses_report_markdown() {
-    assert_eq!(
-      parse_args(&args(&[
-        "report",
-        "results.json",
-        "--format",
-        "markdown",
-        "--out",
-        "report.md",
-      ])),
-      Ok(CliCommand::ReportMarkdown {
-        input: "results.json".to_string(),
-        out: Some("report.md".to_string()),
-      })
-    );
-  }
-
-  #[test]
-  fn rejects_report_without_markdown_format() {
-    assert!(parse_args(&args(&["report", "results.json"])).is_err());
-    assert!(parse_args(&args(&["report", "results.json", "--format", "json"])).is_err());
   }
 }
