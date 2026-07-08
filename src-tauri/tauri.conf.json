@@ -42,7 +42,7 @@
     "updater": {
       "active": true,
       "endpoints": ["https://github.com/SounDoer/PLVS/releases/latest/download/latest.json"],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE5QzQzNDE4MDUwNUM1QTUKUldTbHhRVUZHRFRFR1ZiRXBrVnd5YWNzUDc1U2Y3SFY1c2dtbExscStCVTlINnh6MUlQcElZMlYK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMwQTM5MkYwRkQ0NzRGRDEKUldUUlQwZjk4Sktqd0VqSGtOVVNHS0VaUXZPOXBsamJoaDlpeW9JaXlBL2pFZlBpSlU1K2tuaDIK"
     }
   }
 }

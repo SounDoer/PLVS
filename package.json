@@ -34,7 +34,7 @@
     "desktop": "npm run ffmpeg:fetch && tauri dev",
     "desktop:build": "npm run ffmpeg:fetch && tauri build",
     "desktop:release-nsis": "npm run ffmpeg:fetch && tauri build --bundles nsis",
-    "desktop:release-dmg": "npm run ffmpeg:fetch && tauri build --bundles dmg",
+    "desktop:release-dmg": "npm run ffmpeg:fetch && tauri build --bundles dmg,app",
     "desktop:verify-windows-installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-windows-installer.ps1",
     "desktop:verify-macos-dmg": "bash scripts/verify-macos-dmg.sh"
   },
