@@ -7,7 +7,7 @@
 //! differs (speech-classified blocks for loudness, energy-gated blocks for the %
 //! denominator).
 
-use super::loudness::{gated_integrated_lufs, gated_lra, lufs_from_mean_squares};
+use super::gating::{gated_integrated_lufs, gated_lra, lufs_from_mean_squares};
 
 /// Accumulates speech-classified loudness blocks for dialogue-gated readouts.
 pub struct DialogueIntegrator {

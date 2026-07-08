@@ -110,6 +110,45 @@ impl KWeightMono {
   }
 }
 
+/// BS.1770 True Peak measurement: build the 4× oversampling polyphase FIR bank
+/// (windowed-sinc, Blackman-Harris) shared by the live and summary meters.
+/// Returns `(taps_per_phase, phases, phase_coefficients)`.
+pub(crate) fn init_true_peak_filters() -> (usize, usize, Vec<Vec<f64>>) {
+  let p = 4_usize;
+  let t = 32_usize;
+  let n = p * t;
+  let mut h = vec![0.0_f64; n];
+  let ctr = (n - 1) as f64 / 2.0;
+  for (i, hi) in h.iter_mut().enumerate().take(n) {
+    let n0 = i as f64 - ctr;
+    let x = n0 / p as f64;
+    let sinc = if x.abs() < 1e-12 {
+      1.0
+    } else {
+      (std::f64::consts::PI * x).sin() / (std::f64::consts::PI * x)
+    };
+    let bh = 0.35875 - 0.48829 * (2.0 * std::f64::consts::PI * i as f64 / (n - 1) as f64).cos()
+      + 0.14128 * (4.0 * std::f64::consts::PI * i as f64 / (n - 1) as f64).cos()
+      - 0.01168 * (6.0 * std::f64::consts::PI * i as f64 / (n - 1) as f64).cos();
+    *hi = sinc * bh;
+  }
+  let mut tp_ph = Vec::with_capacity(p);
+  for ph_idx in 0..p {
+    let mut ph = vec![0.0_f64; t];
+    for (tt, slot) in ph.iter_mut().enumerate().take(t) {
+      *slot = h[ph_idx + tt * p];
+    }
+    let s: f64 = ph.iter().sum();
+    if s.abs() > 1e-10 {
+      for v in &mut ph {
+        *v /= s;
+      }
+    }
+    tp_ph.push(ph);
+  }
+  (t, p, tp_ph)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

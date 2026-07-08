@@ -3,6 +3,7 @@
 pub mod channel_sel;
 pub mod dialogue;
 pub mod filters;
+pub mod gating;
 pub mod loudness;
 pub mod meter;
 pub mod paths;
