@@ -10,11 +10,8 @@ function makeOptions(overrides = {}) {
       pushVisualHistRow() {},
     },
     frameRef: { current: 0 },
-    selectedOffsetRef: { current: -1 },
     defaultSampleRateRef: { current: 48000 },
     setAudio() {},
-    setHistoryPathM() {},
-    setHistoryPathST() {},
     ...overrides,
   };
 }

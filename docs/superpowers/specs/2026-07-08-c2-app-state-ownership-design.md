@@ -32,6 +32,12 @@ that is why naive "let useAudioEngine own its state" fails and why the param lis
 Additional finding: `setHistoryPathM` / `setHistoryPathST` are threaded App → both engines →
 `tauriFrameApply`, but **both** call sites pass `() => {}`. Dead plumbing, deletable end to end.
 
+Finding from Phase 0 (2026-07-08): the raw `status` / `status2` strings are **write-only** —
+dozens of `setStatus(...)` calls across App and both engines, but no component renders them
+(the header shows the derived `statusLabel` from `sourceTransportState.js`). Kept as-is in
+Phase 1 (they still move behind `useMeterDisplay` as display-domain state); whether to
+resurface them in the UI or delete the whole chain is a product decision for a later phase.
+
 ## Target architecture
 
 Introduce owners; App becomes layout + assembly.

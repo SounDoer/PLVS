@@ -83,8 +83,6 @@ function Harness({
     setAnalyzingFileId,
     setFileSession,
     setAudio: vi.fn(),
-    setHistoryPathM: vi.fn(),
-    setHistoryPathST: vi.fn(),
     setSelectedOffset: vi.fn(),
     setStatus: vi.fn(),
   });

@@ -40,8 +40,6 @@ export function useFileAnalysisEngine({
   updateFileSession,
   setAnalyzingFileId,
   setAudio,
-  setHistoryPathM,
-  setHistoryPathST,
   setSelectedOffset,
   setStatus,
   shouldDriveDisplay,
@@ -70,8 +68,6 @@ export function useFileAnalysisEngine({
         frameRef.current = 0;
         selectedOffsetRef.current = -1;
         setSelectedOffset(-1);
-        setHistoryPathM("");
-        setHistoryPathST("");
         setAnalyzingFileId(sessionId);
         setStatus("Probing file...");
         const metadata = await probeFileAnalysis(filePath);
@@ -140,11 +136,8 @@ export function useFileAnalysisEngine({
           visualMaxSamples,
           intake,
           frameRef,
-          selectedOffsetRef,
           defaultSampleRateRef,
           setAudio,
-          setHistoryPathM,
-          setHistoryPathST,
           ackFrames: () => {},
           shouldDriveDisplay,
         });

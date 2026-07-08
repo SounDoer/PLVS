@@ -57,8 +57,6 @@ export function useAudioEngine({
   dialogueGatingRef,
   dialogueVadEngineRef,
   setAudio,
-  setHistoryPathM,
-  setHistoryPathST,
   setStatus,
   setStatus2,
   setRunning,
@@ -75,8 +73,6 @@ export function useAudioEngine({
     frameRef.current = 0;
     selectedOffsetRef.current = -1;
     setSelectedOffset(-1);
-    setHistoryPathM("");
-    setHistoryPathST("");
     setAudio({ ...CLEARED_AUDIO_STATE });
     resetTimer?.({ restart: true });
     setShowClock?.(true);
@@ -157,11 +153,8 @@ export function useAudioEngine({
             visualMaxSamples,
             intake,
             frameRef,
-            selectedOffsetRef,
             defaultSampleRateRef,
             setAudio,
-            setHistoryPathM,
-            setHistoryPathST,
             ackFrames: (seq) => {
               void ackFrames(seq);
             },

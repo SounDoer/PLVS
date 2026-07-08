@@ -77,8 +77,6 @@ describe("useAudioEngine", () => {
       captureFormatSignature: "2:48000",
       intake: { reset: vi.fn() },
       setAudio: vi.fn(),
-      setHistoryPathM: vi.fn(),
-      setHistoryPathST: vi.fn(),
       setStatus: vi.fn(),
       setStatus2: vi.fn(),
       setRunning: vi.fn(),
@@ -102,8 +100,6 @@ describe("useAudioEngine", () => {
     expect(props.intake.reset).toHaveBeenCalledTimes(1);
     expect(result.current.frameRef.current).toBe(0);
     expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
-    expect(props.setHistoryPathM).toHaveBeenCalledWith("");
-    expect(props.setHistoryPathST).toHaveBeenCalledWith("");
     expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });
     expect(props.setShowClock).toHaveBeenCalledWith(true);
     expect(props.setAudio).toHaveBeenCalledWith(

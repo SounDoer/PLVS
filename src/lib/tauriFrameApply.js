@@ -7,7 +7,6 @@ import { SPECTRUM_SETTINGS } from "../config/scales.js";
  * @param {number} opts.visualMaxSamples
  * @param {import("./FrameIntake.js").FrameIntake} opts.intake
  * @param {import("react").MutableRefObject<number>} opts.frameRef
- * @param {import("react").MutableRefObject<number>} opts.selectedOffsetRef
  * @param {import("react").MutableRefObject<number | undefined>} opts.defaultSampleRateRef
  */
 export function buildTauriFrameApply({
@@ -15,11 +14,8 @@ export function buildTauriFrameApply({
   visualMaxSamples,
   intake,
   frameRef,
-  selectedOffsetRef,
   defaultSampleRateRef,
   setAudio,
-  setHistoryPathM,
-  setHistoryPathST,
   ackFrames,
   // Gate the shared live-display write so a background analysis (one whose session is not the
   // active/displayed one) keeps filling its own intake and acking the bridge without hijacking the
@@ -28,7 +24,6 @@ export function buildTauriFrameApply({
 }) {
   const applyFrame = (f) => {
     frameRef.current += 1;
-    const shouldPaintUi = frameRef.current % 2 === 0;
     // Heartbeat the native engine ~10Hz with the latest processed seq so it can bound its send
     // backlog. Reaching this line proves the UI thread is draining frames; if it stalls, acks stop
     // and the bridge drops frames instead of letting the host process grow unboundedly.
@@ -95,11 +90,6 @@ export function buildTauriFrameApply({
       dialoguePercent: Number.isFinite(f.dialoguePercent) ? f.dialoguePercent : null,
       dialogueActiveNow: !!f.dialogueActiveNow,
     }));
-
-    if (selectedOffsetRef.current < 0 && shouldPaintUi) {
-      setHistoryPathM?.("");
-      setHistoryPathST?.("");
-    }
   };
 
   return { applyFrame };
