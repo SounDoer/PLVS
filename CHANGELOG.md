@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-07-08
+
+### Changed
+- PLVS CLI now ships as a thin forwarder into the main binary, reducing duplicate installer weight.
+- Added a size-focused release profile.
+- Refactored shared BS.1770 DSP math into reusable gating and filter modules.
+
+### Fixed
+- Agent discovery manifest now reports truthful per-platform CLI paths.
+- File history selection is clamped to the available sample range.
+- Version bumps now regenerate the agent discovery manifest automatically.
+
 ## [0.7.0] - 2026-07-08
 
 ### Added
