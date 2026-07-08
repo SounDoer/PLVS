@@ -10,12 +10,18 @@ const identifier = tauriConfig.identifier ?? "com.soundoer.plvs";
 const version = packageJson.version;
 
 const manifest = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   productName,
   identifier,
   version,
   cli: {
-    relativePath: "Contents/MacOS/plvs-cli",
+    // Path of the CLI relative to the install root, per platform. The same
+    // manifest is bundled on every platform, so a single string would lie on
+    // all but one of them (it used to claim the macOS path on Windows).
+    relativePath: {
+      windows: "plvs-cli.exe",
+      macos: "Contents/MacOS/plvs-cli",
+    },
     doctor: ["doctor", "--json"],
   },
 };
