@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-07-08
+
+### Fixed
+- macOS release builds now use the same `window-vibrancy` version as Tauri, avoiding duplicate symbol failures during DMG packaging.
+
 ## [0.7.1] - 2026-07-08
 
 ### Changed
