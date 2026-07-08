@@ -21,6 +21,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "macOS": {
       "minimumSystemVersion": "14.2"
     },
