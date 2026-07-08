@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "PLVS",
   "mainBinaryName": "plvs",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "identifier": "com.soundoer.plvs",
   "build": {
     "frontendDist": "../dist",
@@ -41,7 +41,9 @@
   "plugins": {
     "updater": {
       "active": true,
-      "endpoints": ["https://github.com/SounDoer/PLVS/releases/latest/download/latest.json"],
+      "endpoints": [
+        "https://github.com/SounDoer/PLVS/releases/latest/download/latest.json"
+      ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMwQTM5MkYwRkQ0NzRGRDEKUldUUlQwZjk4Sktqd0VqSGtOVVNHS0VaUXZPOXBsamJoaDlpeW9JaXlBL2pFZlBpSlU1K2tuaDIK"
     }
   }

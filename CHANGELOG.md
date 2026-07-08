@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-08
+
+### Added
+- In-app auto-update: check, download, verify, and install updates directly from Settings, backed by signed release artifacts and a published update manifest.
+- PLVS CLI: `analyze` (single file), `analyze-batch`, `doctor`, and markdown/JSON report output.
+- CLI added to the user PATH via the Windows installer, with a Settings control to add/remove it.
+- File-mode analysis report export.
+
+### Changed
+- Polished vectorscope correlation marker smoothing.
+- Polished file analysis summary and source transport chrome.
+
+### Fixed
+- Rejected unexpected bundled executables and slimmed the CLI installer to avoid stray PATH hooks.
+- Windows-only Path/PathBuf import gating for the CLI path module.
+- Shortened the report export button in file mode.
+
 ## [0.6.4] - 2026-07-05
 
 ### Added
