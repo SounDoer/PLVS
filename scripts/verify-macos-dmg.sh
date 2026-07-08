@@ -45,7 +45,7 @@ if [[ ! -f "$agent_manifest" ]]; then
   echo "Missing agent discovery manifest: $agent_manifest" >&2
   exit 1
 fi
-if ! grep -q '"relativePath": "Contents/MacOS/plvs-cli"' "$agent_manifest"; then
+if ! grep -q '"macos": "Contents/MacOS/plvs-cli"' "$agent_manifest"; then
   echo "Agent discovery manifest does not point to plvs-cli" >&2
   cat "$agent_manifest" >&2
   exit 1
