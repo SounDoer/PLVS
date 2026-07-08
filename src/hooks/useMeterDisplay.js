@@ -1,0 +1,101 @@
+import { useEffect, useRef, useState } from "react";
+import { useSessionTimer } from "./useSessionTimer.js";
+
+/**
+ * Owner of the shared metering display layer: the meter frame snapshot, history
+ * scrub offset, status lines, session clock, and frame counter. Both engines
+ * (live capture, file analysis) write into this layer; panels read it. See
+ * docs/superpowers/specs/2026-07-08-c2-app-state-ownership-design.md.
+ *
+ * All setters/refs returned here are identity-stable; the wrapper object is not.
+ * Engine effects must keep reading fields inside the effect body and must not
+ * list the wrapper in dependency arrays.
+ */
+
+export const INITIAL_METER_AUDIO = {
+  peakDb: [],
+  rmsDb: [],
+  peakHoldDb: [],
+  momentary: -Infinity,
+  shortTerm: -Infinity,
+  integrated: -Infinity,
+  mMax: -Infinity,
+  stMax: -Infinity,
+  lra: -Infinity,
+  tpL: -Infinity,
+  tpR: -Infinity,
+  truePeakL: -Infinity,
+  truePeakR: -Infinity,
+  tpMax: -Infinity,
+  samplePeakMaxL: -Infinity,
+  samplePeakMaxR: -Infinity,
+  sampleL: -Infinity,
+  sampleR: -Infinity,
+  samplePeak: -Infinity,
+  correlation: -Infinity,
+  sideToMidDb: -Infinity,
+  vectorscopePairX: 0,
+  vectorscopePairY: 1,
+  spectrumResultsByKey: {},
+  vectorscopeResultsByKey: {},
+};
+
+// Clear-time snapshot, kept verbatim from App's clearMeterDisplayState: it is a
+// deliberate full replacement with FEWER keys than INITIAL_METER_AUDIO (e.g. no
+// spectrumResultsByKey), preserving the pre-refactor behavior exactly.
+export const CLEARED_METER_AUDIO = {
+  peakDb: [],
+  rmsDb: [],
+  peakHoldDb: [],
+  momentary: -Infinity,
+  shortTerm: -Infinity,
+  integrated: -Infinity,
+  mMax: -Infinity,
+  stMax: -Infinity,
+  lra: -Infinity,
+  tpL: -Infinity,
+  tpR: -Infinity,
+  truePeakL: -Infinity,
+  truePeakR: -Infinity,
+  tpMax: -Infinity,
+  samplePeakMaxL: -Infinity,
+  samplePeakMaxR: -Infinity,
+  sampleL: -Infinity,
+  sampleR: -Infinity,
+  samplePeak: -Infinity,
+  correlation: -Infinity,
+};
+
+export function useMeterDisplay() {
+  const [audio, setAudio] = useState({ ...INITIAL_METER_AUDIO });
+  const [selectedOffset, setSelectedOffset] = useState(-1);
+  const [status, setStatus] = useState("Ready - click Start to begin monitoring");
+  const [status2, setStatus2] = useState("Device: Not connected");
+  const [showClock, setShowClock] = useState(false);
+  const selectedOffsetRef = useRef(-1);
+  const frameRef = useRef(0);
+  const clock = useSessionTimer();
+
+  useEffect(() => {
+    selectedOffsetRef.current = selectedOffset;
+  }, [selectedOffset]);
+
+  const clearAudio = () => setAudio({ ...CLEARED_METER_AUDIO });
+
+  return {
+    audio,
+    setAudio,
+    selectedOffset,
+    setSelectedOffset,
+    selectedOffsetRef,
+    frameRef,
+    status,
+    setStatus,
+    status2,
+    setStatus2,
+    showClock,
+    setShowClock,
+    clock,
+    clearAudio,
+  };
+}

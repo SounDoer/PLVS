@@ -15,7 +15,7 @@ import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
-import { useSessionTimer } from "./hooks/useSessionTimer.js";
+import { useMeterDisplay } from "./hooks/useMeterDisplay.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -403,9 +403,20 @@ function AppContent() {
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
-  const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } =
-    useSessionTimer();
-  const [showClock, setShowClock] = useState(false);
+  const display = useMeterDisplay();
+  const {
+    audio,
+    setAudio,
+    selectedOffset,
+    setSelectedOffset,
+    selectedOffsetRef,
+    frameRef,
+    setStatus,
+    setStatus2,
+    showClock,
+    setShowClock,
+  } = display;
+  const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } = display.clock;
 
   const [sourceMode, setSourceMode] = useState("live");
   const [fileHistory, setFileHistory] = useState(() => createInitialFileHistory());
@@ -419,9 +430,6 @@ function AppContent() {
   const analyzingFileSession = useMemo(() => getAnalyzingFileSession(fileHistory), [fileHistory]);
   const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const [running, setRunning] = useState(false);
-  const [selectedOffset, setSelectedOffset] = useState(-1);
-  const [status, setStatus] = useState("Ready - click Start to begin monitoring");
-  const [status2, setStatus2] = useState("Device: Not connected");
   const normalizedPanelControls = useMemo(() => {
     const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
     return normalizePanelControls(
@@ -449,33 +457,6 @@ function AppContent() {
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
   const spectrumPeakHoldUi = normalizedPanelControls.spectrumPeakHold;
-  const [audio, setAudio] = useState({
-    peakDb: [],
-    rmsDb: [],
-    peakHoldDb: [],
-    momentary: -Infinity,
-    shortTerm: -Infinity,
-    integrated: -Infinity,
-    mMax: -Infinity,
-    stMax: -Infinity,
-    lra: -Infinity,
-    tpL: -Infinity,
-    tpR: -Infinity,
-    truePeakL: -Infinity,
-    truePeakR: -Infinity,
-    tpMax: -Infinity,
-    samplePeakMaxL: -Infinity,
-    samplePeakMaxR: -Infinity,
-    sampleL: -Infinity,
-    sampleR: -Infinity,
-    samplePeak: -Infinity,
-    correlation: -Infinity,
-    sideToMidDb: -Infinity,
-    vectorscopePairX: 0,
-    vectorscopePairY: 1,
-    spectrumResultsByKey: {},
-    vectorscopeResultsByKey: {},
-  });
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
   const { installStatus, install, restartToApply } = useApplyUpdate();
   const [focusControlsVisible, setFocusControlsVisible] = useState(false);
@@ -485,7 +466,6 @@ function AppContent() {
 
   const audioRef = useRef(null);
   const rafRef = useRef(0);
-  const frameRef = useRef(0);
   // Live and File keep separate history rings so a source switch never bleeds one into the other,
   // and returning to File restores its previous analysis without re-decoding. Each engine writes its
   // own ring (live->liveIntake, file->fileIntake); `intakeRef` always points at the active source's
@@ -520,7 +500,6 @@ function AppContent() {
     (key) => intakeRef.current.getSpectrogramSnapsForKey(key),
     []
   );
-  const selectedOffsetRef = useRef(-1);
   const defaultSampleRateRef = useRef(48000);
   const lastSentAnalysisRequestsKeyRef = useRef("");
 
@@ -1036,28 +1015,7 @@ function AppContent() {
   // and the scrub window. Does NOT touch any history ring, so it is safe to call when switching to
   // File (whose ring must be preserved to restore the previous analysis).
   const clearMeterDisplayState = () => {
-    setAudio({
-      peakDb: [],
-      rmsDb: [],
-      peakHoldDb: [],
-      momentary: -Infinity,
-      shortTerm: -Infinity,
-      integrated: -Infinity,
-      mMax: -Infinity,
-      stMax: -Infinity,
-      lra: -Infinity,
-      tpL: -Infinity,
-      tpR: -Infinity,
-      truePeakL: -Infinity,
-      truePeakR: -Infinity,
-      tpMax: -Infinity,
-      samplePeakMaxL: -Infinity,
-      samplePeakMaxR: -Infinity,
-      sampleL: -Infinity,
-      sampleR: -Infinity,
-      samplePeak: -Infinity,
-      correlation: -Infinity,
-    });
+    display.clearAudio();
     setSelectedOffset(-1);
     setHistoryOffsetSec(0);
     setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
@@ -1484,10 +1442,6 @@ function AppContent() {
     window.addEventListener("contextmenu", preventNativeContextMenu);
     return () => window.removeEventListener("contextmenu", preventNativeContextMenu);
   }, []);
-
-  useEffect(() => {
-    selectedOffsetRef.current = selectedOffset;
-  }, [selectedOffset]);
 
   /** Matches Loudness History snapshot mode: meters/spectrum/vector read the selected instant, not live input */
   useEffect(() => {
