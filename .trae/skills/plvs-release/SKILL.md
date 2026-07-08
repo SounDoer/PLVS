@@ -246,6 +246,11 @@ node scripts/bump-version.mjs <version>
 | `src-tauri/Cargo.toml` | `[package].version` |
 | `src-tauri/tauri.conf.json` | `version` |
 | `src-tauri/Cargo.lock` | (via `cargo update`) |
+| `src-tauri/plvs-agent.json`, `src-tauri/nsis/agent-discovery.nsh`, `src-tauri/nsis/installer-hooks.nsh` | (via `npm run agent:generate`) |
+
+These generated files embed the version string and are committed to git. `bump-version.mjs`
+regenerates them itself (via `npm run agent:generate`) so they can't go stale — don't hand-edit
+them, and don't skip re-running `bump-version.mjs` if you ever bump a version some other way.
 
 ### Version Validation
 

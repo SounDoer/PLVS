@@ -61,6 +61,11 @@ try {
   console.warn("Cargo.lock:            skipped (cargo not available)");
 }
 
+// Regenerate the agent discovery manifest / NSIS hooks — they embed the version
+// string and are committed to git, so they'd otherwise go stale until the next
+// `npm run build` (too late: `npm test` asserts their content before `build` runs).
+execSync("npm run agent:generate", { cwd: root, stdio: "inherit" });
+
 // package-lock.json — sync root version mirrors (top-level + packages[""])
 const lockPath = join(root, "package-lock.json");
 try {
