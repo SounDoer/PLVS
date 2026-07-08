@@ -32,18 +32,15 @@ export function useFileAnalysisEngine({
   histMaxSamples,
   visualMaxSamples,
   audioRef,
-  frameRef,
-  selectedOffsetRef,
   defaultSampleRateRef,
   intake,
   sessionId,
   updateFileSession,
   setAnalyzingFileId,
-  setAudio,
-  setSelectedOffset,
-  setStatus,
+  display,
   shouldDriveDisplay,
 }) {
+  const { frameRef, selectedOffsetRef, setAudio, setSelectedOffset, setStatus } = display;
   const activePathRef = useRef(null);
 
   const stop = useCallback(async () => {

@@ -1059,15 +1059,11 @@ function AppContent() {
     histMaxSamples: HIST_MAX_SAMPLES,
     visualMaxSamples: VISUAL_MAX_SAMPLES,
     audioRef,
-    frameRef,
-    selectedOffsetRef,
     defaultSampleRateRef,
     intake: fileAnalysisIntake,
     updateFileSession,
     setAnalyzingFileId,
-    setAudio,
-    setSelectedOffset,
-    setStatus,
+    display,
     shouldDriveDisplay: () => fileDisplayActiveRef.current,
   });
 
@@ -1464,20 +1460,13 @@ function AppContent() {
     visualMaxSamples: VISUAL_MAX_SAMPLES,
     audioRef,
     rafRef,
-    frameRef,
     intake: liveIntakeRef.current,
-    selectedOffsetRef,
     defaultSampleRateRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
-    setAudio,
-    setStatus,
-    setStatus2,
     setRunning,
-    setSelectedOffset,
-    resetTimer,
-    setShowClock,
+    display,
   });
 
   const audioData = {

@@ -75,16 +75,18 @@ function Harness({
     histMaxSamples: 10,
     visualMaxSamples: 10,
     audioRef,
-    frameRef,
-    selectedOffsetRef,
     defaultSampleRateRef,
     intake,
     updateFileSession,
     setAnalyzingFileId,
     setFileSession,
-    setAudio: vi.fn(),
-    setSelectedOffset: vi.fn(),
-    setStatus: vi.fn(),
+    display: {
+      frameRef,
+      selectedOffsetRef,
+      setAudio: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      setStatus: vi.fn(),
+    },
   });
 
   window.__fileApi = api;

@@ -50,21 +50,24 @@ export function useAudioEngine({
   visualMaxSamples,
   audioRef,
   rafRef,
-  frameRef,
   intake,
-  selectedOffsetRef,
   loudnessWeightsRef,
   dialogueGatingRef,
   dialogueVadEngineRef,
-  setAudio,
-  setStatus,
-  setStatus2,
   setRunning,
-  setSelectedOffset,
-  resetTimer,
-  setShowClock,
+  display,
   defaultSampleRateRef: externalDefaultSampleRateRef,
 }) {
+  const {
+    frameRef,
+    selectedOffsetRef,
+    setAudio,
+    setSelectedOffset,
+    setStatus,
+    setStatus2,
+    setShowClock,
+    clock: { resetTimer },
+  } = display;
   const internalDefaultSampleRateRef = useRef(48000);
   const defaultSampleRateRef = externalDefaultSampleRateRef ?? internalDefaultSampleRateRef;
 
@@ -86,7 +89,8 @@ export function useAudioEngine({
    *   stable (useRef), and the effect reads `.current` on each run — listing them would
    *   not change behavior but would force redundant teardown/restart.
    * - `setStatus`, `setRunning`, etc. are React state setters with stable identity; including
-   *   them is redundant. If a future caller passed an unstable inline setter, stale closures
+   *   them is redundant. The `display` wrapper object is a fresh literal each render — only its
+   *   identity-stable fields are read here, so it must not be listed either. If a future caller passed an unstable inline setter, stale closures
    *   would be a bug in the caller, not fixed by widening this array.
    */
   // `defaultSampleRateRef` may be a ref lifted from the parent (shared with the file-analysis

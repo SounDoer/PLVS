@@ -24,7 +24,15 @@ import {
   stopAudioCapture,
 } from "../ipc/commands.js";
 
-function useHarness(props) {
+function useHarness({
+  setAudio,
+  setSelectedOffset,
+  setStatus,
+  setStatus2,
+  setShowClock,
+  resetTimer,
+  ...props
+}) {
   const audioRef = useRef(null);
   const rafRef = useRef(0);
   const frameRef = useRef(0);
@@ -32,6 +40,16 @@ function useHarness(props) {
   const loudnessWeightsRef = useRef(null);
   const dialogueGatingRef = useRef(false);
   const dialogueVadEngineRef = useRef("silero");
+  const display = {
+    frameRef,
+    selectedOffsetRef,
+    setAudio,
+    setSelectedOffset,
+    setStatus,
+    setStatus2,
+    setShowClock,
+    clock: { resetTimer },
+  };
 
   useAudioEngine({
     running: true,
@@ -40,11 +58,10 @@ function useHarness(props) {
     visualMaxSamples: 10,
     audioRef,
     rafRef,
-    frameRef,
-    selectedOffsetRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
+    display,
     ...props,
   });
 
