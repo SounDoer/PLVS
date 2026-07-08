@@ -76,15 +76,18 @@ describe("Tauri security configuration", () => {
     expect(nsisInstallerHooks).toContain("MUI_FINISHPAGE_SHOWREADME_NOTCHECKED");
   });
 
-  it("ships an agent discovery manifest as a macOS bundle resource", () => {
+  it("ships an agent discovery manifest with per-platform CLI paths", () => {
     expect(tauriConfig.bundle.resources).toContain("plvs-agent.json");
     expect(agentManifest).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       productName: "PLVS",
       identifier: tauriConfig.identifier,
       version: tauriConfig.version,
       cli: {
-        relativePath: "Contents/MacOS/plvs-cli",
+        relativePath: {
+          windows: "plvs-cli.exe",
+          macos: "Contents/MacOS/plvs-cli",
+        },
         doctor: ["doctor", "--json"],
       },
     });
