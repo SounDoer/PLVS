@@ -39,7 +39,6 @@ import { preventNativeContextMenu } from "./lib/contextMenu.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
-import { eventMatchesAccelerator } from "./lib/accelerator.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import {
@@ -63,6 +62,7 @@ import { useGlassEffect } from "./hooks/useGlassEffect.js";
 import { useConfigurationProfileActions } from "./hooks/useConfigurationProfileActions.js";
 import { useCliPathSettings } from "./hooks/useCliPathSettings.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
+import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
@@ -905,9 +905,7 @@ function AppContent() {
     colorScheme: resolvedTheme.colorScheme,
   });
 
-  const shortcutHandlerRef = useRef(null);
-  shortcutHandlerRef.current = {
-    onStartClick,
+  useAppKeyboardShortcuts({
     clearAll,
     running,
     showClock,
@@ -915,39 +913,7 @@ function AppContent() {
     clearShortcut,
     autoHideControls: focusView.autoHideControls,
     toggleFocusControls,
-  };
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      const {
-        clearAll: clear,
-        running: isRunning,
-        showClock: hasClock,
-        setSettingsOpen: openSettings,
-        clearShortcut: clearCombo,
-        autoHideControls,
-        toggleFocusControls: toggleFocus,
-      } = shortcutHandlerRef.current;
-      const tag = document.activeElement?.tagName ?? "";
-      const editable =
-        tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
-      if (eventMatchesAccelerator(e, clearCombo)) {
-        e.preventDefault();
-        if (isRunning || hasClock) clear();
-        return;
-      }
-      if (e.key === "Escape" && autoHideControls && !editable) {
-        e.preventDefault();
-        toggleFocus();
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
-        e.preventDefault();
-        openSettings(true);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  });
 
   useEffect(() => {
     cleanupLegacyKeys();
