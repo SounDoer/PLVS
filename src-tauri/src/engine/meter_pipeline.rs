@@ -1,7 +1,7 @@
 //! PCM 鈫?meters; drives the `AudioFramePayload` emit rate.
 
 use std::collections::{HashMap, HashSet};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::dsp::loudness::LoudnessBlock;
 use crate::dsp::paths::spectrum_paths_from_bands;
@@ -28,6 +28,11 @@ const VISUAL_EMIT_MS: u128 = 40;
 const VS_HISTORY_POINTS: usize = 200;
 /// PCM samples per waveform sub-block. ~19 sub-blocks per ~100ms tick @48kHz.
 const SUBBLOCK_SAMPLES: usize = 256;
+
+fn instant_ago(duration: Duration) -> Instant {
+  let now = Instant::now();
+  now.checked_sub(duration).unwrap_or(now)
+}
 const RMS_WINDOW_MS: u32 = 400;
 
 fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> (String, bool) {
@@ -199,7 +204,7 @@ impl MeterPipeline {
       rms_window: RmsWindow::new(sample_rate, channels, RMS_WINDOW_MS),
       t0: Instant::now(),
       last_frame_emit: Instant::now(),
-      last_hist_emit: Instant::now() - std::time::Duration::from_millis(200),
+      last_hist_emit: instant_ago(Duration::from_millis(200)),
       pending_loudness_hist: None,
       waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
       waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
@@ -214,7 +219,7 @@ impl MeterPipeline {
         }
         v
       },
-      last_visual_emit: Instant::now() - std::time::Duration::from_millis(200),
+      last_visual_emit: instant_ago(Duration::from_millis(200)),
       visual_waveform_min_acc: vec![f32::INFINITY; channels.max(1) as usize],
       visual_waveform_max_acc: vec![f32::NEG_INFINITY; channels.max(1) as usize],
       last_dialogue_gating: false,
@@ -238,7 +243,7 @@ impl MeterPipeline {
   pub fn clear_peak_and_history(&mut self) {
     self.pending_loudness_hist = None;
     self.t0 = Instant::now();
-    self.last_hist_emit = Instant::now() - std::time::Duration::from_millis(200);
+    self.last_hist_emit = instant_ago(Duration::from_millis(200));
     self.m_max = f64::NEG_INFINITY;
     self.st_max = f64::NEG_INFINITY;
     self.tp_max_db = f64::NEG_INFINITY;
@@ -263,7 +268,7 @@ impl MeterPipeline {
     }
     self.visual_waveform_min_acc.fill(f32::INFINITY);
     self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
-    self.last_visual_emit = Instant::now() - std::time::Duration::from_millis(200);
+    self.last_visual_emit = instant_ago(Duration::from_millis(200));
     self.last_hist_media_ms = None;
     self.last_visual_media_ms = None;
   }
@@ -282,8 +287,7 @@ impl MeterPipeline {
     pipeline.file_timing = true;
     // Pre-expire the frame emit timer so the first push can emit a frame immediately,
     // even before 16 ms of wall-clock time has elapsed (offline decoding is faster than real-time).
-    pipeline.last_frame_emit =
-      Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
     pipeline
   }
 
@@ -548,8 +552,7 @@ impl MeterPipeline {
       return None;
     }
     // Force the wall-clock throttle to expire so the next push assembles and emits a frame.
-    self.last_frame_emit =
-      Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+    self.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
     // Push empty PCM through the normal path; DSP state is unchanged (no samples), so each meter's
     // last_output is retained, and the frame assembly code drains both batch queues into the payload.
     self.push_pcm_f32_with_requests(
@@ -1194,9 +1197,9 @@ mod tests {
   #[test]
   fn clear_peak_and_history_resets_live_timestamp_origin() {
     let mut pipeline = MeterPipeline::new(48_000, 2);
-    pipeline.t0 = Instant::now() - std::time::Duration::from_secs(3_600);
+    pipeline.t0 = instant_ago(Duration::from_millis(200));
 
-    assert!(pipeline.timestamp_ms() >= 3_600_000);
+    assert!(pipeline.timestamp_ms() >= 100);
 
     pipeline.clear_peak_and_history();
 
@@ -1463,8 +1466,7 @@ mod tests {
 
     let mut frame = None;
     for _ in 0..4 {
-      pipeline.last_frame_emit =
-        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
       frame = pipeline.push_pcm_f32_with_requests(
         &pcm,
         ChannelLayoutSetting::Auto,
@@ -1535,11 +1537,9 @@ mod tests {
 
     let mut frame = None;
     for _ in 0..6 {
-      pipeline.last_frame_emit =
-        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
       // Force a visual tick on each push so the final frame carries a visual hist entry.
-      pipeline.last_visual_emit =
-        Instant::now() - std::time::Duration::from_millis(VISUAL_EMIT_MS as u64 + 1);
+      pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
       frame = pipeline.push_pcm_f32_with_requests(
         &pcm,
         ChannelLayoutSetting::Auto,
@@ -1686,8 +1686,7 @@ mod tests {
 
     let mut quiet_frame = None;
     for _ in 0..40 {
-      pipeline.last_frame_emit =
-        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
       if let Some(frame) = push_pcm_no_requests(
         &mut pipeline,
         &quiet,
@@ -1704,8 +1703,7 @@ mod tests {
 
     let mut louder_frame = None;
     for _ in 0..40 {
-      pipeline.last_frame_emit =
-        Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
       if let Some(frame) = push_pcm_no_requests(
         &mut pipeline,
         &louder,
@@ -1953,7 +1951,7 @@ mod tests {
       .collect();
     let _ = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, true);
     let _ = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, false);
-    p.last_frame_emit = Instant::now() - std::time::Duration::from_millis(FRAME_EMIT_MS as u64 + 1);
+    p.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
     let frame = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, true);
     let block = frame.expect("frame");
     assert_eq!(block.dialogue_percent, 0.0);
