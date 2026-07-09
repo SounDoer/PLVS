@@ -9,7 +9,9 @@ export function useCliPathSettings({ settingsOpen }) {
   useEffect(() => {
     if (!settingsOpen || !isTauri()) return;
     let disposed = false;
-    setCliPathStatus(null);
+    queueMicrotask(() => {
+      if (!disposed) setCliPathStatus(null);
+    });
     cliPathStatusCommand()
       .then((nextStatus) => {
         if (!disposed) setCliPathStatus(nextStatus);
