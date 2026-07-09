@@ -8,7 +8,7 @@ import {
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
-import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
+import { PanelInstanceProvider, useAudioData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
@@ -121,17 +121,7 @@ export function LeafView({ node, path, style }) {
   const panelControls = activeTab ? getPanelControls(state, activeTab) : null;
   const onPanelControlsChange = activeTab
     ? (nextPanelControls) => setPanelControlsForPanel(activeTab, nextPanelControls)
-    : audioData?.onPanelControlsChange;
-  const panelAudioData =
-    activeTab && audioData
-      ? {
-          ...audioData,
-          panelControls,
-          onPanelControlsChange,
-          analysisStatus: audioData.analysisStatusByPanelId?.[activeTab],
-          panelVisible: !state.fullscreenId,
-        }
-      : audioData;
+    : undefined;
   const zoneHint = getZoneHint(hoverDrop, path);
   const isDragging = !!dragState;
   const isPanelHoverHighlighted = hoveredPanelId != null && visibleTabs.includes(hoveredPanelId);
@@ -352,9 +342,16 @@ export function LeafView({ node, path, style }) {
       {/* Panel body */}
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
         {ActiveComponent && (
-          <AudioDataContext.Provider value={panelAudioData}>
+          <PanelInstanceProvider
+            value={{
+              panelControls,
+              onPanelControlsChange,
+              analysisStatus: audioData?.analysisStatusByPanelId?.[activeTab],
+              panelVisible: !state.fullscreenId,
+            }}
+          >
             <ActiveComponent compact={compactPanels} />
-          </AudioDataContext.Provider>
+          </PanelInstanceProvider>
         )}
       </div>
     </div>

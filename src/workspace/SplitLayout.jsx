@@ -9,7 +9,7 @@ import {
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
-import { AudioDataContext, useAudioData } from "./AudioDataContext.jsx";
+import { PanelInstanceProvider, useAudioData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
@@ -292,15 +292,6 @@ function FullscreenOverlay() {
   const isPinned = Boolean(state.pinnedPanelsById?.[fullscreenId]);
   const onPanelControlsChange = (nextPanelControls) =>
     setPanelControlsForPanel(fullscreenId, nextPanelControls);
-  const panelAudioData = audioData
-    ? {
-        ...audioData,
-        panelControls,
-        onPanelControlsChange,
-        analysisStatus: audioData.analysisStatusByPanelId?.[fullscreenId],
-        panelVisible: true,
-      }
-    : audioData;
 
   return (
     <div
@@ -370,9 +361,16 @@ function FullscreenOverlay() {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <AudioDataContext.Provider value={panelAudioData}>
+        <PanelInstanceProvider
+          value={{
+            panelControls,
+            onPanelControlsChange,
+            analysisStatus: audioData?.analysisStatusByPanelId?.[fullscreenId],
+            panelVisible: true,
+          }}
+        >
           <Component compact={audioData?.compactPanels === true} />
-        </AudioDataContext.Provider>
+        </PanelInstanceProvider>
       </div>
     </div>
   );

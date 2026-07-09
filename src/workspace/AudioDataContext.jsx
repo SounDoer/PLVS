@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 /**
  * Provides all audio-domain data and callbacks to module components,
@@ -8,7 +8,17 @@ import { createContext, useContext } from "react";
  * through the split layout. Module components consume via useAudioData().
  */
 export const AudioDataContext = createContext(null);
+const PanelInstanceContext = createContext(null);
+
+export function PanelInstanceProvider({ value, children }) {
+  return <PanelInstanceContext.Provider value={value}>{children}</PanelInstanceContext.Provider>;
+}
 
 export function useAudioData() {
-  return useContext(AudioDataContext);
+  const audioData = useContext(AudioDataContext);
+  const panelInstance = useContext(PanelInstanceContext);
+  return useMemo(
+    () => (audioData && panelInstance ? { ...audioData, ...panelInstance } : audioData),
+    [audioData, panelInstance]
+  );
 }
