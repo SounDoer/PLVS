@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
@@ -29,10 +29,8 @@ import {
 import { buildSpectrumChannelOptions } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
-import { SettingsPanel } from "./components/SettingsPanel";
-import { ThemeEditor } from "./components/ThemeEditor";
-import { FeedbackDialog } from "./components/FeedbackDialog.jsx";
 import { AppShell } from "./components/AppShell.jsx";
+import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
@@ -41,7 +39,6 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import { resetTruePeakMax } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
-import { openExternalUrl } from "./ipc/openExternal.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
@@ -49,8 +46,6 @@ import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
 import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { useGlassEffect } from "./hooks/useGlassEffect.js";
-import { useConfigurationProfileActions } from "./hooks/useConfigurationProfileActions.js";
-import { useCliPathSettings } from "./hooks/useCliPathSettings.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
@@ -105,28 +100,12 @@ function AppContent() {
     clearFiles,
   } = useMeterRuntime();
   const onClearRef = useRef(null);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const settings = useSettings({ onClearRef });
   const {
     settingsOpen,
     setSettingsOpen,
-    appearance,
-    setAppearanceMode,
-    fixedThemeSelectValue,
-    setFixedThemeIdFromPicker,
-    themeSelectOptions,
     resolvedThemeId,
-    closeAction,
-    setCloseAction,
-    autostartEnabled,
-    setAutostartEnabled,
-    autostartReady,
     clearShortcut,
-    setClearShortcut,
-    clearGlobal,
-    setClearGlobal,
-    setClearCapturing,
-    clearReady,
-    registrationError,
     focusView,
     setFocusView,
     setAutoHideControls,
@@ -134,28 +113,12 @@ function AppContent() {
     setBorderless,
     channelLabelOverrides,
     setChannelLabelOverrides,
-    editor,
-    editorPos,
-    moveEditor,
-    customThemeOptions,
-    createCustomTheme,
-    editActiveCustomTheme,
-    deleteCustomTheme,
-    activeIsCustom,
     panelOpacity,
     setPanelOpacity,
     glassEnabled,
     setGlassEnabled,
-  } = useSettings({ onClearRef });
+  } = settings;
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
-  const {
-    configurationBusy,
-    configurationStatus,
-    exportConfiguration,
-    importConfiguration,
-    resetConfiguration,
-  } = useConfigurationProfileActions();
-  const { cliPathStatus, cliPathBusy, setCliPathEnabled } = useCliPathSettings({ settingsOpen });
   const presets = usePresets({
     windowPinned: pinned,
     setWindowPinned: setPinned,
@@ -908,77 +871,24 @@ function AppContent() {
       panelChromeData={panelChromeData}
       footer={footer}
     >
-      <SettingsPanel
-        settingsOpen={settingsOpen}
-        setSettingsOpen={setSettingsOpen}
-        appearance={appearance}
-        setAppearanceMode={setAppearanceMode}
-        fixedThemeSelectValue={fixedThemeSelectValue}
-        setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
-        themeSelectOptions={themeSelectOptions}
-        channelCount={channelCount}
-        channelLabelTokens={channelLabelTokens}
-        channelLabelHasOverride={!!channelLabelOverride}
-        setChannelLabelToken={setChannelLabelToken}
-        resetChannelLabels={resetChannelLabels}
-        appVersion={APP_VERSION}
-        latestVersion={updateInfo?.latestVersion}
-        releaseUrl={updateInfo?.releaseUrl}
-        hasUpdate={updateInfo?.hasUpdate}
-        updateStatus={updateInfo?.status}
-        onCheckForUpdate={refreshUpdateCheck}
-        installStatus={installStatus}
-        onInstallUpdate={() => install(updateInfo?.update)}
-        onRestartToApply={restartToApply}
-        openExternalUrl={openExternalUrl}
-        autostartEnabled={autostartEnabled}
-        setAutostartEnabled={setAutostartEnabled}
-        autostartReady={autostartReady}
-        closeAction={closeAction}
-        setCloseAction={setCloseAction}
-        clearShortcut={clearShortcut}
-        setClearShortcut={setClearShortcut}
-        clearGlobal={clearGlobal}
-        setClearGlobal={setClearGlobal}
-        setClearCapturing={setClearCapturing}
-        clearReady={clearReady}
-        registrationError={registrationError}
-        customThemeOptions={customThemeOptions}
-        createCustomTheme={createCustomTheme}
-        editActiveCustomTheme={editActiveCustomTheme}
-        deleteCustomTheme={deleteCustomTheme}
-        activeIsCustom={activeIsCustom}
-        themeControlsDisabled={editor.isEditing}
-        onExportConfiguration={exportConfiguration}
-        onImportConfiguration={importConfiguration}
-        onResetConfiguration={resetConfiguration}
-        configurationBusy={configurationBusy}
-        configurationStatus={configurationStatus}
-        cliPathStatus={cliPathStatus}
-        cliPathBusy={cliPathBusy}
-        onSetCliPathEnabled={setCliPathEnabled}
-        onOpenFeedback={() => {
-          setSettingsOpen(false);
-          setFeedbackOpen(true);
+      <AppSettingsOverlays
+        settings={settings}
+        channelSettings={{
+          channelCount,
+          channelLabelTokens,
+          channelLabelHasOverride: !!channelLabelOverride,
+          setChannelLabelToken,
+          resetChannelLabels,
         }}
+        updateControls={{
+          updateInfo,
+          refreshUpdateCheck,
+          installStatus,
+          install,
+          restartToApply,
+        }}
+        appVersion={APP_VERSION}
       />
-
-      {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
-
-      {editor.isEditing ? (
-        <ThemeEditor
-          draft={editor.draft}
-          onName={editor.setName}
-          onSeed={editor.updateSeed}
-          onShell={editor.updateShell}
-          onSave={editor.save}
-          onCancel={editor.cancel}
-          onDelete={undefined}
-          dirty={editor.dirty}
-          pos={editorPos}
-          onMove={moveEditor}
-        />
-      ) : null}
 
       <CloseConfirmDialog
         open={closeDialogOpen}

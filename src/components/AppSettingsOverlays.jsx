@@ -1,0 +1,99 @@
+import { useState } from "react";
+import { openExternalUrl } from "../ipc/openExternal.js";
+import { useCliPathSettings } from "../hooks/useCliPathSettings.js";
+import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
+import { FeedbackDialog } from "./FeedbackDialog.jsx";
+import { SettingsPanel } from "./SettingsPanel.jsx";
+import { ThemeEditor } from "./ThemeEditor.jsx";
+
+export function AppSettingsOverlays({ settings, channelSettings, updateControls, appVersion }) {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const {
+    configurationBusy,
+    configurationStatus,
+    exportConfiguration,
+    importConfiguration,
+    resetConfiguration,
+  } = useConfigurationProfileActions();
+  const { cliPathStatus, cliPathBusy, setCliPathEnabled } = useCliPathSettings({
+    settingsOpen: settings.settingsOpen,
+  });
+  const { updateInfo, refreshUpdateCheck, installStatus, install, restartToApply } = updateControls;
+  const { editor, editorPos, moveEditor } = settings;
+
+  return (
+    <>
+      <SettingsPanel
+        settingsOpen={settings.settingsOpen}
+        setSettingsOpen={settings.setSettingsOpen}
+        appearance={settings.appearance}
+        setAppearanceMode={settings.setAppearanceMode}
+        fixedThemeSelectValue={settings.fixedThemeSelectValue}
+        setFixedThemeIdFromPicker={settings.setFixedThemeIdFromPicker}
+        themeSelectOptions={settings.themeSelectOptions}
+        channelCount={channelSettings.channelCount}
+        channelLabelTokens={channelSettings.channelLabelTokens}
+        channelLabelHasOverride={channelSettings.channelLabelHasOverride}
+        setChannelLabelToken={channelSettings.setChannelLabelToken}
+        resetChannelLabels={channelSettings.resetChannelLabels}
+        appVersion={appVersion}
+        latestVersion={updateInfo?.latestVersion}
+        releaseUrl={updateInfo?.releaseUrl}
+        hasUpdate={updateInfo?.hasUpdate}
+        updateStatus={updateInfo?.status}
+        onCheckForUpdate={refreshUpdateCheck}
+        installStatus={installStatus}
+        onInstallUpdate={() => install(updateInfo?.update)}
+        onRestartToApply={restartToApply}
+        openExternalUrl={openExternalUrl}
+        autostartEnabled={settings.autostartEnabled}
+        setAutostartEnabled={settings.setAutostartEnabled}
+        autostartReady={settings.autostartReady}
+        closeAction={settings.closeAction}
+        setCloseAction={settings.setCloseAction}
+        clearShortcut={settings.clearShortcut}
+        setClearShortcut={settings.setClearShortcut}
+        clearGlobal={settings.clearGlobal}
+        setClearGlobal={settings.setClearGlobal}
+        setClearCapturing={settings.setClearCapturing}
+        clearReady={settings.clearReady}
+        registrationError={settings.registrationError}
+        customThemeOptions={settings.customThemeOptions}
+        createCustomTheme={settings.createCustomTheme}
+        editActiveCustomTheme={settings.editActiveCustomTheme}
+        deleteCustomTheme={settings.deleteCustomTheme}
+        activeIsCustom={settings.activeIsCustom}
+        themeControlsDisabled={editor.isEditing}
+        onExportConfiguration={exportConfiguration}
+        onImportConfiguration={importConfiguration}
+        onResetConfiguration={resetConfiguration}
+        configurationBusy={configurationBusy}
+        configurationStatus={configurationStatus}
+        cliPathStatus={cliPathStatus}
+        cliPathBusy={cliPathBusy}
+        onSetCliPathEnabled={setCliPathEnabled}
+        onOpenFeedback={() => {
+          settings.setSettingsOpen(false);
+          setFeedbackOpen(true);
+        }}
+      />
+
+      {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
+
+      {editor.isEditing ? (
+        <ThemeEditor
+          draft={editor.draft}
+          onName={editor.setName}
+          onSeed={editor.updateSeed}
+          onShell={editor.updateShell}
+          onSave={editor.save}
+          onCancel={editor.cancel}
+          onDelete={undefined}
+          dirty={editor.dirty}
+          pos={editorPos}
+          onMove={moveEditor}
+        />
+      ) : null}
+    </>
+  );
+}
