@@ -18,15 +18,13 @@ import { isCustomThemeId } from "../theme/customTheme.js";
 import { useThemeEditor } from "./useThemeEditor.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
-import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import { useViewSettings } from "./useViewSettings.js";
+import { settingsStore, themesStore } from "../persistence/index.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 import {
   DEFAULT_CLOSE_ACTION,
   normalizeCloseAction,
-  normalizeGlassEnabled,
-  normalizePanelOpacity,
   normalizeReferenceLufs,
-  normalizeSettingsFocusView,
   normalizeThemeEditorPos,
 } from "../settings/defaults.js";
 
@@ -43,21 +41,13 @@ export function useSettings({ onClearRef } = {}) {
   const [closeAction, setCloseActionState] = useState(() =>
     normalizeCloseAction(settingsStore.read().closeAction)
   );
-  const [focusView, setFocusViewState] = useState(() =>
-    normalizeSettingsFocusView(settingsStore.read().focusView)
-  );
   const [channelLabelOverrides, setChannelLabelOverridesState] = useState(() =>
     sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
-  );
-  const [panelOpacity, setPanelOpacityState] = useState(() =>
-    normalizePanelOpacity(settingsStore.read().panelOpacity)
-  );
-  const [glassEnabled, setGlassEnabledState] = useState(() =>
-    normalizeGlassEnabled(settingsStore.read().glassEnabled)
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
   const clearShortcutState = useClearShortcut(onClearRef);
+  const viewSettings = useViewSettings();
 
   const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
   const [editorPos, setEditorPos] = useState(() =>
@@ -91,10 +81,6 @@ export function useSettings({ onClearRef } = {}) {
     if (appearance !== "fixed") return "";
     return isKnownThemeId(themeId, customThemes) ? themeId : resolvedThemeId;
   }, [appearance, themeId, resolvedThemeId, customThemes]);
-
-  function markPresetDirty() {
-    presetsStore.patch({ dirty: true });
-  }
 
   function setAppearance(nextAppearance) {
     const next = nextAppearance === "fixed" ? "fixed" : "system";
@@ -130,39 +116,6 @@ export function useSettings({ onClearRef } = {}) {
     setCloseActionState(next);
   }
 
-  function setFocusView(nextFocusView) {
-    const next = normalizeSettingsFocusView(nextFocusView);
-    settingsStore.patch({ focusView: next });
-    markPresetDirty();
-    setFocusViewState(next);
-  }
-
-  function setAutoHideControls(value) {
-    setFocusView({ ...focusView, autoHideControls: value === true });
-  }
-
-  function setCompactPanels(value) {
-    setFocusView({ ...focusView, compactPanels: value === true });
-  }
-
-  function setBorderless(value) {
-    setFocusView({ ...focusView, borderless: value === true });
-  }
-
-  function setPanelOpacity(value) {
-    const next = normalizePanelOpacity(value);
-    settingsStore.patch({ panelOpacity: next });
-    markPresetDirty();
-    setPanelOpacityState(next);
-  }
-
-  function setGlassEnabled(value) {
-    const next = normalizeGlassEnabled(value);
-    settingsStore.patch({ glassEnabled: next });
-    markPresetDirty();
-    setGlassEnabledState(next);
-  }
-
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setSystemPrefersDark(mq.matches);
@@ -182,17 +135,8 @@ export function useSettings({ onClearRef } = {}) {
       appearance,
       themeId: appearance === "system" ? null : fixedThemeSelectValue,
       channelLabelOverrides,
-      panelOpacity,
-      glassEnabled,
     });
-  }, [
-    referenceLufs,
-    appearance,
-    fixedThemeSelectValue,
-    channelLabelOverrides,
-    panelOpacity,
-    glassEnabled,
-  ]);
+  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides]);
 
   useEffect(
     () =>
@@ -201,12 +145,9 @@ export function useSettings({ onClearRef } = {}) {
         setAppearanceState(next.appearance);
         setThemeIdState(next.themeId);
         setReferenceLufsState(normalizeReferenceLufs(settingsStore.read().referenceLufs));
-        setFocusViewState(normalizeSettingsFocusView(settingsStore.read().focusView));
         setChannelLabelOverridesState(
           sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
         );
-        setPanelOpacityState(normalizePanelOpacity(settingsStore.read().panelOpacity));
-        setGlassEnabledState(normalizeGlassEnabled(settingsStore.read().glassEnabled));
       }),
     []
   );
@@ -268,15 +209,7 @@ export function useSettings({ onClearRef } = {}) {
     setChannelLabelOverrides,
     closeAction,
     setCloseAction,
-    focusView,
-    setFocusView,
-    setAutoHideControls,
-    setCompactPanels,
-    setBorderless,
-    panelOpacity,
-    setPanelOpacity,
-    glassEnabled,
-    setGlassEnabled,
+    ...viewSettings,
     autostartEnabled,
     setAutostartEnabled,
     autostartReady,
