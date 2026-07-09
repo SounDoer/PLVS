@@ -1,116 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  UI_PREFERENCES,
-  applyLayoutToDocument,
-  applyThemeToDocument,
-  readPersistedShellThemeFields,
-  readSystemPrefersDark,
-  resolveThemeId,
-} from "../uiPreferences";
-import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
+import { useState } from "react";
 import {
   listCustomThemes,
   listCustomThemesOrdered,
   removeCustomTheme,
 } from "../theme/customThemesRepo.js";
-import { getTheme, isKnownThemeId } from "../theme/themeRegistry.js";
+import { getTheme } from "../theme/themeRegistry.js";
 import { isCustomThemeId } from "../theme/customTheme.js";
 import { useThemeEditor } from "./useThemeEditor.js";
+import { useThemeSettings } from "./useThemeSettings.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { useCloseActionSetting } from "./useCloseActionSetting.js";
 import { useMeterSettings } from "./useMeterSettings.js";
 import { useViewSettings } from "./useViewSettings.js";
-import { settingsStore, themesStore } from "../persistence/index.js";
+import { settingsStore } from "../persistence/index.js";
 import { normalizeThemeEditorPos } from "../settings/defaults.js";
 
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [appearance, setAppearanceState] = useState(
-    () => readPersistedShellThemeFields().appearance
-  );
-  const [themeId, setThemeIdState] = useState(() => readPersistedShellThemeFields().themeId);
-  const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
   const clearShortcutState = useClearShortcut(onClearRef);
+  const themeSettings = useThemeSettings();
   const closeActionSetting = useCloseActionSetting();
   const meterSettings = useMeterSettings();
   const viewSettings = useViewSettings();
-
-  const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
   const [editorPos, setEditorPos] = useState(() =>
     normalizeThemeEditorPos(settingsStore.read().themeEditorPos)
   );
-
-  const resolvedThemeId = useMemo(
-    () => resolveThemeId({ appearance, themeId }, systemPrefersDark, customThemes),
-    [appearance, themeId, systemPrefersDark, customThemes]
-  );
-  /** ADR 0002 §6: switching system → fixed seeds `themeId` from the resolved builtin at that moment. */
-  function setAppearanceMode(mode) {
-    if (mode === "system") {
-      setAppearance("system");
-      setThemeId(null);
-      return;
-    }
-    if (appearance === "system") {
-      setThemeId(resolveThemeId({ appearance: "system", themeId: null }, systemPrefersDark));
-    }
-    setAppearance("fixed");
-  }
-
-  function setFixedThemeIdFromPicker(id) {
-    if (!isKnownThemeId(id, customThemes)) return;
-    setAppearance("fixed");
-    setThemeId(id);
-  }
-
-  const fixedThemeSelectValue = useMemo(() => {
-    if (appearance !== "fixed") return "";
-    return isKnownThemeId(themeId, customThemes) ? themeId : resolvedThemeId;
-  }, [appearance, themeId, resolvedThemeId, customThemes]);
-
-  function setAppearance(nextAppearance) {
-    const next = nextAppearance === "fixed" ? "fixed" : "system";
-    setAppearanceState(next);
-    if (next === "system") setThemeIdState(null);
-  }
-
-  function setThemeId(nextThemeId) {
-    setThemeIdState(nextThemeId == null || nextThemeId === "" ? null : String(nextThemeId));
-  }
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setSystemPrefersDark(mq.matches);
-    onChange();
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    applyLayoutToDocument(UI_PREFERENCES);
-    applyThemeToDocument(resolvedThemeId, customThemes);
-  }, [resolvedThemeId, customThemes]);
-
-  useEffect(() => {
-    settingsStore.patch({
-      appearance,
-      themeId: appearance === "system" ? null : fixedThemeSelectValue,
-    });
-  }, [appearance, fixedThemeSelectValue]);
-
-  useEffect(
-    () =>
-      settingsStore.subscribe(() => {
-        const next = readPersistedShellThemeFields();
-        setAppearanceState(next.appearance);
-        setThemeIdState(next.themeId);
-      }),
-    []
-  );
-
-  useEffect(() => themesStore.subscribe(() => setCustomThemes(listCustomThemes())), []);
 
   function moveEditor(pos) {
     const next = normalizeThemeEditorPos(pos);
@@ -119,48 +35,48 @@ export function useSettings({ onClearRef } = {}) {
   }
 
   const editor = useThemeEditor({
-    activeTheme: getTheme(resolvedThemeId, customThemes),
-    customThemes,
-    prevSelection: { appearance, themeId },
-    setThemeId,
-    setAppearance,
+    activeTheme: getTheme(themeSettings.resolvedThemeId, themeSettings.customThemes),
+    customThemes: themeSettings.customThemes,
+    prevSelection: { appearance: themeSettings.appearance, themeId: themeSettings.themeId },
+    setThemeId: themeSettings.setThemeId,
+    setAppearance: themeSettings.setAppearance,
     // pluginStore.subscribe is a no-op, so refresh the list explicitly after editor mutations.
-    onChange: () => setCustomThemes(listCustomThemes()),
+    onChange: () => themeSettings.setCustomThemes(listCustomThemes()),
   });
 
   const customThemeOptions = listCustomThemesOrdered().map((t) => ({ id: t.id, label: t.name }));
 
   function selectThemeId(id) {
-    setAppearance("fixed");
-    setThemeId(id);
+    themeSettings.setAppearance("fixed");
+    themeSettings.setThemeId(id);
   }
   function createCustomTheme() {
     setSettingsOpen(false);
     editor.beginCreate("Custom");
   }
   function editActiveCustomTheme() {
-    if (!isCustomThemeId(resolvedThemeId)) return;
+    if (!isCustomThemeId(themeSettings.resolvedThemeId)) return;
     setSettingsOpen(false);
-    editor.beginEdit(getTheme(resolvedThemeId, customThemes));
+    editor.beginEdit(getTheme(themeSettings.resolvedThemeId, themeSettings.customThemes));
   }
   function deleteCustomTheme(id) {
     removeCustomTheme(id);
-    setCustomThemes(listCustomThemes());
-    if (themeId === id) selectThemeId("plvs-dark");
+    themeSettings.setCustomThemes(listCustomThemes());
+    if (themeSettings.themeId === id) selectThemeId("plvs-dark");
   }
 
   return {
     settingsOpen,
     setSettingsOpen,
-    appearance,
-    setAppearance,
-    themeId,
-    setThemeId,
-    resolvedThemeId,
-    themeSelectOptions: THEME_SELECT_OPTIONS,
-    setAppearanceMode,
-    setFixedThemeIdFromPicker,
-    fixedThemeSelectValue,
+    appearance: themeSettings.appearance,
+    setAppearance: themeSettings.setAppearance,
+    themeId: themeSettings.themeId,
+    setThemeId: themeSettings.setThemeId,
+    resolvedThemeId: themeSettings.resolvedThemeId,
+    themeSelectOptions: themeSettings.themeSelectOptions,
+    setAppearanceMode: themeSettings.setAppearanceMode,
+    setFixedThemeIdFromPicker: themeSettings.setFixedThemeIdFromPicker,
+    fixedThemeSelectValue: themeSettings.fixedThemeSelectValue,
     ...meterSettings,
     ...closeActionSetting,
     ...viewSettings,
@@ -174,7 +90,7 @@ export function useSettings({ onClearRef } = {}) {
     createCustomTheme,
     editActiveCustomTheme,
     deleteCustomTheme,
-    activeIsCustom: isCustomThemeId(resolvedThemeId),
+    activeIsCustom: isCustomThemeId(themeSettings.resolvedThemeId),
     ...clearShortcutState,
   };
 }
