@@ -36,7 +36,7 @@ describe("deriveSourceTransportState", () => {
     });
   });
 
-  it("derives the live scrub state from selected history time", () => {
+  it("derives the live scrub state from elapsed session time", () => {
     expect(
       deriveSourceTransportState({
         sourceMode: "live",
@@ -47,14 +47,31 @@ describe("deriveSourceTransportState", () => {
       })
     ).toMatchObject({
       sourceLabel: "Live",
-      statusLabel: "00:00:12",
+      statusLabel: "00:01:31",
       actionLabel: "LIVE",
       chromeState: "snapshot",
       actionKind: "returnToLive",
     });
   });
 
-  it("falls back to selected offset when no live timestamp exists", () => {
+  it("keeps latest live snapshot time aligned with the live session clock", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "live",
+        running: true,
+        selectedOffset: 0,
+        latestTimestampMs: 14 * 60_000 + 34_000,
+        elapsedMs: 25 * 60_000 + 40_000,
+      })
+    ).toMatchObject({
+      statusLabel: "00:25:40",
+      actionLabel: "LIVE",
+      chromeState: "snapshot",
+      actionKind: "returnToLive",
+    });
+  });
+
+  it("derives live scrub time from elapsed session time without native timestamps", () => {
     expect(
       deriveSourceTransportState({
         sourceMode: "live",
@@ -62,7 +79,7 @@ describe("deriveSourceTransportState", () => {
         selectedOffset: 8,
         elapsedMs: 99_000,
       }).statusLabel
-    ).toBe("00:00:08");
+    ).toBe("00:01:31");
   });
 
   it("derives the empty file state", () => {
