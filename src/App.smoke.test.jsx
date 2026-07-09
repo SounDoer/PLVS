@@ -1,6 +1,9 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { isTauri } from "./ipc/env.js";
+import { listAudioDevices, previewAudioDevice } from "./ipc/commands.js";
+import { pickMediaFile } from "./ipc/fileDialog.js";
 
 // Default browser mode (isTauri -> false) keeps the mount deterministic; individual
 // tests flip it to exercise the Tauri capture path against the mocked IPC surface.
@@ -10,7 +13,9 @@ vi.mock("./ipc/env.js", () => ({ isTauri: vi.fn(() => false) }));
 // "No export named X" — keep resolutions inert, do not weaken assertions instead.
 vi.mock("./ipc/commands.js", () => ({
   listAudioDevices: vi.fn().mockResolvedValue([]),
-  previewAudioDevice: vi.fn().mockResolvedValue({ sampleRateHz: 48000, label: "Mock" }),
+  previewAudioDevice: vi
+    .fn()
+    .mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" }),
   startAudioCapture: vi.fn().mockResolvedValue(undefined),
   stopAudioCapture: vi.fn().mockResolvedValue(undefined),
   setLoudnessWeights: vi.fn().mockResolvedValue(undefined),
@@ -22,9 +27,85 @@ vi.mock("./ipc/commands.js", () => ({
   stopFileAnalysis: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    setAlwaysOnTop: vi.fn().mockResolvedValue(undefined),
+    onCloseRequested: vi.fn().mockResolvedValue(() => {}),
+    isVisible: vi.fn().mockResolvedValue(true),
+    hide: vi.fn().mockResolvedValue(undefined),
+    show: vi.fn().mockResolvedValue(undefined),
+    setDecorations: vi.fn().mockResolvedValue(undefined),
+    setShadow: vi.fn().mockResolvedValue(undefined),
+    startDragging: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+vi.mock("@tauri-apps/api/tray", () => ({
+  TrayIcon: {
+    new: vi.fn().mockResolvedValue({
+      close: vi.fn(),
+      setMenu: vi.fn().mockResolvedValue(undefined),
+      setIcon: vi.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
+
+vi.mock("@tauri-apps/api/menu", () => ({
+  Menu: { new: vi.fn().mockResolvedValue({}) },
+  MenuItem: { new: vi.fn().mockResolvedValue({}) },
+  PredefinedMenuItem: { new: vi.fn().mockResolvedValue({}) },
+}));
+
+vi.mock("@tauri-apps/api/image", () => ({
+  Image: { fromPath: vi.fn().mockResolvedValue({}) },
+}));
+
+vi.mock("@tauri-apps/api/path", () => ({
+  resolveResource: vi.fn().mockResolvedValue("tray.png"),
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
+}));
+
+vi.mock("@tauri-apps/api/webview", () => ({
+  getCurrentWebview: () => ({
+    onDragDropEvent: vi.fn().mockResolvedValue(() => {}),
+  }),
+}));
+
+vi.mock("@tauri-apps/plugin-process", () => ({
+  exit: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@tauri-apps/plugin-store", () => ({
+  Store: {
+    load: vi.fn().mockResolvedValue({
+      get: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
+
+vi.mock("./ipc/fileDialog.js", () => ({
+  pickConfigurationProfileFile: vi.fn().mockResolvedValue(null),
+  pickMediaFile: vi.fn().mockResolvedValue(null),
+  saveConfigurationProfileFile: vi.fn().mockResolvedValue(null),
+  saveFileAnalysisReportFile: vi.fn().mockResolvedValue(null),
+}));
+
 beforeEach(() => {
   cleanup();
   localStorage.clear();
+  isTauri.mockReturnValue(false);
+  listAudioDevices.mockResolvedValue([]);
+  previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
+  pickMediaFile.mockResolvedValue(null);
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
@@ -40,6 +121,20 @@ beforeEach(() => {
       unobserve() {}
       disconnect() {}
     };
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+    clearRect: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    putImageData: vi.fn(),
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("App smoke", () => {
@@ -66,5 +161,67 @@ describe("App smoke", () => {
       expect(screen.getByRole("button", { name: /^start$/i })).toBeTruthy();
       expect(screen.getByText("Ready")).toBeTruthy();
     });
+  });
+
+  it("renders the footer status hierarchy", async () => {
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    expect(screen.getByText("Device")).toBeTruthy();
+    expect(screen.getByText("Not connected")).toBeTruthy();
+    expect(screen.getByText("Ref")).toBeTruthy();
+    expect(screen.getByText("Preset")).toBeTruthy();
+  });
+
+  it("uses the formatted default device label in the footer", async () => {
+    isTauri.mockReturnValue(true);
+    previewAudioDevice.mockResolvedValue({
+      sampleRateHz: 48000,
+      channels: 2,
+      label: "Speakers (Realtek USB Audio)",
+    });
+
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+
+    expect(await screen.findByText("Realtek USB Audio")).toBeTruthy();
+    expect(screen.queryByText("Speakers (Realtek USB Audio)")).toBeNull();
+  });
+
+  it("starts file analysis from the File source action and shows the summary surface", async () => {
+    pickMediaFile.mockResolvedValue("C:\\mix.wav");
+
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Source: Live" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "FILE" }));
+    fireEvent.click(screen.getByRole("button", { name: "ANALYZE" }));
+
+    expect(pickMediaFile).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("mix.wav")).toBeTruthy();
+  });
+
+  it("does not toggle transport from Space", async () => {
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    fireEvent.keyDown(document.body, { key: " ", code: "Space" });
+
+    expect(screen.getByRole("button", { name: /^start$/i })).toBeTruthy();
+    expect(screen.getByText("Ready")).toBeTruthy();
+  });
+
+  it("suppresses the native context menu after the shell mounts", async () => {
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 });
