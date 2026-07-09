@@ -17,6 +17,7 @@ import { usePresets } from "./hooks/usePresets.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useMeterDisplay } from "./hooks/useMeterDisplay.js";
 import { useCaptureTransport } from "./hooks/useCaptureTransport.js";
+import { useIntakeRouting } from "./hooks/useIntakeRouting.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -476,34 +477,20 @@ function AppContent() {
     getLiveIntake: () => liveIntakeRef.current,
   });
   const { running } = transport;
-  const emptyFileIntakeRef = useRef(null);
-  if (emptyFileIntakeRef.current === null) emptyFileIntakeRef.current = new FrameIntake();
-  const fileDisplayIntake = activeFileSession?.intake ?? emptyFileIntakeRef.current;
-  const fileAnalysisIntake = analyzingFileSession?.intake ?? emptyFileIntakeRef.current;
-  // The file frame pump drives the shared live `audio` display only while the analyzing session is
-  // the one being shown. Switching to another file freezes that session's panels (its intake still
-  // fills in the background) instead of letting the in-progress analysis hijack the meters.
-  const fileDisplayActiveRef = useRef(false);
-  fileDisplayActiveRef.current =
-    sourceMode === "file" &&
-    fileHistory.analyzingFileId != null &&
-    fileHistory.analyzingFileId === fileHistory.activeFileId;
-  const intakeRef = useRef(liveIntakeRef.current);
-  intakeRef.current = sourceMode === "file" ? fileDisplayIntake : liveIntakeRef.current;
-  const frequencyMarkerRef = useMemo(
-    () => ({
-      get current() {
-        return intakeRef.current.getFrequencyChannelMarkers();
-      },
-    }),
-    []
-  );
-  // Live per-request-key spectrogram source: each Spectrogram panel reads the rolling history for
-  // its own request key so two spectrograms with different channel/view never share one history.
-  const getSpectrogramSnapsForKey = useCallback(
-    (key) => intakeRef.current.getSpectrogramSnapsForKey(key),
-    []
-  );
+  const {
+    intakeRef,
+    fileDisplayIntake,
+    fileAnalysisIntake,
+    fileDisplayActiveRef,
+    frequencyMarkerRef,
+    getSpectrogramSnapsForKey,
+  } = useIntakeRouting({
+    sourceMode,
+    fileHistory,
+    activeFileSession,
+    analyzingFileSession,
+    liveIntake: liveIntakeRef.current,
+  });
   const defaultSampleRateRef = useRef(48000);
   const lastSentAnalysisRequestsKeyRef = useRef("");
 
