@@ -9,15 +9,18 @@ function formatProgress(progress) {
   return `${Math.round(clampProgress(progress) * 100)}%`;
 }
 
-function liveSnapshotTimeMs({ elapsedMs = 0, selectedOffset }) {
+function liveSnapshotTimeMs({ elapsedMs = 0, selectedOffset, selectedSnapshotTimeMs }) {
+  if (Number.isFinite(selectedSnapshotTimeMs)) return selectedSnapshotTimeMs;
   return Math.max(0, elapsedMs - selectedOffset * 1000);
 }
 
-function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0 }) {
+function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selectedSnapshotTimeMs }) {
   if (selectedOffset >= 0) {
     return {
       sourceLabel: "Live",
-      statusLabel: formatClock(liveSnapshotTimeMs({ elapsedMs, selectedOffset })),
+      statusLabel: formatClock(
+        liveSnapshotTimeMs({ elapsedMs, selectedOffset, selectedSnapshotTimeMs })
+      ),
       actionLabel: "LIVE",
       chromeState: "snapshot",
       actionKind: "returnToLive",

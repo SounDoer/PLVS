@@ -71,6 +71,23 @@ describe("deriveSourceTransportState", () => {
     });
   });
 
+  it("keeps live snapshot time frozen after entering snapshot mode", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "live",
+        running: true,
+        selectedOffset: 0,
+        selectedSnapshotTimeMs: 25 * 60_000,
+        elapsedMs: 26 * 60_000,
+      })
+    ).toMatchObject({
+      statusLabel: "00:25:00",
+      actionLabel: "LIVE",
+      chromeState: "snapshot",
+      actionKind: "returnToLive",
+    });
+  });
+
   it("derives live scrub time from elapsed session time without native timestamps", () => {
     expect(
       deriveSourceTransportState({

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSessionTimer } from "./useSessionTimer.js";
 
 /**
@@ -68,13 +68,34 @@ export const CLEARED_METER_AUDIO = {
 
 export function useMeterDisplay() {
   const [audio, setAudio] = useState({ ...INITIAL_METER_AUDIO });
-  const [selectedOffset, setSelectedOffset] = useState(-1);
+  const [selectedOffset, setSelectedOffsetState] = useState(-1);
+  const [selectedSnapshotTimeMs, setSelectedSnapshotTimeMs] = useState(null);
   const [notice, setNotice] = useState(null);
   const [showClock, setShowClock] = useState(false);
   const selectedOffsetRef = useRef(-1);
+  const snapshotBaseElapsedMsRef = useRef(null);
   const frameRef = useRef(0);
   const guardTimerRef = useRef(null);
   const clock = useSessionTimer();
+
+  const setSelectedOffset = useCallback(
+    (nextOffset) => {
+      const value =
+        typeof nextOffset === "function" ? nextOffset(selectedOffsetRef.current) : nextOffset;
+      selectedOffsetRef.current = value;
+      if (value >= 0) {
+        if (!Number.isFinite(snapshotBaseElapsedMsRef.current)) {
+          snapshotBaseElapsedMsRef.current = clock.elapsedMsRef.current;
+        }
+        setSelectedSnapshotTimeMs(Math.max(0, snapshotBaseElapsedMsRef.current - value * 1000));
+      } else {
+        snapshotBaseElapsedMsRef.current = null;
+        setSelectedSnapshotTimeMs(null);
+      }
+      setSelectedOffsetState(value);
+    },
+    [clock.elapsedMsRef]
+  );
 
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;
@@ -117,6 +138,7 @@ export function useMeterDisplay() {
     setAudio,
     selectedOffset,
     setSelectedOffset,
+    selectedSnapshotTimeMs,
     selectedOffsetRef,
     frameRef,
     notice,

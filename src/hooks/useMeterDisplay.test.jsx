@@ -35,6 +35,23 @@ describe("useMeterDisplay", () => {
     expect(result.current.selectedOffset).toBe(42);
   });
 
+  it("freezes the live snapshot session time while selectedOffset changes", () => {
+    const { result } = renderHook(() => useMeterDisplay());
+    result.current.clock.elapsedMsRef.current = 25 * 60_000;
+
+    act(() => result.current.setSelectedOffset(0));
+    expect(result.current.selectedSnapshotTimeMs).toBe(25 * 60_000);
+
+    result.current.clock.elapsedMsRef.current = 26 * 60_000;
+    act(() => result.current.setSelectedOffset(60));
+    expect(result.current.selectedSnapshotTimeMs).toBe(24 * 60_000);
+
+    act(() => result.current.setSelectedOffset(-1));
+    result.current.clock.elapsedMsRef.current = 30 * 60_000;
+    act(() => result.current.setSelectedOffset(0));
+    expect(result.current.selectedSnapshotTimeMs).toBe(30 * 60_000);
+  });
+
   it("clearAudio replaces the snapshot with the clear-time literal", () => {
     const { result } = renderHook(() => useMeterDisplay());
     act(() => result.current.setAudio((a) => ({ ...a, momentary: -12 })));
