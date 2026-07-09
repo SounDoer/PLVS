@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-07-09
+
+### Added
+- A header notice now surfaces transport errors directly, replacing the removed status broadcast path.
+
+### Changed
+- The runtime context value is memoized so meter-frame-rate re-renders no longer cascade to every consumer.
+
+### Fixed
+- Clearing peaks and history now also resets the live timestamp origin.
+
 ## [0.7.3] - 2026-07-08
 
 ### Fixed
