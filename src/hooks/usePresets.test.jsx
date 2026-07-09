@@ -9,6 +9,9 @@ const mocks = vi.hoisted(() => ({
   applyWindowBounds: vi.fn(),
   currentWindowBounds: vi.fn(),
   isTauri: vi.fn(() => false),
+  onWindowBoundsChanged: vi.fn(),
+  unlistenWindowBounds: vi.fn(),
+  windowBoundsHandler: null,
 }));
 
 vi.mock("../ipc/commands.js", () => ({
@@ -18,6 +21,10 @@ vi.mock("../ipc/commands.js", () => ({
 
 vi.mock("../ipc/env.js", () => ({
   isTauri: mocks.isTauri,
+}));
+
+vi.mock("../ipc/events.js", () => ({
+  onWindowBoundsChanged: mocks.onWindowBoundsChanged,
 }));
 
 import { usePresets } from "./usePresets.js";
@@ -53,6 +60,12 @@ describe("usePresets", () => {
       isMaximized: false,
     });
     mocks.isTauri.mockReset().mockReturnValue(false);
+    mocks.unlistenWindowBounds.mockReset();
+    mocks.windowBoundsHandler = null;
+    mocks.onWindowBoundsChanged.mockReset().mockImplementation(async (handler) => {
+      mocks.windowBoundsHandler = handler;
+      return mocks.unlistenWindowBounds;
+    });
   });
 
   afterEach(() => {
@@ -123,7 +136,6 @@ describe("usePresets", () => {
     mocks.isTauri.mockReturnValue(true);
     const setWindowPinned = vi.fn();
     const setFocusView = vi.fn();
-    const suppressPresetDivergence = vi.fn();
     presetsStore.patch({
       list: [
         {
@@ -145,7 +157,6 @@ describe("usePresets", () => {
       windowPinned: false,
       setWindowPinned,
       setFocusView,
-      suppressPresetDivergence,
     });
     await act(async () => {
       await result.current.presets.apply("p1");
@@ -161,7 +172,6 @@ describe("usePresets", () => {
       height: 200,
       isMaximized: false,
     });
-    expect(suppressPresetDivergence).toHaveBeenCalledTimes(1);
     expect(setWindowPinned).toHaveBeenCalledWith(true);
     expect(setFocusView).toHaveBeenCalledWith({
       autoHideControls: true,
@@ -169,6 +179,69 @@ describe("usePresets", () => {
       borderless: false,
     });
     expect(presetsStore.read().activeId).toBe("p1");
+  });
+
+  it("marks the active preset dirty when window bounds change in Tauri", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Preset",
+          tree: leaf(["spectrum"]),
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+        },
+      ],
+      activeId: "p1",
+      dirty: false,
+    });
+
+    renderPresetHook();
+    await act(async () => {});
+
+    Date.now.mockReturnValue(2000);
+    act(() => {
+      mocks.windowBoundsHandler();
+    });
+
+    expect(presetsStore.read().dirty).toBe(true);
+  });
+
+  it("suppresses preset dirty marking while applying stored window bounds", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Preset",
+          tree: leaf(["spectrum"]),
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+          windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
+        },
+      ],
+      activeId: null,
+      dirty: false,
+    });
+    const { result } = renderPresetHook();
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.presets.apply("p1");
+    });
+
+    act(() => {
+      mocks.windowBoundsHandler();
+    });
+    expect(presetsStore.read().dirty).toBe(false);
+
+    Date.now.mockReturnValue(2000);
+    act(() => {
+      mocks.windowBoundsHandler();
+    });
+    expect(presetsStore.read().dirty).toBe(true);
   });
 
   it("does not change Focus View when applying an older preset", async () => {

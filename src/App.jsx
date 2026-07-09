@@ -39,17 +39,9 @@ import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
-import {
-  resetTruePeakMax,
-  setAnalysisRequests,
-  setLoudnessWeights,
-  setDialogueGating,
-  setDialogueVadEngine,
-} from "./ipc/commands.js";
+import { resetTruePeakMax } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
-import { pickMediaFile } from "./ipc/fileDialog.js";
-import { onWindowBoundsChanged } from "./ipc/events.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
@@ -62,6 +54,9 @@ import { useCliPathSettings } from "./hooks/useCliPathSettings.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
+import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
+import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
+import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
@@ -153,10 +148,6 @@ function AppContent() {
     setGlassEnabled,
   } = useSettings({ onClearRef });
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
-  const suppressPresetDivergenceUntilRef = useRef(Date.now() + 1500);
-  const suppressPresetDivergence = useCallback((durationMs = 1500) => {
-    suppressPresetDivergenceUntilRef.current = Date.now() + durationMs;
-  }, []);
   const {
     configurationBusy,
     configurationStatus,
@@ -174,29 +165,8 @@ function AppContent() {
     setPanelOpacity,
     glassEnabled,
     setGlassEnabled,
-    suppressPresetDivergence,
   });
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless);
-
-  useEffect(() => {
-    if (!isTauri()) return undefined;
-    let disposed = false;
-    let unlisten = null;
-    onWindowBoundsChanged(() => {
-      if (Date.now() < suppressPresetDivergenceUntilRef.current) return;
-      presets.markDirty();
-    }).then((fn) => {
-      if (disposed) {
-        fn();
-      } else {
-        unlisten = fn;
-      }
-    });
-    return () => {
-      disposed = true;
-      if (unlisten) unlisten();
-    };
-  }, [presets.markDirty]);
 
   const {
     audioDevices,
@@ -292,13 +262,8 @@ function AppContent() {
   const spectrumPeakHoldUi = normalizedPanelControls.spectrumPeakHold;
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
   const { installStatus, install, restartToApply } = useApplyUpdate();
-  const [focusControlsVisible, setFocusControlsVisible] = useState(false);
-  const [focusControlsHeld, setFocusControlsHeld] = useState(false);
-  const focusControlsHideTimerRef = useRef(0);
-  const focusControlsDragTimerRef = useRef(0);
 
   const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
-  const lastSentAnalysisRequestsKeyRef = useRef("");
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
   // list updatePanelControls in their deps. If its identity changed per dispatch it would
@@ -317,9 +282,6 @@ function AppContent() {
     // an unchanged value would still churn workspace state (and persist) on every frame.
     if (JSON.stringify(next) === JSON.stringify(current)) return;
     setWorkspacePanelControlsRef.current(next);
-  }, []);
-  const sendTrackedLoudnessWeights = useCallback((weights) => {
-    return setLoudnessWeights(weights).catch(() => {});
   }, []);
 
   const {
@@ -437,21 +399,19 @@ function AppContent() {
     [channelCount, channelLabelOverrides, layoutResolution]
   );
   const { channelLabelOverride, overrideLabels, loudnessWeights } = channelLabelRuntime;
-  const loudnessWeightsRef = useRef(loudnessWeights);
   const { dialogueGating, dialogueVadEngine } = useMemo(
     () => deriveDialogueRuntime(workspaceState),
     [workspaceState]
   );
-  const dialogueGatingRef = useRef(dialogueGating);
-  const dialogueVadEngineRef = useRef(dialogueVadEngine);
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
-
-  useEffect(() => {
-    loudnessWeightsRef.current = loudnessWeights;
-    if (!isTauri() || !running) return;
-    void sendTrackedLoudnessWeights(loudnessWeights);
-  }, [loudnessWeights, running, sendTrackedLoudnessWeights]);
+  const { loudnessWeightsRef, dialogueGatingRef, dialogueVadEngineRef } = useRuntimeBackendSync({
+    analysisRequests,
+    loudnessWeights,
+    running,
+    dialogueGating,
+    dialogueVadEngine,
+  });
 
   useEffect(() => {
     const s = document.documentElement.style;
@@ -462,18 +422,6 @@ function AppContent() {
     s.setProperty("--panel-opacity-meter", String(Math.max(0.25, p / 100)));
   }, [panelOpacity]);
 
-  useEffect(() => {
-    dialogueGatingRef.current = dialogueGating;
-    if (!isTauri()) return;
-    void setDialogueGating(dialogueGating);
-  }, [dialogueGating]);
-
-  useEffect(() => {
-    dialogueVadEngineRef.current = dialogueVadEngine;
-    if (!isTauri()) return;
-    void setDialogueVadEngine(dialogueVadEngine);
-  }, [dialogueVadEngine]);
-
   const currentFileAnalysisSettings = useCallback(
     () => ({
       dialogue: {
@@ -483,25 +431,6 @@ function AppContent() {
     }),
     [dialogueGating, dialogueVadEngine]
   );
-
-  useEffect(() => {
-    if (!isTauri()) {
-      lastSentAnalysisRequestsKeyRef.current = "";
-      return;
-    }
-    // Sync request keys to the backend whenever they change, not only during live capture. The file
-    // analysis worker snapshots these at start, so on a fresh launch (no live capture yet) file mode
-    // would otherwise get empty requests and the request-keyed panels (Spectrogram/Spectrum/
-    // Vectorscope) would stay blank until the first live start.
-    const key = JSON.stringify(analysisRequests);
-    if (lastSentAnalysisRequestsKeyRef.current === key) return;
-    lastSentAnalysisRequestsKeyRef.current = key;
-    void setAnalysisRequests(analysisRequests).catch(() => {
-      if (lastSentAnalysisRequestsKeyRef.current === key) {
-        lastSentAnalysisRequestsKeyRef.current = "";
-      }
-    });
-  }, [analysisRequests]);
 
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
 
@@ -590,89 +519,20 @@ function AppContent() {
     focusView.compactPanels ||
     focusView.borderless ||
     panelOpacity < 100;
-
-  const showFocusControls = useCallback(() => {
-    window.clearTimeout(focusControlsHideTimerRef.current);
-    setFocusControlsVisible(true);
-  }, []);
-
-  const hideFocusControlsLater = useCallback(() => {
-    if (focusControlsHeld) return;
-    window.clearTimeout(focusControlsHideTimerRef.current);
-    focusControlsHideTimerRef.current = window.setTimeout(() => {
-      setFocusControlsVisible(false);
-    }, 900);
-  }, [focusControlsHeld]);
-
-  const hideFocusControlsNow = useCallback(() => {
-    if (focusControlsHeld) return;
-    window.clearTimeout(focusControlsHideTimerRef.current);
-    setFocusControlsVisible(false);
-  }, [focusControlsHeld]);
-
-  const toggleFocusControls = useCallback(() => {
-    if (focusControlsVisible) {
-      hideFocusControlsNow();
-    } else {
-      showFocusControls();
-      focusControlsHideTimerRef.current = window.setTimeout(() => {
-        setFocusControlsVisible(false);
-      }, 3000);
-    }
-  }, [focusControlsVisible, hideFocusControlsNow, showFocusControls]);
-
-  const holdFocusControls = useCallback((open) => {
-    setFocusControlsHeld(open);
-    if (open) {
-      window.clearTimeout(focusControlsHideTimerRef.current);
-      setFocusControlsVisible(true);
-    }
-  }, []);
-
-  const releaseFocusControlsHold = useCallback(() => {
-    setFocusControlsHeld(false);
-  }, []);
-
   const frameless = focusView.autoHideControls || focusView.borderless;
-
-  const handleWindowDrag = useCallback(
-    async (event) => {
-      if (!frameless || event.button !== 0 || event.target !== event.currentTarget) return;
-      if (!isTauri()) return;
-      const releaseAfterDrag = () => {
-        releaseFocusControlsHold();
-        window.clearTimeout(focusControlsDragTimerRef.current);
-      };
-      try {
-        holdFocusControls(true);
-        window.addEventListener("pointerup", releaseAfterDrag, { once: true, capture: true });
-        window.addEventListener("pointercancel", releaseAfterDrag, { once: true, capture: true });
-        window.addEventListener("mouseup", releaseAfterDrag, { once: true, capture: true });
-        window.addEventListener("blur", releaseAfterDrag, { once: true });
-        focusControlsDragTimerRef.current = window.setTimeout(releaseAfterDrag, 10000);
-        const win = getCurrentWindow();
-        if (typeof win.startDragging === "function") await win.startDragging();
-      } catch (_) {
-        releaseAfterDrag();
-      }
-    },
-    [frameless, holdFocusControls, releaseFocusControlsHold]
-  );
-
-  useEffect(() => {
-    if (!focusView.autoHideControls) {
-      setFocusControlsVisible(false);
-      setFocusControlsHeld(false);
-    }
-  }, [focusView.autoHideControls]);
-
-  useEffect(
-    () => () => {
-      window.clearTimeout(focusControlsHideTimerRef.current);
-      window.clearTimeout(focusControlsDragTimerRef.current);
-    },
-    []
-  );
+  const {
+    controlsVisible: focusControlsVisible,
+    showControls: showFocusControls,
+    hideControlsLater: hideFocusControlsLater,
+    hideControlsNow: hideFocusControlsNow,
+    toggleControls: toggleFocusControls,
+    holdControls: holdFocusControls,
+    releaseControlsHold: releaseFocusControlsHold,
+    handleWindowDrag,
+  } = useViewsChromeReveal({
+    autoHideControls: focusView.autoHideControls,
+    frameless,
+  });
 
   // Clamp every panel instance's channel selection to the currently available channels. Lowering
   // the device channel count must repair all panels (not just the first), otherwise a stale
@@ -765,15 +625,6 @@ function AppContent() {
     showHistoryHud(1600);
   }, [historyChartInteractive, totalSamples, setSelectedOffset, showHistoryHud]);
 
-  const clearAll = async () => {
-    const cleared = await clearActiveSource();
-    if (cleared) {
-      setHistoryOffsetSec(0);
-      setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
-    }
-  };
-  onClearRef.current = clearAll;
-
   const resetTpMax = async () => {
     if (isTauri()) {
       try {
@@ -783,117 +634,45 @@ function AppContent() {
     setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
   };
 
-  const beginFileAnalysis = useCallback(
-    (path) => {
-      beginRuntimeFileAnalysis(path, currentFileAnalysisSettings());
-    },
-    [beginRuntimeFileAnalysis, currentFileAnalysisSettings]
-  );
-
-  const reanalyzeActiveFile = useCallback(
-    (entry) => {
-      reanalyzeFile(entry?.id, currentFileAnalysisSettings());
-    },
-    [currentFileAnalysisSettings, reanalyzeFile]
-  );
-
   const { exportFileAnalysisReport } = useFileAnalysisReportExport({
     fileSession,
     appVersion: APP_VERSION,
     setStatus,
   });
-
-  const onSelectFile = (id) => {
-    setHistoryOffsetSec(0);
-    setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
-    selectFile(id);
-  };
-
-  const onStopFile = (id) => {
-    void stopFileAnalysis(id);
-  };
-
-  const onReanalyzeFile = (id) => {
-    reanalyzeFile(id, currentFileAnalysisSettings());
-  };
-
-  const onRemoveFile = async (id) => {
-    const clearedDisplay = await removeFile(id);
-    if (clearedDisplay) {
-      setHistoryOffsetSec(0);
-      setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
-    }
-  };
-
-  const onClearAllFiles = async () => {
-    setHistoryOffsetSec(0);
-    setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
-    await clearFiles();
-  };
-
-  // `path` already comes from the Tauri drag-drop event (a real filesystem path).
-  const handleDropFile = useCallback((path) => beginFileAnalysis(path), [beginFileAnalysis]);
-
-  const runLiveStartAction = () => {
-    if (selectedOffset >= 0) {
-      setSelectedOffset(-1);
-      setStatus("Monitoring live input");
-      return;
-    }
-    if (running) {
-      stopLive();
-      return;
-    }
-    startLive();
-  };
-
-  const onSourceTransportAction = async (actionKind) => {
-    if (actionKind === "returnToLive") {
-      setSelectedOffset(-1);
-      setStatus("Monitoring live input");
-      return;
-    }
-    if (actionKind === "startLive" || actionKind === "stopLive") {
-      runLiveStartAction();
-      return;
-    }
-    if (actionKind === "returnToFileResult") {
-      setSelectedOffset(-1);
-      setStatus("File analysis result");
-      return;
-    }
-    if (actionKind === "chooseFile") {
-      const path = await pickMediaFile();
-      if (path) beginFileAnalysis(path);
-      return;
-    }
-    if (actionKind === "analyzeFile") {
-      if (activeFileSession?.path) {
-        reanalyzeActiveFile(activeFileSession);
-      } else {
-        const path = await pickMediaFile();
-        if (path) beginFileAnalysis(path);
-      }
-      return;
-    }
-    if (actionKind === "reanalyzeFile") {
-      reanalyzeActiveFile(activeFileSession);
-      return;
-    }
-    if (actionKind === "stopFileAnalysis") {
-      void stopFileAnalysis();
-      return;
-    }
-  };
-
-  const onStartClick = runLiveStartAction;
-
-  const onSourceModeChange = (nextMode) => {
-    if (nextMode === sourceMode) return;
-    setHistoryOffsetSec(0);
-    setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
-    switchSource(nextMode);
-  };
+  const {
+    clearAll,
+    openFile,
+    onSelectFile,
+    onStopFile,
+    onReanalyzeFile,
+    onRemoveFile,
+    onClearAllFiles,
+    handleDropFile,
+    onStartClick,
+    onSourceTransportAction,
+    onSourceModeChange,
+  } = useSourceTransportActions({
+    sourceMode,
+    running,
+    selectedOffset,
+    setSelectedOffset,
+    setStatus,
+    setHistoryOffsetSec,
+    setHistoryWindowSec,
+    startLive,
+    stopLive,
+    switchSource,
+    clearActiveSource,
+    beginRuntimeFileAnalysis,
+    reanalyzeFile,
+    selectFile,
+    removeFile,
+    clearFiles,
+    stopFileAnalysis,
+    activeFileSession,
+    getFileAnalysisSettings: currentFileAnalysisSettings,
+  });
+  onClearRef.current = clearAll;
 
   useTray({
     running,
@@ -1074,10 +853,7 @@ function AppContent() {
     onClear: clearAll,
     clearDisabled: sourceMode === "file" ? !activeFileSession : !running && !showClock,
     isTauriApp: isTauri(),
-    onOpenFile: async () => {
-      const path = await pickMediaFile();
-      if (path) beginFileAnalysis(path);
-    },
+    onOpenFile: openFile,
     audioDevices,
     audioOutputs,
     audioInputs,

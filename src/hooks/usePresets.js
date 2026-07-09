@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { onWindowBoundsChanged } from "../ipc/events.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
@@ -60,10 +61,10 @@ export function usePresets({
   setPanelOpacity = () => {},
   glassEnabled = false,
   setGlassEnabled = () => {},
-  suppressPresetDivergence = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
+  const suppressPresetDivergenceUntilRef = useRef(0);
 
   useEffect(
     () =>
@@ -85,6 +86,33 @@ export function usePresets({
   const markDirty = useCallback(() => {
     write({ dirty: true });
   }, [write]);
+  const suppressPresetDivergence = useCallback((durationMs = 1500) => {
+    suppressPresetDivergenceUntilRef.current = Date.now() + durationMs;
+  }, []);
+
+  useEffect(() => {
+    suppressPresetDivergence();
+  }, [suppressPresetDivergence]);
+
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    let disposed = false;
+    let unlisten = null;
+    onWindowBoundsChanged(() => {
+      if (Date.now() < suppressPresetDivergenceUntilRef.current) return;
+      markDirty();
+    }).then((fn) => {
+      if (disposed) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
+    });
+    return () => {
+      disposed = true;
+      if (unlisten) unlisten();
+    };
+  }, [markDirty]);
 
   const captureSnapshot = useCallback(async () => {
     const windowBounds = await readWindowBounds();
