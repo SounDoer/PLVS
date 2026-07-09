@@ -127,7 +127,7 @@ impl VectorscopeMeter {
     let vs_safe_inset = 8.0_f64;
     let vs_extent_floor = 0.02_f64;
     let vs_extent_release = 0.965_f64;
-    let base_plot_radius = 96.0_f64;
+    let base_plot_radius = vs_half - vs_safe_inset;
     let mut max_cheb = 0.0_f64;
     let mut i = 0;
     while i < n {
@@ -283,6 +283,27 @@ mod tests {
       "expected corr near -1.0, got {}",
       metrics.correlation
     );
+  }
+
+  #[test]
+  fn unity_mid_content_uses_safe_inset() {
+    let sample = std::f32::consts::FRAC_1_SQRT_2;
+    let interleaved: Vec<f32> = [sample, sample].repeat(6);
+    let mut vs = VectorscopeMeter::new();
+    vs.feed_interleaved(&interleaved, 2, 0, 1);
+    let (_metrics, path) = vs.get_output();
+
+    assert_eq!(path, "M 130.00 8.00");
+  }
+
+  #[test]
+  fn low_level_content_uses_true_display_scale() {
+    let interleaved: Vec<f32> = [0.1, 0.1].repeat(6);
+    let mut vs = VectorscopeMeter::new();
+    vs.feed_interleaved(&interleaved, 2, 0, 1);
+    let (_metrics, path) = vs.get_output();
+
+    assert_eq!(path, "M 130.00 112.75");
   }
 
   #[test]

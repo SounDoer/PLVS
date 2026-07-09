@@ -2,7 +2,7 @@ const INV_SQRT2 = 1 / Math.sqrt(2);
 const VS_HALF = 130.0;
 const VS_SAFE_INSET = 8.0;
 const VS_EXTENT_FLOOR = 0.02;
-const BASE_PLOT_RADIUS = 96.0;
+const BASE_PLOT_RADIUS = VS_HALF - VS_SAFE_INSET;
 
 /**
  * Reconstruct a Lissajous SVG path from stored interleaved float pairs.

@@ -199,16 +199,6 @@ export function VectorscopePanel() {
                     opacity="var(--ui-vectorscope-axis-opacity)"
                     strokeLinecap="round"
                   />
-                  <circle
-                    cx="130"
-                    cy="130"
-                    r="2"
-                    fill={
-                      selectedOffset >= 0
-                        ? "var(--ui-vectorscope-trace-snap)"
-                        : "var(--ui-vectorscope-trace)"
-                    }
-                  />
                 </>
               )}
             </svg>
@@ -253,8 +243,8 @@ export function VectorscopePanel() {
               data-vectorscope-correlation-marker
               className={cn(
                 "absolute top-1/2 h-3 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full",
-                !isSnapshot && "transition-[left] duration-100 ease-out",
-                correlationMarkerClass(panelCorrelation)
+                !isSnapshot && "transition-[left,background-color] duration-100 ease-out",
+                correlationMarkerClass(displayCorrelation)
               )}
               style={{ left: correlationMarkerLeft(displayCorrelation) }}
             />

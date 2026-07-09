@@ -20,4 +20,16 @@ describe("buildVectorscopeSvgFromPairs", () => {
     // Only 1 point → no L segments
     expect(svg).not.toContain(" L ");
   });
+
+  it("uses the safe inset for unity mid/side content", () => {
+    const svg = buildVectorscopeSvgFromPairs([Math.SQRT1_2, Math.SQRT1_2]);
+
+    expect(svg).toBe("M 130.00 8.00");
+  });
+
+  it("keeps low-level content at its true display scale", () => {
+    const svg = buildVectorscopeSvgFromPairs([0.1, 0.1]);
+
+    expect(svg).toBe("M 130.00 112.75");
+  });
 });

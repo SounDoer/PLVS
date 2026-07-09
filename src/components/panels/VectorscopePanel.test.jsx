@@ -158,7 +158,27 @@ describe("VectorscopePanel", () => {
     expect(marker?.className).not.toContain("shadow-[");
   });
 
-  it("smooths the live marker position but leaves snapshot markers immediate", () => {
+  it("does not render a fixed center dot over the trace", () => {
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 } },
+      displayAudio: {
+        peakDb: [-12, -18],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": {
+            path: "M 0 0 L 100 100",
+            correlation: 0.5,
+            pairX: 0,
+            pairY: 1,
+          },
+        },
+      },
+    });
+
+    expect(container.querySelector('circle[cx="130"][cy="130"]')).toBeNull();
+  });
+
+  it("smooths the live marker position and color but leaves snapshot markers immediate", () => {
     const { container, rerender } = renderPanel({
       selectedOffset: -1,
       panelControls: { vectorscopePair: { x: 0, y: 1 } },
@@ -187,8 +207,9 @@ describe("VectorscopePanel", () => {
       })
     );
     const liveMarker = container.querySelector("[data-vectorscope-correlation-marker]");
-    expect(liveMarker?.className).toContain("transition-[left]");
+    expect(liveMarker?.className).toContain("transition-[left,background-color]");
     expect(liveMarker?.getAttribute("style")).toContain("left: 25%");
+    expect(liveMarker?.className).toContain("bg-[color:var(--ui-signal-bad)]");
 
     const snapshot = renderPanel({
       selectedOffset: 2,
@@ -202,7 +223,7 @@ describe("VectorscopePanel", () => {
     });
     expect(
       snapshot.container.querySelector("[data-vectorscope-correlation-marker]")?.className
-    ).not.toContain("transition-[left]");
+    ).not.toContain("transition-[left,background-color]");
   });
 
   it("treats no-signal correlation as indeterminate instead of placing the rail marker at zero", () => {
