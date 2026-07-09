@@ -6,7 +6,8 @@ import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
-import { AudioDataContext, PanelChromeProvider } from "@/workspace/AudioDataContext.jsx";
+import { PanelChromeProvider } from "@/workspace/AudioDataContext.jsx";
+import { PanelDataProviders } from "@/workspace/PanelDataProviders.jsx";
 import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
 import { SplitLayout } from "@/workspace/SplitLayout.jsx";
@@ -32,6 +33,19 @@ vi.mock("framer-motion", () => ({
 vi.mock("@/ipc/openExternal.js", () => ({
   openExternalUrl: vi.fn(),
 }));
+
+function TestPanelDataProviders({ value = {}, panelChromeData = value, children }) {
+  return (
+    <PanelDataProviders
+      frameData={value}
+      historyData={value}
+      metricsData={value}
+      panelChromeData={panelChromeData}
+    >
+      {children}
+    </PanelDataProviders>
+  );
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -1030,7 +1044,7 @@ describe("PanelSettingsContent", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               statsMetrics: [],
@@ -1038,7 +1052,7 @@ describe("PanelSettingsContent", () => {
           >
             <WorkspaceStateProbe onState={onState} />
             <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );
@@ -1068,7 +1082,7 @@ describe("PanelSettingsContent", () => {
     const { container } = render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               statsMetrics: [],
@@ -1076,7 +1090,7 @@ describe("PanelSettingsContent", () => {
           >
             <WorkspaceStateProbe onState={onState} />
             <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );
@@ -1122,14 +1136,14 @@ describe("PanelSettingsContent", () => {
 
     const { container } = render(
       <WorkspaceProvider>
-        <AudioDataContext.Provider
+        <TestPanelDataProviders
           value={{
             panelControls: DEFAULT_PANEL_CONTROLS,
             statsMetrics: [],
           }}
         >
           <SplitLayout />
-        </AudioDataContext.Provider>
+        </TestPanelDataProviders>
       </WorkspaceProvider>
     );
 
@@ -1174,14 +1188,14 @@ describe("PanelSettingsContent", () => {
 
     const { container } = render(
       <WorkspaceProvider>
-        <AudioDataContext.Provider
+        <TestPanelDataProviders
           value={{
             panelControls: DEFAULT_PANEL_CONTROLS,
             statsMetrics: [],
           }}
         >
           <SplitLayout />
-        </AudioDataContext.Provider>
+        </TestPanelDataProviders>
       </WorkspaceProvider>
     );
 
@@ -1205,7 +1219,7 @@ describe("PanelSettingsContent", () => {
 
     render(
       <WorkspaceProvider>
-        <AudioDataContext.Provider
+        <TestPanelDataProviders
           value={{
             panelControls: DEFAULT_PANEL_CONTROLS,
             statsMetrics: [],
@@ -1213,7 +1227,7 @@ describe("PanelSettingsContent", () => {
         >
           <WorkspaceStateProbe onState={onState} />
           <SplitLayout />
-        </AudioDataContext.Provider>
+        </TestPanelDataProviders>
       </WorkspaceProvider>
     );
 
@@ -1242,7 +1256,7 @@ describe("PanelSettingsContent", () => {
 
     render(
       <WorkspaceProvider>
-        <AudioDataContext.Provider
+        <TestPanelDataProviders
           value={{
             panelControls: DEFAULT_PANEL_CONTROLS,
             analysisStatusByPanelId: { spectrum: "overCap" },
@@ -1252,7 +1266,7 @@ describe("PanelSettingsContent", () => {
           <PanelChromeProvider value={{ analysisStatusByPanelId: { spectrum: "overCap" } }}>
             <SplitLayout />
           </PanelChromeProvider>
-        </AudioDataContext.Provider>
+        </TestPanelDataProviders>
       </WorkspaceProvider>
     );
 
@@ -1266,14 +1280,14 @@ describe("PanelSettingsContent", () => {
     const { container } = render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               statsMetrics: [],
             }}
           >
             <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );
@@ -1303,14 +1317,14 @@ describe("PanelSettingsContent", () => {
 
     render(
       <WorkspaceProvider>
-        <AudioDataContext.Provider
+        <TestPanelDataProviders
           value={{
             panelControls: DEFAULT_PANEL_CONTROLS,
             statsMetrics: [],
           }}
         >
           <SplitLayout />
-        </AudioDataContext.Provider>
+        </TestPanelDataProviders>
       </WorkspaceProvider>
     );
 
@@ -1336,7 +1350,7 @@ describe("PanelSettingsContent", () => {
     const { container } = render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               compactPanels: true,
               panelControls: DEFAULT_PANEL_CONTROLS,
@@ -1371,7 +1385,7 @@ describe("PanelSettingsContent", () => {
                 path={[]}
               />
             </PanelChromeProvider>
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );
@@ -1389,7 +1403,7 @@ describe("PanelSettingsContent", () => {
     const { container } = render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               targetLufs: -23,
@@ -1421,7 +1435,7 @@ describe("PanelSettingsContent", () => {
               node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
               path={[]}
             />
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );
@@ -1445,7 +1459,7 @@ describe("PanelSettingsContent", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               displayAudio: { peakDb: [-9.9, -10] },
@@ -1457,7 +1471,7 @@ describe("PanelSettingsContent", () => {
               node={{ type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" }}
               path={[]}
             />
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );
@@ -1479,7 +1493,7 @@ describe("PanelSettingsContent", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               compactPanels: true,
               panelControls: DEFAULT_PANEL_CONTROLS,
@@ -1521,7 +1535,7 @@ describe("PanelSettingsContent", () => {
                 path={[]}
               />
             </PanelChromeProvider>
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );
@@ -1533,14 +1547,14 @@ describe("PanelSettingsContent", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider
+          <TestPanelDataProviders
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
               statsMetrics: [],
             }}
           >
             <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
-          </AudioDataContext.Provider>
+          </TestPanelDataProviders>
         </DragProvider>
       </WorkspaceProvider>
     );

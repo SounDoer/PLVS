@@ -1,7 +1,11 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import {
+  FrameDataProvider,
+  HistoryDataProvider,
+  PanelInstanceProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { WaveformPanel } from "./WaveformPanel.jsx";
 
 const { sliceWaveformSubHistoryMock } = vi.hoisted(() => ({
@@ -48,12 +52,18 @@ function renderPanel(value = {}, props = {}) {
 
 function waveformPanelTree(value = {}, props = {}) {
   const { panelVisible = true, ...shared } = value;
+  const frameData = {
+    channelCount: shared.channelCount ?? baseAudioData.channelCount,
+    peakLabelContext: shared.peakLabelContext ?? baseAudioData.peakLabelContext,
+  };
   return (
-    <AudioDataContext.Provider value={{ ...baseAudioData, ...shared }}>
-      <PanelInstanceProvider value={{ panelVisible }}>
-        <WaveformPanel {...props} />
-      </PanelInstanceProvider>
-    </AudioDataContext.Provider>
+    <FrameDataProvider value={frameData}>
+      <HistoryDataProvider value={{ ...baseAudioData, ...shared }}>
+        <PanelInstanceProvider value={{ panelVisible }}>
+          <WaveformPanel {...props} />
+        </PanelInstanceProvider>
+      </HistoryDataProvider>
+    </FrameDataProvider>
   );
 }
 

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
-import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
+import {
+  useFrameData,
+  useHistoryData,
+  usePanelInstanceData,
+} from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
@@ -31,6 +35,7 @@ const CHART_ZOOM_OUT_FACTOR = 1.18;
 const ACTIVE_PULSE_MS = 160;
 
 export function SpectrogramPanel({ compact = false }) {
+  const { channelCount, spectrumChannelOptions, resolvedThemeId } = useFrameData();
   const {
     frequencyMarkerRef,
     effectiveOffsetSamples,
@@ -39,8 +44,6 @@ export function SpectrogramPanel({ compact = false }) {
     setSelectedOffset,
     showSelLine,
     selLineX,
-    channelCount,
-    spectrumChannelOptions,
     totalSamples,
     histSourceList,
     historyChartInteractive,
@@ -51,10 +54,9 @@ export function SpectrogramPanel({ compact = false }) {
     historyTimeAxisHandlers,
     historyTimeAxisActive,
     historyTimeTicks,
-    resolvedThemeId,
     getSpectrogramSnapsForKey,
     snapshotSpectrumByKey,
-  } = useSharedPanelData();
+  } = useHistoryData();
   const { panelControls, analysisStatus, onPanelControlsChange } = usePanelInstanceData();
   const chartYDragRef = useRef(null);
   const normalizedPanelControls = useMemo(

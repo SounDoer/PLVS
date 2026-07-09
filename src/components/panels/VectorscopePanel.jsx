@@ -1,5 +1,9 @@
 import { useMemo, useRef } from "react";
-import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
+import {
+  useFrameData,
+  useHistoryData,
+  usePanelInstanceData,
+} from "../../workspace/AudioDataContext.jsx";
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
@@ -50,15 +54,14 @@ export function VectorscopePanel() {
   const {
     vsGridDiagInset,
     vsGridDiagFar,
-    selectedOffset,
     correlation,
     channelCount = 0,
     peakLabelContext,
     vectorscopePairX: pairX = 0,
     vectorscopePairY: pairY = 1,
     displayAudio,
-    resolveVectorscopeSnapshotForKey,
-  } = useSharedPanelData();
+  } = useFrameData();
+  const { selectedOffset, resolveVectorscopeSnapshotForKey } = useHistoryData();
   const { panelControls, analysisStatus } = usePanelInstanceData();
   const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";

@@ -5,7 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { ModulesPopoverContent } from "./WorkspaceToolbar.jsx";
 import { WorkspaceProvider } from "./WorkspaceContext.jsx";
 import { DragProvider } from "./DragContext.jsx";
-import { AudioDataContext } from "./AudioDataContext.jsx";
+import { MetricsDataProvider } from "./AudioDataContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 
 vi.mock("framer-motion", () => ({
@@ -82,10 +82,10 @@ describe("ModulesPopoverContent", () => {
     const { container } = render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
-          <AudioDataContext.Provider value={{ statsMetrics: [] }}>
+          <MetricsDataProvider value={{ statsMetrics: [] }}>
             <ModulesPopoverContent />
             <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
-          </AudioDataContext.Provider>
+          </MetricsDataProvider>
         </DragProvider>
       </WorkspaceProvider>
     );

@@ -1,13 +1,13 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import { FrameDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 
 function panel(value = {}) {
   const { panelControls = { levelMeterMode: "peak" }, onPanelControlsChange, ...shared } = value;
   return (
-    <AudioDataContext.Provider
+    <FrameDataProvider
       value={{
         displayAudio: {
           peakDb: [-9.9, -10],
@@ -24,7 +24,7 @@ function panel(value = {}) {
       <PanelInstanceProvider value={{ panelControls, onPanelControlsChange }}>
         <LevelMeterPanel />
       </PanelInstanceProvider>
-    </AudioDataContext.Provider>
+    </FrameDataProvider>
   );
 }
 

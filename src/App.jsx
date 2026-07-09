@@ -695,7 +695,7 @@ function AppContent() {
     ]
   );
 
-  const sharedPanelData = {
+  const frameData = {
     // Peak
     displayAudio,
     hasTpMaxValue,
@@ -706,15 +706,16 @@ function AppContent() {
     correlation,
     vectorscopePairX: vectorscopePairUi.x,
     vectorscopePairY: vectorscopePairUi.y,
-    // Shared
-    selectedOffset,
-    setSelectedOffset,
     channelCount,
     peakLabelContext,
+    resolvedThemeId,
+    spectrumChannelOptions,
+  };
+  const historyData = {
+    selectedOffset,
+    setSelectedOffset,
     running,
     setStatus,
-    resolvedThemeId,
-    // Loudness history
     referenceLufs,
     hasHistoryData,
     historyChartInteractive,
@@ -724,7 +725,6 @@ function AppContent() {
     clampedWindowSec,
     effectiveOffsetSec,
     historyTimeTicks,
-    statsMetrics,
     holdHistoryHud,
     showHistoryHud,
     onHistoryWheel,
@@ -734,9 +734,6 @@ function AppContent() {
     historyTimeAxisHandlers,
     historyTimeAxisActive: isTimeAxisActive,
     captureCurrentSnapshot,
-    // Spectrum
-    spectrumChannelOptions,
-    // Spectrogram
     frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
@@ -746,6 +743,9 @@ function AppContent() {
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
     getSpectrogramSnapsForKey,
+  };
+  const metricsData = {
+    statsMetrics,
     dialogueActiveNow: displayAudio?.dialogueActiveNow ?? false,
   };
   const runtimeEnginesProps = {
@@ -825,7 +825,9 @@ function AppContent() {
 
   return (
     <AppShell
-      sharedPanelData={sharedPanelData}
+      frameData={frameData}
+      historyData={historyData}
+      metricsData={metricsData}
       runtimeEnginesProps={runtimeEnginesProps}
       fileDropProps={fileDropProps}
       focusView={focusView}

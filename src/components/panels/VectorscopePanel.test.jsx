@@ -2,7 +2,11 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import {
+  FrameDataProvider,
+  HistoryDataProvider,
+  PanelInstanceProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { VectorscopePanel } from "./VectorscopePanel.jsx";
 
 function renderPanel(audioData) {
@@ -10,13 +14,38 @@ function renderPanel(audioData) {
 }
 
 function vectorscopePanelTree(audioData) {
-  const { panelControls, analysisStatus, ...sharedData } = audioData;
+  const {
+    panelControls,
+    analysisStatus,
+    vsGridDiagInset,
+    vsGridDiagFar,
+    correlation,
+    channelCount,
+    peakLabelContext,
+    vectorscopePairX,
+    vectorscopePairY,
+    displayAudio,
+    ...historyData
+  } = audioData;
   return (
-    <AudioDataContext.Provider value={sharedData}>
-      <PanelInstanceProvider value={{ panelControls, analysisStatus }}>
-        <VectorscopePanel />
-      </PanelInstanceProvider>
-    </AudioDataContext.Provider>
+    <FrameDataProvider
+      value={{
+        vsGridDiagInset,
+        vsGridDiagFar,
+        correlation,
+        channelCount,
+        peakLabelContext,
+        vectorscopePairX,
+        vectorscopePairY,
+        displayAudio,
+      }}
+    >
+      <HistoryDataProvider value={historyData}>
+        <PanelInstanceProvider value={{ panelControls, analysisStatus }}>
+          <VectorscopePanel />
+        </PanelInstanceProvider>
+      </HistoryDataProvider>
+    </FrameDataProvider>
   );
 }
 

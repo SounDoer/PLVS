@@ -2,7 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import {
+  FrameDataProvider,
+  HistoryDataProvider,
+  PanelInstanceProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
@@ -49,13 +53,29 @@ function renderPanel(value = {}, props = {}) {
 }
 
 function spectrogramPanelTree(value = {}, props = {}) {
-  const { panelControls, analysisStatus, onPanelControlsChange, ...shared } = value;
+  const {
+    panelControls,
+    analysisStatus,
+    onPanelControlsChange,
+    channelCount,
+    spectrumChannelOptions,
+    resolvedThemeId,
+    ...history
+  } = value;
+  const base = { ...baseAudioData, ...history };
+  const frameData = {
+    channelCount: channelCount ?? base.channelCount,
+    spectrumChannelOptions: spectrumChannelOptions ?? base.spectrumChannelOptions,
+    resolvedThemeId: resolvedThemeId ?? base.resolvedThemeId,
+  };
   return (
-    <AudioDataContext.Provider value={{ ...baseAudioData, ...shared }}>
-      <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
-        <SpectrogramPanel {...props} />
-      </PanelInstanceProvider>
-    </AudioDataContext.Provider>
+    <FrameDataProvider value={frameData}>
+      <HistoryDataProvider value={base}>
+        <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
+          <SpectrogramPanel {...props} />
+        </PanelInstanceProvider>
+      </HistoryDataProvider>
+    </FrameDataProvider>
   );
 }
 

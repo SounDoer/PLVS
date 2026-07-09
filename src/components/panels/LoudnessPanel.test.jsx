@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import { HistoryDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LoudnessPanel } from "./LoudnessPanel.jsx";
 
 beforeEach(() => {
@@ -51,11 +51,11 @@ const baseAudioData = {
 function renderPanel(value = {}, props = {}) {
   const { panelControls, ...shared } = value;
   return render(
-    <AudioDataContext.Provider value={{ ...baseAudioData, ...shared }}>
+    <HistoryDataProvider value={{ ...baseAudioData, ...shared }}>
       <PanelInstanceProvider value={{ panelControls }}>
         <LoudnessPanel {...props} />
       </PanelInstanceProvider>
-    </AudioDataContext.Provider>
+    </HistoryDataProvider>
   );
 }
 

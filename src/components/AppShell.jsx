@@ -18,7 +18,9 @@ import {
 } from "@/lib/shellLayout";
 
 export function AppShell({
-  sharedPanelData,
+  frameData,
+  historyData,
+  metricsData,
   runtimeEnginesProps,
   fileDropProps,
   focusView,
@@ -35,7 +37,12 @@ export function AppShell({
   const controlsVisible = !autoHideControls || focusControlsVisible;
 
   return (
-    <PanelDataProviders sharedPanelData={sharedPanelData} panelChromeData={panelChromeData}>
+    <PanelDataProviders
+      frameData={frameData}
+      historyData={historyData}
+      metricsData={metricsData}
+      panelChromeData={panelChromeData}
+    >
       <MeterRuntimeEngines {...runtimeEnginesProps} />
       <FileDropOverlay {...fileDropProps} />
       <div className={SHELL_PAGE}>

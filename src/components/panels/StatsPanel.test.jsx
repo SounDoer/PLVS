@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import { MetricsDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { StatsPanel } from "./StatsPanel.jsx";
 
 const statsMetrics = [
@@ -64,7 +64,7 @@ function renderPanel(visibleIds) {
 
 function renderStatsPanel({ shared, panelControls }) {
   return render(
-    <AudioDataContext.Provider
+    <MetricsDataProvider
       value={{
         ...shared,
       }}
@@ -72,7 +72,7 @@ function renderStatsPanel({ shared, panelControls }) {
       <PanelInstanceProvider value={{ panelControls }}>
         <StatsPanel />
       </PanelInstanceProvider>
-    </AudioDataContext.Provider>
+    </MetricsDataProvider>
   );
 }
 

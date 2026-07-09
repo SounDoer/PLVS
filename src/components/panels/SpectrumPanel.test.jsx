@@ -3,7 +3,11 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
-import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import {
+  FrameDataProvider,
+  HistoryDataProvider,
+  PanelInstanceProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { SpectrumPanel } from "./SpectrumPanel.jsx";
 
 vi.mock("framer-motion", () => ({
@@ -24,13 +28,16 @@ function renderPanel(audioData) {
 }
 
 function spectrumPanelTree(audioData) {
-  const { panelControls, analysisStatus, onPanelControlsChange, ...sharedData } = audioData;
+  const { panelControls, analysisStatus, onPanelControlsChange, displayAudio, ...historyData } =
+    audioData;
   return (
-    <AudioDataContext.Provider value={sharedData}>
-      <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
-        <SpectrumPanel />
-      </PanelInstanceProvider>
-    </AudioDataContext.Provider>
+    <FrameDataProvider value={{ displayAudio }}>
+      <HistoryDataProvider value={historyData}>
+        <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
+          <SpectrumPanel />
+        </PanelInstanceProvider>
+      </HistoryDataProvider>
+    </FrameDataProvider>
   );
 }
 
