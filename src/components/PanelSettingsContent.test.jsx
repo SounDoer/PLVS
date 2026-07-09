@@ -6,7 +6,7 @@ import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
-import { AudioDataContext } from "@/workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelChromeProvider } from "@/workspace/AudioDataContext.jsx";
 import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
 import { SplitLayout } from "@/workspace/SplitLayout.jsx";
@@ -1251,7 +1251,9 @@ describe("PanelSettingsContent", () => {
             selectedOffset: -1,
           }}
         >
-          <SplitLayout />
+          <PanelChromeProvider value={{ analysisStatusByPanelId: { spectrum: "overCap" } }}>
+            <SplitLayout />
+          </PanelChromeProvider>
         </AudioDataContext.Provider>
       </WorkspaceProvider>
     );
@@ -1366,10 +1368,12 @@ describe("PanelSettingsContent", () => {
               visibleSamples: 0,
             }}
           >
-            <LeafView
-              node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
-              path={[]}
-            />
+            <PanelChromeProvider value={{ compactPanels: true }}>
+              <LeafView
+                node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
+                path={[]}
+              />
+            </PanelChromeProvider>
           </AudioDataContext.Provider>
         </DragProvider>
       </WorkspaceProvider>
@@ -1515,10 +1519,12 @@ describe("PanelSettingsContent", () => {
               visibleSamples: 0,
             }}
           >
-            <LeafView
-              node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
-              path={[]}
-            />
+            <PanelChromeProvider value={{ compactPanels: true }}>
+              <LeafView
+                node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
+                path={[]}
+              />
+            </PanelChromeProvider>
           </AudioDataContext.Provider>
         </DragProvider>
       </WorkspaceProvider>

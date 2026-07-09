@@ -8,7 +8,7 @@ import {
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
-import { PanelInstanceProvider, useAudioData } from "./AudioDataContext.jsx";
+import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
@@ -110,8 +110,8 @@ export function LeafView({ node, path, style }) {
   } = useWorkspaceStore();
   const leafRef = useRef(null);
   const { dragState, hoverDrop } = useDrag();
-  const audioData = useAudioData();
-  const compactPanels = audioData?.compactPanels === true;
+  const chromeData = usePanelChromeData();
+  const compactPanels = chromeData?.compactPanels === true;
 
   const visibleTabs = node.tabs.filter((id) => state.panelsById[id]);
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
@@ -280,21 +280,21 @@ export function LeafView({ node, path, style }) {
           <div className={PANEL_HEADER_ACTIONS}>
             <PanelSettingsMenu
               activeTab={activeModuleId}
-              channelCount={audioData?.channelCount ?? 0}
-              vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
-              vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
-              vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
+              channelCount={chromeData?.channelCount ?? 0}
+              vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
+              vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
+              vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
               onVectorscopeChange={noop}
-              spectrumOptions={audioData?.spectrumChannelOptions ?? []}
-              spectrumValueKey={audioData?.spectrumValueKey ?? ""}
-              spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
+              spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
+              spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
+              spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
               onSpectrumChange={noop}
-              spectrumView={audioData?.spectrumView ?? "combined"}
-              spectrumViewLegend={audioData?.spectrumViewLegend ?? null}
+              spectrumView={chromeData?.spectrumView ?? "combined"}
+              spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
               onSpectrumViewChange={noop}
-              spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
+              spectrumPeakHold={chromeData?.spectrumPeakHold ?? false}
               onSpectrumPeakHoldToggle={noop}
-              panelControls={panelControls ?? audioData?.panelControls}
+              panelControls={panelControls}
               onPanelControlsChange={onPanelControlsChange}
             />
             {helpItems ? <HelpPopover items={helpItems} /> : null}
@@ -346,7 +346,7 @@ export function LeafView({ node, path, style }) {
             value={{
               panelControls,
               onPanelControlsChange,
-              analysisStatus: audioData?.analysisStatusByPanelId?.[activeTab],
+              analysisStatus: chromeData?.analysisStatusByPanelId?.[activeTab],
               panelVisible: !state.fullscreenId,
             }}
           >

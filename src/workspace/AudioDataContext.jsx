@@ -9,6 +9,15 @@ import { createContext, useContext, useMemo } from "react";
  */
 export const AudioDataContext = createContext(null);
 const PanelInstanceContext = createContext(null);
+const PanelChromeContext = createContext(null);
+
+export function PanelChromeProvider({ value, children }) {
+  return <PanelChromeContext.Provider value={value}>{children}</PanelChromeContext.Provider>;
+}
+
+export function usePanelChromeData() {
+  return useContext(PanelChromeContext);
+}
 
 export function PanelInstanceProvider({ value, children }) {
   return <PanelInstanceContext.Provider value={value}>{children}</PanelInstanceContext.Provider>;

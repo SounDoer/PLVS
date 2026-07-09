@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
-import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelChromeProvider } from "./workspace/AudioDataContext.jsx";
 import {
   MeterRuntimeProvider,
   useMeterRuntime,
@@ -1203,6 +1203,41 @@ function AppContent() {
     });
   }, [spectrumLiveLabel, vectorscopeLiveLabel]);
 
+  const spectrumViewLegendValue = useMemo(
+    () => spectrumViewLegend(spectrumViewUi, spectrumChannelUi, vectorscopeChannelLabels),
+    [spectrumViewUi, spectrumChannelUi, vectorscopeChannelLabels]
+  );
+  const panelChromeData = useMemo(
+    () => ({
+      compactPanels: focusView.compactPanels,
+      channelCount,
+      vectorscopePairOptions,
+      vectorscopeValueKey,
+      vectorscopeDisplayLabel,
+      spectrumChannelOptions,
+      spectrumValueKey,
+      spectrumDisplayLabel,
+      spectrumView: spectrumViewUi,
+      spectrumViewLegend: spectrumViewLegendValue,
+      spectrumPeakHold: spectrumPeakHoldUi,
+      analysisStatusByPanelId,
+    }),
+    [
+      focusView.compactPanels,
+      channelCount,
+      vectorscopePairOptions,
+      vectorscopeValueKey,
+      vectorscopeDisplayLabel,
+      spectrumChannelOptions,
+      spectrumValueKey,
+      spectrumDisplayLabel,
+      spectrumViewUi,
+      spectrumViewLegendValue,
+      spectrumPeakHoldUi,
+      analysisStatusByPanelId,
+    ]
+  );
+
   const audioData = {
     // Peak
     displayAudio,
@@ -1262,11 +1297,7 @@ function AppContent() {
     onSpectrumChannelChange,
     spectrumView: spectrumViewUi,
     onSpectrumViewChange,
-    spectrumViewLegend: spectrumViewLegend(
-      spectrumViewUi,
-      spectrumChannelUi,
-      vectorscopeChannelLabels
-    ),
+    spectrumViewLegend: spectrumViewLegendValue,
     spectrumPeakHold: spectrumPeakHoldUi,
     onSpectrumPeakHoldToggle,
     // Spectrogram
@@ -1377,7 +1408,9 @@ function AppContent() {
             </div>
           ) : null}
 
-          <SplitLayout />
+          <PanelChromeProvider value={panelChromeData}>
+            <SplitLayout />
+          </PanelChromeProvider>
 
           {(!focusView.autoHideControls || focusControlsVisible) && (
             <footer

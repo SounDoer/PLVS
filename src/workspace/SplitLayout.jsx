@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef } from "react";
+import { Fragment, memo, useCallback, useEffect, useRef } from "react";
 import { Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -9,7 +9,7 @@ import {
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
-import { PanelInstanceProvider, useAudioData } from "./AudioDataContext.jsx";
+import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
@@ -280,7 +280,7 @@ function SplitView({ node, path, style }) {
 function FullscreenOverlay() {
   const { state, setFullscreen, setPanelControlsForPanel, setPanelPinned } = useWorkspaceStore();
   const { fullscreenId } = state;
-  const audioData = useAudioData();
+  const chromeData = usePanelChromeData();
   if (!fullscreenId) return null;
 
   const def = resolvePanelDefinition(state, fullscreenId);
@@ -307,19 +307,19 @@ function FullscreenOverlay() {
         <div className={PANEL_HEADER_ACTIONS}>
           <PanelSettingsMenu
             activeTab={fullscreenModuleId}
-            channelCount={audioData?.channelCount ?? 0}
-            vectorscopeOptions={audioData?.vectorscopePairOptions ?? []}
-            vectorscopeValueKey={audioData?.vectorscopeValueKey ?? ""}
-            vectorscopeDisplayLabel={audioData?.vectorscopeDisplayLabel ?? ""}
+            channelCount={chromeData?.channelCount ?? 0}
+            vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
+            vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
+            vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
             onVectorscopeChange={noop}
-            spectrumOptions={audioData?.spectrumChannelOptions ?? []}
-            spectrumValueKey={audioData?.spectrumValueKey ?? ""}
-            spectrumDisplayLabel={audioData?.spectrumDisplayLabel ?? ""}
+            spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
+            spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
+            spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
             onSpectrumChange={noop}
-            spectrumView={audioData?.spectrumView ?? "combined"}
-            spectrumViewLegend={audioData?.spectrumViewLegend ?? null}
+            spectrumView={chromeData?.spectrumView ?? "combined"}
+            spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
             onSpectrumViewChange={noop}
-            spectrumPeakHold={audioData?.spectrumPeakHold ?? false}
+            spectrumPeakHold={chromeData?.spectrumPeakHold ?? false}
             onSpectrumPeakHoldToggle={noop}
             panelControls={panelControls}
             onPanelControlsChange={onPanelControlsChange}
@@ -365,11 +365,11 @@ function FullscreenOverlay() {
           value={{
             panelControls,
             onPanelControlsChange,
-            analysisStatus: audioData?.analysisStatusByPanelId?.[fullscreenId],
+            analysisStatus: chromeData?.analysisStatusByPanelId?.[fullscreenId],
             panelVisible: true,
           }}
         >
-          <Component compact={audioData?.compactPanels === true} />
+          <Component compact={chromeData?.compactPanels === true} />
         </PanelInstanceProvider>
       </div>
     </div>
@@ -428,6 +428,6 @@ function SplitContent() {
   );
 }
 
-export function SplitLayout() {
+export const SplitLayout = memo(function SplitLayout() {
   return <SplitContent />;
-}
+});
