@@ -237,6 +237,7 @@ impl MeterPipeline {
   /// Clears peak maxima, loudness/spectrum/vectorscope DSP state, and history accumulators (UI Clear).
   pub fn clear_peak_and_history(&mut self) {
     self.pending_loudness_hist = None;
+    self.t0 = Instant::now();
     self.last_hist_emit = Instant::now() - std::time::Duration::from_millis(200);
     self.m_max = f64::NEG_INFINITY;
     self.st_max = f64::NEG_INFINITY;
@@ -1188,6 +1189,18 @@ mod tests {
       dialogue_gating,
       VadEngineKind::default(),
     )
+  }
+
+  #[test]
+  fn clear_peak_and_history_resets_live_timestamp_origin() {
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.t0 = Instant::now() - std::time::Duration::from_secs(3_600);
+
+    assert!(pipeline.timestamp_ms() >= 3_600_000);
+
+    pipeline.clear_peak_and_history();
+
+    assert!(pipeline.timestamp_ms() < 1_000);
   }
 
   #[test]
