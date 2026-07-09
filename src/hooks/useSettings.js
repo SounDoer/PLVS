@@ -19,10 +19,10 @@ import { useThemeEditor } from "./useThemeEditor.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { useCloseActionSetting } from "./useCloseActionSetting.js";
+import { useMeterSettings } from "./useMeterSettings.js";
 import { useViewSettings } from "./useViewSettings.js";
 import { settingsStore, themesStore } from "../persistence/index.js";
-import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
-import { normalizeReferenceLufs, normalizeThemeEditorPos } from "../settings/defaults.js";
+import { normalizeThemeEditorPos } from "../settings/defaults.js";
 
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -31,16 +31,10 @@ export function useSettings({ onClearRef } = {}) {
   );
   const [themeId, setThemeIdState] = useState(() => readPersistedShellThemeFields().themeId);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
-  const [referenceLufs, setReferenceLufsState] = useState(() =>
-    normalizeReferenceLufs(settingsStore.read().referenceLufs)
-  );
-  const [channelLabelOverrides, setChannelLabelOverridesState] = useState(() =>
-    sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
-  );
-
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
   const clearShortcutState = useClearShortcut(onClearRef);
   const closeActionSetting = useCloseActionSetting();
+  const meterSettings = useMeterSettings();
   const viewSettings = useViewSettings();
 
   const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
@@ -86,18 +80,6 @@ export function useSettings({ onClearRef } = {}) {
     setThemeIdState(nextThemeId == null || nextThemeId === "" ? null : String(nextThemeId));
   }
 
-  function setReferenceLufs(nextReferenceLufs) {
-    setReferenceLufsState(normalizeReferenceLufs(nextReferenceLufs));
-  }
-
-  function setChannelLabelOverrides(nextOverrides) {
-    setChannelLabelOverridesState((prev) =>
-      sanitizeChannelLabelOverrides(
-        typeof nextOverrides === "function" ? nextOverrides(prev) : nextOverrides
-      )
-    );
-  }
-
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setSystemPrefersDark(mq.matches);
@@ -113,12 +95,10 @@ export function useSettings({ onClearRef } = {}) {
 
   useEffect(() => {
     settingsStore.patch({
-      referenceLufs,
       appearance,
       themeId: appearance === "system" ? null : fixedThemeSelectValue,
-      channelLabelOverrides,
     });
-  }, [referenceLufs, appearance, fixedThemeSelectValue, channelLabelOverrides]);
+  }, [appearance, fixedThemeSelectValue]);
 
   useEffect(
     () =>
@@ -126,10 +106,6 @@ export function useSettings({ onClearRef } = {}) {
         const next = readPersistedShellThemeFields();
         setAppearanceState(next.appearance);
         setThemeIdState(next.themeId);
-        setReferenceLufsState(normalizeReferenceLufs(settingsStore.read().referenceLufs));
-        setChannelLabelOverridesState(
-          sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
-        );
       }),
     []
   );
@@ -185,10 +161,7 @@ export function useSettings({ onClearRef } = {}) {
     setAppearanceMode,
     setFixedThemeIdFromPicker,
     fixedThemeSelectValue,
-    referenceLufs,
-    setReferenceLufs,
-    channelLabelOverrides,
-    setChannelLabelOverrides,
+    ...meterSettings,
     ...closeActionSetting,
     ...viewSettings,
     autostartEnabled,
