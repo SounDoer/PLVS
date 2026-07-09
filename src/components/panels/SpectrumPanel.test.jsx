@@ -3,7 +3,7 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
-import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { SpectrumPanel } from "./SpectrumPanel.jsx";
 
 vi.mock("framer-motion", () => ({
@@ -20,9 +20,16 @@ vi.mock("framer-motion", () => ({
 }));
 
 function renderPanel(audioData) {
-  return render(
-    <AudioDataContext.Provider value={audioData}>
-      <SpectrumPanel />
+  return render(spectrumPanelTree(audioData));
+}
+
+function spectrumPanelTree(audioData) {
+  const { panelControls, analysisStatus, onPanelControlsChange, ...sharedData } = audioData;
+  return (
+    <AudioDataContext.Provider value={sharedData}>
+      <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
+        <SpectrumPanel />
+      </PanelInstanceProvider>
     </AudioDataContext.Provider>
   );
 }
@@ -262,13 +269,11 @@ describe("SpectrumPanel", () => {
     });
 
     const { rerender } = render(
-      <AudioDataContext.Provider
-        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
+      spectrumPanelTree(
+        liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
           historyChartInteractive: true,
-        })}
-      >
-        <SpectrumPanel />
-      </AudioDataContext.Provider>
+        })
+      )
     );
 
     fireEvent.pointerMove(screen.getByTestId("spectrum-chart"), {
@@ -278,13 +283,11 @@ describe("SpectrumPanel", () => {
     expect(screen.getByText("-96.0 dB")).toBeTruthy();
 
     rerender(
-      <AudioDataContext.Provider
-        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
+      spectrumPanelTree(
+        liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
           historyChartInteractive: true,
-        })}
-      >
-        <SpectrumPanel />
-      </AudioDataContext.Provider>
+        })
+      )
     );
 
     expect(screen.getByText("0.0 dB")).toBeTruthy();
@@ -382,14 +385,12 @@ describe("SpectrumPanel", () => {
   it("smooths live curve changes locally while display hold smoothing is active", () => {
     vi.useFakeTimers();
     const { container, rerender } = render(
-      <AudioDataContext.Provider
-        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
+      spectrumPanelTree(
+        liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
           historyChartInteractive: true,
           totalSamples: 3,
-        })}
-      >
-        <SpectrumPanel />
-      </AudioDataContext.Provider>
+        })
+      )
     );
 
     const chart = screen.getByTestId("spectrum-chart");
@@ -405,14 +406,12 @@ describe("SpectrumPanel", () => {
     );
     act(() => vi.advanceTimersByTime(300));
     rerender(
-      <AudioDataContext.Provider
-        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
+      spectrumPanelTree(
+        liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
           historyChartInteractive: true,
           totalSamples: 3,
-        })}
-      >
-        <SpectrumPanel />
-      </AudioDataContext.Provider>
+        })
+      )
     );
 
     const y = firstPathY(primaryPath(container));
@@ -423,14 +422,12 @@ describe("SpectrumPanel", () => {
   it("returns to the immediate live curve after display hold smoothing is released", () => {
     vi.useFakeTimers();
     const { container, rerender } = render(
-      <AudioDataContext.Provider
-        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
+      spectrumPanelTree(
+        liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [-96, -96] }), {
           historyChartInteractive: true,
           totalSamples: 3,
-        })}
-      >
-        <SpectrumPanel />
-      </AudioDataContext.Provider>
+        })
+      )
     );
 
     const chart = screen.getByTestId("spectrum-chart");
@@ -447,14 +444,12 @@ describe("SpectrumPanel", () => {
     act(() => vi.advanceTimersByTime(300));
     fireEvent(chart, new MouseEvent("pointerup", { bubbles: true }));
     rerender(
-      <AudioDataContext.Provider
-        value={liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
+      spectrumPanelTree(
+        liveAudioData(liveResult({ bandCentersHz: [20, 20000], smoothDb: [0, 0] }), {
           historyChartInteractive: true,
           totalSamples: 3,
-        })}
-      >
-        <SpectrumPanel />
-      </AudioDataContext.Provider>
+        })
+      )
     );
 
     expect(primaryPath(container)).toBe("M 0.00 10.00 L 1000.00 10.00");

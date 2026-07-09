@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { WaveformPanel } from "./WaveformPanel.jsx";
 
 const { sliceWaveformSubHistoryMock } = vi.hoisted(() => ({
@@ -43,9 +43,16 @@ const baseAudioData = {
 };
 
 function renderPanel(value = {}, props = {}) {
-  return render(
-    <AudioDataContext.Provider value={{ ...baseAudioData, ...value }}>
-      <WaveformPanel {...props} />
+  return render(waveformPanelTree(value, props));
+}
+
+function waveformPanelTree(value = {}, props = {}) {
+  const { panelVisible = true, ...shared } = value;
+  return (
+    <AudioDataContext.Provider value={{ ...baseAudioData, ...shared }}>
+      <PanelInstanceProvider value={{ panelVisible }}>
+        <WaveformPanel {...props} />
+      </PanelInstanceProvider>
     </AudioDataContext.Provider>
   );
 }
@@ -149,23 +156,14 @@ describe("WaveformPanel", () => {
 
   it("does not recompute waveform buckets for unrelated rerenders", () => {
     const contextValue = { historyTimeTicks: ["14s", "11s", "7s", "4s", "0s"] };
-    const { rerender } = render(
-      <AudioDataContext.Provider value={{ ...baseAudioData, ...contextValue }}>
-        <WaveformPanel />
-      </AudioDataContext.Provider>
-    );
+    const { rerender } = render(waveformPanelTree(contextValue));
     expect(sliceWaveformSubHistoryMock).toHaveBeenCalledTimes(1);
 
     rerender(
-      <AudioDataContext.Provider
-        value={{
-          ...baseAudioData,
-          ...contextValue,
-          historyTimeTicks: ["15s", "11s", "7s", "4s", "0s"],
-        }}
-      >
-        <WaveformPanel />
-      </AudioDataContext.Provider>
+      waveformPanelTree({
+        ...contextValue,
+        historyTimeTicks: ["15s", "11s", "7s", "4s", "0s"],
+      })
     );
 
     expect(sliceWaveformSubHistoryMock).toHaveBeenCalledTimes(1);
@@ -237,17 +235,12 @@ describe("WaveformPanel", () => {
     expect(screen.getByText("-6.0 dBFS")).toBeTruthy();
 
     rerender(
-      <AudioDataContext.Provider
-        value={{
-          ...baseAudioData,
-          histSourceList: [{ timestampMs: 1100 }],
-          visibleSamples: 1,
-          channelCount: 2,
-          historyChartInteractive: true,
-        }}
-      >
-        <WaveformPanel />
-      </AudioDataContext.Provider>
+      waveformPanelTree({
+        histSourceList: [{ timestampMs: 1100 }],
+        visibleSamples: 1,
+        channelCount: 2,
+        historyChartInteractive: true,
+      })
     );
 
     expect(screen.getByText("0.0 dBFS")).toBeTruthy();

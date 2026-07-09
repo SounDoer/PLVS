@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
@@ -45,9 +45,16 @@ const baseAudioData = {
 };
 
 function renderPanel(value = {}, props = {}) {
-  return render(
-    <AudioDataContext.Provider value={{ ...baseAudioData, ...value }}>
-      <SpectrogramPanel {...props} />
+  return render(spectrogramPanelTree(value, props));
+}
+
+function spectrogramPanelTree(value = {}, props = {}) {
+  const { panelControls, analysisStatus, onPanelControlsChange, ...shared } = value;
+  return (
+    <AudioDataContext.Provider value={{ ...baseAudioData, ...shared }}>
+      <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
+        <SpectrogramPanel {...props} />
+      </PanelInstanceProvider>
     </AudioDataContext.Provider>
   );
 }
@@ -190,11 +197,7 @@ describe("SpectrogramPanel", () => {
     expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].newestMs).toBeNaN();
 
     histSourceList.push({ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 });
-    rerender(
-      <AudioDataContext.Provider value={{ ...baseAudioData, ...props }}>
-        <SpectrogramPanel />
-      </AudioDataContext.Provider>
-    );
+    rerender(spectrogramPanelTree(props));
 
     const canvasArgs = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0];
     expect(canvasArgs.oldestMs).toBe(1000);

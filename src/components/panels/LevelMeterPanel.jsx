@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useHoverTip } from "@/components/HoverTip";
@@ -273,14 +273,8 @@ function AxisValueMarker({
 }
 
 export function LevelMeterPanel() {
-  const {
-    displayAudio,
-    peakLabelContext,
-    hasTpMaxValue,
-    panelControls,
-    onPanelControlsChange,
-    onResetTpMax,
-  } = useAudioData();
+  const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useSharedPanelData();
+  const { panelControls, onPanelControlsChange } = usePanelInstanceData();
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]

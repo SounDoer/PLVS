@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useRef } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -281,17 +281,30 @@ function FullscreenOverlay() {
   const { state, setFullscreen, setPanelControlsForPanel, setPanelPinned } = useWorkspaceStore();
   const { fullscreenId } = state;
   const chromeData = usePanelChromeData();
-  if (!fullscreenId) return null;
-
-  const def = resolvePanelDefinition(state, fullscreenId);
-  if (!def) return null;
-  const { Component } = def;
-  const fullscreenModuleId = resolvePanelModuleId(state, fullscreenId);
+  const def = fullscreenId ? resolvePanelDefinition(state, fullscreenId) : null;
+  const Component = def?.Component ?? null;
+  const fullscreenModuleId = fullscreenId ? resolvePanelModuleId(state, fullscreenId) : null;
   const helpItems = fullscreenModuleId ? PANEL_HELP_BY_MODULE_ID[fullscreenModuleId] : null;
-  const panelControls = getPanelControls(state, fullscreenId);
-  const isPinned = Boolean(state.pinnedPanelsById?.[fullscreenId]);
-  const onPanelControlsChange = (nextPanelControls) =>
-    setPanelControlsForPanel(fullscreenId, nextPanelControls);
+  const panelControls = fullscreenId ? getPanelControls(state, fullscreenId) : null;
+  const isPinned = Boolean(fullscreenId && state.pinnedPanelsById?.[fullscreenId]);
+  const onPanelControlsChange = useCallback(
+    (nextPanelControls) => {
+      if (!fullscreenId) return;
+      setPanelControlsForPanel(fullscreenId, nextPanelControls);
+    },
+    [fullscreenId, setPanelControlsForPanel]
+  );
+  const panelInstanceData = useMemo(
+    () => ({
+      panelControls,
+      onPanelControlsChange: fullscreenId ? onPanelControlsChange : undefined,
+      analysisStatus: chromeData?.analysisStatusByPanelId?.[fullscreenId],
+      panelVisible: true,
+    }),
+    [chromeData?.analysisStatusByPanelId, fullscreenId, onPanelControlsChange, panelControls]
+  );
+
+  if (!fullscreenId || !def || !Component) return null;
 
   return (
     <div
@@ -361,14 +374,7 @@ function FullscreenOverlay() {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <PanelInstanceProvider
-          value={{
-            panelControls,
-            onPanelControlsChange,
-            analysisStatus: chromeData?.analysisStatusByPanelId?.[fullscreenId],
-            panelVisible: true,
-          }}
-        >
+        <PanelInstanceProvider value={panelInstanceData}>
           <Component compact={chromeData?.compactPanels === true} />
         </PanelInstanceProvider>
       </div>

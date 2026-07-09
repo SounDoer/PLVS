@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
@@ -81,15 +81,13 @@ export function SpectrumPanel({ compact = false }) {
   const {
     selectedOffset,
     displayAudio,
-    panelControls,
     resolveSpectrumSnapshotForKey,
-    analysisStatus,
     historyChartInteractive,
     totalSamples,
     setSelectedOffset,
     captureCurrentSnapshot,
-    onPanelControlsChange,
-  } = useAudioData();
+  } = useSharedPanelData();
+  const { panelControls, analysisStatus, onPanelControlsChange } = usePanelInstanceData();
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { StatsPanel } from "./StatsPanel.jsx";
 
 const statsMetrics = [
@@ -56,14 +56,22 @@ const statsMetrics = [
 ];
 
 function renderPanel(visibleIds) {
+  return renderStatsPanel({
+    shared: { statsMetrics, dialogueActiveNow: true },
+    panelControls: { statsVisibleIds: visibleIds },
+  });
+}
+
+function renderStatsPanel({ shared, panelControls }) {
   return render(
     <AudioDataContext.Provider
       value={{
-        statsMetrics,
-        panelControls: { statsVisibleIds: visibleIds },
+        ...shared,
       }}
     >
-      <StatsPanel />
+      <PanelInstanceProvider value={{ panelControls }}>
+        <StatsPanel />
+      </PanelInstanceProvider>
     </AudioDataContext.Provider>
   );
 }
@@ -139,19 +147,15 @@ describe("StatsPanel", () => {
   });
 
   it("shows an active speaking-now dot when dialogueCoverage is visible and dialogueActiveNow is true", () => {
-    render(
-      <AudioDataContext.Provider
-        value={{
-          statsMetrics: [
-            { id: "dialogueCoverage", label: "Dialogue Coverage", value: "62", unit: "%" },
-          ],
-          panelControls: { statsVisibleIds: ["dialogueCoverage"] },
-          dialogueActiveNow: true,
-        }}
-      >
-        <StatsPanel />
-      </AudioDataContext.Provider>
-    );
+    renderStatsPanel({
+      shared: {
+        statsMetrics: [
+          { id: "dialogueCoverage", label: "Dialogue Coverage", value: "62", unit: "%" },
+        ],
+        dialogueActiveNow: true,
+      },
+      panelControls: { statsVisibleIds: ["dialogueCoverage"] },
+    });
 
     expect(screen.getByTestId("dialogue-active-dot").getAttribute("data-active")).toBe("true");
     expect(screen.getByTestId("dialogue-active-dot").className).not.toContain("mr-1");
@@ -160,19 +164,13 @@ describe("StatsPanel", () => {
   });
 
   it("renders visible metrics in statsOrder, ignoring hidden ids", () => {
-    render(
-      <AudioDataContext.Provider
-        value={{
-          statsMetrics,
-          panelControls: {
-            statsVisibleIds: ["momentary", "integrated", "psr"],
-            statsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
-          },
-        }}
-      >
-        <StatsPanel />
-      </AudioDataContext.Provider>
-    );
+    renderStatsPanel({
+      shared: { statsMetrics },
+      panelControls: {
+        statsVisibleIds: ["momentary", "integrated", "psr"],
+        statsOrder: ["psr", "lra", "integrated", "momentary", "shortTerm"],
+      },
+    });
 
     const labels = screen
       .getAllByText(/Momentary|Integrated|Short-term Dynamics/)

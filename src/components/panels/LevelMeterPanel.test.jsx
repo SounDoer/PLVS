@@ -1,10 +1,11 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 
 function panel(value = {}) {
+  const { panelControls = { levelMeterMode: "peak" }, onPanelControlsChange, ...shared } = value;
   return (
     <AudioDataContext.Provider
       value={{
@@ -18,12 +19,13 @@ function panel(value = {}) {
         peakLabelContext: { resolvedLayout: "stereo" },
         fmt: (v) => (Number.isFinite(v) ? v.toFixed(1) : "-"),
         hasTpMaxValue: true,
-        panelControls: { levelMeterMode: "peak" },
         tpMaxText: "-1.0 dBTP",
-        ...value,
+        ...shared,
       }}
     >
-      <LevelMeterPanel />
+      <PanelInstanceProvider value={{ panelControls, onPanelControlsChange }}>
+        <LevelMeterPanel />
+      </PanelInstanceProvider>
     </AudioDataContext.Provider>
   );
 }

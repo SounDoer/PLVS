@@ -1,4 +1,4 @@
-import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
 import { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
@@ -26,7 +26,6 @@ export function LoudnessPanel({ compact = false }) {
     onHistoryPointerUp,
     historyTimeAxisHandlers,
     historyTimeAxisActive,
-    panelControls,
     selectedOffset,
     showSelLine,
     selLineX,
@@ -36,8 +35,8 @@ export function LoudnessPanel({ compact = false }) {
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,
-    onPanelControlsChange,
-  } = useAudioData();
+  } = useSharedPanelData();
+  const { panelControls, onPanelControlsChange } = usePanelInstanceData();
 
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),

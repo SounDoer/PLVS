@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
@@ -57,10 +57,9 @@ export function VectorscopePanel() {
     vectorscopePairX: pairX = 0,
     vectorscopePairY: pairY = 1,
     displayAudio,
-    panelControls,
     resolveVectorscopeSnapshotForKey,
-    analysisStatus,
-  } = useAudioData();
+  } = useSharedPanelData();
+  const { panelControls, analysisStatus } = usePanelInstanceData();
   const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;

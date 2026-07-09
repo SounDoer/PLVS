@@ -2,13 +2,20 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { AudioDataContext } from "../../workspace/AudioDataContext.jsx";
+import { AudioDataContext, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { VectorscopePanel } from "./VectorscopePanel.jsx";
 
 function renderPanel(audioData) {
-  return render(
-    <AudioDataContext.Provider value={audioData}>
-      <VectorscopePanel />
+  return render(vectorscopePanelTree(audioData));
+}
+
+function vectorscopePanelTree(audioData) {
+  const { panelControls, analysisStatus, ...sharedData } = audioData;
+  return (
+    <AudioDataContext.Provider value={sharedData}>
+      <PanelInstanceProvider value={{ panelControls, analysisStatus }}>
+        <VectorscopePanel />
+      </PanelInstanceProvider>
     </AudioDataContext.Provider>
   );
 }
@@ -134,25 +141,21 @@ describe("VectorscopePanel", () => {
       },
     });
     rerender(
-      <AudioDataContext.Provider
-        value={{
-          selectedOffset: -1,
-          panelControls: { vectorscopePair: { x: 0, y: 1 } },
-          displayAudio: {
-            peakDb: [-12, -18],
-            vectorscopeResultsByKey: {
-              "vectorscope:pair:0:1": {
-                path: "M 0 0 L 100 100",
-                correlation: 1,
-                pairX: 0,
-                pairY: 1,
-              },
+      vectorscopePanelTree({
+        selectedOffset: -1,
+        panelControls: { vectorscopePair: { x: 0, y: 1 } },
+        displayAudio: {
+          peakDb: [-12, -18],
+          vectorscopeResultsByKey: {
+            "vectorscope:pair:0:1": {
+              path: "M 0 0 L 100 100",
+              correlation: 1,
+              pairX: 0,
+              pairY: 1,
             },
           },
-        }}
-      >
-        <VectorscopePanel />
-      </AudioDataContext.Provider>
+        },
+      })
     );
     const liveMarker = container.querySelector("[data-vectorscope-correlation-marker]");
     expect(liveMarker?.className).toContain("transition-[left]");

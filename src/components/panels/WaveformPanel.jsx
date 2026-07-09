@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
-import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
@@ -110,8 +110,9 @@ function drawWaveformCanvas(
 }
 
 export function WaveformPanel({ compact = false }) {
-  const audioData = useAudioData();
-  if (audioData?.panelVisible === false) {
+  const sharedData = useSharedPanelData();
+  const { panelVisible } = usePanelInstanceData();
+  if (panelVisible === false) {
     return (
       <div
         className={cn(
@@ -123,7 +124,7 @@ export function WaveformPanel({ compact = false }) {
     );
   }
 
-  return <WaveformPanelContent compact={compact} audioData={audioData} />;
+  return <WaveformPanelContent compact={compact} audioData={sharedData} />;
 }
 
 function WaveformPanelContent({ compact, audioData }) {

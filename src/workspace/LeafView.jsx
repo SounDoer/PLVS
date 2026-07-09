@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Maximize2, Pin, PinOff, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -119,9 +119,13 @@ export function LeafView({ node, path, style }) {
   const activeModuleId = activeTab ? resolvePanelModuleId(state, activeTab) : null;
   const helpItems = activeModuleId ? PANEL_HELP_BY_MODULE_ID[activeModuleId] : null;
   const panelControls = activeTab ? getPanelControls(state, activeTab) : null;
-  const onPanelControlsChange = activeTab
-    ? (nextPanelControls) => setPanelControlsForPanel(activeTab, nextPanelControls)
-    : undefined;
+  const onPanelControlsChange = useCallback(
+    (nextPanelControls) => {
+      if (!activeTab) return;
+      setPanelControlsForPanel(activeTab, nextPanelControls);
+    },
+    [activeTab, setPanelControlsForPanel]
+  );
   const zoneHint = getZoneHint(hoverDrop, path);
   const isDragging = !!dragState;
   const isPanelHoverHighlighted = hoveredPanelId != null && visibleTabs.includes(hoveredPanelId);
@@ -132,6 +136,21 @@ export function LeafView({ node, path, style }) {
   const slotPinnedByOther = Boolean(slotPinnedId && slotPinnedId !== activeTab);
   const slotPinnedTitle = slotPinnedId ? resolvePanelDisplayName(state, slotPinnedId) : "";
   const pathAttr = JSON.stringify(path);
+  const panelInstanceData = useMemo(
+    () => ({
+      panelControls,
+      onPanelControlsChange: activeTab ? onPanelControlsChange : undefined,
+      analysisStatus: chromeData?.analysisStatusByPanelId?.[activeTab],
+      panelVisible: !state.fullscreenId,
+    }),
+    [
+      activeTab,
+      chromeData?.analysisStatusByPanelId,
+      onPanelControlsChange,
+      panelControls,
+      state.fullscreenId,
+    ]
+  );
 
   function getCurrentLeafSize() {
     const el = leafRef.current;
@@ -342,14 +361,7 @@ export function LeafView({ node, path, style }) {
       {/* Panel body */}
       <div data-leaf-body className="flex min-h-0 flex-1 overflow-hidden">
         {ActiveComponent && (
-          <PanelInstanceProvider
-            value={{
-              panelControls,
-              onPanelControlsChange,
-              analysisStatus: chromeData?.analysisStatusByPanelId?.[activeTab],
-              panelVisible: !state.fullscreenId,
-            }}
-          >
+          <PanelInstanceProvider value={panelInstanceData}>
             <ActiveComponent compact={compactPanels} />
           </PanelInstanceProvider>
         )}

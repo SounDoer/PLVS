@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { UI_PREFERENCES } from "../../uiPreferences";
-import { useAudioData } from "../../workspace/AudioDataContext.jsx";
+import { usePanelInstanceData, useSharedPanelData } from "../../workspace/AudioDataContext.jsx";
 import { HoverTip } from "@/components/HoverTip";
 
 const METRIC_ROW_LAYOUT =
@@ -51,7 +51,8 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint }) {
 }
 
 export function StatsPanel() {
-  const { statsMetrics, panelControls, dialogueActiveNow } = useAudioData();
+  const { statsMetrics, dialogueActiveNow } = useSharedPanelData();
+  const { panelControls } = usePanelInstanceData();
   const statsVisibleIds = panelControls?.statsVisibleIds;
   const statsOrder = panelControls?.statsOrder;
   const visibleIds = Array.isArray(statsVisibleIds) ? statsVisibleIds : [];
