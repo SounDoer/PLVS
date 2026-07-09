@@ -48,11 +48,10 @@ import {
   setLoudnessWeights,
   setDialogueGating,
   setDialogueVadEngine,
-  writeTextFile,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
-import { pickMediaFile, saveFileAnalysisReportFile } from "./ipc/fileDialog.js";
+import { pickMediaFile } from "./ipc/fileDialog.js";
 import { onWindowBoundsChanged } from "./ipc/events.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
@@ -63,12 +62,8 @@ import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { useGlassEffect } from "./hooks/useGlassEffect.js";
 import { useConfigurationProfileActions } from "./hooks/useConfigurationProfileActions.js";
 import { useCliPathSettings } from "./hooks/useCliPathSettings.js";
+import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
-import {
-  buildFileAnalysisReport,
-  defaultFileAnalysisReportName,
-  stringifyFileAnalysisReport,
-} from "./lib/fileAnalysisReport.js";
 import packageInfo from "../package.json";
 
 // Live and file sessions share bounded display history. File-mode summary metrics are authoritative
@@ -802,35 +797,11 @@ function AppContent() {
     [currentFileAnalysisSettings, reanalyzeFile]
   );
 
-  const exportFileAnalysisReport = useCallback(async () => {
-    if (fileSession.state !== "complete") {
-      setStatus("Choose a completed file analysis to export");
-      return;
-    }
-
-    try {
-      const report = buildFileAnalysisReport(fileSession, { appVersion: APP_VERSION });
-      const contents = stringifyFileAnalysisReport(report);
-      const defaultName = defaultFileAnalysisReportName(fileSession);
-
-      if (isTauri()) {
-        const path = await saveFileAnalysisReportFile(defaultName);
-        if (!path) return;
-        await writeTextFile(path, contents);
-      } else {
-        const blob = new Blob([contents], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = defaultName;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-      setStatus("File analysis report exported");
-    } catch (_) {
-      setStatus("Report export failed");
-    }
-  }, [fileSession]);
+  const { exportFileAnalysisReport } = useFileAnalysisReportExport({
+    fileSession,
+    appVersion: APP_VERSION,
+    setStatus,
+  });
 
   const onSelectFile = (id) => {
     setHistoryOffsetSec(0);
