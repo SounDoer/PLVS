@@ -18,6 +18,7 @@ import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useMeterDisplay } from "./hooks/useMeterDisplay.js";
 import { useCaptureTransport } from "./hooks/useCaptureTransport.js";
 import { useIntakeRouting } from "./hooks/useIntakeRouting.js";
+import { useFileSessionLedger } from "./hooks/useFileSessionLedger.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -39,17 +40,6 @@ import { AppHeader } from "./components/AppHeader.jsx";
 import { FileAnalysisSummary } from "./components/FileAnalysisSummary.jsx";
 import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
-import {
-  addFileEntry,
-  clearFileHistory,
-  createInitialFileHistory,
-  getActiveFileSession,
-  getAnalyzingFileSession,
-  removeFileEntry,
-  selectFileEntry,
-  startFileAnalysisEntry,
-  updateFileEntry,
-} from "./lib/fileAnalysisSessionRegistry.js";
 import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { preventNativeContextMenu } from "./lib/contextMenu.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
@@ -421,15 +411,8 @@ function AppContent() {
   const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } = display.clock;
 
   const [sourceMode, setSourceMode] = useState("live");
-  const [fileHistory, setFileHistory] = useState(() => createInitialFileHistory());
-  const [fileRunRequest, setFileRunRequest] = useState(null);
-  const fileEntrySeqRef = useRef(0);
-  const fileSessions = useMemo(
-    () => fileHistory.order.map((id) => fileHistory.sessionsById[id]).filter(Boolean),
-    [fileHistory]
-  );
-  const activeFileSession = useMemo(() => getActiveFileSession(fileHistory), [fileHistory]);
-  const analyzingFileSession = useMemo(() => getAnalyzingFileSession(fileHistory), [fileHistory]);
+  const ledger = useFileSessionLedger();
+  const { fileHistory, fileSessions, activeFileSession, analyzingFileSession } = ledger;
   const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const normalizedPanelControls = useMemo(() => {
     const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
@@ -1019,28 +1002,9 @@ function AppContent() {
     clearMeterDisplayState();
   };
 
-  const updateFileSession = useCallback((sessionId, updater) => {
-    setFileHistory((history) => updateFileEntry(history, sessionId, updater));
-  }, []);
-
-  const setAnalyzingFileId = useCallback((nextOrUpdater) => {
-    setFileHistory((history) => {
-      const nextId =
-        typeof nextOrUpdater === "function"
-          ? nextOrUpdater(history.analyzingFileId)
-          : nextOrUpdater;
-      const analyzingFileId = nextId && history.sessionsById[nextId] ? nextId : null;
-      if (analyzingFileId === history.analyzingFileId) return history;
-      return { ...history, analyzingFileId };
-    });
-  }, []);
-
-  const validFileRunRequest =
-    fileRunRequest &&
-    fileRunRequest.sessionId === fileHistory.analyzingFileId &&
-    fileHistory.sessionsById[fileRunRequest.sessionId]
-      ? fileRunRequest
-      : null;
+  const updateFileSession = ledger.updateSession;
+  const setAnalyzingFileId = ledger.setAnalyzingFileId;
+  const validFileRunRequest = ledger.validRunRequest;
 
   const fileAnalysis = useFileAnalysisEngine({
     enabled: sourceMode === "file" && Boolean(validFileRunRequest),
@@ -1065,17 +1029,7 @@ function AppContent() {
     try {
       await fileAnalysis.stop();
     } finally {
-      setFileRunRequest(null);
-      setFileHistory((history) => {
-        if (history.analyzingFileId !== sessionId) return history;
-        const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
-          ...entry,
-          state: "ready",
-          progress: 0,
-          error: null,
-        }));
-        return { ...updatedHistory, analyzingFileId: null };
-      });
+      ledger.markStopped(sessionId);
       setStatus("File analysis stopped");
     }
   }, [fileAnalysis, fileHistory.analyzingFileId]);
@@ -1090,7 +1044,7 @@ function AppContent() {
       }
       activeEntry?.intake?.reset?.();
       clearMeterDisplayState();
-      setFileHistory((history) => removeFileEntry(history, activeId));
+      ledger.remove(activeId);
       setStatus(
         fileHistory.order.length > 1
           ? "File entry cleared"
@@ -1134,27 +1088,10 @@ function AppContent() {
         return;
       }
 
-      const runId = fileEntrySeqRef.current + 1;
-      fileEntrySeqRef.current = runId;
-      const sessionId = `file-analysis-${Date.now()}-${runId}`;
-      const intake = new FrameIntake();
       const analysisSettings = currentFileAnalysisSettings();
-
       setSelectedOffset(-1);
       selectedOffsetRef.current = -1;
-      setFileHistory((history) =>
-        startFileAnalysisEntry(
-          addFileEntry(history, {
-            id: sessionId,
-            path,
-            intake,
-            analysisSettings,
-          }),
-          sessionId,
-          { analysisSettings }
-        )
-      );
-      setFileRunRequest({ sessionId, filePath: path, runId });
+      ledger.beginRun(path, analysisSettings);
     },
     [currentFileAnalysisSettings, fileHistory.analyzingFileId, setSelectedOffset]
   );
@@ -1170,13 +1107,10 @@ function AppContent() {
         return;
       }
 
-      const runId = fileEntrySeqRef.current + 1;
-      fileEntrySeqRef.current = runId;
       const analysisSettings = currentFileAnalysisSettings();
       setSelectedOffset(-1);
       selectedOffsetRef.current = -1;
-      setFileHistory((history) => startFileAnalysisEntry(history, entry.id, { analysisSettings }));
-      setFileRunRequest({ sessionId: entry.id, filePath: entry.path, runId });
+      ledger.rerun(entry.id, entry.path, analysisSettings);
     },
     [currentFileAnalysisSettings, fileHistory.analyzingFileId, setSelectedOffset]
   );
@@ -1215,7 +1149,7 @@ function AppContent() {
     setSelectedOffset(-1);
     selectedOffsetRef.current = -1;
     clearMeterDisplayState();
-    setFileHistory((history) => selectFileEntry(history, id));
+    ledger.select(id);
     setStatus("File analysis result");
   };
 
@@ -1243,9 +1177,9 @@ function AppContent() {
       clearMeterDisplayState();
     }
     if (removedAnalyzingFile) {
-      setFileRunRequest(null);
+      ledger.clearRunRequest();
     }
-    setFileHistory((history) => removeFileEntry(history, id));
+    ledger.remove(id);
     setStatus(
       fileHistory.order.length > 1
         ? "File entry removed"
@@ -1263,8 +1197,7 @@ function AppContent() {
       entry.intake?.reset?.();
     }
     clearMeterDisplayState();
-    setFileRunRequest(null);
-    setFileHistory(clearFileHistory());
+    ledger.clearAll();
     setStatus("File mode - drop a file or click Analyze");
     resetTimer({ restart: false });
     setShowClock(false);

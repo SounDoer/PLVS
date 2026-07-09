@@ -70,7 +70,7 @@ useAudioEngine(display, …) useFileAnalysisEngine(display, …)   panels (via A
 | **1b** | Add `useMeterDisplay`; App consumes it by destructuring (all 1800 lines of consumers unchanged) | hook unit-tested; check green |
 | **1c** | Engines take `display` object; param lists shrink (audio 22→13, file 18→13) | check green; hook tests updated |
 | **2** | *(re-scoped after audit, see below)* Transport owner `useCaptureTransport` (`running` + startLive/stopLive/halt verbs); `rafRef` engine-internal; dead wklt/setRunning cleanup | plan: `2026-07-08-c2-phase2-capture-transport.md` |
-| **3** | File engine + intake ring ownership (`liveIntakeRef`/`intakeRef` switching moves out of App) | separate plan |
+| **3** | ✅ done (2026-07-08): `useIntakeRouting` (intake switch + file-display gate) and `useFileSessionLedger` (history/run-request/run-id + primitive verbs; orchestration composed in App) | plan: `2026-07-08-c2-phase3-file-ledger-and-intake-routing.md` |
 | **4** | App slimming; retire the grep-test (`App.toolbar.test.js`) in favor of behavior tests | separate plan |
 
 Phases 0–1c are covered by `docs/superpowers/plans/2026-07-08-c2-phase1-meter-display-owner.md`.

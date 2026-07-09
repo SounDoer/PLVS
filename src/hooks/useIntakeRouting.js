@@ -13,6 +13,10 @@ import { FrameIntake } from "../lib/FrameIntake.js";
  * panels instead of letting the in-progress analysis hijack the meters.
  * See docs/superpowers/specs/2026-07-08-c2-app-state-ownership-design.md.
  */
+/* eslint-disable react-hooks/refs -- Render-phase ref mirroring is this hook's whole job:
+   intakeRef / fileDisplayActiveRef must reflect the CURRENT render's routing decision
+   synchronously, because the frame pump and channel-metadata writes read them outside the
+   React lifecycle (same pattern this code used inline in App.jsx). */
 export function useIntakeRouting({
   sourceMode,
   fileHistory,
