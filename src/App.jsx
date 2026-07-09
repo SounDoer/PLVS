@@ -188,8 +188,8 @@ function AppContent() {
     selectedOffset,
     setSelectedOffset,
     selectedOffsetRef,
-    setStatus,
-    setStatus2,
+    notice,
+    raiseNotice,
     showClock,
   } = display;
   const { clockRef, elapsedMsRef, canClearRef } = display.clock;
@@ -590,7 +590,7 @@ function AppContent() {
   const { exportFileAnalysisReport } = useFileAnalysisReportExport({
     fileSession,
     appVersion: APP_VERSION,
-    setStatus,
+    raiseNotice,
   });
   const {
     clearAll,
@@ -609,7 +609,6 @@ function AppContent() {
     running,
     selectedOffset,
     setSelectedOffset,
-    setStatus,
     setHistoryOffsetSec,
     setHistoryWindowSec,
     startLive,
@@ -646,12 +645,6 @@ function AppContent() {
     autoHideControls: focusView.autoHideControls,
     toggleFocusControls,
   });
-
-  /** Matches Loudness History snapshot mode: meters/spectrum/vector read the selected instant, not live input */
-  useEffect(() => {
-    if (!running || selectedOffset < 0) return;
-    setStatus("History snapshot (not live input)");
-  }, [running, selectedOffset]);
 
   useEffect(() => {
     intakeRef.current.setCurrentChannelMetadata({
@@ -715,7 +708,6 @@ function AppContent() {
     selectedOffset,
     setSelectedOffset,
     running,
-    setStatus,
     referenceLufs,
     hasHistoryData,
     historyChartInteractive,
@@ -780,6 +772,7 @@ function AppContent() {
     onPointerUp: frameless ? releaseFocusControlsHold : undefined,
     onPointerCancel: frameless ? releaseFocusControlsHold : undefined,
     sourceTransportState,
+    notice,
     sourceMode,
     onSourceModeChange,
     onSourceTransportAction,

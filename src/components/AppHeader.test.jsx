@@ -34,6 +34,7 @@ function renderHeader(overrides = {}) {
       actionKind: "start-live",
       primaryActionDisabled: false,
     },
+    notice: null,
     sourceMode: "live",
     onSourceModeChange: vi.fn(),
     onSourceTransportAction: vi.fn(),
@@ -88,6 +89,20 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "Views" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Presets" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
+  });
+
+  it("renders an error transport notice with tooltip text", () => {
+    renderHeader({ notice: { kind: "error", text: "Error: Audio unavailable" } });
+
+    const notice = screen.getByText("Error: Audio unavailable");
+    expect(notice.title).toBe("Error: Audio unavailable");
+    expect(notice.className).toContain("ui-signal-bad");
+  });
+
+  it("renders a guard transport notice", () => {
+    renderHeader({ notice: { kind: "guard", text: "File analysis already in progress" } });
+
+    expect(screen.getByText("File analysis already in progress")).toBeTruthy();
   });
 
   it("uses the short Devices copy and formatted device rows", () => {

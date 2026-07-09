@@ -6,8 +6,7 @@ import { useCaptureTransport } from "./useCaptureTransport.js";
 function makeDisplay() {
   return {
     setSelectedOffset: vi.fn(),
-    setStatus: vi.fn(),
-    setStatus2: vi.fn(),
+    clearNotice: vi.fn(),
     setShowClock: vi.fn(),
     clock: { startTimer: vi.fn(), stopTimer: vi.fn() },
   };
@@ -24,12 +23,13 @@ describe("useCaptureTransport", () => {
     act(() => result.current.startLive());
 
     expect(result.current.running).toBe(true);
+    expect(display.clearNotice).toHaveBeenCalledTimes(1);
     expect(intake.beginCaptureSession).toHaveBeenCalledTimes(1);
     expect(display.clock.startTimer).toHaveBeenCalledTimes(1);
     expect(display.setShowClock).toHaveBeenCalledWith(true);
   });
 
-  it("stopLive flips running off, resets the scrub offset, writes statuses, stops the clock", () => {
+  it("stopLive flips running off, clears notices, resets the scrub offset, and stops the clock", () => {
     const display = makeDisplay();
     const { result } = renderHook(() =>
       useCaptureTransport({ display, getLiveIntake: () => ({ beginCaptureSession: vi.fn() }) })
@@ -39,9 +39,8 @@ describe("useCaptureTransport", () => {
     act(() => result.current.stopLive());
 
     expect(result.current.running).toBe(false);
+    expect(display.clearNotice).toHaveBeenCalledTimes(2);
     expect(display.setSelectedOffset).toHaveBeenCalledWith(-1);
-    expect(display.setStatus).toHaveBeenCalledWith("Stopped - click Start to resume");
-    expect(display.setStatus2).toHaveBeenCalledWith("Device: Not connected");
     expect(display.clock.stopTimer).toHaveBeenCalledTimes(1);
   });
 
@@ -52,13 +51,13 @@ describe("useCaptureTransport", () => {
     );
 
     act(() => result.current.startLive());
-    display.setStatus.mockClear();
+    display.clearNotice.mockClear();
     display.clock.stopTimer.mockClear();
 
     act(() => result.current.halt());
 
     expect(result.current.running).toBe(false);
-    expect(display.setStatus).not.toHaveBeenCalled();
+    expect(display.clearNotice).not.toHaveBeenCalled();
     expect(display.clock.stopTimer).not.toHaveBeenCalled();
   });
 });

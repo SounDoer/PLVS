@@ -25,7 +25,6 @@ const baseProps = {
   historyChartInteractive: true,
   running: false,
   setSelectedOffset: vi.fn(),
-  setStatus: vi.fn(),
   holdHistoryHud: vi.fn(),
   showHistoryHud: vi.fn(),
   onHistoryWheel: vi.fn(),

@@ -152,8 +152,6 @@ function WaveformPanelContent({ compact, audioData }) {
     onHistoryPointerUp,
     onHistoryWheel,
     setSelectedOffset,
-    running,
-    setStatus,
     holdHistoryHud,
     showHistoryHud,
   } = audioData;
@@ -342,7 +340,6 @@ function WaveformPanelContent({ compact, audioData }) {
           onDoubleClick={() => {
             if (!historyChartInteractive) return;
             setSelectedOffset(-1);
-            if (running) setStatus("Monitoring live input");
             holdHistoryHud(false);
             showHistoryHud(1200);
           }}

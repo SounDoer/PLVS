@@ -53,12 +53,12 @@ describe("useFileAnalysisReportExport", () => {
   });
 
   it("asks the user to choose a completed analysis before exporting", async () => {
-    const setStatus = vi.fn();
+    const raiseNotice = vi.fn();
     const { result } = renderHook(() =>
       useFileAnalysisReportExport({
         fileSession: { state: "empty" },
         appVersion: "0.7.3",
-        setStatus,
+        raiseNotice,
       })
     );
 
@@ -66,19 +66,19 @@ describe("useFileAnalysisReportExport", () => {
       await result.current.exportFileAnalysisReport();
     });
 
-    expect(setStatus).toHaveBeenCalledWith("Choose a completed file analysis to export");
+    expect(raiseNotice).toHaveBeenCalledWith("guard", "Choose a completed file analysis to export");
     expect(mocks.saveFileAnalysisReportFile).not.toHaveBeenCalled();
   });
 
   it("writes a desktop report for completed file analysis", async () => {
-    const setStatus = vi.fn();
+    const raiseNotice = vi.fn();
     mocks.saveFileAnalysisReportFile.mockResolvedValue("C:\\report.json");
     mocks.writeTextFile.mockResolvedValue(undefined);
     const { result } = renderHook(() =>
       useFileAnalysisReportExport({
         fileSession: COMPLETE_SESSION,
         appVersion: "0.7.3",
-        setStatus,
+        raiseNotice,
       })
     );
 
@@ -91,6 +91,25 @@ describe("useFileAnalysisReportExport", () => {
       "C:\\report.json",
       expect.stringContaining('"reportType": "fileAnalysis"')
     );
-    expect(setStatus).toHaveBeenCalledWith("File analysis report exported");
+    expect(raiseNotice).not.toHaveBeenCalled();
+  });
+
+  it("raises a notice when report export fails", async () => {
+    const raiseNotice = vi.fn();
+    mocks.saveFileAnalysisReportFile.mockResolvedValue("C:\\report.json");
+    mocks.writeTextFile.mockRejectedValue(new Error("disk full"));
+    const { result } = renderHook(() =>
+      useFileAnalysisReportExport({
+        fileSession: COMPLETE_SESSION,
+        appVersion: "0.7.3",
+        raiseNotice,
+      })
+    );
+
+    await act(async () => {
+      await result.current.exportFileAnalysisReport();
+    });
+
+    expect(raiseNotice).toHaveBeenCalledWith("error", "Report export failed");
   });
 });

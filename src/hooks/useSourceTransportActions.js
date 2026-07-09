@@ -7,7 +7,6 @@ export function useSourceTransportActions({
   running,
   selectedOffset,
   setSelectedOffset,
-  setStatus,
   setHistoryOffsetSec,
   setHistoryWindowSec,
   startLive,
@@ -92,7 +91,6 @@ export function useSourceTransportActions({
   const runLiveStartAction = useCallback(() => {
     if (selectedOffset >= 0) {
       setSelectedOffset(-1);
-      setStatus("Monitoring live input");
       return;
     }
     if (running) {
@@ -100,13 +98,12 @@ export function useSourceTransportActions({
       return;
     }
     startLive();
-  }, [running, selectedOffset, setSelectedOffset, setStatus, startLive, stopLive]);
+  }, [running, selectedOffset, setSelectedOffset, startLive, stopLive]);
 
   const onSourceTransportAction = useCallback(
     async (actionKind) => {
       if (actionKind === "returnToLive") {
         setSelectedOffset(-1);
-        setStatus("Monitoring live input");
         return;
       }
       if (actionKind === "startLive" || actionKind === "stopLive") {
@@ -115,7 +112,6 @@ export function useSourceTransportActions({
       }
       if (actionKind === "returnToFileResult") {
         setSelectedOffset(-1);
-        setStatus("File analysis result");
         return;
       }
       if (actionKind === "chooseFile") {
@@ -144,7 +140,6 @@ export function useSourceTransportActions({
       reanalyzeActiveFile,
       runLiveStartAction,
       setSelectedOffset,
-      setStatus,
       stopFileAnalysis,
     ]
   );

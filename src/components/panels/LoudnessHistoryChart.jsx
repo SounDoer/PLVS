@@ -29,9 +29,7 @@ export function LoudnessHistoryChart({
   onLoudnessYRangeChange,
   hasHistoryData,
   historyChartInteractive,
-  running,
   setSelectedOffset,
-  setStatus,
   holdHistoryHud,
   showHistoryHud,
   onHistoryWheel,
@@ -294,7 +292,6 @@ export function LoudnessHistoryChart({
         onDoubleClick={() => {
           if (!historyChartInteractive) return;
           setSelectedOffset(-1);
-          if (running) setStatus("Monitoring live input");
           holdHistoryHud(false);
           showHistoryHud(1200);
         }}

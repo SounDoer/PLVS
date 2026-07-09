@@ -41,7 +41,6 @@ const baseAudioData = {
   onHistoryWheel: vi.fn(),
   setSelectedOffset: vi.fn(),
   running: false,
-  setStatus: vi.fn(),
   holdHistoryHud: vi.fn(),
   showHistoryHud: vi.fn(),
 };

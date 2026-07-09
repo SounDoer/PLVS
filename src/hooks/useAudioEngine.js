@@ -11,7 +11,7 @@ import {
 } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
-import { resolveDevice, buildDeviceStatus } from "../lib/audioEngineCommands.js";
+import { resolveDevice } from "../lib/audioEngineCommands.js";
 
 const CLEARED_AUDIO_STATE = {
   peakDb: [],
@@ -63,8 +63,7 @@ export function useAudioEngine({
     selectedOffsetRef,
     setAudio,
     setSelectedOffset,
-    setStatus,
-    setStatus2,
+    raiseNotice,
     setShowClock,
     clock: { resetTimer },
   } = display;
@@ -88,7 +87,7 @@ export function useAudioEngine({
    * - All `*Ref` arguments are mutable boxes read inside the effect; their **identities** are
    *   stable (useRef), and the effect reads `.current` on each run — listing them would
    *   not change behavior but would force redundant teardown/restart.
-   * - `setStatus`, `setRunning`, etc. are React state setters with stable identity; including
+   * - `raiseNotice`, `setRunning`, etc. are React state setters with stable identity; including
    *   them is redundant. The `display` wrapper object is a fresh literal each render — only its
    *   identity-stable fields are read here, so it must not be listed either. If a future caller passed an unstable inline setter, stale closures
    *   would be a bug in the caller, not fixed by widening this array.
@@ -126,7 +125,6 @@ export function useAudioEngine({
     const init = async () => {
       try {
         if (isTauri()) {
-          setStatus("Starting system audio capture…");
           const devices = await listAudioDevices();
           if (!mounted) return;
           if (!devices?.length) {
@@ -135,20 +133,14 @@ export function useAudioEngine({
           const { device: resolvedDevice, isAutomatic } = resolveDevice(devices, captureDeviceId);
 
           let engineDeviceId;
-          let statusMain;
-          let deviceStatusLabel;
-
           if (isAutomatic) {
             const preview = await previewAudioDevice("default");
             if (!mounted) return;
             defaultSampleRateRef.current = preview.sampleRateHz || 48000;
             engineDeviceId = "default";
-            statusMain = "Monitoring system playback (loopback)";
-            deviceStatusLabel = preview.label;
           } else {
             defaultSampleRateRef.current = resolvedDevice.defaultSampleRate || 48000;
             engineDeviceId = resolvedDevice.id;
-            ({ statusMain, deviceStatusLabel } = buildDeviceStatus(resolvedDevice));
           }
 
           const unsubs = [];
@@ -186,22 +178,19 @@ export function useAudioEngine({
           });
           if (!mounted) return;
           audioRef.current = { mode: "tauri", unsubs };
-          setStatus(statusMain);
-          setStatus2(`Device: ${deviceStatusLabel}`);
           return;
         }
 
         halt();
         setSelectedOffset(-1);
-        setStatus(
-          "Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`."
+        raiseNotice(
+          "error",
+          "Error: Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`."
         );
-        setStatus2("Device: Not connected");
       } catch (err) {
         halt();
         setSelectedOffset(-1);
-        setStatus(`Error: ${err?.message || "Audio unavailable"}`);
-        setStatus2("Device: Not connected");
+        raiseNotice("error", `Error: ${err?.message || "Audio unavailable"}`);
       }
     };
     init();

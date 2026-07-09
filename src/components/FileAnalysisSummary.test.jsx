@@ -90,15 +90,17 @@ describe("FileAnalysisSummary", () => {
     expect(onExportReport).toHaveBeenCalledTimes(1);
   });
 
-  it("renders an error state with a readable file-level title", () => {
+  it("renders an error session through the normal non-complete summary shell", () => {
     render(
       <FileAnalysisSummary
         fileSession={{ state: "error", fileName: "clip.mov", error: "Unsupported codec" }}
       />
     );
 
-    expect(screen.getByText("Could not analyze clip.mov")).toBeTruthy();
-    expect(screen.getByText("Unsupported codec")).toBeTruthy();
+    expect(screen.getByText("clip.mov")).toBeTruthy();
+    expect(screen.queryByText("File analysis error")).toBeNull();
+    expect(screen.queryByText("Could not analyze clip.mov")).toBeNull();
+    expect(screen.queryByText("Unsupported codec")).toBeNull();
   });
 
   it("renders the file history menu in the completed banner", () => {
@@ -112,7 +114,7 @@ describe("FileAnalysisSummary", () => {
     expect(screen.getByRole("button", { name: "2 files" })).toBeTruthy();
   });
 
-  it("renders the file history menu in the error banner", () => {
+  it("renders the file history menu for an error session", () => {
     render(
       <FileAnalysisSummary
         fileSession={{ state: "error", error: "Unsupported codec" }}

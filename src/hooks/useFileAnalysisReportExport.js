@@ -8,10 +8,10 @@ import {
   stringifyFileAnalysisReport,
 } from "../lib/fileAnalysisReport.js";
 
-export function useFileAnalysisReportExport({ fileSession, appVersion, setStatus }) {
+export function useFileAnalysisReportExport({ fileSession, appVersion, raiseNotice }) {
   const exportFileAnalysisReport = useCallback(async () => {
     if (fileSession.state !== "complete") {
-      setStatus("Choose a completed file analysis to export");
+      raiseNotice("guard", "Choose a completed file analysis to export");
       return;
     }
 
@@ -33,11 +33,10 @@ export function useFileAnalysisReportExport({ fileSession, appVersion, setStatus
         a.click();
         URL.revokeObjectURL(url);
       }
-      setStatus("File analysis report exported");
     } catch (_) {
-      setStatus("Report export failed");
+      raiseNotice("error", "Report export failed");
     }
-  }, [appVersion, fileSession, setStatus]);
+  }, [appVersion, fileSession, raiseNotice]);
 
   return {
     exportFileAnalysisReport,

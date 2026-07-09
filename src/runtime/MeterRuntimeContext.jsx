@@ -48,12 +48,13 @@ export function MeterRuntimeProvider({ children }) {
       await stopFileAnalysisRef.current();
     } finally {
       ledger.markStopped(sessionId);
-      display.setStatus("File analysis stopped");
+      display.clearNotice();
     }
   };
   const switchSource = (nextMode) => {
     if (nextMode === sourceMode) return;
 
+    display.clearNotice();
     display.clearAudio();
     display.setSelectedOffset(-1);
     liveIntakeRef.current.reset();
@@ -62,10 +63,6 @@ export function MeterRuntimeProvider({ children }) {
       if (transport.running) {
         transport.halt();
         display.clock.stopTimer();
-        display.setStatus("Stopped live monitoring - file mode selected");
-        display.setStatus2("Device: Not connected");
-      } else {
-        display.setStatus("File mode - drop a file or click Analyze");
       }
       setSourceMode("file");
       return;
@@ -75,10 +72,9 @@ export function MeterRuntimeProvider({ children }) {
       void stopFileAnalysis();
     }
     setSourceMode("live");
-    display.setStatus("Ready - click Start to begin monitoring");
-    display.setStatus2("Device: Not connected");
   };
   const clearActiveSource = async () => {
+    display.clearNotice();
     if (sourceMode === "file") {
       const activeId = fileHistory.activeFileId;
       if (!activeId) return false;
@@ -90,11 +86,6 @@ export function MeterRuntimeProvider({ children }) {
       display.clearAudio();
       display.setSelectedOffset(-1);
       ledger.remove(activeId);
-      display.setStatus(
-        fileHistory.order.length > 1
-          ? "File entry cleared"
-          : "File mode - drop a file or click Analyze"
-      );
       display.clock.resetTimer({ restart: false });
       display.setShowClock(false);
       return true;
@@ -108,19 +99,15 @@ export function MeterRuntimeProvider({ children }) {
     routing.intakeRef.current.reset();
     display.clearAudio();
     display.setSelectedOffset(-1);
-    display.setStatus(
-      transport.running
-        ? "Running - cleared history and peak hold"
-        : "Ready - click Start to begin monitoring"
-    );
     display.clock.resetTimer({ restart: transport.running });
     display.setShowClock(transport.running);
     return true;
   };
   const beginFileAnalysis = (path, analysisSettings) => {
     if (!path) return null;
+    display.clearNotice();
     if (fileHistory.analyzingFileId) {
-      display.setStatus("File analysis already in progress");
+      display.raiseNotice("guard", "File analysis already in progress");
       return null;
     }
 
@@ -129,13 +116,14 @@ export function MeterRuntimeProvider({ children }) {
     return ledger.beginRun(path, analysisSettings);
   };
   const reanalyzeFile = (sessionId, analysisSettings) => {
+    display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
     if (!entry?.id || !entry.path) {
-      display.setStatus("Choose a file to analyze");
+      display.raiseNotice("guard", "Choose a file to analyze");
       return false;
     }
     if (fileHistory.analyzingFileId) {
-      display.setStatus("File analysis already in progress");
+      display.raiseNotice("guard", "File analysis already in progress");
       return false;
     }
 
@@ -145,13 +133,14 @@ export function MeterRuntimeProvider({ children }) {
     return true;
   };
   const selectFile = (sessionId) => {
+    display.clearNotice();
     display.setSelectedOffset(-1);
     display.selectedOffsetRef.current = -1;
     display.clearAudio();
     ledger.select(sessionId);
-    display.setStatus("File analysis result");
   };
   const removeFile = async (sessionId) => {
+    display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
     if (!entry) return false;
     const removedAnalyzingFile = fileHistory.analyzingFileId === sessionId;
@@ -169,16 +158,12 @@ export function MeterRuntimeProvider({ children }) {
       ledger.clearRunRequest();
     }
     ledger.remove(sessionId);
-    display.setStatus(
-      fileHistory.order.length > 1
-        ? "File entry removed"
-        : "File mode - drop a file or click Analyze"
-    );
     display.clock.resetTimer({ restart: false });
     display.setShowClock(false);
     return clearedDisplay;
   };
   const clearFiles = async () => {
+    display.clearNotice();
     if (fileHistory.analyzingFileId) {
       await stopFileAnalysis();
     }
@@ -188,7 +173,6 @@ export function MeterRuntimeProvider({ children }) {
     display.clearAudio();
     display.setSelectedOffset(-1);
     ledger.clearAll();
-    display.setStatus("File mode - drop a file or click Analyze");
     display.clock.resetTimer({ restart: false });
     display.setShowClock(false);
   };

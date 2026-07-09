@@ -40,7 +40,7 @@ export function useFileAnalysisEngine({
   display,
   shouldDriveDisplay,
 }) {
-  const { frameRef, selectedOffsetRef, setAudio, setSelectedOffset, setStatus } = display;
+  const { frameRef, selectedOffsetRef, setAudio, setSelectedOffset, raiseNotice } = display;
   const activePathRef = useRef(null);
 
   const stop = useCallback(async () => {
@@ -50,7 +50,7 @@ export function useFileAnalysisEngine({
   useEffect(() => {
     if (!enabled || !sessionId || !filePath || runId <= 0) return;
     if (!isTauri()) {
-      setStatus("File analysis runs in the desktop app");
+      raiseNotice("error", "Error: File analysis runs in the desktop app");
       updateFileSession(sessionId, (current) => ({ ...current, state: "empty" }));
       return;
     }
@@ -66,7 +66,6 @@ export function useFileAnalysisEngine({
         selectedOffsetRef.current = -1;
         setSelectedOffset(-1);
         setAnalyzingFileId(sessionId);
-        setStatus("Probing file...");
         const metadata = await probeFileAnalysis(filePath);
         if (!mounted) return;
         defaultSampleRateRef.current = metadata.selectedTrack?.sampleRateHz || 48000;
@@ -80,7 +79,6 @@ export function useFileAnalysisEngine({
           error: undefined,
           summary: undefined,
         }));
-        setStatus(`Analyzing ${metadata.fileName}`);
 
         unsubs.push(
           await onFileAnalysisProgress((payload) => {
@@ -111,7 +109,6 @@ export function useFileAnalysisEngine({
               analyzedAt: Date.now(),
             }));
             setAnalyzingFileId((current) => (current === sessionId ? null : current));
-            setStatus("File analysis complete");
           })
         );
         unsubs.push(
@@ -124,7 +121,7 @@ export function useFileAnalysisEngine({
               analyzedAt: Date.now(),
             }));
             setAnalyzingFileId((current) => (current === sessionId ? null : current));
-            setStatus(`Error: ${payload.message}`);
+            raiseNotice("error", `Error: ${payload.message}`);
           })
         );
 
@@ -157,7 +154,7 @@ export function useFileAnalysisEngine({
           analyzedAt: Date.now(),
         }));
         setAnalyzingFileId((current) => (current === sessionId ? null : current));
-        setStatus(`Error: ${message}`);
+        raiseNotice("error", `Error: ${message}`);
       }
     };
 

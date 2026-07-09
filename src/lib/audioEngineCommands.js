@@ -1,5 +1,5 @@
 /**
- * Pure functions for audio engine device resolution and status building.
+ * Pure functions for audio engine device resolution.
  * Extracted from useAudioEngine so they can be tested without React or Tauri.
  */
 
@@ -23,17 +23,4 @@ export function resolveDevice(devices, captureDeviceId) {
     devices[0] ||
     null;
   return { device, isAutomatic: true };
-}
-
-/**
- * Returns the status strings to display given the resolved device.
- *
- * @param {{ isSystemOutputMonitor?: boolean, label?: string }} device
- * @returns {{ statusMain: string, deviceStatusLabel: string }}
- */
-export function buildDeviceStatus(device) {
-  const statusMain = device.isSystemOutputMonitor
-    ? "Monitoring system playback (loopback)"
-    : "Monitoring audio input";
-  return { statusMain, deviceStatusLabel: device.label ?? "Unknown device" };
 }

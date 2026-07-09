@@ -27,8 +27,7 @@ import {
 function useHarness({
   setAudio,
   setSelectedOffset,
-  setStatus,
-  setStatus2,
+  raiseNotice,
   setShowClock,
   resetTimer,
   halt,
@@ -45,8 +44,7 @@ function useHarness({
     selectedOffsetRef,
     setAudio,
     setSelectedOffset,
-    setStatus,
-    setStatus2,
+    raiseNotice,
     setShowClock,
     clock: { resetTimer },
   };
@@ -93,8 +91,7 @@ describe("useAudioEngine", () => {
       captureFormatSignature: "2:48000",
       intake: { reset: vi.fn() },
       setAudio: vi.fn(),
-      setStatus: vi.fn(),
-      setStatus2: vi.fn(),
+      raiseNotice: vi.fn(),
       halt: vi.fn(),
       setSelectedOffset: vi.fn(),
       resetTimer: vi.fn(),
@@ -126,6 +123,27 @@ describe("useAudioEngine", () => {
         shortTerm: -Infinity,
         correlation: -Infinity,
       })
+    );
+  });
+
+  it("raises a transport notice when native capture cannot start", async () => {
+    listAudioDevices.mockRejectedValue(new Error("Audio unavailable"));
+    const props = {
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+
+    renderHook((p) => useHarness(p), {
+      initialProps: props,
+    });
+
+    await waitFor(() =>
+      expect(props.raiseNotice).toHaveBeenCalledWith("error", "Error: Audio unavailable")
     );
   });
 });

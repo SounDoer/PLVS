@@ -17,7 +17,6 @@ export function LoudnessPanel({ compact = false }) {
     historyChartInteractive,
     running,
     setSelectedOffset,
-    setStatus,
     holdHistoryHud,
     showHistoryHud,
     onHistoryWheel,
@@ -120,7 +119,6 @@ export function LoudnessPanel({ compact = false }) {
           historyChartInteractive={historyChartInteractive}
           running={running}
           setSelectedOffset={setSelectedOffset}
-          setStatus={setStatus}
           holdHistoryHud={holdHistoryHud}
           showHistoryHud={showHistoryHud}
           onHistoryWheel={onHistoryWheel}

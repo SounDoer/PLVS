@@ -61,6 +61,7 @@ function Harness({
   updateFileSession = vi.fn(),
   setAnalyzingFileId = vi.fn(),
   setFileSession,
+  raiseNotice = vi.fn(),
 }) {
   const audioRef = useRef(null);
   const selectedOffsetRef = useRef(-1);
@@ -85,7 +86,7 @@ function Harness({
       selectedOffsetRef,
       setAudio: vi.fn(),
       setSelectedOffset: vi.fn(),
-      setStatus: vi.fn(),
+      raiseNotice,
     },
   });
 
@@ -235,7 +236,11 @@ describe("useFileAnalysisEngine", () => {
   });
 
   it("marks the targeted session as error and clears the matching analyzing id", async () => {
-    const { updateFileSession, setAnalyzingFileId } = renderHarness({ sessionId: "session-a" });
+    const raiseNotice = vi.fn();
+    const { updateFileSession, setAnalyzingFileId } = renderHarness({
+      sessionId: "session-a",
+      raiseNotice,
+    });
 
     await waitFor(() => expect(eventCallbacks.error).toEqual(expect.any(Function)));
 
@@ -252,6 +257,7 @@ describe("useFileAnalysisEngine", () => {
     expect(setAnalyzingFileId).toHaveBeenLastCalledWith(expect.any(Function));
     expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-a")).toBeNull();
     expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-b")).toBe("session-b");
+    expect(raiseNotice).toHaveBeenCalledWith("error", "Error: decode failed");
   });
 
   it("stops the active file analysis without mutating a single file session", async () => {
@@ -280,8 +286,9 @@ describe("useFileAnalysisEngine", () => {
   it("preserves the targeted session entry shape in browser fallback", async () => {
     isTauri.mockReturnValue(false);
     const updateFileSession = vi.fn();
+    const raiseNotice = vi.fn();
 
-    renderHarness({ updateFileSession, sessionId: "session-a" });
+    renderHarness({ updateFileSession, sessionId: "session-a", raiseNotice });
 
     await waitFor(() =>
       expect(updateFileSession).toHaveBeenCalledWith("session-a", expect.any(Function))
@@ -305,6 +312,10 @@ describe("useFileAnalysisEngine", () => {
     });
     expect(probeFileAnalysis).not.toHaveBeenCalled();
     expect(startFileAnalysis).not.toHaveBeenCalled();
+    expect(raiseNotice).toHaveBeenCalledWith(
+      "error",
+      "Error: File analysis runs in the desktop app"
+    );
   });
 });
 

@@ -4,12 +4,28 @@ import { act, renderHook } from "@testing-library/react";
 import { useMeterDisplay, INITIAL_METER_AUDIO, CLEARED_METER_AUDIO } from "./useMeterDisplay.js";
 
 describe("useMeterDisplay", () => {
-  it("starts with the initial meter snapshot and idle status", () => {
+  it("starts with the initial meter snapshot and no transport notice", () => {
     const { result } = renderHook(() => useMeterDisplay());
     expect(result.current.audio).toEqual(INITIAL_METER_AUDIO);
     expect(result.current.selectedOffset).toBe(-1);
-    expect(result.current.status).toMatch(/Ready/);
+    expect(result.current.notice).toBeNull();
     expect(result.current.showClock).toBe(false);
+  });
+
+  it("starts without a transport notice", () => {
+    const { result } = renderHook(() => useMeterDisplay());
+
+    expect(result.current.notice).toBeNull();
+  });
+
+  it("raises and clears a transport notice", () => {
+    const { result } = renderHook(() => useMeterDisplay());
+
+    act(() => result.current.raiseNotice("error", "Audio unavailable"));
+    expect(result.current.notice).toEqual({ kind: "error", text: "Audio unavailable" });
+
+    act(() => result.current.clearNotice());
+    expect(result.current.notice).toBeNull();
   });
 
   it("mirrors selectedOffset into selectedOffsetRef", () => {

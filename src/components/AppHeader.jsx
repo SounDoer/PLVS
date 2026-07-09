@@ -56,6 +56,7 @@ export function AppHeader({
   onPointerUp,
   onPointerCancel,
   sourceTransportState,
+  notice,
   sourceMode,
   onSourceModeChange,
   onSourceTransportAction,
@@ -105,6 +106,17 @@ export function AppHeader({
         onSourceModeChange={onSourceModeChange}
         onPrimaryAction={onSourceTransportAction}
       />
+      {notice ? (
+        <div
+          title={notice.text}
+          className={cn(
+            "min-w-0 max-w-[min(30rem,34vw)] truncate text-[length:var(--ui-fs-status)] font-medium",
+            notice.kind === "error" ? "text-[color:var(--ui-signal-bad)]" : "text-muted-foreground"
+          )}
+        >
+          {notice.text}
+        </div>
+      ) : null}
       <div className="flex-1" />
       <div className={SHELL_HEADER_ACTIONS}>
         <IconButton

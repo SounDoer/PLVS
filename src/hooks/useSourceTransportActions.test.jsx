@@ -18,7 +18,6 @@ function renderActions(overrides = {}) {
     running: false,
     selectedOffset: -1,
     setSelectedOffset: vi.fn(),
-    setStatus: vi.fn(),
     setHistoryOffsetSec: vi.fn(),
     setHistoryWindowSec: vi.fn(),
     startLive: vi.fn(),
@@ -54,7 +53,6 @@ describe("useSourceTransportActions", () => {
     });
 
     expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
-    expect(props.setStatus).toHaveBeenCalledWith("Monitoring live input");
     expect(props.startLive).not.toHaveBeenCalled();
     expect(props.stopLive).not.toHaveBeenCalled();
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveDevice, buildDeviceStatus } from "./audioEngineCommands";
+import { resolveDevice } from "./audioEngineCommands";
 
 const loopback = { id: "lb-aaa", label: "Speakers (loopback)", isLoopback: true };
 const tap = { id: "tap-bbb", label: "System Audio", isSystemOutputMonitor: true };
@@ -46,27 +46,5 @@ describe("resolveDevice", () => {
     const { device, isAutomatic } = resolveDevice([tap, mic], "lb-unknown");
     expect(isAutomatic).toBe(true);
     expect(device.id).toBe(tap.id);
-  });
-});
-
-describe("buildDeviceStatus", () => {
-  it("returns loopback status for a system output monitor", () => {
-    const { statusMain } = buildDeviceStatus(tap);
-    expect(statusMain).toBe("Monitoring system playback (loopback)");
-  });
-
-  it("returns input status for a non-monitor device", () => {
-    const { statusMain } = buildDeviceStatus(mic);
-    expect(statusMain).toBe("Monitoring audio input");
-  });
-
-  it("uses the device label as deviceStatusLabel", () => {
-    const { deviceStatusLabel } = buildDeviceStatus(mic);
-    expect(deviceStatusLabel).toBe(mic.label);
-  });
-
-  it("falls back to 'Unknown device' when label is absent", () => {
-    const { deviceStatusLabel } = buildDeviceStatus({});
-    expect(deviceStatusLabel).toBe("Unknown device");
   });
 });

@@ -3,7 +3,7 @@ import { useSessionTimer } from "./useSessionTimer.js";
 
 /**
  * Owner of the shared metering display layer: the meter frame snapshot, history
- * scrub offset, status lines, session clock, and frame counter. Both engines
+ * scrub offset, transport notice, session clock, and frame counter. Both engines
  * (live capture, file analysis) write into this layer; panels read it. See
  * docs/superpowers/specs/2026-07-08-c2-app-state-ownership-design.md.
  *
@@ -69,16 +69,46 @@ export const CLEARED_METER_AUDIO = {
 export function useMeterDisplay() {
   const [audio, setAudio] = useState({ ...INITIAL_METER_AUDIO });
   const [selectedOffset, setSelectedOffset] = useState(-1);
-  const [status, setStatus] = useState("Ready - click Start to begin monitoring");
-  const [status2, setStatus2] = useState("Device: Not connected");
+  const [notice, setNotice] = useState(null);
   const [showClock, setShowClock] = useState(false);
   const selectedOffsetRef = useRef(-1);
   const frameRef = useRef(0);
+  const guardTimerRef = useRef(null);
   const clock = useSessionTimer();
 
   useEffect(() => {
     selectedOffsetRef.current = selectedOffset;
   }, [selectedOffset]);
+
+  useEffect(
+    () => () => {
+      if (guardTimerRef.current) clearTimeout(guardTimerRef.current);
+    },
+    []
+  );
+
+  const clearGuardTimer = () => {
+    if (guardTimerRef.current) {
+      clearTimeout(guardTimerRef.current);
+      guardTimerRef.current = null;
+    }
+  };
+
+  const clearNotice = () => {
+    clearGuardTimer();
+    setNotice(null);
+  };
+
+  const raiseNotice = (kind, text) => {
+    clearGuardTimer();
+    setNotice({ kind, text });
+    if (kind === "guard") {
+      guardTimerRef.current = setTimeout(() => {
+        guardTimerRef.current = null;
+        setNotice(null);
+      }, 5000);
+    }
+  };
 
   const clearAudio = () => setAudio({ ...CLEARED_METER_AUDIO });
 
@@ -89,10 +119,9 @@ export function useMeterDisplay() {
     setSelectedOffset,
     selectedOffsetRef,
     frameRef,
-    status,
-    setStatus,
-    status2,
-    setStatus2,
+    notice,
+    raiseNotice,
+    clearNotice,
     showClock,
     setShowClock,
     clock,
