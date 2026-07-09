@@ -31,10 +31,10 @@ function useHarness({
   setStatus2,
   setShowClock,
   resetTimer,
+  halt,
   ...props
 }) {
   const audioRef = useRef(null);
-  const rafRef = useRef(0);
   const frameRef = useRef(0);
   const selectedOffsetRef = useRef(-1);
   const loudnessWeightsRef = useRef(null);
@@ -52,15 +52,14 @@ function useHarness({
   };
 
   useAudioEngine({
-    running: true,
     captureDeviceId: "default",
     histMaxSamples: 10,
     visualMaxSamples: 10,
     audioRef,
-    rafRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
+    transport: { running: true, halt },
     display,
     ...props,
   });
@@ -96,7 +95,7 @@ describe("useAudioEngine", () => {
       setAudio: vi.fn(),
       setStatus: vi.fn(),
       setStatus2: vi.fn(),
-      setRunning: vi.fn(),
+      halt: vi.fn(),
       setSelectedOffset: vi.fn(),
       resetTimer: vi.fn(),
       setShowClock: vi.fn(),

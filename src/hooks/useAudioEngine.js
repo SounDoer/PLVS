@@ -42,22 +42,22 @@ const CLEARED_AUDIO_STATE = {
 };
 
 export function useAudioEngine({
-  running,
   captureDeviceId = "default",
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
   captureFormatSignature = "",
   histMaxSamples,
   visualMaxSamples,
   audioRef,
-  rafRef,
   intake,
   loudnessWeightsRef,
   dialogueGatingRef,
   dialogueVadEngineRef,
-  setRunning,
+  transport,
   display,
   defaultSampleRateRef: externalDefaultSampleRateRef,
 }) {
+  const { running, halt } = transport;
+  const rafRef = useRef(0);
   const {
     frameRef,
     selectedOffsetRef,
@@ -191,14 +191,14 @@ export function useAudioEngine({
           return;
         }
 
-        setRunning(false);
+        halt();
         setSelectedOffset(-1);
         setStatus(
           "Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`."
         );
         setStatus2("Device: Not connected");
       } catch (err) {
-        setRunning(false);
+        halt();
         setSelectedOffset(-1);
         setStatus(`Error: ${err?.message || "Audio unavailable"}`);
         setStatus2("Device: Not connected");

@@ -16,6 +16,7 @@ import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useMeterDisplay } from "./hooks/useMeterDisplay.js";
+import { useCaptureTransport } from "./hooks/useCaptureTransport.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -429,7 +430,6 @@ function AppContent() {
   const activeFileSession = useMemo(() => getActiveFileSession(fileHistory), [fileHistory]);
   const analyzingFileSession = useMemo(() => getAnalyzingFileSession(fileHistory), [fileHistory]);
   const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
-  const [running, setRunning] = useState(false);
   const normalizedPanelControls = useMemo(() => {
     const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
     return normalizePanelControls(
@@ -465,13 +465,17 @@ function AppContent() {
   const focusControlsDragTimerRef = useRef(0);
 
   const audioRef = useRef(null);
-  const rafRef = useRef(0);
   // Live and File keep separate history rings so a source switch never bleeds one into the other,
   // and returning to File restores its previous analysis without re-decoding. Each engine writes its
   // own ring (live->liveIntake, file->fileIntake); `intakeRef` always points at the active source's
   // ring and is what the display / channel-metadata reads use.
   const liveIntakeRef = useRef(null);
   if (liveIntakeRef.current === null) liveIntakeRef.current = new FrameIntake();
+  const transport = useCaptureTransport({
+    display,
+    getLiveIntake: () => liveIntakeRef.current,
+  });
+  const { running } = transport;
   const emptyFileIntakeRef = useRef(null);
   if (emptyFileIntakeRef.current === null) emptyFileIntakeRef.current = new FrameIntake();
   const fileDisplayIntake = activeFileSession?.intake ?? emptyFileIntakeRef.current;
@@ -1289,17 +1293,10 @@ function AppContent() {
       return;
     }
     if (running) {
-      setRunning(false);
-      setSelectedOffset(-1);
-      setStatus("Stopped - click Start to resume");
-      setStatus2("Device: Not connected");
-      stopTimer();
+      transport.stopLive();
       return;
     }
-    intakeRef.current.beginCaptureSession();
-    setRunning(true);
-    startTimer();
-    setShowClock(true);
+    transport.startLive();
   };
 
   const onSourceTransportAction = async (actionKind) => {
@@ -1352,7 +1349,7 @@ function AppContent() {
     liveIntakeRef.current.reset();
     if (nextMode === "file") {
       if (running) {
-        setRunning(false);
+        transport.halt();
         stopTimer();
         setStatus("Stopped live monitoring - file mode selected");
         setStatus2("Device: Not connected");
@@ -1448,19 +1445,17 @@ function AppContent() {
   }, [spectrumLiveLabel, vectorscopeLiveLabel]);
 
   useAudioEngine({
-    running,
     captureDeviceId,
     captureFormatSignature,
     histMaxSamples: HIST_MAX_SAMPLES,
     visualMaxSamples: VISUAL_MAX_SAMPLES,
     audioRef,
-    rafRef,
     intake: liveIntakeRef.current,
     defaultSampleRateRef,
     loudnessWeightsRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
-    setRunning,
+    transport,
     display,
   });
 
