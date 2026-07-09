@@ -11,7 +11,6 @@ import {
   deriveDialogueRuntime,
 } from "./runtime/appRuntimeDerivations.js";
 import { UI_PREFERENCES } from "./uiPreferences";
-import { cleanupLegacyKeys } from "./persistence/cleanupLegacyKeys.js";
 import { normalizePanelControls } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
@@ -35,7 +34,6 @@ import { ThemeEditor } from "./components/ThemeEditor";
 import { FeedbackDialog } from "./components/FeedbackDialog.jsx";
 import { AppShell } from "./components/AppShell.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
-import { preventNativeContextMenu } from "./lib/contextMenu.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
@@ -63,6 +61,7 @@ import { useConfigurationProfileActions } from "./hooks/useConfigurationProfileA
 import { useCliPathSettings } from "./hooks/useCliPathSettings.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
+import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
@@ -90,6 +89,7 @@ function AppContent() {
     setPanelControls: setWorkspacePanelControls,
     setPanelControlsForPanel,
   } = useWorkspaceStore();
+  useAppGlobalEffects();
   const {
     sourceMode,
     running,
@@ -914,15 +914,6 @@ function AppContent() {
     autoHideControls: focusView.autoHideControls,
     toggleFocusControls,
   });
-
-  useEffect(() => {
-    cleanupLegacyKeys();
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("contextmenu", preventNativeContextMenu);
-    return () => window.removeEventListener("contextmenu", preventNativeContextMenu);
-  }, []);
 
   /** Matches Loudness History snapshot mode: meters/spectrum/vector read the selected instant, not live input */
   useEffect(() => {
