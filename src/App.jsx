@@ -44,30 +44,17 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import {
   cliPathStatusCommand,
-  readProfileFile,
   resetTruePeakMax,
   setAnalysisRequests,
   setCliPathEnabledCommand,
   setLoudnessWeights,
   setDialogueGating,
   setDialogueVadEngine,
-  writeProfileFile,
   writeTextFile,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
-import {
-  pickConfigurationProfileFile,
-  pickMediaFile,
-  saveConfigurationProfileFile,
-  saveFileAnalysisReportFile,
-} from "./ipc/fileDialog.js";
-import {
-  exportProfile,
-  importProfile,
-  reloadAfterProfileChange,
-  resetProfile,
-} from "./persistence/profile.js";
+import { pickMediaFile, saveFileAnalysisReportFile } from "./ipc/fileDialog.js";
 import { onWindowBoundsChanged } from "./ipc/events.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
@@ -76,6 +63,7 @@ import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
 import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { useGlassEffect } from "./hooks/useGlassEffect.js";
+import { useConfigurationProfileActions } from "./hooks/useConfigurationProfileActions.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import {
   buildFileAnalysisReport,
@@ -175,8 +163,13 @@ function AppContent() {
   const suppressPresetDivergence = useCallback((durationMs = 1500) => {
     suppressPresetDivergenceUntilRef.current = Date.now() + durationMs;
   }, []);
-  const [configurationBusy, setConfigurationBusy] = useState(false);
-  const [configurationStatus, setConfigurationStatus] = useState("");
+  const {
+    configurationBusy,
+    configurationStatus,
+    exportConfiguration,
+    importConfiguration,
+    resetConfiguration,
+  } = useConfigurationProfileActions();
   const [cliPathStatus, setCliPathStatus] = useState(undefined);
   const [cliPathBusy, setCliPathBusy] = useState(false);
   const presets = usePresets({
@@ -259,74 +252,6 @@ function AppContent() {
     const allowed = new Set(["default", ...(audioDevices || []).map((d) => d.id)]);
     return allowed.has(captureDeviceId) ? captureDeviceId : "default";
   }, [audioDevices, captureDeviceId]);
-
-  const exportConfiguration = useCallback(async () => {
-    if (configurationBusy) return;
-    setConfigurationBusy(true);
-    setConfigurationStatus("");
-    try {
-      const profile = await exportProfile();
-      const contents = `${JSON.stringify(profile, null, 2)}\n`;
-      if (isTauri()) {
-        const path = await saveConfigurationProfileFile("plvs-configuration.plvsconfig");
-        if (!path) {
-          setConfigurationStatus("");
-          return;
-        }
-        await writeProfileFile(path, contents);
-      } else {
-        const blob = new Blob([contents], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "plvs-configuration.plvsconfig";
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-      setConfigurationStatus("Configuration exported");
-    } catch (_) {
-      setConfigurationStatus("Export failed");
-    } finally {
-      setConfigurationBusy(false);
-    }
-  }, [configurationBusy]);
-
-  const importConfiguration = useCallback(async () => {
-    if (configurationBusy) return;
-    setConfigurationBusy(true);
-    setConfigurationStatus("");
-    try {
-      if (!isTauri()) {
-        setConfigurationStatus("Import is available in the desktop app");
-        return;
-      }
-      const path = await pickConfigurationProfileFile();
-      if (!path) {
-        setConfigurationStatus("");
-        return;
-      }
-      const raw = await readProfileFile(path);
-      await importProfile(JSON.parse(raw));
-      reloadAfterProfileChange();
-    } catch (_) {
-      setConfigurationStatus("Import failed");
-    } finally {
-      setConfigurationBusy(false);
-    }
-  }, [configurationBusy]);
-
-  const resetConfiguration = useCallback(async () => {
-    if (configurationBusy) return;
-    setConfigurationBusy(true);
-    setConfigurationStatus("");
-    try {
-      await resetProfile();
-      reloadAfterProfileChange();
-    } catch (_) {
-      setConfigurationStatus("Reset failed");
-      setConfigurationBusy(false);
-    }
-  }, [configurationBusy]);
 
   useEffect(() => {
     if (!settingsOpen || !isTauri()) return;
