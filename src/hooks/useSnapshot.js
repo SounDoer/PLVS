@@ -20,7 +20,6 @@ function freezeSnapshot(intake) {
     corr: [...intake.getCorrSnap()],
     audio: [...intake.getAudioSnap()],
     channelMetadata: [...(intake.getChannelMetadataSnap?.() ?? [])],
-    visualWaveform: intake.getVisualWaveformHist().toArray(),
     spectrumByKey: intake.snapshotVisualSpectrumByKey?.() ?? {},
     vectorscopeByKey: intake.snapshotVisualVectorscopeByKey?.() ?? {},
   };
@@ -36,7 +35,6 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   );
 
   const histSourceList = snapSource ? snapSource.loudness : intake.getLoudnessHistory();
-  const visualWaveformSnap = snapSource?.visualWaveform ?? null;
 
   const resolved = resolveSnapshot({
     selectedOffset,
@@ -102,8 +100,6 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     hasHistoryData: resolved.hasHistoryData,
     correlation: resolved.correlation,
     channelMetadata: resolved.channelMetadata,
-    visualWaveformSnap,
-    visualSnapIdx: resolved.visualSnapIdx,
     targetTimestampMs: resolved.targetTimestampMs,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,

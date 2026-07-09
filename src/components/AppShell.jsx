@@ -1,9 +1,9 @@
-import { AudioDataContext, PanelChromeProvider } from "../workspace/AudioDataContext.jsx";
 import { MeterRuntimeEngines } from "../runtime/MeterRuntimeEngines.jsx";
 import { AppHeader } from "./AppHeader.jsx";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
 import { FileDropOverlay } from "./FileDropOverlay.jsx";
 import { SplitLayout } from "../workspace/SplitLayout.jsx";
+import { PanelDataProviders } from "../workspace/PanelDataProviders.jsx";
 import {
   FOOTER_DIVIDER,
   FOOTER_LABEL,
@@ -18,7 +18,7 @@ import {
 } from "@/lib/shellLayout";
 
 export function AppShell({
-  audioData,
+  sharedPanelData,
   runtimeEnginesProps,
   fileDropProps,
   focusView,
@@ -35,7 +35,7 @@ export function AppShell({
   const controlsVisible = !autoHideControls || focusControlsVisible;
 
   return (
-    <AudioDataContext.Provider value={audioData}>
+    <PanelDataProviders sharedPanelData={sharedPanelData} panelChromeData={panelChromeData}>
       <MeterRuntimeEngines {...runtimeEnginesProps} />
       <FileDropOverlay {...fileDropProps} />
       <div className={SHELL_PAGE}>
@@ -68,9 +68,7 @@ export function AppShell({
             </div>
           ) : null}
 
-          <PanelChromeProvider value={panelChromeData}>
-            <SplitLayout />
-          </PanelChromeProvider>
+          <SplitLayout />
 
           {controlsVisible ? (
             <footer
@@ -110,6 +108,6 @@ export function AppShell({
 
         {children}
       </div>
-    </AudioDataContext.Provider>
+    </PanelDataProviders>
   );
 }

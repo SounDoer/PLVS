@@ -17,9 +17,7 @@ function panel(value = {}) {
           tpMax: -1,
         },
         peakLabelContext: { resolvedLayout: "stereo" },
-        fmt: (v) => (Number.isFinite(v) ? v.toFixed(1) : "-"),
         hasTpMaxValue: true,
-        tpMaxText: "-1.0 dBTP",
         ...shared,
       }}
     >

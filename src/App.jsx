@@ -19,7 +19,6 @@ import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
-import { usePeakVis } from "./hooks/usePeakVis.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -253,7 +252,6 @@ function AppContent() {
     hasHistoryData,
     correlation,
     channelMetadata,
-    visualWaveformSnap,
     targetTimestampMs,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
@@ -280,15 +278,10 @@ function AppContent() {
     maxOffsetSamples,
     effectiveOffsetSamples,
     effectiveOffsetSec,
-    displayHistoryPathM,
-    displayHistoryPathST,
-    selectedHistSteps,
     showSelLine,
     selLineX,
     isHistoryHudVisible,
     historyTimeTicks,
-    targetLufs,
-    historyYAxisTicks,
     statsMetrics,
   } = useLoudnessHistory({
     histSourceList,
@@ -300,10 +293,7 @@ function AppContent() {
     sourceMode,
   });
 
-  const { fmt, getSamplePeakLineColor, hasTpMaxValue, tpMaxText } = usePeakVis(
-    resolvedThemeId,
-    displayAudio
-  );
+  const hasTpMaxValue = Number.isFinite(displayAudio?.tpMax);
   const vsGridDiagInset = useMemo(() => {
     const pct = UI_PREFERENCES.modules.vectorscope.gridDiagInsetPct ?? 0;
     return Math.max(0, Math.min(20, pct));
@@ -705,26 +695,17 @@ function AppContent() {
     ]
   );
 
-  const audioData = {
+  const sharedPanelData = {
     // Peak
     displayAudio,
-    getSamplePeakLineColor,
-    fmt,
     hasTpMaxValue,
-    tpMaxText,
     onResetTpMax: resetTpMax,
     // Vectorscope
     vsGridDiagInset,
     vsGridDiagFar,
     correlation,
-    vectorscopePairOptions,
-    vectorscopeValueKey,
-    vectorscopeDisplayLabel,
-    onVectorscopePairChange,
     vectorscopePairX: vectorscopePairUi.x,
     vectorscopePairY: vectorscopePairUi.y,
-    panelControls: normalizedPanelControls,
-    onPanelControlsChange: updatePanelControls,
     // Shared
     selectedOffset,
     setSelectedOffset,
@@ -734,13 +715,9 @@ function AppContent() {
     setStatus,
     resolvedThemeId,
     // Loudness history
-    historyYAxisTicks,
-    targetLufs,
     referenceLufs,
     hasHistoryData,
     historyChartInteractive,
-    displayHistoryPathM,
-    displayHistoryPathST,
     showSelLine,
     selLineX,
     isHistoryHudVisible,
@@ -759,28 +736,17 @@ function AppContent() {
     captureCurrentSnapshot,
     // Spectrum
     spectrumChannelOptions,
-    spectrumValueKey,
-    spectrumDisplayLabel,
-    onSpectrumChannelChange,
-    spectrumView: spectrumViewUi,
-    onSpectrumViewChange,
-    spectrumViewLegend: spectrumViewLegendValue,
-    spectrumPeakHold: spectrumPeakHoldUi,
-    onSpectrumPeakHoldToggle,
     // Spectrogram
     frequencyMarkerRef,
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,
     histSourceList,
-    visualWaveformSnap,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
     getSpectrogramSnapsForKey,
-    analysisStatusByPanelId,
     dialogueActiveNow: displayAudio?.dialogueActiveNow ?? false,
-    compactPanels: focusView.compactPanels,
   };
   const runtimeEnginesProps = {
     captureDeviceId,
@@ -859,7 +825,7 @@ function AppContent() {
 
   return (
     <AppShell
-      audioData={audioData}
+      sharedPanelData={sharedPanelData}
       runtimeEnginesProps={runtimeEnginesProps}
       fileDropProps={fileDropProps}
       focusView={focusView}

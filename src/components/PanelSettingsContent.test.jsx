@@ -1125,7 +1125,6 @@ describe("PanelSettingsContent", () => {
         <AudioDataContext.Provider
           value={{
             panelControls: DEFAULT_PANEL_CONTROLS,
-            fmt: (value) => value.toFixed(1),
             statsMetrics: [],
           }}
         >
@@ -1178,7 +1177,6 @@ describe("PanelSettingsContent", () => {
         <AudioDataContext.Provider
           value={{
             panelControls: DEFAULT_PANEL_CONTROLS,
-            fmt: (value) => value.toFixed(1),
             statsMetrics: [],
           }}
         >
@@ -1271,7 +1269,6 @@ describe("PanelSettingsContent", () => {
           <AudioDataContext.Provider
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
-              fmt: (value) => value.toFixed(1),
               statsMetrics: [],
             }}
           >
@@ -1453,7 +1450,6 @@ describe("PanelSettingsContent", () => {
               panelControls: DEFAULT_PANEL_CONTROLS,
               displayAudio: { peakDb: [-9.9, -10] },
               peakLabelContext: { resolvedLayout: "stereo" },
-              fmt: (value) => value.toFixed(1),
               hasTpMaxValue: false,
             }}
           >
@@ -1540,7 +1536,6 @@ describe("PanelSettingsContent", () => {
           <AudioDataContext.Provider
             value={{
               panelControls: DEFAULT_PANEL_CONTROLS,
-              fmt: (value) => value.toFixed(1),
               statsMetrics: [],
             }}
           >

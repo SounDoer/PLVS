@@ -9,13 +9,13 @@ import {
   usePanelChromeData,
   useSharedPanelData,
 } from "./AudioDataContext.jsx";
+import { PanelDataProviders } from "./PanelDataProviders.jsx";
 
 describe("panel instance data seam", () => {
   it("exposes shared panel data without panel instance fields", () => {
     const base = {
       displayAudio: { momentary: -18 },
-      panelControls: { spectrumView: "combined" },
-      analysisStatusByPanelId: { spectrumA: "overCap" },
+      spectrumChannelOptions: [{ key: "p-0-1", label: "L/R" }],
     };
     const onPanelControlsChange = vi.fn();
     const wrapper = ({ children }) => (
@@ -36,17 +36,19 @@ describe("panel instance data seam", () => {
     const { result } = renderHook(() => useSharedPanelData(), { wrapper });
 
     expect(result.current.displayAudio).toBe(base.displayAudio);
-    expect(result.current.panelControls).toEqual({ spectrumView: "combined" });
+    expect(result.current.spectrumChannelOptions).toBe(base.spectrumChannelOptions);
+    expect(result.current.panelControls).toBeUndefined();
     expect(result.current.onPanelControlsChange).toBeUndefined();
     expect(result.current.analysisStatus).toBeUndefined();
+    expect(result.current.analysisStatusByPanelId).toBeUndefined();
     expect(result.current.panelVisible).toBeUndefined();
+    expect(result.current.compactPanels).toBeUndefined();
   });
 
   it("exposes panel instance data independently", () => {
     const base = {
       displayAudio: { momentary: -18 },
-      panelControls: { spectrumView: "combined" },
-      analysisStatusByPanelId: { spectrumA: "overCap" },
+      spectrumChannelOptions: [{ key: "p-0-1", label: "L/R" }],
     };
     const onPanelControlsChange = vi.fn();
     const wrapper = ({ children }) => (
@@ -82,5 +84,26 @@ describe("panel instance data seam", () => {
     const { result } = renderHook(() => usePanelChromeData(), { wrapper });
 
     expect(result.current).toBe(chrome);
+  });
+
+  it("composes shared and chrome providers for panel modules", () => {
+    const shared = { displayAudio: { momentary: -18 } };
+    const chrome = { compactPanels: true, channelCount: 6 };
+    const wrapper = ({ children }) => (
+      <PanelDataProviders sharedPanelData={shared} panelChromeData={chrome}>
+        {children}
+      </PanelDataProviders>
+    );
+
+    const { result } = renderHook(
+      () => ({
+        shared: useSharedPanelData(),
+        chrome: usePanelChromeData(),
+      }),
+      { wrapper }
+    );
+
+    expect(result.current.shared).toBe(shared);
+    expect(result.current.chrome).toBe(chrome);
   });
 });
