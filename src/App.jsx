@@ -43,10 +43,8 @@ import { eventMatchesAccelerator } from "./lib/accelerator.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import {
-  cliPathStatusCommand,
   resetTruePeakMax,
   setAnalysisRequests,
-  setCliPathEnabledCommand,
   setLoudnessWeights,
   setDialogueGating,
   setDialogueVadEngine,
@@ -64,6 +62,7 @@ import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
 import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { useGlassEffect } from "./hooks/useGlassEffect.js";
 import { useConfigurationProfileActions } from "./hooks/useConfigurationProfileActions.js";
+import { useCliPathSettings } from "./hooks/useCliPathSettings.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import {
   buildFileAnalysisReport,
@@ -170,8 +169,7 @@ function AppContent() {
     importConfiguration,
     resetConfiguration,
   } = useConfigurationProfileActions();
-  const [cliPathStatus, setCliPathStatus] = useState(undefined);
-  const [cliPathBusy, setCliPathBusy] = useState(false);
+  const { cliPathStatus, cliPathBusy, setCliPathEnabled } = useCliPathSettings({ settingsOpen });
   const presets = usePresets({
     windowPinned: pinned,
     setWindowPinned: setPinned,
@@ -252,48 +250,6 @@ function AppContent() {
     const allowed = new Set(["default", ...(audioDevices || []).map((d) => d.id)]);
     return allowed.has(captureDeviceId) ? captureDeviceId : "default";
   }, [audioDevices, captureDeviceId]);
-
-  useEffect(() => {
-    if (!settingsOpen || !isTauri()) return;
-    let disposed = false;
-    setCliPathStatus(null);
-    cliPathStatusCommand()
-      .then((nextStatus) => {
-        if (!disposed) setCliPathStatus(nextStatus);
-      })
-      .catch(() => {
-        if (!disposed) {
-          setCliPathStatus({
-            supported: false,
-            installed: false,
-            onPath: false,
-            message: "Command line tools are unavailable.",
-          });
-        }
-      });
-    return () => {
-      disposed = true;
-    };
-  }, [settingsOpen]);
-
-  const setCliPathEnabled = useCallback(async (enabled) => {
-    if (!isTauri()) return;
-    setCliPathBusy(true);
-    try {
-      const nextStatus = await setCliPathEnabledCommand(enabled);
-      setCliPathStatus(nextStatus);
-    } catch (_) {
-      setCliPathStatus((current) => ({
-        ...(current ?? {}),
-        supported: current?.supported ?? true,
-        installed: current?.installed ?? false,
-        onPath: current?.onPath ?? false,
-        message: "PATH update failed.",
-      }));
-    } finally {
-      setCliPathBusy(false);
-    }
-  }, []);
 
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
