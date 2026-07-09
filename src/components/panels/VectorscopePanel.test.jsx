@@ -40,6 +40,25 @@ describe("VectorscopePanel", () => {
     expect(trace?.getAttribute("d")).toBe(path);
   });
 
+  it("keeps snapshot display data from changing the panel's live pair selection", () => {
+    renderPanel({
+      selectedOffset: 2,
+      channelCount: 4,
+      panelControls: { vectorscopePair: { x: 0, y: 1 } },
+      displayAudio: { vectorscopePairX: 2, vectorscopePairY: 3 },
+      resolveVectorscopeSnapshotForKey: () => ({
+        missing: false,
+        path: "M 10 10 L 250 250",
+        correlation: 0.5,
+      }),
+    });
+
+    expect(screen.getByText("L")).toBeTruthy();
+    expect(screen.getByText("R")).toBeTruthy();
+    expect(screen.queryByText("C")).toBeNull();
+    expect(screen.queryByText("LFE")).toBeNull();
+  });
+
   it("reads the request-keyed live result in live mode", () => {
     const path = "M 0 0 L 100 100";
     const { container } = renderPanel({

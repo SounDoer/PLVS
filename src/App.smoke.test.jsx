@@ -5,6 +5,8 @@ import { isTauri } from "./ipc/env.js";
 import { listAudioDevices, previewAudioDevice } from "./ipc/commands.js";
 import { pickMediaFile } from "./ipc/fileDialog.js";
 
+const tauriEventHandlers = vi.hoisted(() => new Map());
+
 // Default browser mode (isTauri -> false) keeps the mount deterministic; individual
 // tests flip it to exercise the Tauri capture path against the mocked IPC surface.
 vi.mock("./ipc/env.js", () => ({ isTauri: vi.fn(() => false) }));
@@ -12,6 +14,14 @@ vi.mock("./ipc/env.js", () => ({ isTauri: vi.fn(() => false) }));
 // IPC surface: everything resolves benignly. Add exports here if the mount throws
 // "No export named X" — keep resolutions inert, do not weaken assertions instead.
 vi.mock("./ipc/commands.js", () => ({
+  applyWindowBounds: vi.fn().mockResolvedValue(undefined),
+  currentWindowBounds: vi.fn().mockResolvedValue({
+    x: 10,
+    y: 20,
+    width: 800,
+    height: 600,
+    isMaximized: false,
+  }),
   listAudioDevices: vi.fn().mockResolvedValue([]),
   previewAudioDevice: vi
     .fn()
@@ -69,7 +79,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn().mockResolvedValue(() => {}),
+  listen: vi.fn((eventName, handler) => {
+    tauriEventHandlers.set(eventName, handler);
+    return Promise.resolve(() => tauriEventHandlers.delete(eventName));
+  }),
 }));
 
 vi.mock("@tauri-apps/api/webview", () => ({
@@ -102,6 +115,7 @@ vi.mock("./ipc/fileDialog.js", () => ({
 beforeEach(() => {
   cleanup();
   localStorage.clear();
+  tauriEventHandlers.clear();
   isTauri.mockReturnValue(false);
   listAudioDevices.mockResolvedValue([]);
   previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
@@ -135,6 +149,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("App smoke", () => {
@@ -201,6 +216,44 @@ describe("App smoke", () => {
 
     expect(pickMediaFile).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("mix.wav")).toBeTruthy();
+  });
+
+  it("marks the active preset dirty after manual window bounds changes", async () => {
+    isTauri.mockReturnValue(true);
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Presets" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "New preset name" }), {
+      target: { value: "Mix" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect((await screen.findAllByText("Mix")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(tauriEventHandlers.has("window-bounds-changed")).toBe(true));
+
+    Date.now.mockReturnValue(3_000);
+    tauriEventHandlers.get("window-bounds-changed")();
+
+    expect((await screen.findAllByText("Mix *")).length).toBeGreaterThan(0);
+  });
+
+  it("reveals auto-hidden Focus View controls with Escape", async () => {
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+
+    const viewsButton = await screen.findByRole("button", { name: "Views" });
+    fireEvent.click(viewsButton);
+    fireEvent.click(screen.getByRole("switch", { name: "Auto-hide Controls" }));
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("button", { name: "Views" })).toBeNull();
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+
+    expect(screen.getByRole("button", { name: "Views" })).toBeTruthy();
   });
 
   it("does not toggle transport from Space", async () => {

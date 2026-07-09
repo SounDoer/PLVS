@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
-import { AudioDataContext, PanelChromeProvider } from "./workspace/AudioDataContext.jsx";
 import {
   MeterRuntimeProvider,
   useMeterRuntime,
   useMeterRuntimeAssembly,
 } from "./runtime/MeterRuntimeContext.jsx";
-import { MeterRuntimeEngines } from "./runtime/MeterRuntimeEngines.jsx";
+import {
+  deriveBackendAnalysisRequests,
+  deriveChannelLabelRuntime,
+  deriveDialogueRuntime,
+} from "./runtime/appRuntimeDerivations.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { cleanupLegacyKeys } from "./persistence/cleanupLegacyKeys.js";
 import { normalizePanelControls } from "./lib/panelControls.js";
@@ -25,38 +28,18 @@ import {
   formatVectorscopePairLabel,
 } from "./math/vectorscopePairMath.js";
 import { buildSpectrumChannelOptions } from "./math/spectrumChannelOptions.js";
-import {
-  roleTokensToLabels,
-  roleTokensToLoudnessWeights,
-  seedTokensFromLabels,
-} from "./math/channelRoles.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ThemeEditor } from "./components/ThemeEditor";
 import { FeedbackDialog } from "./components/FeedbackDialog.jsx";
-import { AppHeader } from "./components/AppHeader.jsx";
-import { FileAnalysisSummary } from "./components/FileAnalysisSummary.jsx";
-import { FileDropOverlay } from "./components/FileDropOverlay.jsx";
+import { AppShell } from "./components/AppShell.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
-import { SplitLayout } from "./workspace/SplitLayout.jsx";
 import { preventNativeContextMenu } from "./lib/contextMenu.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
 import { eventMatchesAccelerator } from "./lib/accelerator.js";
-import {
-  FOOTER_DIVIDER,
-  FOOTER_LABEL,
-  FOOTER_VALUE,
-  SHELL_BOTTOM_REVEAL_HOT_ZONE,
-  SHELL_FOOTER,
-  SHELL_FOOTER_OVERLAY,
-  SHELL_INNER,
-  SHELL_INNER_FOCUS,
-  SHELL_PAGE,
-  SHELL_TOP_REVEAL_HOT_ZONE,
-} from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import {
@@ -72,7 +55,6 @@ import {
   writeTextFile,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
-import { DEFAULT_DIALOGUE_VAD_ENGINE } from "./lib/dialogueVadEngines.js";
 import { openExternalUrl } from "./ipc/openExternal.js";
 import {
   pickConfigurationProfileFile,
@@ -106,32 +88,9 @@ import packageInfo from "../package.json";
 // for the whole file; panel history is an inspectable downsampled/session view, not unlimited storage.
 const HIST_MAX_SAMPLES = 72000;
 const VISUAL_MAX_SAMPLES = 180_000; // 25 Hz × 2 h
-const DIALOGUE_STAT_IDS = [
-  "dialogueCoverage",
-  "dialogueIntegrated",
-  "dialogueRange",
-  "dialogueOffset",
-];
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
-
-function toBackendAnalysisRequests(requests) {
-  return {
-    spectrum: requests.spectrumRequests.map((request) => ({
-      key: request.key,
-      channel: request.channel,
-      view: request.view,
-      smoothingPercent: request.smoothingPercent,
-      tiltDbPerOctave: request.tiltDbPerOctave,
-    })),
-    vectorscope: requests.vectorscopeRequests.map((request) => ({
-      key: request.key,
-      x: request.pair.x,
-      y: request.pair.y,
-    })),
-  };
-}
 
 export default function App() {
   return (
@@ -447,7 +406,7 @@ function AppContent() {
     [workspaceState]
   );
   const analysisRequests = useMemo(
-    () => toBackendAnalysisRequests(derivedAnalysisRequests),
+    () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
     [derivedAnalysisRequests]
   );
   const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
@@ -597,54 +556,20 @@ function AppContent() {
     () => resolveChannelLayout("auto", { channelCount }),
     [channelCount]
   );
-  const channelLabelOverride =
-    channelCount > 0 ? (channelLabelOverrides[channelCount] ?? null) : null;
-  const overrideLabels = useMemo(
-    () => (channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null),
-    [channelLabelOverride]
+  const channelLabelRuntime = useMemo(
+    () => deriveChannelLabelRuntime({ channelCount, layoutResolution, channelLabelOverrides }),
+    [channelCount, channelLabelOverrides, layoutResolution]
   );
-  const loudnessWeights = useMemo(
-    () => (channelLabelOverride ? roleTokensToLoudnessWeights(channelLabelOverride) : null),
-    [channelLabelOverride]
-  );
+  const { channelLabelOverride, overrideLabels, loudnessWeights } = channelLabelRuntime;
   const loudnessWeightsRef = useRef(loudnessWeights);
-  const dialogueGating = useMemo(
-    () =>
-      workspaceState.panelOrder.some((panelId) => {
-        const panel = workspaceState.panelsById[panelId];
-        if (panel?.moduleId !== "stats") return false;
-        const controls = getPanelControls(workspaceState, panelId);
-        return controls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id));
-      }),
+  const { dialogueGating, dialogueVadEngine } = useMemo(
+    () => deriveDialogueRuntime(workspaceState),
     [workspaceState]
   );
-  const dialogueVadEngine = useMemo(() => {
-    for (const panelId of workspaceState.panelOrder) {
-      const panel = workspaceState.panelsById[panelId];
-      if (panel?.moduleId !== "stats") continue;
-      const controls = getPanelControls(workspaceState, panelId);
-      if (controls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id))) {
-        return controls.dialogueVadEngine ?? DEFAULT_DIALOGUE_VAD_ENGINE;
-      }
-    }
-    return DEFAULT_DIALOGUE_VAD_ENGINE;
-  }, [workspaceState]);
   const dialogueGatingRef = useRef(dialogueGating);
   const dialogueVadEngineRef = useRef(dialogueVadEngine);
-  const channelAutoLabels = useMemo(
-    () =>
-      channelCount > 0
-        ? getPeakMeterChannelLabels(channelCount, {
-            channelLayout: "auto",
-            resolvedLayout: layoutResolution.resolved,
-          })
-        : [],
-    [channelCount, layoutResolution.resolved]
-  );
-  const channelLabelTokens = useMemo(
-    () => channelLabelOverride ?? seedTokensFromLabels(channelAutoLabels),
-    [channelLabelOverride, channelAutoLabels]
-  );
+  const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
+  const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
 
   useEffect(() => {
     loudnessWeightsRef.current = loudnessWeights;
@@ -702,16 +627,7 @@ function AppContent() {
     });
   }, [analysisRequests]);
 
-  const peakLabelContext = useMemo(
-    () => ({
-      channelLayout: "auto",
-      // Idle (no signal yet): treat the default 2ch as stereo so every panel shows L/R
-      // instead of numbered Ch labels. Once a real layout resolves this falls through.
-      resolvedLayout: channelCount === 0 ? "stereo" : layoutResolution.resolved,
-      overrideLabels,
-    }),
-    [channelCount, layoutResolution.resolved, overrideLabels]
-  );
+  const peakLabelContext = channelLabelRuntime.peakLabelContext;
 
   const setChannelLabelToken = useCallback(
     (index, token) => {
@@ -1315,214 +1231,175 @@ function AppContent() {
     dialogueActiveNow: displayAudio?.dialogueActiveNow ?? false,
     compactPanels: focusView.compactPanels,
   };
+  const runtimeEnginesProps = {
+    captureDeviceId,
+    captureFormatSignature,
+    histMaxSamples: HIST_MAX_SAMPLES,
+    visualMaxSamples: VISUAL_MAX_SAMPLES,
+    loudnessWeightsRef,
+    dialogueGatingRef,
+    dialogueVadEngineRef,
+  };
+  const fileDropProps = {
+    active: sourceMode === "file",
+    onDropFile: handleDropFile,
+  };
+  const shellHandlers = {
+    showFocusControls,
+    hideFocusControlsNow,
+    hideFocusControlsLater,
+    handleWindowDrag,
+    releaseFocusControlsHold,
+  };
+  const headerProps = {
+    autoHideControls: focusView.autoHideControls,
+    onPointerEnter: focusView.autoHideControls ? showFocusControls : undefined,
+    onPointerLeave: focusView.autoHideControls ? hideFocusControlsLater : undefined,
+    onPointerDown: frameless ? handleWindowDrag : undefined,
+    onPointerUp: frameless ? releaseFocusControlsHold : undefined,
+    onPointerCancel: frameless ? releaseFocusControlsHold : undefined,
+    sourceTransportState,
+    sourceMode,
+    onSourceModeChange,
+    onSourceTransportAction,
+    onClear: clearAll,
+    clearDisabled: sourceMode === "file" ? !activeFileSession : !running && !showClock,
+    isTauriApp: isTauri(),
+    onOpenFile: async () => {
+      const path = await pickMediaFile();
+      if (path) beginFileAnalysis(path);
+    },
+    audioDevices,
+    audioOutputs,
+    audioInputs,
+    safeAudioDeviceId,
+    setCaptureDeviceId: setCaptureDeviceIdAndPersist,
+    holdFocusControls,
+    focusView,
+    focusViewActive,
+    pinned,
+    setPinned,
+    setAutoHideControls,
+    setCompactPanels,
+    setBorderless,
+    panelOpacity,
+    setPanelOpacity,
+    glassEnabled,
+    setGlassEnabled,
+    presets,
+    setSettingsOpen,
+  };
+  const fileSummaryProps = {
+    fileSession,
+    fileSessions,
+    activeFileId,
+    analyzingFileId,
+    onSelectFile,
+    onReanalyzeFile,
+    onRemoveFile,
+    onClearAllFiles,
+    onStopFile,
+    onExportReport: exportFileAnalysisReport,
+  };
+  const footer = {
+    deviceLabel: footerDeviceLabel,
+    referenceLufs,
+    activePresetName,
+    hasUpdate: updateInfo?.hasUpdate,
+    onOpenSettings: () => setSettingsOpen(true),
+  };
 
   return (
-    <AudioDataContext.Provider value={audioData}>
-      <MeterRuntimeEngines
-        captureDeviceId={captureDeviceId}
-        captureFormatSignature={captureFormatSignature}
-        histMaxSamples={HIST_MAX_SAMPLES}
-        visualMaxSamples={VISUAL_MAX_SAMPLES}
-        loudnessWeightsRef={loudnessWeightsRef}
-        dialogueGatingRef={dialogueGatingRef}
-        dialogueVadEngineRef={dialogueVadEngineRef}
+    <AppShell
+      audioData={audioData}
+      runtimeEnginesProps={runtimeEnginesProps}
+      fileDropProps={fileDropProps}
+      focusView={focusView}
+      focusControlsVisible={focusControlsVisible}
+      shellHandlers={shellHandlers}
+      headerProps={headerProps}
+      showFileAnalysisResult={showFileAnalysisResult}
+      fileSummaryProps={fileSummaryProps}
+      panelChromeData={panelChromeData}
+      footer={footer}
+    >
+      <SettingsPanel
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
+        appearance={appearance}
+        setAppearanceMode={setAppearanceMode}
+        fixedThemeSelectValue={fixedThemeSelectValue}
+        setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
+        themeSelectOptions={themeSelectOptions}
+        channelCount={channelCount}
+        channelLabelTokens={channelLabelTokens}
+        channelLabelHasOverride={!!channelLabelOverride}
+        setChannelLabelToken={setChannelLabelToken}
+        resetChannelLabels={resetChannelLabels}
+        appVersion={APP_VERSION}
+        latestVersion={updateInfo?.latestVersion}
+        releaseUrl={updateInfo?.releaseUrl}
+        hasUpdate={updateInfo?.hasUpdate}
+        updateStatus={updateInfo?.status}
+        onCheckForUpdate={refreshUpdateCheck}
+        installStatus={installStatus}
+        onInstallUpdate={() => install(updateInfo?.update)}
+        onRestartToApply={restartToApply}
+        openExternalUrl={openExternalUrl}
+        autostartEnabled={autostartEnabled}
+        setAutostartEnabled={setAutostartEnabled}
+        autostartReady={autostartReady}
+        closeAction={closeAction}
+        setCloseAction={setCloseAction}
+        clearShortcut={clearShortcut}
+        setClearShortcut={setClearShortcut}
+        clearGlobal={clearGlobal}
+        setClearGlobal={setClearGlobal}
+        setClearCapturing={setClearCapturing}
+        clearReady={clearReady}
+        registrationError={registrationError}
+        customThemeOptions={customThemeOptions}
+        createCustomTheme={createCustomTheme}
+        editActiveCustomTheme={editActiveCustomTheme}
+        deleteCustomTheme={deleteCustomTheme}
+        activeIsCustom={activeIsCustom}
+        themeControlsDisabled={editor.isEditing}
+        onExportConfiguration={exportConfiguration}
+        onImportConfiguration={importConfiguration}
+        onResetConfiguration={resetConfiguration}
+        configurationBusy={configurationBusy}
+        configurationStatus={configurationStatus}
+        cliPathStatus={cliPathStatus}
+        cliPathBusy={cliPathBusy}
+        onSetCliPathEnabled={setCliPathEnabled}
+        onOpenFeedback={() => {
+          setSettingsOpen(false);
+          setFeedbackOpen(true);
+        }}
       />
-      <FileDropOverlay active={sourceMode === "file"} onDropFile={handleDropFile} />
-      <div className={SHELL_PAGE}>
-        <div
-          className={focusView.autoHideControls ? SHELL_INNER_FOCUS : SHELL_INNER}
-          onPointerLeave={focusView.autoHideControls ? hideFocusControlsNow : undefined}
-        >
-          {focusView.autoHideControls ? (
-            <div
-              className={SHELL_TOP_REVEAL_HOT_ZONE}
-              onPointerEnter={showFocusControls}
-              onPointerDown={handleWindowDrag}
-              onPointerUp={releaseFocusControlsHold}
-              onPointerCancel={releaseFocusControlsHold}
-            />
-          ) : null}
-          {(!focusView.autoHideControls || focusControlsVisible) && (
-            <AppHeader
-              autoHideControls={focusView.autoHideControls}
-              onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
-              onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
-              onPointerDown={frameless ? handleWindowDrag : undefined}
-              onPointerUp={frameless ? releaseFocusControlsHold : undefined}
-              onPointerCancel={frameless ? releaseFocusControlsHold : undefined}
-              sourceTransportState={sourceTransportState}
-              sourceMode={sourceMode}
-              onSourceModeChange={onSourceModeChange}
-              onSourceTransportAction={onSourceTransportAction}
-              onClear={clearAll}
-              clearDisabled={sourceMode === "file" ? !activeFileSession : !running && !showClock}
-              isTauriApp={isTauri()}
-              onOpenFile={async () => {
-                const path = await pickMediaFile();
-                if (path) beginFileAnalysis(path);
-              }}
-              audioDevices={audioDevices}
-              audioOutputs={audioOutputs}
-              audioInputs={audioInputs}
-              safeAudioDeviceId={safeAudioDeviceId}
-              setCaptureDeviceId={setCaptureDeviceIdAndPersist}
-              holdFocusControls={holdFocusControls}
-              focusView={focusView}
-              focusViewActive={focusViewActive}
-              pinned={pinned}
-              setPinned={setPinned}
-              setAutoHideControls={setAutoHideControls}
-              setCompactPanels={setCompactPanels}
-              setBorderless={setBorderless}
-              panelOpacity={panelOpacity}
-              setPanelOpacity={setPanelOpacity}
-              glassEnabled={glassEnabled}
-              setGlassEnabled={setGlassEnabled}
-              presets={presets}
-              setSettingsOpen={setSettingsOpen}
-            />
-          )}
 
-          {showFileAnalysisResult ? (
-            <div
-              className={
-                focusView.autoHideControls
-                  ? "absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[calc(var(--ui-shell-pad)+2.75rem)] z-30"
-                  : "shrink-0"
-              }
-              onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
-              onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
-            >
-              <FileAnalysisSummary
-                fileSession={fileSession}
-                fileSessions={fileSessions}
-                activeFileId={activeFileId}
-                analyzingFileId={analyzingFileId}
-                onSelectFile={onSelectFile}
-                onReanalyzeFile={onReanalyzeFile}
-                onRemoveFile={onRemoveFile}
-                onClearAllFiles={onClearAllFiles}
-                onStopFile={onStopFile}
-                onExportReport={exportFileAnalysisReport}
-              />
-            </div>
-          ) : null}
+      {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
 
-          <PanelChromeProvider value={panelChromeData}>
-            <SplitLayout />
-          </PanelChromeProvider>
-
-          {(!focusView.autoHideControls || focusControlsVisible) && (
-            <footer
-              className={focusView.autoHideControls ? SHELL_FOOTER_OVERLAY : SHELL_FOOTER}
-              onPointerEnter={focusView.autoHideControls ? showFocusControls : undefined}
-              onPointerLeave={focusView.autoHideControls ? hideFocusControlsLater : undefined}
-            >
-              <span className={FOOTER_LABEL}>Device</span>
-              <span className={FOOTER_VALUE}>{footerDeviceLabel}</span>
-              <div className={FOOTER_DIVIDER} />
-              <span className={FOOTER_LABEL}>Ref</span>
-              <span className={FOOTER_VALUE}>{referenceLufs} LUFS</span>
-              <div className={FOOTER_DIVIDER} />
-              <span className={FOOTER_LABEL}>Preset</span>
-              <span className={FOOTER_VALUE}>{activePresetName}</span>
-              {updateInfo?.hasUpdate ? (
-                <>
-                  <div className={FOOTER_DIVIDER} />
-                  <button
-                    type="button"
-                    onClick={() => setSettingsOpen(true)}
-                    className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:underline"
-                  >
-                    Update available · Check in Settings
-                  </button>
-                </>
-              ) : null}
-            </footer>
-          )}
-          {focusView.autoHideControls ? (
-            <div className={SHELL_BOTTOM_REVEAL_HOT_ZONE} onPointerEnter={showFocusControls} />
-          ) : null}
-        </div>
-
-        <SettingsPanel
-          settingsOpen={settingsOpen}
-          setSettingsOpen={setSettingsOpen}
-          appearance={appearance}
-          setAppearanceMode={setAppearanceMode}
-          fixedThemeSelectValue={fixedThemeSelectValue}
-          setFixedThemeIdFromPicker={setFixedThemeIdFromPicker}
-          themeSelectOptions={themeSelectOptions}
-          channelCount={channelCount}
-          channelLabelTokens={channelLabelTokens}
-          channelLabelHasOverride={!!channelLabelOverride}
-          setChannelLabelToken={setChannelLabelToken}
-          resetChannelLabels={resetChannelLabels}
-          appVersion={APP_VERSION}
-          latestVersion={updateInfo?.latestVersion}
-          releaseUrl={updateInfo?.releaseUrl}
-          hasUpdate={updateInfo?.hasUpdate}
-          updateStatus={updateInfo?.status}
-          onCheckForUpdate={refreshUpdateCheck}
-          installStatus={installStatus}
-          onInstallUpdate={() => install(updateInfo?.update)}
-          onRestartToApply={restartToApply}
-          openExternalUrl={openExternalUrl}
-          autostartEnabled={autostartEnabled}
-          setAutostartEnabled={setAutostartEnabled}
-          autostartReady={autostartReady}
-          closeAction={closeAction}
-          setCloseAction={setCloseAction}
-          clearShortcut={clearShortcut}
-          setClearShortcut={setClearShortcut}
-          clearGlobal={clearGlobal}
-          setClearGlobal={setClearGlobal}
-          setClearCapturing={setClearCapturing}
-          clearReady={clearReady}
-          registrationError={registrationError}
-          customThemeOptions={customThemeOptions}
-          createCustomTheme={createCustomTheme}
-          editActiveCustomTheme={editActiveCustomTheme}
-          deleteCustomTheme={deleteCustomTheme}
-          activeIsCustom={activeIsCustom}
-          themeControlsDisabled={editor.isEditing}
-          onExportConfiguration={exportConfiguration}
-          onImportConfiguration={importConfiguration}
-          onResetConfiguration={resetConfiguration}
-          configurationBusy={configurationBusy}
-          configurationStatus={configurationStatus}
-          cliPathStatus={cliPathStatus}
-          cliPathBusy={cliPathBusy}
-          onSetCliPathEnabled={setCliPathEnabled}
-          onOpenFeedback={() => {
-            setSettingsOpen(false);
-            setFeedbackOpen(true);
-          }}
+      {editor.isEditing ? (
+        <ThemeEditor
+          draft={editor.draft}
+          onName={editor.setName}
+          onSeed={editor.updateSeed}
+          onShell={editor.updateShell}
+          onSave={editor.save}
+          onCancel={editor.cancel}
+          onDelete={undefined}
+          dirty={editor.dirty}
+          pos={editorPos}
+          onMove={moveEditor}
         />
+      ) : null}
 
-        {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
-
-        {editor.isEditing ? (
-          <ThemeEditor
-            draft={editor.draft}
-            onName={editor.setName}
-            onSeed={editor.updateSeed}
-            onShell={editor.updateShell}
-            onSave={editor.save}
-            onCancel={editor.cancel}
-            onDelete={undefined}
-            dirty={editor.dirty}
-            pos={editorPos}
-            onMove={moveEditor}
-          />
-        ) : null}
-
-        <CloseConfirmDialog
-          open={closeDialogOpen}
-          onConfirm={handleCloseConfirm}
-          onCancel={handleCloseCancel}
-        />
-      </div>
-    </AudioDataContext.Provider>
+      <CloseConfirmDialog
+        open={closeDialogOpen}
+        onConfirm={handleCloseConfirm}
+        onCancel={handleCloseCancel}
+      />
+    </AppShell>
   );
 }

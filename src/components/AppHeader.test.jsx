@@ -133,6 +133,18 @@ describe("AppHeader", () => {
     expect(screen.getByText("No presets yet. Save the current view to start.")).toBeTruthy();
   });
 
+  it("holds auto-hidden controls while toolbar popovers are open", () => {
+    const holdFocusControls = vi.fn();
+    renderHeader({ autoHideControls: true, holdFocusControls });
+
+    fireEvent.click(screen.getByRole("button", { name: "Modules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Views" }));
+    fireEvent.click(screen.getByRole("button", { name: "Presets" }));
+
+    expect(holdFocusControls).toHaveBeenCalledWith(true);
+    expect(holdFocusControls.mock.calls.filter(([open]) => open === true)).toHaveLength(3);
+  });
+
   it("keeps the Presets toolbar icon in the default muted state", () => {
     renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix" } });
 
