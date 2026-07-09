@@ -1110,11 +1110,6 @@ function AppContent() {
       return;
     }
 
-    if (audioRef.current?.wklt) {
-      try {
-        audioRef.current.wklt.port.postMessage("reset");
-      } catch (_) {}
-    }
     if (isTauri()) {
       try {
         await clearAudioHistory();

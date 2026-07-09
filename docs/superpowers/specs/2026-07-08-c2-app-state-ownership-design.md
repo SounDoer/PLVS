@@ -69,13 +69,20 @@ useAudioEngine(display, …) useFileAnalysisEngine(display, …)   panels (via A
 | **1a** | Delete dead `setHistoryPathM/ST` plumbing (4 files + tests) | full check green |
 | **1b** | Add `useMeterDisplay`; App consumes it by destructuring (all 1800 lines of consumers unchanged) | hook unit-tested; check green |
 | **1c** | Engines take `display` object; param lists shrink (audio 22→13, file 18→13) | check green; hook tests updated |
-| **2** | Capture engine owns `audioRef`/`rafRef`/`running`; exposes `{start, stop}` (needs `running` consumer audit) | separate plan |
+| **2** | *(re-scoped after audit, see below)* Transport owner `useCaptureTransport` (`running` + startLive/stopLive/halt verbs); `rafRef` engine-internal; dead wklt/setRunning cleanup | plan: `2026-07-08-c2-phase2-capture-transport.md` |
 | **3** | File engine + intake ring ownership (`liveIntakeRef`/`intakeRef` switching moves out of App) | separate plan |
 | **4** | App slimming; retire the grep-test (`App.toolbar.test.js`) in favor of behavior tests | separate plan |
 
 Phases 0–1c are covered by `docs/superpowers/plans/2026-07-08-c2-phase1-meter-display-owner.md`.
 Each phase lands as independent commits with the full `npm run check` gate (learned: guard
 tests cross language sides in this repo — always run the full suite).
+
+Phase-2 audit findings (2026-07-08): `running` is consumed from App ~line 570 while the engine
+call sits ~1490 with params assembled in between — the engine cannot own `running` until the
+Phase-4 provider split changes the call topology. `audioRef` is written by both engines (mode
+marker), so it stays shared. Two more dead spots: `audioRef.current.wklt` is never assigned
+(leftover of the removed browser AudioWorklet capture), and `audioData.setRunning` has no
+panel consumer.
 
 ## Non-goals
 
