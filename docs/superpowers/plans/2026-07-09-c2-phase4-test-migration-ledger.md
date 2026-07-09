@@ -18,7 +18,7 @@ assertion protects implementation rather than behavior.
 | 11  | Channel label overrides reach live labels              | runtime behavior           | runtime interface test                                       | pending  |
 | 12  | Channel label overrides reach loudness weights         | runtime/IPC behavior       | runtime interface test                                       | pending  |
 | 13  | Visible dialogue stats drive gating/VAD                | workspace/runtime behavior | runtime interface test                                       | pending  |
-| 14  | Clear preserves live capture                           | runtime behavior           | runtime interface test                                       | pending  |
+| 14  | Clear preserves live capture                           | runtime behavior           | `MeterRuntimeContext.test.jsx`                               | migrated |
 | 15  | Stable panel-control update avoids render loop         | regression behavior        | App START regression test                                    | pending  |
 | 16  | Presets popover trigger                                | rendered UI                | `AppHeader.test.jsx`                                         | pending  |
 | 17  | Focus View popover/active state                        | rendered UI                | `AppHeader.test.jsx`                                         | pending  |
@@ -43,7 +43,7 @@ assertion protects implementation rather than behavior.
 ## Migration progress
 
 - Original tests: 34
-- Migrated and removed: 6
-- Remaining source-reading tests: 28
+- Migrated and removed: 7
+- Remaining source-reading tests: 27
 
 The ledger reaches zero only through incremental migrations. `App.toolbar.test.js` is deleted last.

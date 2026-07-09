@@ -10,19 +10,6 @@ const appHeaderPath = join(currentDir, "components", "AppHeader.jsx");
 const appHeaderSource = existsSync(appHeaderPath) ? readFileSync(appHeaderPath, "utf8") : "";
 const toolbarSource = `${appSource}\n${appHeaderSource}`;
 
-function functionBodyAfter(marker) {
-  const start = appSource.indexOf(marker);
-  expect(start).toBeGreaterThan(-1);
-  const bodyStart = appSource.indexOf("{", start);
-  let depth = 0;
-  for (let i = bodyStart; i < appSource.length; i += 1) {
-    if (appSource[i] === "{") depth += 1;
-    if (appSource[i] === "}") depth -= 1;
-    if (depth === 0) return appSource.slice(bodyStart, i + 1);
-  }
-  throw new Error(`Could not parse function body for ${marker}`);
-}
-
 describe("App toolbar", () => {
   it("uses a slightly larger device icon to match neighboring toolbar glyphs visually", () => {
     expect(toolbarSource).toContain('<Volume2 className="size-4 shrink-0" />');
@@ -131,13 +118,6 @@ describe("App toolbar", () => {
     );
     expect(appSource).toContain("dialogueVadEngineRef.current = dialogueVadEngine;");
     expect(appSource).toContain("setDialogueVadEngine(dialogueVadEngine)");
-  });
-
-  it("keeps capture running when Clear resets the measurement window", () => {
-    const clearAllBody = functionBodyAfter("const clearAll = async () =>");
-
-    expect(clearAllBody).toContain("resetTimer({ restart: running });");
-    expect(clearAllBody).not.toContain("setRunning(false)");
   });
 
   it("keeps updatePanelControls identity stable to avoid a render loop on Start", () => {
@@ -282,7 +262,6 @@ describe("App toolbar", () => {
     expect(appSource).toContain("<MeterRuntimeEngines");
     expect(appSource).toContain('<FileDropOverlay active={sourceMode === "file"}');
     expect(appSource).toContain("<FileAnalysisSummary");
-    expect(appSource).toContain("ledger.beginRun(");
     expect(appSource).toContain("activeFileSession");
     expect(appSource).toContain("analyzingFileSession");
   });

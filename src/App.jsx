@@ -60,7 +60,6 @@ import {
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import {
-  clearAudioHistory,
   cliPathStatusCommand,
   readProfileFile,
   resetTruePeakMax,
@@ -150,8 +149,25 @@ function AppContent() {
     setPanelControls: setWorkspacePanelControls,
     setPanelControlsForPanel,
   } = useWorkspaceStore();
-  const { sourceMode, running, startLive, stopLive, stopFileAnalysis, switchSource } =
-    useMeterRuntime();
+  const {
+    sourceMode,
+    running,
+    fileSessions,
+    activeFileSession,
+    analyzingFileSession,
+    activeFileId,
+    analyzingFileId,
+    startLive,
+    stopLive,
+    stopFileAnalysis,
+    switchSource,
+    clearActiveSource,
+    beginFileAnalysis: beginRuntimeFileAnalysis,
+    reanalyzeFile,
+    selectFile,
+    removeFile,
+    clearFiles,
+  } = useMeterRuntime();
   const onClearRef = useRef(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const {
@@ -398,22 +414,19 @@ function AppContent() {
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
-  const { display, ledger, routing } = useMeterRuntimeAssembly();
+  const { display, routing } = useMeterRuntimeAssembly();
   const {
     audio,
     setAudio,
     selectedOffset,
     setSelectedOffset,
     selectedOffsetRef,
-    frameRef,
     setStatus,
     setStatus2,
     showClock,
-    setShowClock,
   } = display;
-  const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } = display.clock;
+  const { clockRef, elapsedMsRef, canClearRef } = display.clock;
 
-  const { fileHistory, fileSessions, activeFileSession, analyzingFileSession } = ledger;
   const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const normalizedPanelControls = useMemo(() => {
     const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
@@ -960,61 +973,12 @@ function AppContent() {
     showHistoryHud(1600);
   }, [historyChartInteractive, totalSamples, setSelectedOffset, showHistoryHud]);
 
-  // Clear the live-driven meter display only: spectrum/vector paths, the displayed audio snapshot,
-  // and the scrub window. Does NOT touch any history ring, so it is safe to call when switching to
-  // File (whose ring must be preserved to restore the previous analysis).
-  const clearMeterDisplayState = () => {
-    display.clearAudio();
-    setSelectedOffset(-1);
-    setHistoryOffsetSec(0);
-    setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
-  };
-
-  // Reset the active source's history ring AND clear the display. Used by Clear, which wipes whatever
-  // source is currently shown.
-  const resetMeterView = () => {
-    intakeRef.current.reset();
-    clearMeterDisplayState();
-  };
-
-  const stopCurrentFileAnalysis = useCallback(async () => {
-    await stopFileAnalysis();
-  }, [stopFileAnalysis]);
-
   const clearAll = async () => {
-    if (sourceMode === "file") {
-      const activeId = fileHistory.activeFileId;
-      if (!activeId) return;
-      const activeEntry = fileHistory.sessionsById[activeId];
-      if (fileHistory.analyzingFileId === activeId) {
-        await stopCurrentFileAnalysis();
-      }
-      activeEntry?.intake?.reset?.();
-      clearMeterDisplayState();
-      ledger.remove(activeId);
-      setStatus(
-        fileHistory.order.length > 1
-          ? "File entry cleared"
-          : "File mode - drop a file or click Analyze"
-      );
-      resetTimer({ restart: false });
-      setShowClock(false);
-      return;
+    const cleared = await clearActiveSource();
+    if (cleared) {
+      setHistoryOffsetSec(0);
+      setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
     }
-
-    if (isTauri()) {
-      try {
-        await clearAudioHistory();
-      } catch (_) {}
-    }
-    resetMeterView();
-    setStatus(
-      running
-        ? "Running - cleared history and peak hold"
-        : "Ready - click Start to begin monitoring"
-    );
-    resetTimer({ restart: running });
-    setShowClock(running);
   };
   onClearRef.current = clearAll;
 
@@ -1029,37 +993,16 @@ function AppContent() {
 
   const beginFileAnalysis = useCallback(
     (path) => {
-      if (!path) return;
-      if (fileHistory.analyzingFileId) {
-        setStatus("File analysis already in progress");
-        return;
-      }
-
-      const analysisSettings = currentFileAnalysisSettings();
-      setSelectedOffset(-1);
-      selectedOffsetRef.current = -1;
-      ledger.beginRun(path, analysisSettings);
+      beginRuntimeFileAnalysis(path, currentFileAnalysisSettings());
     },
-    [currentFileAnalysisSettings, fileHistory.analyzingFileId, setSelectedOffset]
+    [beginRuntimeFileAnalysis, currentFileAnalysisSettings]
   );
 
   const reanalyzeActiveFile = useCallback(
     (entry) => {
-      if (!entry?.id || !entry.path) {
-        setStatus("Choose a file to analyze");
-        return;
-      }
-      if (fileHistory.analyzingFileId) {
-        setStatus("File analysis already in progress");
-        return;
-      }
-
-      const analysisSettings = currentFileAnalysisSettings();
-      setSelectedOffset(-1);
-      selectedOffsetRef.current = -1;
-      ledger.rerun(entry.id, entry.path, analysisSettings);
+      reanalyzeFile(entry?.id, currentFileAnalysisSettings());
     },
-    [currentFileAnalysisSettings, fileHistory.analyzingFileId, setSelectedOffset]
+    [currentFileAnalysisSettings, reanalyzeFile]
   );
 
   const exportFileAnalysisReport = useCallback(async () => {
@@ -1093,61 +1036,31 @@ function AppContent() {
   }, [fileSession]);
 
   const onSelectFile = (id) => {
-    setSelectedOffset(-1);
-    selectedOffsetRef.current = -1;
-    clearMeterDisplayState();
-    ledger.select(id);
-    setStatus("File analysis result");
+    setHistoryOffsetSec(0);
+    setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+    selectFile(id);
   };
 
   const onStopFile = (id) => {
-    // Only one file analyzes at a time; ignore a stale id that no longer matches.
-    if (id && id !== fileHistory.analyzingFileId) return;
-    void stopCurrentFileAnalysis();
+    void stopFileAnalysis(id);
   };
 
   const onReanalyzeFile = (id) => {
-    const entry = fileHistory.sessionsById[id];
-    reanalyzeActiveFile(entry);
+    reanalyzeFile(id, currentFileAnalysisSettings());
   };
 
   const onRemoveFile = async (id) => {
-    const entry = fileHistory.sessionsById[id];
-    if (!entry) return;
-    const removedAnalyzingFile = fileHistory.analyzingFileId === id;
-
-    if (removedAnalyzingFile) {
-      await stopCurrentFileAnalysis();
+    const clearedDisplay = await removeFile(id);
+    if (clearedDisplay) {
+      setHistoryOffsetSec(0);
+      setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
     }
-    entry.intake?.reset?.();
-    if (fileHistory.activeFileId === id || fileHistory.order.length <= 1) {
-      clearMeterDisplayState();
-    }
-    if (removedAnalyzingFile) {
-      ledger.clearRunRequest();
-    }
-    ledger.remove(id);
-    setStatus(
-      fileHistory.order.length > 1
-        ? "File entry removed"
-        : "File mode - drop a file or click Analyze"
-    );
-    resetTimer({ restart: false });
-    setShowClock(false);
   };
 
   const onClearAllFiles = async () => {
-    if (fileHistory.analyzingFileId) {
-      await stopCurrentFileAnalysis();
-    }
-    for (const entry of Object.values(fileHistory.sessionsById)) {
-      entry.intake?.reset?.();
-    }
-    clearMeterDisplayState();
-    ledger.clearAll();
-    setStatus("File mode - drop a file or click Analyze");
-    resetTimer({ restart: false });
-    setShowClock(false);
+    setHistoryOffsetSec(0);
+    setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+    await clearFiles();
   };
 
   // `path` already comes from the Tauri drag-drop event (a real filesystem path).
@@ -1200,7 +1113,7 @@ function AppContent() {
       return;
     }
     if (actionKind === "stopFileAnalysis") {
-      void stopCurrentFileAnalysis();
+      void stopFileAnalysis();
       return;
     }
   };
@@ -1452,8 +1365,8 @@ function AppContent() {
               <FileAnalysisSummary
                 fileSession={fileSession}
                 fileSessions={fileSessions}
-                activeFileId={fileHistory.activeFileId}
-                analyzingFileId={fileHistory.analyzingFileId}
+                activeFileId={activeFileId}
+                analyzingFileId={analyzingFileId}
                 onSelectFile={onSelectFile}
                 onReanalyzeFile={onReanalyzeFile}
                 onRemoveFile={onRemoveFile}
