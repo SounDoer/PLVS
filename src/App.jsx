@@ -1,24 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import { AudioDataContext } from "./workspace/AudioDataContext.jsx";
-import { FrameIntake } from "./lib/FrameIntake.js";
+import {
+  MeterRuntimeProvider,
+  useMeterRuntime,
+  useMeterRuntimeAssembly,
+} from "./runtime/MeterRuntimeContext.jsx";
+import { MeterRuntimeEngines } from "./runtime/MeterRuntimeEngines.jsx";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { cleanupLegacyKeys } from "./persistence/cleanupLegacyKeys.js";
 import { normalizePanelControls } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
-import { useAudioEngine } from "./hooks/useAudioEngine";
-import { useFileAnalysisEngine } from "./hooks/useFileAnalysisEngine.js";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { usePeakVis } from "./hooks/usePeakVis.js";
-import { useMeterDisplay } from "./hooks/useMeterDisplay.js";
-import { useCaptureTransport } from "./hooks/useCaptureTransport.js";
-import { useIntakeRouting } from "./hooks/useIntakeRouting.js";
-import { useFileSessionLedger } from "./hooks/useFileSessionLedger.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -138,7 +137,9 @@ function toBackendAnalysisRequests(requests) {
 export default function App() {
   return (
     <WorkspaceProvider>
-      <AppContent />
+      <MeterRuntimeProvider>
+        <AppContent />
+      </MeterRuntimeProvider>
     </WorkspaceProvider>
   );
 }
@@ -149,6 +150,8 @@ function AppContent() {
     setPanelControls: setWorkspacePanelControls,
     setPanelControlsForPanel,
   } = useWorkspaceStore();
+  const { sourceMode, running, startLive, stopLive, stopFileAnalysis, switchSource } =
+    useMeterRuntime();
   const onClearRef = useRef(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const {
@@ -395,7 +398,7 @@ function AppContent() {
   const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
-  const display = useMeterDisplay();
+  const { display, ledger, routing } = useMeterRuntimeAssembly();
   const {
     audio,
     setAudio,
@@ -410,8 +413,6 @@ function AppContent() {
   } = display;
   const { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer } = display.clock;
 
-  const [sourceMode, setSourceMode] = useState("live");
-  const ledger = useFileSessionLedger();
   const { fileHistory, fileSessions, activeFileSession, analyzingFileSession } = ledger;
   const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const normalizedPanelControls = useMemo(() => {
@@ -448,33 +449,7 @@ function AppContent() {
   const focusControlsHideTimerRef = useRef(0);
   const focusControlsDragTimerRef = useRef(0);
 
-  const audioRef = useRef(null);
-  // Live and File keep separate history rings so a source switch never bleeds one into the other,
-  // and returning to File restores its previous analysis without re-decoding. Each engine writes its
-  // own ring (live->liveIntake, file->fileIntake); `intakeRef` always points at the active source's
-  // ring and is what the display / channel-metadata reads use.
-  const liveIntakeRef = useRef(null);
-  if (liveIntakeRef.current === null) liveIntakeRef.current = new FrameIntake();
-  const transport = useCaptureTransport({
-    display,
-    getLiveIntake: () => liveIntakeRef.current,
-  });
-  const { running } = transport;
-  const {
-    intakeRef,
-    fileDisplayIntake,
-    fileAnalysisIntake,
-    fileDisplayActiveRef,
-    frequencyMarkerRef,
-    getSpectrogramSnapsForKey,
-  } = useIntakeRouting({
-    sourceMode,
-    fileHistory,
-    activeFileSession,
-    analyzingFileSession,
-    liveIntake: liveIntakeRef.current,
-  });
-  const defaultSampleRateRef = useRef(48000);
+  const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
   const lastSentAnalysisRequestsKeyRef = useRef("");
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
@@ -1002,37 +977,9 @@ function AppContent() {
     clearMeterDisplayState();
   };
 
-  const updateFileSession = ledger.updateSession;
-  const setAnalyzingFileId = ledger.setAnalyzingFileId;
-  const validFileRunRequest = ledger.validRunRequest;
-
-  const fileAnalysis = useFileAnalysisEngine({
-    enabled: sourceMode === "file" && Boolean(validFileRunRequest),
-    sessionId: validFileRunRequest?.sessionId ?? null,
-    filePath: validFileRunRequest?.filePath ?? "",
-    runId: validFileRunRequest?.runId ?? 0,
-    histMaxSamples: HIST_MAX_SAMPLES,
-    visualMaxSamples: VISUAL_MAX_SAMPLES,
-    audioRef,
-    defaultSampleRateRef,
-    intake: fileAnalysisIntake,
-    updateFileSession,
-    setAnalyzingFileId,
-    display,
-    shouldDriveDisplay: () => fileDisplayActiveRef.current,
-  });
-
   const stopCurrentFileAnalysis = useCallback(async () => {
-    const sessionId = fileHistory.analyzingFileId;
-    if (!sessionId) return;
-
-    try {
-      await fileAnalysis.stop();
-    } finally {
-      ledger.markStopped(sessionId);
-      setStatus("File analysis stopped");
-    }
-  }, [fileAnalysis, fileHistory.analyzingFileId]);
+    await stopFileAnalysis();
+  }, [stopFileAnalysis]);
 
   const clearAll = async () => {
     if (sourceMode === "file") {
@@ -1213,10 +1160,10 @@ function AppContent() {
       return;
     }
     if (running) {
-      transport.stopLive();
+      stopLive();
       return;
     }
-    transport.startLive();
+    startLive();
   };
 
   const onSourceTransportAction = async (actionKind) => {
@@ -1262,30 +1209,9 @@ function AppContent() {
 
   const onSourceModeChange = (nextMode) => {
     if (nextMode === sourceMode) return;
-    // Drop the live-driven display state and always wipe the Live ring (every switch starts Live
-    // fresh). The File ring is left intact, so switching back to File restores its previous analysis
-    // without re-decoding.
-    clearMeterDisplayState();
-    liveIntakeRef.current.reset();
-    if (nextMode === "file") {
-      if (running) {
-        transport.halt();
-        stopTimer();
-        setStatus("Stopped live monitoring - file mode selected");
-        setStatus2("Device: Not connected");
-      } else {
-        setStatus("File mode - drop a file or click Analyze");
-      }
-      setSourceMode("file");
-      return;
-    }
-    // Leaving File mode: stop an in-progress analysis so its worker does not keep running.
-    if (fileHistory.analyzingFileId) {
-      void stopCurrentFileAnalysis();
-    }
-    setSourceMode("live");
-    setStatus("Ready - click Start to begin monitoring");
-    setStatus2("Device: Not connected");
+    setHistoryOffsetSec(0);
+    setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+    switchSource(nextMode);
   };
 
   useTray({
@@ -1363,21 +1289,6 @@ function AppContent() {
       vectorscopePairLabel: vectorscopeLiveLabel,
     });
   }, [spectrumLiveLabel, vectorscopeLiveLabel]);
-
-  useAudioEngine({
-    captureDeviceId,
-    captureFormatSignature,
-    histMaxSamples: HIST_MAX_SAMPLES,
-    visualMaxSamples: VISUAL_MAX_SAMPLES,
-    audioRef,
-    intake: liveIntakeRef.current,
-    defaultSampleRateRef,
-    loudnessWeightsRef,
-    dialogueGatingRef,
-    dialogueVadEngineRef,
-    transport,
-    display,
-  });
 
   const audioData = {
     // Peak
@@ -1463,6 +1374,15 @@ function AppContent() {
 
   return (
     <AudioDataContext.Provider value={audioData}>
+      <MeterRuntimeEngines
+        captureDeviceId={captureDeviceId}
+        captureFormatSignature={captureFormatSignature}
+        histMaxSamples={HIST_MAX_SAMPLES}
+        visualMaxSamples={VISUAL_MAX_SAMPLES}
+        loudnessWeightsRef={loudnessWeightsRef}
+        dialogueGatingRef={dialogueGatingRef}
+        dialogueVadEngineRef={dialogueVadEngineRef}
+      />
       <FileDropOverlay active={sourceMode === "file"} onDropFile={handleDropFile} />
       <div className={SHELL_PAGE}>
         <div

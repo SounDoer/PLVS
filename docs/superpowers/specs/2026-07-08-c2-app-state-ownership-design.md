@@ -71,7 +71,7 @@ useAudioEngine(display, …) useFileAnalysisEngine(display, …)   panels (via A
 | **1c** | Engines take `display` object; param lists shrink (audio 22→13, file 18→13) | check green; hook tests updated |
 | **2** | *(re-scoped after audit, see below)* Transport owner `useCaptureTransport` (`running` + startLive/stopLive/halt verbs); `rafRef` engine-internal; dead wklt/setRunning cleanup | plan: `2026-07-08-c2-phase2-capture-transport.md` |
 | **3** | ✅ done (2026-07-08): `useIntakeRouting` (intake switch + file-display gate) and `useFileSessionLedger` (history/run-request/run-id + primitive verbs; orchestration composed in App) | plan: `2026-07-08-c2-phase3-file-ledger-and-intake-routing.md` |
-| **4** | App slimming; retire the grep-test (`App.toolbar.test.js`) in favor of behavior tests | separate plan |
+| **4** | Meter runtime ownership, App slimming, and safe retirement of the grep-test | design: `2026-07-09-c2-phase4-runtime-assembly-design.md` |
 
 Phases 0–1c are covered by `docs/superpowers/plans/2026-07-08-c2-phase1-meter-display-owner.md`.
 Each phase lands as independent commits with the full `npm run check` gate (learned: guard

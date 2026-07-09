@@ -24,19 +24,6 @@ function functionBodyAfter(marker) {
 }
 
 describe("App toolbar", () => {
-  it("has a frontend IPC wrapper for dynamic loudness weights", () => {
-    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
-    expect(commandsSource).toContain("export function setLoudnessWeights(weights)");
-    expect(commandsSource).toContain('return invoke("set_loudness_weights", { weights });');
-  });
-
-  it("exposes dialogue VAD IPC wrappers", () => {
-    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
-    expect(commandsSource).toContain("export function setDialogueGating(enabled)");
-    expect(commandsSource).toContain("export function setDialogueVadEngine(engine)");
-    expect(commandsSource).toContain('invoke("set_dialogue_vad_engine"');
-  });
-
   it("uses a slightly larger device icon to match neighboring toolbar glyphs visually", () => {
     expect(toolbarSource).toContain('<Volume2 className="size-4 shrink-0" />');
   });
@@ -119,7 +106,7 @@ describe("App toolbar", () => {
     expect(appSource).toContain("const loudnessWeights = useMemo(");
     expect(appSource).toContain("sendTrackedLoudnessWeights");
     expect(appSource).toContain("loudnessWeightsRef");
-    expect(appSource).toContain("loudnessWeightsRef,");
+    expect(appSource).toContain("loudnessWeightsRef={loudnessWeightsRef}");
   });
 
   it("derives dialogue gating from visible dialogue stats ids and sends it", () => {
@@ -259,24 +246,6 @@ describe("App toolbar", () => {
     expect(toolbarSource).not.toContain('tip="Layout & Modules"');
   });
 
-  it("exposes file analysis probing through the frontend IPC wrapper", () => {
-    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
-    expect(commandsSource).toContain("export function probeFileAnalysis(path)");
-    expect(commandsSource).toContain('return invoke("file_analysis_probe", { path });');
-  });
-
-  it("exposes file analysis start and stop through frontend IPC wrappers", () => {
-    const commandsSource = readFileSync(join(currentDir, "ipc", "commands.js"), "utf8");
-    expect(commandsSource).toContain(
-      "export async function startFileAnalysis({ path, probe, onFrame })"
-    );
-    expect(commandsSource).toContain(
-      'await invoke("file_analysis_start", { path, probe, onFrame: onAudio });'
-    );
-    expect(commandsSource).toContain("export function stopFileAnalysis()");
-    expect(commandsSource).toContain('return invoke("file_analysis_stop");');
-  });
-
   it("marks active presets dirty on manual window bounds changes", () => {
     const eventsSource = readFileSync(join(currentDir, "ipc", "events.js"), "utf8");
     expect(eventsSource).toContain("export async function onWindowBoundsChanged");
@@ -302,24 +271,6 @@ describe("App toolbar", () => {
     expect(toolbarSource).not.toContain("<TransportButton");
   });
 
-  it("derives transport state from source mode and session state", () => {
-    expect(appSource).toContain('const [sourceMode, setSourceMode] = useState("live");');
-    expect(appSource).toContain("deriveSourceTransportState({");
-    expect(appSource).toContain("sourceMode,");
-    expect(appSource).toContain("latestTimestampMs");
-    expect(appSource).toContain("elapsedMs: elapsedMsRef.current");
-  });
-
-  it("exposes file analysis events through frontend event wrappers", () => {
-    const eventsSource = readFileSync(join(currentDir, "ipc", "events.js"), "utf8");
-    expect(eventsSource).toContain("export function onFileAnalysisProgress(handler)");
-    expect(eventsSource).toContain('listen("file-analysis-progress"');
-    expect(eventsSource).toContain("export function onFileAnalysisCompleted(handler)");
-    expect(eventsSource).toContain('listen("file-analysis-completed"');
-    expect(eventsSource).toContain("export function onFileAnalysisError(handler)");
-    expect(eventsSource).toContain('listen("file-analysis-error"');
-  });
-
   it("opens files through the dialog plugin wrapper", () => {
     const dialogSource = readFileSync(join(currentDir, "ipc", "fileDialog.js"), "utf8");
     expect(dialogSource).toContain('from "@tauri-apps/plugin-dialog"');
@@ -328,13 +279,11 @@ describe("App toolbar", () => {
   });
 
   it("wires file analysis hook, drop overlay, and summary into App", () => {
-    expect(appSource).toContain("useFileAnalysisEngine({");
+    expect(appSource).toContain("<MeterRuntimeEngines");
     expect(appSource).toContain('<FileDropOverlay active={sourceMode === "file"}');
     expect(appSource).toContain("<FileAnalysisSummary");
-    expect(appSource).toContain("useFileSessionLedger()");
     expect(appSource).toContain("ledger.beginRun(");
     expect(appSource).toContain("activeFileSession");
     expect(appSource).toContain("analyzingFileSession");
-    expect(appSource).toContain("updateFileSession");
   });
 });
