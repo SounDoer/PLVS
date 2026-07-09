@@ -744,10 +744,14 @@ function AppContent() {
     resolveVectorscopeSnapshotForKey,
     getSpectrogramSnapsForKey,
   };
-  const metricsData = {
-    statsMetrics,
-    dialogueActiveNow: displayAudio?.dialogueActiveNow ?? false,
-  };
+  // frameData/historyData change at frame/history-sample rate by nature, so memoizing
+  // them buys nothing; the low-frequency layers are metricsData (below), panelChromeData
+  // and the memoized runtime object in MeterRuntimeContext.
+  const dialogueActiveNow = displayAudio?.dialogueActiveNow ?? false;
+  const metricsData = useMemo(
+    () => ({ statsMetrics, dialogueActiveNow }),
+    [statsMetrics, dialogueActiveNow]
+  );
   const runtimeEnginesProps = {
     captureDeviceId,
     captureFormatSignature,

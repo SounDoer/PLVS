@@ -80,7 +80,15 @@ tests cross language sides in this repo — always run the full suite).
 Phase-2 audit findings (2026-07-08): `running` is consumed from App ~line 570 while the engine
 call sits ~1490 with params assembled in between — the engine cannot own `running` until the
 Phase-4 provider split changes the call topology. `audioRef` is written by both engines (mode
-marker), so it stays shared. Two more dead spots: `audioRef.current.wklt` is never assigned
+marker), so it stays shared.
+
+**Resolved by Phase 4 (2026-07-09):** the provider split landed
+(`src/runtime/MeterRuntimeContext.jsx`, design:
+`2026-07-09-c2-phase4-runtime-assembly-design.md`), and the final decision is that
+`running` stays owned by `useCaptureTransport` *inside the runtime provider* rather than
+moving into the engine: it is shared live/file transport state (source switching and file
+flows halt it), not engine-private state. The engine keeps borrowing `transport`. This
+closes the phase-2 deferral — do not re-suggest engine-owned `running`. Two more dead spots: `audioRef.current.wklt` is never assigned
 (leftover of the removed browser AudioWorklet capture), and `audioData.setRunning` has no
 panel consumer.
 

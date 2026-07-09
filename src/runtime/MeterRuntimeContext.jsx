@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useCaptureTransport } from "../hooks/useCaptureTransport.js";
 import { useFileSessionLedger } from "../hooks/useFileSessionLedger.js";
 import { useIntakeRouting } from "../hooks/useIntakeRouting.js";
@@ -193,14 +193,13 @@ export function MeterRuntimeProvider({ children }) {
     display.setShowClock(false);
   };
 
-  const runtime = {
-    sourceMode,
-    running: transport.running,
-    fileSessions,
-    activeFileSession,
-    analyzingFileSession,
-    activeFileId: fileHistory.activeFileId,
-    analyzingFileId: fileHistory.analyzingFileId,
+  // The verb closures above are recreated every render (they read current state
+  // directly). Consumers get identity-stable forwarders instead, so the public
+  // runtime object below can be memoized: without this, the provider re-renders
+  // at meter-frame rate (display.audio lives here) and every useMeterRuntime
+  // consumer would re-render ~30x/s even when its slice never changed. The ref
+  // is written post-render (same pattern as useAppKeyboardShortcuts).
+  const verbImpls = {
     startLive: transport.startLive,
     stopLive: transport.stopLive,
     stopFileAnalysis,
@@ -212,6 +211,54 @@ export function MeterRuntimeProvider({ children }) {
     removeFile,
     clearFiles,
   };
+  const verbImplsRef = useRef(verbImpls);
+  useEffect(() => {
+    verbImplsRef.current = verbImpls;
+  });
+  const verbs = useMemo(() => {
+    const forward =
+      (name) =>
+      (...args) =>
+        verbImplsRef.current[name](...args);
+    return {
+      startLive: forward("startLive"),
+      stopLive: forward("stopLive"),
+      stopFileAnalysis: forward("stopFileAnalysis"),
+      switchSource: forward("switchSource"),
+      clearActiveSource: forward("clearActiveSource"),
+      beginFileAnalysis: forward("beginFileAnalysis"),
+      reanalyzeFile: forward("reanalyzeFile"),
+      selectFile: forward("selectFile"),
+      removeFile: forward("removeFile"),
+      clearFiles: forward("clearFiles"),
+    };
+  }, []);
+
+  const runtime = useMemo(
+    () => ({
+      sourceMode,
+      running: transport.running,
+      fileSessions,
+      activeFileSession,
+      analyzingFileSession,
+      activeFileId: fileHistory.activeFileId,
+      analyzingFileId: fileHistory.analyzingFileId,
+      ...verbs,
+    }),
+    [
+      sourceMode,
+      transport.running,
+      fileSessions,
+      activeFileSession,
+      analyzingFileSession,
+      fileHistory.activeFileId,
+      fileHistory.analyzingFileId,
+      verbs,
+    ]
+  );
+  // Deliberately NOT memoized: its members (display/ledger/transport/routing)
+  // change identity per render anyway, and its only consumer is the
+  // null-rendering MeterRuntimeEngines.
   const assembly = {
     display,
     sourceMode,
