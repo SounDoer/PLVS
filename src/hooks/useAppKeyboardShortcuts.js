@@ -10,8 +10,7 @@ export function useAppKeyboardShortcuts({
   autoHideControls,
   toggleFocusControls,
 }) {
-  const shortcutHandlerRef = useRef(null);
-  shortcutHandlerRef.current = {
+  const shortcutHandlerRef = useRef({
     clearAll,
     running,
     showClock,
@@ -19,7 +18,27 @@ export function useAppKeyboardShortcuts({
     clearShortcut,
     autoHideControls,
     toggleFocusControls,
-  };
+  });
+
+  useEffect(() => {
+    shortcutHandlerRef.current = {
+      clearAll,
+      running,
+      showClock,
+      setSettingsOpen,
+      clearShortcut,
+      autoHideControls,
+      toggleFocusControls,
+    };
+  }, [
+    autoHideControls,
+    clearAll,
+    clearShortcut,
+    running,
+    setSettingsOpen,
+    showClock,
+    toggleFocusControls,
+  ]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
