@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-07-09
+
+### Fixed
+- Windows Rust tests no longer panic when pre-expiring `Instant`-based meter timers.
+- Vectorscope traces are easier to read during live monitoring.
+- Live snapshot timestamps now stay aligned with the active transport session.
+
 ## [0.7.4] - 2026-07-09
 
 ### Added
