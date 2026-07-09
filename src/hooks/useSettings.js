@@ -18,15 +18,11 @@ import { isCustomThemeId } from "../theme/customTheme.js";
 import { useThemeEditor } from "./useThemeEditor.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
+import { useCloseActionSetting } from "./useCloseActionSetting.js";
 import { useViewSettings } from "./useViewSettings.js";
 import { settingsStore, themesStore } from "../persistence/index.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
-import {
-  DEFAULT_CLOSE_ACTION,
-  normalizeCloseAction,
-  normalizeReferenceLufs,
-  normalizeThemeEditorPos,
-} from "../settings/defaults.js";
+import { normalizeReferenceLufs, normalizeThemeEditorPos } from "../settings/defaults.js";
 
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -38,15 +34,13 @@ export function useSettings({ onClearRef } = {}) {
   const [referenceLufs, setReferenceLufsState] = useState(() =>
     normalizeReferenceLufs(settingsStore.read().referenceLufs)
   );
-  const [closeAction, setCloseActionState] = useState(() =>
-    normalizeCloseAction(settingsStore.read().closeAction)
-  );
   const [channelLabelOverrides, setChannelLabelOverridesState] = useState(() =>
     sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
   );
 
   const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
   const clearShortcutState = useClearShortcut(onClearRef);
+  const closeActionSetting = useCloseActionSetting();
   const viewSettings = useViewSettings();
 
   const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
@@ -102,18 +96,6 @@ export function useSettings({ onClearRef } = {}) {
         typeof nextOverrides === "function" ? nextOverrides(prev) : nextOverrides
       )
     );
-  }
-
-  function setCloseAction(value) {
-    const next = normalizeCloseAction(value);
-    if (next === DEFAULT_CLOSE_ACTION) {
-      const { closeAction: _drop, ...rest } = settingsStore.read();
-      settingsStore.reset();
-      settingsStore.patch(rest);
-    } else {
-      settingsStore.patch({ closeAction: next });
-    }
-    setCloseActionState(next);
   }
 
   useEffect(() => {
@@ -207,8 +189,7 @@ export function useSettings({ onClearRef } = {}) {
     setReferenceLufs,
     channelLabelOverrides,
     setChannelLabelOverrides,
-    closeAction,
-    setCloseAction,
+    ...closeActionSetting,
     ...viewSettings,
     autostartEnabled,
     setAutostartEnabled,
