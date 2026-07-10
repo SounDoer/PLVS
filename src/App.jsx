@@ -754,6 +754,7 @@ function AppContent() {
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
+    getVectorscopeHistoryForKey: (key) => intakeRef.current.getVisualVectorscopeHistByKey(key),
     getSpectrogramSnapsForKey,
   };
   // frameData/historyData change at frame/history-sample rate by nature, so memoizing

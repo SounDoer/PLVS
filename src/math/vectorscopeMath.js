@@ -1,8 +1,8 @@
-const INV_SQRT2 = 1 / Math.sqrt(2);
-const VS_HALF = 130.0;
-const VS_SAFE_INSET = 8.0;
-const VS_EXTENT_FLOOR = 0.02;
-const BASE_PLOT_RADIUS = VS_HALF - VS_SAFE_INSET;
+export const INV_SQRT2 = 1 / Math.sqrt(2);
+export const VS_HALF = 130.0;
+export const VS_SAFE_INSET = 8.0;
+export const VS_EXTENT_FLOOR = 0.02;
+export const BASE_PLOT_RADIUS = VS_HALF - VS_SAFE_INSET;
 
 /**
  * Reconstruct a Lissajous SVG path from stored interleaved float pairs.

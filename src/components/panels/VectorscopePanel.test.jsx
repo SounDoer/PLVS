@@ -320,6 +320,21 @@ function lastLiveTrace(container) {
   return traces[traces.length - 1] ?? null;
 }
 
+function fakeVectorscopeSlab(rows) {
+  return {
+    length: rows.length,
+    timestampAt: (i) => rows[i]?.timestampMs ?? NaN,
+    rowAt: (i) => rows[i],
+  };
+}
+
+function persistenceAccessor() {
+  return fakeVectorscopeSlab([
+    { pairs: [0.1, 0.1], timestampMs: 1000 },
+    { pairs: [0.2, 0.2], timestampMs: 1040 },
+  ]);
+}
+
 describe("VectorscopePanel hold slow mode", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -337,37 +352,42 @@ describe("VectorscopePanel hold slow mode", () => {
     return plot;
   }
 
-  it("smooths the live trace toward incoming frames while held", () => {
+  it("shows the persistence layer and hides the live path while held", () => {
     vi.useFakeTimers();
-    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
-    activateHold(container);
-
-    // Each frame moves the displayed points 6% toward the live target.
-    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11")));
-    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 0.06 0.06 L 10.06 10.06");
-  });
-
-  it("preserves the trace size when point order shuffles between frames while held", () => {
-    vi.useFakeTimers();
-    // Horizontal line through the plot center (130,130): offsets -100 / +100.
-    const { container, rerender } = renderPanel(holdAudioData("M 30 130 L 230 130"));
-    activateHold(container);
-
-    // Same shape, endpoints swapped: naive per-point EMA would pull both points
-    // toward the center and shrink the figure; size renormalization must undo that.
-    rerender(vectorscopePanelTree(holdAudioData("M 230 130 L 30 130")));
-    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 30.00 130.00 L 230.00 130.00");
-  });
-
-  it("snaps to the live trace when the point count changes while held", () => {
-    vi.useFakeTimers();
-    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
-    activateHold(container);
-
-    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11 L 21 21")));
-    expect(lastLiveTrace(container)?.getAttribute("d")).toBe(
-      "M 1.00 1.00 L 11.00 11.00 L 21.00 21.00"
+    const { container } = renderPanel(
+      holdAudioData("M 0 0 L 10 10", 0.5, {
+        getVectorscopeHistoryForKey: persistenceAccessor,
+      })
     );
+    expect(container.querySelector("[data-vectorscope-persistence]")).toBeNull();
+
+    activateHold(container);
+    expect(container.querySelector("[data-vectorscope-persistence]")).toBeTruthy();
+    expect(lastLiveTrace(container)).toBeNull();
+  });
+
+  it("removes the persistence layer and restores the live path on release", () => {
+    vi.useFakeTimers();
+    const { container } = renderPanel(
+      holdAudioData("M 0 0 L 10 10", 0.5, {
+        getVectorscopeHistoryForKey: persistenceAccessor,
+      })
+    );
+    const plot = activateHold(container);
+
+    fireEvent(plot, new MouseEvent("pointerup", { bubbles: true }));
+    expect(container.querySelector("[data-vectorscope-persistence]")).toBeNull();
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 0 0 L 10 10");
+  });
+
+  it("falls back to the live trace while held when history is unavailable", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
+    activateHold(container);
+
+    expect(container.querySelector("[data-vectorscope-persistence]")).toBeNull();
+    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11")));
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 1 1 L 11 11");
   });
 
   it("cancels hold activation when the pointer moves beyond the threshold", () => {

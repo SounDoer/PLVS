@@ -11,6 +11,11 @@ import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
+  PERSISTENCE_WINDOW_MS,
+  selectPersistenceWindow,
+  drawPersistenceWindow,
+} from "../../math/vectorscopePersistence.js";
+import {
   SnapshotEmptyState,
   SNAPSHOT_NO_DATA_MESSAGE,
   ANALYSIS_OVER_CAP_MESSAGE,
@@ -25,8 +30,6 @@ const VECTOR_TRACE_STROKE_COMPACT_SIZE_PX = 280;
 const HOLD_SLOW_DELAY_MS = 300;
 const HOLD_SLOW_CANCEL_PX = 4;
 const HOLD_SLOW_SMOOTHING_ALPHA = 0.06;
-const VS_TRACE_CENTER = 130;
-const VS_TRACE_MIN_MEAN_SQUARE_RADIUS = 1e-9;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -59,32 +62,6 @@ function smoothCorrelation(previous, next) {
   return previous + (next - previous) * LIVE_CORRELATION_DISPLAY_ALPHA;
 }
 
-function parseTracePathPoints(d) {
-  if (!d) return null;
-  const nums = d.match(/-?\d+(?:\.\d+)?/g);
-  if (!nums || nums.length < 2 || nums.length % 2 !== 0) return null;
-  return nums.map(Number);
-}
-
-function traceMeanSquareRadius(points) {
-  let sum = 0;
-  for (let i = 0; i < points.length; i += 2) {
-    const dx = points[i] - VS_TRACE_CENTER;
-    const dy = points[i + 1] - VS_TRACE_CENTER;
-    sum += dx * dx + dy * dy;
-  }
-  return sum / (points.length / 2);
-}
-
-function buildTracePathFromPoints(points) {
-  if (!points?.length) return "";
-  const segments = [];
-  for (let i = 0; i < points.length; i += 2) {
-    segments.push(`${points[i].toFixed(2)} ${points[i + 1].toFixed(2)}`);
-  }
-  return `M ${segments.join(" L ")}`;
-}
-
 export function computeVectorscopeTraceStrokeWidth(plotSizePx) {
   if (!Number.isFinite(plotSizePx) || plotSizePx <= 0) return VECTOR_TRACE_STROKE_MAX;
   const t =
@@ -108,8 +85,12 @@ export function VectorscopePanel() {
     vectorscopePairY: pairY = 1,
     displayAudio,
   } = useFrameData();
-  const { selectedOffset, resolveVectorscopeSnapshotForKey, historyChartInteractive } =
-    useHistoryData();
+  const {
+    selectedOffset,
+    resolveVectorscopeSnapshotForKey,
+    historyChartInteractive,
+    getVectorscopeHistoryForKey,
+  } = useHistoryData();
   const { panelControls, analysisStatus } = usePanelInstanceData();
   const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
@@ -203,51 +184,30 @@ export function VectorscopePanel() {
     panelPairX = controlPair.x;
     panelPairY = controlPair.y;
   }
-  // Hold slow mode: while active, low-pass the displayed trace points and correlation toward
-  // the incoming live values (spectrum-style display smoothing). Point index has no stable
-  // physical meaning across frames, so this draws a smoothly morphing average stereo image
-  // rather than a true instantaneous trajectory — intentional for the hold reading mode.
-  // Display-only — frame intake and history writes are unaffected.
-  const holdSmoothingRef = useRef(null);
-  const { gatedVectorPath, gatedCorrelation } = useMemo(() => {
+  // Hold slow mode: correlation low-pass (display-only).
+  const holdCorrelationRef = useRef(null);
+  const gatedCorrelation = useMemo(() => {
     if (isSnapshot || !holdSlowActive) {
-      holdSmoothingRef.current = null;
-      return { gatedVectorPath: panelVectorPath, gatedCorrelation: panelCorrelation };
+      holdCorrelationRef.current = null;
+      return panelCorrelation;
     }
-    const nextPoints = parseTracePathPoints(panelVectorPath);
-    if (!nextPoints) {
-      holdSmoothingRef.current = null;
-      return { gatedVectorPath: panelVectorPath, gatedCorrelation: panelCorrelation };
-    }
-    const previous = holdSmoothingRef.current;
-    const targetMeanSquareRadius = traceMeanSquareRadius(nextPoints);
-    let points = nextPoints;
-    let meanSquareRadius = targetMeanSquareRadius;
-    if (previous?.points && previous.points.length === nextPoints.length) {
-      points = nextPoints.map(
-        (value, idx) =>
-          previous.points[idx] + (value - previous.points[idx]) * HOLD_SLOW_SMOOTHING_ALPHA
-      );
-      // Per-point EMA of index-shuffled targets contracts the cloud toward its centroid, so
-      // renormalize the blended figure back to the (smoothed) live size.
-      meanSquareRadius =
-        previous.meanSquareRadius +
-        (targetMeanSquareRadius - previous.meanSquareRadius) * HOLD_SLOW_SMOOTHING_ALPHA;
-      const blendedMeanSquareRadius = traceMeanSquareRadius(points);
-      if (blendedMeanSquareRadius > VS_TRACE_MIN_MEAN_SQUARE_RADIUS) {
-        const scale = Math.sqrt(meanSquareRadius / blendedMeanSquareRadius);
-        points = points.map((value) => VS_TRACE_CENTER + (value - VS_TRACE_CENTER) * scale);
-      }
-    }
+    const previous = holdCorrelationRef.current;
     let correlation = panelCorrelation;
-    if (Number.isFinite(previous?.correlation) && Number.isFinite(panelCorrelation)) {
-      correlation =
-        previous.correlation +
-        (panelCorrelation - previous.correlation) * HOLD_SLOW_SMOOTHING_ALPHA;
+    if (Number.isFinite(previous) && Number.isFinite(panelCorrelation)) {
+      correlation = previous + (panelCorrelation - previous) * HOLD_SLOW_SMOOTHING_ALPHA;
     }
-    holdSmoothingRef.current = { points, correlation, meanSquareRadius };
-    return { gatedVectorPath: buildTracePathFromPoints(points), gatedCorrelation: correlation };
-  }, [holdSlowActive, isSnapshot, panelCorrelation, panelVectorPath]);
+    holdCorrelationRef.current = correlation;
+    return correlation;
+  }, [holdSlowActive, isSnapshot, panelCorrelation]);
+  // Hold slow mode: phosphor persistence window — real samples from the recent history slab,
+  // drawn with age-based fading. Falls back to the live path when history is unavailable.
+  // Display-only — frame intake and history writes are unaffected.
+  const persistenceSlab =
+    !isSnapshot && holdSlowActive ? (getVectorscopeHistoryForKey?.(vectorscopeKey) ?? null) : null;
+  const persistenceRows = persistenceSlab
+    ? selectPersistenceWindow(persistenceSlab, PERSISTENCE_WINDOW_MS)
+    : [];
+  const persistenceActive = persistenceRows.length > 0;
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
@@ -285,6 +245,31 @@ export function VectorscopePanel() {
       ro.disconnect();
     };
   }, []);
+  const persistenceCanvasRef = useRef(null);
+  // Intentionally no dependency array: a new history row arrives with each frame render, so
+  // the canvas must redraw on every render while active. No-op when inactive or in jsdom
+  // (getContext returns null there).
+  useLayoutEffect(() => {
+    if (!persistenceActive) return;
+    const canvas = persistenceCanvasRef.current;
+    const ctx = canvas?.getContext?.("2d");
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+    const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    const stroke = getComputedStyle(canvas).getPropertyValue("--ui-vectorscope-trace").trim();
+    if (stroke) ctx.strokeStyle = stroke;
+    ctx.lineWidth = Math.max(dpr * 0.5, traceStrokeWidth * (width / 260));
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    drawPersistenceWindow(ctx, persistenceRows, {
+      width,
+      height,
+      windowMs: PERSISTENCE_WINDOW_MS,
+    });
+  });
   const displayCorrelation = useMemo(() => {
     const rawCorrelation = canPlaceCorrelationMarker ? clampCorrelation(gatedCorrelation) : null;
     if (isSnapshot || rawCorrelation === null) {
@@ -365,9 +350,9 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
-              {gatedVectorPath && (
+              {!persistenceActive && panelVectorPath && (
                 <path
-                  d={gatedVectorPath}
+                  d={panelVectorPath}
                   fill="none"
                   stroke={
                     selectedOffset >= 0
@@ -380,6 +365,14 @@ export function VectorscopePanel() {
                 />
               )}
             </svg>
+            {persistenceActive && (
+              <canvas
+                ref={persistenceCanvasRef}
+                data-vectorscope-persistence
+                className="pointer-events-none absolute inset-0 z-[1] block h-full w-full"
+                aria-hidden
+              />
+            )}
           </div>
           <span
             className={cn(
