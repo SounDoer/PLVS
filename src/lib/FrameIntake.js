@@ -1,5 +1,6 @@
 import { RingBuffer } from "./RingBuffer.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
+import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -299,13 +300,19 @@ export class FrameIntake {
     if (vectorscopeByKey) {
       for (const key in vectorscopeByKey) {
         const entry = vectorscopeByKey[key];
-        let ring = this._visualVectorscopeHistByKey.get(key);
-        if (!ring) {
-          ring = new RingBuffer(visualMaxSamples);
-          this._visualVectorscopeHistByKey.set(key, ring);
+        const pairValueCount = entry.pairs?.length ?? 0;
+        if (pairValueCount === 0) continue;
+        let slab = this._visualVectorscopeHistByKey.get(key);
+        if (
+          !slab ||
+          slab.capacity !== visualMaxSamples ||
+          !slab.matchesPairValueCount(pairValueCount)
+        ) {
+          slab = new VectorscopeHistorySlab(visualMaxSamples, pairValueCount);
+          this._visualVectorscopeHistByKey.set(key, slab);
         }
-        ring.push({
-          pairs: snapshotNumericArray(entry.pairs),
+        slab.push({
+          pairs: entry.pairs,
           correlation: Number.isFinite(entry.correlation) ? entry.correlation : -Infinity,
           sideToMidDb: Number.isFinite(entry.sideToMidDb) ? entry.sideToMidDb : -Infinity,
           midEnergy: Number.isFinite(entry.midEnergy) ? entry.midEnergy : 0,
@@ -363,10 +370,10 @@ export class FrameIntake {
     for (const [key, slab] of this._visualSpectrumHistByKey) out[key] = slab.freeze();
     return out;
   }
-  /** Freeze per-key vectorscope history into plain arrays for snapshot scrubbing. */
+  /** Freeze per-key vectorscope history into read-only typed views for snapshot scrubbing. */
   snapshotVisualVectorscopeByKey() {
     const out = {};
-    for (const [key, ring] of this._visualVectorscopeHistByKey) out[key] = ring.toArray();
+    for (const [key, slab] of this._visualVectorscopeHistByKey) out[key] = slab.freeze();
     return out;
   }
 

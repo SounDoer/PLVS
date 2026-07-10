@@ -318,9 +318,39 @@ describe("FrameIntake", () => {
     expect(specRing.length).toBe(1);
     expect(specRing.at(0).dbList).toBeInstanceOf(Float32Array);
     expect(Array.from(specRing.at(0).dbList)).toEqual([-20, -30]);
-    expect(intake.getVisualVectorscopeHistByKey("vectorscope:pair:0:1").length).toBe(1);
+    const vectorSlab = intake.getVisualVectorscopeHistByKey("vectorscope:pair:0:1");
+    expect(vectorSlab.length).toBe(1);
+    expect(vectorSlab.rowAt(0).pairs).toBeInstanceOf(Float32Array);
+    expect(Array.from(vectorSlab.rowAt(0).pairs)).toEqual([
+      expect.closeTo(0.1),
+      expect.closeTo(0.2),
+    ]);
     // A key never seen has no ring.
     expect(intake.getVisualSpectrumHistByKey("spectrum:single:1:combined")).toBeNull();
+  });
+
+  it("freezes request-keyed vectorscope snapshots against later slab overwrites", () => {
+    const intake = new FrameIntake();
+    const key = "vectorscope:pair:0:1";
+    const visualRow = (timestampMs, pairs, correlation) => ({
+      timestampMs,
+      waveformMin: [0],
+      waveformMax: [0],
+      vectorscopeByKey: {
+        [key]: { pairs, correlation },
+      },
+    });
+
+    intake.pushVisualHistRow(visualRow(1000, [0.1, 0.2], 0.1), 2);
+    intake.pushVisualHistRow(visualRow(1040, [0.3, 0.4], 0.2), 2);
+    const frozen = intake.snapshotVisualVectorscopeByKey()[key];
+
+    intake.pushVisualHistRow(visualRow(1080, [0.5, 0.6], 0.3), 2);
+
+    expect(frozen.length).toBe(2);
+    expect(frozen.timestampAt(0)).toBe(1000);
+    expect(Array.from(frozen.rowAt(0).pairs)).toEqual([expect.closeTo(0.1), expect.closeTo(0.2)]);
+    expect(frozen.rowAt(1).correlation).toBe(0.2);
   });
 
   it("recreates a request-keyed spectrum slab when the band grid changes", () => {

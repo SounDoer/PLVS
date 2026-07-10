@@ -81,7 +81,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       keyToleranceMs
     );
     if (missing) return { missing: true, path: "", correlation: -Infinity };
-    const snap = entries[index];
+    const snap = typeof entries?.rowAt === "function" ? entries.rowAt(index) : entries[index];
     const pairs = snap?.pairs ?? [];
     return {
       missing: false,

@@ -112,13 +112,15 @@ describe("useSnapshot", () => {
     };
     const intake = createIntake(samples);
     intake.snapshotVisualVectorscopeByKey = () => ({
-      "vectorscope:pair:0:1": [
-        {
+      "vectorscope:pair:0:1": {
+        length: 1,
+        timestampAt: () => 1000,
+        rowAt: () => ({
           timestampMs: 1000,
-          pairs: [0.25, -0.25],
+          pairs: new Float32Array([0.25, -0.25]),
           correlation: 0.5,
-        },
-      ],
+        }),
+      },
     });
 
     const { result } = renderHook(() =>
