@@ -31,6 +31,8 @@ function useHarness({
   setShowClock,
   resetTimer,
   halt,
+  histMaxSamples = 10,
+  visualMaxSamples = 10,
   ...props
 }) {
   const audioRef = useRef(null);
@@ -51,8 +53,8 @@ function useHarness({
 
   useAudioEngine({
     captureDeviceId: "default",
-    histMaxSamples: 10,
-    visualMaxSamples: 10,
+    histMaxSamples,
+    visualMaxSamples,
     audioRef,
     loudnessWeightsRef,
     dialogueGatingRef,
@@ -124,6 +126,39 @@ describe("useAudioEngine", () => {
         correlation: -Infinity,
       })
     );
+  });
+
+  it("restarts and clears local meter state when history capacity changes during a running session", async () => {
+    const props = {
+      captureFormatSignature: "2:48000",
+      histMaxSamples: 10,
+      visualMaxSamples: 10,
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+
+    const { result, rerender } = renderHook((p) => useHarness(p), {
+      initialProps: props,
+    });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(1));
+
+    result.current.frameRef.current = 12;
+    vi.clearAllMocks();
+
+    rerender({ ...props, histMaxSamples: 20, visualMaxSamples: 20 });
+
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(1));
+    expect(stopAudioCapture).toHaveBeenCalledTimes(1);
+    expect(props.intake.reset).toHaveBeenCalledTimes(1);
+    expect(result.current.frameRef.current).toBe(0);
+    expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
+    expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });
+    expect(props.setShowClock).toHaveBeenCalledWith(true);
   });
 
   it("raises a transport notice when native capture cannot start", async () => {

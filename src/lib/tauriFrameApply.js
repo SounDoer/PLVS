@@ -1,10 +1,14 @@
 import { SPECTRUM_SETTINGS } from "../config/scales.js";
 
+function currentValue(value) {
+  return value && typeof value === "object" && "current" in value ? value.current : value;
+}
+
 /**
  * Shared Tauri `AudioFramePayload` handler.
  * @param {object} opts
- * @param {number} opts.histMaxSamples
- * @param {number} opts.visualMaxSamples
+ * @param {number | import("react").MutableRefObject<number>} opts.histMaxSamples
+ * @param {number | import("react").MutableRefObject<number>} opts.visualMaxSamples
  * @param {import("./FrameIntake.js").FrameIntake} opts.intake
  * @param {import("react").MutableRefObject<number>} opts.frameRef
  * @param {import("react").MutableRefObject<number | undefined>} opts.defaultSampleRateRef
@@ -36,10 +40,10 @@ export function buildTauriFrameApply({
 
     intake.pushFrame(
       f,
-      histMaxSamples,
+      currentValue(histMaxSamples),
       defaultSampleRate,
       SPECTRUM_SETTINGS.freeze,
-      visualMaxSamples
+      currentValue(visualMaxSamples)
     );
 
     if (!shouldDriveDisplay()) return;

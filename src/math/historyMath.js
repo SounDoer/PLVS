@@ -65,11 +65,18 @@ export function mediaTimeAxisRangeSec(
   return { startSec, endSec };
 }
 
-export function getHistoryViewport(totalSamples, historyWindowSec, historyOffsetSec, sampleSec) {
+export function getHistoryViewport(
+  totalSamples,
+  historyWindowSec,
+  historyOffsetSec,
+  sampleSec,
+  maxWindowSec = HISTORY_MAX_WINDOW_SEC
+) {
   const safeTotal = Math.max(0, totalSamples);
+  const safeMaxWindowSec = Math.max(HISTORY_MIN_WINDOW_SEC, maxWindowSec);
   const clampedWindowSec = Math.max(
     HISTORY_MIN_WINDOW_SEC,
-    Math.min(HISTORY_MAX_WINDOW_SEC, historyWindowSec)
+    Math.min(safeMaxWindowSec, historyWindowSec)
   );
   const windowSamples = Math.max(1, Math.round(clampedWindowSec / sampleSec));
   const visibleSamples = windowSamples;

@@ -95,6 +95,29 @@ describe("buildTauriFrameApply", () => {
     expect(ackFrames).toHaveBeenCalledWith(6);
   });
 
+  it("reads updated history capacities from refs without rebuilding the frame handler", () => {
+    const pushFrame = vi.fn();
+    const histMaxSamples = { current: 10 };
+    const visualMaxSamples = { current: 20 };
+    const { applyFrame } = buildTauriFrameApply(
+      makeOptions({
+        histMaxSamples,
+        visualMaxSamples,
+        intake: { pushFrame, pushVisualHistRow() {} },
+      })
+    );
+
+    applyFrame({ peakDb: [], peakHoldDb: [] });
+    histMaxSamples.current = 30;
+    visualMaxSamples.current = 40;
+    applyFrame({ peakDb: [], peakHoldDb: [] });
+
+    expect(pushFrame.mock.calls[0][1]).toBe(10);
+    expect(pushFrame.mock.calls[0][4]).toBe(20);
+    expect(pushFrame.mock.calls[1][1]).toBe(30);
+    expect(pushFrame.mock.calls[1][4]).toBe(40);
+  });
+
   it("propagates per-key spectrum/vectorscope live results into audio state", () => {
     let audioState = { spectrumResultsByKey: {}, vectorscopeResultsByKey: {} };
     const setAudio = (updater) => {

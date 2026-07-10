@@ -5,6 +5,7 @@ import {
   buildHistoryTimeAxisLabels,
   buildMediaTimeAxisLabels,
   getHistoryViewport,
+  HISTORY_MAX_WINDOW_SEC,
   mediaTimeAxisRangeSec,
 } from "../math/historyMath";
 import { UI_PREFERENCES } from "../uiPreferences";
@@ -29,6 +30,7 @@ export function useLoudnessHistory({
   referenceLufs,
   selectedOffset,
   sourceMode,
+  historyMaxWindowSec = HISTORY_MAX_WINDOW_SEC,
 }) {
   const [historyWindowSec, setHistoryWindowSec] = useState(
     UI_PREFERENCES.modules.loudness.history.defaultWindowSec
@@ -70,14 +72,20 @@ export function useLoudnessHistory({
   const effectiveWindowSec =
     sourceMode === "file" && totalSamples > 0
       ? Math.min(historyWindowSec, fileMaxWindowSec)
-      : historyWindowSec;
+      : Math.min(historyWindowSec, historyMaxWindowSec);
   const {
     clampedWindowSec,
     visibleSamples,
     maxOffsetSamples,
     effectiveOffsetSamples,
     effectiveOffsetSec,
-  } = getHistoryViewport(totalSamples, effectiveWindowSec, historyOffsetSec, HIST_SAMPLE_SEC);
+  } = getHistoryViewport(
+    totalSamples,
+    effectiveWindowSec,
+    historyOffsetSec,
+    HIST_SAMPLE_SEC,
+    historyMaxWindowSec
+  );
 
   const displayHistoryPathM = buildHistoryPath(
     histSourceList,

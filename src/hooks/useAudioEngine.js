@@ -69,6 +69,13 @@ export function useAudioEngine({
   } = display;
   const internalDefaultSampleRateRef = useRef(48000);
   const defaultSampleRateRef = externalDefaultSampleRateRef ?? internalDefaultSampleRateRef;
+  const histMaxSamplesRef = useRef(histMaxSamples);
+  const visualMaxSamplesRef = useRef(visualMaxSamples);
+
+  useEffect(() => {
+    histMaxSamplesRef.current = histMaxSamples;
+    visualMaxSamplesRef.current = visualMaxSamples;
+  }, [histMaxSamples, visualMaxSamples]);
 
   const clearLocalMeterStateForRestart = () => {
     intake.reset();
@@ -82,7 +89,7 @@ export function useAudioEngine({
 
   /**
    * Start/stop native or browser audio capture. Dependency list is intentionally narrow:
-   * - `running`, `captureDeviceId`, `captureFormatSignature` are the only
+   * - `running`, `captureDeviceId`, `captureFormatSignature`, and history ring capacities are the only
    *   inputs that should restart the engine when they change.
    * - All `*Ref` arguments are mutable boxes read inside the effect; their **identities** are
    *   stable (useRef), and the effect reads `.current` on each run — listing them would
@@ -145,8 +152,8 @@ export function useAudioEngine({
 
           const unsubs = [];
           const { applyFrame: baseApply } = buildTauriFrameApply({
-            histMaxSamples,
-            visualMaxSamples,
+            histMaxSamples: histMaxSamplesRef,
+            visualMaxSamples: visualMaxSamplesRef,
             intake,
             frameRef,
             defaultSampleRateRef,
@@ -215,6 +222,6 @@ export function useAudioEngine({
         } catch (_) {}
       }
     };
-  }, [running, captureDeviceId, captureFormatSignature]);
+  }, [running, captureDeviceId, captureFormatSignature, histMaxSamples, visualMaxSamples]);
   /* eslint-enable react-hooks/exhaustive-deps, react-hooks/immutability */
 }

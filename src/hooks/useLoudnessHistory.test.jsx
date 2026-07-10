@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 
 function makeHist(n) {
@@ -67,5 +67,22 @@ describe("useLoudnessHistory window clamp", () => {
     const { result } = renderHook(() => useLoudnessHistory({ ...props, sourceMode: "live" }));
     // 60 s default window -> 600 samples, larger than the 200 samples captured so far.
     expect(result.current.visibleSamples).toBeGreaterThan(result.current.totalSamples);
+  });
+
+  it("clamps a live window to the configured history retention", () => {
+    const { result } = renderHook(() =>
+      useLoudnessHistory({
+        ...props,
+        histSourceList: makeHist(40000),
+        sourceMode: "live",
+        historyMaxWindowSec: 1800,
+      })
+    );
+
+    act(() => {
+      result.current.setHistoryWindowSec(7200);
+    });
+
+    expect(result.current.clampedWindowSec).toBeLessThanOrEqual(1800);
   });
 });

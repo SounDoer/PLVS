@@ -20,6 +20,11 @@ describe("getHistoryViewport", () => {
     const { clampedWindowSec } = getHistoryViewport(100, 99999, 0, 0.1);
     expect(clampedWindowSec).toBe(HISTORY_MAX_WINDOW_SEC);
   });
+  it("uses a caller-provided maximum window", () => {
+    const { clampedWindowSec, visibleSamples } = getHistoryViewport(100, 99999, 0, 0.1, 1800);
+    expect(clampedWindowSec).toBe(1800);
+    expect(visibleSamples).toBe(18000);
+  });
   it("keeps the full visible window when fewer samples exist", () => {
     const { visibleSamples } = getHistoryViewport(10, 120, 0, 0.1);
     expect(visibleSamples).toBe(1200);

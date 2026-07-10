@@ -12,7 +12,7 @@ import {
 } from "./runtime/appRuntimeDerivations.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { normalizePanelControls } from "./lib/panelControls.js";
-import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
+import { HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
 import {
   useLoudnessHistory,
@@ -193,6 +193,9 @@ function AppContent() {
     showClock,
   } = display;
   const { clockRef, elapsedMsRef, canClearRef } = display.clock;
+  const historyRetentionSec = settings.historyRetentionSec;
+  const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
+  const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
 
   const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const normalizedPanelControls = useMemo(() => {
@@ -291,6 +294,7 @@ function AppContent() {
     referenceLufs,
     selectedOffset,
     sourceMode,
+    historyMaxWindowSec: historyRetentionSec,
   });
 
   const hasTpMaxValue = Number.isFinite(displayAudio?.tpMax);
@@ -316,12 +320,27 @@ function AppContent() {
     if (sourceMode !== "file") return;
     if (fileSession.state !== "analyzing" && fileSession.state !== "complete") return;
     setHistoryWindowSec(
-      Number.isFinite(fileDurationMs) ? fileDurationMs / 1000 : HISTORY_MAX_WINDOW_SEC
+      Number.isFinite(fileDurationMs) ? fileDurationMs / 1000 : historyRetentionSec
     );
     setHistoryOffsetSec(0);
     setSelectedOffset(-1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceMode, fileSession.state, fileDurationMs]);
+  }, [sourceMode, fileSession.state, fileDurationMs, historyRetentionSec]);
+
+  const previousHistoryRetentionSecRef = useRef(historyRetentionSec);
+  useEffect(() => {
+    if (previousHistoryRetentionSecRef.current === historyRetentionSec) return;
+    previousHistoryRetentionSecRef.current = historyRetentionSec;
+    setSelectedOffset(-1);
+    setHistoryOffsetSec(0);
+    setHistoryWindowSec((current) =>
+      Math.min(
+        current,
+        historyRetentionSec,
+        UI_PREFERENCES.modules.loudness.history.defaultWindowSec
+      )
+    );
+  }, [historyRetentionSec, setHistoryOffsetSec, setHistoryWindowSec, setSelectedOffset]);
 
   const latestTimestampMs = useMemo(() => {
     const last = histSourceList.length > 0 ? histSourceList[histSourceList.length - 1] : null;
@@ -559,7 +578,7 @@ function AppContent() {
     enabled: historyChartInteractive,
     sampleSec: HIST_SAMPLE_SEC,
     minWindowSec: HISTORY_MIN_WINDOW_SEC,
-    maxWindowSec: HISTORY_MAX_WINDOW_SEC,
+    maxWindowSec: historyRetentionSec,
     defaultWindowSec: UI_PREFERENCES.modules.loudness.history.defaultWindowSec,
     totalSamples,
     visibleSamples,
@@ -748,8 +767,6 @@ function AppContent() {
   // Live and file sessions share bounded display history, sized from the user's History Length
   // setting. File-mode summary metrics are authoritative for the whole file; panel history is an
   // inspectable downsampled/session view, not unlimited storage.
-  const histMaxSamples = Math.round(settings.historyRetentionSec / HIST_SAMPLE_SEC);
-  const visualMaxSamples = Math.round(settings.historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
   const runtimeEnginesProps = {
     captureDeviceId,
     captureFormatSignature,
