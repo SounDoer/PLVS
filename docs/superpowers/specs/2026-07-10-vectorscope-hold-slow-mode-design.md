@@ -50,9 +50,10 @@ While held (live mode only):
   the live trace path (the SVG `<path>` is not rendered while the layer is active). Every
   render while active, the canvas is fully redrawn from the panel's request-key history slab
   (`VectorscopeHistorySlab`, 40 ms cadence, raw interleaved L/R pairs per row):
-  - **Window**: rows whose `timestampMs` is within `1500 ms` of the newest row's timestamp
+  - **Window**: rows whose `timestampMs` is within `1000 ms` of the newest row's timestamp
     (age is measured against the newest row, not the wall clock, to stay clock-domain safe).
-    ≈ 38 rows × ~200 pairs ≈ 7500 real sample points.
+    ≈ 25 rows × ~200 pairs ≈ 5000 real sample points. (Started at 1500 ms; tuned down to
+    1000 ms after user testing found 1.5 s too smeared.)
   - **Form**: each row's pairs are drawn as a connected polyline (rows are sample-clocked and
     contiguous, so this is the true signal trajectory), stroked with the live trace color
     (`--ui-vectorscope-trace` resolved via `getComputedStyle`) at the existing
@@ -91,7 +92,7 @@ Canvas drawing itself stays in the panel (thin, unit-untestable in jsdom by desi
 
 ## Performance
 
-Bounded and hold-only: ~38 polylines / ~7500 `lineTo` per redraw on a 2D canvas, redrawn at
+Bounded and hold-only: ~25 polylines / ~5000 `lineTo` per redraw on a 2D canvas, redrawn at
 frame cadence only in the held panel instance. Reads are subarray views. No allocations beyond
 the row descriptor array per redraw.
 

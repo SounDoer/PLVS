@@ -6,7 +6,7 @@ import {
   BASE_PLOT_RADIUS,
 } from "./vectorscopeMath.js";
 
-export const PERSISTENCE_WINDOW_MS = 1500;
+export const PERSISTENCE_WINDOW_MS = 1000;
 export const PERSISTENCE_ALPHA_MAX = 0.9;
 export const PERSISTENCE_ALPHA_MIN = 0.05;
 
