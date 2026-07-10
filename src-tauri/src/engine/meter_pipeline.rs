@@ -25,7 +25,7 @@ const FRAME_EMIT_MS: u128 = 16;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
 const HIST_EMIT_MS: u128 = 95;
 const VISUAL_EMIT_MS: u128 = 40;
-const VS_HISTORY_POINTS: usize = 200;
+const VS_HISTORY_POINTS: usize = 100;
 /// PCM samples per waveform sub-block. ~19 sub-blocks per ~100ms tick @48kHz.
 const SUBBLOCK_SAMPLES: usize = 256;
 
@@ -1566,6 +1566,13 @@ mod tests {
       .vectorscope_by_key
       .get("vectorscope:pair:0:1")
       .is_some_and(|entry| !entry.pairs.is_empty()));
+    assert_eq!(
+      visual
+        .vectorscope_by_key
+        .get("vectorscope:pair:0:1")
+        .map(|entry| entry.pairs.len()),
+      Some(VS_HISTORY_POINTS * 2)
+    );
   }
 
   #[test]

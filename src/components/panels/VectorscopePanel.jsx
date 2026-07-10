@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useFrameData,
   useHistoryData,
@@ -18,6 +18,10 @@ import {
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
+const VECTOR_TRACE_STROKE_MIN = 0.45;
+const VECTOR_TRACE_STROKE_MAX = 1;
+const VECTOR_TRACE_STROKE_FULL_SIZE_PX = 720;
+const VECTOR_TRACE_STROKE_COMPACT_SIZE_PX = 280;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -48,6 +52,18 @@ function correlationMarkerClass(value) {
 function smoothCorrelation(previous, next) {
   if (previous === null || next === null) return next;
   return previous + (next - previous) * LIVE_CORRELATION_DISPLAY_ALPHA;
+}
+
+export function computeVectorscopeTraceStrokeWidth(plotSizePx) {
+  if (!Number.isFinite(plotSizePx) || plotSizePx <= 0) return VECTOR_TRACE_STROKE_MAX;
+  const t =
+    (Math.max(
+      VECTOR_TRACE_STROKE_COMPACT_SIZE_PX,
+      Math.min(VECTOR_TRACE_STROKE_FULL_SIZE_PX, plotSizePx)
+    ) -
+      VECTOR_TRACE_STROKE_COMPACT_SIZE_PX) /
+    (VECTOR_TRACE_STROKE_FULL_SIZE_PX - VECTOR_TRACE_STROKE_COMPACT_SIZE_PX);
+  return VECTOR_TRACE_STROKE_MAX - (VECTOR_TRACE_STROKE_MAX - VECTOR_TRACE_STROKE_MIN) * t;
 }
 
 export function VectorscopePanel() {
@@ -112,6 +128,30 @@ export function VectorscopePanel() {
   const canPlaceCorrelationMarker =
     hasCorrelationSignal && clampCorrelation(panelCorrelation) !== null;
   const liveCorrelationDisplayRef = useRef(null);
+  const traceFrameRef = useRef(null);
+  const [traceStrokeWidth, setTraceStrokeWidth] = useState(VECTOR_TRACE_STROKE_MAX);
+  useLayoutEffect(() => {
+    const el = traceFrameRef.current;
+    if (!el) return undefined;
+    let rafId = 0;
+    const measure = () => {
+      rafId = 0;
+      const rect = el.getBoundingClientRect();
+      const plotSizePx = Math.min(rect.width, rect.height);
+      setTraceStrokeWidth(computeVectorscopeTraceStrokeWidth(plotSizePx));
+    };
+    measure();
+    if (typeof ResizeObserver !== "function") return undefined;
+    const ro = new ResizeObserver(() => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(measure);
+    });
+    ro.observe(el);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
+  }, []);
   const displayCorrelation = useMemo(() => {
     const rawCorrelation = canPlaceCorrelationMarker ? clampCorrelation(panelCorrelation) : null;
     if (isSnapshot || rawCorrelation === null) {
@@ -181,6 +221,7 @@ export function VectorscopePanel() {
               />
             </svg>
             <svg
+              ref={traceFrameRef}
               viewBox="0 0 260 260"
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
@@ -195,7 +236,7 @@ export function VectorscopePanel() {
                         ? "var(--ui-vectorscope-trace-snap)"
                         : "var(--ui-vectorscope-trace)"
                     }
-                    strokeWidth="var(--ui-vectorscope-stroke-width)"
+                    strokeWidth={traceStrokeWidth}
                     opacity="var(--ui-vectorscope-axis-opacity)"
                     strokeLinecap="round"
                   />

@@ -7,7 +7,7 @@ import {
   HistoryDataProvider,
   PanelInstanceProvider,
 } from "../../workspace/AudioDataContext.jsx";
-import { VectorscopePanel } from "./VectorscopePanel.jsx";
+import { computeVectorscopeTraceStrokeWidth, VectorscopePanel } from "./VectorscopePanel.jsx";
 
 function renderPanel(audioData) {
   return render(vectorscopePanelTree(audioData));
@@ -50,6 +50,17 @@ function vectorscopePanelTree(audioData) {
 }
 
 describe("VectorscopePanel", () => {
+  it("keeps vectorscope trace stroke at the default width in compact panes", () => {
+    expect(computeVectorscopeTraceStrokeWidth(240)).toBe(1);
+    expect(computeVectorscopeTraceStrokeWidth(280)).toBe(1);
+  });
+
+  it("thins vectorscope trace stroke as the plot grows", () => {
+    expect(computeVectorscopeTraceStrokeWidth(500)).toBeCloseTo(0.725, 3);
+    expect(computeVectorscopeTraceStrokeWidth(720)).toBeCloseTo(0.45, 2);
+    expect(computeVectorscopeTraceStrokeWidth(1200)).toBeCloseTo(0.45, 2);
+  });
+
   it("shows the no-data empty state when its request has no history at the selected time", () => {
     renderPanel({
       selectedOffset: 2,
