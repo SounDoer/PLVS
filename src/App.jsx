@@ -14,7 +14,11 @@ import { UI_PREFERENCES } from "./uiPreferences";
 import { normalizePanelControls } from "./lib/panelControls.js";
 import { HISTORY_MAX_WINDOW_SEC, HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
 import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
-import { useLoudnessHistory, HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
+import {
+  useLoudnessHistory,
+  HIST_SAMPLE_SEC,
+  VISUAL_HIST_SAMPLE_SEC,
+} from "./hooks/useLoudnessHistory.js";
 import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
@@ -53,11 +57,6 @@ import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
 import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
-
-// Live and file sessions share bounded display history. File-mode summary metrics are authoritative
-// for the whole file; panel history is an inspectable downsampled/session view, not unlimited storage.
-const HIST_MAX_SAMPLES = 72000;
-const VISUAL_MAX_SAMPLES = 180_000; // 25 Hz × 2 h
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
@@ -746,11 +745,16 @@ function AppContent() {
     () => ({ statsMetrics, dialogueActiveNow }),
     [statsMetrics, dialogueActiveNow]
   );
+  // Live and file sessions share bounded display history, sized from the user's History Length
+  // setting. File-mode summary metrics are authoritative for the whole file; panel history is an
+  // inspectable downsampled/session view, not unlimited storage.
+  const histMaxSamples = Math.round(settings.historyRetentionSec / HIST_SAMPLE_SEC);
+  const visualMaxSamples = Math.round(settings.historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
   const runtimeEnginesProps = {
     captureDeviceId,
     captureFormatSignature,
-    histMaxSamples: HIST_MAX_SAMPLES,
-    visualMaxSamples: VISUAL_MAX_SAMPLES,
+    histMaxSamples,
+    visualMaxSamples,
     loudnessWeightsRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
