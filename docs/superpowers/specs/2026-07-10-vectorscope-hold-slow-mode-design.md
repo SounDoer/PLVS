@@ -1,128 +1,108 @@
 # Vectorscope hold slow mode — design
 
 Date: 2026-07-10
-Status: Implemented (revised during implementation — see "Slow-mode behavior")
+Status: Revision 3 — approved (persistence window rendering)
 
-> Revision note: the originally approved design was a display refresh throttle (200 ms cadence
-> with a crossfade). User testing found the discrete refresh read as a frame-skipping jump
-> rather than a smooth slowdown, so the shipped design is spectrum-style per-point EMA with a
-> size renormalization step. The gesture, scope, and data-integrity sections are unchanged.
+> Revision history:
+> - Rev 1 (approved): display refresh throttle (200 ms cadence + crossfade). User testing:
+>   read as frame-skipping jumps, not a smooth slowdown.
+> - Rev 2 (shipped in `8df3d52`): spectrum-style per-point EMA + size renormalization. User
+>   testing: smooth, but the point-to-point structure is fabricated (per-point EMA of
+>   index-shuffled targets), so it conveys only lagged cloud statistics — poor reflection of
+>   the current signal.
+> - Rev 3 (this design): phosphor-persistence window rendering — draw the real samples from
+>   the recent history window with age-based fading. Replaces the Rev 2 trace smoothing.
 
 ## Background
 
-SpectrumPanel already has a hold gesture: pressing and holding the left mouse button on the
-chart for 300 ms (without moving more than 4 px) activates a display-only smoothing mode that
-makes the curve easier to read (`HOLD_DISPLAY_SMOOTHING_ALPHA` per-bin EMA in
-`src/components/panels/SpectrumPanel.jsx`).
-
-The user wants an equivalent hold gesture on the Vectorscope trace. The spectrum mechanism
-cannot be copied blindly: spectrum bins have a stable physical meaning (bin `i` is always the
-same frequency band), while vectorscope path points are raw sample pairs from a sliding
-window — index `i` means a different instant on every frame. Naive per-point EMA therefore
-contracts the figure toward its centroid (the EMA of index-shuffled targets converges to the
-distribution mean; at `alpha = 0.06` the steady-state radius is ~18% of the true size).
-
-The shipped design is per-point EMA **plus size renormalization**: blend every displayed point
-6% toward the live target each frame, then rescale the blended cloud about the plot center so
-its mean-square radius matches the (equally smoothed) live size. The result is a smoothly
-morphing average stereo image at the correct scale. The displayed shape is not a true
-instantaneous Lissajous trajectory — intentional: the hold mode exists to read the average
-stereo image (width, bias, phase tendency), not transient trajectories.
+Holding the left mouse button on the Vectorscope plot should turn the flickering per-frame
+Lissajous trace into a stable, readable view of the current stereo image — the equivalent of
+an analog scope's phosphor afterglow. Every displayed point must be a real measured sample;
+stability comes from showing a statistically stable window of recent data, not from fabricating
+interpolated shapes.
 
 ## Scope
 
-Frontend-only change in `src/components/panels/VectorscopePanel.jsx`. No Rust, IPC, analysis
-request key, or persistence changes. The data pipeline (frame intake, history slab writes,
-snapshot resolution) is untouched; only which frames the panel chooses to *draw* changes.
+Frontend-only. No Rust/IPC changes; frame intake and history writes are untouched (read-only
+use of an existing accessor).
 
-Out of scope:
+Files:
 
-- Phosphor persistence / afterglow rendering.
-- True slow-motion playback (engine-side sample consumption pacing).
-- Any panel setting or persisted control for this behavior.
-- Spectrogram/Waveform hold gestures.
+- `src/components/panels/VectorscopePanel.jsx` — gesture (existing), persistence canvas layer,
+  removal of the Rev 2 EMA trace smoothing.
+- `src/math/vectorscopePersistence.js` (new) — pure window-selection / extent / alpha math.
+- `src/App.jsx` — expose `getVectorscopeHistoryForKey` on the history data context.
 
-## Gesture
+Out of scope: engine-side true slow motion; density/heatmap accumulation; any persisted
+setting; other panels' hold gestures.
 
-Matches the spectrum hold gesture semantics:
+## Gesture (unchanged from Rev 1)
 
-- Trigger: left button (`button === 0`) pointer down on the vectorscope plot area (the square
-  trace container, grid + trace), held for `300 ms` without moving more than `4 px`
-  (`Math.hypot` from the pointer-down position).
-- Guards: no trigger when `selectedOffset >= 0` (snapshot mode) or when
-  `historyChartInteractive` is false. `ctrlKey` down at pointer down does not trigger
-  (consistent with spectrum, which reserves ctrl-drag for panning).
-- Cancel: pointer moves beyond `4 px` before the 300 ms timer fires.
-- Exit: pointer up, pointer cancel, or pointer leave immediately deactivates slow mode and
-  restores per-frame live updates. No exit delay.
-- Timer and refs are cleaned up on unmount.
+- Left button, 300 ms hold, ≤ 4 px movement (`HOLD_SLOW_DELAY_MS`, `HOLD_SLOW_CANCEL_PX`).
+- Guards: not in snapshot mode, not when `historyChartInteractive` is false, not with ctrl.
+- Exit on pointer up/cancel/leave; cleanup on unmount.
 
-Constants (component-local, mirroring spectrum's naming):
+## Slow-mode behavior (Rev 3)
 
-```text
-HOLD_SLOW_DELAY_MS = 300
-HOLD_SLOW_CANCEL_PX = 4
-HOLD_SLOW_SMOOTHING_ALPHA = 0.06
-VS_TRACE_CENTER = 130
-```
+While held (live mode only):
 
-## Slow-mode behavior
+- **Persistence layer**: a `<canvas>` absolutely positioned over the trace SVG's box replaces
+  the live trace path (the SVG `<path>` is not rendered while the layer is active). Every
+  render while active, the canvas is fully redrawn from the panel's request-key history slab
+  (`VectorscopeHistorySlab`, 40 ms cadence, raw interleaved L/R pairs per row):
+  - **Window**: rows whose `timestampMs` is within `1500 ms` of the newest row's timestamp
+    (age is measured against the newest row, not the wall clock, to stay clock-domain safe).
+    ≈ 38 rows × ~200 pairs ≈ 7500 real sample points.
+  - **Form**: each row's pairs are drawn as a connected polyline (rows are sample-clocked and
+    contiguous, so this is the true signal trajectory), stroked with the live trace color
+    (`--ui-vectorscope-trace` resolved via `getComputedStyle`) at the existing
+    adaptive stroke width.
+  - **Fade**: per-row `globalAlpha` from age: newest ≈ 0.9 down to ≈ 0.05 at the window edge
+    (linear in age).
+  - **Extent**: one effective radius computed over *all* pairs in the window (same
+    Chebyshev-extent auto-zoom as `buildVectorscopeSvgFromPairs`), so the whole window shares
+    one scale and the display does not pump frame-to-frame.
+- **Correlation marker**: keeps the Rev 2 behavior — the correlation value is low-passed with
+  `HOLD_SLOW_SMOOTHING_ALPHA = 0.06` before the existing live display smoothing.
+- **Fallback**: if the history accessor is unavailable, the slab is missing, or fewer than 2
+  rows fall in the window, the plain live trace path renders as if not held.
 
-While slow mode is active, every incoming frame is rendered (no throttle), but the displayed
-values are low-passed:
+On release, the canvas layer unmounts and the live SVG path resumes immediately.
 
-- **Trace**: the live SVG path (`M x y L x y …`, 0..260 viewBox, center 130,130) is parsed
-  into coordinates. Each displayed point moves `6%` (`HOLD_SLOW_SMOOTHING_ALPHA`) toward the
-  incoming live point per frame — the same alpha as spectrum's `HOLD_DISPLAY_SMOOTHING_ALPHA`.
-  Because per-point EMA of index-shuffled targets contracts the cloud toward its centroid, the
-  blended figure is then rescaled about the plot center so its mean-square radius matches the
-  live size (itself smoothed with the same alpha, so momentary silence does not collapse the
-  figure instantly). If the point count changes between frames, the display snaps to the raw
-  live path (same degradation strategy as spectrum's `bandsMatch`).
-- **Correlation marker**: the correlation value is low-passed with the same alpha before
-  feeding the existing live display smoothing (`LIVE_CORRELATION_DISPLAY_ALPHA`), so the marker
-  slows down together with the trace.
+The Rev 2 trace machinery (path parse/rebuild, per-point EMA, size renormalization) is removed.
 
-On exit, the panel immediately resumes normal per-frame updates for both trace and correlation.
+## Data flow
 
-## Data integrity
+`FrameIntake.getVisualVectorscopeHistByKey(key)` already exists (used by snapshot freezing).
+`App.jsx` adds `getVectorscopeHistoryForKey: (key) => intakeRef.current.getVisualVectorscopeHistByKey(key)`
+to the `historyData` context object. The panel calls it only while the hold is active.
+Slab rows are read via `rowAt(i)` subarray views — no copies, no writes.
 
-The history path is unaffected by design: vectorscope history pairs are written by the frame
-intake layer (`src/lib/FrameIntake.js` → `VectorscopeHistorySlab`) at the App level, independent
-of panel rendering. Slow mode only skips display updates inside `VectorscopePanel`; every frame
-still reaches the history slab, and snapshots taken over a hold period contain full-rate data.
+## Pure math (`src/math/vectorscopePersistence.js`)
 
-## Implementation notes
+- `selectPersistenceWindow(slab, windowMs)` → `{ rows: [{ pairs, ageMs }...] }` oldest-first,
+  ages relative to the newest row's timestamp; empty result for null/short slabs.
+- `computeWindowEffRadius(rows)` → shared effective plot radius (Chebyshev extent over all
+  pairs, `VS_EXTENT_FLOOR` floor, same constants as `vectorscopeMath.js`).
+- `persistenceAlpha(ageMs, windowMs)` → linear `0.9 → 0.05` over the window.
 
-- The hold state machine (pointer-down timer, move-cancel, release cleanup) mirrors
-  `scheduleHoldSmoothing` / `clearPendingHoldSmoothing` / `releaseHoldSmoothing` in
-  `SpectrumPanel.jsx`. During implementation planning, evaluate extracting a shared
-  `useHoldGesture` hook versus keeping a local copy; default to a local copy unless the
-  extraction is clean (two call sites, identical semantics) — no speculative generalization.
-- The smoothing state is a ref holding `{ points, correlation, meanSquareRadius }`, updated
-  inside a `useMemo` keyed on the live path/correlation and the hold state (ref mutation in a
-  memo is the established pattern in this component — see `liveCorrelationDisplayRef`).
-  Releasing the hold clears the ref, so re-activation starts fresh from the then-current frame.
-- Per-frame cost while held is bounded: the Rust ring caps the path at ~680 points
-  (`VS_CAP = 4096`, decimation step 6), so parse + blend + rebuild is ~1400 numbers per frame,
-  only in the held panel instance.
-- Snapshot mode short-circuits all of this: existing snapshot rendering is unchanged.
-- The plot container currently has no pointer handlers; adding them must keep the two SVGs'
-  `pointer-events` behavior intact (grid SVG is `pointer-events-none`; handlers go on the
-  wrapping container).
+Canvas drawing itself stays in the panel (thin, unit-untestable in jsdom by design: jsdom's
+`canvas.getContext` returns null and the draw effect guards on it).
+
+## Performance
+
+Bounded and hold-only: ~38 polylines / ~7500 `lineTo` per redraw on a 2D canvas, redrawn at
+frame cadence only in the held panel instance. Reads are subarray views. No allocations beyond
+the row descriptor array per redraw.
 
 ## Tests
 
-Vitest, colocated in `src/components/panels/VectorscopePanel.test.jsx`:
-
-- Holding pointer down for ≥ 300 ms (fake timers) activates slow mode; moving > 4 px before the
-  timer fires cancels it.
-- No activation in snapshot mode (`selectedOffset >= 0`) or when `historyChartInteractive` is
-  false.
-- While active, an incoming path blends 6% toward the live target per frame (deterministic
-  coordinate assertions).
-- Size renormalization: the same shape with shuffled point order keeps its size (a swapped-
-  endpoints line stays at full width instead of contracting toward the center).
-- A point-count change snaps to the raw live path.
-- Correlation marker is low-passed with the same alpha.
-- Pointer up restores live per-frame updates.
+- Existing gesture/guard tests unchanged (activation, move-cancel, snapshot/interactive
+  gating, pointer-up restore) — reworked to assert against the persistence layer instead of
+  EMA'd path coordinates.
+- `vectorscopePersistence.test.js`: window selection (drops rows older than the window,
+  ages relative to newest row), extent (shared radius matches expected for known pairs,
+  floor applied), alpha mapping endpoints.
+- Panel: canvas layer (`[data-vectorscope-persistence]`) present and live path absent while
+  held; live path restored on pointer up; fallback to live path when no accessor / too few
+  rows; correlation low-pass retained (existing deterministic test).
