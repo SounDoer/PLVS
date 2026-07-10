@@ -181,6 +181,22 @@ describe("FrameIntake", () => {
     expect(intake.getCorrSnap()).toHaveLength(HIST_MAX);
   });
 
+  it("pushHistRow rebuilds scalar rings when histMaxSamples changes", () => {
+    const intake = new FrameIntake();
+    for (let i = 0; i < 3; i++) {
+      intake.pushHistRow(makeRow(), HIST_MAX, SR);
+    }
+    expect(intake.getLoudnessHistory()).toHaveLength(3);
+    expect(intake.getAudioSnap()).toHaveLength(3);
+    expect(intake.getCorrSnap()).toHaveLength(3);
+
+    intake.pushHistRow(makeRow(), HIST_MAX + 2, SR);
+
+    expect(intake.getLoudnessHistory()).toHaveLength(1);
+    expect(intake.getAudioSnap()).toHaveLength(1);
+    expect(intake.getCorrSnap()).toHaveLength(1);
+  });
+
   it("pushHistRow treats non-finite as -Infinity", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(makeRow({ lufsMomentary: NaN, correlation: undefined }), HIST_MAX, SR);

@@ -154,6 +154,7 @@ function createTimestampDomain() {
 export class FrameIntake {
   constructor() {
     this._loudnessHist = [];
+    this._histCapacity = 0;
     this._audioSnap = [];
     this._corrSnap = [];
     this._frequencyChannelMarkers = [];
@@ -234,6 +235,14 @@ export class FrameIntake {
    * @param {number} histMaxSamples
    */
   pushHistRow(row, histMaxSamples) {
+    if (histMaxSamples !== this._histCapacity) {
+      this._loudnessHist = [];
+      this._audioSnap = [];
+      this._corrSnap = [];
+      this._frequencyChannelMarkers = [];
+      this._channelMetadataSnap = [];
+      this._histCapacity = histMaxSamples;
+    }
     const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._histTimestamp);
     const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
