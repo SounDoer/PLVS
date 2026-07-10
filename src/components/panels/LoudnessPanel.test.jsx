@@ -76,4 +76,50 @@ describe("LoudnessPanel", () => {
 
     expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
   });
+
+  // Regression: once the live history ring fills, its length caps and its reference stays stable
+  // (push+shift mutate in place). A path memo keyed only on totalSamples/reference would then freeze
+  // even though newer samples keep shifting in. Keying on the newest sample's timestamp keeps the
+  // curve advancing. See the memo in LoudnessPanel.jsx.
+  it("keeps the loudness path advancing after the history ring fills", () => {
+    const capacity = 4;
+    // Full ring, mutated in place across ticks exactly like the live intake buffer.
+    const histSourceList = [
+      { m: -20, st: -21, timestampMs: 1000 },
+      { m: -20, st: -21, timestampMs: 1100 },
+      { m: -20, st: -21, timestampMs: 1200 },
+      { m: -20, st: -21, timestampMs: 1300 },
+    ];
+    const shared = {
+      histSourceList,
+      totalSamples: capacity,
+      visibleSamples: capacity,
+      effectiveOffsetSamples: 0,
+    };
+    const panelControls = { loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm"] };
+    const tree = () => (
+      <HistoryDataProvider value={{ ...baseAudioData, ...shared }}>
+        <PanelInstanceProvider value={{ panelControls }}>
+          <LoudnessPanel />
+        </PanelInstanceProvider>
+      </HistoryDataProvider>
+    );
+    const pathsOf = (container) =>
+      Array.from(container.querySelectorAll("path[d]"))
+        .map((p) => p.getAttribute("d"))
+        .join("|");
+
+    const { container, rerender } = render(tree());
+    const before = pathsOf(container);
+
+    // One live tick on a FULL ring: drop oldest, append a newer sample at a different level.
+    // Length stays at `capacity`, so a memo keyed only on totalSamples would freeze here.
+    histSourceList.shift();
+    histSourceList.push({ m: -6, st: -8, timestampMs: 1400 });
+    rerender(tree());
+    const after = pathsOf(container);
+
+    expect(before).toBeTruthy();
+    expect(after).not.toBe(before);
+  });
 });
