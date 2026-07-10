@@ -1,7 +1,12 @@
 # Vectorscope hold slow mode — design
 
 Date: 2026-07-10
-Status: Approved, ready for implementation
+Status: Implemented (revised during implementation — see "Slow-mode behavior")
+
+> Revision note: the originally approved design was a display refresh throttle (200 ms cadence
+> with a crossfade). User testing found the discrete refresh read as a frame-skipping jump
+> rather than a smooth slowdown, so the shipped design is spectrum-style per-point EMA with a
+> size renormalization step. The gesture, scope, and data-integrity sections are unchanged.
 
 ## Background
 
@@ -11,13 +16,18 @@ makes the curve easier to read (`HOLD_DISPLAY_SMOOTHING_ALPHA` per-bin EMA in
 `src/components/panels/SpectrumPanel.jsx`).
 
 The user wants an equivalent hold gesture on the Vectorscope trace. The spectrum mechanism
-cannot be reused directly: spectrum bins have a stable physical meaning (bin `i` is always the
-same frequency band), so per-bin EMA produces a meaningful "slowed" curve. Vectorscope path
-points are raw sample pairs from a sliding window — index `i` means a different instant on every
-frame — so per-point interpolation would draw distorted ghost shapes, not a slower trace.
+cannot be copied blindly: spectrum bins have a stable physical meaning (bin `i` is always the
+same frequency band), while vectorscope path points are raw sample pairs from a sliding
+window — index `i` means a different instant on every frame. Naive per-point EMA therefore
+contracts the figure toward its centroid (the EMA of index-shuffled targets converges to the
+distribution mean; at `alpha = 0.06` the steady-state radius is ~18% of the true size).
 
-Instead, the Vectorscope slow mode is a **display refresh throttle**: while held, the trace
-updates at a fixed slow cadence with a crossfade between shapes.
+The shipped design is per-point EMA **plus size renormalization**: blend every displayed point
+6% toward the live target each frame, then rescale the blended cloud about the plot center so
+its mean-square radius matches the (equally smoothed) live size. The result is a smoothly
+morphing average stereo image at the correct scale. The displayed shape is not a true
+instantaneous Lissajous trajectory — intentional: the hold mode exists to read the average
+stereo image (width, bias, phase tendency), not transient trajectories.
 
 ## Scope
 
@@ -52,25 +62,26 @@ Constants (component-local, mirroring spectrum's naming):
 ```text
 HOLD_SLOW_DELAY_MS = 300
 HOLD_SLOW_CANCEL_PX = 4
-HOLD_SLOW_REFRESH_MS = 200
-HOLD_SLOW_CROSSFADE_MS = 140
+HOLD_SLOW_SMOOTHING_ALPHA = 0.06
+VS_TRACE_CENTER = 130
 ```
 
 ## Slow-mode behavior
 
-While slow mode is active:
+While slow mode is active, every incoming frame is rendered (no throttle), but the displayed
+values are low-passed:
 
-- **Trace**: the displayed SVG path is frozen; a new live path is accepted only every
-  `200 ms`. Frames arriving between refresh ticks are ignored for display (the underlying data
-  flow is unaffected). At each refresh tick the new path replaces the old one with a
-  `~140 ms` opacity crossfade using `framer-motion` `AnimatePresence` (same pattern as the
-  spectrum live/snap palette transition), keyed per refresh tick. `useReducedMotion` disables
-  the crossfade (instant swap), matching spectrum's reduced-motion handling.
-- **Correlation marker**: the correlation value driving the marker and its color updates on the
-  same 200 ms cadence as the trace, so the whole panel reads as one paused-cadence view. The
-  existing live smoothing (`LIVE_CORRELATION_DISPLAY_ALPHA`) applies to the values that are
-  accepted; the marker's existing CSS left/color transition provides the visual easing between
-  ticks.
+- **Trace**: the live SVG path (`M x y L x y …`, 0..260 viewBox, center 130,130) is parsed
+  into coordinates. Each displayed point moves `6%` (`HOLD_SLOW_SMOOTHING_ALPHA`) toward the
+  incoming live point per frame — the same alpha as spectrum's `HOLD_DISPLAY_SMOOTHING_ALPHA`.
+  Because per-point EMA of index-shuffled targets contracts the cloud toward its centroid, the
+  blended figure is then rescaled about the plot center so its mean-square radius matches the
+  live size (itself smoothed with the same alpha, so momentary silence does not collapse the
+  figure instantly). If the point count changes between frames, the display snaps to the raw
+  live path (same degradation strategy as spectrum's `bandsMatch`).
+- **Correlation marker**: the correlation value is low-passed with the same alpha before
+  feeding the existing live display smoothing (`LIVE_CORRELATION_DISPLAY_ALPHA`), so the marker
+  slows down together with the trace.
 
 On exit, the panel immediately resumes normal per-frame updates for both trace and correlation.
 
@@ -88,10 +99,13 @@ still reaches the history slab, and snapshots taken over a hold period contain f
   `SpectrumPanel.jsx`. During implementation planning, evaluate extracting a shared
   `useHoldGesture` hook versus keeping a local copy; default to a local copy unless the
   extraction is clean (two call sites, identical semantics) — no speculative generalization.
-- The throttle can be a ref holding `{ lastAcceptTs, heldPath, heldCorrelation }`: when slow
-  mode is active and `now - lastAcceptTs < 200 ms`, render the held values; otherwise accept
-  the current live values and update the ref. A re-render tick is not required beyond what
-  incoming frames already cause, since frames arrive far more often than 200 ms.
+- The smoothing state is a ref holding `{ points, correlation, meanSquareRadius }`, updated
+  inside a `useMemo` keyed on the live path/correlation and the hold state (ref mutation in a
+  memo is the established pattern in this component — see `liveCorrelationDisplayRef`).
+  Releasing the hold clears the ref, so re-activation starts fresh from the then-current frame.
+- Per-frame cost while held is bounded: the Rust ring caps the path at ~680 points
+  (`VS_CAP = 4096`, decimation step 6), so parse + blend + rebuild is ~1400 numbers per frame,
+  only in the held panel instance.
 - Snapshot mode short-circuits all of this: existing snapshot rendering is unchanged.
 - The plot container currently has no pointer handlers; adding them must keep the two SVGs'
   `pointer-events` behavior intact (grid SVG is `pointer-events-none`; handlers go on the
@@ -105,7 +119,10 @@ Vitest, colocated in `src/components/panels/VectorscopePanel.test.jsx`:
   timer fires cancels it.
 - No activation in snapshot mode (`selectedOffset >= 0`) or when `historyChartInteractive` is
   false.
-- While active, a new live path arriving within 200 ms of the last accepted one does not change
-  the rendered path; after 200 ms the new path is rendered.
-- Correlation marker value follows the same throttle.
+- While active, an incoming path blends 6% toward the live target per frame (deterministic
+  coordinate assertions).
+- Size renormalization: the same shape with shuffled point order keeps its size (a swapped-
+  endpoints line stays at full width instead of contracting toward the center).
+- A point-count change snaps to the raw live path.
+- Correlation marker is low-passed with the same alpha.
 - Pointer up restores live per-frame updates.

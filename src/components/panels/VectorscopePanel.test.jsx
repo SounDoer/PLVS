@@ -337,19 +337,37 @@ describe("VectorscopePanel hold slow mode", () => {
     return plot;
   }
 
-  it("throttles the live trace to the slow cadence while held", () => {
+  it("smooths the live trace toward incoming frames while held", () => {
     vi.useFakeTimers();
     const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
     activateHold(container);
 
+    // Each frame moves the displayed points 6% toward the live target.
     rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11")));
-    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 0 0 L 10 10");
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 0.06 0.06 L 10.06 10.06");
+  });
 
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    rerender(vectorscopePanelTree(holdAudioData("M 2 2 L 12 12")));
-    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 2 2 L 12 12");
+  it("preserves the trace size when point order shuffles between frames while held", () => {
+    vi.useFakeTimers();
+    // Horizontal line through the plot center (130,130): offsets -100 / +100.
+    const { container, rerender } = renderPanel(holdAudioData("M 30 130 L 230 130"));
+    activateHold(container);
+
+    // Same shape, endpoints swapped: naive per-point EMA would pull both points
+    // toward the center and shrink the figure; size renormalization must undo that.
+    rerender(vectorscopePanelTree(holdAudioData("M 230 130 L 30 130")));
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 30.00 130.00 L 230.00 130.00");
+  });
+
+  it("snaps to the live trace when the point count changes while held", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
+    activateHold(container);
+
+    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11 L 21 21")));
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe(
+      "M 1.00 1.00 L 11.00 11.00 L 21.00 21.00"
+    );
   });
 
   it("cancels hold activation when the pointer moves beyond the threshold", () => {
@@ -401,34 +419,16 @@ describe("VectorscopePanel hold slow mode", () => {
     expect(snapTrace?.getAttribute("d")).toBe("M 5 5 L 15 15");
   });
 
-  it("throttles the correlation marker on the same cadence", () => {
+  it("smooths the correlation marker while held", () => {
     vi.useFakeTimers();
     const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10", -1));
     activateHold(container);
 
     rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11", 1)));
-    const marker = () => container.querySelector("[data-vectorscope-correlation-marker]");
-    // Held value is still -1 -> marker pinned at the left edge.
-    expect(marker()?.getAttribute("style")).toContain("left: 0%");
-
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    rerender(vectorscopePanelTree(holdAudioData("M 2 2 L 12 12", 1)));
-    // Accepted +1 smoothed from -1 with alpha 0.25 -> -0.5 -> left 25%.
-    expect(marker()?.getAttribute("style")).toContain("left: 25%");
-  });
-
-  it("wraps the trace in a crossfade group only while holding", () => {
-    vi.useFakeTimers();
-    const { container } = renderPanel(holdAudioData("M 0 0 L 10 10"));
-    expect(lastLiveTrace(container)?.closest("g")).toBeNull();
-
-    const plot = activateHold(container);
-    expect(lastLiveTrace(container)?.closest("g")).toBeTruthy();
-
-    fireEvent(plot, new MouseEvent("pointerup", { bubbles: true }));
-    expect(lastLiveTrace(container)?.closest("g")).toBeNull();
+    const marker = container.querySelector("[data-vectorscope-correlation-marker]");
+    // Hold alpha 0.06 then live display alpha 0.25: -1 -> -0.97 -> left 1.5%
+    // (an unsmoothed jump to +1 would land at 25% through the live alpha alone).
+    expect(marker?.getAttribute("style")).toContain("left: 1.5");
   });
 
   it("restores per-frame updates on pointer up", () => {

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   useFrameData,
   useHistoryData,
@@ -25,8 +24,9 @@ const VECTOR_TRACE_STROKE_FULL_SIZE_PX = 720;
 const VECTOR_TRACE_STROKE_COMPACT_SIZE_PX = 280;
 const HOLD_SLOW_DELAY_MS = 300;
 const HOLD_SLOW_CANCEL_PX = 4;
-const HOLD_SLOW_REFRESH_MS = 200;
-const HOLD_SLOW_CROSSFADE_MS = 140;
+const HOLD_SLOW_SMOOTHING_ALPHA = 0.06;
+const VS_TRACE_CENTER = 130;
+const VS_TRACE_MIN_MEAN_SQUARE_RADIUS = 1e-9;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -57,6 +57,32 @@ function correlationMarkerClass(value) {
 function smoothCorrelation(previous, next) {
   if (previous === null || next === null) return next;
   return previous + (next - previous) * LIVE_CORRELATION_DISPLAY_ALPHA;
+}
+
+function parseTracePathPoints(d) {
+  if (!d) return null;
+  const nums = d.match(/-?\d+(?:\.\d+)?/g);
+  if (!nums || nums.length < 2 || nums.length % 2 !== 0) return null;
+  return nums.map(Number);
+}
+
+function traceMeanSquareRadius(points) {
+  let sum = 0;
+  for (let i = 0; i < points.length; i += 2) {
+    const dx = points[i] - VS_TRACE_CENTER;
+    const dy = points[i + 1] - VS_TRACE_CENTER;
+    sum += dx * dx + dy * dy;
+  }
+  return sum / (points.length / 2);
+}
+
+function buildTracePathFromPoints(points) {
+  if (!points?.length) return "";
+  const segments = [];
+  for (let i = 0; i < points.length; i += 2) {
+    segments.push(`${points[i].toFixed(2)} ${points[i + 1].toFixed(2)}`);
+  }
+  return `M ${segments.join(" L ")}`;
 }
 
 export function computeVectorscopeTraceStrokeWidth(plotSizePx) {
@@ -177,32 +203,51 @@ export function VectorscopePanel() {
     panelPairX = controlPair.x;
     panelPairY = controlPair.y;
   }
-  // Hold slow mode: while active, refuse new live display values until the refresh window
-  // elapses. Display-only — frame intake and history writes are unaffected.
-  const holdSlowGateRef = useRef(null);
-  let gatedVectorPath = panelVectorPath;
-  let gatedCorrelation = panelCorrelation;
-  let traceCrossfadeKey = "live";
-  if (!isSnapshot && holdSlowActive) {
-    const now = Date.now();
-    const gate = holdSlowGateRef.current;
-    if (gate && now - gate.acceptedTs < HOLD_SLOW_REFRESH_MS) {
-      gatedVectorPath = gate.path;
-      gatedCorrelation = gate.correlation;
-      traceCrossfadeKey = `hold-${gate.tick}`;
-    } else {
-      const tick = (gate?.tick ?? 0) + 1;
-      holdSlowGateRef.current = {
-        acceptedTs: now,
-        path: panelVectorPath,
-        correlation: panelCorrelation,
-        tick,
-      };
-      traceCrossfadeKey = `hold-${tick}`;
+  // Hold slow mode: while active, low-pass the displayed trace points and correlation toward
+  // the incoming live values (spectrum-style display smoothing). Point index has no stable
+  // physical meaning across frames, so this draws a smoothly morphing average stereo image
+  // rather than a true instantaneous trajectory — intentional for the hold reading mode.
+  // Display-only — frame intake and history writes are unaffected.
+  const holdSmoothingRef = useRef(null);
+  const { gatedVectorPath, gatedCorrelation } = useMemo(() => {
+    if (isSnapshot || !holdSlowActive) {
+      holdSmoothingRef.current = null;
+      return { gatedVectorPath: panelVectorPath, gatedCorrelation: panelCorrelation };
     }
-  } else {
-    holdSlowGateRef.current = null;
-  }
+    const nextPoints = parseTracePathPoints(panelVectorPath);
+    if (!nextPoints) {
+      holdSmoothingRef.current = null;
+      return { gatedVectorPath: panelVectorPath, gatedCorrelation: panelCorrelation };
+    }
+    const previous = holdSmoothingRef.current;
+    const targetMeanSquareRadius = traceMeanSquareRadius(nextPoints);
+    let points = nextPoints;
+    let meanSquareRadius = targetMeanSquareRadius;
+    if (previous?.points && previous.points.length === nextPoints.length) {
+      points = nextPoints.map(
+        (value, idx) =>
+          previous.points[idx] + (value - previous.points[idx]) * HOLD_SLOW_SMOOTHING_ALPHA
+      );
+      // Per-point EMA of index-shuffled targets contracts the cloud toward its centroid, so
+      // renormalize the blended figure back to the (smoothed) live size.
+      meanSquareRadius =
+        previous.meanSquareRadius +
+        (targetMeanSquareRadius - previous.meanSquareRadius) * HOLD_SLOW_SMOOTHING_ALPHA;
+      const blendedMeanSquareRadius = traceMeanSquareRadius(points);
+      if (blendedMeanSquareRadius > VS_TRACE_MIN_MEAN_SQUARE_RADIUS) {
+        const scale = Math.sqrt(meanSquareRadius / blendedMeanSquareRadius);
+        points = points.map((value) => VS_TRACE_CENTER + (value - VS_TRACE_CENTER) * scale);
+      }
+    }
+    let correlation = panelCorrelation;
+    if (Number.isFinite(previous?.correlation) && Number.isFinite(panelCorrelation)) {
+      correlation =
+        previous.correlation +
+        (panelCorrelation - previous.correlation) * HOLD_SLOW_SMOOTHING_ALPHA;
+    }
+    holdSmoothingRef.current = { points, correlation, meanSquareRadius };
+    return { gatedVectorPath: buildTracePathFromPoints(points), gatedCorrelation: correlation };
+  }, [holdSlowActive, isSnapshot, panelCorrelation, panelVectorPath]);
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
@@ -218,7 +263,6 @@ export function VectorscopePanel() {
   const liveCorrelationDisplayRef = useRef(null);
   const traceFrameRef = useRef(null);
   const [traceStrokeWidth, setTraceStrokeWidth] = useState(VECTOR_TRACE_STROKE_MAX);
-  const reduceMotion = useReducedMotion();
   useLayoutEffect(() => {
     const el = traceFrameRef.current;
     if (!el) return undefined;
@@ -321,48 +365,20 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
-              {gatedVectorPath &&
-                (traceCrossfadeKey !== "live" ? (
-                  // Hold slow mode: crossfade between accepted refreshes. Mounted only while
-                  // holding so release restores the plain live path instantly (no exiting node
-                  // lingering over the live trace).
-                  <AnimatePresence mode="sync">
-                    <motion.g
-                      key={traceCrossfadeKey}
-                      initial={
-                        reduceMotion || traceCrossfadeKey === "hold-1" ? false : { opacity: 0 }
-                      }
-                      animate={{ opacity: 1 }}
-                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
-                      transition={{
-                        duration: reduceMotion ? 0 : HOLD_SLOW_CROSSFADE_MS / 1000,
-                        ease: "easeOut",
-                      }}
-                    >
-                      <path
-                        d={gatedVectorPath}
-                        fill="none"
-                        stroke="var(--ui-vectorscope-trace)"
-                        strokeWidth={traceStrokeWidth}
-                        opacity="var(--ui-vectorscope-axis-opacity)"
-                        strokeLinecap="round"
-                      />
-                    </motion.g>
-                  </AnimatePresence>
-                ) : (
-                  <path
-                    d={gatedVectorPath}
-                    fill="none"
-                    stroke={
-                      selectedOffset >= 0
-                        ? "var(--ui-vectorscope-trace-snap)"
-                        : "var(--ui-vectorscope-trace)"
-                    }
-                    strokeWidth={traceStrokeWidth}
-                    opacity="var(--ui-vectorscope-axis-opacity)"
-                    strokeLinecap="round"
-                  />
-                ))}
+              {gatedVectorPath && (
+                <path
+                  d={gatedVectorPath}
+                  fill="none"
+                  stroke={
+                    selectedOffset >= 0
+                      ? "var(--ui-vectorscope-trace-snap)"
+                      : "var(--ui-vectorscope-trace)"
+                  }
+                  strokeWidth={traceStrokeWidth}
+                  opacity="var(--ui-vectorscope-axis-opacity)"
+                  strokeLinecap="round"
+                />
+              )}
             </svg>
           </div>
           <span
