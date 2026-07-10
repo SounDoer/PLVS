@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   useFrameData,
   useHistoryData,
@@ -22,6 +23,10 @@ const VECTOR_TRACE_STROKE_MIN = 0.45;
 const VECTOR_TRACE_STROKE_MAX = 1;
 const VECTOR_TRACE_STROKE_FULL_SIZE_PX = 720;
 const VECTOR_TRACE_STROKE_COMPACT_SIZE_PX = 280;
+const HOLD_SLOW_DELAY_MS = 300;
+const HOLD_SLOW_CANCEL_PX = 4;
+const HOLD_SLOW_REFRESH_MS = 200;
+const HOLD_SLOW_CROSSFADE_MS = 140;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -77,11 +82,68 @@ export function VectorscopePanel() {
     vectorscopePairY: pairY = 1,
     displayAudio,
   } = useFrameData();
-  const { selectedOffset, resolveVectorscopeSnapshotForKey } = useHistoryData();
+  const { selectedOffset, resolveVectorscopeSnapshotForKey, historyChartInteractive } =
+    useHistoryData();
   const { panelControls, analysisStatus } = usePanelInstanceData();
   const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
+  const [holdSlowActive, setHoldSlowActive] = useState(false);
+  const holdSlowTimerRef = useRef(null);
+  const holdSlowPointerRef = useRef(null);
+  const holdSlowActiveRef = useRef(false);
+  const clearPendingHoldSlow = useCallback(() => {
+    if (holdSlowTimerRef.current != null) {
+      window.clearTimeout(holdSlowTimerRef.current);
+      holdSlowTimerRef.current = null;
+    }
+    holdSlowPointerRef.current = null;
+  }, []);
+  const releaseHoldSlow = useCallback(() => {
+    clearPendingHoldSlow();
+    if (holdSlowActiveRef.current) {
+      holdSlowActiveRef.current = false;
+      setHoldSlowActive(false);
+    }
+  }, [clearPendingHoldSlow]);
+  useEffect(() => releaseHoldSlow, [releaseHoldSlow]);
+  const onTracePointerDown = useCallback(
+    (e) => {
+      if (
+        isSnapshot ||
+        !historyChartInteractive ||
+        (e.button != null && e.button !== 0) ||
+        e.ctrlKey
+      ) {
+        return;
+      }
+      clearPendingHoldSlow();
+      holdSlowPointerRef.current = { id: e.pointerId, startX: e.clientX, startY: e.clientY };
+      holdSlowTimerRef.current = window.setTimeout(() => {
+        holdSlowTimerRef.current = null;
+        if (!holdSlowPointerRef.current) return;
+        holdSlowActiveRef.current = true;
+        setHoldSlowActive(true);
+      }, HOLD_SLOW_DELAY_MS);
+    },
+    [clearPendingHoldSlow, historyChartInteractive, isSnapshot]
+  );
+  const onTracePointerMove = useCallback(
+    (e) => {
+      const pointer = holdSlowPointerRef.current;
+      if (
+        pointer &&
+        !holdSlowActiveRef.current &&
+        Math.hypot(e.clientX - pointer.startX, e.clientY - pointer.startY) > HOLD_SLOW_CANCEL_PX
+      ) {
+        clearPendingHoldSlow();
+      }
+    },
+    [clearPendingHoldSlow]
+  );
+  const onTracePointerUp = useCallback(() => {
+    releaseHoldSlow();
+  }, [releaseHoldSlow]);
   const snapResolved = isSnapshot ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey) : null;
   const snapshotMissing = snapResolved?.missing === true;
   const liveVectorscopeResult = isSnapshot
@@ -115,6 +177,32 @@ export function VectorscopePanel() {
     panelPairX = controlPair.x;
     panelPairY = controlPair.y;
   }
+  // Hold slow mode: while active, refuse new live display values until the refresh window
+  // elapses. Display-only — frame intake and history writes are unaffected.
+  const holdSlowGateRef = useRef(null);
+  let gatedVectorPath = panelVectorPath;
+  let gatedCorrelation = panelCorrelation;
+  let traceCrossfadeKey = "live";
+  if (!isSnapshot && holdSlowActive) {
+    const now = Date.now();
+    const gate = holdSlowGateRef.current;
+    if (gate && now - gate.acceptedTs < HOLD_SLOW_REFRESH_MS) {
+      gatedVectorPath = gate.path;
+      gatedCorrelation = gate.correlation;
+      traceCrossfadeKey = `hold-${gate.tick}`;
+    } else {
+      const tick = (gate?.tick ?? 0) + 1;
+      holdSlowGateRef.current = {
+        acceptedTs: now,
+        path: panelVectorPath,
+        correlation: panelCorrelation,
+        tick,
+      };
+      traceCrossfadeKey = `hold-${tick}`;
+    }
+  } else {
+    holdSlowGateRef.current = null;
+  }
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
@@ -126,10 +214,11 @@ export function VectorscopePanel() {
     ? snapResolved?.hasSignal === true
     : hasPairSignal(displayAudio?.peakDb, px, py);
   const canPlaceCorrelationMarker =
-    hasCorrelationSignal && clampCorrelation(panelCorrelation) !== null;
+    hasCorrelationSignal && clampCorrelation(gatedCorrelation) !== null;
   const liveCorrelationDisplayRef = useRef(null);
   const traceFrameRef = useRef(null);
   const [traceStrokeWidth, setTraceStrokeWidth] = useState(VECTOR_TRACE_STROKE_MAX);
+  const reduceMotion = useReducedMotion();
   useLayoutEffect(() => {
     const el = traceFrameRef.current;
     if (!el) return undefined;
@@ -153,7 +242,7 @@ export function VectorscopePanel() {
     };
   }, []);
   const displayCorrelation = useMemo(() => {
-    const rawCorrelation = canPlaceCorrelationMarker ? clampCorrelation(panelCorrelation) : null;
+    const rawCorrelation = canPlaceCorrelationMarker ? clampCorrelation(gatedCorrelation) : null;
     if (isSnapshot || rawCorrelation === null) {
       liveCorrelationDisplayRef.current = rawCorrelation;
       return rawCorrelation;
@@ -164,7 +253,7 @@ export function VectorscopePanel() {
     );
     liveCorrelationDisplayRef.current = smoothedCorrelation;
     return smoothedCorrelation;
-  }, [canPlaceCorrelationMarker, isSnapshot, panelCorrelation]);
+  }, [canPlaceCorrelationMarker, isSnapshot, gatedCorrelation]);
 
   if (isOverCap || snapshotMissing) {
     return (
@@ -189,8 +278,14 @@ export function VectorscopePanel() {
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-0">
         <div
+          data-vectorscope-plot
           className="relative w-full"
           style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}
+          onPointerDown={onTracePointerDown}
+          onPointerMove={onTracePointerMove}
+          onPointerUp={onTracePointerUp}
+          onPointerCancel={onTracePointerUp}
+          onPointerLeave={onTracePointerUp}
         >
           <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             <svg
@@ -226,10 +321,37 @@ export function VectorscopePanel() {
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
             >
-              {panelVectorPath && (
-                <>
+              {gatedVectorPath &&
+                (traceCrossfadeKey !== "live" ? (
+                  // Hold slow mode: crossfade between accepted refreshes. Mounted only while
+                  // holding so release restores the plain live path instantly (no exiting node
+                  // lingering over the live trace).
+                  <AnimatePresence mode="sync">
+                    <motion.g
+                      key={traceCrossfadeKey}
+                      initial={
+                        reduceMotion || traceCrossfadeKey === "hold-1" ? false : { opacity: 0 }
+                      }
+                      animate={{ opacity: 1 }}
+                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+                      transition={{
+                        duration: reduceMotion ? 0 : HOLD_SLOW_CROSSFADE_MS / 1000,
+                        ease: "easeOut",
+                      }}
+                    >
+                      <path
+                        d={gatedVectorPath}
+                        fill="none"
+                        stroke="var(--ui-vectorscope-trace)"
+                        strokeWidth={traceStrokeWidth}
+                        opacity="var(--ui-vectorscope-axis-opacity)"
+                        strokeLinecap="round"
+                      />
+                    </motion.g>
+                  </AnimatePresence>
+                ) : (
                   <path
-                    d={panelVectorPath}
+                    d={gatedVectorPath}
                     fill="none"
                     stroke={
                       selectedOffset >= 0
@@ -240,8 +362,7 @@ export function VectorscopePanel() {
                     opacity="var(--ui-vectorscope-axis-opacity)"
                     strokeLinecap="round"
                   />
-                </>
-              )}
+                ))}
             </svg>
           </div>
           <span

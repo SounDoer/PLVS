@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
 import {
   FrameDataProvider,
@@ -297,5 +297,147 @@ describe("VectorscopePanel", () => {
     });
 
     expect(container.querySelector("[data-vectorscope-trace-hold]")).toBeNull();
+  });
+});
+
+function holdAudioData(path, correlation = 0.5, overrides = {}) {
+  return {
+    selectedOffset: -1,
+    historyChartInteractive: true,
+    panelControls: { vectorscopePair: { x: 0, y: 1 } },
+    displayAudio: {
+      peakDb: [-12, -18],
+      vectorscopeResultsByKey: {
+        "vectorscope:pair:0:1": { path, correlation, pairX: 0, pairY: 1 },
+      },
+    },
+    ...overrides,
+  };
+}
+
+function lastLiveTrace(container) {
+  const traces = container.querySelectorAll('path[stroke="var(--ui-vectorscope-trace)"]');
+  return traces[traces.length - 1] ?? null;
+}
+
+describe("VectorscopePanel hold slow mode", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function activateHold(container) {
+    const plot = container.querySelector("[data-vectorscope-plot]");
+    fireEvent(
+      plot,
+      new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 50, clientY: 50 })
+    );
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    return plot;
+  }
+
+  it("throttles the live trace to the slow cadence while held", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
+    activateHold(container);
+
+    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11")));
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 0 0 L 10 10");
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    rerender(vectorscopePanelTree(holdAudioData("M 2 2 L 12 12")));
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 2 2 L 12 12");
+  });
+
+  it("cancels hold activation when the pointer moves beyond the threshold", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
+    const plot = container.querySelector("[data-vectorscope-plot]");
+    fireEvent(
+      plot,
+      new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 50, clientY: 50 })
+    );
+    fireEvent(plot, new MouseEvent("pointermove", { bubbles: true, clientX: 60, clientY: 50 }));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11")));
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 1 1 L 11 11");
+  });
+
+  it("does not activate when history is not interactive", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = renderPanel(
+      holdAudioData("M 0 0 L 10 10", 0.5, { historyChartInteractive: false })
+    );
+    activateHold(container);
+
+    rerender(
+      vectorscopePanelTree(holdAudioData("M 1 1 L 11 11", 0.5, { historyChartInteractive: false }))
+    );
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 1 1 L 11 11");
+  });
+
+  it("does not activate in snapshot mode", () => {
+    vi.useFakeTimers();
+    const snapshotData = {
+      selectedOffset: 2,
+      historyChartInteractive: true,
+      resolveVectorscopeSnapshotForKey: () => ({
+        missing: false,
+        path: "M 5 5 L 15 15",
+        correlation: 0.5,
+        hasSignal: true,
+      }),
+    };
+    const { container } = renderPanel(snapshotData);
+    activateHold(container);
+
+    const snapTrace = container.querySelector('path[stroke="var(--ui-vectorscope-trace-snap)"]');
+    expect(snapTrace?.getAttribute("d")).toBe("M 5 5 L 15 15");
+  });
+
+  it("throttles the correlation marker on the same cadence", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10", -1));
+    activateHold(container);
+
+    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11", 1)));
+    const marker = () => container.querySelector("[data-vectorscope-correlation-marker]");
+    // Held value is still -1 -> marker pinned at the left edge.
+    expect(marker()?.getAttribute("style")).toContain("left: 0%");
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    rerender(vectorscopePanelTree(holdAudioData("M 2 2 L 12 12", 1)));
+    // Accepted +1 smoothed from -1 with alpha 0.25 -> -0.5 -> left 25%.
+    expect(marker()?.getAttribute("style")).toContain("left: 25%");
+  });
+
+  it("wraps the trace in a crossfade group only while holding", () => {
+    vi.useFakeTimers();
+    const { container } = renderPanel(holdAudioData("M 0 0 L 10 10"));
+    expect(lastLiveTrace(container)?.closest("g")).toBeNull();
+
+    const plot = activateHold(container);
+    expect(lastLiveTrace(container)?.closest("g")).toBeTruthy();
+
+    fireEvent(plot, new MouseEvent("pointerup", { bubbles: true }));
+    expect(lastLiveTrace(container)?.closest("g")).toBeNull();
+  });
+
+  it("restores per-frame updates on pointer up", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = renderPanel(holdAudioData("M 0 0 L 10 10"));
+    const plot = activateHold(container);
+
+    fireEvent(plot, new MouseEvent("pointerup", { bubbles: true }));
+    rerender(vectorscopePanelTree(holdAudioData("M 1 1 L 11 11")));
+    expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 1 1 L 11 11");
   });
 });
