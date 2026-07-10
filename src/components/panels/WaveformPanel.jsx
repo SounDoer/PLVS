@@ -232,7 +232,9 @@ function WaveformPanelContent({ compact, audioData }) {
             effectiveOffsetSamples ?? 0,
             visibleSamples ?? 0,
             HIST_SAMPLE_SEC,
-            labels
+            labels,
+            firstBucket,
+            lastBucket
           )
         : null,
     selectedOffset < 0

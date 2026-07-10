@@ -90,10 +90,8 @@ export function computeHistoryHoverPoint(
   if (!histSourceList.length) return null;
   const normalized = 1 - xFrac;
   const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
-  const hoverIndex = Math.max(
-    0,
-    Math.min(histSourceList.length - 1, histSourceList.length - 1 - Math.round(fromEndSamples))
-  );
+  const hoverIndex = histSourceList.length - 1 - Math.round(fromEndSamples);
+  if (hoverIndex < 0 || hoverIndex >= histSourceList.length) return null;
   const point = histSourceList[hoverIndex];
   if (!point) return null;
   const offsetSec = Math.max(0, (histSourceList.length - 1 - hoverIndex) * sampleSec);
@@ -130,10 +128,15 @@ export function computeWaveformHoverPoint(
   effectiveOffsetSamples,
   visibleSamples,
   sampleSec,
-  labels
+  labels,
+  firstBucket = 0,
+  lastBucket = Math.max(0, columns - 1)
 ) {
   if (!columns || columns === 0) return null;
   const col = Math.round(xFrac * Math.max(0, columns - 1));
+  if (firstBucket < 0 || lastBucket < firstBucket || col < firstBucket || col > lastBucket) {
+    return null;
+  }
   const offsetFromEnd = effectiveOffsetSamples + (1 - xFrac) * Math.max(0, visibleSamples - 1);
   const offsetSec = Math.max(0, offsetFromEnd * sampleSec);
   return {

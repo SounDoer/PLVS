@@ -92,6 +92,11 @@ describe("computeHistoryHoverPoint", () => {
     expect(typeof r.shortTerm).toBe("number");
   });
 
+  it("returns null when hovering before the earliest real sample", () => {
+    const r = computeHistoryHoverPoint(0, samples, 0, 30, 0.1, {}, ["momentary"]);
+    expect(r).toBeNull();
+  });
+
   it("uses momentary as the y guide when it is the only visible curve", () => {
     const r = computeHistoryHoverPoint(0, samples, 0, 3, 0.1, {}, ["momentary"]);
     expect(r.topPct).toBeCloseTo((23 / 64) * 100);
@@ -137,6 +142,20 @@ describe("computeWaveformHoverPoint", () => {
 
   it("returns null for empty columns", () => {
     expect(computeWaveformHoverPoint(0.5, [[]], [[]], 0, 0, 50, 0.1, ["L"])).toBeNull();
+  });
+
+  it("returns null when hovering outside the real waveform bucket range", () => {
+    const columns = 10;
+    const maxes = [new Array(columns).fill(0)];
+    const mins = [new Array(columns).fill(0)];
+    maxes[0][5] = 0.5;
+
+    expect(
+      computeWaveformHoverPoint(0.1, mins, maxes, columns, 0, 50, 0.1, ["L"], 4, 8)
+    ).toBeNull();
+    expect(
+      computeWaveformHoverPoint(0.5, mins, maxes, columns, 0, 50, 0.1, ["L"], 4, 8)
+    ).not.toBeNull();
   });
 });
 
