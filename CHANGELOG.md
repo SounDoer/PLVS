@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-10
+
+### Added
+- History Length control in System Settings to configure how much history is retained.
+- Vectorscope hold-to-slow: holding the plot briefly activates a smoothed trace display.
+
+### Changed
+- Loudness history and vectorscope rendering now scale to long capture sessions without degrading frame rate when zoomed out.
+
+### Fixed
+- Timeline zoom and live capture now stay aligned with the configured history retention window.
+- History rings rebuild immediately when the retention capacity setting changes.
+
 ## [0.7.5] - 2026-07-09
 
 ### Fixed
