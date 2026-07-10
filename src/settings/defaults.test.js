@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CLOSE_ACTION,
   DEFAULT_GLASS_ENABLED,
+  DEFAULT_HISTORY_RETENTION_SEC,
   DEFAULT_PANEL_OPACITY,
   DEFAULT_REFERENCE_LUFS,
   DEFAULT_THEME_EDITOR_POS,
+  HISTORY_RETENTION_OPTIONS_SEC,
   normalizeCloseAction,
   normalizeGlassEnabled,
+  normalizeHistoryRetentionSec,
   normalizePanelOpacity,
   normalizeReferenceLufs,
   normalizeThemeEditorPos,
@@ -55,6 +58,18 @@ describe("settings defaults", () => {
     expect(normalizePanelOpacity(50)).toBe(50);
     expect(normalizePanelOpacity(100)).toBe(100);
     expect(normalizePanelOpacity("abc")).toBe(DEFAULT_PANEL_OPACITY);
+  });
+
+  it("normalizes history retention seconds", () => {
+    expect(DEFAULT_HISTORY_RETENTION_SEC).toBe(3600);
+    expect(HISTORY_RETENTION_OPTIONS_SEC).toEqual([1800, 3600, 7200, 14400]);
+    expect(normalizeHistoryRetentionSec(1800)).toBe(1800);
+    expect(normalizeHistoryRetentionSec(7200)).toBe(7200);
+    expect(normalizeHistoryRetentionSec(14400)).toBe(14400);
+    expect(normalizeHistoryRetentionSec(999)).toBe(DEFAULT_HISTORY_RETENTION_SEC);
+    expect(normalizeHistoryRetentionSec(null)).toBe(DEFAULT_HISTORY_RETENTION_SEC);
+    expect(normalizeHistoryRetentionSec(undefined)).toBe(DEFAULT_HISTORY_RETENTION_SEC);
+    expect(normalizeHistoryRetentionSec("7200")).toBe(DEFAULT_HISTORY_RETENTION_SEC);
   });
 
   it("normalizes glass enabled", () => {

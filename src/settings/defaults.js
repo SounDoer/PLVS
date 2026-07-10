@@ -5,6 +5,8 @@ export const DEFAULT_REFERENCE_LUFS = LOUDNESS_DEFAULT_REFERENCE_LUFS;
 export const DEFAULT_CLOSE_ACTION = "ask";
 export const DEFAULT_PANEL_OPACITY = 100;
 export const DEFAULT_GLASS_ENABLED = false;
+export const DEFAULT_HISTORY_RETENTION_SEC = 3600;
+export const HISTORY_RETENTION_OPTIONS_SEC = [1800, 3600, 7200, 14400];
 export const DEFAULT_THEME_EDITOR_POS = Object.freeze({ x: 80, y: 80 });
 
 export function normalizeReferenceLufs(raw) {
@@ -38,4 +40,8 @@ export function normalizePanelOpacity(raw) {
 
 export function normalizeGlassEnabled(raw) {
   return raw === true;
+}
+
+export function normalizeHistoryRetentionSec(raw) {
+  return HISTORY_RETENTION_OPTIONS_SEC.includes(raw) ? raw : DEFAULT_HISTORY_RETENTION_SEC;
 }
