@@ -124,6 +124,22 @@ describe("buildHistoryPath", () => {
     const path = buildHistoryPath(list, "m", 5, 0, (v) => v, 400);
     expect(path).toBe("M 200 -23 L 300 -20 L 400 -18");
   });
+  it("bounds node count by the pixel budget when samples vastly outnumber columns", () => {
+    const list = Array.from({ length: 60000 }, (_, i) => ({ m: -40 + (i % 20) }));
+    const cols = 600;
+    const path = buildHistoryPath(list, "m", 60000, 0, (v) => v, 600, cols);
+    const nodes = (path.match(/[ML]/g) ?? []).length;
+    // Decimated envelope emits at most 2 points per column; far below the 60000 raw samples.
+    expect(nodes).toBeLessThanOrEqual(2 * cols);
+    expect(nodes).toBeGreaterThan(cols); // did decimate to an envelope, not a single line
+    expect(path).toMatch(/^M /);
+  });
+  it("preserves per-column peaks in the decimated envelope", () => {
+    // One tall spike inside an otherwise flat window must survive decimation.
+    const list = Array.from({ length: 6000 }, (_, i) => ({ m: i === 3000 ? 0 : -60 }));
+    const path = buildHistoryPath(list, "m", 6000, 0, (v) => v, 600, 600);
+    expect(path).toContain(" 0 "); // the spike's y-value is present
+  });
 });
 
 describe("buildLoudnessYAxisTicks", () => {

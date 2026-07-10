@@ -22,6 +22,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
   "rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm";
 
 export function LoudnessHistoryChart({
+  plotAreaRef,
   historyYAxisTicks: historyYAxisTicksProp,
   targetLufs,
   loudnessYMinDb = -64,
@@ -275,6 +276,7 @@ export function LoudnessHistoryChart({
 
       {/* Chart area */}
       <div
+        ref={plotAreaRef}
         className={cn(
           "relative flex min-h-0 min-w-0 flex-1",
           !historyChartInteractive && "pointer-events-none"

@@ -107,7 +107,8 @@ export function buildHistoryPath(
   visibleSamples,
   effectiveOffsetSamples,
   toY,
-  viewWidth = 600
+  viewWidth = 600,
+  targetColumns = viewWidth
 ) {
   if (!histSourceList.length) return "";
   const total = histSourceList.length;
@@ -118,12 +119,41 @@ export function buildHistoryPath(
   const start = Math.max(0, oldestVisible);
   const end = Math.min(total - 1, newestVisible);
   if (end < start) return "";
-  const view = histSourceList.slice(start, end + 1);
-  if (view.length < 2) return "";
-  return view
-    .map(
-      (p, i) =>
-        `${i === 0 ? "M" : "L"} ${((start + i - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth} ${toY(p[key])}`
-    )
-    .join(" ");
+  const count = end - start + 1;
+  if (count < 2) return "";
+
+  const xOf = (idx) => ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
+  const cols = Math.max(1, Math.floor(targetColumns));
+
+  // Faithful per-sample path when the visible window fits within the pixel budget. Sub-column
+  // detail is invisible anyway, so only decimate once samples outnumber columns.
+  if (count <= cols) {
+    let d = "";
+    for (let i = start; i <= end; i++) {
+      d += `${i === start ? "M" : " L"} ${xOf(i)} ${toY(histSourceList[i][key])}`;
+    }
+    return d;
+  }
+
+  // Decimated path: bucket visible samples into <= cols columns and draw a per-column min/max
+  // envelope (screen-space Y) so peaks and troughs survive. Node count is bounded by the pixel
+  // budget instead of the retained sample count, so zoom-out cost stays flat over long sessions.
+  const minY = new Array(cols).fill(Infinity);
+  const maxY = new Array(cols).fill(-Infinity);
+  for (let i = start; i <= end; i++) {
+    const b = Math.min(cols - 1, Math.floor(((i - start) / count) * cols));
+    const y = toY(histSourceList[i][key]);
+    if (y < minY[b]) minY[b] = y;
+    if (y > maxY[b]) maxY[b] = y;
+  }
+
+  let d = "";
+  let first = true;
+  for (let b = 0; b < cols; b++) {
+    if (minY[b] === Infinity) continue;
+    const x = xOf(start + ((b + 0.5) * count) / cols);
+    d += `${first ? "M" : " L"} ${x} ${maxY[b]} L ${x} ${minY[b]}`;
+    first = false;
+  }
+  return d;
 }

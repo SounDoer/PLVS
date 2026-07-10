@@ -1,5 +1,5 @@
 import { useHistoryData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
 import { LoudnessHistoryChart } from "./LoudnessHistoryChart";
@@ -50,22 +50,74 @@ export function LoudnessPanel({ compact = false }) {
     [loudnessYMinDb, loudnessYMaxDb]
   );
   const loudnessHistoryVisibleLayerIds = normalizedPanelControls.loudnessHistoryVisibleLayerIds;
-  // Computed inline (not memoized): histSourceList is a stable, mutated-in-place ring buffer, so its
-  // reference never changes between frames even as samples are appended. Memoizing on it would freeze
-  // the curve. Cheap enough to rebuild each render.
-  const displayHistoryPathMForRange = buildHistoryPath(
-    histSourceList,
-    "m",
-    visibleSamples,
-    effectiveOffsetSamples,
-    (v) => loudnessHistY(v, 220, loudnessYRange)
+  // Real plot width (CSS px) drives the decimation column budget so the envelope matches screen
+  // resolution instead of the fixed 600-unit SVG coordinate space. 0 until first measurement.
+  const plotAreaRef = useRef(null);
+  const [plotWidthPx, setPlotWidthPx] = useState(0);
+  useEffect(() => {
+    const el = plotAreaRef.current;
+    if (!el) return;
+    let rafId = 0;
+    const measure = () => {
+      rafId = 0;
+      const w = Math.round(el.clientWidth);
+      setPlotWidthPx((prev) => (prev === w ? prev : w));
+    };
+    const ro = new ResizeObserver(() => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(measure);
+    });
+    ro.observe(el);
+    measure();
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
+  }, []);
+  const targetColumns = plotWidthPx > 0 ? plotWidthPx : undefined;
+  // histSourceList is a stable, mutated-in-place ring buffer, so its reference never changes between
+  // frames even as samples are appended. Keying the memo on totalSamples (its length) captures newly
+  // appended data without freezing the curve, and avoids rebuilding the (now decimated) path on every
+  // unrelated re-render (hover, sibling state). buildHistoryPath caps node count at the pixel budget.
+  const displayHistoryPathMForRange = useMemo(
+    () =>
+      buildHistoryPath(
+        histSourceList,
+        "m",
+        visibleSamples,
+        effectiveOffsetSamples,
+        (v) => loudnessHistY(v, 220, loudnessYRange),
+        600,
+        targetColumns
+      ),
+    [
+      histSourceList,
+      totalSamples,
+      visibleSamples,
+      effectiveOffsetSamples,
+      loudnessYRange,
+      targetColumns,
+    ]
   );
-  const displayHistoryPathSTForRange = buildHistoryPath(
-    histSourceList,
-    "st",
-    visibleSamples,
-    effectiveOffsetSamples,
-    (v) => loudnessHistY(v, 220, loudnessYRange)
+  const displayHistoryPathSTForRange = useMemo(
+    () =>
+      buildHistoryPath(
+        histSourceList,
+        "st",
+        visibleSamples,
+        effectiveOffsetSamples,
+        (v) => loudnessHistY(v, 220, loudnessYRange),
+        600,
+        targetColumns
+      ),
+    [
+      histSourceList,
+      totalSamples,
+      visibleSamples,
+      effectiveOffsetSamples,
+      loudnessYRange,
+      targetColumns,
+    ]
   );
   const onLoudnessYRangeChange = useCallback(
     (newMin, newMax) => {
@@ -111,6 +163,7 @@ export function LoudnessPanel({ compact = false }) {
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
         <LoudnessHistoryChart
+          plotAreaRef={plotAreaRef}
           targetLufs={targetLufs}
           loudnessYMinDb={normalizedPanelControls.loudnessYMinDb}
           loudnessYMaxDb={normalizedPanelControls.loudnessYMaxDb}
