@@ -130,6 +130,8 @@ export function SettingsPanel({
   autostartReady = false,
   closeAction = "ask",
   setCloseAction = () => {},
+  historyRetentionSec = 3600,
+  setHistoryRetentionSec = () => {},
   clearShortcut = "CmdOrCtrl+K",
   setClearShortcut = () => {},
   clearGlobal = false,
@@ -416,6 +418,28 @@ export function SettingsPanel({
                       </Button>
                     </div>
                   ) : null}
+                </SettingsSection>
+
+                <SettingsDivider />
+
+                {/* History retention */}
+                <SettingsSection>
+                  <SettingsRow label="History Length">
+                    <Select
+                      value={String(historyRetentionSec)}
+                      onValueChange={setHistoryRetentionSec}
+                    >
+                      <SelectTrigger aria-label="History Length" className={SELECT_TRIGGER_CLASS}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                        <SelectItem value="1800">30 min</SelectItem>
+                        <SelectItem value="3600">1 h</SelectItem>
+                        <SelectItem value="7200">2 h</SelectItem>
+                        <SelectItem value="14400">4 h</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </SettingsRow>
                 </SettingsSection>
 
                 <SettingsDivider />

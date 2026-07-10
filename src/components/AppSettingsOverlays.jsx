@@ -51,6 +51,8 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
         autostartReady={settings.autostartReady}
         closeAction={settings.closeAction}
         setCloseAction={settings.setCloseAction}
+        historyRetentionSec={settings.historyRetentionSec}
+        setHistoryRetentionSec={settings.setHistoryRetentionSec}
         clearShortcut={settings.clearShortcut}
         setClearShortcut={settings.setClearShortcut}
         clearGlobal={settings.clearGlobal}

@@ -375,6 +375,30 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Close Behavior")).toBeTruthy();
   });
 
+  const HISTORY_PROPS = {
+    historyRetentionSec: 3600,
+    setHistoryRetentionSec: vi.fn(),
+  };
+
+  it("renders History Length select with current value", () => {
+    render(<SettingsPanel {...BASE_PROPS} {...HISTORY_PROPS} historyRetentionSec={7200} />);
+    expect(screen.getByLabelText("History Length")).toBeTruthy();
+  });
+
+  it("calls setHistoryRetentionSec when a new option is chosen", () => {
+    const setHistoryRetentionSec = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        {...HISTORY_PROPS}
+        setHistoryRetentionSec={setHistoryRetentionSec}
+      />
+    );
+    fireEvent.click(screen.getByLabelText("History Length"));
+    fireEvent.click(screen.getByText("2 h"));
+    expect(setHistoryRetentionSec).toHaveBeenCalledWith("7200");
+  });
+
   it("existing controls still render with new props absent (backwards compat)", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
