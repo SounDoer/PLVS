@@ -213,3 +213,31 @@ describe("SourceTransportCluster", () => {
     expect(onPrimaryAction).not.toHaveBeenCalled();
   });
 });
+
+describe("SourceTransportCluster sourceLocked", () => {
+  it("renders the source label as static text when locked", () => {
+    render(
+      <SourceTransportCluster
+        state={baseState}
+        sourceMode="live"
+        sourceLocked
+        onSourceModeChange={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole("button", { name: /source:/i })).toBeNull();
+    expect(screen.getByText("Live")).toBeTruthy();
+  });
+
+  it("keeps the popover trigger when unlocked", () => {
+    render(
+      <SourceTransportCluster
+        state={baseState}
+        sourceMode="live"
+        onSourceModeChange={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /source:/i })).toBeTruthy();
+  });
+});

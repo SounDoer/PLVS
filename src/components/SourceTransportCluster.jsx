@@ -37,7 +37,13 @@ const SOURCE_OPTIONS = [
   },
 ];
 
-export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, onPrimaryAction }) {
+export function SourceTransportCluster({
+  state,
+  sourceMode,
+  sourceLocked = false,
+  onSourceModeChange,
+  onPrimaryAction,
+}) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const contentRef = useRef(null);
@@ -62,50 +68,56 @@ export function SourceTransportCluster({ state, sourceMode, onSourceModeChange, 
         chrome.shell
       )}
     >
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            ref={triggerRef}
-            type="button"
-            aria-label={`Source: ${state.sourceLabel}`}
-            className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            {state.sourceLabel}
-            <ChevronDown className="size-3" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          ref={contentRef}
-          role="menu"
-          aria-label="Source"
-          align="start"
-          sideOffset={6}
-          className="w-auto min-w-[var(--radix-popover-trigger-width)] p-1"
-        >
-          {SOURCE_OPTIONS.map((option) => (
+      {sourceLocked ? (
+        <span className="flex h-full items-center rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
+          {state.sourceLabel}
+        </span>
+      ) : (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
             <button
-              key={option.id}
+              ref={triggerRef}
               type="button"
-              role="menuitemradio"
-              aria-checked={sourceMode === option.id}
-              onClick={() => {
-                setOpen(false);
-                if (option.id !== sourceMode) onSourceModeChange(option.id);
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label={`Source: ${state.sourceLabel}`}
+              className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "size-1.5 shrink-0 rounded-full",
-                  sourceMode === option.id ? "bg-primary" : "bg-muted-foreground/20"
-                )}
-              />
-              <span className="min-w-0 font-medium text-foreground">{option.label}</span>
+              {state.sourceLabel}
+              <ChevronDown className="size-3" />
             </button>
-          ))}
-        </PopoverContent>
-      </Popover>
+          </PopoverTrigger>
+          <PopoverContent
+            ref={contentRef}
+            role="menu"
+            aria-label="Source"
+            align="start"
+            sideOffset={6}
+            className="w-auto min-w-[var(--radix-popover-trigger-width)] p-1"
+          >
+            {SOURCE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={sourceMode === option.id}
+                onClick={() => {
+                  setOpen(false);
+                  if (option.id !== sourceMode) onSourceModeChange(option.id);
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    sourceMode === option.id ? "bg-primary" : "bg-muted-foreground/20"
+                  )}
+                />
+                <span className="min-w-0 font-medium text-foreground">{option.label}</span>
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      )}
       <span className="min-w-0 truncate pl-1.2 pr-2.5 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
         {state.statusLabel}
       </span>
