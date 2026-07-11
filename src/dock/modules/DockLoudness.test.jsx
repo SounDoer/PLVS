@@ -32,12 +32,23 @@ describe("DockLoudness", () => {
   });
 
   it("renders a dash for non-finite values and an svg sparkline with history", () => {
-    const rows = Array.from({ length: 40 }, (_, i) => ({ shortTerm: -30 + i * 0.1 }));
+    // Real history rows use the short keys written by FrameIntake.pushHistRow (m / st).
+    const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -30 + i * 0.2 }));
     const { container } = renderWith({
       displayAudio: { momentary: -Infinity, shortTerm: -Infinity, integrated: -Infinity },
       histSourceList: rows,
     });
     expect(screen.getByText("-")).toBeTruthy();
-    expect(container.querySelector("svg path")).not.toBeNull();
+    const path = container.querySelector("svg path");
+    expect(path).not.toBeNull();
+    // Varying st values must produce more than one distinct Y — a flat line means
+    // the component read the wrong row key and every sample floored to the bottom.
+    const yValues = path
+      .getAttribute("d")
+      .split(/[ML]/)
+      .map((pair) => pair.trim())
+      .filter(Boolean)
+      .map((pair) => pair.split(/\s+/)[1]);
+    expect(new Set(yValues).size).toBeGreaterThan(1);
   });
 });

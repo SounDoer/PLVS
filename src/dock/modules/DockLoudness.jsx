@@ -24,9 +24,10 @@ export function DockLoudness() {
   const value = displayAudio?.[metric.key];
 
   const sparkSamples = Math.round(SPARK_WINDOW_SEC / HIST_SAMPLE_SEC);
+  // History rows store the short keys written by FrameIntake.pushHistRow (m / st).
   const path = buildHistoryPath(
     histSourceList,
-    "shortTerm",
+    "st",
     sparkSamples,
     0,
     (v) => loudnessHistY(v, SPARK_H),
@@ -37,7 +38,7 @@ export function DockLoudness() {
     <div className="flex h-full min-w-0 items-center gap-2 px-2">
       <button
         type="button"
-        aria-label="Loudness metric (click to cycle)"
+        aria-label={`Loudness metric: ${metric.short} (click to cycle)`}
         onClick={() => setMetricIndex((i) => (i + 1) % METRICS.length)}
         className="flex shrink-0 items-baseline gap-1 rounded px-1 hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
