@@ -1,11 +1,12 @@
+import { PEAK_DB_MAX, PEAK_DB_MIN } from "../../config/scales.js";
+import { fmtMetric } from "../../math/formatMath.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 
-const MIN_DB = -60;
 const CLIP_DB = -0.1;
 
 function widthPct(db) {
   if (!Number.isFinite(db)) return 0;
-  return Math.max(0, Math.min(1, (db - MIN_DB) / -MIN_DB)) * 100;
+  return Math.max(0, Math.min(1, (db - PEAK_DB_MIN) / (PEAK_DB_MAX - PEAK_DB_MIN))) * 100;
 }
 
 /** Per-channel horizontal peak bars + true-peak max readout. */
@@ -36,9 +37,7 @@ export function DockLevel() {
         ))}
       </div>
       <span className="shrink-0 font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-muted-foreground">
-        {hasTpMaxValue && Number.isFinite(displayAudio?.tpMax)
-          ? displayAudio.tpMax.toFixed(1)
-          : "-"}
+        {hasTpMaxValue ? fmtMetric(displayAudio?.tpMax) : "-"}
         <span className="ml-0.5 text-[8px] uppercase">tp</span>
       </span>
     </div>
