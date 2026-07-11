@@ -49,7 +49,7 @@ export const SPECTRUM_HELP = [
     title: "Inspect",
     items: [
       "Hover - Inspect value",
-      "Left hold - Increase smoothing",
+      "Left hold - Slow the trace",
       "Click - Capture snapshot",
       "Double-click - Return to live",
     ],
@@ -129,10 +129,18 @@ export const WAVEFORM_HELP = [
   },
 ];
 
+export const VECTORSCOPE_HELP = [
+  {
+    title: "Persistence",
+    items: ["Left hold - Slow trace decay"],
+  },
+];
+
 export const PANEL_HELP_BY_MODULE_ID = {
   levelMeter: LEVEL_METER_HELP,
   loudness: LOUDNESS_HELP,
   spectrum: SPECTRUM_HELP,
   spectrogram: SPECTROGRAM_HELP,
   waveform: WAVEFORM_HELP,
+  vectorscope: VECTORSCOPE_HELP,
 };
