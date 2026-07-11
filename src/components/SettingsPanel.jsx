@@ -434,9 +434,9 @@ export function SettingsPanel({
                       </SelectTrigger>
                       <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
                         <SelectItem value="1800">30 min</SelectItem>
-                        <SelectItem value="3600">1 h</SelectItem>
-                        <SelectItem value="7200">2 h</SelectItem>
-                        <SelectItem value="14400">4 h</SelectItem>
+                        <SelectItem value="3600">60 min</SelectItem>
+                        <SelectItem value="7200">120 min</SelectItem>
+                        <SelectItem value="14400">240 min</SelectItem>
                       </SelectContent>
                     </Select>
                   </SettingsRow>

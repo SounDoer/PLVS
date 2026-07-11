@@ -395,7 +395,7 @@ describe("SettingsPanel", () => {
       />
     );
     fireEvent.click(screen.getByLabelText("History Length"));
-    fireEvent.click(screen.getByText("2 h"));
+    fireEvent.click(screen.getByText("120 min"));
     expect(setHistoryRetentionSec).toHaveBeenCalledWith("7200");
   });
 
