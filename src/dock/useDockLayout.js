@@ -2,6 +2,10 @@ import { useCallback, useState } from "react";
 import { workspaceStore } from "../persistence/index.js";
 import { normalizeDockLayout, reorderDockModule, toggleDockModule } from "./dockLayout.js";
 
+/**
+ * Assumes a single mounted instance (App.jsx); local state is not synced via
+ * workspaceStore.subscribe, so two simultaneous mounts would diverge.
+ */
 export function useDockLayout() {
   const [layout, setLayout] = useState(() => normalizeDockLayout(workspaceStore.read().dock));
 

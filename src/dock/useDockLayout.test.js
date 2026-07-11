@@ -27,5 +27,6 @@ describe("useDockLayout", () => {
     const { result } = renderHook(() => useDockLayout());
     act(() => result.current.setModules(["spectrum"]));
     expect(result.current.modules).toEqual(["spectrum"]);
+    expect(workspaceStore.read().dock.modules).toEqual(["spectrum"]);
   });
 });
