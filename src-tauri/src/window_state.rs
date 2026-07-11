@@ -37,7 +37,7 @@ fn is_unusable_bounds(b: &WindowBounds) -> bool {
     || b.y <= WINDOWS_MINIMIZED_SENTINEL
 }
 
-fn centered_on_monitor(b: WindowBounds, m: MonitorRect) -> WindowBounds {
+pub(crate) fn centered_on_monitor(b: WindowBounds, m: MonitorRect) -> WindowBounds {
   let width = DEFAULT_RESTORED_WIDTH.min(m.width.max(MIN_RESTORED_WIDTH));
   let height = DEFAULT_RESTORED_HEIGHT.min(m.height.max(MIN_RESTORED_HEIGHT));
   let x = m.x + ((m.width as i32 - width as i32) / 2).max(0);

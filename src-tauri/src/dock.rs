@@ -1,6 +1,13 @@
-use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
-use crate::window_state::{MonitorRect, WindowBounds};
+use serde::{Deserialize, Serialize};
+use tauri::Manager;
+use tauri_plugin_store::StoreExt;
+
+use crate::window_state::{
+  centered_on_monitor, clamp_to_visible, save_window_bounds, MonitorRect, WindowBounds,
+};
 
 /// Logical (DPI-independent) strip height. Single source of truth: the
 /// frontend strip simply fills the viewport, so no JS copy of this number.
@@ -40,14 +47,6 @@ pub fn dock_strip_rect(work_area: MonitorRect, edge: DockEdge, height: u32) -> W
   }
 }
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
-use tauri::Manager;
-use tauri_plugin_store::StoreExt;
-
-use crate::window_state::{clamp_to_visible, save_window_bounds};
-
 /// True while the window is docked. The window-state flush thread checks this
 /// so strip geometry can never leak into the `windowBounds` key (the height
 /// guard in `is_unusable_bounds` would miss it on high-DPI monitors where
@@ -76,7 +75,7 @@ fn save_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>, record: &DockSt
 fn work_area_and_scale<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   monitor_name: Option<&str>,
-) -> Result<(crate::window_state::MonitorRect, f64, Option<String>), String> {
+) -> Result<(MonitorRect, f64, Option<String>), String> {
   let monitors = window
     .available_monitors()
     .map_err(|e| format!("monitors: {e}"))?;
@@ -92,7 +91,7 @@ fn work_area_and_scale<R: tauri::Runtime>(
     .ok_or_else(|| "no monitor available".to_string())?;
   let wa = monitor.work_area();
   Ok((
-    crate::window_state::MonitorRect {
+    MonitorRect {
       x: wa.position.x,
       y: wa.position.y,
       width: wa.size.width,
@@ -103,8 +102,32 @@ fn work_area_and_scale<R: tauri::Runtime>(
   ))
 }
 
+/// Best-effort recovery after a failed dock transition: put the window shell
+/// back to normal form and, in case the strip geometry was already applied,
+/// restore the last saved normal bounds so strip-sized geometry can't linger
+/// (or get flushed to `windowBounds` once the docked flag is rolled back).
+fn restore_normal_shell<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
+  let _ = window.set_decorations(true);
+  let _ = window.set_shadow(true);
+  let _ = window.set_always_on_top(false);
+  let _ = window.set_resizable(true);
+  let saved: Option<WindowBounds> = window
+    .app_handle()
+    .store("plvs-settings.json")
+    .ok()
+    .and_then(|s| s.get("windowBounds"))
+    .and_then(|v| serde_json::from_value(v).ok());
+  if let Some(b) = saved {
+    let _ = window.set_size(tauri::PhysicalSize::new(b.width, b.height));
+    let _ = window.set_position(tauri::PhysicalPosition::new(b.x, b.y));
+  }
+}
+
 /// Force the window into the docked strip form. Attribute overrides here are
 /// runtime-only: stored settings (windowPinned, focusView) are never written.
+/// On Err the window shell has been rolled back to normal form (best effort),
+/// so callers falling back to the normal UI don't inherit a chromeless,
+/// topmost strip window.
 pub fn apply_dock_form<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   edge: DockEdge,
@@ -116,22 +139,26 @@ pub fn apply_dock_form<R: tauri::Runtime>(
   if window.is_maximized().unwrap_or(false) {
     let _ = window.unmaximize();
   }
-  window
-    .set_decorations(false)
-    .map_err(|e| format!("decorations: {e}"))?;
-  let _ = window.set_shadow(false);
-  window
-    .set_always_on_top(true)
-    .map_err(|e| format!("always on top: {e}"))?;
-  window
-    .set_resizable(false)
-    .map_err(|e| format!("resizable: {e}"))?;
-  window
-    .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
-    .map_err(|e| format!("size: {e}"))?;
-  window
-    .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
-    .map_err(|e| format!("position: {e}"))?;
+  let applied = (|| -> Result<(), String> {
+    window
+      .set_decorations(false)
+      .map_err(|e| format!("decorations: {e}"))?;
+    let _ = window.set_shadow(false);
+    window
+      .set_always_on_top(true)
+      .map_err(|e| format!("always on top: {e}"))?;
+    window
+      .set_resizable(false)
+      .map_err(|e| format!("resizable: {e}"))?;
+    window
+      .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
+      .map_err(|e| format!("size: {e}"))?;
+    window
+      .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
+      .map_err(|e| format!("position: {e}"))?;
+    Ok(())
+  })();
+  applied.inspect_err(|_| restore_normal_shell(window))?;
   Ok(resolved_monitor)
 }
 
@@ -178,29 +205,44 @@ pub fn exit_dock<R: tauri::Runtime>(
     .map_err(|e| format!("always on top: {e}"))?;
 
   let app = window.app_handle();
-  let saved: Option<crate::window_state::WindowBounds> = app
+  let saved: Option<WindowBounds> = app
     .store("plvs-settings.json")
     .ok()
     .and_then(|s| s.get("windowBounds"))
     .and_then(|v| serde_json::from_value(v).ok());
+  let monitors: Vec<MonitorRect> = window
+    .available_monitors()
+    .unwrap_or_default()
+    .iter()
+    .map(|m| MonitorRect {
+      x: m.position().x,
+      y: m.position().y,
+      width: m.size().width,
+      height: m.size().height,
+    })
+    .collect();
   if let Some(b) = saved {
-    let monitors: Vec<crate::window_state::MonitorRect> = window
-      .available_monitors()
-      .unwrap_or_default()
-      .iter()
-      .map(|m| crate::window_state::MonitorRect {
-        x: m.position().x,
-        y: m.position().y,
-        width: m.size().width,
-        height: m.size().height,
-      })
-      .collect();
     let clamped = clamp_to_visible(b, &monitors);
     let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
     let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
     if b.is_maximized {
       let _ = window.maximize();
     }
+  } else if let Some(m) = monitors.first() {
+    // No saved normal bounds (e.g. first run docked): don't leave the window
+    // strip-sized — fall back to a default-sized window centered on a monitor.
+    let fallback = centered_on_monitor(
+      WindowBounds {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        is_maximized: false,
+      },
+      *m,
+    );
+    let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
+    let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
   }
   let prev = read_dock_state(app);
   save_dock_state(
