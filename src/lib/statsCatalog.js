@@ -125,7 +125,7 @@ export function dialogueOffsetText(dialogueIntegrated, integrated) {
   return `${d >= 0 ? "+" : "-"}${Math.abs(d).toFixed(1)}`;
 }
 
-function hasCorrelationSignal(displayAudio) {
+export function hasCorrelationSignal(displayAudio) {
   const peakDb = displayAudio?.peakDb;
   if (Array.isArray(peakDb)) {
     return peakDb.some((v) => Number.isFinite(v) && v > CORRELATION_SIGNAL_FLOOR_DB);

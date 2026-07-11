@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { FrameDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DockCorrelation } from "./DockCorrelation.jsx";
 
-function renderWith(correlation) {
+function renderWith(correlation, displayAudio = { peakDb: [-12, -10] }) {
   return render(
-    <FrameDataProvider value={{ correlation }}>
+    <FrameDataProvider value={{ correlation, displayAudio }}>
       <DockCorrelation />
     </FrameDataProvider>
   );
@@ -28,5 +28,13 @@ describe("DockCorrelation", () => {
   it("renders a dash without signal", () => {
     renderWith(-Infinity);
     expect(screen.getByText("-")).toBeTruthy();
+  });
+
+  it("renders a dash and no marker during silence despite finite correlation", () => {
+    // Rust DSP emits correlation = 0.0 during silence; gate on peakDb like
+    // Stats / VectorscopePanel instead of showing a fake "+0.00".
+    renderWith(0, { peakDb: [-Infinity, -Infinity] });
+    expect(screen.getByText("-")).toBeTruthy();
+    expect(screen.queryByTestId("dock-correlation-marker")).toBeNull();
   });
 });
