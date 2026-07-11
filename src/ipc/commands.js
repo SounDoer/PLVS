@@ -64,6 +64,19 @@ export function applyWindowBounds(bounds) {
   return invoke("apply_window_bounds", { bounds });
 }
 
+/** Enter dock mode on the given edge ("top" | "bottom"). Rust persists dockState. */
+export function enterDock(edge) {
+  return invoke("enter_dock", { edge });
+}
+
+/**
+ * Exit dock mode. `decorations` / `alwaysOnTop` restore the user's normal-form
+ * window attributes (dock overrides them at runtime without persisting).
+ */
+export function exitDock({ decorations, alwaysOnTop }) {
+  return invoke("exit_dock", { decorations, alwaysOnTop });
+}
+
 export function exportProfileCommand() {
   return invoke("export_profile");
 }
