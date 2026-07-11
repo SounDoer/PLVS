@@ -59,4 +59,11 @@ describe("useDockMode", () => {
     expect(mocks.enterDock).not.toHaveBeenCalled();
     expect(result.current.dockEnabled).toBe(false);
   });
+
+  it("enterDockMode leaves state unchanged when the IPC call rejects", async () => {
+    mocks.enterDock.mockRejectedValueOnce(new Error("apply_dock_form failed"));
+    const { result } = renderHook(() => useDockMode());
+    await expect(act(() => result.current.enterDockMode("top"))).rejects.toThrow();
+    expect(result.current.dockEnabled).toBe(false);
+  });
 });
