@@ -19,7 +19,7 @@ mod window_state;
 
 use std::time::Duration;
 
-use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 
 pub use audio::{AppAudioBackend, AudioCapture, AudioCaptureSession, DeviceInfo, PcmFrame};
@@ -41,6 +41,9 @@ pub fn run() {
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
     .manage(AppState::default())
+    .manage(dock::DockedFlag(std::sync::Arc::new(
+      std::sync::atomic::AtomicBool::new(false),
+    )))
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
       ipc::commands::preview_audio_device,
@@ -68,6 +71,9 @@ pub fn run() {
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
       window_state::apply_window_bounds,
+      dock::enter_dock,
+      dock::exit_dock,
+      dock::get_dock_state,
       glass_effect::set_glass_effect,
     ])
     .setup(|app| {
@@ -88,11 +94,15 @@ pub fn run() {
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
       let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
       let themes = store.get("plvs:themes").unwrap_or(serde_json::json!({}));
+      let dock_state = store
+        .get(dock::DOCK_STATE_KEY)
+        .unwrap_or(serde_json::json!(null));
       let initial = serde_json::json!({
         "plvs:settings": settings,
         "plvs:workspace": workspace,
         "plvs:presets": presets,
         "plvs:themes": themes,
+        "dockState": dock_state,
       });
       let init_script = format!("window.__PLVS_INITIAL_STATE__ = {};", initial);
 
@@ -120,23 +130,47 @@ pub fn run() {
       // so on a scaled display (e.g. 150%) restoring through the builder double-scales and
       // the window grows + drifts on every relaunch. set_size/set_position take physical,
       // matching the save path and the (physical) monitor rects used for clamping.
-      if let Some(b) = saved_bounds {
-        let monitors: Vec<MonitorRect> = window
-          .available_monitors()
-          .unwrap_or_default()
-          .iter()
-          .map(|m| MonitorRect {
-            x: m.position().x,
-            y: m.position().y,
-            width: m.size().width,
-            height: m.size().height,
-          })
-          .collect();
-        let clamped = clamp_to_visible(b, &monitors);
-        let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
-        let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
-        if b.is_maximized {
-          let _ = window.maximize();
+      let boot_dock: Option<dock::DockStateRecord> = store
+        .get(dock::DOCK_STATE_KEY)
+        .and_then(|v| serde_json::from_value(v).ok());
+      let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
+      if boot_docked {
+        let d = boot_dock.unwrap();
+        app
+          .state::<dock::DockedFlag>()
+          .0
+          .store(true, std::sync::atomic::Ordering::Relaxed);
+        if let Err(e) = dock::apply_dock_form(&window, d.edge, d.monitor.as_deref()) {
+          log::warn!("dock restore failed, falling back to normal bounds: {e}");
+          app
+            .state::<dock::DockedFlag>()
+            .0
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        }
+      }
+      let restore_normal = !app
+        .state::<dock::DockedFlag>()
+        .0
+        .load(std::sync::atomic::Ordering::Relaxed);
+      if restore_normal {
+        if let Some(b) = saved_bounds {
+          let monitors: Vec<MonitorRect> = window
+            .available_monitors()
+            .unwrap_or_default()
+            .iter()
+            .map(|m| MonitorRect {
+              x: m.position().x,
+              y: m.position().y,
+              width: m.size().width,
+              height: m.size().height,
+            })
+            .collect();
+          let clamped = clamp_to_visible(b, &monitors);
+          let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
+          let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
+          if b.is_maximized {
+            let _ = window.maximize();
+          }
         }
       }
       let _ = window.show();
@@ -159,11 +193,12 @@ pub fn run() {
       {
         let dirty = dirty.clone();
         let win = window.clone();
+        let docked = app.state::<dock::DockedFlag>().0.clone();
         std::thread::Builder::new()
           .name("window-state-flush".into())
           .spawn(move || loop {
             std::thread::sleep(Duration::from_millis(400));
-            if dirty.swap(false, Ordering::Relaxed) {
+            if dirty.swap(false, Ordering::Relaxed) && !docked.load(Ordering::Relaxed) {
               crate::window_state::save_window_bounds(&win);
             }
           })
