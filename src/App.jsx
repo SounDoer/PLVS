@@ -135,7 +135,9 @@ function AppContent() {
     glassEnabled,
     setGlassEnabled,
   });
-  useFocusViewWindow(focusView.autoHideControls, focusView.borderless);
+  // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
+  // when docked flips false the effect re-runs and re-asserts the user's values.
+  useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
 
   const {
     audioDevices,
@@ -703,7 +705,9 @@ function AppContent() {
     clearAll,
     running,
     showClock,
-    setSettingsOpen,
+    // Settings dialog is normal-form only; ignore the shortcut while docked so
+    // exiting dock doesn't pop a dialog opened invisibly from the strip.
+    setSettingsOpen: docked ? () => {} : setSettingsOpen,
     clearShortcut,
     autoHideControls: focusView.autoHideControls,
     toggleFocusControls,
