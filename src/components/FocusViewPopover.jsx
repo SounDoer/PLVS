@@ -54,6 +54,7 @@ export function FocusViewPopoverContent({
                 key={option.label}
                 type="button"
                 aria-label={option.ariaLabel}
+                aria-pressed={(dockEdge ?? null) === option.value}
                 disabled={dockDisabled}
                 onClick={() => onDockChange(option.value)}
                 className={cn(
