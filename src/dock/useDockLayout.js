@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { workspaceStore } from "../persistence/index.js";
+import { presetsStore, workspaceStore } from "../persistence/index.js";
 import { normalizeDockLayout, reorderDockModule, toggleDockModule } from "./dockLayout.js";
 
 /**
@@ -11,6 +11,9 @@ export function useDockLayout() {
 
   const write = useCallback((next) => {
     workspaceStore.patch({ dock: next });
+    // Dock layout is part of the preset snapshot, so edits dirty the active
+    // preset (usePresets.apply clears the flag when it finishes).
+    presetsStore.patch({ dirty: true });
     setLayout(next);
   }, []);
 

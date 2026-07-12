@@ -112,4 +112,26 @@ describe("useAlwaysOnTop", () => {
     expect(stored.activeId).toBe("p1");
     expect(stored.dirty).toBe(true);
   });
+
+  it("skips setAlwaysOnTop while suspended (docked strip keeps Rust-owned topmost)", () => {
+    const { result } = renderHook(() => useAlwaysOnTop({ suspended: true }));
+    expect(mockSetAlwaysOnTop).not.toHaveBeenCalled();
+
+    act(() => result.current.setPinned(false));
+
+    // The stored value still updates; only the window call is gated.
+    expect(mockSetAlwaysOnTop).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).windowPinned).toBe(false);
+  });
+
+  it("re-asserts the stored pin when unsuspended (dock exit)", () => {
+    localStorage.setItem("plvs:settings", JSON.stringify({ windowPinned: true }));
+    const { rerender } = renderHook(({ suspended }) => useAlwaysOnTop({ suspended }), {
+      initialProps: { suspended: true },
+    });
+    expect(mockSetAlwaysOnTop).not.toHaveBeenCalled();
+
+    rerender({ suspended: false });
+    expect(mockSetAlwaysOnTop).toHaveBeenCalledWith(true);
+  });
 });

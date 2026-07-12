@@ -119,12 +119,17 @@ function AppContent() {
     glassEnabled,
     setGlassEnabled,
   } = settings;
-  const { pinned, setPinned, togglePin } = useAlwaysOnTop();
-  // Dock hooks run before usePresets so preset capture/apply can read dock state
-  // (wired in the presets task). `docked` gates the whole dock window form.
+  // Dock hooks run first: `docked` suspends the always-on-top and focus-view
+  // window overrides below (Rust owns strip chrome + topmost while docked),
+  // and preset capture/apply reads dock state. useDockMode depends on no
+  // other hook, so hoisting it above useAlwaysOnTop is safe.
   const { dockEnabled, dockEdge, enterDockMode, exitDockMode } = useDockMode();
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
+  // Suspended while docked: a preset apply may flip the stored pin to false
+  // while the strip must stay topmost; when docked flips false the effect
+  // re-asserts the user's value.
+  const { pinned, setPinned, togglePin } = useAlwaysOnTop({ suspended: docked });
   // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
   // when docked flips false the effect re-runs and re-asserts the user's values.
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
@@ -240,6 +245,13 @@ function AppContent() {
     [dockLayout, enterDockMode, dockEnabled, exitDockRestoringAttributes]
   );
 
+  // Stable identity: an inline literal would churn captureSnapshot (and the
+  // memoized presets API) on every render.
+  const presetDockState = useMemo(
+    () => ({ enabled: dockEnabled, edge: dockEdge, modules: dockLayout.modules }),
+    [dockEnabled, dockEdge, dockLayout.modules]
+  );
+
   const presets = usePresets({
     windowPinned: pinned,
     setWindowPinned: setPinned,
@@ -249,7 +261,7 @@ function AppContent() {
     setPanelOpacity,
     glassEnabled,
     setGlassEnabled,
-    dock: { enabled: dockEnabled, edge: dockEdge, modules: dockLayout.modules },
+    dock: presetDockState,
     applyDockPreset,
   });
 
