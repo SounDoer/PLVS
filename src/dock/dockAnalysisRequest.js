@@ -1,5 +1,8 @@
 import { normalizePanelControls } from "../lib/panelControls.js";
-import { spectrumRequestKeyFromControls } from "../analysis/analysisRequests.js";
+import {
+  MAX_SPECTRUM_REQUESTS,
+  spectrumRequestKeyFromControls,
+} from "../analysis/analysisRequests.js";
 
 const DEFAULT_CONTROLS = normalizePanelControls(undefined);
 
@@ -29,8 +32,18 @@ function dockSpectrumRequest() {
 export function mergeDockSpectrumRequest(derived, active) {
   if (!active) return derived;
   if (derived.spectrumRequests.some((r) => r.key === DOCK_SPECTRUM_KEY)) return derived;
+  // deriveAnalysisRequests already caps spectrumRequests at MAX_SPECTRUM_REQUESTS.
+  // Appending unconditionally could push the set to MAX+1, which Rust rejects
+  // wholesale (set_analysis_requests fails) and silently starves dock spectrum.
+  // While docked the workspace panels are invisible, so evict from the tail to
+  // make room. This self-heals on exit: the merge is inactive then, restoring
+  // the workspace's own requests.
+  const kept =
+    derived.spectrumRequests.length >= MAX_SPECTRUM_REQUESTS
+      ? derived.spectrumRequests.slice(0, MAX_SPECTRUM_REQUESTS - 1)
+      : derived.spectrumRequests;
   return {
     ...derived,
-    spectrumRequests: [...derived.spectrumRequests, dockSpectrumRequest()],
+    spectrumRequests: [...kept, dockSpectrumRequest()],
   };
 }

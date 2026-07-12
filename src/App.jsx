@@ -24,6 +24,9 @@ import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
+import { useDockMode } from "./hooks/useDockMode.js";
+import { useDockLayout } from "./dock/useDockLayout.js";
+import { mergeDockSpectrumRequest } from "./dock/dockAnalysisRequest.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
   buildVectorscopePairOptions,
@@ -117,6 +120,11 @@ function AppContent() {
     setGlassEnabled,
   } = settings;
   const { pinned, setPinned, togglePin } = useAlwaysOnTop();
+  // Dock hooks run before usePresets so preset capture/apply can read dock state
+  // (wired in the presets task). `docked` gates the whole dock window form.
+  const { dockEnabled, dockEdge, enterDockMode, exitDockMode } = useDockMode();
+  const dockLayout = useDockLayout();
+  const docked = isTauri() && dockEnabled;
   const presets = usePresets({
     windowPinned: pinned,
     setWindowPinned: setPinned,
@@ -193,6 +201,37 @@ function AppContent() {
     showClock,
   } = display;
   const { clockRef, elapsedMsRef, canClearRef } = display.clock;
+
+  // Dock transitions. Exit restores the user's TRUE normal-form attributes
+  // (override-not-overwrite): decorations follow focusView, always-on-top follows
+  // the pin toggle — dock never persists over stored settings. Every transition
+  // catches IPC rejections and surfaces them via raiseNotice(kind, text) so a
+  // failed click handler can't leave an unhandled rejection.
+  // NOTE: there is no in-flight guard against rapid dock transitions (v1 accepts
+  // this; a fast toggle spam could interleave enter/exit IPC calls).
+  const exitDockRestoringAttributes = useCallback(async () => {
+    try {
+      await exitDockMode({
+        decorations: !(focusView.autoHideControls || focusView.borderless),
+        alwaysOnTop: pinned === true,
+      });
+    } catch (err) {
+      raiseNotice("error", `Restore window failed: ${err?.message || err}`);
+    }
+  }, [exitDockMode, focusView.autoHideControls, focusView.borderless, pinned, raiseNotice]);
+
+  const onDockChange = useCallback(
+    async (edgeOrNull) => {
+      try {
+        if (edgeOrNull) await enterDockMode(edgeOrNull);
+        else await exitDockRestoringAttributes();
+      } catch (err) {
+        raiseNotice("error", `Dock failed: ${err?.message || err}`);
+      }
+    },
+    [enterDockMode, exitDockRestoringAttributes, raiseNotice]
+  );
+
   const historyRetentionSec = settings.historyRetentionSec;
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
   const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
@@ -213,8 +252,12 @@ function AppContent() {
     ).loudnessReferenceLufs;
   }, [workspaceState]);
   const derivedAnalysisRequests = useMemo(
-    () => deriveAnalysisRequests(workspaceState),
-    [workspaceState]
+    () =>
+      mergeDockSpectrumRequest(
+        deriveAnalysisRequests(workspaceState),
+        docked && dockLayout.modules.includes("spectrum")
+      ),
+    [workspaceState, docked, dockLayout.modules]
   );
   const analysisRequests = useMemo(
     () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
@@ -821,6 +864,10 @@ function AppContent() {
     setPanelOpacity,
     glassEnabled,
     setGlassEnabled,
+    showDock: isTauri(),
+    dockEdge: docked ? dockEdge : null,
+    onDockChange,
+    dockDisabled: sourceMode === "file",
     presets,
     setSettingsOpen,
   };
@@ -843,9 +890,29 @@ function AppContent() {
     hasUpdate: updateInfo?.hasUpdate,
     onOpenSettings: () => setSettingsOpen(true),
   };
+  const dockProps = docked
+    ? {
+        modules: dockLayout.modules,
+        onToggleModule: dockLayout.toggle,
+        onReorderModule: dockLayout.reorder,
+        presets,
+        controls: {
+          sourceTransportState,
+          onSourceTransportAction,
+          onClear: clearAll,
+          clearDisabled: !running && !showClock,
+          dockEdge,
+          onDockEdgeChange: (edge) => onDockChange(edge),
+          onExitDock: exitDockRestoringAttributes,
+          notice,
+        },
+      }
+    : null;
 
   return (
     <AppShell
+      docked={docked}
+      dockProps={dockProps}
       frameData={frameData}
       historyData={historyData}
       metricsData={metricsData}

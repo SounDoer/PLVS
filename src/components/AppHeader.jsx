@@ -81,6 +81,10 @@ export function AppHeader({
   setPanelOpacity,
   glassEnabled,
   setGlassEnabled,
+  showDock,
+  dockEdge,
+  onDockChange,
+  dockDisabled,
   presets,
   setSettingsOpen,
 }) {
@@ -230,6 +234,10 @@ export function AppHeader({
               setPanelOpacity={setPanelOpacity}
               glassEnabled={glassEnabled}
               setGlassEnabled={setGlassEnabled}
+              showDock={showDock}
+              dockEdge={dockEdge}
+              onDockChange={onDockChange}
+              dockDisabled={dockDisabled}
             />
           </PopoverContent>
         </Popover>

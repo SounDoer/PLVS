@@ -35,6 +35,8 @@ vi.mock("./ipc/commands.js", () => ({
   setAnalysisRequests: vi.fn().mockResolvedValue(undefined),
   startFileAnalysis: vi.fn().mockResolvedValue(undefined),
   stopFileAnalysis: vi.fn().mockResolvedValue(undefined),
+  enterDock: vi.fn().mockResolvedValue(undefined),
+  exitDock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -116,6 +118,7 @@ beforeEach(() => {
   cleanup();
   localStorage.clear();
   tauriEventHandlers.clear();
+  delete window.__PLVS_INITIAL_STATE__;
   isTauri.mockReturnValue(false);
   listAudioDevices.mockResolvedValue([]);
   previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
@@ -276,5 +279,26 @@ describe("App smoke", () => {
     window.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("renders the dock strip (not the workspace header) when boot state is docked", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+
+    // Docked form swaps the whole shell for the strip; the normal-form header
+    // (Views control) is not mounted.
+    expect(await screen.findByTestId("dock-strip")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Views" })).toBeNull();
+  });
+
+  it("renders the normal shell (no dock strip) without dock boot state", async () => {
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    expect(screen.queryByTestId("dock-strip")).toBeNull();
   });
 });

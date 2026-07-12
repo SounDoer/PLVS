@@ -166,7 +166,9 @@ export function useTray({
         deviceName,
         onToggleWindow: stableToggleWindow,
       });
-      await trayRef.current.setMenu(menu);
+      // trayRef may have been cleared by unmount cleanup during the await above;
+      // re-check before touching it to avoid an unhandled rejection on teardown.
+      await trayRef.current?.setMenu(menu);
     })();
   }, [running, pinned, deviceName, stableToggleCapture, stableTogglePin, stableToggleWindow]);
 
@@ -178,7 +180,7 @@ export function useTray({
       const iconName = colorScheme === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
       const iconPath = await resolveResource(iconName);
       const icon = await Image.fromPath(iconPath);
-      await trayRef.current.setIcon(icon);
+      await trayRef.current?.setIcon(icon);
     })();
   }, [colorScheme]);
 }

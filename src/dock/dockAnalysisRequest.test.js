@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveAnalysisRequests } from "../analysis/analysisRequests.js";
+import { MAX_SPECTRUM_REQUESTS, deriveAnalysisRequests } from "../analysis/analysisRequests.js";
 import { DOCK_SPECTRUM_KEY, mergeDockSpectrumRequest } from "./dockAnalysisRequest.js";
 
 const EMPTY_DERIVED = deriveAnalysisRequests({ tree: null, panelsById: {}, panelOrder: [] });
@@ -28,5 +28,24 @@ describe("mergeDockSpectrumRequest", () => {
     const merged = mergeDockSpectrumRequest(derived, true);
     expect(merged.spectrumRequests).toHaveLength(1);
     expect(merged.spectrumRequests[0].panelIds).toEqual(["panel-1"]);
+  });
+
+  it("evicts the tail request when already at the spectrum cap", () => {
+    // A full workspace: MAX_SPECTRUM_REQUESTS distinct spectrum requests, none
+    // the dock key. Appending would exceed the cap and Rust would reject the set.
+    const full = Array.from({ length: MAX_SPECTRUM_REQUESTS }, (_, i) => ({
+      key: `panel-key-${i}`,
+      panelIds: [`panel-${i}`],
+    }));
+    const derived = { ...EMPTY_DERIVED, spectrumRequests: full };
+    const merged = mergeDockSpectrumRequest(derived, true);
+
+    expect(merged.spectrumRequests).toHaveLength(MAX_SPECTRUM_REQUESTS);
+    // Dock request present.
+    expect(merged.spectrumRequests.some((r) => r.key === DOCK_SPECTRUM_KEY)).toBe(true);
+    // Former tail evicted; earlier requests preserved.
+    const keys = merged.spectrumRequests.map((r) => r.key);
+    expect(keys).not.toContain(`panel-key-${MAX_SPECTRUM_REQUESTS - 1}`);
+    expect(keys).toContain("panel-key-0");
   });
 });
