@@ -30,6 +30,9 @@ export function DockModulesEditor({ modules, onToggle, onReorder, onDone }) {
             onDragStart={() => {
               dragFromRef.current = enabledIndex;
             }}
+            onDragEnd={() => {
+              dragFromRef.current = null;
+            }}
             onDragOver={(e) => {
               if (enabled && dragFromRef.current !== null) e.preventDefault();
             }}

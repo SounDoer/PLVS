@@ -7,8 +7,10 @@ export function DockPresetsRow({ presets, onDone }) {
   const save = () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    presets.save(trimmed);
-    setName("");
+    // Mirror PresetsPopover: only clear the input once the save went through.
+    Promise.resolve(presets.save(trimmed)).then((v) => {
+      if (v !== false) setName("");
+    });
   };
   return (
     <div className="flex h-full min-w-0 items-center gap-1.5 overflow-x-auto px-2">

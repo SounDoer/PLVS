@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DockControls } from "./DockControls.jsx";
 import { DockModulesEditor } from "./editors/DockModulesEditor.jsx";
 import { DockPresetsRow } from "./editors/DockPresetsRow.jsx";
@@ -17,6 +17,8 @@ export function DockStrip({ modules, onToggleModule, onReorderModule, controls, 
   const [hovered, setHovered] = useState(false);
   const [view, setView] = useState("meters"); // meters | modules | presets
   const hideTimerRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(hideTimerRef.current), []);
 
   const onPointerEnter = () => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
