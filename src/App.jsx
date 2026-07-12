@@ -125,16 +125,6 @@ function AppContent() {
   const { dockEnabled, dockEdge, enterDockMode, exitDockMode } = useDockMode();
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
-  const presets = usePresets({
-    windowPinned: pinned,
-    setWindowPinned: setPinned,
-    focusView,
-    setFocusView,
-    panelOpacity,
-    setPanelOpacity,
-    glassEnabled,
-    setGlassEnabled,
-  });
   // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
   // when docked flips false the effect re-runs and re-asserts the user's values.
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
@@ -233,6 +223,35 @@ function AppContent() {
     },
     [enterDockMode, exitDockRestoringAttributes, raiseNotice]
   );
+
+  // Preset apply hand-off: dock geometry is Rust-owned, so a preset's dock
+  // state is applied via enter/exit dock rather than window bounds. Left
+  // uncaught here on purpose — usePresets.apply wraps this call and clears
+  // activeId on failure (mirroring its existing applyWindowBounds handling).
+  const applyDockPreset = useCallback(
+    async (presetDock) => {
+      if (presetDock.enabled) {
+        dockLayout.setModules(presetDock.modules);
+        await enterDockMode(presetDock.edge);
+      } else if (dockEnabled) {
+        await exitDockRestoringAttributes();
+      }
+    },
+    [dockLayout, enterDockMode, dockEnabled, exitDockRestoringAttributes]
+  );
+
+  const presets = usePresets({
+    windowPinned: pinned,
+    setWindowPinned: setPinned,
+    focusView,
+    setFocusView,
+    panelOpacity,
+    setPanelOpacity,
+    glassEnabled,
+    setGlassEnabled,
+    dock: { enabled: dockEnabled, edge: dockEdge, modules: dockLayout.modules },
+    applyDockPreset,
+  });
 
   const historyRetentionSec = settings.historyRetentionSec;
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);

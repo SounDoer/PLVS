@@ -509,4 +509,81 @@ describe("usePresets", () => {
     act(() => result.current.presets.remove("p1"));
     expect(presetsStore.read()).toEqual({ list: [], activeId: null });
   });
+
+  describe("dock in presets", () => {
+    it("captureSnapshot includes the dock field", async () => {
+      const dock = { enabled: true, edge: "top", modules: ["level", "spectrum"] };
+      const { result } = renderPresetHook({ dock });
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Docked");
+      });
+      expect(preset.dock).toEqual(dock);
+    });
+
+    it("apply calls applyDockPreset with the preset dock (or a disabled default)", async () => {
+      const applyDockPreset = vi.fn(async () => {});
+      const { result } = renderPresetHook({ applyDockPreset });
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Normal");
+      });
+      await act(async () => {
+        await result.current.presets.apply(preset.id);
+      });
+      expect(applyDockPreset).toHaveBeenCalledWith({
+        enabled: false,
+        edge: "bottom",
+        modules: expect.any(Array),
+      });
+    });
+
+    it("presets without a dock field apply as dock-disabled (backward compat)", async () => {
+      const applyDockPreset = vi.fn(async () => {});
+      const { result } = renderPresetHook({ applyDockPreset });
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Legacy");
+      });
+      // Strip the dock field to simulate a preset saved before dock existed.
+      const raw = presetsStore.read();
+      presetsStore.patch({
+        list: raw.list.map((p) => {
+          const { dock: _dock, ...rest } = p;
+          return rest;
+        }),
+      });
+      await act(async () => {
+        await result.current.presets.apply(preset.id);
+      });
+      expect(applyDockPreset).toHaveBeenCalledWith({ enabled: false, edge: "bottom", modules: [] });
+    });
+
+    it("returns false and clears activeId when applyDockPreset rejects", async () => {
+      const applyDockPreset = vi.fn(async () => {
+        throw new Error("dock enter failed");
+      });
+      presetsStore.patch({
+        list: [
+          {
+            id: "p1",
+            name: "Preset",
+            tree: leaf(["spectrum"]),
+            panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+            panelOrder: ["spectrum"],
+            panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+          },
+        ],
+        activeId: "p1",
+        dirty: false,
+      });
+      const { result } = renderPresetHook({ applyDockPreset });
+      let applied;
+      await act(async () => {
+        applied = await result.current.presets.apply("p1");
+      });
+      expect(applied).toBe(false);
+      expect(presetsStore.read().activeId).toBeNull();
+    });
+  });
 });

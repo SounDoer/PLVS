@@ -61,6 +61,8 @@ export function usePresets({
   setPanelOpacity = () => {},
   glassEnabled = false,
   setGlassEnabled = () => {},
+  dock = { enabled: false, edge: "bottom", modules: [] },
+  applyDockPreset = async () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
@@ -132,6 +134,11 @@ export function usePresets({
       focusView: normalizeFocusView(focusView),
       panelOpacity,
       glassEnabled,
+      dock: {
+        enabled: dock.enabled === true,
+        edge: dock.edge === "top" ? "top" : "bottom",
+        modules: [...dock.modules],
+      },
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
   }, [
@@ -139,6 +146,7 @@ export function usePresets({
     focusView,
     panelOpacity,
     glassEnabled,
+    dock,
     workspaceState.panelControlsById,
     workspaceState.panelOrder,
     workspaceState.panelsById,
@@ -178,7 +186,18 @@ export function usePresets({
         panelControlsById: normalizePresetPanelControls(preset, workspaceState),
         pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
       });
-      if (preset.windowBounds && isTauri()) {
+      const presetDock = {
+        enabled: preset.dock?.enabled === true,
+        edge: preset.dock?.edge === "top" ? "top" : "bottom",
+        modules: Array.isArray(preset.dock?.modules) ? preset.dock.modules : [],
+      };
+      try {
+        await applyDockPreset(presetDock);
+      } catch (_) {
+        write({ activeId: null });
+        return false;
+      }
+      if (!presetDock.enabled && preset.windowBounds && isTauri()) {
         try {
           await applyWindowBounds(preset.windowBounds);
         } catch (_) {
@@ -207,6 +226,7 @@ export function usePresets({
       setFocusView,
       setPanelOpacity,
       setGlassEnabled,
+      applyDockPreset,
       suppressPresetDivergence,
       workspaceState,
       write,
