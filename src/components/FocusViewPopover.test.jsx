@@ -120,4 +120,32 @@ describe("FocusViewPopoverContent", () => {
     expect(setBorderless).toHaveBeenCalledWith(true);
     expect(setGlassEnabled).toHaveBeenCalledWith(true);
   });
+
+  describe("Dock control", () => {
+    it("renders Off/Top/Bottom and reports edge choices", () => {
+      const onDockChange = vi.fn();
+      render(<FocusViewPopoverContent showDock dockEdge={null} onDockChange={onDockChange} />);
+      fireEvent.click(screen.getByRole("button", { name: /dock to top/i }));
+      expect(onDockChange).toHaveBeenCalledWith("top");
+    });
+
+    it("Off exits dock", () => {
+      const onDockChange = vi.fn();
+      render(<FocusViewPopoverContent showDock dockEdge="bottom" onDockChange={onDockChange} />);
+      fireEvent.click(screen.getByRole("button", { name: /dock off/i }));
+      expect(onDockChange).toHaveBeenCalledWith(null);
+    });
+
+    it("is disabled in FILE mode", () => {
+      render(
+        <FocusViewPopoverContent showDock dockDisabled dockEdge={null} onDockChange={vi.fn()} />
+      );
+      expect(screen.getByRole("button", { name: /dock to top/i }).disabled).toBe(true);
+    });
+
+    it("is hidden when showDock is false (non-Tauri)", () => {
+      render(<FocusViewPopoverContent showDock={false} />);
+      expect(screen.queryByText(/^dock$/i)).toBeNull();
+    });
+  });
 });

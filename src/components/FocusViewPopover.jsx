@@ -2,6 +2,7 @@ import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
 import { DEFAULT_PANEL_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
@@ -25,6 +26,10 @@ export function FocusViewPopoverContent({
   setPanelOpacity = () => {},
   glassEnabled = DEFAULT_GLASS_ENABLED,
   setGlassEnabled = () => {},
+  showDock = false,
+  dockEdge = null,
+  onDockChange = () => {},
+  dockDisabled = false,
 }) {
   const normalized = normalizeFocusView(focusView);
   const isMac =
@@ -36,6 +41,34 @@ export function FocusViewPopoverContent({
       <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
         Views
       </p>
+      {showDock ? (
+        <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
+          <span className="min-w-0 text-xs font-normal text-foreground">Dock</span>
+          <div className="flex overflow-hidden rounded-md border border-border/60">
+            {[
+              { label: "Off", ariaLabel: "Dock off", value: null },
+              { label: "Top", ariaLabel: "Dock to top", value: "top" },
+              { label: "Bottom", ariaLabel: "Dock to bottom", value: "bottom" },
+            ].map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                aria-label={option.ariaLabel}
+                disabled={dockDisabled}
+                onClick={() => onDockChange(option.value)}
+                className={cn(
+                  "px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-40",
+                  (dockEdge ?? null) === option.value
+                    ? "bg-primary/15 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/40"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <FocusSwitch
         id="focus-view-always-on-top"
         label="Always on Top"
