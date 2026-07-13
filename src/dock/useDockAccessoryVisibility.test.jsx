@@ -16,7 +16,7 @@ describe("useDockAccessoryVisibility", () => {
     vi.clearAllMocks();
   });
 
-  it("shows on strip enter and hides 300ms after both surfaces are left", async () => {
+  it("shows on strip enter and hides immediately after both surfaces are left", async () => {
     const { result } = renderHook(() =>
       useDockAccessoryVisibility({ active: true, edge: "bottom" })
     );
@@ -24,9 +24,7 @@ describe("useDockAccessoryVisibility", () => {
     await act(async () => Promise.resolve());
     expect(result.current.headerVisible).toBe(true);
     act(() => result.current.onStripPointerLeave());
-    act(() => vi.advanceTimersByTime(299));
-    expect(result.current.headerVisible).toBe(true);
-    act(() => vi.advanceTimersByTime(1));
+    await act(async () => Promise.resolve());
     expect(result.current.headerVisible).toBe(false);
     await act(async () => {
       await Promise.resolve();
@@ -45,7 +43,7 @@ describe("useDockAccessoryVisibility", () => {
     act(() => vi.advanceTimersByTime(1000));
     expect(result.current.headerVisible).toBe(true);
     act(() => result.current.closeEditor());
-    act(() => vi.advanceTimersByTime(300));
+    act(() => vi.advanceTimersByTime(0));
     expect(result.current.editorView).toBeNull();
     expect(result.current.headerVisible).toBe(false);
   });

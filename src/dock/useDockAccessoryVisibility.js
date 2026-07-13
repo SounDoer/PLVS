@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setDockAccessories } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { DOCK_ACCESSORY_HIDE_DELAY_MS, shouldShowDockHeader } from "./accessoryVisibility.js";
+import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
 const ACCESSORY_READY_RETRY_MS = 50;
 const ACCESSORY_READY_ATTEMPTS = 4;
@@ -41,40 +41,26 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
   const [measuredEditorView, setMeasuredEditorView] = useState(null);
   const editorViewRef = useRef(null);
   const measuredEditorViewRef = useRef(null);
-  const hideTimerRef = useRef(null);
   const requestRef = useRef(0);
   const commandQueueRef = useRef(Promise.resolve());
 
-  const clearHideTimer = useCallback(() => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = null;
+  const updatePresence = useCallback((key, inside) => {
+    setPresence((current) => ({ ...current, [key]: inside }));
+    if (inside) setHeaderVisible(true);
   }, []);
 
-  const updatePresence = useCallback(
-    (key, inside) => {
-      clearHideTimer();
-      setPresence((current) => ({ ...current, [key]: inside }));
-      if (inside) setHeaderVisible(true);
-    },
-    [clearHideTimer]
-  );
-
-  const openEditor = useCallback(
-    (view) => {
-      clearHideTimer();
-      const hasVisibleEditor =
-        editorViewRef.current !== null && measuredEditorViewRef.current === editorViewRef.current;
-      if (!hasVisibleEditor) {
-        setEditorSize(initialEditorSize(view));
-        measuredEditorViewRef.current = null;
-        setMeasuredEditorView(null);
-      }
-      editorViewRef.current = view;
-      setEditorView(view);
-      setHeaderVisible(true);
-    },
-    [clearHideTimer]
-  );
+  const openEditor = useCallback((view) => {
+    const hasVisibleEditor =
+      editorViewRef.current !== null && measuredEditorViewRef.current === editorViewRef.current;
+    if (!hasVisibleEditor) {
+      setEditorSize(initialEditorSize(view));
+      measuredEditorViewRef.current = null;
+      setMeasuredEditorView(null);
+    }
+    editorViewRef.current = view;
+    setEditorView(view);
+    setHeaderVisible(true);
+  }, []);
   const closeEditor = useCallback((expectedView, reason) => {
     if (expectedView && editorViewRef.current !== expectedView) return;
     if (reason === "blur" && measuredEditorViewRef.current !== editorViewRef.current) return;
@@ -99,7 +85,6 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
 
   useEffect(() => {
     if (!active) {
-      clearHideTimer();
       const resetTimer = setTimeout(() => {
         editorViewRef.current = null;
         measuredEditorViewRef.current = null;
@@ -114,10 +99,8 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
       const showTimer = setTimeout(() => setHeaderVisible(true), 0);
       return () => clearTimeout(showTimer);
     }
-    clearHideTimer();
-    hideTimerRef.current = setTimeout(() => setHeaderVisible(false), DOCK_ACCESSORY_HIDE_DELAY_MS);
-    return clearHideTimer;
-  }, [active, clearHideTimer, editorView, presence]);
+    setHeaderVisible(false);
+  }, [active, editorView, presence]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -137,8 +120,6 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
       if (request === requestRef.current) onError?.(error);
     });
   }, [active, edge, editorSize, editorView, headerVisible, measuredEditorView, onError]);
-
-  useEffect(() => () => clearHideTimer(), [clearHideTimer]);
 
   return {
     headerVisible,
