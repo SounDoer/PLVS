@@ -45,4 +45,26 @@ describe("useDockLayout", () => {
     act(() => result.current.reorder(0, 2));
     expect(presetsStore.read().dirty).toBe(true);
   });
+
+  it("exposes statsIds with defaults and persists toggles", () => {
+    const { result } = renderHook(() => useDockLayout());
+    expect(result.current.statsIds).toEqual(["integrated", "truePeak", "lra"]);
+    act(() => result.current.toggleStat("psr"));
+    expect(result.current.statsIds).toEqual(["integrated", "truePeak", "lra", "psr"]);
+    expect(workspaceStore.read().dock.statsIds).toEqual(["integrated", "truePeak", "lra", "psr"]);
+  });
+
+  it("setStatsIds replaces the selection (used by preset apply)", () => {
+    const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.setStatsIds(["lra"]));
+    expect(result.current.statsIds).toEqual(["lra"]);
+    expect(workspaceStore.read().dock.statsIds).toEqual(["lra"]);
+  });
+
+  it("stat toggles dirty the active preset", () => {
+    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1", dirty: false });
+    const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.toggleStat("psr"));
+    expect(presetsStore.read().dirty).toBe(true);
+  });
 });

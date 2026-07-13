@@ -1,7 +1,19 @@
-/** Known dock module ids, in registry order (kept in sync with registry.jsx). */
-export const DOCK_MODULE_IDS = ["level", "loudness", "spectrum", "correlation"];
+import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
-export const DEFAULT_DOCK_MODULES = [...DOCK_MODULE_IDS];
+/** Known dock module ids, in catalog order (kept in sync with registry.jsx). */
+export const DOCK_MODULE_IDS = [
+  "level",
+  "loudness",
+  "spectrum",
+  "correlation",
+  "stats",
+  "waveform",
+  "spectrogram",
+  "transport",
+];
+
+/** v1 default set; later-phase modules are opt-in. */
+export const DEFAULT_DOCK_MODULES = ["level", "loudness", "spectrum", "correlation"];
 
 /** Normalize the persisted `dock` value from workspaceStore. */
 export function normalizeDockLayout(raw) {
@@ -34,4 +46,30 @@ export function reorderDockModule(layout, fromIndex, toIndex) {
   const [moved] = modules.splice(from, 1);
   modules.splice(to, 0, moved);
   return { ...layout, modules };
+}
+
+/** Spec: DockStats shows 2-4 user-picked readouts; we allow 0-4 and default to 3. */
+export const MAX_DOCK_STATS_IDS = 4;
+
+export const DEFAULT_DOCK_STATS_IDS = ["integrated", "truePeak", "lra"];
+
+/** Normalize the persisted stats-readout selection. */
+export function normalizeDockStatsIds(raw) {
+  if (!Array.isArray(raw)) return [...DEFAULT_DOCK_STATS_IDS];
+  const seen = new Set();
+  const ids = [];
+  for (const id of raw) {
+    if (!STATS_CANONICAL_ORDER.includes(id) || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+    if (ids.length >= MAX_DOCK_STATS_IDS) break;
+  }
+  return ids;
+}
+
+export function toggleDockStatId(statsIds, id) {
+  if (!STATS_CANONICAL_ORDER.includes(id)) return statsIds;
+  if (statsIds.includes(id)) return statsIds.filter((s) => s !== id);
+  if (statsIds.length >= MAX_DOCK_STATS_IDS) return statsIds;
+  return [...statsIds, id];
 }
