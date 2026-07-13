@@ -287,7 +287,7 @@ function SettingsOptionRow({
   );
 }
 
-function SettingsSelect({
+export function SettingsSelect({
   label,
   ariaLabel,
   options,

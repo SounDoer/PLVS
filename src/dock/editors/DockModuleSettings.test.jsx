@@ -35,8 +35,18 @@ describe("DockModuleSettings", () => {
 
   it("emits a complete updated controls object", () => {
     const onChange = renderSettings("level");
-    fireEvent.change(screen.getByLabelText("Level readout"), { target: { value: "peak" } });
+    fireEvent.click(screen.getByLabelText("Level readout"));
+    fireEvent.click(screen.getByRole("option", { name: "Peak" }));
     expect(onChange).toHaveBeenCalledWith({ readout: "peak" });
+  });
+
+  it("uses the themed inline selector instead of a native select", () => {
+    renderSettings("spectrogram");
+
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Spectrogram channel"));
+    expect(screen.getByRole("listbox", { name: "Spectrogram channel" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Channels 1 + 2" })).toBeTruthy();
   });
 
   it("exposes Back, Reset, and Done actions", () => {

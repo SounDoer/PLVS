@@ -1,6 +1,8 @@
+import { useState } from "react";
 import {
   SettingsGroup,
   SettingsRow,
+  SettingsSelect,
   SettingsSwitch,
 } from "../../components/PanelSettingsContent.jsx";
 import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
@@ -11,19 +13,18 @@ const FIELD_CLASS =
   "h-7 rounded-md border border-border/60 bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 function SelectField({ label, value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value) ?? options[0];
   return (
-    <select
-      aria-label={label}
+    <SettingsSelect
+      label={selected?.label ?? ""}
+      ariaLabel={label}
+      options={options.map((option) => ({ key: option.value, label: option.label }))}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={FIELD_CLASS}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      open={open}
+      onOpenChange={setOpen}
+    />
   );
 }
 

@@ -793,7 +793,8 @@ function AppContent() {
       if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
       else if (type === "open-editor") dockAccessoryVisibility.openEditor(payload.view);
-      else if (type === "close-editor") dockAccessoryVisibility.closeEditor(payload.view);
+      else if (type === "close-editor")
+        dockAccessoryVisibility.closeEditor(payload.view, payload.reason);
       else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
       else if (type === "set-edge") void onDockChange(payload.edge);
       else if (type === "set-reserve-space") {

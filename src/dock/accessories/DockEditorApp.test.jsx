@@ -34,7 +34,9 @@ describe("DockEditorApp window behavior", () => {
 
     fireEvent(window, new Event("blur"));
 
-    await waitFor(() => expect(action).toHaveBeenCalledWith("close-editor", { view: "presets" }));
+    await waitFor(() =>
+      expect(action).toHaveBeenCalledWith("close-editor", { view: "presets", reason: "blur" })
+    );
   });
 
   it("closes when a transparent viewport remainder is clicked", () => {
@@ -93,5 +95,27 @@ describe("DockEditorApp window behavior", () => {
       "resize-editor",
       expect.objectContaining({ view: "presets" })
     );
+  });
+
+  it("lets module settings use their intrinsic width", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "module:spectrogram",
+      controlsByModuleId: {
+        spectrogram: {
+          channel: { type: "pair", x: 0, y: 1 },
+          minDb: -96,
+          maxDb: -12,
+          minFreq: 20,
+          maxFreq: 20000,
+        },
+      },
+    };
+
+    render(<DockEditorApp />);
+
+    const classes = screen.getByTestId("dock-editor").className.split(/\s+/);
+    expect(classes).toContain("w-max");
+    expect(classes).not.toContain("w-[400px]");
   });
 });

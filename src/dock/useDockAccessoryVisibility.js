@@ -40,6 +40,7 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
   const [editorSize, setEditorSize] = useState(() => initialEditorSize(null));
   const [measuredEditorView, setMeasuredEditorView] = useState(null);
   const editorViewRef = useRef(null);
+  const measuredEditorViewRef = useRef(null);
   const hideTimerRef = useRef(null);
   const requestRef = useRef(0);
   const commandQueueRef = useRef(Promise.resolve());
@@ -62,6 +63,7 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
     (view) => {
       clearHideTimer();
       setEditorSize(initialEditorSize(view));
+      measuredEditorViewRef.current = null;
       setMeasuredEditorView(null);
       editorViewRef.current = view;
       setEditorView(view);
@@ -69,9 +71,11 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
     },
     [clearHideTimer]
   );
-  const closeEditor = useCallback((expectedView) => {
+  const closeEditor = useCallback((expectedView, reason) => {
     if (expectedView && editorViewRef.current !== expectedView) return;
+    if (reason === "blur" && measuredEditorViewRef.current !== editorViewRef.current) return;
     editorViewRef.current = null;
+    measuredEditorViewRef.current = null;
     setMeasuredEditorView(null);
     setEditorView(null);
   }, []);
@@ -85,6 +89,7 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
     setEditorSize((current) =>
       current.width === next.width && current.height === next.height ? current : next
     );
+    measuredEditorViewRef.current = view;
     setMeasuredEditorView(view);
   }, []);
 
@@ -93,6 +98,7 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
       clearHideTimer();
       const resetTimer = setTimeout(() => {
         editorViewRef.current = null;
+        measuredEditorViewRef.current = null;
         setMeasuredEditorView(null);
         setHeaderVisible(false);
         setEditorView(null);

@@ -145,4 +145,19 @@ describe("useDockAccessoryVisibility", () => {
       expect.objectContaining({ editorVisible: false })
     );
   });
+
+  it("ignores blur caused by hiding an editor while its replacement is measured", () => {
+    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    act(() => result.current.openEditor("modules"));
+    act(() => result.current.resizeEditor({ view: "modules", width: 188, height: 386 }));
+    act(() => result.current.openEditor("module:spectrogram"));
+    act(() => result.current.closeEditor("module:spectrogram", "blur"));
+
+    expect(result.current.editorView).toBe("module:spectrogram");
+
+    act(() => result.current.resizeEditor({ view: "module:spectrogram", width: 280, height: 180 }));
+    act(() => result.current.closeEditor("module:spectrogram", "blur"));
+
+    expect(result.current.editorView).toBeNull();
+  });
 });

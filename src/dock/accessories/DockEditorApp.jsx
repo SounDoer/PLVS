@@ -45,7 +45,7 @@ export function DockEditorApp() {
     const onBlur = () => {
       if (!pointerActiveRef.current) {
         blurTimer = setTimeout(
-          () => action("close-editor", { view: payload?.view }),
+          () => action("close-editor", { view: payload?.view, reason: "blur" }),
           DOCK_EDITOR_BLUR_CLOSE_DELAY_MS
         );
       }
@@ -122,7 +122,7 @@ export function DockEditorApp() {
           ? "w-60"
           : payload.view === "modules"
             ? "w-max min-w-44"
-            : "w-[400px]"
+            : "w-max min-w-64 max-w-[400px]"
       )}
     >
       {payload.view === "modules" ? (
