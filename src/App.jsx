@@ -294,7 +294,8 @@ function AppContent() {
     () =>
       mergeDockSpectrumRequest(
         deriveAnalysisRequests(workspaceState),
-        docked && dockLayout.modules.includes("spectrum")
+        docked &&
+          (dockLayout.modules.includes("spectrum") || dockLayout.modules.includes("spectrogram"))
       ),
     [workspaceState, docked, dockLayout.modules]
   );
