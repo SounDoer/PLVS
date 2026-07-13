@@ -104,10 +104,19 @@ describe("useDockAccessoryVisibility", () => {
     expect(wait).not.toHaveBeenCalled();
   });
 
-  it("applies measured editor dimensions", async () => {
+  it("keeps the editor hidden until its intrinsic dimensions are measured", async () => {
     const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
     act(() => result.current.openEditor("presets"));
-    act(() => result.current.resizeEditor({ width: 238.2, height: 146.4 }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ editorVisible: false })
+    );
+
+    act(() => result.current.resizeEditor({ view: "presets", width: 238.2, height: 146.4 }));
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -119,6 +128,21 @@ describe("useDockAccessoryVisibility", () => {
         editorWidth: 239,
         editorHeight: 147,
       })
+    );
+  });
+
+  it("ignores a stale measurement from the editor that was just replaced", async () => {
+    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    act(() => result.current.openEditor("modules"));
+    act(() => result.current.openEditor("presets"));
+    act(() => result.current.resizeEditor({ view: "modules", width: 320, height: 240 }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({ editorVisible: false })
     );
   });
 });

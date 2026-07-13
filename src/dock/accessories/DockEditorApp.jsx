@@ -83,7 +83,7 @@ export function DockEditorApp() {
           return;
         }
         lastSizeRef.current = next;
-        action("resize-editor", next);
+        action("resize-editor", { ...next, view: payload.view });
       });
     };
     measure();

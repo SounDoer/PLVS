@@ -89,5 +89,9 @@ describe("DockEditorApp window behavior", () => {
     await waitFor(() =>
       expect(action.mock.calls.filter(([type]) => type === "resize-editor")).toHaveLength(2)
     );
+    expect(action).toHaveBeenLastCalledWith(
+      "resize-editor",
+      expect.objectContaining({ view: "presets" })
+    );
   });
 });
