@@ -24,7 +24,6 @@ export function DockSpectrogram() {
   // Repaint on every render: the strip re-renders at frame rate via the
   // frame context, and the canvas is tiny (300x56), matching the visual
   // history cadence closely enough without a dedicated scheduler.
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: no dep array, repaint every render (see comment above)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -50,6 +49,10 @@ export function DockSpectrogram() {
     const data = image.data;
     const rng = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
     let yToBand = null;
+    // Snaps arrive ~every 40ms but a column spans 100ms, so several snaps
+    // collide per x. Scanning newest-first, the first writer must win or the
+    // oldest of each cluster would overwrite the newest.
+    const paintedX = new Uint8Array(W);
 
     for (let i = snaps.length - 1; i >= 0; i--) {
       const snap = snaps.rowAt(i);
@@ -57,7 +60,8 @@ export function DockSpectrogram() {
       if (snap.timestampMs < oldestMs) break;
       if (!yToBand) yToBand = buildYToBand(snap.bands, H, MIN_HZ, MAX_HZ);
       const x = Math.round(((snap.timestampMs - oldestMs) / WINDOW_MS) * (W - 1));
-      if (x < 0 || x >= W) continue;
+      if (x < 0 || x >= W || paintedX[x]) continue;
+      paintedX[x] = 1;
       for (let y = 0; y < H; y++) {
         const db = snap.dbList[yToBand[y]] ?? SPECTROGRAM_DB_MIN;
         const t = Math.max(0, Math.min(1, (db - SPECTROGRAM_DB_MIN) / rng));
