@@ -64,9 +64,9 @@ export function applyWindowBounds(bounds) {
   return invoke("apply_window_bounds", { bounds });
 }
 
-/** Enter dock mode on the given edge ("top" | "bottom"). Rust persists dockState. */
-export function enterDock(edge) {
-  return invoke("enter_dock", { edge });
+/** Enter dock mode on the given edge. A reserve override makes preset apply atomic. */
+export function enterDock(edge, reserveSpace) {
+  return invoke("enter_dock", { edge, reserveSpace });
 }
 
 /**

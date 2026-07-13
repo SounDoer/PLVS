@@ -67,7 +67,7 @@ export function DockHeader({ state, onAction, onPointer }) {
           icon={<PanelTop className="size-3.5" />}
           tip={state.reserveSpace ? "Stop reserving screen space" : "Reserve screen space"}
           aria-pressed={state.reserveSpace}
-          onClick={() => onAction("set-reserve-space", { enabled: !state.reserveSpace })}
+          onClick={() => onAction("toggle-reserve-space")}
           className={state.reserveSpace ? "bg-accent text-accent-foreground" : undefined}
         />
       ) : null}

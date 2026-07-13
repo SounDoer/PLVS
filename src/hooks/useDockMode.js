@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { enterDock, exitDock, setDockReserveSpace } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { presetsStore } from "../persistence/index.js";
 
 function normalizeDockState(raw) {
   const edge = raw?.edge === "top" ? "top" : "bottom";
@@ -19,28 +20,84 @@ export function useDockMode() {
       typeof window !== "undefined" ? window.__PLVS_INITIAL_STATE__?.dockState : undefined
     )
   );
+  const dockRef = useRef(dock);
+  const transitionTailRef = useRef(Promise.resolve());
 
-  const enterDockMode = useCallback(async (edge) => {
-    if (!isTauri()) return;
-    await enterDock(edge);
-    setDock((prev) => ({ ...prev, enabled: true, edge }));
+  const commitDock = useCallback((update) => {
+    const next = typeof update === "function" ? update(dockRef.current) : update;
+    dockRef.current = next;
+    setDock(next);
+    return next;
   }, []);
 
-  const exitDockMode = useCallback(async ({ decorations, alwaysOnTop }) => {
-    if (!isTauri()) return;
-    await exitDock({ decorations, alwaysOnTop });
-    setDock((prev) => ({ ...prev, enabled: false, reserveSpace: false }));
+  const enqueueTransition = useCallback((operation) => {
+    const result = transitionTailRef.current.then(operation, operation);
+    transitionTailRef.current = result.catch(() => {});
+    return result;
   }, []);
+
+  const enterDockMode = useCallback(
+    (edge, reserveSpaceOverride) => {
+      if (!isTauri()) return Promise.resolve();
+      return enqueueTransition(async () => {
+        const current = dockRef.current;
+        const hasReserveOverride = typeof reserveSpaceOverride === "boolean";
+        await enterDock(edge, hasReserveOverride ? reserveSpaceOverride : undefined);
+        const changed =
+          !current.enabled ||
+          current.edge !== edge ||
+          (hasReserveOverride && current.reserveSpace !== reserveSpaceOverride);
+        commitDock((latest) => ({
+          ...latest,
+          enabled: true,
+          edge,
+          reserveSpace: hasReserveOverride ? reserveSpaceOverride : latest.reserveSpace,
+        }));
+        if (changed) presetsStore.patch({ dirty: true });
+      });
+    },
+    [commitDock, enqueueTransition]
+  );
+
+  const exitDockMode = useCallback(
+    ({ decorations, alwaysOnTop }) => {
+      if (!isTauri()) return Promise.resolve();
+      return enqueueTransition(async () => {
+        const wasEnabled = dockRef.current.enabled;
+        await exitDock({ decorations, alwaysOnTop });
+        commitDock((latest) => ({ ...latest, enabled: false, reserveSpace: false }));
+        if (wasEnabled) presetsStore.patch({ dirty: true });
+      });
+    },
+    [commitDock, enqueueTransition]
+  );
+
+  const applyReserveSpace = useCallback(
+    async (enabled, edgeOverride) => {
+      const current = dockRef.current;
+      const edge =
+        edgeOverride === "top" || edgeOverride === "bottom" ? edgeOverride : current.edge;
+      await setDockReserveSpace({ enabled, edge });
+      commitDock((latest) => ({ ...latest, edge, reserveSpace: enabled }));
+      if (current.reserveSpace !== enabled || current.edge !== edge) {
+        presetsStore.patch({ dirty: true });
+      }
+    },
+    [commitDock]
+  );
 
   const setReserveSpace = useCallback(
-    async (enabled, edgeOverride) => {
-      if (!isTauri()) return;
-      const edge = edgeOverride === "top" || edgeOverride === "bottom" ? edgeOverride : dock.edge;
-      await setDockReserveSpace({ enabled, edge });
-      setDock((prev) => ({ ...prev, edge, reserveSpace: enabled }));
+    (enabled, edgeOverride) => {
+      if (!isTauri()) return Promise.resolve();
+      return enqueueTransition(() => applyReserveSpace(enabled, edgeOverride));
     },
-    [dock.edge]
+    [applyReserveSpace, enqueueTransition]
   );
+
+  const toggleReserveSpace = useCallback(() => {
+    if (!isTauri()) return Promise.resolve();
+    return enqueueTransition(() => applyReserveSpace(!dockRef.current.reserveSpace));
+  }, [applyReserveSpace, enqueueTransition]);
 
   return {
     dockEnabled: dock.enabled,
@@ -49,5 +106,6 @@ export function useDockMode() {
     enterDockMode,
     exitDockMode,
     setReserveSpace,
+    toggleReserveSpace,
   };
 }

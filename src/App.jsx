@@ -125,8 +125,15 @@ function AppContent() {
   // window overrides below (Rust owns strip chrome + topmost while docked),
   // and preset capture/apply reads dock state. useDockMode depends on no
   // other hook, so hoisting it above useAlwaysOnTop is safe.
-  const { dockEnabled, dockEdge, reserveSpace, enterDockMode, exitDockMode, setReserveSpace } =
-    useDockMode();
+  const {
+    dockEnabled,
+    dockEdge,
+    reserveSpace,
+    enterDockMode,
+    exitDockMode,
+    setReserveSpace,
+    toggleReserveSpace,
+  } = useDockMode();
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
   // Suspended while docked: a preset apply may flip the stored pin to false
@@ -242,9 +249,8 @@ function AppContent() {
         dockLayout.setModules(presetDock.modules);
         dockLayout.setControlsByModuleId(presetDock.controlsByModuleId, presetDock.statsIds);
         if (!dockEnabled || dockEdge !== presetDock.edge) {
-          await enterDockMode(presetDock.edge);
-        }
-        if (presetDock.reserveSpace !== reserveSpace) {
+          await enterDockMode(presetDock.edge, presetDock.reserveSpace);
+        } else if (presetDock.reserveSpace !== reserveSpace) {
           await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
         }
       } else if (dockEnabled) {
@@ -811,8 +817,8 @@ function AppContent() {
         dockAccessoryVisibility.closeEditor(payload.view, payload.reason);
       else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
       else if (type === "set-edge") void onDockChange(payload.edge);
-      else if (type === "set-reserve-space") {
-        void setReserveSpace(payload.enabled).catch((error) =>
+      else if (type === "toggle-reserve-space") {
+        void toggleReserveSpace().catch((error) =>
           raiseNotice("error", `Reserve screen space failed: ${error?.message || error}`)
         );
       } else if (type === "restore-window") void exitDockRestoringAttributes();
@@ -850,6 +856,7 @@ function AppContent() {
       presets,
       raiseNotice,
       setReserveSpace,
+      toggleReserveSpace,
     ]
   );
   useDockAccessoryBridge({

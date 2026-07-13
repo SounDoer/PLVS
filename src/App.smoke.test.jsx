@@ -2,7 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { isTauri } from "./ipc/env.js";
-import { listAudioDevices, previewAudioDevice, setDockReserveSpace } from "./ipc/commands.js";
+import {
+  enterDock,
+  listAudioDevices,
+  previewAudioDevice,
+  setDockReserveSpace,
+} from "./ipc/commands.js";
 import { pickMediaFile } from "./ipc/fileDialog.js";
 
 const tauriEventHandlers = vi.hoisted(() => new Map());
@@ -125,6 +130,7 @@ beforeEach(() => {
   isTauri.mockReturnValue(false);
   listAudioDevices.mockResolvedValue([]);
   previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
+  enterDock.mockClear().mockResolvedValue(undefined);
   setDockReserveSpace.mockClear().mockResolvedValue(undefined);
   pickMediaFile.mockResolvedValue(null);
   window.matchMedia = vi.fn().mockImplementation((query) => ({
@@ -340,9 +346,47 @@ describe("App smoke", () => {
       });
     });
 
+    await waitFor(() => expect(enterDock).toHaveBeenCalledWith("top", true));
+    expect(setDockReserveSpace).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(setDockReserveSpace).toHaveBeenCalledWith({ enabled: true, edge: "top" })
+      expect(presetsStore.read()).toMatchObject({ activeId: "dock-reserved", dirty: false })
     );
+  });
+
+  it("serializes rapid reserve toggles from the dock header", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    let releaseFirst;
+    setDockReserveSpace.mockImplementationOnce(
+      () => new Promise((resolve) => (releaseFirst = resolve))
+    );
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+    await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
+    const dispatchToggle = (revision) =>
+      tauriEventHandlers.get("dock-accessory://action")({
+        payload: {
+          surface: "dock-header",
+          type: "toggle-reserve-space",
+          revision,
+          payload: {},
+        },
+      });
+
+    await act(async () => {
+      dispatchToggle(1);
+      dispatchToggle(2);
+      await Promise.resolve();
+    });
+
+    expect(setDockReserveSpace).toHaveBeenCalledTimes(1);
+    expect(setDockReserveSpace).toHaveBeenLastCalledWith({ enabled: true, edge: "bottom" });
+
+    releaseFirst();
+    await waitFor(() => expect(setDockReserveSpace).toHaveBeenCalledTimes(2));
+    expect(setDockReserveSpace).toHaveBeenLastCalledWith({ enabled: false, edge: "bottom" });
   });
 
   it("renders the normal shell (no dock strip) without dock boot state", async () => {

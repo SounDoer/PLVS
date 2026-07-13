@@ -74,6 +74,16 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("open-editor", { view: "presets" });
   });
 
+  it("emits a reserve toggle instead of a stale target value", () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
+    const onAction = vi.fn();
+    render(<DockHeader state={STATE} onAction={onAction} onPointer={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop reserving screen space" }));
+
+    expect(onAction).toHaveBeenCalledWith("toggle-reserve-space");
+  });
+
   it.each([
     ["startLive", "START"],
     ["stopLive", "STOP"],

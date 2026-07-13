@@ -14,7 +14,7 @@ const ACTION_TYPES = new Set([
   "close-editor",
   "resize-editor",
   "set-edge",
-  "set-reserve-space",
+  "toggle-reserve-space",
   "restore-window",
   "toggle-module",
   "add-module",

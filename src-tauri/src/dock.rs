@@ -46,6 +46,7 @@ pub struct DockStateRecord {
 }
 
 /// Compute the docked strip rect (physical px) inside a monitor work area.
+#[cfg(any(not(target_os = "windows"), test))]
 pub fn dock_strip_rect(work_area: MonitorRect, edge: DockEdge, height: u32) -> WindowBounds {
   let height = height.min(work_area.height).max(1);
   let y = match edge {
@@ -222,7 +223,11 @@ pub fn apply_dock_form<R: tauri::Runtime>(
   monitor_name: Option<&str>,
 ) -> Result<Option<String>, String> {
   let (wa, scale, resolved_monitor) = work_area_and_scale(window, monitor_name)?;
+  #[cfg(target_os = "windows")]
+  let _ = (wa, scale);
+  #[cfg(not(target_os = "windows"))]
   let height = (DOCK_STRIP_LOGICAL_HEIGHT * scale).round() as u32;
+  #[cfg(not(target_os = "windows"))]
   let rect = dock_strip_rect(wa, edge, height);
   if window.is_maximized().unwrap_or(false) {
     let _ = window.unmaximize();
@@ -238,12 +243,17 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     window
       .set_resizable(false)
       .map_err(|e| format!("resizable: {e}"))?;
-    window
-      .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
-      .map_err(|e| format!("size: {e}"))?;
-    window
-      .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
-      .map_err(|e| format!("position: {e}"))?;
+    #[cfg(target_os = "windows")]
+    crate::appbar::position_overlay(window, edge)?;
+    #[cfg(not(target_os = "windows"))]
+    {
+      window
+        .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
+        .map_err(|e| format!("size: {e}"))?;
+      window
+        .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
+        .map_err(|e| format!("position: {e}"))?;
+    }
     Ok(())
   })();
   applied.inspect_err(|_| restore_normal_shell(window))?;
@@ -255,17 +265,22 @@ pub fn enter_dock<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   flag: tauri::State<'_, DockedFlag>,
   edge: DockEdge,
+  reserve_space: Option<bool>,
 ) -> Result<(), String> {
-  let reserve_space = read_dock_state(window.app_handle())
-    .map(|state| state.reserve_space)
-    .unwrap_or(false);
+  let previous = read_dock_state(window.app_handle());
+  let reserve_space = reserve_space.unwrap_or_else(|| {
+    previous
+      .as_ref()
+      .map(|state| state.reserve_space)
+      .unwrap_or(false)
+  });
   #[cfg(target_os = "windows")]
-  if reserve_space {
-    crate::appbar::set_reserved(&window, false, edge)?;
-  }
+  crate::appbar::set_reserved(&window, false, edge)?;
   // Persist the latest normal-form geometry, then raise the suppression flag
   // BEFORE moving the window so the flush thread can't record strip bounds.
-  save_window_bounds(&window);
+  if !flag.0.load(Ordering::Relaxed) {
+    save_window_bounds(&window);
+  }
   flag.0.store(true, Ordering::Relaxed);
   let monitor = apply_dock_form(&window, edge, None).inspect_err(|_| {
     flag.0.store(false, Ordering::Relaxed);
@@ -385,9 +400,6 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
   #[cfg(target_os = "windows")]
   {
     crate::appbar::set_reserved(&window, enabled, edge)?;
-    if !enabled {
-      apply_dock_form(&window, edge, None)?;
-    }
   }
   #[cfg(not(target_os = "windows"))]
   if enabled {

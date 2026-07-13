@@ -29,6 +29,13 @@ describe("Dock accessory protocol", () => {
       revision: 4,
       payload: { edge: "bottom" },
     });
+    expect(
+      normalizeAccessoryAction({
+        surface: "dock-header",
+        type: "toggle-reserve-space",
+        revision: 5,
+      })
+    ).toMatchObject({ type: "toggle-reserve-space", payload: {} });
     expect(normalizeAccessoryAction({ surface: "dock-header", type: "unknown" })).toBeNull();
     expect(normalizeAccessoryPointer({ surface: "dock-editor", inside: true })).toEqual({
       surface: "dock-editor",

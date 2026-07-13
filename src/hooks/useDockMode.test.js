@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   exitDock: vi.fn(async () => {}),
   setDockReserveSpace: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
+  patchPresets: vi.fn(),
 }));
 
 vi.mock("../ipc/commands.js", () => ({
@@ -14,6 +15,9 @@ vi.mock("../ipc/commands.js", () => ({
   setDockReserveSpace: mocks.setDockReserveSpace,
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
+vi.mock("../persistence/index.js", () => ({
+  presetsStore: { patch: mocks.patchPresets },
+}));
 
 import { useDockMode } from "./useDockMode.js";
 
@@ -21,8 +25,9 @@ describe("useDockMode", () => {
   beforeEach(() => {
     mocks.enterDock.mockClear();
     mocks.exitDock.mockClear();
-    mocks.setDockReserveSpace.mockClear();
+    mocks.setDockReserveSpace.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
+    mocks.patchPresets.mockClear();
     delete window.__PLVS_INITIAL_STATE__;
   });
 
@@ -57,6 +62,66 @@ describe("useDockMode", () => {
     expect(result.current).toMatchObject({ dockEdge: "bottom", reserveSpace: true });
   });
 
+  it("applies a preset edge and reserve-space target in one dock transition", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    const { result } = renderHook(() => useDockMode());
+
+    await act(() => result.current.enterDockMode("top", true));
+
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", true);
+    expect(mocks.setDockReserveSpace).not.toHaveBeenCalled();
+    expect(result.current).toMatchObject({ dockEdge: "top", reserveSpace: true });
+  });
+
+  it("marks the active preset dirty after a successful reserve-space change", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", reserveSpace: false },
+    };
+    const { result } = renderHook(() => useDockMode());
+
+    await act(() => result.current.setReserveSpace(true));
+
+    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
+  });
+
+  it("serializes rapid reserve toggles and computes each from the latest state", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    let releaseFirst;
+    mocks.setDockReserveSpace.mockImplementationOnce(
+      () => new Promise((resolve) => (releaseFirst = resolve))
+    );
+    const { result } = renderHook(() => useDockMode());
+
+    let first;
+    let second;
+    await act(async () => {
+      first = result.current.toggleReserveSpace();
+      second = result.current.toggleReserveSpace();
+      await Promise.resolve();
+    });
+
+    expect(mocks.setDockReserveSpace).toHaveBeenCalledTimes(1);
+    expect(mocks.setDockReserveSpace).toHaveBeenLastCalledWith({
+      enabled: true,
+      edge: "bottom",
+    });
+
+    await act(async () => {
+      releaseFirst();
+      await Promise.all([first, second]);
+    });
+
+    expect(mocks.setDockReserveSpace.mock.calls).toEqual([
+      [{ enabled: true, edge: "bottom" }],
+      [{ enabled: false, edge: "bottom" }],
+    ]);
+    expect(result.current.reserveSpace).toBe(false);
+  });
+
   it("starts disabled without injected state", () => {
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEnabled).toBe(false);
@@ -73,9 +138,10 @@ describe("useDockMode", () => {
   it("enterDockMode invokes IPC and flips state", async () => {
     const { result } = renderHook(() => useDockMode());
     await act(() => result.current.enterDockMode("top"));
-    expect(mocks.enterDock).toHaveBeenCalledWith("top");
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", undefined);
     expect(result.current.dockEnabled).toBe(true);
     expect(result.current.dockEdge).toBe("top");
+    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
   it("exitDockMode passes restore attributes through", async () => {
@@ -84,6 +150,7 @@ describe("useDockMode", () => {
     await act(() => result.current.exitDockMode({ decorations: true, alwaysOnTop: false }));
     expect(mocks.exitDock).toHaveBeenCalledWith({ decorations: true, alwaysOnTop: false });
     expect(result.current.dockEnabled).toBe(false);
+    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
   it("is inert outside Tauri", async () => {
@@ -99,5 +166,6 @@ describe("useDockMode", () => {
     const { result } = renderHook(() => useDockMode());
     await expect(act(() => result.current.enterDockMode("top"))).rejects.toThrow();
     expect(result.current.dockEnabled).toBe(false);
+    expect(mocks.patchPresets).not.toHaveBeenCalled();
   });
 });
