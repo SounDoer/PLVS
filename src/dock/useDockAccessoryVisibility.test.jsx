@@ -1,7 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setDockAccessories } from "../ipc/commands.js";
-import { useDockAccessoryVisibility } from "./useDockAccessoryVisibility.js";
+import {
+  setDockAccessoriesWhenReady,
+  useDockAccessoryVisibility,
+} from "./useDockAccessoryVisibility.js";
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../ipc/commands.js", () => ({ setDockAccessories: vi.fn().mockResolvedValue(undefined) }));
@@ -45,5 +48,42 @@ describe("useDockAccessoryVisibility", () => {
     act(() => vi.advanceTimersByTime(300));
     expect(result.current.editorView).toBeNull();
     expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("retries while accessory windows are still registering", async () => {
+    const command = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("dock editor window unavailable"))
+      .mockResolvedValue(undefined);
+    const wait = vi.fn().mockResolvedValue(undefined);
+    const options = {
+      edge: "bottom",
+      headerVisible: false,
+      editorVisible: false,
+      editorHeight: 480,
+    };
+
+    await expect(setDockAccessoriesWhenReady(options, { command, wait })).resolves.toBeUndefined();
+
+    expect(command).toHaveBeenCalledTimes(2);
+    expect(command).toHaveBeenNthCalledWith(1, options);
+    expect(command).toHaveBeenNthCalledWith(2, options);
+    expect(wait).toHaveBeenCalledWith(50);
+  });
+
+  it("does not retry unrelated native failures", async () => {
+    const error = new Error("dock editor position: access denied");
+    const command = vi.fn().mockRejectedValue(error);
+    const wait = vi.fn();
+
+    await expect(
+      setDockAccessoriesWhenReady(
+        { edge: "top", headerVisible: true, editorVisible: true, editorHeight: 480 },
+        { command, wait }
+      )
+    ).rejects.toBe(error);
+
+    expect(command).toHaveBeenCalledOnce();
+    expect(wait).not.toHaveBeenCalled();
   });
 });

@@ -124,18 +124,24 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
   let main = app
     .get_webview_window("main")
     .ok_or_else(|| "main window unavailable".to_string())?;
-  let header = app
-    .get_webview_window(DOCK_HEADER_LABEL)
-    .ok_or_else(|| "dock header window unavailable".to_string())?;
-  let editor = app
-    .get_webview_window(DOCK_EDITOR_LABEL)
-    .ok_or_else(|| "dock editor window unavailable".to_string())?;
+  let header = app.get_webview_window(DOCK_HEADER_LABEL);
+  let editor = app.get_webview_window(DOCK_EDITOR_LABEL);
+  if header_visible && header.is_none() {
+    return Err("dock header window unavailable".to_string());
+  }
+  if editor_visible && editor.is_none() {
+    return Err("dock editor window unavailable".to_string());
+  }
   let (monitor, strip, scale) = main_geometry(&main)?;
   let rects = dock_accessory_rects(monitor, strip, edge, scale, editor_height);
 
-  set_rect(&header, rects.header)?;
-  set_rect(&editor, rects.editor)?;
-  show_or_hide(&header, header_visible)?;
-  show_or_hide(&editor, editor_visible)?;
+  if let Some(header) = header {
+    set_rect(&header, rects.header)?;
+    show_or_hide(&header, header_visible)?;
+  }
+  if let Some(editor) = editor {
+    set_rect(&editor, rects.editor)?;
+    show_or_hide(&editor, editor_visible)?;
+  }
   Ok(())
 }

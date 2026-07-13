@@ -3,6 +3,30 @@ import { setDockAccessories } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { DOCK_ACCESSORY_HIDE_DELAY_MS, shouldShowDockHeader } from "./accessoryVisibility.js";
 
+const ACCESSORY_READY_RETRY_MS = 50;
+const ACCESSORY_READY_ATTEMPTS = 4;
+
+function isAccessoryUnavailable(error) {
+  return /dock (?:header|editor) window unavailable/i.test(error?.message || String(error));
+}
+
+export async function setDockAccessoriesWhenReady(
+  options,
+  {
+    command = setDockAccessories,
+    wait = (delay) => new Promise((resolve) => setTimeout(resolve, delay)),
+  } = {}
+) {
+  for (let attempt = 1; attempt <= ACCESSORY_READY_ATTEMPTS; attempt += 1) {
+    try {
+      return await command(options);
+    } catch (error) {
+      if (attempt === ACCESSORY_READY_ATTEMPTS || !isAccessoryUnavailable(error)) throw error;
+      await wait(ACCESSORY_READY_RETRY_MS);
+    }
+  }
+}
+
 export function useDockAccessoryVisibility({ active, edge, onError }) {
   const [presence, setPresence] = useState({ stripInside: false, headerInside: false });
   const [headerVisible, setHeaderVisible] = useState(false);
@@ -60,7 +84,7 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
     commandQueueRef.current = commandQueueRef.current
       .catch(() => {})
       .then(() =>
-        setDockAccessories({
+        setDockAccessoriesWhenReady({
           edge,
           headerVisible: active && headerVisible,
           editorVisible: active && editorView !== null,
