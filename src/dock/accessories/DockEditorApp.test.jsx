@@ -29,12 +29,12 @@ describe("DockEditorApp window behavior", () => {
     client.action = action;
   });
 
-  it("closes when the accessory window loses focus", () => {
+  it("closes when the accessory window loses focus", async () => {
     render(<DockEditorApp />);
 
     fireEvent(window, new Event("blur"));
 
-    expect(action).toHaveBeenCalledWith("close-editor");
+    await waitFor(() => expect(action).toHaveBeenCalledWith("close-editor", { view: "presets" }));
   });
 
   it("closes when a transparent viewport remainder is clicked", () => {

@@ -13,6 +13,11 @@ import { SourceTransportCluster } from "../../components/SourceTransportCluster.
 export function DockHeader({ state, onAction, onPointer }) {
   const isWindows = /Win/i.test(navigator.platform || navigator.userAgent || "");
   if (!state) return null;
+  const toggleEditor = (view) => {
+    const actionType = state.editorView === view ? "close-editor" : "open-editor";
+    if (actionType === "close-editor") onAction(actionType);
+    else onAction(actionType, { view });
+  };
   return (
     <div
       data-testid="dock-header"
@@ -46,12 +51,16 @@ export function DockHeader({ state, onAction, onPointer }) {
       <IconButton
         icon={<LayoutGrid className="size-3.5" />}
         tip="Edit modules"
-        onClick={() => onAction("open-editor", { view: "modules" })}
+        aria-pressed={state.editorView === "modules"}
+        className={state.editorView === "modules" ? "bg-accent text-accent-foreground" : undefined}
+        onClick={() => toggleEditor("modules")}
       />
       <IconButton
         icon={<Bookmark className="size-3.5" />}
         tip="Presets"
-        onClick={() => onAction("open-editor", { view: "presets" })}
+        aria-pressed={state.editorView === "presets"}
+        className={state.editorView === "presets" ? "bg-accent text-accent-foreground" : undefined}
+        onClick={() => toggleEditor("presets")}
       />
       {isWindows ? (
         <IconButton

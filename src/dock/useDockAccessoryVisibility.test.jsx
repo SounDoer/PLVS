@@ -50,6 +50,16 @@ describe("useDockAccessoryVisibility", () => {
     expect(result.current.headerVisible).toBe(false);
   });
 
+  it("ignores a delayed blur close from the editor that was just replaced", () => {
+    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+
+    act(() => result.current.openEditor("modules"));
+    act(() => result.current.openEditor("presets"));
+    act(() => result.current.closeEditor("modules"));
+
+    expect(result.current.editorView).toBe("presets");
+  });
+
   it("retries while accessory windows are still registering", async () => {
     const command = vi
       .fn()

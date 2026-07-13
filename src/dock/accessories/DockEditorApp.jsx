@@ -5,6 +5,8 @@ import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
 import { DockModuleSettings } from "../editors/DockModuleSettings.jsx";
 import { DockPresetsRow } from "../editors/DockPresetsRow.jsx";
 
+export const DOCK_EDITOR_BLUR_CLOSE_DELAY_MS = 100;
+
 export function measureDockEditorContent(root) {
   const shell = root?.querySelector("[data-dock-editor-shell]");
   const content = root?.querySelector("[data-dock-editor-content]");
@@ -31,6 +33,7 @@ export function DockEditorApp() {
   }, [action]);
 
   useEffect(() => {
+    let blurTimer = null;
     const onPointerDown = (event) => {
       const inside = rootRef.current?.contains(event.target) === true;
       pointerActiveRef.current = inside;
@@ -40,19 +43,25 @@ export function DockEditorApp() {
       pointerActiveRef.current = false;
     };
     const onBlur = () => {
-      if (!pointerActiveRef.current) action("close-editor");
+      if (!pointerActiveRef.current) {
+        blurTimer = setTimeout(
+          () => action("close-editor", { view: payload?.view }),
+          DOCK_EDITOR_BLUR_CLOSE_DELAY_MS
+        );
+      }
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("pointerup", onPointerEnd, true);
     window.addEventListener("pointercancel", onPointerEnd, true);
     window.addEventListener("blur", onBlur);
     return () => {
+      if (blurTimer) clearTimeout(blurTimer);
       document.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("pointerup", onPointerEnd, true);
       window.removeEventListener("pointercancel", onPointerEnd, true);
       window.removeEventListener("blur", onBlur);
     };
-  }, [action]);
+  }, [action, payload?.view]);
 
   useLayoutEffect(() => {
     if (!payload?.view) {

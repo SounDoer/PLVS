@@ -44,6 +44,36 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("open-editor", { view: "modules" });
   });
 
+  it("closes an editor when its active toolbar button is clicked again", () => {
+    const onAction = vi.fn();
+    render(
+      <DockHeader
+        state={{ ...STATE, editorView: "modules" }}
+        onAction={onAction}
+        onPointer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit modules" }));
+
+    expect(onAction).toHaveBeenCalledWith("close-editor");
+  });
+
+  it("opens the requested editor directly when another editor is active", () => {
+    const onAction = vi.fn();
+    render(
+      <DockHeader
+        state={{ ...STATE, editorView: "modules" }}
+        onAction={onAction}
+        onPointer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Presets" }));
+
+    expect(onAction).toHaveBeenCalledWith("open-editor", { view: "presets" });
+  });
+
   it.each([
     ["startLive", "START"],
     ["stopLive", "STOP"],
