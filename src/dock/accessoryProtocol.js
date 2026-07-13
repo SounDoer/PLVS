@@ -16,6 +16,8 @@ const ACTION_TYPES = new Set([
   "set-reserve-space",
   "restore-window",
   "toggle-module",
+  "add-module",
+  "remove-module",
   "reorder-module",
   "open-module-settings",
   "update-module-controls",

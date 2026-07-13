@@ -792,8 +792,18 @@ function AppContent() {
         );
       } else if (type === "restore-window") void exitDockRestoringAttributes();
       else if (type === "toggle-module") dockLayout.toggle(payload.moduleId);
-      else if (type === "reorder-module") dockLayout.reorder(payload.from, payload.to);
-      else if (type === "open-module-settings") {
+      else if (type === "add-module") {
+        if (!dockLayout.modules.includes(payload.moduleId)) {
+          dockLayout.setModules([...dockLayout.modules, payload.moduleId]);
+        }
+      } else if (type === "remove-module") {
+        dockLayout.setModules(
+          dockLayout.modules.filter((moduleId) => moduleId !== payload.moduleId)
+        );
+      } else if (type === "reorder-module") {
+        if (Array.isArray(payload.modules)) dockLayout.setModules(payload.modules);
+        else dockLayout.reorder(payload.from, payload.to);
+      } else if (type === "open-module-settings") {
         dockAccessoryVisibility.openEditor(`module:${payload.moduleId}`);
       } else if (type === "update-module-controls") {
         dockLayout.setModuleControls(payload.moduleId, payload.controls);

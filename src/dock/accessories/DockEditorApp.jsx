@@ -10,13 +10,8 @@ export function DockEditorApp() {
     const onKeyDown = (event) => {
       if (event.key === "Escape") action("close-editor");
     };
-    const onBlur = () => action("close-editor");
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("blur", onBlur);
-    };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [action]);
   if (!payload) return null;
   const close = () => action("close-editor");
@@ -39,8 +34,9 @@ export function DockEditorApp() {
       {payload.view === "modules" ? (
         <DockModulesEditor
           modules={payload.modules}
-          onToggle={(moduleId) => action("toggle-module", { moduleId })}
-          onReorder={(from, to) => action("reorder-module", { from, to })}
+          onAdd={(moduleId) => action("add-module", { moduleId })}
+          onRemove={(moduleId) => action("remove-module", { moduleId })}
+          onReorder={(modules) => action("reorder-module", { modules })}
           onOpenSettings={(moduleId) => action("open-module-settings", { moduleId })}
           onDone={close}
         />

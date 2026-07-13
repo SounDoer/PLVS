@@ -1,29 +1,30 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { DockTransport } from "./DockTransport.jsx";
 
-const CONTROLS = {
-  sourceTransportState: {
-    chromeState: "ready",
-    sourceLabel: "Live",
-    statusLabel: "00:00",
-    actionLabel: "START",
-    actionKind: "start",
-    primaryActionDisabled: false,
-  },
-  onSourceTransportAction: vi.fn(),
-};
-
 describe("DockTransport", () => {
-  it("renders the locked transport pill and forwards the primary action", () => {
-    render(<DockTransport controls={CONTROLS} />);
-    // locked: no source popover trigger
-    expect(screen.queryByRole("button", { name: /source:/i })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /start/i }));
-    expect(CONTROLS.onSourceTransportAction).toHaveBeenCalledWith("start");
+  it("renders only the current timer without transport controls", () => {
+    render(
+      <DockTransport
+        controls={{
+          sourceTransportState: {
+            statusLabel: "01:23",
+            actionLabel: "STOP",
+          },
+        }}
+      />
+    );
+    expect(screen.getByTestId("dock-transport-timer").textContent).toBe("01:23");
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText("STOP")).toBeNull();
   });
 
-  it("renders nothing without controls (defensive)", () => {
+  it("shows a zero timer while capture is ready", () => {
+    render(<DockTransport controls={{ sourceTransportState: { statusLabel: "Ready" } }} />);
+    expect(screen.getByText("00:00")).toBeTruthy();
+  });
+
+  it("renders nothing without timer state", () => {
     const { container } = render(<DockTransport />);
     expect(container.firstChild).toBeNull();
   });

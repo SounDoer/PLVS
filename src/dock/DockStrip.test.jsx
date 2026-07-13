@@ -47,10 +47,10 @@ describe("DockStrip", () => {
     expect(screen.queryByRole("button", { name: /restore window/i })).toBeNull();
   });
 
-  it("passes controls down to modules (transport pill renders without hover)", () => {
+  it("passes controls down to the timer-only transport module", () => {
     renderStrip({ modules: ["transport"] });
-    // DockTransport reads controls.sourceTransportState; no hover involved.
-    expect(screen.getByRole("button", { name: /start/i })).toBeTruthy();
+    expect(screen.getByTestId("dock-transport-timer").textContent).toBe("00:00");
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("shows the health dot in error state when the notice is an error", () => {
