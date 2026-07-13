@@ -2,7 +2,7 @@ import { hasCorrelationSignal } from "../../lib/statsCatalog.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 
 /** -1..+1 correlation bar with a moving marker; vectorscope's dock form. */
-export function DockCorrelation() {
+export function DockCorrelation({ controls }) {
   const { correlation, displayAudio } = useFrameData();
   // The DSP emits correlation = 0.0 during silence, which is finite but
   // meaningless; gate on peakDb like Stats / VectorscopePanel do.
@@ -33,9 +33,11 @@ export function DockCorrelation() {
         ) : null}
       </div>
       <span className="shrink-0 text-[8px] font-bold uppercase text-muted-foreground">+1</span>
-      <span className="w-9 shrink-0 text-right font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-muted-foreground">
-        {finite ? `${clamped >= 0 ? "+" : ""}${clamped.toFixed(2)}` : "-"}
-      </span>
+      {controls?.showValue !== false ? (
+        <span className="w-9 shrink-0 text-right font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-muted-foreground">
+          {finite ? `${clamped >= 0 ? "+" : ""}${clamped.toFixed(2)}` : "-"}
+        </span>
+      ) : null}
     </div>
   );
 }

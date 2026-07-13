@@ -51,14 +51,41 @@ describe("useDockLayout", () => {
     expect(result.current.statsIds).toEqual(["integrated", "truePeak", "lra"]);
     act(() => result.current.toggleStat("psr"));
     expect(result.current.statsIds).toEqual(["integrated", "truePeak", "lra", "psr"]);
-    expect(workspaceStore.read().dock.statsIds).toEqual(["integrated", "truePeak", "lra", "psr"]);
+    expect(workspaceStore.read().dock.controlsByModuleId.stats.ids).toEqual([
+      "integrated",
+      "truePeak",
+      "lra",
+      "psr",
+    ]);
+    expect(workspaceStore.read().dock.statsIds).toBeUndefined();
   });
 
   it("setStatsIds replaces the selection (used by preset apply)", () => {
     const { result } = renderHook(() => useDockLayout());
     act(() => result.current.setStatsIds(["lra"]));
     expect(result.current.statsIds).toEqual(["lra"]);
-    expect(workspaceStore.read().dock.statsIds).toEqual(["lra"]);
+    expect(workspaceStore.read().dock.controlsByModuleId.stats.ids).toEqual(["lra"]);
+  });
+
+  it("migrates legacy statsIds and writes the new controls shape", () => {
+    workspaceStore.patch({ dock: { modules: ["stats"], statsIds: ["psr", "lra"] } });
+    const { result } = renderHook(() => useDockLayout());
+    expect(result.current.statsIds).toEqual(["psr", "lra"]);
+    act(() => result.current.setModuleControls("loudness", { metric: "integrated" }));
+    const persisted = workspaceStore.read().dock;
+    expect(persisted.statsIds).toBeUndefined();
+    expect(persisted.controlsByModuleId.stats.ids).toEqual(["psr", "lra"]);
+    expect(persisted.controlsByModuleId.loudness.metric).toBe("integrated");
+  });
+
+  it("updates and resets one module without mutating other families", () => {
+    const { result } = renderHook(() => useDockLayout());
+    const spectrumBefore = result.current.controlsByModuleId.spectrum;
+    act(() => result.current.setModuleControls("loudness", { metric: "momentary" }));
+    expect(result.current.controlsByModuleId.loudness.metric).toBe("momentary");
+    expect(result.current.controlsByModuleId.spectrum).toEqual(spectrumBefore);
+    act(() => result.current.resetModuleControls("loudness"));
+    expect(result.current.controlsByModuleId.loudness.metric).toBe("shortTerm");
   });
 
   it("stat toggles dirty the active preset", () => {

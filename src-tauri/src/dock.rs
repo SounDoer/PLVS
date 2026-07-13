@@ -12,6 +12,17 @@ use crate::window_state::{
 /// Logical (DPI-independent) strip height. Single source of truth: the
 /// frontend strip simply fills the viewport, so no JS copy of this number.
 pub const DOCK_STRIP_LOGICAL_HEIGHT: f64 = 72.0;
+pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 44.0;
+pub const DOCK_EDITOR_LOGICAL_WIDTH: f64 = 400.0;
+pub const DOCK_EDITOR_MIN_LOGICAL_HEIGHT: f64 = 180.0;
+pub const DOCK_EDITOR_MAX_LOGICAL_HEIGHT: f64 = 640.0;
+pub const DOCK_EDITOR_LOGICAL_INSET: f64 = 8.0;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DockAccessoryRects {
+  pub header: WindowBounds,
+  pub editor: WindowBounds,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -47,6 +58,77 @@ pub fn dock_strip_rect(work_area: MonitorRect, edge: DockEdge, height: u32) -> W
     height,
     is_maximized: false,
   }
+}
+
+fn scaled_px(logical: f64, scale: f64) -> u32 {
+  (logical * scale.max(0.1)).round().max(1.0) as u32
+}
+
+/// Compute physical-pixel accessory rectangles outside the accepted meter strip.
+/// The strip/AppBar rectangle is input-only and never grows with either accessory.
+pub fn dock_accessory_rects(
+  monitor: MonitorRect,
+  strip: WindowBounds,
+  edge: DockEdge,
+  scale: f64,
+  editor_logical_height: f64,
+) -> DockAccessoryRects {
+  let header_height = scaled_px(DOCK_HEADER_LOGICAL_HEIGHT, scale).min(monitor.height);
+  let preferred_editor_width = scaled_px(DOCK_EDITOR_LOGICAL_WIDTH, scale);
+  let inset = scaled_px(DOCK_EDITOR_LOGICAL_INSET, scale) as i32;
+  let requested_editor_height = editor_logical_height.clamp(
+    DOCK_EDITOR_MIN_LOGICAL_HEIGHT,
+    DOCK_EDITOR_MAX_LOGICAL_HEIGHT,
+  );
+
+  let header_y = match edge {
+    DockEdge::Top => strip.y + strip.height as i32,
+    DockEdge::Bottom => strip.y - header_height as i32,
+  };
+  let header = WindowBounds {
+    x: strip.x,
+    y: header_y.clamp(
+      monitor.y,
+      monitor.y + monitor.height.saturating_sub(header_height) as i32,
+    ),
+    width: strip.width.min(monitor.width).max(1),
+    height: header_height.max(1),
+    is_maximized: false,
+  };
+
+  let available_height = match edge {
+    DockEdge::Top => monitor.y + monitor.height as i32 - (header.y + header.height as i32),
+    DockEdge::Bottom => header.y - monitor.y,
+  }
+  .max(1) as u32;
+  let editor_height = scaled_px(requested_editor_height, scale).min(available_height);
+  let editor_width = preferred_editor_width
+    .min(
+      monitor
+        .width
+        .saturating_sub((inset.max(0) as u32).saturating_mul(2)),
+    )
+    .max(1);
+  let editor_x = (header.x + header.width as i32 - inset - editor_width as i32).clamp(
+    monitor.x,
+    monitor.x + monitor.width.saturating_sub(editor_width) as i32,
+  );
+  let editor_y = match edge {
+    DockEdge::Top => header.y + header.height as i32,
+    DockEdge::Bottom => header.y - editor_height as i32,
+  };
+  let editor = WindowBounds {
+    x: editor_x,
+    y: editor_y.clamp(
+      monitor.y,
+      monitor.y + monitor.height.saturating_sub(editor_height) as i32,
+    ),
+    width: editor_width,
+    height: editor_height.max(1),
+    is_maximized: false,
+  };
+
+  DockAccessoryRects { header, editor }
 }
 
 /// True while the window is docked. The window-state flush thread checks this
@@ -210,6 +292,7 @@ pub fn exit_dock<R: tauri::Runtime>(
   decorations: bool,
   always_on_top: bool,
 ) -> Result<(), String> {
+  crate::dock_accessories::hide_all(window.app_handle());
   #[cfg(target_os = "windows")]
   crate::appbar::set_reserved(&window, false, DockEdge::Bottom)?;
   window
@@ -386,5 +469,71 @@ mod tests {
     assert_eq!(v["reserveSpace"], true);
     let back: DockStateRecord = serde_json::from_value(v).unwrap();
     assert_eq!(back, s);
+  }
+
+  #[test]
+  fn bottom_accessories_open_above_the_strip_and_align_right() {
+    let strip = dock_strip_rect(wa(), DockEdge::Bottom, 72);
+    let rects = dock_accessory_rects(wa(), strip, DockEdge::Bottom, 1.0, 480.0);
+    assert_eq!(
+      (
+        rects.header.x,
+        rects.header.y,
+        rects.header.width,
+        rects.header.height
+      ),
+      (0, 1040 - 72 - 44, 1920, 44)
+    );
+    assert_eq!(
+      (
+        rects.editor.x,
+        rects.editor.y,
+        rects.editor.width,
+        rects.editor.height
+      ),
+      (1920 - 8 - 400, 1040 - 72 - 44 - 480, 400, 480)
+    );
+  }
+
+  #[test]
+  fn top_accessories_open_below_the_strip_at_scaled_size() {
+    let strip = dock_strip_rect(wa(), DockEdge::Top, 108);
+    let rects = dock_accessory_rects(wa(), strip, DockEdge::Top, 1.5, 300.0);
+    assert_eq!((rects.header.y, rects.header.height), (108, 66));
+    assert_eq!(
+      (rects.editor.y, rects.editor.width, rects.editor.height),
+      (174, 600, 450)
+    );
+    assert_eq!(rects.editor.x, 1920 - 12 - 600);
+  }
+
+  #[test]
+  fn accessories_respect_negative_secondary_monitor_offsets() {
+    let monitor = MonitorRect {
+      x: -2560,
+      y: -200,
+      width: 2560,
+      height: 1400,
+    };
+    let strip = dock_strip_rect(monitor, DockEdge::Top, 72);
+    let rects = dock_accessory_rects(monitor, strip, DockEdge::Top, 1.0, 400.0);
+    assert_eq!((rects.header.x, rects.header.y), (-2560, -128));
+    assert_eq!(rects.editor.x, -408);
+    assert_eq!(rects.editor.y, -84);
+  }
+
+  #[test]
+  fn editor_is_clamped_when_monitor_cannot_fit_preferred_size() {
+    let monitor = MonitorRect {
+      x: 10,
+      y: 20,
+      width: 320,
+      height: 240,
+    };
+    let strip = dock_strip_rect(monitor, DockEdge::Bottom, 72);
+    let rects = dock_accessory_rects(monitor, strip, DockEdge::Bottom, 1.0, 640.0);
+    assert_eq!((rects.header.y, rects.header.height), (144, 44));
+    assert_eq!((rects.editor.x, rects.editor.y), (18, 20));
+    assert_eq!((rects.editor.width, rects.editor.height), (304, 124));
   }
 }

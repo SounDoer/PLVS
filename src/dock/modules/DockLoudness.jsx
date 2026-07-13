@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { loudnessHistY } from "../../config/scales.js";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { buildHistoryPath } from "../../math/historyMath.js";
@@ -16,11 +15,10 @@ const SPARK_W = 120;
 const SPARK_H = 24;
 
 /** Primary LUFS readout (click cycles S/I/M) + a fixed-window sparkline. */
-export function DockLoudness() {
+export function DockLoudness({ controls }) {
   const { displayAudio } = useFrameData();
   const { histSourceList = [] } = useHistoryData() ?? {};
-  const [metricIndex, setMetricIndex] = useState(0);
-  const metric = METRICS[metricIndex];
+  const metric = METRICS.find((candidate) => candidate.key === controls?.metric) ?? METRICS[0];
   const value = displayAudio?.[metric.key];
 
   const sparkSamples = Math.round(SPARK_WINDOW_SEC / HIST_SAMPLE_SEC);
@@ -36,12 +34,7 @@ export function DockLoudness() {
 
   return (
     <div className="flex h-full min-w-0 items-center gap-2 px-2">
-      <button
-        type="button"
-        aria-label={`Loudness metric: ${metric.short} (click to cycle)`}
-        onClick={() => setMetricIndex((i) => (i + 1) % METRICS.length)}
-        className="flex shrink-0 items-baseline gap-1 rounded px-1 hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      >
+      <div className="flex shrink-0 items-baseline gap-1 px-1">
         <span
           className="font-[family-name:var(--ui-font-mono)] text-lg font-semibold leading-none tabular-nums"
           style={{ color: metric.color }}
@@ -49,23 +42,36 @@ export function DockLoudness() {
           {fmtMetric(value)}
         </span>
         <span className="text-[9px] font-bold text-muted-foreground">{metric.short}</span>
-      </button>
-      <svg
-        viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
-        preserveAspectRatio="none"
-        className="h-6 w-full min-w-12 flex-1"
-        aria-hidden="true"
-      >
-        {path ? (
-          <path
-            d={path}
-            fill="none"
-            stroke="var(--ui-loudness-shortterm)"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
-        ) : null}
-      </svg>
+      </div>
+      {controls?.showSparkline !== false ? (
+        <svg
+          viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+          preserveAspectRatio="none"
+          className="h-6 w-full min-w-12 flex-1"
+          aria-hidden="true"
+        >
+          {controls?.showReference ? (
+            <line
+              x1="0"
+              x2={SPARK_W}
+              y1={loudnessHistY(controls.referenceLufs, SPARK_H)}
+              y2={loudnessHistY(controls.referenceLufs, SPARK_H)}
+              stroke="var(--ui-chart-reference)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+            />
+          ) : null}
+          {path ? (
+            <path
+              d={path}
+              fill="none"
+              stroke="var(--ui-loudness-shortterm)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+        </svg>
+      ) : null}
     </div>
   );
 }

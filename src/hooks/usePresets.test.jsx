@@ -4,6 +4,7 @@ import { act, renderHook } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { presetsStore } from "../persistence/index.js";
+import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dock/dockModuleControls.js";
 
 const mocks = vi.hoisted(() => ({
   applyWindowBounds: vi.fn(),
@@ -518,7 +519,10 @@ describe("usePresets", () => {
       await act(async () => {
         preset = await result.current.presets.save("Docked");
       });
-      expect(preset.dock).toEqual(dock);
+      expect(preset.dock).toEqual({
+        ...dock,
+        controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
+      });
     });
 
     it("apply calls applyDockPreset with the preset dock (or a disabled default)", async () => {
@@ -535,6 +539,8 @@ describe("usePresets", () => {
         enabled: false,
         edge: "bottom",
         modules: expect.any(Array),
+        controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
+        statsIds: undefined,
       });
     });
 
@@ -556,7 +562,13 @@ describe("usePresets", () => {
       await act(async () => {
         await result.current.presets.apply(preset.id);
       });
-      expect(applyDockPreset).toHaveBeenCalledWith({ enabled: false, edge: "bottom", modules: [] });
+      expect(applyDockPreset).toHaveBeenCalledWith({
+        enabled: false,
+        edge: "bottom",
+        modules: [],
+        controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
+        statsIds: undefined,
+      });
     });
 
     it("returns false and clears activeId when applyDockPreset rejects", async () => {
@@ -586,25 +598,27 @@ describe("usePresets", () => {
       expect(presetsStore.read().activeId).toBeNull();
     });
 
-    it("captures and applies statsIds through the dock field", async () => {
+    it("captures and applies Dock controls through the dock field", async () => {
       const applyDockPreset = vi.fn(async () => {});
       const dock = {
         enabled: true,
         edge: "top",
         modules: ["stats"],
-        statsIds: ["psr", "plr"],
+        controlsByModuleId: { stats: { ids: ["psr", "plr"] } },
       };
       const { result } = renderPresetHook({ dock, applyDockPreset });
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Stats dock");
       });
-      expect(preset.dock.statsIds).toEqual(["psr", "plr"]);
+      expect(preset.dock.controlsByModuleId.stats.ids).toEqual(["psr", "plr"]);
       await act(async () => {
         await result.current.presets.apply(preset.id);
       });
       expect(applyDockPreset).toHaveBeenCalledWith(
-        expect.objectContaining({ statsIds: ["psr", "plr"] })
+        expect.objectContaining({
+          controlsByModuleId: expect.objectContaining({ stats: { ids: ["psr", "plr"] } }),
+        })
       );
     });
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DockModulesEditor } from "./DockModulesEditor.jsx";
 
 describe("DockModulesEditor", () => {
-  it("renders a chip per registry module, marking enabled ones", () => {
+  it("renders a vertical row per registry module, marking enabled ones", () => {
     render(
       <DockModulesEditor
         modules={["level", "spectrum"]}
@@ -12,11 +12,11 @@ describe("DockModulesEditor", () => {
         onDone={vi.fn()}
       />
     );
-    expect(screen.getByRole("button", { name: /^level/i }).getAttribute("aria-pressed")).toBe(
-      "true"
+    expect(screen.getByRole("switch", { name: "Level module" }).getAttribute("data-state")).toBe(
+      "checked"
     );
-    expect(screen.getByRole("button", { name: /^loudness/i }).getAttribute("aria-pressed")).toBe(
-      "false"
+    expect(screen.getByRole("switch", { name: "Loudness module" }).getAttribute("data-state")).toBe(
+      "unchecked"
     );
   });
 
@@ -30,7 +30,7 @@ describe("DockModulesEditor", () => {
         onDone={vi.fn()}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: /^loudness/i }));
+    fireEvent.click(screen.getByRole("switch", { name: "Loudness module" }));
     expect(onToggle).toHaveBeenCalledWith("loudness");
   });
 
@@ -44,8 +44,8 @@ describe("DockModulesEditor", () => {
         onDone={vi.fn()}
       />
     );
-    const level = screen.getByRole("button", { name: /^level/i });
-    const loudness = screen.getByRole("button", { name: /^loudness/i });
+    const level = screen.getByTestId("dock-module-row-level");
+    const loudness = screen.getByTestId("dock-module-row-loudness");
     fireEvent.dragStart(level, { dataTransfer: { setData: vi.fn() } });
     fireEvent.drop(loudness, { dataTransfer: { getData: () => "" } });
     expect(onReorder).toHaveBeenCalledWith(0, 1);
@@ -59,40 +59,19 @@ describe("DockModulesEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /done/i }));
     expect(onDone).toHaveBeenCalled();
   });
-});
-
-describe("stats picker row", () => {
-  it("is hidden while the stats module is disabled", () => {
+  it("opens settings for modules with controls", () => {
+    const onOpenSettings = vi.fn();
     render(
       <DockModulesEditor
         modules={["level"]}
-        statsIds={["lra"]}
         onToggle={vi.fn()}
-        onToggleStat={vi.fn()}
         onReorder={vi.fn()}
+        onOpenSettings={onOpenSettings}
         onDone={vi.fn()}
       />
     );
-    expect(screen.queryByTestId("dock-stats-picker")).toBeNull();
-  });
-
-  it("lists all catalog stats as chips and toggles them", () => {
-    const onToggleStat = vi.fn();
-    render(
-      <DockModulesEditor
-        modules={["stats"]}
-        statsIds={["lra"]}
-        onToggle={vi.fn()}
-        onToggleStat={onToggleStat}
-        onReorder={vi.fn()}
-        onDone={vi.fn()}
-      />
-    );
-    const picker = screen.getByTestId("dock-stats-picker");
-    expect(picker).toBeTruthy();
-    const lraChip = screen.getByRole("button", { name: /^LRA$/i });
-    expect(lraChip.getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: /^PSR$/i }));
-    expect(onToggleStat).toHaveBeenCalledWith("psr");
+    fireEvent.click(screen.getByRole("button", { name: "Level settings" }));
+    expect(onOpenSettings).toHaveBeenCalledWith("level");
+    expect(screen.queryByRole("button", { name: "Transport settings" })).toBeNull();
   });
 });

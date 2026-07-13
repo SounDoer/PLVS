@@ -10,7 +10,7 @@ function widthPct(db) {
 }
 
 /** Per-channel horizontal peak bars + true-peak max readout. */
-export function DockLevel() {
+export function DockLevel({ controls }) {
   const { displayAudio, hasTpMaxValue } = useFrameData();
   const peaks = Array.isArray(displayAudio?.peakDb) ? displayAudio.peakDb : [];
   const channels = peaks.length > 0 ? peaks : [-Infinity, -Infinity];
@@ -37,8 +37,14 @@ export function DockLevel() {
         ))}
       </div>
       <span className="shrink-0 font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-muted-foreground">
-        {hasTpMaxValue ? fmtMetric(displayAudio?.tpMax) : "-"}
-        <span className="ml-0.5 text-[8px] uppercase">tp</span>
+        {controls?.readout === "peak"
+          ? fmtMetric(Math.max(...channels))
+          : hasTpMaxValue
+            ? fmtMetric(displayAudio?.tpMax)
+            : "-"}
+        <span className="ml-0.5 text-[8px] uppercase">
+          {controls?.readout === "peak" ? "pk" : "tp"}
+        </span>
       </span>
     </div>
   );

@@ -1,24 +1,26 @@
 import { useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 
-const WINDOW_SEC = 30;
 const VIEW_W = 300;
 const VIEW_H = 40;
 
 /** Max absolute envelope across channels for one row, linear [0, 1]. */
-function rowEnvelope(row) {
+function rowEnvelope(row, controls) {
   const mins = Array.isArray(row?.waveformMin) ? row.waveformMin : [];
   const maxs = Array.isArray(row?.waveformMax) ? row.waveformMax : [];
   let peak = 0;
-  for (const v of mins) if (Number.isFinite(v)) peak = Math.max(peak, Math.abs(v));
-  for (const v of maxs) if (Number.isFinite(v)) peak = Math.max(peak, Math.abs(v));
+  const indexes = controls?.view === "single" ? [controls.channel] : mins.map((_, index) => index);
+  for (const index of indexes) {
+    if (Number.isFinite(mins[index])) peak = Math.max(peak, Math.abs(mins[index]));
+    if (Number.isFinite(maxs[index])) peak = Math.max(peak, Math.abs(maxs[index]));
+  }
   return Math.min(1, peak);
 }
 
 /** Scrolling compact waveform: symmetric envelope of the last 30 s. */
-export function DockWaveform() {
+export function DockWaveform({ controls }) {
   const { histSourceList = [] } = useHistoryData() ?? {};
-  const windowSamples = Math.round(WINDOW_SEC / HIST_SAMPLE_SEC);
+  const windowSamples = Math.round((controls?.windowSec ?? 30) / HIST_SAMPLE_SEC);
   const rows = histSourceList.slice(-windowSamples);
 
   let d = "";
@@ -30,7 +32,7 @@ export function DockWaveform() {
     let top = "";
     let bottom = "";
     for (let i = 0; i < rows.length; i++) {
-      const env = rowEnvelope(rows[i]);
+      const env = rowEnvelope(rows[i], controls);
       const x = xOf(offset + i);
       const yTop = mid - env * mid;
       const yBottom = mid + env * mid;

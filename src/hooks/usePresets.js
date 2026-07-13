@@ -9,6 +9,7 @@ import { normalizePinnedPanelsById } from "../workspace/reducer.js";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
+import { normalizeDockControlsByModuleId } from "../dock/dockModuleControls.js";
 
 const EMPTY_PRESETS = { list: [], activeId: null, dirty: false };
 
@@ -61,7 +62,7 @@ export function usePresets({
   setPanelOpacity = () => {},
   glassEnabled = false,
   setGlassEnabled = () => {},
-  dock = { enabled: false, edge: "bottom", modules: [], statsIds: undefined },
+  dock = { enabled: false, edge: "bottom", modules: [], controlsByModuleId: undefined },
   applyDockPreset = async () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
@@ -138,7 +139,7 @@ export function usePresets({
         enabled: dock.enabled === true,
         edge: dock.edge === "top" ? "top" : "bottom",
         modules: [...dock.modules],
-        statsIds: Array.isArray(dock.statsIds) ? [...dock.statsIds] : undefined,
+        controlsByModuleId: normalizeDockControlsByModuleId(dock.controlsByModuleId),
       },
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
@@ -191,6 +192,10 @@ export function usePresets({
         enabled: preset.dock?.enabled === true,
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
         modules: Array.isArray(preset.dock?.modules) ? preset.dock.modules : [],
+        controlsByModuleId: normalizeDockControlsByModuleId(
+          preset.dock?.controlsByModuleId,
+          preset.dock?.statsIds
+        ),
         statsIds: Array.isArray(preset.dock?.statsIds) ? preset.dock.statsIds : undefined,
       };
       try {

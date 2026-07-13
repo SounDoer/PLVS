@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { MetricsDataProvider } from "../../workspace/AudioDataContext.jsx";
-import { workspaceStore } from "../../persistence/index.js";
 import { DockStats } from "./DockStats.jsx";
 
 const METRICS = [
@@ -11,39 +10,31 @@ const METRICS = [
   { id: "psr", shortLabel: "PSR", unit: "dB", value: "11.0" },
 ];
 
-function renderWith(statsMetrics) {
+function renderWith(statsMetrics, ids) {
   return render(
     <MetricsDataProvider value={{ statsMetrics }}>
-      <DockStats />
+      <DockStats controls={ids ? { ids } : undefined} />
     </MetricsDataProvider>
   );
 }
 
 describe("DockStats", () => {
-  beforeEach(() => {
-    workspaceStore.reset();
-  });
-
   it("renders the default selection in catalog order", () => {
     renderWith(METRICS);
-    const cells = screen.getAllByTestId("dock-stat");
-    expect(cells).toHaveLength(3); // integrated, truePeak, lra defaults
+    expect(screen.getAllByTestId("dock-stat")).toHaveLength(3);
     expect(screen.getByText("-20.1")).toBeTruthy();
     expect(screen.getByText("TP Max")).toBeTruthy();
-    expect(screen.getByText("7.4")).toBeTruthy();
-    expect(screen.queryByText("11.0")).toBeNull(); // psr not selected
+    expect(screen.queryByText("11.0")).toBeNull();
   });
 
-  it("respects a persisted custom selection", () => {
-    workspaceStore.patch({ dock: { modules: ["stats"], statsIds: ["psr"] } });
-    renderWith(METRICS);
+  it("respects the Dock-owned selection", () => {
+    renderWith(METRICS, ["psr"]);
     expect(screen.getAllByTestId("dock-stat")).toHaveLength(1);
     expect(screen.getByText("11.0")).toBeTruthy();
   });
 
   it("renders dashes for metrics missing from the feed", () => {
-    workspaceStore.patch({ dock: { modules: ["stats"], statsIds: ["sideToMid"] } });
-    renderWith(METRICS); // feed has no sideToMid entry
+    renderWith(METRICS, ["sideToMid"]);
     expect(screen.getByText("-")).toBeTruthy();
   });
 });

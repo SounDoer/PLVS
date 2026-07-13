@@ -37,6 +37,7 @@ vi.mock("./ipc/commands.js", () => ({
   stopFileAnalysis: vi.fn().mockResolvedValue(undefined),
   enterDock: vi.fn().mockResolvedValue(undefined),
   exitDock: vi.fn().mockResolvedValue(undefined),
+  setDockAccessories: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -81,6 +82,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
+  emitTo: vi.fn().mockResolvedValue(undefined),
   listen: vi.fn((eventName, handler) => {
     tauriEventHandlers.set(eventName, handler);
     return Promise.resolve(() => tauriEventHandlers.delete(eventName));

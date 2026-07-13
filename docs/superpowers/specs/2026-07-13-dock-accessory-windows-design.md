@@ -1,7 +1,7 @@
 # Dock Accessory Windows and Independent Module Settings
 
 **Date:** 2026-07-13  
-**Status:** Design approved in discussion; implementation not started.
+**Status:** Implemented; automated gate and Windows 125% DPI geometry/header/Modules/Presets matrix passed on 2026-07-13. Settings drill-in is component-tested; macOS manual verification remains.
 
 ## Summary
 

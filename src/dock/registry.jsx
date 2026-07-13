@@ -13,22 +13,60 @@ import { DockWaveform } from "./modules/DockWaveform.jsx";
  * entry here + one component (plus its id in dockLayout.js).
  */
 export const DOCK_MODULE_REGISTRY = {
-  level: { id: "level", label: "Level", Component: DockLevel, flexible: false },
-  loudness: { id: "loudness", label: "Loudness", Component: DockLoudness, flexible: false },
-  spectrum: { id: "spectrum", label: "Spectrum", Component: DockSpectrum, flexible: true },
+  level: {
+    id: "level",
+    label: "Level",
+    Component: DockLevel,
+    flexible: false,
+    settingsFamily: "level",
+  },
+  loudness: {
+    id: "loudness",
+    label: "Loudness",
+    Component: DockLoudness,
+    flexible: false,
+    settingsFamily: "loudness",
+  },
+  spectrum: {
+    id: "spectrum",
+    label: "Spectrum",
+    Component: DockSpectrum,
+    flexible: true,
+    settingsFamily: "spectrum",
+  },
   correlation: {
     id: "correlation",
     label: "Correlation",
     Component: DockCorrelation,
     flexible: false,
+    settingsFamily: "correlation",
   },
-  stats: { id: "stats", label: "Stats", Component: DockStats, flexible: false },
-  waveform: { id: "waveform", label: "Waveform", Component: DockWaveform, flexible: true },
+  stats: {
+    id: "stats",
+    label: "Stats",
+    Component: DockStats,
+    flexible: false,
+    settingsFamily: "stats",
+  },
+  waveform: {
+    id: "waveform",
+    label: "Waveform",
+    Component: DockWaveform,
+    flexible: true,
+    settingsFamily: "waveform",
+  },
   spectrogram: {
     id: "spectrogram",
     label: "Spectrogram",
     Component: DockSpectrogram,
     flexible: true,
+    settingsFamily: "spectrogram",
   },
-  transport: { id: "transport", label: "Transport", Component: DockTransport, flexible: false },
+  transport: {
+    id: "transport",
+    label: "Transport",
+    Component: DockTransport,
+    flexible: false,
+    settingsFamily: null,
+  },
 };

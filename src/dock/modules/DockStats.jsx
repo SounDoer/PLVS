@@ -1,5 +1,4 @@
 import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
-import { workspaceStore } from "../../persistence/index.js";
 import { normalizeDockStatsIds } from "../dockLayout.js";
 import { STATS_META } from "../../lib/statsCatalog.js";
 
@@ -9,9 +8,9 @@ import { STATS_META } from "../../lib/statsCatalog.js";
  * frame rate anyway (metrics context), so no dedicated subscription is
  * needed, and the picker (modules editor) writes through useDockLayout.
  */
-export function DockStats() {
+export function DockStats({ controls }) {
   const { statsMetrics } = useMetricsData() ?? {};
-  const statsIds = normalizeDockStatsIds(workspaceStore.read().dock?.statsIds);
+  const statsIds = normalizeDockStatsIds(controls?.ids);
   const byId = new Map((statsMetrics ?? []).map((m) => [m.id, m]));
   return (
     <div className="flex h-full min-w-0 items-center gap-3 px-2">

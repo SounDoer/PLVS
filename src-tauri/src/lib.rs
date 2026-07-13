@@ -7,6 +7,7 @@ pub mod cli_main;
 mod cli_path;
 pub mod cli_report;
 mod dock;
+mod dock_accessories;
 pub mod doctor;
 mod dsp;
 mod engine;
@@ -77,6 +78,7 @@ pub fn run() {
       dock::exit_dock,
       dock::get_dock_state,
       dock::set_dock_reserve_space,
+      dock_accessories::set_dock_accessories,
       glass_effect::set_glass_effect,
     ])
     .setup(|app| {
@@ -127,6 +129,8 @@ pub fn run() {
         .initialization_script(&init_script)
         .build()
         .map_err(|e| format!("window build: {e}"))?;
+
+      dock_accessories::create(app, &init_script)?;
 
       // Saved bounds are PHYSICAL pixels (saved from inner_size + outer_position). Restore
       // them with physical setters: the builder's inner_size/position take LOGICAL pixels,

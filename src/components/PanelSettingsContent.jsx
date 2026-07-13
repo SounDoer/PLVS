@@ -38,11 +38,11 @@ const SETTINGS_SWITCH_CLASS =
 const SETTINGS_SWITCH_THUMB_CLASS =
   "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
 
-function SettingsGroup({ children }) {
+export function SettingsGroup({ children }) {
   return <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5">{children}</div>;
 }
 
-function SettingsRow({ label, tooltip, children }) {
+export function SettingsRow({ label, tooltip, children }) {
   return (
     <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-xs">
       <span className="group relative flex h-6 items-center whitespace-nowrap font-medium text-muted-foreground">
@@ -69,7 +69,7 @@ function settingsValueClass(open, className) {
   );
 }
 
-function SettingsSwitch(props) {
+export function SettingsSwitch(props) {
   return (
     <Switch
       className={SETTINGS_SWITCH_CLASS}
@@ -85,7 +85,7 @@ function rangePercent(value, min, max) {
   return Math.max(0, Math.min(100, ((value - min) / span) * 100));
 }
 
-function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommit }) {
+export function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommit }) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [draftValue, setDraftValue] = useState(value);
   const displayValue = formatValue(draftValue);
@@ -131,7 +131,7 @@ function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommi
   );
 }
 
-function SettingsRangeInput({
+export function SettingsRangeInput({
   minAriaLabel,
   maxAriaLabel,
   minValue,

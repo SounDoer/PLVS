@@ -5,10 +5,8 @@ import { DockStrip } from "./DockStrip.jsx";
 
 const BASE_PROPS = {
   modules: ["level", "correlation"],
-  onToggleModule: vi.fn(),
-  onReorderModule: vi.fn(),
-  statsIds: [],
-  onToggleStat: vi.fn(),
+  onPointerEnter: vi.fn(),
+  onPointerLeave: vi.fn(),
   controls: {
     sourceTransportState: {
       chromeState: "ready",
@@ -18,15 +16,8 @@ const BASE_PROPS = {
       actionKind: "start",
       primaryActionDisabled: false,
     },
-    onSourceTransportAction: vi.fn(),
-    onClear: vi.fn(),
-    clearDisabled: false,
-    dockEdge: "bottom",
-    onDockEdgeChange: vi.fn(),
-    onExitDock: vi.fn(),
     notice: null,
   },
-  presets: { list: [], activeId: null, dirty: false, apply: vi.fn(), save: vi.fn() },
 };
 
 function renderStrip(props = {}) {
@@ -45,18 +36,15 @@ describe("DockStrip", () => {
     expect(screen.getAllByTestId("dock-module")).toHaveLength(2);
   });
 
-  it("reveals controls on pointer enter and hides them after leave", () => {
-    renderStrip();
+  it("reports pointer presence without rendering accessory controls in the strip", () => {
+    const onPointerEnter = vi.fn();
+    const onPointerLeave = vi.fn();
+    renderStrip({ onPointerEnter, onPointerLeave });
+    fireEvent.pointerEnter(screen.getByTestId("dock-strip"));
+    fireEvent.pointerLeave(screen.getByTestId("dock-strip"));
+    expect(onPointerEnter).toHaveBeenCalledOnce();
+    expect(onPointerLeave).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: /restore window/i })).toBeNull();
-    fireEvent.pointerEnter(screen.getByTestId("dock-strip"));
-    expect(screen.getByRole("button", { name: /restore window/i })).toBeTruthy();
-  });
-
-  it("opens the modules editor from the control bar", () => {
-    renderStrip();
-    fireEvent.pointerEnter(screen.getByTestId("dock-strip"));
-    fireEvent.click(screen.getByRole("button", { name: /edit modules/i }));
-    expect(screen.getByRole("button", { name: /done/i })).toBeTruthy();
   });
 
   it("passes controls down to modules (transport pill renders without hover)", () => {

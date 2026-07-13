@@ -12,6 +12,10 @@ reservation.
 **Design:**
 `docs/superpowers/specs/2026-07-13-dock-accessory-windows-design.md`
 
+**Status:** Implemented. `npm run check` passed on 2026-07-13; Windows Top/Bottom,
+Reserve On/Off, header, Modules, and Presets surfaces were manually verified at
+125% DPI. Settings drill-in is component-tested; macOS manual verification remains.
+
 **Architecture:** Rust owns physical geometry and lifecycle for `main`,
 `dock-header`, and `dock-editor`. The main React root owns Dock/runtime state
 and synchronizes serializable snapshots/actions with accessory roots through a
@@ -359,4 +363,3 @@ matrix in Task 14.
 - Reserving accessory space; adjustable Dock/editor dimensions; detachable or
   draggable editor; left/right Dock; FILE mode in Dock; animation polish;
   syncing Dock display controls to workspace panel instances.
-

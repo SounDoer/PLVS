@@ -26,6 +26,8 @@ import { usePresets } from "./hooks/usePresets.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
 import { useDockLayout } from "./dock/useDockLayout.js";
+import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
+import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { mergeDockSpectrumRequest } from "./dock/dockAnalysisRequest.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -238,7 +240,7 @@ function AppContent() {
     async (presetDock) => {
       if (presetDock.enabled) {
         dockLayout.setModules(presetDock.modules);
-        if (presetDock.statsIds) dockLayout.setStatsIds(presetDock.statsIds);
+        dockLayout.setControlsByModuleId(presetDock.controlsByModuleId, presetDock.statsIds);
         await enterDockMode(presetDock.edge);
       } else if (dockEnabled) {
         await exitDockRestoringAttributes();
@@ -254,9 +256,9 @@ function AppContent() {
       enabled: dockEnabled,
       edge: dockEdge,
       modules: dockLayout.modules,
-      statsIds: dockLayout.statsIds,
+      controlsByModuleId: dockLayout.controlsByModuleId,
     }),
-    [dockEnabled, dockEdge, dockLayout.modules, dockLayout.statsIds]
+    [dockEnabled, dockEdge, dockLayout.controlsByModuleId, dockLayout.modules]
   );
 
   const presets = usePresets({
@@ -295,10 +297,18 @@ function AppContent() {
     () =>
       mergeDockSpectrumRequest(
         deriveAnalysisRequests(workspaceState),
-        docked &&
-          (dockLayout.modules.includes("spectrum") || dockLayout.modules.includes("spectrogram"))
+        docked
+          ? {
+              spectrum: dockLayout.modules.includes("spectrum")
+                ? dockLayout.controlsByModuleId.spectrum
+                : null,
+              spectrogram: dockLayout.modules.includes("spectrogram")
+                ? dockLayout.controlsByModuleId.spectrogram
+                : null,
+            }
+          : false
       ),
-    [workspaceState, docked, dockLayout.modules]
+    [workspaceState, docked, dockLayout.controlsByModuleId, dockLayout.modules]
   );
   const analysisRequests = useMemo(
     () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
@@ -730,6 +740,91 @@ function AppContent() {
   });
   onClearRef.current = clearAll;
 
+  const onDockAccessoryError = useCallback(
+    (error) => raiseNotice("error", `Dock accessory failed: ${error?.message || error}`),
+    [raiseNotice]
+  );
+  const dockAccessoryVisibility = useDockAccessoryVisibility({
+    active: docked,
+    edge: dockEdge,
+    onError: onDockAccessoryError,
+  });
+  const dockHeaderState = useMemo(
+    () => ({
+      sourceTransportState,
+      clearDisabled: !running && !showClock,
+      notice,
+      edge: dockEdge,
+      reserveSpace,
+    }),
+    [dockEdge, notice, reserveSpace, running, showClock, sourceTransportState]
+  );
+  const dockEditorState = useMemo(
+    () => ({
+      view: dockAccessoryVisibility.editorView,
+      modules: dockLayout.modules,
+      controlsByModuleId: dockLayout.controlsByModuleId,
+      presets: {
+        list: presets.list.map(({ id, name }) => ({ id, name })),
+        activeId: presets.activeId,
+        dirty: presets.dirty,
+      },
+    }),
+    [
+      dockAccessoryVisibility.editorView,
+      dockLayout.controlsByModuleId,
+      dockLayout.modules,
+      presets.activeId,
+      presets.dirty,
+      presets.list,
+    ]
+  );
+  const onDockAccessoryAction = useCallback(
+    ({ type, payload }) => {
+      if (type === "source-primary") onSourceTransportAction();
+      else if (type === "clear") clearAll();
+      else if (type === "open-editor") dockAccessoryVisibility.openEditor(payload.view);
+      else if (type === "close-editor") dockAccessoryVisibility.closeEditor();
+      else if (type === "set-edge") void onDockChange(payload.edge);
+      else if (type === "set-reserve-space") {
+        void setReserveSpace(payload.enabled).catch((error) =>
+          raiseNotice("error", `Reserve screen space failed: ${error?.message || error}`)
+        );
+      } else if (type === "restore-window") void exitDockRestoringAttributes();
+      else if (type === "toggle-module") dockLayout.toggle(payload.moduleId);
+      else if (type === "reorder-module") dockLayout.reorder(payload.from, payload.to);
+      else if (type === "open-module-settings") {
+        dockAccessoryVisibility.openEditor(`module:${payload.moduleId}`);
+      } else if (type === "update-module-controls") {
+        dockLayout.setModuleControls(payload.moduleId, payload.controls);
+      } else if (type === "reset-module-controls") {
+        dockLayout.resetModuleControls(payload.moduleId);
+      } else if (type === "apply-preset") void presets.apply(payload.presetId);
+      else if (type === "save-preset") void presets.save(payload.name);
+      else if (type === "update-preset") void presets.update(payload.presetId);
+      else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
+      else if (type === "delete-preset") presets.remove(payload.presetId);
+    },
+    [
+      clearAll,
+      dockAccessoryVisibility,
+      dockLayout,
+      exitDockRestoringAttributes,
+      onDockChange,
+      onSourceTransportAction,
+      presets,
+      raiseNotice,
+      setReserveSpace,
+    ]
+  );
+  useDockAccessoryBridge({
+    active: docked,
+    headerState: dockHeaderState,
+    editorState: dockEditorState,
+    onAction: onDockAccessoryAction,
+    onPointer: dockAccessoryVisibility.onAccessoryPointer,
+  });
+
   useTray({
     running,
     pinned,
@@ -936,27 +1031,12 @@ function AppContent() {
   const dockProps = docked
     ? {
         modules: dockLayout.modules,
-        onToggleModule: dockLayout.toggle,
-        onReorderModule: dockLayout.reorder,
-        statsIds: dockLayout.statsIds,
-        onToggleStat: dockLayout.toggleStat,
-        presets,
+        onPointerEnter: dockAccessoryVisibility.onStripPointerEnter,
+        onPointerLeave: dockAccessoryVisibility.onStripPointerLeave,
         controls: {
+          controlsByModuleId: dockLayout.controlsByModuleId,
           sourceTransportState,
           onSourceTransportAction,
-          onClear: clearAll,
-          clearDisabled: !running && !showClock,
-          dockEdge,
-          onDockEdgeChange: (edge) => onDockChange(edge),
-          reserveSpace,
-          onReserveSpaceChange: async (enabled) => {
-            try {
-              await setReserveSpace(enabled);
-            } catch (err) {
-              raiseNotice("error", `Reserve screen space failed: ${err?.message || err}`);
-            }
-          },
-          onExitDock: exitDockRestoringAttributes,
           notice,
         },
       }

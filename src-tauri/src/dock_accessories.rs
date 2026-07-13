@@ -1,0 +1,141 @@
+use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+
+use crate::dock::{dock_accessory_rects, DockEdge};
+use crate::window_state::{MonitorRect, WindowBounds};
+
+pub const DOCK_HEADER_LABEL: &str = "dock-header";
+pub const DOCK_EDITOR_LABEL: &str = "dock-editor";
+
+fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
+  manager: &'a M,
+  label: &str,
+  surface: &str,
+  init_script: &str,
+) -> WebviewWindowBuilder<'a, R, M> {
+  let builder = WebviewWindowBuilder::new(
+    manager,
+    label,
+    WebviewUrl::App(format!("index.html?surface={surface}").into()),
+  )
+  .title("PLVS")
+  .inner_size(1.0, 1.0)
+  .initialization_script(init_script)
+  .visible(false)
+  .focused(false)
+  .focusable(true)
+  .decorations(false)
+  .resizable(false)
+  .always_on_top(true)
+  .skip_taskbar(true)
+  .shadow(false);
+  #[cfg(any(target_os = "windows", target_os = "macos"))]
+  let builder = builder.transparent(true);
+  builder
+}
+
+pub fn create<R: tauri::Runtime>(app: &tauri::App<R>, init_script: &str) -> Result<(), String> {
+  if app.get_webview_window(DOCK_HEADER_LABEL).is_none() {
+    accessory_builder(app, DOCK_HEADER_LABEL, "dock-header", init_script)
+      .build()
+      .map_err(|e| format!("dock header window: {e}"))?;
+  }
+  if app.get_webview_window(DOCK_EDITOR_LABEL).is_none() {
+    accessory_builder(app, DOCK_EDITOR_LABEL, "dock-editor", init_script)
+      .build()
+      .map_err(|e| format!("dock editor window: {e}"))?;
+  }
+  Ok(())
+}
+
+fn set_rect<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  rect: WindowBounds,
+) -> Result<(), String> {
+  window
+    .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
+    .map_err(|e| format!("{} size: {e}", window.label()))?;
+  window
+    .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
+    .map_err(|e| format!("{} position: {e}", window.label()))?;
+  Ok(())
+}
+
+fn show_or_hide<R: tauri::Runtime>(window: &WebviewWindow<R>, visible: bool) -> Result<(), String> {
+  if visible {
+    window
+      .show()
+      .map_err(|e| format!("{} show: {e}", window.label()))
+  } else {
+    window
+      .hide()
+      .map_err(|e| format!("{} hide: {e}", window.label()))
+  }
+}
+
+fn main_geometry<R: tauri::Runtime>(
+  main: &WebviewWindow<R>,
+) -> Result<(MonitorRect, WindowBounds, f64), String> {
+  let monitor = main
+    .current_monitor()
+    .map_err(|e| format!("accessory current monitor: {e}"))?
+    .or_else(|| main.primary_monitor().ok().flatten())
+    .ok_or_else(|| "no monitor available for dock accessories".to_string())?;
+  let position = main
+    .outer_position()
+    .map_err(|e| format!("accessory strip position: {e}"))?;
+  let size = main
+    .inner_size()
+    .map_err(|e| format!("accessory strip size: {e}"))?;
+  Ok((
+    MonitorRect {
+      x: monitor.position().x,
+      y: monitor.position().y,
+      width: monitor.size().width,
+      height: monitor.size().height,
+    },
+    WindowBounds {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height,
+      is_maximized: false,
+    },
+    monitor.scale_factor(),
+  ))
+}
+
+pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+  for label in [DOCK_HEADER_LABEL, DOCK_EDITOR_LABEL] {
+    if let Some(window) = app.get_webview_window(label) {
+      let _ = window.hide();
+    }
+  }
+}
+
+#[tauri::command]
+pub fn set_dock_accessories<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+  edge: DockEdge,
+  header_visible: bool,
+  editor_visible: bool,
+  editor_height: f64,
+) -> Result<(), String> {
+  let app = window.app_handle();
+  let main = app
+    .get_webview_window("main")
+    .ok_or_else(|| "main window unavailable".to_string())?;
+  let header = app
+    .get_webview_window(DOCK_HEADER_LABEL)
+    .ok_or_else(|| "dock header window unavailable".to_string())?;
+  let editor = app
+    .get_webview_window(DOCK_EDITOR_LABEL)
+    .ok_or_else(|| "dock editor window unavailable".to_string())?;
+  let (monitor, strip, scale) = main_geometry(&main)?;
+  let rects = dock_accessory_rects(monitor, strip, edge, scale, editor_height);
+
+  set_rect(&header, rects.header)?;
+  set_rect(&editor, rects.editor)?;
+  show_or_hide(&header, header_visible)?;
+  show_or_hide(&editor, editor_visible)?;
+  Ok(())
+}

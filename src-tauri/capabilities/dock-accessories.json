@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "dock-accessories",
+  "description": "Allows Dock accessory surfaces to exchange UI state and actions with main.",
+  "windows": ["dock-header", "dock-editor"],
+  "permissions": ["core:event:default"]
+}

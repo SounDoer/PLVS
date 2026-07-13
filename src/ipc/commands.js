@@ -82,6 +82,21 @@ export function setDockReserveSpace({ enabled, edge }) {
   return invoke("set_dock_reserve_space", { enabled, edge });
 }
 
+/** Position and show/hide the two Dock accessory windows atomically. */
+export function setDockAccessories({
+  edge,
+  headerVisible,
+  editorVisible = false,
+  editorHeight = 480,
+}) {
+  return invoke("set_dock_accessories", {
+    edge,
+    headerVisible,
+    editorVisible,
+    editorHeight,
+  });
+}
+
 export function exportProfileCommand() {
   return invoke("export_profile");
 }

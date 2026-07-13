@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MAX_SPECTRUM_REQUESTS, deriveAnalysisRequests } from "../analysis/analysisRequests.js";
-import { DOCK_SPECTRUM_KEY, mergeDockSpectrumRequest } from "./dockAnalysisRequest.js";
+import {
+  DOCK_SPECTRUM_KEY,
+  dockSpectrumKey,
+  mergeDockSpectrumRequest,
+} from "./dockAnalysisRequest.js";
 
 const EMPTY_DERIVED = deriveAnalysisRequests({ tree: null, panelsById: {}, panelOrder: [] });
 
@@ -28,6 +32,17 @@ describe("mergeDockSpectrumRequest", () => {
     const merged = mergeDockSpectrumRequest(derived, true);
     expect(merged.spectrumRequests).toHaveLength(1);
     expect(merged.spectrumRequests[0].panelIds).toEqual(["panel-1"]);
+  });
+
+  it("derives distinct requests from Dock spectrum and spectrogram channels", () => {
+    const spectrum = { channel: { type: "pair", x: 0, y: 1 }, view: "lr" };
+    const spectrogram = { channel: { type: "single", ch: 3 } };
+    const merged = mergeDockSpectrumRequest(EMPTY_DERIVED, { spectrum, spectrogram });
+    expect(merged.spectrumRequests.map((request) => request.key)).toEqual([
+      dockSpectrumKey(spectrum),
+      dockSpectrumKey(spectrogram),
+    ]);
+    expect(merged.spectrumRequests[1].panelIds).toEqual(["dock:spectrogram"]);
   });
 
   it("evicts the tail request when already at the spectrum cap", () => {
