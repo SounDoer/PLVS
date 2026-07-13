@@ -17,8 +17,8 @@ export function DockEditorShell({ title, onBack, onReset, onDone, children }) {
         ) : null}
         <IconButton icon={<X className="size-3.5" />} tip="Done" onClick={onDone} />
       </header>
-      <div data-dock-editor-content className="min-h-0 flex-1 overflow-y-auto">
-        {children}
+      <div data-dock-editor-scroll className="min-h-0 flex-1 overflow-y-auto">
+        <div data-dock-editor-content>{children}</div>
       </div>
     </section>
   );

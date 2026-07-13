@@ -5,6 +5,17 @@ import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
 import { DockModuleSettings } from "../editors/DockModuleSettings.jsx";
 import { DockPresetsRow } from "../editors/DockPresetsRow.jsx";
 
+export function measureDockEditorContent(root) {
+  const shell = root?.querySelector("[data-dock-editor-shell]");
+  const content = root?.querySelector("[data-dock-editor-content]");
+  if (!shell || !content) return null;
+  const header = shell.querySelector("header");
+  return {
+    width: Math.ceil(Math.max(root.scrollWidth, shell.scrollWidth, content.scrollWidth) + 2),
+    height: Math.ceil((header?.offsetHeight || 0) + content.scrollHeight + 2),
+  };
+}
+
 export function DockEditorApp() {
   const { payload, action, pointer } = useAccessoryClient("dock-editor");
   const rootRef = useRef(null);
@@ -44,20 +55,24 @@ export function DockEditorApp() {
   }, [action]);
 
   useLayoutEffect(() => {
+    if (!payload?.view) {
+      lastSizeRef.current = null;
+      return;
+    }
     const root = rootRef.current;
-    if (!root || !payload?.view) return;
+    if (!root) return;
     let frame = 0;
     const measure = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const shell = root.querySelector("[data-dock-editor-shell]");
-        const content = root.querySelector("[data-dock-editor-content]");
-        if (!shell || !content) return;
-        const header = shell.querySelector("header");
-        const width = Math.ceil(Math.max(root.scrollWidth, shell.scrollWidth) + 2);
-        const height = Math.ceil((header?.offsetHeight || 0) + content.scrollHeight + 2);
-        const next = { width, height };
-        if (lastSizeRef.current?.width === width && lastSizeRef.current?.height === height) return;
+        const next = measureDockEditorContent(root);
+        if (!next) return;
+        if (
+          lastSizeRef.current?.width === next.width &&
+          lastSizeRef.current?.height === next.height
+        ) {
+          return;
+        }
         lastSizeRef.current = next;
         action("resize-editor", next);
       });

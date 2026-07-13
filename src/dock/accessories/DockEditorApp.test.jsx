@@ -1,24 +1,33 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DockEditorApp } from "./DockEditorApp.jsx";
+import { DockEditorApp, measureDockEditorContent } from "./DockEditorApp.jsx";
 
-const { action } = vi.hoisted(() => ({ action: vi.fn() }));
+const { action, client } = vi.hoisted(() => ({
+  action: vi.fn(),
+  client: {
+    payload: null,
+    action: null,
+    pointer: vi.fn(),
+  },
+}));
+
+const PRESETS_PAYLOAD = {
+  view: "presets",
+  modules: [],
+  controlsByModuleId: {},
+  presets: { list: [], activeId: null, dirty: false },
+};
 
 vi.mock("./useAccessoryClient.js", () => ({
-  useAccessoryClient: () => ({
-    payload: {
-      view: "presets",
-      modules: [],
-      controlsByModuleId: {},
-      presets: { list: [], activeId: null, dirty: false },
-    },
-    action,
-    pointer: vi.fn(),
-  }),
+  useAccessoryClient: () => client,
 }));
 
 describe("DockEditorApp window behavior", () => {
-  beforeEach(() => action.mockClear());
+  beforeEach(() => {
+    action.mockClear();
+    client.payload = PRESETS_PAYLOAD;
+    client.action = action;
+  });
 
   it("closes when the accessory window loses focus", () => {
     render(<DockEditorApp />);
@@ -45,5 +54,40 @@ describe("DockEditorApp window behavior", () => {
     fireEvent.pointerUp(window);
 
     expect(action).not.toHaveBeenCalledWith("close-editor");
+  });
+
+  it("measures intrinsic content instead of an expanded scroll viewport", () => {
+    render(<DockEditorApp />);
+    const root = screen.getByTestId("dock-editor");
+    const shell = root.querySelector("[data-dock-editor-shell]");
+    const scroll = root.querySelector("[data-dock-editor-scroll]");
+    const content = root.querySelector("[data-dock-editor-content]");
+    const header = shell.querySelector("header");
+    Object.defineProperties(root, { scrollWidth: { configurable: true, value: 238 } });
+    Object.defineProperties(shell, { scrollWidth: { configurable: true, value: 238 } });
+    Object.defineProperties(scroll, { scrollHeight: { configurable: true, value: 640 } });
+    Object.defineProperties(content, {
+      scrollWidth: { configurable: true, value: 238 },
+      scrollHeight: { configurable: true, value: 129 },
+    });
+    Object.defineProperties(header, { offsetHeight: { configurable: true, value: 40 } });
+
+    expect(measureDockEditorContent(root)).toEqual({ width: 240, height: 171 });
+  });
+
+  it("publishes intrinsic size again when the same editor is reopened", async () => {
+    const { rerender } = render(<DockEditorApp />);
+    await waitFor(() =>
+      expect(action.mock.calls.filter(([type]) => type === "resize-editor")).toHaveLength(1)
+    );
+
+    client.payload = { ...PRESETS_PAYLOAD, view: null };
+    rerender(<DockEditorApp />);
+    client.payload = PRESETS_PAYLOAD;
+    rerender(<DockEditorApp />);
+
+    await waitFor(() =>
+      expect(action.mock.calls.filter(([type]) => type === "resize-editor")).toHaveLength(2)
+    );
   });
 });
