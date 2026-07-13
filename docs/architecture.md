@@ -249,8 +249,9 @@ header/editor 始终覆盖相邻工作区，因此 hover 不会触发 maximized 
 Rust 的 `dock.rs` / `dock_accessories.rs` 拥有物理像素几何和窗口生命周期。主 React root
 拥有 runtime、workspace、preset 和 Dock persistence；两个 accessory root 仅接收可序列化快照，
 并通过 semantic Tauri events 回传 action/pointer，不挂载 audio intake 或持久化 store owner。
-Dock module display controls 位于 `workspaceStore.dock.controlsByModuleId`，独立于正常 workspace 的
-`panelControlsById`；measurement runtime 和 channel label semantics 仍共享。
+Dock panel display controls 位于 `workspaceStore.dock.controlsByPanelId`，独立于正常 workspace 的
+`panelControlsById`；旧 `controlsByModuleId` 仅作为兼容字段保留。measurement runtime 和 channel label
+semantics 仍共享。
 
 ---
 

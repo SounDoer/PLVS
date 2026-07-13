@@ -1,4 +1,5 @@
 import { DOCK_MODULE_REGISTRY } from "./registry.jsx";
+import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 import { cn } from "@/lib/utils";
 
 function healthFromNotice(notice) {
@@ -7,7 +8,7 @@ function healthFromNotice(notice) {
 }
 
 /** The reserved 72px meter strip. Accessory chrome lives in sibling windows. */
-export function DockStrip({ modules, controls, onPointerEnter, onPointerLeave }) {
+export function DockStrip({ panels = [], controls, onPointerEnter, onPointerLeave }) {
   const health = healthFromNotice(controls.notice);
 
   return (
@@ -23,17 +24,23 @@ export function DockStrip({ modules, controls, onPointerEnter, onPointerLeave })
       }}
     >
       <div className="flex h-full min-w-0 items-stretch divide-x divide-border/40">
-        {modules.map((id) => {
-          const entry = DOCK_MODULE_REGISTRY[id];
+        {panels.map((panel) => {
+          const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
+          const entry = DOCK_MODULE_REGISTRY[dockModuleId];
           if (!entry) return null;
           const { Component } = entry;
           return (
             <div
-              key={id}
+              key={panel.id}
               data-testid="dock-module"
               className={cn("min-w-0", entry.flexible ? "flex-1" : "shrink-0")}
             >
-              <Component controls={{ ...controls, ...controls.controlsByModuleId?.[id] }} />
+              <Component
+                controls={{
+                  ...controls,
+                  ...controls.controlsByPanelId?.[panel.id],
+                }}
+              />
             </div>
           );
         })}

@@ -4,6 +4,8 @@ import { useAccessoryClient } from "./useAccessoryClient.js";
 import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
 import { DockModuleSettings } from "../editors/DockModuleSettings.jsx";
 import { DockPresetsRow } from "../editors/DockPresetsRow.jsx";
+import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
+import { panelModuleIdForDockModuleId } from "../dockLayout.js";
 
 export const DOCK_EDITOR_BLUR_CLOSE_DELAY_MS = 100;
 
@@ -100,7 +102,6 @@ export function DockEditorApp() {
   }, [action, payload?.view]);
 
   if (!payload) return null;
-  const close = () => action("close-editor");
   const presetController = {
     ...payload.presets,
     apply: (presetId) => action("apply-preset", { presetId }),
@@ -109,7 +110,13 @@ export function DockEditorApp() {
     rename: (presetId, name) => action("rename-preset", { presetId, name }),
     remove: (presetId) => action("delete-preset", { presetId }),
   };
-  const moduleId = payload.view?.startsWith("module:") ? payload.view.slice(7) : null;
+  const panelId = payload.view?.startsWith("module:") ? payload.view.slice(7) : null;
+  const panel = panelId
+    ? (payload.panelsById?.[panelId] ?? {
+        id: panelId,
+        moduleId: panelModuleIdForDockModuleId(panelId),
+      })
+    : null;
   return (
     <div
       ref={rootRef}
@@ -127,23 +134,26 @@ export function DockEditorApp() {
     >
       {payload.view === "modules" ? (
         <DockModulesEditor
-          modules={payload.modules}
+          panels={payload.panels}
           onAdd={(moduleId) => action("add-module", { moduleId })}
-          onRemove={(moduleId) => action("remove-module", { moduleId })}
-          onReorder={(modules) => action("reorder-module", { modules })}
-          onOpenSettings={(moduleId) => action("open-module-settings", { moduleId })}
-          onDone={close}
+          onRename={(panelId, name) => action("rename-module", { panelId, name })}
+          onRemove={(panelId) => action("remove-module", { panelId })}
+          onReorder={(panelOrder) => action("reorder-module", { panelOrder })}
+          onOpenSettings={(panelId) => action("open-module-settings", { panelId })}
         />
       ) : payload.view === "presets" ? (
-        <DockPresetsRow presets={presetController} onDone={close} />
-      ) : moduleId ? (
+        <DockPresetsRow presets={presetController} />
+      ) : panel ? (
         <DockModuleSettings
-          moduleId={moduleId}
-          controls={payload.controlsByModuleId[moduleId]}
-          onChange={(controls) => action("update-module-controls", { moduleId, controls })}
-          onReset={() => action("reset-module-controls", { moduleId })}
+          moduleId={panel.moduleId}
+          title={resolvePanelDisplayName(
+            { panelsById: payload.panelsById, panelOrder: payload.panelOrder },
+            panel.id
+          )}
+          controls={payload.controlsByPanelId?.[panel.id]}
+          onChange={(controls) => action("update-module-controls", { panelId: panel.id, controls })}
+          onReset={() => action("reset-module-controls", { panelId: panel.id })}
           onBack={() => action("open-editor", { view: "modules" })}
-          onDone={close}
         />
       ) : null}
     </div>

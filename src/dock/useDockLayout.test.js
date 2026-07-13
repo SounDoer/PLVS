@@ -14,21 +14,24 @@ describe("useDockLayout", () => {
     expect(result.current.modules).toEqual(["level", "loudness", "spectrum", "correlation"]);
     act(() => result.current.toggle("spectrum"));
     expect(result.current.modules).toEqual(["level", "loudness", "correlation"]);
-    expect(workspaceStore.read().dock.modules).toEqual(["level", "loudness", "correlation"]);
+    expect(workspaceStore.read().dock.panelOrder).toEqual(["level", "loudness", "correlation"]);
+    expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
   it("reorders and persists", () => {
     const { result } = renderHook(() => useDockLayout());
     act(() => result.current.reorder(0, 3));
     expect(result.current.modules[3]).toBe("level");
-    expect(workspaceStore.read().dock.modules[3]).toBe("level");
+    expect(workspaceStore.read().dock.panelOrder[3]).toBe("level");
+    expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
   it("setModules replaces the list (used by preset apply)", () => {
     const { result } = renderHook(() => useDockLayout());
     act(() => result.current.setModules(["spectrum"]));
     expect(result.current.modules).toEqual(["spectrum"]);
-    expect(workspaceStore.read().dock.modules).toEqual(["spectrum"]);
+    expect(workspaceStore.read().dock.panelOrder).toEqual(["spectrum"]);
+    expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
   it("marks the active preset dirty when the layout changes", () => {
@@ -48,34 +51,51 @@ describe("useDockLayout", () => {
 
   it("exposes statsIds with defaults and persists toggles", () => {
     const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.setModules(["stats"]));
     expect(result.current.statsIds).toEqual(["integrated", "truePeak", "lra"]);
     act(() => result.current.toggleStat("psr"));
     expect(result.current.statsIds).toEqual(["integrated", "truePeak", "lra", "psr"]);
-    expect(workspaceStore.read().dock.controlsByModuleId.stats.ids).toEqual([
+    expect(workspaceStore.read().dock.controlsByPanelId.stats.ids).toEqual([
       "integrated",
       "truePeak",
       "lra",
       "psr",
     ]);
     expect(workspaceStore.read().dock.statsIds).toBeUndefined();
+    expect(workspaceStore.read().dock.controlsByModuleId).toBeUndefined();
   });
 
   it("setStatsIds replaces the selection (used by preset apply)", () => {
     const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.setModules(["stats"]));
     act(() => result.current.setStatsIds(["lra"]));
     expect(result.current.statsIds).toEqual(["lra"]);
-    expect(workspaceStore.read().dock.controlsByModuleId.stats.ids).toEqual(["lra"]);
+    expect(workspaceStore.read().dock.controlsByPanelId.stats.ids).toEqual(["lra"]);
   });
 
-  it("migrates legacy statsIds and writes the new controls shape", () => {
-    workspaceStore.patch({ dock: { modules: ["stats"], statsIds: ["psr", "lra"] } });
+  it("drops stale legacy dock fields when writing panel order", () => {
+    workspaceStore.patch({
+      dock: {
+        panelsById: {
+          loudness: { id: "loudness", moduleId: "loudness" },
+          stats: { id: "stats", moduleId: "stats" },
+        },
+        panelOrder: ["loudness", "stats"],
+        controlsByPanelId: { stats: { ids: ["psr", "lra"] } },
+        modules: ["level", "correlation", "level", "correlation"],
+        controlsByModuleId: { level: { readout: "peak" } },
+        statsIds: ["integrated"],
+      },
+    });
     const { result } = renderHook(() => useDockLayout());
-    expect(result.current.statsIds).toEqual(["psr", "lra"]);
-    act(() => result.current.setModuleControls("loudness", { metric: "integrated" }));
+    act(() => result.current.setPanelOrder(["stats", "loudness"]));
     const persisted = workspaceStore.read().dock;
+    expect(persisted.panelOrder).toEqual(["stats", "loudness"]);
+    expect(Object.keys(persisted.panelsById)).toEqual(["loudness", "stats"]);
+    expect(persisted.controlsByPanelId.stats.ids).toEqual(["psr", "lra"]);
+    expect(persisted.modules).toBeUndefined();
+    expect(persisted.controlsByModuleId).toBeUndefined();
     expect(persisted.statsIds).toBeUndefined();
-    expect(persisted.controlsByModuleId.stats.ids).toEqual(["psr", "lra"]);
-    expect(persisted.controlsByModuleId.loudness.metric).toBe("integrated");
   });
 
   it("updates and resets one module without mutating other families", () => {
@@ -91,6 +111,8 @@ describe("useDockLayout", () => {
   it("stat toggles dirty the active preset", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1", dirty: false });
     const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.setModules(["stats"]));
+    presetsStore.patch({ dirty: false });
     act(() => result.current.toggleStat("psr"));
     expect(presetsStore.read().dirty).toBe(true);
   });

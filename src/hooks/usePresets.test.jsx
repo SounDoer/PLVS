@@ -4,7 +4,6 @@ import { act, renderHook } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { presetsStore } from "../persistence/index.js";
-import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dock/dockModuleControls.js";
 
 const mocks = vi.hoisted(() => ({
   applyWindowBounds: vi.fn(),
@@ -517,7 +516,12 @@ describe("usePresets", () => {
         enabled: true,
         edge: "top",
         reserveSpace: true,
-        modules: ["level", "spectrum"],
+        panelsById: {
+          levelMeter: { id: "levelMeter", moduleId: "levelMeter" },
+          spectrum: { id: "spectrum", moduleId: "spectrum" },
+        },
+        panelOrder: ["levelMeter", "spectrum"],
+        controlsByPanelId: { spectrum: { channel: { type: "single", channel: 0 } } },
       };
       const { result } = renderPresetHook({ dock });
       let preset;
@@ -526,7 +530,6 @@ describe("usePresets", () => {
       });
       expect(preset.dock).toEqual({
         ...dock,
-        controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
       });
     });
 
@@ -544,9 +547,9 @@ describe("usePresets", () => {
         enabled: false,
         edge: "bottom",
         reserveSpace: false,
-        modules: expect.any(Array),
-        controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
-        statsIds: undefined,
+        panelsById: {},
+        panelOrder: [],
+        controlsByPanelId: {},
       });
     });
 
@@ -572,9 +575,9 @@ describe("usePresets", () => {
         enabled: false,
         edge: "bottom",
         reserveSpace: false,
-        modules: [],
-        controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
-        statsIds: undefined,
+        panelsById: undefined,
+        panelOrder: undefined,
+        controlsByPanelId: undefined,
       });
     });
 
@@ -611,46 +614,49 @@ describe("usePresets", () => {
         enabled: true,
         edge: "top",
         reserveSpace: true,
-        modules: ["stats"],
-        controlsByModuleId: { stats: { ids: ["psr", "plr"] } },
+        panelsById: { stats: { id: "stats", moduleId: "stats" } },
+        panelOrder: ["stats"],
+        controlsByPanelId: { stats: { ids: ["psr", "plr"] } },
       };
       const { result } = renderPresetHook({ dock, applyDockPreset });
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Stats dock");
       });
-      expect(preset.dock.controlsByModuleId.stats.ids).toEqual(["psr", "plr"]);
+      expect(preset.dock.controlsByPanelId.stats.ids).toEqual(["psr", "plr"]);
       await act(async () => {
         await result.current.presets.apply(preset.id);
       });
       expect(applyDockPreset).toHaveBeenCalledWith(
         expect.objectContaining({
           reserveSpace: true,
-          controlsByModuleId: expect.objectContaining({ stats: { ids: ["psr", "plr"] } }),
+          controlsByPanelId: expect.objectContaining({ stats: { ids: ["psr", "plr"] } }),
         })
       );
     });
 
-    it("presets without statsIds apply with an undefined statsIds (defaults downstream)", async () => {
+    it("applies dock presets without legacy module fields", async () => {
       const applyDockPreset = vi.fn(async () => {});
-      const { result } = renderPresetHook({ applyDockPreset });
+      const dock = {
+        enabled: true,
+        panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
+        panelOrder: ["loudness"],
+        controlsByPanelId: { loudness: { metric: "integrated" } },
+      };
+      const { result } = renderPresetHook({ dock, applyDockPreset });
       let preset;
       await act(async () => {
-        preset = await result.current.presets.save("Old dock");
-      });
-      const raw = presetsStore.read();
-      presetsStore.patch({
-        list: raw.list.map((p) => {
-          const dockCopy = { ...p.dock };
-          delete dockCopy.statsIds;
-          return { ...p, dock: dockCopy };
-        }),
+        preset = await result.current.presets.save("Dock");
       });
       await act(async () => {
         await result.current.presets.apply(preset.id);
       });
       expect(applyDockPreset).toHaveBeenCalledWith(
-        expect.objectContaining({ statsIds: undefined })
+        expect.not.objectContaining({
+          modules: expect.anything(),
+          controlsByModuleId: expect.anything(),
+          statsIds: expect.anything(),
+        })
       );
     });
   });

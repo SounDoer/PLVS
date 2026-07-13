@@ -15,13 +15,13 @@ const PRESETS = {
 
 describe("DockPresetsRow", () => {
   it("renders preset chips and applies on click", () => {
-    render(<DockPresetsRow presets={PRESETS} onDone={vi.fn()} />);
+    render(<DockPresetsRow presets={PRESETS} />);
     fireEvent.click(screen.getByRole("button", { name: /apply preset mix/i }));
     expect(PRESETS.apply).toHaveBeenCalledWith("p1");
   });
 
   it("saves a new preset from the inline input", () => {
-    render(<DockPresetsRow presets={PRESETS} onDone={vi.fn()} />);
+    render(<DockPresetsRow presets={PRESETS} />);
     fireEvent.change(screen.getByLabelText(/new preset name/i), {
       target: { value: "Strip" },
     });

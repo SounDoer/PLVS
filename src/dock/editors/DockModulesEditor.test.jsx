@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DockModulesEditor, reorderDockModulesAtPointer } from "./DockModulesEditor.jsx";
 
@@ -8,24 +8,24 @@ const BASE_PROPS = {
   onRemove: vi.fn(),
   onReorder: vi.fn(),
   onOpenSettings: vi.fn(),
-  onDone: vi.fn(),
 };
 
 describe("DockModulesEditor", () => {
   it("lists only added modules in their current order", () => {
     render(<DockModulesEditor {...BASE_PROPS} />);
-    const rows = screen.getAllByTestId(/dock-module-row-/);
+    const rows = screen.getAllByTestId(/dock-panel-row-/);
     expect(rows.map((row) => row.dataset.testid)).toEqual([
-      "dock-module-row-level",
-      "dock-module-row-spectrum",
+      "dock-panel-row-level",
+      "dock-panel-row-spectrum",
     ]);
-    expect(screen.queryByTestId("dock-module-row-loudness")).toBeNull();
+    expect(screen.queryByTestId("dock-panel-row-loudness")).toBeNull();
   });
 
   it("removes a module with an explicit row action", () => {
     const onRemove = vi.fn();
     render(<DockModulesEditor {...BASE_PROPS} onRemove={onRemove} />);
-    fireEvent.click(screen.getByRole("button", { name: "Remove Level" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Level Meter" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete Level Meter" }));
     expect(onRemove).toHaveBeenCalledWith("level");
   });
 
@@ -35,12 +35,20 @@ describe("DockModulesEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
     fireEvent.click(screen.getByRole("button", { name: "Loudness" }));
     expect(onAdd).toHaveBeenCalledWith("loudness");
-    expect(screen.queryByRole("button", { name: "Level" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Level Meter" })).toBeTruthy();
+  });
+
+  it("offers the dock-only Timecode module in the add list", () => {
+    const onAdd = vi.fn();
+    render(<DockModulesEditor {...BASE_PROPS} onAdd={onAdd} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Timecode" }));
+    expect(onAdd).toHaveBeenCalledWith("transport");
   });
 
   it("provides a dedicated drag handle for every added module", () => {
     render(<DockModulesEditor {...BASE_PROPS} />);
-    expect(screen.getByRole("button", { name: "Reorder Level" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reorder Level Meter" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Reorder Spectrum" })).toBeTruthy();
   });
 
@@ -62,15 +70,24 @@ describe("DockModulesEditor", () => {
         onOpenSettings={onOpenSettings}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Level settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Level Meter settings" }));
     expect(onOpenSettings).toHaveBeenCalledWith("level");
-    expect(screen.queryByRole("button", { name: "Transport settings" })).toBeNull();
+    expect(screen.getByText("Timecode")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Timecode settings" })).toBeNull();
   });
 
-  it("Done exits the editor", () => {
-    const onDone = vi.fn();
-    render(<DockModulesEditor {...BASE_PROPS} onDone={onDone} />);
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(onDone).toHaveBeenCalledOnce();
+  it("orders row actions as settings, rename, and delete", () => {
+    render(<DockModulesEditor {...BASE_PROPS} />);
+    const row = screen.getByTestId("dock-panel-row-spectrum");
+    expect(
+      within(row)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label"))
+    ).toEqual(["Reorder Spectrum", "Spectrum settings", "Rename Spectrum", "Delete Spectrum"]);
+  });
+
+  it("does not render a title close button", () => {
+    render(<DockModulesEditor {...BASE_PROPS} />);
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
   });
 });

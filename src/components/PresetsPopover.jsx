@@ -19,7 +19,7 @@ const NOOP_PRESETS = {
  * from usePresets(). Whole-row click applies; row-tail icons do
  * Update / Rename / Delete. Rename is inline.
  */
-export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
+export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true }) {
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [drafts, setDrafts] = useState({});
@@ -53,9 +53,11 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS }) {
 
   return (
     <>
-      <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-        Presets
-      </p>
+      {showTitle ? (
+        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+          Presets
+        </p>
+      ) : null}
       <div className="flex items-center gap-2 px-2 py-1.5">
         <input
           type="text"

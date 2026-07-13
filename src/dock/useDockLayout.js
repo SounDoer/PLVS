@@ -1,19 +1,31 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
 import {
+  addDockPanel,
+  dockModuleIdForPanelModuleId,
   normalizeDockLayout,
   normalizeDockStatsIds,
+  removeDockPanel,
+  renameDockPanel,
   reorderDockModule,
+  setDockPanelOrder,
   toggleDockModule,
   toggleDockStatId,
 } from "./dockLayout.js";
-import { normalizeDockControlsByModuleId, updateDockModuleControls } from "./dockModuleControls.js";
+import {
+  controlsByModuleIdFromPanels,
+  dockControlModuleIdForPanel,
+  normalizeDockControlsByModuleId,
+  normalizeDockControlsByPanelId,
+  updateDockPanelControls,
+} from "./dockModuleControls.js";
 
 function readDockState() {
   const raw = workspaceStore.read().dock;
+  const layout = normalizeDockLayout(raw);
   return {
-    layout: normalizeDockLayout(raw),
-    controlsByModuleId: normalizeDockControlsByModuleId(raw?.controlsByModuleId, raw?.statsIds),
+    layout,
+    controlsByPanelId: normalizeDockControlsByPanelId(layout.panelsById, raw?.controlsByPanelId),
   };
 }
 
@@ -27,8 +39,9 @@ export function useDockLayout() {
   const write = useCallback((next) => {
     workspaceStore.patch({
       dock: {
-        modules: next.layout.modules,
-        controlsByModuleId: next.controlsByModuleId,
+        panelsById: next.layout.panelsById,
+        panelOrder: next.layout.panelOrder,
+        controlsByPanelId: next.controlsByPanelId,
       },
     });
     // Dock layout is part of the preset snapshot, so edits dirty the active
@@ -54,18 +67,90 @@ export function useDockLayout() {
   const setModules = useCallback(
     (modules) => {
       const current = readDockState();
-      write({ ...current, layout: normalizeDockLayout({ modules }) });
+      const layout = normalizeDockLayout({ modules });
+      write({
+        layout,
+        controlsByPanelId: normalizeDockControlsByPanelId(
+          layout.panelsById,
+          undefined,
+          controlsByModuleIdFromPanels(
+            current.layout.panelsById,
+            current.layout.panelOrder,
+            current.controlsByPanelId
+          )
+        ),
+      });
+    },
+    [write]
+  );
+  const setPanels = useCallback(
+    (dockLike) => {
+      const layout = normalizeDockLayout(dockLike);
+      write({
+        layout,
+        controlsByPanelId: normalizeDockControlsByPanelId(
+          layout.panelsById,
+          dockLike?.controlsByPanelId
+        ),
+      });
+    },
+    [write]
+  );
+  const addPanel = useCallback(
+    (moduleId) => {
+      const current = readDockState();
+      const layout = addDockPanel(current.layout, moduleId);
+      write({
+        layout,
+        controlsByPanelId: normalizeDockControlsByPanelId(
+          layout.panelsById,
+          current.controlsByPanelId
+        ),
+      });
+    },
+    [write]
+  );
+  const removePanel = useCallback(
+    (panelId) => {
+      const current = readDockState();
+      const layout = removeDockPanel(current.layout, panelId);
+      const { [panelId]: _removed, ...controlsByPanelId } = current.controlsByPanelId;
+      write({ layout, controlsByPanelId });
+    },
+    [write]
+  );
+  const renamePanel = useCallback(
+    (panelId, customTitle) => {
+      const current = readDockState();
+      write({
+        ...current,
+        layout: renameDockPanel(current.layout, panelId, customTitle),
+      });
+    },
+    [write]
+  );
+  const setPanelOrder = useCallback(
+    (panelOrder) => {
+      const current = readDockState();
+      write({ ...current, layout: setDockPanelOrder(current.layout, panelOrder) });
     },
     [write]
   );
   const toggleStat = useCallback(
     (id) => {
       const current = readDockState();
+      const statsPanelId = current.layout.panelOrder.find(
+        (panelId) => current.layout.panelsById[panelId]?.moduleId === "stats"
+      );
+      if (!statsPanelId) return;
       write({
         ...current,
-        controlsByModuleId: updateDockModuleControls(current.controlsByModuleId, "stats", {
-          ids: toggleDockStatId(current.controlsByModuleId.stats.ids, id),
-        }),
+        controlsByPanelId: updateDockPanelControls(
+          current.controlsByPanelId,
+          current.layout.panelsById,
+          statsPanelId,
+          { ids: toggleDockStatId(current.controlsByPanelId[statsPanelId]?.ids ?? [], id) }
+        ),
       });
     },
     [write]
@@ -73,11 +158,34 @@ export function useDockLayout() {
   const setStatsIds = useCallback(
     (ids) => {
       const current = readDockState();
+      const statsPanelId = current.layout.panelOrder.find(
+        (panelId) => current.layout.panelsById[panelId]?.moduleId === "stats"
+      );
+      if (!statsPanelId) return;
       write({
         ...current,
-        controlsByModuleId: updateDockModuleControls(current.controlsByModuleId, "stats", {
-          ids: normalizeDockStatsIds(ids),
-        }),
+        controlsByPanelId: updateDockPanelControls(
+          current.controlsByPanelId,
+          current.layout.panelsById,
+          statsPanelId,
+          { ids: normalizeDockStatsIds(ids) }
+        ),
+      });
+    },
+    [write]
+  );
+
+  const setPanelControls = useCallback(
+    (panelId, controls) => {
+      const current = readDockState();
+      write({
+        ...current,
+        controlsByPanelId: updateDockPanelControls(
+          current.controlsByPanelId,
+          current.layout.panelsById,
+          panelId,
+          controls
+        ),
       });
     },
     [write]
@@ -86,48 +194,86 @@ export function useDockLayout() {
   const setModuleControls = useCallback(
     (moduleId, controls) => {
       const current = readDockState();
-      write({
-        ...current,
-        controlsByModuleId: updateDockModuleControls(
-          current.controlsByModuleId,
-          moduleId,
-          controls
-        ),
+      const panelId = current.layout.panelOrder.find((id) => {
+        const panel = current.layout.panelsById[id];
+        return (
+          panel?.moduleId === moduleId || dockModuleIdForPanelModuleId(panel?.moduleId) === moduleId
+        );
       });
+      if (!panelId) return;
+      setPanelControls(panelId, controls);
     },
-    [write]
+    [setPanelControls]
+  );
+
+  const resetPanelControls = useCallback(
+    (panelId) => {
+      const current = readDockState();
+      const controlModuleId = dockControlModuleIdForPanel(current.layout.panelsById[panelId]);
+      const defaults = normalizeDockControlsByModuleId()[controlModuleId];
+      if (!defaults) return;
+      setPanelControls(panelId, defaults);
+    },
+    [setPanelControls]
   );
 
   const resetModuleControls = useCallback(
     (moduleId) => {
-      const defaults = normalizeDockControlsByModuleId()[moduleId];
-      if (!defaults) return;
-      setModuleControls(moduleId, defaults);
-    },
-    [setModuleControls]
-  );
-  const setControlsByModuleId = useCallback(
-    (controlsByModuleId, legacyStatsIds) => {
       const current = readDockState();
-      write({
-        ...current,
-        controlsByModuleId: normalizeDockControlsByModuleId(controlsByModuleId, legacyStatsIds),
+      const panelId = current.layout.panelOrder.find((id) => {
+        const panel = current.layout.panelsById[id];
+        return (
+          panel?.moduleId === moduleId || dockModuleIdForPanelModuleId(panel?.moduleId) === moduleId
+        );
       });
+      if (!panelId) return;
+      resetPanelControls(panelId);
     },
-    [write]
+    [resetPanelControls]
+  );
+  const panels = useMemo(
+    () =>
+      state.layout.panelOrder.map((panelId) => state.layout.panelsById[panelId]).filter(Boolean),
+    [state.layout.panelOrder, state.layout.panelsById]
+  );
+  const controlsByModuleId = useMemo(
+    () =>
+      controlsByModuleIdFromPanels(
+        state.layout.panelsById,
+        state.layout.panelOrder,
+        state.controlsByPanelId
+      ),
+    [state.controlsByPanelId, state.layout.panelOrder, state.layout.panelsById]
+  );
+  const modules = useMemo(
+    () =>
+      state.layout.panelOrder
+        .map((panelId) => dockModuleIdForPanelModuleId(state.layout.panelsById[panelId]?.moduleId))
+        .filter(Boolean),
+    [state.layout.panelOrder, state.layout.panelsById]
   );
 
   return {
-    modules: state.layout.modules,
-    controlsByModuleId: state.controlsByModuleId,
-    statsIds: state.controlsByModuleId.stats.ids,
+    panelsById: state.layout.panelsById,
+    panelOrder: state.layout.panelOrder,
+    panels,
+    controlsByPanelId: state.controlsByPanelId,
+    modules,
+    controlsByModuleId,
+    statsIds: controlsByModuleId.stats.ids,
     toggle,
     reorder,
     setModules,
+    setPanels,
+    addPanel,
+    removePanel,
+    renamePanel,
+    setPanelOrder,
     toggleStat,
     setStatsIds,
+    setPanelControls,
+    resetPanelControls,
     setModuleControls,
     resetModuleControls,
-    setControlsByModuleId,
   };
 }

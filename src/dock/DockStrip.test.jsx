@@ -4,7 +4,10 @@ import { FrameDataProvider, HistoryDataProvider } from "../workspace/AudioDataCo
 import { DockStrip } from "./DockStrip.jsx";
 
 const BASE_PROPS = {
-  modules: ["level", "correlation"],
+  panels: [
+    { id: "levelMeter", moduleId: "levelMeter" },
+    { id: "vectorscope", moduleId: "vectorscope" },
+  ],
   onPointerEnter: vi.fn(),
   onPointerLeave: vi.fn(),
   controls: {
@@ -48,7 +51,7 @@ describe("DockStrip", () => {
   });
 
   it("passes controls down to the timer-only transport module", () => {
-    renderStrip({ modules: ["transport"] });
+    renderStrip({ panels: [{ id: "transport", moduleId: "transport" }] });
     expect(screen.getByTestId("dock-transport-timer").textContent).toBe("00:00");
     expect(screen.queryByRole("button")).toBeNull();
   });

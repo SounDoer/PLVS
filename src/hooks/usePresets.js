@@ -9,7 +9,6 @@ import { normalizePinnedPanelsById } from "../workspace/reducer.js";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
-import { normalizeDockControlsByModuleId } from "../dock/dockModuleControls.js";
 
 const EMPTY_PRESETS = { list: [], activeId: null, dirty: false };
 
@@ -66,8 +65,9 @@ export function usePresets({
     enabled: false,
     edge: "bottom",
     reserveSpace: false,
-    modules: [],
-    controlsByModuleId: undefined,
+    panelsById: {},
+    panelOrder: [],
+    controlsByPanelId: undefined,
   },
   applyDockPreset = async () => {},
 } = {}) {
@@ -145,8 +145,9 @@ export function usePresets({
         enabled: dock.enabled === true,
         edge: dock.edge === "top" ? "top" : "bottom",
         reserveSpace: dock.reserveSpace === true,
-        modules: [...dock.modules],
-        controlsByModuleId: normalizeDockControlsByModuleId(dock.controlsByModuleId),
+        panelsById: clone(dock.panelsById ?? {}),
+        panelOrder: Array.isArray(dock.panelOrder) ? [...dock.panelOrder] : [],
+        controlsByPanelId: clone(dock.controlsByPanelId ?? {}),
       },
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
@@ -199,12 +200,9 @@ export function usePresets({
         enabled: preset.dock?.enabled === true,
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
         reserveSpace: preset.dock?.reserveSpace === true,
-        modules: Array.isArray(preset.dock?.modules) ? preset.dock.modules : [],
-        controlsByModuleId: normalizeDockControlsByModuleId(
-          preset.dock?.controlsByModuleId,
-          preset.dock?.statsIds
-        ),
-        statsIds: Array.isArray(preset.dock?.statsIds) ? preset.dock.statsIds : undefined,
+        panelsById: preset.dock?.panelsById,
+        panelOrder: preset.dock?.panelOrder,
+        controlsByPanelId: preset.dock?.controlsByPanelId,
       };
       try {
         await applyDockPreset(presetDock);

@@ -246,8 +246,7 @@ function AppContent() {
   const applyDockPreset = useCallback(
     async (presetDock) => {
       if (presetDock.enabled) {
-        dockLayout.setModules(presetDock.modules);
-        dockLayout.setControlsByModuleId(presetDock.controlsByModuleId, presetDock.statsIds);
+        dockLayout.setPanels(presetDock);
         if (!dockEnabled || dockEdge !== presetDock.edge) {
           await enterDockMode(presetDock.edge, presetDock.reserveSpace);
         } else if (presetDock.reserveSpace !== reserveSpace) {
@@ -275,10 +274,18 @@ function AppContent() {
       enabled: dockEnabled,
       edge: dockEdge,
       reserveSpace,
-      modules: dockLayout.modules,
-      controlsByModuleId: dockLayout.controlsByModuleId,
+      panelsById: dockLayout.panelsById,
+      panelOrder: dockLayout.panelOrder,
+      controlsByPanelId: dockLayout.controlsByPanelId,
     }),
-    [dockEnabled, dockEdge, dockLayout.controlsByModuleId, dockLayout.modules, reserveSpace]
+    [
+      dockEnabled,
+      dockEdge,
+      dockLayout.controlsByPanelId,
+      dockLayout.panelOrder,
+      dockLayout.panelsById,
+      reserveSpace,
+    ]
   );
 
   const presets = usePresets({
@@ -318,17 +325,14 @@ function AppContent() {
       mergeDockSpectrumRequest(
         deriveAnalysisRequests(workspaceState),
         docked
-          ? {
-              spectrum: dockLayout.modules.includes("spectrum")
-                ? dockLayout.controlsByModuleId.spectrum
-                : null,
-              spectrogram: dockLayout.modules.includes("spectrogram")
-                ? dockLayout.controlsByModuleId.spectrogram
-                : null,
-            }
+          ? dockLayout.panels.map((panel) => ({
+              panelId: panel.id,
+              moduleId: panel.moduleId,
+              controls: dockLayout.controlsByPanelId[panel.id],
+            }))
           : false
       ),
-    [workspaceState, docked, dockLayout.controlsByModuleId, dockLayout.modules]
+    [workspaceState, docked, dockLayout.controlsByPanelId, dockLayout.panels]
   );
   const analysisRequests = useMemo(
     () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
@@ -791,8 +795,10 @@ function AppContent() {
   const dockEditorState = useMemo(
     () => ({
       view: dockAccessoryVisibility.editorView,
-      modules: dockLayout.modules,
-      controlsByModuleId: dockLayout.controlsByModuleId,
+      panels: dockLayout.panels,
+      panelsById: dockLayout.panelsById,
+      panelOrder: dockLayout.panelOrder,
+      controlsByPanelId: dockLayout.controlsByPanelId,
       presets: {
         list: presets.list.map(({ id, name }) => ({ id, name })),
         activeId: presets.activeId,
@@ -801,8 +807,10 @@ function AppContent() {
     }),
     [
       dockAccessoryVisibility.editorView,
-      dockLayout.controlsByModuleId,
-      dockLayout.modules,
+      dockLayout.controlsByPanelId,
+      dockLayout.panelOrder,
+      dockLayout.panels,
+      dockLayout.panelsById,
       presets.activeId,
       presets.dirty,
       presets.list,
@@ -824,22 +832,20 @@ function AppContent() {
       } else if (type === "restore-window") void exitDockRestoringAttributes();
       else if (type === "toggle-module") dockLayout.toggle(payload.moduleId);
       else if (type === "add-module") {
-        if (!dockLayout.modules.includes(payload.moduleId)) {
-          dockLayout.setModules([...dockLayout.modules, payload.moduleId]);
-        }
+        dockLayout.addPanel(payload.moduleId);
+      } else if (type === "rename-module") {
+        dockLayout.renamePanel(payload.panelId, payload.name);
       } else if (type === "remove-module") {
-        dockLayout.setModules(
-          dockLayout.modules.filter((moduleId) => moduleId !== payload.moduleId)
-        );
+        dockLayout.removePanel(payload.panelId);
       } else if (type === "reorder-module") {
-        if (Array.isArray(payload.modules)) dockLayout.setModules(payload.modules);
+        if (Array.isArray(payload.panelOrder)) dockLayout.setPanelOrder(payload.panelOrder);
         else dockLayout.reorder(payload.from, payload.to);
       } else if (type === "open-module-settings") {
-        dockAccessoryVisibility.openEditor(`module:${payload.moduleId}`);
+        dockAccessoryVisibility.openEditor(`module:${payload.panelId}`);
       } else if (type === "update-module-controls") {
-        dockLayout.setModuleControls(payload.moduleId, payload.controls);
+        dockLayout.setPanelControls(payload.panelId, payload.controls);
       } else if (type === "reset-module-controls") {
-        dockLayout.resetModuleControls(payload.moduleId);
+        dockLayout.resetPanelControls(payload.panelId);
       } else if (type === "apply-preset") void presets.apply(payload.presetId);
       else if (type === "save-preset") void presets.save(payload.name);
       else if (type === "update-preset") void presets.update(payload.presetId);
@@ -1072,11 +1078,11 @@ function AppContent() {
   };
   const dockProps = docked
     ? {
-        modules: dockLayout.modules,
+        panels: dockLayout.panels,
         onPointerEnter: dockAccessoryVisibility.onStripPointerEnter,
         onPointerLeave: dockAccessoryVisibility.onStripPointerLeave,
         controls: {
-          controlsByModuleId: dockLayout.controlsByModuleId,
+          controlsByPanelId: dockLayout.controlsByPanelId,
           sourceTransportState,
           onSourceTransportAction,
           notice,

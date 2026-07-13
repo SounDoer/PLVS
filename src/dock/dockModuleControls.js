@@ -6,6 +6,16 @@ const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
 const LOUDNESS_METRICS = new Set(["momentary", "shortTerm", "integrated"]);
 const LEVEL_READOUTS = new Set(["truePeakMax", "peak"]);
 const WAVEFORM_VIEWS = new Set(["all", "single"]);
+const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
+  levelMeter: "level",
+  loudness: "loudness",
+  stats: "stats",
+  vectorscope: "correlation",
+  spectrum: "spectrum",
+  spectrogram: "spectrogram",
+  waveform: "waveform",
+  transport: "transport",
+});
 
 export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   level: Object.freeze({ readout: "truePeakMax" }),
@@ -201,4 +211,64 @@ export function updateDockModuleControls(controlsByModuleId, moduleId, nextContr
     ...controlsByModuleId,
     [moduleId]: normalizeDockModuleControls(moduleId, nextControls),
   };
+}
+
+export function dockControlModuleIdForPanel(panel) {
+  return DOCK_MODULE_ID_BY_PANEL_MODULE_ID[panel?.moduleId] ?? panel?.moduleId ?? null;
+}
+
+export function normalizeDockControlsByPanelId(
+  panelsById = {},
+  rawControlsByPanelId,
+  legacyControlsByModuleId,
+  legacyStatsIds
+) {
+  const rawByPanel =
+    rawControlsByPanelId && typeof rawControlsByPanelId === "object" ? rawControlsByPanelId : {};
+  const legacyByModule =
+    legacyControlsByModuleId && typeof legacyControlsByModuleId === "object"
+      ? legacyControlsByModuleId
+      : {};
+  return Object.fromEntries(
+    Object.entries(panelsById)
+      .map(([panelId, panel]) => {
+        const controlModuleId = dockControlModuleIdForPanel(panel);
+        if (!DOCK_CONTROL_MODULE_IDS.includes(controlModuleId)) return null;
+        const raw =
+          rawByPanel[panelId] ??
+          (controlModuleId === "stats" &&
+          legacyByModule.stats == null &&
+          legacyStatsIds !== undefined
+            ? { ids: legacyStatsIds }
+            : legacyByModule[controlModuleId]);
+        return [panelId, normalizeDockModuleControls(controlModuleId, raw)];
+      })
+      .filter(Boolean)
+  );
+}
+
+export function updateDockPanelControls(controlsByPanelId, panelsById, panelId, nextControls) {
+  const controlModuleId = dockControlModuleIdForPanel(panelsById?.[panelId]);
+  if (!DOCK_CONTROL_MODULE_IDS.includes(controlModuleId)) return controlsByPanelId;
+  return {
+    ...controlsByPanelId,
+    [panelId]: normalizeDockModuleControls(controlModuleId, nextControls),
+  };
+}
+
+export function controlsByModuleIdFromPanels(
+  panelsById = {},
+  panelOrder = [],
+  controlsByPanelId = {}
+) {
+  const result = {};
+  for (const panelId of panelOrder) {
+    const controlModuleId = dockControlModuleIdForPanel(panelsById[panelId]);
+    if (!DOCK_CONTROL_MODULE_IDS.includes(controlModuleId) || result[controlModuleId]) continue;
+    result[controlModuleId] = normalizeDockModuleControls(
+      controlModuleId,
+      controlsByPanelId[panelId]
+    );
+  }
+  return normalizeDockControlsByModuleId(result);
 }

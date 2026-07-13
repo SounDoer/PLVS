@@ -12,7 +12,6 @@ function renderSettings(moduleId, props = {}) {
       onChange={onChange}
       onReset={vi.fn()}
       onBack={vi.fn()}
-      onDone={vi.fn()}
       {...props}
     />
   );
@@ -49,16 +48,14 @@ describe("DockModuleSettings", () => {
     expect(screen.getByRole("option", { name: "Channels 1 + 2" })).toBeTruthy();
   });
 
-  it("exposes Back, Reset, and Done actions", () => {
+  it("exposes Back and Reset actions without a title close button", () => {
     const onBack = vi.fn();
     const onReset = vi.fn();
-    const onDone = vi.fn();
-    renderSettings("level", { onBack, onReset, onDone });
+    renderSettings("level", { onBack, onReset });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onBack).toHaveBeenCalledOnce();
     expect(onReset).toHaveBeenCalledOnce();
-    expect(onDone).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
   });
 });

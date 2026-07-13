@@ -7,6 +7,7 @@ import {
 } from "../../components/PanelSettingsContent.jsx";
 import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
 import { DockEditorShell } from "./DockEditorShell.jsx";
+import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 
 const FIELD_CLASS =
@@ -339,19 +340,15 @@ function SettingsBody({ moduleId, controls, onChange }) {
   return null;
 }
 
-export function DockModuleSettings({ moduleId, controls, onChange, onReset, onBack, onDone }) {
-  const entry = DOCK_MODULE_REGISTRY[moduleId];
+export function DockModuleSettings({ moduleId, title, controls, onChange, onReset, onBack }) {
+  const dockModuleId = dockModuleIdForPanelModuleId(moduleId) ?? moduleId;
+  const entry = DOCK_MODULE_REGISTRY[dockModuleId];
   if (!entry?.settingsFamily || !controls) return null;
   return (
-    <DockEditorShell
-      title={`${entry.label} settings`}
-      onBack={onBack}
-      onReset={onReset}
-      onDone={onDone}
-    >
+    <DockEditorShell title={`${title ?? entry.label} settings`} onBack={onBack} onReset={onReset}>
       <SettingsGroup>
         <div className="grid gap-1 p-2">
-          <SettingsBody moduleId={moduleId} controls={controls} onChange={onChange} />
+          <SettingsBody moduleId={dockModuleId} controls={controls} onChange={onChange} />
         </div>
       </SettingsGroup>
     </DockEditorShell>

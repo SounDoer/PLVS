@@ -30,23 +30,23 @@ force.
 
 ## Locked product decisions
 
-| Topic | Decision |
-| --- | --- |
-| Meter strip | Remains a dedicated 72 logical px window and the only AppBar. |
-| Header | Separate frameless window, full strip width, 44 logical px high. |
-| Header layout | Left: existing `SourceTransportCluster`/timecode pill. Right: Clear, Modules, Presets, edge, Reserve, Restore. |
-| Header placement | Bottom Dock: above meter strip. Top Dock: below meter strip. |
-| Editor | Separate frameless window, 380-420 logical px wide, single-column drill-in navigation. |
-| Editor placement | Right-aligned to header. Bottom Dock opens upward; Top Dock opens downward. |
-| Reserve semantics | Reserve only 72px meter strip. Header/editor overlay adjacent apps. Never resize the AppBar on hover. |
-| Visibility | Enter meter strip shows header. Leaving strip and header hides after 300ms. Open editor locks both visible. |
-| Dismissal | Done, outside click, or Escape closes editor. Header then returns to hover visibility rules. |
-| Modules UI | Normal vertical list with enable toggles, drag handles, settings actions, and Done. |
-| Presets UI | Moves to the accessory editor and uses the normal-size presets interaction model. |
-| Settings navigation | Modules list -> module settings -> Back. No nested popover is required. |
-| Settings ownership | Dock display controls are independent from workspace panel-instance controls. |
-| Shared state | Capture, source, channel labels/layout, theme, opacity, measurement semantics, and runtime actions stay shared. |
-| Multi-monitor | All three windows stay on the meter strip's current monitor and move together on edge changes. |
+| Topic               | Decision                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Meter strip         | Remains a dedicated 72 logical px window and the only AppBar.                                                             |
+| Header              | Separate frameless window, full strip width, 44 logical px high.                                                          |
+| Header layout       | Left: existing `SourceTransportCluster`/timecode pill. Right: Clear, Modules, Presets, edge, Reserve, Restore.            |
+| Header placement    | Bottom Dock: above meter strip. Top Dock: below meter strip.                                                              |
+| Editor              | Separate frameless window, 380-420 logical px wide, single-column drill-in navigation.                                    |
+| Editor placement    | Right-aligned to header. Bottom Dock opens upward; Top Dock opens downward.                                               |
+| Reserve semantics   | Reserve only 72px meter strip. Header/editor overlay adjacent apps. Never resize the AppBar on hover.                     |
+| Visibility          | Enter meter strip shows header. Leaving strip and header hides after 300ms. Open editor locks both visible.               |
+| Dismissal           | Toggling the active header button, outside click, or Escape closes editor. Header then returns to hover visibility rules. |
+| Modules UI          | Normal panel-instance list with icons, settings, rename, delete confirmation, drag handles, and Add Module.               |
+| Presets UI          | Moves to the accessory editor and uses the normal-size presets interaction model.                                         |
+| Settings navigation | Modules list -> module settings -> Back. No nested popover is required.                                                   |
+| Settings ownership  | Dock display controls are independent from workspace panel-instance controls.                                             |
+| Shared state        | Capture, source, channel labels/layout, theme, opacity, measurement semantics, and runtime actions stay shared.           |
+| Multi-monitor       | All three windows stay on the meter strip's current monitor and move together on edge changes.                            |
 
 ## Why two accessory windows
 
@@ -150,7 +150,7 @@ the main WebView:
 - entering either surface cancels the hide timer;
 - leaving both surfaces starts the existing 300ms timer;
 - an open editor sets `lockedOpen = true` and suppresses auto-hide;
-- editor Done, outside click, or Escape clears the lock and closes editor;
+- toggling the active header button, outside click, or Escape clears the lock and closes editor;
 - Dock exit immediately cancels timers and hides both accessories.
 
 There is no geometric gap between strip and header. The timer still protects
@@ -186,23 +186,25 @@ The editor is a single-column tool surface, not a popover inside the header.
 
 ### Modules root
 
-Each registry module appears as one vertical row:
+Each Dock panel instance appears as one vertical row:
 
 - drag handle;
+- normal-mode module icon;
 - label;
-- enabled switch/checkbox;
-- settings icon when the module has Dock display settings.
+- settings icon when the panel's Dock renderer has display settings.
+- inline rename action;
+- delete confirmation action.
 
-Enabled modules can be reordered. Disabled modules retain catalog order until
-enabled. Done closes the editor. Transport has no settings action in the first
-implementation.
+Panels can be reordered. Add Module uses the normal workspace module catalog
+plus Dock-only Timecode, and can add multiple instances of the same module
+family. Legacy `transport` rows are displayed as Timecode.
 
 ### Module settings drill-in
 
 Selecting a settings icon replaces the list with:
 
 - Back;
-- module name;
+- panel display name;
 - Reset;
 - Dock-specific settings content.
 
@@ -222,19 +224,21 @@ fits. Preset UI primitives should be extracted/shared rather than duplicated.
 The current Dock implementation partially derives controls from a normalized
 workspace panel and uses default spectrum controls. That coupling is removed.
 
-Persist under the existing `workspaceStore` `dock` object:
+Persist the primary Dock layout under the existing `workspaceStore` `dock`
+object as panel instances:
 
 ```js
 {
-  modules: ["level", "loudness", "spectrum", "correlation"],
-  controlsByModuleId: {
+  panelOrder: ["level", "spectrum", "spectrum-2"],
+  panelsById: {
+    level: { id: "level", moduleId: "levelMeter" },
+    spectrum: { id: "spectrum", moduleId: "spectrum" },
+    "spectrum-2": { id: "spectrum-2", moduleId: "spectrum", customTitle: "Sidechain RTA" }
+  },
+  controlsByPanelId: {
     level: { /* DockLevel display controls */ },
-    loudness: { /* DockLoudness display controls */ },
     spectrum: { /* DockSpectrum display controls */ },
-    correlation: { /* DockCorrelation display controls */ },
-    stats: { /* DockStats display controls */ },
-    waveform: { /* DockWaveform display controls */ },
-    spectrogram: { /* DockSpectrogram display controls */ }
+    "spectrum-2": { /* DockSpectrum display controls */ }
   }
 }
 ```
@@ -243,18 +247,23 @@ Use a Dock-specific normalized schema. Do not persist a full
 `PanelControls` object per module because most fields would be irrelevant and
 some fields represent global measurement semantics.
 
+During this local development phase, persisted Dock state and preset snapshots
+use only `panelOrder` / `panelsById` / `controlsByPanelId`. Legacy `modules`,
+`controlsByModuleId`, and `statsIds` fields are not written back, so there is a
+single source of truth for ordering and per-panel display controls.
+
 Initial control families:
 
-| Module | Dock-owned display controls |
-| --- | --- |
-| Level | displayed detector/readout options supported by `DockLevel` |
-| Loudness | primary M/S/I metric, reference-line visibility/value |
-| Spectrum | channel, view, smoothing, tilt, peak hold/display range as supported |
-| Correlation | channel pair and Dock display/hold options |
-| Stats | selected 0-4 readouts and order |
-| Waveform | channel/view and Dock display scale options |
-| Spectrogram | channel/view, dB range, colormap/display options |
-| Transport | none |
+| Module      | Dock-owned display controls                                          |
+| ----------- | -------------------------------------------------------------------- |
+| Level       | displayed detector/readout options supported by `DockLevel`          |
+| Loudness    | primary M/S/I metric, reference-line visibility/value                |
+| Spectrum    | channel, view, smoothing, tilt, peak hold/display range as supported |
+| Correlation | channel pair and Dock display/hold options                           |
+| Stats       | selected 0-4 readouts and order                                      |
+| Waveform    | channel/view and Dock display scale options                          |
+| Spectrogram | channel/view, dB range, colormap/display options                     |
+| Timecode    | none                                                                 |
 
 Settings that are not yet meaningful in the compact renderer should not be
 shown merely because a normal panel has them.
@@ -272,35 +281,35 @@ Shared:
 
 Independent:
 
-- every Dock module display choice;
-- enabled modules and order;
+- every Dock panel display choice;
+- panel instances, custom titles, and order;
 - Dock Stats readout selection;
 - Dock editor navigation state (ephemeral).
 
-Changing Dock Spectrum does not mutate any normal Spectrum panel. Changing a
-normal panel does not mutate Dock Spectrum.
+Changing a Dock Spectrum panel does not mutate any normal Spectrum panel or any
+other Dock Spectrum instance. Changing a normal panel does not mutate Dock
+Spectrum.
 
 ## Analysis requests
 
 Dock-owned controls must drive Dock's keyed spectrum/spectrogram requests.
 `dockAnalysisRequest.js` stops using `DEFAULT_CONTROLS` as the fixed request.
-Request keys and payloads derive from normalized Dock controls. Workspace
+Request keys and payloads derive from normalized Dock panel controls. Workspace
 requests remain untouched; while docked, Dock requests still receive priority
 within `MAX_SPECTRUM_REQUESTS` because workspace panels are not visible.
 
-Changing a Dock analysis control updates the backend request and the module's
+Changing a Dock analysis control updates the backend request and the panel's
 snapshot lookup key together, so the renderer cannot read stale/default data.
 
 ## Persistence and presets
 
-- `workspaceStore.dock` owns modules and `controlsByModuleId`.
-- Existing `statsIds` values migrate into `controlsByModuleId.stats` and remain
-  readable for backward compatibility.
-- Preset `dock` snapshots gain `controlsByModuleId`.
+- `workspaceStore.dock` owns panel instances and `controlsByPanelId`.
+- Preset `dock` snapshots contain `panelsById`, `panelOrder`, and
+  `controlsByPanelId`.
 - Presets without Dock controls normalize to defaults.
 - Applying an old Dock preset preserves backward compatibility.
-- Applying a Dock preset updates modules and controls before entering Dock, so
-  the first visible frame uses the intended configuration.
+- Applying a Dock preset updates panel instances and controls before entering
+  Dock, so the first visible frame uses the intended configuration.
 - Accessory visibility/navigation is never persisted or captured.
 
 ## Security and capabilities
@@ -332,7 +341,7 @@ all semantic actions route to main.
 - Event snapshot/action reducer and stale-revision handling.
 - Header control ordering and Windows-only Reserve action.
 - Hover coordinator across strip/header/editor presence.
-- Vertical Modules list, reorder, toggle, settings drill-in, Back/Reset/Done.
+- Vertical Modules list, reorder, add/remove, settings drill-in, Back/Reset.
 - Presets editor behavior using shared primitives.
 - Dock analysis request keys derive from Dock controls.
 - Dock modules render from Dock controls, independent of workspace controls.
@@ -348,7 +357,8 @@ all semantic actions route to main.
 
 - Header crosses from meter strip without flicker.
 - Header hides after 300ms only when no Dock surface is hovered.
-- Editor stays open while interacted with and dismisses by Done/Escape/outside.
+- Editor stays open while interacted with and dismisses by active-button toggle,
+  Escape, or outside click.
 - Transparent areas do not block applications behind them.
 - Bottom and Top placement at 100%, 150%, and mixed-DPI monitors.
 - Windows Reserve keeps maximized window geometry stable while header/editor

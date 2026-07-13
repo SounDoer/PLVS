@@ -13,8 +13,10 @@ const { action, client } = vi.hoisted(() => ({
 
 const PRESETS_PAYLOAD = {
   view: "presets",
-  modules: [],
-  controlsByModuleId: {},
+  panels: [],
+  panelsById: {},
+  panelOrder: [],
+  controlsByPanelId: {},
   presets: { list: [], activeId: null, dirty: false },
 };
 
@@ -101,7 +103,9 @@ describe("DockEditorApp window behavior", () => {
     client.payload = {
       ...PRESETS_PAYLOAD,
       view: "module:spectrogram",
-      controlsByModuleId: {
+      panelsById: { spectrogram: { id: "spectrogram", moduleId: "spectrogram" } },
+      panelOrder: ["spectrogram"],
+      controlsByPanelId: {
         spectrogram: {
           channel: { type: "pair", x: 0, y: 1 },
           minDb: -96,

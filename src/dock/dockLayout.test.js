@@ -5,6 +5,7 @@ import {
   DOCK_MODULE_IDS,
   normalizeDockLayout,
   normalizeDockStatsIds,
+  setDockPanelOrder,
   toggleDockModule,
   toggleDockStatId,
   reorderDockModule,
@@ -53,6 +54,22 @@ describe("reorderDockModule", () => {
   it("clamps out-of-range indices", () => {
     const next = reorderDockModule({ modules: ["level", "loudness"] }, 5, -3);
     expect(next.modules).toEqual(["loudness", "level"]);
+  });
+
+  it("setDockPanelOrder does not append omitted legacy ids", () => {
+    const next = setDockPanelOrder(
+      {
+        panelsById: {
+          level: { id: "level", moduleId: "levelMeter" },
+          levelMeter: { id: "levelMeter", moduleId: "levelMeter" },
+          loudness: { id: "loudness", moduleId: "loudness" },
+        },
+        panelOrder: ["level", "levelMeter", "loudness"],
+      },
+      ["loudness", "levelMeter"]
+    );
+
+    expect(next.panelOrder).toEqual(["loudness", "levelMeter"]);
   });
 });
 

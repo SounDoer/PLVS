@@ -64,7 +64,7 @@ export const DOCK_MODULE_REGISTRY = {
   },
   transport: {
     id: "transport",
-    label: "Transport",
+    label: "Timecode",
     Component: DockTransport,
     flexible: false,
     settingsFamily: null,

@@ -6,6 +6,7 @@ import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
   normalizeDockModuleControls,
 } from "./dockModuleControls.js";
+import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 
 function spectrumPanelControls(raw) {
   const controls = normalizeDockModuleControls("spectrum", raw);
@@ -37,8 +38,15 @@ function dockSpectrumRequest(raw, panelId = "dock:spectrum") {
 
 export function mergeDockSpectrumRequest(derived, active, controls) {
   if (!active) return derived;
-  const configured =
-    typeof active === "object"
+  const configured = Array.isArray(active)
+    ? active
+        .map((panel) => {
+          const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
+          if (dockModuleId !== "spectrum" && dockModuleId !== "spectrogram") return null;
+          return dockSpectrumRequest(panel.controls, `dock:${panel.panelId}`);
+        })
+        .filter(Boolean)
+    : typeof active === "object"
       ? [
           active.spectrum ? dockSpectrumRequest(active.spectrum, "dock:spectrum") : null,
           active.spectrogram ? dockSpectrumRequest(active.spectrogram, "dock:spectrogram") : null,
