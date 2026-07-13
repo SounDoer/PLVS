@@ -781,7 +781,7 @@ function AppContent() {
   );
   const onDockAccessoryAction = useCallback(
     ({ type, payload }) => {
-      if (type === "source-primary") onSourceTransportAction();
+      if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
       else if (type === "open-editor") dockAccessoryVisibility.openEditor(payload.view);
       else if (type === "close-editor") dockAccessoryVisibility.closeEditor();

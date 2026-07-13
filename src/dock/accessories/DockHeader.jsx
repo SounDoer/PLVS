@@ -25,7 +25,7 @@ export function DockHeader({ state, onAction, onPointer }) {
         sourceMode="live"
         sourceLocked
         onSourceModeChange={() => {}}
-        onPrimaryAction={() => onAction("source-primary")}
+        onPrimaryAction={(actionKind) => onAction("source-primary", { actionKind })}
       />
       {state.notice ? (
         <span

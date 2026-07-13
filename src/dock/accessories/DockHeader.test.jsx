@@ -43,4 +43,29 @@ describe("DockHeader", () => {
     expect(onPointer.mock.calls).toEqual([[true], [false]]);
     expect(onAction).toHaveBeenCalledWith("open-editor", { view: "modules" });
   });
+
+  it.each([
+    ["startLive", "START"],
+    ["stopLive", "STOP"],
+  ])("forwards the %s transport action to main", (actionKind, actionLabel) => {
+    const onAction = vi.fn();
+    render(
+      <DockHeader
+        state={{
+          ...STATE,
+          sourceTransportState: {
+            ...STATE.sourceTransportState,
+            actionKind,
+            actionLabel,
+          },
+        }}
+        onAction={onAction}
+        onPointer={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: actionLabel }));
+
+    expect(onAction).toHaveBeenCalledWith("source-primary", { actionKind });
+  });
 });
