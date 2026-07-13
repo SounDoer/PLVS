@@ -60,6 +60,7 @@ describe("useDockAccessoryVisibility", () => {
       edge: "bottom",
       headerVisible: false,
       editorVisible: false,
+      editorWidth: 400,
       editorHeight: 480,
     };
 
@@ -78,12 +79,36 @@ describe("useDockAccessoryVisibility", () => {
 
     await expect(
       setDockAccessoriesWhenReady(
-        { edge: "top", headerVisible: true, editorVisible: true, editorHeight: 480 },
+        {
+          edge: "top",
+          headerVisible: true,
+          editorVisible: true,
+          editorWidth: 400,
+          editorHeight: 480,
+        },
         { command, wait }
       )
     ).rejects.toBe(error);
 
     expect(command).toHaveBeenCalledOnce();
     expect(wait).not.toHaveBeenCalled();
+  });
+
+  it("applies measured editor dimensions", async () => {
+    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    act(() => result.current.openEditor("presets"));
+    act(() => result.current.resizeEditor({ width: 238.2, height: 146.4 }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        editorVisible: true,
+        editorWidth: 239,
+        editorHeight: 147,
+      })
+    );
   });
 });

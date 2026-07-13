@@ -60,11 +60,24 @@ fn set_rect<R: tauri::Runtime>(
   Ok(())
 }
 
-fn show_or_hide<R: tauri::Runtime>(window: &WebviewWindow<R>, visible: bool) -> Result<(), String> {
+fn show_or_hide<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  visible: bool,
+  focus_on_show: bool,
+) -> Result<(), String> {
   if visible {
+    let was_visible = window
+      .is_visible()
+      .map_err(|e| format!("{} visibility: {e}", window.label()))?;
     window
       .show()
-      .map_err(|e| format!("{} show: {e}", window.label()))
+      .map_err(|e| format!("{} show: {e}", window.label()))?;
+    if focus_on_show && !was_visible {
+      window
+        .set_focus()
+        .map_err(|e| format!("{} focus: {e}", window.label()))?;
+    }
+    Ok(())
   } else {
     window
       .hide()
@@ -118,6 +131,7 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
   edge: DockEdge,
   header_visible: bool,
   editor_visible: bool,
+  editor_width: f64,
   editor_height: f64,
 ) -> Result<(), String> {
   let app = window.app_handle();
@@ -133,15 +147,15 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     return Err("dock editor window unavailable".to_string());
   }
   let (monitor, strip, scale) = main_geometry(&main)?;
-  let rects = dock_accessory_rects(monitor, strip, edge, scale, editor_height);
+  let rects = dock_accessory_rects(monitor, strip, edge, scale, editor_width, editor_height);
 
   if let Some(header) = header {
     set_rect(&header, rects.header)?;
-    show_or_hide(&header, header_visible)?;
+    show_or_hide(&header, header_visible, false)?;
   }
   if let Some(editor) = editor {
     set_rect(&editor, rects.editor)?;
-    show_or_hide(&editor, editor_visible)?;
+    show_or_hide(&editor, editor_visible, true)?;
   }
   Ok(())
 }

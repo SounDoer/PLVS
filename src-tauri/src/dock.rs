@@ -13,8 +13,9 @@ use crate::window_state::{
 /// frontend strip simply fills the viewport, so no JS copy of this number.
 pub const DOCK_STRIP_LOGICAL_HEIGHT: f64 = 72.0;
 pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 44.0;
-pub const DOCK_EDITOR_LOGICAL_WIDTH: f64 = 400.0;
-pub const DOCK_EDITOR_MIN_LOGICAL_HEIGHT: f64 = 180.0;
+pub const DOCK_EDITOR_MIN_LOGICAL_WIDTH: f64 = 176.0;
+pub const DOCK_EDITOR_MAX_LOGICAL_WIDTH: f64 = 400.0;
+pub const DOCK_EDITOR_MIN_LOGICAL_HEIGHT: f64 = 80.0;
 pub const DOCK_EDITOR_MAX_LOGICAL_HEIGHT: f64 = 640.0;
 pub const DOCK_EDITOR_LOGICAL_INSET: f64 = 8.0;
 
@@ -71,10 +72,13 @@ pub fn dock_accessory_rects(
   strip: WindowBounds,
   edge: DockEdge,
   scale: f64,
+  editor_logical_width: f64,
   editor_logical_height: f64,
 ) -> DockAccessoryRects {
   let header_height = scaled_px(DOCK_HEADER_LOGICAL_HEIGHT, scale).min(monitor.height);
-  let preferred_editor_width = scaled_px(DOCK_EDITOR_LOGICAL_WIDTH, scale);
+  let requested_editor_width =
+    editor_logical_width.clamp(DOCK_EDITOR_MIN_LOGICAL_WIDTH, DOCK_EDITOR_MAX_LOGICAL_WIDTH);
+  let preferred_editor_width = scaled_px(requested_editor_width, scale);
   let inset = scaled_px(DOCK_EDITOR_LOGICAL_INSET, scale) as i32;
   let requested_editor_height = editor_logical_height.clamp(
     DOCK_EDITOR_MIN_LOGICAL_HEIGHT,
@@ -474,7 +478,7 @@ mod tests {
   #[test]
   fn bottom_accessories_open_above_the_strip_and_align_right() {
     let strip = dock_strip_rect(wa(), DockEdge::Bottom, 72);
-    let rects = dock_accessory_rects(wa(), strip, DockEdge::Bottom, 1.0, 480.0);
+    let rects = dock_accessory_rects(wa(), strip, DockEdge::Bottom, 1.0, 400.0, 480.0);
     assert_eq!(
       (
         rects.header.x,
@@ -498,7 +502,7 @@ mod tests {
   #[test]
   fn top_accessories_open_below_the_strip_at_scaled_size() {
     let strip = dock_strip_rect(wa(), DockEdge::Top, 108);
-    let rects = dock_accessory_rects(wa(), strip, DockEdge::Top, 1.5, 300.0);
+    let rects = dock_accessory_rects(wa(), strip, DockEdge::Top, 1.5, 400.0, 300.0);
     assert_eq!((rects.header.y, rects.header.height), (108, 66));
     assert_eq!(
       (rects.editor.y, rects.editor.width, rects.editor.height),
@@ -516,7 +520,7 @@ mod tests {
       height: 1400,
     };
     let strip = dock_strip_rect(monitor, DockEdge::Top, 72);
-    let rects = dock_accessory_rects(monitor, strip, DockEdge::Top, 1.0, 400.0);
+    let rects = dock_accessory_rects(monitor, strip, DockEdge::Top, 1.0, 400.0, 400.0);
     assert_eq!((rects.header.x, rects.header.y), (-2560, -128));
     assert_eq!(rects.editor.x, -408);
     assert_eq!(rects.editor.y, -84);
@@ -531,7 +535,7 @@ mod tests {
       height: 240,
     };
     let strip = dock_strip_rect(monitor, DockEdge::Bottom, 72);
-    let rects = dock_accessory_rects(monitor, strip, DockEdge::Bottom, 1.0, 640.0);
+    let rects = dock_accessory_rects(monitor, strip, DockEdge::Bottom, 1.0, 400.0, 640.0);
     assert_eq!((rects.header.y, rects.header.height), (144, 44));
     assert_eq!((rects.editor.x, rects.editor.y), (18, 20));
     assert_eq!((rects.editor.width, rects.editor.height), (304, 124));

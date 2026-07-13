@@ -12,6 +12,7 @@ const ACTION_TYPES = new Set([
   "clear",
   "open-editor",
   "close-editor",
+  "resize-editor",
   "set-edge",
   "set-reserve-space",
   "restore-window",

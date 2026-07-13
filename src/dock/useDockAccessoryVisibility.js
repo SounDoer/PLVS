@@ -6,6 +6,12 @@ import { DOCK_ACCESSORY_HIDE_DELAY_MS, shouldShowDockHeader } from "./accessoryV
 const ACCESSORY_READY_RETRY_MS = 50;
 const ACCESSORY_READY_ATTEMPTS = 4;
 
+function initialEditorSize(view) {
+  if (view === "presets") return { width: 240, height: 560 };
+  if (view === "modules") return { width: 320, height: 480 };
+  return { width: 400, height: 480 };
+}
+
 function isAccessoryUnavailable(error) {
   return /dock (?:header|editor) window unavailable/i.test(error?.message || String(error));
 }
@@ -31,6 +37,7 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
   const [presence, setPresence] = useState({ stripInside: false, headerInside: false });
   const [headerVisible, setHeaderVisible] = useState(false);
   const [editorView, setEditorView] = useState(null);
+  const [editorSize, setEditorSize] = useState(() => initialEditorSize(null));
   const hideTimerRef = useRef(null);
   const requestRef = useRef(0);
   const commandQueueRef = useRef(Promise.resolve());
@@ -52,12 +59,23 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
   const openEditor = useCallback(
     (view) => {
       clearHideTimer();
+      setEditorSize(initialEditorSize(view));
       setEditorView(view);
       setHeaderVisible(true);
     },
     [clearHideTimer]
   );
   const closeEditor = useCallback(() => setEditorView(null), []);
+  const resizeEditor = useCallback(({ width, height }) => {
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return;
+    const next = {
+      width: Math.max(176, Math.min(400, Math.ceil(width))),
+      height: Math.max(80, Math.min(640, Math.ceil(height))),
+    };
+    setEditorSize((current) =>
+      current.width === next.width && current.height === next.height ? current : next
+    );
+  }, []);
 
   useEffect(() => {
     if (!active) {
@@ -88,13 +106,14 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
           edge,
           headerVisible: active && headerVisible,
           editorVisible: active && editorView !== null,
-          editorHeight: editorView === "presets" ? 560 : 480,
+          editorWidth: editorSize.width,
+          editorHeight: editorSize.height,
         })
       );
     void commandQueueRef.current.catch((error) => {
       if (request === requestRef.current) onError?.(error);
     });
-  }, [active, edge, editorView, headerVisible, onError]);
+  }, [active, edge, editorSize, editorView, headerVisible, onError]);
 
   useEffect(() => () => clearHideTimer(), [clearHideTimer]);
 
@@ -108,5 +127,6 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
     },
     openEditor,
     closeEditor,
+    resizeEditor,
   };
 }

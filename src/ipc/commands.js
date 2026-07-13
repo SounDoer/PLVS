@@ -87,12 +87,14 @@ export function setDockAccessories({
   edge,
   headerVisible,
   editorVisible = false,
+  editorWidth = 400,
   editorHeight = 480,
 }) {
   return invoke("set_dock_accessories", {
     edge,
     headerVisible,
     editorVisible,
+    editorWidth,
     editorHeight,
   });
 }
