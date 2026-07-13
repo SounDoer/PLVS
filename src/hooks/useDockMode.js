@@ -33,11 +33,11 @@ export function useDockMode() {
   }, []);
 
   const setReserveSpace = useCallback(
-    async (enabled) => {
+    async (enabled, edgeOverride) => {
       if (!isTauri()) return;
-      const edge = dock.edge;
+      const edge = edgeOverride === "top" || edgeOverride === "bottom" ? edgeOverride : dock.edge;
       await setDockReserveSpace({ enabled, edge });
-      setDock((prev) => ({ ...prev, reserveSpace: enabled }));
+      setDock((prev) => ({ ...prev, edge, reserveSpace: enabled }));
     },
     [dock.edge]
   );

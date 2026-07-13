@@ -36,6 +36,18 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(true);
   });
 
+  it("uses an explicit edge while applying preset reserve-space", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    const { result } = renderHook(() => useDockMode());
+
+    await act(() => result.current.setReserveSpace(true, "top"));
+
+    expect(mocks.setDockReserveSpace).toHaveBeenCalledWith({ enabled: true, edge: "top" });
+    expect(result.current).toMatchObject({ dockEdge: "top", reserveSpace: true });
+  });
+
   it("keeps reserve-space enabled when moving to the other edge", async () => {
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", reserveSpace: true },

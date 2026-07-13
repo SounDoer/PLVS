@@ -301,7 +301,7 @@ describe("App smoke", () => {
   it("applies reserve screen space from a dock preset", async () => {
     isTauri.mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: true, edge: "top", reserveSpace: false },
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
     };
     const { presetsStore } = await import("./persistence/index.js");
     presetsStore.patch({

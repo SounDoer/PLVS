@@ -241,9 +241,11 @@ function AppContent() {
       if (presetDock.enabled) {
         dockLayout.setModules(presetDock.modules);
         dockLayout.setControlsByModuleId(presetDock.controlsByModuleId, presetDock.statsIds);
-        await enterDockMode(presetDock.edge);
+        if (!dockEnabled || dockEdge !== presetDock.edge) {
+          await enterDockMode(presetDock.edge);
+        }
         if (presetDock.reserveSpace !== reserveSpace) {
-          await setReserveSpace(presetDock.reserveSpace);
+          await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
         }
       } else if (dockEnabled) {
         await exitDockRestoringAttributes();
@@ -253,6 +255,7 @@ function AppContent() {
       dockLayout,
       enterDockMode,
       dockEnabled,
+      dockEdge,
       exitDockRestoringAttributes,
       reserveSpace,
       setReserveSpace,
