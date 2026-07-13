@@ -3,6 +3,7 @@ import {
   ArrowUpToLine,
   Bookmark,
   LayoutGrid,
+  PanelTop,
   PictureInPicture2,
   Trash2,
 } from "lucide-react";
@@ -24,7 +25,10 @@ export function DockControls({
   notice,
   onEditModules,
   onEditPresets,
+  reserveSpace = false,
+  onReserveSpaceChange,
 }) {
+  const isWindows = /Win/i.test(navigator.platform || navigator.userAgent || "");
   return (
     <div className="absolute inset-0 z-20 flex items-center gap-2 bg-background/80 px-2 backdrop-blur-sm">
       <SourceTransportCluster
@@ -56,6 +60,15 @@ export function DockControls({
         onClick={onEditModules}
       />
       <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" onClick={onEditPresets} />
+      {isWindows ? (
+        <IconButton
+          icon={<PanelTop className="size-3.5" />}
+          tip={reserveSpace ? "Stop reserving screen space" : "Reserve screen space"}
+          aria-pressed={reserveSpace}
+          onClick={() => onReserveSpaceChange?.(!reserveSpace)}
+          className={reserveSpace ? "bg-accent text-accent-foreground" : undefined}
+        />
+      ) : null}
       <IconButton
         icon={
           dockEdge === "top" ? (

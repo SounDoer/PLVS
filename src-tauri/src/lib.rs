@@ -1,3 +1,5 @@
+#[cfg(target_os = "windows")]
+mod appbar;
 mod audio;
 pub mod cli_analyze;
 pub mod cli_analyze_batch;
@@ -74,6 +76,7 @@ pub fn run() {
       dock::enter_dock,
       dock::exit_dock,
       dock::get_dock_state,
+      dock::set_dock_reserve_space,
       glass_effect::set_glass_effect,
     ])
     .setup(|app| {
@@ -135,7 +138,7 @@ pub fn run() {
         .and_then(|v| serde_json::from_value(v).ok());
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       if boot_docked {
-        let d = boot_dock.unwrap();
+        let d = boot_dock.as_ref().expect("boot_docked requires dock state");
         app
           .state::<dock::DockedFlag>()
           .0
@@ -174,6 +177,18 @@ pub fn run() {
         }
       }
       let _ = window.show();
+
+      #[cfg(target_os = "windows")]
+      appbar::install_window_subclass(&window).map_err(|e| format!("appbar subclass: {e}"))?;
+
+      #[cfg(target_os = "windows")]
+      if boot_docked && boot_dock.as_ref().is_some_and(|d| d.reserve_space) {
+        if let Some(d) = boot_dock.as_ref() {
+          if let Err(e) = appbar::set_reserved(&window, true, d.edge) {
+            log::warn!("appbar restore failed, continuing as overlay dock: {e}");
+          }
+        }
+      }
 
       // Persist geometry on move/resize, debounced via a dirty flag + short flush thread.
       use std::sync::atomic::{AtomicBool, Ordering};

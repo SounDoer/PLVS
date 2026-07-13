@@ -29,6 +29,8 @@ pub struct DockStateRecord {
   pub edge: DockEdge,
   #[serde(default)]
   pub monitor: Option<String>,
+  #[serde(default)]
+  pub reserve_space: bool,
 }
 
 /// Compute the docked strip rect (physical px) inside a monitor work area.
@@ -168,6 +170,13 @@ pub fn enter_dock<R: tauri::Runtime>(
   flag: tauri::State<'_, DockedFlag>,
   edge: DockEdge,
 ) -> Result<(), String> {
+  let reserve_space = read_dock_state(window.app_handle())
+    .map(|state| state.reserve_space)
+    .unwrap_or(false);
+  #[cfg(target_os = "windows")]
+  if reserve_space {
+    crate::appbar::set_reserved(&window, false, edge)?;
+  }
   // Persist the latest normal-form geometry, then raise the suppression flag
   // BEFORE moving the window so the flush thread can't record strip bounds.
   save_window_bounds(&window);
@@ -175,12 +184,20 @@ pub fn enter_dock<R: tauri::Runtime>(
   let monitor = apply_dock_form(&window, edge, None).inspect_err(|_| {
     flag.0.store(false, Ordering::Relaxed);
   })?;
+  #[cfg(target_os = "windows")]
+  if reserve_space {
+    crate::appbar::set_reserved(&window, true, edge).inspect_err(|_| {
+      flag.0.store(false, Ordering::Relaxed);
+      restore_normal_shell(&window);
+    })?;
+  }
   save_dock_state(
     window.app_handle(),
     &DockStateRecord {
       enabled: true,
       edge,
       monitor,
+      reserve_space,
     },
   );
   Ok(())
@@ -193,6 +210,8 @@ pub fn exit_dock<R: tauri::Runtime>(
   decorations: bool,
   always_on_top: bool,
 ) -> Result<(), String> {
+  #[cfg(target_os = "windows")]
+  crate::appbar::set_reserved(&window, false, DockEdge::Bottom)?;
   window
     .set_resizable(true)
     .map_err(|e| format!("resizable: {e}"))?;
@@ -251,6 +270,7 @@ pub fn exit_dock<R: tauri::Runtime>(
       enabled: false,
       edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
       monitor: prev.and_then(|s| s.monitor),
+      reserve_space: false,
     },
   );
   flag.0.store(false, Ordering::Relaxed);
@@ -262,6 +282,42 @@ pub fn get_dock_state<R: tauri::Runtime>(
   app: tauri::AppHandle<R>,
 ) -> Result<Option<DockStateRecord>, String> {
   Ok(read_dock_state(&app))
+}
+
+#[tauri::command]
+pub fn set_dock_reserve_space<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  flag: tauri::State<'_, DockedFlag>,
+  enabled: bool,
+  edge: DockEdge,
+) -> Result<(), String> {
+  if !flag.0.load(Ordering::Relaxed) {
+    return Err("window is not docked".into());
+  }
+
+  #[cfg(target_os = "windows")]
+  {
+    crate::appbar::set_reserved(&window, enabled, edge)?;
+    if !enabled {
+      apply_dock_form(&window, edge, None)?;
+    }
+  }
+  #[cfg(not(target_os = "windows"))]
+  if enabled {
+    return Err("reserve screen space is only available on Windows".into());
+  }
+
+  let previous = read_dock_state(window.app_handle());
+  save_dock_state(
+    window.app_handle(),
+    &DockStateRecord {
+      enabled: true,
+      edge,
+      monitor: previous.and_then(|state| state.monitor),
+      reserve_space: enabled,
+    },
+  );
+  Ok(())
 }
 
 #[cfg(test)]
@@ -321,11 +377,13 @@ mod tests {
       enabled: true,
       edge: DockEdge::Bottom,
       monitor: Some("\\\\.\\DISPLAY1".into()),
+      reserve_space: true,
     };
     let v = serde_json::to_value(&s).unwrap();
     assert_eq!(v["enabled"], true);
     assert_eq!(v["edge"], "bottom");
     assert_eq!(v["monitor"], "\\\\.\\DISPLAY1");
+    assert_eq!(v["reserveSpace"], true);
     let back: DockStateRecord = serde_json::from_value(v).unwrap();
     assert_eq!(back, s);
   }

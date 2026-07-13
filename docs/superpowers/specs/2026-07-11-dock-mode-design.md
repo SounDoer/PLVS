@@ -1,7 +1,7 @@
 # Dock Mode (miniMeters-style edge strip)
 
 **Date:** 2026-07-11
-**Status:** Design approved in discussion; implementation not started.
+**Status:** Implemented, including the Windows AppBar reserve-space phase.
 
 ## Summary
 
@@ -13,7 +13,7 @@ second app surface: the audio/data layer is untouched, and existing view
 attributes (Always on Top, Hide Chrome, …) are temporarily overridden — never
 overwritten — while docked.
 
-A later Windows-only enhancement ("Reserve screen space", Win32 AppBar) makes
+The Windows-only enhancement ("Reserve screen space", Win32 AppBar) makes
 the strip claim real work-area space so maximized windows avoid it. Phase 1
 ships without it but must not block it.
 
@@ -24,7 +24,7 @@ ships without it but must not block it.
 | Edges | Top / Bottom only (horizontal strip). No left/right vertical strips. |
 | Width | Full width of the monitor's **work area** (avoids taskbar / macOS Dock). Computed once on entry; no live work-area tracking in v1. |
 | Height | Fixed in v1: 72 logical px initial value, defined as a `--ui-*` token (tunable at implementation time, single source). Not user-resizable. |
-| Space semantics | v1: always-on-top overlay strip (form 1). AppBar reserve-space (form 2) is a **sub-option of dock**, Windows-only, later phase — not a parallel mode. |
+| Space semantics | Always-on-top overlay strip (form 1). AppBar reserve-space (form 2) is a **sub-option of dock**, Windows-only — not a parallel mode. |
 | Content | Dedicated dock modules (approach: "watch-face widgets"), NOT squeezed workspace panels. Data layer (AudioDataContext / frame intake) fully reused; theme tokens fully reused. |
 | Customization | Which modules + order, edited **inside dock mode only** (WYSIWYG). No dock pre-configuration UI in normal mode. |
 | Entry point | Views popover (`FocusViewPopoverContent`): one **three-state segmented control** `Dock: Off | Top | Bottom`. Disabled while in FILE mode. |
@@ -101,7 +101,7 @@ Left → right:
 3. Modules (LayoutGrid icon) → switches strip into **module edit state**.
 4. Presets (Bookmark icon) → switches strip into **preset state**.
 5. Top/Bottom edge switch.
-6. (later, Windows-only) Reserve screen space toggle.
+6. (Windows-only) Reserve screen space toggle.
 7. Restore window (exit dock).
 
 **Health dot (not hover-gated):** a small always-visible status dot in a strip
@@ -150,7 +150,7 @@ flows through them.
 The strip rect computation is a pure function
 (`MonitorRect + work area + edge → WindowBounds`) with unit tests, following
 the `clamp_to_visible` precedent in `window_state.rs`. The same function must
-serve both form 1 (overlay) and form 2 (AppBar) later.
+serve both form 1 (overlay) and form 2 (AppBar).
 
 ## Persistence map
 
@@ -189,7 +189,7 @@ dock: { enabled, edge, modules }   // modules = ordered enabled ids
 | v1.5 | DockWaveform | Scrolling compact waveform | Overlaps Level in value; visual intuition |
 | v1.5 | DockTransport (optional) | `SourceTransportCluster` as an always-visible module | Near-zero cost; for users who want persistent transport |
 | v2 | DockSpectrogram | Scrolling mini spectrogram (colormap LUT reuse) | Readability at 60px needs dedicated polish |
-| later | AppBar reserve-space | See below | Windows only |
+| shipped | AppBar reserve-space | See below | Windows only |
 
 ## Phase: AppBar (Windows-only "Reserve screen space")
 
@@ -236,6 +236,5 @@ platform reality, documented, not a bug.
 
 - Left/right vertical strips; user-resizable strip height; drag-to-move while
   docked; dock content pre-configuration from normal mode; FILE mode in dock;
-  history/scrub interactions in dock modules; enter/exit animation; AppBar
-  implementation (design locked above, shipped later); click-through overlay
-  mode.
+  history/scrub interactions in dock modules; enter/exit animation;
+  click-through overlay mode.

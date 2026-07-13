@@ -77,6 +77,11 @@ export function exitDock({ decorations, alwaysOnTop }) {
   return invoke("exit_dock", { decorations, alwaysOnTop });
 }
 
+/** Windows-only: register or remove the dock strip as a Win32 AppBar. */
+export function setDockReserveSpace({ enabled, edge }) {
+  return invoke("set_dock_reserve_space", { enabled, edge });
+}
+
 export function exportProfileCommand() {
   return invoke("export_profile");
 }

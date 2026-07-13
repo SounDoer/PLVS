@@ -56,6 +56,13 @@ window-vibrancy = "0.6"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.52"
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_Controls",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
 
 # Size-focused release profile (the Tauri template defaults this project was missing).
 # opt-level stays at the default 3: the DSP hot path should keep full speed optimization.

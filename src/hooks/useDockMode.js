@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
-import { enterDock, exitDock } from "../ipc/commands.js";
+import { enterDock, exitDock, setDockReserveSpace } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 
 function normalizeDockState(raw) {
   const edge = raw?.edge === "top" ? "top" : "bottom";
-  return { enabled: raw?.enabled === true, edge };
+  return { enabled: raw?.enabled === true, edge, reserveSpace: raw?.reserveSpace === true };
 }
 
 /**
@@ -23,14 +23,31 @@ export function useDockMode() {
   const enterDockMode = useCallback(async (edge) => {
     if (!isTauri()) return;
     await enterDock(edge);
-    setDock({ enabled: true, edge });
+    setDock((prev) => ({ ...prev, enabled: true, edge }));
   }, []);
 
   const exitDockMode = useCallback(async ({ decorations, alwaysOnTop }) => {
     if (!isTauri()) return;
     await exitDock({ decorations, alwaysOnTop });
-    setDock((prev) => ({ ...prev, enabled: false }));
+    setDock((prev) => ({ ...prev, enabled: false, reserveSpace: false }));
   }, []);
 
-  return { dockEnabled: dock.enabled, dockEdge: dock.edge, enterDockMode, exitDockMode };
+  const setReserveSpace = useCallback(
+    async (enabled) => {
+      if (!isTauri()) return;
+      const edge = dock.edge;
+      await setDockReserveSpace({ enabled, edge });
+      setDock((prev) => ({ ...prev, reserveSpace: enabled }));
+    },
+    [dock.edge]
+  );
+
+  return {
+    dockEnabled: dock.enabled,
+    dockEdge: dock.edge,
+    reserveSpace: dock.reserveSpace,
+    enterDockMode,
+    exitDockMode,
+    setReserveSpace,
+  };
 }

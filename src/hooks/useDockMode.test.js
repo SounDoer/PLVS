@@ -4,12 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   enterDock: vi.fn(async () => {}),
   exitDock: vi.fn(async () => {}),
+  setDockReserveSpace: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
 }));
 
 vi.mock("../ipc/commands.js", () => ({
   enterDock: mocks.enterDock,
   exitDock: mocks.exitDock,
+  setDockReserveSpace: mocks.setDockReserveSpace,
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
 
@@ -19,8 +21,28 @@ describe("useDockMode", () => {
   beforeEach(() => {
     mocks.enterDock.mockClear();
     mocks.exitDock.mockClear();
+    mocks.setDockReserveSpace.mockClear();
     mocks.isTauri.mockReturnValue(true);
     delete window.__PLVS_INITIAL_STATE__;
+  });
+
+  it("toggles reserve-space through IPC using the current edge", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", reserveSpace: false },
+    };
+    const { result } = renderHook(() => useDockMode());
+    await act(() => result.current.setReserveSpace(true));
+    expect(mocks.setDockReserveSpace).toHaveBeenCalledWith({ enabled: true, edge: "top" });
+    expect(result.current.reserveSpace).toBe(true);
+  });
+
+  it("keeps reserve-space enabled when moving to the other edge", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", reserveSpace: true },
+    };
+    const { result } = renderHook(() => useDockMode());
+    await act(() => result.current.enterDockMode("bottom"));
+    expect(result.current).toMatchObject({ dockEdge: "bottom", reserveSpace: true });
   });
 
   it("starts disabled without injected state", () => {

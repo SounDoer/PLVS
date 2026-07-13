@@ -123,7 +123,8 @@ function AppContent() {
   // window overrides below (Rust owns strip chrome + topmost while docked),
   // and preset capture/apply reads dock state. useDockMode depends on no
   // other hook, so hoisting it above useAlwaysOnTop is safe.
-  const { dockEnabled, dockEdge, enterDockMode, exitDockMode } = useDockMode();
+  const { dockEnabled, dockEdge, reserveSpace, enterDockMode, exitDockMode, setReserveSpace } =
+    useDockMode();
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
   // Suspended while docked: a preset apply may flip the stored pin to false
@@ -947,6 +948,14 @@ function AppContent() {
           clearDisabled: !running && !showClock,
           dockEdge,
           onDockEdgeChange: (edge) => onDockChange(edge),
+          reserveSpace,
+          onReserveSpaceChange: async (enabled) => {
+            try {
+              await setReserveSpace(enabled);
+            } catch (err) {
+              raiseNotice("error", `Reserve screen space failed: ${err?.message || err}`);
+            }
+          },
           onExitDock: exitDockRestoringAttributes,
           notice,
         },
