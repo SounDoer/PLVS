@@ -41,8 +41,12 @@ pub struct DockStateRecord {
   pub edge: DockEdge,
   #[serde(default)]
   pub monitor: Option<String>,
-  #[serde(default)]
+  #[serde(default = "default_reserve_space")]
   pub reserve_space: bool,
+}
+
+fn default_reserve_space() -> bool {
+  true
 }
 
 /// Compute the docked strip rect (physical px) inside a monitor work area.
@@ -272,7 +276,7 @@ pub fn enter_dock<R: tauri::Runtime>(
     previous
       .as_ref()
       .map(|state| state.reserve_space)
-      .unwrap_or(false)
+      .unwrap_or(true)
   });
   #[cfg(target_os = "windows")]
   crate::appbar::set_reserved(&window, false, edge)?;
@@ -371,8 +375,8 @@ pub fn exit_dock<R: tauri::Runtime>(
     &DockStateRecord {
       enabled: false,
       edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
-      monitor: prev.and_then(|s| s.monitor),
-      reserve_space: false,
+      monitor: prev.as_ref().and_then(|s| s.monitor.clone()),
+      reserve_space: prev.as_ref().map(|s| s.reserve_space).unwrap_or(true),
     },
   );
   flag.0.store(false, Ordering::Relaxed);
@@ -485,6 +489,13 @@ mod tests {
     assert_eq!(v["reserveSpace"], true);
     let back: DockStateRecord = serde_json::from_value(v).unwrap();
     assert_eq!(back, s);
+  }
+
+  #[test]
+  fn dock_state_defaults_reserve_space_on_when_missing() {
+    let back: DockStateRecord =
+      serde_json::from_value(serde_json::json!({ "enabled": true, "edge": "bottom" })).unwrap();
+    assert!(back.reserve_space);
   }
 
   #[test]

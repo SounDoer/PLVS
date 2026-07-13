@@ -10,6 +10,8 @@ import { HoverTip } from "@/components/HoverTip";
  *   disabled?: boolean,
  *   onClick?: () => void,
  *   className?: string,
+ *   tipSide?: "bottom" | "top" | "left" | "right",
+ *   tipAlign?: "start" | "center" | "end",
  *   "aria-label"?: string,
  *   "aria-pressed"?: boolean,
  * }} props
@@ -20,11 +22,13 @@ export function IconButton({
   disabled = false,
   onClick,
   className,
+  tipSide = "bottom",
+  tipAlign = "center",
   "aria-label": ariaLabel,
   "aria-pressed": ariaPressed,
 }) {
   return (
-    <HoverTip tip={tip} side="bottom">
+    <HoverTip tip={tip} side={tipSide} align={tipAlign}>
       <button
         type="button"
         aria-label={ariaLabel ?? tip}

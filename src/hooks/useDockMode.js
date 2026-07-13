@@ -5,7 +5,7 @@ import { presetsStore } from "../persistence/index.js";
 
 function normalizeDockState(raw) {
   const edge = raw?.edge === "top" ? "top" : "bottom";
-  return { enabled: raw?.enabled === true, edge, reserveSpace: raw?.reserveSpace === true };
+  return { enabled: raw?.enabled === true, edge, reserveSpace: raw?.reserveSpace !== false };
 }
 
 /**
@@ -65,7 +65,7 @@ export function useDockMode() {
       return enqueueTransition(async () => {
         const wasEnabled = dockRef.current.enabled;
         await exitDock({ decorations, alwaysOnTop });
-        commitDock((latest) => ({ ...latest, enabled: false, reserveSpace: false }));
+        commitDock((latest) => ({ ...latest, enabled: false }));
         if (wasEnabled) presetsStore.patch({ dirty: true });
       });
     },

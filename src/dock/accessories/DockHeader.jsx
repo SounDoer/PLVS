@@ -13,6 +13,7 @@ import { SourceTransportCluster } from "../../components/SourceTransportCluster.
 export function DockHeader({ state, onAction, onPointer }) {
   const isWindows = /Win/i.test(navigator.platform || navigator.userAgent || "");
   if (!state) return null;
+  const toolTipProps = { tipSide: "left", tipAlign: "center" };
   const toggleEditor = (view) => {
     const actionType = state.editorView === view ? "close-editor" : "open-editor";
     if (actionType === "close-editor") onAction(actionType);
@@ -45,27 +46,23 @@ export function DockHeader({ state, onAction, onPointer }) {
       <IconButton
         icon={<Trash2 className="size-3.5" />}
         tip="Clear"
+        {...toolTipProps}
         disabled={state.clearDisabled}
         onClick={() => onAction("clear")}
       />
       <IconButton
         icon={<LayoutGrid className="size-3.5" />}
         tip="Edit modules"
+        {...toolTipProps}
         aria-pressed={state.editorView === "modules"}
         className={state.editorView === "modules" ? "bg-accent text-accent-foreground" : undefined}
         onClick={() => toggleEditor("modules")}
-      />
-      <IconButton
-        icon={<Bookmark className="size-3.5" />}
-        tip="Presets"
-        aria-pressed={state.editorView === "presets"}
-        className={state.editorView === "presets" ? "bg-accent text-accent-foreground" : undefined}
-        onClick={() => toggleEditor("presets")}
       />
       {isWindows ? (
         <IconButton
           icon={<PanelTop className="size-3.5" />}
           tip={state.reserveSpace ? "Stop reserving screen space" : "Reserve screen space"}
+          {...toolTipProps}
           aria-pressed={state.reserveSpace}
           onClick={() => onAction("toggle-reserve-space")}
           className={state.reserveSpace ? "bg-accent text-accent-foreground" : undefined}
@@ -80,12 +77,22 @@ export function DockHeader({ state, onAction, onPointer }) {
           )
         }
         tip={state.edge === "top" ? "Dock to bottom" : "Dock to top"}
+        {...toolTipProps}
         onClick={() => onAction("set-edge", { edge: state.edge === "top" ? "bottom" : "top" })}
       />
       <IconButton
         icon={<PictureInPicture2 className="size-3.5" />}
         tip="Restore window"
+        {...toolTipProps}
         onClick={() => onAction("restore-window")}
+      />
+      <IconButton
+        icon={<Bookmark className="size-3.5" />}
+        tip="Presets"
+        {...toolTipProps}
+        aria-pressed={state.editorView === "presets"}
+        className={state.editorView === "presets" ? "bg-accent text-accent-foreground" : undefined}
+        onClick={() => toggleEditor("presets")}
       />
     </div>
   );

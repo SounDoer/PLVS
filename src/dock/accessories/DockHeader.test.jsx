@@ -26,10 +26,10 @@ describe("DockHeader", () => {
       null,
       "Clear",
       "Edit modules",
-      "Presets",
       "Stop reserving screen space",
       "Dock to top",
       "Restore window",
+      "Presets",
     ]);
   });
 

@@ -126,6 +126,7 @@ describe("useDockMode", () => {
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEnabled).toBe(false);
     expect(result.current.dockEdge).toBe("bottom");
+    expect(result.current.reserveSpace).toBe(true);
   });
 
   it("starts docked from injected boot state", () => {
@@ -133,6 +134,7 @@ describe("useDockMode", () => {
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEnabled).toBe(true);
     expect(result.current.dockEdge).toBe("top");
+    expect(result.current.reserveSpace).toBe(true);
   });
 
   it("enterDockMode invokes IPC and flips state", async () => {
@@ -150,6 +152,7 @@ describe("useDockMode", () => {
     await act(() => result.current.exitDockMode({ decorations: true, alwaysOnTop: false }));
     expect(mocks.exitDock).toHaveBeenCalledWith({ decorations: true, alwaysOnTop: false });
     expect(result.current.dockEnabled).toBe(false);
+    expect(result.current.reserveSpace).toBe(true);
     expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
   });
 
