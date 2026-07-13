@@ -237,6 +237,7 @@ function AppContent() {
     async (presetDock) => {
       if (presetDock.enabled) {
         dockLayout.setModules(presetDock.modules);
+        if (presetDock.statsIds) dockLayout.setStatsIds(presetDock.statsIds);
         await enterDockMode(presetDock.edge);
       } else if (dockEnabled) {
         await exitDockRestoringAttributes();
@@ -248,8 +249,13 @@ function AppContent() {
   // Stable identity: an inline literal would churn captureSnapshot (and the
   // memoized presets API) on every render.
   const presetDockState = useMemo(
-    () => ({ enabled: dockEnabled, edge: dockEdge, modules: dockLayout.modules }),
-    [dockEnabled, dockEdge, dockLayout.modules]
+    () => ({
+      enabled: dockEnabled,
+      edge: dockEdge,
+      modules: dockLayout.modules,
+      statsIds: dockLayout.statsIds,
+    }),
+    [dockEnabled, dockEdge, dockLayout.modules, dockLayout.statsIds]
   );
 
   const presets = usePresets({

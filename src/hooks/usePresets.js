@@ -61,7 +61,7 @@ export function usePresets({
   setPanelOpacity = () => {},
   glassEnabled = false,
   setGlassEnabled = () => {},
-  dock = { enabled: false, edge: "bottom", modules: [] },
+  dock = { enabled: false, edge: "bottom", modules: [], statsIds: undefined },
   applyDockPreset = async () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
@@ -138,6 +138,7 @@ export function usePresets({
         enabled: dock.enabled === true,
         edge: dock.edge === "top" ? "top" : "bottom",
         modules: [...dock.modules],
+        statsIds: Array.isArray(dock.statsIds) ? [...dock.statsIds] : undefined,
       },
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
@@ -190,6 +191,7 @@ export function usePresets({
         enabled: preset.dock?.enabled === true,
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
         modules: Array.isArray(preset.dock?.modules) ? preset.dock.modules : [],
+        statsIds: Array.isArray(preset.dock?.statsIds) ? preset.dock.statsIds : undefined,
       };
       try {
         await applyDockPreset(presetDock);

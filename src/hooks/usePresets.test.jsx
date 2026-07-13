@@ -585,5 +585,50 @@ describe("usePresets", () => {
       expect(applied).toBe(false);
       expect(presetsStore.read().activeId).toBeNull();
     });
+
+    it("captures and applies statsIds through the dock field", async () => {
+      const applyDockPreset = vi.fn(async () => {});
+      const dock = {
+        enabled: true,
+        edge: "top",
+        modules: ["stats"],
+        statsIds: ["psr", "plr"],
+      };
+      const { result } = renderPresetHook({ dock, applyDockPreset });
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Stats dock");
+      });
+      expect(preset.dock.statsIds).toEqual(["psr", "plr"]);
+      await act(async () => {
+        await result.current.presets.apply(preset.id);
+      });
+      expect(applyDockPreset).toHaveBeenCalledWith(
+        expect.objectContaining({ statsIds: ["psr", "plr"] })
+      );
+    });
+
+    it("presets without statsIds apply with an undefined statsIds (defaults downstream)", async () => {
+      const applyDockPreset = vi.fn(async () => {});
+      const { result } = renderPresetHook({ applyDockPreset });
+      let preset;
+      await act(async () => {
+        preset = await result.current.presets.save("Old dock");
+      });
+      const raw = presetsStore.read();
+      presetsStore.patch({
+        list: raw.list.map((p) => {
+          const dockCopy = { ...p.dock };
+          delete dockCopy.statsIds;
+          return { ...p, dock: dockCopy };
+        }),
+      });
+      await act(async () => {
+        await result.current.presets.apply(preset.id);
+      });
+      expect(applyDockPreset).toHaveBeenCalledWith(
+        expect.objectContaining({ statsIds: undefined })
+      );
+    });
   });
 });
