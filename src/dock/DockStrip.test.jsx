@@ -57,6 +57,12 @@ describe("DockStrip", () => {
     expect(screen.getByRole("button", { name: /done/i })).toBeTruthy();
   });
 
+  it("passes controls down to modules (transport pill renders without hover)", () => {
+    renderStrip({ modules: ["transport"] });
+    // DockTransport reads controls.sourceTransportState; no hover involved.
+    expect(screen.getByRole("button", { name: /start/i })).toBeTruthy();
+  });
+
   it("shows the health dot in error state when the notice is an error", () => {
     renderStrip({
       controls: { ...BASE_PROPS.controls, notice: { kind: "error", text: "capture failed" } },

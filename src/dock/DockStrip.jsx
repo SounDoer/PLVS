@@ -54,7 +54,7 @@ export function DockStrip({ modules, onToggleModule, onReorderModule, controls, 
                 data-testid="dock-module"
                 className={cn("min-w-0", entry.flexible ? "flex-1" : "shrink-0")}
               >
-                <Component />
+                <Component controls={controls} />
               </div>
             );
           })}
