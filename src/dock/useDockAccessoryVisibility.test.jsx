@@ -131,6 +131,30 @@ describe("useDockAccessoryVisibility", () => {
     );
   });
 
+  it("keeps a measured editor visible while an internal replacement is measured", async () => {
+    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    act(() => result.current.openEditor("modules"));
+    act(() => result.current.resizeEditor({ view: "modules", width: 188, height: 386 }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => result.current.openEditor("module:spectrogram"));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(setDockAccessories).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        editorVisible: true,
+        editorWidth: 188,
+        editorHeight: 386,
+      })
+    );
+  });
+
   it("ignores a stale measurement from the editor that was just replaced", async () => {
     const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
     act(() => result.current.openEditor("modules"));
@@ -146,7 +170,7 @@ describe("useDockAccessoryVisibility", () => {
     );
   });
 
-  it("ignores blur caused by hiding an editor while its replacement is measured", () => {
+  it("ignores blur while an internal replacement is being measured", () => {
     const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
     act(() => result.current.openEditor("modules"));
     act(() => result.current.resizeEditor({ view: "modules", width: 188, height: 386 }));

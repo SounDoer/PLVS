@@ -62,9 +62,13 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
   const openEditor = useCallback(
     (view) => {
       clearHideTimer();
-      setEditorSize(initialEditorSize(view));
-      measuredEditorViewRef.current = null;
-      setMeasuredEditorView(null);
+      const hasVisibleEditor =
+        editorViewRef.current !== null && measuredEditorViewRef.current === editorViewRef.current;
+      if (!hasVisibleEditor) {
+        setEditorSize(initialEditorSize(view));
+        measuredEditorViewRef.current = null;
+        setMeasuredEditorView(null);
+      }
       editorViewRef.current = view;
       setEditorView(view);
       setHeaderVisible(true);
@@ -124,7 +128,7 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
         setDockAccessoriesWhenReady({
           edge,
           headerVisible: active && headerVisible,
-          editorVisible: active && editorView !== null && measuredEditorView === editorView,
+          editorVisible: active && editorView !== null && measuredEditorView !== null,
           editorWidth: editorSize.width,
           editorHeight: editorSize.height,
         })
