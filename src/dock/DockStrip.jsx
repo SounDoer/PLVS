@@ -13,7 +13,15 @@ function healthFromNotice(notice) {
 }
 
 /** The docked strip: modules row + hover controls + in-strip editors. */
-export function DockStrip({ modules, onToggleModule, onReorderModule, controls, presets }) {
+export function DockStrip({
+  modules,
+  onToggleModule,
+  onReorderModule,
+  statsIds,
+  onToggleStat,
+  controls,
+  presets,
+}) {
   const [hovered, setHovered] = useState(false);
   const [view, setView] = useState("meters"); // meters | modules | presets
   const hideTimerRef = useRef(null);
@@ -62,7 +70,9 @@ export function DockStrip({ modules, onToggleModule, onReorderModule, controls, 
       ) : view === "modules" ? (
         <DockModulesEditor
           modules={modules}
+          statsIds={statsIds}
           onToggle={onToggleModule}
+          onToggleStat={onToggleStat}
           onReorder={onReorderModule}
           onDone={() => setView("meters")}
         />

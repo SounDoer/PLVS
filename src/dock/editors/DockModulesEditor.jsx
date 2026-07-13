@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Check } from "lucide-react";
 import { DOCK_MODULE_IDS } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
+import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,12 +10,22 @@ import { cn } from "@/lib/utils";
  * outside the 72px dock window, so all editing stays inside the strip.
  * Chips list every registry module in catalog order; enabled chips are
  * draggable to reorder (indices are positions in the enabled `modules` list).
+ * When the "stats" module is enabled, a second row lets the user pick which
+ * catalog readouts DockStats shows.
  */
-export function DockModulesEditor({ modules, onToggle, onReorder, onDone }) {
+export function DockModulesEditor({
+  modules,
+  statsIds = [],
+  onToggle,
+  onToggleStat,
+  onReorder,
+  onDone,
+}) {
   const dragFromRef = useRef(null);
+  const statsEnabled = modules.includes("stats");
 
-  return (
-    <div className="flex h-full min-w-0 items-center gap-1.5 overflow-x-auto px-2">
+  const moduleRow = (
+    <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
       <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
         Modules
       </span>
@@ -63,6 +74,51 @@ export function DockModulesEditor({ modules, onToggle, onReorder, onDone }) {
       >
         Done
       </button>
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "h-full min-w-0 px-2",
+        statsEnabled ? "flex flex-col justify-center gap-1" : "flex items-center"
+      )}
+    >
+      {statsEnabled ? (
+        <>
+          {moduleRow}
+          <div
+            data-testid="dock-stats-picker"
+            className="flex min-w-0 items-center gap-1 overflow-x-auto"
+          >
+            <span className="shrink-0 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Stats
+            </span>
+            {STATS_CANONICAL_ORDER.map((id) => {
+              const picked = statsIds.includes(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={picked}
+                  aria-label={STATS_META[id].shortLabel}
+                  onClick={() => onToggleStat(id)}
+                  className={cn(
+                    "h-5 shrink-0 rounded-full border px-1.5 text-[9px] font-medium transition-colors",
+                    picked
+                      ? "border-primary/50 bg-primary/15 text-foreground"
+                      : "border-border/60 text-muted-foreground hover:bg-muted/40"
+                  )}
+                >
+                  {STATS_META[id].shortLabel}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        moduleRow
+      )}
     </div>
   );
 }

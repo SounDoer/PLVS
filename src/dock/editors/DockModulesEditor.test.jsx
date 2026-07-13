@@ -60,3 +60,39 @@ describe("DockModulesEditor", () => {
     expect(onDone).toHaveBeenCalled();
   });
 });
+
+describe("stats picker row", () => {
+  it("is hidden while the stats module is disabled", () => {
+    render(
+      <DockModulesEditor
+        modules={["level"]}
+        statsIds={["lra"]}
+        onToggle={vi.fn()}
+        onToggleStat={vi.fn()}
+        onReorder={vi.fn()}
+        onDone={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId("dock-stats-picker")).toBeNull();
+  });
+
+  it("lists all catalog stats as chips and toggles them", () => {
+    const onToggleStat = vi.fn();
+    render(
+      <DockModulesEditor
+        modules={["stats"]}
+        statsIds={["lra"]}
+        onToggle={vi.fn()}
+        onToggleStat={onToggleStat}
+        onReorder={vi.fn()}
+        onDone={vi.fn()}
+      />
+    );
+    const picker = screen.getByTestId("dock-stats-picker");
+    expect(picker).toBeTruthy();
+    const lraChip = screen.getByRole("button", { name: /^LRA$/i });
+    expect(lraChip.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /^PSR$/i }));
+    expect(onToggleStat).toHaveBeenCalledWith("psr");
+  });
+});

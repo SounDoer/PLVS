@@ -7,6 +7,8 @@ const BASE_PROPS = {
   modules: ["level", "correlation"],
   onToggleModule: vi.fn(),
   onReorderModule: vi.fn(),
+  statsIds: [],
+  onToggleStat: vi.fn(),
   controls: {
     sourceTransportState: {
       chromeState: "ready",

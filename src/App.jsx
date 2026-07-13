@@ -930,6 +930,8 @@ function AppContent() {
         modules: dockLayout.modules,
         onToggleModule: dockLayout.toggle,
         onReorderModule: dockLayout.reorder,
+        statsIds: dockLayout.statsIds,
+        onToggleStat: dockLayout.toggleStat,
         presets,
         controls: {
           sourceTransportState,
