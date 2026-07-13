@@ -513,7 +513,12 @@ describe("usePresets", () => {
 
   describe("dock in presets", () => {
     it("captureSnapshot includes the dock field", async () => {
-      const dock = { enabled: true, edge: "top", modules: ["level", "spectrum"] };
+      const dock = {
+        enabled: true,
+        edge: "top",
+        reserveSpace: true,
+        modules: ["level", "spectrum"],
+      };
       const { result } = renderPresetHook({ dock });
       let preset;
       await act(async () => {
@@ -538,6 +543,7 @@ describe("usePresets", () => {
       expect(applyDockPreset).toHaveBeenCalledWith({
         enabled: false,
         edge: "bottom",
+        reserveSpace: false,
         modules: expect.any(Array),
         controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
         statsIds: undefined,
@@ -565,6 +571,7 @@ describe("usePresets", () => {
       expect(applyDockPreset).toHaveBeenCalledWith({
         enabled: false,
         edge: "bottom",
+        reserveSpace: false,
         modules: [],
         controlsByModuleId: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
         statsIds: undefined,
@@ -603,6 +610,7 @@ describe("usePresets", () => {
       const dock = {
         enabled: true,
         edge: "top",
+        reserveSpace: true,
         modules: ["stats"],
         controlsByModuleId: { stats: { ids: ["psr", "plr"] } },
       };
@@ -617,6 +625,7 @@ describe("usePresets", () => {
       });
       expect(applyDockPreset).toHaveBeenCalledWith(
         expect.objectContaining({
+          reserveSpace: true,
           controlsByModuleId: expect.objectContaining({ stats: { ids: ["psr", "plr"] } }),
         })
       );

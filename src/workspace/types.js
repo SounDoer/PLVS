@@ -48,6 +48,13 @@
  *   panelOrder: PanelId[],
  *   panelControlsById: Record<PanelId, PanelControls>,
  *   pinnedPanelsById?: Record<PanelId, PinnedPanelSize>,
+ *   dock?: {
+ *     enabled: boolean,
+ *     edge: 'top' | 'bottom',
+ *     reserveSpace?: boolean,
+ *     modules: string[],
+ *     controlsByModuleId?: Record<string, object>,
+ *   },
  * }} Preset
  *
  * @typedef {{

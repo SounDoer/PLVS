@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { isTauri } from "./ipc/env.js";
-import { listAudioDevices, previewAudioDevice } from "./ipc/commands.js";
+import { listAudioDevices, previewAudioDevice, setDockReserveSpace } from "./ipc/commands.js";
 import { pickMediaFile } from "./ipc/fileDialog.js";
 
 const tauriEventHandlers = vi.hoisted(() => new Map());
@@ -37,6 +37,7 @@ vi.mock("./ipc/commands.js", () => ({
   stopFileAnalysis: vi.fn().mockResolvedValue(undefined),
   enterDock: vi.fn().mockResolvedValue(undefined),
   exitDock: vi.fn().mockResolvedValue(undefined),
+  setDockReserveSpace: vi.fn().mockResolvedValue(undefined),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -124,6 +125,7 @@ beforeEach(() => {
   isTauri.mockReturnValue(false);
   listAudioDevices.mockResolvedValue([]);
   previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
+  setDockReserveSpace.mockClear().mockResolvedValue(undefined);
   pickMediaFile.mockResolvedValue(null);
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,
@@ -294,6 +296,53 @@ describe("App smoke", () => {
     // (Views control) is not mounted.
     expect(await screen.findByTestId("dock-strip")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Views" })).toBeNull();
+  });
+
+  it("applies reserve screen space from a dock preset", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", reserveSpace: false },
+    };
+    const { presetsStore } = await import("./persistence/index.js");
+    presetsStore.patch({
+      list: [
+        {
+          id: "dock-reserved",
+          name: "Reserved",
+          tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: {},
+          dock: {
+            enabled: true,
+            edge: "top",
+            reserveSpace: true,
+            modules: ["level"],
+          },
+        },
+      ],
+      activeId: null,
+      dirty: false,
+    });
+
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+    await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
+
+    await act(async () => {
+      tauriEventHandlers.get("dock-accessory://action")({
+        payload: {
+          surface: "dock-editor",
+          type: "apply-preset",
+          revision: 1,
+          payload: { presetId: "dock-reserved" },
+        },
+      });
+    });
+
+    await waitFor(() =>
+      expect(setDockReserveSpace).toHaveBeenCalledWith({ enabled: true, edge: "top" })
+    );
   });
 
   it("renders the normal shell (no dock strip) without dock boot state", async () => {

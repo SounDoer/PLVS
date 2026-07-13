@@ -242,11 +242,21 @@ function AppContent() {
         dockLayout.setModules(presetDock.modules);
         dockLayout.setControlsByModuleId(presetDock.controlsByModuleId, presetDock.statsIds);
         await enterDockMode(presetDock.edge);
+        if (presetDock.reserveSpace !== reserveSpace) {
+          await setReserveSpace(presetDock.reserveSpace);
+        }
       } else if (dockEnabled) {
         await exitDockRestoringAttributes();
       }
     },
-    [dockLayout, enterDockMode, dockEnabled, exitDockRestoringAttributes]
+    [
+      dockLayout,
+      enterDockMode,
+      dockEnabled,
+      exitDockRestoringAttributes,
+      reserveSpace,
+      setReserveSpace,
+    ]
   );
 
   // Stable identity: an inline literal would churn captureSnapshot (and the
@@ -255,10 +265,11 @@ function AppContent() {
     () => ({
       enabled: dockEnabled,
       edge: dockEdge,
+      reserveSpace,
       modules: dockLayout.modules,
       controlsByModuleId: dockLayout.controlsByModuleId,
     }),
-    [dockEnabled, dockEdge, dockLayout.controlsByModuleId, dockLayout.modules]
+    [dockEnabled, dockEdge, dockLayout.controlsByModuleId, dockLayout.modules, reserveSpace]
   );
 
   const presets = usePresets({
