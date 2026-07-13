@@ -70,7 +70,7 @@ describe("useDockMode", () => {
 
     await act(() => result.current.enterDockMode("top", true));
 
-    expect(mocks.enterDock).toHaveBeenCalledWith("top", true);
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", true, undefined);
     expect(mocks.setDockReserveSpace).not.toHaveBeenCalled();
     expect(result.current).toMatchObject({ dockEdge: "top", reserveSpace: true });
   });
@@ -130,20 +130,36 @@ describe("useDockMode", () => {
   });
 
   it("starts docked from injected boot state", () => {
-    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY2" },
+    };
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEnabled).toBe(true);
     expect(result.current.dockEdge).toBe("top");
+    expect(result.current.dockMonitor).toBe("\\\\.\\DISPLAY2");
     expect(result.current.reserveSpace).toBe(true);
   });
 
   it("enterDockMode invokes IPC and flips state", async () => {
     const { result } = renderHook(() => useDockMode());
     await act(() => result.current.enterDockMode("top"));
-    expect(mocks.enterDock).toHaveBeenCalledWith("top", undefined);
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", undefined, undefined);
     expect(result.current.dockEnabled).toBe(true);
     expect(result.current.dockEdge).toBe("top");
     expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
+  });
+
+  it("stores the monitor resolved by the dock IPC call", async () => {
+    mocks.enterDock.mockResolvedValueOnce({
+      enabled: true,
+      edge: "top",
+      monitor: "\\\\.\\DISPLAY2",
+      reserveSpace: true,
+    });
+    const { result } = renderHook(() => useDockMode());
+    await act(() => result.current.enterDockMode("top", true, "\\\\.\\DISPLAY2"));
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2");
+    expect(result.current).toMatchObject({ dockMonitor: "\\\\.\\DISPLAY2" });
   });
 
   it("exitDockMode passes restore attributes through", async () => {

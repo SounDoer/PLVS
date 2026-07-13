@@ -64,6 +64,7 @@ export function usePresets({
   dock = {
     enabled: false,
     edge: "bottom",
+    monitor: null,
     reserveSpace: false,
     panelsById: {},
     panelOrder: [],
@@ -144,6 +145,7 @@ export function usePresets({
       dock: {
         enabled: dock.enabled === true,
         edge: dock.edge === "top" ? "top" : "bottom",
+        monitor: typeof dock.monitor === "string" ? dock.monitor : null,
         reserveSpace: dock.reserveSpace === true,
         panelsById: clone(dock.panelsById ?? {}),
         panelOrder: Array.isArray(dock.panelOrder) ? [...dock.panelOrder] : [],
@@ -199,6 +201,7 @@ export function usePresets({
       const presetDock = {
         enabled: preset.dock?.enabled === true,
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
+        monitor: typeof preset.dock?.monitor === "string" ? preset.dock.monitor : null,
         reserveSpace: preset.dock?.reserveSpace === true,
         panelsById: preset.dock?.panelsById,
         panelOrder: preset.dock?.panelOrder,

@@ -64,9 +64,9 @@ export function applyWindowBounds(bounds) {
   return invoke("apply_window_bounds", { bounds });
 }
 
-/** Enter dock mode on the given edge. A reserve override makes preset apply atomic. */
-export function enterDock(edge, reserveSpace) {
-  return invoke("enter_dock", { edge, reserveSpace });
+/** Enter dock mode on the given edge. Reserve/monitor overrides make preset apply atomic. */
+export function enterDock(edge, reserveSpace, monitor) {
+  return invoke("enter_dock", { edge, reserveSpace, monitor });
 }
 
 /**

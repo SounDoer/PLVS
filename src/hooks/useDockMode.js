@@ -5,7 +5,13 @@ import { presetsStore } from "../persistence/index.js";
 
 function normalizeDockState(raw) {
   const edge = raw?.edge === "top" ? "top" : "bottom";
-  return { enabled: raw?.enabled === true, edge, reserveSpace: raw?.reserveSpace !== false };
+  const monitor = typeof raw?.monitor === "string" ? raw.monitor : null;
+  return {
+    enabled: raw?.enabled === true,
+    edge,
+    monitor,
+    reserveSpace: raw?.reserveSpace !== false,
+  };
 }
 
 /**
@@ -37,20 +43,32 @@ export function useDockMode() {
   }, []);
 
   const enterDockMode = useCallback(
-    (edge, reserveSpaceOverride) => {
+    (edge, reserveSpaceOverride, monitorOverride) => {
       if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
         const current = dockRef.current;
         const hasReserveOverride = typeof reserveSpaceOverride === "boolean";
-        await enterDock(edge, hasReserveOverride ? reserveSpaceOverride : undefined);
+        const resolved = await enterDock(
+          edge,
+          hasReserveOverride ? reserveSpaceOverride : undefined,
+          monitorOverride
+        );
+        const monitor =
+          typeof resolved?.monitor === "string"
+            ? resolved.monitor
+            : typeof monitorOverride === "string"
+              ? monitorOverride
+              : current.monitor;
         const changed =
           !current.enabled ||
           current.edge !== edge ||
+          (typeof monitorOverride === "string" && current.monitor !== monitorOverride) ||
           (hasReserveOverride && current.reserveSpace !== reserveSpaceOverride);
         commitDock((latest) => ({
           ...latest,
           enabled: true,
           edge,
+          monitor,
           reserveSpace: hasReserveOverride ? reserveSpaceOverride : latest.reserveSpace,
         }));
         if (changed) presetsStore.patch({ dirty: true });
@@ -102,6 +120,7 @@ export function useDockMode() {
   return {
     dockEnabled: dock.enabled,
     dockEdge: dock.edge,
+    dockMonitor: dock.monitor,
     reserveSpace: dock.reserveSpace,
     enterDockMode,
     exitDockMode,

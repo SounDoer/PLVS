@@ -128,6 +128,7 @@ function AppContent() {
   const {
     dockEnabled,
     dockEdge,
+    dockMonitor,
     reserveSpace,
     enterDockMode,
     exitDockMode,
@@ -247,8 +248,8 @@ function AppContent() {
     async (presetDock) => {
       if (presetDock.enabled) {
         dockLayout.setPanels(presetDock);
-        if (!dockEnabled || dockEdge !== presetDock.edge) {
-          await enterDockMode(presetDock.edge, presetDock.reserveSpace);
+        if (!dockEnabled || dockEdge !== presetDock.edge || dockMonitor !== presetDock.monitor) {
+          await enterDockMode(presetDock.edge, presetDock.reserveSpace, presetDock.monitor);
         } else if (presetDock.reserveSpace !== reserveSpace) {
           await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
         }
@@ -261,6 +262,7 @@ function AppContent() {
       enterDockMode,
       dockEnabled,
       dockEdge,
+      dockMonitor,
       exitDockRestoringAttributes,
       reserveSpace,
       setReserveSpace,
@@ -273,6 +275,7 @@ function AppContent() {
     () => ({
       enabled: dockEnabled,
       edge: dockEdge,
+      monitor: dockMonitor,
       reserveSpace,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
@@ -281,6 +284,7 @@ function AppContent() {
     [
       dockEnabled,
       dockEdge,
+      dockMonitor,
       dockLayout.controlsByPanelId,
       dockLayout.panelOrder,
       dockLayout.panelsById,

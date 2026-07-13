@@ -304,10 +304,10 @@ describe("App smoke", () => {
     expect(screen.queryByRole("button", { name: "Views" })).toBeNull();
   });
 
-  it("applies reserve screen space from a dock preset", async () => {
+  it("applies monitor from a dock preset", async () => {
     isTauri.mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {
-      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+      dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY1", reserveSpace: true },
     };
     const { presetsStore } = await import("./persistence/index.js");
     presetsStore.patch({
@@ -322,6 +322,7 @@ describe("App smoke", () => {
           dock: {
             enabled: true,
             edge: "top",
+            monitor: "\\\\.\\DISPLAY2",
             reserveSpace: true,
             modules: ["level"],
           },
@@ -346,7 +347,7 @@ describe("App smoke", () => {
       });
     });
 
-    await waitFor(() => expect(enterDock).toHaveBeenCalledWith("top", true));
+    await waitFor(() => expect(enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2"));
     expect(setDockReserveSpace).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(presetsStore.read()).toMatchObject({ activeId: "dock-reserved", dirty: false })

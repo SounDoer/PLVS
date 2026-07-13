@@ -16,6 +16,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 };
 
 use crate::dock::{DockEdge, DOCK_STRIP_LOGICAL_HEIGHT};
+use crate::window_state::MonitorRect;
 
 const APPBAR_CALLBACK_MESSAGE: u32 = WM_APP + 0x31;
 const APPBAR_SUBCLASS_ID: usize = 0x504c5653;
@@ -178,14 +179,25 @@ fn move_overlay(hwnd: HWND, edge: DockEdge, height: i32, work_area: RECT) -> Res
 pub fn position_overlay<R: tauri::Runtime>(
   window: &WebviewWindow<R>,
   edge: DockEdge,
+  work_area: MonitorRect,
+  scale: f64,
 ) -> Result<(), String> {
   let _transition = transition_lock()
     .lock()
     .map_err(|_| "appbar transition lock poisoned")?;
   let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
-  let height = (DOCK_STRIP_LOGICAL_HEIGHT * window.scale_factor().unwrap_or(1.0)).round() as i32;
-  let work_area = unsafe { monitor_work_area(hwnd)? };
-  move_overlay(hwnd, edge, height.max(1), work_area)
+  let height = (DOCK_STRIP_LOGICAL_HEIGHT * scale).round() as i32;
+  move_overlay(
+    hwnd,
+    edge,
+    height.max(1),
+    RECT {
+      left: work_area.x,
+      top: work_area.y,
+      right: work_area.x + work_area.width as i32,
+      bottom: work_area.y + work_area.height as i32,
+    },
+  )
 }
 
 fn reposition(

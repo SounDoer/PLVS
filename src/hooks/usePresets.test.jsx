@@ -515,6 +515,7 @@ describe("usePresets", () => {
       const dock = {
         enabled: true,
         edge: "top",
+        monitor: "\\\\.\\DISPLAY2",
         reserveSpace: true,
         panelsById: {
           levelMeter: { id: "levelMeter", moduleId: "levelMeter" },
@@ -546,6 +547,7 @@ describe("usePresets", () => {
       expect(applyDockPreset).toHaveBeenCalledWith({
         enabled: false,
         edge: "bottom",
+        monitor: null,
         reserveSpace: false,
         panelsById: {},
         panelOrder: [],
@@ -574,6 +576,7 @@ describe("usePresets", () => {
       expect(applyDockPreset).toHaveBeenCalledWith({
         enabled: false,
         edge: "bottom",
+        monitor: null,
         reserveSpace: false,
         panelsById: undefined,
         panelOrder: undefined,
@@ -613,6 +616,7 @@ describe("usePresets", () => {
       const dock = {
         enabled: true,
         edge: "top",
+        monitor: "\\\\.\\DISPLAY2",
         reserveSpace: true,
         panelsById: { stats: { id: "stats", moduleId: "stats" } },
         panelOrder: ["stats"],
@@ -630,6 +634,7 @@ describe("usePresets", () => {
       expect(applyDockPreset).toHaveBeenCalledWith(
         expect.objectContaining({
           reserveSpace: true,
+          monitor: "\\\\.\\DISPLAY2",
           controlsByPanelId: expect.objectContaining({ stats: { ids: ["psr", "plr"] } }),
         })
       );
@@ -639,6 +644,7 @@ describe("usePresets", () => {
       const applyDockPreset = vi.fn(async () => {});
       const dock = {
         enabled: true,
+        monitor: "\\\\.\\DISPLAY2",
         panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
         panelOrder: ["loudness"],
         controlsByPanelId: { loudness: { metric: "integrated" } },

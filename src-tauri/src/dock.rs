@@ -248,7 +248,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
       .set_resizable(false)
       .map_err(|e| format!("resizable: {e}"))?;
     #[cfg(target_os = "windows")]
-    crate::appbar::position_overlay(window, edge)?;
+    crate::appbar::position_overlay(window, edge, wa, scale)?;
     #[cfg(not(target_os = "windows"))]
     {
       window
@@ -270,7 +270,8 @@ pub fn enter_dock<R: tauri::Runtime>(
   flag: tauri::State<'_, DockedFlag>,
   edge: DockEdge,
   reserve_space: Option<bool>,
-) -> Result<(), String> {
+  monitor: Option<String>,
+) -> Result<DockStateRecord, String> {
   let previous = read_dock_state(window.app_handle());
   let reserve_space = reserve_space.unwrap_or_else(|| {
     previous
@@ -286,7 +287,7 @@ pub fn enter_dock<R: tauri::Runtime>(
     save_window_bounds(&window);
   }
   flag.0.store(true, Ordering::Relaxed);
-  let monitor = apply_dock_form(&window, edge, None).inspect_err(|_| {
+  let monitor = apply_dock_form(&window, edge, monitor.as_deref()).inspect_err(|_| {
     flag.0.store(false, Ordering::Relaxed);
   })?;
   #[cfg(target_os = "windows")]
@@ -296,16 +297,14 @@ pub fn enter_dock<R: tauri::Runtime>(
       restore_normal_shell(&window);
     })?;
   }
-  save_dock_state(
-    window.app_handle(),
-    &DockStateRecord {
-      enabled: true,
-      edge,
-      monitor,
-      reserve_space,
-    },
-  );
-  Ok(())
+  let next = DockStateRecord {
+    enabled: true,
+    edge,
+    monitor,
+    reserve_space,
+  };
+  save_dock_state(window.app_handle(), &next);
+  Ok(next)
 }
 
 #[tauri::command]
