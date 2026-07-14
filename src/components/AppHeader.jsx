@@ -112,7 +112,7 @@ export function AppHeader({
       />
       {notice ? (
         <div
-          title={notice.text}
+          title={notice.details ?? notice.text}
           className={cn(
             "min-w-0 max-w-[min(30rem,34vw)] truncate text-[length:var(--ui-fs-status)] font-medium",
             notice.kind === "error" ? "text-[color:var(--ui-signal-bad)]" : "text-muted-foreground"

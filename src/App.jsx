@@ -66,6 +66,10 @@ import packageInfo from "../package.json";
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 
+function errorDetails(prefix, error) {
+  return `${prefix}: ${error?.message || String(error)}`;
+}
+
 export default function App() {
   return (
     <WorkspaceProvider>
@@ -206,6 +210,7 @@ function AppContent() {
     selectedOffsetRef,
     notice,
     raiseNotice,
+    clearNotice,
     showClock,
   } = display;
   const { clockRef, elapsedMsRef, canClearRef } = display.clock;
@@ -213,31 +218,55 @@ function AppContent() {
   // Dock transitions. Exit restores the user's TRUE normal-form attributes
   // (override-not-overwrite): decorations follow focusView, always-on-top follows
   // the pin toggle — dock never persists over stored settings. Every transition
-  // catches IPC rejections and surfaces them via raiseNotice(kind, text) so a
-  // failed click handler can't leave an unhandled rejection.
+  // UI entry points map IPC rejections to actionable notices so a failed click
+  // handler cannot leave an unhandled rejection or stale error copy behind.
   // NOTE: there is no in-flight guard against rapid dock transitions (v1 accepts
   // this; a fast toggle spam could interleave enter/exit IPC calls).
-  const exitDockRestoringAttributes = useCallback(async () => {
-    try {
-      await exitDockMode({
-        decorations: !(focusView.autoHideControls || focusView.borderless),
-        alwaysOnTop: pinned === true,
-      });
-    } catch (err) {
-      raiseNotice("error", `Restore window failed: ${err?.message || err}`);
-    }
-  }, [exitDockMode, focusView.autoHideControls, focusView.borderless, pinned, raiseNotice]);
+  const exitDockRestoringAttributes = useCallback(
+    async ({ reportError = true } = {}) => {
+      clearNotice();
+      try {
+        await exitDockMode({
+          decorations: !(focusView.autoHideControls || focusView.borderless),
+          alwaysOnTop: pinned === true,
+        });
+        return { ok: true, error: null };
+      } catch (error) {
+        if (reportError) {
+          raiseNotice(
+            "error",
+            "Could not restore the main window. Try again.",
+            errorDetails("Restore window failed", error)
+          );
+        }
+        return { ok: false, error };
+      }
+    },
+    [
+      clearNotice,
+      exitDockMode,
+      focusView.autoHideControls,
+      focusView.borderless,
+      pinned,
+      raiseNotice,
+    ]
+  );
 
   const onDockChange = useCallback(
     async (edgeOrNull) => {
+      clearNotice();
       try {
         if (edgeOrNull) await enterDockMode(edgeOrNull);
         else await exitDockRestoringAttributes();
-      } catch (err) {
-        raiseNotice("error", `Dock failed: ${err?.message || err}`);
+      } catch (error) {
+        raiseNotice(
+          "error",
+          "Could not move Dock. The previous position was kept.",
+          errorDetails("Dock failed", error)
+        );
       }
     },
-    [enterDockMode, exitDockRestoringAttributes, raiseNotice]
+    [clearNotice, enterDockMode, exitDockRestoringAttributes, raiseNotice]
   );
 
   // Preset apply hand-off: dock geometry is Rust-owned, so a preset's dock
@@ -246,6 +275,7 @@ function AppContent() {
   // activeId on failure (mirroring its existing applyWindowBounds handling).
   const applyDockPreset = useCallback(
     async (presetDock) => {
+      clearNotice();
       if (presetDock.enabled) {
         dockLayout.setPanels(presetDock);
         if (!dockEnabled || dockEdge !== presetDock.edge || dockMonitor !== presetDock.monitor) {
@@ -254,10 +284,12 @@ function AppContent() {
           await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
         }
       } else if (dockEnabled) {
-        await exitDockRestoringAttributes();
+        const result = await exitDockRestoringAttributes({ reportError: false });
+        if (!result.ok) throw result.error;
       }
     },
     [
+      clearNotice,
       dockLayout,
       enterDockMode,
       dockEnabled,
@@ -267,6 +299,17 @@ function AppContent() {
       reserveSpace,
       setReserveSpace,
     ]
+  );
+
+  const onPresetApplyError = useCallback(
+    (error) => {
+      raiseNotice(
+        "error",
+        "Preset could not be applied.",
+        errorDetails("Preset apply failed", error)
+      );
+    },
+    [raiseNotice]
   );
 
   // Stable identity: an inline literal would churn captureSnapshot (and the
@@ -303,6 +346,7 @@ function AppContent() {
     setGlassEnabled,
     dock: presetDockState,
     applyDockPreset,
+    onApplyError: onPresetApplyError,
   });
 
   const historyRetentionSec = settings.historyRetentionSec;
@@ -769,12 +813,32 @@ function AppContent() {
   onClearRef.current = clearAll;
 
   const onDockAccessoryError = useCallback(
-    (error) => raiseNotice("error", `Dock accessory failed: ${error?.message || error}`),
-    [raiseNotice]
+    async (accessoryError) => {
+      if (!docked) return;
+      const result = await exitDockRestoringAttributes({ reportError: false });
+      if (result.ok) {
+        raiseNotice(
+          "error",
+          "Dock controls could not open. The main window was restored.",
+          errorDetails("Dock accessory failed", accessoryError)
+        );
+        return;
+      }
+      raiseNotice(
+        "error",
+        "Dock controls could not open, and the main window could not be restored.",
+        `${errorDetails("Dock accessory failed", accessoryError)}\n${errorDetails(
+          "Restore window failed",
+          result.error
+        )}`
+      );
+    },
+    [docked, exitDockRestoringAttributes, raiseNotice]
   );
   const dockAccessoryVisibility = useDockAccessoryVisibility({
     active: docked,
     edge: dockEdge,
+    forceHeaderVisible: notice?.kind === "error",
     onError: onDockAccessoryError,
   });
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
@@ -834,8 +898,15 @@ function AppContent() {
       } else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
       else if (type === "set-edge") void onDockChange(payload.edge);
       else if (type === "toggle-reserve-space") {
+        clearNotice();
         void toggleReserveSpace().catch((error) =>
-          raiseNotice("error", `Reserve screen space failed: ${error?.message || error}`)
+          raiseNotice(
+            "error",
+            reserveSpace
+              ? "Could not release reserved screen space. Dock remains reserved."
+              : "Could not reserve screen space. Dock remains an overlay.",
+            errorDetails("Reserve screen space failed", error)
+          )
         );
       } else if (type === "restore-window") {
         setHoveredDockPanelId(null);
@@ -858,14 +929,17 @@ function AppContent() {
         dockLayout.setPanelControls(payload.panelId, payload.controls);
       } else if (type === "reset-module-controls") {
         dockLayout.resetPanelControls(payload.panelId);
-      } else if (type === "apply-preset") void presets.apply(payload.presetId);
-      else if (type === "save-preset") void presets.save(payload.name);
+      } else if (type === "apply-preset") {
+        clearNotice();
+        void presets.apply(payload.presetId);
+      } else if (type === "save-preset") void presets.save(payload.name);
       else if (type === "update-preset") void presets.update(payload.presetId);
       else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
       else if (type === "delete-preset") presets.remove(payload.presetId);
     },
     [
       clearAll,
+      clearNotice,
       dockAccessoryVisibility,
       dockLayout,
       exitDockRestoringAttributes,
@@ -873,6 +947,7 @@ function AppContent() {
       onSourceTransportAction,
       presets,
       raiseNotice,
+      reserveSpace,
       setReserveSpace,
       toggleReserveSpace,
     ]

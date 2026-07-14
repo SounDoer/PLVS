@@ -63,11 +63,4 @@ describe("DockStrip", () => {
     expect(modules[1].dataset.hoverHighlighted).toBe("true");
     expect(modules[1].className).toContain("ring-primary/60");
   });
-
-  it("shows the health dot in error state when the notice is an error", () => {
-    renderStrip({
-      controls: { ...BASE_PROPS.controls, notice: { kind: "error", text: "capture failed" } },
-    });
-    expect(screen.getByTestId("dock-health-dot").dataset.health).toBe("error");
-  });
 });

@@ -2,11 +2,6 @@ import { DOCK_MODULE_REGISTRY } from "./registry.jsx";
 import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 import { cn } from "@/lib/utils";
 
-function healthFromNotice(notice) {
-  if (!notice) return "ok";
-  return notice.kind === "error" ? "error" : "warn";
-}
-
 /** The reserved 72px meter strip. Accessory chrome lives in sibling windows. */
 export function DockStrip({
   panels = [],
@@ -15,8 +10,6 @@ export function DockStrip({
   onPointerEnter,
   onPointerLeave,
 }) {
-  const health = healthFromNotice(controls.notice);
-
   return (
     <div
       data-testid="dock-strip"
@@ -57,21 +50,6 @@ export function DockStrip({
           );
         })}
       </div>
-
-      <div
-        data-testid="dock-health-dot"
-        data-health={health}
-        aria-hidden="true"
-        className="absolute bottom-1 right-1 z-30 size-1.5 rounded-full"
-        style={{
-          background:
-            health === "error"
-              ? "var(--ui-signal-bad)"
-              : health === "warn"
-                ? "var(--ui-signal-warn)"
-                : "color-mix(in srgb, var(--ui-signal-good) 35%, transparent)",
-        }}
-      />
     </div>
   );
 }

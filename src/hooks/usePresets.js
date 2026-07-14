@@ -71,6 +71,7 @@ export function usePresets({
     controlsByPanelId: undefined,
   },
   applyDockPreset = async () => {},
+  onApplyError = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
@@ -209,15 +210,17 @@ export function usePresets({
       };
       try {
         await applyDockPreset(presetDock);
-      } catch (_) {
+      } catch (error) {
         write({ activeId: null });
+        onApplyError(error);
         return false;
       }
       if (!presetDock.enabled && preset.windowBounds && isTauri()) {
         try {
           await applyWindowBounds(preset.windowBounds);
-        } catch (_) {
+        } catch (error) {
           write({ activeId: null });
+          onApplyError(error);
           return false;
         }
       }
@@ -243,6 +246,7 @@ export function usePresets({
       setPanelOpacity,
       setGlassEnabled,
       applyDockPreset,
+      onApplyError,
       suppressPresetDivergence,
       workspaceState,
       write,

@@ -33,7 +33,7 @@ export async function setDockAccessoriesWhenReady(
   }
 }
 
-export function useDockAccessoryVisibility({ active, edge, onError }) {
+export function useDockAccessoryVisibility({ active, edge, forceHeaderVisible = false, onError }) {
   const [presence, setPresence] = useState({ stripInside: false, headerInside: false });
   const [headerVisible, setHeaderVisible] = useState(false);
   const [editorView, setEditorView] = useState(null);
@@ -95,12 +95,19 @@ export function useDockAccessoryVisibility({ active, edge, onError }) {
       }, 0);
       return () => clearTimeout(resetTimer);
     }
-    if (shouldShowDockHeader({ ...presence, editorOpen: editorView !== null })) {
+    if (
+      shouldShowDockHeader({
+        ...presence,
+        editorOpen: editorView !== null,
+        forceVisible: forceHeaderVisible,
+      })
+    ) {
       const showTimer = setTimeout(() => setHeaderVisible(true), 0);
       return () => clearTimeout(showTimer);
     }
-    setHeaderVisible(false);
-  }, [active, editorView, presence]);
+    const hideTimer = setTimeout(() => setHeaderVisible(false), 0);
+    return () => clearTimeout(hideTimer);
+  }, [active, editorView, forceHeaderVisible, presence]);
 
   useEffect(() => {
     if (!isTauri()) return;

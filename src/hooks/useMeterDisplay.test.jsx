@@ -28,6 +28,24 @@ describe("useMeterDisplay", () => {
     expect(result.current.notice).toBeNull();
   });
 
+  it("keeps technical notice details separate from user-facing text", () => {
+    const { result } = renderHook(() => useMeterDisplay());
+
+    act(() =>
+      result.current.raiseNotice(
+        "error",
+        "Could not move Dock. The previous position was kept.",
+        "Dock failed: unable to resolve appbar monitor"
+      )
+    );
+
+    expect(result.current.notice).toEqual({
+      kind: "error",
+      text: "Could not move Dock. The previous position was kept.",
+      details: "Dock failed: unable to resolve appbar monitor",
+    });
+  });
+
   it("mirrors selectedOffset into selectedOffsetRef", () => {
     const { result } = renderHook(() => useMeterDisplay());
     act(() => result.current.setSelectedOffset(42));

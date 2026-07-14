@@ -4,11 +4,14 @@ import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-libra
 import { isTauri } from "./ipc/env.js";
 import {
   enterDock,
+  exitDock,
   listAudioDevices,
   previewAudioDevice,
+  setDockAccessories,
   setDockReserveSpace,
 } from "./ipc/commands.js";
 import { pickMediaFile } from "./ipc/fileDialog.js";
+import { emitTo } from "@tauri-apps/api/event";
 
 const tauriEventHandlers = vi.hoisted(() => new Map());
 
@@ -130,7 +133,10 @@ beforeEach(() => {
   isTauri.mockReturnValue(false);
   listAudioDevices.mockResolvedValue([]);
   previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
+  emitTo.mockClear();
   enterDock.mockClear().mockResolvedValue(undefined);
+  exitDock.mockClear().mockResolvedValue(undefined);
+  setDockAccessories.mockClear().mockResolvedValue(undefined);
   setDockReserveSpace.mockClear().mockResolvedValue(undefined);
   pickMediaFile.mockResolvedValue(null);
   window.matchMedia = vi.fn().mockImplementation((query) => ({
@@ -388,6 +394,63 @@ describe("App smoke", () => {
     releaseFirst();
     await waitFor(() => expect(setDockReserveSpace).toHaveBeenCalledTimes(2));
     expect(setDockReserveSpace).toHaveBeenLastCalledWith({ enabled: false, edge: "bottom" });
+  });
+
+  it("keeps the Dock header visible with actionable reserve-space errors", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    setDockReserveSpace.mockRejectedValueOnce(new Error("ABM_NEW rejected registration"));
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+    await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
+
+    act(() => {
+      tauriEventHandlers.get("dock-accessory://action")({
+        payload: {
+          surface: "dock-header",
+          type: "toggle-reserve-space",
+          revision: 1,
+          payload: {},
+        },
+      });
+    });
+
+    await waitFor(() =>
+      expect(setDockAccessories).toHaveBeenCalledWith(
+        expect.objectContaining({ headerVisible: true })
+      )
+    );
+    await waitFor(() =>
+      expect(
+        emitTo.mock.calls.some(
+          ([surface, eventName, snapshot]) =>
+            surface === "dock-header" &&
+            eventName === "dock-accessory://state" &&
+            snapshot?.payload?.notice?.text ===
+              "Could not reserve screen space. Dock remains an overlay." &&
+            snapshot.payload.notice.details ===
+              "Reserve screen space failed: ABM_NEW rejected registration"
+        )
+      ).toBe(true)
+    );
+  });
+
+  it("restores the main window when Dock accessory controls cannot open", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", reserveSpace: false },
+    };
+    setDockAccessories.mockRejectedValueOnce(new Error("dock editor position: access denied"));
+    const { default: App } = await import("./App.jsx");
+    render(<App />);
+
+    await waitFor(() => expect(exitDock).toHaveBeenCalledOnce());
+    expect(
+      await screen.findByText("Dock controls could not open. The main window was restored.")
+    ).toBeTruthy();
+    expect(screen.queryByTestId("dock-strip")).toBeNull();
   });
 
   it("renders the normal shell (no dock strip) without dock boot state", async () => {

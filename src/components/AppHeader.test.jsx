@@ -92,10 +92,16 @@ describe("AppHeader", () => {
   });
 
   it("renders an error transport notice with tooltip text", () => {
-    renderHeader({ notice: { kind: "error", text: "Error: Audio unavailable" } });
+    renderHeader({
+      notice: {
+        kind: "error",
+        text: "Error: Audio unavailable",
+        details: "audio_start: device unavailable",
+      },
+    });
 
     const notice = screen.getByText("Error: Audio unavailable");
-    expect(notice.title).toBe("Error: Audio unavailable");
+    expect(notice.title).toBe("audio_start: device unavailable");
     expect(notice.className).toContain("ui-signal-bad");
   });
 

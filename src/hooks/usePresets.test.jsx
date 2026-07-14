@@ -588,6 +588,7 @@ describe("usePresets", () => {
       const applyDockPreset = vi.fn(async () => {
         throw new Error("dock enter failed");
       });
+      const onApplyError = vi.fn();
       presetsStore.patch({
         list: [
           {
@@ -602,13 +603,16 @@ describe("usePresets", () => {
         activeId: "p1",
         dirty: false,
       });
-      const { result } = renderPresetHook({ applyDockPreset });
+      const { result } = renderPresetHook({ applyDockPreset, onApplyError });
       let applied;
       await act(async () => {
         applied = await result.current.presets.apply("p1");
       });
       expect(applied).toBe(false);
       expect(presetsStore.read().activeId).toBeNull();
+      expect(onApplyError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "dock enter failed" })
+      );
     });
 
     it("captures and applies Dock controls through the dock field", async () => {

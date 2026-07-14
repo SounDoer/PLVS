@@ -84,6 +84,27 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("toggle-reserve-space");
   });
 
+  it("renders errors like the normal header and exposes technical details as a tooltip", () => {
+    render(
+      <DockHeader
+        state={{
+          ...STATE,
+          notice: {
+            kind: "error",
+            text: "Could not reserve screen space. Dock remains an overlay.",
+            details: "ABM_NEW rejected the appbar registration",
+          },
+        }}
+        onAction={vi.fn()}
+        onPointer={vi.fn()}
+      />
+    );
+
+    const notice = screen.getByText("Could not reserve screen space. Dock remains an overlay.");
+    expect(notice.className).toContain("ui-signal-bad");
+    expect(notice.title).toBe("ABM_NEW rejected the appbar registration");
+  });
+
   it.each([
     ["startLive", "START"],
     ["stopLive", "STOP"],

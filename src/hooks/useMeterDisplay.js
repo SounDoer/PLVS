@@ -120,9 +120,13 @@ export function useMeterDisplay() {
     setNotice(null);
   };
 
-  const raiseNotice = (kind, text) => {
+  const raiseNotice = (kind, text, details) => {
     clearGuardTimer();
-    setNotice({ kind, text });
+    setNotice({
+      kind,
+      text,
+      ...(typeof details === "string" && details ? { details } : null),
+    });
     if (kind === "guard") {
       guardTimerRef.current = setTimeout(() => {
         guardTimerRef.current = null;

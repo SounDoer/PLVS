@@ -24,7 +24,7 @@ describe("useDockAccessoryVisibility", () => {
     await act(async () => Promise.resolve());
     expect(result.current.headerVisible).toBe(true);
     act(() => result.current.onStripPointerLeave());
-    await act(async () => Promise.resolve());
+    act(() => vi.advanceTimersByTime(0));
     expect(result.current.headerVisible).toBe(false);
     await act(async () => {
       await Promise.resolve();
@@ -45,6 +45,22 @@ describe("useDockAccessoryVisibility", () => {
     act(() => result.current.closeEditor());
     act(() => vi.advanceTimersByTime(0));
     expect(result.current.editorView).toBeNull();
+    expect(result.current.headerVisible).toBe(false);
+  });
+
+  it("keeps the header visible while an error requires attention", async () => {
+    const { result, rerender } = renderHook(
+      ({ forceHeaderVisible }) =>
+        useDockAccessoryVisibility({ active: true, edge: "bottom", forceHeaderVisible }),
+      { initialProps: { forceHeaderVisible: false } }
+    );
+
+    rerender({ forceHeaderVisible: true });
+    act(() => vi.advanceTimersByTime(0));
+    expect(result.current.headerVisible).toBe(true);
+
+    rerender({ forceHeaderVisible: false });
+    act(() => vi.advanceTimersByTime(0));
     expect(result.current.headerVisible).toBe(false);
   });
 
