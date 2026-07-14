@@ -20,7 +20,7 @@ function renderSettings(moduleId, props = {}) {
 
 describe("DockModuleSettings", () => {
   it.each([
-    ["level", "Level readout"],
+    ["level", "Level mode"],
     ["loudness", "Loudness metric"],
     ["spectrum", "Spectrum channel"],
     ["correlation", "Show correlation value"],
@@ -34,9 +34,26 @@ describe("DockModuleSettings", () => {
 
   it("emits a complete updated controls object", () => {
     const onChange = renderSettings("level");
+    fireEvent.click(screen.getByLabelText("Level mode"));
+    fireEvent.click(screen.getByRole("option", { name: "RMS" }));
+    expect(onChange).toHaveBeenCalledWith({
+      mode: "rms",
+      readout: "live",
+      showLabels: true,
+    });
+  });
+
+  it("uses the shared Live and Labels controls for scalar Level modes", () => {
+    const controls = { mode: "shortTerm", readout: "live", showLabels: true };
+    const onChange = renderSettings("level", { controls });
+
     fireEvent.click(screen.getByLabelText("Level readout"));
-    fireEvent.click(screen.getByRole("option", { name: "Peak" }));
-    expect(onChange).toHaveBeenCalledWith({ readout: "peak" });
+    expect(screen.getByRole("option", { name: "Live" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Playback max" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Live Peak" })).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("Show Level labels"));
+    expect(onChange).toHaveBeenCalledWith({ ...controls, showLabels: false });
   });
 
   it("uses the themed inline selector instead of a native select", () => {

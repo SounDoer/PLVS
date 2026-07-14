@@ -9,6 +9,7 @@ import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
+import { LEVEL_METER_MODE_OPTIONS } from "../../lib/panelControls.js";
 
 const FIELD_CLASS =
   "h-7 rounded-md border border-border/60 bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -102,18 +103,48 @@ function parseChannel(value) {
 
 function SettingsBody({ moduleId, controls, onChange }) {
   if (moduleId === "level") {
+    const isPeak = controls.mode === "peak";
+    const readoutOptions = isPeak
+      ? [
+          { value: "live", label: "Live" },
+          { value: "truePeakMax", label: "TP Max" },
+        ]
+      : [
+          { value: "live", label: "Live" },
+          { value: "playbackMax", label: "Playback max" },
+        ];
     return (
-      <SettingsRow label="Readout">
-        <SelectField
-          label="Level readout"
-          value={controls.readout}
-          options={[
-            { value: "truePeakMax", label: "TP Max" },
-            { value: "peak", label: "Peak" },
-          ]}
-          onChange={(readout) => onChange({ ...controls, readout })}
-        />
-      </SettingsRow>
+      <>
+        <SettingsRow label="Mode">
+          <SelectField
+            label="Level mode"
+            value={controls.mode}
+            options={LEVEL_METER_MODE_OPTIONS.map(({ id, label }) => ({ value: id, label }))}
+            onChange={(mode) =>
+              onChange({
+                ...controls,
+                mode,
+                readout: "live",
+              })
+            }
+          />
+        </SettingsRow>
+        <SettingsRow label="Readout">
+          <SelectField
+            label="Level readout"
+            value={controls.readout}
+            options={readoutOptions}
+            onChange={(readout) => onChange({ ...controls, readout })}
+          />
+        </SettingsRow>
+        <SettingsRow label="Labels">
+          <SettingsSwitch
+            aria-label="Show Level labels"
+            checked={controls.showLabels}
+            onCheckedChange={(showLabels) => onChange({ ...controls, showLabels })}
+          />
+        </SettingsRow>
+      </>
     );
   }
   if (moduleId === "loudness") {

@@ -4,7 +4,8 @@ import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 const MAX_STATS_IDS = 4;
 const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
 const LOUDNESS_METRICS = new Set(["momentary", "shortTerm", "integrated"]);
-const LEVEL_READOUTS = new Set(["truePeakMax", "peak"]);
+const LEVEL_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
+const LEVEL_READOUTS = new Set(["live", "truePeakMax", "playbackMax"]);
 const WAVEFORM_VIEWS = new Set(["all", "single"]);
 const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",
@@ -18,7 +19,7 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
 });
 
 export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
-  level: Object.freeze({ readout: "truePeakMax" }),
+  level: Object.freeze({ mode: "peak", readout: "live", showLabels: true }),
   loudness: Object.freeze({
     metric: "shortTerm",
     showSparkline: true,
@@ -122,8 +123,18 @@ export function normalizeDockModuleControls(moduleId, raw) {
   if (!defaults) return null;
 
   switch (moduleId) {
-    case "level":
-      return { readout: LEVEL_READOUTS.has(raw?.readout) ? raw.readout : defaults.readout };
+    case "level": {
+      const mode = LEVEL_MODES.has(raw?.mode) ? raw.mode : defaults.mode;
+      const legacyReadout = raw?.readout === "peak" ? "live" : raw?.readout;
+      let readout = LEVEL_READOUTS.has(legacyReadout) ? legacyReadout : defaults.readout;
+      if (mode === "peak" && readout === "playbackMax") readout = "live";
+      if (mode !== "peak" && readout === "truePeakMax") readout = "live";
+      return {
+        mode,
+        readout,
+        showLabels: bool(raw?.showLabels, bool(raw?.showChannelLabels, defaults.showLabels)),
+      };
+    }
     case "loudness":
       return {
         metric: LOUDNESS_METRICS.has(raw?.metric) ? raw.metric : defaults.metric,

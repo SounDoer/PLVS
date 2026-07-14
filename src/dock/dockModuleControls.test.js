@@ -56,6 +56,31 @@ describe("normalizeDockControlsByModuleId", () => {
 });
 
 describe("normalizeDockModuleControls", () => {
+  it("defaults Level to live Peak and migrates legacy readouts", () => {
+    expect(normalizeDockModuleControls("level", {})).toEqual({
+      mode: "peak",
+      readout: "live",
+      showLabels: true,
+    });
+    expect(normalizeDockModuleControls("level", { readout: "peak" }).readout).toBe("live");
+    expect(normalizeDockModuleControls("level", { readout: "truePeakMax" })).toMatchObject({
+      mode: "peak",
+      readout: "truePeakMax",
+    });
+    expect(normalizeDockModuleControls("level", { showChannelLabels: false }).showLabels).toBe(
+      false
+    );
+  });
+
+  it("keeps detector-specific Level readouts valid", () => {
+    expect(
+      normalizeDockModuleControls("level", { mode: "rms", readout: "playbackMax" })
+    ).toMatchObject({ mode: "rms", readout: "playbackMax" });
+    expect(
+      normalizeDockModuleControls("level", { mode: "shortTerm", readout: "truePeakMax" }).readout
+    ).toBe("live");
+  });
+
   it("rejects invalid channel pairs and caps stats at four known ids", () => {
     expect(normalizeDockModuleControls("correlation", { pair: { x: 2, y: 2 } }).pair).toEqual({
       x: 0,

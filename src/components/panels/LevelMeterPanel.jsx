@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useFrameData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,10 @@ import { getPeakChannels } from "../../math/peakChannelMath";
 import { fmtMetric } from "../../math/formatMath";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
+import {
+  useLevelMeterPlaybackMax,
+  useLevelMeterPlaybackMaxChannels,
+} from "../../hooks/useLevelMeterPlaybackMax.js";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -36,8 +40,6 @@ const LEVEL_METER_VALUE_MARKER_BASE =
 const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[5ch]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
-const PLAYBACK_SIGNAL_FLOOR_DB = -70;
-const PLAYBACK_SILENCE_HOLD_MS = 350;
 const LEVEL_METER_GRID =
   "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
 
@@ -85,144 +87,6 @@ function AnimatedPeakFill({ dbValue, yRange }) {
 
 function formatLevelValue(value) {
   return fmtMetric(value);
-}
-
-function hasPlaybackSignal(displayAudio) {
-  const peakDb = displayAudio?.peakDb;
-  if (Array.isArray(peakDb)) {
-    return peakDb.some((v) => Number.isFinite(v) && v > PLAYBACK_SIGNAL_FLOOR_DB);
-  }
-  return false;
-}
-
-function hasValueSignal(values) {
-  if (Array.isArray(values)) {
-    return values.some((v) => Number.isFinite(v) && v > PLAYBACK_SIGNAL_FLOOR_DB);
-  }
-  return Number.isFinite(values) && values > PLAYBACK_SIGNAL_FLOOR_DB;
-}
-
-function usePlaybackMaxReadout({ enabled, mode, value, displayAudio }) {
-  const [playbackMax, setPlaybackMax] = useState(-Infinity);
-  const trackerRef = useRef({
-    mode,
-    active: false,
-    silentSince: null,
-    playbackMax: -Infinity,
-  });
-
-  const signalKey = Array.isArray(displayAudio?.peakDb) ? displayAudio.peakDb.join("|") : "";
-
-  useEffect(() => {
-    const tracker = trackerRef.current;
-    if (tracker.mode !== mode) {
-      tracker.mode = mode;
-      tracker.active = false;
-      tracker.silentSince = null;
-      tracker.playbackMax = -Infinity;
-      setPlaybackMax(-Infinity);
-    }
-
-    if (!enabled) {
-      tracker.active = false;
-      tracker.silentSince = null;
-      tracker.playbackMax = -Infinity;
-      setPlaybackMax(-Infinity);
-      return;
-    }
-
-    const now = Date.now();
-    const audible = hasPlaybackSignal(displayAudio);
-    const silenceElapsed =
-      tracker.silentSince != null && now - tracker.silentSince >= PLAYBACK_SILENCE_HOLD_MS;
-
-    if (audible) {
-      const startsNewPlayback = !tracker.active || silenceElapsed;
-      tracker.active = true;
-      tracker.silentSince = null;
-      const nextMax = startsNewPlayback
-        ? value
-        : Number.isFinite(value)
-          ? Math.max(tracker.playbackMax, value)
-          : tracker.playbackMax;
-      tracker.playbackMax = Number.isFinite(nextMax) ? nextMax : -Infinity;
-      setPlaybackMax(tracker.playbackMax);
-      return;
-    }
-
-    if (tracker.active && tracker.silentSince == null) {
-      tracker.silentSince = now;
-    }
-  }, [displayAudio, enabled, mode, signalKey, value]);
-
-  return playbackMax;
-}
-
-function usePlaybackMaxChannels({ enabled, mode, values }) {
-  const [playbackMax, setPlaybackMax] = useState([]);
-  const trackerRef = useRef({
-    mode,
-    active: false,
-    silentSince: null,
-    playbackMax: [],
-  });
-
-  const valuesKey = Array.isArray(values) ? values.join("|") : "";
-
-  useEffect(() => {
-    const tracker = trackerRef.current;
-    if (tracker.mode !== mode) {
-      tracker.mode = mode;
-      tracker.active = false;
-      tracker.silentSince = null;
-      tracker.playbackMax = [];
-      setPlaybackMax([]);
-    }
-
-    if (!enabled) {
-      tracker.active = false;
-      tracker.silentSince = null;
-      tracker.playbackMax = [];
-      setPlaybackMax([]);
-      return;
-    }
-
-    const now = Date.now();
-    const hasSignal = hasValueSignal(values);
-    const silenceElapsed =
-      tracker.silentSince != null && now - tracker.silentSince >= PLAYBACK_SILENCE_HOLD_MS;
-    if (hasSignal) {
-      const startsNewPlayback = !tracker.active || silenceElapsed;
-      tracker.active = true;
-      tracker.silentSince = null;
-      const next = values.map((value, index) => {
-        if (startsNewPlayback) {
-          return Number.isFinite(value) ? value : -Infinity;
-        }
-        const previous = Number.isFinite(tracker.playbackMax[index])
-          ? tracker.playbackMax[index]
-          : -Infinity;
-        return Number.isFinite(value) ? Math.max(previous, value) : previous;
-      });
-      const changed =
-        next.length !== tracker.playbackMax.length ||
-        next.some((value, index) => !Object.is(value, tracker.playbackMax[index]));
-      tracker.playbackMax = next;
-      if (changed) setPlaybackMax(next);
-      return;
-    } else if (tracker.active) {
-      if (tracker.silentSince == null) {
-        tracker.silentSince = now;
-      } else if (silenceElapsed) {
-        tracker.active = false;
-        tracker.silentSince = null;
-        tracker.playbackMax = [];
-        setPlaybackMax([]);
-      }
-    }
-  }, [enabled, mode, valuesKey]);
-
-  return playbackMax;
 }
 
 function AxisValueMarker({
@@ -329,7 +193,7 @@ export function LevelMeterPanel() {
     levelMeterYAxis.axisPx
   );
   const liveLevelValue = displayAudio?.[modeMeta.field];
-  const playbackMaxValue = usePlaybackMaxReadout({
+  const playbackMaxValue = useLevelMeterPlaybackMax({
     enabled: !isPeakFamily && showPlaybackMax,
     mode: levelMeterMode,
     value: liveLevelValue,
@@ -337,7 +201,7 @@ export function LevelMeterPanel() {
   });
   const channels = getPeakChannels(displayAudio, peakLabelContext, isRms ? "rmsDb" : "peakDb");
   const channelValues = useMemo(() => channels.map((channel) => channel.valueDb), [channels]);
-  const rmsPlaybackMaxValues = usePlaybackMaxChannels({
+  const rmsPlaybackMaxValues = useLevelMeterPlaybackMaxChannels({
     enabled: isRms && showPlaybackMax,
     mode: levelMeterMode,
     values: channelValues,
