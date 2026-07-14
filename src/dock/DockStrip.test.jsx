@@ -63,4 +63,43 @@ describe("DockStrip", () => {
     expect(modules[1].dataset.hoverHighlighted).toBe("true");
     expect(modules[1].className).toContain("ring-primary/60");
   });
+
+  it("exposes an edge-aware keyboard height resize handle", () => {
+    const onHeightChange = vi.fn();
+    renderStrip({ edge: "bottom", height: 72, onHeightChange });
+    const handle = screen.getByRole("separator", { name: /resize dock height/i });
+    fireEvent.keyDown(handle, { key: "ArrowUp" });
+    fireEvent.keyDown(handle, { key: "ArrowDown", shiftKey: true });
+    fireEvent.doubleClick(handle);
+    expect(onHeightChange).toHaveBeenNthCalledWith(1, 76, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(2, 56, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(3, 72, { persist: true });
+  });
+
+  it("disables height resizing while an accessory editor is open", () => {
+    renderStrip({ heightResizeDisabled: true });
+    const handle = screen.getByRole("separator", { name: /resize dock height/i });
+    expect(handle.getAttribute("aria-disabled")).toBe("true");
+    expect(handle.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("resizes and resets an adjacent panel pair from its divider", () => {
+    const onPanelResize = vi.fn();
+    const onPanelResizeReset = vi.fn();
+    renderStrip({ onPanelResize, onPanelResizeReset });
+    const divider = screen.getByRole("separator", {
+      name: /resize levelMeter and vectorscope/i,
+    });
+    fireEvent.keyDown(divider, { key: "ArrowRight" });
+    fireEvent.doubleClick(divider);
+    expect(onPanelResize).toHaveBeenCalledWith({
+      leftPanelId: "levelMeter",
+      rightPanelId: "vectorscope",
+      leftWidth: 180,
+      rightWidth: 220,
+      delta: 4,
+      persist: true,
+    });
+    expect(onPanelResizeReset).toHaveBeenCalledWith("levelMeter", "vectorscope");
+  });
 });

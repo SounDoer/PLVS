@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
-import { enterDock, exitDock, setDockReserveSpace } from "../ipc/commands.js";
+import { enterDock, exitDock, setDockHeight, setDockReserveSpace } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
+import { clampDockHeight } from "../dock/dockSizing.js";
 
 function normalizeDockState(raw) {
   const edge = raw?.edge === "top" ? "top" : "bottom";
@@ -11,6 +12,7 @@ function normalizeDockState(raw) {
     edge,
     monitor,
     reserveSpace: raw?.reserveSpace !== false,
+    height: clampDockHeight(raw?.height),
   };
 }
 
@@ -28,6 +30,8 @@ export function useDockMode() {
   );
   const dockRef = useRef(dock);
   const transitionTailRef = useRef(Promise.resolve());
+  const heightTransitionTailRef = useRef(Promise.resolve());
+  const heightRequestRef = useRef(0);
 
   const commitDock = useCallback((update) => {
     const next = typeof update === "function" ? update(dockRef.current) : update;
@@ -43,15 +47,17 @@ export function useDockMode() {
   }, []);
 
   const enterDockMode = useCallback(
-    (edge, reserveSpaceOverride, monitorOverride) => {
+    (edge, reserveSpaceOverride, monitorOverride, heightOverride) => {
       if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
         const current = dockRef.current;
         const hasReserveOverride = typeof reserveSpaceOverride === "boolean";
+        const hasHeightOverride = Number.isFinite(heightOverride);
         const resolved = await enterDock(
           edge,
           hasReserveOverride ? reserveSpaceOverride : undefined,
-          monitorOverride
+          monitorOverride,
+          hasHeightOverride ? clampDockHeight(heightOverride) : undefined
         );
         const monitor =
           typeof resolved?.monitor === "string"
@@ -63,13 +69,20 @@ export function useDockMode() {
           !current.enabled ||
           current.edge !== edge ||
           (typeof monitorOverride === "string" && current.monitor !== monitorOverride) ||
-          (hasReserveOverride && current.reserveSpace !== reserveSpaceOverride);
+          (hasReserveOverride && current.reserveSpace !== reserveSpaceOverride) ||
+          (hasHeightOverride && current.height !== clampDockHeight(heightOverride));
         commitDock((latest) => ({
           ...latest,
           enabled: true,
           edge,
           monitor,
-          reserveSpace: hasReserveOverride ? reserveSpaceOverride : latest.reserveSpace,
+          reserveSpace:
+            typeof resolved?.reserveSpace === "boolean"
+              ? resolved.reserveSpace
+              : hasReserveOverride
+                ? reserveSpaceOverride
+                : latest.reserveSpace,
+          height: clampDockHeight(resolved?.height ?? heightOverride ?? latest.height),
         }));
         if (changed) presetsStore.patch({ dirty: true });
       });
@@ -117,14 +130,42 @@ export function useDockMode() {
     return enqueueTransition(() => applyReserveSpace(!dockRef.current.reserveSpace));
   }, [applyReserveSpace, enqueueTransition]);
 
+  const resizeDockHeight = useCallback(
+    (height, { persist = true } = {}) => {
+      if (!isTauri() || !dockRef.current.enabled) return;
+      const previousHeight = dockRef.current.height;
+      const nextHeight = clampDockHeight(height);
+      const request = ++heightRequestRef.current;
+      const operation = heightTransitionTailRef.current.then(async () => {
+        try {
+          const resolved = await setDockHeight({ height: nextHeight, persist });
+          if (persist && request === heightRequestRef.current) {
+            commitDock((latest) => ({ ...latest, height: clampDockHeight(resolved) }));
+          }
+          if (persist && previousHeight !== nextHeight) presetsStore.patch({ dirty: true });
+        } catch (error) {
+          if (request === heightRequestRef.current) {
+            commitDock((latest) => ({ ...latest, height: previousHeight }));
+          }
+          throw error;
+        }
+      });
+      heightTransitionTailRef.current = operation.catch(() => {});
+      return operation;
+    },
+    [commitDock]
+  );
+
   return {
     dockEnabled: dock.enabled,
     dockEdge: dock.edge,
     dockMonitor: dock.monitor,
+    dockHeight: dock.height,
     reserveSpace: dock.reserveSpace,
     enterDockMode,
     exitDockMode,
     setReserveSpace,
     toggleReserveSpace,
+    resizeDockHeight,
   };
 }

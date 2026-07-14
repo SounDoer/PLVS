@@ -19,6 +19,7 @@ import {
   normalizeDockControlsByPanelId,
   updateDockPanelControls,
 } from "./dockModuleControls.js";
+import { resetDockPanelPair, resizeDockPanelPair } from "./dockPanelSizing.js";
 
 function readDockState() {
   const raw = workspaceStore.read().dock;
@@ -41,6 +42,7 @@ export function useDockLayout() {
       dock: {
         panelsById: next.layout.panelsById,
         panelOrder: next.layout.panelOrder,
+        panelSizesById: next.layout.panelSizesById,
         controlsByPanelId: next.controlsByPanelId,
       },
     });
@@ -231,6 +233,42 @@ export function useDockLayout() {
     },
     [resetPanelControls]
   );
+  const resizePanelPair = useCallback(
+    ({ leftPanelId, rightPanelId, leftWidth, rightWidth, delta, persist = true }) => {
+      const current = readDockState();
+      const layout = {
+        ...current.layout,
+        panelSizesById: resizeDockPanelPair({
+          panelSizesById: current.layout.panelSizesById,
+          leftPanel: current.layout.panelsById[leftPanelId],
+          rightPanel: current.layout.panelsById[rightPanelId],
+          leftWidth,
+          rightWidth,
+          delta,
+        }),
+      };
+      if (persist) write({ ...current, layout });
+      else setState({ ...current, layout });
+    },
+    [write]
+  );
+  const resetPanelPair = useCallback(
+    (leftPanelId, rightPanelId) => {
+      const current = readDockState();
+      write({
+        ...current,
+        layout: {
+          ...current.layout,
+          panelSizesById: resetDockPanelPair(
+            current.layout.panelSizesById,
+            leftPanelId,
+            rightPanelId
+          ),
+        },
+      });
+    },
+    [write]
+  );
   const panels = useMemo(
     () =>
       state.layout.panelOrder.map((panelId) => state.layout.panelsById[panelId]).filter(Boolean),
@@ -256,6 +294,7 @@ export function useDockLayout() {
   return {
     panelsById: state.layout.panelsById,
     panelOrder: state.layout.panelOrder,
+    panelSizesById: state.layout.panelSizesById,
     panels,
     controlsByPanelId: state.controlsByPanelId,
     modules,
@@ -275,5 +314,7 @@ export function useDockLayout() {
     resetPanelControls,
     setModuleControls,
     resetModuleControls,
+    resizePanelPair,
+    resetPanelPair,
   };
 }

@@ -78,6 +78,7 @@ pub fn run() {
       dock::exit_dock,
       dock::get_dock_state,
       dock::set_dock_reserve_space,
+      dock::set_dock_height,
       dock_accessories::set_dock_accessories,
       glass_effect::set_glass_effect,
     ])
@@ -147,7 +148,7 @@ pub fn run() {
           .state::<dock::DockedFlag>()
           .0
           .store(true, std::sync::atomic::Ordering::Relaxed);
-        if let Err(e) = dock::apply_dock_form(&window, d.edge, d.monitor.as_deref()) {
+        if let Err(e) = dock::apply_dock_form(&window, d.edge, d.monitor.as_deref(), d.height) {
           log::warn!("dock restore failed, falling back to normal bounds: {e}");
           app
             .state::<dock::DockedFlag>()
@@ -188,7 +189,7 @@ pub fn run() {
       #[cfg(target_os = "windows")]
       if boot_docked && boot_dock.as_ref().is_some_and(|d| d.reserve_space) {
         if let Some(d) = boot_dock.as_ref() {
-          if let Err(e) = appbar::set_reserved(&window, true, d.edge) {
+          if let Err(e) = appbar::set_reserved(&window, true, d.edge, d.height) {
             log::warn!("appbar restore failed, continuing as overlay dock: {e}");
           }
         }

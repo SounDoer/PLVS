@@ -66,8 +66,10 @@ export function usePresets({
     edge: "bottom",
     monitor: null,
     reserveSpace: false,
+    height: 72,
     panelsById: {},
     panelOrder: [],
+    panelSizesById: {},
     controlsByPanelId: undefined,
   },
   applyDockPreset = async () => {},
@@ -148,8 +150,10 @@ export function usePresets({
         edge: dock.edge === "top" ? "top" : "bottom",
         monitor: typeof dock.monitor === "string" ? dock.monitor : null,
         reserveSpace: dock.reserveSpace === true,
+        height: Number.isFinite(dock.height) ? dock.height : 72,
         panelsById: clone(dock.panelsById ?? {}),
         panelOrder: Array.isArray(dock.panelOrder) ? [...dock.panelOrder] : [],
+        panelSizesById: clone(dock.panelSizesById ?? {}),
         controlsByPanelId: clone(dock.controlsByPanelId ?? {}),
       },
     };
@@ -204,8 +208,10 @@ export function usePresets({
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
         monitor: typeof preset.dock?.monitor === "string" ? preset.dock.monitor : null,
         reserveSpace: preset.dock?.reserveSpace === true,
+        height: Number.isFinite(preset.dock?.height) ? preset.dock.height : undefined,
         panelsById: preset.dock?.panelsById,
         panelOrder: preset.dock?.panelOrder,
+        panelSizesById: preset.dock?.panelSizesById,
         controlsByPanelId: preset.dock?.controlsByPanelId,
       };
       try {

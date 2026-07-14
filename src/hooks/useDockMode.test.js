@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   enterDock: vi.fn(async () => {}),
   exitDock: vi.fn(async () => {}),
   setDockReserveSpace: vi.fn(async () => {}),
+  setDockHeight: vi.fn(async ({ height }) => height),
   isTauri: vi.fn(() => true),
   patchPresets: vi.fn(),
 }));
@@ -13,6 +14,7 @@ vi.mock("../ipc/commands.js", () => ({
   enterDock: mocks.enterDock,
   exitDock: mocks.exitDock,
   setDockReserveSpace: mocks.setDockReserveSpace,
+  setDockHeight: mocks.setDockHeight,
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
 vi.mock("../persistence/index.js", () => ({
@@ -26,6 +28,7 @@ describe("useDockMode", () => {
     mocks.enterDock.mockClear();
     mocks.exitDock.mockClear();
     mocks.setDockReserveSpace.mockReset().mockResolvedValue(undefined);
+    mocks.setDockHeight.mockReset().mockImplementation(async ({ height }) => height);
     mocks.isTauri.mockReturnValue(true);
     mocks.patchPresets.mockClear();
     delete window.__PLVS_INITIAL_STATE__;
@@ -70,7 +73,7 @@ describe("useDockMode", () => {
 
     await act(() => result.current.enterDockMode("top", true));
 
-    expect(mocks.enterDock).toHaveBeenCalledWith("top", true, undefined);
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", true, undefined, undefined);
     expect(mocks.setDockReserveSpace).not.toHaveBeenCalled();
     expect(result.current).toMatchObject({ dockEdge: "top", reserveSpace: true });
   });
@@ -143,7 +146,7 @@ describe("useDockMode", () => {
   it("enterDockMode invokes IPC and flips state", async () => {
     const { result } = renderHook(() => useDockMode());
     await act(() => result.current.enterDockMode("top"));
-    expect(mocks.enterDock).toHaveBeenCalledWith("top", undefined, undefined);
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", undefined, undefined, undefined);
     expect(result.current.dockEnabled).toBe(true);
     expect(result.current.dockEdge).toBe("top");
     expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
@@ -158,7 +161,7 @@ describe("useDockMode", () => {
     });
     const { result } = renderHook(() => useDockMode());
     await act(() => result.current.enterDockMode("top", true, "\\\\.\\DISPLAY2"));
-    expect(mocks.enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2");
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2", undefined);
     expect(result.current).toMatchObject({ dockMonitor: "\\\\.\\DISPLAY2" });
   });
 
@@ -170,6 +173,31 @@ describe("useDockMode", () => {
     expect(result.current.dockEnabled).toBe(false);
     expect(result.current.reserveSpace).toBe(true);
     expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
+  });
+
+  it("resizes and persists dock height through IPC", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", height: 72 },
+    };
+    const { result } = renderHook(() => useDockMode());
+
+    await act(() => result.current.resizeDockHeight(110, { persist: true }));
+
+    expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 110, persist: true });
+    expect(result.current.dockHeight).toBe(110);
+    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
+  });
+
+  it("clamps legacy and requested dock heights", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", height: 10 },
+    };
+    const { result } = renderHook(() => useDockMode());
+    expect(result.current.dockHeight).toBe(56);
+
+    await act(() => result.current.resizeDockHeight(999, { persist: false }));
+    expect(mocks.setDockHeight).toHaveBeenCalledWith({ height: 160, persist: false });
+    expect(result.current.dockHeight).toBe(56);
   });
 
   it("is inert outside Tauri", async () => {

@@ -11,7 +11,9 @@ use crate::window_state::{
 
 /// Logical (DPI-independent) strip height. Single source of truth: the
 /// frontend strip simply fills the viewport, so no JS copy of this number.
-pub const DOCK_STRIP_LOGICAL_HEIGHT: f64 = 72.0;
+pub const DOCK_MIN_LOGICAL_HEIGHT: u32 = 56;
+pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 72;
+pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = 160;
 pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 44.0;
 pub const DOCK_EDITOR_MIN_LOGICAL_WIDTH: f64 = 176.0;
 pub const DOCK_EDITOR_MAX_LOGICAL_WIDTH: f64 = 400.0;
@@ -43,10 +45,20 @@ pub struct DockStateRecord {
   pub monitor: Option<String>,
   #[serde(default = "default_reserve_space")]
   pub reserve_space: bool,
+  #[serde(default = "default_dock_height")]
+  pub height: u32,
 }
 
 fn default_reserve_space() -> bool {
   true
+}
+
+fn default_dock_height() -> u32 {
+  DOCK_DEFAULT_LOGICAL_HEIGHT
+}
+
+pub fn clamp_dock_height(height: u32) -> u32 {
+  height.clamp(DOCK_MIN_LOGICAL_HEIGHT, DOCK_MAX_LOGICAL_HEIGHT)
 }
 
 /// Compute the docked strip rect (physical px) inside a monitor work area.
@@ -225,12 +237,14 @@ pub fn apply_dock_form<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   edge: DockEdge,
   monitor_name: Option<&str>,
+  logical_height: u32,
 ) -> Result<Option<String>, String> {
+  let logical_height = clamp_dock_height(logical_height);
   let (wa, scale, resolved_monitor) = work_area_and_scale(window, monitor_name)?;
   #[cfg(target_os = "windows")]
   let _ = (wa, scale);
   #[cfg(not(target_os = "windows"))]
-  let height = (DOCK_STRIP_LOGICAL_HEIGHT * scale).round() as u32;
+  let height = (logical_height as f64 * scale).round() as u32;
   #[cfg(not(target_os = "windows"))]
   let rect = dock_strip_rect(wa, edge, height);
   if window.is_maximized().unwrap_or(false) {
@@ -248,7 +262,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
       .set_resizable(false)
       .map_err(|e| format!("resizable: {e}"))?;
     #[cfg(target_os = "windows")]
-    crate::appbar::position_overlay(window, edge, wa, scale)?;
+    crate::appbar::position_overlay(window, edge, wa, scale, logical_height)?;
     #[cfg(not(target_os = "windows"))]
     {
       window
@@ -271,6 +285,7 @@ pub fn enter_dock<R: tauri::Runtime>(
   edge: DockEdge,
   reserve_space: Option<bool>,
   monitor: Option<String>,
+  height: Option<u32>,
 ) -> Result<DockStateRecord, String> {
   let previous = read_dock_state(window.app_handle());
   let reserve_space = reserve_space.unwrap_or_else(|| {
@@ -279,20 +294,26 @@ pub fn enter_dock<R: tauri::Runtime>(
       .map(|state| state.reserve_space)
       .unwrap_or(true)
   });
+  let height = clamp_dock_height(height.unwrap_or_else(|| {
+    previous
+      .as_ref()
+      .map(|state| state.height)
+      .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT)
+  }));
   #[cfg(target_os = "windows")]
-  crate::appbar::set_reserved(&window, false, edge)?;
+  crate::appbar::set_reserved(&window, false, edge, height)?;
   // Persist the latest normal-form geometry, then raise the suppression flag
   // BEFORE moving the window so the flush thread can't record strip bounds.
   if !flag.0.load(Ordering::Relaxed) {
     save_window_bounds(&window);
   }
   flag.0.store(true, Ordering::Relaxed);
-  let monitor = apply_dock_form(&window, edge, monitor.as_deref()).inspect_err(|_| {
+  let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height).inspect_err(|_| {
     flag.0.store(false, Ordering::Relaxed);
   })?;
   #[cfg(target_os = "windows")]
   if reserve_space {
-    crate::appbar::set_reserved(&window, true, edge).inspect_err(|_| {
+    crate::appbar::set_reserved(&window, true, edge, height).inspect_err(|_| {
       flag.0.store(false, Ordering::Relaxed);
       restore_normal_shell(&window);
     })?;
@@ -302,6 +323,7 @@ pub fn enter_dock<R: tauri::Runtime>(
     edge,
     monitor,
     reserve_space,
+    height,
   };
   save_dock_state(window.app_handle(), &next);
   Ok(next)
@@ -316,7 +338,14 @@ pub fn exit_dock<R: tauri::Runtime>(
 ) -> Result<(), String> {
   crate::dock_accessories::hide_all(window.app_handle());
   #[cfg(target_os = "windows")]
-  crate::appbar::set_reserved(&window, false, DockEdge::Bottom)?;
+  crate::appbar::set_reserved(
+    &window,
+    false,
+    DockEdge::Bottom,
+    read_dock_state(window.app_handle())
+      .map(|state| clamp_dock_height(state.height))
+      .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+  )?;
   window
     .set_resizable(true)
     .map_err(|e| format!("resizable: {e}"))?;
@@ -376,6 +405,10 @@ pub fn exit_dock<R: tauri::Runtime>(
       edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
       monitor: prev.as_ref().and_then(|s| s.monitor.clone()),
       reserve_space: prev.as_ref().map(|s| s.reserve_space).unwrap_or(true),
+      height: prev
+        .as_ref()
+        .map(|s| clamp_dock_height(s.height))
+        .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
     },
   );
   flag.0.store(false, Ordering::Relaxed);
@@ -402,7 +435,10 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
 
   #[cfg(target_os = "windows")]
   {
-    crate::appbar::set_reserved(&window, enabled, edge)?;
+    let height = read_dock_state(window.app_handle())
+      .map(|state| clamp_dock_height(state.height))
+      .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT);
+    crate::appbar::set_reserved(&window, enabled, edge, height)?;
   }
   #[cfg(not(target_os = "windows"))]
   if enabled {
@@ -417,9 +453,70 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
       edge,
       monitor: previous.and_then(|state| state.monitor),
       reserve_space: enabled,
+      height: read_dock_state(window.app_handle())
+        .map(|state| clamp_dock_height(state.height))
+        .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
     },
   );
   Ok(())
+}
+
+#[tauri::command]
+pub fn set_dock_height<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  flag: tauri::State<'_, DockedFlag>,
+  height: u32,
+  persist: bool,
+) -> Result<u32, String> {
+  if !flag.0.load(Ordering::Relaxed) {
+    return Err("window is not docked".into());
+  }
+  let height = clamp_dock_height(height);
+  let previous = read_dock_state(window.app_handle()).unwrap_or(DockStateRecord {
+    enabled: true,
+    edge: DockEdge::Bottom,
+    monitor: None,
+    reserve_space: true,
+    height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+  });
+  let (work_area, scale, resolved_monitor) =
+    work_area_and_scale(&window, previous.monitor.as_deref())?;
+
+  #[cfg(target_os = "windows")]
+  if previous.reserve_space {
+    if persist {
+      crate::appbar::set_reserved(&window, true, previous.edge, height)?;
+    } else {
+      crate::appbar::preview_reserved_height(&window, previous.edge, height)?;
+    }
+  } else {
+    crate::appbar::position_overlay(&window, previous.edge, work_area, scale, height)?;
+  }
+  #[cfg(not(target_os = "windows"))]
+  {
+    let physical_height = (height as f64 * scale).round() as u32;
+    let rect = dock_strip_rect(work_area, previous.edge, physical_height);
+    window
+      .set_size(tauri::PhysicalSize::new(rect.width, rect.height))
+      .map_err(|e| format!("size: {e}"))?;
+    window
+      .set_position(tauri::PhysicalPosition::new(rect.x, rect.y))
+      .map_err(|e| format!("position: {e}"))?;
+  }
+
+  if persist {
+    save_dock_state(
+      window.app_handle(),
+      &DockStateRecord {
+        enabled: true,
+        edge: previous.edge,
+        monitor: resolved_monitor.or(previous.monitor),
+        reserve_space: previous.reserve_space,
+        height,
+      },
+    );
+  }
+  Ok(height)
 }
 
 #[cfg(test)]
@@ -480,12 +577,14 @@ mod tests {
       edge: DockEdge::Bottom,
       monitor: Some("\\\\.\\DISPLAY1".into()),
       reserve_space: true,
+      height: DOCK_DEFAULT_LOGICAL_HEIGHT,
     };
     let v = serde_json::to_value(&s).unwrap();
     assert_eq!(v["enabled"], true);
     assert_eq!(v["edge"], "bottom");
     assert_eq!(v["monitor"], "\\\\.\\DISPLAY1");
     assert_eq!(v["reserveSpace"], true);
+    assert_eq!(v["height"], 72);
     let back: DockStateRecord = serde_json::from_value(v).unwrap();
     assert_eq!(back, s);
   }
@@ -495,6 +594,14 @@ mod tests {
     let back: DockStateRecord =
       serde_json::from_value(serde_json::json!({ "enabled": true, "edge": "bottom" })).unwrap();
     assert!(back.reserve_space);
+    assert_eq!(back.height, DOCK_DEFAULT_LOGICAL_HEIGHT);
+  }
+
+  #[test]
+  fn dock_height_clamps_to_supported_range() {
+    assert_eq!(clamp_dock_height(1), DOCK_MIN_LOGICAL_HEIGHT);
+    assert_eq!(clamp_dock_height(72), 72);
+    assert_eq!(clamp_dock_height(999), DOCK_MAX_LOGICAL_HEIGHT);
   }
 
   #[test]

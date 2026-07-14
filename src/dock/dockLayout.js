@@ -3,6 +3,7 @@ import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
   normalizeDockStatsIds as normalizeDockStatsControlIds,
 } from "./dockModuleControls.js";
+import { normalizeDockPanelSizes } from "./dockPanelSizing.js";
 
 /** Workspace panel module ids that Dock can render, in the normal app catalog order. */
 export const DOCK_PANEL_MODULE_IDS = [
@@ -128,7 +129,11 @@ export function normalizeDockLayout(raw) {
       panelsById[panel.id] = panel;
       panelOrder.push(panel.id);
     }
-    return withLegacyModules({ panelsById, panelOrder });
+    return withLegacyModules({
+      panelsById,
+      panelOrder,
+      panelSizesById: normalizeDockPanelSizes(panelsById, raw.panelSizesById),
+    });
   }
   const list = raw && typeof raw === "object" ? raw.modules : undefined;
   const source = Array.isArray(list) ? list : DEFAULT_DOCK_MODULES;
@@ -141,7 +146,7 @@ export function normalizeDockLayout(raw) {
     panelsById[panel.id] = panel;
     panelOrder.push(panel.id);
   }
-  return withLegacyModules({ panelsById, panelOrder });
+  return withLegacyModules({ panelsById, panelOrder, panelSizesById: {} });
 }
 
 export function toggleDockModule(layout, id) {
@@ -182,9 +187,11 @@ export function removeDockPanel(layout, panelId) {
   layout = ensureDockLayout(layout);
   if (!layout.panelsById[panelId]) return layout;
   const { [panelId]: _removed, ...panelsById } = layout.panelsById;
+  const { [panelId]: _removedSize, ...panelSizesById } = layout.panelSizesById ?? {};
   return withLegacyModules({
     ...layout,
     panelsById,
+    panelSizesById,
     panelOrder: layout.panelOrder.filter((id) => id !== panelId),
   });
 }

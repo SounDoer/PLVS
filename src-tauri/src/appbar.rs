@@ -15,7 +15,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
   WM_WINDOWPOSCHANGING,
 };
 
-use crate::dock::{DockEdge, DOCK_STRIP_LOGICAL_HEIGHT};
+use crate::dock::DockEdge;
 use crate::window_state::MonitorRect;
 
 const APPBAR_CALLBACK_MESSAGE: u32 = WM_APP + 0x31;
@@ -181,12 +181,13 @@ pub fn position_overlay<R: tauri::Runtime>(
   edge: DockEdge,
   work_area: MonitorRect,
   scale: f64,
+  logical_height: u32,
 ) -> Result<(), String> {
   let _transition = transition_lock()
     .lock()
     .map_err(|_| "appbar transition lock poisoned")?;
   let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
-  let height = (DOCK_STRIP_LOGICAL_HEIGHT * scale).round() as i32;
+  let height = (logical_height as f64 * scale).round() as i32;
   move_overlay(
     hwnd,
     edge,
@@ -198,6 +199,42 @@ pub fn position_overlay<R: tauri::Runtime>(
       bottom: work_area.y + work_area.height as i32,
     },
   )
+}
+
+/// Preview a height change without renegotiating the Shell reservation. The
+/// registered work area stays unchanged until pointer release; only the Dock
+/// window follows the pointer during the drag.
+pub fn preview_reserved_height<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  edge: DockEdge,
+  logical_height: u32,
+) -> Result<(), String> {
+  let _transition = transition_lock()
+    .lock()
+    .map_err(|_| "appbar transition lock poisoned")?;
+  let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
+  let height = (logical_height as f64 * window.scale_factor().unwrap_or(1.0)).round() as i32;
+  let previous = {
+    let mut current = state().lock().map_err(|_| "appbar state poisoned")?;
+    if !current.registered || current.hwnd != hwnd as isize {
+      return Err("dock is not registered as an appbar".into());
+    }
+    current.transitioning = true;
+    (current.edge, current.height)
+  };
+
+  let result = unsafe {
+    (|| -> Result<(), String> {
+      let reserved_work_area = monitor_work_area(hwnd)?;
+      let available_work_area = work_area_without_self(reserved_work_area, previous.0, previous.1);
+      let rect = appbar_rect_from_work_area(available_work_area, edge, height, false);
+      move_window(hwnd, rect, "dock height preview")
+    })()
+  };
+  if let Ok(mut current) = state().lock() {
+    current.transitioning = false;
+  }
+  result
 }
 
 fn reposition(
@@ -302,6 +339,7 @@ pub fn set_reserved<R: tauri::Runtime>(
   window: &WebviewWindow<R>,
   enabled: bool,
   edge: DockEdge,
+  logical_height: u32,
 ) -> Result<(), String> {
   let _transition = transition_lock()
     .lock()
@@ -310,7 +348,7 @@ pub fn set_reserved<R: tauri::Runtime>(
     .lock()
     .map_err(|_| "appbar state poisoned")?
     .transitioning = true;
-  let result = set_reserved_inner(window, enabled, edge);
+  let result = set_reserved_inner(window, enabled, edge, logical_height);
   if let Ok(mut current) = state().lock() {
     current.transitioning = false;
   }
@@ -321,9 +359,10 @@ fn set_reserved_inner<R: tauri::Runtime>(
   window: &WebviewWindow<R>,
   enabled: bool,
   edge: DockEdge,
+  logical_height: u32,
 ) -> Result<(), String> {
   let hwnd = window.hwnd().map_err(|e| format!("hwnd: {e}"))?.0;
-  let height = (DOCK_STRIP_LOGICAL_HEIGHT * window.scale_factor().unwrap_or(1.0)).round() as i32;
+  let height = (logical_height as f64 * window.scale_factor().unwrap_or(1.0)).round() as i32;
   let previous_registration = {
     let mut current = state().lock().map_err(|_| "appbar state poisoned")?;
     let registration = current.registered.then_some((current.edge, current.height));
@@ -422,6 +461,22 @@ mod tests {
     constrain_to_edge(&mut rect, DockEdge::Top, 108);
 
     assert_eq!(rect.bottom - rect.top, 108);
+  }
+
+  #[test]
+  fn reserved_height_preview_recovers_the_unreserved_work_area() {
+    let reserved = RECT {
+      left: 0,
+      top: 0,
+      right: 1920,
+      bottom: 968,
+    };
+    let available = work_area_without_self(reserved, DockEdge::Bottom, 72);
+    let preview = appbar_rect_from_work_area(available, DockEdge::Bottom, 120, false);
+    assert_eq!(
+      (preview.left, preview.top, preview.right, preview.bottom),
+      (0, 920, 1920, 1040)
+    );
   }
 
   #[test]

@@ -6,6 +6,7 @@ import { DockSpectrum } from "./modules/DockSpectrum.jsx";
 import { DockStats } from "./modules/DockStats.jsx";
 import { DockTransport } from "./modules/DockTransport.jsx";
 import { DockWaveform } from "./modules/DockWaveform.jsx";
+import { getDockPanelSizing } from "./dockPanelSizing.js";
 
 /**
  * Catalog of dock modules. `flexible` entries absorb remaining strip width;
@@ -17,56 +18,56 @@ export const DOCK_MODULE_REGISTRY = {
     id: "level",
     label: "Level",
     Component: DockLevel,
-    flexible: false,
+    ...getDockPanelSizing("levelMeter"),
     settingsFamily: "level",
   },
   loudness: {
     id: "loudness",
     label: "Loudness",
     Component: DockLoudness,
-    flexible: false,
+    ...getDockPanelSizing("loudness"),
     settingsFamily: "loudness",
   },
   spectrum: {
     id: "spectrum",
     label: "Spectrum",
     Component: DockSpectrum,
-    flexible: true,
+    ...getDockPanelSizing("spectrum"),
     settingsFamily: "spectrum",
   },
   correlation: {
     id: "correlation",
     label: "Correlation",
     Component: DockCorrelation,
-    flexible: false,
+    ...getDockPanelSizing("vectorscope"),
     settingsFamily: "correlation",
   },
   stats: {
     id: "stats",
     label: "Stats",
     Component: DockStats,
-    flexible: false,
+    ...getDockPanelSizing("stats"),
     settingsFamily: "stats",
   },
   waveform: {
     id: "waveform",
     label: "Waveform",
     Component: DockWaveform,
-    flexible: true,
+    ...getDockPanelSizing("waveform"),
     settingsFamily: "waveform",
   },
   spectrogram: {
     id: "spectrogram",
     label: "Spectrogram",
     Component: DockSpectrogram,
-    flexible: true,
+    ...getDockPanelSizing("spectrogram"),
     settingsFamily: "spectrogram",
   },
   transport: {
     id: "transport",
     label: "Timecode",
     Component: DockTransport,
-    flexible: false,
+    ...getDockPanelSizing("transport"),
     settingsFamily: null,
   },
 };

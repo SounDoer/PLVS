@@ -46,6 +46,7 @@ vi.mock("./ipc/commands.js", () => ({
   enterDock: vi.fn().mockResolvedValue(undefined),
   exitDock: vi.fn().mockResolvedValue(undefined),
   setDockReserveSpace: vi.fn().mockResolvedValue(undefined),
+  setDockHeight: vi.fn(async ({ height }) => height),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -353,7 +354,9 @@ describe("App smoke", () => {
       });
     });
 
-    await waitFor(() => expect(enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2"));
+    await waitFor(() =>
+      expect(enterDock).toHaveBeenCalledWith("top", true, "\\\\.\\DISPLAY2", undefined)
+    );
     expect(setDockReserveSpace).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(presetsStore.read()).toMatchObject({ activeId: "dock-reserved", dirty: false })

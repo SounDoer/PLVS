@@ -116,4 +116,42 @@ describe("useDockLayout", () => {
     act(() => result.current.toggleStat("psr"));
     expect(presetsStore.read().dirty).toBe(true);
   });
+
+  it("previews and persists an adjacent panel resize", () => {
+    const { result } = renderHook(() => useDockLayout());
+    const resize = {
+      leftPanelId: "level",
+      rightPanelId: "loudness",
+      leftWidth: 180,
+      rightWidth: 200,
+      delta: 24,
+    };
+
+    act(() => result.current.resizePanelPair({ ...resize, persist: false }));
+    expect(result.current.panelSizesById).toMatchObject({ level: 204, loudness: 176 });
+    expect(workspaceStore.read().dock).toBeUndefined();
+
+    act(() => result.current.resizePanelPair({ ...resize, persist: true }));
+    expect(workspaceStore.read().dock.panelSizesById).toMatchObject({
+      level: 204,
+      loudness: 176,
+    });
+  });
+
+  it("resets the preferred widths for one adjacent pair", () => {
+    workspaceStore.patch({
+      dock: {
+        panelsById: {
+          level: { id: "level", moduleId: "levelMeter" },
+          loudness: { id: "loudness", moduleId: "loudness" },
+        },
+        panelOrder: ["level", "loudness"],
+        panelSizesById: { level: 220, loudness: 260 },
+      },
+    });
+    const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.resetPanelPair("level", "loudness"));
+    expect(result.current.panelSizesById).toEqual({});
+    expect(workspaceStore.read().dock.panelSizesById).toEqual({});
+  });
 });

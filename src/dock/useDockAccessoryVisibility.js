@@ -33,7 +33,13 @@ export async function setDockAccessoriesWhenReady(
   }
 }
 
-export function useDockAccessoryVisibility({ active, edge, forceHeaderVisible = false, onError }) {
+export function useDockAccessoryVisibility({
+  active,
+  edge,
+  geometryVersion,
+  forceHeaderVisible = false,
+  onError,
+}) {
   const [presence, setPresence] = useState({ stripInside: false, headerInside: false });
   const [headerVisible, setHeaderVisible] = useState(false);
   const [editorView, setEditorView] = useState(null);
@@ -126,7 +132,16 @@ export function useDockAccessoryVisibility({ active, edge, forceHeaderVisible = 
     void commandQueueRef.current.catch((error) => {
       if (request === requestRef.current) onError?.(error);
     });
-  }, [active, edge, editorSize, editorView, headerVisible, measuredEditorView, onError]);
+  }, [
+    active,
+    edge,
+    editorSize,
+    editorView,
+    geometryVersion,
+    headerVisible,
+    measuredEditorView,
+    onError,
+  ]);
 
   return {
     headerVisible,

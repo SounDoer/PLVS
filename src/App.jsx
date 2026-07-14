@@ -133,11 +133,13 @@ function AppContent() {
     dockEnabled,
     dockEdge,
     dockMonitor,
+    dockHeight,
     reserveSpace,
     enterDockMode,
     exitDockMode,
     setReserveSpace,
     toggleReserveSpace,
+    resizeDockHeight,
   } = useDockMode();
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
@@ -278,10 +280,22 @@ function AppContent() {
       clearNotice();
       if (presetDock.enabled) {
         dockLayout.setPanels(presetDock);
-        if (!dockEnabled || dockEdge !== presetDock.edge || dockMonitor !== presetDock.monitor) {
-          await enterDockMode(presetDock.edge, presetDock.reserveSpace, presetDock.monitor);
-        } else if (presetDock.reserveSpace !== reserveSpace) {
-          await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
+        const requiresDockTransition =
+          !dockEnabled || dockEdge !== presetDock.edge || dockMonitor !== presetDock.monitor;
+        if (requiresDockTransition) {
+          await enterDockMode(
+            presetDock.edge,
+            presetDock.reserveSpace,
+            presetDock.monitor,
+            presetDock.height
+          );
+        } else {
+          if (presetDock.reserveSpace !== reserveSpace) {
+            await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
+          }
+          if (Number.isFinite(presetDock.height) && presetDock.height !== dockHeight) {
+            await resizeDockHeight(presetDock.height, { persist: true });
+          }
         }
       } else if (dockEnabled) {
         const result = await exitDockRestoringAttributes({ reportError: false });
@@ -295,8 +309,10 @@ function AppContent() {
       dockEnabled,
       dockEdge,
       dockMonitor,
+      dockHeight,
       exitDockRestoringAttributes,
       reserveSpace,
+      resizeDockHeight,
       setReserveSpace,
     ]
   );
@@ -320,16 +336,20 @@ function AppContent() {
       edge: dockEdge,
       monitor: dockMonitor,
       reserveSpace,
+      height: dockHeight,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
+      panelSizesById: dockLayout.panelSizesById,
       controlsByPanelId: dockLayout.controlsByPanelId,
     }),
     [
       dockEnabled,
       dockEdge,
       dockMonitor,
+      dockHeight,
       dockLayout.controlsByPanelId,
       dockLayout.panelOrder,
+      dockLayout.panelSizesById,
       dockLayout.panelsById,
       reserveSpace,
     ]
@@ -838,10 +858,26 @@ function AppContent() {
   const dockAccessoryVisibility = useDockAccessoryVisibility({
     active: docked,
     edge: dockEdge,
+    geometryVersion: dockHeight,
     forceHeaderVisible: notice?.kind === "error",
     onError: onDockAccessoryError,
   });
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
+  const onDockHeightChange = useCallback(
+    async (height, options) => {
+      clearNotice();
+      try {
+        await resizeDockHeight(height, options);
+      } catch (error) {
+        raiseNotice(
+          "error",
+          "Dock height could not be changed. The previous height was kept.",
+          errorDetails("Dock resize failed", error)
+        );
+      }
+    },
+    [clearNotice, raiseNotice, resizeDockHeight]
+  );
   const dockHeaderState = useMemo(
     () => ({
       sourceTransportState,
@@ -1166,10 +1202,18 @@ function AppContent() {
   const dockProps = docked
     ? {
         panels: dockLayout.panels,
+        panelSizesById: dockLayout.panelSizesById,
         hoveredPanelId:
           dockAccessoryVisibility.editorView === "modules" ? hoveredDockPanelId : null,
         onPointerEnter: dockAccessoryVisibility.onStripPointerEnter,
         onPointerLeave: dockAccessoryVisibility.onStripPointerLeave,
+        edge: dockEdge,
+        height: dockHeight,
+        heightResizeDisabled: dockAccessoryVisibility.editorView !== null,
+        panelResizeDisabled: dockAccessoryVisibility.editorView !== null,
+        onHeightChange: onDockHeightChange,
+        onPanelResize: dockLayout.resizePanelPair,
+        onPanelResizeReset: dockLayout.resetPanelPair,
         controls: {
           controlsByPanelId: dockLayout.controlsByPanelId,
           sourceTransportState,

@@ -65,8 +65,8 @@ export function applyWindowBounds(bounds) {
 }
 
 /** Enter dock mode on the given edge. Reserve/monitor overrides make preset apply atomic. */
-export function enterDock(edge, reserveSpace, monitor) {
-  return invoke("enter_dock", { edge, reserveSpace, monitor });
+export function enterDock(edge, reserveSpace, monitor, height) {
+  return invoke("enter_dock", { edge, reserveSpace, monitor, height });
 }
 
 /**
@@ -80,6 +80,11 @@ export function exitDock({ decorations, alwaysOnTop }) {
 /** Windows-only: register or remove the dock strip as a Win32 AppBar. */
 export function setDockReserveSpace({ enabled, edge }) {
   return invoke("set_dock_reserve_space", { enabled, edge });
+}
+
+/** Resize the dock strip in logical pixels. Preview updates are not persisted. */
+export function setDockHeight({ height, persist = true }) {
+  return invoke("set_dock_height", { height, persist });
 }
 
 /** Position and show/hide the two Dock accessory windows atomically. */

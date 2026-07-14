@@ -13,6 +13,7 @@ import {
   probeFileAnalysis,
   setDialogueGating,
   setDialogueVadEngine,
+  setDockHeight,
   setLoudnessWeights,
   startFileAnalysis,
   stopFileAnalysis,
@@ -70,5 +71,12 @@ describe("audio engine command seam", () => {
     expect(onFrame).toHaveBeenNthCalledWith(1, { seq: 7 });
     expect(onFrame).toHaveBeenNthCalledWith(2, { seq: 8 });
     expect(onFrame).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("dock command seam", () => {
+  it("passes logical height and persistence intent to Rust", async () => {
+    await setDockHeight({ height: 108, persist: false });
+    expect(invoke).toHaveBeenCalledWith("set_dock_height", { height: 108, persist: false });
   });
 });

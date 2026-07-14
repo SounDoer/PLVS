@@ -517,11 +517,13 @@ describe("usePresets", () => {
         edge: "top",
         monitor: "\\\\.\\DISPLAY2",
         reserveSpace: true,
+        height: 96,
         panelsById: {
           levelMeter: { id: "levelMeter", moduleId: "levelMeter" },
           spectrum: { id: "spectrum", moduleId: "spectrum" },
         },
         panelOrder: ["levelMeter", "spectrum"],
+        panelSizesById: { levelMeter: 210, spectrum: 420 },
         controlsByPanelId: { spectrum: { channel: { type: "single", channel: 0 } } },
       };
       const { result } = renderPresetHook({ dock });
@@ -549,8 +551,10 @@ describe("usePresets", () => {
         edge: "bottom",
         monitor: null,
         reserveSpace: false,
+        height: 72,
         panelsById: {},
         panelOrder: [],
+        panelSizesById: {},
         controlsByPanelId: {},
       });
     });
@@ -578,8 +582,10 @@ describe("usePresets", () => {
         edge: "bottom",
         monitor: null,
         reserveSpace: false,
+        height: undefined,
         panelsById: undefined,
         panelOrder: undefined,
+        panelSizesById: undefined,
         controlsByPanelId: undefined,
       });
     });
