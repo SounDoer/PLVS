@@ -122,4 +122,22 @@ describe("DockEditorApp window behavior", () => {
     expect(classes).toContain("w-max");
     expect(classes).not.toContain("w-[400px]");
   });
+
+  it("forwards module row hover to the main dock window", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "modules",
+      panels: [{ id: "spectrum", moduleId: "spectrum" }],
+      panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+      panelOrder: ["spectrum"],
+    };
+
+    render(<DockEditorApp />);
+    const row = screen.getByTestId("dock-panel-row-spectrum");
+    fireEvent.mouseEnter(row);
+    fireEvent.mouseLeave(row);
+
+    expect(action).toHaveBeenCalledWith("hover-module", { panelId: "spectrum" });
+    expect(action).toHaveBeenCalledWith("hover-module", { panelId: null });
+  });
 });

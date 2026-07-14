@@ -52,6 +52,16 @@ describe("DockModulesEditor", () => {
     expect(screen.getByRole("button", { name: "Reorder Spectrum" })).toBeTruthy();
   });
 
+  it("reports the panel row currently hovered", () => {
+    const onHover = vi.fn();
+    render(<DockModulesEditor {...BASE_PROPS} onHover={onHover} />);
+    const row = screen.getByTestId("dock-panel-row-spectrum");
+    fireEvent.mouseEnter(row);
+    fireEvent.mouseLeave(row);
+    expect(onHover).toHaveBeenNthCalledWith(1, "spectrum");
+    expect(onHover).toHaveBeenNthCalledWith(2, null);
+  });
+
   it("derives pointer-drag order from the row under the pointer", () => {
     expect(
       reorderDockModulesAtPointer(["level", "spectrum"], "level", 95, {

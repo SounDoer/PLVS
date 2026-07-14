@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { cn } from "../../lib/utils.js";
 import { useAccessoryClient } from "./useAccessoryClient.js";
 import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
@@ -25,6 +25,7 @@ export function DockEditorApp() {
   const rootRef = useRef(null);
   const pointerActiveRef = useRef(false);
   const lastSizeRef = useRef(null);
+  const onHoverModule = useCallback((panelId) => action("hover-module", { panelId }), [action]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -139,6 +140,7 @@ export function DockEditorApp() {
           onRename={(panelId, name) => action("rename-module", { panelId, name })}
           onRemove={(panelId) => action("remove-module", { panelId })}
           onReorder={(panelOrder) => action("reorder-module", { panelOrder })}
+          onHover={onHoverModule}
           onOpenSettings={(panelId) => action("open-module-settings", { panelId })}
         />
       ) : payload.view === "presets" ? (

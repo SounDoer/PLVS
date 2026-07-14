@@ -8,7 +8,13 @@ function healthFromNotice(notice) {
 }
 
 /** The reserved 72px meter strip. Accessory chrome lives in sibling windows. */
-export function DockStrip({ panels = [], controls, onPointerEnter, onPointerLeave }) {
+export function DockStrip({
+  panels = [],
+  controls,
+  hoveredPanelId = null,
+  onPointerEnter,
+  onPointerLeave,
+}) {
   const health = healthFromNotice(controls.notice);
 
   return (
@@ -33,7 +39,13 @@ export function DockStrip({ panels = [], controls, onPointerEnter, onPointerLeav
             <div
               key={panel.id}
               data-testid="dock-module"
-              className={cn("min-w-0", entry.flexible ? "flex-1" : "shrink-0")}
+              data-panel-id={panel.id}
+              data-hover-highlighted={hoveredPanelId === panel.id ? "true" : undefined}
+              className={cn(
+                "min-w-0 transition-[box-shadow] duration-150",
+                entry.flexible ? "flex-1" : "shrink-0",
+                hoveredPanelId === panel.id && "relative z-10 ring-2 ring-inset ring-primary/60"
+              )}
             >
               <Component
                 controls={{

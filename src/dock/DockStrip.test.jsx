@@ -56,6 +56,14 @@ describe("DockStrip", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("draws an accent frame around the module hovered in the editor", () => {
+    renderStrip({ hoveredPanelId: "vectorscope" });
+    const modules = screen.getAllByTestId("dock-module");
+    expect(modules[0].dataset.hoverHighlighted).toBeUndefined();
+    expect(modules[1].dataset.hoverHighlighted).toBe("true");
+    expect(modules[1].className).toContain("ring-primary/60");
+  });
+
   it("shows the health dot in error state when the notice is an error", () => {
     renderStrip({
       controls: { ...BASE_PROPS.controls, notice: { kind: "error", text: "capture failed" } },

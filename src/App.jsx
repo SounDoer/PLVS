@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
@@ -777,6 +777,7 @@ function AppContent() {
     edge: dockEdge,
     onError: onDockAccessoryError,
   });
+  const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
   const dockHeaderState = useMemo(
     () => ({
       sourceTransportState,
@@ -824,17 +825,22 @@ function AppContent() {
     ({ type, payload }) => {
       if (type === "source-primary") onSourceTransportAction(payload.actionKind);
       else if (type === "clear") clearAll();
-      else if (type === "open-editor") dockAccessoryVisibility.openEditor(payload.view);
-      else if (type === "close-editor")
+      else if (type === "open-editor") {
+        setHoveredDockPanelId(null);
+        dockAccessoryVisibility.openEditor(payload.view);
+      } else if (type === "close-editor") {
+        setHoveredDockPanelId(null);
         dockAccessoryVisibility.closeEditor(payload.view, payload.reason);
-      else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
+      } else if (type === "resize-editor") dockAccessoryVisibility.resizeEditor(payload);
       else if (type === "set-edge") void onDockChange(payload.edge);
       else if (type === "toggle-reserve-space") {
         void toggleReserveSpace().catch((error) =>
           raiseNotice("error", `Reserve screen space failed: ${error?.message || error}`)
         );
-      } else if (type === "restore-window") void exitDockRestoringAttributes();
-      else if (type === "toggle-module") dockLayout.toggle(payload.moduleId);
+      } else if (type === "restore-window") {
+        setHoveredDockPanelId(null);
+        void exitDockRestoringAttributes();
+      } else if (type === "toggle-module") dockLayout.toggle(payload.moduleId);
       else if (type === "add-module") {
         dockLayout.addPanel(payload.moduleId);
       } else if (type === "rename-module") {
@@ -844,6 +850,8 @@ function AppContent() {
       } else if (type === "reorder-module") {
         if (Array.isArray(payload.panelOrder)) dockLayout.setPanelOrder(payload.panelOrder);
         else dockLayout.reorder(payload.from, payload.to);
+      } else if (type === "hover-module") {
+        setHoveredDockPanelId(typeof payload.panelId === "string" ? payload.panelId : null);
       } else if (type === "open-module-settings") {
         dockAccessoryVisibility.openEditor(`module:${payload.panelId}`);
       } else if (type === "update-module-controls") {
@@ -1083,6 +1091,8 @@ function AppContent() {
   const dockProps = docked
     ? {
         panels: dockLayout.panels,
+        hoveredPanelId:
+          dockAccessoryVisibility.editorView === "modules" ? hoveredDockPanelId : null,
         onPointerEnter: dockAccessoryVisibility.onStripPointerEnter,
         onPointerLeave: dockAccessoryVisibility.onStripPointerLeave,
         controls: {

@@ -36,6 +36,13 @@ describe("Dock accessory protocol", () => {
         revision: 5,
       })
     ).toMatchObject({ type: "toggle-reserve-space", payload: {} });
+    expect(
+      normalizeAccessoryAction({
+        surface: "dock-editor",
+        type: "hover-module",
+        payload: { panelId: "spectrum" },
+      })
+    ).toMatchObject({ type: "hover-module", payload: { panelId: "spectrum" } });
     expect(normalizeAccessoryAction({ surface: "dock-header", type: "unknown" })).toBeNull();
     expect(normalizeAccessoryPointer({ surface: "dock-editor", inside: true })).toEqual({
       surface: "dock-editor",

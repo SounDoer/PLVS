@@ -45,6 +45,7 @@ function DockModuleRow({
   onDragEnd,
   onRename,
   onRemove,
+  onHover,
   onOpenSettings,
 }) {
   const [editing, setEditing] = useState(false);
@@ -95,6 +96,8 @@ function DockModuleRow({
     <div
       data-testid={`dock-panel-row-${panel.id}`}
       className={`group grid h-9 grid-cols-[28px_18px_minmax(0,1fr)_28px_28px_28px] items-center rounded-md px-1 text-xs transition-colors hover:bg-muted/50 ${dragging ? "z-10 ring-1 ring-primary/60" : ""}`}
+      onMouseEnter={() => onHover?.(panel.id)}
+      onMouseLeave={() => onHover?.(null)}
     >
       <button
         type="button"
@@ -175,6 +178,7 @@ export function DockModulesEditor({
   onRename,
   onRemove,
   onReorder,
+  onHover,
   onOpenSettings,
 }) {
   const panelList = useMemo(
@@ -202,6 +206,8 @@ export function DockModulesEditor({
     }, 0);
     return () => clearTimeout(timer);
   }, [panelList]);
+
+  useEffect(() => () => onHover?.(null), [onHover]);
 
   const startDrag = (id, event) => {
     dragStartOrderRef.current = orderedPanelIdsRef.current;
@@ -252,6 +258,7 @@ export function DockModulesEditor({
                 onDragEnd={endDrag}
                 onRename={onRename}
                 onRemove={onRemove}
+                onHover={onHover}
                 onOpenSettings={onOpenSettings}
               />
             ))}
