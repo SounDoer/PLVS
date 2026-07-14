@@ -33,6 +33,11 @@ describe("DockLoudness", () => {
         .getAllByTestId("dock-loudness-readout-label")
         .every((node) => node.className.includes("justify-self-start"))
     ).toBe(true);
+    expect(
+      ["-18.2", "-19.4", "-20.1"].every((value) =>
+        screen.getByText(value).className.includes("w-[var(--ui-dock-readout-w)]")
+      )
+    ).toBe(true);
     const history = screen.getByTestId("dock-loudness-history");
     expect(
       history.compareDocumentPosition(readouts) & Node.DOCUMENT_POSITION_FOLLOWING

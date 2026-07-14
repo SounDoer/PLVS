@@ -35,14 +35,21 @@ describe("DockLevel", () => {
       },
       { mode: "peak", readout: "truePeakMax", showLabels: true }
     );
-    expect(screen.getByText("-3.2")).toBeTruthy();
+    expect(screen.getByText("-3.2").className).toContain("var(--ui-dock-fs-value)");
     expect(screen.getByTestId("dock-level-readout-source").textContent).toBe("TP Max");
     expect(screen.queryByTestId("dock-level-channel-readout")).toBeNull();
     const source = screen.getByTestId("dock-level-readout-source");
     expect(screen.getByTestId("dock-level-readout-region").contains(source)).toBe(true);
     expect(screen.getByTestId("dock-level-meter-region").contains(source)).toBe(false);
     expect(screen.getByTestId("dock-level-readout-sizer").getAttribute("aria-hidden")).toBe("true");
-    expect(screen.getByTestId("dock-level-readout-content").contains(source)).toBe(true);
+    const readoutContent = screen.getByTestId("dock-level-readout-content");
+    expect(readoutContent.contains(source)).toBe(true);
+    expect(readoutContent.className).toContain("self-center");
+    expect(readoutContent.className).toContain("items-baseline");
+    expect(screen.getByText("-3.2").parentElement.className).not.toContain(
+      "w-[var(--ui-dock-readout-w)]"
+    );
+    expect(screen.getByText("-3.2").parentElement.className).toContain("text-right");
     expect(
       screen.getAllByTestId("dock-level-bar").every((bar) => bar.className.includes("h-full"))
     ).toBe(true);
@@ -83,6 +90,14 @@ describe("DockLevel", () => {
     });
     expect(screen.getByTestId("dock-level-readout-source").textContent).toBe("PB Max");
     expect(screen.getByTitle("Playback Max")).toBeTruthy();
+    expect(
+      screen.getAllByTestId("dock-level-channel-readout")[0].parentElement.className
+    ).toContain("w-max");
+    expect(
+      screen
+        .getAllByTestId("dock-level-channel-readout")
+        .every((node) => node.className.includes("text-right"))
+    ).toBe(true);
   });
 
   it.each([

@@ -256,20 +256,18 @@ resized, without waiting for React state or persisted geometry.
 
 ### Responsive density tiers
 
-| Role / token                  | Compact `56–63px` | Standard `64–95px` | Expanded `96–160px` |
-| ----------------------------- | ----------------: | -----------------: | ------------------: |
-| `--ui-dock-fs-label`          |               8px |                9px |                10px |
-| `--ui-dock-fs-caption`        |               8px |                9px |                10px |
-| `--ui-dock-fs-value`          |              11px |               13px |                15px |
-| `--ui-dock-fs-value-emphasis` |              13px |               15px |                18px |
-| `--ui-dock-fs-time`           |              14px |               16px |                20px |
-| `--ui-dock-pad-x`             |               5px |                6px |                 8px |
-| `--ui-dock-pad-y`             |               3px |                4px |                 6px |
-| `--ui-dock-gap-region`        |               4px |                5px |                 7px |
-| `--ui-dock-gap-column`        |               3px |                4px |                 5px |
-| `--ui-dock-gap-row`           |               2px |                3px |                 5px |
-| `--ui-dock-bar-min-h`         |               4px |                5px |                 6px |
-| `--ui-dock-readout-w`         |               5ch |                5ch |                 5ch |
+| Role / token           | Compact `56–63px` | Standard `64–95px` | Expanded `96–160px` |
+| ---------------------- | ----------------: | -----------------: | ------------------: |
+| `--ui-dock-fs-label`   |               8px |                9px |                10px |
+| `--ui-dock-fs-caption` |               8px |                9px |                10px |
+| `--ui-dock-fs-value`   |              11px |               13px |                15px |
+| `--ui-dock-pad-x`      |               5px |                6px |                 8px |
+| `--ui-dock-pad-y`      |               3px |                4px |                 6px |
+| `--ui-dock-gap-region` |               4px |                5px |                 7px |
+| `--ui-dock-gap-column` |               3px |                4px |                 5px |
+| `--ui-dock-gap-row`    |               2px |                3px |                 5px |
+| `--ui-dock-bar-min-h`  |               4px |                5px |                 6px |
+| `--ui-dock-readout-w`  |               5ch |                5ch |                 5ch |
 
 The tiers are intentionally discrete. Typography must remain stable while the user adjusts height;
 the additional space at larger heights primarily benefits bars, plots, and row separation rather
@@ -277,15 +275,18 @@ than continuously magnifying every label.
 
 ### Typography roles
 
+Within one density tier, the same typography role has the same size in every Dock module. Modules
+must use these shared tokens rather than hard-coded font sizes or module-specific emphasis sizes.
+
 - `Label`: detector names, channel names, and compact metric names (`PK`, `RMS`, `M`, `ST`, `L`,
   `R`, `LFE`). Static labels use `--ui-font-sans`, medium weight, and muted foreground.
 - `Caption`: compact source-rail annotations such as `PB Max` and `TP Max`. Captions use
   `--ui-font-sans`, medium weight, muted foreground, and the repository Title Case convention. The
   full source name remains available through settings, `title`, and accessible text.
-- `Value`: per-channel or compact dynamic values. Values use `--ui-font-mono`, `tabular-nums`, and
-  semibold weight.
-- `Value emphasis`: one primary/global value such as TP Max or correlation.
-- `Time`: transport timecode and similarly dominant dynamic time displays.
+- `Value`: all dynamic numeric displays, including per-channel values, global values such as TP Max
+  and correlation, and transport timecode. Values use `--ui-font-mono`, `tabular-nums`, and semibold
+  weight. Modules express emphasis through color, weight, position, or interaction rather than a
+  larger font size.
 
 Do not append detector names or readout sources after a number. A trailing `M Max` or `RMS Max`
 looks like a unit or a different metric. Detector identity belongs on the leading side of the
@@ -297,9 +298,10 @@ normal state and needs no caption.
 - Height selects the density tier. Width does not scale font sizes.
 - Additional width belongs to bars, plots, waveforms, and spectra; gaps do not grow with container
   width. Do not use `vw`, `cqw`, or percentage-based spacing for Dock layout gaps.
-- Numeric readouts never shrink below their tier size. Reserve the configured `ch` capacity in an
-  invisible sizing layer so changing digit count does not resize the meter. Lay out the visible
-  source rail and intrinsic-width value group separately so their optical gap remains constant.
+- Multi-row metric grids may reserve the configured `ch` capacity in their visible mono value
+  column when label stability is more important than intrinsic width. A single source rail such as
+  `TP Max` or `PB Max` instead keeps its visible source-and-value group intrinsic and trailing
+  aligned; an invisible sizing layer reserves the complete region without adding visible whitespace.
 - Labels use intrinsic (`max-content`) columns rather than reserving a fixed `ch` width for every
   abbreviation. A module-level Labels setting may remove optional labels to free more data width.
 - `--ui-dock-bar-min-h` is a floor, not a fixed bar height. Channel rows divide all available Dock
@@ -338,9 +340,9 @@ ordering.
 Other Dock modules map their content onto the same roles:
 
 - Loudness and Stats: metric name → Label; numeric metric → Value.
-- Correlation: primary coefficient → Value emphasis.
+- Correlation: primary coefficient → Value.
 - Spectrum and Spectrogram: compact scale annotations → Caption.
-- Transport: timecode → Time.
+- Transport: timecode → Value.
 - Waveform: necessary lane or channel annotations → Label.
 
 Dock Loudness is the compact form of the normal Loudness panel, not a separate metric selector. Its

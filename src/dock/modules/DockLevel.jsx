@@ -56,7 +56,7 @@ function ChannelReadout({ value, style }) {
 
 function GlobalReadout({ value, onReset, style }) {
   const content = (
-    <span className="text-[length:var(--ui-dock-fs-value-emphasis)] leading-none text-foreground">
+    <span className="text-[length:var(--ui-dock-fs-value)] leading-none text-foreground">
       {fmtMetric(value)}
     </span>
   );
@@ -111,38 +111,34 @@ function ReadoutRegion({
       </div>
       <div
         data-testid="dock-level-readout-content"
-        className="flex min-h-0 justify-self-end"
+        className={`flex min-h-0 justify-self-end ${showGlobal ? "self-center items-baseline" : ""}`}
         style={{ gap: "var(--ui-dock-gap-column)", gridArea: "readout" }}
       >
         {source ? (
           <abbr
             data-testid="dock-level-readout-source"
-            className="self-center whitespace-nowrap font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground no-underline"
+            className={`${showGlobal ? "" : "self-center"} whitespace-nowrap font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground no-underline`}
             aria-label={sourceTitle}
             title={sourceTitle}
           >
             {source}
           </abbr>
         ) : null}
-        <div
-          className="grid h-full min-h-0 w-max items-center"
-          style={{
-            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-            rowGap: "var(--ui-dock-gap-row)",
-          }}
-        >
-          {showGlobal ? (
-            <GlobalReadout
-              value={globalValue}
-              onReset={onReset}
-              style={{ alignSelf: "center", gridRow: `1 / span ${rows}` }}
-            />
-          ) : (
-            values.map((value, index) => (
+        {showGlobal ? (
+          <GlobalReadout value={globalValue} onReset={onReset} />
+        ) : (
+          <div
+            className="grid h-full min-h-0 w-max items-center"
+            style={{
+              gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+              rowGap: "var(--ui-dock-gap-row)",
+            }}
+          >
+            {values.map((value, index) => (
               <ChannelReadout key={index} value={value} style={{ gridRow: index + 1 }} />
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -42,7 +42,7 @@ function DockLoudnessReadouts({ displayAudio }) {
             >
               {short}
             </span>
-            <span className="justify-self-end whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
+            <span className="w-[var(--ui-dock-readout-w)] justify-self-end whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
               {formatted}
             </span>
           </div>
