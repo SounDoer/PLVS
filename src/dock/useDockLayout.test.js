@@ -101,11 +101,22 @@ describe("useDockLayout", () => {
   it("updates and resets one module without mutating other families", () => {
     const { result } = renderHook(() => useDockLayout());
     const spectrumBefore = result.current.controlsByModuleId.spectrum;
-    act(() => result.current.setModuleControls("loudness", { metric: "momentary" }));
-    expect(result.current.controlsByModuleId.loudness.metric).toBe("momentary");
+    act(() =>
+      result.current.setModuleControls("loudness", {
+        ...result.current.controlsByModuleId.loudness,
+        loudnessHistoryVisibleLayerIds: ["momentary"],
+      })
+    );
+    expect(result.current.controlsByModuleId.loudness.loudnessHistoryVisibleLayerIds).toEqual([
+      "momentary",
+    ]);
     expect(result.current.controlsByModuleId.spectrum).toEqual(spectrumBefore);
     act(() => result.current.resetModuleControls("loudness"));
-    expect(result.current.controlsByModuleId.loudness.metric).toBe("shortTerm");
+    expect(result.current.controlsByModuleId.loudness.loudnessHistoryVisibleLayerIds).toEqual([
+      "momentary",
+      "shortTerm",
+      "ref",
+    ]);
   });
 
   it("stat toggles dirty the active preset", () => {

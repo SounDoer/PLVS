@@ -182,7 +182,7 @@ dock: { enabled, edge, modules }   // modules = ordered enabled ids
 | Phase | Module | Content | Notes |
 | --- | --- | --- | --- |
 | v1 | DockLevel | Per-channel horizontal peak bars (stereo 2 bars; 5.1/7.1 denser stack) + peak/true-peak numeric + clip accent | ~140–220px |
-| v1 | DockLoudness | One primary LUFS number (M/S/I selectable) + mini history sparkline + optional reference line | ~160–240px; reuses history path math |
+| v1 | DockLoudness | Compact M/ST/Reference history using the normal panel's layer behavior + right-side M/ST/I readouts | ~160–240px; reuses history path math and normal Loudness settings |
 | v1 | DockSpectrum | Compact RTA curve, fixed scale, no axes | Flexible width (absorbs remaining space) |
 | v1 | DockCorrelation | −1…+1 correlation bar + value (optional L/R balance) | ~80–120px. Vectorscope's dock form **is** the correlation bar; an XY cloud at 60px is unreadable by design decision. |
 | v1.5 | DockStats | 2–4 user-picked readouts from the existing `buildStatsMetrics` catalog | Cheapest module; generalizes DockLoudness's number |

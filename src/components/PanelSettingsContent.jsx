@@ -585,6 +585,55 @@ function toggleId(ids, id) {
   return [...ids, id];
 }
 
+export function LoudnessSettingsRows({
+  referenceLufs,
+  visibleLayerIds,
+  yMinDb,
+  yMaxDb,
+  onReferenceChange,
+  onVisibleLayerIdsChange,
+  onYRangeChange,
+}) {
+  const [layersOpen, setLayersOpen] = useState(false);
+
+  return (
+    <>
+      <SettingsRow label="Ref">
+        <SettingsLufsInput value={referenceLufs} onCommit={onReferenceChange} />
+      </SettingsRow>
+      <SettingsRow label="Layers" expanded={layersOpen}>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <InlineDetailTrigger
+            ariaLabel={layersOpen ? "Hide layers" : "Edit layers"}
+            summary={visibleSummary(visibleLayerIds.length)}
+            open={layersOpen}
+            onToggle={() => setLayersOpen((open) => !open)}
+          />
+          {layersOpen ? (
+            <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
+              <MultiSelectList
+                label="Layers"
+                options={LOUDNESS_HISTORY_LAYER_OPTIONS}
+                selectedIds={visibleLayerIds}
+                onToggle={(id) => onVisibleLayerIdsChange(toggleId(visibleLayerIds, id))}
+              />
+            </div>
+          ) : null}
+        </div>
+      </SettingsRow>
+      <SettingsRow label="Y range">
+        <SettingsRangeInput
+          minAriaLabel="loudness y range min"
+          maxAriaLabel="loudness y range max"
+          minValue={yMinDb}
+          maxValue={yMaxDb}
+          onCommit={onYRangeChange}
+        />
+      </SettingsRow>
+    </>
+  );
+}
+
 export function PanelSettingsContent({
   activeTab,
   channelCount = 0,
@@ -605,7 +654,6 @@ export function PanelSettingsContent({
   onPanelControlsChange,
 }) {
   const [metricsOpen, setMetricsOpen] = useState(false);
-  const [layersOpen, setLayersOpen] = useState(false);
   const [levelMeterModeOpen, setLevelMeterModeOpen] = useState(false);
   const [spectrumChannelOpen, setSpectrumChannelOpen] = useState(false);
   const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
@@ -814,68 +862,37 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Loudness">
-        <SettingsRow label="Ref">
-          <SettingsLufsInput
-            value={normalizedPanelControls.loudnessReferenceLufs}
-            onCommit={(loudnessReferenceLufs) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  loudnessReferenceLufs,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
-        <SettingsRow label="Layers" expanded={layersOpen}>
-          <div className="flex min-w-0 flex-1 flex-col">
-            <InlineDetailTrigger
-              ariaLabel={layersOpen ? "Hide layers" : "Edit layers"}
-              summary={visibleSummary(
-                normalizedPanelControls.loudnessHistoryVisibleLayerIds.length
-              )}
-              open={layersOpen}
-              onToggle={() => setLayersOpen((open) => !open)}
-            />
-            {layersOpen ? (
-              <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
-                <MultiSelectList
-                  label="Layers"
-                  options={LOUDNESS_HISTORY_LAYER_OPTIONS}
-                  selectedIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
-                  onToggle={(id) => {
-                    onPanelControlsChange(
-                      normalizePanelControls({
-                        ...normalizedPanelControls,
-                        loudnessHistoryVisibleLayerIds: toggleId(
-                          normalizedPanelControls.loudnessHistoryVisibleLayerIds,
-                          id
-                        ),
-                      })
-                    );
-                  }}
-                />
-              </div>
-            ) : null}
-          </div>
-        </SettingsRow>
-        <SettingsRow label="Y range">
-          <SettingsRangeInput
-            minAriaLabel="loudness y range min"
-            maxAriaLabel="loudness y range max"
-            minValue={normalizedPanelControls.loudnessYMinDb}
-            maxValue={normalizedPanelControls.loudnessYMaxDb}
-            onCommit={(newMin, newMax) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  loudnessYMinDb: newMin,
-                  loudnessYMaxDb: newMax,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
+        <LoudnessSettingsRows
+          referenceLufs={normalizedPanelControls.loudnessReferenceLufs}
+          visibleLayerIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
+          yMinDb={normalizedPanelControls.loudnessYMinDb}
+          yMaxDb={normalizedPanelControls.loudnessYMaxDb}
+          onReferenceChange={(loudnessReferenceLufs) => {
+            onPanelControlsChange(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                loudnessReferenceLufs,
+              })
+            );
+          }}
+          onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) => {
+            onPanelControlsChange(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                loudnessHistoryVisibleLayerIds,
+              })
+            );
+          }}
+          onYRangeChange={(loudnessYMinDb, loudnessYMaxDb) => {
+            onPanelControlsChange(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                loudnessYMinDb,
+                loudnessYMaxDb,
+              })
+            );
+          }}
+        />
       </SettingsGroup>
     );
   }

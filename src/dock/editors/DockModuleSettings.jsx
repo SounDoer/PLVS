@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  LoudnessSettingsRows,
   SettingsGroup,
   SettingsRow,
   SettingsSelect,
@@ -149,44 +150,21 @@ function SettingsBody({ moduleId, controls, onChange }) {
   }
   if (moduleId === "loudness") {
     return (
-      <>
-        <SettingsRow label="Metric">
-          <SelectField
-            label="Loudness metric"
-            value={controls.metric}
-            options={[
-              { value: "momentary", label: "Momentary" },
-              { value: "shortTerm", label: "Short-term" },
-              { value: "integrated", label: "Integrated" },
-            ]}
-            onChange={(metric) => onChange({ ...controls, metric })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Sparkline">
-          <SettingsSwitch
-            aria-label="Show loudness sparkline"
-            checked={controls.showSparkline}
-            onCheckedChange={(showSparkline) => onChange({ ...controls, showSparkline })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Reference">
-          <SettingsSwitch
-            aria-label="Show loudness reference"
-            checked={controls.showReference}
-            onCheckedChange={(showReference) => onChange({ ...controls, showReference })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Reference level">
-          <SliderField
-            label="Loudness reference level"
-            value={controls.referenceLufs}
-            min={-36}
-            max={-9}
-            suffix=" LUFS"
-            onChange={(referenceLufs) => onChange({ ...controls, referenceLufs })}
-          />
-        </SettingsRow>
-      </>
+      <LoudnessSettingsRows
+        referenceLufs={controls.loudnessReferenceLufs}
+        visibleLayerIds={controls.loudnessHistoryVisibleLayerIds}
+        yMinDb={controls.loudnessYMinDb}
+        yMaxDb={controls.loudnessYMaxDb}
+        onReferenceChange={(loudnessReferenceLufs) =>
+          onChange({ ...controls, loudnessReferenceLufs })
+        }
+        onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) =>
+          onChange({ ...controls, loudnessHistoryVisibleLayerIds })
+        }
+        onYRangeChange={(loudnessYMinDb, loudnessYMaxDb) =>
+          onChange({ ...controls, loudnessYMinDb, loudnessYMaxDb })
+        }
+      />
     );
   }
   if (moduleId === "spectrum") {

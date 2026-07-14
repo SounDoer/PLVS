@@ -13,6 +13,9 @@ describe("normalizeDockControlsByModuleId", () => {
     expect(controls.spectrum).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum);
     expect(controls.spectrum.channel).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum.channel);
     expect(controls.stats.ids).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.ids);
+    expect(controls.loudness.loudnessHistoryVisibleLayerIds).not.toBe(
+      DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness.loudnessHistoryVisibleLayerIds
+    );
   });
 
   it("migrates legacy statsIds only when new stats controls are absent", () => {
@@ -24,7 +27,13 @@ describe("normalizeDockControlsByModuleId", () => {
 
   it("normalizes each family without retaining unrelated fields", () => {
     const controls = normalizeDockControlsByModuleId({
-      loudness: { metric: "integrated", showSparkline: false, referenceLufs: -18, junk: true },
+      loudness: {
+        loudnessReferenceLufs: -18,
+        loudnessHistoryVisibleLayerIds: ["shortTerm", "ghost", "shortTerm"],
+        loudnessYMinDb: -42,
+        loudnessYMaxDb: -12,
+        junk: true,
+      },
       spectrum: {
         channel: { type: "single", ch: 3.8 },
         view: "ms",
@@ -37,10 +46,10 @@ describe("normalizeDockControlsByModuleId", () => {
       waveform: { view: "single", channel: 4.9, windowSec: 200 },
     });
     expect(controls.loudness).toEqual({
-      metric: "integrated",
-      showSparkline: false,
-      showReference: false,
-      referenceLufs: -18,
+      loudnessReferenceLufs: -18,
+      loudnessHistoryVisibleLayerIds: ["shortTerm"],
+      loudnessYMinDb: -42,
+      loudnessYMaxDb: -12,
     });
     expect(controls.spectrum).toMatchObject({
       channel: { type: "single", ch: 3 },
@@ -52,6 +61,24 @@ describe("normalizeDockControlsByModuleId", () => {
       maxDb: -12,
     });
     expect(controls.waveform).toEqual({ view: "single", channel: 4, windowSec: 120 });
+  });
+
+  it("migrates the legacy Dock Loudness reference and adopts the normal layer defaults", () => {
+    expect(
+      normalizeDockControlsByModuleId({
+        loudness: {
+          metric: "integrated",
+          showSparkline: false,
+          showReference: false,
+          referenceLufs: -18,
+        },
+      }).loudness
+    ).toEqual({
+      loudnessReferenceLufs: -18,
+      loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+      loudnessYMinDb: -64,
+      loudnessYMaxDb: 0,
+    });
   });
 });
 
@@ -101,8 +128,11 @@ describe("normalizeDockModuleControls", () => {
 describe("updateDockModuleControls", () => {
   it("updates one cloned family and ignores unknown ids", () => {
     const controls = normalizeDockControlsByModuleId();
-    const next = updateDockModuleControls(controls, "loudness", { metric: "momentary" });
-    expect(next.loudness.metric).toBe("momentary");
+    const next = updateDockModuleControls(controls, "loudness", {
+      ...controls.loudness,
+      loudnessHistoryVisibleLayerIds: ["momentary"],
+    });
+    expect(next.loudness.loudnessHistoryVisibleLayerIds).toEqual(["momentary"]);
     expect(next.spectrum).toBe(controls.spectrum);
     expect(updateDockModuleControls(controls, "ghost", {})).toBe(controls);
   });

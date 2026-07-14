@@ -1,9 +1,12 @@
 import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
+import { LOUDNESS_HISTORY_LAYER_OPTIONS } from "../lib/panelControls.js";
 
 const MAX_STATS_IDS = 4;
 const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
-const LOUDNESS_METRICS = new Set(["momentary", "shortTerm", "integrated"]);
+const LOUDNESS_HISTORY_LAYER_IDS = new Set(
+  LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
+);
 const LEVEL_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
 const LEVEL_READOUTS = new Set(["live", "truePeakMax", "playbackMax"]);
 const WAVEFORM_VIEWS = new Set(["all", "single"]);
@@ -21,10 +24,10 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
 export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   level: Object.freeze({ mode: "peak", readout: "live", showLabels: true }),
   loudness: Object.freeze({
-    metric: "shortTerm",
-    showSparkline: true,
-    showReference: false,
-    referenceLufs: -23,
+    loudnessReferenceLufs: -23,
+    loudnessHistoryVisibleLayerIds: Object.freeze(["momentary", "shortTerm", "ref"]),
+    loudnessYMinDb: -64,
+    loudnessYMaxDb: 0,
   }),
   spectrum: Object.freeze({
     channel: Object.freeze({ type: "pair", x: 0, y: 1 }),
@@ -118,6 +121,12 @@ export function normalizeDockStatsIds(raw) {
   return ids;
 }
 
+function normalizeDockLoudnessLayerIds(raw) {
+  const fallback = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness.loudnessHistoryVisibleLayerIds;
+  if (!Array.isArray(raw)) return [...fallback];
+  return raw.filter((id, index) => LOUDNESS_HISTORY_LAYER_IDS.has(id) && raw.indexOf(id) === index);
+}
+
 export function normalizeDockModuleControls(moduleId, raw) {
   const defaults = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId];
   if (!defaults) return null;
@@ -135,13 +144,27 @@ export function normalizeDockModuleControls(moduleId, raw) {
         showLabels: bool(raw?.showLabels, bool(raw?.showChannelLabels, defaults.showLabels)),
       };
     }
-    case "loudness":
+    case "loudness": {
+      const range = linearRange(
+        raw?.loudnessYMinDb,
+        raw?.loudnessYMaxDb,
+        defaults.loudnessYMinDb,
+        defaults.loudnessYMaxDb,
+        -64,
+        0,
+        12
+      );
       return {
-        metric: LOUDNESS_METRICS.has(raw?.metric) ? raw.metric : defaults.metric,
-        showSparkline: bool(raw?.showSparkline, defaults.showSparkline),
-        showReference: bool(raw?.showReference, defaults.showReference),
-        referenceLufs: normalizeReferenceLufs(raw?.referenceLufs),
+        loudnessReferenceLufs: normalizeReferenceLufs(
+          raw?.loudnessReferenceLufs ?? raw?.referenceLufs
+        ),
+        loudnessHistoryVisibleLayerIds: normalizeDockLoudnessLayerIds(
+          raw?.loudnessHistoryVisibleLayerIds
+        ),
+        loudnessYMinDb: range.min,
+        loudnessYMaxDb: range.max,
       };
+    }
     case "spectrum": {
       const range = linearRange(
         raw?.minDb,

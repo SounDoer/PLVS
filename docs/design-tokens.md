@@ -343,6 +343,13 @@ Other Dock modules map their content onto the same roles:
 - Transport: timecode → Time.
 - Waveform: necessary lane or channel annotations → Label.
 
+Dock Loudness is the compact form of the normal Loudness panel, not a separate metric selector. Its
+history region fills the available height and retains the normal panel's Momentary, Short-term,
+and Reference layers. Reference uses the same over-reference trace gradients; Dock does not add a
+separate reference line. A content-sized readout rail follows the history region and shows M, ST, and
+I as three aligned Label → Value rows. Its settings reuse the normal panel's Ref, Layers, and
+Y range controls and vocabulary.
+
 ---
 
 ## Dataviz Style Tokens
