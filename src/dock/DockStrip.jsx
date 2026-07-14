@@ -25,7 +25,7 @@ export function DockStrip({
       data-testid="dock-strip"
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
-      className="relative h-screen w-screen select-none overflow-hidden text-foreground"
+      className="dock-strip relative h-screen w-screen select-none overflow-hidden text-foreground"
       style={{
         // Spec: dock shares the Views Opacity value. App.jsx keeps setting
         // --panel-opacity in both forms; the window itself is transparent.

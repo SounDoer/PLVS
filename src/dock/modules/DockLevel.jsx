@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, PEAK_DB_MAX, PEAK_DB_MIN } from "../../config/scales.js";
 import {
   useLevelMeterPlaybackMax,
@@ -20,16 +21,12 @@ function widthPct(value, min, max) {
   return Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
 }
 
-function maxFinite(values) {
-  const finiteValues = values.filter(Number.isFinite);
-  return finiteValues.length > 0 ? Math.max(...finiteValues) : -Infinity;
-}
-
-function MeterFill({ value, min, max, peakFamily }) {
+function MeterFill({ value, min, max, peakFamily, style }) {
   return (
     <div
       data-testid="dock-level-bar"
-      className="h-[clamp(4px,8vh,10px)] w-full overflow-hidden rounded-sm bg-muted/40"
+      className="h-full min-h-[var(--ui-dock-bar-min-h)] w-full overflow-hidden rounded-sm bg-muted/40"
+      style={style}
     >
       <div
         className="h-full rounded-sm"
@@ -45,22 +42,31 @@ function MeterFill({ value, min, max, peakFamily }) {
   );
 }
 
-function Readout({ value, label, onReset }) {
-  const content = (
-    <>
-      <span className="text-[clamp(10px,10vh,15px)] leading-none text-foreground">
-        {fmtMetric(value)}
-      </span>
-      <span className="text-[8px] uppercase text-muted-foreground">{label}</span>
-    </>
+function ChannelReadout({ value, style }) {
+  return (
+    <span
+      data-testid="dock-level-channel-readout"
+      className="justify-self-end whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground"
+      style={style}
+    >
+      {fmtMetric(value)}
+    </span>
   );
+}
 
+function GlobalReadout({ value, onReset, style }) {
+  const content = (
+    <span className="text-[length:var(--ui-dock-fs-value-emphasis)] leading-none text-foreground">
+      {fmtMetric(value)}
+    </span>
+  );
   const className =
-    "flex shrink-0 items-baseline gap-1 font-[family-name:var(--ui-font-mono)] tabular-nums";
+    "justify-self-end whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] font-semibold tabular-nums";
   return onReset ? (
     <button
       type="button"
       className={`${className} rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary`}
+      style={style}
       onClick={onReset}
       aria-label="Reset true peak maximum"
       title="Reset TP Max"
@@ -68,7 +74,77 @@ function Readout({ value, label, onReset }) {
       {content}
     </button>
   ) : (
-    <div className={className}>{content}</div>
+    <div className={className} style={style}>
+      {content}
+    </div>
+  );
+}
+
+function ReadoutRegion({
+  source,
+  sourceTitle,
+  values,
+  globalValue,
+  onReset,
+  rowCount,
+  showGlobal,
+}) {
+  const rows = Math.max(1, rowCount);
+  return (
+    <div
+      data-testid="dock-level-readout-region"
+      className="grid shrink-0 self-stretch"
+      style={{ gridTemplateAreas: '"readout"' }}
+    >
+      <div
+        data-testid="dock-level-readout-sizer"
+        aria-hidden="true"
+        className="invisible flex items-center"
+        style={{ gap: "var(--ui-dock-gap-column)", gridArea: "readout" }}
+      >
+        {source ? (
+          <span className="whitespace-nowrap font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none">
+            {source}
+          </span>
+        ) : null}
+        <span className="block w-[var(--ui-dock-readout-w)] font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)]" />
+      </div>
+      <div
+        data-testid="dock-level-readout-content"
+        className="flex min-h-0 justify-self-end"
+        style={{ gap: "var(--ui-dock-gap-column)", gridArea: "readout" }}
+      >
+        {source ? (
+          <abbr
+            data-testid="dock-level-readout-source"
+            className="self-center whitespace-nowrap font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground no-underline"
+            aria-label={sourceTitle}
+            title={sourceTitle}
+          >
+            {source}
+          </abbr>
+        ) : null}
+        <div
+          className="grid h-full min-h-0 w-max items-center"
+          style={{
+            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+            rowGap: "var(--ui-dock-gap-row)",
+          }}
+        >
+          {showGlobal ? (
+            <GlobalReadout
+              value={globalValue}
+              onReset={onReset}
+              style={{ alignSelf: "center", gridRow: `1 / span ${rows}` }}
+            />
+          ) : (
+            values.map((value, index) => (
+              <ChannelReadout key={index} value={value} style={{ gridRow: index + 1 }} />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -107,47 +183,99 @@ export function DockLevel({ controls = {} }) {
     values: channelValues,
   });
 
-  let readoutValue = peakFamily ? maxFinite(channelValues) : scalarValue;
-  let readoutLabel = meta.label;
+  const channelReadoutValues =
+    mode === "rms" && readout === "playbackMax" ? channelPlaybackMax : channelValues;
+  let globalValue = scalarValue;
   let resetReadout;
   if (mode === "peak" && readout === "truePeakMax") {
-    readoutValue = hasTpMaxValue ? displayAudio?.tpMax : -Infinity;
-    readoutLabel = "TP";
+    globalValue = hasTpMaxValue ? displayAudio?.tpMax : -Infinity;
     resetReadout = hasTpMaxValue && typeof onResetTpMax === "function" ? onResetTpMax : undefined;
-  } else if (mode === "rms" && readout === "playbackMax") {
-    readoutValue = maxFinite(channelPlaybackMax);
-    readoutLabel = "MAX";
   } else if (!peakFamily && readout === "playbackMax") {
-    readoutValue = scalarPlaybackMax;
-    readoutLabel = `${meta.label} MAX`;
+    globalValue = scalarPlaybackMax;
   }
 
+  const showGlobalReadout = !peakFamily || (mode === "peak" && readout === "truePeakMax");
+  const readoutSource =
+    mode === "peak" && readout === "truePeakMax"
+      ? "TP Max"
+      : readout === "playbackMax"
+        ? "PB Max"
+        : null;
+  const readoutSourceTitle =
+    mode === "peak" && readout === "truePeakMax"
+      ? "True Peak Max"
+      : readout === "playbackMax"
+        ? "Playback Max"
+        : null;
+  const showLabels = controls.showLabels !== false;
+  const rows = peakFamily ? Math.max(1, channels.length) : 1;
+  const meterColumns = peakFamily && showLabels ? "max-content minmax(0, 1fr)" : "minmax(0, 1fr)";
+  const barColumn = peakFamily && showLabels ? 2 : 1;
+
   return (
-    <div className="@container flex h-full min-w-0 items-center gap-[clamp(6px,3cqw,12px)] px-2">
-      <div className="flex min-w-12 flex-1 flex-col justify-center gap-[clamp(3px,4vh,7px)]">
-        {peakFamily ? (
-          channels.map(({ label, valueDb }, index) => (
-            <div key={`${label}-${index}`} className="flex min-w-0 items-center gap-1.5">
-              {controls.showLabels !== false ? (
-                <span className="w-[3ch] shrink-0 truncate text-right font-[family-name:var(--ui-font-mono)] text-[9px] leading-none text-muted-foreground @max-[155px]:hidden">
-                  {label}
-                </span>
-              ) : null}
-              <MeterFill value={valueDb} min={meta.min} max={meta.max} peakFamily />
-            </div>
-          ))
-        ) : (
-          <div className="flex min-w-0 items-center gap-1.5">
-            {controls.showLabels !== false ? (
-              <span className="w-[3ch] shrink-0 text-right font-[family-name:var(--ui-font-mono)] text-[9px] leading-none text-muted-foreground @max-[130px]:hidden">
-                {meta.label}
-              </span>
-            ) : null}
+    <div
+      className="flex h-full min-w-0 items-stretch"
+      style={{
+        gap: "var(--ui-dock-gap-region)",
+        padding: "var(--ui-dock-pad-y) var(--ui-dock-pad-x)",
+      }}
+    >
+      {showLabels ? (
+        <span className="self-center font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
+          {meta.label}
+        </span>
+      ) : null}
+      <div
+        className="flex min-h-0 min-w-12 flex-1 items-stretch"
+        style={{ gap: "var(--ui-dock-gap-column)" }}
+      >
+        <div
+          data-testid="dock-level-meter-region"
+          className="grid min-h-0 min-w-0 flex-1 items-stretch"
+          style={{
+            gridTemplateColumns: meterColumns,
+            gridTemplateRows: `repeat(${rows}, minmax(var(--ui-dock-bar-min-h), 1fr))`,
+            columnGap: peakFamily && showLabels ? "var(--ui-dock-gap-column)" : 0,
+            rowGap: peakFamily ? "var(--ui-dock-gap-row)" : 0,
+          }}
+        >
+          {peakFamily ? (
+            channels.map(({ label, valueDb }, index) => {
+              const row = index + 1;
+              return (
+                <Fragment key={`${label}-${index}`}>
+                  {showLabels ? (
+                    <span
+                      className="self-center font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground"
+                      style={{ gridColumn: 1, gridRow: row }}
+                    >
+                      {label}
+                    </span>
+                  ) : null}
+                  <MeterFill
+                    value={valueDb}
+                    min={meta.min}
+                    max={meta.max}
+                    peakFamily
+                    style={{ gridColumn: barColumn, gridRow: row }}
+                  />
+                </Fragment>
+              );
+            })
+          ) : (
             <MeterFill value={scalarValue} min={meta.min} max={meta.max} peakFamily={false} />
-          </div>
-        )}
+          )}
+        </div>
+        <ReadoutRegion
+          source={readoutSource}
+          sourceTitle={readoutSourceTitle}
+          values={channelReadoutValues}
+          globalValue={globalValue}
+          onReset={resetReadout}
+          rowCount={rows}
+          showGlobal={showGlobalReadout}
+        />
       </div>
-      <Readout value={readoutValue} label={readoutLabel} onReset={resetReadout} />
     </div>
   );
 }

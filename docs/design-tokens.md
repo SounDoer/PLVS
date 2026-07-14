@@ -19,8 +19,10 @@ Semantic     shadcn-standard CSS variables (--background, --primary, --muted-for
              Used directly by shadcn components and Tailwind semantic utilities.
 
 Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
-             Written by applyThemeToDocument() and applyLayoutToDocument().
-             Split into sub-namespaces: typography, spacing, radius, dataviz.
+             Global tokens are written by applyThemeToDocument() and applyLayoutToDocument().
+             Responsive Dock tokens are scoped by src/dock/dockTokens.css because they depend
+             on the Dock window viewport height. Sub-namespaces include typography, spacing,
+             radius, dataviz, and dock.
 ```
 
 ---
@@ -48,7 +50,7 @@ Current PLVS Dark values:
 | `--accent`                 | same as `--secondary`               | Accent surface                      |
 | `--accent-foreground`      | same as `--foreground`              | Text on accent surface              |
 | `--border`                 | `oklch(1 0 0 / 9%)`                 | Borders and dividers                |
-| `--input`                  | `oklch(1 0 0 / 14%)`               | Input field border                  |
+| `--input`                  | `oklch(1 0 0 / 14%)`                | Input field border                  |
 | `--ring`                   | `#fb923c`                           | Focus ring — matches brand color    |
 | `--destructive`            | `oklch(0.65 0.22 25)`               | Error / danger state                |
 | `--destructive-foreground` | `oklch(0.985 0 0)`                  | Text on destructive                 |
@@ -134,21 +136,21 @@ the instrument tokens above.
 Two font families:
 
 ```css
---ui-font-sans: "Inter", system-ui, sans-serif;        /* set by applyLayoutToDocument */
---ui-font-mono: "JetBrains Mono", ui-monospace, monospace;  /* set statically in index.css */
+--ui-font-sans: "Inter", system-ui, sans-serif; /* set by applyLayoutToDocument */
+--ui-font-mono: "JetBrains Mono", ui-monospace, monospace; /* set statically in index.css */
 ```
 
 **Rule:** All live-changing numeric displays use `--ui-font-mono` + `tabular-nums`. Static UI text uses `--ui-font-sans`.
 
 ### Text Roles and Sizes
 
-| # | Role                  | Token                  | Size | Weight | Notes                                                                        |
-|---|-----------------------|------------------------|------|--------|------------------------------------------------------------------------------|
-| 1 | **Axis Annotation**   | `--ui-fs-axis`         | 11px | 400    | Chart scale labels, secondary hints, error text. Muted.                      |
-| 2 | **Dynamic Display**   | `--ui-fs-display`      | 13px | —      | Live values on charts, settings drawer labels and control text.              |
-| 3 | **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | 500    | Loudness metric row label + unit. Also footer status links in drawer.        |
-| 4 | **Metric Value**      | `--ui-fs-metric-value` | 16px | 600    | Loudness metric row numeric value. Mono + tabular-nums.                      |
-| 5 | **Status**            | `--ui-fs-status`       | 11px | 400    | Footer status bar text. Muted.                                               |
+| #   | Role                  | Token                  | Size | Weight | Notes                                                                 |
+| --- | --------------------- | ---------------------- | ---- | ------ | --------------------------------------------------------------------- |
+| 1   | **Axis Annotation**   | `--ui-fs-axis`         | 11px | 400    | Chart scale labels, secondary hints, error text. Muted.               |
+| 2   | **Dynamic Display**   | `--ui-fs-display`      | 13px | —      | Live values on charts, settings drawer labels and control text.       |
+| 3   | **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | 500    | Loudness metric row label + unit. Also footer status links in drawer. |
+| 4   | **Metric Value**      | `--ui-fs-metric-value` | 16px | 600    | Loudness metric row numeric value. Mono + tabular-nums.               |
+| 5   | **Status**            | `--ui-fs-status`       | 11px | 400    | Footer status bar text. Muted.                                        |
 
 ---
 
@@ -239,6 +241,107 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 --ui-drawer-row-gap      0.25rem   Gap between rows within a section
 --ui-drawer-row-min-h    1.5rem    Minimum row height
 ```
+
+## Dock Tokens
+
+Dock is a separate high-density instrument surface with a supported height of `56–160px` and a
+default height of `72px`. It shares the global font families, semantic colors, and instrument
+colors, but it does not reuse normal-panel typography or spacing dimensions. Normal panels have
+minimum heights measured in `rem`; applying those dimensions to Dock would either overflow or
+waste its limited data area.
+
+Responsive Dock component tokens are owned by `src/dock/dockTokens.css` and scoped to
+`.dock-strip`. Height media queries update them directly while the native Dock window is being
+resized, without waiting for React state or persisted geometry.
+
+### Responsive density tiers
+
+| Role / token                  | Compact `56–63px` | Standard `64–95px` | Expanded `96–160px` |
+| ----------------------------- | ----------------: | -----------------: | ------------------: |
+| `--ui-dock-fs-label`          |               8px |                9px |                10px |
+| `--ui-dock-fs-caption`        |               8px |                9px |                10px |
+| `--ui-dock-fs-value`          |              11px |               13px |                15px |
+| `--ui-dock-fs-value-emphasis` |              13px |               15px |                18px |
+| `--ui-dock-fs-time`           |              14px |               16px |                20px |
+| `--ui-dock-pad-x`             |               5px |                6px |                 8px |
+| `--ui-dock-pad-y`             |               3px |                4px |                 6px |
+| `--ui-dock-gap-region`        |               4px |                5px |                 7px |
+| `--ui-dock-gap-column`        |               3px |                4px |                 5px |
+| `--ui-dock-gap-row`           |               2px |                3px |                 5px |
+| `--ui-dock-bar-min-h`         |               4px |                5px |                 6px |
+| `--ui-dock-readout-w`         |               5ch |                5ch |                 5ch |
+
+The tiers are intentionally discrete. Typography must remain stable while the user adjusts height;
+the additional space at larger heights primarily benefits bars, plots, and row separation rather
+than continuously magnifying every label.
+
+### Typography roles
+
+- `Label`: detector names, channel names, and compact metric names (`PK`, `RMS`, `M`, `ST`, `L`,
+  `R`, `LFE`). Static labels use `--ui-font-sans`, medium weight, and muted foreground.
+- `Caption`: compact source-rail annotations such as `PB Max` and `TP Max`. Captions use
+  `--ui-font-sans`, medium weight, muted foreground, and the repository Title Case convention. The
+  full source name remains available through settings, `title`, and accessible text.
+- `Value`: per-channel or compact dynamic values. Values use `--ui-font-mono`, `tabular-nums`, and
+  semibold weight.
+- `Value emphasis`: one primary/global value such as TP Max or correlation.
+- `Time`: transport timecode and similarly dominant dynamic time displays.
+
+Do not append detector names or readout sources after a number. A trailing `M Max` or `RMS Max`
+looks like a unit or a different metric. Detector identity belongs on the leading side of the
+instrument; a non-live source belongs in a caption aligned with the readout column. Live is the
+normal state and needs no caption.
+
+### Responsive rules
+
+- Height selects the density tier. Width does not scale font sizes.
+- Additional width belongs to bars, plots, waveforms, and spectra; gaps do not grow with container
+  width. Do not use `vw`, `cqw`, or percentage-based spacing for Dock layout gaps.
+- Numeric readouts never shrink below their tier size. Reserve the configured `ch` capacity in an
+  invisible sizing layer so changing digit count does not resize the meter. Lay out the visible
+  source rail and intrinsic-width value group separately so their optical gap remains constant.
+- Labels use intrinsic (`max-content`) columns rather than reserving a fixed `ch` width for every
+  abbreviation. A module-level Labels setting may remove optional labels to free more data width.
+- `--ui-dock-bar-min-h` is a floor, not a fixed bar height. Channel rows divide all available Dock
+  height with `minmax(var(--ui-dock-bar-min-h), 1fr)`, and each bar stretches to fill its row.
+- Component-specific structural changes, such as multi-bank layout for high channel counts, may use
+  container queries. They must not redefine the shared type or spacing scale.
+
+### Reference module grammar
+
+Level Meter is the reference implementation for label/bar/readout modules. Its detector label is
+centered against the meter region only. The meter and readout regions are sibling grids that share
+the same channel-row count but do not share caption layout:
+
+```text
+detector | meter region (channel | minmax(0, 1fr) bar) | readout region
+```
+
+Examples:
+
+```text
+PK   L   ━━━━━━━━━━━━━   -3.1
+     R   ━━━━━━━━━━━━    -4.0
+
+RMS  L   ━━━━━━━━━━━━━   PB Max   -12.2
+     R   ━━━━━━━━━━━━             -10.8
+```
+
+A non-live readout adds one single-line source rail between the meter and value regions. Use
+`TP Max` for true-peak maximum and `PB Max` for playback maximum; do not wrap either label. The rail
+is vertically centered across the complete channel grid and does not participate in its row sizing.
+Values retain the same channel-row alignment in Live and non-live states. Toggling a source rail
+must not change the detector label, channel labels, bar rows, or their available height. Scalar
+modes omit the channel column but keep the same detector → data region → source rail → readout
+ordering.
+
+Other Dock modules map their content onto the same roles:
+
+- Loudness and Stats: metric name → Label; numeric metric → Value.
+- Correlation: primary coefficient → Value emphasis.
+- Spectrum and Spectrogram: compact scale annotations → Caption.
+- Transport: timecode → Time.
+- Waveform: necessary lane or channel annotations → Label.
 
 ---
 

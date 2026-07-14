@@ -3,6 +3,7 @@
 
 /* First-paint shadcn semantic tokens — generated from builtin `plvs-dark` (`npm run theme:generate`). */
 @import "./generated/theme-fallbacks.css";
+@import "./dock/dockTokens.css";
 
 /* Runtime: `applyLayoutToDocument` / `applyThemeToDocument` inject `--ui-*`; Tailwind `chart-*` maps to `--chart-*`
  * from the active theme semantic (`applyShadcnSemanticTokensToDocument`). Theme id: `html[data-theme]`.

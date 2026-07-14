@@ -1,0 +1,46 @@
+.dock-strip {
+  --ui-dock-fs-label: 9px;
+  --ui-dock-fs-caption: 9px;
+  --ui-dock-fs-value: 13px;
+  --ui-dock-fs-value-emphasis: 15px;
+  --ui-dock-fs-time: 16px;
+  --ui-dock-pad-x: 6px;
+  --ui-dock-pad-y: 4px;
+  --ui-dock-gap-region: 5px;
+  --ui-dock-gap-column: 4px;
+  --ui-dock-gap-row: 3px;
+  --ui-dock-bar-min-h: 5px;
+  --ui-dock-readout-w: 5ch;
+}
+
+@media (max-height: 63px) {
+  .dock-strip {
+    --ui-dock-fs-label: 8px;
+    --ui-dock-fs-caption: 8px;
+    --ui-dock-fs-value: 11px;
+    --ui-dock-fs-value-emphasis: 13px;
+    --ui-dock-fs-time: 14px;
+    --ui-dock-pad-x: 5px;
+    --ui-dock-pad-y: 3px;
+    --ui-dock-gap-region: 4px;
+    --ui-dock-gap-column: 3px;
+    --ui-dock-gap-row: 2px;
+    --ui-dock-bar-min-h: 4px;
+  }
+}
+
+@media (min-height: 96px) {
+  .dock-strip {
+    --ui-dock-fs-label: 10px;
+    --ui-dock-fs-caption: 10px;
+    --ui-dock-fs-value: 15px;
+    --ui-dock-fs-value-emphasis: 18px;
+    --ui-dock-fs-time: 20px;
+    --ui-dock-pad-x: 8px;
+    --ui-dock-pad-y: 6px;
+    --ui-dock-gap-region: 7px;
+    --ui-dock-gap-column: 5px;
+    --ui-dock-gap-row: 5px;
+    --ui-dock-bar-min-h: 6px;
+  }
+}
