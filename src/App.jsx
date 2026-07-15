@@ -743,7 +743,7 @@ function AppContent() {
 
   useEffect(() => {
     for (const panel of dockLayout.panels) {
-      if (panel.moduleId !== "spectrum") continue;
+      if (panel.moduleId !== "spectrum" && panel.moduleId !== "spectrogram") continue;
       const controls = dockLayout.controlsByPanelId[panel.id];
       const nextChannel = clampSpectrumChannelToAvailable(
         controls?.channel,

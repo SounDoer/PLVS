@@ -24,7 +24,7 @@ describe("DockModuleSettings", () => {
     ["loudness", "Loudness reference"],
     ["spectrum", "Spectrum channel"],
     ["correlation", "Vectorscope channel pair"],
-    ["stats", "Metrics"],
+    ["stats", "Edit metrics"],
     ["waveform", "Waveform view"],
     ["spectrogram", "Spectrogram channel"],
   ])("renders the %s settings family", (moduleId, label) => {
@@ -135,9 +135,20 @@ describe("DockModuleSettings", () => {
   it("exposes Spectrum X range and quarter-decibel tilt steps", () => {
     renderSettings("spectrum");
 
-    expect(screen.getByLabelText("Spectrum x range min").value).toBe("20");
-    expect(screen.getByLabelText("Spectrum x range max").value).toBe("20000");
-    expect(screen.getByLabelText("Spectrum tilt").step).toBe("0.25");
+    expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
+    expect(screen.getByLabelText("spectrum x range max").value).toBe("20000");
+    expect(screen.getByLabelText("spectrum tilt").step).toBe("0.25");
+    expect(screen.queryByText("3.00 dB/oct")).toBeNull();
+    fireEvent.mouseEnter(screen.getByLabelText("spectrum tilt"));
+    expect(screen.getByRole("tooltip").textContent).toBe("3.00 dB/oct");
+  });
+
+  it("matches the normal Spectrum settings order", () => {
+    renderSettings("spectrum");
+
+    const peakRow = screen.getByText("Peak hold").closest("div.grid");
+    const smoothingRow = screen.getByText("Smoothing").closest("div.grid");
+    expect(peakRow.compareDocumentPosition(smoothingRow) & 4).toBeTruthy();
   });
 
   it("uses the themed inline selector instead of a native select", () => {
@@ -157,6 +168,7 @@ describe("DockModuleSettings", () => {
     const onChange = renderSettings("stats", { controls });
 
     expect(screen.getByText("4 visible")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
     expect(screen.getAllByRole("checkbox")).toHaveLength(15);
     expect(screen.queryByRole("button", { name: "Reset stats" })).toBeNull();
     fireEvent.click(screen.getByRole("checkbox", { name: "Integrated Dynamics" }));
@@ -164,6 +176,31 @@ describe("DockModuleSettings", () => {
       ...controls,
       statsVisibleIds: [...controls.statsVisibleIds, "plr"],
     });
+  });
+
+  it("uses runtime Spectrogram channels", () => {
+    const spectrumOptions = [
+      { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+      { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+    ];
+    const onChange = renderSettings("spectrogram", { spectrumOptions, channelCount: 6 });
+
+    fireEvent.click(screen.getByLabelText("Spectrogram channel"));
+    fireEvent.click(screen.getByRole("option", { name: "C" }));
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrogram,
+      channel: { type: "single", ch: 2 },
+    });
+  });
+
+  it("hides the Spectrogram Channel selector for stereo", () => {
+    renderSettings("spectrogram", {
+      spectrumOptions: [{ key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } }],
+      channelCount: 2,
+    });
+
+    expect(screen.queryByLabelText("Spectrogram channel")).toBeNull();
+    expect(screen.getByLabelText("Spectrogram level range min")).toBeTruthy();
   });
 
   it("exposes Back and Reset actions without a title close button", () => {

@@ -588,6 +588,44 @@ function toggleId(ids, id) {
   return [...ids, id];
 }
 
+export function StatsMetricsSettingsRow({
+  visibleIds,
+  orderedIds,
+  onToggle,
+  onReorder,
+  onReset,
+  showReset = true,
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <SettingsRow label="Metrics">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <InlineDetailTrigger
+          ariaLabel={open ? "Hide metrics" : "Edit metrics"}
+          summary={visibleSummary(visibleIds.length)}
+          open={open}
+          onToggle={() => setOpen((current) => !current)}
+        />
+        {open ? (
+          <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
+            <SortableStatsList
+              label="Metrics"
+              options={STATS_OPTIONS}
+              orderedIds={orderedIds}
+              selectedIds={visibleIds}
+              onToggle={onToggle}
+              onReorder={onReorder}
+              onReset={onReset}
+              showReset={showReset}
+            />
+          </div>
+        ) : null}
+      </div>
+    </SettingsRow>
+  );
+}
+
 export function LoudnessSettingsRows({
   referenceLufs,
   visibleLayerIds,
@@ -637,6 +675,81 @@ export function LoudnessSettingsRows({
   );
 }
 
+export function SpectrumDisplaySettingsRows({
+  showPeak = true,
+  showDisplay = true,
+  peakHold,
+  smoothingPercent,
+  tiltDbPerOctave,
+  xMinFreq,
+  xMaxFreq,
+  yMinDb,
+  yMaxDb,
+  onPeakHoldChange,
+  onSmoothingChange,
+  onTiltChange,
+  onXRangeChange,
+  onYRangeChange,
+}) {
+  return (
+    <>
+      {showPeak ? (
+        <SettingsRow label="Peak hold">
+          <SettingsSwitch
+            aria-label="peak hold"
+            checked={peakHold}
+            onCheckedChange={onPeakHoldChange}
+          />
+        </SettingsRow>
+      ) : null}
+      {showDisplay ? (
+        <>
+          <SettingsRow label="Smoothing">
+            <SettingsSlider
+              ariaLabel="spectrum smoothing"
+              min={0}
+              max={100}
+              step={1}
+              value={smoothingPercent}
+              formatValue={(value) => `${value.toFixed(0)}%`}
+              onCommit={onSmoothingChange}
+            />
+          </SettingsRow>
+          <SettingsRow label="Tilt">
+            <SettingsSlider
+              ariaLabel="spectrum tilt"
+              min={0}
+              max={6}
+              step={0.25}
+              value={tiltDbPerOctave}
+              formatValue={(value) => `${value.toFixed(2)} dB/oct`}
+              onCommit={onTiltChange}
+            />
+          </SettingsRow>
+          <SettingsRow label="X range">
+            <SettingsRangeInput
+              minAriaLabel="spectrum x range min"
+              maxAriaLabel="spectrum x range max"
+              minValue={xMinFreq}
+              maxValue={xMaxFreq}
+              onCommit={onXRangeChange}
+            />
+          </SettingsRow>
+          <SettingsRow label="Y range">
+            <SettingsRangeInput
+              minAriaLabel="spectrum y range min"
+              maxAriaLabel="spectrum y range max"
+              minValue={yMinDb}
+              maxValue={yMaxDb}
+              onCommit={onYRangeChange}
+            />
+          </SettingsRow>
+        </>
+      ) : null}
+    </>
+  );
+}
+
 export function PanelSettingsContent({
   activeTab,
   channelCount = 0,
@@ -656,7 +769,6 @@ export function PanelSettingsContent({
   panelControls,
   onPanelControlsChange,
 }) {
-  const [metricsOpen, setMetricsOpen] = useState(false);
   const [levelMeterModeOpen, setLevelMeterModeOpen] = useState(false);
   const [spectrumChannelOpen, setSpectrumChannelOpen] = useState(false);
   const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
@@ -792,51 +904,35 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Stats">
-        <SettingsRow label="Metrics" expanded={metricsOpen}>
-          <div className="flex min-w-0 flex-1 flex-col">
-            <InlineDetailTrigger
-              ariaLabel={metricsOpen ? "Hide metrics" : "Edit metrics"}
-              summary={visibleSummary(normalizedPanelControls.statsVisibleIds.length)}
-              open={metricsOpen}
-              onToggle={() => setMetricsOpen((open) => !open)}
-            />
-            {metricsOpen ? (
-              <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
-                <SortableStatsList
-                  label="Metrics"
-                  options={STATS_OPTIONS}
-                  orderedIds={normalizedPanelControls.statsOrder}
-                  selectedIds={normalizedPanelControls.statsVisibleIds}
-                  onToggle={(id) => {
-                    onPanelControlsChange(
-                      normalizePanelControls({
-                        ...normalizedPanelControls,
-                        statsVisibleIds: toggleId(normalizedPanelControls.statsVisibleIds, id),
-                      })
-                    );
-                  }}
-                  onReorder={(nextOrder) => {
-                    onPanelControlsChange(
-                      normalizePanelControls({
-                        ...normalizedPanelControls,
-                        statsOrder: nextOrder,
-                      })
-                    );
-                  }}
-                  onReset={() => {
-                    onPanelControlsChange(
-                      normalizePanelControls({
-                        ...normalizedPanelControls,
-                        statsOrder: [...STATS_CANONICAL_ORDER],
-                        statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
-                      })
-                    );
-                  }}
-                />
-              </div>
-            ) : null}
-          </div>
-        </SettingsRow>
+        <StatsMetricsSettingsRow
+          visibleIds={normalizedPanelControls.statsVisibleIds}
+          orderedIds={normalizedPanelControls.statsOrder}
+          onToggle={(id) => {
+            onPanelControlsChange(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                statsVisibleIds: toggleId(normalizedPanelControls.statsVisibleIds, id),
+              })
+            );
+          }}
+          onReorder={(nextOrder) => {
+            onPanelControlsChange(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                statsOrder: nextOrder,
+              })
+            );
+          }}
+          onReset={() => {
+            onPanelControlsChange(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                statsOrder: [...STATS_CANONICAL_ORDER],
+                statsVisibleIds: [...DEFAULT_PANEL_CONTROLS.statsVisibleIds],
+              })
+            );
+          }}
+        />
         <SettingsRow label="VAD" tooltip="Voice activity detector used by dialogue stats.">
           <SettingsVadSelect
             selectedOption={selectedVad}
@@ -996,101 +1092,60 @@ export function PanelSettingsContent({
             />
           </SettingsRow>
         ) : null}
-        {showPeak ? (
-          <SettingsRow label="Peak hold">
-            <SettingsSwitch
-              aria-label="peak hold"
-              checked={effectiveSpectrumPeakHold}
-              onCheckedChange={(checked) => {
-                onPanelControlsChange?.(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    spectrumPeakHold: checked,
-                  })
-                );
-                onSpectrumPeakHoldToggle?.();
-              }}
-            />
-          </SettingsRow>
-        ) : null}
-        {showDisplayControls ? (
-          <SettingsRow label="Smoothing">
-            <SettingsSlider
-              ariaLabel="spectrum smoothing"
-              min={0}
-              max={100}
-              step={1}
-              value={effectiveSmoothingPercent}
-              formatValue={(value) => `${value.toFixed(0)}%`}
-              onCommit={(value) => {
-                onPanelControlsChange?.(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    spectrumSmoothingPercent: value,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
-        ) : null}
-        {showDisplayControls ? (
-          <SettingsRow label="Tilt">
-            <SettingsSlider
-              ariaLabel="spectrum tilt"
-              min={0}
-              max={6}
-              step={0.25}
-              value={effectiveTiltDbPerOctave}
-              formatValue={(value) => `${value.toFixed(2)} dB/oct`}
-              onCommit={(value) => {
-                onPanelControlsChange?.(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    spectrumTiltDbPerOctave: value,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
-        ) : null}
-        {showDisplayControls ? (
-          <SettingsRow label="X range">
-            <SettingsRangeInput
-              minAriaLabel="spectrum x range min"
-              maxAriaLabel="spectrum x range max"
-              minValue={normalizedPanelControls.spectrumXMinFreq}
-              maxValue={normalizedPanelControls.spectrumXMaxFreq}
-              onCommit={(newMin, newMax) => {
-                onPanelControlsChange?.(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    spectrumXMinFreq: newMin,
-                    spectrumXMaxFreq: newMax,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
-        ) : null}
-        {showDisplayControls ? (
-          <SettingsRow label="Y range">
-            <SettingsRangeInput
-              minAriaLabel="spectrum y range min"
-              maxAriaLabel="spectrum y range max"
-              minValue={effectiveYMinDb}
-              maxValue={effectiveYMaxDb}
-              onCommit={(newMin, newMax) => {
-                onPanelControlsChange?.(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    spectrumYMinDb: newMin,
-                    spectrumYMaxDb: newMax,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
-        ) : null}
+        <SpectrumDisplaySettingsRows
+          showPeak={showPeak}
+          showDisplay={showDisplayControls}
+          peakHold={effectiveSpectrumPeakHold}
+          smoothingPercent={effectiveSmoothingPercent}
+          tiltDbPerOctave={effectiveTiltDbPerOctave}
+          xMinFreq={normalizedPanelControls.spectrumXMinFreq}
+          xMaxFreq={normalizedPanelControls.spectrumXMaxFreq}
+          yMinDb={effectiveYMinDb}
+          yMaxDb={effectiveYMaxDb}
+          onPeakHoldChange={(checked) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumPeakHold: checked,
+              })
+            );
+            onSpectrumPeakHoldToggle?.();
+          }}
+          onSmoothingChange={(value) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumSmoothingPercent: value,
+              })
+            );
+          }}
+          onTiltChange={(value) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumTiltDbPerOctave: value,
+              })
+            );
+          }}
+          onXRangeChange={(newMin, newMax) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumXMinFreq: newMin,
+                spectrumXMaxFreq: newMax,
+              })
+            );
+          }}
+          onYRangeChange={(newMin, newMax) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumYMinDb: newMin,
+                spectrumYMaxDb: newMax,
+              })
+            );
+          }}
+        />
         {showSpectrogramRange ? (
           <SettingsRow label="Y range">
             <SettingsRangeInput

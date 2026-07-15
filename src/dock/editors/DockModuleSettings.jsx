@@ -1,20 +1,19 @@
 import { useState } from "react";
 import {
   LoudnessSettingsRows,
+  SettingsRangeInput,
   SettingsGroup,
   SettingsRow,
   SettingsSelect,
+  SettingsSlider,
   SettingsSwitch,
-  SortableStatsList,
+  SpectrumDisplaySettingsRows,
+  StatsMetricsSettingsRow,
 } from "../../components/PanelSettingsContent.jsx";
-import { STATS_OPTIONS } from "../../lib/statsCatalog.js";
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { LEVEL_METER_MODE_OPTIONS } from "../../lib/panelControls.js";
-
-const FIELD_CLASS =
-  "h-7 rounded-md border border-border/60 bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 function SelectField({ label, value, options, onChange }) {
   const [open, setOpen] = useState(false);
@@ -33,55 +32,6 @@ function SelectField({ label, value, options, onChange }) {
       open={open}
       onOpenChange={setOpen}
     />
-  );
-}
-
-function SliderField({ label, value, min, max, step = 1, suffix = "", onChange }) {
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        aria-label={label}
-        type="range"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="plvs-range w-24"
-      />
-      <output className="w-12 text-right font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-muted-foreground">
-        {value}
-        {suffix}
-      </output>
-    </div>
-  );
-}
-
-function RangeFields({ label, minValue, maxValue, min, max, step = 1, onChange }) {
-  return (
-    <div className="flex items-center gap-1">
-      <input
-        aria-label={`${label} min`}
-        type="number"
-        value={minValue}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(event) => onChange(Number(event.target.value), maxValue)}
-        className={`${FIELD_CLASS} w-20 text-right font-[family-name:var(--ui-font-mono)]`}
-      />
-      <span className="text-muted-foreground">to</span>
-      <input
-        aria-label={`${label} max`}
-        type="number"
-        value={maxValue}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(event) => onChange(minValue, Number(event.target.value))}
-        className={`${FIELD_CLASS} w-20 text-right font-[family-name:var(--ui-font-mono)]`}
-      />
-    </div>
   );
 }
 
@@ -105,10 +55,6 @@ function parseChannel(value) {
   return type === "single"
     ? { type, ch: Number(first) }
     : { type: "pair", x: Number(first), y: Number(second) };
-}
-
-function toggleId(ids, id) {
-  return ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 }
 
 function SettingsBody({
@@ -217,54 +163,20 @@ function SettingsBody({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Smoothing">
-          <SliderField
-            label="Spectrum smoothing"
-            value={controls.smoothingPercent}
-            min={0}
-            max={100}
-            suffix="%"
-            onChange={(smoothingPercent) => onChange({ ...controls, smoothingPercent })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Tilt">
-          <SliderField
-            label="Spectrum tilt"
-            value={controls.tiltDbPerOctave}
-            min={0}
-            max={6}
-            step={0.25}
-            suffix=" dB/oct"
-            onChange={(tiltDbPerOctave) => onChange({ ...controls, tiltDbPerOctave })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Peak hold">
-          <SettingsSwitch
-            aria-label="Spectrum peak hold"
-            checked={controls.peakHold}
-            onCheckedChange={(peakHold) => onChange({ ...controls, peakHold })}
-          />
-        </SettingsRow>
-        <SettingsRow label="X range">
-          <RangeFields
-            label="Spectrum x range"
-            minValue={controls.minFreq}
-            maxValue={controls.maxFreq}
-            min={20}
-            max={20000}
-            onChange={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Y range">
-          <RangeFields
-            label="Spectrum y range"
-            minValue={controls.minDb}
-            maxValue={controls.maxDb}
-            min={-120}
-            max={0}
-            onChange={(minDb, maxDb) => onChange({ ...controls, minDb, maxDb })}
-          />
-        </SettingsRow>
+        <SpectrumDisplaySettingsRows
+          peakHold={controls.peakHold}
+          smoothingPercent={controls.smoothingPercent}
+          tiltDbPerOctave={controls.tiltDbPerOctave}
+          xMinFreq={controls.minFreq}
+          xMaxFreq={controls.maxFreq}
+          yMinDb={controls.minDb}
+          yMaxDb={controls.maxDb}
+          onPeakHoldChange={(peakHold) => onChange({ ...controls, peakHold })}
+          onSmoothingChange={(smoothingPercent) => onChange({ ...controls, smoothingPercent })}
+          onTiltChange={(tiltDbPerOctave) => onChange({ ...controls, tiltDbPerOctave })}
+          onXRangeChange={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
+          onYRangeChange={(minDb, maxDb) => onChange({ ...controls, minDb, maxDb })}
+        />
       </>
     );
   }
@@ -294,33 +206,20 @@ function SettingsBody({
   }
   if (moduleId === "stats") {
     return (
-      <div className="flex min-w-0 flex-col gap-1 px-1.5 py-1">
-        <div className="flex min-h-6 items-center justify-between gap-2 px-1 text-xs">
-          <span className="font-medium text-muted-foreground">Metrics</span>
-          <span className="text-[10px] text-muted-foreground/70">
-            {controls.statsVisibleIds.length} visible
-          </span>
-        </div>
-        <div className="min-w-0 rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30">
-          <SortableStatsList
-            label="Metrics"
-            options={STATS_OPTIONS}
-            orderedIds={controls.statsOrder}
-            selectedIds={controls.statsVisibleIds}
-            onToggle={(id) =>
-              onChange({
-                ...controls,
-                statsVisibleIds: toggleId(controls.statsVisibleIds, id),
-              })
-            }
-            onReorder={(statsOrder) => onChange({ ...controls, statsOrder })}
-            showReset={false}
-          />
-        </div>
-        <p className="px-1 text-[10px] leading-snug text-muted-foreground/65">
-          Metrics that do not fit are hidden from the end.
-        </p>
-      </div>
+      <StatsMetricsSettingsRow
+        visibleIds={controls.statsVisibleIds}
+        orderedIds={controls.statsOrder}
+        onToggle={(id) =>
+          onChange({
+            ...controls,
+            statsVisibleIds: controls.statsVisibleIds.includes(id)
+              ? controls.statsVisibleIds.filter((value) => value !== id)
+              : [...controls.statsVisibleIds, id],
+          })
+        }
+        onReorder={(statsOrder) => onChange({ ...controls, statsOrder })}
+        showReset={false}
+      />
     );
   }
   if (moduleId === "waveform") {
@@ -351,47 +250,54 @@ function SettingsBody({
           </SettingsRow>
         ) : null}
         <SettingsRow label="Window">
-          <SliderField
-            label="Waveform window"
+          <SettingsSlider
+            ariaLabel="Waveform window"
             value={controls.windowSec}
             min={5}
             max={120}
-            suffix=" s"
-            onChange={(windowSec) => onChange({ ...controls, windowSec })}
+            step={1}
+            formatValue={(value) => `${value.toFixed(0)} s`}
+            onCommit={(windowSec) => onChange({ ...controls, windowSec })}
           />
         </SettingsRow>
       </>
     );
   }
   if (moduleId === "spectrogram") {
+    const runtimeOptions = spectrumOptions?.map((option) => ({
+      value: channelValue(option.sel),
+      label: option.label,
+    }));
+    const channelOptions = runtimeOptions ?? CHANNEL_OPTIONS;
+    const showChannel = channelCount == null ? true : channelCount > 2 && channelOptions.length > 0;
     return (
       <>
-        <SettingsRow label="Channel">
-          <SelectField
-            label="Spectrogram channel"
-            value={channelValue(controls.channel)}
-            options={CHANNEL_OPTIONS}
-            onChange={(value) => onChange({ ...controls, channel: parseChannel(value) })}
-          />
-        </SettingsRow>
+        {showChannel ? (
+          <SettingsRow label="Channel">
+            <SelectField
+              label="Spectrogram channel"
+              value={channelValue(controls.channel)}
+              options={channelOptions}
+              onChange={(value) => onChange({ ...controls, channel: parseChannel(value) })}
+            />
+          </SettingsRow>
+        ) : null}
         <SettingsRow label="Level range">
-          <RangeFields
-            label="Spectrogram level range"
+          <SettingsRangeInput
+            minAriaLabel="Spectrogram level range min"
+            maxAriaLabel="Spectrogram level range max"
             minValue={controls.minDb}
             maxValue={controls.maxDb}
-            min={-120}
-            max={0}
-            onChange={(minDb, maxDb) => onChange({ ...controls, minDb, maxDb })}
+            onCommit={(minDb, maxDb) => onChange({ ...controls, minDb, maxDb })}
           />
         </SettingsRow>
         <SettingsRow label="Frequency range">
-          <RangeFields
-            label="Spectrogram frequency range"
+          <SettingsRangeInput
+            minAriaLabel="Spectrogram frequency range min"
+            maxAriaLabel="Spectrogram frequency range max"
             minValue={controls.minFreq}
             maxValue={controls.maxFreq}
-            min={20}
-            max={20000}
-            onChange={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
+            onCommit={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
           />
         </SettingsRow>
       </>
@@ -416,8 +322,8 @@ export function DockModuleSettings({
   if (!entry?.settingsFamily || !controls) return null;
   return (
     <DockEditorShell title={`${title ?? entry.label} settings`} onBack={onBack} onReset={onReset}>
-      <SettingsGroup>
-        <div className="grid gap-1 p-2">
+      <div className="p-2">
+        <SettingsGroup>
           <SettingsBody
             moduleId={dockModuleId}
             controls={controls}
@@ -426,8 +332,8 @@ export function DockModuleSettings({
             channelCount={channelCount}
             onChange={onChange}
           />
-        </div>
-      </SettingsGroup>
+        </SettingsGroup>
+      </div>
     </DockEditorShell>
   );
 }
