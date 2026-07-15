@@ -87,6 +87,59 @@ describe("DockModuleSettings", () => {
     expect(onChange).toHaveBeenCalledWith({ pair: { x: 2, y: 3 } });
   });
 
+  it("uses runtime Spectrum channels and only shows View for a pair", () => {
+    const spectrumOptions = [
+      { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+      { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+    ];
+    const onChange = renderSettings("spectrum", { spectrumOptions, channelCount: 6 });
+
+    expect(screen.getByLabelText("Spectrum view")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Spectrum channel"));
+    fireEvent.click(screen.getByRole("option", { name: "C" }));
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
+      channel: { type: "single", ch: 2 },
+    });
+  });
+
+  it("hides Spectrum Channel for stereo and View for a single channel", () => {
+    const pairOption = [{ key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } }];
+    const { unmount } = render(
+      <DockModuleSettings
+        moduleId="spectrum"
+        controls={DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum}
+        spectrumOptions={pairOption}
+        channelCount={2}
+        onChange={vi.fn()}
+        onReset={vi.fn()}
+        onBack={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("Spectrum channel")).toBeNull();
+    expect(screen.getByLabelText("Spectrum view")).toBeTruthy();
+    unmount();
+
+    renderSettings("spectrum", {
+      controls: {
+        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
+        channel: { type: "single", ch: 2 },
+      },
+      spectrumOptions: [{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }],
+      channelCount: 6,
+    });
+    expect(screen.getByLabelText("Spectrum channel")).toBeTruthy();
+    expect(screen.queryByLabelText("Spectrum view")).toBeNull();
+  });
+
+  it("exposes Spectrum X range and quarter-decibel tilt steps", () => {
+    renderSettings("spectrum");
+
+    expect(screen.getByLabelText("Spectrum x range min").value).toBe("20");
+    expect(screen.getByLabelText("Spectrum x range max").value).toBe("20000");
+    expect(screen.getByLabelText("Spectrum tilt").step).toBe("0.25");
+  });
+
   it("uses the themed inline selector instead of a native select", () => {
     renderSettings("spectrogram");
 

@@ -155,6 +155,8 @@ export function DockEditorApp() {
           )}
           controls={payload.controlsByPanelId?.[panel.id]}
           vectorscopeOptions={payload.vectorscopeOptions}
+          spectrumOptions={payload.spectrumOptions}
+          channelCount={payload.channelCount}
           onChange={(controls) => action("update-module-controls", { panelId: panel.id, controls })}
           onReset={() => action("reset-module-controls", { panelId: panel.id })}
           onBack={() => action("open-editor", { view: "modules" })}

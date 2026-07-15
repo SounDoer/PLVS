@@ -35,7 +35,10 @@ import {
   clampVectorscopePairToAvailable,
   formatVectorscopePairLabel,
 } from "./math/vectorscopePairMath.js";
-import { buildSpectrumChannelOptions } from "./math/spectrumChannelOptions.js";
+import {
+  buildSpectrumChannelOptions,
+  clampSpectrumChannelToAvailable,
+} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { AppShell } from "./components/AppShell.jsx";
@@ -738,6 +741,32 @@ function AppContent() {
     peakLabelContext,
   ]);
 
+  useEffect(() => {
+    for (const panel of dockLayout.panels) {
+      if (panel.moduleId !== "spectrum") continue;
+      const controls = dockLayout.controlsByPanelId[panel.id];
+      const nextChannel = clampSpectrumChannelToAvailable(
+        controls?.channel,
+        spectrumChannelOptions
+      );
+      const currentKey =
+        controls?.channel?.type === "single"
+          ? `s-${controls.channel.ch}`
+          : `p-${controls?.channel?.x ?? 0}-${controls?.channel?.y ?? 1}`;
+      const nextKey =
+        nextChannel.type === "single"
+          ? `s-${nextChannel.ch}`
+          : `p-${nextChannel.x}-${nextChannel.y}`;
+      if (currentKey === nextKey) continue;
+      dockLayout.setPanelControls(panel.id, { ...controls, channel: nextChannel });
+    }
+  }, [
+    dockLayout.controlsByPanelId,
+    dockLayout.panels,
+    dockLayout.setPanelControls,
+    spectrumChannelOptions,
+  ]);
+
   const onVectorscopePairChange = (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({
       x: pair.x,
@@ -930,6 +959,8 @@ function AppContent() {
       panelOrder: dockLayout.panelOrder,
       controlsByPanelId: dockLayout.controlsByPanelId,
       vectorscopeOptions: vectorscopePairOptions,
+      spectrumOptions: spectrumChannelOptions,
+      channelCount,
       vectorscopeSettingsAvailable: channelCount > 2 && vectorscopePairOptions.length > 0,
       presets: {
         list: presets.list.map(({ id, name }) => ({ id, name })),
@@ -947,6 +978,7 @@ function AppContent() {
       presets.activeId,
       presets.dirty,
       presets.list,
+      spectrumChannelOptions,
       vectorscopePairOptions,
     ]
   );

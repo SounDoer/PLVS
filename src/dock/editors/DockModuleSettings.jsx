@@ -111,7 +111,14 @@ function toggleId(ids, id) {
   return ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 }
 
-function SettingsBody({ moduleId, controls, vectorscopeOptions, onChange }) {
+function SettingsBody({
+  moduleId,
+  controls,
+  vectorscopeOptions,
+  spectrumOptions,
+  channelCount,
+  onChange,
+}) {
   if (moduleId === "level") {
     const isPeak = controls.mode === "peak";
     const readoutOptions = isPeak
@@ -177,28 +184,39 @@ function SettingsBody({ moduleId, controls, vectorscopeOptions, onChange }) {
     );
   }
   if (moduleId === "spectrum") {
+    const runtimeOptions = spectrumOptions?.map((option) => ({
+      value: channelValue(option.sel),
+      label: option.label,
+    }));
+    const channelOptions = runtimeOptions ?? CHANNEL_OPTIONS;
+    const showChannel = channelCount == null ? true : channelCount > 2 && channelOptions.length > 0;
+    const showView = channelOptions.length > 0 && controls.channel?.type === "pair";
     return (
       <>
-        <SettingsRow label="Channel">
-          <SelectField
-            label="Spectrum channel"
-            value={channelValue(controls.channel)}
-            options={CHANNEL_OPTIONS}
-            onChange={(value) => onChange({ ...controls, channel: parseChannel(value) })}
-          />
-        </SettingsRow>
-        <SettingsRow label="View">
-          <SelectField
-            label="Spectrum view"
-            value={controls.view}
-            options={[
-              { value: "combined", label: "Combined" },
-              { value: "lr", label: "L / R" },
-              { value: "ms", label: "M / S" },
-            ]}
-            onChange={(view) => onChange({ ...controls, view })}
-          />
-        </SettingsRow>
+        {showChannel ? (
+          <SettingsRow label="Channel">
+            <SelectField
+              label="Spectrum channel"
+              value={channelValue(controls.channel)}
+              options={channelOptions}
+              onChange={(value) => onChange({ ...controls, channel: parseChannel(value) })}
+            />
+          </SettingsRow>
+        ) : null}
+        {showView ? (
+          <SettingsRow label="View">
+            <SelectField
+              label="Spectrum view"
+              value={controls.view}
+              options={[
+                { value: "combined", label: "Combined" },
+                { value: "lr", label: "L / R" },
+                { value: "ms", label: "M / S" },
+              ]}
+              onChange={(view) => onChange({ ...controls, view })}
+            />
+          </SettingsRow>
+        ) : null}
         <SettingsRow label="Smoothing">
           <SliderField
             label="Spectrum smoothing"
@@ -215,8 +233,8 @@ function SettingsBody({ moduleId, controls, vectorscopeOptions, onChange }) {
             value={controls.tiltDbPerOctave}
             min={0}
             max={6}
-            step={0.5}
-            suffix=" dB"
+            step={0.25}
+            suffix=" dB/oct"
             onChange={(tiltDbPerOctave) => onChange({ ...controls, tiltDbPerOctave })}
           />
         </SettingsRow>
@@ -225,6 +243,16 @@ function SettingsBody({ moduleId, controls, vectorscopeOptions, onChange }) {
             aria-label="Spectrum peak hold"
             checked={controls.peakHold}
             onCheckedChange={(peakHold) => onChange({ ...controls, peakHold })}
+          />
+        </SettingsRow>
+        <SettingsRow label="X range">
+          <RangeFields
+            label="Spectrum x range"
+            minValue={controls.minFreq}
+            maxValue={controls.maxFreq}
+            min={20}
+            max={20000}
+            onChange={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
           />
         </SettingsRow>
         <SettingsRow label="Y range">
@@ -377,6 +405,8 @@ export function DockModuleSettings({
   title,
   controls,
   vectorscopeOptions,
+  spectrumOptions,
+  channelCount,
   onChange,
   onReset,
   onBack,
@@ -392,6 +422,8 @@ export function DockModuleSettings({
             moduleId={dockModuleId}
             controls={controls}
             vectorscopeOptions={vectorscopeOptions}
+            spectrumOptions={spectrumOptions}
+            channelCount={channelCount}
             onChange={onChange}
           />
         </div>

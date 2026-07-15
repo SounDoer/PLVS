@@ -53,6 +53,8 @@ describe("normalizeDockControlsByModuleId", () => {
       smoothingPercent: 100,
       tiltDbPerOctave: 0,
       peakHold: true,
+      minFreq: 20,
+      maxFreq: 20000,
       minDb: -96,
       maxDb: -12,
     });
