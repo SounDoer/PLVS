@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act, render } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
 
 function Probe({ onState }) {
   const { state } = useWorkspaceStore();
@@ -203,5 +203,34 @@ describe("WorkspaceContext active preset divergence", () => {
       })
     );
     expect(presetsStore.read().activeId).toBe("p1");
+  });
+
+  it("does not overwrite a Dock preset applied alongside the main workspace view", () => {
+    const previousDock = {
+      panelOrder: ["levelMeter", "stats"],
+      panelSizesById: { levelMeter: 180, stats: 240 },
+    };
+    const presetDock = {
+      panelOrder: ["stats", "levelMeter"],
+      panelSizesById: { stats: 300, levelMeter: 200 },
+    };
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({ ...DEFAULT_WORKSPACE_STATE, dock: previousDock })
+    );
+    const actions = renderActions();
+
+    act(() => {
+      workspaceStore.patch({ dock: presetDock });
+      actions.setView({
+        tree: DEFAULT_WORKSPACE_STATE.tree,
+        panelsById: DEFAULT_WORKSPACE_STATE.panelsById,
+        panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
+        panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+      });
+    });
+
+    expect(actions.state.dock).toBeUndefined();
+    expect(workspaceStore.read().dock).toEqual(presetDock);
   });
 });

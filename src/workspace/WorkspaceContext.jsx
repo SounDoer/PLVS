@@ -22,6 +22,17 @@ function normalizeWorkspacePanelControls(panelsById, panelControlsById, referenc
   return normalized;
 }
 
+function ownedWorkspaceState(state) {
+  return {
+    tree: state.tree,
+    panelsById: state.panelsById,
+    panelOrder: state.panelOrder,
+    fullscreenId: state.fullscreenId,
+    panelControlsById: state.panelControlsById,
+    pinnedPanelsById: state.pinnedPanelsById,
+  };
+}
+
 function initState() {
   const parsed = workspaceStore.read();
   const legacyReferenceLufs = normalizeReferenceLufs(settingsStore.read().referenceLufs);
@@ -47,7 +58,9 @@ function initState() {
   }
   return {
     ...DEFAULT_WORKSPACE_STATE,
-    ...parsed,
+    tree: parsed.tree,
+    panelsById: parsed.panelsById,
+    panelOrder: parsed.panelOrder,
     panelControlsById: normalizeWorkspacePanelControls(
       parsed.panelsById,
       parsed.panelControlsById,
@@ -106,7 +119,7 @@ export function WorkspaceProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    workspaceStore.patch(state);
+    workspaceStore.patch(ownedWorkspaceState(state));
   }, [state]);
 
   const value = useMemo(
