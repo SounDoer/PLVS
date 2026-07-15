@@ -273,6 +273,10 @@ The tiers are intentionally discrete. Typography must remain stable while the us
 the additional space at larger heights primarily benefits bars, plots, and row separation rather
 than continuously magnifying every label.
 
+Dock Stats keeps `2px` between each label and its fixed-width value and reserves at least `12px`
+between metric groups. Each metric cell compresses from a comfortable `72px` to `60px`, with the
+label absorbing that reduction before the responsive grid drops a column from view.
+
 ### Typography roles
 
 Within one density tier, the same typography role has the same size in every Dock module. Modules
@@ -344,6 +348,11 @@ Other Dock modules map their content onto the same roles:
 - Spectrum and Spectrogram: compact scale annotations → Caption.
 - Transport: timecode → Value.
 - Waveform: necessary lane or channel annotations → Label.
+
+Dock Stats lays selected metrics out from left to right, then top to bottom, using at most three
+rows. Its column count follows the available panel width. Metrics that exceed the current capacity
+are hidden from the end of the user-defined order, so ordering also defines narrow-width visibility
+priority. Stats values do not repeat units in the Dock matrix.
 
 Dock Loudness is the compact form of the normal Loudness panel, not a separate metric selector. Its
 history region fills the available height and retains the normal panel's Momentary, Short-term,

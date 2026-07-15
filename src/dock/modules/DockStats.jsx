@@ -1,6 +1,38 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
-import { normalizeDockStatsIds } from "../dockLayout.js";
 import { STATS_META } from "../../lib/statsCatalog.js";
+import { normalizeDockModuleControls } from "../dockModuleControls.js";
+import {
+  computeDockStatsColumnCount,
+  dockStatsGridPosition,
+  dockStatsGridTemplate,
+  DOCK_STATS_INNER_GAP_PX,
+  visibleDockStats,
+} from "../dockStatsLayout.js";
+
+function useDockStatsColumnCount(containerRef, enabled) {
+  const [columnCount, setColumnCount] = useState(1);
+
+  useLayoutEffect(() => {
+    const element = containerRef.current;
+    if (!element || !enabled) return undefined;
+
+    const measure = (width = element.clientWidth) => {
+      const next = computeDockStatsColumnCount(width);
+      setColumnCount((current) => (current === next ? current : next));
+    };
+
+    measure();
+    if (typeof ResizeObserver !== "function") return undefined;
+    const observer = new ResizeObserver((entries) => {
+      measure(entries[0]?.contentRect?.width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [containerRef, enabled]);
+
+  return columnCount;
+}
 
 /**
  * User-picked compact readouts from the shared stats catalog. Reads the
@@ -9,30 +41,83 @@ import { STATS_META } from "../../lib/statsCatalog.js";
  * needed, and the picker (modules editor) writes through useDockLayout.
  */
 export function DockStats({ controls }) {
-  const { statsMetrics } = useMetricsData() ?? {};
-  const statsIds = normalizeDockStatsIds(controls?.ids);
+  const { statsMetrics, dialogueActiveNow } = useMetricsData() ?? {};
+  const normalizedControls = normalizeDockModuleControls("stats", controls);
   const byId = new Map((statsMetrics ?? []).map((m) => [m.id, m]));
+  const selected = new Set(normalizedControls.statsVisibleIds);
+  const orderedMetrics = normalizedControls.statsOrder
+    .filter((id) => selected.has(id))
+    .map((id) => ({ id, metric: byId.get(id), meta: STATS_META[id] }));
+  const containerRef = useRef(null);
+  const columnCount = useDockStatsColumnCount(containerRef, orderedMetrics.length > 0);
+  const visibleMetrics = visibleDockStats(orderedMetrics, columnCount);
+
+  if (orderedMetrics.length === 0) {
+    return (
+      <div className="flex h-full min-w-0 items-center px-[var(--ui-dock-pad-x)] text-[length:var(--ui-dock-fs-label)] font-medium text-muted-foreground">
+        No stats selected
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full min-w-0 items-center gap-3 px-2">
-      {statsIds.map((id) => {
-        const metric = byId.get(id);
-        const meta = STATS_META[id];
-        return (
-          <div key={id} data-testid="dock-stat" className="flex min-w-0 flex-col justify-center">
-            <span className="truncate text-[8px] font-bold uppercase tracking-wide text-muted-foreground">
-              {metric?.shortLabel ?? meta?.shortLabel ?? id}
-            </span>
-            <span className="font-[family-name:var(--ui-font-mono)] text-[12px] font-semibold leading-tight tabular-nums text-foreground">
-              {metric?.value ?? "-"}
-              {metric?.unit ? (
-                <span className="ml-0.5 text-[7px] font-normal text-muted-foreground">
-                  {metric.unit}
-                </span>
-              ) : null}
-            </span>
-          </div>
-        );
-      })}
+    <div
+      className="flex h-full min-w-0"
+      style={{ padding: "var(--ui-dock-pad-y) var(--ui-dock-pad-x)" }}
+    >
+      <div
+        ref={containerRef}
+        data-testid="dock-stats-grid"
+        data-column-count={columnCount}
+        className="grid min-h-0 min-w-0 flex-1 overflow-hidden"
+        style={{
+          gridTemplateColumns: dockStatsGridTemplate(columnCount),
+          gridTemplateRows: "repeat(3, max-content)",
+          alignContent: "space-around",
+          justifyContent: "center",
+          rowGap: "var(--ui-dock-gap-row)",
+        }}
+      >
+        {visibleMetrics.map(({ id, metric, meta }, metricIndex) => {
+          const label = metric?.shortLabel ?? meta?.shortLabel ?? id;
+          const value = metric?.value ?? "-";
+          const dialogueActive = id === "dialogueCoverage" && dialogueActiveNow;
+          const position = dockStatsGridPosition(metricIndex, columnCount);
+          return (
+            <div
+              key={id}
+              data-testid="dock-stat"
+              className="flex min-w-0 items-baseline"
+              style={{
+                gridColumn: position.cellColumn,
+                gridRow: position.row,
+                gap: `${DOCK_STATS_INNER_GAP_PX}px`,
+              }}
+              aria-label={`${meta?.label ?? label} ${value}`}
+            >
+              <span
+                data-testid="dock-stat-label"
+                title={label}
+                className="flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground"
+              >
+                {id === "dialogueCoverage" ? (
+                  <span
+                    data-testid="dock-dialogue-active-dot"
+                    data-active={dialogueActive ? "true" : "false"}
+                    className={`size-1.5 shrink-0 rounded-full ${
+                      dialogueActive ? "bg-foreground" : "bg-muted-foreground/30"
+                    }`}
+                  />
+                ) : null}
+                <span className="min-w-0 truncate">{label}</span>
+              </span>
+              <span className="w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
+                {value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

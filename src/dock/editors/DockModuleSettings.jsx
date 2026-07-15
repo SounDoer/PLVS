@@ -5,8 +5,9 @@ import {
   SettingsRow,
   SettingsSelect,
   SettingsSwitch,
+  SortableStatsList,
 } from "../../components/PanelSettingsContent.jsx";
-import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
+import { STATS_OPTIONS } from "../../lib/statsCatalog.js";
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
@@ -100,6 +101,10 @@ function parseChannel(value) {
   return type === "single"
     ? { type, ch: Number(first) }
     : { type: "pair", x: Number(first), y: Number(second) };
+}
+
+function toggleId(ids, id) {
+  return ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 }
 
 function SettingsBody({ moduleId, controls, onChange }) {
@@ -244,31 +249,32 @@ function SettingsBody({ moduleId, controls, onChange }) {
   }
   if (moduleId === "stats") {
     return (
-      <div className="grid grid-cols-2 gap-1 px-1.5 py-1">
-        {STATS_CANONICAL_ORDER.map((id) => {
-          const checked = controls.ids.includes(id);
-          return (
-            <label
-              key={id}
-              className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-secondary/40"
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                disabled={!checked && controls.ids.length >= 4}
-                onChange={() =>
-                  onChange({
-                    ...controls,
-                    ids: checked
-                      ? controls.ids.filter((value) => value !== id)
-                      : [...controls.ids, id],
-                  })
-                }
-              />
-              <span className="truncate">{STATS_META[id].shortLabel}</span>
-            </label>
-          );
-        })}
+      <div className="flex min-w-0 flex-col gap-1 px-1.5 py-1">
+        <div className="flex min-h-6 items-center justify-between gap-2 px-1 text-xs">
+          <span className="font-medium text-muted-foreground">Metrics</span>
+          <span className="text-[10px] text-muted-foreground/70">
+            {controls.statsVisibleIds.length} visible
+          </span>
+        </div>
+        <div className="min-w-0 rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30">
+          <SortableStatsList
+            label="Metrics"
+            options={STATS_OPTIONS}
+            orderedIds={controls.statsOrder}
+            selectedIds={controls.statsVisibleIds}
+            onToggle={(id) =>
+              onChange({
+                ...controls,
+                statsVisibleIds: toggleId(controls.statsVisibleIds, id),
+              })
+            }
+            onReorder={(statsOrder) => onChange({ ...controls, statsOrder })}
+            showReset={false}
+          />
+        </div>
+        <p className="px-1 text-[10px] leading-snug text-muted-foreground/65">
+          Metrics that do not fit are hidden from the end.
+        </p>
       </div>
     );
   }

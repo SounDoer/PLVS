@@ -4,13 +4,11 @@ import {
   addDockPanel,
   dockModuleIdForPanelModuleId,
   normalizeDockLayout,
-  normalizeDockStatsIds,
   removeDockPanel,
   renameDockPanel,
   reorderDockModule,
   setDockPanelOrder,
   toggleDockModule,
-  toggleDockStatId,
 } from "./dockLayout.js";
 import {
   controlsByModuleIdFromPanels,
@@ -138,45 +136,6 @@ export function useDockLayout() {
     },
     [write]
   );
-  const toggleStat = useCallback(
-    (id) => {
-      const current = readDockState();
-      const statsPanelId = current.layout.panelOrder.find(
-        (panelId) => current.layout.panelsById[panelId]?.moduleId === "stats"
-      );
-      if (!statsPanelId) return;
-      write({
-        ...current,
-        controlsByPanelId: updateDockPanelControls(
-          current.controlsByPanelId,
-          current.layout.panelsById,
-          statsPanelId,
-          { ids: toggleDockStatId(current.controlsByPanelId[statsPanelId]?.ids ?? [], id) }
-        ),
-      });
-    },
-    [write]
-  );
-  const setStatsIds = useCallback(
-    (ids) => {
-      const current = readDockState();
-      const statsPanelId = current.layout.panelOrder.find(
-        (panelId) => current.layout.panelsById[panelId]?.moduleId === "stats"
-      );
-      if (!statsPanelId) return;
-      write({
-        ...current,
-        controlsByPanelId: updateDockPanelControls(
-          current.controlsByPanelId,
-          current.layout.panelsById,
-          statsPanelId,
-          { ids: normalizeDockStatsIds(ids) }
-        ),
-      });
-    },
-    [write]
-  );
-
   const setPanelControls = useCallback(
     (panelId, controls) => {
       const current = readDockState();
@@ -299,7 +258,6 @@ export function useDockLayout() {
     controlsByPanelId: state.controlsByPanelId,
     modules,
     controlsByModuleId,
-    statsIds: controlsByModuleId.stats.ids,
     toggle,
     reorder,
     setModules,
@@ -308,8 +266,6 @@ export function useDockLayout() {
     removePanel,
     renamePanel,
     setPanelOrder,
-    toggleStat,
-    setStatsIds,
     setPanelControls,
     resetPanelControls,
     setModuleControls,

@@ -12,17 +12,13 @@ describe("normalizeDockControlsByModuleId", () => {
     expect(controls.spectrum).toEqual(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum);
     expect(controls.spectrum).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum);
     expect(controls.spectrum.channel).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum.channel);
-    expect(controls.stats.ids).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.ids);
+    expect(controls.stats.statsVisibleIds).not.toBe(
+      DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.statsVisibleIds
+    );
+    expect(controls.stats.statsOrder).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.statsOrder);
     expect(controls.loudness.loudnessHistoryVisibleLayerIds).not.toBe(
       DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness.loudnessHistoryVisibleLayerIds
     );
-  });
-
-  it("migrates legacy statsIds only when new stats controls are absent", () => {
-    expect(normalizeDockControlsByModuleId({}, ["psr", "lra"]).stats.ids).toEqual(["psr", "lra"]);
-    expect(
-      normalizeDockControlsByModuleId({ stats: { ids: ["integrated"] } }, ["psr"]).stats.ids
-    ).toEqual(["integrated"]);
   });
 
   it("normalizes each family without retaining unrelated fields", () => {
@@ -108,16 +104,18 @@ describe("normalizeDockModuleControls", () => {
     ).toBe("live");
   });
 
-  it("rejects invalid channel pairs and caps stats at four known ids", () => {
+  it("rejects invalid channel pairs and normalizes unlimited Stats visibility and order", () => {
     expect(normalizeDockModuleControls("correlation", { pair: { x: 2, y: 2 } }).pair).toEqual({
       x: 0,
       y: 1,
     });
-    expect(
-      normalizeDockModuleControls("stats", {
-        ids: ["truePeak", "ghost", "lra", "truePeak", "integrated", "psr", "plr"],
-      }).ids
-    ).toEqual(["truePeak", "lra", "integrated", "psr"]);
+    const stats = normalizeDockModuleControls("stats", {
+      statsVisibleIds: ["truePeak", "ghost", "lra", "truePeak", "integrated", "psr", "plr"],
+      statsOrder: ["plr", "psr", "ghost", "plr", "integrated"],
+    });
+    expect(stats.statsVisibleIds).toEqual(["truePeak", "lra", "integrated", "psr", "plr"]);
+    expect(stats.statsOrder.slice(0, 3)).toEqual(["plr", "psr", "integrated"]);
+    expect(stats.statsOrder).toHaveLength(15);
   });
 
   it("returns null for modules without controls", () => {

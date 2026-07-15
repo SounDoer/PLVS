@@ -185,7 +185,7 @@ dock: { enabled, edge, modules }   // modules = ordered enabled ids
 | v1 | DockLoudness | Compact M/ST/Reference history using the normal panel's layer behavior + right-side M/ST/I readouts | ~160–240px; reuses history path math and normal Loudness settings |
 | v1 | DockSpectrum | Compact RTA curve, fixed scale, no axes | Flexible width (absorbs remaining space) |
 | v1 | DockCorrelation | −1…+1 correlation bar + value (optional L/R balance) | ~80–120px. Vectorscope's dock form **is** the correlation bar; an XY cloud at 60px is unreadable by design decision. |
-| v1.5 | DockStats | 2–4 user-picked readouts from the existing `buildStatsMetrics` catalog | Cheapest module; generalizes DockLoudness's number |
+| v1.5 | DockStats | User-picked readouts from the existing `buildStatsMetrics` catalog, ordered by display priority | Adaptive matrix with at most three rows; narrower widths hide metrics from the end |
 | v1.5 | DockWaveform | Scrolling compact waveform | Overlaps Level in value; visual intuition |
 | v1.5 | DockTransport (optional) | `SourceTransportCluster` as an always-visible module | Near-zero cost; for users who want persistent transport |
 | v2 | DockSpectrogram | Scrolling mini spectrogram (colormap LUT reuse) | Readability at 60px needs dedicated polish |

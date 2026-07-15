@@ -24,7 +24,7 @@ describe("DockModuleSettings", () => {
     ["loudness", "Loudness reference"],
     ["spectrum", "Spectrum channel"],
     ["correlation", "Show correlation value"],
-    ["stats", "M"],
+    ["stats", "Metrics"],
     ["waveform", "Waveform view"],
     ["spectrogram", "Spectrogram channel"],
   ])("renders the %s settings family", (moduleId, label) => {
@@ -82,6 +82,23 @@ describe("DockModuleSettings", () => {
     fireEvent.click(screen.getByLabelText("Spectrogram channel"));
     expect(screen.getByRole("listbox", { name: "Spectrogram channel" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Channels 1 + 2" })).toBeTruthy();
+  });
+
+  it("reuses the sortable multi-select Stats list without a selection cap", () => {
+    const controls = {
+      statsVisibleIds: ["integrated", "truePeak", "lra", "psr"],
+      statsOrder: DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.statsOrder,
+    };
+    const onChange = renderSettings("stats", { controls });
+
+    expect(screen.getByText("4 visible")).toBeTruthy();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(15);
+    expect(screen.queryByRole("button", { name: "Reset stats" })).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Integrated Dynamics" }));
+    expect(onChange).toHaveBeenCalledWith({
+      ...controls,
+      statsVisibleIds: [...controls.statsVisibleIds, "plr"],
+    });
   });
 
   it("exposes Back and Reset actions without a title close button", () => {

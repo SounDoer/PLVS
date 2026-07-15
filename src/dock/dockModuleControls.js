@@ -2,7 +2,6 @@ import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { LOUDNESS_HISTORY_LAYER_OPTIONS } from "../lib/panelControls.js";
 
-const MAX_STATS_IDS = 4;
 const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
 const LOUDNESS_HISTORY_LAYER_IDS = new Set(
   LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
@@ -20,6 +19,12 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   waveform: "waveform",
   transport: "transport",
 });
+
+const DEFAULT_DOCK_STATS_VISIBLE_IDS = ["integrated", "truePeak", "lra"];
+const DEFAULT_DOCK_STATS_ORDER = [
+  ...DEFAULT_DOCK_STATS_VISIBLE_IDS,
+  ...STATS_CANONICAL_ORDER.filter((id) => !DEFAULT_DOCK_STATS_VISIBLE_IDS.includes(id)),
+];
 
 export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   level: Object.freeze({ mode: "peak", readout: "live", showLabels: true }),
@@ -39,7 +44,10 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
     maxDb: -12,
   }),
   correlation: Object.freeze({ pair: Object.freeze({ x: 0, y: 1 }), showValue: true }),
-  stats: Object.freeze({ ids: Object.freeze(["integrated", "truePeak", "lra"]) }),
+  stats: Object.freeze({
+    statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
+    statsOrder: Object.freeze([...DEFAULT_DOCK_STATS_ORDER]),
+  }),
   waveform: Object.freeze({ view: "all", channel: 0, windowSec: 30 }),
   spectrogram: Object.freeze({
     channel: Object.freeze({ type: "pair", x: 0, y: 1 }),
@@ -110,15 +118,27 @@ function logRange(rawMin, rawMax, fallbackMin, fallbackMax) {
   return { min, max };
 }
 
-export function normalizeDockStatsIds(raw) {
-  const fallback = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.ids;
+export function normalizeDockStatsVisibleIds(raw) {
+  const fallback = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.statsVisibleIds;
   if (!Array.isArray(raw)) return [...fallback];
   const ids = [];
   for (const id of raw) {
     if (STATS_CANONICAL_ORDER.includes(id) && !ids.includes(id)) ids.push(id);
-    if (ids.length >= MAX_STATS_IDS) break;
   }
   return ids;
+}
+
+export function normalizeDockStatsOrder(raw) {
+  const ordered = [];
+  if (Array.isArray(raw)) {
+    for (const id of raw) {
+      if (STATS_CANONICAL_ORDER.includes(id) && !ordered.includes(id)) ordered.push(id);
+    }
+  }
+  for (const id of DEFAULT_DOCK_STATS_ORDER) {
+    if (!ordered.includes(id)) ordered.push(id);
+  }
+  return ordered;
 }
 
 function normalizeDockLoudnessLayerIds(raw) {
@@ -193,7 +213,10 @@ export function normalizeDockModuleControls(moduleId, raw) {
         showValue: bool(raw?.showValue, defaults.showValue),
       };
     case "stats":
-      return { ids: normalizeDockStatsIds(raw?.ids) };
+      return {
+        statsVisibleIds: normalizeDockStatsVisibleIds(raw?.statsVisibleIds),
+        statsOrder: normalizeDockStatsOrder(raw?.statsOrder),
+      };
     case "waveform":
       return {
         view: WAVEFORM_VIEWS.has(raw?.view) ? raw.view : defaults.view,
@@ -224,17 +247,12 @@ export function normalizeDockModuleControls(moduleId, raw) {
   }
 }
 
-export function normalizeDockControlsByModuleId(raw, legacyStatsIds) {
+export function normalizeDockControlsByModuleId(raw) {
   const source = raw && typeof raw === "object" ? raw : {};
   return Object.fromEntries(
     DOCK_CONTROL_MODULE_IDS.map((moduleId) => [
       moduleId,
-      normalizeDockModuleControls(
-        moduleId,
-        moduleId === "stats" && source.stats == null && legacyStatsIds !== undefined
-          ? { ids: legacyStatsIds }
-          : source[moduleId]
-      ),
+      normalizeDockModuleControls(moduleId, source[moduleId]),
     ])
   );
 }
@@ -254,27 +272,20 @@ export function dockControlModuleIdForPanel(panel) {
 export function normalizeDockControlsByPanelId(
   panelsById = {},
   rawControlsByPanelId,
-  legacyControlsByModuleId,
-  legacyStatsIds
+  fallbackControlsByModuleId
 ) {
   const rawByPanel =
     rawControlsByPanelId && typeof rawControlsByPanelId === "object" ? rawControlsByPanelId : {};
-  const legacyByModule =
-    legacyControlsByModuleId && typeof legacyControlsByModuleId === "object"
-      ? legacyControlsByModuleId
+  const fallbackByModule =
+    fallbackControlsByModuleId && typeof fallbackControlsByModuleId === "object"
+      ? fallbackControlsByModuleId
       : {};
   return Object.fromEntries(
     Object.entries(panelsById)
       .map(([panelId, panel]) => {
         const controlModuleId = dockControlModuleIdForPanel(panel);
         if (!DOCK_CONTROL_MODULE_IDS.includes(controlModuleId)) return null;
-        const raw =
-          rawByPanel[panelId] ??
-          (controlModuleId === "stats" &&
-          legacyByModule.stats == null &&
-          legacyStatsIds !== undefined
-            ? { ids: legacyStatsIds }
-            : legacyByModule[controlModuleId]);
+        const raw = rawByPanel[panelId] ?? fallbackByModule[controlModuleId];
         return [panelId, normalizeDockModuleControls(controlModuleId, raw)];
       })
       .filter(Boolean)

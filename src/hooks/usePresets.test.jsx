@@ -630,14 +630,22 @@ describe("usePresets", () => {
         reserveSpace: true,
         panelsById: { stats: { id: "stats", moduleId: "stats" } },
         panelOrder: ["stats"],
-        controlsByPanelId: { stats: { ids: ["psr", "plr"] } },
+        controlsByPanelId: {
+          stats: {
+            statsVisibleIds: ["psr", "plr"],
+            statsOrder: ["plr", "psr"],
+          },
+        },
       };
       const { result } = renderPresetHook({ dock, applyDockPreset });
       let preset;
       await act(async () => {
         preset = await result.current.presets.save("Stats dock");
       });
-      expect(preset.dock.controlsByPanelId.stats.ids).toEqual(["psr", "plr"]);
+      expect(preset.dock.controlsByPanelId.stats).toEqual({
+        statsVisibleIds: ["psr", "plr"],
+        statsOrder: ["plr", "psr"],
+      });
       await act(async () => {
         await result.current.presets.apply(preset.id);
       });
@@ -645,7 +653,12 @@ describe("usePresets", () => {
         expect.objectContaining({
           reserveSpace: true,
           monitor: "\\\\.\\DISPLAY2",
-          controlsByPanelId: expect.objectContaining({ stats: { ids: ["psr", "plr"] } }),
+          controlsByPanelId: expect.objectContaining({
+            stats: {
+              statsVisibleIds: ["psr", "plr"],
+              statsOrder: ["plr", "psr"],
+            },
+          }),
         })
       );
     });

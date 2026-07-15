@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DOCK_MODULES,
-  DEFAULT_DOCK_STATS_IDS,
   DOCK_MODULE_IDS,
   normalizeDockLayout,
-  normalizeDockStatsIds,
   setDockPanelOrder,
   toggleDockModule,
-  toggleDockStatId,
   reorderDockModule,
 } from "./dockLayout.js";
 
@@ -89,37 +86,5 @@ describe("dock module catalog v1.5/v2", () => {
 
   it("keeps the v1 default enabled set (new modules are opt-in)", () => {
     expect(DEFAULT_DOCK_MODULES).toEqual(["level", "loudness", "spectrum", "correlation"]);
-  });
-});
-
-describe("normalizeDockStatsIds", () => {
-  it("falls back to defaults for junk input", () => {
-    expect(normalizeDockStatsIds(undefined)).toEqual(DEFAULT_DOCK_STATS_IDS);
-    expect(normalizeDockStatsIds("nope")).toEqual(DEFAULT_DOCK_STATS_IDS);
-  });
-
-  it("drops unknown ids and duplicates, caps at MAX_DOCK_STATS_IDS", () => {
-    const raw = ["truePeak", "ghost", "lra", "truePeak", "integrated", "psr", "plr"];
-    expect(normalizeDockStatsIds(raw)).toEqual(["truePeak", "lra", "integrated", "psr"]);
-  });
-
-  it("keeps an intentionally empty list empty", () => {
-    expect(normalizeDockStatsIds([])).toEqual([]);
-  });
-});
-
-describe("toggleDockStatId", () => {
-  it("removes a present id and appends an absent one", () => {
-    expect(toggleDockStatId(["lra"], "lra")).toEqual([]);
-    expect(toggleDockStatId(["lra"], "psr")).toEqual(["lra", "psr"]);
-  });
-
-  it("refuses to exceed the cap", () => {
-    const full = ["integrated", "truePeak", "lra", "psr"];
-    expect(toggleDockStatId(full, "plr")).toEqual(full);
-  });
-
-  it("ignores unknown ids", () => {
-    expect(toggleDockStatId(["lra"], "ghost")).toEqual(["lra"]);
   });
 });

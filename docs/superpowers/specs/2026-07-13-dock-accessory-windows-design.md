@@ -260,7 +260,7 @@ Initial control families:
 | Loudness    | primary M/S/I metric, reference-line visibility/value                |
 | Spectrum    | channel, view, smoothing, tilt, peak hold/display range as supported |
 | Correlation | channel pair and Dock display/hold options                           |
-| Stats       | selected 0-4 readouts and order                                      |
+| Stats       | selected readouts and display-priority order                          |
 | Waveform    | channel/view and Dock display scale options                          |
 | Spectrogram | channel/view, dB range, colormap/display options                     |
 | Timecode    | none                                                                 |

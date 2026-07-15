@@ -484,7 +484,7 @@ function SortableStatRow({ id, label, checked, onToggle }) {
   );
 }
 
-function SortableStatsList({
+export function SortableStatsList({
   label,
   options,
   orderedIds,
@@ -492,6 +492,7 @@ function SortableStatsList({
   onToggle,
   onReorder,
   onReset,
+  showReset = true,
 }) {
   const labelById = new Map(options.map((option) => [option.id, option.label]));
   return (
@@ -514,23 +515,25 @@ function SortableStatsList({
           />
         ))}
       </Reorder.Group>
-      <div className="mt-0.5 border-t border-border/30 pt-0.5">
-        <InlineConfirm
-          onConfirm={onReset}
-          confirmLabel="Confirm reset stats"
-          cancelLabel="Cancel reset stats"
-          trigger={(arm) => (
-            <button
-              type="button"
-              aria-label="Reset stats"
-              onClick={arm}
-              className="w-auto rounded-sm px-2 py-0.5 text-left text-[11px] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
-            >
-              Reset
-            </button>
-          )}
-        />
-      </div>
+      {showReset ? (
+        <div className="mt-0.5 border-t border-border/30 pt-0.5">
+          <InlineConfirm
+            onConfirm={onReset}
+            confirmLabel="Confirm reset stats"
+            cancelLabel="Cancel reset stats"
+            trigger={(arm) => (
+              <button
+                type="button"
+                aria-label="Reset stats"
+                onClick={arm}
+                className="w-auto rounded-sm px-2 py-0.5 text-left text-[11px] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
+              >
+                Reset
+              </button>
+            )}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
