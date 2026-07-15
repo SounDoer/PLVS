@@ -36,7 +36,7 @@ describe("ModulesPopoverContent", () => {
 
     expect(actions?.className).toContain("opacity-0");
     expect(actions?.className).toContain("group-hover:opacity-100");
-    expect(actions?.className).not.toContain("group-focus-within:opacity-100");
+    expect(actions?.className).toContain("group-focus-within:opacity-100");
   });
 
   it("shows the panel icon beside existing panel names", () => {

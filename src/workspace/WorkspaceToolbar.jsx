@@ -1,24 +1,17 @@
 import { Check, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import {
+  MANAGEMENT_ROW_ACTIONS_CLASS,
+  MANAGEMENT_ROW_CLASS,
+  ManagementIconAction,
+} from "@/components/ManagementRow.jsx";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { resolvePanelDefinition, resolvePanelDisplayName } from "./panelInstances.js";
-
-function IconAction({ label, icon, onClick, className = "" }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className={`rounded p-0.5 text-muted-foreground opacity-70 transition-colors hover:text-foreground hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${className}`}
-      onClick={onClick}
-    >
-      {icon}
-    </button>
-  );
-}
 
 function PanelRow({ panelId }) {
   const { state, removePanel, renamePanel, setHoveredPanelId } = useWorkspaceStore();
@@ -52,12 +45,12 @@ function PanelRow({ panelId }) {
           className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           autoFocus
         />
-        <IconAction
+        <ManagementIconAction
           label={`Save ${title} name`}
           icon={<Check className="size-3.5" />}
           onClick={commitRename}
         />
-        <IconAction
+        <ManagementIconAction
           label={`Cancel ${title} rename`}
           icon={<X className="size-3.5" />}
           onClick={() => setEditing(false)}
@@ -68,7 +61,7 @@ function PanelRow({ panelId }) {
 
   return (
     <div
-      className="group flex w-full min-w-44 items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/50"
+      className={cn(MANAGEMENT_ROW_CLASS, "min-w-44")}
       onMouseEnter={() => setHoveredPanelId(panelId)}
       onMouseLeave={() => setHoveredPanelId(null)}
     >
@@ -78,8 +71,8 @@ function PanelRow({ panelId }) {
         </span>
       ) : null}
       <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
-      <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-        <IconAction
+      <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
+        <ManagementIconAction
           label={`Rename ${title}`}
           icon={<Pencil className="size-3.5" />}
           onClick={startRename}
@@ -89,7 +82,7 @@ function PanelRow({ panelId }) {
           confirmLabel={`Confirm delete ${title}`}
           cancelLabel={`Cancel delete ${title}`}
           trigger={(arm) => (
-            <IconAction
+            <ManagementIconAction
               label={`Delete ${title}`}
               icon={<Trash2 className="size-3.5" />}
               className="hover:text-destructive"
@@ -119,7 +112,7 @@ function AddPanelControl() {
           <button
             key={id}
             type="button"
-            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-foreground transition-colors hover:bg-muted/50"
+            className={cn(MANAGEMENT_ROW_CLASS, "text-foreground")}
             onClick={() => {
               addPanel(id);
               setOpen(false);

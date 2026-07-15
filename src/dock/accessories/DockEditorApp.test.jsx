@@ -123,6 +123,18 @@ describe("DockEditorApp window behavior", () => {
     expect(classes).not.toContain("w-[400px]");
   });
 
+  it("uses the same semantic surface as regular popovers", () => {
+    render(<DockEditorApp />);
+
+    const classes = screen.getByTestId("dock-editor").className.split(/\s+/);
+    expect(classes).toContain("rounded-md");
+    expect(classes).toContain("border-border");
+    expect(classes).toContain("bg-popover");
+    expect(classes).toContain("text-popover-foreground");
+    expect(classes).toContain("shadow-md");
+    expect(classes).not.toContain("backdrop-blur-sm");
+  });
+
   it("forwards module row hover to the main dock window", () => {
     client.payload = {
       ...PRESETS_PAYLOAD,

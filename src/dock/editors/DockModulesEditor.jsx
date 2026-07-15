@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, GripVertical, Pencil, Plus, Settings2, Timer, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "../../components/InlineConfirm.jsx";
-import { IconButton } from "../../components/IconButton.jsx";
+import {
+  MANAGEMENT_ROW_ACTIONS_CLASS,
+  MANAGEMENT_ROW_CLASS,
+  ManagementIconAction,
+} from "../../components/ManagementRow.jsx";
 import { Button } from "../../components/ui/button.jsx";
+import { cn } from "../../lib/utils.js";
 import { MODULE_REGISTRY } from "../../workspace/registry.jsx";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
 import {
@@ -66,7 +71,7 @@ function DockModuleRow({
 
   if (editing) {
     return (
-      <div className="flex h-9 w-full items-center gap-1 rounded-md px-1.5 py-1">
+      <div className="flex w-full items-center gap-1 rounded px-1.5 py-1">
         <input
           type="text"
           aria-label={`Rename ${title}`}
@@ -79,14 +84,14 @@ function DockModuleRow({
           className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           autoFocus
         />
-        <IconButton
+        <ManagementIconAction
           icon={<Check className="size-3.5" />}
-          tip={`Save ${title} name`}
+          label={`Save ${title} name`}
           onClick={commitRename}
         />
-        <IconButton
+        <ManagementIconAction
           icon={<X className="size-3.5" />}
-          tip={`Cancel ${title} rename`}
+          label={`Cancel ${title} rename`}
           onClick={() => setEditing(false)}
         />
       </div>
@@ -96,7 +101,7 @@ function DockModuleRow({
   return (
     <div
       data-testid={`dock-panel-row-${panel.id}`}
-      className={`group grid h-9 grid-cols-[28px_18px_minmax(0,1fr)_28px_28px_28px] items-center rounded-md px-1 text-xs transition-colors hover:bg-muted/50 ${dragging ? "z-10 ring-1 ring-primary/60" : ""}`}
+      className={cn(MANAGEMENT_ROW_CLASS, dragging && "z-10 ring-1 ring-primary/60")}
       onMouseEnter={() => onHover?.(panel.id)}
       onMouseLeave={() => onHover?.(null)}
     >
@@ -107,7 +112,7 @@ function DockModuleRow({
         onPointerMove={onDragMove}
         onPointerUp={onDragEnd}
         onPointerCancel={onDragEnd}
-        className="flex size-7 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground active:cursor-grabbing"
+        className="-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <GripVertical className="size-3.5" />
       </button>
@@ -116,35 +121,35 @@ function DockModuleRow({
           <def.Icon />
         </span>
       ) : null}
-      <span className="min-w-0 truncate px-1 text-left text-foreground">{title}</span>
-      {dockEntry?.settingsFamily &&
-      (panel.moduleId !== "vectorscope" || vectorscopeSettingsAvailable) ? (
-        <IconButton
-          icon={<Settings2 className="size-3.5" />}
-          tip={`${title} settings`}
-          onClick={() => onOpenSettings(panel.id)}
-        />
-      ) : (
-        <span />
-      )}
-      <IconButton
-        icon={<Pencil className="size-3.5" />}
-        tip={`Rename ${title}`}
-        onClick={startRename}
-      />
-      <InlineConfirm
-        onConfirm={() => onRemove(panel.id)}
-        confirmLabel={`Confirm delete ${title}`}
-        cancelLabel={`Cancel delete ${title}`}
-        trigger={(arm) => (
-          <IconButton
-            icon={<Trash2 className="size-3.5" />}
-            tip={`Delete ${title}`}
-            onClick={arm}
-            className="hover:text-destructive"
+      <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
+      <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
+        {dockEntry?.settingsFamily &&
+        (panel.moduleId !== "vectorscope" || vectorscopeSettingsAvailable) ? (
+          <ManagementIconAction
+            icon={<Settings2 className="size-3.5" />}
+            label={`${title} settings`}
+            onClick={() => onOpenSettings(panel.id)}
           />
-        )}
-      />
+        ) : null}
+        <ManagementIconAction
+          icon={<Pencil className="size-3.5" />}
+          label={`Rename ${title}`}
+          onClick={startRename}
+        />
+        <InlineConfirm
+          onConfirm={() => onRemove(panel.id)}
+          confirmLabel={`Confirm delete ${title}`}
+          cancelLabel={`Cancel delete ${title}`}
+          trigger={(arm) => (
+            <ManagementIconAction
+              icon={<Trash2 className="size-3.5" />}
+              label={`Delete ${title}`}
+              onClick={arm}
+              className="hover:text-destructive"
+            />
+          )}
+        />
+      </span>
     </div>
   );
 }
@@ -247,7 +252,7 @@ export function DockModulesEditor({
 
   return (
     <DockEditorShell title="Modules">
-      <div className="flex min-h-full flex-col p-1.5">
+      <div className="flex min-h-full flex-col p-1">
         {orderedPanels.length ? (
           <div ref={listRef} data-testid="dock-module-order-list" className="grid gap-px">
             {orderedPanels.map((panel) => (
@@ -281,7 +286,10 @@ export function DockModulesEditor({
                     key={id}
                     type="button"
                     onClick={() => onAdd(id)}
-                    className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-xs text-foreground hover:bg-secondary/50"
+                    className={cn(
+                      MANAGEMENT_ROW_CLASS,
+                      "text-left text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    )}
                   >
                     <span className="flex shrink-0 text-muted-foreground">
                       {entry?.Icon ? <entry.Icon /> : <Plus className="size-3.5" />}

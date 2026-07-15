@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { POPOVER_SURFACE_CLASS } from "../../components/ui/surfaceStyles.js";
 import { cn } from "../../lib/utils.js";
 import { useAccessoryClient } from "./useAccessoryClient.js";
 import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
@@ -125,7 +126,8 @@ export function DockEditorApp() {
       onPointerEnter={() => pointer(true)}
       onPointerLeave={() => pointer(false)}
       className={cn(
-        "inline-block max-h-screen overflow-hidden border border-border/70 bg-background/95 text-foreground shadow-lg backdrop-blur-sm",
+        "inline-block max-h-screen overflow-hidden",
+        POPOVER_SURFACE_CLASS,
         payload.view === "presets"
           ? "w-60"
           : payload.view === "modules"

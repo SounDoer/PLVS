@@ -2,12 +2,16 @@ import { ArrowLeft, RotateCcw } from "lucide-react";
 import { IconButton } from "../../components/IconButton.jsx";
 
 export function DockEditorShell({ title, onBack, onReset, children }) {
+  const hasNavigation = Boolean(onBack || onReset);
+
   return (
     <section
       data-dock-editor-shell
       className="flex max-h-screen min-h-0 min-w-full flex-col text-foreground"
     >
-      <header className="flex shrink-0 items-center gap-1 border-b border-border/30 px-2 py-1">
+      <header
+        className={`flex shrink-0 items-center gap-1 px-2 ${hasNavigation ? "border-b border-border/30 py-1" : "pb-1 pt-2"}`}
+      >
         {onBack ? (
           <IconButton icon={<ArrowLeft className="size-3.5" />} tip="Back" onClick={onBack} />
         ) : null}
