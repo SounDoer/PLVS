@@ -610,6 +610,27 @@ mod tests {
   }
 
   #[test]
+  fn shared_wire_payload_deserializes_and_validates() {
+    // The other half of the JS parity guard: that test asserts the runtime emits this exact
+    // payload, this one asserts the payload is one we accept. AnalysisRequests declares no serde
+    // defaults, so a field the JS side stops sending fails the whole `set_analysis_requests`
+    // call — which blanks every analysis panel, vectorscope included, not just the one that lost
+    // the field. That shipped once; the key fixtures could not catch it because they only pin
+    // the key string, never the request shape.
+    let raw = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../shared/analysis-request-key-fixtures.json"
+    ));
+    let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
+    let requests: AnalysisRequests = serde_json::from_value(fixture["wirePayload"].clone())
+      .expect("wire payload must deserialize into AnalysisRequests");
+    assert!(
+      super::validate_analysis_requests(&requests).is_ok(),
+      "wire payload rejected by validator"
+    );
+  }
+
+  #[test]
   fn analysis_request_keys_match_shared_fixture() {
     // Parity guard against the JS deriver: the Rust validator must accept exactly the request-key
     // strings recorded in the shared fixture. The JS test (src/analysis/analysisRequestKeyFormat.test.js)

@@ -44,5 +44,19 @@
   "vectorscope": [
     { "x": 0, "y": 1, "key": "vectorscope:pair:0:1" },
     { "x": 4, "y": 5, "key": "vectorscope:pair:4:5" }
-  ]
+  ],
+  "_wirePayloadComment": "One complete set_analysis_requests payload, exactly as the JS runtime sends it. Guards the request SHAPE, which the key fixtures above do not: they only pin the key string. The JS test asserts deriveBackendAnalysisRequests emits this object; the Rust test asserts it deserializes into AnalysisRequests. SpectrumAnalysisRequest declares no serde defaults, so a field dropped on the JS side fails the whole payload and blanks every analysis panel — vectorscope included — not just the one that lost the field.",
+  "wirePayload": {
+    "spectrum": [
+      {
+        "key": "spectrum:pair:0:1:combined:sp25:tilt300:smoff",
+        "channel": { "type": "pair", "x": 0, "y": 1 },
+        "view": "combined",
+        "speedPercent": 25,
+        "tiltDbPerOctave": 3,
+        "octaveSmoothing": "off"
+      }
+    ],
+    "vectorscope": [{ "key": "vectorscope:pair:0:1", "x": 0, "y": 1 }]
+  }
 }
