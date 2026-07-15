@@ -56,6 +56,31 @@ describe("DockStrip", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("routes time-window gestures through the shared Dock viewport", () => {
+    const onDockHistoryWheel = vi.fn();
+    const onDockHistoryPointerDown = vi.fn();
+    renderStrip({
+      panels: [
+        { id: "loudness-1", moduleId: "loudness" },
+        { id: "waveform-1", moduleId: "waveform" },
+      ],
+      controls: {
+        ...BASE_PROPS.controls,
+        dockHistoryWindowSec: 60,
+        dockHistoryHud: { panelId: "waveform-1", windowSec: 60 },
+        onDockHistoryWheel,
+        onDockHistoryPointerDown,
+      },
+    });
+
+    fireEvent.wheel(screen.getByTestId("dock-loudness-history"), { deltaY: -1 });
+    expect(onDockHistoryWheel).toHaveBeenCalledWith("loudness-1", -1);
+    const waveformSvg = screen.getAllByTestId("dock-module")[1].querySelector("svg");
+    fireEvent(waveformSvg, new MouseEvent("pointerdown", { bubbles: true, button: 2 }));
+    expect(onDockHistoryPointerDown).toHaveBeenCalledWith("waveform-1", 2, expect.any(Number));
+    expect(screen.getByRole("status").textContent).toBe("1m");
+  });
+
   it("draws an accent frame around the module hovered in the editor", () => {
     renderStrip({ hoveredPanelId: "vectorscope" });
     const modules = screen.getAllByTestId("dock-module");

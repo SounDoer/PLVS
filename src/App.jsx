@@ -28,6 +28,7 @@ import { useDockMode } from "./hooks/useDockMode.js";
 import { useDockLayout } from "./dock/useDockLayout.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
+import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
 import { mergeDockAnalysisRequests } from "./dock/dockAnalysisRequest.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -378,6 +379,7 @@ function AppContent() {
   });
 
   const historyRetentionSec = settings.historyRetentionSec;
+  const dockHistoryViewport = useDockHistoryViewport({ maxWindowSec: historyRetentionSec });
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
   const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
 
@@ -1277,6 +1279,7 @@ function AppContent() {
         onPanelResizeReset: dockLayout.resetPanelPair,
         controls: {
           controlsByPanelId: dockLayout.controlsByPanelId,
+          ...dockHistoryViewport,
           sourceTransportState,
           onSourceTransportAction,
           notice,

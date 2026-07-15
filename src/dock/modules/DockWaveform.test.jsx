@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
-import { DockWaveform } from "./DockWaveform.jsx";
+import { buildDockWaveformPath, DockWaveform } from "./DockWaveform.jsx";
 
 function rows(values) {
   // Each row: symmetric min/max envelope across one stereo channel pair.
@@ -39,5 +39,13 @@ describe("DockWaveform", () => {
     const { container } = renderWith([]);
     expect(container.querySelector("svg")).not.toBeNull();
     expect(container.querySelector("svg path")).toBeNull();
+  });
+
+  it("bounds long-history SVG complexity by horizontal resolution", () => {
+    const history = rows(Array.from({ length: 150_000 }, (_, index) => (index % 100) / 100));
+    const path = buildDockWaveformPath(history, { view: "all" }, history.length, 300, 40);
+    const commands = path.match(/[ML]/g) ?? [];
+
+    expect(commands.length).toBeLessThanOrEqual(600);
   });
 });

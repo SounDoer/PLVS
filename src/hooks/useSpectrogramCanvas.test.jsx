@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { useMemo, useRef } from "react";
 
-import { useSpectrogramCanvas } from "./useSpectrogramCanvas.js";
+import { paintSpectrogramImageData, useSpectrogramCanvas } from "./useSpectrogramCanvas.js";
 
 const BANDS = [{ fCenter: 1000 }];
 
@@ -80,5 +80,66 @@ describe("useSpectrogramCanvas", () => {
     rafCallback();
 
     expect(putImageData).toHaveBeenCalledTimes(2);
+  });
+
+  it("bounds dense long-window painting by canvas width", () => {
+    const length = 10_000;
+    const rowAt = vi.fn((index) => ({
+      timestampMs: index * 40,
+      dbList: [-20],
+    }));
+    const snaps = {
+      length,
+      timestampAt: (index) => (index >= 0 && index < length ? index * 40 : NaN),
+      rowAt,
+    };
+    const imageData = new ImageData(20, 1);
+    const colormapLut = new Uint8Array(256 * 3);
+    colormapLut.fill(255);
+
+    paintSpectrogramImageData(
+      imageData,
+      snaps,
+      0,
+      length - 1,
+      0,
+      length * 40,
+      40,
+      new Int16Array([0]),
+      colormapLut
+    );
+
+    expect(rowAt.mock.calls.length).toBeLessThanOrEqual(20);
+  });
+
+  it("preserves real timestamp gaps on the dense bounded path", () => {
+    const timestamps = [
+      ...Array.from({ length: 50 }, (_, index) => index * 40),
+      ...Array.from({ length: 50 }, (_, index) => 4000 + index * 40),
+    ];
+    const snaps = {
+      length: timestamps.length,
+      timestampAt: (index) => timestamps[index] ?? NaN,
+      rowAt: (index) => ({ timestampMs: timestamps[index], dbList: [-20] }),
+    };
+    const imageData = new ImageData(20, 1);
+    const colormapLut = new Uint8Array(256 * 3);
+    colormapLut.fill(255);
+
+    paintSpectrogramImageData(
+      imageData,
+      snaps,
+      0,
+      timestamps.length - 1,
+      0,
+      6000,
+      40,
+      new Int16Array([0]),
+      colormapLut
+    );
+
+    const alphas = Array.from({ length: 20 }, (_, index) => imageData.data[index * 4 + 3]);
+    expect(alphas.some((alpha) => alpha === 0)).toBe(true);
+    expect(alphas.some((alpha) => alpha > 0)).toBe(true);
   });
 });

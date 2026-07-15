@@ -5,7 +5,6 @@ import {
   SettingsGroup,
   SettingsRow,
   SettingsSelect,
-  SettingsSlider,
   SettingsSwitch,
   SpectrumDisplaySettingsRows,
   StatsMetricsSettingsRow,
@@ -249,17 +248,6 @@ function SettingsBody({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Window">
-          <SettingsSlider
-            ariaLabel="Waveform window"
-            value={controls.windowSec}
-            min={5}
-            max={120}
-            step={1}
-            formatValue={(value) => `${value.toFixed(0)} s`}
-            onCommit={(windowSec) => onChange({ ...controls, windowSec })}
-          />
-        </SettingsRow>
       </>
     );
   }
@@ -282,19 +270,10 @@ function SettingsBody({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Level range">
+        <SettingsRow label="Y range">
           <SettingsRangeInput
-            minAriaLabel="Spectrogram level range min"
-            maxAriaLabel="Spectrogram level range max"
-            minValue={controls.minDb}
-            maxValue={controls.maxDb}
-            onCommit={(minDb, maxDb) => onChange({ ...controls, minDb, maxDb })}
-          />
-        </SettingsRow>
-        <SettingsRow label="Frequency range">
-          <SettingsRangeInput
-            minAriaLabel="Spectrogram frequency range min"
-            maxAriaLabel="Spectrogram frequency range max"
+            minAriaLabel="spectrogram y range min"
+            maxAriaLabel="spectrogram y range max"
             minValue={controls.minFreq}
             maxValue={controls.maxFreq}
             onCommit={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}

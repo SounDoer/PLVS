@@ -50,11 +50,9 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
     statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
     statsOrder: Object.freeze([...DEFAULT_DOCK_STATS_ORDER]),
   }),
-  waveform: Object.freeze({ view: "all", channel: 0, windowSec: 30 }),
+  waveform: Object.freeze({ view: "all", channel: 0 }),
   spectrogram: Object.freeze({
     channel: Object.freeze({ type: "pair", x: 0, y: 1 }),
-    minDb: -96,
-    maxDb: -12,
     minFreq: 20,
     maxFreq: 20000,
   }),
@@ -225,23 +223,11 @@ export function normalizeDockModuleControls(moduleId, raw) {
       return {
         view: WAVEFORM_VIEWS.has(raw?.view) ? raw.view : defaults.view,
         channel: Math.floor(clamp(raw?.channel, 0, 63, defaults.channel)),
-        windowSec: Math.round(clamp(raw?.windowSec, 5, 120, defaults.windowSec)),
       };
     case "spectrogram": {
-      const dbRange = linearRange(
-        raw?.minDb,
-        raw?.maxDb,
-        defaults.minDb,
-        defaults.maxDb,
-        -120,
-        0,
-        12
-      );
       const freqRange = logRange(raw?.minFreq, raw?.maxFreq, defaults.minFreq, defaults.maxFreq);
       return {
         channel: channel(raw?.channel, defaults.channel),
-        minDb: dbRange.min,
-        maxDb: dbRange.max,
         minFreq: freqRange.min,
         maxFreq: freqRange.max,
       };

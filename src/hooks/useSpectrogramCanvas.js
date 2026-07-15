@@ -3,7 +3,35 @@ import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
 
-function paintImageData(
+function paintSpan(data, width, height, xStart, xEnd, snap, yToBand, colormapLut) {
+  const rng = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
+  for (let y = 0; y < height; y++) {
+    const db = snap.dbList[yToBand[y]] ?? SPECTROGRAM_DB_MIN;
+    const t = Math.max(0, Math.min(1, (db - SPECTROGRAM_DB_MIN) / rng));
+    const lutIdx = Math.round(t * 255) * 3;
+    const rowBase = y * width;
+    for (let x = xStart; x < xEnd; x++) {
+      const idx = (rowBase + x) * 4;
+      data[idx] = colormapLut[lutIdx];
+      data[idx + 1] = colormapLut[lutIdx + 1];
+      data[idx + 2] = colormapLut[lutIdx + 2];
+      data[idx + 3] = Math.round(t * 255);
+    }
+  }
+}
+
+function upperBoundTimestamp(view, target, startIdx, endIdx) {
+  let lo = startIdx;
+  let hi = endIdx + 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (view.timestampAt(mid) <= target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+export function paintSpectrogramImageData(
   imageData,
   snaps,
   startIdx,
@@ -15,8 +43,24 @@ function paintImageData(
   colormapLut
 ) {
   const { data, width: W, height: H } = imageData;
-  const rng = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
   data.fill(0);
+
+  // At long zoom levels, thousands of frames collapse into a few hundred physical pixels. Resolve
+  // the newest active frame per pixel instead of walking every retained frame; work is bounded by
+  // canvas width while real timestamp gaps remain transparent.
+  if (endIdx - startIdx + 1 > W * 4) {
+    for (let x = 0; x < W; x++) {
+      const targetMs = oldestMs + ((x + 0.5) / W) * span;
+      const index = upperBoundTimestamp(snaps, targetMs, startIdx, endIdx) - 1;
+      if (index < startIdx || index > endIdx) continue;
+      const snap = snaps.rowAt(index);
+      if (!snap?.dbList || !Number.isFinite(snap.timestampMs)) continue;
+      const frameEndMs = spectrogramFrameEndMs(snaps, index, sampleMs);
+      if (!(targetMs >= snap.timestampMs && targetMs < frameEndMs)) continue;
+      paintSpan(data, W, H, x, x + 1, snap, yToBand, colormapLut);
+    }
+    return;
+  }
 
   for (let i = startIdx; i <= endIdx; i++) {
     const snap = snaps.rowAt(i);
@@ -30,22 +74,7 @@ function paintImageData(
     const xEnd = Math.min(W, Math.round(((endMs - oldestMs) / span) * W));
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
-    for (let y = 0; y < H; y++) {
-      const db = snap.dbList[yToBand[y]] ?? SPECTROGRAM_DB_MIN;
-      const t = Math.max(0, Math.min(1, (db - SPECTROGRAM_DB_MIN) / rng));
-      const lutIdx = Math.round(t * 255) * 3;
-      const r = colormapLut[lutIdx];
-      const g = colormapLut[lutIdx + 1];
-      const b = colormapLut[lutIdx + 2];
-      const rowBase = y * W;
-      for (let dx = 0; dx < colW; dx++) {
-        const idx = (rowBase + xStart + dx) * 4;
-        data[idx] = r;
-        data[idx + 1] = g;
-        data[idx + 2] = b;
-        data[idx + 3] = Math.round(t * 255);
-      }
-    }
+    paintSpan(data, W, H, xStart, xEnd, snap, yToBand, colormapLut);
   }
 }
 
@@ -174,7 +203,7 @@ export function useSpectrogramCanvas({
         return;
       }
 
-      paintImageData(
+      paintSpectrogramImageData(
         cache.imageData,
         snaps,
         startIdx,

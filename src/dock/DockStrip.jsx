@@ -69,6 +69,7 @@ export function DockStrip({
                 controls={{
                   ...controls,
                   ...controls.controlsByPanelId?.[panel.id],
+                  panelId: panel.id,
                 }}
               />
               {nextPanel && nextEntry ? (

@@ -200,7 +200,13 @@ describe("DockModuleSettings", () => {
     });
 
     expect(screen.queryByLabelText("Spectrogram channel")).toBeNull();
-    expect(screen.getByLabelText("Spectrogram level range min")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram y range min")).toBeTruthy();
+    expect(screen.queryByLabelText("Spectrogram level range min")).toBeNull();
+  });
+
+  it("keeps the shared time window out of per-panel settings", () => {
+    renderSettings("waveform");
+    expect(screen.queryByLabelText("Waveform window")).toBeNull();
   });
 
   it("exposes Back and Reset actions without a title close button", () => {

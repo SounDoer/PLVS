@@ -58,7 +58,7 @@ describe("normalizeDockControlsByModuleId", () => {
       minDb: -96,
       maxDb: -12,
     });
-    expect(controls.waveform).toEqual({ view: "single", channel: 4, windowSec: 120 });
+    expect(controls.waveform).toEqual({ view: "single", channel: 4 });
   });
 
   it("migrates the legacy Dock Loudness reference and adopts the normal layer defaults", () => {
