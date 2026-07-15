@@ -65,6 +65,11 @@ describe("DockModuleSettings", () => {
     expect(screen.getByLabelText("Loudness reference").value).toBe("-23");
     expect(screen.getByLabelText("loudness y range min").value).toBe("-64");
     expect(screen.getByLabelText("loudness y range max").value).toBe("0");
+    const settingsRows = screen.getByText("Readouts").closest("div")?.parentElement?.children;
+    expect(settingsRows?.[settingsRows.length - 1]?.textContent).toContain("Readouts");
+
+    fireEvent.click(screen.getByLabelText("Show Loudness readouts"));
+    expect(onChange).toHaveBeenCalledWith({ ...controls, showReadouts: false });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit layers" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));

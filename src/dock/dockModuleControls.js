@@ -28,6 +28,7 @@ const DEFAULT_DOCK_STATS_ORDER = [
 export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   level: Object.freeze({ mode: "peak", readout: "live", showLabels: true }),
   loudness: Object.freeze({
+    showReadouts: true,
     loudnessReferenceLufs: -23,
     loudnessHistoryVisibleLayerIds: Object.freeze(["momentary", "shortTerm", "ref"]),
     loudnessYMinDb: -64,
@@ -173,6 +174,7 @@ export function normalizeDockModuleControls(moduleId, raw) {
         12
       );
       return {
+        showReadouts: bool(raw?.showReadouts, defaults.showReadouts),
         loudnessReferenceLufs: normalizeReferenceLufs(
           raw?.loudnessReferenceLufs ?? raw?.referenceLufs
         ),

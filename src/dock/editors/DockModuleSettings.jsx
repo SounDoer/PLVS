@@ -111,21 +111,30 @@ function SettingsBody({
   }
   if (moduleId === "loudness") {
     return (
-      <LoudnessSettingsRows
-        referenceLufs={controls.loudnessReferenceLufs}
-        visibleLayerIds={controls.loudnessHistoryVisibleLayerIds}
-        yMinDb={controls.loudnessYMinDb}
-        yMaxDb={controls.loudnessYMaxDb}
-        onReferenceChange={(loudnessReferenceLufs) =>
-          onChange({ ...controls, loudnessReferenceLufs })
-        }
-        onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) =>
-          onChange({ ...controls, loudnessHistoryVisibleLayerIds })
-        }
-        onYRangeChange={(loudnessYMinDb, loudnessYMaxDb) =>
-          onChange({ ...controls, loudnessYMinDb, loudnessYMaxDb })
-        }
-      />
+      <>
+        <LoudnessSettingsRows
+          referenceLufs={controls.loudnessReferenceLufs}
+          visibleLayerIds={controls.loudnessHistoryVisibleLayerIds}
+          yMinDb={controls.loudnessYMinDb}
+          yMaxDb={controls.loudnessYMaxDb}
+          onReferenceChange={(loudnessReferenceLufs) =>
+            onChange({ ...controls, loudnessReferenceLufs })
+          }
+          onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) =>
+            onChange({ ...controls, loudnessHistoryVisibleLayerIds })
+          }
+          onYRangeChange={(loudnessYMinDb, loudnessYMaxDb) =>
+            onChange({ ...controls, loudnessYMinDb, loudnessYMaxDb })
+          }
+        />
+        <SettingsRow label="Readouts">
+          <SettingsSwitch
+            aria-label="Show Loudness readouts"
+            checked={controls.showReadouts}
+            onCheckedChange={(showReadouts) => onChange({ ...controls, showReadouts })}
+          />
+        </SettingsRow>
+      </>
     );
   }
   if (moduleId === "spectrum") {

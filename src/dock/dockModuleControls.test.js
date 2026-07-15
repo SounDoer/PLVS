@@ -42,6 +42,7 @@ describe("normalizeDockControlsByModuleId", () => {
       waveform: { view: "single", channel: 4.9, windowSec: 200 },
     });
     expect(controls.loudness).toEqual({
+      showReadouts: true,
       loudnessReferenceLufs: -18,
       loudnessHistoryVisibleLayerIds: ["shortTerm"],
       loudnessYMinDb: -42,
@@ -72,6 +73,7 @@ describe("normalizeDockControlsByModuleId", () => {
         },
       }).loudness
     ).toEqual({
+      showReadouts: true,
       loudnessReferenceLufs: -18,
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
       loudnessYMinDb: -64,
@@ -81,6 +83,13 @@ describe("normalizeDockControlsByModuleId", () => {
 });
 
 describe("normalizeDockModuleControls", () => {
+  it("defaults Loudness readouts on and preserves an explicit hidden state", () => {
+    expect(normalizeDockModuleControls("loudness", {}).showReadouts).toBe(true);
+    expect(normalizeDockModuleControls("loudness", { showReadouts: false }).showReadouts).toBe(
+      false
+    );
+  });
+
   it("defaults Level to live Peak and migrates legacy readouts", () => {
     expect(normalizeDockModuleControls("level", {})).toEqual({
       mode: "peak",

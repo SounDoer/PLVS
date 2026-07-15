@@ -188,7 +188,9 @@ export function DockLoudness({ controls }) {
         </svg>
         <DockHistoryWindowHud controls={controls} />
       </div>
-      <DockLoudnessReadouts displayAudio={displayAudio} />
+      {controls?.showReadouts !== false ? (
+        <DockLoudnessReadouts displayAudio={displayAudio} />
+      ) : null}
     </div>
   );
 }

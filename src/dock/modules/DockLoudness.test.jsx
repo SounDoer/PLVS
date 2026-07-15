@@ -44,6 +44,19 @@ describe("DockLoudness", () => {
     ).toBeTruthy();
   });
 
+  it("lets the history fill the panel when readouts are hidden", () => {
+    renderWith({
+      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
+      controls: {
+        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
+        showReadouts: false,
+      },
+    });
+
+    expect(screen.queryByTestId("dock-loudness-readouts")).toBeNull();
+    expect(screen.getByTestId("dock-loudness-history").parentElement.className).toContain("flex-1");
+  });
+
   it("uses the normal panel's Momentary, Short-term, and Reference layer semantics", () => {
     const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
     renderWith({
