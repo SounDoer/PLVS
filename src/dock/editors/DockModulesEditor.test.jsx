@@ -86,6 +86,11 @@ describe("DockModulesEditor", () => {
     expect(screen.queryByRole("button", { name: "Timecode settings" })).toBeNull();
   });
 
+  it("does not expose Waveform settings", () => {
+    render(<DockModulesEditor {...BASE_PROPS} modules={["waveform"]} />);
+    expect(screen.queryByRole("button", { name: "Waveform settings" })).toBeNull();
+  });
+
   it("hides Vectorscope settings when there is no alternative channel pair", () => {
     const { rerender } = render(
       <DockModulesEditor

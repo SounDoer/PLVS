@@ -1,95 +1,190 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
-import { useHistoryData } from "../../workspace/AudioDataContext.jsx";
+import { useCanvasSize } from "../../hooks/useCanvasSize.js";
+import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
+import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
+import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
 
-const VIEW_W = 300;
-const VIEW_H = 40;
+const MAX_DEVICE_PIXEL_RATIO = 1;
+const MAX_AGGREGATION_STRIDE = 10;
 
-/** Max absolute envelope across channels for one row, linear [0, 1]. */
-function rowEnvelope(row, controls) {
-  const mins = Array.isArray(row?.waveformMin) ? row.waveformMin : [];
-  const maxs = Array.isArray(row?.waveformMax) ? row.waveformMax : [];
-  let peak = 0;
-  const indexes = controls?.view === "single" ? [controls.channel] : mins.map((_, index) => index);
-  for (const index of indexes) {
-    if (Number.isFinite(mins[index])) peak = Math.max(peak, Math.abs(mins[index]));
-    if (Number.isFinite(maxs[index])) peak = Math.max(peak, Math.abs(maxs[index]));
-  }
-  return Math.min(1, peak);
+function cssNumber(style, name, fallback) {
+  const value = Number.parseFloat(style.getPropertyValue(name));
+  return Number.isFinite(value) ? value : fallback;
 }
 
-/** Build a bounded envelope path: at most two points per horizontal pixel column. */
-export function buildDockWaveformPath(
-  histSourceList,
-  controls,
-  windowSamples,
-  viewWidth = VIEW_W,
-  viewHeight = VIEW_H
+function clampAmplitude(value) {
+  return Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
+}
+
+/**
+ * Long windows move by much less than one pixel per history tick. Avoid rebuilding every bucket
+ * for sub-pixel changes while keeping short windows at the full 10 Hz history cadence.
+ */
+export function dockWaveformAggregationStride(visibleRowCount, pixelWidth) {
+  const rowsPerPixel = Math.max(1, visibleRowCount) / Math.max(1, pixelWidth);
+  return Math.max(1, Math.min(MAX_AGGREGATION_STRIDE, Math.floor(rowsPerPixel / 2)));
+}
+
+/** Paint all channel envelopes into one bounded canvas. */
+export function paintDockWaveformCanvas(
+  canvas,
+  { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, channelCount }
 ) {
-  const total = histSourceList.length;
-  const safeWindowSamples = Math.max(2, Math.floor(windowSamples));
-  if (total < 2) return "";
-  const oldestVisible = total - safeWindowSamples;
-  const start = Math.max(0, oldestVisible);
-  const end = total - 1;
-  const columns = Math.max(2, Math.min(Math.floor(viewWidth), safeWindowSamples));
-  const amplitudes = new Float32Array(columns);
-  const populated = new Uint8Array(columns);
+  if (!canvas || canvas.width <= 0 || canvas.height <= 0 || channelCount <= 0) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
 
-  for (let index = start; index <= end; index += 1) {
-    const position = index - oldestVisible;
-    const column = Math.max(
-      0,
-      Math.min(
-        columns - 1,
-        Math.round((position / Math.max(1, safeWindowSamples - 1)) * (columns - 1))
-      )
-    );
-    amplitudes[column] = Math.max(amplitudes[column], rowEnvelope(histSourceList[index], controls));
-    populated[column] = 1;
-  }
+  const width = canvas.width;
+  const height = canvas.height;
+  const style = getComputedStyle(canvas);
+  const traceColor = style.getPropertyValue("--ui-waveform-trace").trim() || "#fb923c";
+  const gridColor = style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
+  const fillOpacity = cssNumber(style, "--ui-waveform-fill-opacity", 0.22);
+  const rowGap = cssNumber(style, "--ui-dock-gap-row", 0);
+  const laneHeight = Math.max(0, (height - rowGap * Math.max(0, channelCount - 1)) / channelCount);
 
-  const mid = viewHeight / 2;
-  const top = [];
-  const bottom = [];
-  for (let column = 0; column < columns; column += 1) {
-    if (!populated[column]) continue;
-    const x = (column / Math.max(1, columns - 1)) * viewWidth;
-    const extent = amplitudes[column] * mid;
-    top.push(`${top.length ? "L" : "M"} ${x} ${mid - extent}`);
-    bottom.push(`L ${x} ${mid + extent}`);
+  ctx.clearRect(0, 0, width, height);
+  ctx.lineWidth = 1;
+
+  for (let channel = 0; channel < channelCount; channel += 1) {
+    const laneTop = channel * (laneHeight + rowGap);
+    const centerY = laneTop + laneHeight / 2;
+    const halfHeight = laneHeight / 2;
+
+    ctx.strokeStyle = gridColor;
+    ctx.beginPath();
+    ctx.moveTo(0, centerY);
+    ctx.lineTo(width, centerY);
+    ctx.stroke();
+
+    if (
+      firstBucket < 0 ||
+      firstBucket > lastBucket ||
+      !bucketCount ||
+      !mins?.[channel]?.length ||
+      !maxes?.[channel]?.length
+    ) {
+      continue;
+    }
+
+    const xFor = (bucket) => bucket - fracPhase;
+    ctx.beginPath();
+    for (let bucket = firstBucket; bucket <= lastBucket; bucket += 1) {
+      const x = xFor(bucket);
+      const y = centerY - clampAmplitude(maxes[channel][bucket]) * halfHeight;
+      if (bucket === firstBucket) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    for (let bucket = lastBucket; bucket >= firstBucket; bucket -= 1) {
+      const x = xFor(bucket);
+      const y = centerY - clampAmplitude(mins[channel][bucket]) * halfHeight;
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+
+    ctx.globalAlpha = fillOpacity;
+    ctx.fillStyle = traceColor;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = traceColor;
+    ctx.stroke();
   }
-  if (top.length < 2) return "";
-  return `${top.join(" ")} ${bottom.reverse().join(" ")} Z`;
 }
 
-/** Scrolling compact waveform with the Dock's shared live time window. */
+/** Compact, latest-locked waveform with one labeled lane per available channel. */
 export function DockWaveform({ controls }) {
+  const frameData = useFrameData() ?? {};
   const { histSourceList = [] } = useHistoryData() ?? {};
-  const windowSamples = Math.round((controls?.dockHistoryWindowSec ?? 60) / HIST_SAMPLE_SEC);
+  const canvasRef = useRef(null);
+  const plotRef = useRef(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const latestRow = histSourceList[histSourceList.length - 1];
   const historyLength = histSourceList.length;
-  const path = useMemo(
-    () => buildDockWaveformPath(histSourceList, controls, windowSamples),
-    // The history array is mutated in place; length is the advancing version signal.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [histSourceList, historyLength, controls?.view, controls?.channel, windowSamples]
+  const detectedChannelCount =
+    frameData.channelCount ||
+    frameData.displayAudio?.peakDb?.length ||
+    latestRow?.waveformMin?.length ||
+    latestRow?.waveformMax?.length ||
+    2;
+  const channelCount = Math.max(1, Math.floor(Number(detectedChannelCount) || 2));
+  const labels = getPeakMeterChannelLabels(channelCount, frameData.peakLabelContext ?? {});
+  const visibleSamples = Math.round((controls?.dockHistoryWindowSec ?? 60) / HIST_SAMPLE_SEC);
+  const aggregationStride = dockWaveformAggregationStride(
+    Math.min(historyLength, visibleSamples),
+    canvasSize.width
   );
+  const latestTimestampMs = Number.isFinite(latestRow?.timestampMs) ? latestRow.timestampMs : null;
+  const historyVersion =
+    latestTimestampMs === null
+      ? historyLength
+      : Math.floor(latestTimestampMs / (HIST_SAMPLE_SEC * 1000 * aggregationStride));
+
+  const onCanvasResize = useCallback(({ width, height }) => {
+    setCanvasSize((current) =>
+      current.width === width && current.height === height ? current : { width, height }
+    );
+  }, []);
+  useCanvasSize(canvasRef, plotRef, onCanvasResize, {
+    maxDevicePixelRatio: MAX_DEVICE_PIXEL_RATIO,
+  });
+
+  const envelope = useMemo(
+    () =>
+      sliceWaveformSubHistory(histSourceList, visibleSamples, 0, channelCount, canvasSize.width),
+    [
+      histSourceList,
+      historyVersion,
+      latestTimestampMs === null ? latestRow : null,
+      visibleSamples,
+      channelCount,
+      canvasSize.width,
+    ]
+  );
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      paintDockWaveformCanvas(canvasRef.current, { ...envelope, channelCount });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [envelope, channelCount, canvasSize.height, frameData.resolvedThemeId]);
 
   return (
     <div
       {...dockHistoryInteractionProps(controls)}
-      className="relative h-full min-w-0 flex-1 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]"
+      className="relative flex h-full min-w-0 items-stretch"
+      style={{
+        columnGap: "var(--ui-dock-gap-column)",
+        padding: "var(--ui-dock-pad-y) var(--ui-dock-pad-x)",
+      }}
     >
-      <svg
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        preserveAspectRatio="none"
-        className="h-full w-full"
-        aria-hidden="true"
+      <div
+        data-testid="dock-waveform-labels"
+        className="grid min-h-0 shrink-0"
+        style={{
+          gridTemplateRows: `repeat(${channelCount}, minmax(0, 1fr))`,
+          rowGap: "var(--ui-dock-gap-row)",
+        }}
       >
-        {path ? <path d={path} fill="var(--ui-waveform-trace)" opacity="0.6" /> : null}
-      </svg>
-      <DockHistoryWindowHud controls={controls} />
+        {labels.map((label, channel) => (
+          <span
+            key={`${channel}-${label}`}
+            className="self-center whitespace-nowrap text-right font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground"
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      <div ref={plotRef} className="relative min-h-0 min-w-0 flex-1">
+        <canvas
+          ref={canvasRef}
+          data-testid="dock-waveform-canvas"
+          className="absolute inset-0 h-full w-full"
+          aria-hidden="true"
+        />
+        <DockHistoryWindowHud controls={controls} />
+      </div>
     </div>
   );
 }

@@ -8,7 +8,6 @@ const LOUDNESS_HISTORY_LAYER_IDS = new Set(
 );
 const LEVEL_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
 const LEVEL_READOUTS = new Set(["live", "truePeakMax", "playbackMax"]);
-const WAVEFORM_VIEWS = new Set(["all", "single"]);
 const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",
   loudness: "loudness",
@@ -50,7 +49,6 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
     statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
     statsOrder: Object.freeze([...DEFAULT_DOCK_STATS_ORDER]),
   }),
-  waveform: Object.freeze({ view: "all", channel: 0 }),
   spectrogram: Object.freeze({
     channel: Object.freeze({ type: "pair", x: 0, y: 1 }),
     minFreq: 20,
@@ -218,11 +216,6 @@ export function normalizeDockModuleControls(moduleId, raw) {
       return {
         statsVisibleIds: normalizeDockStatsVisibleIds(raw?.statsVisibleIds),
         statsOrder: normalizeDockStatsOrder(raw?.statsOrder),
-      };
-    case "waveform":
-      return {
-        view: WAVEFORM_VIEWS.has(raw?.view) ? raw.view : defaults.view,
-        channel: Math.floor(clamp(raw?.channel, 0, 63, defaults.channel)),
       };
     case "spectrogram": {
       const freqRange = logRange(raw?.minFreq, raw?.maxFreq, defaults.minFreq, defaults.maxFreq);

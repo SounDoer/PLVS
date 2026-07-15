@@ -25,7 +25,6 @@ describe("DockModuleSettings", () => {
     ["spectrum", "Spectrum channel"],
     ["correlation", "Vectorscope channel pair"],
     ["stats", "Edit metrics"],
-    ["waveform", "Waveform view"],
     ["spectrogram", "Spectrogram channel"],
   ])("renders the %s settings family", (moduleId, label) => {
     renderSettings(moduleId);
@@ -204,9 +203,10 @@ describe("DockModuleSettings", () => {
     expect(screen.queryByLabelText("Spectrogram level range min")).toBeNull();
   });
 
-  it("keeps the shared time window out of per-panel settings", () => {
+  it("does not expose settings for Waveform", () => {
     renderSettings("waveform");
-    expect(screen.queryByLabelText("Waveform window")).toBeNull();
+    expect(screen.queryByText("Waveform settings")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
   });
 
   it("exposes Back and Reset actions without a title close button", () => {

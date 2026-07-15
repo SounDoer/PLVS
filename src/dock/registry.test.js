@@ -20,9 +20,12 @@ describe("DOCK_MODULE_REGISTRY", () => {
     }
   });
 
-  it("keeps Timecode as the only module without display settings", () => {
+  it("keeps Waveform and Timecode aligned with their settings-free normal panels", () => {
     expect(DOCK_MODULE_REGISTRY.transport.settingsFamily).toBeNull();
-    for (const id of DOCK_MODULE_IDS.filter((moduleId) => moduleId !== "transport")) {
+    expect(DOCK_MODULE_REGISTRY.waveform.settingsFamily).toBeNull();
+    for (const id of DOCK_MODULE_IDS.filter(
+      (moduleId) => !["transport", "waveform"].includes(moduleId)
+    )) {
       expect(DOCK_MODULE_REGISTRY[id].settingsFamily).toBe(id);
     }
   });

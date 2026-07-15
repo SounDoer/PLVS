@@ -54,7 +54,7 @@ export const DOCK_MODULE_REGISTRY = {
     label: "Waveform",
     Component: DockWaveform,
     ...getDockPanelSizing("waveform"),
-    settingsFamily: "waveform",
+    settingsFamily: null,
   },
   spectrogram: {
     id: "spectrogram",

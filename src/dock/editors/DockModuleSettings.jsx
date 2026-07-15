@@ -221,36 +221,6 @@ function SettingsBody({
       />
     );
   }
-  if (moduleId === "waveform") {
-    return (
-      <>
-        <SettingsRow label="View">
-          <SelectField
-            label="Waveform view"
-            value={controls.view}
-            options={[
-              { value: "all", label: "All channels" },
-              { value: "single", label: "Single channel" },
-            ]}
-            onChange={(view) => onChange({ ...controls, view })}
-          />
-        </SettingsRow>
-        {controls.view === "single" ? (
-          <SettingsRow label="Channel">
-            <SelectField
-              label="Waveform channel"
-              value={String(controls.channel)}
-              options={Array.from({ length: 8 }, (_, channel) => ({
-                value: String(channel),
-                label: `Channel ${channel + 1}`,
-              }))}
-              onChange={(channel) => onChange({ ...controls, channel: Number(channel) })}
-            />
-          </SettingsRow>
-        ) : null}
-      </>
-    );
-  }
   if (moduleId === "spectrogram") {
     const runtimeOptions = spectrumOptions?.map((option) => ({
       value: channelValue(option.sel),

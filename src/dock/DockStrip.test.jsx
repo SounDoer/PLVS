@@ -1,7 +1,16 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { FrameDataProvider, HistoryDataProvider } from "../workspace/AudioDataContext.jsx";
 import { DockStrip } from "./DockStrip.jsx";
+
+beforeAll(() => {
+  class ResizeObserverStub {
+    observe() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = ResizeObserverStub;
+  globalThis.ResizeObserver = ResizeObserverStub;
+});
 
 const BASE_PROPS = {
   panels: [
@@ -75,8 +84,8 @@ describe("DockStrip", () => {
 
     fireEvent.wheel(screen.getByTestId("dock-loudness-history"), { deltaY: -1 });
     expect(onDockHistoryWheel).toHaveBeenCalledWith("loudness-1", -1);
-    const waveformSvg = screen.getAllByTestId("dock-module")[1].querySelector("svg");
-    fireEvent(waveformSvg, new MouseEvent("pointerdown", { bubbles: true, button: 2 }));
+    const waveformCanvas = screen.getByTestId("dock-waveform-canvas");
+    fireEvent(waveformCanvas, new MouseEvent("pointerdown", { bubbles: true, button: 2 }));
     expect(onDockHistoryPointerDown).toHaveBeenCalledWith("waveform-1", 2, expect.any(Number));
     expect(screen.getByRole("status").textContent).toBe("1m");
   });
