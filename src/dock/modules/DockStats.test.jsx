@@ -37,10 +37,10 @@ function statsControls(statsVisibleIds, statsOrder = statsVisibleIds) {
   };
 }
 
-function renderWith(statsMetrics, controls, shared = {}) {
+function renderWith(statsMetrics, controls, shared = {}, heightMode = "standard") {
   return render(
     <MetricsDataProvider value={{ statsMetrics, ...shared }}>
-      <DockStats controls={controls} />
+      <DockStats controls={controls} heightMode={heightMode} />
     </MetricsDataProvider>
   );
 }
@@ -72,6 +72,21 @@ describe("DockStats", () => {
     expect(screen.getByText("I").parentElement?.className).toContain("var(--ui-dock-fs-label)");
     expect(screen.getByText("-20.1").className).toContain("var(--ui-dock-fs-value)");
     expect(screen.queryByText("LUFS")).toBeNull();
+  });
+
+  it("uses two-line metrics with units in Expanded mode", () => {
+    renderWith(METRICS, statsControls(["integrated", "truePeak", "correlation"]), {}, "expanded");
+
+    expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 84px)");
+    expect(screen.getAllByTestId("dock-expanded-metric")).toHaveLength(3);
+    expect(
+      screen.getAllByTestId("dock-expanded-metric-unit").map((node) => node.textContent)
+    ).toEqual(["LUFS", "dBTP"]);
+    expect(screen.getAllByTestId("dock-stat").map((node) => node.textContent)).toEqual([
+      "I-20.1LUFS",
+      "TP Max-3.2dBTP",
+      "Corr-",
+    ]);
   });
 
   it("keeps a long label shrinkable without letting it overlap the fixed value", () => {

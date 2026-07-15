@@ -39,6 +39,29 @@ Dock presets capture `height`; legacy presets without it retain the current
 height when applied. Entering Dock without an explicit preset height uses the
 persisted Rust value.
 
+### Height presentation tiers
+
+Dock modules resolve the clamped height into three presentation tiers. These
+tiers change composition only; metric selection, ordering, and measurement
+semantics remain unchanged.
+
+| Tier     | Height  | Presentation                                                              |
+| -------- | ------- | ------------------------------------------------------------------------- |
+| Compact  | 56-63   | Existing densest layout                                                   |
+| Standard | 64-119  | Existing horizontal layout                                                |
+| Expanded | 120-160 | Richer vertical composition where the module has height-specific readouts |
+
+The frontend follows the pointer's preview height immediately, including tier
+changes. Preview height is render-only: the persisted Dock height, accessory
+geometry version, preset dirty state, and AppBar reservation update only when
+the resize is committed.
+
+In Expanded mode, Level global readouts, Loudness M/ST/I, and Stats metrics
+use a shared two-line label plus value-and-unit treatment. Loudness places its
+history above a three-column readout footer. Vectorscope places a square scope
+above a full-width correlation rail and axis. Level's `PK` remains a detector
+mode label; only `L` and `R` identify meter channels.
+
 ## Panel width contract
 
 Each Dock panel instance has an optional persisted logical-pixel basis keyed by

@@ -7,13 +7,26 @@ import {
 import { fmtMetric } from "../../math/formatMath.js";
 import { getPeakChannels } from "../../math/peakChannelMath.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
+import { DockExpandedMetric } from "./DockExpandedMetric.jsx";
 
 const CLIP_DB = -0.1;
 const MODE_META = {
-  peak: { field: "peakDb", label: "PK", min: PEAK_DB_MIN, max: PEAK_DB_MAX },
-  rms: { field: "rmsDb", label: "RMS", min: PEAK_DB_MIN, max: PEAK_DB_MAX },
-  momentary: { field: "momentary", label: "M", min: LOUDNESS_DB_MIN, max: LOUDNESS_DB_MAX },
-  shortTerm: { field: "shortTerm", label: "ST", min: LOUDNESS_DB_MIN, max: LOUDNESS_DB_MAX },
+  peak: { field: "peakDb", label: "PK", unit: "dBFS", min: PEAK_DB_MIN, max: PEAK_DB_MAX },
+  rms: { field: "rmsDb", label: "RMS", unit: "dBFS", min: PEAK_DB_MIN, max: PEAK_DB_MAX },
+  momentary: {
+    field: "momentary",
+    label: "M",
+    unit: "LUFS",
+    min: LOUDNESS_DB_MIN,
+    max: LOUDNESS_DB_MAX,
+  },
+  shortTerm: {
+    field: "shortTerm",
+    label: "ST",
+    unit: "LUFS",
+    min: LOUDNESS_DB_MIN,
+    max: LOUDNESS_DB_MAX,
+  },
 };
 
 function widthPct(value, min, max) {
@@ -54,8 +67,10 @@ function ChannelReadout({ value, style }) {
   );
 }
 
-function GlobalReadout({ value, onReset, style }) {
-  const content = (
+function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
+  const content = expanded ? (
+    <DockExpandedMetric label={label} value={fmtMetric(value)} unit={unit} />
+  ) : (
     <span className="text-[length:var(--ui-dock-fs-value)] leading-none text-foreground">
       {fmtMetric(value)}
     </span>
@@ -88,6 +103,9 @@ function ReadoutRegion({
   onReset,
   rowCount,
   showGlobal,
+  expanded,
+  expandedLabel,
+  unit,
 }) {
   const rows = Math.max(1, rowCount);
   return (
@@ -102,7 +120,7 @@ function ReadoutRegion({
         className="invisible flex items-center"
         style={{ gap: "var(--ui-dock-gap-column)", gridArea: "readout" }}
       >
-        {source ? (
+        {source && !expanded ? (
           <span className="whitespace-nowrap font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none">
             {source}
           </span>
@@ -114,7 +132,7 @@ function ReadoutRegion({
         className={`flex min-h-0 justify-self-end ${showGlobal ? "self-center items-baseline" : ""}`}
         style={{ gap: "var(--ui-dock-gap-column)", gridArea: "readout" }}
       >
-        {source ? (
+        {source && !expanded ? (
           <abbr
             data-testid="dock-level-readout-source"
             className={`${showGlobal ? "" : "self-center"} whitespace-nowrap font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground no-underline`}
@@ -125,7 +143,13 @@ function ReadoutRegion({
           </abbr>
         ) : null}
         {showGlobal ? (
-          <GlobalReadout value={globalValue} onReset={onReset} />
+          <GlobalReadout
+            value={globalValue}
+            onReset={onReset}
+            expanded={expanded}
+            label={expandedLabel}
+            unit={unit}
+          />
         ) : (
           <div
             className="grid h-full min-h-0 w-max items-center"
@@ -145,7 +169,7 @@ function ReadoutRegion({
 }
 
 /** Compact Peak/RMS/Loudness meter for the Dock strip. */
-export function DockLevel({ controls = {} }) {
+export function DockLevel({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useFrameData();
   const mode = MODE_META[controls.mode] ? controls.mode : "peak";
   const meta = MODE_META[mode];
@@ -204,6 +228,9 @@ export function DockLevel({ controls = {} }) {
         ? "Playback Max"
         : null;
   const showLabels = controls.showLabels !== false;
+  const expanded = heightMode === "expanded";
+  const expandedReadoutLabel = readoutSource ?? meta.label;
+  const readoutUnit = mode === "peak" && readout === "truePeakMax" ? "dBTP" : meta.unit;
   const rows = peakFamily ? Math.max(1, channels.length) : 1;
   const meterColumns = peakFamily && showLabels ? "max-content minmax(0, 1fr)" : "minmax(0, 1fr)";
   const barColumn = peakFamily && showLabels ? 2 : 1;
@@ -270,6 +297,9 @@ export function DockLevel({ controls = {} }) {
           onReset={resetReadout}
           rowCount={rows}
           showGlobal={showGlobalReadout}
+          expanded={expanded && showGlobalReadout}
+          expandedLabel={expandedReadoutLabel}
+          unit={readoutUnit}
         />
       </div>
     </div>

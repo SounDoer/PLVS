@@ -4,10 +4,14 @@ import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
 import { FrameDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DockLevel } from "./DockLevel.jsx";
 
-function renderWith(frameData, controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level) {
+function renderWith(
+  frameData,
+  controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
+  heightMode = "standard"
+) {
   return render(
     <FrameDataProvider value={frameData}>
-      <DockLevel controls={controls} />
+      <DockLevel controls={controls} heightMode={heightMode} />
     </FrameDataProvider>
   );
 }
@@ -55,6 +59,22 @@ describe("DockLevel", () => {
     ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Reset true peak maximum" }));
     expect(onResetTpMax).toHaveBeenCalledOnce();
+  });
+
+  it("shows a two-line true-peak readout with its unit in Expanded mode", () => {
+    renderWith(
+      {
+        displayAudio: { peakDb: [-12, -9.5], tpMax: -3.2 },
+        hasTpMaxValue: true,
+      },
+      { mode: "peak", readout: "truePeakMax", showLabels: true },
+      "expanded"
+    );
+
+    const metric = screen.getByTestId("dock-expanded-metric");
+    expect(metric.textContent).toBe("TP Max-3.2dBTP");
+    expect(metric.className).toContain("items-start");
+    expect(screen.queryByTestId("dock-level-readout-source")).toBeNull();
   });
 
   it("renders RMS from the per-channel RMS values", () => {

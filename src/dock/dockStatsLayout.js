@@ -1,6 +1,8 @@
 export const DOCK_STATS_MAX_ROWS = 3;
 export const DOCK_STATS_MIN_CELL_WIDTH_PX = 60;
 export const DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX = 72;
+export const DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX = 72;
+export const DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX = 84;
 export const DOCK_STATS_INNER_GAP_PX = 2;
 export const DOCK_STATS_GROUP_GAP_PX = 12;
 
@@ -33,9 +35,15 @@ export function dockStatsGridPosition(metricIndex, columnCount) {
   };
 }
 
-export function dockStatsGridTemplate(columnCount) {
+export function dockStatsGridTemplate(
+  columnCount,
+  comfortableCellWidthPx = DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX
+) {
   const columns = Math.max(1, Math.floor(Number(columnCount) || 1));
-  const metricTrack = `minmax(0, ${DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX}px)`;
+  const comfortableCellWidth = Number.isFinite(Number(comfortableCellWidthPx))
+    ? Math.max(1, Number(comfortableCellWidthPx))
+    : DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX;
+  const metricTrack = `minmax(0, ${comfortableCellWidth}px)`;
   const groupGap = `minmax(${DOCK_STATS_GROUP_GAP_PX}px, 1fr)`;
   return Array.from({ length: columns }, (_, columnIndex) =>
     columnIndex < columns - 1 ? `${metricTrack} ${groupGap}` : metricTrack

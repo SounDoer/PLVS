@@ -4,6 +4,8 @@ import {
   dockStatsGridPosition,
   dockStatsGridTemplate,
   DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX,
+  DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX,
+  DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX,
   DOCK_STATS_MAX_ROWS,
   DOCK_STATS_MIN_CELL_WIDTH_PX,
   visibleDockStats,
@@ -17,6 +19,17 @@ describe("computeDockStatsColumnCount", () => {
     expect(computeDockStatsColumnCount(132)).toBe(2);
     expect(computeDockStatsColumnCount(203)).toBe(2);
     expect(computeDockStatsColumnCount(204)).toBe(3);
+  });
+
+  it("supports wider Expanded metric cells", () => {
+    expect(DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX).toBe(84);
+    expect(DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX).toBe(72);
+    expect(computeDockStatsColumnCount(155, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
+      1
+    );
+    expect(computeDockStatsColumnCount(156, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
+      2
+    );
   });
 
   it("keeps at least one column for missing or invalid measurements", () => {
@@ -49,5 +62,11 @@ describe("dockStatsGridPosition", () => {
 describe("dockStatsGridTemplate", () => {
   it("puts elastic space between metric groups instead of label and value", () => {
     expect(dockStatsGridTemplate(2)).toBe("minmax(0, 72px) minmax(12px, 1fr) minmax(0, 72px)");
+  });
+
+  it("accepts a tier-specific comfortable cell width", () => {
+    expect(dockStatsGridTemplate(1, DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX)).toBe(
+      "minmax(0, 84px)"
+    );
   });
 });

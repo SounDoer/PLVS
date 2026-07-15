@@ -3,6 +3,7 @@ import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 import { cn } from "@/lib/utils";
 import { DockHeightResizeHandle } from "./DockHeightResizeHandle.jsx";
 import { DockPanelResizeHandle } from "./DockPanelResizeHandle.jsx";
+import { dockHeightMode } from "./dockSizing.js";
 
 /** The resizable meter strip. Accessory chrome lives in sibling windows. */
 export function DockStrip({
@@ -20,9 +21,11 @@ export function DockStrip({
   onPointerEnter,
   onPointerLeave,
 }) {
+  const heightMode = dockHeightMode(height);
   return (
     <div
       data-testid="dock-strip"
+      data-height-mode={heightMode}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       className="dock-strip relative h-screen w-screen select-none overflow-hidden text-foreground"
@@ -66,6 +69,7 @@ export function DockStrip({
               }}
             >
               <Component
+                heightMode={heightMode}
                 controls={{
                   ...controls,
                   ...controls.controlsByPanelId?.[panel.id],

@@ -7,6 +7,7 @@ const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
 const CORRELATION_MIN_WIDTH_PX = 72;
 const CONTENT_GAP_PX = 8;
+const EXPANDED_CORRELATION_HEIGHT_PX = 44;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -31,8 +32,11 @@ function formatCorrelation(value) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }
 
-function computePlotSize(width, height) {
+function computePlotSize(width, height, expanded = false) {
   if (!Number.isFinite(width) || !Number.isFinite(height)) return 48;
+  if (expanded) {
+    return Math.max(32, Math.floor(Math.min(width, height - EXPANDED_CORRELATION_HEIGHT_PX)));
+  }
   return Math.max(
     32,
     Math.floor(Math.min(height, width - CONTENT_GAP_PX - CORRELATION_MIN_WIDTH_PX))
@@ -40,7 +44,7 @@ function computePlotSize(width, height) {
 }
 
 /** Compact live Vectorscope with a dedicated correlation readout. */
-export function DockVectorscope({ controls = {} }) {
+export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();
   const contentRef = useRef(null);
   const displayCorrelationRef = useRef(null);
@@ -71,26 +75,30 @@ export function DockVectorscope({ controls = {} }) {
   const labels = getPeakMeterChannelLabels(labelCount, peakLabelContext || {});
   const firstLabel = labels[pairX] ?? `Ch ${pairX + 1}`;
   const secondLabel = labels[pairY] ?? `Ch ${pairY + 1}`;
+  const expanded = heightMode === "expanded";
 
   useLayoutEffect(() => {
     const content = contentRef.current;
     if (!content) return undefined;
     const measure = () => {
       const rect = content.getBoundingClientRect();
-      setPlotSize(computePlotSize(rect.width, rect.height));
+      setPlotSize(computePlotSize(rect.width, rect.height, expanded));
     };
     measure();
     if (typeof ResizeObserver !== "function") return undefined;
     const observer = new ResizeObserver(measure);
     observer.observe(content);
     return () => observer.disconnect();
-  }, []);
+  }, [expanded]);
 
   return (
     <div className="h-full min-w-0 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]">
       <div
         ref={contentRef}
-        className="flex h-full min-w-0 items-center gap-[var(--ui-dock-gap-region)]"
+        data-layout={expanded ? "expanded" : "standard"}
+        className={`flex h-full min-w-0 items-center gap-[var(--ui-dock-gap-region)] ${
+          expanded ? "flex-col" : "flex-row"
+        }`}
       >
         <div
           data-testid="dock-vectorscope-plot"
@@ -148,13 +156,14 @@ export function DockVectorscope({ controls = {} }) {
           ) : null}
         </div>
 
-        <div className="flex min-w-[72px] flex-1 flex-col items-stretch justify-center gap-[var(--ui-dock-gap-row)]">
-          <div
-            data-testid="dock-vectorscope-correlation-rail"
-            className={`flex items-center gap-[var(--ui-dock-gap-column)] font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground ${displayCorrelation === null ? "opacity-30" : "opacity-100"}`}
-          >
-            <span className="shrink-0">-1</span>
-            <div className="relative h-[4px] min-w-6 flex-1 rounded-sm bg-muted/40">
+        {expanded ? (
+          <div className="flex w-full min-w-0 flex-col gap-1">
+            <div
+              data-testid="dock-vectorscope-correlation-rail"
+              className={`relative h-[4px] w-full rounded-sm bg-muted/40 ${
+                displayCorrelation === null ? "opacity-30" : "opacity-100"
+              }`}
+            >
               <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground" />
               {displayCorrelation !== null ? (
                 <div
@@ -167,12 +176,47 @@ export function DockVectorscope({ controls = {} }) {
                 />
               ) : null}
             </div>
-            <span className="shrink-0">+1</span>
+            <div className="flex justify-between font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground">
+              <span>-1</span>
+              <span>0</span>
+              <span>+1</span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
+                Correlation
+              </span>
+              <span className="font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
+                {formatCorrelation(displayCorrelation)}
+              </span>
+            </div>
           </div>
-          <span className="text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
-            {formatCorrelation(displayCorrelation)}
-          </span>
-        </div>
+        ) : (
+          <div className="flex min-w-[72px] flex-1 flex-col items-stretch justify-center gap-[var(--ui-dock-gap-row)]">
+            <div
+              data-testid="dock-vectorscope-correlation-rail"
+              className={`flex items-center gap-[var(--ui-dock-gap-column)] font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground ${displayCorrelation === null ? "opacity-30" : "opacity-100"}`}
+            >
+              <span className="shrink-0">-1</span>
+              <div className="relative h-[4px] min-w-6 flex-1 rounded-sm bg-muted/40">
+                <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground" />
+                {displayCorrelation !== null ? (
+                  <div
+                    data-testid="dock-vectorscope-correlation-marker"
+                    className="absolute top-1/2 h-2.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-[left,background-color] duration-100 ease-out"
+                    style={{
+                      left: `${((displayCorrelation + 1) / 2) * 100}%`,
+                      background: markerColor(displayCorrelation),
+                    }}
+                  />
+                ) : null}
+              </div>
+              <span className="shrink-0">+1</span>
+            </div>
+            <span className="text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
+              {formatCorrelation(displayCorrelation)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

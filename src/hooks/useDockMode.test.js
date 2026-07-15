@@ -200,6 +200,23 @@ describe("useDockMode", () => {
     expect(result.current.dockHeight).toBe(56);
   });
 
+  it("exposes a render-only preview height until the resize is committed", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "bottom", height: 72 },
+    };
+    const { result } = renderHook(() => useDockMode());
+
+    await act(() => result.current.resizeDockHeight(124, { persist: false }));
+    expect(result.current.dockPreviewHeight).toBe(124);
+    expect(result.current.dockHeight).toBe(72);
+    expect(mocks.patchPresets).not.toHaveBeenCalled();
+
+    await act(() => result.current.resizeDockHeight(124, { persist: true }));
+    expect(result.current.dockPreviewHeight).toBeNull();
+    expect(result.current.dockHeight).toBe(124);
+    expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });
+  });
+
   it("is inert outside Tauri", async () => {
     mocks.isTauri.mockReturnValue(false);
     const { result } = renderHook(() => useDockMode());

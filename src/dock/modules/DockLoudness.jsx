@@ -5,6 +5,7 @@ import { buildHistoryPath } from "../../math/historyMath.js";
 import { fmtMetric } from "../../math/formatMath.js";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
+import { DockExpandedMetric } from "./DockExpandedMetric.jsx";
 
 const READOUTS = [
   { key: "momentary", short: "M", label: "Momentary" },
@@ -52,8 +53,31 @@ function DockLoudnessReadouts({ displayAudio }) {
   );
 }
 
+function DockLoudnessExpandedReadouts({ displayAudio }) {
+  return (
+    <div
+      data-testid="dock-loudness-readouts"
+      className="grid shrink-0 grid-cols-3 items-start"
+      style={{ columnGap: "var(--ui-dock-gap-region)" }}
+    >
+      {READOUTS.map(({ key, short, label }) => {
+        const formatted = fmtMetric(displayAudio?.[key]);
+        return (
+          <div
+            key={key}
+            data-testid="dock-loudness-readout"
+            aria-label={`${label} ${formatted} LUFS`}
+          >
+            <DockExpandedMetric label={short} value={formatted} unit="LUFS" />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Compact Loudness history with the normal panel's layers and M/ST/I readouts. */
-export function DockLoudness({ controls }) {
+export function DockLoudness({ controls, heightMode = "standard" }) {
   const { displayAudio } = useFrameData();
   const { histSourceList = [] } = useHistoryData() ?? {};
   const visibleLayerIds = controls?.loudnessHistoryVisibleLayerIds ?? DEFAULT_VISIBLE_LAYER_IDS;
@@ -98,11 +122,12 @@ export function DockLoudness({ controls }) {
   const referenceOffset = loudnessHistY(referenceLufs, SPARK_H, yRange) / SPARK_H;
   const momentaryGradientId = useId().replace(/:/g, "");
   const shortTermGradientId = useId().replace(/:/g, "");
+  const expanded = heightMode === "expanded";
 
   return (
     <div
       {...dockHistoryInteractionProps(controls)}
-      className="flex h-full min-w-0 items-stretch"
+      className={`flex h-full min-w-0 items-stretch ${expanded ? "flex-col" : "flex-row"}`}
       style={{
         gap: "var(--ui-dock-gap-region)",
         padding: "var(--ui-dock-pad-y) var(--ui-dock-pad-x)",
@@ -189,7 +214,11 @@ export function DockLoudness({ controls }) {
         <DockHistoryWindowHud controls={controls} />
       </div>
       {controls?.showReadouts !== false ? (
-        <DockLoudnessReadouts displayAudio={displayAudio} />
+        expanded ? (
+          <DockLoudnessExpandedReadouts displayAudio={displayAudio} />
+        ) : (
+          <DockLoudnessReadouts displayAudio={displayAudio} />
+        )
       ) : null}
     </div>
   );

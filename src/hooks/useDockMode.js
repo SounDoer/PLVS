@@ -28,6 +28,7 @@ export function useDockMode() {
       typeof window !== "undefined" ? window.__PLVS_INITIAL_STATE__?.dockState : undefined
     )
   );
+  const [dockPreviewHeight, setDockPreviewHeight] = useState(null);
   const dockRef = useRef(dock);
   const transitionTailRef = useRef(Promise.resolve());
   const heightTransitionTailRef = useRef(Promise.resolve());
@@ -136,16 +137,19 @@ export function useDockMode() {
       const previousHeight = dockRef.current.height;
       const nextHeight = clampDockHeight(height);
       const request = ++heightRequestRef.current;
+      setDockPreviewHeight(nextHeight);
       const operation = heightTransitionTailRef.current.then(async () => {
         try {
           const resolved = await setDockHeight({ height: nextHeight, persist });
           if (persist && request === heightRequestRef.current) {
             commitDock((latest) => ({ ...latest, height: clampDockHeight(resolved) }));
+            setDockPreviewHeight(null);
           }
           if (persist && previousHeight !== nextHeight) presetsStore.patch({ dirty: true });
         } catch (error) {
           if (request === heightRequestRef.current) {
             commitDock((latest) => ({ ...latest, height: previousHeight }));
+            setDockPreviewHeight(null);
           }
           throw error;
         }
@@ -161,6 +165,7 @@ export function useDockMode() {
     dockEdge: dock.edge,
     dockMonitor: dock.monitor,
     dockHeight: dock.height,
+    dockPreviewHeight,
     reserveSpace: dock.reserveSpace,
     enterDockMode,
     exitDockMode,

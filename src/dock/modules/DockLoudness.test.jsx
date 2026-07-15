@@ -8,11 +8,12 @@ function renderWith({
   displayAudio,
   histSourceList = [],
   controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
+  heightMode = "standard",
 }) {
   return render(
     <FrameDataProvider value={{ displayAudio }}>
       <HistoryDataProvider value={{ histSourceList }}>
-        <DockLoudness controls={controls} />
+        <DockLoudness controls={controls} heightMode={heightMode} />
       </HistoryDataProvider>
     </FrameDataProvider>
   );
@@ -55,6 +56,33 @@ describe("DockLoudness", () => {
 
     expect(screen.queryByTestId("dock-loudness-readouts")).toBeNull();
     expect(screen.getByTestId("dock-loudness-history").parentElement.className).toContain("flex-1");
+  });
+
+  it("moves two-line readouts below the history in Expanded mode", () => {
+    renderWith({
+      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
+      heightMode: "expanded",
+    });
+
+    const history = screen.getByTestId("dock-loudness-history");
+    const readouts = screen.getByTestId("dock-loudness-readouts");
+    expect(readouts.className).toContain("grid-cols-3");
+    expect(
+      history.compareDocumentPosition(readouts) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      screen.getAllByTestId("dock-expanded-metric-unit").map((node) => node.textContent)
+    ).toEqual(["LUFS", "LUFS", "LUFS"]);
+    expect(screen.getAllByTestId("dock-loudness-readout").map((node) => node.textContent)).toEqual([
+      "M-18.2LUFS",
+      "ST-19.4LUFS",
+      "I-20.1LUFS",
+    ]);
+    expect(
+      screen
+        .getAllByTestId("dock-expanded-metric")
+        .every((node) => node.className.includes("items-start"))
+    ).toBe(true);
   });
 
   it("uses the normal panel's Momentary, Short-term, and Reference layer semantics", () => {

@@ -48,6 +48,20 @@ describe("DockStrip", () => {
     expect(screen.getAllByTestId("dock-module")).toHaveLength(2);
   });
 
+  it("exposes the resolved height presentation tier", () => {
+    const { rerender } = renderStrip({ height: 119 });
+    expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("standard");
+
+    rerender(
+      <FrameDataProvider value={{ displayAudio: { peakDb: [-12, -10] }, correlation: 0.3 }}>
+        <HistoryDataProvider value={{ histSourceList: [] }}>
+          <DockStrip {...BASE_PROPS} height={120} />
+        </HistoryDataProvider>
+      </FrameDataProvider>
+    );
+    expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("expanded");
+  });
+
   it("reports pointer presence without rendering accessory controls in the strip", () => {
     const onPointerEnter = vi.fn();
     const onPointerLeave = vi.fn();
