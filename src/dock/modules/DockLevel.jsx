@@ -229,8 +229,13 @@ export function DockLevel({ controls = {}, heightMode = "standard" }) {
         : null;
   const showLabels = controls.showLabels !== false;
   const expanded = heightMode === "expanded";
+  const stackedGlobalReadout = showGlobalReadout && (expanded || readoutSource !== null);
   const expandedReadoutLabel = readoutSource ?? meta.label;
-  const readoutUnit = mode === "peak" && readout === "truePeakMax" ? "dBTP" : meta.unit;
+  const readoutUnit = expanded
+    ? mode === "peak" && readout === "truePeakMax"
+      ? "dBTP"
+      : meta.unit
+    : "";
   const rows = peakFamily ? Math.max(1, channels.length) : 1;
   const meterColumns = peakFamily && showLabels ? "max-content minmax(0, 1fr)" : "minmax(0, 1fr)";
   const barColumn = peakFamily && showLabels ? 2 : 1;
@@ -297,7 +302,7 @@ export function DockLevel({ controls = {}, heightMode = "standard" }) {
           onReset={resetReadout}
           rowCount={rows}
           showGlobal={showGlobalReadout}
-          expanded={expanded && showGlobalReadout}
+          expanded={stackedGlobalReadout}
           expandedLabel={expandedReadoutLabel}
           unit={readoutUnit}
         />

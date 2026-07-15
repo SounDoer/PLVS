@@ -37,23 +37,23 @@ describe("DockLevel", () => {
         hasTpMaxValue: true,
         onResetTpMax,
       },
-      { mode: "peak", readout: "truePeakMax", showLabels: true }
+      { mode: "peak", readout: "truePeakMax", showLabels: true },
+      "compact"
     );
     expect(screen.getByText("-3.2").className).toContain("var(--ui-dock-fs-value)");
-    expect(screen.getByTestId("dock-level-readout-source").textContent).toBe("TP Max");
+    expect(screen.getByTestId("dock-expanded-metric").textContent).toBe("TP Max-3.2");
+    expect(screen.queryByTestId("dock-expanded-metric-unit")).toBeNull();
+    expect(screen.queryByTestId("dock-level-readout-source")).toBeNull();
     expect(screen.queryByTestId("dock-level-channel-readout")).toBeNull();
-    const source = screen.getByTestId("dock-level-readout-source");
-    expect(screen.getByTestId("dock-level-readout-region").contains(source)).toBe(true);
-    expect(screen.getByTestId("dock-level-meter-region").contains(source)).toBe(false);
     expect(screen.getByTestId("dock-level-readout-sizer").getAttribute("aria-hidden")).toBe("true");
     const readoutContent = screen.getByTestId("dock-level-readout-content");
-    expect(readoutContent.contains(source)).toBe(true);
+    expect(readoutContent.contains(screen.getByTestId("dock-expanded-metric"))).toBe(true);
     expect(readoutContent.className).toContain("self-center");
     expect(readoutContent.className).toContain("items-baseline");
     expect(screen.getByText("-3.2").parentElement.className).not.toContain(
       "w-[var(--ui-dock-readout-w)]"
     );
-    expect(screen.getByText("-3.2").parentElement.className).toContain("text-right");
+    expect(screen.getByTestId("dock-expanded-metric").className).toContain("items-start");
     expect(
       screen.getAllByTestId("dock-level-bar").every((bar) => bar.className.includes("h-full"))
     ).toBe(true);
@@ -140,7 +140,9 @@ describe("DockLevel", () => {
     );
 
     expect(screen.getByText("M")).toBeTruthy();
-    expect(screen.getByTestId("dock-level-readout-source").textContent).toBe("PB Max");
+    expect(screen.getByTestId("dock-expanded-metric").textContent).toBe("PB Max-20.3");
+    expect(screen.queryByTestId("dock-expanded-metric-unit")).toBeNull();
+    expect(screen.queryByTestId("dock-level-readout-source")).toBeNull();
     expect(screen.queryByText("M Max")).toBeNull();
     await waitFor(() => expect(screen.getByText("-20.3")).toBeTruthy());
   });

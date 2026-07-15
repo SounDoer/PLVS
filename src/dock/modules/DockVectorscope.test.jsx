@@ -43,6 +43,9 @@ describe("DockVectorscope", () => {
     expect(screen.getByText("L").className).toContain("var(--ui-dock-fs-label)");
     expect(screen.getByText("-1").parentElement?.className).toContain("var(--ui-dock-fs-caption)");
     expect(screen.getByText("+0.50").className).toContain("var(--ui-dock-fs-value)");
+    expect(screen.getByTestId("dock-vectorscope-correlation-readout").textContent).toBe(
+      "Corr+0.50"
+    );
     rect.mockRestore();
   });
 
@@ -79,7 +82,33 @@ describe("DockVectorscope", () => {
     expect(screen.getByTestId("dock-vectorscope-correlation-rail").className).toContain("w-full");
     const rail = screen.getByTestId("dock-vectorscope-correlation-rail");
     const readout = screen.getByText("Correlation").parentElement;
+    expect(readout.className).toContain("justify-center");
     expect(rail.compareDocumentPosition(readout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    rect.mockRestore();
+  });
+
+  it("keeps the abbreviated correlation label when Expanded width is narrow", () => {
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 160,
+      height: 152,
+      top: 0,
+      right: 160,
+      bottom: 152,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    renderWith(
+      { path: "M 0 0 L 260 260", correlation: 0.5, pairX: 0, pairY: 1 },
+      undefined,
+      "expanded"
+    );
+
+    expect(screen.getByTestId("dock-vectorscope-correlation-readout").textContent).toBe(
+      "Corr+0.50"
+    );
+    expect(screen.queryByText("Correlation")).toBeNull();
     rect.mockRestore();
   });
 

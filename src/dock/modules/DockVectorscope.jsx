@@ -8,6 +8,7 @@ const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
 const CORRELATION_MIN_WIDTH_PX = 72;
 const CONTENT_GAP_PX = 8;
 const EXPANDED_CORRELATION_HEIGHT_PX = 44;
+const CORRELATION_FULL_LABEL_MIN_WIDTH_PX = 184;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -49,6 +50,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const contentRef = useRef(null);
   const displayCorrelationRef = useRef(null);
   const [plotSize, setPlotSize] = useState(48);
+  const [contentWidth, setContentWidth] = useState(0);
   const pair = controls.pair ?? { x: 0, y: 1 };
   const key = dockVectorscopeKey({ pair });
   const result = displayAudio?.vectorscopeResultsByKey?.[key];
@@ -76,12 +78,15 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const firstLabel = labels[pairX] ?? `Ch ${pairX + 1}`;
   const secondLabel = labels[pairY] ?? `Ch ${pairY + 1}`;
   const expanded = heightMode === "expanded";
+  const correlationLabel =
+    expanded && contentWidth >= CORRELATION_FULL_LABEL_MIN_WIDTH_PX ? "Correlation" : "Corr";
 
   useLayoutEffect(() => {
     const content = contentRef.current;
     if (!content) return undefined;
     const measure = () => {
       const rect = content.getBoundingClientRect();
+      setContentWidth(rect.width);
       setPlotSize(computePlotSize(rect.width, rect.height, expanded));
     };
     measure();
@@ -181,9 +186,12 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               <span>0</span>
               <span>+1</span>
             </div>
-            <div className="flex items-baseline justify-between">
+            <div
+              data-testid="dock-vectorscope-correlation-readout"
+              className="flex items-baseline justify-center gap-[var(--ui-dock-gap-column)]"
+            >
               <span className="font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
-                Correlation
+                {correlationLabel}
               </span>
               <span className="font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
                 {formatCorrelation(displayCorrelation)}
@@ -212,9 +220,17 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               </div>
               <span className="shrink-0">+1</span>
             </div>
-            <span className="text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
-              {formatCorrelation(displayCorrelation)}
-            </span>
+            <div
+              data-testid="dock-vectorscope-correlation-readout"
+              className="flex items-baseline justify-center gap-[var(--ui-dock-gap-column)]"
+            >
+              <span className="font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
+                {correlationLabel}
+              </span>
+              <span className="font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
+                {formatCorrelation(displayCorrelation)}
+              </span>
+            </div>
           </div>
         )}
       </div>
