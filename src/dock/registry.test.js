@@ -13,8 +13,9 @@ describe("DOCK_MODULE_REGISTRY", () => {
       expect(entry.id).toBe(id);
       expect(typeof entry.label).toBe("string");
       expect(typeof entry.Component).toBe("function");
-      expect(typeof entry.flexible).toBe("boolean");
+      expect(["fixed", "flexible"]).toContain(entry.growthPolicy);
       expect(entry.defaultWidth).toBeGreaterThanOrEqual(entry.minWidth);
+      expect(entry.maxPreferredWidth).toBeGreaterThanOrEqual(entry.defaultWidth);
       expect(entry.minWidth).toBeGreaterThan(0);
       expect(entry.settingsFamily === null || typeof entry.settingsFamily === "string").toBe(true);
     }

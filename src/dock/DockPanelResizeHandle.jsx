@@ -14,20 +14,16 @@ export function DockPanelResizeHandle({
   const leftSizing = getDockPanelSizing(leftPanel.moduleId);
   const rightSizing = getDockPanelSizing(rightPanel.moduleId);
 
-  const dimensions = (element) => {
-    const leftElement = element.closest('[data-testid="dock-module"]');
-    const rightElement = leftElement?.nextElementSibling;
-    const measuredLeft = leftElement?.getBoundingClientRect().width;
-    const measuredRight = rightElement?.getBoundingClientRect().width;
+  const preferredWidths = () => {
     return {
-      leftWidth: measuredLeft || leftBasis || leftSizing.defaultWidth,
-      rightWidth: measuredRight || rightBasis || rightSizing.defaultWidth,
+      leftWidth: leftBasis || leftSizing.defaultWidth,
+      rightWidth: rightBasis || rightSizing.defaultWidth,
     };
   };
 
-  const emit = (element, delta, persist, base) => {
+  const emit = (delta, persist, base) => {
     if (disabled || !onResize) return;
-    const widths = base ?? dimensions(element);
+    const widths = base ?? preferredWidths();
     onResize({
       leftPanelId: leftPanel.id,
       rightPanelId: rightPanel.id,
@@ -58,7 +54,7 @@ export function DockPanelResizeHandle({
         dragRef.current = {
           pointerId: event.pointerId,
           startX: event.clientX,
-          widths: dimensions(event.currentTarget),
+          widths: preferredWidths(),
           latestDelta: 0,
         };
       }}
@@ -68,19 +64,19 @@ export function DockPanelResizeHandle({
         const delta = event.clientX - drag.startX;
         if (delta === drag.latestDelta) return;
         drag.latestDelta = delta;
-        emit(event.currentTarget, delta, false, drag.widths);
+        emit(delta, false, drag.widths);
       }}
       onPointerUp={(event) => {
         const drag = dragRef.current;
         if (!drag || drag.pointerId !== event.pointerId) return;
         dragRef.current = null;
         event.currentTarget.releasePointerCapture?.(event.pointerId);
-        emit(event.currentTarget, drag.latestDelta, true, drag.widths);
+        emit(drag.latestDelta, true, drag.widths);
       }}
       onPointerCancel={(event) => {
         const drag = dragRef.current;
         dragRef.current = null;
-        if (drag) emit(event.currentTarget, drag.latestDelta, true, drag.widths);
+        if (drag) emit(drag.latestDelta, true, drag.widths);
       }}
       onDoubleClick={() => {
         if (!disabled) onReset?.(leftPanel.id, rightPanel.id);
@@ -89,7 +85,7 @@ export function DockPanelResizeHandle({
         if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
         event.preventDefault();
         const step = event.shiftKey ? 16 : 4;
-        emit(event.currentTarget, event.key === "ArrowRight" ? step : -step, true);
+        emit(event.key === "ArrowRight" ? step : -step, true);
       }}
     >
       <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-border/40 transition-colors group-hover:bg-primary/70 group-focus-visible:bg-primary" />

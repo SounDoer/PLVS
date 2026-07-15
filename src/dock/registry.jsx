@@ -9,9 +9,9 @@ import { DockWaveform } from "./modules/DockWaveform.jsx";
 import { getDockPanelSizing } from "./dockPanelSizing.js";
 
 /**
- * Catalog of dock modules. `flexible` entries absorb remaining strip width;
- * fixed entries keep their natural width. Adding a later-phase module is one
- * entry here + one component (plus its id in dockLayout.js).
+ * Catalog of dock modules. Entries with a flexible growth policy absorb
+ * remaining strip width; fixed entries keep their preferred width. Adding a
+ * later-phase module is one entry here + one component (plus its id in dockLayout.js).
  */
 export const DOCK_MODULE_REGISTRY = {
   level: {

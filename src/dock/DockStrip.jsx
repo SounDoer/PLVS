@@ -62,7 +62,7 @@ export function DockStrip({
               )}
               style={{
                 minWidth: entry.minWidth,
-                flex: `${entry.flexible ? 1 : 0} 1 ${basis}px`,
+                flex: `${entry.growthPolicy === "flexible" ? 1 : 0} 1 ${basis}px`,
               }}
             >
               <Component

@@ -42,15 +42,25 @@ persisted Rust value.
 ## Panel width contract
 
 Each Dock panel instance has an optional persisted logical-pixel basis keyed by
-`panelId`. Module registry entries define `defaultWidth`, `minWidth`, and
-whether the module may grow into unused space.
+`panelId`. Module registry entries define `minWidth`, `defaultWidth`,
+`maxPreferredWidth`, and `growthPolicy`.
+
+- `minWidth` is the hard rendering floor needed to keep the module usable.
+- `defaultWidth` is the initial and double-click reset width.
+- `maxPreferredWidth` caps user-resized and persisted preferred widths. It is
+  not a rendered CSS maximum: a flexible panel may still render wider when it
+  absorbs otherwise unused strip space.
+- `growthPolicy` is either `fixed` or `flexible`. Fixed panels retain their
+  preferred width; flexible panels share unused strip width.
 
 - Dragging a divider changes only the two adjacent visible panels.
 - The pair's total width remains constant during a drag.
 - Neither panel may cross its module `minWidth`.
+- Neither panel's preferred basis may cross its module `maxPreferredWidth`.
 - No horizontal scrollbar is introduced.
 - Flexible panels may absorb unused strip width after explicit bases are
-  applied; fixed panels retain their basis.
+  applied, including beyond `maxPreferredWidth`; fixed panels retain their
+  basis.
 - A double-click resets the adjacent pair to module defaults.
 - Arrow keys move the divider by 4px; Shift+Arrow moves it by 16px.
 - Resizing is disabled while an accessory editor is open.

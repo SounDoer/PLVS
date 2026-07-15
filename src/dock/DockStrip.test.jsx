@@ -136,4 +136,50 @@ describe("DockStrip", () => {
     });
     expect(onPanelResizeReset).toHaveBeenCalledWith("levelMeter", "vectorscope");
   });
+
+  it("resizes from preferred bases instead of flexible rendered widths", () => {
+    const onPanelResize = vi.fn();
+    renderStrip({
+      panels: [
+        { id: "spectrum", moduleId: "spectrum" },
+        { id: "levelMeter", moduleId: "levelMeter" },
+      ],
+      panelSizesById: { spectrum: 600, levelMeter: 200 },
+      onPanelResize,
+    });
+    const [spectrum, level] = screen.getAllByTestId("dock-module");
+    vi.spyOn(spectrum, "getBoundingClientRect").mockReturnValue({ width: 1200 });
+    vi.spyOn(level, "getBoundingClientRect").mockReturnValue({ width: 200 });
+    const divider = screen.getByRole("separator", {
+      name: /resize spectrum and levelMeter/i,
+    });
+
+    const pointerEvent = (type, values) => {
+      const event = new Event(type, { bubbles: true });
+      for (const [key, value] of Object.entries(values)) {
+        Object.defineProperty(event, key, { value });
+      }
+      return event;
+    };
+    fireEvent(divider, pointerEvent("pointerdown", { button: 0, pointerId: 1, clientX: 100 }));
+    fireEvent(divider, pointerEvent("pointermove", { pointerId: 1, clientX: 112 }));
+    fireEvent(divider, pointerEvent("pointerup", { pointerId: 1, clientX: 112 }));
+
+    expect(onPanelResize).toHaveBeenNthCalledWith(1, {
+      leftPanelId: "spectrum",
+      rightPanelId: "levelMeter",
+      leftWidth: 600,
+      rightWidth: 200,
+      delta: 12,
+      persist: false,
+    });
+    expect(onPanelResize).toHaveBeenNthCalledWith(2, {
+      leftPanelId: "spectrum",
+      rightPanelId: "levelMeter",
+      leftWidth: 600,
+      rightWidth: 200,
+      delta: 12,
+      persist: true,
+    });
+  });
 });
