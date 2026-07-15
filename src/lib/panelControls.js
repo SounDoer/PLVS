@@ -15,6 +15,15 @@ export const LEVEL_METER_MODE_OPTIONS = [
   { id: "shortTerm", label: "Short-term" },
 ];
 
+/// Frequency-axis smoothing. Distinct from Speed, which is the time axis. Ids are the wire
+/// values parsed by `parse_octave_smoothing` in src-tauri/src/ipc/commands.rs.
+export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
+  { id: "off", label: "Off", keyToken: "off" },
+  { id: "1/12", label: "1/12 oct", keyToken: "12" },
+  { id: "1/6", label: "1/6 oct", keyToken: "6" },
+  { id: "1/3", label: "1/3 oct", keyToken: "3" },
+];
+
 export const DEFAULT_PANEL_CONTROLS = {
   levelMeterMode: "peak",
   levelMeterPlaybackMax: false,
@@ -26,6 +35,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumPeakHold: false,
   spectrumSpeedPercent: 25,
   spectrumTiltDbPerOctave: 3,
+  spectrumOctaveSmoothing: "off",
   spectrumXMinFreq: 20,
   spectrumXMaxFreq: 20000,
   spectrumYMaxDb: -12,
@@ -82,6 +92,15 @@ function normalizeSpectrumChannel(raw) {
 const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
 function normalizeSpectrumView(raw) {
   return SPECTRUM_VIEWS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.spectrumView;
+}
+
+const SPECTRUM_OCTAVE_SMOOTHING_IDS = new Set(
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.map((option) => option.id)
+);
+function normalizeSpectrumOctaveSmoothing(raw) {
+  return SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw)
+    ? raw
+    : DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing;
 }
 
 function normalizeSpectrumPeakHold(raw) {
@@ -249,6 +268,7 @@ export function normalizePanelControls(raw) {
       raw?.spectrumSpeedPercent ?? raw?.spectrumSmoothingPercent
     ),
     spectrumTiltDbPerOctave: normalizeSpectrumTiltDbPerOctave(raw?.spectrumTiltDbPerOctave),
+    spectrumOctaveSmoothing: normalizeSpectrumOctaveSmoothing(raw?.spectrumOctaveSmoothing),
     spectrumXMinFreq: spectrumXRange.min,
     spectrumXMaxFreq: spectrumXRange.max,
     spectrumYMaxDb: spectrumYRange.max,

@@ -28,7 +28,7 @@ describe("analysisRequests", () => {
 
     expect(result.spectrumRequests).toHaveLength(1);
     expect(result.spectrumRequests[0]).toMatchObject({
-      key: "spectrum:pair:0:1:combined:sp25:tilt300",
+      key: "spectrum:pair:0:1:combined:sp25:tilt300:smoff",
       panelIds: ["spectrum", "spectrum-2"],
       speedPercent: 25,
       tiltDbPerOctave: 3,
@@ -53,8 +53,8 @@ describe("analysisRequests", () => {
 
     const requests = deriveAnalysisRequests(s).spectrumRequests;
     expect(requests.map((r) => r.key)).toEqual([
-      "spectrum:pair:0:1:combined:sp25:tilt300",
-      "spectrum:single:2:combined:sp25:tilt300",
+      "spectrum:pair:0:1:combined:sp25:tilt300:smoff",
+      "spectrum:single:2:combined:sp25:tilt300:smoff",
     ]);
     expect(requests[1].view).toBe("combined");
   });
@@ -82,7 +82,7 @@ describe("analysisRequests", () => {
         spectrumSpeedPercent: 25,
         spectrumTiltDbPerOctave: 1.25,
       })
-    ).toBe("spectrum:pair:0:1:combined:sp25:tilt125");
+    ).toBe("spectrum:pair:0:1:combined:sp25:tilt125:smoff");
   });
 
   it("includes spectrogram in spectrum-like requests", () => {

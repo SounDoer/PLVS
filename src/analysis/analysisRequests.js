@@ -1,4 +1,4 @@
-import { normalizePanelControls } from "../lib/panelControls.js";
+import { normalizePanelControls, SPECTRUM_OCTAVE_SMOOTHING_OPTIONS } from "../lib/panelControls.js";
 import { getPanelControls } from "../workspace/panelControlInstances.js";
 import { resolvePanelModuleId } from "../workspace/panelInstances.js";
 
@@ -10,7 +10,13 @@ function spectrumDisplayControlsFromControls(panelControls) {
   const speedPercent = Math.round(controls.spectrumSpeedPercent);
   const tiltDbPerOctave = Math.round(controls.spectrumTiltDbPerOctave * 100) / 100;
   const tiltCentidb = Math.round(tiltDbPerOctave * 100);
-  return { speedPercent, tiltDbPerOctave, tiltCentidb };
+  const octaveSmoothing = controls.spectrumOctaveSmoothing;
+  // Looked up rather than derived from the id: ids carry a '/', which would break the
+  // colon-delimited key grammar. Rust mirrors this via `OctaveSmoothing::key_token`.
+  const smoothingToken =
+    SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.find((option) => option.id === octaveSmoothing)?.keyToken ??
+    "off";
+  return { speedPercent, tiltDbPerOctave, tiltCentidb, octaveSmoothing, smoothingToken };
 }
 
 function collectPanelIdsFromTree(node, panelsById, out = []) {
@@ -30,7 +36,7 @@ export function spectrumRequestKeyFromControls(panelControls) {
   const view = controls.spectrumView ?? "combined";
   const sel = controls.spectrumChannel;
   const display = spectrumDisplayControlsFromControls(controls);
-  const suffix = `sp${display.speedPercent}:tilt${display.tiltCentidb}`;
+  const suffix = `sp${display.speedPercent}:tilt${display.tiltCentidb}:sm${display.smoothingToken}`;
   if (sel?.type === "single") return `spectrum:single:${sel.ch}:combined:${suffix}`;
   return `spectrum:pair:${sel?.x ?? 0}:${sel?.y ?? 1}:${view}:${suffix}`;
 }
@@ -79,6 +85,7 @@ export function deriveAnalysisRequests(state) {
         view: controls.spectrumChannel?.type === "single" ? "combined" : controls.spectrumView,
         speedPercent: display.speedPercent,
         tiltDbPerOctave: display.tiltDbPerOctave,
+        octaveSmoothing: display.octaveSmoothing,
       });
       statusByPanelId[panelId] = "active";
     } else if (moduleId === "vectorscope") {

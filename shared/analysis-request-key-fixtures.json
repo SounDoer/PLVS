@@ -1,5 +1,5 @@
 {
-  "_comment": "Single source of truth for analysis request-key string format. Consumed by both the JS deriver test (src/analysis/analysisRequestKeyFormat.test.js) and the Rust validator test (src-tauri/src/ipc/commands.rs). Changing the key grammar on either side without updating this file fails one of those tests. Format: spectrum pair = spectrum:pair:<x>:<y>:<view>:sp<speedPercent>:tilt<tiltCentidb> (view in combined|lr|ms); spectrum single = spectrum:single:<ch>:combined:sp<speedPercent>:tilt<tiltCentidb> (view always forced to combined); vectorscope = vectorscope:pair:<x>:<y>.",
+  "_comment": "Single source of truth for analysis request-key string format. Consumed by both the JS deriver test (src/analysis/analysisRequestKeyFormat.test.js) and the Rust validator test (src-tauri/src/ipc/commands.rs). Changing the key grammar on either side without updating this file fails one of those tests. Format: spectrum pair = spectrum:pair:<x>:<y>:<view>:sp<speedPercent>:tilt<tiltCentidb>:sm<octaveSmoothingToken> (view in combined|lr|ms); spectrum single = spectrum:single:<ch>:combined:sp<speedPercent>:tilt<tiltCentidb>:sm<octaveSmoothingToken> (view always forced to combined); vectorscope = vectorscope:pair:<x>:<y>. sp is Speed, the time axis; sm is octave smoothing, the frequency axis. octaveSmoothing carries the wire value (off|1/12|1/6|1/3) while its key token drops the fraction (off|12|6|3), so no '/' can enter the colon-delimited grammar.",
   "spectrum": [
     {
       "type": "pair",
@@ -8,7 +8,8 @@
       "view": "combined",
       "speedPercent": 50,
       "tiltDbPerOctave": 4.5,
-      "key": "spectrum:pair:0:1:combined:sp50:tilt450"
+      "octaveSmoothing": "off",
+      "key": "spectrum:pair:0:1:combined:sp50:tilt450:smoff"
     },
     {
       "type": "pair",
@@ -17,7 +18,8 @@
       "view": "lr",
       "speedPercent": 25,
       "tiltDbPerOctave": 1.25,
-      "key": "spectrum:pair:0:1:lr:sp25:tilt125"
+      "octaveSmoothing": "1/3",
+      "key": "spectrum:pair:0:1:lr:sp25:tilt125:sm3"
     },
     {
       "type": "pair",
@@ -26,7 +28,8 @@
       "view": "ms",
       "speedPercent": 100,
       "tiltDbPerOctave": 6,
-      "key": "spectrum:pair:4:5:ms:sp100:tilt600"
+      "octaveSmoothing": "1/6",
+      "key": "spectrum:pair:4:5:ms:sp100:tilt600:sm6"
     },
     {
       "type": "single",
@@ -34,7 +37,8 @@
       "view": "combined",
       "speedPercent": 0,
       "tiltDbPerOctave": 0,
-      "key": "spectrum:single:2:combined:sp0:tilt0"
+      "octaveSmoothing": "1/12",
+      "key": "spectrum:single:2:combined:sp0:tilt0:sm12"
     }
   ],
   "vectorscope": [

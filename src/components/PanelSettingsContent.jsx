@@ -8,6 +8,7 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   normalizePanelControls,
 } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
@@ -367,6 +368,56 @@ function SettingsSelect({
   );
 }
 
+/// A plain label-only choice list. `SettingsVadSelect` carries an external-link button per row,
+/// which nothing else needs.
+function SettingsChoiceSelect({ ariaLabel, options, value, onChange, open, onOpenChange }) {
+  const selectedOption = options.find((option) => option.id === value) ?? options[0];
+  return (
+    <div className="flex min-w-0 flex-col items-end">
+      <InlineDetailTrigger
+        ariaLabel={ariaLabel}
+        summary={selectedOption.label}
+        open={open}
+        onToggle={() => onOpenChange(!open)}
+        className="w-auto grid-cols-[auto_auto] gap-1.5 justify-self-end"
+      />
+      {open ? (
+        <div role="listbox" aria-label={ariaLabel} className={SETTINGS_DETAIL_SURFACE_CLASS}>
+          {options.map((option) => {
+            const checked = option.id === value;
+            return (
+              <div
+                key={option.id}
+                role="option"
+                aria-selected={checked}
+                tabIndex={0}
+                data-settings-option-row
+                className={cn(SETTINGS_CHOICE_ROW_CLASS, "cursor-default")}
+                onClick={() => {
+                  onChange(option.id);
+                  onOpenChange(false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onChange(option.id);
+                    onOpenChange(false);
+                  }
+                }}
+              >
+                <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS)}>
+                  {checked ? <Check aria-hidden="true" className="size-3" /> : null}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SettingsVadSelect({ selectedOption, options, value, onChange, open, onOpenChange }) {
   return (
     <div className="flex min-w-0 flex-col items-end">
@@ -611,6 +662,7 @@ export function PanelSettingsContent({
   const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
   const [vectorscopeChannelOpen, setVectorscopeChannelOpen] = useState(false);
   const [vadOpen, setVadOpen] = useState(false);
+  const [spectrumSmoothingOpen, setSpectrumSmoothingOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
@@ -1027,6 +1079,28 @@ export function PanelSettingsContent({
                   normalizePanelControls({
                     ...normalizedPanelControls,
                     spectrumTiltDbPerOctave: value,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showDisplayControls ? (
+          <SettingsRow
+            label="Smoothing"
+            tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Speed smooths over time; this smooths over frequency."
+          >
+            <SettingsChoiceSelect
+              ariaLabel="spectrum octave smoothing"
+              options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
+              value={normalizedPanelControls.spectrumOctaveSmoothing}
+              open={spectrumSmoothingOpen}
+              onOpenChange={setSpectrumSmoothingOpen}
+              onChange={(id) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumOctaveSmoothing: id,
                   })
                 );
               }}

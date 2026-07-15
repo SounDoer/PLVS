@@ -42,7 +42,7 @@ function spectrumPanelTree(audioData) {
 }
 
 // Default panel controls resolve to this live request key (pair 0/1, combined view).
-const LIVE_KEY = "spectrum:pair:0:1:combined:sp25:tilt300";
+const LIVE_KEY = "spectrum:pair:0:1:combined:sp25:tilt300:smoff";
 
 function liveResult(over = {}) {
   return {

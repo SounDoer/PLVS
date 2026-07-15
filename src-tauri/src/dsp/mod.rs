@@ -18,4 +18,5 @@ pub use channel_sel::{SpectrumChannelSel, SpectrumView};
 pub use loudness::LoudnessMeter;
 pub use meter::{Meter, PcmContext};
 pub use spectrum::SpectrumMeter;
+pub use spectrum_bank::OctaveSmoothing;
 pub use vectorscope::VectorscopeMeter;

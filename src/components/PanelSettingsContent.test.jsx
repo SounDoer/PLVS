@@ -820,11 +820,15 @@ describe("PanelSettingsContent", () => {
     const peak = screen.getByText("Peak hold");
     const speed = screen.getByText("Speed");
     const tilt = screen.getByText("Tilt");
+    const smoothing = screen.getByText("Smoothing");
     const xRange = screen.getByText("X range");
     const yRange = screen.getByText("Y range");
     expect(peak.compareDocumentPosition(speed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(speed.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(tilt.compareDocumentPosition(xRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tilt.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      smoothing.compareDocumentPosition(xRange) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(xRange.compareDocumentPosition(yRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const speedSlider = screen.getByLabelText("spectrum speed");
     const tiltSlider = screen.getByLabelText("spectrum tilt");
@@ -834,6 +838,10 @@ describe("PanelSettingsContent", () => {
     expect(speedSlider.style.getPropertyValue("--range-pct")).toBe("25%");
     expect(tiltSlider.classList.contains("plvs-range")).toBe(true);
     expect(tiltSlider.style.getPropertyValue("--range-pct")).toBe("50%");
+    // Speed is a slider (time axis), Smoothing is a choice list (frequency axis). Confusing the
+    // two is what this whole control layout exists to prevent, so pin that they stay distinct.
+    expect(screen.getByLabelText("spectrum octave smoothing")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrum octave smoothing").tagName).not.toBe("INPUT");
     expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
     expect(screen.getByLabelText("spectrum x range max").value).toBe("20000");
     expect(screen.getByLabelText("spectrum y range min").value).toBe("-96");
@@ -914,6 +922,15 @@ describe("PanelSettingsContent", () => {
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
       spectrumTiltDbPerOctave: 1.25,
+    });
+
+    // Kept after the tilt block: the count assertion above pins that dragging without
+    // committing stays silent, and any commit inserted before it would break that.
+    fireEvent.click(screen.getByLabelText("spectrum octave smoothing"));
+    fireEvent.click(screen.getByRole("option", { name: /1\/3 oct/ }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumOctaveSmoothing: "1/3",
     });
 
     const xMin = screen.getByLabelText("spectrum x range min");

@@ -19,6 +19,7 @@ describe("analysis request key format (shared fixture)", () => {
       spectrumView: entry.view,
       spectrumSpeedPercent: entry.speedPercent,
       spectrumTiltDbPerOctave: entry.tiltDbPerOctave,
+      spectrumOctaveSmoothing: entry.octaveSmoothing,
     });
     expect(key).toBe(entry.key);
   });

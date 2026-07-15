@@ -23,6 +23,7 @@ pub struct SpectrumAnalysisRequest {
   pub view: String,
   pub speed_percent: f64,
   pub tilt_db_per_octave: f64,
+  pub octave_smoothing: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

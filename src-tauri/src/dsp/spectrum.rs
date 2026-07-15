@@ -1,10 +1,13 @@
 //! **Multi-resolution spectrum display** driven by `MultiResBank` (three windowed FFTs blended
-//! at crossover frequencies). Per grid-point: weighting, a user-set slope tilt (pivoted at 1 kHz),
-//! attack/release envelope, and peak-hold. No octave smoothing — peaks stay sharp; time stability
-//! comes from the bank's power averaging.
+//! at crossover frequencies). Per grid-point: optional fractional-octave smoothing, weighting,
+//! a user-set slope tilt (pivoted at 1 kHz), attack/release envelope, and peak-hold.
 //!
-//! "Speed" is the user-facing name for the temporal controls here — attack/release plus the
-//! bank's analysis average. It is not frequency-axis smoothing, which this display does not do.
+//! The two smoothing axes are separate controls and are easy to confuse:
+//! - **Speed** is the *time* axis — attack/release plus the bank's analysis average. It changes
+//!   how fast the curve moves, never its shape at rest.
+//! - **Octave smoothing** is the *frequency* axis (`OctaveSmoothing`, applied in the bank). It
+//!   changes the shape and leaves the ballistics alone. Default is `Off`: peaks stay sharp, so
+//!   individual partials remain readable.
 //!
 //! Levels are **noise-referenced**: the bank emits PSD (power/Hz), so broadband material reads
 //! continuous across the crossovers. That is the property the display is calibrated for and the
@@ -16,7 +19,7 @@
 //! Product wording: **`docs/architecture.md` §6 Spectrum / RTA**.
 
 use super::meter::{Meter, PcmContext};
-use crate::dsp::spectrum_bank::{MultiResBank, CAL_OFFSET_DB};
+use crate::dsp::spectrum_bank::{MultiResBank, OctaveSmoothing, CAL_OFFSET_DB};
 use crate::dsp::{SpectrumChannelSel, SpectrumView};
 
 fn weighting_a(f_hz: f64) -> f64 {
@@ -114,6 +117,7 @@ pub struct SpectrumMeter {
   peak_hold_sec: f64,
   peak_decay_db_per_sec: f64,
   tilt_db_per_octave: f64,
+  octave_smoothing: OctaveSmoothing,
   analysis_average_sec: f64,
   min_hz: f64,
   max_hz: f64,
@@ -154,6 +158,7 @@ impl SpectrumMeter {
       // `DEFAULT_PANEL_CONTROLS` in `src/lib/panelControls.js`; kept in step with it so reading
       // this line does not mislead. Nothing enforces that — check the JS side before trusting it.
       tilt_db_per_octave: 3.0,
+      octave_smoothing: OctaveSmoothing::Off,
       analysis_average_sec: MultiResBank::analysis_average_sec_for_speed_percent(50.0),
       min_hz,
       max_hz,
@@ -182,12 +187,18 @@ impl SpectrumMeter {
     (attack_ms, release_ms)
   }
 
-  pub fn set_display_controls(&mut self, speed_percent: f64, tilt_db_per_octave: f64) {
+  pub fn set_display_controls(
+    &mut self,
+    speed_percent: f64,
+    tilt_db_per_octave: f64,
+    octave_smoothing: OctaveSmoothing,
+  ) {
     let (attack_ms, release_ms) = Self::attack_release_ms_for_speed_percent(speed_percent);
     let analysis_average_sec = MultiResBank::analysis_average_sec_for_speed_percent(speed_percent);
     self.attack_ms = attack_ms;
     self.release_ms = release_ms;
     self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
+    self.octave_smoothing = octave_smoothing;
     self.analysis_average_sec = analysis_average_sec;
     self.bank.set_analysis_average_sec(analysis_average_sec);
     if let Some(bank_b) = self.bank_b.as_mut() {
@@ -202,7 +213,10 @@ impl SpectrumMeter {
 
   fn post_process_for(&self, bank: &MultiResBank) -> Vec<f64> {
     let centers = bank.grid_freqs();
-    let raw = bank.psd_db_row(CAL_OFFSET_DB);
+    // Smoothing happens inside the bank, on linear power, so it averages the *measurement*.
+    // Weighting and tilt are display shaping and are applied after, on the smoothed row: they
+    // are smooth curves themselves, so the order only matters for the measurement.
+    let raw = bank.psd_db_row(CAL_OFFSET_DB, self.octave_smoothing);
     let log_pivot = SLOPE_PIVOT_HZ.log2();
     let mut shaped = Vec::with_capacity(raw.len());
     for (i, &db) in raw.iter().enumerate() {
@@ -785,7 +799,7 @@ mod tests {
   fn zero_tilt_disables_default_slope() {
     let sr = 48000.0;
     let mut m = SpectrumMeter::new(sr);
-    m.set_display_controls(75.0, 0.0);
+    m.set_display_controls(75.0, 0.0, OctaveSmoothing::Off);
     let mut x: u32 = 0xC0FFEE;
     let frames = 16384 * 6;
     let mut pcm = vec![0.0_f32; frames * 2];
@@ -821,7 +835,7 @@ mod tests {
     let sr = 48000.0;
     let hz = 8000.0;
     let mut m = SpectrumMeter::new(sr);
-    m.set_display_controls(0.0, 4.5);
+    m.set_display_controls(0.0, 4.5, OctaveSmoothing::Off);
 
     let tone_frames = 16384 * 8;
     let mut tone = vec![0.0_f32; tone_frames * 2];
