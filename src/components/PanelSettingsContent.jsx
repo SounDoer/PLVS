@@ -892,7 +892,7 @@ export function PanelSettingsContent({
     const effectiveSpectrumPeakHold = hasPanelControls
       ? normalizedPanelControls.spectrumPeakHold
       : spectrumPeakHold;
-    const effectiveSmoothingPercent = normalizedPanelControls.spectrumSmoothingPercent;
+    const effectiveSpeedPercent = normalizedPanelControls.spectrumSpeedPercent;
     const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
     const effectiveYMaxDb = normalizedPanelControls.spectrumYMaxDb;
     const effectiveYMinDb = normalizedPanelControls.spectrumYMinDb;
@@ -994,19 +994,19 @@ export function PanelSettingsContent({
           </SettingsRow>
         ) : null}
         {showDisplayControls ? (
-          <SettingsRow label="Smoothing">
+          <SettingsRow label="Speed">
             <SettingsSlider
-              ariaLabel="spectrum smoothing"
+              ariaLabel="spectrum speed"
               min={0}
               max={100}
               step={1}
-              value={effectiveSmoothingPercent}
+              value={effectiveSpeedPercent}
               formatValue={(value) => `${value.toFixed(0)}%`}
               onCommit={(value) => {
                 onPanelControlsChange?.(
                   normalizePanelControls({
                     ...normalizedPanelControls,
-                    spectrumSmoothingPercent: value,
+                    spectrumSpeedPercent: value,
                   })
                 );
               }}

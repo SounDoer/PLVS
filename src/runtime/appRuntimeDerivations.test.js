@@ -25,10 +25,10 @@ describe("app runtime derivations", () => {
       deriveBackendAnalysisRequests({
         spectrumRequests: [
           {
-            key: "spectrum:single:2:combined:sm25:tilt300",
+            key: "spectrum:single:2:combined:sp25:tilt300",
             channel: { type: "single", ch: 2 },
             view: "combined",
-            smoothingPercent: 25,
+            speedPercent: 25,
             tiltDbPerOctave: 3,
           },
         ],
@@ -37,10 +37,10 @@ describe("app runtime derivations", () => {
     ).toEqual({
       spectrum: [
         {
-          key: "spectrum:single:2:combined:sm25:tilt300",
+          key: "spectrum:single:2:combined:sp25:tilt300",
           channel: { type: "single", ch: 2 },
           view: "combined",
-          smoothingPercent: 25,
+          speedPercent: 25,
           tiltDbPerOctave: 3,
         },
       ],

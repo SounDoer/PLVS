@@ -81,7 +81,7 @@ describe("panelControls", () => {
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      spectrumSmoothingPercent: 25,
+      spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
       spectrumXMinFreq: 20,
       spectrumXMaxFreq: 20000,
@@ -209,7 +209,7 @@ describe("panelControls", () => {
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumPeakHold: false,
-      spectrumSmoothingPercent: 25,
+      spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
       spectrumXMinFreq: 20,
       spectrumXMaxFreq: 20000,
@@ -323,8 +323,8 @@ describe("spectrumPeakHold normalization", () => {
 
 describe("spectrum display controls normalization", () => {
   it("defaults to the current display behavior", () => {
-    expect(normalizePanelControls({}).spectrumSmoothingPercent).toBe(25);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent).toBe(25);
+    expect(normalizePanelControls({}).spectrumSpeedPercent).toBe(25);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent).toBe(25);
     expect(normalizePanelControls({}).spectrumTiltDbPerOctave).toBe(3);
     expect(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave).toBe(3);
     expect(normalizePanelControls({}).spectrumYMaxDb).toBe(-12);
@@ -341,19 +341,22 @@ describe("spectrum display controls normalization", () => {
     expect(normalizePanelControls({}).levelMeterYMaxDb).toBe(3);
   });
 
-  it("clamps smoothing to 0..100 percent", () => {
-    expect(normalizePanelControls({ spectrumSmoothingPercent: -1 }).spectrumSmoothingPercent).toBe(
-      0
-    );
-    expect(normalizePanelControls({ spectrumSmoothingPercent: 101 }).spectrumSmoothingPercent).toBe(
-      100
-    );
-    expect(normalizePanelControls({ spectrumSmoothingPercent: 42 }).spectrumSmoothingPercent).toBe(
-      42
-    );
+  it("reads spectrumSpeedPercent from presets written under the old smoothing key", () => {
+    expect(normalizePanelControls({ spectrumSmoothingPercent: 80 }).spectrumSpeedPercent).toBe(80);
+    // A stored 0 must survive: `??` falls through only on null/undefined, never on a falsy 0.
+    expect(normalizePanelControls({ spectrumSmoothingPercent: 0 }).spectrumSpeedPercent).toBe(0);
+    // The new key wins when a preset somehow carries both.
     expect(
-      normalizePanelControls({ spectrumSmoothingPercent: "75" }).spectrumSmoothingPercent
-    ).toBe(25);
+      normalizePanelControls({ spectrumSpeedPercent: 10, spectrumSmoothingPercent: 90 })
+        .spectrumSpeedPercent
+    ).toBe(10);
+  });
+
+  it("clamps speed to 0..100 percent", () => {
+    expect(normalizePanelControls({ spectrumSpeedPercent: -1 }).spectrumSpeedPercent).toBe(0);
+    expect(normalizePanelControls({ spectrumSpeedPercent: 101 }).spectrumSpeedPercent).toBe(100);
+    expect(normalizePanelControls({ spectrumSpeedPercent: 42 }).spectrumSpeedPercent).toBe(42);
+    expect(normalizePanelControls({ spectrumSpeedPercent: "75" }).spectrumSpeedPercent).toBe(25);
   });
 
   it("clamps tilt to 0..6 dB per octave", () => {

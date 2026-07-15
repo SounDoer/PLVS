@@ -818,20 +818,20 @@ describe("PanelSettingsContent", () => {
     );
 
     const peak = screen.getByText("Peak hold");
-    const smoothing = screen.getByText("Smoothing");
+    const speed = screen.getByText("Speed");
     const tilt = screen.getByText("Tilt");
     const xRange = screen.getByText("X range");
     const yRange = screen.getByText("Y range");
-    expect(peak.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(smoothing.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(peak.compareDocumentPosition(speed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(speed.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(tilt.compareDocumentPosition(xRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(xRange.compareDocumentPosition(yRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const smoothingSlider = screen.getByLabelText("spectrum smoothing");
+    const speedSlider = screen.getByLabelText("spectrum speed");
     const tiltSlider = screen.getByLabelText("spectrum tilt");
-    expect(smoothingSlider).toBeTruthy();
+    expect(speedSlider).toBeTruthy();
     expect(tiltSlider).toBeTruthy();
-    expect(smoothingSlider.classList.contains("plvs-range")).toBe(true);
-    expect(smoothingSlider.style.getPropertyValue("--range-pct")).toBe("25%");
+    expect(speedSlider.classList.contains("plvs-range")).toBe(true);
+    expect(speedSlider.style.getPropertyValue("--range-pct")).toBe("25%");
     expect(tiltSlider.classList.contains("plvs-range")).toBe(true);
     expect(tiltSlider.style.getPropertyValue("--range-pct")).toBe("50%");
     expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
@@ -845,7 +845,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("4.50 dB/oct")).toBeNull();
     expect(screen.queryByText("-12 dB")).toBeNull();
     expect(screen.queryByText("-96 dB")).toBeNull();
-    expect(screen.queryByText("Smoothing: 50%")).toBeNull();
+    expect(screen.queryByText("Speed: 50%")).toBeNull();
     expect(screen.queryByText("Tilt: 4.50 dB/oct")).toBeNull();
   });
 
@@ -865,11 +865,11 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    const smoothing = screen.getByLabelText("spectrum smoothing");
-    fireEvent.mouseEnter(smoothing);
+    const speed = screen.getByLabelText("spectrum speed");
+    fireEvent.mouseEnter(speed);
     expect(screen.getByText("25%")).toBeTruthy();
-    expect(screen.queryByText("Smoothing: 25%")).toBeNull();
-    fireEvent.mouseLeave(smoothing);
+    expect(screen.queryByText("Speed: 25%")).toBeNull();
+    fireEvent.mouseLeave(speed);
     expect(screen.queryByText("25%")).toBeNull();
 
     const tilt = screen.getByLabelText("spectrum tilt");
@@ -898,13 +898,13 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    const smoothing = screen.getByLabelText("spectrum smoothing");
-    fireEvent.change(smoothing, { target: { value: "42" } });
+    const speed = screen.getByLabelText("spectrum speed");
+    fireEvent.change(speed, { target: { value: "42" } });
     expect(onPanelControlsChange).not.toHaveBeenCalled();
-    fireEvent.pointerUp(smoothing);
+    fireEvent.pointerUp(speed);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
-      spectrumSmoothingPercent: 42,
+      spectrumSpeedPercent: 42,
     });
 
     const tilt = screen.getByLabelText("spectrum tilt");
@@ -993,7 +993,7 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={onPanelControlsChange}
       />
     );
-    expect(screen.queryByLabelText("spectrum smoothing")).toBeNull();
+    expect(screen.queryByLabelText("spectrum speed")).toBeNull();
     expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
     expect(screen.queryByLabelText("spectrum x range max")).toBeNull();
     expect(screen.queryByLabelText("spectrum y range max")).toBeNull();

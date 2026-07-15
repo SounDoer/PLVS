@@ -153,24 +153,24 @@ pub fn parse_spectrum_view(s: &str) -> Result<crate::dsp::SpectrumView, String> 
 fn expected_spectrum_request_key(
   channel: &SpectrumAnalysisChannel,
   view: &str,
-  smoothing_percent: f64,
+  speed_percent: f64,
   tilt_db_per_octave: f64,
 ) -> Result<String, String> {
   parse_spectrum_view(view)?;
-  if !smoothing_percent.is_finite() || !(0.0..=100.0).contains(&smoothing_percent) {
-    return Err("spectrum smoothingPercent must be finite and between 0 and 100".to_string());
+  if !speed_percent.is_finite() || !(0.0..=100.0).contains(&speed_percent) {
+    return Err("spectrum speedPercent must be finite and between 0 and 100".to_string());
   }
   if !tilt_db_per_octave.is_finite() || !(0.0..=6.0).contains(&tilt_db_per_octave) {
     return Err("spectrum tiltDbPerOctave must be finite and between 0 and 6".to_string());
   }
-  let smoothing = smoothing_percent.round() as i64;
+  let speed = speed_percent.round() as i64;
   let tilt_centidb = (tilt_db_per_octave * 100.0).round() as i64;
   Ok(match channel {
     SpectrumAnalysisChannel::Pair { x, y } => {
-      format!("spectrum:pair:{x}:{y}:{view}:sm{smoothing}:tilt{tilt_centidb}")
+      format!("spectrum:pair:{x}:{y}:{view}:sp{speed}:tilt{tilt_centidb}")
     }
     SpectrumAnalysisChannel::Single { ch } => {
-      format!("spectrum:single:{ch}:combined:sm{smoothing}:tilt{tilt_centidb}")
+      format!("spectrum:single:{ch}:combined:sp{speed}:tilt{tilt_centidb}")
     }
   })
 }
@@ -202,7 +202,7 @@ fn validate_analysis_requests(requests: &AnalysisRequests) -> Result<(), String>
     let expected = expected_spectrum_request_key(
       &request.channel,
       &request.view,
-      request.smoothing_percent,
+      request.speed_percent,
       request.tilt_db_per_octave,
     )?;
     if request.key != expected {
@@ -527,17 +527,17 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:pair:0:1:lr:sm50:tilt450".to_string(),
+          key: "spectrum:pair:0:1:lr:sp50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
           view: "lr".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:2:combined:sm25:tilt125".to_string(),
+          key: "spectrum:single:2:combined:sp25:tilt125".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 2 },
           view: "combined".to_string(),
-          smoothing_percent: 25.0,
+          speed_percent: 25.0,
           tilt_db_per_octave: 1.25,
         },
       ],
@@ -554,10 +554,10 @@ mod tests {
   fn analysis_requests_validation_rejects_mismatched_keys() {
     let requests = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:pair:0:1:combined:sm50:tilt450".to_string(),
+        key: "spectrum:pair:0:1:combined:sp50:tilt450".to_string(),
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
         view: "ms".to_string(),
-        smoothing_percent: 50.0,
+        speed_percent: 50.0,
         tilt_db_per_octave: 4.5,
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -574,10 +574,10 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: (0..=super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
         .map(|idx| SpectrumAnalysisRequest {
-          key: format!("spectrum:single:{idx}:combined:sm50:tilt450"),
+          key: format!("spectrum:single:{idx}:combined:sp50:tilt450"),
           channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
           view: "combined".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
         })
         .collect(),
@@ -600,7 +600,7 @@ mod tests {
     for entry in fixture["spectrum"].as_array().expect("spectrum array") {
       let key = entry["key"].as_str().unwrap().to_string();
       let view = entry["view"].as_str().unwrap().to_string();
-      let smoothing_percent = entry["smoothingPercent"].as_f64().unwrap();
+      let speed_percent = entry["speedPercent"].as_f64().unwrap();
       let tilt_db_per_octave = entry["tiltDbPerOctave"].as_f64().unwrap();
       let channel = if entry["type"] == "single" {
         SpectrumAnalysisChannel::Single {
@@ -617,7 +617,7 @@ mod tests {
           key,
           channel,
           view,
-          smoothing_percent,
+          speed_percent,
           tilt_db_per_octave,
         }],
         vectorscope: vec![],

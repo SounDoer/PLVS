@@ -7,10 +7,10 @@ export const MAX_VECTORSCOPE_REQUESTS = 4;
 
 function spectrumDisplayControlsFromControls(panelControls) {
   const controls = normalizePanelControls(panelControls);
-  const smoothingPercent = Math.round(controls.spectrumSmoothingPercent);
+  const speedPercent = Math.round(controls.spectrumSpeedPercent);
   const tiltDbPerOctave = Math.round(controls.spectrumTiltDbPerOctave * 100) / 100;
   const tiltCentidb = Math.round(tiltDbPerOctave * 100);
-  return { smoothingPercent, tiltDbPerOctave, tiltCentidb };
+  return { speedPercent, tiltDbPerOctave, tiltCentidb };
 }
 
 function collectPanelIdsFromTree(node, panelsById, out = []) {
@@ -30,7 +30,7 @@ export function spectrumRequestKeyFromControls(panelControls) {
   const view = controls.spectrumView ?? "combined";
   const sel = controls.spectrumChannel;
   const display = spectrumDisplayControlsFromControls(controls);
-  const suffix = `sm${display.smoothingPercent}:tilt${display.tiltCentidb}`;
+  const suffix = `sp${display.speedPercent}:tilt${display.tiltCentidb}`;
   if (sel?.type === "single") return `spectrum:single:${sel.ch}:combined:${suffix}`;
   return `spectrum:pair:${sel?.x ?? 0}:${sel?.y ?? 1}:${view}:${suffix}`;
 }
@@ -77,7 +77,7 @@ export function deriveAnalysisRequests(state) {
       pushRequest(spectrumByKey, key, panelId, {
         channel: controls.spectrumChannel,
         view: controls.spectrumChannel?.type === "single" ? "combined" : controls.spectrumView,
-        smoothingPercent: display.smoothingPercent,
+        speedPercent: display.speedPercent,
         tiltDbPerOctave: display.tiltDbPerOctave,
       });
       statusByPanelId[panelId] = "active";

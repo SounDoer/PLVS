@@ -242,7 +242,7 @@ impl MultiResBank {
     }
   }
 
-  pub fn analysis_average_sec_for_smoothing_percent(percent: f64) -> f64 {
+  pub fn analysis_average_sec_for_speed_percent(percent: f64) -> f64 {
     let p = percent.clamp(0.0, 100.0);
     if p <= 0.0 {
       0.0
@@ -367,15 +367,14 @@ mod tests {
   }
 
   #[test]
-  fn analysis_average_scales_across_full_smoothing_range() {
+  fn analysis_average_scales_across_full_speed_range() {
     assert_eq!(
-      MultiResBank::analysis_average_sec_for_smoothing_percent(0.0),
+      MultiResBank::analysis_average_sec_for_speed_percent(0.0),
       0.0
     );
-    assert!((MultiResBank::analysis_average_sec_for_smoothing_percent(50.0) - 0.075).abs() < 1e-9);
+    assert!((MultiResBank::analysis_average_sec_for_speed_percent(50.0) - 0.075).abs() < 1e-9);
     assert!(
-      (MultiResBank::analysis_average_sec_for_smoothing_percent(100.0) - ANALYSIS_AVERAGE_SEC)
-        .abs()
+      (MultiResBank::analysis_average_sec_for_speed_percent(100.0) - ANALYSIS_AVERAGE_SEC).abs()
         < 1e-9
     );
   }

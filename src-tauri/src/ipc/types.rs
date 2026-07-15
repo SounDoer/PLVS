@@ -21,7 +21,7 @@ pub struct SpectrumAnalysisRequest {
   pub key: String,
   pub channel: SpectrumAnalysisChannel,
   pub view: String,
-  pub smoothing_percent: f64,
+  pub speed_percent: f64,
   pub tilt_db_per_octave: f64,
 }
 

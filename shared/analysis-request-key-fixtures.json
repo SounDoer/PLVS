@@ -1,40 +1,40 @@
 {
-  "_comment": "Single source of truth for analysis request-key string format. Consumed by both the JS deriver test (src/analysis/analysisRequestKeyFormat.test.js) and the Rust validator test (src-tauri/src/ipc/commands.rs). Changing the key grammar on either side without updating this file fails one of those tests. Format: spectrum pair = spectrum:pair:<x>:<y>:<view>:sm<smoothingPercent>:tilt<tiltCentidb> (view in combined|lr|ms); spectrum single = spectrum:single:<ch>:combined:sm<smoothingPercent>:tilt<tiltCentidb> (view always forced to combined); vectorscope = vectorscope:pair:<x>:<y>.",
+  "_comment": "Single source of truth for analysis request-key string format. Consumed by both the JS deriver test (src/analysis/analysisRequestKeyFormat.test.js) and the Rust validator test (src-tauri/src/ipc/commands.rs). Changing the key grammar on either side without updating this file fails one of those tests. Format: spectrum pair = spectrum:pair:<x>:<y>:<view>:sp<speedPercent>:tilt<tiltCentidb> (view in combined|lr|ms); spectrum single = spectrum:single:<ch>:combined:sp<speedPercent>:tilt<tiltCentidb> (view always forced to combined); vectorscope = vectorscope:pair:<x>:<y>.",
   "spectrum": [
     {
       "type": "pair",
       "x": 0,
       "y": 1,
       "view": "combined",
-      "smoothingPercent": 50,
+      "speedPercent": 50,
       "tiltDbPerOctave": 4.5,
-      "key": "spectrum:pair:0:1:combined:sm50:tilt450"
+      "key": "spectrum:pair:0:1:combined:sp50:tilt450"
     },
     {
       "type": "pair",
       "x": 0,
       "y": 1,
       "view": "lr",
-      "smoothingPercent": 25,
+      "speedPercent": 25,
       "tiltDbPerOctave": 1.25,
-      "key": "spectrum:pair:0:1:lr:sm25:tilt125"
+      "key": "spectrum:pair:0:1:lr:sp25:tilt125"
     },
     {
       "type": "pair",
       "x": 4,
       "y": 5,
       "view": "ms",
-      "smoothingPercent": 100,
+      "speedPercent": 100,
       "tiltDbPerOctave": 6,
-      "key": "spectrum:pair:4:5:ms:sm100:tilt600"
+      "key": "spectrum:pair:4:5:ms:sp100:tilt600"
     },
     {
       "type": "single",
       "ch": 2,
       "view": "combined",
-      "smoothingPercent": 0,
+      "speedPercent": 0,
       "tiltDbPerOctave": 0,
-      "key": "spectrum:single:2:combined:sm0:tilt0"
+      "key": "spectrum:single:2:combined:sp0:tilt0"
     }
   ],
   "vectorscope": [

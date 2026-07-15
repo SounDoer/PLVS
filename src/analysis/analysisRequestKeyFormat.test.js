@@ -17,7 +17,7 @@ describe("analysis request key format (shared fixture)", () => {
     const key = spectrumRequestKeyFromControls({
       spectrumChannel,
       spectrumView: entry.view,
-      spectrumSmoothingPercent: entry.smoothingPercent,
+      spectrumSpeedPercent: entry.speedPercent,
       spectrumTiltDbPerOctave: entry.tiltDbPerOctave,
     });
     expect(key).toBe(entry.key);

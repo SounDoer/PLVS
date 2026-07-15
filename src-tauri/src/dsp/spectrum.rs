@@ -1,7 +1,10 @@
 //! **Multi-resolution spectrum display** driven by `MultiResBank` (three windowed FFTs blended
-//! at crossover frequencies). Per grid-point: weighting, 4.5 dB/oct slope tilt (pivoted at 1 kHz),
+//! at crossover frequencies). Per grid-point: weighting, a user-set slope tilt (pivoted at 1 kHz),
 //! attack/release envelope, and peak-hold. No octave smoothing — peaks stay sharp; time stability
 //! comes from the bank's power averaging.
+//!
+//! "Speed" is the user-facing name for the temporal controls here — attack/release plus the
+//! bank's analysis average. It is not frequency-axis smoothing, which this display does not do.
 //!
 //! Levels are **noise-referenced**: the bank emits PSD (power/Hz), so broadband material reads
 //! continuous across the crossovers. That is the property the display is calibrated for and the
@@ -151,7 +154,7 @@ impl SpectrumMeter {
       // `DEFAULT_PANEL_CONTROLS` in `src/lib/panelControls.js`; kept in step with it so reading
       // this line does not mislead. Nothing enforces that — check the JS side before trusting it.
       tilt_db_per_octave: 3.0,
-      analysis_average_sec: MultiResBank::analysis_average_sec_for_smoothing_percent(50.0),
+      analysis_average_sec: MultiResBank::analysis_average_sec_for_speed_percent(50.0),
       min_hz,
       max_hz,
       cached_centers: Vec::new(),
@@ -167,7 +170,7 @@ impl SpectrumMeter {
     }
   }
 
-  pub fn smoothing_times_ms_for_percent(percent: f64) -> (f64, f64) {
+  pub fn attack_release_ms_for_speed_percent(percent: f64) -> (f64, f64) {
     let p = percent.clamp(0.0, 100.0);
     if p <= 0.0 {
       return (0.0, 0.0);
@@ -179,10 +182,9 @@ impl SpectrumMeter {
     (attack_ms, release_ms)
   }
 
-  pub fn set_display_controls(&mut self, smoothing_percent: f64, tilt_db_per_octave: f64) {
-    let (attack_ms, release_ms) = Self::smoothing_times_ms_for_percent(smoothing_percent);
-    let analysis_average_sec =
-      MultiResBank::analysis_average_sec_for_smoothing_percent(smoothing_percent);
+  pub fn set_display_controls(&mut self, speed_percent: f64, tilt_db_per_octave: f64) {
+    let (attack_ms, release_ms) = Self::attack_release_ms_for_speed_percent(speed_percent);
+    let analysis_average_sec = MultiResBank::analysis_average_sec_for_speed_percent(speed_percent);
     self.attack_ms = attack_ms;
     self.release_ms = release_ms;
     self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
@@ -754,28 +756,28 @@ mod tests {
   }
 
   #[test]
-  fn smoothing_percent_50_matches_current_attack_release() {
-    let (attack_ms, release_ms) = SpectrumMeter::smoothing_times_ms_for_percent(50.0);
+  fn speed_percent_50_matches_current_attack_release() {
+    let (attack_ms, release_ms) = SpectrumMeter::attack_release_ms_for_speed_percent(50.0);
     assert!(
       (attack_ms - 30.0).abs() < 0.1,
-      "50% smoothing should preserve current 30ms attack, got {attack_ms}"
+      "50% speed should preserve current 30ms attack, got {attack_ms}"
     );
     assert!(
       (release_ms - 150.0).abs() < 0.1,
-      "50% smoothing should preserve current 150ms release, got {release_ms}"
+      "50% speed should preserve current 150ms release, got {release_ms}"
     );
   }
 
   #[test]
-  fn smoothing_percent_100_is_extra_slow() {
-    let (attack_ms, release_ms) = SpectrumMeter::smoothing_times_ms_for_percent(100.0);
+  fn speed_percent_100_is_extra_slow() {
+    let (attack_ms, release_ms) = SpectrumMeter::attack_release_ms_for_speed_percent(100.0);
     assert!(
       (attack_ms - 400.0).abs() < 1.0,
-      "100% smoothing should use about 400ms attack, got {attack_ms}"
+      "100% speed should use about 400ms attack, got {attack_ms}"
     );
     assert!(
       (release_ms - 2000.0).abs() < 1.0,
-      "100% smoothing should use about 2000ms release, got {release_ms}"
+      "100% speed should use about 2000ms release, got {release_ms}"
     );
   }
 
@@ -815,7 +817,7 @@ mod tests {
   }
 
   #[test]
-  fn zero_smoothing_bypasses_hidden_analysis_average() {
+  fn zero_speed_bypasses_hidden_analysis_average() {
     let sr = 48000.0;
     let hz = 8000.0;
     let mut m = SpectrumMeter::new(sr);
@@ -855,7 +857,7 @@ mod tests {
 
     assert!(
       after_db < steady_db - 20.0,
-      "0% smoothing should not retain a hidden analysis average: steady={steady_db}, after={after_db}"
+      "0% speed should not retain a hidden analysis average: steady={steady_db}, after={after_db}"
     );
   }
 

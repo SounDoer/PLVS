@@ -365,7 +365,7 @@ impl MeterPipeline {
         .spectrum_by_key
         .entry(request.key.clone())
         .or_insert_with(|| SpectrumMeter::new(self.sample_rate));
-      meter.set_display_controls(request.smoothing_percent, request.tilt_db_per_octave);
+      meter.set_display_controls(request.speed_percent, request.tilt_db_per_octave);
       let ctx = PcmContext {
         interleaved,
         channels: ch,
@@ -1215,14 +1215,14 @@ mod tests {
     let mut pipeline = MeterPipeline::new(sr, channels);
     let pcm_lr = tone_on_channel(4096 * 8, channels as usize, sr as f64, 1000.0, 0);
     let pcm_c_short = tone_on_channel(256, channels as usize, sr as f64, 500.0, 2);
-    let lr_key = "spectrum:pair:0:1:combined:sm50:tilt450".to_string();
-    let c_key = "spectrum:single:2:combined:sm50:tilt450".to_string();
+    let lr_key = "spectrum:pair:0:1:combined:sp50:tilt450".to_string();
+    let c_key = "spectrum:single:2:combined:sp50:tilt450".to_string();
     let requests_lr = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
         key: lr_key.clone(),
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
         view: "combined".to_string(),
-        smoothing_percent: 50.0,
+        speed_percent: 50.0,
         tilt_db_per_octave: 4.5,
       }],
       vectorscope: vec![],
@@ -1232,7 +1232,7 @@ mod tests {
         key: c_key.clone(),
         channel: SpectrumAnalysisChannel::Single { ch: 2 },
         view: "combined".to_string(),
-        smoothing_percent: 50.0,
+        speed_percent: 50.0,
         tilt_db_per_octave: 4.5,
       }],
       vectorscope: vec![],
@@ -1353,10 +1353,10 @@ mod tests {
     let pcm = tone_on_channel(frames, channels as usize, sr as f64, 1000.0, 0);
     let requests_a = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
+        key: "spectrum:single:0:combined:sp50:tilt450".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
         view: "combined".to_string(),
-        smoothing_percent: 50.0,
+        speed_percent: 50.0,
         tilt_db_per_octave: 4.5,
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -1367,10 +1367,10 @@ mod tests {
     };
     let requests_b = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:single:0:combined:sm25:tilt450".to_string(),
+        key: "spectrum:single:0:combined:sp25:tilt450".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
         view: "combined".to_string(),
-        smoothing_percent: 25.0,
+        speed_percent: 25.0,
         tilt_db_per_octave: 4.5,
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -1390,7 +1390,7 @@ mod tests {
     );
     assert!(pipeline
       .spectrum_by_key
-      .contains_key("spectrum:single:0:combined:sm50:tilt450"));
+      .contains_key("spectrum:single:0:combined:sp50:tilt450"));
     assert!(pipeline
       .vectorscope_by_key
       .contains_key("vectorscope:pair:0:1"));
@@ -1407,10 +1407,10 @@ mod tests {
     assert_eq!(pipeline.spectrum_by_key.len(), 1);
     assert!(pipeline
       .spectrum_by_key
-      .contains_key("spectrum:single:0:combined:sm25:tilt450"));
+      .contains_key("spectrum:single:0:combined:sp25:tilt450"));
     assert!(!pipeline
       .spectrum_by_key
-      .contains_key("spectrum:single:0:combined:sm50:tilt450"));
+      .contains_key("spectrum:single:0:combined:sp50:tilt450"));
     assert_eq!(pipeline.vectorscope_by_key.len(), 1);
     assert!(pipeline
       .vectorscope_by_key
@@ -1436,17 +1436,17 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
+          key: "spectrum:single:0:combined:sp50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 0 },
           view: "combined".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:1:combined:sm50:tilt450".to_string(),
+          key: "spectrum:single:1:combined:sp50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 1 },
           view: "combined".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
         },
       ],
@@ -1482,11 +1482,11 @@ mod tests {
     assert_eq!(frame.vectorscope_results_by_key.len(), 2);
     assert!(frame
       .spectrum_results_by_key
-      .get("spectrum:single:0:combined:sm50:tilt450")
+      .get("spectrum:single:0:combined:sp50:tilt450")
       .is_some_and(|result| !result.smooth_db.is_empty()));
     assert!(frame
       .spectrum_results_by_key
-      .get("spectrum:single:1:combined:sm50:tilt450")
+      .get("spectrum:single:1:combined:sp50:tilt450")
       .is_some_and(|result| !result.smooth_db.is_empty()));
     assert!(frame
       .vectorscope_results_by_key
@@ -1514,17 +1514,17 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
+          key: "spectrum:single:0:combined:sp50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 0 },
           view: "combined".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:1:combined:sm50:tilt450".to_string(),
+          key: "spectrum:single:1:combined:sp50:tilt450".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 1 },
           view: "combined".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
         },
       ],
@@ -1555,11 +1555,11 @@ mod tests {
     assert_eq!(visual.spectrum_by_key.len(), 2);
     assert!(visual
       .spectrum_by_key
-      .get("spectrum:single:0:combined:sm50:tilt450")
+      .get("spectrum:single:0:combined:sp50:tilt450")
       .is_some_and(|entry| !entry.smooth_db.is_empty()));
     assert!(visual
       .spectrum_by_key
-      .get("spectrum:single:1:combined:sm50:tilt450")
+      .get("spectrum:single:1:combined:sp50:tilt450")
       .is_some_and(|entry| !entry.smooth_db.is_empty()));
     assert_eq!(visual.vectorscope_by_key.len(), 1);
     assert!(visual
@@ -1593,10 +1593,10 @@ mod tests {
     let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
     let requests = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:single:0:combined:sm50:tilt450".to_string(),
+        key: "spectrum:single:0:combined:sp50:tilt450".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
         view: "combined".to_string(),
-        smoothing_percent: 50.0,
+        speed_percent: 50.0,
         tilt_db_per_octave: 4.5,
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -1613,7 +1613,7 @@ mod tests {
       for entry in &frame.visual_hist_batch {
         if entry
           .spectrum_by_key
-          .get("spectrum:single:0:combined:sm50:tilt450")
+          .get("spectrum:single:0:combined:sp50:tilt450")
           .is_some_and(|e| !e.smooth_db.is_empty())
         {
           *sp += 1;
