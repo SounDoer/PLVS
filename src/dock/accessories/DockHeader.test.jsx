@@ -18,7 +18,7 @@ const STATE = {
 };
 
 describe("DockHeader", () => {
-  it("keeps transport left and the Dock tools in their established order", () => {
+  it("centers transport and Dock tools as one compact group", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     render(<DockHeader state={STATE} onAction={vi.fn()} onPointer={vi.fn()} />);
     const names = screen.getAllByRole("button").map((button) => button.getAttribute("aria-label"));
@@ -31,6 +31,8 @@ describe("DockHeader", () => {
       "Restore window",
       "Presets",
     ]);
+    expect(screen.getByTestId("dock-header").className).toContain("justify-center");
+    expect(screen.getByTestId("dock-header-controls").className).toContain("max-w-full");
   });
 
   it("emits semantic actions and pointer presence", () => {
@@ -38,10 +40,15 @@ describe("DockHeader", () => {
     const onPointer = vi.fn();
     render(<DockHeader state={STATE} onAction={onAction} onPointer={onPointer} />);
     fireEvent.pointerEnter(screen.getByTestId("dock-header"));
-    fireEvent.click(screen.getByRole("button", { name: "Edit modules" }));
+    const modulesButton = screen.getByRole("button", { name: "Edit modules" });
+    vi.spyOn(modulesButton, "getBoundingClientRect").mockReturnValue({
+      left: 320,
+      width: 24,
+    });
+    fireEvent.click(modulesButton);
     fireEvent.pointerLeave(screen.getByTestId("dock-header"));
     expect(onPointer.mock.calls).toEqual([[true], [false]]);
-    expect(onAction).toHaveBeenCalledWith("open-editor", { view: "modules" });
+    expect(onAction).toHaveBeenCalledWith("open-editor", { view: "modules", anchorX: 332 });
   });
 
   it("closes an editor when its active toolbar button is clicked again", () => {
@@ -71,7 +78,7 @@ describe("DockHeader", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Presets" }));
 
-    expect(onAction).toHaveBeenCalledWith("open-editor", { view: "presets" });
+    expect(onAction).toHaveBeenCalledWith("open-editor", { view: "presets", anchorX: 0 });
   });
 
   it("emits a reserve toggle instead of a stale target value", () => {

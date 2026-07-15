@@ -44,6 +44,7 @@ export function useDockAccessoryVisibility({
   const [headerVisible, setHeaderVisible] = useState(false);
   const [editorView, setEditorView] = useState(null);
   const [editorSize, setEditorSize] = useState(() => initialEditorSize(null));
+  const [editorAnchorX, setEditorAnchorX] = useState(null);
   const [measuredEditorView, setMeasuredEditorView] = useState(null);
   const editorViewRef = useRef(null);
   const measuredEditorViewRef = useRef(null);
@@ -55,7 +56,7 @@ export function useDockAccessoryVisibility({
     if (inside) setHeaderVisible(true);
   }, []);
 
-  const openEditor = useCallback((view) => {
+  const openEditor = useCallback((view, anchorX) => {
     const hasVisibleEditor =
       editorViewRef.current !== null && measuredEditorViewRef.current === editorViewRef.current;
     if (!hasVisibleEditor) {
@@ -64,6 +65,7 @@ export function useDockAccessoryVisibility({
       setMeasuredEditorView(null);
     }
     editorViewRef.current = view;
+    if (Number.isFinite(anchorX)) setEditorAnchorX(anchorX);
     setEditorView(view);
     setHeaderVisible(true);
   }, []);
@@ -97,6 +99,7 @@ export function useDockAccessoryVisibility({
         setMeasuredEditorView(null);
         setHeaderVisible(false);
         setEditorView(null);
+        setEditorAnchorX(null);
         setPresence({ stripInside: false, headerInside: false });
       }, 0);
       return () => clearTimeout(resetTimer);
@@ -127,6 +130,7 @@ export function useDockAccessoryVisibility({
           editorVisible: active && editorView !== null && measuredEditorView !== null,
           editorWidth: editorSize.width,
           editorHeight: editorSize.height,
+          editorAnchorX,
         })
       );
     void commandQueueRef.current.catch((error) => {
@@ -136,6 +140,7 @@ export function useDockAccessoryVisibility({
     active,
     edge,
     editorSize,
+    editorAnchorX,
     editorView,
     geometryVersion,
     headerVisible,

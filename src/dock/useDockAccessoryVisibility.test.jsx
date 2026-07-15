@@ -68,7 +68,7 @@ describe("useDockAccessoryVisibility", () => {
     const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
 
     act(() => result.current.openEditor("modules"));
-    act(() => result.current.openEditor("presets"));
+    act(() => result.current.openEditor("presets", 480));
     act(() => result.current.closeEditor("modules"));
 
     expect(result.current.editorView).toBe("presets");
@@ -120,14 +120,14 @@ describe("useDockAccessoryVisibility", () => {
 
   it("keeps the editor hidden until its intrinsic dimensions are measured", async () => {
     const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
-    act(() => result.current.openEditor("presets"));
+    act(() => result.current.openEditor("presets", 480));
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
 
     expect(setDockAccessories).toHaveBeenLastCalledWith(
-      expect.objectContaining({ editorVisible: false })
+      expect.objectContaining({ editorVisible: false, editorAnchorX: 480 })
     );
 
     act(() => result.current.resizeEditor({ view: "presets", width: 238.2, height: 146.4 }));
@@ -141,6 +141,7 @@ describe("useDockAccessoryVisibility", () => {
         editorVisible: true,
         editorWidth: 239,
         editorHeight: 147,
+        editorAnchorX: 480,
       })
     );
   });

@@ -133,6 +133,7 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
   editor_visible: bool,
   editor_width: f64,
   editor_height: f64,
+  editor_anchor_x: Option<f64>,
 ) -> Result<(), String> {
   let app = window.app_handle();
   let main = app
@@ -147,7 +148,15 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     return Err("dock editor window unavailable".to_string());
   }
   let (monitor, strip, scale) = main_geometry(&main)?;
-  let rects = dock_accessory_rects(monitor, strip, edge, scale, editor_width, editor_height);
+  let rects = dock_accessory_rects(
+    monitor,
+    strip,
+    edge,
+    scale,
+    editor_width,
+    editor_height,
+    editor_anchor_x,
+  );
 
   if let Some(header) = header {
     set_rect(&header, rects.header)?;

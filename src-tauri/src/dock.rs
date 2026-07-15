@@ -91,6 +91,7 @@ pub fn dock_accessory_rects(
   scale: f64,
   editor_logical_width: f64,
   editor_logical_height: f64,
+  editor_anchor_logical_x: Option<f64>,
 ) -> DockAccessoryRects {
   let header_height = scaled_px(DOCK_HEADER_LOGICAL_HEIGHT, scale).min(monitor.height);
   let requested_editor_width =
@@ -130,7 +131,11 @@ pub fn dock_accessory_rects(
         .saturating_sub((inset.max(0) as u32).saturating_mul(2)),
     )
     .max(1);
-  let editor_x = (header.x + header.width as i32 - inset - editor_width as i32).clamp(
+  let editor_anchor_x = editor_anchor_logical_x
+    .filter(|value| value.is_finite())
+    .map(|value| header.x + (value * scale.max(0.1)).round() as i32)
+    .unwrap_or(header.x + header.width as i32 / 2);
+  let editor_x = (editor_anchor_x - editor_width as i32 / 2).clamp(
     monitor.x,
     monitor.x + monitor.width.saturating_sub(editor_width) as i32,
   );
@@ -605,9 +610,17 @@ mod tests {
   }
 
   #[test]
-  fn bottom_accessories_open_above_the_strip_and_align_right() {
+  fn bottom_accessories_open_above_the_strip_and_anchor_editor() {
     let strip = dock_strip_rect(wa(), DockEdge::Bottom, 72);
-    let rects = dock_accessory_rects(wa(), strip, DockEdge::Bottom, 1.0, 400.0, 480.0);
+    let rects = dock_accessory_rects(
+      wa(),
+      strip,
+      DockEdge::Bottom,
+      1.0,
+      400.0,
+      480.0,
+      Some(1200.0),
+    );
     assert_eq!(
       (
         rects.header.x,
@@ -624,20 +637,20 @@ mod tests {
         rects.editor.width,
         rects.editor.height
       ),
-      (1920 - 8 - 400, 1040 - 72 - 44 - 480, 400, 480)
+      (1200 - 400 / 2, 1040 - 72 - 44 - 480, 400, 480)
     );
   }
 
   #[test]
   fn top_accessories_open_below_the_strip_at_scaled_size() {
     let strip = dock_strip_rect(wa(), DockEdge::Top, 108);
-    let rects = dock_accessory_rects(wa(), strip, DockEdge::Top, 1.5, 400.0, 300.0);
+    let rects = dock_accessory_rects(wa(), strip, DockEdge::Top, 1.5, 400.0, 300.0, Some(1000.0));
     assert_eq!((rects.header.y, rects.header.height), (108, 66));
     assert_eq!(
       (rects.editor.y, rects.editor.width, rects.editor.height),
       (174, 600, 450)
     );
-    assert_eq!(rects.editor.x, 1920 - 12 - 600);
+    assert_eq!(rects.editor.x, 1500 - 600 / 2);
   }
 
   #[test]
@@ -649,9 +662,17 @@ mod tests {
       height: 1400,
     };
     let strip = dock_strip_rect(monitor, DockEdge::Top, 72);
-    let rects = dock_accessory_rects(monitor, strip, DockEdge::Top, 1.0, 400.0, 400.0);
+    let rects = dock_accessory_rects(
+      monitor,
+      strip,
+      DockEdge::Top,
+      1.0,
+      400.0,
+      400.0,
+      Some(600.0),
+    );
     assert_eq!((rects.header.x, rects.header.y), (-2560, -128));
-    assert_eq!(rects.editor.x, -408);
+    assert_eq!(rects.editor.x, -2560 + 600 - 400 / 2);
     assert_eq!(rects.editor.y, -84);
   }
 
@@ -664,7 +685,15 @@ mod tests {
       height: 240,
     };
     let strip = dock_strip_rect(monitor, DockEdge::Bottom, 72);
-    let rects = dock_accessory_rects(monitor, strip, DockEdge::Bottom, 1.0, 400.0, 640.0);
+    let rects = dock_accessory_rects(
+      monitor,
+      strip,
+      DockEdge::Bottom,
+      1.0,
+      400.0,
+      640.0,
+      Some(160.0),
+    );
     assert_eq!((rects.header.y, rects.header.height), (144, 44));
     assert_eq!((rects.editor.x, rects.editor.y), (18, 20));
     assert_eq!((rects.editor.width, rects.editor.height), (304, 124));

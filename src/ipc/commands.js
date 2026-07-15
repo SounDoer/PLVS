@@ -94,6 +94,7 @@ export function setDockAccessories({
   editorVisible = false,
   editorWidth = 400,
   editorHeight = 480,
+  editorAnchorX = null,
 }) {
   return invoke("set_dock_accessories", {
     edge,
@@ -101,6 +102,7 @@ export function setDockAccessories({
     editorVisible,
     editorWidth,
     editorHeight,
+    editorAnchorX,
   });
 }
 

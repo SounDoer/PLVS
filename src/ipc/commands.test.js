@@ -13,6 +13,7 @@ import {
   probeFileAnalysis,
   setDialogueGating,
   setDialogueVadEngine,
+  setDockAccessories,
   setDockHeight,
   setLoudnessWeights,
   startFileAnalysis,
@@ -78,5 +79,24 @@ describe("dock command seam", () => {
   it("passes logical height and persistence intent to Rust", async () => {
     await setDockHeight({ height: 108, persist: false });
     expect(invoke).toHaveBeenCalledWith("set_dock_height", { height: 108, persist: false });
+  });
+
+  it("passes the logical editor trigger anchor to Rust", async () => {
+    await setDockAccessories({
+      edge: "bottom",
+      headerVisible: true,
+      editorVisible: true,
+      editorWidth: 240,
+      editorHeight: 320,
+      editorAnchorX: 612.5,
+    });
+    expect(invoke).toHaveBeenCalledWith("set_dock_accessories", {
+      edge: "bottom",
+      headerVisible: true,
+      editorVisible: true,
+      editorWidth: 240,
+      editorHeight: 320,
+      editorAnchorX: 612.5,
+    });
   });
 });

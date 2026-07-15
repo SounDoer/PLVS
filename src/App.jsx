@@ -991,7 +991,7 @@ function AppContent() {
       else if (type === "clear") clearAll();
       else if (type === "open-editor") {
         setHoveredDockPanelId(null);
-        dockAccessoryVisibility.openEditor(payload.view);
+        dockAccessoryVisibility.openEditor(payload.view, payload.anchorX);
       } else if (type === "close-editor") {
         setHoveredDockPanelId(null);
         dockAccessoryVisibility.closeEditor(payload.view, payload.reason);
