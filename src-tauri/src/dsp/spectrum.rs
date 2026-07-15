@@ -145,7 +145,12 @@ impl SpectrumMeter {
       release_ms: 150.0,
       peak_hold_sec: 1.5,
       peak_decay_db_per_sec: 8.0,
-      tilt_db_per_octave: 4.5,
+      // Placeholder, not the product default. `meter_pipeline` calls `set_display_controls` on
+      // the line after it constructs a meter and again on every frame, so this value never
+      // reaches a rendered row. The default the user actually gets is owned by
+      // `DEFAULT_PANEL_CONTROLS` in `src/lib/panelControls.js`; kept in step with it so reading
+      // this line does not mislead. Nothing enforces that — check the JS side before trusting it.
+      tilt_db_per_octave: 3.0,
       analysis_average_sec: MultiResBank::analysis_average_sec_for_smoothing_percent(50.0),
       min_hz,
       max_hz,
@@ -736,11 +741,14 @@ mod tests {
         .unwrap();
       smooth[i]
     };
-    // White noise is flat in PSD; +4.5 dB/oct slope makes 10 kHz read clearly above 100 Hz.
+    // White noise is flat in PSD, so the constructed tilt is the only thing that can lift
+    // 10 kHz above 100 Hz. This is one of the few places the placeholder default is observable
+    // — nothing calls set_display_controls here — so keep the literal in step with it.
+    let default_tilt_db_per_oct = 3.0;
     let octaves = (10000.0_f64 / 100.0).log2();
     let delta = val_near(10000.0) - val_near(100.0);
     assert!(
-      delta > 4.5 * octaves * 0.6,
+      delta > default_tilt_db_per_oct * octaves * 0.6,
       "slope not applied: delta={delta}"
     );
   }
