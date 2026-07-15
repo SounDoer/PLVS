@@ -160,20 +160,52 @@ impl StftAnalyzer {
     self.average_initialized = true;
   }
 
-  /// Time-averaged PSD at an arbitrary frequency via linear interpolation between bins.
-  pub fn psd_at(&self, hz: f64) -> f64 {
-    if !self.average_initialized {
-      return 1e-20;
-    }
-    let bin_count = self.smoothed_psd.len();
+  /// Where one frequency reads from: the bins to interpolate and the fraction between them.
+  /// Fixed by size and sample rate, so it is resolved once and replayed every frame.
+  pub fn bin_tap(&self, hz: f64) -> BinTap {
+    let bin_count = self.size / 2 + 1; // matches `r2c.make_output_vec()`
     let pos = hz / self.bin_width_hz();
     let k0 = pos.floor().clamp(0.0, (bin_count - 1) as f64) as usize;
     let k1 = (k0 + 1).min(bin_count - 1);
     let frac = (pos - k0 as f64).clamp(0.0, 1.0);
-    let a = self.smoothed_psd[k0];
-    let b = self.smoothed_psd[k1];
-    (a * (1.0 - frac) + b * frac).max(1e-20)
+    BinTap { k0, k1, frac }
   }
+
+  /// Time-averaged PSD at a resolved tap.
+  pub fn psd_at_tap(&self, tap: BinTap) -> f64 {
+    if !self.average_initialized {
+      return 1e-20;
+    }
+    let a = self.smoothed_psd[tap.k0];
+    let b = self.smoothed_psd[tap.k1];
+    (a * (1.0 - tap.frac) + b * tap.frac).max(1e-20)
+  }
+
+  /// Time-averaged PSD at an arbitrary frequency, resolving the tap on each call. Convenience
+  /// for tests; the render path holds a precomputed tap table instead.
+  #[cfg(test)]
+  pub fn psd_at(&self, hz: f64) -> f64 {
+    self.psd_at_tap(self.bin_tap(hz))
+  }
+}
+
+/// Resolved read position for one frequency on one analyzer.
+#[derive(Clone, Copy)]
+pub struct BinTap {
+  k0: usize,
+  k1: usize,
+  frac: f64,
+}
+
+/// One grid point's read plan: where each analyzer is sampled and the two crossover weights.
+/// Every field is fixed by the grid, the FFT sizes and the crossovers, so the whole table is
+/// built once in `MultiResBank::new` rather than re-derived for ~1k points on every frame.
+struct GridTap {
+  big: BinTap,
+  mid: BinTap,
+  small: BinTap,
+  b_lo: f64,
+  b_hi: f64,
 }
 
 pub struct MultiResBank {
@@ -181,15 +213,32 @@ pub struct MultiResBank {
   mid: StftAnalyzer,
   small: StftAnalyzer,
   grid: LogGrid,
+  taps: Vec<GridTap>,
 }
 
 impl MultiResBank {
   pub fn new(sample_rate: f64, min_hz: f64, max_hz: f64) -> Self {
+    let big = StftAnalyzer::new(FFT_BIG, sample_rate);
+    let mid = StftAnalyzer::new(FFT_MID, sample_rate);
+    let small = StftAnalyzer::new(FFT_SMALL, sample_rate);
+    let grid = LogGrid::new(min_hz, max_hz);
+    let taps = grid
+      .freqs
+      .iter()
+      .map(|&f| GridTap {
+        big: big.bin_tap(f),
+        mid: mid.bin_tap(f),
+        small: small.bin_tap(f),
+        b_lo: Self::blend(f, XOVER_LO_HZ), // 0=big, 1=mid
+        b_hi: Self::blend(f, XOVER_HI_HZ), // 0=lowmid(mid), 1=small
+      })
+      .collect();
     Self {
-      big: StftAnalyzer::new(FFT_BIG, sample_rate),
-      mid: StftAnalyzer::new(FFT_MID, sample_rate),
-      small: StftAnalyzer::new(FFT_SMALL, sample_rate),
-      grid: LogGrid::new(min_hz, max_hz),
+      big,
+      mid,
+      small,
+      grid,
+      taps,
     }
   }
 
@@ -238,17 +287,17 @@ impl MultiResBank {
   }
 
   /// PSD-dB per grid point, combining the three analyzers. `cal_offset_db` is added here.
+  /// Reads the precomputed tap table; the arithmetic below is deliberately in the same order as
+  /// the naive form so the row stays bit-identical (floating point is not associative).
   pub fn psd_db_row(&self, cal_offset_db: f64) -> Vec<f64> {
     self
-      .grid
-      .freqs
+      .taps
       .iter()
-      .map(|&f| {
+      .map(|t| {
         // Low/mid blend then mid/high blend, all in linear PSD.
-        let b_lo = Self::blend(f, XOVER_LO_HZ); // 0=big, 1=mid
-        let lowmid = self.big.psd_at(f) * (1.0 - b_lo) + self.mid.psd_at(f) * b_lo;
-        let b_hi = Self::blend(f, XOVER_HI_HZ); // 0=lowmid(mid), 1=small
-        let psd = lowmid * (1.0 - b_hi) + self.small.psd_at(f) * b_hi;
+        let lowmid =
+          self.big.psd_at_tap(t.big) * (1.0 - t.b_lo) + self.mid.psd_at_tap(t.mid) * t.b_lo;
+        let psd = lowmid * (1.0 - t.b_hi) + self.small.psd_at_tap(t.small) * t.b_hi;
         10.0 * psd.max(1e-20).log10() + cal_offset_db
       })
       .collect()
