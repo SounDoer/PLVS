@@ -1,7 +1,14 @@
 //! **Multi-resolution spectrum display** driven by `MultiResBank` (three windowed FFTs blended
 //! at crossover frequencies). Per grid-point: weighting, 4.5 dB/oct slope tilt (pivoted at 1 kHz),
-//! attack/release envelope, and peak-hold. No octave smoothing — peaks stay sharp and tone levels
-//! read at their true dBFS (SPAN-style); time stability comes from the bank's power averaging.
+//! attack/release envelope, and peak-hold. No octave smoothing — peaks stay sharp; time stability
+//! comes from the bank's power averaging.
+//!
+//! Levels are **noise-referenced**: the bank emits PSD (power/Hz), so broadband material reads
+//! continuous across the crossovers. That is the property the display is calibrated for and the
+//! one to preserve. It costs tone accuracy: a pure tone's PSD scales with bin width, so the same
+//! 0 dBFS sine reads ~+6 dB below 200 Hz and ~-6 dB above 2 kHz relative to the mid band. This is
+//! inherent to PSD normalisation, not a tuning error — one per-band offset can align tones or
+//! noise, never both. See `spectrum_bank::CAL_OFFSET_DB`.
 //!
 //! Product wording: **`docs/architecture.md` §6 Spectrum / RTA**.
 

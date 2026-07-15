@@ -12,8 +12,12 @@ pub const ANALYSIS_AVERAGE_SEC: f64 = 0.150;
 pub const OVERLAP_BIG: usize = 8; // smoother low-band updates without changing bass resolution
 pub const OVERLAP_MID: usize = 4; // 75% overlap → hop = size / overlap
 pub const OVERLAP_SMALL: usize = 2; // calmer high-band updates while keeping the 1024-point window
-/// Display calibration: added to PSD-dB so a 0 dBFS sine peak reads ~0 dB.
-/// Empirically tuned; pinned by `calibration_full_scale_sine_near_zero`.
+/// Display calibration added to PSD-dB; it only decides where zero sits on the axis.
+/// Empirically tuned against a 0 dBFS sine **in the mid band** — 1 kHz falls between the two
+/// crossovers, so it reads ~0 dB there and only there. Rows are PSD (power/Hz), so a tone's level
+/// tracks bin width: the same sine reads ~+6 dB on `FFT_BIG` and ~-6 dB on `FFT_SMALL`. Noise is
+/// continuous across bands instead, which is the convention this display is built on — see the
+/// module docs of `dsp::spectrum`. Pinned by `calibration_mid_band_full_scale_sine_near_zero`.
 pub const CAL_OFFSET_DB: f64 = 16.5;
 
 /// Fixed log-frequency render grid spanning [min_hz, max_hz] at GRID_POINTS_PER_OCT points/octave.
@@ -379,9 +383,12 @@ mod tests {
   }
 
   #[test]
-  fn calibration_full_scale_sine_near_zero() {
+  fn calibration_mid_band_full_scale_sine_near_zero() {
     let sr = 48000.0;
     let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    // 1 kHz sits between both crossovers, so this pins CAL_OFFSET_DB against `FFT_MID` alone.
+    // It is deliberately not a claim about tones in general: rows are PSD, so the same sine
+    // reads ~+6 dB on `FFT_BIG` and ~-6 dB on `FFT_SMALL`. See CAL_OFFSET_DB.
     feed_bank_tone(&mut bank, sr, 1000.0, FFT_BIG * 6); // amplitude 1.0 = 0 dBFS
     assert!(bank.ready());
     let row = bank.psd_db_row(CAL_OFFSET_DB);
@@ -398,9 +405,14 @@ mod tests {
   fn bank_broadband_continuous_across_crossovers() {
     let sr = 48000.0;
     let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    // Converge the PSD estimate before measuring. A single grid point under the default 150 ms
+    // average carries several dB of chi-squared spread, which is what forced the old 4 dB
+    // tolerance — wide enough to pass a badly broken seam. Long averaging plus a band mean
+    // below drops the spread far enough to assert what this display actually promises.
+    bank.set_analysis_average_sec(2.0);
     // Deterministic pseudo-white noise.
     let mut x: u32 = 0x12345678;
-    for _ in 0..FFT_BIG * 8 {
+    for _ in 0..FFT_BIG * 64 {
       x = x.wrapping_mul(1664525).wrapping_add(1013904223);
       let s = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
       bank.push_sample(s);
@@ -408,17 +420,23 @@ mod tests {
     assert!(bank.ready());
     let row = bank.psd_db_row(0.0);
     let freqs = bank.grid_freqs();
-    let near = |t: f64| {
-      freqs
+    // Mean dB over a band, kept clear of the ±1/6-octave crossfade around each crossover.
+    let band_mean = |lo: f64, hi: f64| {
+      let v: Vec<f64> = freqs
         .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| (**a - t).abs().partial_cmp(&(**b - t).abs()).unwrap())
-        .map(|(i, _)| row[i])
-        .unwrap()
+        .zip(&row)
+        .filter(|(f, _)| **f >= lo && **f <= hi)
+        .map(|(_, d)| *d)
+        .collect();
+      assert!(!v.is_empty(), "no grid points in {lo}-{hi} Hz");
+      v.iter().sum::<f64>() / v.len() as f64
     };
-    // White-noise PSD is ~flat; no large step across either crossover.
-    // Tolerance accounts for window/edge variance in pseudo-noise; tighten later if desired.
-    assert!((near(180.0) - near(220.0)).abs() < 4.0, "seam at 200 Hz");
-    assert!((near(1800.0) - near(2200.0)).abs() < 4.0, "seam at 2 kHz");
+    // White-noise PSD is flat, so both analyzers either side of a crossover must agree. This is
+    // the display's core convention — noise-referenced levels (see CAL_OFFSET_DB) — so it is
+    // asserted tightly. A tone would legitimately step ~6 dB here; noise must not.
+    let seam_200 = (band_mean(120.0, 175.0) - band_mean(230.0, 330.0)).abs();
+    let seam_2k = (band_mean(1200.0, 1750.0) - band_mean(2300.0, 3200.0)).abs();
+    assert!(seam_200 < 1.0, "seam at 200 Hz: {seam_200:.2} dB");
+    assert!(seam_2k < 1.0, "seam at 2 kHz: {seam_2k:.2} dB");
   }
 }
