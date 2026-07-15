@@ -1,4 +1,4 @@
-import { DockCorrelation } from "./modules/DockCorrelation.jsx";
+import { DockVectorscope } from "./modules/DockVectorscope.jsx";
 import { DockLevel } from "./modules/DockLevel.jsx";
 import { DockLoudness } from "./modules/DockLoudness.jsx";
 import { DockSpectrogram } from "./modules/DockSpectrogram.jsx";
@@ -37,8 +37,8 @@ export const DOCK_MODULE_REGISTRY = {
   },
   correlation: {
     id: "correlation",
-    label: "Correlation",
-    Component: DockCorrelation,
+    label: "Vectorscope",
+    Component: DockVectorscope,
     ...getDockPanelSizing("vectorscope"),
     settingsFamily: "correlation",
   },

@@ -43,7 +43,7 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
     minDb: -96,
     maxDb: -12,
   }),
-  correlation: Object.freeze({ pair: Object.freeze({ x: 0, y: 1 }), showValue: true }),
+  correlation: Object.freeze({ pair: Object.freeze({ x: 0, y: 1 }) }),
   stats: Object.freeze({
     statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
     statsOrder: Object.freeze([...DEFAULT_DOCK_STATS_ORDER]),
@@ -210,7 +210,6 @@ export function normalizeDockModuleControls(moduleId, raw) {
     case "correlation":
       return {
         pair: pair(raw?.pair, defaults.pair),
-        showValue: bool(raw?.showValue, defaults.showValue),
       };
     case "stats":
       return {

@@ -136,6 +136,7 @@ export function DockEditorApp() {
       {payload.view === "modules" ? (
         <DockModulesEditor
           panels={payload.panels}
+          vectorscopeSettingsAvailable={payload.vectorscopeSettingsAvailable}
           onAdd={(moduleId) => action("add-module", { moduleId })}
           onRename={(panelId, name) => action("rename-module", { panelId, name })}
           onRemove={(panelId) => action("remove-module", { panelId })}
@@ -153,6 +154,7 @@ export function DockEditorApp() {
             panel.id
           )}
           controls={payload.controlsByPanelId?.[panel.id]}
+          vectorscopeOptions={payload.vectorscopeOptions}
           onChange={(controls) => action("update-module-controls", { panelId: panel.id, controls })}
           onReset={() => action("reset-module-controls", { panelId: panel.id })}
           onBack={() => action("open-editor", { view: "modules" })}

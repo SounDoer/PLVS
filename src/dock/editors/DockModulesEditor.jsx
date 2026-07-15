@@ -47,6 +47,7 @@ function DockModuleRow({
   onRemove,
   onHover,
   onOpenSettings,
+  vectorscopeSettingsAvailable,
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -116,7 +117,8 @@ function DockModuleRow({
         </span>
       ) : null}
       <span className="min-w-0 truncate px-1 text-left text-foreground">{title}</span>
-      {dockEntry?.settingsFamily ? (
+      {dockEntry?.settingsFamily &&
+      (panel.moduleId !== "vectorscope" || vectorscopeSettingsAvailable) ? (
         <IconButton
           icon={<Settings2 className="size-3.5" />}
           tip={`${title} settings`}
@@ -174,6 +176,7 @@ function resolveDockPanelDisplayName(state, panelId) {
 export function DockModulesEditor({
   panels,
   modules,
+  vectorscopeSettingsAvailable = false,
   onAdd,
   onRename,
   onRemove,
@@ -260,6 +263,7 @@ export function DockModulesEditor({
                 onRemove={onRemove}
                 onHover={onHover}
                 onOpenSettings={onOpenSettings}
+                vectorscopeSettingsAvailable={vectorscopeSettingsAvailable}
               />
             ))}
           </div>

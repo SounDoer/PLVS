@@ -28,10 +28,11 @@ import { useDockMode } from "./hooks/useDockMode.js";
 import { useDockLayout } from "./dock/useDockLayout.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
-import { mergeDockSpectrumRequest } from "./dock/dockAnalysisRequest.js";
+import { mergeDockAnalysisRequests } from "./dock/dockAnalysisRequest.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
   buildVectorscopePairOptions,
+  clampVectorscopePairToAvailable,
   formatVectorscopePairLabel,
 } from "./math/vectorscopePairMath.js";
 import { buildSpectrumChannelOptions } from "./math/spectrumChannelOptions.js";
@@ -258,8 +259,10 @@ function AppContent() {
     async (edgeOrNull) => {
       clearNotice();
       try {
-        if (edgeOrNull) await enterDockMode(edgeOrNull);
-        else await exitDockRestoringAttributes();
+        if (edgeOrNull) {
+          await enterDockMode(edgeOrNull);
+          setSelectedOffset(-1);
+        } else await exitDockRestoringAttributes();
       } catch (error) {
         raiseNotice(
           "error",
@@ -268,7 +271,7 @@ function AppContent() {
         );
       }
     },
-    [clearNotice, enterDockMode, exitDockRestoringAttributes, raiseNotice]
+    [clearNotice, enterDockMode, exitDockRestoringAttributes, raiseNotice, setSelectedOffset]
   );
 
   // Preset apply hand-off: dock geometry is Rust-owned, so a preset's dock
@@ -297,6 +300,7 @@ function AppContent() {
             await resizeDockHeight(presetDock.height, { persist: true });
           }
         }
+        setSelectedOffset(-1);
       } else if (dockEnabled) {
         const result = await exitDockRestoringAttributes({ reportError: false });
         if (!result.ok) throw result.error;
@@ -314,6 +318,7 @@ function AppContent() {
       reserveSpace,
       resizeDockHeight,
       setReserveSpace,
+      setSelectedOffset,
     ]
   );
 
@@ -390,7 +395,7 @@ function AppContent() {
   }, [workspaceState]);
   const derivedAnalysisRequests = useMemo(
     () =>
-      mergeDockSpectrumRequest(
+      mergeDockAnalysisRequests(
         deriveAnalysisRequests(workspaceState),
         docked
           ? dockLayout.panels.map((panel) => ({
@@ -713,6 +718,26 @@ function AppContent() {
     setPanelControlsForPanel,
   ]);
 
+  useEffect(() => {
+    for (const panel of dockLayout.panels) {
+      if (panel.moduleId !== "vectorscope") continue;
+      const controls = dockLayout.controlsByPanelId[panel.id];
+      const nextPair = clampVectorscopePairToAvailable(
+        controls?.pair,
+        channelCount >= 2 ? channelCount : 2,
+        peakLabelContext
+      );
+      if (nextPair.x === controls?.pair?.x && nextPair.y === controls?.pair?.y) continue;
+      dockLayout.setPanelControls(panel.id, { ...controls, pair: nextPair });
+    }
+  }, [
+    channelCount,
+    dockLayout.controlsByPanelId,
+    dockLayout.panels,
+    dockLayout.setPanelControls,
+    peakLabelContext,
+  ]);
+
   const onVectorscopePairChange = (pair) => {
     const nextVectorscopeLabel = formatVectorscopePairLabel({
       x: pair.x,
@@ -904,6 +929,8 @@ function AppContent() {
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
       controlsByPanelId: dockLayout.controlsByPanelId,
+      vectorscopeOptions: vectorscopePairOptions,
+      vectorscopeSettingsAvailable: channelCount > 2 && vectorscopePairOptions.length > 0,
       presets: {
         list: presets.list.map(({ id, name }) => ({ id, name })),
         activeId: presets.activeId,
@@ -916,9 +943,11 @@ function AppContent() {
       dockLayout.panelOrder,
       dockLayout.panels,
       dockLayout.panelsById,
+      channelCount,
       presets.activeId,
       presets.dirty,
       presets.list,
+      vectorscopePairOptions,
     ]
   );
   const onDockAccessoryAction = useCallback(

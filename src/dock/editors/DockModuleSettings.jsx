@@ -23,7 +23,11 @@ function SelectField({ label, value, options, onChange }) {
     <SettingsSelect
       label={selected?.label ?? ""}
       ariaLabel={label}
-      options={options.map((option) => ({ key: option.value, label: option.label }))}
+      options={options.map((option) => ({
+        key: option.value,
+        label: option.label,
+        group: option.group,
+      }))}
       value={value}
       onChange={onChange}
       open={open}
@@ -107,7 +111,7 @@ function toggleId(ids, id) {
   return ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 }
 
-function SettingsBody({ moduleId, controls, onChange }) {
+function SettingsBody({ moduleId, controls, vectorscopeOptions, onChange }) {
   if (moduleId === "level") {
     const isPeak = controls.mode === "peak";
     const readoutOptions = isPeak
@@ -237,12 +241,25 @@ function SettingsBody({ moduleId, controls, onChange }) {
     );
   }
   if (moduleId === "correlation") {
+    const pairOptions =
+      vectorscopeOptions?.length > 0
+        ? vectorscopeOptions.map((option) => ({
+            value: option.key,
+            label: option.label,
+            group: option.group,
+          }))
+        : [{ value: "0-1", label: "L/R" }];
+    const pairValue = `${controls.pair?.x ?? 0}-${controls.pair?.y ?? 1}`;
     return (
-      <SettingsRow label="Value">
-        <SettingsSwitch
-          aria-label="Show correlation value"
-          checked={controls.showValue}
-          onCheckedChange={(showValue) => onChange({ ...controls, showValue })}
+      <SettingsRow label="Channel pair">
+        <SelectField
+          label="Vectorscope channel pair"
+          value={pairValue}
+          options={pairOptions}
+          onChange={(value) => {
+            const selected = vectorscopeOptions?.find((option) => option.key === value);
+            if (selected) onChange({ ...controls, pair: { x: selected.x, y: selected.y } });
+          }}
         />
       </SettingsRow>
     );
@@ -355,7 +372,15 @@ function SettingsBody({ moduleId, controls, onChange }) {
   return null;
 }
 
-export function DockModuleSettings({ moduleId, title, controls, onChange, onReset, onBack }) {
+export function DockModuleSettings({
+  moduleId,
+  title,
+  controls,
+  vectorscopeOptions,
+  onChange,
+  onReset,
+  onBack,
+}) {
   const dockModuleId = dockModuleIdForPanelModuleId(moduleId) ?? moduleId;
   const entry = DOCK_MODULE_REGISTRY[dockModuleId];
   if (!entry?.settingsFamily || !controls) return null;
@@ -363,7 +388,12 @@ export function DockModuleSettings({ moduleId, title, controls, onChange, onRese
     <DockEditorShell title={`${title ?? entry.label} settings`} onBack={onBack} onReset={onReset}>
       <SettingsGroup>
         <div className="grid gap-1 p-2">
-          <SettingsBody moduleId={dockModuleId} controls={controls} onChange={onChange} />
+          <SettingsBody
+            moduleId={dockModuleId}
+            controls={controls}
+            vectorscopeOptions={vectorscopeOptions}
+            onChange={onChange}
+          />
         </div>
       </SettingsGroup>
     </DockEditorShell>

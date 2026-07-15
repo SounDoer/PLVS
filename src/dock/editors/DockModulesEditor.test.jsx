@@ -86,6 +86,22 @@ describe("DockModulesEditor", () => {
     expect(screen.queryByRole("button", { name: "Timecode settings" })).toBeNull();
   });
 
+  it("hides Vectorscope settings when there is no alternative channel pair", () => {
+    const { rerender } = render(
+      <DockModulesEditor
+        {...BASE_PROPS}
+        modules={["correlation"]}
+        vectorscopeSettingsAvailable={false}
+      />
+    );
+    expect(screen.queryByRole("button", { name: "Vectorscope settings" })).toBeNull();
+
+    rerender(
+      <DockModulesEditor {...BASE_PROPS} modules={["correlation"]} vectorscopeSettingsAvailable />
+    );
+    expect(screen.getByRole("button", { name: "Vectorscope settings" })).toBeTruthy();
+  });
+
   it("orders row actions as settings, rename, and delete", () => {
     render(<DockModulesEditor {...BASE_PROPS} />);
     const row = screen.getByTestId("dock-panel-row-spectrum");

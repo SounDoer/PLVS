@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SPECTRUM_REQUESTS, deriveAnalysisRequests } from "../analysis/analysisRequests.js";
+import {
+  MAX_SPECTRUM_REQUESTS,
+  MAX_VECTORSCOPE_REQUESTS,
+  deriveAnalysisRequests,
+} from "../analysis/analysisRequests.js";
 import {
   DOCK_SPECTRUM_KEY,
+  DOCK_VECTORSCOPE_KEY,
   dockSpectrumKey,
+  dockVectorscopeKey,
+  mergeDockAnalysisRequests,
   mergeDockSpectrumRequest,
 } from "./dockAnalysisRequest.js";
 
@@ -62,5 +69,58 @@ describe("mergeDockSpectrumRequest", () => {
     const keys = merged.spectrumRequests.map((r) => r.key);
     expect(keys).not.toContain(`panel-key-${MAX_SPECTRUM_REQUESTS - 1}`);
     expect(keys).toContain("panel-key-0");
+  });
+});
+
+describe("mergeDockAnalysisRequests", () => {
+  it("adds a configured Dock vectorscope request", () => {
+    const controls = { pair: { x: 2, y: 3 } };
+    const merged = mergeDockAnalysisRequests(EMPTY_DERIVED, [
+      { panelId: "vectorscope", moduleId: "vectorscope", controls },
+    ]);
+    expect(merged.vectorscopeRequests).toEqual([
+      {
+        key: dockVectorscopeKey(controls),
+        panelIds: ["dock:vectorscope"],
+        pair: { x: 2, y: 3 },
+      },
+    ]);
+  });
+
+  it("deduplicates matching Dock vectorscope pairs", () => {
+    const merged = mergeDockAnalysisRequests(EMPTY_DERIVED, [
+      { panelId: "vectorscope", moduleId: "vectorscope", controls: { pair: { x: 0, y: 1 } } },
+      {
+        panelId: "vectorscope-2",
+        moduleId: "vectorscope",
+        controls: { pair: { x: 0, y: 1 } },
+      },
+    ]);
+    expect(merged.vectorscopeRequests).toEqual([
+      {
+        key: DOCK_VECTORSCOPE_KEY,
+        panelIds: ["dock:vectorscope", "dock:vectorscope-2"],
+        pair: { x: 0, y: 1 },
+      },
+    ]);
+  });
+
+  it("keeps the Dock vectorscope request within the backend cap", () => {
+    const derived = {
+      ...EMPTY_DERIVED,
+      vectorscopeRequests: Array.from({ length: MAX_VECTORSCOPE_REQUESTS }, (_, index) => ({
+        key: `vectorscope:pair:${index}:${index + 1}`,
+        panelIds: [`panel-${index}`],
+      })),
+    };
+    const merged = mergeDockAnalysisRequests(derived, [
+      {
+        panelId: "vectorscope",
+        moduleId: "vectorscope",
+        controls: { pair: { x: 8, y: 9 } },
+      },
+    ]);
+    expect(merged.vectorscopeRequests).toHaveLength(MAX_VECTORSCOPE_REQUESTS);
+    expect(merged.vectorscopeRequests.at(-1)?.key).toBe("vectorscope:pair:8:9");
   });
 });

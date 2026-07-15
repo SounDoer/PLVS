@@ -23,7 +23,7 @@ describe("DockModuleSettings", () => {
     ["level", "Level mode"],
     ["loudness", "Loudness reference"],
     ["spectrum", "Spectrum channel"],
-    ["correlation", "Show correlation value"],
+    ["correlation", "Vectorscope channel pair"],
     ["stats", "Metrics"],
     ["waveform", "Waveform view"],
     ["spectrogram", "Spectrogram channel"],
@@ -73,6 +73,18 @@ describe("DockModuleSettings", () => {
       ...controls,
       loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
     });
+  });
+
+  it("uses the runtime vectorscope pair options", () => {
+    const vectorscopeOptions = [
+      { key: "0-1", label: "L/R", x: 0, y: 1, group: "Common" },
+      { key: "2-3", label: "Ls/Rs", x: 2, y: 3, group: "Common" },
+    ];
+    const onChange = renderSettings("correlation", { vectorscopeOptions });
+
+    fireEvent.click(screen.getByLabelText("Vectorscope channel pair"));
+    fireEvent.click(screen.getByRole("option", { name: "Ls/Rs" }));
+    expect(onChange).toHaveBeenCalledWith({ pair: { x: 2, y: 3 } });
   });
 
   it("uses the themed inline selector instead of a native select", () => {

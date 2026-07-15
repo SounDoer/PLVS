@@ -1,6 +1,8 @@
 import {
   MAX_SPECTRUM_REQUESTS,
+  MAX_VECTORSCOPE_REQUESTS,
   spectrumRequestKeyFromControls,
+  vectorscopeRequestKeyFromControls,
 } from "../analysis/analysisRequests.js";
 import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
@@ -24,6 +26,17 @@ export function dockSpectrumKey(controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.sp
 
 export const DOCK_SPECTRUM_KEY = dockSpectrumKey();
 
+function vectorscopePanelControls(raw) {
+  const controls = normalizeDockModuleControls("correlation", raw);
+  return { vectorscopePair: controls.pair };
+}
+
+export function dockVectorscopeKey(controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation) {
+  return vectorscopeRequestKeyFromControls(vectorscopePanelControls(controls));
+}
+
+export const DOCK_VECTORSCOPE_KEY = dockVectorscopeKey();
+
 function dockSpectrumRequest(raw, panelId = "dock:spectrum") {
   const controls = normalizeDockModuleControls("spectrum", raw);
   return {
@@ -33,6 +46,15 @@ function dockSpectrumRequest(raw, panelId = "dock:spectrum") {
     view: controls.channel?.type === "single" ? "combined" : controls.view,
     smoothingPercent: Math.round(controls.smoothingPercent),
     tiltDbPerOctave: Math.round(controls.tiltDbPerOctave * 100) / 100,
+  };
+}
+
+function dockVectorscopeRequest(raw, panelId = "dock:vectorscope") {
+  const controls = normalizeDockModuleControls("correlation", raw);
+  return {
+    key: dockVectorscopeKey(controls),
+    panelIds: [panelId],
+    pair: controls.pair,
   };
 }
 
@@ -73,4 +95,43 @@ export function mergeDockSpectrumRequest(derived, active, controls) {
     ...derived,
     spectrumRequests: [...kept, ...requests].slice(0, MAX_SPECTRUM_REQUESTS),
   };
+}
+
+export function mergeDockVectorscopeRequest(derived, active) {
+  if (!active) return derived;
+  const configured = Array.isArray(active)
+    ? active
+        .map((panel) => {
+          const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
+          return dockModuleId === "correlation"
+            ? dockVectorscopeRequest(panel.controls, `dock:${panel.panelId}`)
+            : null;
+        })
+        .filter(Boolean)
+    : [dockVectorscopeRequest()];
+  const requestedByKey = new Map();
+  for (const request of configured) {
+    const existing = requestedByKey.get(request.key);
+    requestedByKey.set(
+      request.key,
+      existing ? { ...existing, panelIds: [...existing.panelIds, ...request.panelIds] } : request
+    );
+  }
+  const requests = [...requestedByKey.values()].filter(
+    (request) => !derived.vectorscopeRequests.some((candidate) => candidate.key === request.key)
+  );
+  if (requests.length === 0) return derived;
+  const available = Math.max(0, MAX_VECTORSCOPE_REQUESTS - requests.length);
+  const kept =
+    derived.vectorscopeRequests.length > available
+      ? derived.vectorscopeRequests.slice(0, available)
+      : derived.vectorscopeRequests;
+  return {
+    ...derived,
+    vectorscopeRequests: [...kept, ...requests].slice(0, MAX_VECTORSCOPE_REQUESTS),
+  };
+}
+
+export function mergeDockAnalysisRequests(derived, active) {
+  return mergeDockVectorscopeRequest(mergeDockSpectrumRequest(derived, active), active);
 }
