@@ -23,12 +23,15 @@ describe("computeDockStatsColumnCount", () => {
 
   it("supports wider Expanded metric cells", () => {
     expect(DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX).toBe(84);
-    expect(DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX).toBe(72);
-    expect(computeDockStatsColumnCount(155, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
+    expect(DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX).toBe(64);
+    expect(computeDockStatsColumnCount(139, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
       1
     );
-    expect(computeDockStatsColumnCount(156, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
+    expect(computeDockStatsColumnCount(140, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
       2
+    );
+    expect(computeDockStatsColumnCount(404, undefined, DOCK_STATS_EXPANDED_MIN_CELL_WIDTH_PX)).toBe(
+      5
     );
   });
 

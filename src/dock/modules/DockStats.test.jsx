@@ -170,6 +170,24 @@ describe("DockStats", () => {
     });
   });
 
+  it("uses five Expanded columns at the Stats maximum content width", () => {
+    const ids = STATS_CANONICAL_ORDER;
+    const metrics = ids.map((id, index) => ({
+      id,
+      shortLabel: STATS_META[id].shortLabel,
+      value: `v${index}`,
+    }));
+    renderWith(metrics, statsControls(ids), {}, "expanded");
+
+    act(() => triggerResize([{ contentRect: { width: 404 } }]));
+
+    expect(screen.getByTestId("dock-stats-grid").getAttribute("data-column-count")).toBe("5");
+    expect(screen.getAllByTestId("dock-stat")).toHaveLength(15);
+    expect(screen.getAllByTestId("dock-expanded-metric-unit")[0].className).toContain(
+      "@max-[68px]:hidden"
+    );
+  });
+
   it("renders the empty state when no metrics are selected", () => {
     renderWith(METRICS, statsControls([]));
     expect(screen.getByText("No stats selected")).toBeTruthy();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDockPanelSizing,
   normalizeDockPanelSizes,
   resetDockPanelPair,
   resizeDockPanelPair,
@@ -11,6 +12,18 @@ const panelsById = {
 };
 
 describe("dock panel sizing", () => {
+  it("keeps Loudness compact while protecting three Expanded values", () => {
+    expect(getDockPanelSizing("loudness").minWidth).toBe(154);
+  });
+
+  it("allows Level Meter to grow beyond its original narrow preferred range", () => {
+    expect(getDockPanelSizing("levelMeter")).toMatchObject({
+      minWidth: 140,
+      defaultWidth: 180,
+      maxPreferredWidth: 420,
+    });
+  });
+
   it("normalizes known panel ids and clamps their preferred width range", () => {
     expect(normalizeDockPanelSizes(panelsById, { level: 20, spectrum: 1200, stale: 300 })).toEqual({
       level: 140,
@@ -62,9 +75,9 @@ describe("dock panel sizing", () => {
         rightPanel: panelsById.spectrum,
         leftWidth: 300,
         rightWidth: 900,
-        delta: 100,
+        delta: 200,
       })
-    ).toEqual({ level: 320, spectrum: 880 });
+    ).toEqual({ level: 420, spectrum: 780 });
 
     expect(
       resizeDockPanelPair({

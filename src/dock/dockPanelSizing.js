@@ -2,11 +2,11 @@ export const DOCK_PANEL_SIZING_BY_MODULE_ID = Object.freeze({
   levelMeter: {
     minWidth: 140,
     defaultWidth: 180,
-    maxPreferredWidth: 320,
+    maxPreferredWidth: 420,
     growthPolicy: "fixed",
   },
   loudness: {
-    minWidth: 150,
+    minWidth: 154,
     defaultWidth: 200,
     maxPreferredWidth: 480,
     growthPolicy: "fixed",

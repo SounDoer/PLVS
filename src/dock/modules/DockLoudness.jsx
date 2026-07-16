@@ -57,7 +57,7 @@ function DockLoudnessExpandedReadouts({ displayAudio }) {
   return (
     <div
       data-testid="dock-loudness-readouts"
-      className="grid shrink-0 grid-cols-3 items-start"
+      className="grid min-w-0 shrink-0 grid-cols-3 items-start"
       style={{ columnGap: "var(--ui-dock-gap-region)" }}
     >
       {READOUTS.map(({ key, short, label }) => {
@@ -66,6 +66,7 @@ function DockLoudnessExpandedReadouts({ displayAudio }) {
           <div
             key={key}
             data-testid="dock-loudness-readout"
+            className="min-w-0 overflow-hidden"
             aria-label={`${label} ${formatted} LUFS`}
           >
             <DockExpandedMetric label={short} value={formatted} unit="LUFS" />

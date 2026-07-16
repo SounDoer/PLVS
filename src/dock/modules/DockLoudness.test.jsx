@@ -83,6 +83,11 @@ describe("DockLoudness", () => {
         .getAllByTestId("dock-expanded-metric")
         .every((node) => node.className.includes("items-start"))
     ).toBe(true);
+    expect(
+      screen
+        .getAllByTestId("dock-loudness-readout")
+        .every((node) => node.className.includes("min-w-0"))
+    ).toBe(true);
   });
 
   it("uses the normal panel's Momentary, Short-term, and Reference layer semantics", () => {

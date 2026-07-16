@@ -74,6 +74,13 @@ describe("DockLevel", () => {
     const metric = screen.getByTestId("dock-expanded-metric");
     expect(metric.textContent).toBe("TP Max-3.2dBTP");
     expect(metric.className).toContain("items-start");
+    expect(metric.parentElement.className).toContain("w-full");
+    expect(screen.getByTestId("dock-expanded-metric-unit").className).toContain(
+      "@max-[68px]:hidden"
+    );
+    expect(screen.getByTestId("dock-level-readout-region").style.width).toBe(
+      "clamp(48px, 28%, 76px)"
+    );
     expect(screen.queryByTestId("dock-level-readout-source")).toBeNull();
   });
 

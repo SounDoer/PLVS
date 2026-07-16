@@ -69,14 +69,19 @@ function ChannelReadout({ value, style }) {
 
 function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
   const content = expanded ? (
-    <DockExpandedMetric label={label} value={fmtMetric(value)} unit={unit} />
+    <DockExpandedMetric
+      label={label}
+      value={fmtMetric(value)}
+      unit={unit}
+      unitVisibility={unit ? "tight" : "default"}
+    />
   ) : (
     <span className="text-[length:var(--ui-dock-fs-value)] leading-none text-foreground">
       {fmtMetric(value)}
     </span>
   );
   const className =
-    "justify-self-end whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] font-semibold tabular-nums";
+    "w-full justify-self-end whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] font-semibold tabular-nums";
   return onReset ? (
     <button
       type="button"
@@ -108,11 +113,16 @@ function ReadoutRegion({
   unit,
 }) {
   const rows = Math.max(1, rowCount);
+  const globalReadoutWidth = showGlobal
+    ? unit
+      ? "clamp(48px, 28%, 76px)"
+      : "var(--ui-dock-readout-w)"
+    : undefined;
   return (
     <div
       data-testid="dock-level-readout-region"
       className="grid shrink-0 self-stretch"
-      style={{ gridTemplateAreas: '"readout"' }}
+      style={{ gridTemplateAreas: '"readout"', width: globalReadoutWidth }}
     >
       <div
         data-testid="dock-level-readout-sizer"
@@ -129,7 +139,7 @@ function ReadoutRegion({
       </div>
       <div
         data-testid="dock-level-readout-content"
-        className={`flex min-h-0 justify-self-end ${showGlobal ? "self-center items-baseline" : ""}`}
+        className={`flex min-h-0 justify-self-end ${showGlobal ? "w-full self-center items-baseline" : ""}`}
         style={{ gap: "var(--ui-dock-gap-column)", gridArea: "readout" }}
       >
         {source && !expanded ? (

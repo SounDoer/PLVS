@@ -116,6 +116,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
                   label={label}
                   value={value}
                   unit={unit}
+                  unitVisibility="tight"
                   indicator={
                     id === "dialogueCoverage" ? (
                       <span
