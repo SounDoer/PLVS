@@ -451,10 +451,7 @@ fn create_silence_stream(device: &cpal::Device, config: &StreamConfig) -> Option
   }
 }
 
-/// Device-facing half of live capture, free of Tauri. Opens the stream, feeds
-/// pooled PCM into a queue, and hands the queue to `consumer` on its own thread.
-/// The GUI passes the meter/IPC bridge; the CLI passes a `SummaryMeter` loop.
-/// Blocks until `stop_rx` fires, then tears the stream down and joins `consumer`.
+/// Everything [`run_capture_stream`] needs to open one device stream.
 pub(crate) struct CaptureStreamArgs {
   pub(crate) device_id: String,
   pub(crate) device: cpal::Device,
@@ -465,6 +462,10 @@ pub(crate) struct CaptureStreamArgs {
   pub(crate) dropped_chunks: Arc<AtomicU64>,
 }
 
+/// Device-facing half of live capture, free of Tauri. Opens the stream, feeds
+/// pooled PCM into a queue, and hands the queue to `consumer` on its own thread.
+/// The GUI passes the meter/IPC bridge; the CLI passes a `SummaryMeter` loop.
+/// Blocks until `stop_rx` fires, then tears the stream down and joins `consumer`.
 pub(crate) fn run_capture_stream<C>(args: CaptureStreamArgs, consumer: C) -> Result<(), String>
 where
   C: FnOnce(std::sync::mpsc::Receiver<Vec<f32>>, PcmBufferPool, u32, u16) + Send + 'static,
