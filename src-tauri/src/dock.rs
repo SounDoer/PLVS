@@ -163,7 +163,19 @@ pub fn dock_accessory_rects(
 /// 72 logical px exceeds 240 physical px).
 pub struct DockedFlag(pub Arc<AtomicBool>);
 
+/// False while setup is still applying the persisted Dock shell and AppBar.
+/// Frontend reconciliation must not treat DockedFlag's default value as final
+/// until this becomes true.
+pub struct DockBootReady(pub Arc<AtomicBool>);
+
 pub const DOCK_STATE_KEY: &str = "dockState";
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DockStateSnapshot {
+  pub ready: bool,
+  pub state: Option<DockStateRecord>,
+}
 
 pub fn read_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<DockStateRecord> {
   let store = app.store("plvs-settings.json").ok()?;
@@ -270,20 +282,6 @@ fn restore_window_form<R: tauri::Runtime>(
   }
 }
 
-fn apply_dock_chrome<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> Result<(), String> {
-  window
-    .set_decorations(false)
-    .map_err(|e| format!("decorations: {e}"))?;
-  let _ = window.set_shadow(false);
-  window
-    .set_always_on_top(true)
-    .map_err(|e| format!("always on top: {e}"))?;
-  window
-    .set_resizable(false)
-    .map_err(|e| format!("resizable: {e}"))?;
-  Ok(())
-}
-
 /// Force the window into the docked strip form. Attribute overrides here are
 /// runtime-only: stored settings (windowPinned, focusView) are never written.
 /// On Err the window shell has been rolled back to normal form (best effort),
@@ -308,7 +306,16 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     let _ = window.unmaximize();
   }
   let applied = (|| -> Result<(), String> {
-    apply_dock_chrome(window)?;
+    window
+      .set_decorations(false)
+      .map_err(|e| format!("decorations: {e}"))?;
+    let _ = window.set_shadow(false);
+    window
+      .set_always_on_top(true)
+      .map_err(|e| format!("always on top: {e}"))?;
+    window
+      .set_resizable(false)
+      .map_err(|e| format!("resizable: {e}"))?;
     #[cfg(target_os = "windows")]
     crate::appbar::position_overlay(window, edge, wa, scale, logical_height)?;
     #[cfg(not(target_os = "windows"))]
@@ -486,25 +493,19 @@ pub fn exit_dock<R: tauri::Runtime>(
 pub fn get_dock_state<R: tauri::Runtime>(
   app: tauri::AppHandle<R>,
   flag: tauri::State<'_, DockedFlag>,
-) -> Result<Option<DockStateRecord>, String> {
-  Ok(read_dock_state(&app).map(|mut state| {
-    state.enabled = flag.0.load(Ordering::Relaxed);
-    state
-  }))
-}
-
-/// Re-assert only the native Dock chrome after frontend/native state
-/// reconciliation. This intentionally leaves geometry and AppBar reservation
-/// untouched because the current work area may already exclude this Dock.
-#[tauri::command]
-pub fn reassert_dock_chrome<R: tauri::Runtime>(
-  window: tauri::WebviewWindow<R>,
-  flag: tauri::State<'_, DockedFlag>,
-) -> Result<(), String> {
-  if !flag.0.load(Ordering::Relaxed) {
-    return Err("window is not docked".into());
-  }
-  apply_dock_chrome(&window)
+  ready: tauri::State<'_, DockBootReady>,
+) -> Result<DockStateSnapshot, String> {
+  let ready = ready.0.load(Ordering::Acquire);
+  let state = ready.then(|| {
+    read_dock_state(&app).map(|mut state| {
+      state.enabled = flag.0.load(Ordering::Relaxed);
+      state
+    })
+  });
+  Ok(DockStateSnapshot {
+    ready,
+    state: state.flatten(),
+  })
 }
 
 #[tauri::command]
@@ -733,6 +734,18 @@ mod tests {
       serde_json::from_value(serde_json::json!({ "enabled": true, "edge": "bottom" })).unwrap();
     assert!(back.reserve_space);
     assert_eq!(back.height, DOCK_DEFAULT_LOGICAL_HEIGHT);
+  }
+
+  #[test]
+  fn dock_state_snapshot_distinguishes_pending_boot_from_resolved_state() {
+    let pending = DockStateSnapshot {
+      ready: false,
+      state: None,
+    };
+    assert_eq!(
+      serde_json::to_value(pending).unwrap(),
+      serde_json::json!({ "ready": false, "state": null })
+    );
   }
 
   #[test]

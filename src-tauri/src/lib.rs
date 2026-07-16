@@ -47,6 +47,9 @@ pub fn run() {
     .manage(dock::DockedFlag(std::sync::Arc::new(
       std::sync::atomic::AtomicBool::new(false),
     )))
+    .manage(dock::DockBootReady(std::sync::Arc::new(
+      std::sync::atomic::AtomicBool::new(false),
+    )))
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
       ipc::commands::preview_audio_device,
@@ -77,7 +80,6 @@ pub fn run() {
       dock::enter_dock,
       dock::exit_dock,
       dock::get_dock_state,
-      dock::reassert_dock_chrome,
       dock::set_dock_reserve_space,
       dock::set_dock_suspended,
       dock::set_dock_height,
@@ -209,6 +211,11 @@ pub fn run() {
           }
         }
       }
+
+      app
+        .state::<dock::DockBootReady>()
+        .0
+        .store(true, std::sync::atomic::Ordering::Release);
 
       // Persist geometry on move/resize, debounced via a dirty flag + short flush thread.
       use std::sync::atomic::{AtomicBool, Ordering};

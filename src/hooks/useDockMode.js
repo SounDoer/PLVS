@@ -3,7 +3,6 @@ import {
   enterDock,
   exitDock,
   getDockState,
-  reassertDockChrome,
   setDockHeight,
   setDockReserveSpace,
   setDockSuspended,
@@ -59,18 +58,26 @@ export function useDockMode() {
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
-    getDockState()
-      .then(async (resolved) => {
-        if (cancelled || !resolved || typeof resolved !== "object") return;
-        const normalized = normalizeDockState(resolved);
-        if (normalized.enabled) await reassertDockChrome().catch(() => {});
-        if (cancelled) return;
-        commitDock(normalized);
-        if (!normalized.enabled) setDockSuspendedState(false);
-      })
-      .catch(() => {});
+    let retryTimer = null;
+    const reconcile = () => {
+      getDockState()
+        .then((snapshot) => {
+          if (cancelled || !snapshot || typeof snapshot !== "object") return;
+          if (snapshot.ready !== true) {
+            retryTimer = window.setTimeout(reconcile, 16);
+            return;
+          }
+          if (!snapshot.state || typeof snapshot.state !== "object") return;
+          const normalized = normalizeDockState(snapshot.state);
+          commitDock(normalized);
+          if (!normalized.enabled) setDockSuspendedState(false);
+        })
+        .catch(() => {});
+    };
+    reconcile();
     return () => {
       cancelled = true;
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
   }, [commitDock]);
 

@@ -77,14 +77,9 @@ export function exitDock({ decorations, alwaysOnTop }) {
   return invoke("exit_dock", { decorations, alwaysOnTop });
 }
 
-/** Read the native-authoritative Dock state after boot restore has settled. */
+/** Read native Dock state plus whether the boot restore has settled. */
 export function getDockState() {
   return invoke("get_dock_state");
-}
-
-/** Re-assert native frameless/topmost Dock chrome without moving the AppBar. */
-export function reassertDockChrome() {
-  return invoke("reassert_dock_chrome");
 }
 
 /** Windows-only: register or remove the dock strip as a Win32 AppBar. */

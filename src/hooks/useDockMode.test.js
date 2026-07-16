@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({
   enterDock: vi.fn(async () => {}),
   exitDock: vi.fn(async () => {}),
   getDockState: vi.fn(async () => undefined),
-  reassertDockChrome: vi.fn(async () => {}),
   setDockReserveSpace: vi.fn(async () => {}),
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn(async () => {}),
@@ -17,7 +16,6 @@ vi.mock("../ipc/commands.js", () => ({
   enterDock: mocks.enterDock,
   exitDock: mocks.exitDock,
   getDockState: mocks.getDockState,
-  reassertDockChrome: mocks.reassertDockChrome,
   setDockReserveSpace: mocks.setDockReserveSpace,
   setDockHeight: mocks.setDockHeight,
   setDockSuspended: mocks.setDockSuspended,
@@ -34,7 +32,6 @@ describe("useDockMode", () => {
     mocks.enterDock.mockClear();
     mocks.exitDock.mockClear();
     mocks.getDockState.mockReset().mockResolvedValue(undefined);
-    mocks.reassertDockChrome.mockReset().mockResolvedValue(undefined);
     mocks.setDockReserveSpace.mockReset().mockResolvedValue(undefined);
     mocks.setDockHeight.mockReset().mockImplementation(async ({ height }) => height);
     mocks.setDockSuspended.mockReset().mockResolvedValue(undefined);
@@ -154,28 +151,26 @@ describe("useDockMode", () => {
 
   it("reconciles a failed native boot restore instead of trusting stale injected state", async () => {
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
-    mocks.getDockState.mockResolvedValueOnce({ enabled: false, edge: "top", reserveSpace: false });
+    mocks.getDockState.mockResolvedValueOnce({
+      ready: true,
+      state: { enabled: false, edge: "top", reserveSpace: false },
+    });
     const { result } = renderHook(() => useDockMode());
 
     await waitFor(() => expect(result.current.dockEnabled).toBe(false));
     expect(result.current.reserveSpace).toBe(false);
   });
 
-  it("re-asserts native Dock chrome when boot reconciliation stays docked", async () => {
-    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: false, edge: "bottom" } };
-    mocks.getDockState.mockResolvedValueOnce({ enabled: true, edge: "top", reserveSpace: true });
+  it("waits for native Dock boot readiness before reconciling", async () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    mocks.getDockState.mockResolvedValueOnce({ ready: false, state: null }).mockResolvedValueOnce({
+      ready: true,
+      state: { enabled: true, edge: "top", reserveSpace: true },
+    });
     const { result } = renderHook(() => useDockMode());
 
-    await waitFor(() => expect(result.current.dockEnabled).toBe(true));
-    expect(mocks.reassertDockChrome).toHaveBeenCalledOnce();
-  });
-
-  it("still reconciles Dock state if the native chrome re-assertion fails", async () => {
-    mocks.getDockState.mockResolvedValueOnce({ enabled: true, edge: "top", reserveSpace: true });
-    mocks.reassertDockChrome.mockRejectedValueOnce(new Error("chrome unavailable"));
-    const { result } = renderHook(() => useDockMode());
-
-    await waitFor(() => expect(result.current.dockEnabled).toBe(true));
+    await waitFor(() => expect(mocks.getDockState).toHaveBeenCalledTimes(2));
+    expect(result.current.dockEnabled).toBe(true);
   });
 
   it("enterDockMode invokes IPC and flips state", async () => {
