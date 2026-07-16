@@ -37,10 +37,24 @@ describe("useFocusViewWindow", () => {
     expect(mocks.setShadow).toHaveBeenCalledWith(false);
   });
 
-  it("skips all window calls while suspended (docked boot must keep strip chrome)", () => {
+  it("re-asserts frameless chrome while suspended", () => {
     renderHook(() => useFocusViewWindow(false, false, { suspended: true }));
-    expect(mocks.setDecorations).not.toHaveBeenCalled();
-    expect(mocks.setShadow).not.toHaveBeenCalled();
+    expect(mocks.setDecorations).toHaveBeenCalledWith(false);
+    expect(mocks.setShadow).toHaveBeenCalledWith(false);
+  });
+
+  it("removes normal chrome when native dock reconciliation arrives after mount", () => {
+    const { rerender } = renderHook(
+      ({ suspended }) => useFocusViewWindow(false, false, { suspended }),
+      {
+        initialProps: { suspended: false },
+      }
+    );
+    expect(mocks.setDecorations).toHaveBeenLastCalledWith(true);
+
+    rerender({ suspended: true });
+    expect(mocks.setDecorations).toHaveBeenLastCalledWith(false);
+    expect(mocks.setShadow).toHaveBeenLastCalledWith(false);
   });
 
   it("re-applies the user's attributes when unsuspended (dock exit)", () => {
@@ -50,7 +64,7 @@ describe("useFocusViewWindow", () => {
         initialProps: { suspended: true },
       }
     );
-    expect(mocks.setDecorations).not.toHaveBeenCalled();
+    expect(mocks.setDecorations).toHaveBeenLastCalledWith(false);
 
     rerender({ suspended: false });
     expect(mocks.setDecorations).toHaveBeenCalledWith(true);

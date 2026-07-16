@@ -3,6 +3,7 @@ import {
   enterDock,
   exitDock,
   getDockState,
+  reassertDockChrome,
   setDockHeight,
   setDockReserveSpace,
   setDockSuspended,
@@ -59,9 +60,11 @@ export function useDockMode() {
     if (!isTauri()) return;
     let cancelled = false;
     getDockState()
-      .then((resolved) => {
+      .then(async (resolved) => {
         if (cancelled || !resolved || typeof resolved !== "object") return;
         const normalized = normalizeDockState(resolved);
+        if (normalized.enabled) await reassertDockChrome().catch(() => {});
+        if (cancelled) return;
         commitDock(normalized);
         if (!normalized.enabled) setDockSuspendedState(false);
       })

@@ -12,6 +12,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 import {
   probeFileAnalysis,
   getDockState,
+  reassertDockChrome,
   setDialogueGating,
   setDialogueVadEngine,
   setDockAccessories,
@@ -81,6 +82,10 @@ describe("dock command seam", () => {
   it("reads the native-authoritative Dock state", async () => {
     await getDockState();
     expect(invoke).toHaveBeenCalledWith("get_dock_state");
+  });
+  it("re-asserts native Dock chrome without changing geometry", async () => {
+    await reassertDockChrome();
+    expect(invoke).toHaveBeenCalledWith("reassert_dock_chrome");
   });
   it("passes logical height and persistence intent to Rust", async () => {
     await setDockHeight({ height: 108, persist: false });

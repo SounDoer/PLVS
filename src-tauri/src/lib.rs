@@ -77,6 +77,7 @@ pub fn run() {
       dock::enter_dock,
       dock::exit_dock,
       dock::get_dock_state,
+      dock::reassert_dock_chrome,
       dock::set_dock_reserve_space,
       dock::set_dock_suspended,
       dock::set_dock_height,

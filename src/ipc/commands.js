@@ -82,6 +82,11 @@ export function getDockState() {
   return invoke("get_dock_state");
 }
 
+/** Re-assert native frameless/topmost Dock chrome without moving the AppBar. */
+export function reassertDockChrome() {
+  return invoke("reassert_dock_chrome");
+}
+
 /** Windows-only: register or remove the dock strip as a Win32 AppBar. */
 export function setDockReserveSpace({ enabled, edge }) {
   return invoke("set_dock_reserve_space", { enabled, edge });

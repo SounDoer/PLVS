@@ -270,6 +270,20 @@ fn restore_window_form<R: tauri::Runtime>(
   }
 }
 
+fn apply_dock_chrome<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> Result<(), String> {
+  window
+    .set_decorations(false)
+    .map_err(|e| format!("decorations: {e}"))?;
+  let _ = window.set_shadow(false);
+  window
+    .set_always_on_top(true)
+    .map_err(|e| format!("always on top: {e}"))?;
+  window
+    .set_resizable(false)
+    .map_err(|e| format!("resizable: {e}"))?;
+  Ok(())
+}
+
 /// Force the window into the docked strip form. Attribute overrides here are
 /// runtime-only: stored settings (windowPinned, focusView) are never written.
 /// On Err the window shell has been rolled back to normal form (best effort),
@@ -294,16 +308,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     let _ = window.unmaximize();
   }
   let applied = (|| -> Result<(), String> {
-    window
-      .set_decorations(false)
-      .map_err(|e| format!("decorations: {e}"))?;
-    let _ = window.set_shadow(false);
-    window
-      .set_always_on_top(true)
-      .map_err(|e| format!("always on top: {e}"))?;
-    window
-      .set_resizable(false)
-      .map_err(|e| format!("resizable: {e}"))?;
+    apply_dock_chrome(window)?;
     #[cfg(target_os = "windows")]
     crate::appbar::position_overlay(window, edge, wa, scale, logical_height)?;
     #[cfg(not(target_os = "windows"))]
@@ -486,6 +491,20 @@ pub fn get_dock_state<R: tauri::Runtime>(
     state.enabled = flag.0.load(Ordering::Relaxed);
     state
   }))
+}
+
+/// Re-assert only the native Dock chrome after frontend/native state
+/// reconciliation. This intentionally leaves geometry and AppBar reservation
+/// untouched because the current work area may already exclude this Dock.
+#[tauri::command]
+pub fn reassert_dock_chrome<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  flag: tauri::State<'_, DockedFlag>,
+) -> Result<(), String> {
+  if !flag.0.load(Ordering::Relaxed) {
+    return Err("window is not docked".into());
+  }
+  apply_dock_chrome(&window)
 }
 
 #[tauri::command]

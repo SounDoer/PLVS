@@ -20,13 +20,11 @@ async function setWindowShadow(enabled) {
 
 export function useFocusViewWindow(autoHideControls, borderless, { suspended = false } = {}) {
   useEffect(() => {
-    // While docked (suspended), Rust owns window chrome: apply_dock_form strips
-    // decorations/shadow, and this mount effect must not re-decorate the strip
-    // (boot-into-dock would otherwise get a title bar). `suspended` stays in the
-    // deps so flipping it false on exit re-asserts the user's true attributes —
-    // a harmless double-set with exitDock's own restore.
-    if (suspended) return;
-    const frameless = autoHideControls === true || borderless === true;
+    // Rust applies the Dock shell before the webview mounts, but native-state
+    // reconciliation can arrive after an initial normal-form render. Re-assert
+    // frameless chrome when suspended so that transient render cannot leave a
+    // title bar consuming the entire Dock strip.
+    const frameless = suspended || autoHideControls === true || borderless === true;
     void setWindowDecorations(!frameless).catch(() => {});
     void setWindowShadow(!frameless).catch(() => {});
   }, [autoHideControls, borderless, suspended]);
