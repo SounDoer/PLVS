@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-16
+
+### Added
+- Dock Mode with top and bottom placement, Windows work-area reservation, resizable modules, accessory editors, and preset integration.
+- Dock modules for transport, level, loudness, stats, correlation, spectrum, vectorscope, waveform, and spectrogram monitoring.
+- `plvs-cli capture` for recording live input into the shared summary metrics JSON contract.
+- Small, Default, Large, and Extra Large interface size profiles for normal mode.
+- Fractional-octave spectrum smoothing, tracked peak labels, and Max Hold controls.
+
+### Changed
+- Standardized normal-mode typography, iconography, and chart-axis geometry on semantic design tokens.
+- Made the Settings drawer width and layout adapt to interface size and narrow application windows.
+- Renamed Spectrum temporal `Smoothing` to `Speed` and `Peak hold` to `Max hold`.
+
+### Fixed
+- Stabilized Dock startup, edge transitions, AppBar reservation, accessory windows, and preset restoration.
+- Kept Dock history, waveform, spectrogram, stats, and level displays responsive across module sizes.
+- Improved Spectrum peak-label tracking and synchronized octave-smoothing analysis requests.
+- Corrected History Length unit labels and optical alignment of panel pin controls.
+
 ## [0.8.1] - 2026-07-10
 
 ### Added
