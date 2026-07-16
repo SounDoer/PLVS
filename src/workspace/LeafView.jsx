@@ -5,6 +5,7 @@ import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
   PANEL_HEADER_BAR,
+  PANEL_HEADER_PIN_ICON,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
@@ -344,9 +345,9 @@ export function LeafView({ node, path, style }) {
                 onClick={handlePinClick}
               >
                 {isActivePinned ? (
-                  <PinOff className="size-[length:var(--ui-icon-panel-action)]" />
+                  <PinOff className={PANEL_HEADER_PIN_ICON} />
                 ) : (
-                  <Pin className="size-[length:var(--ui-icon-panel-action)]" />
+                  <Pin className={PANEL_HEADER_PIN_ICON} />
                 )}
               </button>
             </HoverTip>

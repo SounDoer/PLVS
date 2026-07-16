@@ -5,6 +5,7 @@ import {
   FOOTER_LABEL,
   FOOTER_VALUE,
   PANEL_HEADER_BAR,
+  PANEL_HEADER_PIN_ICON,
   PANEL_HEADER_TITLE_GROUP,
   SHELL_HEADER_ACTIONS,
   SHELL_FOOTER,
@@ -66,6 +67,11 @@ describe("shellLayout token names", () => {
     expect(PANEL_HEADER_TITLE_GROUP).toContain("overflow-hidden");
     expect(PANEL_HEADER_TITLE_GROUP).toContain("@max-[80px]:hidden");
     expect(PANEL_HEADER_TITLE_GROUP).toContain("--ui-fs-panel-title");
+  });
+
+  it("optically scales pin icons against the shared panel action size", () => {
+    expect(PANEL_HEADER_PIN_ICON).toContain("--ui-icon-panel-action");
+    expect(PANEL_HEADER_PIN_ICON).toContain("*0.9");
   });
 
   it("panel axis rail helpers share one CSS variable", () => {

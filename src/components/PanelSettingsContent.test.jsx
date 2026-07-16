@@ -1114,13 +1114,21 @@ describe("PanelSettingsContent", () => {
     const leafEl = container.querySelector("[data-leaf]");
     leafEl.getBoundingClientRect = () => ({ width: 320, height: 180 });
 
-    fireEvent.click(screen.getByRole("button", { name: "Pin panel size" }));
+    const pinButton = screen.getByRole("button", { name: "Pin panel size" });
+    expect(pinButton.querySelector("svg")?.getAttribute("class")).toContain(
+      "size-[calc(var(--ui-icon-panel-action)*0.9)]"
+    );
+
+    fireEvent.click(pinButton);
 
     const latestState = onState.mock.calls.at(-1)?.[0];
     expect(latestState.pinnedPanelsById).toEqual({
       stats: { width: 320, height: 180 },
     });
-    expect(screen.getByRole("button", { name: "Unpin panel size" })).toBeTruthy();
+    const unpinButton = screen.getByRole("button", { name: "Unpin panel size" });
+    expect(unpinButton.querySelector("svg")?.getAttribute("class")).toContain(
+      "size-[calc(var(--ui-icon-panel-action)*0.9)]"
+    );
   });
 
   it("uses another tab's pinned size for the shared tab slot", () => {

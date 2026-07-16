@@ -5,6 +5,7 @@ import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
   PANEL_HEADER_BAR,
+  PANEL_HEADER_PIN_ICON,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DragProvider, useDrag } from "./DragContext.jsx";
@@ -363,10 +364,7 @@ function FullscreenOverlay() {
               aria-pressed={isPinned}
               disabled={!isPinned}
             >
-              <Pin
-                className="size-[length:var(--ui-icon-panel-action)]"
-                fill={isPinned ? "currentColor" : "none"}
-              />
+              <Pin className={PANEL_HEADER_PIN_ICON} fill={isPinned ? "currentColor" : "none"} />
             </button>
           </HoverTip>
           <button
