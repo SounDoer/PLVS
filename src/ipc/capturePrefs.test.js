@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { describe, it, expect } from "vitest";
 import { LEGACY_CAPTURE_DEVICE_LS_KEY } from "./capturePrefs.js";
 

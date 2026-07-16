@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 // src/persistence/index.test.js
 import { afterEach, describe, expect, it } from "vitest";
 import {

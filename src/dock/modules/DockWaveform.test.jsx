@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { sliceWaveformSubHistory } from "../../math/waveformMath.js";

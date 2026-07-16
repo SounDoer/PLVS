@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 // src/persistence/localStorageBackend.test.js
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLocalStorageBackend } from "./localStorageBackend.js";

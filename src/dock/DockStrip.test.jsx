@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { FrameDataProvider, HistoryDataProvider } from "../workspace/AudioDataContext.jsx";

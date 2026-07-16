@@ -451,25 +451,35 @@ fn create_silence_stream(device: &cpal::Device, config: &StreamConfig) -> Option
   }
 }
 
-fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
-  let RunCaptureArgs {
+/// Everything [`run_capture_stream`] needs to open one device stream.
+pub(crate) struct CaptureStreamArgs {
+  pub(crate) device_id: String,
+  pub(crate) device: cpal::Device,
+  pub(crate) supported: cpal::SupportedStreamConfig,
+  pub(crate) sample_rate: u32,
+  pub(crate) channels: u16,
+  pub(crate) stop_rx: std::sync::mpsc::Receiver<()>,
+  pub(crate) dropped_chunks: Arc<AtomicU64>,
+}
+
+/// Device-facing half of live capture, free of Tauri. Opens the stream, feeds
+/// pooled PCM into a queue, and hands the queue to `consumer` on its own thread.
+/// The GUI passes the meter/IPC bridge; the CLI passes a `SummaryMeter` loop.
+/// Blocks until `stop_rx` fires, then tears the stream down and joins `consumer`.
+pub(crate) fn run_capture_stream<C>(args: CaptureStreamArgs, consumer: C) -> Result<(), String>
+where
+  C: FnOnce(std::sync::mpsc::Receiver<Vec<f32>>, PcmBufferPool, u32, u16) + Send + 'static,
+{
+  let CaptureStreamArgs {
     device_id: _device_id,
     device,
     supported,
     sample_rate,
     channels,
-    frame_subscribers,
-    app,
     stop_rx,
-    clear_peak_history,
-    reset_tp_max,
-    channel_layout,
-    loudness_weights,
-    dialogue_gating,
-    dialogue_vad_engine,
     dropped_chunks,
   } = args;
-  let dropped_for_callbacks = dropped_chunks.clone();
+  let dropped_for_callbacks = dropped_chunks;
   let stream_config = StreamConfig {
     channels,
     sample_rate: supported.sample_rate(),
@@ -491,25 +501,11 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     PCM_QUEUE_CAP,
     pooled_pcm_buffer_capacity(sample_rate, channels),
   );
-  let bridge_pool = pcm_pool.clone();
+  let consumer_pool = pcm_pool.clone();
   let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(PCM_QUEUE_CAP);
 
-  let bridge = std::thread::spawn(move || {
-    run_meter_pipeline_bridge_thread(
-      audio_rx,
-      sample_rate,
-      channels,
-      frame_subscribers,
-      app,
-      clear_peak_history,
-      reset_tp_max,
-      channel_layout,
-      loudness_weights,
-      dialogue_gating,
-      dialogue_vad_engine,
-      dropped_chunks,
-      bridge_pool,
-    );
+  let consumer_thread = std::thread::spawn(move || {
+    consumer(audio_rx, consumer_pool, sample_rate, channels);
   });
 
   let stream = match supported.sample_format() {
@@ -573,8 +569,58 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
   let _ = stop_rx.recv();
   drop(stream);
   drop(audio_tx);
-  let _ = bridge.join();
+  let _ = consumer_thread.join();
   Ok(())
+}
+
+fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
+  let RunCaptureArgs {
+    device_id,
+    device,
+    supported,
+    sample_rate,
+    channels,
+    frame_subscribers,
+    app,
+    stop_rx,
+    clear_peak_history,
+    reset_tp_max,
+    channel_layout,
+    loudness_weights,
+    dialogue_gating,
+    dialogue_vad_engine,
+    dropped_chunks,
+  } = args;
+  let bridge_dropped = dropped_chunks.clone();
+
+  run_capture_stream(
+    CaptureStreamArgs {
+      device_id,
+      device,
+      supported,
+      sample_rate,
+      channels,
+      stop_rx,
+      dropped_chunks,
+    },
+    move |audio_rx, pool, sample_rate, channels| {
+      run_meter_pipeline_bridge_thread(
+        audio_rx,
+        sample_rate,
+        channels,
+        frame_subscribers,
+        app,
+        clear_peak_history,
+        reset_tp_max,
+        channel_layout,
+        loudness_weights,
+        dialogue_gating,
+        dialogue_vad_engine,
+        bridge_dropped,
+        pool,
+      );
+    },
+  )
 }
 
 #[cfg(test)]

@@ -1055,33 +1055,118 @@ Expected: exit code 2; stderr lists real devices including both `CABLE Input …
 Run: `./src-tauri/target/release/plvs-cli.exe capture --device "CABLE" --seconds 5 --json`
 Expected: exit code 2; error says it matches 2 devices.
 
-- [ ] **Step 4: Generate an asymmetric test signal.** L at -20 dBFS, R at -26 dBFS, 1 kHz, 30 s — asymmetric on purpose, because equal-weight channels make an L/R swap invisible to integrated loudness:
+- [ ] **Step 4: Generate an asymmetric test signal.** 1 kHz sine, 60 s, 48 kHz stereo, with L at -20 dBFS peak and R at -26 dBFS peak. The asymmetry is the point: equal-weight channels make an L/R swap invisible to integrated loudness (`dsp/loudness.rs` weighs FL and FR at `1.0`), so per-channel peaks are the only canary for a channel-map bug.
 
-```powershell
-$ff = "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe"
-& $ff -f lavfi -i "sine=frequency=1000:duration=30" -f lavfi -i "sine=frequency=1000:duration=30" `
-  -filter_complex "[0:a]volume=-20dB[l];[1:a]volume=-26dB[r];[l][r]amerge=inputs=2[a]" `
-  -map "[a]" -ac 2 -ar 48000 -y "$env:TEMP\plvs-smoke-signal.wav"
+**Do not use ffmpeg for this.** The bundled sidecar is a trimmed build with no `volume` filter — `-filter_complex "volume=..."` fails with `No such filter: 'volume'`. Synthesize the WAV directly instead:
+
+```js
+// make-signal.mjs — run: node make-signal.mjs "%TEMP%\plvs-smoke-signal.wav"
+import { writeFileSync } from "node:fs";
+
+const SAMPLE_RATE = 48000;
+const SECONDS = 60;
+const FREQ = 1000;
+const AMP_L = 10 ** (-20 / 20); // -20 dBFS peak
+const AMP_R = 10 ** (-26 / 20); // -26 dBFS peak
+
+const frames = SAMPLE_RATE * SECONDS;
+const dataBytes = frames * 2 * 2; // stereo, 16-bit
+const buf = Buffer.alloc(44 + dataBytes);
+
+buf.write("RIFF", 0);
+buf.writeUInt32LE(36 + dataBytes, 4);
+buf.write("WAVE", 8);
+buf.write("fmt ", 12);
+buf.writeUInt32LE(16, 16);
+buf.writeUInt16LE(1, 20); // PCM
+buf.writeUInt16LE(2, 22); // channels
+buf.writeUInt32LE(SAMPLE_RATE, 24);
+buf.writeUInt32LE(SAMPLE_RATE * 2 * 2, 28);
+buf.writeUInt16LE(4, 32);
+buf.writeUInt16LE(16, 34);
+buf.write("data", 36);
+buf.writeUInt32LE(dataBytes, 40);
+
+for (let i = 0; i < frames; i++) {
+  const phase = (2 * Math.PI * FREQ * i) / SAMPLE_RATE;
+  buf.writeInt16LE(Math.round(Math.sin(phase) * AMP_L * 32767), 44 + i * 4);
+  buf.writeInt16LE(Math.round(Math.sin(phase) * AMP_R * 32767), 44 + i * 4 + 2);
+}
+
+writeFileSync(process.argv[2], buf);
 ```
 
-If the sidecar is not present, run `npm run ffmpeg:fetch` first.
+- [ ] **Step 5: Establish ground truth from the file path.** Do NOT assert against hand-computed numbers. Measure the same file through `analyze` — the already-trusted path — and require `capture` to agree with it:
 
-- [ ] **Step 5: Play the signal into VB-Cable and capture it.** Set `CABLE Input` as the playback device for the player, then in one shell start playback and in another run:
+Run: `./src-tauri/target/release/plvs-cli.exe analyze "$env:TEMP\plvs-smoke-signal.wav" --json`
+
+Measured 2026-07-16 for the signal above:
+
+| Field | Value |
+|-------|-------|
+| `integratedLufs` | **-22.03** |
+| `samplePeakMaxLDb` | -19.9995 |
+| `samplePeakMaxRDb` | -26.0015 |
+
+**Note `integratedLufs` is -22.03, not -20.** A -20 dBFS *peak* sine has ~-23 dBFS RMS, and integrated loudness sums K-weighted energy across both channels — peak level and integrated loudness are different quantities. An earlier draft of this plan expected ≈ -20 and would have sent you hunting a bug that isn't there.
+
+- [ ] **Step 6: Play the signal into VB-Cable and capture it.** Do **not** change the system default playback device: point one player at VB-Cable's endpoint instead, so everything else keeps using the normal device and nothing is audible.
+
+Find VB-Cable's render endpoint id (read-only registry lookup):
+
+```powershell
+$base = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render"
+Get-ChildItem $base | ForEach-Object {
+  $name = (Get-ItemProperty (Join-Path $_.PSPath "Properties"))."{a45c254e-df1c-4efd-8020-67d146a850e0},2"
+  if ($name -eq "CABLE Input") { "{0.0.0.00000000}.{$($_.PSChildName)}" }
+}
+```
+
+Start VLC looping the signal into that endpoint only. VLC's `directsound` output wants a GUID and rejects a device *name* (`bad device GUID`); `mmdevice` takes the endpoint id:
+
+```powershell
+$devId = '{0.0.0.00000000}.{<guid-from-above>}'
+$argStr = '--intf dummy --no-video --loop --aout=mmdevice --mmdevice-audio-device="' + $devId + '" "' + $env:TEMP + '\plvs-smoke-signal.wav"'
+Start-Process "C:\Program Files\VideoLAN\VLC\vlc.exe" -ArgumentList $argStr -WindowStyle Hidden
+```
+
+Pass the whole thing as ONE argument string — an `-ArgumentList` array splits the device id and label on spaces, and VLC then tries to open the fragments as filenames.
+
+Then capture, and stop VLC afterwards (`Get-Process vlc | Stop-Process -Force`):
 
 Run: `./src-tauri/target/release/plvs-cli.exe capture --device "CABLE Output" --seconds 10 --json`
 
-Expected: exit 0, and JSON where `summary.integratedLufs` ≈ -20 (±0.5), `summary.samplePeakMaxLDb` ≈ -20 (±0.2), `summary.samplePeakMaxRDb` ≈ -26 (±0.2), `source.sampleRateHz` = 48000, `source.channelCount` = 2, `health.droppedChunks` = 0.
+Measured 2026-07-16 — `capture` against the Step 5 `analyze` ground truth:
+
+| Field | `analyze` (truth) | `capture` (live) | Delta |
+|-------|-------------------|------------------|-------|
+| `samplePeakMaxLDb` | -19.999469871546843 | -19.999469871546843 | **0 — bit-identical** |
+| `samplePeakMaxRDb` | -26.00153564352592 | -26.00153564352592 | **0 — bit-identical** |
+| `integratedLufs` | -22.0306 | -22.0329 | 0.0024 dB |
+
+Also: `sampleRateHz` 48000, `channelCount` 2, `health.droppedChunks` 0, exit 0.
+
+Bit-identical peaks are the real result: the capture layer hands over the PCM unaltered — no resampling, no gain, no channel swap. The 0.0024 dB integrated delta is expected and not error — `capture` integrates a 10 s window of the looping file while `analyze` integrates all 60 s.
+
+Assertion tolerances for a future automated gate: peaks ±0.2 dB, integrated ±0.5 dB.
 
 **If L and R come back swapped or equal, stop — that is the channel-map bug this command exists to find.** Report it rather than adjusting the assertion.
 
-- [ ] **Step 6: Verify streaming mode**
+Set VB-Cable's format to 48 kHz / 2 channels in the Windows sound control panel first. If `sampleRateHz` comes back as something else, that is test-rig drift, not a code bug — fix the rig.
+
+Note this machine exposes **three** rows matching `CABLE` (`CABLE In 16ch`, `CABLE Input`, `CABLE Output`), so the ambiguity rejection in Step 3 is load-bearing, not decorative.
+
+- [ ] **Step 7: Verify streaming mode**
 
 Run: `./src-tauri/target/release/plvs-cli.exe capture --device "CABLE Output" --seconds 30 --every 10 --json --out soak-check.jsonl`
-Expected: 3 sample lines (`t` = 10, 20, 30) plus a final report line; `soak-check.jsonl` holds all four.
 
-- [ ] **Step 7: Verify the GUI still meters.** Launch the app (`npm run desktop`), start capture on any device, confirm the meters move. This is what guards the Task 1 refactor.
+Expected: sample lines at `t` = 10 and 20, then a final report line; `soak-check.jsonl` holds the whole stream.
 
-- [ ] **Step 8: Commit nothing.** This task produces no code. Record the observed numbers in the PR / commit description of Task 5 if anything surprised you.
+**A `t` = 30 line may or may not appear — both are correct.** The consumer's clock and the caller's deadline start within microseconds of each other, so emitting the last sample requires a PCM chunk (~1 per 100 ms) to land in the window before the stop takes effect. It is a race, deliberately left alone: no caller reads the final sample (the soak reads the trend, the smoke gate does not use `--every`, and the final report already carries the end-state value), so making it deterministic would add synchronization for nobody. Do not "fix" a missing `t` = 30.
+
+- [ ] **Step 8: Verify the GUI still meters.** Launch the app (`npm run desktop`), start capture on any device, confirm the meters move. This is what guards the Task 1 refactor.
+
+- [ ] **Step 9: Commit nothing.** This task produces no code. Record the observed numbers in the PR / commit description of Task 5 if anything surprised you.
 
 ---
 
