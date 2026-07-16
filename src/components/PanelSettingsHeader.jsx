@@ -12,7 +12,7 @@ export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false 
     >
       {onBack ? (
         <ManagementIconAction
-          icon={<ArrowLeft className="size-3.5" />}
+          icon={<ArrowLeft className="size-[length:var(--ui-icon-management-action)]" />}
           label="Back"
           title="Back"
           onClick={onBack}
@@ -31,7 +31,7 @@ export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false 
             trigger={(arm) => (
               <span title={isDefault ? "Using defaults" : resetLabel}>
                 <ManagementIconAction
-                  icon={<RotateCcw className="size-3.5" />}
+                  icon={<RotateCcw className="size-[length:var(--ui-icon-management-action)]" />}
                   label={resetLabel}
                   disabled={isDefault}
                   onClick={arm}

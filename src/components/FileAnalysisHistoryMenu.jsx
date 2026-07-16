@@ -56,7 +56,7 @@ export function FileAnalysisHistoryMenu({
           aria-label={countLabel}
           className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <FileStack className="size-3.5" aria-hidden="true" />
+          <FileStack className="size-[1.15em]" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>
           {analyzingPct != null ? (
             <span
@@ -134,7 +134,7 @@ export function FileAnalysisHistoryMenu({
                       aria-label={`Stop analyzing ${session.fileName}`}
                       className="rounded p-1 text-[color:var(--ui-signal-bad)] transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
-                      <Square className="size-3.5" />
+                      <Square className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
                   ) : (
                     <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
@@ -144,7 +144,7 @@ export function FileAnalysisHistoryMenu({
                         aria-label={`Reanalyze ${session.fileName}`}
                         className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
-                        <RefreshCw className="size-3.5" />
+                        <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
                       <button
                         type="button"
@@ -152,7 +152,7 @@ export function FileAnalysisHistoryMenu({
                         aria-label={`Remove ${session.fileName}`}
                         className="rounded p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
-                        <Trash2 className="size-3.5" />
+                        <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
                     </span>
                   )}

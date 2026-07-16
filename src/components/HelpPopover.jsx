@@ -160,7 +160,7 @@ export function HelpPopover({ items }) {
           }}
           onMouseLeave={scheduleClose}
         >
-          <CircleHelp size={12} aria-hidden />
+          <CircleHelp className="size-[length:var(--ui-icon-panel-action)]" aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent

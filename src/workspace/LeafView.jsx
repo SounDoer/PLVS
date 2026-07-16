@@ -343,7 +343,11 @@ export function LeafView({ node, path, style }) {
                 )}
                 onClick={handlePinClick}
               >
-                {isActivePinned ? <PinOff size={12} /> : <Pin size={12} />}
+                {isActivePinned ? (
+                  <PinOff className="size-[length:var(--ui-icon-panel-action)]" />
+                ) : (
+                  <Pin className="size-[length:var(--ui-icon-panel-action)]" />
+                )}
               </button>
             </HoverTip>
             <button
@@ -352,7 +356,7 @@ export function LeafView({ node, path, style }) {
               className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => activeTab && setFullscreen(activeTab)}
             >
-              <Maximize2 size={12} />
+              <Maximize2 className="size-[length:var(--ui-icon-panel-action)]" />
             </button>
             <button
               type="button"
@@ -360,7 +364,7 @@ export function LeafView({ node, path, style }) {
               className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => visibleTabs.forEach((id) => removePanel(id))}
             >
-              <X size={12} />
+              <X className="size-[length:var(--ui-icon-panel-action)]" />
             </button>
           </div>
         </div>

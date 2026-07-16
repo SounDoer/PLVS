@@ -292,7 +292,7 @@ export function SettingsPanel({
                             onClick={arm}
                             aria-label="Reset clear shortcut"
                           >
-                            <RotateCcw className="size-3.5" />
+                            <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
                           </IconButton>
                         )}
                       />
@@ -382,7 +382,7 @@ export function SettingsPanel({
                             onClick={editActiveCustomTheme}
                             aria-label="Edit theme"
                           >
-                            <Pencil className="size-3.5" />
+                            <Pencil className="size-[length:var(--ui-icon-management-action)]" />
                           </IconButton>
                           <InlineConfirm
                             onConfirm={() => deleteCustomTheme(fixedThemeSelectValue)}
@@ -394,7 +394,7 @@ export function SettingsPanel({
                                 onClick={arm}
                                 aria-label="Delete theme"
                               >
-                                <Trash2 className="size-3.5" />
+                                <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
                               </IconButton>
                             )}
                           />
@@ -413,7 +413,7 @@ export function SettingsPanel({
                         aria-label="New theme"
                         className="h-7 w-full px-2 text-[length:var(--ui-fs-display)]"
                       >
-                        <Plus className="size-3.5" />
+                        <Plus className="size-[1.15em]" />
                         New Theme
                       </Button>
                     </div>
@@ -464,7 +464,7 @@ export function SettingsPanel({
                             disabled={!channelLabelHasOverride}
                             aria-label="Reset channel labels"
                           >
-                            <RotateCcw className="size-3.5" />
+                            <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
                           </IconButton>
                         )}
                       />
@@ -541,7 +541,7 @@ export function SettingsPanel({
                             aria-label="Reset configuration"
                             className="hover:text-destructive focus-visible:text-destructive"
                           >
-                            <RotateCcw className="size-3.5" />
+                            <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
                           </IconButton>
                         )}
                       />
@@ -572,7 +572,7 @@ export function SettingsPanel({
                           onClick={() => onSetCliPathEnabled(!cliPathOnPath)}
                           className="h-7 px-2 text-[length:var(--ui-fs-display)]"
                         >
-                          <Terminal className="size-3.5" />
+                          <Terminal className="size-[1.15em]" />
                           {cliPathOnPath ? "Remove PATH" : "Add PATH"}
                         </Button>
                       </SettingsRow>
@@ -650,7 +650,7 @@ export function SettingsPanel({
                           onClick={() => openExternalUrl(effectiveReleaseUrl)}
                         >
                           Releases
-                          <ExternalLink className="size-3" />
+                          <ExternalLink className="size-[1em]" />
                         </button>
                         <span className="shrink-0 text-muted-foreground/30">&middot;</span>
                         <button
@@ -659,7 +659,7 @@ export function SettingsPanel({
                           onClick={() => openExternalUrl(DOCS_URL)}
                         >
                           Docs
-                          <ExternalLink className="size-3" />
+                          <ExternalLink className="size-[1em]" />
                         </button>
                         <span className="shrink-0 text-muted-foreground/30">&middot;</span>
                         <button

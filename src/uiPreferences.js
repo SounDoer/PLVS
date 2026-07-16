@@ -1,5 +1,5 @@
 /**
- * Public entry for UI preferences: tunable layout/typography + chart geometry.
+ * Public entry for UI preferences: tunable layout/typography/iconography + chart geometry.
  *
  * - **Data** — `src/preferences/data.js` (`UI_PREFERENCES`)
  * - **Persistence** — `src/persistence/` (domain stores: `settingsStore`, `workspaceStore`) + `src/preferences/themeResolve.js`

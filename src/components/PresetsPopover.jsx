@@ -113,7 +113,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       disabled={!(drafts[preset.id] ?? "").trim()}
                       className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40"
                     >
-                      <Check className="size-3.5" />
+                      <Check className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
                     <button
                       type="button"
@@ -121,7 +121,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       onClick={cancelRename}
                       className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
-                      <X className="size-3.5" />
+                      <X className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
                   </div>
                 ) : (
@@ -158,7 +158,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                         }}
                         className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
-                        <RefreshCw className="size-3.5" />
+                        <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
                       <button
                         type="button"
@@ -169,7 +169,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                         }}
                         className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
-                        <Pencil className="size-3.5" />
+                        <Pencil className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
                       <InlineConfirm
                         onConfirm={() => presets.remove(preset.id)}
@@ -185,7 +185,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                             }}
                             className="rounded text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           >
-                            <Trash2 className="size-3.5" />
+                            <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
                           </button>
                         )}
                       />

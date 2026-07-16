@@ -41,7 +41,7 @@ export function InlineConfirm({ trigger, onConfirm, confirmLabel, cancelLabel, c
         }}
         className="rounded p-0.5 text-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <Check className="size-3.5" />
+        <Check className="size-[length:var(--ui-icon-management-action)]" />
       </button>
       <button
         type="button"
@@ -52,7 +52,7 @@ export function InlineConfirm({ trigger, onConfirm, confirmLabel, cancelLabel, c
         }}
         className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <X className="size-3.5" />
+        <X className="size-[length:var(--ui-icon-management-action)]" />
       </button>
     </span>
   );

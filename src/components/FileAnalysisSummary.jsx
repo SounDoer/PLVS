@@ -66,7 +66,7 @@ export function FileAnalysisSummary({
           onClick={() => onExportReport?.()}
           className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <Download className="size-3.5" aria-hidden="true" />
+          <Download className="size-[1.15em]" aria-hidden="true" />
           <span>Export</span>
         </button>
       ) : null}

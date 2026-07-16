@@ -124,7 +124,7 @@ export function AppHeader({
       <div className="flex-1" />
       <div className={SHELL_HEADER_ACTIONS}>
         <IconButton
-          icon={<Trash2 className="size-3.5" />}
+          icon={<Trash2 className="size-[length:var(--ui-icon-shell-action)]" />}
           tip="Clear"
           disabled={clearDisabled}
           onClick={onClear}
@@ -134,7 +134,7 @@ export function AppHeader({
             // Reuse the Devices slot (meaningless in File mode) as a re-import affordance,
             // mirroring the ANALYZE picker without adding a new toolbar control.
             <IconButton
-              icon={<FolderOpen className="size-4 shrink-0" />}
+              icon={<FolderOpen className="size-[length:var(--ui-icon-shell-action)] shrink-0" />}
               tip="Open file"
               onClick={onOpenFile}
             />
@@ -150,7 +150,9 @@ export function AppHeader({
               <PopoverTrigger asChild>
                 <span>
                   <IconButton
-                    icon={<Volume2 className="size-4 shrink-0" />}
+                    icon={
+                      <Volume2 className="size-[length:var(--ui-icon-shell-action)] shrink-0" />
+                    }
                     tip="Devices"
                     disabled={!audioDevices.length}
                   />
@@ -202,7 +204,10 @@ export function AppHeader({
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
           <PopoverTrigger asChild>
             <span>
-              <IconButton icon={<LayoutGrid className="size-3.5" />} tip="Modules" />
+              <IconButton
+                icon={<LayoutGrid className="size-[length:var(--ui-icon-shell-action)]" />}
+                tip="Modules"
+              />
             </span>
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className="w-max min-w-44 max-w-[92vw] p-1">
@@ -216,7 +221,7 @@ export function AppHeader({
           <PopoverTrigger asChild>
             <span>
               <IconButton
-                icon={<Focus className="size-3.5" />}
+                icon={<Focus className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Views"
                 className={focusViewActive ? "text-foreground" : undefined}
               />
@@ -244,7 +249,10 @@ export function AppHeader({
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
           <PopoverTrigger asChild>
             <span>
-              <IconButton icon={<Bookmark className="size-3.5" />} tip="Presets" />
+              <IconButton
+                icon={<Bookmark className="size-[length:var(--ui-icon-shell-action)]" />}
+                tip="Presets"
+              />
             </span>
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
@@ -252,7 +260,7 @@ export function AppHeader({
           </PopoverContent>
         </Popover>
         <IconButton
-          icon={<Settings className="size-3.5" />}
+          icon={<Settings className="size-[length:var(--ui-icon-shell-action)]" />}
           tip="Settings"
           onClick={() => setSettingsOpen(true)}
         />

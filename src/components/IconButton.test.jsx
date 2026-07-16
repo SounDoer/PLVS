@@ -12,7 +12,12 @@ const source = readFileSync(join(currentDir, "IconButton.jsx"), "utf8");
 
 describe("IconButton", () => {
   it("uses its tooltip text as the accessible button name", () => {
-    render(<IconButton icon={<Settings className="size-3.5" />} tip="Settings" />);
+    render(
+      <IconButton
+        icon={<Settings className="size-[length:var(--ui-icon-shell-action)]" />}
+        tip="Settings"
+      />
+    );
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
   });
 

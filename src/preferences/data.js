@@ -1,5 +1,5 @@
 /**
- * Default layout, typography, radii, and per-module **non-theme** tuning (`UI_PREFERENCES`).
+ * Default layout, typography, iconography, radii, and per-module **non-theme** tuning (`UI_PREFERENCES`).
  * Instrument colours are derived from theme seeds; chart geometry and meter gradient geometry live here.
  */
 
@@ -92,6 +92,15 @@ export const UI_PREFERENCES = {
       display: 13,
       body: 14,
       metricValue: 16,
+    },
+  },
+
+  iconography: {
+    sizesPx: {
+      panelAction: 12,
+      managementAction: 14,
+      shellAction: 14,
+      panelModule: 16,
     },
   },
 

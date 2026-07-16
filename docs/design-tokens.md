@@ -162,6 +162,26 @@ under `src/dock/dockTokens.css`.
 
 Relative `em` sizes are allowed inside a semantic parent when they express a local hierarchy.
 
+## Icon Tokens
+
+Normal application surfaces create icon tokens only for roles with an independent scaling policy.
+Do not introduce a generic icon size scale.
+
+| Role                  | Token                         | Default | Usage                                                   |
+| --------------------- | ----------------------------- | ------: | ------------------------------------------------------- |
+| Panel Action          | `--ui-icon-panel-action`      |    12px | Panel settings, help, pin, fullscreen and close actions |
+| Management Action     | `--ui-icon-management-action` |    14px | Rename, delete, save, cancel and reset actions          |
+| Shell Action          | `--ui-icon-shell-action`      |    14px | Icon-only actions in the normal application header      |
+| Panel Module Identity | `--ui-icon-panel-module`      |    16px | Module identity next to a normal panel title            |
+
+Icons paired with text use local `em` sizing instead of global tokens: inline indicators use `1em`,
+button-leading icons use `1.15em`, and module-list icons use `1.25em`. Module definitions own only
+the Lucide glyph; each rendering context owns its presentation size.
+
+Status dots, switch thumbs, drag handles, resize rails, control containers and data visualizations
+are component geometry, not iconography tokens. Dock is excluded and keeps its self-contained
+responsive contract in `src/dock/dockTokens.css`.
+
 ---
 
 ## Spacing Tokens

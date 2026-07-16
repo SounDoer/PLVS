@@ -82,7 +82,7 @@ export function SourceTransportCluster({
               className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {state.sourceLabel}
-              <ChevronDown className="size-3" />
+              <ChevronDown className="size-[1em]" />
             </button>
           </PopoverTrigger>
           <PopoverContent
@@ -131,7 +131,7 @@ export function SourceTransportCluster({
           chrome.action
         )}
       >
-        <ActionIcon className="size-[10px]" />
+        <ActionIcon className="size-[1em]" />
         {state.actionLabel}
       </button>
     </div>

@@ -116,7 +116,7 @@ describe("AppHeader", () => {
 
     const devicesButton = screen.getByRole("button", { name: "Devices" });
     const icon = devicesButton.querySelector("svg");
-    expect(icon?.classList.contains("size-4")).toBe(true);
+    expect(icon?.classList.contains("size-[length:var(--ui-icon-shell-action)]")).toBe(true);
     expect(icon?.classList.contains("shrink-0")).toBe(true);
 
     fireEvent.click(devicesButton);

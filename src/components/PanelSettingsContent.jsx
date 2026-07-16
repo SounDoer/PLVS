@@ -259,7 +259,7 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) 
       )}
     >
       <span className="min-w-0 truncate">{summary}</span>
-      <DisclosureIcon aria-hidden="true" className="size-3 text-muted-foreground/60" />
+      <DisclosureIcon aria-hidden="true" className="size-[1em] text-muted-foreground/60" />
     </button>
   );
 }
@@ -281,7 +281,7 @@ function SettingsOptionRow({
       {...props}
     >
       <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS, checkClassName)}>
-        {checked ? <Check aria-hidden="true" className="size-3" /> : null}
+        {checked ? <Check aria-hidden="true" className="size-[1em]" /> : null}
       </span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
     </button>
@@ -335,9 +335,9 @@ export function SettingsSelect({
                     >
                       <span className="min-w-0 truncate">{opt.group}</span>
                       {groupCollapsed ? (
-                        <ChevronDown aria-hidden="true" className="size-3 shrink-0" />
+                        <ChevronDown aria-hidden="true" className="size-[1em] shrink-0" />
                       ) : (
-                        <ChevronUp aria-hidden="true" className="size-3 shrink-0" />
+                        <ChevronUp aria-hidden="true" className="size-[1em] shrink-0" />
                       )}
                     </button>
                   ) : (
@@ -406,7 +406,7 @@ function SettingsChoiceSelect({ ariaLabel, options, value, onChange, open, onOpe
                 }}
               >
                 <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS)}>
-                  {checked ? <Check aria-hidden="true" className="size-3" /> : null}
+                  {checked ? <Check aria-hidden="true" className="size-[1em]" /> : null}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
               </div>
@@ -453,7 +453,7 @@ function SettingsVadSelect({ selectedOption, options, value, onChange, open, onO
                 }}
               >
                 <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS)}>
-                  {checked ? <Check aria-hidden="true" className="size-3" /> : null}
+                  {checked ? <Check aria-hidden="true" className="size-[1em]" /> : null}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
                 <button
@@ -472,7 +472,7 @@ function SettingsVadSelect({ selectedOption, options, value, onChange, open, onO
                     void openExternalUrl(option.url);
                   }}
                 >
-                  <ExternalLink aria-hidden="true" className="size-3" />
+                  <ExternalLink aria-hidden="true" className="size-[1em]" />
                 </button>
               </div>
             );

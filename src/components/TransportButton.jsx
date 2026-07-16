@@ -42,7 +42,7 @@ export function TransportButton({ state = "ready", onClick }) {
         className
       )}
     >
-      <Icon className="size-[10px]" />
+      <Icon className="size-[1em]" />
       {label}
     </button>
   );

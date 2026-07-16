@@ -86,7 +86,7 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
     <Popover>
       <PopoverTrigger asChild>
         <button type="button" aria-label="Panel settings" className={PANEL_HEADER_ACTION_BUTTON}>
-          <Settings2 size={12} />
+          <Settings2 className="size-[length:var(--ui-icon-panel-action)]" />
         </button>
       </PopoverTrigger>
       <PopoverContent

@@ -14,9 +14,16 @@ const TYPOGRAPHY_VARS = {
   "--ui-fs-metric-value": "16px",
 };
 
+const ICON_VARS = {
+  "--ui-icon-panel-action": "12px",
+  "--ui-icon-management-action": "14px",
+  "--ui-icon-shell-action": "14px",
+  "--ui-icon-panel-module": "16px",
+};
+
 describe("normal-mode typography variables", () => {
   afterEach(() => {
-    for (const name of Object.keys(TYPOGRAPHY_VARS)) {
+    for (const name of [...Object.keys(TYPOGRAPHY_VARS), ...Object.keys(ICON_VARS)]) {
       document.documentElement.style.removeProperty(name);
     }
   });
@@ -25,6 +32,14 @@ describe("normal-mode typography variables", () => {
     applyLayoutToDocument(UI_PREFERENCES);
 
     for (const [name, value] of Object.entries(TYPOGRAPHY_VARS)) {
+      expect(document.documentElement.style.getPropertyValue(name)).toBe(value);
+    }
+  });
+
+  it("applies only the independent semantic icon roles", () => {
+    applyLayoutToDocument(UI_PREFERENCES);
+
+    for (const [name, value] of Object.entries(ICON_VARS)) {
       expect(document.documentElement.style.getPropertyValue(name)).toBe(value);
     }
   });

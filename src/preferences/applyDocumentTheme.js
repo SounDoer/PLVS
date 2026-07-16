@@ -9,12 +9,12 @@ function setCssVar(name, value) {
 }
 
 /**
- * Spatial / typographic / non-palette tuning (ADR 0002 `applyLayout`).
+ * Spatial / typographic / iconographic / non-palette tuning (ADR 0002 `applyLayout`).
  * @param {typeof UI_PREFERENCES} prefs
  */
 export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   if (typeof document === "undefined") return;
-  const { typography, radii } = prefs;
+  const { typography, iconography, radii } = prefs;
   const { shell, splitters, header, footer, articlePadding, spacingRem, heightsRem, widthsPx } =
     prefs.layout;
 
@@ -30,6 +30,12 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-fs-display", `${s.display}px`);
   setCssVar("--ui-fs-body", `${s.body}px`);
   setCssVar("--ui-fs-metric-value", `${s.metricValue}px`);
+
+  const icons = iconography.sizesPx;
+  setCssVar("--ui-icon-panel-action", `${icons.panelAction}px`);
+  setCssVar("--ui-icon-management-action", `${icons.managementAction}px`);
+  setCssVar("--ui-icon-shell-action", `${icons.shellAction}px`);
+  setCssVar("--ui-icon-panel-module", `${icons.panelModule}px`);
 
   setCssVar("--radius", radii.card);
 

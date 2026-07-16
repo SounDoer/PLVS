@@ -27,7 +27,7 @@ export const MODULE_REGISTRY = {
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: LevelMeterPanel,
-    Icon: () => <BarChart2 size={16} />,
+    Icon: BarChart2,
   },
   loudness: {
     id: "loudness",
@@ -35,7 +35,7 @@ export const MODULE_REGISTRY = {
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: LoudnessPanel,
-    Icon: () => <Activity size={16} />,
+    Icon: Activity,
   },
   stats: {
     id: "stats",
@@ -43,7 +43,7 @@ export const MODULE_REGISTRY = {
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: StatsPanel,
-    Icon: () => <List size={16} />,
+    Icon: List,
   },
   vectorscope: {
     id: "vectorscope",
@@ -51,7 +51,7 @@ export const MODULE_REGISTRY = {
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: VectorscopePanel,
-    Icon: () => <Crosshair size={16} />,
+    Icon: Crosshair,
   },
   spectrum: {
     id: "spectrum",
@@ -59,7 +59,7 @@ export const MODULE_REGISTRY = {
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: SpectrumPanel,
-    Icon: () => <AudioLines size={16} />,
+    Icon: AudioLines,
   },
   spectrogram: {
     id: "spectrogram",
@@ -67,7 +67,7 @@ export const MODULE_REGISTRY = {
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: SpectrogramPanel,
-    Icon: () => <Layers size={16} />,
+    Icon: Layers,
   },
   waveform: {
     id: "waveform",
@@ -75,6 +75,6 @@ export const MODULE_REGISTRY = {
     minWidth: MIN_PANEL_WIDTH,
     minHeight: MIN_PANEL_HEIGHT,
     Component: WaveformPanel,
-    Icon: () => <AudioWaveform size={16} />,
+    Icon: AudioWaveform,
   },
 };

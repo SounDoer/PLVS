@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef } from "react";
-import { Pin } from "lucide-react";
+import { Minimize2, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PANEL_HEADER_ACTION_BUTTON,
@@ -363,7 +363,10 @@ function FullscreenOverlay() {
               aria-pressed={isPinned}
               disabled={!isPinned}
             >
-              <Pin size={12} fill={isPinned ? "currentColor" : "none"} />
+              <Pin
+                className="size-[length:var(--ui-icon-panel-action)]"
+                fill={isPinned ? "currentColor" : "none"}
+              />
             </button>
           </HoverTip>
           <button
@@ -372,16 +375,7 @@ function FullscreenOverlay() {
             onClick={() => setFullscreen(null)}
             aria-label="Exit fullscreen"
           >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-            </svg>
+            <Minimize2 className="size-[length:var(--ui-icon-panel-action)]" />
           </button>
         </div>
       </div>

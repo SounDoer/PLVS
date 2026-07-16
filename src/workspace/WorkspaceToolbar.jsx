@@ -47,12 +47,12 @@ function PanelRow({ panelId }) {
         />
         <ManagementIconAction
           label={`Save ${title} name`}
-          icon={<Check className="size-3.5" />}
+          icon={<Check className="size-[length:var(--ui-icon-management-action)]" />}
           onClick={commitRename}
         />
         <ManagementIconAction
           label={`Cancel ${title} rename`}
-          icon={<X className="size-3.5" />}
+          icon={<X className="size-[length:var(--ui-icon-management-action)]" />}
           onClick={() => setEditing(false)}
         />
       </div>
@@ -67,14 +67,14 @@ function PanelRow({ panelId }) {
     >
       {def?.Icon ? (
         <span className="flex shrink-0 text-muted-foreground">
-          <def.Icon />
+          <def.Icon className="size-[1.25em]" />
         </span>
       ) : null}
       <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
       <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
         <ManagementIconAction
           label={`Rename ${title}`}
-          icon={<Pencil className="size-3.5" />}
+          icon={<Pencil className="size-[length:var(--ui-icon-management-action)]" />}
           onClick={startRename}
         />
         <InlineConfirm
@@ -84,7 +84,7 @@ function PanelRow({ panelId }) {
           trigger={(arm) => (
             <ManagementIconAction
               label={`Delete ${title}`}
-              icon={<Trash2 className="size-3.5" />}
+              icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
               className="hover:text-destructive"
               onClick={arm}
             />
@@ -107,7 +107,7 @@ function AddPanelControl() {
           size="sm"
           className="h-7 min-w-0 flex-1 px-2 text-[length:var(--ui-fs-control)]"
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-[1.15em]" />
           Add Panel
         </Button>
       </PopoverTrigger>
@@ -123,7 +123,7 @@ function AddPanelControl() {
             }}
           >
             <span className="flex shrink-0 text-muted-foreground">
-              <Icon />
+              <Icon className="size-[1.25em]" />
             </span>
             <span className="min-w-0 flex-1 truncate text-left">{title}</span>
           </button>
@@ -169,7 +169,7 @@ export function ModulesPopoverContent() {
               onClick={arm}
               className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              <RotateCcw className="size-3.5" />
+              <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
             </button>
           )}
         />
