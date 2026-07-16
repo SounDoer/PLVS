@@ -16,7 +16,7 @@ function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
       type="button"
       aria-label={ariaLabel}
       onClick={onSelect}
-      className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <span
         aria-hidden="true"
@@ -157,7 +157,7 @@ export function AppHeader({
                 </span>
               </PopoverTrigger>
               <PopoverContent align="end" sideOffset={6} className="w-auto max-w-[92vw] p-1">
-                <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
                   Devices
                 </p>
                 <DeviceRow
@@ -168,7 +168,7 @@ export function AppHeader({
                 />
                 {audioOutputs.length ? (
                   <>
-                    <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                    <p className="px-2 pt-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground/70">
                       Output
                     </p>
                     {audioOutputs.map((device) => (
@@ -183,7 +183,7 @@ export function AppHeader({
                 ) : null}
                 {audioInputs.length ? (
                   <>
-                    <p className="px-2 pt-1 text-[10px] font-semibold tracking-wide text-muted-foreground/70">
+                    <p className="px-2 pt-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground/70">
                       Input
                     </p>
                     {audioInputs.map((device) => (
@@ -206,7 +206,7 @@ export function AppHeader({
             </span>
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className="w-max min-w-44 max-w-[92vw] p-1">
-            <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+            <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
               Modules
             </p>
             <ModulesPopoverContent />

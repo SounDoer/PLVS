@@ -13,7 +13,10 @@ import { Switch } from "@/components/ui/switch";
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
-      <Label htmlFor={id} className="min-w-0 text-xs font-normal text-foreground">
+      <Label
+        htmlFor={id}
+        className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
+      >
         {label}
       </Label>
       <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
@@ -44,7 +47,7 @@ export function FocusViewPopoverContent({
 
   return (
     <div className="grid gap-1">
-      <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+      <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
         Views
       </p>
       <FocusSwitch
@@ -72,7 +75,10 @@ export function FocusViewPopoverContent({
         onCheckedChange={setAutoHideControls}
       />
       <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
-        <Label htmlFor="panel-opacity" className="min-w-0 text-xs font-normal text-foreground">
+        <Label
+          htmlFor="panel-opacity"
+          className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
+        >
           Opacity
         </Label>
         <input
@@ -102,7 +108,7 @@ export function FocusViewPopoverContent({
           <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
             <Label
               htmlFor="focus-view-dock"
-              className="min-w-0 text-xs font-normal text-foreground"
+              className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
             >
               Dock
             </Label>
@@ -114,13 +120,13 @@ export function FocusViewPopoverContent({
               <SelectTrigger
                 id="focus-view-dock"
                 aria-label="Dock position"
-                className="h-6 w-auto min-w-[4.75rem] rounded-md border-transparent bg-transparent px-2 py-0 text-xs shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+                className="h-6 w-auto min-w-[4.75rem] rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent
                 align="end"
-                className="min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-xs"
+                className="min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
               >
                 <SelectItem value="off">Off</SelectItem>
                 <SelectItem value="top">Top</SelectItem>

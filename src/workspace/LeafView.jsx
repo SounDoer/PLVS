@@ -248,28 +248,28 @@ export function LeafView({ node, path, style }) {
     >
       {/* Zone hint: above */}
       {isDragging && zoneHint === "above" && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-1/2 items-start justify-center rounded-t-[10px] border-t-2 border-dashed border-primary bg-primary/5 pt-2 text-[10px] text-primary">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-1/2 items-start justify-center rounded-t-[10px] border-t-2 border-dashed border-primary bg-primary/5 pt-2 text-[length:var(--ui-fs-caption)] text-primary">
           Insert above
         </div>
       )}
 
       {/* Zone hint: below */}
       {isDragging && zoneHint === "below" && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-1/2 items-end justify-center rounded-b-[10px] border-b-2 border-dashed border-primary bg-primary/5 pb-2 text-[10px] text-primary">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-1/2 items-end justify-center rounded-b-[10px] border-b-2 border-dashed border-primary bg-primary/5 pb-2 text-[length:var(--ui-fs-caption)] text-primary">
           Insert below
         </div>
       )}
 
       {/* Zone hint: left */}
       {isDragging && zoneHint === "left" && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-1/2 items-center justify-center rounded-l-[10px] border-l-2 border-dashed border-primary bg-primary/5 text-[10px] text-primary">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-1/2 items-center justify-center rounded-l-[10px] border-l-2 border-dashed border-primary bg-primary/5 text-[length:var(--ui-fs-caption)] text-primary">
           Insert left
         </div>
       )}
 
       {/* Zone hint: right */}
       {isDragging && zoneHint === "right" && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-1/2 items-center justify-center rounded-r-[10px] border-r-2 border-dashed border-primary bg-primary/5 text-[10px] text-primary">
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-1/2 items-center justify-center rounded-r-[10px] border-r-2 border-dashed border-primary bg-primary/5 text-[length:var(--ui-fs-caption)] text-primary">
           Insert right
         </div>
       )}

@@ -18,7 +18,7 @@ export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false 
           onClick={onBack}
         />
       ) : null}
-      <h1 className="min-w-0 flex-1 truncate text-[10px] font-semibold tracking-wide text-muted-foreground">
+      <h1 className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
         {title}
       </h1>
       {onReset ? (

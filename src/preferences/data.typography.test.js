@@ -4,12 +4,19 @@ import { UI_PREFERENCES } from "./data.js";
 const sizes = UI_PREFERENCES.typography.sizesPx;
 
 describe("typography size scale", () => {
-  it("Axis token source (axisUnit) is 11px", () => expect(sizes.axisUnit).toBe(11));
-  it("Dynamic Display source (extraValue) is 13px (unchanged)", () =>
-    expect(sizes.extraValue).toBe(13));
-  it("Metric Annotation (metricMeta) is 12px", () => expect(sizes.metricMeta).toBe(12));
-  it("Metric Value (metricValue) is 16px", () => expect(sizes.metricValue).toBe(16));
-  it("Status is 11px", () => expect(sizes.status).toBe(11));
+  it("defines the complete normal-mode semantic type scale", () => {
+    expect(sizes).toEqual({
+      caption: 10,
+      axis: 11,
+      status: 11,
+      control: 12,
+      metricMeta: 12,
+      panelTitle: 12,
+      display: 13,
+      body: 14,
+      metricValue: 16,
+    });
+  });
 });
 
 describe("spacing data", () => {

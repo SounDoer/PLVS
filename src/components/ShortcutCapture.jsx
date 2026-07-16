@@ -60,7 +60,9 @@ export function ShortcutCapture({
       >
         {recording ? "Press a combo…" : formatAcceleratorForDisplay(value, { isMac })}
       </Button>
-      {hint ? <span className="text-[11px] text-destructive">{hint}</span> : null}
+      {hint ? (
+        <span className="text-[length:var(--ui-fs-axis)] text-destructive">{hint}</span>
+      ) : null}
     </div>
   );
 }

@@ -136,7 +136,7 @@ export function DragProvider({ children, onDrop }) {
       {children}
       {dragState && (
         <div
-          className="pointer-events-none fixed z-50 rounded border border-primary/60 bg-card px-2 py-0.5 text-xs font-medium shadow-lg"
+          className="pointer-events-none fixed z-50 rounded border border-primary/60 bg-card px-2 py-0.5 text-[length:var(--ui-fs-control)] font-medium shadow-lg"
           style={{ left: dragState.x + 14, top: dragState.y - 8 }}
         >
           {resolvePanelDisplayName(state, dragState.sourceId)}

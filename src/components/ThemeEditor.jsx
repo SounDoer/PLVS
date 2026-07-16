@@ -188,10 +188,10 @@ export function ThemeEditor({
             role="alertdialog"
             className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none"
           >
-            <Dialog.Title className="mb-3 text-sm font-semibold text-foreground">
+            <Dialog.Title className="mb-3 text-[length:var(--ui-fs-body)] font-semibold text-foreground">
               Discard theme changes?
             </Dialog.Title>
-            <Dialog.Description className="mb-6 text-sm text-muted-foreground">
+            <Dialog.Description className="mb-6 text-[length:var(--ui-fs-body)] text-muted-foreground">
               Unsaved edits will be discarded and the previous theme will be restored.
             </Dialog.Description>
             <div className="flex justify-end gap-2">

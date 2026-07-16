@@ -42,7 +42,7 @@ function PanelRow({ panelId }) {
             if (event.key === "Enter") commitRename();
             if (event.key === "Escape") setEditing(false);
           }}
-          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           autoFocus
         />
         <ManagementIconAction
@@ -102,7 +102,11 @@ function AddPanelControl() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="secondary" size="sm" className="h-7 min-w-0 flex-1 px-2 text-xs">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-7 min-w-0 flex-1 px-2 text-[length:var(--ui-fs-control)]"
+        >
           <Plus className="size-3.5" />
           Add Panel
         </Button>
@@ -146,7 +150,9 @@ export function ModulesPopoverContent() {
           <PanelRow key={panelId} panelId={panelId} />
         ))}
         {panelIds.length === 0 ? (
-          <p className="px-2 py-1.5 text-xs text-muted-foreground">No panels</p>
+          <p className="px-2 py-1.5 text-[length:var(--ui-fs-control)] text-muted-foreground">
+            No panels
+          </p>
         ) : null}
       </div>
       <div className="mt-1 flex items-center gap-1 border-t border-border/30 pt-1">

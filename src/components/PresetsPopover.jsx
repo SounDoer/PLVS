@@ -54,7 +54,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
   return (
     <>
       {showTitle ? (
-        <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+        <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
           Presets
         </p>
       ) : null}
@@ -68,13 +68,13 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
             if (e.key === "Enter") handleSave();
           }}
           placeholder="New preset name"
-          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
         <Button
           type="button"
           variant="secondary"
           size="sm"
-          className="h-7 px-2 text-xs"
+          className="h-7 px-2 text-[length:var(--ui-fs-control)]"
           onClick={handleSave}
           disabled={!name.trim()}
         >
@@ -82,7 +82,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
         </Button>
       </div>
       {presets.list.length === 0 ? (
-        <p className="px-2 py-1.5 text-xs text-muted-foreground">
+        <p className="px-2 py-1.5 text-[length:var(--ui-fs-control)] text-muted-foreground">
           No presets yet. Save the current view to start.
         </p>
       ) : (
@@ -104,7 +104,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                         if (e.key === "Enter") commitRename(preset.id);
                         if (e.key === "Escape") cancelRename();
                       }}
-                      className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                     <button
                       type="button"
@@ -125,7 +125,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 rounded text-xs transition-colors hover:bg-muted/50 focus-within:bg-muted/50">
+                  <div className="flex items-center gap-2 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50">
                     <button
                       type="button"
                       aria-label={`Apply preset ${preset.name}`}

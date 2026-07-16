@@ -50,7 +50,9 @@ export function StatusPill({ state = "ready", showClock = false, clockRef = null
           cfg.dotGlow
         )}
       />
-      <span className="ml-1.5 text-[11px] font-bold tracking-[0.08em] uppercase">{cfg.label}</span>
+      <span className="ml-1.5 text-[length:var(--ui-fs-status)] font-bold tracking-[0.08em] uppercase">
+        {cfg.label}
+      </span>
       {showClock && (
         <>
           <span className="w-px h-[1em] bg-current opacity-30 mx-[9px]" />

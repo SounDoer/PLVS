@@ -616,7 +616,7 @@ describe("PanelSettingsContent", () => {
     expect(momentaryRow.className).toContain("py-0.5");
     expect(momentaryRow.className).not.toContain("py-1 ");
     expect(momentaryRow.className).not.toContain("py-1.5");
-    expect(momentaryRow.className).toContain("text-xs");
+    expect(momentaryRow.className).toContain("var(--ui-fs-control)");
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -1355,7 +1355,7 @@ describe("PanelSettingsContent", () => {
     expect(titleGroup?.className).toContain("px-1");
     expect(titleBar?.className).toContain("h-7");
     expect(titleBar?.className).toContain("px-1");
-    expect(titleBar?.className).toContain("text-xs");
+    expect(titleBar?.className).toContain("var(--ui-fs-control)");
     expect(titleBar?.className).not.toContain("h-9");
     expect(titleBar?.className).not.toContain("px-3");
     expect(titleBar?.className).not.toContain("text-sm");

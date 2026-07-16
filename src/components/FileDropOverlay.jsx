@@ -45,8 +45,10 @@ export function FileDropOverlay({ active, onDropFile }) {
   return (
     <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-background/70 backdrop-blur-sm">
       <div className="rounded-xl border border-primary/40 bg-popover px-6 py-5 text-center shadow-lg">
-        <p className="text-sm font-semibold text-foreground">Drop file to analyze</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="text-[length:var(--ui-fs-body)] font-semibold text-foreground">
+          Drop file to analyze
+        </p>
+        <p className="mt-1 text-[length:var(--ui-fs-control)] text-muted-foreground">
           Audio files and videos with audio tracks stay local.
         </p>
       </div>

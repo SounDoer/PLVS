@@ -142,15 +142,25 @@ Two font families:
 
 **Rule:** All live-changing numeric displays use `--ui-font-mono` + `tabular-nums`. Static UI text uses `--ui-font-sans`.
 
-### Text Roles and Sizes
+### Normal-mode Text Roles and Sizes
 
-| #   | Role                  | Token                  | Size | Weight | Notes                                                                 |
-| --- | --------------------- | ---------------------- | ---- | ------ | --------------------------------------------------------------------- |
-| 1   | **Axis Annotation**   | `--ui-fs-axis`         | 11px | 400    | Chart scale labels, secondary hints, error text. Muted.               |
-| 2   | **Dynamic Display**   | `--ui-fs-display`      | 13px | —      | Live values on charts, settings drawer labels and control text.       |
-| 3   | **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | 500    | Loudness metric row label + unit. Also footer status links in drawer. |
-| 4   | **Metric Value**      | `--ui-fs-metric-value` | 16px | 600    | Loudness metric row numeric value. Mono + tabular-nums.               |
-| 5   | **Status**            | `--ui-fs-status`       | 11px | 400    | Footer status bar text. Muted.                                        |
+Normal application surfaces use semantic typography roles instead of fixed Tailwind font-size
+utilities or component-local pixel values. Dock is excluded and owns its responsive typography
+under `src/dock/dockTokens.css`.
+
+| Role                  | Token                  | Size | Typical use                                                  |
+| --------------------- | ---------------------- | ---- | ------------------------------------------------------------ |
+| **Caption**           | `--ui-fs-caption`      | 10px | Menu groups, compact metadata, drag/drop overlay labels      |
+| **Axis Annotation**   | `--ui-fs-axis`         | 11px | Chart ticks, secondary hints, validation and tooltip text    |
+| **Status**            | `--ui-fs-status`       | 11px | Header/footer state and compact status chips                 |
+| **Control**           | `--ui-fs-control`      | 12px | Compact buttons, selects, inputs and management rows         |
+| **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | Metric names and units                                       |
+| **Panel Title**       | `--ui-fs-panel-title`  | 12px | Panel, editor and dialog titles                              |
+| **Dynamic Display**   | `--ui-fs-display`      | 13px | Live chart values and settings drawer text                   |
+| **Body**              | `--ui-fs-body`         | 14px | General descriptions, empty states and standard UI controls |
+| **Metric Value**      | `--ui-fs-metric-value` | 16px | Primary metric values; mono with tabular numerals            |
+
+Relative `em` sizes are allowed inside a semantic parent when they express a local hierarchy.
 
 ---
 

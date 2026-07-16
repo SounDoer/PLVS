@@ -15,7 +15,7 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
     ref={ref}
     data-slot="select-trigger"
     className={cn(
-      "border-input bg-background ring-offset-background data-[placeholder]:text-muted-foreground flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "border-input bg-background ring-offset-background data-[placeholder]:text-muted-foreground flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-[length:var(--ui-fs-body)] whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className
     )}
     {...props}
@@ -85,7 +85,10 @@ SelectContent.displayName = SelectPrimitive.Content.displayName;
 const SelectLabel = React.forwardRef(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-xs font-semibold text-muted-foreground", className)}
+    className={cn(
+      "px-2 py-1.5 text-[length:var(--ui-fs-control)] font-semibold text-muted-foreground",
+      className
+    )}
     {...props}
   />
 ));
@@ -96,7 +99,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
     ref={ref}
     data-slot="select-item"
     className={cn(
-      "focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-[length:var(--ui-fs-body)] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}

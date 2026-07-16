@@ -436,7 +436,7 @@ function SplitContent() {
             }}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+          <div className="flex flex-1 items-center justify-center text-[length:var(--ui-fs-body)] text-muted-foreground">
             No panels
           </div>
         )}

@@ -54,12 +54,15 @@ export function FileAnalysisHistoryMenu({
         <button
           type="button"
           aria-label={countLabel}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <FileStack className="size-3.5" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>
           {analyzingPct != null ? (
-            <span aria-hidden="true" className="text-[10px] tabular-nums text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className="text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground"
+            >
               {`${analyzingPct}%`}
             </span>
           ) : null}
@@ -67,13 +70,13 @@ export function FileAnalysisHistoryMenu({
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-80 max-w-[92vw] p-1">
         <div className="flex items-center justify-between gap-2 px-2 py-1">
-          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground">
+          <p className="text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
             File History
           </p>
           <button
             type="button"
             onClick={() => onClearAllFiles?.()}
-            className="rounded px-1.5 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="rounded px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             aria-label="Clear all file history"
           >
             Clear all
@@ -87,7 +90,7 @@ export function FileAnalysisHistoryMenu({
             return (
               <div
                 key={session.id}
-                className="group flex items-center gap-1 rounded text-xs transition-colors hover:bg-muted/50 focus-within:bg-muted/50"
+                className="group flex items-center gap-1 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50"
               >
                 <button
                   type="button"
@@ -106,13 +109,13 @@ export function FileAnalysisHistoryMenu({
                     <span className="block truncate font-medium text-foreground">
                       {session.fileName}
                     </span>
-                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[length:var(--ui-fs-caption)] text-muted-foreground">
                       <span>{statusLabel(session)}</span>
                     </span>
                     {detail ? (
                       <span
                         className={cn(
-                          "mt-0.5 block truncate text-[10px] tabular-nums",
+                          "mt-0.5 block truncate text-[length:var(--ui-fs-caption)] tabular-nums",
                           session.state === "error"
                             ? "text-[color:var(--ui-signal-bad)]"
                             : "text-muted-foreground"

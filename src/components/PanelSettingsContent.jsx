@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
-  "h-6 max-w-none rounded-md border px-2 py-0 text-xs text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
 
 const SETTINGS_VALUE_IDLE_CLASS =
   "border-transparent bg-transparent hover:border-border hover:bg-secondary/85 hover:text-foreground";
@@ -29,7 +29,7 @@ const SETTINGS_DETAIL_SURFACE_CLASS =
   "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
 
 const SETTINGS_CHOICE_ROW_CLASS =
-  "flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-left text-xs text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
+  "flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-left text-[length:var(--ui-fs-control)] text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
 
@@ -45,13 +45,13 @@ export function SettingsGroup({ children }) {
 
 export function SettingsRow({ label, tooltip, children }) {
   return (
-    <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-xs">
+    <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
       <span className="group relative flex h-6 items-center whitespace-nowrap font-medium text-muted-foreground">
         {label}
         {tooltip ? (
           <span
             role="tooltip"
-            className="pointer-events-none absolute bottom-full left-0 z-50 mb-1 hidden w-48 whitespace-normal rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-normal leading-snug text-popover-foreground shadow-sm group-hover:block"
+            className="pointer-events-none absolute bottom-full left-0 z-50 mb-1 hidden w-48 whitespace-normal rounded-md border border-border bg-popover px-2 py-1 text-[length:var(--ui-fs-axis)] font-normal leading-snug text-popover-foreground shadow-sm group-hover:block"
           >
             {tooltip}
           </span>
@@ -123,7 +123,7 @@ export function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, 
       {tooltipOpen ? (
         <span
           role="tooltip"
-          className="pointer-events-none absolute bottom-full right-0 mb-1 whitespace-nowrap rounded-md border border-border bg-popover px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-popover-foreground shadow-sm"
+          className="pointer-events-none absolute bottom-full right-0 mb-1 whitespace-nowrap rounded-md border border-border bg-popover px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)] tabular-nums text-popover-foreground shadow-sm"
         >
           {displayValue}
         </span>
@@ -169,7 +169,7 @@ export function SettingsRangeInput({
   const minWidthCh = Math.min(7, Math.max(4.5, draftMin.length + 1.5));
   const maxWidthCh = Math.min(7, Math.max(4.5, draftMax.length + 1.5));
   const inputClass =
-    "h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[11px] tabular-nums text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring";
+    "h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring";
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -236,7 +236,7 @@ function SettingsLufsInput({ value, onCommit }) {
         onKeyDown={(event) => {
           if (event.key === "Enter") event.currentTarget.blur();
         }}
-        className="h-6 w-14 rounded-md border border-transparent bg-transparent px-1.5 py-0 text-center font-[family-name:var(--ui-font-mono)] text-xs tabular-nums text-popover-foreground transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="h-6 w-14 rounded-md border border-transparent bg-transparent px-1.5 py-0 text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums text-popover-foreground transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       />
       <span className="text-muted-foreground/60 shrink-0">LUFS</span>
     </div>
@@ -331,7 +331,7 @@ export function SettingsSelect({
                           [opt.group]: current[opt.group] !== true,
                         }))
                       }
-                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-sm px-2 pb-0.5 pt-1 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 outline-none transition-colors hover:bg-secondary/35 hover:text-muted-foreground"
+                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-sm px-2 pb-0.5 pt-1 text-left text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground/60 outline-none transition-colors hover:bg-secondary/35 hover:text-muted-foreground"
                     >
                       <span className="min-w-0 truncate">{opt.group}</span>
                       {groupCollapsed ? (
@@ -341,7 +341,7 @@ export function SettingsSelect({
                       )}
                     </button>
                   ) : (
-                    <div className="min-w-0 truncate px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+                    <div className="min-w-0 truncate px-2 pb-0.5 pt-1 text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground/60">
                       {opt.group}
                     </div>
                   )
@@ -577,7 +577,7 @@ export function SortableStatsList({
                 type="button"
                 aria-label="Reset stats"
                 onClick={arm}
-                className="w-auto rounded-sm px-2 py-0.5 text-left text-[11px] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
+                className="w-auto rounded-sm px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
               >
                 Reset
               </button>

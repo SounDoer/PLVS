@@ -36,7 +36,7 @@ export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3
 export const SHELL_BOTTOM_REVEAL_HOT_ZONE = "absolute bottom-0 left-0 right-0 z-20 h-3";
 
 export const PANEL_HEADER_BAR =
-  "@container relative flex h-7 shrink-0 items-center gap-0.5 border-b border-border/60 px-1 text-xs font-medium";
+  "@container relative flex h-7 shrink-0 items-center gap-0.5 border-b border-border/60 px-1 text-[length:var(--ui-fs-control)] font-medium";
 
 export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
 
@@ -44,7 +44,7 @@ export const PANEL_HEADER_ACTION_BUTTON =
   "rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none";
 
 export const PANEL_HEADER_TITLE_GROUP =
-  "@max-[80px]:hidden flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0.5 text-xs font-medium";
+  "@max-[80px]:hidden flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0.5 text-[length:var(--ui-fs-control)] font-medium";
 
 export const FOOTER_LABEL =
   "text-[length:var(--ui-fs-status)] tracking-[0.06em] text-muted-foreground/60";
