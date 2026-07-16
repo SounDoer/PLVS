@@ -1,6 +1,7 @@
 import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import {
+  DEFAULT_PANEL_CONTROLS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
 } from "../lib/panelControls.js";
@@ -25,11 +26,8 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   transport: "transport",
 });
 
-const DEFAULT_DOCK_STATS_VISIBLE_IDS = ["integrated", "truePeak", "lra"];
-const DEFAULT_DOCK_STATS_ORDER = [
-  ...DEFAULT_DOCK_STATS_VISIBLE_IDS,
-  ...STATS_CANONICAL_ORDER.filter((id) => !DEFAULT_DOCK_STATS_VISIBLE_IDS.includes(id)),
-];
+const DEFAULT_DOCK_STATS_VISIBLE_IDS = DEFAULT_PANEL_CONTROLS.statsVisibleIds;
+const DEFAULT_DOCK_STATS_ORDER = DEFAULT_PANEL_CONTROLS.statsOrder;
 
 export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   level: Object.freeze({ mode: "peak", readout: "live", showLabels: true }),

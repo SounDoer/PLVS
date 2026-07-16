@@ -38,7 +38,18 @@ describe("useDockLayout", () => {
         loudnessYMinDb: -64,
         loudnessYMaxDb: 0,
       },
-      stats: { statsVisibleIds: ["integrated", "truePeak", "lra"] },
+      stats: {
+        statsVisibleIds: [
+          "momentary",
+          "shortTerm",
+          "integrated",
+          "momentaryMax",
+          "shortTermMax",
+          "lra",
+          "psr",
+          "plr",
+        ],
+      },
       correlation: { pair: { x: 0, y: 1 } },
       spectrum: {
         channel: { type: "pair", x: 0, y: 1 },

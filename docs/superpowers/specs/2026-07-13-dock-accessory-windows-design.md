@@ -278,6 +278,9 @@ Initial control families:
 Settings that are not yet meaningful in the compact renderer should not be
 shown merely because a normal panel has them.
 
+Dock Stats initializes and resets its metric order and visibility from the normal
+Stats defaults. Subsequent Dock edits remain independently persisted.
+
 ### Shared versus independent rule
 
 Shared:

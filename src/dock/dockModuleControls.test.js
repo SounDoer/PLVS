@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
   isDefaultDockModuleControls,
@@ -8,6 +9,14 @@ import {
 } from "./dockModuleControls.js";
 
 describe("normalizeDockControlsByModuleId", () => {
+  it("shares the normal Stats default order and visible metrics", () => {
+    const stats = normalizeDockControlsByModuleId().stats;
+    expect(stats.statsOrder).toEqual(DEFAULT_PANEL_CONTROLS.statsOrder);
+    expect(stats.statsVisibleIds).toEqual(DEFAULT_PANEL_CONTROLS.statsVisibleIds);
+    expect(stats.statsOrder).not.toBe(DEFAULT_PANEL_CONTROLS.statsOrder);
+    expect(stats.statsVisibleIds).not.toBe(DEFAULT_PANEL_CONTROLS.statsVisibleIds);
+  });
+
   it("detects defaults after normalization", () => {
     expect(isDefaultDockModuleControls("level", { mode: "peak" })).toBe(true);
     expect(isDefaultDockModuleControls("level", { mode: "rms" })).toBe(false);

@@ -5,10 +5,15 @@ import { MetricsDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DockStats } from "./DockStats.jsx";
 
 const METRICS = [
+  { id: "momentary", shortLabel: "M", unit: "LUFS", value: "-18.1" },
+  { id: "shortTerm", shortLabel: "ST", unit: "LUFS", value: "-19.2" },
   { id: "integrated", shortLabel: "I", unit: "LUFS", value: "-20.1" },
-  { id: "truePeak", shortLabel: "TP Max", unit: "dBTP", value: "-3.2" },
+  { id: "momentaryMax", shortLabel: "M Max", unit: "LUFS", value: "-15.0" },
+  { id: "shortTermMax", shortLabel: "ST Max", unit: "LUFS", value: "-16.0" },
   { id: "lra", shortLabel: "LRA", unit: "LU", value: "7.4" },
   { id: "psr", shortLabel: "PSR", unit: "dB", value: "11.0" },
+  { id: "plr", shortLabel: "PLR", unit: "dB", value: "16.9" },
+  { id: "truePeak", shortLabel: "TP Max", unit: "dBTP", value: "-3.2" },
 ];
 
 let triggerResize;
@@ -46,17 +51,15 @@ function renderWith(statsMetrics, controls, shared = {}, heightMode = "standard"
 }
 
 describe("DockStats", () => {
-  it("renders the default selection in Dock priority order", () => {
+  it("renders the normal Stats defaults in canonical order", () => {
     renderWith(METRICS);
     const stats = screen.getAllByTestId("dock-stat");
     expect(stats).toHaveLength(3);
-    expect(stats.map((row) => row.textContent)).toEqual(["I-20.1", "TP Max-3.2", "LRA7.4"]);
+    expect(stats.map((row) => row.textContent)).toEqual(["M-18.1", "ST-19.2", "I-20.1"]);
     expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 72px)");
     expect(stats[0].className).toContain("flex");
     expect(stats[0].style.gap).toBe("2px");
-    expect(screen.getByText("TP Max").closest("[data-testid='dock-stat-label']")?.title).toBe(
-      "TP Max"
-    );
+    expect(screen.getByText("M").closest("[data-testid='dock-stat-label']")?.title).toBe("M");
   });
 
   it("respects independent visibility and ordering controls", () => {
