@@ -8,6 +8,7 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   normalizePanelControls,
 } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
@@ -367,6 +368,56 @@ export function SettingsSelect({
   );
 }
 
+/// A plain label-only choice list. `SettingsVadSelect` carries an external-link button per row,
+/// which nothing else needs.
+function SettingsChoiceSelect({ ariaLabel, options, value, onChange, open, onOpenChange }) {
+  const selectedOption = options.find((option) => option.id === value) ?? options[0];
+  return (
+    <div className="flex min-w-0 flex-col items-end">
+      <InlineDetailTrigger
+        ariaLabel={ariaLabel}
+        summary={selectedOption.label}
+        open={open}
+        onToggle={() => onOpenChange(!open)}
+        className="w-auto grid-cols-[auto_auto] gap-1.5 justify-self-end"
+      />
+      {open ? (
+        <div role="listbox" aria-label={ariaLabel} className={SETTINGS_DETAIL_SURFACE_CLASS}>
+          {options.map((option) => {
+            const checked = option.id === value;
+            return (
+              <div
+                key={option.id}
+                role="option"
+                aria-selected={checked}
+                tabIndex={0}
+                data-settings-option-row
+                className={cn(SETTINGS_CHOICE_ROW_CLASS, "cursor-default")}
+                onClick={() => {
+                  onChange(option.id);
+                  onOpenChange(false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onChange(option.id);
+                    onOpenChange(false);
+                  }
+                }}
+              >
+                <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS)}>
+                  {checked ? <Check aria-hidden="true" className="size-3" /> : null}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SettingsVadSelect({ selectedOption, options, value, onChange, open, onOpenChange }) {
   return (
     <div className="flex min-w-0 flex-col items-end">
@@ -677,42 +728,60 @@ export function LoudnessSettingsRows({
 
 export function SpectrumDisplaySettingsRows({
   showPeak = true,
+  showPeakLabels = showPeak,
   showDisplay = true,
-  peakHold,
-  smoothingPercent,
+  maxHold,
+  peakLabels,
+  speedPercent,
+  octaveSmoothing,
   tiltDbPerOctave,
   xMinFreq,
   xMaxFreq,
   yMinDb,
   yMaxDb,
-  onPeakHoldChange,
-  onSmoothingChange,
+  onMaxHoldChange,
+  onPeakLabelsChange,
+  onSpeedChange,
+  onOctaveSmoothingChange,
   onTiltChange,
   onXRangeChange,
   onYRangeChange,
 }) {
+  const [smoothingOpen, setSmoothingOpen] = useState(false);
   return (
     <>
       {showPeak ? (
-        <SettingsRow label="Peak hold">
+        <SettingsRow label="Max hold">
           <SettingsSwitch
-            aria-label="peak hold"
-            checked={peakHold}
-            onCheckedChange={onPeakHoldChange}
+            aria-label="spectrum max hold"
+            checked={maxHold}
+            onCheckedChange={onMaxHoldChange}
+          />
+        </SettingsRow>
+      ) : null}
+      {showPeakLabels ? (
+        <SettingsRow
+          label="Peak labels"
+          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max hold is the time axis; this is the frequency axis."
+        >
+          <SettingsSwitch
+            aria-label="spectrum peak labels"
+            checked={peakLabels}
+            onCheckedChange={onPeakLabelsChange}
           />
         </SettingsRow>
       ) : null}
       {showDisplay ? (
         <>
-          <SettingsRow label="Smoothing">
+          <SettingsRow label="Speed">
             <SettingsSlider
-              ariaLabel="spectrum smoothing"
+              ariaLabel="spectrum speed"
               min={0}
               max={100}
               step={1}
-              value={smoothingPercent}
+              value={speedPercent}
               formatValue={(value) => `${value.toFixed(0)}%`}
-              onCommit={onSmoothingChange}
+              onCommit={onSpeedChange}
             />
           </SettingsRow>
           <SettingsRow label="Tilt">
@@ -724,6 +793,19 @@ export function SpectrumDisplaySettingsRows({
               value={tiltDbPerOctave}
               formatValue={(value) => `${value.toFixed(2)} dB/oct`}
               onCommit={onTiltChange}
+            />
+          </SettingsRow>
+          <SettingsRow
+            label="Smoothing"
+            tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Speed smooths over time; this smooths over frequency."
+          >
+            <SettingsChoiceSelect
+              ariaLabel="spectrum octave smoothing"
+              options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
+              value={octaveSmoothing}
+              open={smoothingOpen}
+              onOpenChange={setSmoothingOpen}
+              onChange={onOctaveSmoothingChange}
             />
           </SettingsRow>
           <SettingsRow label="X range">
@@ -764,8 +846,8 @@ export function PanelSettingsContent({
   spectrumView = "combined",
   spectrumViewLegend = null,
   onSpectrumViewChange,
-  spectrumPeakHold = false,
-  onSpectrumPeakHoldToggle,
+  spectrumMaxHold = false,
+  onSpectrumMaxHoldToggle,
   panelControls,
   onPanelControlsChange,
 }) {
@@ -1005,10 +1087,10 @@ export function PanelSettingsContent({
     const effectiveSpectrumView = hasPanelControls
       ? normalizedPanelControls.spectrumView
       : spectrumView;
-    const effectiveSpectrumPeakHold = hasPanelControls
-      ? normalizedPanelControls.spectrumPeakHold
-      : spectrumPeakHold;
-    const effectiveSmoothingPercent = normalizedPanelControls.spectrumSmoothingPercent;
+    const effectiveSpectrumMaxHold = hasPanelControls
+      ? normalizedPanelControls.spectrumMaxHold
+      : spectrumMaxHold;
+    const effectiveSpeedPercent = normalizedPanelControls.spectrumSpeedPercent;
     const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
     const effectiveYMaxDb = normalizedPanelControls.spectrumYMaxDb;
     const effectiveYMinDb = normalizedPanelControls.spectrumYMinDb;
@@ -1024,7 +1106,7 @@ export function PanelSettingsContent({
       spectrumViewApplies(sel) &&
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
-    const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
+    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxHoldToggle === "function";
     const showDisplayControls =
       activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
     const showSpectrogramRange =
@@ -1095,27 +1177,45 @@ export function PanelSettingsContent({
         <SpectrumDisplaySettingsRows
           showPeak={showPeak}
           showDisplay={showDisplayControls}
-          peakHold={effectiveSpectrumPeakHold}
-          smoothingPercent={effectiveSmoothingPercent}
+          maxHold={effectiveSpectrumMaxHold}
+          peakLabels={normalizedPanelControls.spectrumPeakLabels}
+          speedPercent={effectiveSpeedPercent}
+          octaveSmoothing={normalizedPanelControls.spectrumOctaveSmoothing}
           tiltDbPerOctave={effectiveTiltDbPerOctave}
           xMinFreq={normalizedPanelControls.spectrumXMinFreq}
           xMaxFreq={normalizedPanelControls.spectrumXMaxFreq}
           yMinDb={effectiveYMinDb}
           yMaxDb={effectiveYMaxDb}
-          onPeakHoldChange={(checked) => {
+          onMaxHoldChange={(checked) => {
             onPanelControlsChange?.(
               normalizePanelControls({
                 ...normalizedPanelControls,
-                spectrumPeakHold: checked,
+                spectrumMaxHold: checked,
               })
             );
-            onSpectrumPeakHoldToggle?.();
+            onSpectrumMaxHoldToggle?.();
           }}
-          onSmoothingChange={(value) => {
+          onPeakLabelsChange={(checked) => {
             onPanelControlsChange?.(
               normalizePanelControls({
                 ...normalizedPanelControls,
-                spectrumSmoothingPercent: value,
+                spectrumPeakLabels: checked,
+              })
+            );
+          }}
+          onSpeedChange={(value) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumSpeedPercent: value,
+              })
+            );
+          }}
+          onOctaveSmoothingChange={(id) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumOctaveSmoothing: id,
               })
             );
           }}

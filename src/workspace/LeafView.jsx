@@ -317,8 +317,8 @@ export function LeafView({ node, path, style }) {
               spectrumView={chromeData?.spectrumView ?? "combined"}
               spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
               onSpectrumViewChange={noop}
-              spectrumPeakHold={chromeData?.spectrumPeakHold ?? false}
-              onSpectrumPeakHoldToggle={noop}
+              spectrumMaxHold={chromeData?.spectrumMaxHold ?? false}
+              onSpectrumMaxHoldToggle={noop}
               panelControls={panelControls}
               onPanelControlsChange={onPanelControlsChange}
               onPanelControlsReset={onPanelControlsReset}

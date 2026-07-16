@@ -7,7 +7,11 @@ import {
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
-import { buildSpectrumSvgFromBandsAndDb } from "../../math/spectrumMath.js";
+import {
+  buildSpectrumSvgFromBandsAndDb,
+  findSpectrumPeakCandidates,
+  trackSpectrumPeaks,
+} from "../../math/spectrumMath.js";
 import {
   SnapshotEmptyState,
   SNAPSHOT_NO_DATA_MESSAGE,
@@ -43,6 +47,16 @@ const ACTIVE_PULSE_MS = 160;
 const HOLD_SMOOTHING_DELAY_MS = 300;
 const HOLD_SMOOTHING_CANCEL_PX = 4;
 const HOLD_DISPLAY_SMOOTHING_ALPHA = 0.06;
+// A label costs more to win than to keep: without the gap, a peak sitting near the bar blinks.
+const PEAK_LABEL_COUNT = 5;
+const PEAK_LABEL_ENTER_PROMINENCE_DB = 9;
+const PEAK_LABEL_EXIT_PROMINENCE_DB = 5;
+// Peaks are found on their own slow average of the curve, not on the curve as drawn. Speed is a
+// choice about how the curve should move; a label is something to read, and at a fast Speed the
+// peaks genuinely change faster than anyone can follow. Tying the two means buying a readable
+// label with a sluggish curve. Same value as the press-and-hold smoothing above, which settles
+// the curve about as far as Speed 100 does — the setting where these were already steady.
+const PEAK_LABEL_DETECT_SMOOTHING_ALPHA = 0.06;
 
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
@@ -97,7 +111,8 @@ export function SpectrumPanel({ compact = false }) {
     [panelControls]
   );
   const [holdSmoothingActive, setHoldSmoothingActive] = useState(false);
-  const spectrumPeakHold = normalizedPanelControls.spectrumPeakHold;
+  const spectrumMaxHold = normalizedPanelControls.spectrumMaxHold;
+  const spectrumPeakLabels = normalizedPanelControls.spectrumPeakLabels;
   const spectrumRange = {
     minHz: normalizedPanelControls.spectrumXMinFreq,
     maxHz: normalizedPanelControls.spectrumXMaxFreq,
@@ -153,6 +168,8 @@ export function SpectrumPanel({ compact = false }) {
     spectrumXAxis.axisPx
   );
   const holdDisplaySpectrumResultRef = useRef(null);
+  const spectrumPeakTrackRef = useRef([]);
+  const spectrumPeakDetectDbRef = useRef(null);
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
@@ -217,6 +234,59 @@ export function SpectrumPanel({ compact = false }) {
     panelSpectrumPeakDb = [];
     panelSpectrumPeakDbB = [];
   }
+  // Peaks are read off the curve as displayed and only within the visible range, so what gets
+  // labelled follows what is on screen — including when the user zooms in on one band. That is
+  // also why this lives here rather than in the bank: the backend has no idea what is visible.
+  //
+  // Labels are carried frame to frame rather than re-ranked from scratch. Ranking afresh churns
+  // badly on live material, and a slow curve alone does not save it: two peaks a tenth of a dB
+  // apart still swap on noise, just more slowly. It takes both — a settled curve to look at and
+  // an identity to carry — which is why the smoothing above is not enough on its own either.
+  const spectrumPeakLabelList = useMemo(() => {
+    if (!spectrumPeakLabels || !panelSpectrumData?.bands?.length) {
+      spectrumPeakTrackRef.current = [];
+      spectrumPeakDetectDbRef.current = null;
+      return [];
+    }
+    const liveDb = panelSpectrumData.dbList;
+    const detectDb = smoothDbList(
+      spectrumPeakDetectDbRef.current,
+      liveDb,
+      PEAK_LABEL_DETECT_SMOOTHING_ALPHA
+    );
+    spectrumPeakDetectDbRef.current = detectDb;
+
+    const candidates = findSpectrumPeakCandidates(panelSpectrumData.bands, detectDb, {
+      // Nothing under the exit bar can be kept or entered, so there is no point costing out
+      // its prominence.
+      minProminenceDb: PEAK_LABEL_EXIT_PROMINENCE_DB,
+      minHz: spectrumRange.minHz,
+      maxHz: spectrumRange.maxHz,
+    });
+    const tracked = trackSpectrumPeaks(spectrumPeakTrackRef.current, candidates, {
+      count: PEAK_LABEL_COUNT,
+      enterProminenceDb: PEAK_LABEL_ENTER_PROMINENCE_DB,
+      exitProminenceDb: PEAK_LABEL_EXIT_PROMINENCE_DB,
+    });
+    spectrumPeakTrackRef.current = tracked;
+    return tracked.map((peak) => ({
+      key: peak.index,
+      leftPct: rangedFreqToXFrac(peak.freq, spectrumRange.minHz, spectrumRange.maxHz) * 100,
+      // Height off the live curve, not the slow one the peak was found on, so the dot rides the
+      // line the user can actually see. It bobs with the music while its frequency holds still,
+      // which is the split being drawn here: where a peak is, versus how loud it is right now.
+      topPct: spectrumDbToTopFrac(liveDb[peak.index] ?? peak.db, spectrumRange) * 100,
+      freqLabel: formatSpectrumFreq(peak.freq),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    spectrumPeakLabels,
+    panelSpectrumData,
+    spectrumRange.minHz,
+    spectrumRange.maxHz,
+    spectrumRange.yMinDb,
+    spectrumRange.yMaxDb,
+  ]);
   const spectrumSvgRef = useRef(null);
   const chartDragRef = useRef(null);
   const holdSmoothingTimerRef = useRef(null);
@@ -542,12 +612,12 @@ export function SpectrumPanel({ compact = false }) {
     panelSpectrumPeakPathB;
   // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
   // on top). When peak hold is off, the fill follows the live curve as before.
-  const peakFillActive = spectrumPeakHold && !!displayPanelSpectrumPeakPath;
+  const peakFillActive = spectrumMaxHold && !!displayPanelSpectrumPeakPath;
   const displaySpectrumAreaPath = buildSpectrumAreaPath(
     peakFillActive ? displayPanelSpectrumPeakPath : displayPanelSpectrumPath
   );
   const displaySpectrumAreaPathB =
-    spectrumPeakHold && displayPanelSpectrumPeakPathB
+    spectrumMaxHold && displayPanelSpectrumPeakPathB
       ? buildSpectrumAreaPath(displayPanelSpectrumPeakPathB)
       : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
@@ -801,6 +871,30 @@ export function SpectrumPanel({ compact = false }) {
                   ) : null}
                 </svg>
               </div>
+              {spectrumPeakLabelList.length ? (
+                <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-[9]">
+                  {spectrumPeakLabelList.map((peak) => (
+                    <div
+                      key={peak.key}
+                      className="absolute -translate-x-1/2 -translate-y-1/2"
+                      style={{ left: `${peak.leftPct}%`, top: `${peak.topPct}%` }}
+                    >
+                      <div
+                        className="mx-auto size-1.5 rounded-full"
+                        style={{
+                          backgroundColor:
+                            selectedOffset >= 0
+                              ? "var(--ui-spectrum-primary-snap)"
+                              : "var(--ui-spectrum-primary)",
+                        }}
+                      />
+                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-secondary px-1 py-px font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-muted-foreground shadow-sm">
+                        {peak.freqLabel}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {spectrumHover && !chartDragging ? (
                 <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
                   <div

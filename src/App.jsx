@@ -424,7 +424,7 @@ function AppContent() {
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
-  const spectrumPeakHoldUi = normalizedPanelControls.spectrumPeakHold;
+  const spectrumMaxHoldUi = normalizedPanelControls.spectrumMaxHold;
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
   const { installStatus, install, restartToApply } = useApplyUpdate();
 
@@ -807,8 +807,8 @@ function AppContent() {
     updatePanelControls((current) => ({ ...current, spectrumView: view }));
   };
 
-  const onSpectrumPeakHoldToggle = () => {
-    updatePanelControls((current) => ({ ...current, spectrumPeakHold: !spectrumPeakHoldUi }));
+  const onSpectrumMaxHoldToggle = () => {
+    updatePanelControls((current) => ({ ...current, spectrumMaxHold: !spectrumMaxHoldUi }));
   };
 
   const {
@@ -1108,7 +1108,7 @@ function AppContent() {
       spectrumDisplayLabel,
       spectrumView: spectrumViewUi,
       spectrumViewLegend: spectrumViewLegendValue,
-      spectrumPeakHold: spectrumPeakHoldUi,
+      spectrumMaxHold: spectrumMaxHoldUi,
       analysisStatusByPanelId,
     }),
     [
@@ -1122,7 +1122,7 @@ function AppContent() {
       spectrumDisplayLabel,
       spectrumViewUi,
       spectrumViewLegendValue,
-      spectrumPeakHoldUi,
+      spectrumMaxHoldUi,
       analysisStatusByPanelId,
     ]
   );

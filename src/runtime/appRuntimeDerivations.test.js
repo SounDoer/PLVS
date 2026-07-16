@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
+import { deriveAnalysisRequests } from "../analysis/analysisRequests.js";
+import fixtures from "../../shared/analysis-request-key-fixtures.json";
 import {
   deriveBackendAnalysisRequests,
   deriveChannelLabelRuntime,
@@ -20,16 +22,33 @@ function workspace({ panelsById, panelOrder = Object.keys(panelsById), panelCont
 }
 
 describe("app runtime derivations", () => {
+  it("sends the wire payload the Rust side declares, built by the real deriver", () => {
+    // Chained off deriveAnalysisRequests rather than a hand-written request object: the mapper
+    // re-lists the fields the deriver assembled, so a hand-written input can omit a field on
+    // both sides and pass while the real payload is missing it. That is exactly how
+    // octaveSmoothing shipped absent and blanked every analysis panel.
+    // The expected payload lives in the shared fixture, which the Rust test deserializes — so
+    // this and SpectrumAnalysisRequest cannot drift apart unnoticed.
+    const state = workspace({
+      panelsById: { p1: { moduleId: "spectrum" }, p2: { moduleId: "vectorscope" } },
+      panelOrder: ["p1", "p2"],
+      panelControlsById: {},
+    });
+    const payload = deriveBackendAnalysisRequests(deriveAnalysisRequests(state));
+    expect(payload).toEqual(fixtures.wirePayload);
+  });
+
   it("maps aggregate analysis requests to the backend request shape", () => {
     expect(
       deriveBackendAnalysisRequests({
         spectrumRequests: [
           {
-            key: "spectrum:single:2:combined:sm25:tilt300",
+            key: "spectrum:single:2:combined:sp25:tilt300:smoff",
             channel: { type: "single", ch: 2 },
             view: "combined",
-            smoothingPercent: 25,
+            speedPercent: 25,
             tiltDbPerOctave: 3,
+            octaveSmoothing: "off",
           },
         ],
         vectorscopeRequests: [{ key: "vectorscope:pair:0:1", pair: { x: 0, y: 1 } }],
@@ -37,11 +56,12 @@ describe("app runtime derivations", () => {
     ).toEqual({
       spectrum: [
         {
-          key: "spectrum:single:2:combined:sm25:tilt300",
+          key: "spectrum:single:2:combined:sp25:tilt300:smoff",
           channel: { type: "single", ch: 2 },
           view: "combined",
-          smoothingPercent: 25,
+          speedPercent: 25,
           tiltDbPerOctave: 3,
+          octaveSmoothing: "off",
         },
       ],
       vectorscope: [{ key: "vectorscope:pair:0:1", x: 0, y: 1 }],

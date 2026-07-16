@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -32,6 +33,11 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Nested git worktrees live under .claude/ with their own node_modules. Their test files sit
+    // outside the default node_modules exclude, and importing them pulls in a second React copy
+    // that breaks unrelated suites in this repo. Spread the defaults — setting exclude replaces
+    // them, and dropping **/node_modules/** would be far worse than the problem being fixed.
+    exclude: [...configDefaults.exclude, "**/.claude/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

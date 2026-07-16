@@ -1,12 +1,25 @@
 //! **Multi-resolution spectrum display** driven by `MultiResBank` (three windowed FFTs blended
-//! at crossover frequencies). Per grid-point: weighting, 4.5 dB/oct slope tilt (pivoted at 1 kHz),
-//! attack/release envelope, and peak-hold. No octave smoothing — peaks stay sharp and tone levels
-//! read at their true dBFS (SPAN-style); time stability comes from the bank's power averaging.
+//! at crossover frequencies). Per grid-point: optional fractional-octave smoothing, weighting,
+//! a user-set slope tilt (pivoted at 1 kHz), attack/release envelope, and peak-hold.
+//!
+//! The two smoothing axes are separate controls and are easy to confuse:
+//! - **Speed** is the *time* axis — attack/release plus the bank's analysis average. It changes
+//!   how fast the curve moves, never its shape at rest.
+//! - **Octave smoothing** is the *frequency* axis (`OctaveSmoothing`, applied in the bank). It
+//!   changes the shape and leaves the ballistics alone. Default is `Off`: peaks stay sharp, so
+//!   individual partials remain readable.
+//!
+//! Levels are **noise-referenced**: the bank emits PSD (power/Hz), so broadband material reads
+//! continuous across the crossovers. That is the property the display is calibrated for and the
+//! one to preserve. It costs tone accuracy: a pure tone's PSD scales with bin width, so the same
+//! 0 dBFS sine reads ~+6 dB below 200 Hz and ~-6 dB above 2 kHz relative to the mid band. This is
+//! inherent to PSD normalisation, not a tuning error — one per-band offset can align tones or
+//! noise, never both. See `spectrum_bank::CAL_OFFSET_DB`.
 //!
 //! Product wording: **`docs/architecture.md` §6 Spectrum / RTA**.
 
 use super::meter::{Meter, PcmContext};
-use crate::dsp::spectrum_bank::{MultiResBank, CAL_OFFSET_DB};
+use crate::dsp::spectrum_bank::{MultiResBank, OctaveSmoothing, CAL_OFFSET_DB};
 use crate::dsp::{SpectrumChannelSel, SpectrumView};
 
 fn weighting_a(f_hz: f64) -> f64 {
@@ -104,6 +117,7 @@ pub struct SpectrumMeter {
   peak_hold_sec: f64,
   peak_decay_db_per_sec: f64,
   tilt_db_per_octave: f64,
+  octave_smoothing: OctaveSmoothing,
   analysis_average_sec: f64,
   min_hz: f64,
   max_hz: f64,
@@ -138,8 +152,14 @@ impl SpectrumMeter {
       release_ms: 150.0,
       peak_hold_sec: 1.5,
       peak_decay_db_per_sec: 8.0,
-      tilt_db_per_octave: 4.5,
-      analysis_average_sec: MultiResBank::analysis_average_sec_for_smoothing_percent(50.0),
+      // Placeholder, not the product default. `meter_pipeline` calls `set_display_controls` on
+      // the line after it constructs a meter and again on every frame, so this value never
+      // reaches a rendered row. The default the user actually gets is owned by
+      // `DEFAULT_PANEL_CONTROLS` in `src/lib/panelControls.js`; kept in step with it so reading
+      // this line does not mislead. Nothing enforces that — check the JS side before trusting it.
+      tilt_db_per_octave: 3.0,
+      octave_smoothing: OctaveSmoothing::Off,
+      analysis_average_sec: MultiResBank::analysis_average_sec_for_speed_percent(50.0),
       min_hz,
       max_hz,
       cached_centers: Vec::new(),
@@ -155,7 +175,7 @@ impl SpectrumMeter {
     }
   }
 
-  pub fn smoothing_times_ms_for_percent(percent: f64) -> (f64, f64) {
+  pub fn attack_release_ms_for_speed_percent(percent: f64) -> (f64, f64) {
     let p = percent.clamp(0.0, 100.0);
     if p <= 0.0 {
       return (0.0, 0.0);
@@ -167,13 +187,18 @@ impl SpectrumMeter {
     (attack_ms, release_ms)
   }
 
-  pub fn set_display_controls(&mut self, smoothing_percent: f64, tilt_db_per_octave: f64) {
-    let (attack_ms, release_ms) = Self::smoothing_times_ms_for_percent(smoothing_percent);
-    let analysis_average_sec =
-      MultiResBank::analysis_average_sec_for_smoothing_percent(smoothing_percent);
+  pub fn set_display_controls(
+    &mut self,
+    speed_percent: f64,
+    tilt_db_per_octave: f64,
+    octave_smoothing: OctaveSmoothing,
+  ) {
+    let (attack_ms, release_ms) = Self::attack_release_ms_for_speed_percent(speed_percent);
+    let analysis_average_sec = MultiResBank::analysis_average_sec_for_speed_percent(speed_percent);
     self.attack_ms = attack_ms;
     self.release_ms = release_ms;
     self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
+    self.octave_smoothing = octave_smoothing;
     self.analysis_average_sec = analysis_average_sec;
     self.bank.set_analysis_average_sec(analysis_average_sec);
     if let Some(bank_b) = self.bank_b.as_mut() {
@@ -188,7 +213,10 @@ impl SpectrumMeter {
 
   fn post_process_for(&self, bank: &MultiResBank) -> Vec<f64> {
     let centers = bank.grid_freqs();
-    let raw = bank.psd_db_row(CAL_OFFSET_DB);
+    // Smoothing happens inside the bank, on linear power, so it averages the *measurement*.
+    // Weighting and tilt are display shaping and are applied after, on the smoothed row: they
+    // are smooth curves themselves, so the order only matters for the measurement.
+    let raw = bank.psd_db_row(CAL_OFFSET_DB, self.octave_smoothing);
     let log_pivot = SLOPE_PIVOT_HZ.log2();
     let mut shaped = Vec::with_capacity(raw.len());
     for (i, &db) in raw.iter().enumerate() {
@@ -729,38 +757,41 @@ mod tests {
         .unwrap();
       smooth[i]
     };
-    // White noise is flat in PSD; +4.5 dB/oct slope makes 10 kHz read clearly above 100 Hz.
+    // White noise is flat in PSD, so the constructed tilt is the only thing that can lift
+    // 10 kHz above 100 Hz. This is one of the few places the placeholder default is observable
+    // — nothing calls set_display_controls here — so keep the literal in step with it.
+    let default_tilt_db_per_oct = 3.0;
     let octaves = (10000.0_f64 / 100.0).log2();
     let delta = val_near(10000.0) - val_near(100.0);
     assert!(
-      delta > 4.5 * octaves * 0.6,
+      delta > default_tilt_db_per_oct * octaves * 0.6,
       "slope not applied: delta={delta}"
     );
   }
 
   #[test]
-  fn smoothing_percent_50_matches_current_attack_release() {
-    let (attack_ms, release_ms) = SpectrumMeter::smoothing_times_ms_for_percent(50.0);
+  fn speed_percent_50_matches_current_attack_release() {
+    let (attack_ms, release_ms) = SpectrumMeter::attack_release_ms_for_speed_percent(50.0);
     assert!(
       (attack_ms - 30.0).abs() < 0.1,
-      "50% smoothing should preserve current 30ms attack, got {attack_ms}"
+      "50% speed should preserve current 30ms attack, got {attack_ms}"
     );
     assert!(
       (release_ms - 150.0).abs() < 0.1,
-      "50% smoothing should preserve current 150ms release, got {release_ms}"
+      "50% speed should preserve current 150ms release, got {release_ms}"
     );
   }
 
   #[test]
-  fn smoothing_percent_100_is_extra_slow() {
-    let (attack_ms, release_ms) = SpectrumMeter::smoothing_times_ms_for_percent(100.0);
+  fn speed_percent_100_is_extra_slow() {
+    let (attack_ms, release_ms) = SpectrumMeter::attack_release_ms_for_speed_percent(100.0);
     assert!(
       (attack_ms - 400.0).abs() < 1.0,
-      "100% smoothing should use about 400ms attack, got {attack_ms}"
+      "100% speed should use about 400ms attack, got {attack_ms}"
     );
     assert!(
       (release_ms - 2000.0).abs() < 1.0,
-      "100% smoothing should use about 2000ms release, got {release_ms}"
+      "100% speed should use about 2000ms release, got {release_ms}"
     );
   }
 
@@ -768,7 +799,7 @@ mod tests {
   fn zero_tilt_disables_default_slope() {
     let sr = 48000.0;
     let mut m = SpectrumMeter::new(sr);
-    m.set_display_controls(75.0, 0.0);
+    m.set_display_controls(75.0, 0.0, OctaveSmoothing::Off);
     let mut x: u32 = 0xC0FFEE;
     let frames = 16384 * 6;
     let mut pcm = vec![0.0_f32; frames * 2];
@@ -800,11 +831,11 @@ mod tests {
   }
 
   #[test]
-  fn zero_smoothing_bypasses_hidden_analysis_average() {
+  fn zero_speed_bypasses_hidden_analysis_average() {
     let sr = 48000.0;
     let hz = 8000.0;
     let mut m = SpectrumMeter::new(sr);
-    m.set_display_controls(0.0, 4.5);
+    m.set_display_controls(0.0, 4.5, OctaveSmoothing::Off);
 
     let tone_frames = 16384 * 8;
     let mut tone = vec![0.0_f32; tone_frames * 2];
@@ -840,7 +871,7 @@ mod tests {
 
     assert!(
       after_db < steady_db - 20.0,
-      "0% smoothing should not retain a hidden analysis average: steady={steady_db}, after={after_db}"
+      "0% speed should not retain a hidden analysis average: steady={steady_db}, after={after_db}"
     );
   }
 

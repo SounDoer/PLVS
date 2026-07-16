@@ -1,8 +1,14 @@
 import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
-import { LOUDNESS_HISTORY_LAYER_OPTIONS } from "../lib/panelControls.js";
+import {
+  LOUDNESS_HISTORY_LAYER_OPTIONS,
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+} from "../lib/panelControls.js";
 
 const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
+const SPECTRUM_OCTAVE_SMOOTHING_IDS = new Set(
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.map((option) => option.id)
+);
 const LOUDNESS_HISTORY_LAYER_IDS = new Set(
   LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
 );
@@ -37,9 +43,10 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   spectrum: Object.freeze({
     channel: Object.freeze({ type: "pair", x: 0, y: 1 }),
     view: "combined",
-    smoothingPercent: 25,
+    speedPercent: 25,
+    octaveSmoothing: "off",
     tiltDbPerOctave: 3,
-    peakHold: false,
+    maxHold: false,
     minFreq: 20,
     maxFreq: 20000,
     minDb: -96,
@@ -199,11 +206,14 @@ export function normalizeDockModuleControls(moduleId, raw) {
       return {
         channel: channel(raw?.channel, defaults.channel),
         view: SPECTRUM_VIEWS.has(raw?.view) ? raw.view : defaults.view,
-        smoothingPercent: Math.round(
-          clamp(raw?.smoothingPercent, 0, 100, defaults.smoothingPercent)
+        speedPercent: Math.round(
+          clamp(raw?.speedPercent ?? raw?.smoothingPercent, 0, 100, defaults.speedPercent)
         ),
+        octaveSmoothing: SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw?.octaveSmoothing)
+          ? raw.octaveSmoothing
+          : defaults.octaveSmoothing,
         tiltDbPerOctave: clamp(raw?.tiltDbPerOctave, 0, 6, defaults.tiltDbPerOctave),
-        peakHold: bool(raw?.peakHold, defaults.peakHold),
+        maxHold: bool(raw?.maxHold ?? raw?.peakHold, defaults.maxHold),
         minFreq: freqRange.min,
         maxFreq: freqRange.max,
         minDb: range.min,

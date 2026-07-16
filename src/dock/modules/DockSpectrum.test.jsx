@@ -40,7 +40,7 @@ describe("DockSpectrum", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
       view: "lr",
-      peakHold: true,
+      maxHold: true,
     };
     const { container } = renderSpectrum(controls, {
       path: "M 0 140 L 1000 190",

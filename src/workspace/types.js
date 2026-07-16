@@ -20,7 +20,7 @@
  *   vectorscopePair: { x: number, y: number },
  *   spectrumChannel: { type: 'pair', x: number, y: number } | { type: 'single', ch: number },
  *   spectrumView: string,
- *   spectrumPeakHold: boolean,
+ *   spectrumMaxHold: boolean,
  *   levelMeterMode: string,
  *   levelMeterPlaybackMax: boolean,
  *   levelMeterValueMarker: boolean,

@@ -28,9 +28,9 @@ describe("analysisRequests", () => {
 
     expect(result.spectrumRequests).toHaveLength(1);
     expect(result.spectrumRequests[0]).toMatchObject({
-      key: "spectrum:pair:0:1:combined:sm25:tilt300",
+      key: "spectrum:pair:0:1:combined:sp25:tilt300:smoff",
       panelIds: ["spectrum", "spectrum-2"],
-      smoothingPercent: 25,
+      speedPercent: 25,
       tiltDbPerOctave: 3,
     });
   });
@@ -53,16 +53,16 @@ describe("analysisRequests", () => {
 
     const requests = deriveAnalysisRequests(s).spectrumRequests;
     expect(requests.map((r) => r.key)).toEqual([
-      "spectrum:pair:0:1:combined:sm25:tilt300",
-      "spectrum:single:2:combined:sm25:tilt300",
+      "spectrum:pair:0:1:combined:sp25:tilt300:smoff",
+      "spectrum:single:2:combined:sp25:tilt300:smoff",
     ]);
     expect(requests[1].view).toBe("combined");
   });
 
-  it("does not include peak hold in the spectrum request key", () => {
+  it("does not include max hold in the spectrum request key", () => {
     expect(
-      spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumPeakHold: false })
-    ).toBe(spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumPeakHold: true }));
+      spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumMaxHold: false })
+    ).toBe(spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumMaxHold: true }));
   });
 
   it("does not include Y-axis display controls in the spectrum request key", () => {
@@ -75,14 +75,14 @@ describe("analysisRequests", () => {
     ).toBe(spectrumRequestKeyFromControls(DEFAULT_PANEL_CONTROLS));
   });
 
-  it("includes smoothing and tilt in the spectrum request key", () => {
+  it("includes speed and tilt in the spectrum request key", () => {
     expect(
       spectrumRequestKeyFromControls({
         ...DEFAULT_PANEL_CONTROLS,
-        spectrumSmoothingPercent: 25,
+        spectrumSpeedPercent: 25,
         spectrumTiltDbPerOctave: 1.25,
       })
-    ).toBe("spectrum:pair:0:1:combined:sm25:tilt125");
+    ).toBe("spectrum:pair:0:1:combined:sp25:tilt125:smoff");
   });
 
   it("includes spectrogram in spectrum-like requests", () => {

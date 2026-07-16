@@ -39,9 +39,10 @@ describe("normalizeDockControlsByModuleId", () => {
       spectrum: {
         channel: { type: "single", ch: 3.8 },
         view: "ms",
-        smoothingPercent: 140,
+        speedPercent: 140,
+        octaveSmoothing: "1/6",
         tiltDbPerOctave: -2,
-        peakHold: true,
+        maxHold: true,
         minDb: -30,
         maxDb: -25,
       },
@@ -57,9 +58,10 @@ describe("normalizeDockControlsByModuleId", () => {
     expect(controls.spectrum).toMatchObject({
       channel: { type: "single", ch: 3 },
       view: "ms",
-      smoothingPercent: 100,
+      speedPercent: 100,
+      octaveSmoothing: "1/6",
       tiltDbPerOctave: 0,
-      peakHold: true,
+      maxHold: true,
       minFreq: 20,
       maxFreq: 20000,
       minDb: -96,
@@ -85,6 +87,20 @@ describe("normalizeDockControlsByModuleId", () => {
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
     });
+  });
+
+  it("migrates legacy Spectrum time-axis control names", () => {
+    const controls = normalizeDockControlsByModuleId({
+      spectrum: { smoothingPercent: 72, peakHold: true },
+    }).spectrum;
+
+    expect(controls).toMatchObject({
+      speedPercent: 72,
+      octaveSmoothing: "off",
+      maxHold: true,
+    });
+    expect(controls).not.toHaveProperty("smoothingPercent");
+    expect(controls).not.toHaveProperty("peakHold");
   });
 });
 

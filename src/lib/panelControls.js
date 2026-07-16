@@ -15,6 +15,15 @@ export const LEVEL_METER_MODE_OPTIONS = [
   { id: "shortTerm", label: "Short-term" },
 ];
 
+/// Frequency-axis smoothing. Distinct from Speed, which is the time axis. Ids are the wire
+/// values parsed by `parse_octave_smoothing` in src-tauri/src/ipc/commands.rs.
+export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
+  { id: "off", label: "Off", keyToken: "off" },
+  { id: "1/12", label: "1/12 oct", keyToken: "12" },
+  { id: "1/6", label: "1/6 oct", keyToken: "6" },
+  { id: "1/3", label: "1/3 oct", keyToken: "3" },
+];
+
 export const DEFAULT_PANEL_CONTROLS = {
   levelMeterMode: "peak",
   levelMeterPlaybackMax: false,
@@ -23,9 +32,11 @@ export const DEFAULT_PANEL_CONTROLS = {
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
-  spectrumPeakHold: false,
-  spectrumSmoothingPercent: 25,
+  spectrumMaxHold: false,
+  spectrumPeakLabels: false,
+  spectrumSpeedPercent: 25,
   spectrumTiltDbPerOctave: 3,
+  spectrumOctaveSmoothing: "off",
   spectrumXMinFreq: 20,
   spectrumXMaxFreq: 20000,
   spectrumYMaxDb: -12,
@@ -84,8 +95,30 @@ function normalizeSpectrumView(raw) {
   return SPECTRUM_VIEWS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.spectrumView;
 }
 
-function normalizeSpectrumPeakHold(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakHold;
+const SPECTRUM_OCTAVE_SMOOTHING_IDS = new Set(
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.map((option) => option.id)
+);
+function normalizeSpectrumOctaveSmoothing(raw) {
+  return SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw)
+    ? raw
+    : DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing;
+}
+
+function normalizeSpectrumPeakLabels(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakLabels;
+}
+
+function normalizeSpectrumMaxHold(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumMaxHold;
+}
+
+/// spectrumMaxHold was spectrumPeakHold until "peak" was needed for the frequency axis — a peak
+/// in a spectrum is a bump in the curve, which is what Peak labels marks; this control is the
+/// time axis. Presets from before the rename still carry the old key, so read it as a fallback
+/// rather than snapping them back to the default. `??` and not `||`: a stored `false` is a real
+/// value, not an absent one.
+function readSpectrumMaxHoldRaw(raw) {
+  return raw?.spectrumMaxHold ?? raw?.spectrumPeakHold;
 }
 
 function clampNumber(raw, min, max, fallback) {
@@ -93,8 +126,8 @@ function clampNumber(raw, min, max, fallback) {
   return Math.min(max, Math.max(min, raw));
 }
 
-function normalizeSpectrumSmoothingPercent(raw) {
-  return clampNumber(raw, 0, 100, DEFAULT_PANEL_CONTROLS.spectrumSmoothingPercent);
+function normalizeSpectrumSpeedPercent(raw) {
+  return clampNumber(raw, 0, 100, DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent);
 }
 
 function normalizeSpectrumTiltDbPerOctave(raw) {
@@ -239,9 +272,18 @@ export function normalizePanelControls(raw) {
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
-    spectrumPeakHold: normalizeSpectrumPeakHold(raw?.spectrumPeakHold),
-    spectrumSmoothingPercent: normalizeSpectrumSmoothingPercent(raw?.spectrumSmoothingPercent),
+    spectrumMaxHold: normalizeSpectrumMaxHold(readSpectrumMaxHoldRaw(raw)),
+    spectrumPeakLabels: normalizeSpectrumPeakLabels(raw?.spectrumPeakLabels),
+    // spectrumSpeedPercent was named spectrumSmoothingPercent until the frequency-smoothing
+    // control arrived and needed the "smoothing" name. Presets written before the rename still
+    // carry the old key; read it as a fallback so they keep their value instead of silently
+    // snapping back to the default. Normalizing rewrites the key, so this only has to survive
+    // one load per stored preset.
+    spectrumSpeedPercent: normalizeSpectrumSpeedPercent(
+      raw?.spectrumSpeedPercent ?? raw?.spectrumSmoothingPercent
+    ),
     spectrumTiltDbPerOctave: normalizeSpectrumTiltDbPerOctave(raw?.spectrumTiltDbPerOctave),
+    spectrumOctaveSmoothing: normalizeSpectrumOctaveSmoothing(raw?.spectrumOctaveSmoothing),
     spectrumXMinFreq: spectrumXRange.min,
     spectrumXMaxFreq: spectrumXRange.max,
     spectrumYMaxDb: spectrumYRange.max,

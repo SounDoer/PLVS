@@ -34,8 +34,8 @@ export function DockSpectrum({ controls }) {
   const livePathB = spectrumPath(result, "smoothDbB", "pathB", range);
   const peakPath = spectrumPath(result, "peakDb", "peakPath", range);
   const peakPathB = spectrumPath(result, "peakDbB", "peakPathB", range);
-  const primaryAreaPath = areaPath(controls?.peakHold && peakPath ? peakPath : livePath);
-  const secondaryAreaPath = controls?.peakHold ? areaPath(peakPathB) : "";
+  const primaryAreaPath = areaPath(controls?.maxHold && peakPath ? peakPath : livePath);
+  const secondaryAreaPath = controls?.maxHold ? areaPath(peakPathB) : "";
 
   return (
     <div className="h-full min-w-0 flex-1 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]">

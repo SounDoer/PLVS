@@ -12,8 +12,12 @@ pub const ANALYSIS_AVERAGE_SEC: f64 = 0.150;
 pub const OVERLAP_BIG: usize = 8; // smoother low-band updates without changing bass resolution
 pub const OVERLAP_MID: usize = 4; // 75% overlap → hop = size / overlap
 pub const OVERLAP_SMALL: usize = 2; // calmer high-band updates while keeping the 1024-point window
-/// Display calibration: added to PSD-dB so a 0 dBFS sine peak reads ~0 dB.
-/// Empirically tuned; pinned by `calibration_full_scale_sine_near_zero`.
+/// Display calibration added to PSD-dB; it only decides where zero sits on the axis.
+/// Empirically tuned against a 0 dBFS sine **in the mid band** — 1 kHz falls between the two
+/// crossovers, so it reads ~0 dB there and only there. Rows are PSD (power/Hz), so a tone's level
+/// tracks bin width: the same sine reads ~+6 dB on `FFT_BIG` and ~-6 dB on `FFT_SMALL`. Noise is
+/// continuous across bands instead, which is the convention this display is built on — see the
+/// module docs of `dsp::spectrum`. Pinned by `calibration_mid_band_full_scale_sine_near_zero`.
 pub const CAL_OFFSET_DB: f64 = 16.5;
 
 /// Fixed log-frequency render grid spanning [min_hz, max_hz] at GRID_POINTS_PER_OCT points/octave.
@@ -156,20 +160,114 @@ impl StftAnalyzer {
     self.average_initialized = true;
   }
 
-  /// Time-averaged PSD at an arbitrary frequency via linear interpolation between bins.
-  pub fn psd_at(&self, hz: f64) -> f64 {
-    if !self.average_initialized {
-      return 1e-20;
-    }
-    let bin_count = self.smoothed_psd.len();
+  /// Where one frequency reads from: the bins to interpolate and the fraction between them.
+  /// Fixed by size and sample rate, so it is resolved once and replayed every frame.
+  pub fn bin_tap(&self, hz: f64) -> BinTap {
+    let bin_count = self.size / 2 + 1; // matches `r2c.make_output_vec()`
     let pos = hz / self.bin_width_hz();
     let k0 = pos.floor().clamp(0.0, (bin_count - 1) as f64) as usize;
     let k1 = (k0 + 1).min(bin_count - 1);
     let frac = (pos - k0 as f64).clamp(0.0, 1.0);
-    let a = self.smoothed_psd[k0];
-    let b = self.smoothed_psd[k1];
-    (a * (1.0 - frac) + b * frac).max(1e-20)
+    BinTap { k0, k1, frac }
   }
+
+  /// Time-averaged PSD at a resolved tap.
+  pub fn psd_at_tap(&self, tap: BinTap) -> f64 {
+    if !self.average_initialized {
+      return 1e-20;
+    }
+    let a = self.smoothed_psd[tap.k0];
+    let b = self.smoothed_psd[tap.k1];
+    (a * (1.0 - tap.frac) + b * tap.frac).max(1e-20)
+  }
+
+  /// Time-averaged PSD at an arbitrary frequency, resolving the tap on each call. Convenience
+  /// for tests; the render path holds a precomputed tap table instead.
+  #[cfg(test)]
+  pub fn psd_at(&self, hz: f64) -> f64 {
+    self.psd_at_tap(self.bin_tap(hz))
+  }
+}
+
+/// Resolved read position for one frequency on one analyzer.
+#[derive(Clone, Copy)]
+pub struct BinTap {
+  k0: usize,
+  k1: usize,
+  frac: f64,
+}
+
+/// Fractional-octave smoothing width for the render grid. This is the frequency axis; the
+/// time axis is Speed (see `SpectrumMeter::set_display_controls`).
+///
+/// "Smoothing" here is averaging, not banding/summation — the level convention is untouched,
+/// peaks are only pulled down and spread out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OctaveSmoothing {
+  /// Raw grid; every resolved partial stays sharp.
+  #[default]
+  Off,
+  OneTwelfth,
+  OneSixth,
+  OneThird,
+}
+
+impl OctaveSmoothing {
+  /// Compact token for the analysis request key. Free of ':' and '/' so it cannot break the
+  /// colon-delimited grammar; mirrored in `spectrumRequestKeyFromControls`.
+  pub fn key_token(self) -> &'static str {
+    match self {
+      Self::Off => "off",
+      Self::OneTwelfth => "12",
+      Self::OneSixth => "6",
+      Self::OneThird => "3",
+    }
+  }
+
+  /// Half-window in grid points, or None for `Off`.
+  ///
+  /// The grid is uniform in log frequency, so a fractional-octave window is a *constant* number
+  /// of points everywhere — 1/N octave spans `GRID_POINTS_PER_OCT / N`, half of that each side.
+  /// No per-point width search, and the same window at 30 Hz as at 15 kHz.
+  fn half_width_points(self) -> Option<usize> {
+    let denom = match self {
+      Self::Off => return None,
+      Self::OneTwelfth => 12.0,
+      Self::OneSixth => 6.0,
+      Self::OneThird => 3.0,
+    };
+    Some((GRID_POINTS_PER_OCT / (2.0 * denom)).round() as usize)
+  }
+}
+
+/// Box-average `src` over ±`half` points, truncating at the ends.
+///
+/// Summed directly rather than via prefix sums on purpose: PSD values span the full display
+/// range, so a running total sits near the loudest bin seen so far and adding a 1e-18 neighbour
+/// to it loses that neighbour entirely. Differencing two such totals then returns noise for
+/// quiet windows. At ~1k points and a ≤33-wide window the direct loop is not worth optimising
+/// into that bug.
+fn box_average(src: &[f64], half: usize) -> Vec<f64> {
+  let n = src.len();
+  (0..n)
+    .map(|i| {
+      let lo = i.saturating_sub(half);
+      let hi = (i + half + 1).min(n);
+      let sum: f64 = src[lo..hi].iter().sum();
+      sum / (hi - lo) as f64
+    })
+    .collect()
+}
+
+/// One grid point's read plan: where each analyzer is sampled and the two crossover weights.
+/// Every field is fixed by the grid, the FFT sizes and the crossovers, so the whole table is
+/// built once in `MultiResBank::new` rather than re-derived for ~1k points on every frame.
+struct GridTap {
+  big: BinTap,
+  mid: BinTap,
+  small: BinTap,
+  b_lo: f64,
+  b_hi: f64,
 }
 
 pub struct MultiResBank {
@@ -177,19 +275,36 @@ pub struct MultiResBank {
   mid: StftAnalyzer,
   small: StftAnalyzer,
   grid: LogGrid,
+  taps: Vec<GridTap>,
 }
 
 impl MultiResBank {
   pub fn new(sample_rate: f64, min_hz: f64, max_hz: f64) -> Self {
+    let big = StftAnalyzer::new(FFT_BIG, sample_rate);
+    let mid = StftAnalyzer::new(FFT_MID, sample_rate);
+    let small = StftAnalyzer::new(FFT_SMALL, sample_rate);
+    let grid = LogGrid::new(min_hz, max_hz);
+    let taps = grid
+      .freqs
+      .iter()
+      .map(|&f| GridTap {
+        big: big.bin_tap(f),
+        mid: mid.bin_tap(f),
+        small: small.bin_tap(f),
+        b_lo: Self::blend(f, XOVER_LO_HZ), // 0=big, 1=mid
+        b_hi: Self::blend(f, XOVER_HI_HZ), // 0=lowmid(mid), 1=small
+      })
+      .collect();
     Self {
-      big: StftAnalyzer::new(FFT_BIG, sample_rate),
-      mid: StftAnalyzer::new(FFT_MID, sample_rate),
-      small: StftAnalyzer::new(FFT_SMALL, sample_rate),
-      grid: LogGrid::new(min_hz, max_hz),
+      big,
+      mid,
+      small,
+      grid,
+      taps,
     }
   }
 
-  pub fn analysis_average_sec_for_smoothing_percent(percent: f64) -> f64 {
+  pub fn analysis_average_sec_for_speed_percent(percent: f64) -> f64 {
     let p = percent.clamp(0.0, 100.0);
     if p <= 0.0 {
       0.0
@@ -233,20 +348,38 @@ impl MultiResBank {
     }
   }
 
-  /// PSD-dB per grid point, combining the three analyzers. `cal_offset_db` is added here.
-  pub fn psd_db_row(&self, cal_offset_db: f64) -> Vec<f64> {
+  /// Linear PSD per grid point, combining the three analyzers.
+  /// Reads the precomputed tap table; the arithmetic below is deliberately in the same order as
+  /// the naive form so the row stays bit-identical (floating point is not associative).
+  fn psd_linear_row(&self) -> Vec<f64> {
     self
-      .grid
-      .freqs
+      .taps
       .iter()
-      .map(|&f| {
+      .map(|t| {
         // Low/mid blend then mid/high blend, all in linear PSD.
-        let b_lo = Self::blend(f, XOVER_LO_HZ); // 0=big, 1=mid
-        let lowmid = self.big.psd_at(f) * (1.0 - b_lo) + self.mid.psd_at(f) * b_lo;
-        let b_hi = Self::blend(f, XOVER_HI_HZ); // 0=lowmid(mid), 1=small
-        let psd = lowmid * (1.0 - b_hi) + self.small.psd_at(f) * b_hi;
-        10.0 * psd.max(1e-20).log10() + cal_offset_db
+        let lowmid =
+          self.big.psd_at_tap(t.big) * (1.0 - t.b_lo) + self.mid.psd_at_tap(t.mid) * t.b_lo;
+        lowmid * (1.0 - t.b_hi) + self.small.psd_at_tap(t.small) * t.b_hi
       })
+      .collect()
+  }
+
+  /// PSD-dB per grid point. `cal_offset_db` is added here.
+  ///
+  /// Smoothing runs on linear power, before the log: averaging dB instead would be a geometric
+  /// mean, which drags a lone loud partial's neighbours down far harder than the energy in the
+  /// band justifies. Power-averaging keeps the band's energy honest, which is the whole point of
+  /// a noise-referenced display (see `CAL_OFFSET_DB`).
+  pub fn psd_db_row(&self, cal_offset_db: f64, smoothing: OctaveSmoothing) -> Vec<f64> {
+    let lin = self.psd_linear_row();
+    let lin = match smoothing.half_width_points() {
+      // `Off` must stay bit-identical to the unsmoothed row, so it does not touch `lin` at all.
+      None => lin,
+      Some(half) => box_average(&lin, half),
+    };
+    lin
+      .iter()
+      .map(|psd| 10.0 * psd.max(1e-20).log10() + cal_offset_db)
       .collect()
   }
 }
@@ -314,15 +447,14 @@ mod tests {
   }
 
   #[test]
-  fn analysis_average_scales_across_full_smoothing_range() {
+  fn analysis_average_scales_across_full_speed_range() {
     assert_eq!(
-      MultiResBank::analysis_average_sec_for_smoothing_percent(0.0),
+      MultiResBank::analysis_average_sec_for_speed_percent(0.0),
       0.0
     );
-    assert!((MultiResBank::analysis_average_sec_for_smoothing_percent(50.0) - 0.075).abs() < 1e-9);
+    assert!((MultiResBank::analysis_average_sec_for_speed_percent(50.0) - 0.075).abs() < 1e-9);
     assert!(
-      (MultiResBank::analysis_average_sec_for_smoothing_percent(100.0) - ANALYSIS_AVERAGE_SEC)
-        .abs()
+      (MultiResBank::analysis_average_sec_for_speed_percent(100.0) - ANALYSIS_AVERAGE_SEC).abs()
         < 1e-9
     );
   }
@@ -358,7 +490,7 @@ mod tests {
       bank.push_sample(s);
     }
     assert!(bank.ready());
-    let row = bank.psd_db_row(0.0);
+    let row = bank.psd_db_row(0.0, OctaveSmoothing::Off);
     let freqs = bank.grid_freqs();
     let val_at = |target: f64| {
       let (idx, _) = freqs
@@ -379,12 +511,138 @@ mod tests {
   }
 
   #[test]
-  fn calibration_full_scale_sine_near_zero() {
+  fn octave_smoothing_half_widths_are_constant_grid_points() {
+    // 1/N octave spans GRID_POINTS_PER_OCT / N points, half each side. The grid is uniform in
+    // log frequency, so these hold at every frequency.
+    assert_eq!(OctaveSmoothing::Off.half_width_points(), None);
+    assert_eq!(OctaveSmoothing::OneThird.half_width_points(), Some(16));
+    assert_eq!(OctaveSmoothing::OneSixth.half_width_points(), Some(8));
+    assert_eq!(OctaveSmoothing::OneTwelfth.half_width_points(), Some(4));
+  }
+
+  #[test]
+  fn octave_smoothing_off_leaves_the_row_untouched() {
     let sr = 48000.0;
     let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    feed_bank_tone(&mut bank, sr, 1000.0, FFT_BIG * 6);
+    assert!(bank.ready());
+    // Off must not merely look similar: it must not touch the row at all, so that turning the
+    // control off is exactly the old behaviour rather than a 1-wide average of it.
+    let plain = bank.psd_db_row(CAL_OFFSET_DB, OctaveSmoothing::Off);
+    let linear = bank.psd_linear_row();
+    let expected: Vec<f64> = linear
+      .iter()
+      .map(|p| 10.0 * p.max(1e-20).log10() + CAL_OFFSET_DB)
+      .collect();
+    assert_eq!(plain, expected, "Off row is not bit-identical");
+  }
+
+  #[test]
+  fn octave_smoothing_lowers_and_widens_a_tone_peak() {
+    let sr = 48000.0;
+    let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    feed_bank_tone(&mut bank, sr, 1000.0, FFT_BIG * 6);
+    assert!(bank.ready());
+    let freqs = bank.grid_freqs().to_vec();
+    let val_at = |row: &[f64], target: f64| {
+      let (i, _) = freqs
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+          (**a - target)
+            .abs()
+            .partial_cmp(&(**b - target).abs())
+            .unwrap()
+        })
+        .unwrap();
+      row[i]
+    };
+    let off = bank.psd_db_row(CAL_OFFSET_DB, OctaveSmoothing::Off);
+    let third = bank.psd_db_row(CAL_OFFSET_DB, OctaveSmoothing::OneThird);
+    let peak = |row: &[f64]| row.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+
+    // Spreading one tone's energy over a band lowers its peak...
+    assert!(
+      peak(&third) < peak(&off) - 6.0,
+      "1/3 oct should pull the peak well down: off={:.2} third={:.2}",
+      peak(&off),
+      peak(&third)
+    );
+    // ...and lifts the skirt beside it, which is the point of the control.
+    let skirt_off = val_at(&off, 1150.0);
+    let skirt_third = val_at(&third, 1150.0);
+    assert!(
+      skirt_third > skirt_off + 6.0,
+      "1/3 oct should lift the skirt: off={skirt_off:.2} third={skirt_third:.2}"
+    );
+  }
+
+  #[test]
+  fn octave_smoothing_widths_are_ordered() {
+    let sr = 48000.0;
+    let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    feed_bank_tone(&mut bank, sr, 1000.0, FFT_BIG * 6);
+    assert!(bank.ready());
+    let peak = |s| {
+      bank
+        .psd_db_row(CAL_OFFSET_DB, s)
+        .iter()
+        .cloned()
+        .fold(f64::NEG_INFINITY, f64::max)
+    };
+    // More smoothing spreads a tone further, so its peak drops monotonically with width.
+    let (off, twelfth, sixth, third) = (
+      peak(OctaveSmoothing::Off),
+      peak(OctaveSmoothing::OneTwelfth),
+      peak(OctaveSmoothing::OneSixth),
+      peak(OctaveSmoothing::OneThird),
+    );
+    assert!(
+      off > twelfth && twelfth > sixth && sixth > third,
+      "peak must fall as the window widens: {off:.2} {twelfth:.2} {sixth:.2} {third:.2}"
+    );
+  }
+
+  #[test]
+  fn octave_smoothing_keeps_broadband_noise_flat() {
+    let sr = 48000.0;
+    let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    bank.set_analysis_average_sec(2.0);
+    let mut x: u32 = 0x12345678;
+    for _ in 0..FFT_BIG * 64 {
+      x = x.wrapping_mul(1664525).wrapping_add(1013904223);
+      bank.push_sample(((x >> 8) as f32 / 8_388_608.0) - 1.0);
+    }
+    assert!(bank.ready());
+    let row = bank.psd_db_row(0.0, OctaveSmoothing::OneThird);
+    let freqs = bank.grid_freqs();
+    let band_mean = |lo: f64, hi: f64| {
+      let v: Vec<f64> = freqs
+        .iter()
+        .zip(&row)
+        .filter(|(f, _)| **f >= lo && **f <= hi)
+        .map(|(_, d)| *d)
+        .collect();
+      v.iter().sum::<f64>() / v.len() as f64
+    };
+    // Averaging power across a band must not move a flat spectrum's level: smoothing is
+    // averaging, not banding/summation, so white noise stays where it was.
+    let seam_200 = (band_mean(120.0, 175.0) - band_mean(230.0, 330.0)).abs();
+    let seam_2k = (band_mean(1200.0, 1750.0) - band_mean(2300.0, 3200.0)).abs();
+    assert!(seam_200 < 1.0, "smoothed seam at 200 Hz: {seam_200:.2} dB");
+    assert!(seam_2k < 1.0, "smoothed seam at 2 kHz: {seam_2k:.2} dB");
+  }
+
+  #[test]
+  fn calibration_mid_band_full_scale_sine_near_zero() {
+    let sr = 48000.0;
+    let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    // 1 kHz sits between both crossovers, so this pins CAL_OFFSET_DB against `FFT_MID` alone.
+    // It is deliberately not a claim about tones in general: rows are PSD, so the same sine
+    // reads ~+6 dB on `FFT_BIG` and ~-6 dB on `FFT_SMALL`. See CAL_OFFSET_DB.
     feed_bank_tone(&mut bank, sr, 1000.0, FFT_BIG * 6); // amplitude 1.0 = 0 dBFS
     assert!(bank.ready());
-    let row = bank.psd_db_row(CAL_OFFSET_DB);
+    let row = bank.psd_db_row(CAL_OFFSET_DB, OctaveSmoothing::Off);
     let peak = row.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     // Tone peak varies a few dB with bin alignment (1 kHz is not bin-centered); a loose
     // tolerance is fine for a display-referenced analyzer.
@@ -398,27 +656,38 @@ mod tests {
   fn bank_broadband_continuous_across_crossovers() {
     let sr = 48000.0;
     let mut bank = MultiResBank::new(sr, 20.0, 20000.0);
+    // Converge the PSD estimate before measuring. A single grid point under the default 150 ms
+    // average carries several dB of chi-squared spread, which is what forced the old 4 dB
+    // tolerance — wide enough to pass a badly broken seam. Long averaging plus a band mean
+    // below drops the spread far enough to assert what this display actually promises.
+    bank.set_analysis_average_sec(2.0);
     // Deterministic pseudo-white noise.
     let mut x: u32 = 0x12345678;
-    for _ in 0..FFT_BIG * 8 {
+    for _ in 0..FFT_BIG * 64 {
       x = x.wrapping_mul(1664525).wrapping_add(1013904223);
       let s = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
       bank.push_sample(s);
     }
     assert!(bank.ready());
-    let row = bank.psd_db_row(0.0);
+    let row = bank.psd_db_row(0.0, OctaveSmoothing::Off);
     let freqs = bank.grid_freqs();
-    let near = |t: f64| {
-      freqs
+    // Mean dB over a band, kept clear of the ±1/6-octave crossfade around each crossover.
+    let band_mean = |lo: f64, hi: f64| {
+      let v: Vec<f64> = freqs
         .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| (**a - t).abs().partial_cmp(&(**b - t).abs()).unwrap())
-        .map(|(i, _)| row[i])
-        .unwrap()
+        .zip(&row)
+        .filter(|(f, _)| **f >= lo && **f <= hi)
+        .map(|(_, d)| *d)
+        .collect();
+      assert!(!v.is_empty(), "no grid points in {lo}-{hi} Hz");
+      v.iter().sum::<f64>() / v.len() as f64
     };
-    // White-noise PSD is ~flat; no large step across either crossover.
-    // Tolerance accounts for window/edge variance in pseudo-noise; tighten later if desired.
-    assert!((near(180.0) - near(220.0)).abs() < 4.0, "seam at 200 Hz");
-    assert!((near(1800.0) - near(2200.0)).abs() < 4.0, "seam at 2 kHz");
+    // White-noise PSD is flat, so both analyzers either side of a crossover must agree. This is
+    // the display's core convention — noise-referenced levels (see CAL_OFFSET_DB) — so it is
+    // asserted tightly. A tone would legitimately step ~6 dB here; noise must not.
+    let seam_200 = (band_mean(120.0, 175.0) - band_mean(230.0, 330.0)).abs();
+    let seam_2k = (band_mean(1200.0, 1750.0) - band_mean(2300.0, 3200.0)).abs();
+    assert!(seam_200 < 1.0, "seam at 200 Hz: {seam_200:.2} dB");
+    assert!(seam_2k < 1.0, "seam at 2 kHz: {seam_2k:.2} dB");
   }
 }

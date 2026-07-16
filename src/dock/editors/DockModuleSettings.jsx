@@ -173,15 +173,18 @@ function SettingsBody({
           </SettingsRow>
         ) : null}
         <SpectrumDisplaySettingsRows
-          peakHold={controls.peakHold}
-          smoothingPercent={controls.smoothingPercent}
+          showPeakLabels={false}
+          maxHold={controls.maxHold}
+          speedPercent={controls.speedPercent}
+          octaveSmoothing={controls.octaveSmoothing}
           tiltDbPerOctave={controls.tiltDbPerOctave}
           xMinFreq={controls.minFreq}
           xMaxFreq={controls.maxFreq}
           yMinDb={controls.minDb}
           yMaxDb={controls.maxDb}
-          onPeakHoldChange={(peakHold) => onChange({ ...controls, peakHold })}
-          onSmoothingChange={(smoothingPercent) => onChange({ ...controls, smoothingPercent })}
+          onMaxHoldChange={(maxHold) => onChange({ ...controls, maxHold })}
+          onSpeedChange={(speedPercent) => onChange({ ...controls, speedPercent })}
+          onOctaveSmoothingChange={(octaveSmoothing) => onChange({ ...controls, octaveSmoothing })}
           onTiltChange={(tiltDbPerOctave) => onChange({ ...controls, tiltDbPerOctave })}
           onXRangeChange={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
           onYRangeChange={(minDb, maxDb) => onChange({ ...controls, minDb, maxDb })}

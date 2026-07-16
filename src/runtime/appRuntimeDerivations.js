@@ -14,14 +14,19 @@ export const DIALOGUE_STAT_IDS = [
   "dialogueOffset",
 ];
 
+/// Every field here is required by `SpectrumAnalysisRequest` in src-tauri/src/ipc/types.rs,
+/// which declares no serde defaults. A field missing from this object fails deserialization of
+/// the whole `set_analysis_requests` payload — so dropping one silently blanks the vectorscope
+/// too, not just the spectrum. Adding a field to the request means adding it here.
 export function deriveBackendAnalysisRequests(requests) {
   return {
     spectrum: requests.spectrumRequests.map((request) => ({
       key: request.key,
       channel: request.channel,
       view: request.view,
-      smoothingPercent: request.smoothingPercent,
+      speedPercent: request.speedPercent,
       tiltDbPerOctave: request.tiltDbPerOctave,
+      octaveSmoothing: request.octaveSmoothing,
     })),
     vectorscope: requests.vectorscopeRequests.map((request) => ({
       key: request.key,

@@ -150,27 +150,45 @@ pub fn parse_spectrum_view(s: &str) -> Result<crate::dsp::SpectrumView, String> 
   }
 }
 
+/// Frequency-axis smoothing width. Wire values match `SPECTRUM_OCTAVE_SMOOTHING_OPTIONS`
+/// in `src/lib/panelControls.js`.
+pub fn parse_octave_smoothing(s: &str) -> Result<crate::dsp::OctaveSmoothing, String> {
+  use crate::dsp::OctaveSmoothing;
+  match s {
+    "off" => Ok(OctaveSmoothing::Off),
+    "1/12" => Ok(OctaveSmoothing::OneTwelfth),
+    "1/6" => Ok(OctaveSmoothing::OneSixth),
+    "1/3" => Ok(OctaveSmoothing::OneThird),
+    other => Err(format!("unknown octave_smoothing: {other}")),
+  }
+}
+
 fn expected_spectrum_request_key(
   channel: &SpectrumAnalysisChannel,
   view: &str,
-  smoothing_percent: f64,
+  speed_percent: f64,
   tilt_db_per_octave: f64,
+  octave_smoothing: &str,
 ) -> Result<String, String> {
   parse_spectrum_view(view)?;
-  if !smoothing_percent.is_finite() || !(0.0..=100.0).contains(&smoothing_percent) {
-    return Err("spectrum smoothingPercent must be finite and between 0 and 100".to_string());
+  let smoothing = parse_octave_smoothing(octave_smoothing)?;
+  if !speed_percent.is_finite() || !(0.0..=100.0).contains(&speed_percent) {
+    return Err("spectrum speedPercent must be finite and between 0 and 100".to_string());
   }
   if !tilt_db_per_octave.is_finite() || !(0.0..=6.0).contains(&tilt_db_per_octave) {
     return Err("spectrum tiltDbPerOctave must be finite and between 0 and 6".to_string());
   }
-  let smoothing = smoothing_percent.round() as i64;
+  let speed = speed_percent.round() as i64;
   let tilt_centidb = (tilt_db_per_octave * 100.0).round() as i64;
+  // Smoothing belongs in the key: it changes the row, and panels that share a key share one
+  // meter — and therefore one smoothing setting, which they would otherwise fight over.
+  let sm = smoothing.key_token();
   Ok(match channel {
     SpectrumAnalysisChannel::Pair { x, y } => {
-      format!("spectrum:pair:{x}:{y}:{view}:sm{smoothing}:tilt{tilt_centidb}")
+      format!("spectrum:pair:{x}:{y}:{view}:sp{speed}:tilt{tilt_centidb}:sm{sm}")
     }
     SpectrumAnalysisChannel::Single { ch } => {
-      format!("spectrum:single:{ch}:combined:sm{smoothing}:tilt{tilt_centidb}")
+      format!("spectrum:single:{ch}:combined:sp{speed}:tilt{tilt_centidb}:sm{sm}")
     }
   })
 }
@@ -202,8 +220,9 @@ fn validate_analysis_requests(requests: &AnalysisRequests) -> Result<(), String>
     let expected = expected_spectrum_request_key(
       &request.channel,
       &request.view,
-      request.smoothing_percent,
+      request.speed_percent,
       request.tilt_db_per_octave,
+      &request.octave_smoothing,
     )?;
     if request.key != expected {
       return Err(format!(
@@ -527,18 +546,20 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:pair:0:1:lr:sm50:tilt450".to_string(),
+          key: "spectrum:pair:0:1:lr:sp50:tilt450:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
           view: "lr".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
+          octave_smoothing: "off".to_string(),
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:2:combined:sm25:tilt125".to_string(),
+          key: "spectrum:single:2:combined:sp25:tilt125:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 2 },
           view: "combined".to_string(),
-          smoothing_percent: 25.0,
+          speed_percent: 25.0,
           tilt_db_per_octave: 1.25,
+          octave_smoothing: "off".to_string(),
         },
       ],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -554,11 +575,12 @@ mod tests {
   fn analysis_requests_validation_rejects_mismatched_keys() {
     let requests = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:pair:0:1:combined:sm50:tilt450".to_string(),
+        key: "spectrum:pair:0:1:combined:sp50:tilt450:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
         view: "ms".to_string(),
-        smoothing_percent: 50.0,
+        speed_percent: 50.0,
         tilt_db_per_octave: 4.5,
+        octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
         key: "vectorscope:pair:1:2".to_string(),
@@ -574,16 +596,38 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: (0..=super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
         .map(|idx| SpectrumAnalysisRequest {
-          key: format!("spectrum:single:{idx}:combined:sm50:tilt450"),
+          key: format!("spectrum:single:{idx}:combined:sp50:tilt450:smoff"),
           channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
           view: "combined".to_string(),
-          smoothing_percent: 50.0,
+          speed_percent: 50.0,
           tilt_db_per_octave: 4.5,
+          octave_smoothing: "off".to_string(),
         })
         .collect(),
       vectorscope: vec![],
     };
     assert!(super::validate_analysis_requests(&requests).is_err());
+  }
+
+  #[test]
+  fn shared_wire_payload_deserializes_and_validates() {
+    // The other half of the JS parity guard: that test asserts the runtime emits this exact
+    // payload, this one asserts the payload is one we accept. AnalysisRequests declares no serde
+    // defaults, so a field the JS side stops sending fails the whole `set_analysis_requests`
+    // call — which blanks every analysis panel, vectorscope included, not just the one that lost
+    // the field. That shipped once; the key fixtures could not catch it because they only pin
+    // the key string, never the request shape.
+    let raw = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../shared/analysis-request-key-fixtures.json"
+    ));
+    let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
+    let requests: AnalysisRequests = serde_json::from_value(fixture["wirePayload"].clone())
+      .expect("wire payload must deserialize into AnalysisRequests");
+    assert!(
+      super::validate_analysis_requests(&requests).is_ok(),
+      "wire payload rejected by validator"
+    );
   }
 
   #[test]
@@ -600,8 +644,9 @@ mod tests {
     for entry in fixture["spectrum"].as_array().expect("spectrum array") {
       let key = entry["key"].as_str().unwrap().to_string();
       let view = entry["view"].as_str().unwrap().to_string();
-      let smoothing_percent = entry["smoothingPercent"].as_f64().unwrap();
+      let speed_percent = entry["speedPercent"].as_f64().unwrap();
       let tilt_db_per_octave = entry["tiltDbPerOctave"].as_f64().unwrap();
+      let octave_smoothing = entry["octaveSmoothing"].as_str().unwrap().to_string();
       let channel = if entry["type"] == "single" {
         SpectrumAnalysisChannel::Single {
           ch: entry["ch"].as_u64().unwrap() as u16,
@@ -617,8 +662,9 @@ mod tests {
           key,
           channel,
           view,
-          smoothing_percent,
+          speed_percent,
           tilt_db_per_octave,
+          octave_smoothing,
         }],
         vectorscope: vec![],
       };

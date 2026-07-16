@@ -781,8 +781,8 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
   });
 
-  it("shows Peak hold as a switch on spectrum and reflects + flips state", () => {
-    const onSpectrumPeakHoldToggle = vi.fn();
+  it("shows Max hold as a switch on spectrum and reflects + flips state", () => {
+    const onSpectrumMaxHoldToggle = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -791,17 +791,17 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={true}
-        onSpectrumPeakHoldToggle={onSpectrumPeakHoldToggle}
+        spectrumMaxHold={true}
+        onSpectrumMaxHoldToggle={onSpectrumMaxHoldToggle}
       />
     );
-    const btn = screen.getByRole("switch", { name: "peak hold" });
+    const btn = screen.getByRole("switch", { name: "spectrum max hold" });
     expect(btn.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(btn);
-    expect(onSpectrumPeakHoldToggle).toHaveBeenCalledTimes(1);
+    expect(onSpectrumMaxHoldToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("shows compact spectrum display controls after Peak hold", () => {
+  it("shows compact spectrum display controls after Max hold", () => {
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -810,30 +810,38 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={true}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={true}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
     );
 
-    const peak = screen.getByText("Peak hold");
-    const smoothing = screen.getByText("Smoothing");
+    const peak = screen.getByText("Max hold");
+    const speed = screen.getByText("Speed");
     const tilt = screen.getByText("Tilt");
+    const smoothing = screen.getByText("Smoothing");
     const xRange = screen.getByText("X range");
     const yRange = screen.getByText("Y range");
-    expect(peak.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(smoothing.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(tilt.compareDocumentPosition(xRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(peak.compareDocumentPosition(speed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(speed.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tilt.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      smoothing.compareDocumentPosition(xRange) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(xRange.compareDocumentPosition(yRange) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const smoothingSlider = screen.getByLabelText("spectrum smoothing");
+    const speedSlider = screen.getByLabelText("spectrum speed");
     const tiltSlider = screen.getByLabelText("spectrum tilt");
-    expect(smoothingSlider).toBeTruthy();
+    expect(speedSlider).toBeTruthy();
     expect(tiltSlider).toBeTruthy();
-    expect(smoothingSlider.classList.contains("plvs-range")).toBe(true);
-    expect(smoothingSlider.style.getPropertyValue("--range-pct")).toBe("25%");
+    expect(speedSlider.classList.contains("plvs-range")).toBe(true);
+    expect(speedSlider.style.getPropertyValue("--range-pct")).toBe("25%");
     expect(tiltSlider.classList.contains("plvs-range")).toBe(true);
     expect(tiltSlider.style.getPropertyValue("--range-pct")).toBe("50%");
+    // Speed is a slider (time axis), Smoothing is a choice list (frequency axis). Confusing the
+    // two is what this whole control layout exists to prevent, so pin that they stay distinct.
+    expect(screen.getByLabelText("spectrum octave smoothing")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrum octave smoothing").tagName).not.toBe("INPUT");
     expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
     expect(screen.getByLabelText("spectrum x range max").value).toBe("20000");
     expect(screen.getByLabelText("spectrum y range min").value).toBe("-96");
@@ -845,7 +853,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("4.50 dB/oct")).toBeNull();
     expect(screen.queryByText("-12 dB")).toBeNull();
     expect(screen.queryByText("-96 dB")).toBeNull();
-    expect(screen.queryByText("Smoothing: 50%")).toBeNull();
+    expect(screen.queryByText("Speed: 50%")).toBeNull();
     expect(screen.queryByText("Tilt: 4.50 dB/oct")).toBeNull();
   });
 
@@ -858,18 +866,18 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
     );
 
-    const smoothing = screen.getByLabelText("spectrum smoothing");
-    fireEvent.mouseEnter(smoothing);
+    const speed = screen.getByLabelText("spectrum speed");
+    fireEvent.mouseEnter(speed);
     expect(screen.getByText("25%")).toBeTruthy();
-    expect(screen.queryByText("Smoothing: 25%")).toBeNull();
-    fireEvent.mouseLeave(smoothing);
+    expect(screen.queryByText("Speed: 25%")).toBeNull();
+    fireEvent.mouseLeave(speed);
     expect(screen.queryByText("25%")).toBeNull();
 
     const tilt = screen.getByLabelText("spectrum tilt");
@@ -891,20 +899,20 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
     );
 
-    const smoothing = screen.getByLabelText("spectrum smoothing");
-    fireEvent.change(smoothing, { target: { value: "42" } });
+    const speed = screen.getByLabelText("spectrum speed");
+    fireEvent.change(speed, { target: { value: "42" } });
     expect(onPanelControlsChange).not.toHaveBeenCalled();
-    fireEvent.pointerUp(smoothing);
+    fireEvent.pointerUp(speed);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
-      spectrumSmoothingPercent: 42,
+      spectrumSpeedPercent: 42,
     });
 
     const tilt = screen.getByLabelText("spectrum tilt");
@@ -914,6 +922,15 @@ describe("PanelSettingsContent", () => {
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
       spectrumTiltDbPerOctave: 1.25,
+    });
+
+    // Kept after the tilt block: the count assertion above pins that dragging without
+    // committing stays silent, and any commit inserted before it would break that.
+    fireEvent.click(screen.getByLabelText("spectrum octave smoothing"));
+    fireEvent.click(screen.getByRole("option", { name: /1\/3 oct/ }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumOctaveSmoothing: "1/3",
     });
 
     const xMin = screen.getByLabelText("spectrum x range min");
@@ -948,8 +965,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           spectrumXMinFreq: 20.000001,
@@ -974,11 +991,11 @@ describe("PanelSettingsContent", () => {
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
         spectrumValueKey="p-0-1"
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
       />
     );
-    expect(screen.queryByLabelText("peak hold")).toBeNull();
+    expect(screen.queryByLabelText("spectrum max hold")).toBeNull();
   });
 
   it("shows only the Y range display control on the spectrogram tab", () => {
@@ -993,7 +1010,7 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={onPanelControlsChange}
       />
     );
-    expect(screen.queryByLabelText("spectrum smoothing")).toBeNull();
+    expect(screen.queryByLabelText("spectrum speed")).toBeNull();
     expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
     expect(screen.queryByLabelText("spectrum x range max")).toBeNull();
     expect(screen.queryByLabelText("spectrum y range max")).toBeNull();

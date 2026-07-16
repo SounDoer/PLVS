@@ -15,8 +15,9 @@ function spectrumPanelControls(raw) {
   return {
     spectrumChannel: controls.channel,
     spectrumView: controls.view,
-    spectrumSmoothingPercent: controls.smoothingPercent,
+    spectrumSpeedPercent: controls.speedPercent,
     spectrumTiltDbPerOctave: controls.tiltDbPerOctave,
+    spectrumOctaveSmoothing: controls.octaveSmoothing,
   };
 }
 
@@ -44,8 +45,9 @@ function dockSpectrumRequest(raw, panelId = "dock:spectrum") {
     panelIds: [panelId],
     channel: controls.channel,
     view: controls.channel?.type === "single" ? "combined" : controls.view,
-    smoothingPercent: Math.round(controls.smoothingPercent),
+    speedPercent: Math.round(controls.speedPercent),
     tiltDbPerOctave: Math.round(controls.tiltDbPerOctave * 100) / 100,
+    octaveSmoothing: controls.octaveSmoothing,
   };
 }
 

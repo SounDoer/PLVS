@@ -144,15 +144,20 @@ describe("DockModuleSettings", () => {
     expect(screen.getByLabelText("spectrum tilt").step).toBe("0.25");
     expect(screen.queryByText("3.00 dB/oct")).toBeNull();
     fireEvent.mouseEnter(screen.getByLabelText("spectrum tilt"));
-    expect(screen.getByRole("tooltip").textContent).toBe("3.00 dB/oct");
+    expect(
+      screen.getAllByRole("tooltip").some((tooltip) => tooltip.textContent === "3.00 dB/oct")
+    ).toBe(true);
   });
 
   it("matches the normal Spectrum settings order", () => {
     renderSettings("spectrum");
 
-    const peakRow = screen.getByText("Peak hold").closest("div.grid");
+    const peakRow = screen.getByText("Max hold").closest("div.grid");
+    const speedRow = screen.getByText("Speed").closest("div.grid");
     const smoothingRow = screen.getByText("Smoothing").closest("div.grid");
-    expect(peakRow.compareDocumentPosition(smoothingRow) & 4).toBeTruthy();
+    expect(peakRow.compareDocumentPosition(speedRow) & 4).toBeTruthy();
+    expect(speedRow.compareDocumentPosition(smoothingRow) & 4).toBeTruthy();
+    expect(screen.queryByText("Peak labels")).toBeNull();
   });
 
   it("uses the themed inline selector instead of a native select", () => {
