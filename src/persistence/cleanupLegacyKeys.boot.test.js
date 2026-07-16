@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanupLegacyKeys, LEGACY_LOCALSTORAGE_KEYS } from "./cleanupLegacyKeys.js";
 

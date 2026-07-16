@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCanvasSize } from "../../hooks/useCanvasSize.js";

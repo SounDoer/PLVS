@@ -31,7 +31,11 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
+    // Opt in to jsdom per file with `/** @vitest-environment jsdom */`. Building a jsdom costs
+    // ~1.4s per file, and most suites here are pure logic (math, layout, protocol) that never
+    // touch the DOM — defaulting every file to jsdom spent ~115s of aggregate setup to run 0.76s
+    // of assertions. A file that needs the DOM and forgets the docblock fails loudly.
+    environment: "node",
     globals: true,
     // Nested git worktrees live under .claude/ with their own node_modules. Their test files sit
     // outside the default node_modules exclude, and importing them pulls in a second React copy
