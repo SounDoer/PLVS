@@ -27,6 +27,9 @@ node_modules/
 dist/
 coverage/
 
+# Capture soak output
+soak-*.jsonl
+
 # Claude Code local settings
 .claude/
 

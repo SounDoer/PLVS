@@ -30,6 +30,7 @@
     "release:preflight": "node scripts/run-release-gate.mjs",
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
     "smoke:capture": "node scripts/smoke-capture.mjs",
+    "soak:capture": "node scripts/soak-capture.mjs",
     "tauri": "tauri",
     "ffmpeg:fetch": "node scripts/fetch-ffmpeg-sidecar.mjs",
     "desktop": "npm run ffmpeg:fetch && tauri dev",
