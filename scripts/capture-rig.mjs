@@ -77,12 +77,25 @@ export async function synthesizeSignal(path) {
 }
 
 /** `null` fails rather than skips: silence reports null, and a skipped null
- *  would call a dead capture path green. */
+ *  would call a dead capture path green. Both sides are guarded, not just
+ *  `actual`: a missing `expected` makes `got - expected` NaN, and `NaN > tolerance`
+ *  is false, so an un-guarded truth field would pass unconditionally and forever —
+ *  the exact silent-green this check exists to prevent, hiding in the check. */
 export function compareMetrics(truth, actual) {
   const failures = [];
   for (const [field, tolerance] of Object.entries(TOLERANCE_DB)) {
     const expected = truth[field];
     const got = actual[field];
+    if (typeof expected !== "number" || !Number.isFinite(expected)) {
+      failures.push({
+        field,
+        expected,
+        got,
+        tolerance,
+        reason: "no ground truth for this field",
+      });
+      continue;
+    }
     if (typeof got !== "number" || !Number.isFinite(got)) {
       failures.push({ field, expected, got, tolerance, reason: "not a finite number" });
       continue;
@@ -172,21 +185,27 @@ export function startPlayer(endpointId, wavPath) {
   return child;
 }
 
-/** Must run on every exit path. A VLC left looping into a virtual cable is
- *  silent, so it goes unnoticed while poisoning the next run's reading. */
+/**
+ * Must run on every exit path. A VLC left looping into a virtual cable is
+ * silent, so it goes unnoticed while poisoning the next run's reading.
+ *
+ * Kills only the process tree we spawned. An earlier version swept every VLC on
+ * the machine, which would have killed one the user had open for their own
+ * purposes — and it ran on the argument-validation path too, so a typo'd flag
+ * would have taken their media player with it.
+ */
 export function stopPlayer(child) {
-  if (child && !child.killed) {
-    try {
-      child.kill();
-    } catch {
-      // Already gone; nothing to do.
-    }
+  if (!child || child.exitCode !== null || child.signalCode !== null) {
+    return;
   }
-  spawnSync("powershell", [
-    "-NoProfile",
-    "-Command",
-    "Get-Process vlc -ErrorAction SilentlyContinue | Stop-Process -Force",
-  ]);
+  // /T covers any helper processes VLC spawned; /F because it is looping and
+  // will not exit politely. Targeted by PID, never by image name.
+  spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+  try {
+    child.kill();
+  } catch {
+    // taskkill already got it.
+  }
 }
 
 export function runCli(cliPath, args) {

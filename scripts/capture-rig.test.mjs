@@ -92,6 +92,20 @@ describe("compareMetrics", () => {
     ]);
   });
 
+  it("fails when ground truth is missing a field instead of passing silently", () => {
+    // `Math.abs(got - undefined)` is NaN and `NaN > tolerance` is false, so an
+    // unguarded expected value would pass unconditionally and forever. If analyze
+    // ever renames a field, this check must go red rather than green.
+    const result = compareMetrics({}, {
+      integratedLufs: -22.03,
+      samplePeakMaxLDb: -20.0,
+      samplePeakMaxRDb: -26.0,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failures).toHaveLength(3);
+    expect(result.failures[0].reason).toBe("no ground truth for this field");
+  });
+
   it("treats a null metric as a failure rather than passing it", () => {
     // Silence reports null. A comparison that skipped nulls would call a dead
     // capture path green.
