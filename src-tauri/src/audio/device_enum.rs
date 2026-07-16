@@ -340,8 +340,6 @@ fn format_device_lines(devices: &[DeviceInfo]) -> String {
 /// Ambiguity is an error on purpose: VB-Cable installs as two rows ("CABLE
 /// Input" and "CABLE Output"), so silently picking one would capture the wrong
 /// end of the loop.
-// Consumed by the CLI capture path added in a later task; not yet wired up.
-#[allow(dead_code)]
 pub fn match_device_substring(devices: &[DeviceInfo], needle: &str) -> Result<String, String> {
   let needle_lower = needle.to_lowercase();
   let matches: Vec<&DeviceInfo> = devices
@@ -366,8 +364,6 @@ pub fn match_device_substring(devices: &[DeviceInfo], needle: &str) -> Result<St
 }
 
 /// Live wrapper: enumerate real devices, then resolve `needle` against them.
-// Consumed by the CLI capture path added in a later task; not yet wired up.
-#[allow(dead_code)]
 pub fn resolve_device_id_by_substring(needle: &str) -> Result<String, String> {
   let devices = build_device_list()?;
   match_device_substring(&devices, needle)

@@ -12,8 +12,6 @@ use crate::audio::device_enum::{device_list_label, resolve_device};
 use crate::dsp::summary_meter::SummaryMeter;
 
 /// One periodic reading emitted while `--every` is active.
-// Consumed by the CLI capture path added in a later task; not yet wired up.
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaptureSample {
   pub t_seconds: u64,
@@ -22,8 +20,6 @@ pub struct CaptureSample {
 }
 
 /// Everything one `capture` run observed.
-// Consumed by the CLI capture path added in a later task; not yet wired up.
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaptureRun {
   pub device_label: String,
@@ -39,8 +35,6 @@ pub struct CaptureRun {
 
 /// Capture `device_id` for `seconds`, invoking `on_sample` every `every` seconds
 /// when set. Blocks for the full duration.
-// Consumed by the CLI capture path added in a later task; not yet wired up.
-#[allow(dead_code)]
 pub fn capture_device_to_summary(
   device_id: &str,
   seconds: u64,

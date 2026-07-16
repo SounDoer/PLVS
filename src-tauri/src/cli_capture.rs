@@ -93,8 +93,6 @@ pub struct CliCaptureError {
 }
 
 /// One periodic JSONL line. Distinguishable from the final report by `t`.
-// Consumed by the CLI capture dispatch added in a later task; not yet wired up.
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliCaptureSampleLine {
@@ -119,8 +117,6 @@ fn finite_or_none(value: f64) -> Option<f64> {
   }
 }
 
-// Consumed by the CLI capture dispatch added in a later task; not yet wired up.
-#[allow(dead_code)]
 pub fn sample_line(sample: &CaptureSample) -> CliCaptureSampleLine {
   CliCaptureSampleLine {
     t: sample.t_seconds,
@@ -169,8 +165,6 @@ pub fn error_report(device_id: &str, message: String) -> CliCaptureReport {
 /// Resolve the device, run the capture, and emit sample lines through `on_sample`.
 /// Substring resolution failures are usage errors and surface as `Err` (exit 2);
 /// a capture that starts and then fails yields an error *report* (exit 1).
-// Consumed by the CLI capture dispatch added in a later task; not yet wired up.
-#[allow(dead_code)]
 pub fn run_capture(
   device_substring: Option<&str>,
   seconds: u64,
