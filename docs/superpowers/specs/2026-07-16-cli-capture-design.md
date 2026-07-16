@@ -168,8 +168,7 @@ Reuses the `analyze` envelope verbatim — `schemaVersion`, `command`, `status`,
     "samplePeakMaxRDb": -26.03
   },
   "health": {
-    "droppedChunks": 0,
-    "rssMb": 142
+    "droppedChunks": 0
   }
 }
 ```
@@ -184,9 +183,9 @@ so a caller that only wants the summary reads the last line and shares one parse
 with the one-shot mode.
 
 ```jsonl
-{"t":10,"integratedLufs":-20.01,"droppedChunks":0,"rssMb":142}
-{"t":20,"integratedLufs":-20.00,"droppedChunks":0,"rssMb":142}
-{"t":14400,"integratedLufs":-19.31,"droppedChunks":7,"rssMb":2870}
+{"t":10,"integratedLufs":-20.01,"droppedChunks":0}
+{"t":20,"integratedLufs":-20.00,"droppedChunks":0}
+{"t":14400,"integratedLufs":-19.31,"droppedChunks":7}
 {"schemaVersion":1,"command":"capture","status":"ok","app":{...},"source":{...},"summary":{...},"health":{...}}
 ```
 
@@ -197,7 +196,12 @@ Sample lines carry exactly these fields, and nothing else:
 | `t` | Whole seconds elapsed since capture start |
 | `integratedLufs` | Integrated value as of `t` |
 | `droppedChunks` | Cumulative count since start |
-| `rssMb` | Process resident set size at `t` |
+
+Process memory is deliberately absent: the soak orchestrator samples it externally
+against the PID (see the `rssMb` row under exclusions).
+
+`SummaryMeter::finish(&self)` borrows rather than consumes, so interim readings
+need no DSP change — the sample loop just calls it every `--every` seconds.
 
 A sample line is distinguishable from the final report by the presence of `t`
 (equivalently, by the absence of `schemaVersion`).
@@ -219,7 +223,6 @@ and the soak run.
 | `integratedLufs` | smoke, soak | Level canary; also the drift curve |
 | `samplePeakMaxLDb` / `samplePeakMaxRDb` | smoke | Channel-map canary (see below) |
 | `droppedChunks` | smoke, soak | Capture-layer health; accumulates only over time |
-| `rssMb` | soak | Only source for leak detection |
 
 **Why per-channel peaks are not redundant.** `capture` verifies the capture
 layer, not the DSP — and a capture layer feeding bad PCM shifts *every* metric at
@@ -257,6 +260,7 @@ revisited rather than re-argued:
 | `lra` | Needs a long window; noise in a 10 s gate |
 | `mMaxLufs` / `stMaxLufs` | Adds DSP coverage, which file mode already owns; adds no capture-layer coverage |
 | `truePeakMaxDbtp` | Same — DSP-layer concern, already covered from files |
+| `rssMb` | The soak needs process memory, but the CLI is the wrong place to get it. Rust has no std API for RSS, so self-reporting means a new dependency (no `sysinfo` in `Cargo.toml` today) or raw psapi calls — to tell the caller something it can already read from outside: the soak orchestrator owns the PID and can sample `Get-Process plvs \| Select-Object WorkingSet64` on its own cadence. External sampling is cheaper, adds no dependency, and measures the whole process rather than what the process believes about itself. |
 | `xruns` | Not a concept in this codebase. `cpal_backend.rs` has no xrun counter and cpal does not surface device-level xruns; the term was imported from ALSA/JACK vocabulary to name something that already has a name here. Use `droppedChunks`. |
 | `callbackMaxUs` | No caller today, and `droppedChunks` already answers the same question as a *result* metric: a callback slow enough to matter backs the queue up and drops chunks. It is also not instrumented today, so it is new work for no consumer. (Not excluded on realtime-safety grounds — `Instant::now()` on Windows resolves through `KUSER_SHARED_DATA` without a kernel transition, so the cost is tens of nanoseconds and the `realtime-safe` guidance in `docs/architecture.md` §7 is not implicated. If a caller ever appears, this field is viable.) |
 
