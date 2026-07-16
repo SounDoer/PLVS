@@ -303,6 +303,8 @@ This gap is real, known, and not closed by this work.
 
 ## Follow-on Work
 
-- Update `plvs-agent.json` and the agent-discovery surface (`npm run agent:generate`).
 - Document the command in the CLI help topics alongside `doctor` / `analyze` /
-  `analyze-batch` / `report`.
+  `analyze-batch` / `report`. That is the whole discovery surface: `plvs-agent.json`
+  advertises only the CLI's path and the `doctor` health-check invocation, and does
+  not enumerate commands (`analyze` is absent from it too). Adding `capture` there
+  would invent a convention the manifest does not have.
