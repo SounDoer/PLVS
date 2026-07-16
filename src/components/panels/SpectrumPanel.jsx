@@ -7,7 +7,11 @@ import {
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
-import { buildSpectrumSvgFromBandsAndDb, findSpectrumPeaks } from "../../math/spectrumMath.js";
+import {
+  buildSpectrumSvgFromBandsAndDb,
+  findSpectrumPeakCandidates,
+  trackSpectrumPeaks,
+} from "../../math/spectrumMath.js";
 import {
   SnapshotEmptyState,
   SNAPSHOT_NO_DATA_MESSAGE,
@@ -43,6 +47,10 @@ const ACTIVE_PULSE_MS = 160;
 const HOLD_SMOOTHING_DELAY_MS = 300;
 const HOLD_SMOOTHING_CANCEL_PX = 4;
 const HOLD_DISPLAY_SMOOTHING_ALPHA = 0.06;
+// A label costs more to win than to keep: without the gap, a peak sitting near the bar blinks.
+const PEAK_LABEL_COUNT = 5;
+const PEAK_LABEL_ENTER_PROMINENCE_DB = 9;
+const PEAK_LABEL_EXIT_PROMINENCE_DB = 5;
 
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
@@ -154,6 +162,7 @@ export function SpectrumPanel({ compact = false }) {
     spectrumXAxis.axisPx
   );
   const holdDisplaySpectrumResultRef = useRef(null);
+  const spectrumPeakTrackRef = useRef([]);
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
@@ -221,12 +230,33 @@ export function SpectrumPanel({ compact = false }) {
   // Peaks are read off the curve as displayed and only within the visible range, so what gets
   // labelled follows what is on screen — including when the user zooms in on one band. That is
   // also why this lives here rather than in the bank: the backend has no idea what is visible.
+  //
+  // Labels are carried frame to frame rather than re-ranked from scratch. Ranking afresh churns
+  // badly on live material, and time smoothing does not save it: even with Speed at 100 the
+  // labels still swap between near-equal peaks, only more slowly.
   const spectrumPeakLabelList = useMemo(() => {
-    if (!spectrumPeakLabels || !panelSpectrumData?.bands?.length) return [];
-    return findSpectrumPeaks(panelSpectrumData.bands, panelSpectrumData.dbList, {
-      minHz: spectrumRange.minHz,
-      maxHz: spectrumRange.maxHz,
-    }).map((peak) => ({
+    if (!spectrumPeakLabels || !panelSpectrumData?.bands?.length) {
+      spectrumPeakTrackRef.current = [];
+      return [];
+    }
+    const candidates = findSpectrumPeakCandidates(
+      panelSpectrumData.bands,
+      panelSpectrumData.dbList,
+      {
+        // Nothing under the exit bar can be kept or entered, so there is no point costing out
+        // its prominence.
+        minProminenceDb: PEAK_LABEL_EXIT_PROMINENCE_DB,
+        minHz: spectrumRange.minHz,
+        maxHz: spectrumRange.maxHz,
+      }
+    );
+    const tracked = trackSpectrumPeaks(spectrumPeakTrackRef.current, candidates, {
+      count: PEAK_LABEL_COUNT,
+      enterProminenceDb: PEAK_LABEL_ENTER_PROMINENCE_DB,
+      exitProminenceDb: PEAK_LABEL_EXIT_PROMINENCE_DB,
+    });
+    spectrumPeakTrackRef.current = tracked;
+    return tracked.map((peak) => ({
       key: peak.index,
       leftPct: rangedFreqToXFrac(peak.freq, spectrumRange.minHz, spectrumRange.maxHz) * 100,
       topPct: spectrumDbToTopFrac(peak.db, spectrumRange) * 100,
