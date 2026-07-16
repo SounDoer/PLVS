@@ -111,6 +111,10 @@ export function WorkspaceProvider({ children }) {
         markPresetDirty();
         bound.setPanelControlsForPanel(...args);
       },
+      resetPanelControlsForPanel: (...args) => {
+        markPresetDirty();
+        bound.resetPanelControlsForPanel(...args);
+      },
       resetWorkspace: (...args) => {
         markPresetDirty();
         bound.resetWorkspace(...args);

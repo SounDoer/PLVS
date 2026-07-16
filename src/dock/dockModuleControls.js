@@ -232,6 +232,15 @@ export function normalizeDockModuleControls(moduleId, raw) {
   }
 }
 
+export function isDefaultDockModuleControls(moduleId, controls) {
+  return (
+    JSON.stringify(normalizeDockModuleControls(moduleId, controls)) ===
+    JSON.stringify(
+      normalizeDockModuleControls(moduleId, DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId])
+    )
+  );
+}
+
 export function normalizeDockControlsByModuleId(raw) {
   const source = raw && typeof raw === "object" ? raw : {};
   return Object.fromEntries(

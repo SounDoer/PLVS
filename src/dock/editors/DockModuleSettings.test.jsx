@@ -217,11 +217,31 @@ describe("DockModuleSettings", () => {
   it("exposes Back and Reset actions without a title close button", () => {
     const onBack = vi.fn();
     const onReset = vi.fn();
-    renderSettings("level", { onBack, onReset });
+    renderSettings("level", {
+      title: "Level Meter",
+      controls: { mode: "rms", readout: "live", showLabels: true },
+      onBack,
+      onReset,
+    });
+    expect(screen.getByRole("heading", { name: "Level Meter" })).toBeTruthy();
+    expect(screen.queryByText("Level Meter settings")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset Level Meter settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm reset Level Meter settings" }));
     expect(onBack).toHaveBeenCalledOnce();
     expect(onReset).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+  });
+
+  it("keeps a fixed reset action slot while confirmation is armed", () => {
+    renderSettings("level", {
+      title: "Level Meter",
+      controls: { mode: "rms", readout: "live", showLabels: true },
+    });
+    const reset = screen.getByRole("button", { name: "Reset Level Meter settings" });
+    const slot = reset.closest("span.flex.w-10");
+    fireEvent.click(reset);
+    expect(slot?.className).toContain("w-10");
+    expect(screen.getByRole("button", { name: "Cancel reset Level Meter settings" })).toBeTruthy();
   });
 });

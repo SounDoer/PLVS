@@ -278,7 +278,13 @@ function SplitView({ node, path, style }) {
 // ---------------------------------------------------------------------------
 
 function FullscreenOverlay() {
-  const { state, setFullscreen, setPanelControlsForPanel, setPanelPinned } = useWorkspaceStore();
+  const {
+    state,
+    setFullscreen,
+    setPanelControlsForPanel,
+    resetPanelControlsForPanel,
+    setPanelPinned,
+  } = useWorkspaceStore();
   const { fullscreenId } = state;
   const chromeData = usePanelChromeData();
   const def = fullscreenId ? resolvePanelDefinition(state, fullscreenId) : null;
@@ -294,6 +300,10 @@ function FullscreenOverlay() {
     },
     [fullscreenId, setPanelControlsForPanel]
   );
+  const onPanelControlsReset = useCallback(() => {
+    if (!fullscreenId) return;
+    resetPanelControlsForPanel(fullscreenId);
+  }, [fullscreenId, resetPanelControlsForPanel]);
   const panelInstanceData = useMemo(
     () => ({
       panelControls,
@@ -320,6 +330,7 @@ function FullscreenOverlay() {
         <div className={PANEL_HEADER_ACTIONS}>
           <PanelSettingsMenu
             activeTab={fullscreenModuleId}
+            panelTitle={resolvePanelDisplayName(state, fullscreenId)}
             channelCount={chromeData?.channelCount ?? 0}
             vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
             vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
@@ -336,6 +347,7 @@ function FullscreenOverlay() {
             onSpectrumPeakHoldToggle={noop}
             panelControls={panelControls}
             onPanelControlsChange={onPanelControlsChange}
+            onPanelControlsReset={onPanelControlsReset}
           />
           {helpItems ? <HelpPopover items={helpItems} /> : null}
           <HoverTip

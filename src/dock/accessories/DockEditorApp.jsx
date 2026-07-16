@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import { POPOVER_SURFACE_CLASS } from "../../components/ui/surfaceStyles.js";
+import {
+  PANEL_SETTINGS_SURFACE_CLASS,
+  POPOVER_SURFACE_CLASS,
+} from "../../components/ui/surfaceStyles.js";
 import { cn } from "../../lib/utils.js";
 import { useAccessoryClient } from "./useAccessoryClient.js";
 import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
@@ -15,9 +18,16 @@ export function measureDockEditorContent(root) {
   const content = root?.querySelector("[data-dock-editor-content]");
   if (!shell || !content) return null;
   const header = shell.querySelector("header");
+  const style = typeof getComputedStyle === "function" ? getComputedStyle(root) : null;
+  const chromeHeight = style
+    ? [style.paddingTop, style.paddingBottom, style.borderTopWidth, style.borderBottomWidth].reduce(
+        (sum, value) => sum + (Number.parseFloat(value) || 0),
+        0
+      )
+    : 0;
   return {
     width: Math.ceil(Math.max(root.scrollWidth, shell.scrollWidth, content.scrollWidth) + 2),
-    height: Math.ceil((header?.offsetHeight || 0) + content.scrollHeight + 2),
+    height: Math.ceil((header?.offsetHeight || 0) + content.scrollHeight + (chromeHeight || 2)),
   };
 }
 
@@ -128,11 +138,12 @@ export function DockEditorApp() {
       className={cn(
         "inline-block max-h-screen overflow-hidden",
         POPOVER_SURFACE_CLASS,
+        payload.view?.startsWith("module:") && cn("p-1", PANEL_SETTINGS_SURFACE_CLASS),
         payload.view === "presets"
           ? "w-60"
           : payload.view === "modules"
             ? "w-max min-w-44"
-            : "w-max min-w-64 max-w-[400px]"
+            : "w-max min-w-48 max-w-[400px]"
       )}
     >
       {payload.view === "modules" ? (

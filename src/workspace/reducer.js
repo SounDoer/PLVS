@@ -348,6 +348,19 @@ export function workspaceReducer(state, action) {
         ),
       };
 
+    case "RESET_PANEL_CONTROLS_FOR_PANEL": {
+      const { id } = action.payload;
+      if (!state.panelsById[id]) return state;
+      return {
+        ...state,
+        panelControlsById: updatePanelControlsById(
+          state.panelControlsById,
+          id,
+          createDefaultPanelControls()
+        ),
+      };
+    }
+
     case "SET_PANEL_CONTROLS": {
       const id = state.panelOrder.find((panelId) => state.panelsById[panelId]);
       if (!id) return state;
@@ -395,6 +408,8 @@ export function bindWorkspaceActions(dispatch) {
       dispatch({ type: "SET_PANEL_PINNED", payload: { id, size, ...metadata } }),
     setPanelControlsForPanel: (id, panelControls) =>
       dispatch({ type: "SET_PANEL_CONTROLS_FOR_PANEL", payload: { id, panelControls } }),
+    resetPanelControlsForPanel: (id) =>
+      dispatch({ type: "RESET_PANEL_CONTROLS_FOR_PANEL", payload: { id } }),
     setPanelControls: (panelControls) =>
       dispatch({ type: "SET_PANEL_CONTROLS", payload: { panelControls } }),
     resetWorkspace: () => dispatch({ type: "RESET_WORKSPACE" }),

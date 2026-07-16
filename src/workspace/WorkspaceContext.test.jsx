@@ -191,6 +191,14 @@ describe("WorkspaceContext active preset divergence", () => {
     expect(presetsStore.read().dirty).toBe(true);
   });
 
+  it("marks presets dirty when one panel instance is reset", () => {
+    presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
+    const actions = renderActions();
+    act(() => actions.resetPanelControlsForPanel("levelMeter"));
+    expect(presetsStore.read().activeId).toBe("p1");
+    expect(presetsStore.read().dirty).toBe(true);
+  });
+
   it("does not clear presets.activeId when applying setView", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();

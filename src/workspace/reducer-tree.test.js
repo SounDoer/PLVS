@@ -677,4 +677,31 @@ describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
       DEFAULT_WORKSPACE_STATE.panelControlsById.loudness
     );
   });
+
+  it("resets only the requested panel instance", () => {
+    const state = {
+      ...DEFAULT_WORKSPACE_STATE,
+      panelControlsById: {
+        ...DEFAULT_WORKSPACE_STATE.panelControlsById,
+        levelMeter: {
+          ...DEFAULT_WORKSPACE_STATE.panelControlsById.levelMeter,
+          levelMeterMode: "rms",
+        },
+        loudness: {
+          ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
+          loudnessReferenceLufs: -14,
+        },
+      },
+    };
+
+    const next = workspaceReducer(state, {
+      type: "RESET_PANEL_CONTROLS_FOR_PANEL",
+      payload: { id: "levelMeter" },
+    });
+
+    expect(next.panelControlsById.levelMeter).toEqual(
+      DEFAULT_WORKSPACE_STATE.panelControlsById.levelMeter
+    );
+    expect(next.panelControlsById.loudness.loudnessReferenceLufs).toBe(-14);
+  });
 });

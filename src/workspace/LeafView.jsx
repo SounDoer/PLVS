@@ -105,6 +105,7 @@ export function LeafView({ node, path, style }) {
     removePanel,
     setFullscreen,
     setPanelControlsForPanel,
+    resetPanelControlsForPanel,
     setPanelPinned,
     hoveredPanelId,
   } = useWorkspaceStore();
@@ -126,6 +127,10 @@ export function LeafView({ node, path, style }) {
     },
     [activeTab, setPanelControlsForPanel]
   );
+  const onPanelControlsReset = useCallback(() => {
+    if (!activeTab) return;
+    resetPanelControlsForPanel(activeTab);
+  }, [activeTab, resetPanelControlsForPanel]);
   const zoneHint = getZoneHint(hoverDrop, path);
   const isDragging = !!dragState;
   const isPanelHoverHighlighted = hoveredPanelId != null && visibleTabs.includes(hoveredPanelId);
@@ -299,6 +304,7 @@ export function LeafView({ node, path, style }) {
           <div className={PANEL_HEADER_ACTIONS}>
             <PanelSettingsMenu
               activeTab={activeModuleId}
+              panelTitle={activeTab ? resolvePanelDisplayName(state, activeTab) : undefined}
               channelCount={chromeData?.channelCount ?? 0}
               vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
               vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
@@ -315,6 +321,7 @@ export function LeafView({ node, path, style }) {
               onSpectrumPeakHoldToggle={noop}
               panelControls={panelControls}
               onPanelControlsChange={onPanelControlsChange}
+              onPanelControlsReset={onPanelControlsReset}
             />
             {helpItems ? <HelpPopover items={helpItems} /> : null}
             <HoverTip

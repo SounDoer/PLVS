@@ -12,6 +12,7 @@ import {
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
+import { isDefaultDockModuleControls } from "../dockModuleControls.js";
 import { LEVEL_METER_MODE_OPTIONS } from "../../lib/panelControls.js";
 
 function SelectField({ label, value, options, onChange }) {
@@ -279,8 +280,13 @@ export function DockModuleSettings({
   const entry = DOCK_MODULE_REGISTRY[dockModuleId];
   if (!entry?.settingsFamily || !controls) return null;
   return (
-    <DockEditorShell title={`${title ?? entry.label} settings`} onBack={onBack} onReset={onReset}>
-      <div className="p-2">
+    <DockEditorShell
+      title={title ?? entry.label}
+      onBack={onBack}
+      onReset={onReset}
+      resetIsDefault={isDefaultDockModuleControls(dockModuleId, controls)}
+    >
+      <div>
         <SettingsGroup>
           <SettingsBody
             moduleId={dockModuleId}

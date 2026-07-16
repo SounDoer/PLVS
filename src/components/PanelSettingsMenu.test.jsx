@@ -46,6 +46,41 @@ describe("PanelSettingsMenu", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("uses the panel instance title and confirms a scoped reset", () => {
+    const onPanelControlsReset = vi.fn();
+    render(
+      <PanelSettingsMenu
+        activeTab="levelMeter"
+        panelTitle="Broadcast Meter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "rms" }}
+        onPanelControlsChange={vi.fn()}
+        onPanelControlsReset={onPanelControlsReset}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+
+    expect(screen.getByRole("heading", { name: "Broadcast Meter" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reset Broadcast Meter settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm reset Broadcast Meter settings" }));
+    expect(onPanelControlsReset).toHaveBeenCalledOnce();
+  });
+
+  it("disables reset while the panel already uses defaults", () => {
+    render(
+      <PanelSettingsMenu
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+        onPanelControlsReset={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+    expect(screen.getByRole("button", { name: "Reset Level Meter settings" }).disabled).toBe(true);
+  });
+
   it("renders spectrogram settings trigger when only range controls are available", () => {
     render(
       <PanelSettingsMenu

@@ -3,6 +3,7 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import {
   createDefaultPanelControls,
   getPanelControls,
+  isDefaultPanelControls,
   normalizePanelControlsById,
   updatePanelControlsById,
 } from "./panelControlInstances.js";
@@ -12,6 +13,16 @@ describe("panelControlInstances", () => {
     const controls = createDefaultPanelControls();
     expect(controls).toEqual(DEFAULT_PANEL_CONTROLS);
     expect(controls).not.toBe(DEFAULT_PANEL_CONTROLS);
+  });
+
+  it("detects whether normalized controls match the product defaults", () => {
+    expect(isDefaultPanelControls(createDefaultPanelControls())).toBe(true);
+    expect(
+      isDefaultPanelControls({
+        ...createDefaultPanelControls(),
+        levelMeterMode: "rms",
+      })
+    ).toBe(false);
   });
 
   it("normalizes controls only for existing panel ids", () => {

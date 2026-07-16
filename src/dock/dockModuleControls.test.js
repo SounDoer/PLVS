@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
+  isDefaultDockModuleControls,
   normalizeDockControlsByModuleId,
   normalizeDockModuleControls,
   updateDockModuleControls,
 } from "./dockModuleControls.js";
 
 describe("normalizeDockControlsByModuleId", () => {
+  it("detects defaults after normalization", () => {
+    expect(isDefaultDockModuleControls("level", { mode: "peak" })).toBe(true);
+    expect(isDefaultDockModuleControls("level", { mode: "rms" })).toBe(false);
+  });
+
   it("returns cloned defaults for junk input", () => {
     const controls = normalizeDockControlsByModuleId(null);
     expect(controls.spectrum).toEqual(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum);

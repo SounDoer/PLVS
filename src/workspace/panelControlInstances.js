@@ -4,6 +4,13 @@ export function createDefaultPanelControls() {
   return normalizePanelControls(DEFAULT_PANEL_CONTROLS);
 }
 
+export function isDefaultPanelControls(panelControls) {
+  return (
+    JSON.stringify(normalizePanelControls(panelControls)) ===
+    JSON.stringify(createDefaultPanelControls())
+  );
+}
+
 export function normalizePanelControlsById(panelsById = {}, panelControlsById = {}) {
   return Object.fromEntries(
     Object.keys(panelsById).map((id) => [

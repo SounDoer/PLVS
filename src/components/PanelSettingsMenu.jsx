@@ -1,10 +1,23 @@
 import { Settings2 } from "lucide-react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
+import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PANEL_SETTINGS_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
+import { cn } from "@/lib/utils";
 import { normalizePanelControls } from "@/lib/panelControls.js";
 import { spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
+import { isDefaultPanelControls } from "@/workspace/panelControlInstances.js";
+
+const PANEL_SETTINGS_TITLES = {
+  levelMeter: "Level Meter",
+  loudness: "Loudness",
+  spectrum: "Spectrum",
+  spectrogram: "Spectrogram",
+  stats: "Stats",
+  vectorscope: "Vectorscope",
+};
 
 function getSelectedOption(options, valueKey) {
   const matchedOption = options.find((opt) => opt.key === valueKey);
@@ -65,8 +78,9 @@ function hasPanelSettings({
   );
 }
 
-export function PanelSettingsMenu(props) {
+export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }) {
   if (!hasPanelSettings(props)) return null;
+  const title = panelTitle ?? PANEL_SETTINGS_TITLES[props.activeTab] ?? "Panel";
 
   return (
     <Popover>
@@ -78,9 +92,14 @@ export function PanelSettingsMenu(props) {
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-auto rounded-lg border-border/70 bg-popover/95 p-1 shadow-sm"
+        className={cn("w-auto p-1", PANEL_SETTINGS_SURFACE_CLASS)}
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
+        <PanelSettingsHeader
+          title={title}
+          onReset={onPanelControlsReset}
+          isDefault={isDefaultPanelControls(props.panelControls)}
+        />
         <PanelSettingsContent {...props} />
       </PopoverContent>
     </Popover>

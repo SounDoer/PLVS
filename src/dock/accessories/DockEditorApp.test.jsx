@@ -79,6 +79,36 @@ describe("DockEditorApp window behavior", () => {
     expect(measureDockEditorContent(root)).toEqual({ width: 240, height: 171 });
   });
 
+  it("includes settings surface padding in its intrinsic height", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "module:levelMeter",
+      panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+      panelOrder: ["levelMeter"],
+      controlsByPanelId: {
+        levelMeter: { mode: "peak", readout: "live", showLabels: true },
+      },
+    };
+    render(<DockEditorApp />);
+    const root = screen.getByTestId("dock-editor");
+    const shell = root.querySelector("[data-dock-editor-shell]");
+    const content = root.querySelector("[data-dock-editor-content]");
+    const header = shell.querySelector("header");
+    root.style.paddingTop = "4px";
+    root.style.paddingBottom = "4px";
+    root.style.borderTopWidth = "1px";
+    root.style.borderBottomWidth = "1px";
+    Object.defineProperties(root, { scrollWidth: { configurable: true, value: 190 } });
+    Object.defineProperties(shell, { scrollWidth: { configurable: true, value: 190 } });
+    Object.defineProperties(content, {
+      scrollWidth: { configurable: true, value: 190 },
+      scrollHeight: { configurable: true, value: 80 },
+    });
+    Object.defineProperties(header, { offsetHeight: { configurable: true, value: 28 } });
+
+    expect(measureDockEditorContent(root)).toEqual({ width: 192, height: 118 });
+  });
+
   it("publishes intrinsic size again when the same editor is reopened", async () => {
     const { rerender } = render(<DockEditorApp />);
     await waitFor(() =>
@@ -120,7 +150,13 @@ describe("DockEditorApp window behavior", () => {
 
     const classes = screen.getByTestId("dock-editor").className.split(/\s+/);
     expect(classes).toContain("w-max");
+    expect(classes).toContain("min-w-48");
+    expect(classes).not.toContain("min-w-64");
     expect(classes).not.toContain("w-[400px]");
+    expect(classes).toContain("rounded-lg");
+    expect(classes).toContain("border-border/70");
+    expect(classes).toContain("bg-popover/95");
+    expect(classes).toContain("shadow-sm");
   });
 
   it("uses the same semantic surface as regular popovers", () => {
