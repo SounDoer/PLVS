@@ -80,6 +80,12 @@ body {
   overflow: hidden;
 }
 
+html[data-surface="dock-editor"],
+html[data-surface="dock-editor"] body,
+html[data-surface="dock-editor"] #root {
+  background: transparent;
+}
+
 .meter-gradient {
   background: linear-gradient(
     180deg,

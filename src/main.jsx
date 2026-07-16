@@ -13,6 +13,7 @@ import {
 import { listCustomThemes } from "./theme/customThemesRepo.js";
 import { DockHeaderApp } from "./dock/accessories/DockHeaderApp.jsx";
 import { DockEditorApp } from "./dock/accessories/DockEditorApp.jsx";
+import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
 
 const systemPrefersDark = readSystemPrefersDark();
 const shell = readPersistedShellThemeFields();
@@ -21,7 +22,7 @@ const resolvedThemeId = resolveThemeId(shell, systemPrefersDark, customThemes);
 applyLayoutToDocument(UI_PREFERENCES);
 applyThemeToDocument(resolvedThemeId, customThemes);
 
-const surface = new URLSearchParams(window.location.search).get("surface");
+const surface = applyDocumentSurface(window.location.search);
 const RootComponent =
   surface === "dock-header" ? DockHeaderApp : surface === "dock-editor" ? DockEditorApp : App;
 
