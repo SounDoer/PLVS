@@ -327,6 +327,7 @@ Run comprehensive checks before pushing:
 |---|-------|---------|----------------|
 | 1 | Release state | `node scripts/check-release-state.mjs` | Fix version / CHANGELOG / git / tag state |
 | 2 | Full repository gate | `npm run check` | Fix format / lint / test / build / Rust errors |
+| 3 | Capture smoke (conditional) | Runs inside `npm run release:preflight` | Only when `src-tauri/src/audio`/`dsp`/`engine` changed since the last tag. Needs VB-Cable + VLC. See "Capture Smoke" below. |
 
 Branch selection is a release-management decision from the Branching Model
 section. The automated preflight command does not enforce a branch name.
@@ -342,6 +343,25 @@ repository gate. Use it as the single local pre-tag command.
 
 `node scripts/check-release-state.mjs` is still available when you only need the
 fast version / CHANGELOG / git / tag check.
+
+### Capture Smoke
+
+`release:preflight` runs `npm run smoke:capture` **only if** audio code changed
+since the last tag. Most releases touch dock/UI code and skip it entirely,
+touching no hardware.
+
+When it does run, read the exit code:
+
+| Exit | Meaning | What to do |
+|------|---------|------------|
+| 0 | Live capture agrees with the file path | Continue |
+| 1 | **Assertion failed** | A real capture-layer defect. **Stop.** Do not widen the tolerance, do not proceed. |
+| 2 | **Rig unusable** (no VB-Cable, no VLC, device busy) | Not a code signal. Fix the rig, or **stop and ask the user**. |
+
+**There is no bypass flag, on purpose.** The capture layer has no other
+coverage — CI runners have no sound card — so skipping this ships a version whose
+audio path nobody checked. If you cannot get it green, that decision belongs to
+the user, not to you.
 
 ### Expected Output
 

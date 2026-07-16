@@ -22,6 +22,7 @@ PLVS：实时音频计量桌面应用（Tauri 2 + Rust 后端 / React 19 + Vite 
 ## 踩过的坑（来自真实改过的 commit）
 - **持久化分域**：状态分三个域，`src/persistence/index.js` 里的 `settingsStore` / `workspaceStore` / `presetsStore`；底层在 Tauri 下走 plugin-store、否则 localStorage。新增持久化键先确认归属，别再退回已废弃的 `plvs.ui` 适配层；旧键清理在 `cleanupLegacyKeys.js`。
 - **窗口几何用物理像素存取**：bounds 存的是物理像素（`inner_size`+`outer_position`），还原必须用 `set_size`/`set_position`（物理），不能走 builder 的 `inner_size`/`position`（逻辑像素）——否则缩放屏（如 150%）下每次启动窗口翻倍变大。见 `src-tauri/src/lib.rs`。
+- **改了 `src-tauri/src/audio` / `dsp` / `engine` 之后**：这三处是采集层，`npm run check` 和 CI 都碰不到（runner 没声卡），bug 会带着满屏绿灯发出去。发版时 `release:preflight` 会自动跑 `npm run smoke:capture` 挡住你——**红了别绕，修装备（VB-Cable + VLC）或者停下来问用户**，没有 bypass flag 是故意的。另外考虑挂个 `npm run soak:capture`（默认 4 小时，睡前跑）：泄漏和指标漂移只有长跑才现形，而它不挡发版，没人提醒就永远不会跑。
 
 ## 约定（非铁律，相关时参考）
 - **realtime-safe**：音频回调线程应不做内存分配 / 不加锁 / 不 syscall。改 `src-tauri/src/audio`、`dsp` 时留意——细节见 docs/architecture.md §7。
