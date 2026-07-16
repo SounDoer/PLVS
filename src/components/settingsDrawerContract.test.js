@@ -17,7 +17,7 @@ describe("settings drawer responsive contract", () => {
   });
 
   it("stacks only explicitly adaptive rows when drawer content becomes too narrow", () => {
-    expect(indexCss).toContain("@container (max-width: 347px)");
+    expect(indexCss).toContain("@container (max-width: 287px)");
     expect(indexCss).toContain(".settings-row-stackable");
   });
 });

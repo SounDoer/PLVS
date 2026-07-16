@@ -36,6 +36,13 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
     expect(screen.queryByLabelText("Theme")).toBeNull();
     expect(screen.getByLabelText("Interface Size")).toBeTruthy();
+    const interfaceSizeHelp = screen.getByRole("button", {
+      name: "Interface Size help: Adjusts text and related interface icons. Dock is unaffected.",
+    });
+    expect(
+      screen.queryByText("Adjusts text and related interface icons. Dock is unaffected.")
+    ).toBeNull();
+    fireEvent.mouseEnter(interfaceSizeHelp);
     expect(
       screen.getByText("Adjusts text and related interface icons. Dock is unaffected.")
     ).toBeTruthy();
@@ -102,6 +109,9 @@ describe("SettingsPanel", () => {
 
     expect(screen.getByText("Export")).toBeTruthy();
     expect(screen.getByText("Import")).toBeTruthy();
+    expect(screen.getByText("Configuration").closest("[data-settings-row]").className).toContain(
+      "settings-row-stackable"
+    );
     fireEvent.click(screen.getByRole("button", { name: "Export configuration" }));
     fireEvent.click(screen.getByRole("button", { name: "Import configuration" }));
 
@@ -126,6 +136,13 @@ describe("SettingsPanel", () => {
     );
 
     expect(screen.getByText("Command Line")).toBeTruthy();
+    const commandLineHelp = screen.getByRole("button", {
+      name: "Command Line help: Add PLVS to user PATH to call plvs-cli from new terminals.",
+    });
+    expect(
+      screen.queryByText("Add PLVS to user PATH to call plvs-cli from new terminals.")
+    ).toBeNull();
+    fireEvent.mouseEnter(commandLineHelp);
     expect(
       screen.getByText("Add PLVS to user PATH to call plvs-cli from new terminals.")
     ).toBeTruthy();

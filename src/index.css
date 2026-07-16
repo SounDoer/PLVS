@@ -94,7 +94,7 @@ body {
   }
 }
 
-@container (max-width: 347px) {
+@container (max-width: 287px) {
   .settings-row-stackable {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;

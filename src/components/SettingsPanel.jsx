@@ -1,6 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ExternalLink, Pencil, Plus, RotateCcw, Terminal, Trash2, X } from "lucide-react";
+import {
+  CircleHelp,
+  ExternalLink,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Terminal,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +22,7 @@ import {
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { HoverTip } from "@/components/HoverTip.jsx";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
 import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
@@ -89,6 +99,29 @@ function SettingsRow({ children, label, labelNode, className, ...props }) {
       <div data-settings-row-value className={ROW_VALUE_CLASS}>
         {children}
       </div>
+    </div>
+  );
+}
+
+function SettingsLabelWithTip({ label, tip }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className={ROW_LABEL_CLASS}>{label}</span>
+      <HoverTip
+        tip={tip}
+        side="bottom"
+        align="start"
+        className="inline-flex shrink-0"
+        tipClassName="w-max max-w-[18rem] whitespace-normal"
+      >
+        <button
+          type="button"
+          aria-label={`${label} help: ${tip}`}
+          className="rounded p-0.5 text-muted-foreground/55 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <CircleHelp className="size-[1em]" aria-hidden />
+        </button>
+      </HoverTip>
     </div>
   );
 }
@@ -364,7 +397,14 @@ export function SettingsPanel({
                       </SelectContent>
                     </Select>
                   </SettingsRow>
-                  <SettingsRow label="Interface Size">
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="Interface Size"
+                        tip="Adjusts text and related interface icons. Dock is unaffected."
+                      />
+                    }
+                  >
                     <Select value={interfaceSize} onValueChange={setInterfaceSize}>
                       <SelectTrigger aria-label="Interface Size" className={SELECT_TRIGGER_CLASS}>
                         <SelectValue />
@@ -378,9 +418,6 @@ export function SettingsPanel({
                       </SelectContent>
                     </Select>
                   </SettingsRow>
-                  <p className="px-1.5 text-[length:var(--ui-fs-axis)] leading-snug text-muted-foreground/60">
-                    Adjusts text and related interface icons. Dock is unaffected.
-                  </p>
                   {appearance === "fixed" ? (
                     <div
                       role="group"
@@ -599,7 +636,12 @@ export function SettingsPanel({
 
                     {/* Command line */}
                     <SettingsSection>
-                      <SettingsRow label="Command Line" className="settings-row-stackable">
+                      <SettingsRow
+                        labelNode={
+                          <SettingsLabelWithTip label="Command Line" tip={cliPathMessage} />
+                        }
+                        className="settings-row-stackable"
+                      >
                         <Button
                           type="button"
                           variant="secondary"
@@ -615,9 +657,6 @@ export function SettingsPanel({
                           {cliPathOnPath ? "Remove PATH" : "Add PATH"}
                         </Button>
                       </SettingsRow>
-                      <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
-                        {cliPathMessage}
-                      </div>
                     </SettingsSection>
                   </>
                 ) : null}
