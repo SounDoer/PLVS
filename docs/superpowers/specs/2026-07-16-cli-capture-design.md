@@ -130,9 +130,7 @@ Reuses the `analyze` envelope verbatim — `schemaVersion`, `command`, `status`,
     "samplePeakMaxRDb": -26.03
   },
   "health": {
-    "xruns": 0,
-    "droppedFrames": 0,
-    "callbackMaxUs": 412,
+    "droppedChunks": 0,
     "rssMb": 142
   }
 }
@@ -148,9 +146,9 @@ so a caller that only wants the summary reads the last line and shares one parse
 with the one-shot mode.
 
 ```jsonl
-{"t":10,"integratedLufs":-20.01,"xruns":0,"rssMb":142}
-{"t":20,"integratedLufs":-20.00,"xruns":0,"rssMb":142}
-{"t":14400,"integratedLufs":-19.31,"xruns":7,"rssMb":2870}
+{"t":10,"integratedLufs":-20.01,"droppedChunks":0,"rssMb":142}
+{"t":20,"integratedLufs":-20.00,"droppedChunks":0,"rssMb":142}
+{"t":14400,"integratedLufs":-19.31,"droppedChunks":7,"rssMb":2870}
 {"schemaVersion":1,"command":"capture","status":"ok","app":{...},"source":{...},"summary":{...},"health":{...}}
 ```
 
@@ -160,7 +158,7 @@ Sample lines carry exactly these fields, and nothing else:
 |-------|---------|
 | `t` | Whole seconds elapsed since capture start |
 | `integratedLufs` | Integrated value as of `t` |
-| `xruns` | Cumulative count since start |
+| `droppedChunks` | Cumulative count since start |
 | `rssMb` | Process resident set size at `t` |
 
 A sample line is distinguishable from the final report by the presence of `t`
@@ -181,17 +179,26 @@ and the soak run.
 | `channelCount` | smoke | Detects a layout the capture layer got wrong |
 | `integratedLufs` | smoke, soak | Level canary; also the drift curve |
 | `samplePeakMaxLDb` / `samplePeakMaxRDb` | smoke | Channel-map canary (see below) |
-| `xruns` / `droppedFrames` | smoke, soak | Capture-layer health; accumulate only over time |
+| `droppedChunks` | smoke, soak | Capture-layer health; accumulates only over time |
 | `rssMb` | soak | Only source for leak detection |
-| `callbackMaxUs` | soak | Only proxy for realtime-thread health |
 
 **Why per-channel peaks are not redundant.** `capture` verifies the capture
 layer, not the DSP — and a capture layer feeding bad PCM shifts *every* metric at
 once, so one canary would normally suffice. There is one exception, and it
-matters: under BS.1770, L and R carry equal weight, so **a swapped L/R channel
-map integrates to a bit-identical LUFS value** and is completely invisible to
-`integratedLufs`. Per-channel peaks catch it: play asymmetric levels (L = -20,
-R = -26) and assert both.
+matters: **any permutation among equal-weight channels integrates to a
+bit-identical LUFS value.** Per the weight table in `dsp/loudness.rs`, a manual
+5.1 layout weighs FL/FR/C at `1.0`, LFE at `0.0`, and SL/SR at
+`SURROUND_LOUDNESS_WEIGHT` — so an L↔R swap in stereo, an FL↔FR↔C permutation, or
+an SL↔SR swap are all completely invisible to `integratedLufs`. Only a swap
+involving LFE (weight `0.0`) shifts it. Per-channel peaks catch the rest: play
+asymmetric levels (L = -20, R = -26) and assert both.
+
+**`droppedChunks` already exists.** `cpal_backend.rs` maintains
+`dropped_chunks: Arc<AtomicU64>` and increments it in the callback when the
+cpal→meter queue is full. Exposing it costs nothing and adds no realtime risk.
+Note this is a *different* counter from the `dropped_frames` UI-backlog warning
+in the same file — that one tracks the webview failing to consume frames, is
+meaningless with no UI attached, and must not be conflated with capture health.
 
 **Deliberately excluded**, with the reasoning recorded so the decision can be
 revisited rather than re-argued:
@@ -201,6 +208,8 @@ revisited rather than re-argued:
 | `lra` | Needs a long window; noise in a 10 s gate |
 | `mMaxLufs` / `stMaxLufs` | Adds DSP coverage, which file mode already owns; adds no capture-layer coverage |
 | `truePeakMaxDbtp` | Same — DSP-layer concern, already covered from files |
+| `xruns` | Not a concept in this codebase. `cpal_backend.rs` has no xrun counter and cpal does not surface device-level xruns; the term was imported from ALSA/JACK vocabulary to name something that already has a name here. Use `droppedChunks`. |
+| `callbackMaxUs` | No timing instrumentation exists in the callback. Adding `Instant::now()` there means a `QueryPerformanceCounter` on the audio thread, which collides with the no-syscall rule in `docs/architecture.md` §7 — a bad trade for a nice-to-have. `droppedChunks` already answers the same question as a *result* metric: a callback slow enough to matter backs the queue up and drops chunks. |
 
 Adding a field later when a caller appears is cheap. Removing one that shipped
 breaks a contract. The asymmetry sets the default: exclude.
@@ -238,15 +247,6 @@ Both are usage patterns of this one command, not separate machinery.
 Windows only in practice. The author develops on Windows, so the macOS capture
 path (`audio/macos/`) stays CI-verified only — CI cannot exercise it either.
 This gap is real, known, and not closed by this work.
-
-## Open Question
-
-`callbackMaxUs` is the one field carried on unverified assumptions: it depends on
-what the cpal callback can actually observe about its own timing without
-violating the realtime-safety constraints in `docs/architecture.md` §7 (no
-allocation, no locks, no syscalls on the audio thread). If a cheap monotonic
-read plus an atomic max-store is not viable there, drop the field — the rest of
-the design does not depend on it.
 
 ## Follow-on Work
 
