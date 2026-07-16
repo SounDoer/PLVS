@@ -18,6 +18,8 @@ const BASE_PROPS = {
   setSettingsOpen: vi.fn(),
   appearance: "system",
   setAppearanceMode: vi.fn(),
+  interfaceSize: "default",
+  setInterfaceSize: vi.fn(),
   fixedThemeSelectValue: "",
   setFixedThemeIdFromPicker: vi.fn(),
   themeSelectOptions: THEME_SELECT_OPTIONS,
@@ -33,6 +35,22 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
     expect(screen.queryByLabelText("Theme")).toBeNull();
+    expect(screen.getByLabelText("Interface Size")).toBeTruthy();
+    expect(
+      screen.getByText("Adjusts text and related interface icons. Dock is unaffected.")
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Interface Size").className).toContain("min-h-6");
+    expect(screen.getByLabelText("Interface Size").className).not.toContain(" h-6 ");
+  });
+
+  it("updates the global interface size", () => {
+    const setInterfaceSize = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} setInterfaceSize={setInterfaceSize} />);
+
+    fireEvent.click(screen.getByLabelText("Interface Size"));
+    fireEvent.click(screen.getByRole("option", { name: "Extra Large" }));
+
+    expect(setInterfaceSize).toHaveBeenCalledWith("extra-large");
   });
 
   it("shows theme picker in fixed mode", () => {

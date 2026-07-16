@@ -21,6 +21,8 @@ const ICON_VARS = {
   "--ui-icon-panel-module": "14px",
 };
 
+const CHART_AXIS_ROW_HEIGHT = "max(0.8rem, calc(var(--ui-fs-axis) * 1.15))";
+
 describe("normal-mode typography variables", () => {
   afterEach(() => {
     for (const name of [...Object.keys(TYPOGRAPHY_VARS), ...Object.keys(ICON_VARS)]) {
@@ -42,5 +44,13 @@ describe("normal-mode typography variables", () => {
     for (const [name, value] of Object.entries(ICON_VARS)) {
       expect(document.documentElement.style.getPropertyValue(name)).toBe(value);
     }
+  });
+
+  it("lets the chart axis row grow with readable axis text", () => {
+    applyLayoutToDocument(UI_PREFERENCES);
+
+    expect(document.documentElement.style.getPropertyValue("--ui-chart-x-axis-row-h")).toBe(
+      CHART_AXIS_ROW_HEIGHT
+    );
   });
 });

@@ -48,7 +48,10 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-min-h-history", `${heightsRem.historyModuleMin}rem`);
   setCssVar("--ui-min-h-spectrum", `${heightsRem.spectrumModuleMin}rem`);
   setCssVar("--ui-min-h-history-chart", `${heightsRem.historyChartMin}rem`);
-  setCssVar("--ui-chart-x-axis-row-h", `${heightsRem.chartXAxisRowRem}rem`);
+  setCssVar(
+    "--ui-chart-x-axis-row-h",
+    `max(${heightsRem.chartXAxisRowRem}rem, calc(var(--ui-fs-axis) * 1.15))`
+  );
 
   setCssVar("--ui-w-axis-rail", `${widthsPx.axisRail}px`);
 

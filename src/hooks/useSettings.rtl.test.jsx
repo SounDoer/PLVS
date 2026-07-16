@@ -105,6 +105,28 @@ describe("useSettings", () => {
     });
   });
 
+  it("persists interface size without theme changes resetting it", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    act(() => {
+      result.current.setInterfaceSize("extra-large");
+    });
+
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem("plvs:settings")).interfaceSize).toBe("extra-large");
+      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("17px");
+    });
+
+    act(() => {
+      result.current.setAppearanceMode("fixed");
+    });
+
+    await waitFor(() => {
+      expect(result.current.interfaceSize).toBe("extra-large");
+      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("17px");
+    });
+  });
+
   it("owns sanitized channel-label overrides", async () => {
     localStorage.setItem(
       "plvs:settings",

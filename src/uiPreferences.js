@@ -5,7 +5,7 @@
  * - **Persistence** — `src/persistence/` (domain stores: `settingsStore`, `workspaceStore`) + `src/preferences/themeResolve.js`
  * - **Apply** — `src/preferences/applyDocumentTheme.js` (`applyLayoutToDocument`, `applyThemeToDocument`)
  *
- * `applyLayoutToDocument` writes spatial/typographic `--ui-*` variables; `applyThemeToDocument` sets
+ * `applyLayoutToDocument` writes spatial/typographic/iconographic `--ui-*` variables; `applyThemeToDocument` sets
  * `data-theme`, `color-scheme`, shadcn semantic tokens, and derived instrument colour tokens.
  *
  * Debug: DevTools → `<html>` → Computed → filter `--ui-` or `--background`.
@@ -22,3 +22,11 @@ export {
   THEME_IDS,
 } from "./preferences/themeResolve.js";
 export { applyLayoutToDocument, applyThemeToDocument } from "./preferences/applyDocumentTheme.js";
+export {
+  DEFAULT_INTERFACE_SIZE,
+  INTERFACE_SIZE_OPTIONS,
+  normalizeInterfaceSize,
+  readPersistedInterfaceSize,
+  resolveInterfacePreferences,
+  resolveInterfacePreferencesForSurface,
+} from "./preferences/interfaceSize.js";

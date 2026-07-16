@@ -28,6 +28,8 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
         setSettingsOpen={settings.setSettingsOpen}
         appearance={settings.appearance}
         setAppearanceMode={settings.setAppearanceMode}
+        interfaceSize={settings.interfaceSize}
+        setInterfaceSize={settings.setInterfaceSize}
         fixedThemeSelectValue={settings.fixedThemeSelectValue}
         setFixedThemeIdFromPicker={settings.setFixedThemeIdFromPicker}
         themeSelectOptions={settings.themeSelectOptions}

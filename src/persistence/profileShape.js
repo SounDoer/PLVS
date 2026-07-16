@@ -3,6 +3,7 @@ import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 import {
   normalizePanelOpacity,
   normalizeReferenceLufs,
+  normalizeInterfaceSize,
   normalizeSettingsFocusView,
   normalizeThemeEditorPos,
 } from "../settings/defaults.js";
@@ -62,6 +63,7 @@ function normalizeSettings(settings) {
   if ("focusView" in next) next.focusView = normalizeSettingsFocusView(next.focusView);
   if ("panelOpacity" in next) next.panelOpacity = normalizePanelOpacity(next.panelOpacity);
   if ("themeEditorPos" in next) next.themeEditorPos = normalizeThemeEditorPos(next.themeEditorPos);
+  if ("interfaceSize" in next) next.interfaceSize = normalizeInterfaceSize(next.interfaceSize);
   if ("channelLabelOverrides" in next) {
     next.channelLabelOverrides = sanitizeChannelLabelOverrides(next.channelLabelOverrides);
   }

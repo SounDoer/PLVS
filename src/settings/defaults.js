@@ -8,6 +8,12 @@ export const DEFAULT_GLASS_ENABLED = false;
 export const DEFAULT_HISTORY_RETENTION_SEC = 3600;
 export const HISTORY_RETENTION_OPTIONS_SEC = [1800, 3600, 7200, 14400];
 export const DEFAULT_THEME_EDITOR_POS = Object.freeze({ x: 80, y: 80 });
+export const DEFAULT_INTERFACE_SIZE = "default";
+export const INTERFACE_SIZE_OPTIONS = Object.freeze([
+  { id: "default", label: "Default" },
+  { id: "large", label: "Large" },
+  { id: "extra-large", label: "Extra Large" },
+]);
 
 export function normalizeReferenceLufs(raw) {
   if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
@@ -44,4 +50,8 @@ export function normalizeGlassEnabled(raw) {
 
 export function normalizeHistoryRetentionSec(raw) {
   return HISTORY_RETENTION_OPTIONS_SEC.includes(raw) ? raw : DEFAULT_HISTORY_RETENTION_SEC;
+}
+
+export function normalizeInterfaceSize(raw) {
+  return INTERFACE_SIZE_OPTIONS.some(({ id }) => id === raw) ? raw : DEFAULT_INTERFACE_SIZE;
 }

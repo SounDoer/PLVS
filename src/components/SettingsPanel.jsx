@@ -18,6 +18,7 @@ import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
+import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
@@ -38,7 +39,7 @@ const ROW_LABEL_CLASS =
 const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
 
 const SELECT_TRIGGER_CLASS =
-  "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
 
 const SELECT_CONTENT_CLASS =
   "border-border/50 min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)] [&_[data-slot=select-item]]:hover:bg-secondary/85";
@@ -112,6 +113,8 @@ export function SettingsPanel({
   setSettingsOpen,
   appearance,
   setAppearanceMode,
+  interfaceSize = "default",
+  setInterfaceSize = () => {},
   fixedThemeSelectValue,
   setFixedThemeIdFromPicker,
   themeSelectOptions,
@@ -342,6 +345,23 @@ export function SettingsPanel({
                       </SelectContent>
                     </Select>
                   </SettingsRow>
+                  <SettingsRow label="Interface Size">
+                    <Select value={interfaceSize} onValueChange={setInterfaceSize}>
+                      <SelectTrigger aria-label="Interface Size" className={SELECT_TRIGGER_CLASS}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                        {INTERFACE_SIZE_OPTIONS.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SettingsRow>
+                  <p className="px-1.5 text-[length:var(--ui-fs-axis)] leading-snug text-muted-foreground/60">
+                    Adjusts text and related interface icons. Dock is unaffected.
+                  </p>
                   {appearance === "fixed" ? (
                     <div
                       role="group"

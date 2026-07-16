@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  UI_PREFERENCES,
-  applyLayoutToDocument,
   applyThemeToDocument,
   readPersistedShellThemeFields,
   readSystemPrefersDark,
@@ -68,7 +66,6 @@ export function useThemeSettings() {
   }, []);
 
   useEffect(() => {
-    applyLayoutToDocument(UI_PREFERENCES);
     applyThemeToDocument(resolvedThemeId, customThemes);
   }, [resolvedThemeId, customThemes]);
 

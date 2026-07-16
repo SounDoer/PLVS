@@ -44,7 +44,7 @@ export const PANEL_HEADER_ACTION_BUTTON =
   "rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100 focus-visible:outline-none";
 
 export const PANEL_HEADER_TITLE_GROUP =
-  "@max-[80px]:hidden flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0.5 text-[length:var(--ui-fs-control)] font-medium";
+  "@max-[80px]:hidden flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0.5 text-[length:var(--ui-fs-panel-title)] font-medium";
 
 export const FOOTER_LABEL =
   "text-[length:var(--ui-fs-status)] tracking-[0.06em] text-muted-foreground/60";

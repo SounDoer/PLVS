@@ -74,6 +74,15 @@ describe("profileShape", () => {
     });
   });
 
+  it("normalizes imported interface size settings", () => {
+    expect(
+      buildProfileSnapshot({ settings: { interfaceSize: "extra-large" } }).settings.interfaceSize
+    ).toBe("extra-large");
+    expect(
+      buildProfileSnapshot({ settings: { interfaceSize: "huge" } }).settings.interfaceSize
+    ).toBe("default");
+  });
+
   it("rejects unrelated JSON", () => {
     expect(() => normalizeImportedProfile({ app: "Other" })).toThrow(ProfileValidationError);
     expect(() => normalizeImportedProfile({ app: "Other" })).toThrow(

@@ -6,23 +6,28 @@ import {
   UI_PREFERENCES,
   applyLayoutToDocument,
   applyThemeToDocument,
+  readPersistedInterfaceSize,
   readPersistedShellThemeFields,
   readSystemPrefersDark,
   resolveThemeId,
+  resolveInterfacePreferencesForSurface,
 } from "./uiPreferences";
 import { listCustomThemes } from "./theme/customThemesRepo.js";
 import { DockHeaderApp } from "./dock/accessories/DockHeaderApp.jsx";
 import { DockEditorApp } from "./dock/accessories/DockEditorApp.jsx";
 import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
 
+const surface = applyDocumentSurface(window.location.search);
 const systemPrefersDark = readSystemPrefersDark();
 const shell = readPersistedShellThemeFields();
+const interfaceSize = readPersistedInterfaceSize();
 const customThemes = listCustomThemes();
 const resolvedThemeId = resolveThemeId(shell, systemPrefersDark, customThemes);
-applyLayoutToDocument(UI_PREFERENCES);
+applyLayoutToDocument(
+  resolveInterfacePreferencesForSurface(UI_PREFERENCES, interfaceSize, surface)
+);
 applyThemeToDocument(resolvedThemeId, customThemes);
 
-const surface = applyDocumentSurface(window.location.search);
 const RootComponent =
   surface === "dock-header" ? DockHeaderApp : surface === "dock-editor" ? DockEditorApp : App;
 

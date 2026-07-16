@@ -5,6 +5,7 @@ import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { useCloseActionSetting } from "./useCloseActionSetting.js";
 import { useHistoryRetentionSetting } from "./useHistoryRetentionSetting.js";
+import { useInterfaceSizeSetting } from "./useInterfaceSizeSetting.js";
 import { useMeterSettings } from "./useMeterSettings.js";
 import { useViewSettings } from "./useViewSettings.js";
 
@@ -16,6 +17,7 @@ export function useSettings({ onClearRef } = {}) {
   const customThemeSettings = useCustomThemeSettings({ themeSettings, setSettingsOpen });
   const closeActionSetting = useCloseActionSetting();
   const historyRetentionSetting = useHistoryRetentionSetting();
+  const interfaceSizeSetting = useInterfaceSizeSetting();
   const meterSettings = useMeterSettings();
   const viewSettings = useViewSettings();
 
@@ -34,6 +36,7 @@ export function useSettings({ onClearRef } = {}) {
     ...meterSettings,
     ...closeActionSetting,
     ...historyRetentionSetting,
+    ...interfaceSizeSetting,
     ...viewSettings,
     autostartEnabled,
     setAutostartEnabled,

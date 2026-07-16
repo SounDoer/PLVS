@@ -3,13 +3,16 @@ import {
   DEFAULT_CLOSE_ACTION,
   DEFAULT_GLASS_ENABLED,
   DEFAULT_HISTORY_RETENTION_SEC,
+  DEFAULT_INTERFACE_SIZE,
   DEFAULT_PANEL_OPACITY,
   DEFAULT_REFERENCE_LUFS,
   DEFAULT_THEME_EDITOR_POS,
   HISTORY_RETENTION_OPTIONS_SEC,
+  INTERFACE_SIZE_OPTIONS,
   normalizeCloseAction,
   normalizeGlassEnabled,
   normalizeHistoryRetentionSec,
+  normalizeInterfaceSize,
   normalizePanelOpacity,
   normalizeReferenceLufs,
   normalizeThemeEditorPos,
@@ -21,6 +24,8 @@ describe("settings defaults", () => {
     expect(DEFAULT_REFERENCE_LUFS).toBe(-23);
     expect(DEFAULT_CLOSE_ACTION).toBe("ask");
     expect(DEFAULT_THEME_EDITOR_POS).toEqual({ x: 80, y: 80 });
+    expect(DEFAULT_INTERFACE_SIZE).toBe("default");
+    expect(INTERFACE_SIZE_OPTIONS.map(({ id }) => id)).toEqual(["default", "large", "extra-large"]);
   });
 
   it("normalizes reference LUFS", () => {
@@ -70,6 +75,14 @@ describe("settings defaults", () => {
     expect(normalizeHistoryRetentionSec(null)).toBe(DEFAULT_HISTORY_RETENTION_SEC);
     expect(normalizeHistoryRetentionSec(undefined)).toBe(DEFAULT_HISTORY_RETENTION_SEC);
     expect(normalizeHistoryRetentionSec("7200")).toBe(DEFAULT_HISTORY_RETENTION_SEC);
+  });
+
+  it("normalizes interface size", () => {
+    expect(normalizeInterfaceSize("default")).toBe("default");
+    expect(normalizeInterfaceSize("large")).toBe("large");
+    expect(normalizeInterfaceSize("extra-large")).toBe("extra-large");
+    expect(normalizeInterfaceSize("huge")).toBe(DEFAULT_INTERFACE_SIZE);
+    expect(normalizeInterfaceSize(undefined)).toBe(DEFAULT_INTERFACE_SIZE);
   });
 
   it("normalizes glass enabled", () => {

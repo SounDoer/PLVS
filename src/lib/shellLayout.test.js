@@ -65,6 +65,7 @@ describe("shellLayout token names", () => {
     expect(PANEL_HEADER_TITLE_GROUP).toContain("min-w-0");
     expect(PANEL_HEADER_TITLE_GROUP).toContain("overflow-hidden");
     expect(PANEL_HEADER_TITLE_GROUP).toContain("@max-[80px]:hidden");
+    expect(PANEL_HEADER_TITLE_GROUP).toContain("--ui-fs-panel-title");
   });
 
   it("panel axis rail helpers share one CSS variable", () => {

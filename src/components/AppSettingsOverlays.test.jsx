@@ -29,10 +29,20 @@ vi.mock("../hooks/useCliPathSettings.js", () => ({
 }));
 
 vi.mock("./SettingsPanel.jsx", () => ({
-  SettingsPanel: ({ onOpenFeedback, themeControlsDisabled, cliPathStatus }) => (
+  SettingsPanel: ({
+    onOpenFeedback,
+    themeControlsDisabled,
+    cliPathStatus,
+    interfaceSize,
+    setInterfaceSize,
+  }) => (
     <div data-testid="settings-panel">
       <span data-testid="theme-disabled">{String(themeControlsDisabled)}</span>
       <span data-testid="cli-status">{cliPathStatus}</span>
+      <span data-testid="interface-size">{interfaceSize}</span>
+      <button type="button" onClick={() => setInterfaceSize("large")}>
+        Set interface size
+      </button>
       <button type="button" onClick={onOpenFeedback}>
         Feedback
       </button>
@@ -60,6 +70,8 @@ function makeSettings(overrides = {}) {
     setSettingsOpen: vi.fn(),
     appearance: "system",
     setAppearanceMode: vi.fn(),
+    interfaceSize: "default",
+    setInterfaceSize: vi.fn(),
     fixedThemeSelectValue: "system",
     setFixedThemeIdFromPicker: vi.fn(),
     themeSelectOptions: [],
@@ -120,6 +132,15 @@ function renderOverlays(settings = makeSettings()) {
 }
 
 describe("AppSettingsOverlays", () => {
+  it("forwards the global interface size setting", () => {
+    const settings = makeSettings();
+    renderOverlays(settings);
+
+    expect(screen.getByTestId("interface-size").textContent).toBe("default");
+    fireEvent.click(screen.getByRole("button", { name: "Set interface size" }));
+    expect(settings.setInterfaceSize).toHaveBeenCalledWith("large");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
