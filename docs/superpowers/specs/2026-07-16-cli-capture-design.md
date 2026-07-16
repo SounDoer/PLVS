@@ -41,12 +41,40 @@ PLVS is unsigned and has no auto-update, so a bad release cannot be recalled.
 ## Goals
 
 - Add `plvs-cli capture --json`: run the real live-capture path headlessly for a
-  bounded duration and emit machine-readable metrics.
+  bounded duration and emit machine-readable metrics. "Real" is load-bearing: the
+  command must **share** the device resolution, sample-format conversion, buffer
+  pool, and drop accounting with the GUI, not reimplement them. A parallel
+  capture implementation would test only itself and defeat the purpose.
 - Make live-capture correctness **assertable** — a script can play a known signal
   into a loopback device (VB-Cable) and assert the returned numbers.
 - Emit periodic samples (`--every`) so slow drift and leaks are observable over
   a multi-hour run.
 - Mirror the `analyze` envelope, flag vocabulary, and exit-code contract exactly.
+
+## Implementation Shape
+
+This mirrors the split `file_analysis` already uses: `session.rs` serves the UI
+through Tauri, while `summary.rs` (zero Tauri imports) serves `analyze` by driving
+`SummaryMeter` over the same `dsp/` primitives. `capture` is the live twin of
+`summary.rs`.
+
+The capture layer is already factored for this. In `cpal_backend.rs`, everything
+the callback touches is standalone and Tauri-free — `PcmBufferPool`,
+`copy_f32_pcm_to_pooled_buffer` / `copy_i16_…` / `copy_u16_…`,
+`send_pcm_buffer_or_count_drop` — as is all of `device_enum.rs`. Tauri appears at
+exactly one point: `run_meter_pipeline_bridge_thread`, which delivers frames to
+the webview. That is the *delivery* layer, which this command explicitly does not
+test.
+
+So the work is one surgical extraction, not an architectural change:
+parameterize `run_capture_worker` over its `audio_rx` consumer. The GUI passes the
+existing bridge; the CLI passes a `SummaryMeter` loop. The device resolution,
+sample-format conversion, buffer pool, and drop accounting — the code actually
+under test — are shared, not reimplemented.
+
+`SummaryMeter` (not `MeterPipeline`) is the CLI's meter, for the same reason
+`analyze` uses it: it is the simpler, already-trusted path, and it keeps the CLI
+free of the UI's frame/request machinery.
 
 ## Non-Goals
 
@@ -88,8 +116,18 @@ is the caller stating they want a stream. `--sample-interval` was rejected —
 
 ## Device Selection
 
-`--device` matches by substring, case-insensitive. Exactly one match proceeds;
-zero or multiple matches are a usage error (exit 2).
+PLVS already has a stable device-id scheme (`lb-*` for output loopback, `cap-*`
+for inputs, plus `default`), and `device_enum::resolve_device` resolves any of
+them to a cpal device. `--device` does not replace that: it takes a
+case-insensitive **substring of the list label**, resolves it to one of those ids
+via `build_device_list()`, and hands the id to the existing resolver. The
+resolved id is echoed back as `source.deviceId`.
+
+Exactly one match proceeds; zero or multiple matches are a usage error (exit 2).
+Ambiguity is load-bearing here rather than annoying: VB-Cable installs as *two*
+rows — "CABLE Input" (an output, captured via loopback) and "CABLE Output" (an
+input) — so a bare `--device "CABLE"` is genuinely ambiguous and must not silently
+pick one. Capturing the signal under test means matching `CABLE Output`.
 
 There is deliberately **no `plvs-cli devices` command**. Discovery is solved by
 the error path, which has to exist anyway:
@@ -119,8 +157,8 @@ Reuses the `analyze` envelope verbatim — `schemaVersion`, `command`, `status`,
   "app": { "name": "PLVS", "version": "0.8.1" },
   "source": {
     "deviceName": "CABLE Output (VB-Audio Virtual Cable)",
-    "requestedSampleRateHz": 48000,
-    "actualSampleRateHz": 48000,
+    "deviceId": "cap-3",
+    "sampleRateHz": 48000,
     "channelCount": 2,
     "capturedMs": 10000
   },
@@ -175,7 +213,8 @@ and the soak run.
 
 | Field | Caller | Why it earns its place |
 |-------|--------|------------------------|
-| `requestedSampleRateHz` / `actualSampleRateHz` | smoke | The only probe for a mis-negotiated rate — DSP computing at 48k on 44.1k data |
+| `deviceId` | smoke | Records which device the substring actually resolved to, so an assertion failure is diagnosable |
+| `sampleRateHz` | smoke | Confirms the capture ran at the expected rate; guards test-rig drift (VB-Cable reconfigured) rather than a code bug — see below |
 | `channelCount` | smoke | Detects a layout the capture layer got wrong |
 | `integratedLufs` | smoke, soak | Level canary; also the drift curve |
 | `samplePeakMaxLDb` / `samplePeakMaxRDb` | smoke | Channel-map canary (see below) |
@@ -192,6 +231,16 @@ bit-identical LUFS value.** Per the weight table in `dsp/loudness.rs`, a manual
 an SL↔SR swap are all completely invisible to `integratedLufs`. Only a swap
 involving LFE (weight `0.0`) shifts it. Per-channel peaks catch the rest: play
 asymmetric levels (L = -20, R = -26) and assert both.
+
+**There is no rate negotiation to verify.** An earlier draft carried a
+`requestedSampleRateHz` / `actualSampleRateHz` pair to catch a mis-negotiated
+rate. That bug class cannot occur here: `run_capture_worker` builds its
+`StreamConfig` with `sample_rate: supported.sample_rate()`, i.e. it adopts the
+device's own default config rather than requesting a rate, and `MeterPipeline` is
+constructed from the same values. Requested and actual are equal by construction,
+so the pair would assert a tautology. A single `sampleRateHz` remains, reusing
+`analyze`'s vocabulary; it earns its place by catching **test-rig drift** (VB-Cable
+silently reconfigured to 44.1k), not by catching a code bug.
 
 **`droppedChunks` already exists.** `cpal_backend.rs` maintains
 `dropped_chunks: Arc<AtomicU64>` and increments it in the callback when the
