@@ -1,6 +1,8 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import App from "./App.jsx";
+import { presetsStore } from "./persistence/index.js";
 import { isTauri } from "./ipc/env.js";
 import {
   enterDock,
@@ -180,7 +182,6 @@ afterEach(() => {
 
 describe("App smoke", () => {
   it("mounts the full app shell", async () => {
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     // Transport spine: if the derived Ready status and START button render, the
     // whole provider/workspace/panel tree mounted without throwing.
@@ -189,7 +190,6 @@ describe("App smoke", () => {
   });
 
   it("START click settles back to Ready without crashing (browser branch)", async () => {
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     const start = await screen.findByRole("button", { name: /^start$/i });
     fireEvent.click(start);
@@ -205,7 +205,6 @@ describe("App smoke", () => {
   });
 
   it("renders the footer status hierarchy", async () => {
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
@@ -222,8 +221,6 @@ describe("App smoke", () => {
       channels: 2,
       label: "Speakers (Realtek USB Audio)",
     });
-
-    const { default: App } = await import("./App.jsx");
     render(<App />);
 
     expect(await screen.findByText("Realtek USB Audio")).toBeTruthy();
@@ -232,8 +229,6 @@ describe("App smoke", () => {
 
   it("starts file analysis from the File source action and shows the summary surface", async () => {
     pickMediaFile.mockResolvedValue("C:\\mix.wav");
-
-    const { default: App } = await import("./App.jsx");
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Source: Live" }));
@@ -247,8 +242,6 @@ describe("App smoke", () => {
   it("marks the active preset dirty after manual window bounds changes", async () => {
     isTauri.mockReturnValue(true);
     vi.spyOn(Date, "now").mockReturnValue(1_000);
-
-    const { default: App } = await import("./App.jsx");
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Presets" }));
@@ -267,7 +260,6 @@ describe("App smoke", () => {
   });
 
   it("reveals auto-hidden Focus View controls with Escape", async () => {
-    const { default: App } = await import("./App.jsx");
     render(<App />);
 
     const viewsButton = await screen.findByRole("button", { name: "Views" });
@@ -283,7 +275,6 @@ describe("App smoke", () => {
   });
 
   it("does not toggle transport from Space", async () => {
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
@@ -294,7 +285,6 @@ describe("App smoke", () => {
   });
 
   it("suppresses the native context menu after the shell mounts", async () => {
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
@@ -307,8 +297,6 @@ describe("App smoke", () => {
   it("renders the dock strip (not the workspace header) when boot state is docked", async () => {
     isTauri.mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
-
-    const { default: App } = await import("./App.jsx");
     render(<App />);
 
     // Docked form swaps the whole shell for the strip; the normal-form header
@@ -322,7 +310,6 @@ describe("App smoke", () => {
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY1", reserveSpace: true },
     };
-    const { presetsStore } = await import("./persistence/index.js");
     presetsStore.patch({
       list: [
         {
@@ -344,8 +331,6 @@ describe("App smoke", () => {
       activeId: null,
       dirty: false,
     });
-
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
 
@@ -378,7 +363,6 @@ describe("App smoke", () => {
     setDockReserveSpace.mockImplementationOnce(
       () => new Promise((resolve) => (releaseFirst = resolve))
     );
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
     const dispatchToggle = (revision) =>
@@ -411,7 +395,6 @@ describe("App smoke", () => {
       dockState: { enabled: true, edge: "bottom", reserveSpace: false },
     };
     setDockReserveSpace.mockRejectedValueOnce(new Error("ABM_NEW rejected registration"));
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
 
@@ -452,7 +435,6 @@ describe("App smoke", () => {
       dockState: { enabled: true, edge: "bottom", reserveSpace: false },
     };
     setDockAccessories.mockRejectedValueOnce(new Error("dock editor position: access denied"));
-    const { default: App } = await import("./App.jsx");
     render(<App />);
 
     await waitFor(() => expect(exitDock).toHaveBeenCalledOnce());
@@ -463,7 +445,6 @@ describe("App smoke", () => {
   });
 
   it("renders the normal shell (no dock strip) without dock boot state", async () => {
-    const { default: App } = await import("./App.jsx");
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
