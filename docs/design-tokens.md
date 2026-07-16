@@ -172,7 +172,7 @@ Do not introduce a generic icon size scale.
 | Panel Action          | `--ui-icon-panel-action`      |    12px | Panel settings, help, pin, fullscreen and close actions |
 | Management Action     | `--ui-icon-management-action` |    14px | Rename, delete, save, cancel and reset actions          |
 | Shell Action          | `--ui-icon-shell-action`      |    14px | Icon-only actions in the normal application header      |
-| Panel Module Identity | `--ui-icon-panel-module`      |    16px | Module identity next to a normal panel title            |
+| Panel Module Identity | `--ui-icon-panel-module`      |    14px | Module identity next to a normal panel title            |
 
 Icons paired with text use local `em` sizing instead of global tokens: inline indicators use `1em`,
 button-leading icons use `1.15em`, and module-list icons use `1.25em`. Module definitions own only

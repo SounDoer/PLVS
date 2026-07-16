@@ -18,7 +18,7 @@ const ICON_VARS = {
   "--ui-icon-panel-action": "12px",
   "--ui-icon-management-action": "14px",
   "--ui-icon-shell-action": "14px",
-  "--ui-icon-panel-module": "16px",
+  "--ui-icon-panel-module": "14px",
 };
 
 describe("normal-mode typography variables", () => {

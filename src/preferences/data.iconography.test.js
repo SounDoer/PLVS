@@ -7,7 +7,7 @@ describe("normal-mode icon roles", () => {
       panelAction: 12,
       managementAction: 14,
       shellAction: 14,
-      panelModule: 16,
+      panelModule: 14,
     });
   });
 });
