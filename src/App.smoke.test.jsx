@@ -137,6 +137,9 @@ beforeEach(() => {
   localStorage.clear();
   tauriEventHandlers.clear();
   delete window.__PLVS_INITIAL_STATE__;
+  // AppBar reserve-space scenarios are Windows-only. Pin the mocked Tauri
+  // surface to that platform so these smoke tests do not inherit the CI host.
+  vi.spyOn(window.navigator, "platform", "get").mockReturnValue("Win32");
   isTauri.mockReturnValue(false);
   listAudioDevices.mockResolvedValue([]);
   previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
