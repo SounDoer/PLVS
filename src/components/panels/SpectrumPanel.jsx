@@ -51,6 +51,12 @@ const HOLD_DISPLAY_SMOOTHING_ALPHA = 0.06;
 const PEAK_LABEL_COUNT = 5;
 const PEAK_LABEL_ENTER_PROMINENCE_DB = 9;
 const PEAK_LABEL_EXIT_PROMINENCE_DB = 5;
+// Peaks are found on their own slow average of the curve, not on the curve as drawn. Speed is a
+// choice about how the curve should move; a label is something to read, and at a fast Speed the
+// peaks genuinely change faster than anyone can follow. Tying the two means buying a readable
+// label with a sluggish curve. Same value as the press-and-hold smoothing above, which settles
+// the curve about as far as Speed 100 does — the setting where these were already steady.
+const PEAK_LABEL_DETECT_SMOOTHING_ALPHA = 0.06;
 
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
@@ -163,6 +169,7 @@ export function SpectrumPanel({ compact = false }) {
   );
   const holdDisplaySpectrumResultRef = useRef(null);
   const spectrumPeakTrackRef = useRef([]);
+  const spectrumPeakDetectDbRef = useRef(null);
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
@@ -232,24 +239,30 @@ export function SpectrumPanel({ compact = false }) {
   // also why this lives here rather than in the bank: the backend has no idea what is visible.
   //
   // Labels are carried frame to frame rather than re-ranked from scratch. Ranking afresh churns
-  // badly on live material, and time smoothing does not save it: even with Speed at 100 the
-  // labels still swap between near-equal peaks, only more slowly.
+  // badly on live material, and a slow curve alone does not save it: two peaks a tenth of a dB
+  // apart still swap on noise, just more slowly. It takes both — a settled curve to look at and
+  // an identity to carry — which is why the smoothing above is not enough on its own either.
   const spectrumPeakLabelList = useMemo(() => {
     if (!spectrumPeakLabels || !panelSpectrumData?.bands?.length) {
       spectrumPeakTrackRef.current = [];
+      spectrumPeakDetectDbRef.current = null;
       return [];
     }
-    const candidates = findSpectrumPeakCandidates(
-      panelSpectrumData.bands,
-      panelSpectrumData.dbList,
-      {
-        // Nothing under the exit bar can be kept or entered, so there is no point costing out
-        // its prominence.
-        minProminenceDb: PEAK_LABEL_EXIT_PROMINENCE_DB,
-        minHz: spectrumRange.minHz,
-        maxHz: spectrumRange.maxHz,
-      }
+    const liveDb = panelSpectrumData.dbList;
+    const detectDb = smoothDbList(
+      spectrumPeakDetectDbRef.current,
+      liveDb,
+      PEAK_LABEL_DETECT_SMOOTHING_ALPHA
     );
+    spectrumPeakDetectDbRef.current = detectDb;
+
+    const candidates = findSpectrumPeakCandidates(panelSpectrumData.bands, detectDb, {
+      // Nothing under the exit bar can be kept or entered, so there is no point costing out
+      // its prominence.
+      minProminenceDb: PEAK_LABEL_EXIT_PROMINENCE_DB,
+      minHz: spectrumRange.minHz,
+      maxHz: spectrumRange.maxHz,
+    });
     const tracked = trackSpectrumPeaks(spectrumPeakTrackRef.current, candidates, {
       count: PEAK_LABEL_COUNT,
       enterProminenceDb: PEAK_LABEL_ENTER_PROMINENCE_DB,
@@ -259,7 +272,10 @@ export function SpectrumPanel({ compact = false }) {
     return tracked.map((peak) => ({
       key: peak.index,
       leftPct: rangedFreqToXFrac(peak.freq, spectrumRange.minHz, spectrumRange.maxHz) * 100,
-      topPct: spectrumDbToTopFrac(peak.db, spectrumRange) * 100,
+      // Height off the live curve, not the slow one the peak was found on, so the dot rides the
+      // line the user can actually see. It bobs with the music while its frequency holds still,
+      // which is the split being drawn here: where a peak is, versus how loud it is right now.
+      topPct: spectrumDbToTopFrac(liveDb[peak.index] ?? peak.db, spectrumRange) * 100,
       freqLabel: formatSpectrumFreq(peak.freq),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
