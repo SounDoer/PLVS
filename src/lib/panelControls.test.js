@@ -80,7 +80,7 @@ describe("panelControls", () => {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
-      spectrumPeakHold: false,
+      spectrumMaxHold: false,
       spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
       spectrumOctaveSmoothing: "off",
@@ -209,7 +209,7 @@ describe("panelControls", () => {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
-      spectrumPeakHold: false,
+      spectrumMaxHold: false,
       spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
       spectrumOctaveSmoothing: "off",
@@ -309,17 +309,17 @@ describe("spectrumView normalization", () => {
   });
 });
 
-describe("spectrumPeakHold normalization", () => {
+describe("spectrumMaxHold normalization", () => {
   it("defaults to false", () => {
-    expect(normalizePanelControls({}).spectrumPeakHold).toBe(false);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumPeakHold).toBe(false);
+    expect(normalizePanelControls({}).spectrumMaxHold).toBe(false);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumMaxHold).toBe(false);
   });
   it("keeps booleans", () => {
-    expect(normalizePanelControls({ spectrumPeakHold: true }).spectrumPeakHold).toBe(true);
-    expect(normalizePanelControls({ spectrumPeakHold: false }).spectrumPeakHold).toBe(false);
+    expect(normalizePanelControls({ spectrumMaxHold: true }).spectrumMaxHold).toBe(true);
+    expect(normalizePanelControls({ spectrumMaxHold: false }).spectrumMaxHold).toBe(false);
   });
   it("falls back on non-boolean", () => {
-    expect(normalizePanelControls({ spectrumPeakHold: "yes" }).spectrumPeakHold).toBe(false);
+    expect(normalizePanelControls({ spectrumMaxHold: "yes" }).spectrumMaxHold).toBe(false);
   });
 });
 
@@ -341,6 +341,16 @@ describe("spectrum display controls normalization", () => {
     expect(normalizePanelControls({}).loudnessYMaxDb).toBe(0);
     expect(normalizePanelControls({}).levelMeterYMinDb).toBe(-60);
     expect(normalizePanelControls({}).levelMeterYMaxDb).toBe(3);
+  });
+
+  it("reads spectrumMaxHold from presets written under the old peak hold key", () => {
+    expect(normalizePanelControls({ spectrumPeakHold: true }).spectrumMaxHold).toBe(true);
+    // A stored `false` is a real value: `??` must not mistake it for an absent key.
+    expect(normalizePanelControls({ spectrumPeakHold: false }).spectrumMaxHold).toBe(false);
+    // The new key wins when a preset somehow carries both.
+    expect(
+      normalizePanelControls({ spectrumMaxHold: false, spectrumPeakHold: true }).spectrumMaxHold
+    ).toBe(false);
   });
 
   it("reads spectrumSpeedPercent from presets written under the old smoothing key", () => {

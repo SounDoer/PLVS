@@ -25,7 +25,7 @@ function hasPanelSettings({
   spectrumOptions = [],
   spectrumValueKey = "",
   onSpectrumViewChange,
-  onSpectrumPeakHoldToggle,
+  onSpectrumMaxHoldToggle,
   vectorscopeOptions = [],
   panelControls,
   onPanelControlsChange,
@@ -47,7 +47,7 @@ function hasPanelSettings({
       spectrumViewApplies(sel) &&
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
-    const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
+    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxHoldToggle === "function";
     const showDisplayControls =
       activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
     const showSpectrogramRange =

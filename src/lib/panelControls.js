@@ -32,7 +32,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   vectorscopePair: { x: 0, y: 1 },
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
-  spectrumPeakHold: false,
+  spectrumMaxHold: false,
   spectrumSpeedPercent: 25,
   spectrumTiltDbPerOctave: 3,
   spectrumOctaveSmoothing: "off",
@@ -103,8 +103,17 @@ function normalizeSpectrumOctaveSmoothing(raw) {
     : DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing;
 }
 
-function normalizeSpectrumPeakHold(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakHold;
+function normalizeSpectrumMaxHold(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumMaxHold;
+}
+
+/// spectrumMaxHold was spectrumPeakHold until "peak" was needed for the frequency axis — a peak
+/// in a spectrum is a bump in the curve, which is what Peak labels marks; this control is the
+/// time axis. Presets from before the rename still carry the old key, so read it as a fallback
+/// rather than snapping them back to the default. `??` and not `||`: a stored `false` is a real
+/// value, not an absent one.
+function readSpectrumMaxHoldRaw(raw) {
+  return raw?.spectrumMaxHold ?? raw?.spectrumPeakHold;
 }
 
 function clampNumber(raw, min, max, fallback) {
@@ -258,7 +267,7 @@ export function normalizePanelControls(raw) {
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
-    spectrumPeakHold: normalizeSpectrumPeakHold(raw?.spectrumPeakHold),
+    spectrumMaxHold: normalizeSpectrumMaxHold(readSpectrumMaxHoldRaw(raw)),
     // spectrumSpeedPercent was named spectrumSmoothingPercent until the frequency-smoothing
     // control arrived and needed the "smoothing" name. Presets written before the rename still
     // carry the old key; read it as a fallback so they keep their value instead of silently

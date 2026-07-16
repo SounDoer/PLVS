@@ -97,7 +97,7 @@ export function SpectrumPanel({ compact = false }) {
     [panelControls]
   );
   const [holdSmoothingActive, setHoldSmoothingActive] = useState(false);
-  const spectrumPeakHold = normalizedPanelControls.spectrumPeakHold;
+  const spectrumMaxHold = normalizedPanelControls.spectrumMaxHold;
   const spectrumRange = {
     minHz: normalizedPanelControls.spectrumXMinFreq,
     maxHz: normalizedPanelControls.spectrumXMaxFreq,
@@ -542,12 +542,12 @@ export function SpectrumPanel({ compact = false }) {
     panelSpectrumPeakPathB;
   // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
   // on top). When peak hold is off, the fill follows the live curve as before.
-  const peakFillActive = spectrumPeakHold && !!displayPanelSpectrumPeakPath;
+  const peakFillActive = spectrumMaxHold && !!displayPanelSpectrumPeakPath;
   const displaySpectrumAreaPath = buildSpectrumAreaPath(
     peakFillActive ? displayPanelSpectrumPeakPath : displayPanelSpectrumPath
   );
   const displaySpectrumAreaPathB =
-    spectrumPeakHold && displayPanelSpectrumPeakPathB
+    spectrumMaxHold && displayPanelSpectrumPeakPathB
       ? buildSpectrumAreaPath(displayPanelSpectrumPeakPathB)
       : "";
   const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";

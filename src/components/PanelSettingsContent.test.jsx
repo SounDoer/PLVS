@@ -781,8 +781,8 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
   });
 
-  it("shows Peak hold as a switch on spectrum and reflects + flips state", () => {
-    const onSpectrumPeakHoldToggle = vi.fn();
+  it("shows Max hold as a switch on spectrum and reflects + flips state", () => {
+    const onSpectrumMaxHoldToggle = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -791,17 +791,17 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={true}
-        onSpectrumPeakHoldToggle={onSpectrumPeakHoldToggle}
+        spectrumMaxHold={true}
+        onSpectrumMaxHoldToggle={onSpectrumMaxHoldToggle}
       />
     );
     const btn = screen.getByRole("switch", { name: "peak hold" });
     expect(btn.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(btn);
-    expect(onSpectrumPeakHoldToggle).toHaveBeenCalledTimes(1);
+    expect(onSpectrumMaxHoldToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("shows compact spectrum display controls after Peak hold", () => {
+  it("shows compact spectrum display controls after Max hold", () => {
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -810,14 +810,14 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={true}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={true}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
     );
 
-    const peak = screen.getByText("Peak hold");
+    const peak = screen.getByText("Max hold");
     const speed = screen.getByText("Speed");
     const tilt = screen.getByText("Tilt");
     const smoothing = screen.getByText("Smoothing");
@@ -866,8 +866,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
@@ -899,8 +899,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -965,8 +965,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           spectrumXMinFreq: 20.000001,
@@ -991,8 +991,8 @@ describe("PanelSettingsContent", () => {
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
         spectrumValueKey="p-0-1"
-        spectrumPeakHold={false}
-        onSpectrumPeakHoldToggle={vi.fn()}
+        spectrumMaxHold={false}
+        onSpectrumMaxHoldToggle={vi.fn()}
       />
     );
     expect(screen.queryByLabelText("peak hold")).toBeNull();

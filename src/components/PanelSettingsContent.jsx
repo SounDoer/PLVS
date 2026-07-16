@@ -650,8 +650,8 @@ export function PanelSettingsContent({
   spectrumView = "combined",
   spectrumViewLegend = null,
   onSpectrumViewChange,
-  spectrumPeakHold = false,
-  onSpectrumPeakHoldToggle,
+  spectrumMaxHold = false,
+  onSpectrumMaxHoldToggle,
   panelControls,
   onPanelControlsChange,
 }) {
@@ -942,8 +942,8 @@ export function PanelSettingsContent({
       ? normalizedPanelControls.spectrumView
       : spectrumView;
     const effectiveSpectrumPeakHold = hasPanelControls
-      ? normalizedPanelControls.spectrumPeakHold
-      : spectrumPeakHold;
+      ? normalizedPanelControls.spectrumMaxHold
+      : spectrumMaxHold;
     const effectiveSpeedPercent = normalizedPanelControls.spectrumSpeedPercent;
     const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
     const effectiveYMaxDb = normalizedPanelControls.spectrumYMaxDb;
@@ -960,7 +960,7 @@ export function PanelSettingsContent({
       spectrumViewApplies(sel) &&
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
-    const showPeak = activeTab === "spectrum" && typeof onSpectrumPeakHoldToggle === "function";
+    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxHoldToggle === "function";
     const showDisplayControls =
       activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
     const showSpectrogramRange =
@@ -1029,7 +1029,7 @@ export function PanelSettingsContent({
           </SettingsRow>
         ) : null}
         {showPeak ? (
-          <SettingsRow label="Peak hold">
+          <SettingsRow label="Max hold">
             <SettingsSwitch
               aria-label="peak hold"
               checked={effectiveSpectrumPeakHold}
@@ -1037,10 +1037,10 @@ export function PanelSettingsContent({
                 onPanelControlsChange?.(
                   normalizePanelControls({
                     ...normalizedPanelControls,
-                    spectrumPeakHold: checked,
+                    spectrumMaxHold: checked,
                   })
                 );
-                onSpectrumPeakHoldToggle?.();
+                onSpectrumMaxHoldToggle?.();
               }}
             />
           </SettingsRow>

@@ -83,11 +83,11 @@ afterEach(() => {
 });
 
 describe("SpectrumPanel", () => {
-  it("fills up to the peak contour when peak hold is on", () => {
+  it("fills up to the peak contour when max hold is on", () => {
     const peakPath = "M 0 20 L 1000 20";
     const { container } = renderPanel(
       liveAudioData(liveResult({ path: "M 0 120 L 1000 80", peakPath }), {
-        panelControls: { spectrumPeakHold: true },
+        panelControls: { spectrumMaxHold: true },
       })
     );
 
@@ -103,8 +103,8 @@ describe("SpectrumPanel", () => {
     // Global (first panel) has peak hold on, but this panel's own control has it off.
     const { container } = renderPanel(
       liveAudioData(liveResult({ path: livePath, peakPath }), {
-        spectrumPeakHold: true,
-        panelControls: { spectrumPeakHold: false },
+        spectrumMaxHold: true,
+        panelControls: { spectrumMaxHold: false },
       })
     );
 
@@ -116,7 +116,7 @@ describe("SpectrumPanel", () => {
     const livePath = "M 0 120 L 1000 80";
     const { container } = renderPanel(
       liveAudioData(liveResult({ path: livePath, peakPath: "M 0 20 L 1000 20" }), {
-        panelControls: { spectrumPeakHold: false },
+        panelControls: { spectrumMaxHold: false },
       })
     );
 
@@ -133,7 +133,7 @@ describe("SpectrumPanel", () => {
           pathB: "M 0 130 L 1000 90",
           peakPathB: peakB,
         }),
-        { panelControls: { spectrumPeakHold: true }, spectrumViewLegend: null }
+        { panelControls: { spectrumMaxHold: true }, spectrumViewLegend: null }
       )
     );
 
@@ -193,7 +193,7 @@ describe("SpectrumPanel", () => {
           smoothDb: [-40, -70],
           peakDb: [-24, -84],
         }),
-        { panelControls: { spectrumPeakHold: true, spectrumYMaxDb: -24, spectrumYRangeDb: 60 } }
+        { panelControls: { spectrumMaxHold: true, spectrumYMaxDb: -24, spectrumYRangeDb: 60 } }
       )
     );
 
