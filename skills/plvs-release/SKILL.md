@@ -101,10 +101,10 @@ existing flow. Until then, ignore this section.
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  Step 7: Push & Tag                                             │
-│  - git push                                                     │
-│  - git tag vX.Y.Z                                               │
-│  - git push origin vX.Y.Z                                       │
+│  Step 7: Push, Wait for CI, Then Tag                            │
+│  - Push main                                                    │
+│  - Require successful ci.yml run for the exact HEAD SHA         │
+│  - Only then create and push vX.Y.Z                             │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -420,25 +420,79 @@ Do NOT proceed to Step 7. Fix issues and re-run `npm run release:preflight`.
 
 ---
 
-## Step 7: Push & Tag
+## Step 7: Push, Wait for Remote CI, Then Tag
 
 ### Push Commit First
 
 ```bash
-git push
+git push origin main
 ```
 
+### Mandatory Pre-Tag Remote Gate
+
+Do **not** create the tag immediately after pushing. Local preflight runs on the
+developer's OS, while CI runs the canonical Linux frontend and Rust jobs. Wait
+for `.github/workflows/ci.yml` to complete successfully for the **exact HEAD
+SHA** that will be tagged.
+
+**PowerShell (Windows):**
+
+```powershell
+$sha = git rev-parse HEAD
+$runId = $null
+
+1..30 | ForEach-Object {
+  $runs = gh run list --workflow=ci.yml --commit $sha --event push --limit 1 --json databaseId | ConvertFrom-Json
+  $runId = ($runs | Select-Object -First 1).databaseId
+  if ($runId) { break }
+  Start-Sleep -Seconds 2
+}
+
+if (-not $runId) { throw "No CI run appeared for $sha" }
+gh run watch $runId --exit-status
+if ((gh run view $runId --json conclusion -q .conclusion) -ne "success") {
+  throw "CI did not succeed for $sha"
+}
+
+$remoteMain = (git ls-remote origin refs/heads/main).Split()[0]
+if ($remoteMain -ne $sha) { throw "origin/main moved after CI verification" }
+```
+
+**Bash (Linux/macOS):**
+
+```bash
+sha=$(git rev-parse HEAD)
+run_id=""
+for _ in $(seq 1 30); do
+  run_id=$(gh run list --workflow=ci.yml --commit "$sha" --event push --limit 1 --json databaseId -q '.[0].databaseId')
+  [ -n "$run_id" ] && break
+  sleep 2
+done
+
+[ -n "$run_id" ] || { echo "No CI run appeared for $sha" >&2; exit 1; }
+gh run watch "$run_id" --exit-status
+[ "$(gh run view "$run_id" --json conclusion -q .conclusion)" = "success" ]
+[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$sha" ]
+```
+
+If this gate fails, **do not bump the version and do not create a tag**. Fix the
+failure on `main`, keep the already-bumped version, re-run
+`npm run release:preflight`, push again, and wait for CI on the new exact SHA.
+
 ### Create and Push Tag
+
+Only after the exact-SHA CI gate succeeds:
 
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-**Why push before tag?**
+**Why wait for remote CI before tagging?**
 - Ensures commit is on remote
 - Tag points to the correct commit
-- CI can access the commit
+- Catches Linux-only and clean-checkout failures before the version is published
+- Lets failures be fixed under the same version because no public tag exists yet
 
 ### ⚠️ Do NOT force-move a released tag
 
@@ -577,13 +631,17 @@ Add section manually to `CHANGELOG.md`:
 
 ### Tag Already Exists
 
-```bash
-# Delete local tag
-git tag -d vX.Y.Z
+Check both locations before acting:
 
-# Delete remote tag
-git push origin :refs/tags/vX.Y.Z
+```bash
+git rev-parse -q --verify refs/tags/vX.Y.Z
+git ls-remote --tags origin refs/tags/vX.Y.Z refs/tags/vX.Y.Z^{}
 ```
+
+- If the tag exists remotely, treat the version as published. Do not delete or
+  move it; select the next patch version.
+- If the tag exists only locally and has never been pushed, it may be removed
+  with `git tag -d vX.Y.Z`, then the full pre-tag gate must run again.
 
 ### Preflight Fails
 
@@ -603,14 +661,19 @@ Release run, find the red gate job, fix the reported check locally
 (it mirrors CI exactly), then ship a **new** version (do not re-move the
 tag — see the Step 7 warning).
 
-### CI Build Fails
+### Pre-Tag CI Fails
 
-1. Check GitHub Actions logs
-2. Fix issues locally
-3. Delete tag: `git push origin :refs/tags/vX.Y.Z`
-4. Amend commit or create new commit
-5. Re-run `npm run release:preflight`
-6. Re-tag and push
+1. Check the exact-SHA `ci.yml` run logs.
+2. Fix the issue on `main` without changing the release version.
+3. Re-run `npm run release:preflight`.
+4. Push the fix and wait for the new exact-SHA CI run.
+5. Create the tag only after that run succeeds.
+
+### Tagged Release Build Fails
+
+1. Check the `release.yml` logs and fix the issue on `main`.
+2. Ship the fix as the next patch version through the complete workflow.
+3. Never delete, move, or recreate the already-pushed release tag.
 
 ---
 
