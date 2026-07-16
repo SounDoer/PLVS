@@ -70,9 +70,36 @@ plvs-cli analyze <path> --json [--out <file>]
 plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]
 plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]
 plvs-cli report <analysis.json> --format markdown [--out <file>]
+plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]
 ```
 
 Use `plvs-cli --help`, `plvs-cli help`, or `plvs-cli <command> --help` for the installed command reference.
+
+### capture
+
+`capture` measures **live audio from a device**, where `analyze` measures a file. It opens the real capture path the desktop app uses, without a window.
+
+It is unlike the other commands in two ways worth planning around:
+
+- **It blocks for `--seconds` of wall-clock time.** `capture --seconds 10` takes ten seconds. Every other command returns as fast as it can.
+- **It holds an audio device open** for that span. Still read-only — it never routes or modifies audio — but a device under exclusive-mode use by another application may refuse to open.
+
+`--device` matches a case-insensitive substring of the device label and must match exactly one device; omit it for the system default. There is no `devices` command: a substring that matches nothing prints the available devices, so one wrong guess tells you the real name. A substring matching several devices is an error rather than a guess — virtual cables commonly install as multiple rows (`CABLE Input`, `CABLE Output`, `CABLE In 16ch`), and picking the wrong one silently captures the wrong end of the loop.
+
+```powershell
+plvs-cli capture --seconds 10 --json                        # default device
+plvs-cli capture --device "CABLE Output" --seconds 10 --json
+```
+
+With `--every <n>`, output switches from a single report to **JSONL**: one line every `n` seconds, then the same final report as the non-streaming mode. Use it to see drift over a long run, which a single averaged number would hide.
+
+```powershell
+plvs-cli capture --device "CABLE Output" --seconds 14400 --every 10 --json --out soak.jsonl
+```
+
+Sample lines carry `t` (whole seconds elapsed), `integratedLufs`, and `droppedChunks`. A sample line is distinguishable from the final report by the presence of `t`. Process memory is deliberately absent — sample it externally against the PID if you need it.
+
+Silence reports `null` metrics, not `0`: an all-silent capture has no finite loudness, and non-finite values serialize to `null` as they do in `analyze`.
 
 ## Agent Workflow
 
@@ -81,10 +108,11 @@ Use `plvs-cli --help`, `plvs-cli help`, or `plvs-cli <command> --help` for the i
 - Use `analyze-batch <paths...> --json` for two or more files.
 - Use `analyze-batch --manifest <file.json> --json` when paths are numerous, generated programmatically, or need reproducibility.
 - Use `report <analysis.json> --format markdown` when the user asks for a human-readable report, summary, table, or Markdown output.
+- Use `capture --seconds <n> --json` when the question is about **live audio on a device** rather than a file — "what level is coming in right now", or verifying that the capture path itself is healthy. Budget `<n>` seconds of wall clock for it.
 
 ## JSON First, Markdown Second
 
-`doctor`, `analyze`, and `analyze-batch` currently produce machine-readable JSON. `report --format markdown` reads JSON produced by `analyze` or `analyze-batch` and renders a human-readable Markdown table.
+`doctor`, `analyze`, `analyze-batch`, and `capture` currently produce machine-readable JSON. `report --format markdown` reads JSON produced by `analyze` or `analyze-batch` and renders a human-readable Markdown table. `report` does not accept `capture` output.
 
 This split keeps the analysis commands stable for automation while still giving users readable output when needed.
 
@@ -98,6 +126,8 @@ Examples:
 plvs-cli analyze "C:\media\mix.wav" --json --out analysis.json
 plvs-cli report analysis.json --format markdown --out report.md
 ```
+
+For `capture`, the payload `--out` receives depends on the mode: the single report without `--every`, or the whole JSONL stream (samples plus the final report) with it. The file always mirrors what went to stdout.
 
 ## Batch Manifests
 
@@ -128,6 +158,7 @@ Run the CLI from source with Cargo:
 ```powershell
 cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- doctor --json
 cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- analyze "C:\media\mix.wav" --json
+cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- capture --seconds 5 --json
 ```
 
 Focused CLI tests:
@@ -137,7 +168,10 @@ cargo test --manifest-path src-tauri/Cargo.toml --bin plvs-cli
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze_batch
 cargo test --manifest-path src-tauri/Cargo.toml cli_report
+cargo test --manifest-path src-tauri/Cargo.toml cli_capture
 ```
+
+`capture`'s device-touching code is not unit-tested and cannot be: CI runners have no sound card, so device enumeration returns an empty list and the code path is unreachable. Only the pure parts — substring matching, report shaping, argument parsing — carry tests. Verifying the rest needs real hardware.
 
 For installed Windows validation, build and verify the installer:
 

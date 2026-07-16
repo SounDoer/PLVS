@@ -119,9 +119,12 @@ plvs-cli doctor --json
 plvs-cli analyze "C:\path\file.wav" --json
 plvs-cli analyze-batch "C:\path\a.wav" "C:\path\b.wav" --json
 plvs-cli report analysis.json --format markdown
+plvs-cli capture --device "CABLE Output" --seconds 10 --json
 ```
 
-Use JSON commands for automation, then use `report --format markdown` when a user-readable summary is needed. See [docs/cli.md](docs/cli.md) for `--out`, batch manifests, and exit codes.
+`analyze` measures a file; `capture` measures live audio from a device, using the same capture path as the desktop app but without a window. It blocks for `--seconds` of wall clock and holds the device open for that span. Omit `--device` for the system default; a substring that matches nothing lists the available devices.
+
+Use JSON commands for automation, then use `report --format markdown` when a user-readable summary is needed. See [docs/cli.md](docs/cli.md) for `--out`, batch manifests, streaming `capture --every`, and exit codes.
 
 ---
 
