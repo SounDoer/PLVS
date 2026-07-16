@@ -327,3 +327,111 @@ pub fn preview_device(device_id: &str) -> Result<(String, String, u32, u16), Str
   let key = device_id_key(&device)?;
   Ok((label, key, supported.sample_rate(), supported.channels()))
 }
+
+fn format_device_lines(devices: &[DeviceInfo]) -> String {
+  devices
+    .iter()
+    .map(|d| format!("  - {}", d.label))
+    .collect::<Vec<_>>()
+    .join("\n")
+}
+
+/// Resolve a case-insensitive label substring to exactly one device id.
+/// Ambiguity is an error on purpose: VB-Cable installs as two rows ("CABLE
+/// Input" and "CABLE Output"), so silently picking one would capture the wrong
+/// end of the loop.
+// Consumed by the CLI capture path added in a later task; not yet wired up.
+#[allow(dead_code)]
+pub fn match_device_substring(devices: &[DeviceInfo], needle: &str) -> Result<String, String> {
+  let needle_lower = needle.to_lowercase();
+  let matches: Vec<&DeviceInfo> = devices
+    .iter()
+    .filter(|d| d.label.to_lowercase().contains(&needle_lower))
+    .collect();
+
+  match matches.len() {
+    1 => Ok(matches[0].id.clone()),
+    0 => Err(format!(
+      "No capture device matches \"{needle}\". Available:\n{}",
+      format_device_lines(devices)
+    )),
+    n => {
+      let owned: Vec<DeviceInfo> = matches.into_iter().cloned().collect();
+      Err(format!(
+        "\"{needle}\" matches {n} devices. Be more specific:\n{}",
+        format_device_lines(&owned)
+      ))
+    }
+  }
+}
+
+/// Live wrapper: enumerate real devices, then resolve `needle` against them.
+// Consumed by the CLI capture path added in a later task; not yet wired up.
+#[allow(dead_code)]
+pub fn resolve_device_id_by_substring(needle: &str) -> Result<String, String> {
+  let devices = build_device_list()?;
+  match_device_substring(&devices, needle)
+}
+
+#[cfg(test)]
+mod substring_tests {
+  use super::match_device_substring;
+  use crate::audio::device::DeviceInfo;
+
+  fn device(id: &str, label: &str) -> DeviceInfo {
+    DeviceInfo {
+      id: id.to_string(),
+      label: label.to_string(),
+      is_system_output_monitor: false,
+      is_loopback: false,
+      default_sample_rate: 48000,
+      channels: 2,
+      core_audio_output_uid: None,
+    }
+  }
+
+  fn fixture() -> Vec<DeviceInfo> {
+    vec![
+      device("lb-1", "CABLE Input (VB-Audio Virtual Cable)"),
+      device("cap-1", "Microphone (Realtek High Definition Audio)"),
+      device("cap-2", "CABLE Output (VB-Audio Virtual Cable)"),
+    ]
+  }
+
+  #[test]
+  fn matches_one_device_case_insensitively() {
+    assert_eq!(
+      match_device_substring(&fixture(), "cable output"),
+      Ok("cap-2".to_string())
+    );
+  }
+
+  #[test]
+  fn rejects_ambiguous_substring_and_lists_the_candidates() {
+    // VB-Cable installs as both an output (loopback) and an input row, so a bare
+    // "CABLE" is genuinely ambiguous and must never silently pick one.
+    let err = match_device_substring(&fixture(), "CABLE").unwrap_err();
+    assert!(err.contains("matches 2 devices"), "unexpected: {err}");
+    assert!(
+      err.contains("CABLE Input (VB-Audio Virtual Cable)"),
+      "unexpected: {err}"
+    );
+    assert!(
+      err.contains("CABLE Output (VB-Audio Virtual Cable)"),
+      "unexpected: {err}"
+    );
+  }
+
+  #[test]
+  fn reports_available_devices_when_nothing_matches() {
+    let err = match_device_substring(&fixture(), "vb-cable").unwrap_err();
+    assert!(
+      err.contains("No capture device matches \"vb-cable\""),
+      "unexpected: {err}"
+    );
+    assert!(
+      err.contains("Microphone (Realtek High Definition Audio)"),
+      "unexpected: {err}"
+    );
+  }
+}
