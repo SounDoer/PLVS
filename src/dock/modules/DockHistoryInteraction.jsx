@@ -21,7 +21,7 @@ export function DockHistoryWindowHud({ controls }) {
   return (
     <div
       role="status"
-      className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded border border-border/60 bg-background/85 px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[10px] tabular-nums text-muted-foreground shadow-sm"
+      className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded border border-border/60 bg-background/85 px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] tabular-nums text-muted-foreground shadow-sm"
     >
       {fmtSec(hud.windowSec)}
     </div>

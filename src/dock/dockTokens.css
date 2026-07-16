@@ -25,7 +25,7 @@
   }
 }
 
-@media (min-height: 96px) {
+@media (min-height: 120px) {
   .dock-strip {
     --ui-dock-fs-label: 10px;
     --ui-dock-fs-caption: 10px;

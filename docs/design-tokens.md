@@ -250,13 +250,16 @@ colors, but it does not reuse normal-panel typography or spacing dimensions. Nor
 minimum heights measured in `rem`; applying those dimensions to Dock would either overflow or
 waste its limited data area.
 
+Dock typography is self-contained and does not inherit user-configurable text-size preferences.
+Its font sizes respond only to the Dock height tiers below.
+
 Responsive Dock component tokens are owned by `src/dock/dockTokens.css` and scoped to
 `.dock-strip`. Height media queries update them directly while the native Dock window is being
 resized, without waiting for React state or persisted geometry.
 
 ### Responsive density tiers
 
-| Role / token           | Compact `56–63px` | Standard `64–95px` | Expanded `96–160px` |
+| Role / token           | Compact `56–63px` | Standard `64–119px` | Expanded `120–160px` |
 | ---------------------- | ----------------: | -----------------: | ------------------: |
 | `--ui-dock-fs-label`   |               8px |                9px |                10px |
 | `--ui-dock-fs-caption` |               8px |                9px |                10px |

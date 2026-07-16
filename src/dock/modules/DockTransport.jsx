@@ -7,7 +7,7 @@ export function DockTransport({ controls }) {
     <div className="flex h-full min-w-20 items-center justify-center px-3">
       <span
         data-testid="dock-transport-timer"
-        className="font-[family-name:var(--ui-font-mono)] text-sm font-semibold tabular-nums text-foreground"
+        className="font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold tabular-nums text-foreground"
       >
         {timer}
       </span>
