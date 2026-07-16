@@ -26,15 +26,19 @@ struct AppBarState {
   hwnd: isize,
   edge: DockEdge,
   height: i32,
+  target_work_area: RECT,
   registered: bool,
   positioning: bool,
   transitioning: bool,
 }
 
 impl AppBarState {
-  fn requested_position(&self, hwnd: isize) -> Option<(DockEdge, i32)> {
-    (self.registered && !self.positioning && !self.transitioning && self.hwnd == hwnd)
-      .then_some((self.edge, self.height))
+  fn requested_position(&self, hwnd: isize) -> Option<(DockEdge, i32, RECT)> {
+    (self.registered && !self.positioning && !self.transitioning && self.hwnd == hwnd).then_some((
+      self.edge,
+      self.height,
+      self.target_work_area,
+    ))
   }
 
   fn should_notify_window_position_changed(&self, hwnd: isize) -> bool {
@@ -51,6 +55,7 @@ fn state() -> &'static Mutex<AppBarState> {
       hwnd: 0,
       edge: DockEdge::Bottom,
       height: 72,
+      target_work_area: RECT::default(),
       registered: false,
       positioning: false,
       transitioning: false,
@@ -277,8 +282,8 @@ unsafe extern "system" fn subclass_proc(
       .lock()
       .ok()
       .and_then(|current| current.requested_position(hwnd as isize));
-    if let Some((edge, height)) = requested {
-      let _ = reposition(hwnd, edge, height, None);
+    if let Some((edge, height, target_work_area)) = requested {
+      let _ = reposition(hwnd, edge, height, Some(target_work_area));
     }
     return 0;
   }
@@ -287,12 +292,10 @@ unsafe extern "system" fn subclass_proc(
       .lock()
       .ok()
       .and_then(|current| current.requested_position(hwnd as isize));
-    if let Some((edge, height)) = requested {
-      if let Ok(work_area) = monitor_work_area(hwnd) {
-        let rect = appbar_rect_from_work_area(work_area, edge, height, true);
-        if let Some(position) = (lparam as *mut WINDOWPOS).as_mut() {
-          enforce_window_position(position, rect);
-        }
+    if let Some((edge, height, target_work_area)) = requested {
+      let rect = appbar_rect_from_work_area(target_work_area, edge, height, false);
+      if let Some(position) = (lparam as *mut WINDOWPOS).as_mut() {
+        enforce_window_position(position, rect);
       }
     }
   }
@@ -396,6 +399,7 @@ fn set_reserved_inner<R: tauri::Runtime>(
         current.hwnd = hwnd as isize;
         current.edge = edge;
         current.height = height;
+        current.target_work_area = available_work_area;
         current.registered = true;
       }
       if let Err(error) = reposition(hwnd, edge, height, Some(available_work_area)) {
@@ -550,17 +554,49 @@ mod tests {
   }
 
   #[test]
+  fn registered_appbar_keeps_its_target_monitor_while_window_moves_offscreen() {
+    let target_work_area = monitor_rect();
+    let current = AppBarState {
+      hwnd: 42,
+      edge: DockEdge::Bottom,
+      height: 108,
+      target_work_area,
+      registered: true,
+      positioning: false,
+      transitioning: false,
+    };
+
+    let (_, _, restored_work_area) = current.requested_position(42).unwrap();
+
+    assert_eq!(
+      (
+        restored_work_area.left,
+        restored_work_area.top,
+        restored_work_area.right,
+        restored_work_area.bottom,
+      ),
+      (
+        target_work_area.left,
+        target_work_area.top,
+        target_work_area.right,
+        target_work_area.bottom,
+      )
+    );
+  }
+
+  #[test]
   fn appbar_ignores_position_notifications_caused_by_its_own_reposition() {
     let current = AppBarState {
       hwnd: 42,
       edge: DockEdge::Top,
       height: 72,
+      target_work_area: monitor_rect(),
       registered: true,
       positioning: true,
       transitioning: false,
     };
 
-    assert_eq!(current.requested_position(42), None);
+    assert!(current.requested_position(42).is_none());
     assert!(!current.should_notify_window_position_changed(42));
   }
 
@@ -570,12 +606,13 @@ mod tests {
       hwnd: 42,
       edge: DockEdge::Bottom,
       height: 72,
+      target_work_area: monitor_rect(),
       registered: true,
       positioning: false,
       transitioning: true,
     };
 
-    assert_eq!(current.requested_position(42), None);
+    assert!(current.requested_position(42).is_none());
     assert!(!current.should_notify_window_position_changed(42));
   }
 }
