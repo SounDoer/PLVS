@@ -11,18 +11,80 @@ describe("useDockLayout", () => {
 
   it("starts from defaults and persists toggles to workspaceStore", () => {
     const { result } = renderHook(() => useDockLayout());
-    expect(result.current.modules).toEqual(["level", "loudness", "spectrum", "correlation"]);
+    expect(result.current.modules).toEqual([
+      "transport",
+      "level",
+      "loudness",
+      "stats",
+      "correlation",
+      "spectrum",
+      "spectrogram",
+      "waveform",
+    ]);
+    expect(Object.keys(result.current.controlsByPanelId)).toEqual([
+      "level",
+      "loudness",
+      "stats",
+      "correlation",
+      "spectrum",
+      "spectrogram",
+    ]);
+    expect(result.current.controlsByPanelId).toMatchObject({
+      level: { mode: "peak", readout: "live", showLabels: true },
+      loudness: {
+        showReadouts: true,
+        loudnessReferenceLufs: -23,
+        loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+        loudnessYMinDb: -64,
+        loudnessYMaxDb: 0,
+      },
+      stats: { statsVisibleIds: ["integrated", "truePeak", "lra"] },
+      correlation: { pair: { x: 0, y: 1 } },
+      spectrum: {
+        channel: { type: "pair", x: 0, y: 1 },
+        view: "combined",
+        speedPercent: 25,
+        octaveSmoothing: "off",
+        tiltDbPerOctave: 3,
+        maxHold: false,
+        minFreq: 20,
+        maxFreq: 20000,
+        minDb: -96,
+        maxDb: -12,
+      },
+      spectrogram: {
+        channel: { type: "pair", x: 0, y: 1 },
+        minFreq: 20,
+        maxFreq: 20000,
+      },
+    });
     act(() => result.current.toggle("spectrum"));
-    expect(result.current.modules).toEqual(["level", "loudness", "correlation"]);
-    expect(workspaceStore.read().dock.panelOrder).toEqual(["level", "loudness", "correlation"]);
+    expect(result.current.modules).toEqual([
+      "transport",
+      "level",
+      "loudness",
+      "stats",
+      "correlation",
+      "spectrogram",
+      "waveform",
+    ]);
+    expect(workspaceStore.read().dock.panelOrder).toEqual([
+      "transport",
+      "level",
+      "loudness",
+      "stats",
+      "correlation",
+      "spectrogram",
+      "waveform",
+    ]);
     expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
   it("reorders and persists", () => {
     const { result } = renderHook(() => useDockLayout());
     act(() => result.current.reorder(0, 3));
-    expect(result.current.modules[3]).toBe("level");
-    expect(workspaceStore.read().dock.panelOrder[3]).toBe("level");
+    expect(result.current.modules[3]).toBe("transport");
+    expect(workspaceStore.read().dock.panelOrder[3]).toBe("transport");
     expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 

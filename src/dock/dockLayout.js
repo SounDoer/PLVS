@@ -24,8 +24,17 @@ export const DOCK_MODULE_IDS = [
   "transport",
 ];
 
-/** v1 default set; later-phase modules are opt-in. */
-export const DEFAULT_DOCK_MODULES = ["level", "loudness", "spectrum", "correlation"];
+/** Complete first-run Dock layout, ordered from transport/readouts to history views. */
+export const DEFAULT_DOCK_MODULES = [
+  "transport",
+  "level",
+  "loudness",
+  "stats",
+  "correlation",
+  "spectrum",
+  "spectrogram",
+  "waveform",
+];
 
 export const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",

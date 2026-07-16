@@ -204,6 +204,11 @@ Panels can be reordered. Add Module uses the normal workspace module catalog
 plus Dock-only Timecode, and can add multiple instances of the same module
 family. Legacy `transport` rows are displayed as Timecode.
 
+For a new workspace with no persisted Dock layout, all eight panels are enabled
+in this order: Timecode, Level Meter, Loudness, Stats, Vectorscope, Spectrum,
+Spectrogram, Waveform. Each starts from its Dock-owned default controls; existing
+persisted layouts and presets remain authoritative.
+
 ### Module settings drill-in
 
 Selecting a settings icon replaces the list with:

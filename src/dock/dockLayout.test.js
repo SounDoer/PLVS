@@ -84,7 +84,16 @@ describe("dock module catalog v1.5/v2", () => {
     ]);
   });
 
-  it("keeps the v1 default enabled set (new modules are opt-in)", () => {
-    expect(DEFAULT_DOCK_MODULES).toEqual(["level", "loudness", "spectrum", "correlation"]);
+  it("enables all panels in the first-run product order", () => {
+    expect(DEFAULT_DOCK_MODULES).toEqual([
+      "transport",
+      "level",
+      "loudness",
+      "stats",
+      "correlation",
+      "spectrum",
+      "spectrogram",
+      "waveform",
+    ]);
   });
 });
