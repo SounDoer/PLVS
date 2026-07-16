@@ -30,35 +30,43 @@ const DEFAULT_DOCK_STATS_VISIBLE_IDS = DEFAULT_PANEL_CONTROLS.statsVisibleIds;
 const DEFAULT_DOCK_STATS_ORDER = DEFAULT_PANEL_CONTROLS.statsOrder;
 
 export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
-  level: Object.freeze({ mode: "peak", readout: "live", showLabels: true }),
+  level: Object.freeze({
+    mode: DEFAULT_PANEL_CONTROLS.levelMeterMode,
+    readout: "live",
+    showLabels: true,
+  }),
   loudness: Object.freeze({
     showReadouts: true,
-    loudnessReferenceLufs: -23,
-    loudnessHistoryVisibleLayerIds: Object.freeze(["momentary", "shortTerm", "ref"]),
-    loudnessYMinDb: -64,
-    loudnessYMaxDb: 0,
+    loudnessReferenceLufs: DEFAULT_PANEL_CONTROLS.loudnessReferenceLufs,
+    loudnessHistoryVisibleLayerIds: Object.freeze([
+      ...DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds,
+    ]),
+    loudnessYMinDb: DEFAULT_PANEL_CONTROLS.loudnessYMinDb,
+    loudnessYMaxDb: DEFAULT_PANEL_CONTROLS.loudnessYMaxDb,
   }),
   spectrum: Object.freeze({
-    channel: Object.freeze({ type: "pair", x: 0, y: 1 }),
-    view: "combined",
-    speedPercent: 25,
-    octaveSmoothing: "off",
-    tiltDbPerOctave: 3,
-    maxHold: false,
-    minFreq: 20,
-    maxFreq: 20000,
-    minDb: -96,
-    maxDb: -12,
+    channel: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.spectrumChannel }),
+    view: DEFAULT_PANEL_CONTROLS.spectrumView,
+    speedPercent: DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent,
+    octaveSmoothing: DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing,
+    tiltDbPerOctave: DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
+    maxHold: DEFAULT_PANEL_CONTROLS.spectrumMaxHold,
+    minFreq: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
+    maxFreq: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
+    minDb: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
+    maxDb: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
   }),
-  correlation: Object.freeze({ pair: Object.freeze({ x: 0, y: 1 }) }),
+  correlation: Object.freeze({
+    pair: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.vectorscopePair }),
+  }),
   stats: Object.freeze({
     statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
     statsOrder: Object.freeze([...DEFAULT_DOCK_STATS_ORDER]),
   }),
   spectrogram: Object.freeze({
-    channel: Object.freeze({ type: "pair", x: 0, y: 1 }),
-    minFreq: 20,
-    maxFreq: 20000,
+    channel: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.spectrumChannel }),
+    minFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
+    maxFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
   }),
 });
 

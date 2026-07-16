@@ -9,6 +9,45 @@ import {
 } from "./dockModuleControls.js";
 
 describe("normalizeDockControlsByModuleId", () => {
+  it("shares normal defaults for every overlapping Dock control", () => {
+    const controls = normalizeDockControlsByModuleId();
+
+    expect(controls.level.mode).toBe(DEFAULT_PANEL_CONTROLS.levelMeterMode);
+    expect(controls.loudness).toMatchObject({
+      loudnessReferenceLufs: DEFAULT_PANEL_CONTROLS.loudnessReferenceLufs,
+      loudnessYMinDb: DEFAULT_PANEL_CONTROLS.loudnessYMinDb,
+      loudnessYMaxDb: DEFAULT_PANEL_CONTROLS.loudnessYMaxDb,
+    });
+    expect(controls.loudness.loudnessHistoryVisibleLayerIds).toEqual(
+      DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
+    );
+    expect(controls.spectrum).toMatchObject({
+      channel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
+      view: DEFAULT_PANEL_CONTROLS.spectrumView,
+      speedPercent: DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent,
+      octaveSmoothing: DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing,
+      tiltDbPerOctave: DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
+      maxHold: DEFAULT_PANEL_CONTROLS.spectrumMaxHold,
+      minFreq: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
+      maxFreq: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
+      minDb: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
+      maxDb: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
+    });
+    expect(controls.correlation.pair).toEqual(DEFAULT_PANEL_CONTROLS.vectorscopePair);
+    expect(controls.spectrogram).toMatchObject({
+      channel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
+      minFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
+      maxFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
+    });
+
+    expect(controls.loudness.loudnessHistoryVisibleLayerIds).not.toBe(
+      DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
+    );
+    expect(controls.spectrum.channel).not.toBe(DEFAULT_PANEL_CONTROLS.spectrumChannel);
+    expect(controls.correlation.pair).not.toBe(DEFAULT_PANEL_CONTROLS.vectorscopePair);
+    expect(controls.spectrogram.channel).not.toBe(DEFAULT_PANEL_CONTROLS.spectrumChannel);
+  });
+
   it("shares the normal Stats default order and visible metrics", () => {
     const stats = normalizeDockControlsByModuleId().stats;
     expect(stats.statsOrder).toEqual(DEFAULT_PANEL_CONTROLS.statsOrder);

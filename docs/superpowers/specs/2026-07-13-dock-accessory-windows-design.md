@@ -281,6 +281,10 @@ shown merely because a normal panel has them.
 Dock Stats initializes and resets its metric order and visibility from the normal
 Stats defaults. Subsequent Dock edits remain independently persisted.
 
+Where a Dock control has a normal-panel counterpart, its initial and reset value
+derives from `DEFAULT_PANEL_CONTROLS`. Dock-only presentation controls remain
+Dock-owned.
+
 ### Shared versus independent rule
 
 Shared:
