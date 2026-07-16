@@ -101,9 +101,10 @@ existing flow. Until then, ignore this section.
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  Step 7: Push, Wait for CI, Then Tag                            │
+│  Step 7: Push, Pass Remote Gates, Then Tag                      │
 │  - Push main                                                    │
 │  - Require successful ci.yml run for the exact HEAD SHA         │
+│  - Require untagged Windows + macOS release-candidate builds    │
 │  - Only then create and push vX.Y.Z                             │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
@@ -420,7 +421,7 @@ Do NOT proceed to Step 7. Fix issues and re-run `npm run release:preflight`.
 
 ---
 
-## Step 7: Push, Wait for Remote CI, Then Tag
+## Step 7: Push, Pass Remote Gates, Then Tag
 
 ### Push Commit First
 
@@ -428,12 +429,13 @@ Do NOT proceed to Step 7. Fix issues and re-run `npm run release:preflight`.
 git push origin main
 ```
 
-### Mandatory Pre-Tag Remote Gate
+### Mandatory Pre-Tag Remote Gates
 
 Do **not** create the tag immediately after pushing. Local preflight runs on the
-developer's OS, while CI runs the canonical Linux frontend and Rust jobs. Wait
-for `.github/workflows/ci.yml` to complete successfully for the **exact HEAD
-SHA** that will be tagged.
+developer's OS, while CI runs the canonical Linux frontend and Rust jobs. The
+normal CI still cannot catch platform-specific installer/linker failures, so a
+manual untagged `release.yml` run must also build and smoke-test Windows and
+macOS. Both runs must succeed for the **exact HEAD SHA** that will be tagged.
 
 **PowerShell (Windows):**
 
@@ -456,6 +458,24 @@ if ((gh run view $runId --json conclusion -q .conclusion) -ne "success") {
 
 $remoteMain = (git ls-remote origin refs/heads/main).Split()[0]
 if ($remoteMain -ne $sha) { throw "origin/main moved after CI verification" }
+
+gh workflow run release.yml --ref main
+$rcRunId = $null
+1..30 | ForEach-Object {
+  $runs = gh run list --workflow=release.yml --commit $sha --event workflow_dispatch --limit 1 --json databaseId | ConvertFrom-Json
+  $rcRunId = ($runs | Select-Object -First 1).databaseId
+  if ($rcRunId) { break }
+  Start-Sleep -Seconds 2
+}
+
+if (-not $rcRunId) { throw "No release-candidate run appeared for $sha" }
+gh run watch $rcRunId --exit-status
+if ((gh run view $rcRunId --json conclusion -q .conclusion) -ne "success") {
+  throw "Cross-platform release candidate did not succeed for $sha"
+}
+
+$remoteMain = (git ls-remote origin refs/heads/main).Split()[0]
+if ($remoteMain -ne $sha) { throw "origin/main moved during release-candidate verification" }
 ```
 
 **Bash (Linux/macOS):**
@@ -473,15 +493,29 @@ done
 gh run watch "$run_id" --exit-status
 [ "$(gh run view "$run_id" --json conclusion -q .conclusion)" = "success" ]
 [ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$sha" ]
+
+gh workflow run release.yml --ref main
+rc_run_id=""
+for _ in $(seq 1 30); do
+  rc_run_id=$(gh run list --workflow=release.yml --commit "$sha" --event workflow_dispatch --limit 1 --json databaseId -q '.[0].databaseId')
+  [ -n "$rc_run_id" ] && break
+  sleep 2
+done
+
+[ -n "$rc_run_id" ] || { echo "No release-candidate run appeared for $sha" >&2; exit 1; }
+gh run watch "$rc_run_id" --exit-status
+[ "$(gh run view "$rc_run_id" --json conclusion -q .conclusion)" = "success" ]
+[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$sha" ]
 ```
 
-If this gate fails, **do not bump the version and do not create a tag**. Fix the
-failure on `main`, keep the already-bumped version, re-run
-`npm run release:preflight`, push again, and wait for CI on the new exact SHA.
+If either gate fails, **do not bump the version and do not create a tag**. Fix
+the failure on `main`, keep the already-bumped version, re-run
+`npm run release:preflight`, push again, and repeat both gates for the new exact
+SHA.
 
 ### Create and Push Tag
 
-Only after the exact-SHA CI gate succeeds:
+Only after both exact-SHA remote gates succeed:
 
 ```bash
 git tag vX.Y.Z
@@ -492,6 +526,7 @@ git push origin vX.Y.Z
 - Ensures commit is on remote
 - Tag points to the correct commit
 - Catches Linux-only and clean-checkout failures before the version is published
+- Catches Windows installer and macOS linker/DMG failures before tagging
 - Lets failures be fixed under the same version because no public tag exists yet
 
 ### ⚠️ Do NOT force-move a released tag
@@ -661,13 +696,13 @@ Release run, find the red gate job, fix the reported check locally
 (it mirrors CI exactly), then ship a **new** version (do not re-move the
 tag — see the Step 7 warning).
 
-### Pre-Tag CI Fails
+### Pre-Tag Remote Gate Fails
 
-1. Check the exact-SHA `ci.yml` run logs.
+1. Check the exact-SHA `ci.yml` or untagged `release.yml` run logs.
 2. Fix the issue on `main` without changing the release version.
 3. Re-run `npm run release:preflight`.
-4. Push the fix and wait for the new exact-SHA CI run.
-5. Create the tag only after that run succeeds.
+4. Push the fix and repeat both exact-SHA remote gates.
+5. Create the tag only after both runs succeed.
 
 ### Tagged Release Build Fails
 
