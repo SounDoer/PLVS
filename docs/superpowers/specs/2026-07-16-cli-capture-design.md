@@ -209,7 +209,7 @@ revisited rather than re-argued:
 | `mMaxLufs` / `stMaxLufs` | Adds DSP coverage, which file mode already owns; adds no capture-layer coverage |
 | `truePeakMaxDbtp` | Same — DSP-layer concern, already covered from files |
 | `xruns` | Not a concept in this codebase. `cpal_backend.rs` has no xrun counter and cpal does not surface device-level xruns; the term was imported from ALSA/JACK vocabulary to name something that already has a name here. Use `droppedChunks`. |
-| `callbackMaxUs` | No timing instrumentation exists in the callback. Adding `Instant::now()` there means a `QueryPerformanceCounter` on the audio thread, which collides with the no-syscall rule in `docs/architecture.md` §7 — a bad trade for a nice-to-have. `droppedChunks` already answers the same question as a *result* metric: a callback slow enough to matter backs the queue up and drops chunks. |
+| `callbackMaxUs` | No caller today, and `droppedChunks` already answers the same question as a *result* metric: a callback slow enough to matter backs the queue up and drops chunks. It is also not instrumented today, so it is new work for no consumer. (Not excluded on realtime-safety grounds — `Instant::now()` on Windows resolves through `KUSER_SHARED_DATA` without a kernel transition, so the cost is tens of nanoseconds and the `realtime-safe` guidance in `docs/architecture.md` §7 is not implicated. If a caller ever appears, this field is viable.) |
 
 Adding a field later when a caller appears is cheap. Removing one that shipped
 breaks a contract. The asymmetry sets the default: exclude.
