@@ -25,7 +25,12 @@ describe("settings defaults", () => {
     expect(DEFAULT_CLOSE_ACTION).toBe("ask");
     expect(DEFAULT_THEME_EDITOR_POS).toEqual({ x: 80, y: 80 });
     expect(DEFAULT_INTERFACE_SIZE).toBe("default");
-    expect(INTERFACE_SIZE_OPTIONS.map(({ id }) => id)).toEqual(["default", "large", "extra-large"]);
+    expect(INTERFACE_SIZE_OPTIONS.map(({ id }) => id)).toEqual([
+      "small",
+      "default",
+      "large",
+      "extra-large",
+    ]);
   });
 
   it("normalizes reference LUFS", () => {
@@ -78,6 +83,7 @@ describe("settings defaults", () => {
   });
 
   it("normalizes interface size", () => {
+    expect(normalizeInterfaceSize("small")).toBe("small");
     expect(normalizeInterfaceSize("default")).toBe("default");
     expect(normalizeInterfaceSize("large")).toBe("large");
     expect(normalizeInterfaceSize("extra-large")).toBe("extra-large");

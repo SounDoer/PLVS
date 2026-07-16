@@ -184,23 +184,23 @@ responsive contract in `src/dock/dockTokens.css`.
 
 ### Interface size profiles
 
-The global `settingsStore.interfaceSize` setting selects one of three hand-tuned profiles. Profiles
+The global `settingsStore.interfaceSize` setting selects one of four hand-tuned profiles. Profiles
 write final integer pixel values rather than applying browser zoom or one uniform multiplier.
 
-| Role                         | Default | Large | Extra Large |
-| ---------------------------- | ------: | ----: | ----------: |
-| Caption                      |    10px |  11px |        12px |
-| Axis / Status                |    11px |  12px |        13px |
-| Control / Panel Title        |    12px |  13px |        14px |
-| Dynamic Display              |    13px |  14px |        15px |
-| Body                         |    14px |  15px |        17px |
-| Metric Value                 |    16px |  18px |        19px |
-| Panel Action Icon            |    12px |  13px |        14px |
-| Management / Shell Icon      |    14px |  15px |        17px |
-| Panel Module Identity Icon   |    14px |  15px |        16px |
+| Role                         | Small | Default | Large | Extra Large |
+| ---------------------------- | ----: | ------: | ----: | ----------: |
+| Caption                      |  10px |    11px |  12px |        14px |
+| Axis / Status                |  11px |    12px |  14px |        16px |
+| Control / Panel Title        |  12px |    13px |  15px |        17px |
+| Dynamic Display              |  13px |    14px |  16px |        18px |
+| Body                         |  14px |    15px |  17px |        19px |
+| Metric Value                 |  16px |    18px |  21px |        24px |
+| Panel Action Icon            |  12px |    13px |  15px |        17px |
+| Management / Shell Icon      |  14px |    15px |  17px |        19px |
+| Panel Module Identity Icon   |  14px |    15px |  17px |        19px |
 
 The normal application document applies the selected profile before first render. Dock header and
-editor accessory documents always apply Default, while the Dock strip continues to use only its
+editor accessory documents always apply the compact Small baseline, while the Dock strip continues to use only its
 responsive `--ui-dock-*` typography.
 
 ---

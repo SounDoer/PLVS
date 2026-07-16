@@ -9,11 +9,11 @@ describe("useInterfaceSizeSetting", () => {
     document.documentElement.style.cssText = "";
   });
 
-  it("defaults to the unchanged interface profile", () => {
+  it("defaults to the enlarged Default interface profile", () => {
     const { result } = renderHook(() => useInterfaceSizeSetting());
 
     expect(result.current.interfaceSize).toBe("default");
-    expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("14px");
+    expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("15px");
   });
 
   it("persists and applies a selected profile", async () => {
@@ -24,9 +24,9 @@ describe("useInterfaceSizeSetting", () => {
     await waitFor(() => {
       expect(result.current.interfaceSize).toBe("extra-large");
       expect(JSON.parse(localStorage.getItem("plvs:settings")).interfaceSize).toBe("extra-large");
-      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("17px");
+      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("19px");
       expect(document.documentElement.style.getPropertyValue("--ui-icon-panel-action")).toBe(
-        "14px"
+        "17px"
       );
     });
   });

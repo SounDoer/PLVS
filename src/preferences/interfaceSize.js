@@ -10,7 +10,7 @@ import { UI_PREFERENCES } from "./data.js";
 export { DEFAULT_INTERFACE_SIZE, INTERFACE_SIZE_OPTIONS, normalizeInterfaceSize };
 
 const PROFILES = Object.freeze({
-  large: {
+  default: {
     typography: {
       caption: 11,
       axis: 12,
@@ -29,23 +29,42 @@ const PROFILES = Object.freeze({
       panelModule: 15,
     },
   },
-  "extra-large": {
+  large: {
     typography: {
       caption: 12,
-      axis: 13,
-      status: 13,
-      control: 14,
-      metricMeta: 14,
-      panelTitle: 14,
-      display: 15,
+      axis: 14,
+      status: 14,
+      control: 15,
+      metricMeta: 15,
+      panelTitle: 15,
+      display: 16,
       body: 17,
-      metricValue: 19,
+      metricValue: 21,
     },
     iconography: {
-      panelAction: 14,
+      panelAction: 15,
       managementAction: 17,
       shellAction: 17,
-      panelModule: 16,
+      panelModule: 17,
+    },
+  },
+  "extra-large": {
+    typography: {
+      caption: 14,
+      axis: 16,
+      status: 16,
+      control: 17,
+      metricMeta: 17,
+      panelTitle: 17,
+      display: 18,
+      body: 19,
+      metricValue: 24,
+    },
+    iconography: {
+      panelAction: 17,
+      managementAction: 19,
+      shellAction: 19,
+      panelModule: 19,
     },
   },
 });
@@ -56,7 +75,7 @@ export function readPersistedInterfaceSize() {
 
 export function resolveInterfacePreferences(prefs = UI_PREFERENCES, rawSize) {
   const size = normalizeInterfaceSize(rawSize);
-  if (size === DEFAULT_INTERFACE_SIZE) return prefs;
+  if (size === "small") return prefs;
   const profile = PROFILES[size];
   return {
     ...prefs,
@@ -72,8 +91,5 @@ export function resolveInterfacePreferences(prefs = UI_PREFERENCES, rawSize) {
 }
 
 export function resolveInterfacePreferencesForSurface(prefs, rawSize, surface) {
-  return resolveInterfacePreferences(
-    prefs,
-    isDockAccessorySurface(surface) ? DEFAULT_INTERFACE_SIZE : rawSize
-  );
+  return resolveInterfacePreferences(prefs, isDockAccessorySurface(surface) ? "small" : rawSize);
 }

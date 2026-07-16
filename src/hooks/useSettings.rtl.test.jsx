@@ -114,7 +114,7 @@ describe("useSettings", () => {
 
     await waitFor(() => {
       expect(JSON.parse(localStorage.getItem("plvs:settings")).interfaceSize).toBe("extra-large");
-      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("17px");
+      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("19px");
     });
 
     act(() => {
@@ -123,7 +123,7 @@ describe("useSettings", () => {
 
     await waitFor(() => {
       expect(result.current.interfaceSize).toBe("extra-large");
-      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("17px");
+      expect(document.documentElement.style.getPropertyValue("--ui-fs-body")).toBe("19px");
     });
   });
 

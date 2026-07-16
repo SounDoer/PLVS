@@ -10,6 +10,7 @@ export const HISTORY_RETENTION_OPTIONS_SEC = [1800, 3600, 7200, 14400];
 export const DEFAULT_THEME_EDITOR_POS = Object.freeze({ x: 80, y: 80 });
 export const DEFAULT_INTERFACE_SIZE = "default";
 export const INTERFACE_SIZE_OPTIONS = Object.freeze([
+  { id: "small", label: "Small" },
   { id: "default", label: "Default" },
   { id: "large", label: "Large" },
   { id: "extra-large", label: "Extra Large" },
