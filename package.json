@@ -29,6 +29,7 @@
     "check": "npm run version:check && npm run format:check && npm run lint && npm test && npm run build && npm run rust:check",
     "release:preflight": "node scripts/run-release-gate.mjs",
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
+    "smoke:capture": "node scripts/smoke-capture.mjs",
     "tauri": "tauri",
     "ffmpeg:fetch": "node scripts/fetch-ffmpeg-sidecar.mjs",
     "desktop": "npm run ffmpeg:fetch && tauri dev",
