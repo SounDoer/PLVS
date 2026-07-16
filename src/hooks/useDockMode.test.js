@@ -37,6 +37,7 @@ describe("useDockMode", () => {
     mocks.setDockSuspended.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
     mocks.patchPresets.mockClear();
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     delete window.__PLVS_INITIAL_STATE__;
   });
 
@@ -147,6 +148,29 @@ describe("useDockMode", () => {
     expect(result.current.dockEdge).toBe("top");
     expect(result.current.dockMonitor).toBe("\\\\.\\DISPLAY2");
     expect(result.current.reserveSpace).toBe(true);
+  });
+
+  it("normalizes reserve-space off on macOS", async () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", reserveSpace: true },
+    };
+    const { result } = renderHook(() => useDockMode());
+
+    expect(result.current.reserveSpace).toBe(false);
+    await act(() => result.current.setReserveSpace(true));
+    expect(mocks.setDockReserveSpace).not.toHaveBeenCalled();
+    expect(result.current.reserveSpace).toBe(false);
+  });
+
+  it("downgrades a Windows reserve-space preset to overlay on macOS", async () => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+    const { result } = renderHook(() => useDockMode());
+
+    await act(() => result.current.enterDockMode("top", true));
+
+    expect(mocks.enterDock).toHaveBeenCalledWith("top", false, undefined, undefined);
+    expect(result.current.reserveSpace).toBe(false);
   });
 
   it("reconciles a failed native boot restore instead of trusting stale injected state", async () => {

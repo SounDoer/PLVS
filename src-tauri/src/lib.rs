@@ -104,9 +104,14 @@ pub fn run() {
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
       let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
       let themes = store.get("plvs:themes").unwrap_or(serde_json::json!({}));
-      let dock_state = store
+      let dock_state: Option<dock::DockStateRecord> = store
         .get(dock::DOCK_STATE_KEY)
-        .unwrap_or(serde_json::json!(null));
+        .and_then(|value| serde_json::from_value(value).ok())
+        .map(dock::DockStateRecord::normalize_for_platform);
+      #[cfg(not(target_os = "windows"))]
+      if let Some(state) = dock_state.as_ref() {
+        dock::write_dock_state(app.handle(), state);
+      }
       let initial = serde_json::json!({
         "plvs:settings": settings,
         "plvs:workspace": workspace,
@@ -144,9 +149,7 @@ pub fn run() {
       // so on a scaled display (e.g. 150%) restoring through the builder double-scales and
       // the window grows + drifts on every relaunch. set_size/set_position take physical,
       // matching the save path and the (physical) monitor rects used for clamping.
-      let boot_dock: Option<dock::DockStateRecord> = store
-        .get(dock::DOCK_STATE_KEY)
-        .and_then(|v| serde_json::from_value(v).ok());
+      let boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       if boot_docked {
         let d = boot_dock.as_ref().expect("boot_docked requires dock state");

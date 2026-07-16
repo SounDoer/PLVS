@@ -11,6 +11,12 @@ import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
 
+function supportsDockReserveSpace() {
+  return (
+    typeof navigator !== "undefined" && /Win/i.test(navigator.platform || navigator.userAgent || "")
+  );
+}
+
 function normalizeDockState(raw) {
   const edge = raw?.edge === "top" ? "top" : "bottom";
   const monitor = typeof raw?.monitor === "string" ? raw.monitor : null;
@@ -18,7 +24,7 @@ function normalizeDockState(raw) {
     enabled: raw?.enabled === true,
     edge,
     monitor,
-    reserveSpace: raw?.reserveSpace !== false,
+    reserveSpace: supportsDockReserveSpace() && raw?.reserveSpace !== false,
     height: clampDockHeight(raw?.height),
   };
 }
@@ -87,10 +93,13 @@ export function useDockMode() {
       return enqueueTransition(async () => {
         const current = dockRef.current;
         const hasReserveOverride = typeof reserveSpaceOverride === "boolean";
+        const normalizedReserveOverride = hasReserveOverride
+          ? supportsDockReserveSpace() && reserveSpaceOverride
+          : undefined;
         const hasHeightOverride = Number.isFinite(heightOverride);
         const resolved = await enterDock(
           edge,
-          hasReserveOverride ? reserveSpaceOverride : undefined,
+          normalizedReserveOverride,
           monitorOverride,
           hasHeightOverride ? clampDockHeight(heightOverride) : undefined
         );
@@ -104,7 +113,7 @@ export function useDockMode() {
           !current.enabled ||
           current.edge !== edge ||
           (typeof monitorOverride === "string" && current.monitor !== monitorOverride) ||
-          (hasReserveOverride && current.reserveSpace !== reserveSpaceOverride) ||
+          (hasReserveOverride && current.reserveSpace !== normalizedReserveOverride) ||
           (hasHeightOverride && current.height !== clampDockHeight(heightOverride));
         commitDock((latest) => ({
           ...latest,
@@ -115,7 +124,7 @@ export function useDockMode() {
             typeof resolved?.reserveSpace === "boolean"
               ? resolved.reserveSpace
               : hasReserveOverride
-                ? reserveSpaceOverride
+                ? normalizedReserveOverride
                 : latest.reserveSpace,
           height: clampDockHeight(resolved?.height ?? heightOverride ?? latest.height),
         }));
@@ -145,6 +154,12 @@ export function useDockMode() {
       const current = dockRef.current;
       const edge =
         edgeOverride === "top" || edgeOverride === "bottom" ? edgeOverride : current.edge;
+      if (!supportsDockReserveSpace()) {
+        if (current.reserveSpace) {
+          commitDock((latest) => ({ ...latest, reserveSpace: false }));
+        }
+        return;
+      }
       await setDockReserveSpace({ enabled, edge });
       commitDock((latest) => ({ ...latest, edge, reserveSpace: enabled }));
       if (current.reserveSpace !== enabled || current.edge !== edge) {

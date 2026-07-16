@@ -1,8 +1,14 @@
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
 import { DEFAULT_PANEL_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
@@ -41,35 +47,6 @@ export function FocusViewPopoverContent({
       <p className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
         Views
       </p>
-      {showDock ? (
-        <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
-          <span className="min-w-0 text-xs font-normal text-foreground">Dock</span>
-          <div className="flex overflow-hidden rounded-md border border-border/60">
-            {[
-              { label: "Off", ariaLabel: "Dock off", value: null },
-              { label: "Top", ariaLabel: "Dock to top", value: "top" },
-              { label: "Bottom", ariaLabel: "Dock to bottom", value: "bottom" },
-            ].map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                aria-label={option.ariaLabel}
-                aria-pressed={(dockEdge ?? null) === option.value}
-                disabled={dockDisabled}
-                onClick={() => onDockChange(option.value)}
-                className={cn(
-                  "px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-40",
-                  (dockEdge ?? null) === option.value
-                    ? "bg-primary/15 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/40"
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
       <FocusSwitch
         id="focus-view-always-on-top"
         label="Always on Top"
@@ -118,6 +95,40 @@ export function FocusViewPopoverContent({
           checked={glassEnabled === true}
           onCheckedChange={setGlassEnabled}
         />
+      ) : null}
+      {showDock ? (
+        <>
+          <div className="mx-2 border-t border-border/60" />
+          <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
+            <Label
+              htmlFor="focus-view-dock"
+              className="min-w-0 text-xs font-normal text-foreground"
+            >
+              Dock
+            </Label>
+            <Select
+              value={dockEdge ?? "off"}
+              onValueChange={(value) => onDockChange(value === "off" ? null : value)}
+              disabled={dockDisabled}
+            >
+              <SelectTrigger
+                id="focus-view-dock"
+                aria-label="Dock position"
+                className="h-6 w-auto min-w-[4.75rem] rounded-md border-transparent bg-transparent px-2 py-0 text-xs shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                className="min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-xs"
+              >
+                <SelectItem value="off">Off</SelectItem>
+                <SelectItem value="top">Top</SelectItem>
+                <SelectItem value="bottom">Bottom</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
       ) : null}
     </div>
   );

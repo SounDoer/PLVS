@@ -122,25 +122,46 @@ describe("FocusViewPopoverContent", () => {
   });
 
   describe("Dock control", () => {
-    it("renders Off/Top/Bottom and reports edge choices", () => {
-      const onDockChange = vi.fn();
-      render(<FocusViewPopoverContent showDock dockEdge={null} onDockChange={onDockChange} />);
-      fireEvent.click(screen.getByRole("button", { name: /dock to top/i }));
-      expect(onDockChange).toHaveBeenCalledWith("top");
+    it("renders the current position in a compact select", () => {
+      render(<FocusViewPopoverContent showDock dockEdge="top" />);
+
+      expect(screen.getByRole("combobox", { name: "Dock position" }).textContent).toContain("Top");
     });
 
-    it("Off exits dock", () => {
+    it("reports edge choices and maps Off back to the existing null value", () => {
       const onDockChange = vi.fn();
-      render(<FocusViewPopoverContent showDock dockEdge="bottom" onDockChange={onDockChange} />);
-      fireEvent.click(screen.getByRole("button", { name: /dock off/i }));
-      expect(onDockChange).toHaveBeenCalledWith(null);
+      const { rerender } = render(
+        <FocusViewPopoverContent showDock dockEdge={null} onDockChange={onDockChange} />
+      );
+
+      fireEvent.keyDown(screen.getByRole("combobox", { name: "Dock position" }), {
+        key: "ArrowDown",
+      });
+      fireEvent.click(screen.getByRole("option", { name: "Top" }));
+      expect(onDockChange).toHaveBeenLastCalledWith("top");
+
+      rerender(<FocusViewPopoverContent showDock dockEdge="top" onDockChange={onDockChange} />);
+      fireEvent.keyDown(screen.getByRole("combobox", { name: "Dock position" }), {
+        key: "ArrowDown",
+      });
+      fireEvent.click(screen.getByRole("option", { name: "Off" }));
+      expect(onDockChange).toHaveBeenLastCalledWith(null);
+    });
+
+    it("places Dock after the normal view controls", () => {
+      mockPlatform("Win32");
+      render(<FocusViewPopoverContent showDock />);
+
+      const opacity = screen.getByRole("slider", { name: "Panel opacity" });
+      const dock = screen.getByRole("combobox", { name: "Dock position" });
+      expect(opacity.compareDocumentPosition(dock)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     it("is disabled in FILE mode", () => {
       render(
         <FocusViewPopoverContent showDock dockDisabled dockEdge={null} onDockChange={vi.fn()} />
       );
-      expect(screen.getByRole("button", { name: /dock to top/i }).disabled).toBe(true);
+      expect(screen.getByRole("combobox", { name: "Dock position" }).disabled).toBe(true);
     });
 
     it("is hidden when showDock is false (non-Tauri)", () => {

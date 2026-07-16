@@ -50,7 +50,22 @@ pub struct DockStateRecord {
 }
 
 fn default_reserve_space() -> bool {
-  true
+  cfg!(target_os = "windows")
+}
+
+fn reserve_space_with_support(reserve_space: bool, supported: bool) -> bool {
+  supported && reserve_space
+}
+
+impl DockStateRecord {
+  fn with_reserve_space_support(mut self, supported: bool) -> Self {
+    self.reserve_space = reserve_space_with_support(self.reserve_space, supported);
+    self
+  }
+
+  pub(crate) fn normalize_for_platform(self) -> Self {
+    self.with_reserve_space_support(cfg!(target_os = "windows"))
+  }
 }
 
 fn default_dock_height() -> u32 {
@@ -182,6 +197,7 @@ pub fn read_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<D
   store
     .get(DOCK_STATE_KEY)
     .and_then(|v| serde_json::from_value(v).ok())
+    .map(DockStateRecord::normalize_for_platform)
 }
 
 pub(crate) fn write_dock_state<R: tauri::Runtime>(
@@ -189,6 +205,7 @@ pub(crate) fn write_dock_state<R: tauri::Runtime>(
   record: &DockStateRecord,
 ) {
   if let Ok(store) = app.store("plvs-settings.json") {
+    let record = record.clone().normalize_for_platform();
     store.set(
       DOCK_STATE_KEY,
       serde_json::to_value(record).unwrap_or_default(),
@@ -345,12 +362,15 @@ pub fn enter_dock<R: tauri::Runtime>(
   let previous = read_dock_state(window.app_handle());
   let was_docked = flag.0.load(Ordering::Relaxed);
   let previous_form = capture_window_form(&window)?;
-  let reserve_space = reserve_space.unwrap_or_else(|| {
-    previous
-      .as_ref()
-      .map(|state| state.reserve_space)
-      .unwrap_or(true)
-  });
+  let reserve_space = reserve_space_with_support(
+    reserve_space.unwrap_or_else(|| {
+      previous
+        .as_ref()
+        .map(|state| state.reserve_space)
+        .unwrap_or_else(default_reserve_space)
+    }),
+    cfg!(target_os = "windows"),
+  );
   let height = clamp_dock_height(height.unwrap_or_else(|| {
     previous
       .as_ref()
@@ -729,11 +749,24 @@ mod tests {
   }
 
   #[test]
-  fn dock_state_defaults_reserve_space_on_when_missing() {
+  fn dock_state_defaults_reserve_space_for_the_current_platform_when_missing() {
     let back: DockStateRecord =
       serde_json::from_value(serde_json::json!({ "enabled": true, "edge": "bottom" })).unwrap();
-    assert!(back.reserve_space);
+    assert_eq!(back.reserve_space, cfg!(target_os = "windows"));
     assert_eq!(back.height, DOCK_DEFAULT_LOGICAL_HEIGHT);
+  }
+
+  #[test]
+  fn dock_state_disables_reserve_space_on_unsupported_platforms() {
+    let state = DockStateRecord {
+      enabled: true,
+      edge: DockEdge::Bottom,
+      monitor: None,
+      reserve_space: true,
+      height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+    };
+
+    assert!(!state.with_reserve_space_support(false).reserve_space);
   }
 
   #[test]
