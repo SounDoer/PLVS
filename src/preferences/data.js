@@ -22,6 +22,7 @@ export const UI_PREFERENCES = {
       paddingYRem: 0.4,
     },
     drawer: {
+      preferredWidthPx: 320,
       paddingRem: 0.875,
       sectionGapRem: 0.75,
       rowGapRem: 0.25,

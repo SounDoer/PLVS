@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ExternalLink, Pencil, Plus, RotateCcw, Terminal, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, RotateCcw, Terminal, Trash2, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
@@ -24,7 +24,12 @@ const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
 
 const SHEET_CLASS =
-  "w-full gap-0 overflow-y-auto border-border bg-card/95 p-[var(--ui-drawer-pad)] backdrop-blur-[24px] sm:max-w-sm";
+  "settings-sheet gap-0 overflow-hidden border-border bg-card/95 p-0 backdrop-blur-[24px]";
+
+const SHEET_HEADER_CLASS =
+  "flex shrink-0 items-center justify-between border-b border-border px-[var(--ui-drawer-pad)] py-2";
+
+const SHEET_SCROLL_CLASS = "min-h-0 flex-1 overflow-y-auto p-[var(--ui-drawer-pad)]";
 
 const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--ui-fs-display)]";
 
@@ -81,7 +86,9 @@ function SettingsRow({ children, label, labelNode, className, ...props }) {
   return (
     <div data-settings-row className={cn(ROW_CLASS, className)} {...props}>
       {labelNode ?? <span className={ROW_LABEL_CLASS}>{label}</span>}
-      <div className={ROW_VALUE_CLASS}>{children}</div>
+      <div data-settings-row-value className={ROW_VALUE_CLASS}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -215,6 +222,16 @@ export function SettingsPanel({
   return (
     <Sheet open={settingsOpen} onOpenChange={handleOpenChange}>
       <SheetContent side="right" hideClose aria-describedby={undefined} className={SHEET_CLASS}>
+        <div data-settings-header className={SHEET_HEADER_CLASS}>
+          <SheetTitle className="text-[length:var(--ui-fs-panel-title)]">Settings</SheetTitle>
+          <SheetClose
+            type="button"
+            aria-label="Close settings"
+            className={cn(ICON_BTN_CLASS, "p-1")}
+          >
+            <X className="size-[length:var(--ui-icon-shell-action)]" />
+          </SheetClose>
+        </div>
         <AnimatePresence
           onExitComplete={() => {
             if (closingIntentRef.current) {
@@ -226,6 +243,8 @@ export function SettingsPanel({
           {sheetBodyVisible ? (
             <motion.div
               key="settings-inner"
+              data-settings-scroll
+              className={SHEET_SCROLL_CLASS}
               initial={reduceMotion ? false : { opacity: 0, x: 18 }}
               animate={{ opacity: 1, x: 0 }}
               exit={
@@ -530,7 +549,7 @@ export function SettingsPanel({
 
                 {/* Configuration */}
                 <SettingsSection>
-                  <SettingsRow label="Configuration">
+                  <SettingsRow label="Configuration" className="settings-row-stackable">
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
@@ -580,7 +599,7 @@ export function SettingsPanel({
 
                     {/* Command line */}
                     <SettingsSection>
-                      <SettingsRow label="Command Line">
+                      <SettingsRow label="Command Line" className="settings-row-stackable">
                         <Button
                           type="button"
                           variant="secondary"

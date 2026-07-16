@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 
@@ -41,6 +41,13 @@ describe("SettingsPanel", () => {
     ).toBeTruthy();
     expect(screen.getByLabelText("Interface Size").className).toContain("min-h-6");
     expect(screen.getByLabelText("Interface Size").className).not.toContain(" h-6 ");
+    expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close settings" })).toBeTruthy();
+    expect(document.body.querySelector("[data-settings-header]")).toBeTruthy();
+    expect(document.body.querySelector("[data-settings-scroll]")).toBeTruthy();
+    expect(document.body.querySelector("[data-slot=sheet-content]").className).toContain(
+      "settings-sheet"
+    );
   });
 
   it("updates the global interface size", () => {
@@ -51,6 +58,15 @@ describe("SettingsPanel", () => {
     fireEvent.click(screen.getByRole("option", { name: "Extra Large" }));
 
     expect(setInterfaceSize).toHaveBeenCalledWith("extra-large");
+  });
+
+  it("provides a visible close action that follows the sheet exit flow", async () => {
+    const setSettingsOpen = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} setSettingsOpen={setSettingsOpen} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+
+    await waitFor(() => expect(setSettingsOpen).toHaveBeenCalledWith(false));
   });
 
   it("shows theme picker in fixed mode", () => {
@@ -67,6 +83,9 @@ describe("SettingsPanel", () => {
       4
     );
     expect(document.body.querySelectorAll("[data-settings-row]").length).toBeGreaterThanOrEqual(5);
+    expect(
+      document.body.querySelectorAll("[data-settings-row-value]").length
+    ).toBeGreaterThanOrEqual(5);
   });
 
   it("renders configuration profile actions", () => {

@@ -21,3 +21,9 @@ describe("UI_PREFERENCES shell density", () => {
     expect(UI_PREFERENCES.layout.shell.gapRem.base).toBe(0.35);
   });
 });
+
+describe("UI_PREFERENCES settings drawer", () => {
+  it("uses the Small profile width as the compact baseline", () => {
+    expect(UI_PREFERENCES.layout.drawer.preferredWidthPx).toBe(320);
+  });
+});

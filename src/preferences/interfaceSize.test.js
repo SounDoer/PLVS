@@ -31,6 +31,7 @@ describe("interface size profiles", () => {
     const resolved = resolveInterfacePreferences(UI_PREFERENCES, "small");
 
     expect(resolved).toBe(UI_PREFERENCES);
+    expect(resolved.layout.drawer.preferredWidthPx).toBe(320);
   });
 
   it("resolves the enlarged Default profile", () => {
@@ -53,6 +54,7 @@ describe("interface size profiles", () => {
       shellAction: 15,
       panelModule: 15,
     });
+    expect(resolved.layout.drawer.preferredWidthPx).toBe(336);
   });
 
   it("resolves the hand-tuned Large profile", () => {
@@ -75,6 +77,7 @@ describe("interface size profiles", () => {
       shellAction: 17,
       panelModule: 17,
     });
+    expect(resolved.layout.drawer.preferredWidthPx).toBe(368);
   });
 
   it("resolves the hand-tuned Extra Large profile", () => {
@@ -97,6 +100,7 @@ describe("interface size profiles", () => {
       shellAction: 19,
       panelModule: 19,
     });
+    expect(resolved.layout.drawer.preferredWidthPx).toBe(400);
   });
 
   it("keeps Dock accessory documents on the compact baseline", () => {
@@ -108,6 +112,7 @@ describe("interface size profiles", () => {
       );
       expect(resolved.typography.sizesPx).toEqual(UI_PREFERENCES.typography.sizesPx);
       expect(resolved.iconography.sizesPx).toEqual(UI_PREFERENCES.iconography.sizesPx);
+      expect(resolved.layout.drawer.preferredWidthPx).toBe(320);
     }
 
     expect(

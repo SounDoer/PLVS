@@ -80,6 +80,33 @@ body {
   overflow: hidden;
 }
 
+.settings-sheet {
+  width: min(var(--ui-drawer-w), calc(100vw - 2rem));
+  width: min(var(--ui-drawer-w), calc(100dvw - 2rem));
+  max-width: none;
+  container-type: inline-size;
+}
+
+@media (max-width: 359px) {
+  .settings-sheet {
+    width: 100vw;
+    width: 100dvw;
+  }
+}
+
+@container (max-width: 347px) {
+  .settings-row-stackable {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .settings-row-stackable > [data-settings-row-value] {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
 html[data-surface="dock-editor"],
 html[data-surface="dock-editor"] body,
 html[data-surface="dock-editor"] #root {

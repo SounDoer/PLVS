@@ -198,6 +198,7 @@ write final integer pixel values rather than applying browser zoom or one unifor
 | Panel Action Icon            |  12px |    13px |  15px |        17px |
 | Management / Shell Icon      |  14px |    15px |  17px |        19px |
 | Panel Module Identity Icon   |  14px |    15px |  17px |        19px |
+| Settings Drawer Width        | 320px |   336px | 368px |       400px |
 
 The normal application document applies the selected profile before first render. Dock header and
 editor accessory documents always apply the compact Small baseline, while the Dock strip continues to use only its
@@ -288,6 +289,7 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 
 ```
 --ui-drawer-pad          0.875rem  Inner padding of the settings drawer
+--ui-drawer-w            20rem     Preferred Small-profile drawer width
 --ui-drawer-gap          0.75rem   Gap between settings sections
 --ui-drawer-row-gap      0.25rem   Gap between rows within a section
 --ui-drawer-row-min-h    1.5rem    Minimum row height
