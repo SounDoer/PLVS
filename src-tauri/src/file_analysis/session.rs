@@ -651,6 +651,191 @@ mod tests {
     );
   }
 
+  /// Level-stepped sine: distinct short-term levels so LRA and the gates are actually exercised
+  /// instead of collapsing to a single-level signal where any two meters trivially agree.
+  fn stepped_sine_stereo_f32(sample_rate: u32, seconds: usize) -> Vec<f32> {
+    const LEVELS: [f64; 4] = [0.5, 0.05, 0.25, 0.5];
+    let mut samples = Vec::with_capacity(seconds * sample_rate as usize * 2);
+    for n in 0..seconds * sample_rate as usize {
+      let second = n / sample_rate as usize;
+      let amplitude = LEVELS[(second / 3) % LEVELS.len()];
+      let phase = 2.0 * PI * 1_000.0 * n as f64 / sample_rate as f64;
+      let value = (amplitude * phase.sin()) as f32;
+      samples.push(value);
+      samples.push(value);
+    }
+    samples
+  }
+
+  /// Drive the `plvs-cli analyze` orchestration (SummaryPcmChunker + SummaryMeter) over `pcm`,
+  /// split into ffmpeg-sized source reads exactly like `analyze_file_to_summary` does.
+  fn run_summary_path(
+    pcm: &[f32],
+    sr: u32,
+    channels: u16,
+    read_samples: usize,
+  ) -> FileAnalysisSummaryMetrics {
+    use crate::dsp::summary_meter::SummaryMeter;
+    use crate::file_analysis::summary::SummaryPcmChunker;
+
+    let mut meter = SummaryMeter::new(sr, channels);
+    let mut chunker = SummaryPcmChunker::new(sr, channels);
+    for chunk in pcm.chunks(read_samples.max(1)) {
+      chunker.push_pcm(&mut meter, chunk);
+    }
+    chunker.flush(&mut meter);
+    let metrics = meter.finish();
+    FileAnalysisSummaryMetrics {
+      duration_ms: None,
+      sample_rate_hz: sr,
+      channels,
+      integrated_lufs: metrics.integrated_lufs,
+      lra: metrics.lra,
+      m_max_lufs: metrics.m_max_lufs,
+      st_max_lufs: metrics.st_max_lufs,
+      true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+      sample_peak_max_l_db: metrics.sample_peak_max_l_db,
+      sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+      dialogue_integrated: f64::NEG_INFINITY,
+      dialogue_lra: 0.0,
+    }
+  }
+
+  /// Drive the GUI orchestration (FilePcmHistoryChunker + MeterPipeline) over the same `pcm`.
+  fn run_session_path(
+    pcm: &[f32],
+    sr: u32,
+    channels: u16,
+    read_samples: usize,
+  ) -> FileAnalysisSummaryMetrics {
+    let config = default_config();
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let mut chunker = FilePcmHistoryChunker::new(sr, channels);
+    {
+      let mut on_frame = |_frame: AudioFramePayload| Ok(());
+      for chunk in pcm.chunks(read_samples.max(1)) {
+        chunker
+          .push_pcm(&mut pipeline, chunk, &config, &mut on_frame)
+          .expect("push pcm");
+      }
+      chunker
+        .flush(&mut pipeline, &config, &mut on_frame)
+        .expect("flush pcm");
+      if let Some(frame) = pipeline.flush_file_batch(&config.requests) {
+        on_frame(frame).expect("flush frame");
+      }
+    }
+    let metrics = pipeline.summary_metrics();
+    FileAnalysisSummaryMetrics {
+      duration_ms: None,
+      sample_rate_hz: sr,
+      channels,
+      integrated_lufs: metrics.integrated_lufs,
+      lra: metrics.lra,
+      m_max_lufs: metrics.m_max_lufs,
+      st_max_lufs: metrics.st_max_lufs,
+      true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+      sample_peak_max_l_db: metrics.sample_peak_max_l_db,
+      sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+      dialogue_integrated: metrics.dialogue_integrated,
+      dialogue_lra: metrics.dialogue_lra,
+    }
+  }
+
+  /// `plvs-cli analyze` and dragging the same file into the GUI must report the same delivery
+  /// numbers. The two paths share the DSP primitives and the decode helpers, but each drives its
+  /// own meter (`SummaryMeter` vs `MeterPipeline`) behind its own read loop and PCM chunker, and
+  /// nothing else pins the two meters to the same answer.
+  ///
+  /// Tolerance is exact equality, and that is measured rather than assumed: both meters accumulate
+  /// their own 100 ms loudness blocks internally, so a chunker only decides how work is batched,
+  /// never where a block boundary falls. Feeding the GUI path a deliberately different source read
+  /// size below pins that down — if a future change makes either path's block boundaries follow
+  /// its chunker, the numbers separate and this test fails instead of silently shipping two
+  /// different answers for one file.
+  #[test]
+  fn summary_and_session_paths_agree_on_delivery_metrics() {
+    const TOLERANCE_DB: f64 = 0.0;
+    // Matches the worker's 64 KiB stdout reads: 16,384 f32 samples.
+    const FFMPEG_READ_SAMPLES: usize = (64 * 1024) / 4;
+
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    // 12 s spans four 3 s level steps: long enough for short-term blocks, LRA and the -10 LU
+    // relative gate to have something to chew on.
+    let pcm = stepped_sine_stereo_f32(sr, 12);
+
+    let cli = run_summary_path(&pcm, sr, channels, FFMPEG_READ_SAMPLES);
+    let gui = run_session_path(&pcm, sr, channels, FFMPEG_READ_SAMPLES);
+    // Same GUI path, tiny reads: agreement must not depend on how ffmpeg happens to hand over PCM.
+    let gui_small = run_session_path(&pcm, sr, channels, 32 * channels as usize);
+
+    let checks: [(&str, f64, f64, f64); 7] = [
+      (
+        "integrated_lufs",
+        cli.integrated_lufs,
+        gui.integrated_lufs,
+        gui_small.integrated_lufs,
+      ),
+      ("lra", cli.lra, gui.lra, gui_small.lra),
+      (
+        "m_max_lufs",
+        cli.m_max_lufs,
+        gui.m_max_lufs,
+        gui_small.m_max_lufs,
+      ),
+      (
+        "st_max_lufs",
+        cli.st_max_lufs,
+        gui.st_max_lufs,
+        gui_small.st_max_lufs,
+      ),
+      (
+        "true_peak_max_dbtp",
+        cli.true_peak_max_dbtp,
+        gui.true_peak_max_dbtp,
+        gui_small.true_peak_max_dbtp,
+      ),
+      (
+        "sample_peak_max_l_db",
+        cli.sample_peak_max_l_db,
+        gui.sample_peak_max_l_db,
+        gui_small.sample_peak_max_l_db,
+      ),
+      (
+        "sample_peak_max_r_db",
+        cli.sample_peak_max_r_db,
+        gui.sample_peak_max_r_db,
+        gui_small.sample_peak_max_r_db,
+      ),
+    ];
+
+    for (name, cli_value, gui_value, gui_small_value) in checks {
+      assert!(
+        cli_value.is_finite(),
+        "{name}: fixture must produce a finite value, got {cli_value}"
+      );
+      assert!(
+        (cli_value - gui_value).abs() <= TOLERANCE_DB,
+        "{name} disagrees between plvs-cli and GUI paths: cli={cli_value} gui={gui_value} \
+         (delta={})",
+        (cli_value - gui_value).abs()
+      );
+      assert!(
+        (cli_value - gui_small_value).abs() <= TOLERANCE_DB,
+        "{name} disagrees once the GUI path reads PCM in small chunks: cli={cli_value} \
+         gui={gui_small_value} (delta={})",
+        (cli_value - gui_small_value).abs()
+      );
+    }
+
+    assert!(
+      cli.lra > 1.0,
+      "fixture must exercise a non-trivial LRA, got {}",
+      cli.lra
+    );
+  }
+
   #[test]
   fn analyzes_wav_fixture_end_to_end() {
     if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {

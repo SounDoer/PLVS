@@ -22,7 +22,7 @@ pub struct FileAnalysisSummaryRun {
   pub summary: FileAnalysisSummaryMetrics,
 }
 
-struct SummaryPcmChunker {
+pub(crate) struct SummaryPcmChunker {
   channels: usize,
   chunk_samples: usize,
   pending: Vec<f32>,
@@ -30,7 +30,7 @@ struct SummaryPcmChunker {
 }
 
 impl SummaryPcmChunker {
-  fn new(sample_rate: u32, channels: u16) -> Self {
+  pub(crate) fn new(sample_rate: u32, channels: u16) -> Self {
     let channels = channels.max(1) as usize;
     Self {
       channels,
@@ -40,16 +40,16 @@ impl SummaryPcmChunker {
     }
   }
 
-  fn decoded_frames(&self) -> u64 {
+  pub(crate) fn decoded_frames(&self) -> u64 {
     self.decoded_frames
   }
 
-  fn push_pcm(&mut self, meter: &mut SummaryMeter, pcm: &[f32]) {
+  pub(crate) fn push_pcm(&mut self, meter: &mut SummaryMeter, pcm: &[f32]) {
     self.pending.extend_from_slice(pcm);
     self.drain_ready_chunks(meter);
   }
 
-  fn flush(&mut self, meter: &mut SummaryMeter) {
+  pub(crate) fn flush(&mut self, meter: &mut SummaryMeter) {
     if self.pending.is_empty() {
       return;
     }
