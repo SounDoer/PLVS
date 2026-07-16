@@ -53,7 +53,10 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
     `max(${heightsRem.chartXAxisRowRem}rem, calc(var(--ui-fs-axis) * 1.15))`
   );
 
-  setCssVar("--ui-w-axis-rail", `${widthsPx.axisRail}px`);
+  setCssVar(
+    "--ui-chart-y-axis-rail-w",
+    `max(${widthsPx.yAxisRailMin}px, calc(var(--ui-fs-axis) * 1.65))`
+  );
 
   setCssVar("--ui-splitter-bar-thickness", `${splitters.barThicknessPx}px`);
 

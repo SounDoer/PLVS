@@ -17,7 +17,7 @@ import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 
-const WAVEFORM_AXIS_WIDTH_VAR = "--ui-w-axis-rail";
+const WAVEFORM_AXIS_WIDTH_VAR = "--ui-chart-y-axis-rail-w";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
 const WAVEFORM_MAX_DEVICE_PIXEL_RATIO = 1;
 
@@ -167,7 +167,8 @@ function WaveformPanelContent({ compact, audioData }) {
       rafId = 0;
       const dpr = Math.min(window.devicePixelRatio || 1, WAVEFORM_MAX_DEVICE_PIXEL_RATIO);
       const computedStyle = getComputedStyle(el);
-      const axisWidthPx = cssLengthToPx(computedStyle.getPropertyValue(WAVEFORM_AXIS_WIDTH_VAR));
+      const axisWidthPx =
+        el.querySelector("[data-waveform-label-rail]")?.getBoundingClientRect().width ?? 0;
       const chartAxisGapPx = cssLengthToPx(computedStyle.getPropertyValue("--ui-chart-axis-gap"));
       const cssW = Math.max(0, el.clientWidth - axisWidthPx - chartAxisGapPx);
       const nextCanvasW = Math.round(cssW * dpr);
@@ -271,7 +272,7 @@ function WaveformPanelContent({ compact, audioData }) {
 
         <TimelineLatestEdgeHint
           active={(effectiveOffsetSamples ?? 0) > 0}
-          className="left-[calc(var(--ui-w-axis-rail)+var(--ui-chart-axis-gap))] w-auto"
+          className="left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))] w-auto"
         />
 
         {/* Hover crosshair + popover 鈥?pointer-events-none so interaction overlay stays active */}

@@ -231,7 +231,7 @@ export function LoudnessHistoryChart({
   }, [historyYAxisTicksLabeled, hasHistoryData, loudnessYMinDb, loudnessYMaxDb, targetLufs]);
 
   return (
-    <div className="grid min-h-0 h-full grid-cols-[var(--ui-w-axis-rail)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
+    <div className="grid min-h-0 h-full grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
       {/* Y-axis labels */}
       <div
         ref={loudnessYAxis.axisRef}

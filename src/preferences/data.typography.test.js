@@ -73,7 +73,7 @@ describe("spacing data", () => {
   });
 
   it("uses one axis rail width source for chart Y axes", () => {
-    expect(UI_PREFERENCES.layout.widthsPx).toEqual({ axisRail: 20 });
+    expect(UI_PREFERENCES.layout.widthsPx).toEqual({ yAxisRailMin: 20 });
   });
 });
 

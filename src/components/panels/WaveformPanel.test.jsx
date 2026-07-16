@@ -114,12 +114,12 @@ describe("WaveformPanel", () => {
 
     expect(labelRail?.className).not.toContain("pr-1");
     expect(container.firstElementChild?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(labelRail?.className).toContain("w-[var(--ui-w-axis-rail)]");
+    expect(labelRail?.className).toContain("w-[var(--ui-chart-y-axis-rail-w)]");
     expect(lane?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
     expect(timeAxisRow?.className).toContain("gap-[var(--ui-chart-axis-gap)]");
-    expect(timeAxisSpacer?.className).toContain("w-[var(--ui-w-axis-rail)]");
+    expect(timeAxisSpacer?.className).toContain("w-[var(--ui-chart-y-axis-rail-w)]");
     expect(interactionOverlay?.style.left).toBe(
-      "calc(var(--ui-w-axis-rail) + var(--ui-chart-axis-gap))"
+      "calc(var(--ui-chart-y-axis-rail-w) + var(--ui-chart-axis-gap))"
     );
   });
 
@@ -129,7 +129,7 @@ describe("WaveformPanel", () => {
     const hint = container.querySelector("[data-timeline-latest-edge-hint]");
     expect(hint).toBeTruthy();
     expect(hint?.className).toContain(
-      "left-[calc(var(--ui-w-axis-rail)+var(--ui-chart-axis-gap))]"
+      "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))]"
     );
     expect(screen.queryByText(/Latest/i)).toBeNull();
   });

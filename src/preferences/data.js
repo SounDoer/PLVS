@@ -77,7 +77,7 @@ export const UI_PREFERENCES = {
       chartXAxisRowRem: 0.8,
     },
     widthsPx: {
-      axisRail: 20,
+      yAxisRailMin: 20,
     },
   },
 

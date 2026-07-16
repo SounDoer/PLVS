@@ -22,6 +22,7 @@ const ICON_VARS = {
 };
 
 const CHART_AXIS_ROW_HEIGHT = "max(0.8rem, calc(var(--ui-fs-axis) * 1.15))";
+const CHART_Y_AXIS_RAIL_WIDTH = "max(20px, calc(var(--ui-fs-axis) * 1.65))";
 const DRAWER_WIDTH_VAR = "--ui-drawer-w";
 
 describe("normal-mode typography variables", () => {
@@ -56,6 +57,9 @@ describe("normal-mode typography variables", () => {
 
     expect(document.documentElement.style.getPropertyValue("--ui-chart-x-axis-row-h")).toBe(
       CHART_AXIS_ROW_HEIGHT
+    );
+    expect(document.documentElement.style.getPropertyValue("--ui-chart-y-axis-rail-w")).toBe(
+      CHART_Y_AXIS_RAIL_WIDTH
     );
   });
 

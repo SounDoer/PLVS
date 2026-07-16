@@ -142,7 +142,7 @@ describe("LevelMeterPanel", () => {
     expect(marker.className).not.toContain("translate-x");
     expect(marker.closest("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
     expect(marker.closest("[data-level-meter-y-axis]")?.className).not.toContain(
-      "w-[var(--ui-w-axis-rail)]"
+      "w-[var(--ui-chart-y-axis-rail-w)]"
     );
     const axisTick = screen.getByText("-20");
     expect(axisTick.className).toContain("right-0");
@@ -196,7 +196,7 @@ describe("LevelMeterPanel", () => {
 
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      "w-[var(--ui-w-axis-rail)]"
+      "w-[var(--ui-chart-y-axis-rail-w)]"
     );
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).not.toContain(
       "w-[5ch]"
@@ -245,7 +245,7 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).not.toContain(
-      "w-[var(--ui-w-axis-rail)]"
+      "w-[var(--ui-chart-y-axis-rail-w)]"
     );
   });
 
@@ -254,7 +254,7 @@ describe("LevelMeterPanel", () => {
 
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      "w-[var(--ui-w-axis-rail)]"
+      "w-[var(--ui-chart-y-axis-rail-w)]"
     );
   });
 
@@ -285,7 +285,7 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();
     expect(container.querySelector("[data-level-value]")?.className).toContain("flex");
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
-      "w-[var(--ui-w-axis-rail)]"
+      "w-[var(--ui-chart-y-axis-rail-w)]"
     );
   });
 

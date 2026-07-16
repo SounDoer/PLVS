@@ -124,4 +124,11 @@ describe("interface size profiles", () => {
         .sizesPx.body
     ).toBe(19);
   });
+
+  it("keeps axis geometry profile-independent", () => {
+    for (const size of INTERFACE_SIZE_OPTIONS.map(({ id }) => id)) {
+      const resolved = resolveInterfacePreferences(UI_PREFERENCES, size);
+      expect(resolved.layout.widthsPx).toBe(UI_PREFERENCES.layout.widthsPx);
+    }
+  });
 });

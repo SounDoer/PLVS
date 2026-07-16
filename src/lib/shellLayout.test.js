@@ -70,7 +70,7 @@ describe("shellLayout token names", () => {
 
   it("panel axis rail helpers share one CSS variable", () => {
     for (const widthClass of [W_LOUDNESS_Y_AXIS, W_SPECTRUM_Y_AXIS, W_PEAK_TICKS]) {
-      expect(widthClass).toContain("--ui-w-axis-rail");
+      expect(widthClass).toContain("--ui-chart-y-axis-rail-w");
       expect(widthClass).not.toContain("--ui-w-loudness-y-axis");
       expect(widthClass).not.toContain("--ui-w-spectrum-y-axis");
       expect(widthClass).not.toContain("--ui-w-peak-ticks");

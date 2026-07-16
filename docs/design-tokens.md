@@ -247,7 +247,8 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 --ui-chart-inset-bottom  0rem     Bottom inset within chart display area
 --ui-chart-axis-gap      0.4rem   Gap between axis label column and chart area
 --ui-chart-hud-inset     0.25rem  Inset for floating HUD / tooltip boxes
---ui-chart-x-axis-row-h  0.8rem  Height of the x-axis label row
+--ui-chart-x-axis-row-h      max(0.8rem, axis * 1.15)  Height of the x-axis label row
+--ui-chart-y-axis-rail-w     max(20px, axis * 1.65)    Width of the y-axis label rail
 ```
 
 #### Panel → Module Spacing
@@ -267,12 +268,6 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 --ui-min-h-history        10rem    Loudness history panel minimum height
 --ui-min-h-spectrum       10rem    Spectrum panel minimum height
 --ui-min-h-history-chart  8rem     Loudness history chart area minimum height
-```
-
-#### Panel → Axis Widths
-
-```
---ui-w-axis-rail   20px   Width of the Y-axis label column
 ```
 
 ### Metric Row
