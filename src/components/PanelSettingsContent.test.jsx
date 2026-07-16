@@ -795,7 +795,7 @@ describe("PanelSettingsContent", () => {
         onSpectrumMaxHoldToggle={onSpectrumMaxHoldToggle}
       />
     );
-    const btn = screen.getByRole("switch", { name: "peak hold" });
+    const btn = screen.getByRole("switch", { name: "spectrum max hold" });
     expect(btn.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(btn);
     expect(onSpectrumMaxHoldToggle).toHaveBeenCalledTimes(1);
@@ -995,7 +995,7 @@ describe("PanelSettingsContent", () => {
         onSpectrumMaxHoldToggle={vi.fn()}
       />
     );
-    expect(screen.queryByLabelText("peak hold")).toBeNull();
+    expect(screen.queryByLabelText("spectrum max hold")).toBeNull();
   });
 
   it("shows only the Y range display control on the spectrogram tab", () => {

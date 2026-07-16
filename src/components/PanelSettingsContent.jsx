@@ -941,7 +941,7 @@ export function PanelSettingsContent({
     const effectiveSpectrumView = hasPanelControls
       ? normalizedPanelControls.spectrumView
       : spectrumView;
-    const effectiveSpectrumPeakHold = hasPanelControls
+    const effectiveSpectrumMaxHold = hasPanelControls
       ? normalizedPanelControls.spectrumMaxHold
       : spectrumMaxHold;
     const effectiveSpeedPercent = normalizedPanelControls.spectrumSpeedPercent;
@@ -1031,8 +1031,8 @@ export function PanelSettingsContent({
         {showPeak ? (
           <SettingsRow label="Max hold">
             <SettingsSwitch
-              aria-label="peak hold"
-              checked={effectiveSpectrumPeakHold}
+              aria-label="spectrum max hold"
+              checked={effectiveSpectrumMaxHold}
               onCheckedChange={(checked) => {
                 onPanelControlsChange?.(
                   normalizePanelControls({
@@ -1041,6 +1041,25 @@ export function PanelSettingsContent({
                   })
                 );
                 onSpectrumMaxHoldToggle?.();
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {showPeak ? (
+          <SettingsRow
+            label="Peak labels"
+            tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max hold is the time axis; this is the frequency axis."
+          >
+            <SettingsSwitch
+              aria-label="spectrum peak labels"
+              checked={normalizedPanelControls.spectrumPeakLabels}
+              onCheckedChange={(checked) => {
+                onPanelControlsChange?.(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    spectrumPeakLabels: checked,
+                  })
+                );
               }}
             />
           </SettingsRow>

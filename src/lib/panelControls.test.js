@@ -81,6 +81,7 @@ describe("panelControls", () => {
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumMaxHold: false,
+      spectrumPeakLabels: false,
       spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
       spectrumOctaveSmoothing: "off",
@@ -210,6 +211,7 @@ describe("panelControls", () => {
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumMaxHold: false,
+      spectrumPeakLabels: false,
       spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
       spectrumOctaveSmoothing: "off",
@@ -341,6 +343,12 @@ describe("spectrum display controls normalization", () => {
     expect(normalizePanelControls({}).loudnessYMaxDb).toBe(0);
     expect(normalizePanelControls({}).levelMeterYMinDb).toBe(-60);
     expect(normalizePanelControls({}).levelMeterYMaxDb).toBe(3);
+  });
+
+  it("keeps peak labels off by default and normalizes non-booleans", () => {
+    expect(normalizePanelControls({}).spectrumPeakLabels).toBe(false);
+    expect(normalizePanelControls({ spectrumPeakLabels: true }).spectrumPeakLabels).toBe(true);
+    expect(normalizePanelControls({ spectrumPeakLabels: "yes" }).spectrumPeakLabels).toBe(false);
   });
 
   it("reads spectrumMaxHold from presets written under the old peak hold key", () => {

@@ -33,6 +33,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
   spectrumMaxHold: false,
+  spectrumPeakLabels: false,
   spectrumSpeedPercent: 25,
   spectrumTiltDbPerOctave: 3,
   spectrumOctaveSmoothing: "off",
@@ -101,6 +102,10 @@ function normalizeSpectrumOctaveSmoothing(raw) {
   return SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw)
     ? raw
     : DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing;
+}
+
+function normalizeSpectrumPeakLabels(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakLabels;
 }
 
 function normalizeSpectrumMaxHold(raw) {
@@ -268,6 +273,7 @@ export function normalizePanelControls(raw) {
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
     spectrumMaxHold: normalizeSpectrumMaxHold(readSpectrumMaxHoldRaw(raw)),
+    spectrumPeakLabels: normalizeSpectrumPeakLabels(raw?.spectrumPeakLabels),
     // spectrumSpeedPercent was named spectrumSmoothingPercent until the frequency-smoothing
     // control arrived and needed the "smoothing" name. Presets written before the rename still
     // carry the old key; read it as a fallback so they keep their value instead of silently
