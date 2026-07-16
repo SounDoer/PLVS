@@ -1110,24 +1110,51 @@ Measured 2026-07-16 for the signal above:
 
 **Note `integratedLufs` is -22.03, not -20.** A -20 dBFS *peak* sine has ~-23 dBFS RMS, and integrated loudness sums K-weighted energy across both channels — peak level and integrated loudness are different quantities. An earlier draft of this plan expected ≈ -20 and would have sent you hunting a bug that isn't there.
 
-- [ ] **Step 6: Play the signal into VB-Cable and capture it.** Set `CABLE Input` as the system playback device, start the WAV looping in any player, then run:
+- [ ] **Step 6: Play the signal into VB-Cable and capture it.** Do **not** change the system default playback device: point one player at VB-Cable's endpoint instead, so everything else keeps using the normal device and nothing is audible.
+
+Find VB-Cable's render endpoint id (read-only registry lookup):
+
+```powershell
+$base = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render"
+Get-ChildItem $base | ForEach-Object {
+  $name = (Get-ItemProperty (Join-Path $_.PSPath "Properties"))."{a45c254e-df1c-4efd-8020-67d146a850e0},2"
+  if ($name -eq "CABLE Input") { "{0.0.0.00000000}.{$($_.PSChildName)}" }
+}
+```
+
+Start VLC looping the signal into that endpoint only. VLC's `directsound` output wants a GUID and rejects a device *name* (`bad device GUID`); `mmdevice` takes the endpoint id:
+
+```powershell
+$devId = '{0.0.0.00000000}.{<guid-from-above>}'
+$argStr = '--intf dummy --no-video --loop --aout=mmdevice --mmdevice-audio-device="' + $devId + '" "' + $env:TEMP + '\plvs-smoke-signal.wav"'
+Start-Process "C:\Program Files\VideoLAN\VLC\vlc.exe" -ArgumentList $argStr -WindowStyle Hidden
+```
+
+Pass the whole thing as ONE argument string — an `-ArgumentList` array splits the device id and label on spaces, and VLC then tries to open the fragments as filenames.
+
+Then capture, and stop VLC afterwards (`Get-Process vlc | Stop-Process -Force`):
 
 Run: `./src-tauri/target/release/plvs-cli.exe capture --device "CABLE Output" --seconds 10 --json`
 
-Expected: exit 0, and JSON agreeing with the Step 5 ground truth:
+Measured 2026-07-16 — `capture` against the Step 5 `analyze` ground truth:
 
-| Field | Expected |
-|-------|----------|
-| `summary.integratedLufs` | -22.03 ±0.5 |
-| `summary.samplePeakMaxLDb` | -20.0 ±0.2 |
-| `summary.samplePeakMaxRDb` | -26.0 ±0.2 |
-| `source.sampleRateHz` | 48000 |
-| `source.channelCount` | 2 |
-| `health.droppedChunks` | 0 |
+| Field | `analyze` (truth) | `capture` (live) | Delta |
+|-------|-------------------|------------------|-------|
+| `samplePeakMaxLDb` | -19.999469871546843 | -19.999469871546843 | **0 — bit-identical** |
+| `samplePeakMaxRDb` | -26.00153564352592 | -26.00153564352592 | **0 — bit-identical** |
+| `integratedLufs` | -22.0306 | -22.0329 | 0.0024 dB |
+
+Also: `sampleRateHz` 48000, `channelCount` 2, `health.droppedChunks` 0, exit 0.
+
+Bit-identical peaks are the real result: the capture layer hands over the PCM unaltered — no resampling, no gain, no channel swap. The 0.0024 dB integrated delta is expected and not error — `capture` integrates a 10 s window of the looping file while `analyze` integrates all 60 s.
+
+Assertion tolerances for a future automated gate: peaks ±0.2 dB, integrated ±0.5 dB.
 
 **If L and R come back swapped or equal, stop — that is the channel-map bug this command exists to find.** Report it rather than adjusting the assertion.
 
 Set VB-Cable's format to 48 kHz / 2 channels in the Windows sound control panel first. If `sampleRateHz` comes back as something else, that is test-rig drift, not a code bug — fix the rig.
+
+Note this machine exposes **three** rows matching `CABLE` (`CABLE In 16ch`, `CABLE Input`, `CABLE Output`), so the ambiguity rejection in Step 3 is load-bearing, not decorative.
 
 - [ ] **Step 7: Verify streaming mode**
 
