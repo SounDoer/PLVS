@@ -1,5 +1,12 @@
-import { useCallback, useRef, useState } from "react";
-import { enterDock, exitDock, setDockHeight, setDockReserveSpace } from "../ipc/commands.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  enterDock,
+  exitDock,
+  getDockState,
+  setDockHeight,
+  setDockReserveSpace,
+  setDockSuspended,
+} from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
@@ -29,6 +36,7 @@ export function useDockMode() {
     )
   );
   const [dockPreviewHeight, setDockPreviewHeight] = useState(null);
+  const [dockSuspended, setDockSuspendedState] = useState(false);
   const dockRef = useRef(dock);
   const transitionTailRef = useRef(Promise.resolve());
   const heightTransitionTailRef = useRef(Promise.resolve());
@@ -46,6 +54,22 @@ export function useDockMode() {
     transitionTailRef.current = result.catch(() => {});
     return result;
   }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    getDockState()
+      .then((resolved) => {
+        if (cancelled || !resolved || typeof resolved !== "object") return;
+        const normalized = normalizeDockState(resolved);
+        commitDock(normalized);
+        if (!normalized.enabled) setDockSuspendedState(false);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [commitDock]);
 
   const enterDockMode = useCallback(
     (edge, reserveSpaceOverride, monitorOverride, heightOverride) => {
@@ -85,6 +109,7 @@ export function useDockMode() {
                 : latest.reserveSpace,
           height: clampDockHeight(resolved?.height ?? heightOverride ?? latest.height),
         }));
+        setDockSuspendedState(false);
         if (changed) presetsStore.patch({ dirty: true });
       });
     },
@@ -98,6 +123,7 @@ export function useDockMode() {
         const wasEnabled = dockRef.current.enabled;
         await exitDock({ decorations, alwaysOnTop });
         commitDock((latest) => ({ ...latest, enabled: false }));
+        setDockSuspendedState(false);
         if (wasEnabled) presetsStore.patch({ dirty: true });
       });
     },
@@ -160,17 +186,41 @@ export function useDockMode() {
     [commitDock]
   );
 
+  const suspendDockMode = useCallback(async () => {
+    if (!isTauri() || !dockRef.current.enabled) return;
+    await setDockSuspended(true);
+    setDockSuspendedState(true);
+  }, []);
+
+  const resumeDockMode = useCallback(async () => {
+    if (!isTauri() || !dockRef.current.enabled) return;
+    const resolved = await setDockSuspended(false);
+    if (resolved && typeof resolved === "object") {
+      commitDock((latest) => ({
+        ...latest,
+        monitor: typeof resolved.monitor === "string" ? resolved.monitor : latest.monitor,
+        reserveSpace:
+          typeof resolved.reserveSpace === "boolean" ? resolved.reserveSpace : latest.reserveSpace,
+        height: clampDockHeight(resolved.height ?? latest.height),
+      }));
+    }
+    setDockSuspendedState(false);
+  }, [commitDock]);
+
   return {
     dockEnabled: dock.enabled,
     dockEdge: dock.edge,
     dockMonitor: dock.monitor,
     dockHeight: dock.height,
     dockPreviewHeight,
+    dockSuspended,
     reserveSpace: dock.reserveSpace,
     enterDockMode,
     exitDockMode,
     setReserveSpace,
     toggleReserveSpace,
     resizeDockHeight,
+    suspendDockMode,
+    resumeDockMode,
   };
 }

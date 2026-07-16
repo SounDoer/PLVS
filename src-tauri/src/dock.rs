@@ -172,7 +172,10 @@ pub fn read_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<D
     .and_then(|v| serde_json::from_value(v).ok())
 }
 
-fn save_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>, record: &DockStateRecord) {
+pub(crate) fn write_dock_state<R: tauri::Runtime>(
+  app: &tauri::AppHandle<R>,
+  record: &DockStateRecord,
+) {
   if let Ok(store) = app.store("plvs-settings.json") {
     store.set(
       DOCK_STATE_KEY,
@@ -212,24 +215,58 @@ fn work_area_and_scale<R: tauri::Runtime>(
   ))
 }
 
-/// Best-effort recovery after a failed dock transition: put the window shell
-/// back to normal form and, in case the strip geometry was already applied,
-/// restore the last saved normal bounds so strip-sized geometry can't linger
-/// (or get flushed to `windowBounds` once the docked flag is rolled back).
-fn restore_normal_shell<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
-  let _ = window.set_decorations(true);
-  let _ = window.set_shadow(true);
-  let _ = window.set_always_on_top(false);
-  let _ = window.set_resizable(true);
-  let saved: Option<WindowBounds> = window
-    .app_handle()
-    .store("plvs-settings.json")
-    .ok()
-    .and_then(|s| s.get("windowBounds"))
-    .and_then(|v| serde_json::from_value(v).ok());
-  if let Some(b) = saved {
-    let _ = window.set_size(tauri::PhysicalSize::new(b.width, b.height));
-    let _ = window.set_position(tauri::PhysicalPosition::new(b.x, b.y));
+#[derive(Clone, Copy)]
+struct WindowFormSnapshot {
+  bounds: WindowBounds,
+  decorations: bool,
+  resizable: bool,
+  always_on_top: bool,
+}
+
+fn capture_window_form<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+) -> Result<WindowFormSnapshot, String> {
+  let position = window
+    .outer_position()
+    .map_err(|e| format!("snapshot position: {e}"))?;
+  let size = window
+    .inner_size()
+    .map_err(|e| format!("snapshot size: {e}"))?;
+  Ok(WindowFormSnapshot {
+    bounds: WindowBounds {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height,
+      is_maximized: window.is_maximized().unwrap_or(false),
+    },
+    decorations: window.is_decorated().unwrap_or(true),
+    resizable: window.is_resizable().unwrap_or(true),
+    always_on_top: window.is_always_on_top().unwrap_or(false),
+  })
+}
+
+fn restore_window_form<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+  snapshot: WindowFormSnapshot,
+) {
+  if window.is_maximized().unwrap_or(false) {
+    let _ = window.unmaximize();
+  }
+  let _ = window.set_resizable(snapshot.resizable);
+  let _ = window.set_decorations(snapshot.decorations);
+  let _ = window.set_shadow(snapshot.decorations);
+  let _ = window.set_always_on_top(snapshot.always_on_top);
+  let _ = window.set_size(tauri::PhysicalSize::new(
+    snapshot.bounds.width,
+    snapshot.bounds.height,
+  ));
+  let _ = window.set_position(tauri::PhysicalPosition::new(
+    snapshot.bounds.x,
+    snapshot.bounds.y,
+  ));
+  if snapshot.bounds.is_maximized {
+    let _ = window.maximize();
   }
 }
 
@@ -244,6 +281,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
   monitor_name: Option<&str>,
   logical_height: u32,
 ) -> Result<Option<String>, String> {
+  let previous_form = capture_window_form(window)?;
   let logical_height = clamp_dock_height(logical_height);
   let (wa, scale, resolved_monitor) = work_area_and_scale(window, monitor_name)?;
   #[cfg(target_os = "windows")]
@@ -279,7 +317,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     }
     Ok(())
   })();
-  applied.inspect_err(|_| restore_normal_shell(window))?;
+  applied.inspect_err(|_| restore_window_form(window, previous_form))?;
   Ok(resolved_monitor)
 }
 
@@ -293,6 +331,8 @@ pub fn enter_dock<R: tauri::Runtime>(
   height: Option<u32>,
 ) -> Result<DockStateRecord, String> {
   let previous = read_dock_state(window.app_handle());
+  let was_docked = flag.0.load(Ordering::Relaxed);
+  let previous_form = capture_window_form(&window)?;
   let reserve_space = reserve_space.unwrap_or_else(|| {
     previous
       .as_ref()
@@ -305,24 +345,41 @@ pub fn enter_dock<R: tauri::Runtime>(
       .map(|state| state.height)
       .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT)
   }));
-  #[cfg(target_os = "windows")]
-  crate::appbar::set_reserved(&window, false, edge, height)?;
-  // Persist the latest normal-form geometry, then raise the suppression flag
-  // BEFORE moving the window so the flush thread can't record strip bounds.
-  if !flag.0.load(Ordering::Relaxed) {
-    save_window_bounds(&window);
-  }
-  flag.0.store(true, Ordering::Relaxed);
-  let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height).inspect_err(|_| {
-    flag.0.store(false, Ordering::Relaxed);
-  })?;
-  #[cfg(target_os = "windows")]
-  if reserve_space {
-    crate::appbar::set_reserved(&window, true, edge, height).inspect_err(|_| {
-      flag.0.store(false, Ordering::Relaxed);
-      restore_normal_shell(&window);
-    })?;
-  }
+  let transition = (|| -> Result<Option<String>, String> {
+    #[cfg(target_os = "windows")]
+    crate::appbar::set_reserved(&window, false, edge, height)?;
+    // Persist the latest normal-form geometry, then raise the suppression flag
+    // BEFORE moving the window so the flush thread can't record strip bounds.
+    if !was_docked {
+      save_window_bounds(&window);
+    }
+    flag.0.store(true, Ordering::Relaxed);
+    let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height)?;
+    #[cfg(target_os = "windows")]
+    if reserve_space {
+      crate::appbar::set_reserved(&window, true, edge, height)?;
+    }
+    Ok(monitor)
+  })();
+  let monitor = match transition {
+    Ok(monitor) => monitor,
+    Err(error) => {
+      flag.0.store(was_docked, Ordering::Relaxed);
+      restore_window_form(&window, previous_form);
+      #[cfg(target_os = "windows")]
+      if was_docked {
+        if let Some(previous) = previous.as_ref() {
+          let _ = crate::appbar::set_reserved(
+            &window,
+            previous.reserve_space,
+            previous.edge,
+            previous.height,
+          );
+        }
+      }
+      return Err(error);
+    }
+  };
   let next = DockStateRecord {
     enabled: true,
     edge,
@@ -330,7 +387,7 @@ pub fn enter_dock<R: tauri::Runtime>(
     reserve_space,
     height,
   };
-  save_dock_state(window.app_handle(), &next);
+  write_dock_state(window.app_handle(), &next);
   Ok(next)
 }
 
@@ -403,7 +460,7 @@ pub fn exit_dock<R: tauri::Runtime>(
     let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
   }
   let prev = read_dock_state(app);
-  save_dock_state(
+  write_dock_state(
     app,
     &DockStateRecord {
       enabled: false,
@@ -423,8 +480,12 @@ pub fn exit_dock<R: tauri::Runtime>(
 #[tauri::command]
 pub fn get_dock_state<R: tauri::Runtime>(
   app: tauri::AppHandle<R>,
+  flag: tauri::State<'_, DockedFlag>,
 ) -> Result<Option<DockStateRecord>, String> {
-  Ok(read_dock_state(&app))
+  Ok(read_dock_state(&app).map(|mut state| {
+    state.enabled = flag.0.load(Ordering::Relaxed);
+    state
+  }))
 }
 
 #[tauri::command]
@@ -451,7 +512,7 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
   }
 
   let previous = read_dock_state(window.app_handle());
-  save_dock_state(
+  write_dock_state(
     window.app_handle(),
     &DockStateRecord {
       enabled: true,
@@ -464,6 +525,59 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
     },
   );
   Ok(())
+}
+
+/// Temporarily hide or restore the complete Dock form without changing the
+/// persisted enabled state. Capture and Dock layout continue running while
+/// suspended; only native window visibility and AppBar reservation change.
+#[tauri::command]
+pub fn set_dock_suspended<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  flag: tauri::State<'_, DockedFlag>,
+  suspended: bool,
+) -> Result<DockStateRecord, String> {
+  if !flag.0.load(Ordering::Relaxed) {
+    return Err("window is not docked".into());
+  }
+  let mut state = read_dock_state(window.app_handle())
+    .filter(|state| state.enabled)
+    .ok_or_else(|| "dock state unavailable".to_string())?;
+
+  if suspended {
+    crate::dock_accessories::hide_all(window.app_handle());
+    #[cfg(target_os = "windows")]
+    if state.reserve_space {
+      crate::appbar::set_reserved(&window, false, state.edge, state.height)?;
+    }
+    window
+      .hide()
+      .map_err(|e| format!("suspend dock hide: {e}"))?;
+    window
+      .set_skip_taskbar(true)
+      .map_err(|e| format!("suspend dock taskbar: {e}"))?;
+    return Ok(state);
+  }
+
+  state.monitor = apply_dock_form(&window, state.edge, state.monitor.as_deref(), state.height)?;
+  #[cfg(target_os = "windows")]
+  if state.reserve_space
+    && crate::appbar::set_reserved(&window, true, state.edge, state.height).is_err()
+  {
+    // Resume as a usable overlay Dock. The UI receives this resolved record,
+    // so Reserve never claims to be active when Shell rejected registration.
+    state.reserve_space = false;
+    write_dock_state(window.app_handle(), &state);
+  }
+  window
+    .set_skip_taskbar(false)
+    .map_err(|e| format!("resume dock taskbar: {e}"))?;
+  window
+    .show()
+    .map_err(|e| format!("resume dock show: {e}"))?;
+  window
+    .set_focus()
+    .map_err(|e| format!("resume dock focus: {e}"))?;
+  Ok(state)
 }
 
 #[tauri::command]
@@ -510,7 +624,7 @@ pub fn set_dock_height<R: tauri::Runtime>(
   }
 
   if persist {
-    save_dock_state(
+    write_dock_state(
       window.app_handle(),
       &DockStateRecord {
         enabled: true,

@@ -6,7 +6,7 @@
 ## Summary
 
 Add a **Dock mode**: the PLVS window snaps to the top or bottom edge of the
-current monitor as a thin, always-on-top, chromeless strip (~72 logical px
+current monitor as a thin, always-on-top, chromeless strip (72 logical px by default
 tall, full work-area width) showing a user-customizable horizontal row of
 purpose-built **dock modules** (mini meters). Dock is a *window form*, not a
 second app surface: the audio/data layer is untouched, and existing view
@@ -23,7 +23,7 @@ ships without it but must not block it.
 | --- | --- |
 | Edges | Top / Bottom only (horizontal strip). No left/right vertical strips. |
 | Width | Full width of the monitor's **work area** (avoids taskbar / macOS Dock). Computed once on entry; no live work-area tracking in v1. |
-| Height | Fixed in v1: 72 logical px initial value, defined as a `--ui-*` token (tunable at implementation time, single source). Not user-resizable. |
+| Height | 56-160 logical px, 72px default/legacy fallback. Superseded by `2026-07-14-dock-sizing-design.md`. |
 | Space semantics | Always-on-top overlay strip (form 1). AppBar reserve-space (form 2) is a **sub-option of dock**, Windows-only — not a parallel mode. |
 | Content | Dedicated dock modules (approach: "watch-face widgets"), NOT squeezed workspace panels. Data layer (AudioDataContext / frame intake) fully reused; theme tokens fully reused. |
 | Customization | Which modules + order, edited **inside dock mode only** (WYSIWYG). No dock pre-configuration UI in normal mode. |
@@ -34,7 +34,7 @@ ships without it but must not block it.
 | Restart behavior | If the app was docked on close, restore into dock on launch (consistent with existing bounds restore). Restoring dock never auto-starts capture (PRD: no auto START). |
 | Multi-monitor | Dock to the monitor the window currently occupies. If that monitor is gone on restore, fall back to primary. No drag-to-move while docked in v1 (exit → move → re-dock). |
 | Settings dialog | Not reachable from dock (physically cannot fit). No Settings icon in the hover bar. |
-| History interaction | None in dock. Dock modules are realtime display only (no hover-history / scrub / snapshot interactions). |
+| History interaction | No scrub or snapshot selection. History modules allow wheel-controlled viewport sizing with a transient HUD. |
 | Transition animation | None in v1 (polish later). |
 | Browser dev (non-Tauri) | Dock entry hidden, same as the Glass toggle precedent. |
 

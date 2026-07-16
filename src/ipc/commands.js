@@ -77,6 +77,11 @@ export function exitDock({ decorations, alwaysOnTop }) {
   return invoke("exit_dock", { decorations, alwaysOnTop });
 }
 
+/** Read the native-authoritative Dock state after boot restore has settled. */
+export function getDockState() {
+  return invoke("get_dock_state");
+}
+
 /** Windows-only: register or remove the dock strip as a Win32 AppBar. */
 export function setDockReserveSpace({ enabled, edge }) {
   return invoke("set_dock_reserve_space", { enabled, edge });
@@ -85,6 +90,11 @@ export function setDockReserveSpace({ enabled, edge }) {
 /** Resize the dock strip in logical pixels. Preview updates are not persisted. */
 export function setDockHeight({ height, persist = true }) {
   return invoke("set_dock_height", { height, persist });
+}
+
+/** Temporarily hide/show the complete Dock form without changing dockState.enabled. */
+export function setDockSuspended(suspended) {
+  return invoke("set_dock_suspended", { suspended });
 }
 
 /** Position and show/hide the two Dock accessory windows atomically. */

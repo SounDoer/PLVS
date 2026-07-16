@@ -5,10 +5,12 @@ import { isTauri } from "./ipc/env.js";
 import {
   enterDock,
   exitDock,
+  getDockState,
   listAudioDevices,
   previewAudioDevice,
   setDockAccessories,
   setDockReserveSpace,
+  setDockSuspended,
 } from "./ipc/commands.js";
 import { pickMediaFile } from "./ipc/fileDialog.js";
 import { emitTo } from "@tauri-apps/api/event";
@@ -45,8 +47,10 @@ vi.mock("./ipc/commands.js", () => ({
   stopFileAnalysis: vi.fn().mockResolvedValue(undefined),
   enterDock: vi.fn().mockResolvedValue(undefined),
   exitDock: vi.fn().mockResolvedValue(undefined),
+  getDockState: vi.fn().mockResolvedValue(undefined),
   setDockReserveSpace: vi.fn().mockResolvedValue(undefined),
   setDockHeight: vi.fn(async ({ height }) => height),
+  setDockSuspended: vi.fn().mockResolvedValue(undefined),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -137,8 +141,10 @@ beforeEach(() => {
   emitTo.mockClear();
   enterDock.mockClear().mockResolvedValue(undefined);
   exitDock.mockClear().mockResolvedValue(undefined);
+  getDockState.mockClear().mockResolvedValue(undefined);
   setDockAccessories.mockClear().mockResolvedValue(undefined);
   setDockReserveSpace.mockClear().mockResolvedValue(undefined);
+  setDockSuspended.mockClear().mockResolvedValue(undefined);
   pickMediaFile.mockResolvedValue(null);
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,

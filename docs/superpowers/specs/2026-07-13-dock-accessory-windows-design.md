@@ -32,14 +32,14 @@ force.
 
 | Topic               | Decision                                                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Meter strip         | Remains a dedicated 72 logical px window and the only AppBar.                                                             |
+| Meter strip         | Remains a dedicated 56-160 logical px window and the only AppBar; 72px is the default.                                   |
 | Header              | Separate frameless window, full strip width, 44 logical px high.                                                          |
 | Header layout       | Left: existing `SourceTransportCluster`/timecode pill. Right: Clear, Modules, Presets, edge, Reserve, Restore.            |
 | Header placement    | Bottom Dock: above meter strip. Top Dock: below meter strip.                                                              |
 | Editor              | Separate frameless window, 380-420 logical px wide, single-column drill-in navigation.                                    |
 | Editor placement    | Right-aligned to header. Bottom Dock opens upward; Top Dock opens downward.                                               |
 | Reserve semantics   | Reserve only 72px meter strip. Header/editor overlay adjacent apps. Never resize the AppBar on hover.                     |
-| Visibility          | Enter meter strip shows header. Leaving strip and header hides after 300ms. Open editor locks both visible.               |
+| Visibility          | Enter meter strip shows header. Leaving strip and header hides immediately. Open editor locks both visible.               |
 | Dismissal           | Toggling the active header button, outside click, or Escape closes editor. Header then returns to hover visibility rules. |
 | Modules UI          | Normal panel-instance list with icons, settings, rename, delete confirmation, drag handles, and Add Module.               |
 | Presets UI          | Moves to the accessory editor and uses the normal-size presets interaction model.                                         |
@@ -99,7 +99,7 @@ editor, with clamping when a monitor cannot fit the preferred editor height.
 ### AppBar interaction
 
 `dock-header` and `dock-editor` do not change the registered AppBar rectangle.
-The meter strip remains 72 logical px whether accessories are hidden or shown.
+The meter strip keeps its current persisted height whether accessories are hidden or shown.
 Switching Top/Bottom performs this sequence:
 
 1. renegotiate/move the meter AppBar;
@@ -147,14 +147,19 @@ rendered from, and main validates them against current state where needed.
 The main Dock strip and header report pointer presence to one coordinator in
 the main WebView:
 
-- entering either surface cancels the hide timer;
-- leaving both surfaces starts the existing 300ms timer;
+- entering either surface shows the header;
+- leaving both surfaces hides the header immediately;
 - an open editor sets `lockedOpen = true` and suppresses auto-hide;
 - toggling the active header button, outside click, or Escape clears the lock and closes editor;
 - Dock exit immediately cancels timers and hides both accessories.
 
-There is no geometric gap between strip and header. The timer still protects
-against cross-window pointer event ordering.
+There is no geometric gap between strip and header. Immediate hide keeps the
+interaction deterministic across the two native surfaces.
+
+Tray `Hide Window` temporarily suspends the complete Dock form: all three
+windows hide and an active AppBar reservation is released, while capture,
+layout, and persisted Dock state remain active. `Show Window` restores the
+same Dock form and reservation; it does not exit Dock.
 
 Outside-click dismissal uses focus loss only while an editor is open. Header
 activation by itself must not hide the header or stop audio keyboard behavior
@@ -321,10 +326,9 @@ all semantic actions route to main.
 
 ## Failure behavior
 
-- If header creation/show fails, the 72px meter strip remains usable and the
-  health notice reports the failure; Restore remains available through a
-  fallback keyboard command or tray action.
-- If editor creation fails, header remains visible and reports the failure.
+- Accessory creation failure never blocks normal-mode application startup.
+- If header/editor creation or positioning fails after Dock entry, Dock exits,
+  restores the normal window, and reports the failure there.
 - If an accessory crashes/reloads, it emits `ready` and receives the latest
   snapshot without changing Dock state.
 - Monitor removal recomputes meter/header/editor geometry against the primary
@@ -356,7 +360,7 @@ all semantic actions route to main.
 ### Manual Windows/macOS
 
 - Header crosses from meter strip without flicker.
-- Header hides after 300ms only when no Dock surface is hovered.
+- Header hides immediately when no Dock surface is hovered.
 - Editor stays open while interacted with and dismisses by active-button toggle,
   Escape, or outside click.
 - Transparent areas do not block applications behind them.

@@ -73,6 +73,7 @@ export function usePresets({
     controlsByPanelId: undefined,
   },
   applyDockPreset = async () => {},
+  canApplyDockPreset = () => true,
   onApplyError = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
@@ -193,16 +194,6 @@ export function usePresets({
       const current = normalizePresets(presetsStore.read());
       const preset = current.list.find((p) => p.id === id);
       if (!preset) return false;
-      if (preset.windowBounds && isTauri()) {
-        suppressPresetDivergence();
-      }
-      setView({
-        tree: clone(preset.tree),
-        panelsById: clone(preset.panelsById),
-        panelOrder: [...preset.panelOrder],
-        panelControlsById: normalizePresetPanelControls(preset, workspaceState),
-        pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
-      });
       const presetDock = {
         enabled: preset.dock?.enabled === true,
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
@@ -214,6 +205,21 @@ export function usePresets({
         panelSizesById: preset.dock?.panelSizesById,
         controlsByPanelId: preset.dock?.controlsByPanelId,
       };
+      if (presetDock.enabled && !canApplyDockPreset(presetDock)) {
+        const error = new Error("Dock presets are unavailable in FILE mode");
+        onApplyError(error);
+        return false;
+      }
+      if (preset.windowBounds && isTauri()) {
+        suppressPresetDivergence();
+      }
+      setView({
+        tree: clone(preset.tree),
+        panelsById: clone(preset.panelsById),
+        panelOrder: [...preset.panelOrder],
+        panelControlsById: normalizePresetPanelControls(preset, workspaceState),
+        pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
+      });
       try {
         await applyDockPreset(presetDock);
       } catch (error) {
@@ -252,6 +258,7 @@ export function usePresets({
       setPanelOpacity,
       setGlassEnabled,
       applyDockPreset,
+      canApplyDockPreset,
       onApplyError,
       suppressPresetDivergence,
       workspaceState,

@@ -78,6 +78,7 @@ pub fn run() {
       dock::exit_dock,
       dock::get_dock_state,
       dock::set_dock_reserve_space,
+      dock::set_dock_suspended,
       dock::set_dock_height,
       dock_accessories::set_dock_accessories,
       glass_effect::set_glass_effect,
@@ -131,7 +132,9 @@ pub fn run() {
         .build()
         .map_err(|e| format!("window build: {e}"))?;
 
-      dock_accessories::create(app, &init_script)?;
+      if let Err(error) = dock_accessories::create(app, &init_script) {
+        log::warn!("dock accessories unavailable; normal mode will continue: {error}");
+      }
 
       // Saved bounds are PHYSICAL pixels (saved from inner_size + outer_position). Restore
       // them with physical setters: the builder's inner_size/position take LOGICAL pixels,
@@ -154,6 +157,9 @@ pub fn run() {
             .state::<dock::DockedFlag>()
             .0
             .store(false, std::sync::atomic::Ordering::Relaxed);
+          let mut failed = d.clone();
+          failed.enabled = false;
+          dock::write_dock_state(window.app_handle(), &failed);
         }
       }
       let restore_normal = !app
@@ -187,10 +193,18 @@ pub fn run() {
       appbar::install_window_subclass(&window).map_err(|e| format!("appbar subclass: {e}"))?;
 
       #[cfg(target_os = "windows")]
-      if boot_docked && boot_dock.as_ref().is_some_and(|d| d.reserve_space) {
+      if app
+        .state::<dock::DockedFlag>()
+        .0
+        .load(std::sync::atomic::Ordering::Relaxed)
+        && boot_dock.as_ref().is_some_and(|d| d.reserve_space)
+      {
         if let Some(d) = boot_dock.as_ref() {
           if let Err(e) = appbar::set_reserved(&window, true, d.edge, d.height) {
             log::warn!("appbar restore failed, continuing as overlay dock: {e}");
+            let mut overlay = d.clone();
+            overlay.reserve_space = false;
+            dock::write_dock_state(window.app_handle(), &overlay);
           }
         }
       }

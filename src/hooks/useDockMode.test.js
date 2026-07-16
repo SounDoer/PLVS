@@ -1,11 +1,13 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   enterDock: vi.fn(async () => {}),
   exitDock: vi.fn(async () => {}),
+  getDockState: vi.fn(async () => undefined),
   setDockReserveSpace: vi.fn(async () => {}),
   setDockHeight: vi.fn(async ({ height }) => height),
+  setDockSuspended: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
   patchPresets: vi.fn(),
 }));
@@ -13,8 +15,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../ipc/commands.js", () => ({
   enterDock: mocks.enterDock,
   exitDock: mocks.exitDock,
+  getDockState: mocks.getDockState,
   setDockReserveSpace: mocks.setDockReserveSpace,
   setDockHeight: mocks.setDockHeight,
+  setDockSuspended: mocks.setDockSuspended,
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
 vi.mock("../persistence/index.js", () => ({
@@ -27,8 +31,10 @@ describe("useDockMode", () => {
   beforeEach(() => {
     mocks.enterDock.mockClear();
     mocks.exitDock.mockClear();
+    mocks.getDockState.mockReset().mockResolvedValue(undefined);
     mocks.setDockReserveSpace.mockReset().mockResolvedValue(undefined);
     mocks.setDockHeight.mockReset().mockImplementation(async ({ height }) => height);
+    mocks.setDockSuspended.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
     mocks.patchPresets.mockClear();
     delete window.__PLVS_INITIAL_STATE__;
@@ -143,6 +149,15 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(true);
   });
 
+  it("reconciles a failed native boot restore instead of trusting stale injected state", async () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    mocks.getDockState.mockResolvedValueOnce({ enabled: false, edge: "top", reserveSpace: false });
+    const { result } = renderHook(() => useDockMode());
+
+    await waitFor(() => expect(result.current.dockEnabled).toBe(false));
+    expect(result.current.reserveSpace).toBe(false);
+  });
+
   it("enterDockMode invokes IPC and flips state", async () => {
     const { result } = renderHook(() => useDockMode());
     await act(() => result.current.enterDockMode("top"));
@@ -223,6 +238,19 @@ describe("useDockMode", () => {
     await act(() => result.current.enterDockMode("top"));
     expect(mocks.enterDock).not.toHaveBeenCalled();
     expect(result.current.dockEnabled).toBe(false);
+  });
+
+  it("suspends and resumes the native Dock without exiting it", async () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "bottom" } };
+    const { result } = renderHook(() => useDockMode());
+
+    await act(() => result.current.suspendDockMode());
+    expect(mocks.setDockSuspended).toHaveBeenCalledWith(true);
+    expect(result.current).toMatchObject({ dockEnabled: true, dockSuspended: true });
+
+    await act(() => result.current.resumeDockMode());
+    expect(mocks.setDockSuspended).toHaveBeenLastCalledWith(false);
+    expect(result.current).toMatchObject({ dockEnabled: true, dockSuspended: false });
   });
 
   it("enterDockMode leaves state unchanged when the IPC call rejects", async () => {

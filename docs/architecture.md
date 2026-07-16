@@ -241,7 +241,7 @@ Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `
 
 ### Dock 三窗口边界
 
-Dock form 由三个 native window 组成：`main` 是固定 72 logical px 的 meter strip，
+Dock form 由三个 native window 组成：`main` 是 56-160 logical px、默认 72px 的 meter strip，
 `dock-header` 是 44 logical px 的全宽临时工具条，`dock-editor` 是右对齐的单列编辑器。
 Windows 上只有 `main` 注册 AppBar；开启 Reserve screen space 时也只保留 meter strip，
 header/editor 始终覆盖相邻工作区，因此 hover 不会触发 maximized window 重排。

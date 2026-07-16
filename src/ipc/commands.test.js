@@ -11,10 +11,12 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import {
   probeFileAnalysis,
+  getDockState,
   setDialogueGating,
   setDialogueVadEngine,
   setDockAccessories,
   setDockHeight,
+  setDockSuspended,
   setLoudnessWeights,
   startFileAnalysis,
   stopFileAnalysis,
@@ -76,9 +78,18 @@ describe("audio engine command seam", () => {
 });
 
 describe("dock command seam", () => {
+  it("reads the native-authoritative Dock state", async () => {
+    await getDockState();
+    expect(invoke).toHaveBeenCalledWith("get_dock_state");
+  });
   it("passes logical height and persistence intent to Rust", async () => {
     await setDockHeight({ height: 108, persist: false });
     expect(invoke).toHaveBeenCalledWith("set_dock_height", { height: 108, persist: false });
+  });
+
+  it("passes temporary Dock suspension without changing persisted state", async () => {
+    await setDockSuspended(true);
+    expect(invoke).toHaveBeenCalledWith("set_dock_suspended", { suspended: true });
   });
 
   it("passes the logical editor trigger anchor to Rust", async () => {

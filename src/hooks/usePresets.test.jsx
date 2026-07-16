@@ -559,6 +559,46 @@ describe("usePresets", () => {
       });
     });
 
+    it("rejects an ineligible dock preset before mutating the workspace", async () => {
+      const applyDockPreset = vi.fn(async () => {});
+      const canApplyDockPreset = vi.fn(() => false);
+      const onApplyError = vi.fn();
+      presetsStore.patch({
+        list: [
+          {
+            id: "dock-file-blocked",
+            name: "Docked",
+            tree: leaf(["spectrum"]),
+            panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+            panelOrder: ["spectrum"],
+            panelControlsById: {},
+            dock: { enabled: true, edge: "top" },
+          },
+        ],
+        activeId: null,
+        dirty: false,
+      });
+      const { result } = renderPresetHook({
+        applyDockPreset,
+        canApplyDockPreset,
+        onApplyError,
+      });
+      const before = result.current.workspace.state;
+
+      let applied;
+      await act(async () => {
+        applied = await result.current.presets.apply("dock-file-blocked");
+      });
+
+      expect(applied).toBe(false);
+      expect(canApplyDockPreset).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }));
+      expect(applyDockPreset).not.toHaveBeenCalled();
+      expect(result.current.workspace.state).toBe(before);
+      expect(onApplyError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Dock presets are unavailable in FILE mode" })
+      );
+    });
+
     it("presets without a dock field apply as dock-disabled (backward compat)", async () => {
       const applyDockPreset = vi.fn(async () => {});
       const { result } = renderPresetHook({ applyDockPreset });

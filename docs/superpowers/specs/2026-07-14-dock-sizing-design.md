@@ -1,7 +1,7 @@
 # Dock Sizing
 
 **Date:** 2026-07-14
-**Status:** Approved for implementation.
+**Status:** Implemented.
 
 ## Goal
 

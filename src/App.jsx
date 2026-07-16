@@ -30,6 +30,7 @@ import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
 import { mergeDockAnalysisRequests } from "./dock/dockAnalysisRequest.js";
+import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
   buildVectorscopePairOptions,
@@ -140,12 +141,15 @@ function AppContent() {
     dockMonitor,
     dockHeight,
     dockPreviewHeight,
+    dockSuspended,
     reserveSpace,
     enterDockMode,
     exitDockMode,
     setReserveSpace,
     toggleReserveSpace,
     resizeDockHeight,
+    suspendDockMode,
+    resumeDockMode,
   } = useDockMode();
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
@@ -167,24 +171,22 @@ function AppContent() {
 
   const onHideWindow = useCallback(async () => {
     if (!isTauri()) return;
-    const win = getCurrentWindow();
-    await win.hide();
-    await win.setSkipTaskbar(true);
-  }, []);
+    await hideAppWindow({
+      docked,
+      window: getCurrentWindow(),
+      suspendDock: suspendDockMode,
+    });
+  }, [docked, suspendDockMode]);
 
   const onToggleWindow = useCallback(async () => {
     if (!isTauri()) return;
-    const win = getCurrentWindow();
-    const visible = await win.isVisible();
-    if (visible) {
-      await win.hide();
-      await win.setSkipTaskbar(true);
-    } else {
-      await win.show();
-      await win.setSkipTaskbar(false);
-      await win.setFocus();
-    }
-  }, []);
+    await toggleAppWindow({
+      docked,
+      window: getCurrentWindow(),
+      suspendDock: suspendDockMode,
+      resumeDock: resumeDockMode,
+    });
+  }, [docked, resumeDockMode, suspendDockMode]);
 
   const {
     dialogOpen: closeDialogOpen,
@@ -376,6 +378,7 @@ function AppContent() {
     setGlassEnabled,
     dock: presetDockState,
     applyDockPreset,
+    canApplyDockPreset: (presetDock) => !presetDock.enabled || sourceMode !== "file",
     onApplyError: onPresetApplyError,
   });
 
@@ -913,7 +916,7 @@ function AppContent() {
     [docked, exitDockRestoringAttributes, raiseNotice]
   );
   const dockAccessoryVisibility = useDockAccessoryVisibility({
-    active: docked,
+    active: docked && !dockSuspended,
     edge: dockEdge,
     geometryVersion: dockHeight,
     forceHeaderVisible: notice?.kind === "error",

@@ -21,9 +21,11 @@ export function useAccessoryClient(surface) {
       setPayload(accepted.payload);
     }).then((fn) => {
       if (cancelled) fn();
-      else unlisten = fn;
+      else {
+        unlisten = fn;
+        void emitDockAccessoryReady(surface);
+      }
     });
-    void emitDockAccessoryReady(surface);
     return () => {
       cancelled = true;
       unlisten?.();
