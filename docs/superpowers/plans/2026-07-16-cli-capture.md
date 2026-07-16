@@ -1077,7 +1077,10 @@ Expected: exit 0, and JSON where `summary.integratedLufs` ≈ -20 (±0.5), `summ
 - [ ] **Step 6: Verify streaming mode**
 
 Run: `./src-tauri/target/release/plvs-cli.exe capture --device "CABLE Output" --seconds 30 --every 10 --json --out soak-check.jsonl`
-Expected: 3 sample lines (`t` = 10, 20, 30) plus a final report line; `soak-check.jsonl` holds all four.
+
+Expected: sample lines at `t` = 10 and 20, then a final report line; `soak-check.jsonl` holds the whole stream.
+
+**A `t` = 30 line may or may not appear — both are correct.** The consumer's clock and the caller's deadline start within microseconds of each other, so emitting the last sample requires a PCM chunk (~1 per 100 ms) to land in the window before the stop takes effect. It is a race, deliberately left alone: no caller reads the final sample (the soak reads the trend, the smoke gate does not use `--every`, and the final report already carries the end-state value), so making it deterministic would add synchronization for nobody. Do not "fix" a missing `t` = 30.
 
 - [ ] **Step 7: Verify the GUI still meters.** Launch the app (`npm run desktop`), start capture on any device, confirm the meters move. This is what guards the Task 1 refactor.
 
