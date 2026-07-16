@@ -1,6 +1,7 @@
 //! System audio capture: WASAPI loopback on Windows; Core Audio process tap (macOS 14.2+) + cpal.
 
 pub mod capture;
+pub mod capture_summary;
 pub mod cpal_backend;
 pub mod device;
 pub mod device_enum;
