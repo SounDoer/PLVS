@@ -126,6 +126,7 @@ pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn set_dock_accessories<R: tauri::Runtime>(
   window: WebviewWindow<R>,
   edge: DockEdge,
@@ -134,6 +135,7 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
   editor_width: f64,
   editor_height: f64,
   editor_anchor_x: Option<f64>,
+  webview_scale: Option<f64>,
 ) -> Result<(), String> {
   let app = window.app_handle();
   let main = app
@@ -147,7 +149,12 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
   if editor_visible && editor.is_none() {
     return Err("dock editor window unavailable".to_string());
   }
-  let (monitor, strip, scale) = main_geometry(&main)?;
+  let (monitor, strip, monitor_scale) = main_geometry(&main)?;
+  // The caller's devicePixelRatio, not `monitor_scale`: only the webview sees the
+  // Windows text-scaling factor. Fall back to the monitor when JS sends nothing.
+  let scale = webview_scale
+    .filter(|value| value.is_finite() && *value > 0.0)
+    .unwrap_or(monitor_scale);
   let rects = dock_accessory_rects(
     monitor,
     strip,

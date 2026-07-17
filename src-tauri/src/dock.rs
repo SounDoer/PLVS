@@ -99,20 +99,27 @@ fn scaled_px(logical: f64, scale: f64) -> u32 {
 
 /// Compute physical-pixel accessory rectangles outside the accepted meter strip.
 /// The strip/AppBar rectangle is input-only and never grows with either accessory.
+///
+/// `webview_scale` must be a webview's `devicePixelRatio`, never a monitor's
+/// `scale_factor()`. Every logical length here is a CSS pixel measured inside an
+/// accessory webview, and WebView2 folds the Windows *text* scaling factor into
+/// `devicePixelRatio` on top of the monitor's DPI scale. A monitor scale factor
+/// misses that factor entirely, so the windows come out short by exactly the
+/// text-scaling ratio and clip their own content.
 pub fn dock_accessory_rects(
   monitor: MonitorRect,
   strip: WindowBounds,
   edge: DockEdge,
-  scale: f64,
+  webview_scale: f64,
   editor_logical_width: f64,
   editor_logical_height: f64,
   editor_anchor_logical_x: Option<f64>,
 ) -> DockAccessoryRects {
-  let header_height = scaled_px(DOCK_HEADER_LOGICAL_HEIGHT, scale).min(monitor.height);
+  let header_height = scaled_px(DOCK_HEADER_LOGICAL_HEIGHT, webview_scale).min(monitor.height);
   let requested_editor_width =
     editor_logical_width.clamp(DOCK_EDITOR_MIN_LOGICAL_WIDTH, DOCK_EDITOR_MAX_LOGICAL_WIDTH);
-  let preferred_editor_width = scaled_px(requested_editor_width, scale);
-  let inset = scaled_px(DOCK_EDITOR_LOGICAL_INSET, scale) as i32;
+  let preferred_editor_width = scaled_px(requested_editor_width, webview_scale);
+  let inset = scaled_px(DOCK_EDITOR_LOGICAL_INSET, webview_scale) as i32;
   let requested_editor_height = editor_logical_height.clamp(
     DOCK_EDITOR_MIN_LOGICAL_HEIGHT,
     DOCK_EDITOR_MAX_LOGICAL_HEIGHT,
@@ -138,7 +145,7 @@ pub fn dock_accessory_rects(
     DockEdge::Bottom => header.y - monitor.y,
   }
   .max(1) as u32;
-  let editor_height = scaled_px(requested_editor_height, scale).min(available_height);
+  let editor_height = scaled_px(requested_editor_height, webview_scale).min(available_height);
   let editor_width = preferred_editor_width
     .min(
       monitor
@@ -148,7 +155,7 @@ pub fn dock_accessory_rects(
     .max(1);
   let editor_anchor_x = editor_anchor_logical_x
     .filter(|value| value.is_finite())
-    .map(|value| header.x + (value * scale.max(0.1)).round() as i32)
+    .map(|value| header.x + (value * webview_scale.max(0.1)).round() as i32)
     .unwrap_or(header.x + header.width as i32 / 2);
   let editor_x = (editor_anchor_x - editor_width as i32 / 2).clamp(
     monitor.x,

@@ -97,7 +97,13 @@ export function setDockSuspended(suspended) {
   return invoke("set_dock_suspended", { suspended });
 }
 
-/** Position and show/hide the two Dock accessory windows atomically. */
+/**
+ * Position and show/hide the two Dock accessory windows atomically.
+ *
+ * Every size here is a CSS pixel, so Rust needs `devicePixelRatio` to convert:
+ * a monitor's scale factor misses the Windows text-scaling factor that WebView2
+ * folds into the ratio, which sizes the accessory windows short of their content.
+ */
 export function setDockAccessories({
   edge,
   headerVisible,
@@ -105,6 +111,7 @@ export function setDockAccessories({
   editorWidth = 400,
   editorHeight = 480,
   editorAnchorX = null,
+  webviewScale = globalThis.devicePixelRatio ?? null,
 }) {
   return invoke("set_dock_accessories", {
     edge,
@@ -113,6 +120,7 @@ export function setDockAccessories({
     editorWidth,
     editorHeight,
     editorAnchorX,
+    webviewScale,
   });
 }
 

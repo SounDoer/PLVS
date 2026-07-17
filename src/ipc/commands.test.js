@@ -100,6 +100,7 @@ describe("dock command seam", () => {
       editorWidth: 240,
       editorHeight: 320,
       editorAnchorX: 612.5,
+      webviewScale: 1.25,
     });
     expect(invoke).toHaveBeenCalledWith("set_dock_accessories", {
       edge: "bottom",
@@ -108,6 +109,19 @@ describe("dock command seam", () => {
       editorWidth: 240,
       editorHeight: 320,
       editorAnchorX: 612.5,
+      webviewScale: 1.25,
     });
+  });
+
+  it("reports devicePixelRatio so Rust never converts with a monitor scale factor", async () => {
+    // WebView2 folds Windows text scaling into devicePixelRatio; a monitor's
+    // scale factor misses it and undersizes the accessory windows.
+    vi.stubGlobal("devicePixelRatio", 1.9125);
+    await setDockAccessories({ edge: "top", headerVisible: true });
+    expect(invoke).toHaveBeenCalledWith(
+      "set_dock_accessories",
+      expect.objectContaining({ webviewScale: 1.9125 })
+    );
+    vi.unstubAllGlobals();
   });
 });
