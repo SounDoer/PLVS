@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { onWindowBoundsChanged } from "../ipc/events.js";
+import { setWindowDecorations } from "./useFocusViewWindow.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
@@ -220,11 +221,12 @@ export function usePresets({
         panelControlsById: normalizePresetPanelControls(preset, workspaceState),
         pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
       });
+      const presetFocusView = preset.focusView ? normalizeFocusView(preset.focusView) : null;
       let windowBoundsAppliedByDockExit;
       try {
         windowBoundsAppliedByDockExit = await applyDockPreset(presetDock, {
           bounds: preset.windowBounds,
-          focusView: preset.focusView ? normalizeFocusView(preset.focusView) : undefined,
+          focusView: presetFocusView ?? undefined,
           pinned: preset.windowPinned,
         });
       } catch (error) {
@@ -239,6 +241,18 @@ export function usePresets({
         isTauri()
       ) {
         try {
+          // Chrome before geometry. windowBounds pairs an outer position with an
+          // inner size, so the frame must already match the preset's when the
+          // bounds land. setFocusView below only schedules the change — it runs in
+          // useFocusViewWindow's effect, after this await chain — and Windows keeps
+          // the outer rect when decorations drop, handing the title bar area back
+          // to the client and growing the window by that much. The dock path
+          // already gets this right by passing decorations into exit_dock.
+          if (presetFocusView) {
+            await setWindowDecorations(
+              !(presetFocusView.autoHideControls || presetFocusView.borderless)
+            );
+          }
           await applyWindowBounds(preset.windowBounds);
         } catch (error) {
           write({ activeId: null });
@@ -249,8 +263,8 @@ export function usePresets({
       if (typeof preset.windowPinned === "boolean") {
         setWindowPinned(preset.windowPinned);
       }
-      if (preset.focusView) {
-        setFocusView(normalizeFocusView(preset.focusView));
+      if (presetFocusView) {
+        setFocusView(presetFocusView);
       }
       if (typeof preset.panelOpacity === "number") {
         setPanelOpacity(preset.panelOpacity);

@@ -46,17 +46,16 @@ describe("useFocusViewWindow", () => {
     expect(mocks.setShadow).not.toHaveBeenCalled();
   });
 
-  it("applies decorations and shadow from the view flags", async () => {
+  it("applies decorations from the view flags", async () => {
     mocks.isDecorated.mockResolvedValue(false);
     renderHook(() => useFocusViewWindow(false, false));
     await waitFor(() => expect(mocks.setDecorations).toHaveBeenCalledWith(true));
-    expect(mocks.setShadow).toHaveBeenCalledWith(true);
   });
 
-  it("strips chrome when frameless", async () => {
+  it("strips decorations when frameless but leaves the Rust-owned shadow alone", async () => {
     renderHook(() => useFocusViewWindow(true, false));
     await waitFor(() => expect(mocks.setDecorations).toHaveBeenCalledWith(false));
-    expect(mocks.setShadow).toHaveBeenCalledWith(false);
+    expect(mocks.setShadow).not.toHaveBeenCalled();
   });
 
   it("skips all window calls while suspended (docked boot must keep strip chrome)", () => {
@@ -77,6 +76,5 @@ describe("useFocusViewWindow", () => {
 
     rerender({ suspended: false });
     await waitFor(() => expect(mocks.setDecorations).toHaveBeenCalledWith(true));
-    expect(mocks.setShadow).toHaveBeenCalledWith(true);
   });
 });

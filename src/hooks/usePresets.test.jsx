@@ -12,6 +12,15 @@ const mocks = vi.hoisted(() => ({
   onWindowBoundsChanged: vi.fn(),
   unlistenWindowBounds: vi.fn(),
   windowBoundsHandler: null,
+  isDecorated: vi.fn(),
+  setDecorations: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    isDecorated: mocks.isDecorated,
+    setDecorations: mocks.setDecorations,
+  }),
 }));
 
 vi.mock("../ipc/commands.js", () => ({
@@ -60,6 +69,8 @@ describe("usePresets", () => {
       isMaximized: false,
     });
     mocks.isTauri.mockReset().mockReturnValue(false);
+    mocks.isDecorated.mockReset().mockResolvedValue(true);
+    mocks.setDecorations.mockReset().mockResolvedValue(undefined);
     mocks.unlistenWindowBounds.mockReset();
     mocks.windowBoundsHandler = null;
     mocks.onWindowBoundsChanged.mockReset().mockImplementation(async (handler) => {
@@ -179,6 +190,43 @@ describe("usePresets", () => {
       borderless: false,
     });
     expect(presetsStore.read().activeId).toBe("p1");
+  });
+
+  it("strips chrome before applying window bounds", async () => {
+    // windowBounds pairs an outer position with an inner size. Land the bounds
+    // while the window still wears the old chrome and the later decoration flip
+    // hands the title bar area back to the client, growing the window past the
+    // preset's — the drift this ordering exists to prevent.
+    mocks.isTauri.mockReturnValue(true);
+    const order = [];
+    mocks.setDecorations.mockImplementation(async (enabled) => {
+      order.push(`decorations:${enabled}`);
+    });
+    mocks.applyWindowBounds.mockImplementation(async () => {
+      order.push("bounds");
+    });
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Borderless",
+          tree: leaf(["spectrum"]),
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+          pinnedPanelsById: {},
+          windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
+          focusView: { autoHideControls: false, compactPanels: false, borderless: true },
+        },
+      ],
+      activeId: null,
+    });
+    const { result } = renderPresetHook({ setFocusView: vi.fn() });
+    await act(async () => {
+      await result.current.presets.apply("p1");
+    });
+
+    expect(order).toEqual(["decorations:false", "bounds"]);
   });
 
   it("does not reapply normal bounds after Dock exit restored the preset bounds", async () => {

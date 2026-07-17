@@ -12,14 +12,6 @@ export async function setWindowDecorations(enabled) {
   return true;
 }
 
-async function setWindowShadow(enabled) {
-  if (!isTauri()) return;
-  const win = getCurrentWindow();
-  if (typeof win.setShadow === "function") {
-    await win.setShadow(enabled);
-  }
-}
-
 export function useFocusViewWindow(autoHideControls, borderless, { suspended = false } = {}) {
   useEffect(() => {
     // While docked (suspended), Rust owns window chrome: apply_dock_form strips
@@ -28,10 +20,13 @@ export function useFocusViewWindow(autoHideControls, borderless, { suspended = f
     // deps so flipping it false on exit re-asserts the user's true attributes —
     // a harmless double-set with exitDock's own restore.
     if (suspended) return;
+    // Decorations only. The shadow is Rust-owned: a normal window always keeps it
+    // (Tauri's default, restored by exit_dock), the docked strip never has it.
+    // Driving it from `frameless` here contradicted that and left the shadow
+    // dependent on which side ran last — and since the stored geometry pairs an
+    // outer position with an inner size, a shadow that disagrees with the one at
+    // save time drifts the window by a frame.
     const frameless = autoHideControls === true || borderless === true;
-    void (async () => {
-      const decorationsChanged = await setWindowDecorations(!frameless);
-      if (decorationsChanged) await setWindowShadow(!frameless);
-    })().catch(() => {});
+    void setWindowDecorations(!frameless).catch(() => {});
   }, [autoHideControls, borderless, suspended]);
 }
