@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-07-17
+
+### Changed
+- Loudness, vectorscope, waveform, and spectrum trace stroke widths are now driven consistently by their theme tokens and rendered at true CSS-pixel widths, instead of some curves scaling incorrectly or ignoring the configured width.
+
+### Fixed
+- Window chrome (decorations/shadow) and geometry are now applied in the correct order across Dock, presets, and relaunch, fixing window drift and shadow inconsistencies.
+- Dock accessory windows size correctly under Windows Text Size scaling instead of clipping their content.
+- Panel settings menu stays within the viewport.
+- Update status in Settings now reflects the latest check instead of a stale state.
+- Popovers close when the window loses focus.
+
 ## [0.9.2] - 2026-07-16
 
 ### Fixed
