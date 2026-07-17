@@ -60,7 +60,15 @@ function rssMb(pid) {
     ],
     { encoding: "utf8" },
   );
-  const bytes = Number(out.stdout?.trim());
+  const text = out.stdout?.trim();
+  // An exited process prints nothing, and `Number("")` is 0 — which is finite.
+  // Left unguarded, the last tick of a finished run records "0 MB" and drags the
+  // curve to the floor, which is exactly how a real leak would be made to look
+  // like memory being released.
+  if (!text) {
+    return null;
+  }
+  const bytes = Number(text);
   return Number.isFinite(bytes) ? bytes / (1024 * 1024) : null;
 }
 

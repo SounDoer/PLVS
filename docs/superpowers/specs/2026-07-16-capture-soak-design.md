@@ -177,9 +177,43 @@ RSS 142 MB → ~14x MB, consistent with SummaryMeter accumulation.
 droppedChunks 0.
 ```
 
+## First Measurements (90 s, 2026-07-17)
+
+A short run on known-good code, pending a real four-hour baseline:
+
+```
+Samples        : 18 (7 after the 60 s warmup)
+integratedLufs : spread 0.0027 dB after warmup
+droppedChunks  : 0
+RSS            : 8.6 MB -> 8.6 MB
+```
+
+**The drift figure contradicts this spec's theory, and the theory was too clean.**
+It argued integrated loudness must be flat to within floating-point error over a
+constant signal. Observed spread is 0.0027 dB — orders of magnitude above float
+error, and it is not a defect. Integrated loudness is a *cumulative* mean, so the
+start-up transient is diluted as blocks accumulate: the value climbs
+**monotonically toward its limit** rather than sitting still. What the spread
+measures at 90 s is mostly that convergence tail.
+
+This makes `max - min` the wrong statistic: it **conflates convergence (expected,
+monotone, front-loaded) with drift (a defect)**. It is kept for now because it is
+honest about what it measures and no data yet justifies anything cleverer.
+
+**Consequences to settle with a real run, not by tuning:**
+
+- `DRIFT_LIMIT_DB = 0.01` has only ~3.7× headroom over the 90 s figure.
+- Over four hours the settled window spans t=60..14400, and the early samples
+  carry more of the transient than a 90 s run's do — **the spread may be larger,
+  not smaller, and could cross the limit on healthy code.**
+- If it does, the fix is a longer warmup or a trend-based statistic (compare late
+  halves), **not** a widened threshold. Widening it to fit an observation is how a
+  check stops being one.
+
 ## Follow-on
 
-- Record the first real run's numbers here: post-warmup drift spread, and RSS
-  start/end. Until then this spec has a criterion with a guessed threshold, which
-  is the one part of it that is not yet honest.
+- Run a real four-hour soak on known-good code and record the post-warmup spread
+  and RSS start/end here. Until that exists, `DRIFT_LIMIT_DB` is a guess with a
+  known risk of false-alarming, which is the one part of this spec that is not yet
+  honest.
 - **macOS** — unreachable from this rig; still unverified.
