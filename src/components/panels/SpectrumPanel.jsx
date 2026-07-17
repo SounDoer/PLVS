@@ -849,6 +849,7 @@ export function SpectrumPanel({ compact = false }) {
                               : "var(--ui-spectrum-primary)"
                           }
                           strokeWidth="var(--ui-spectrum-stroke-width)"
+                          vectorEffect="non-scaling-stroke"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
@@ -862,6 +863,7 @@ export function SpectrumPanel({ compact = false }) {
                                 : "var(--ui-spectrum-secondary)"
                             }
                             strokeWidth="var(--ui-spectrum-stroke-width)"
+                            vectorEffect="non-scaling-stroke"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />

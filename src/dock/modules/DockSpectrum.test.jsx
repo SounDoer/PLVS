@@ -37,6 +37,19 @@ describe("DockSpectrum", () => {
     expect(paths[2].getAttribute("d")).toBe("M 0 150 L 1000 180");
   });
 
+  it("keeps live outline stroke widths independent from SVG scaling", () => {
+    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum, view: "lr" };
+    const { container } = renderSpectrum(controls, {
+      path: "M 0 130 L 1000 200",
+      pathB: "M 0 150 L 1000 180",
+    });
+    const outlines = [...container.querySelectorAll('svg > path[fill="none"]')];
+
+    expect(outlines).toHaveLength(2);
+    expect(outlines[0].getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    expect(outlines[1].getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
   it("fills to both peak contours while keeping the live outlines on top", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,

@@ -152,6 +152,19 @@ describe("SpectrumPanel", () => {
     expect(secondary).toBeTruthy();
   });
 
+  it("keeps curve stroke widths independent from SVG scaling", () => {
+    const { container } = renderPanel(
+      liveAudioData(liveResult({ path: "M 0 120 L 1000 80", pathB: "M 0 130 L 1000 90" }), {
+        spectrumViewLegend: null,
+      })
+    );
+
+    const primary = container.querySelector('path[stroke="var(--ui-spectrum-primary)"]');
+    const secondary = container.querySelector('path[stroke="var(--ui-spectrum-secondary)"]');
+    expect(primary?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    expect(secondary?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
   it("rebuilds the live curve with the default -12..-96 dB Y range", () => {
     const { container } = renderPanel(
       liveAudioData(

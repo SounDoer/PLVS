@@ -81,6 +81,7 @@ export function DockSpectrum({ controls }) {
             fill="none"
             stroke="var(--ui-spectrum-primary)"
             strokeWidth="var(--ui-spectrum-stroke-width)"
+            vectorEffect="non-scaling-stroke"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -91,6 +92,7 @@ export function DockSpectrum({ controls }) {
             fill="none"
             stroke="var(--ui-spectrum-secondary)"
             strokeWidth="var(--ui-spectrum-stroke-width)"
+            vectorEffect="non-scaling-stroke"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
