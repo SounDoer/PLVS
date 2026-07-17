@@ -118,17 +118,27 @@ function powershell(command) {
   return result.stdout.trim();
 }
 
+/** `{0.0.0.00000000}.{<guid>}` — exactly one pair of braces around the guid. */
+const ENDPOINT_ID_SHAPE = /^\{0\.0\.0\.00000000\}\.\{[0-9a-fA-F-]{36}\}$/;
+
 /**
  * VB-Cable's MMDevice render endpoint id. `directsound` would need a GUID and
  * rejects the device name outright, so `mmdevice` + endpoint id is the only
  * route that works.
+ *
+ * `PSChildName` already carries its own braces, so the id must NOT wrap it in
+ * another pair. A doubled brace is accepted by VLC without complaint — it stays
+ * alive, plays nothing to the endpoint, and the capture then reads pure silence.
+ * That surfaces as an assertion failure on all-null metrics, i.e. a rig fault
+ * wearing a code fault's clothes, which is the one confusion this whole design
+ * is built to avoid. Hence the shape check below rather than trust.
  */
 export function resolveRenderEndpointId(friendlyName = VB_CABLE_RENDER_NAME) {
   const command = `
     $base = "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render"
     Get-ChildItem $base -ErrorAction SilentlyContinue | ForEach-Object {
       $n = (Get-ItemProperty (Join-Path $_.PSPath "Properties") -ErrorAction SilentlyContinue)."{a45c254e-df1c-4efd-8020-67d146a850e0},2"
-      if ($n -eq "${friendlyName}") { "{0.0.0.00000000}.{$($_.PSChildName)}" }
+      if ($n -eq "${friendlyName}") { "{0.0.0.00000000}.$($_.PSChildName)" }
     }
   `;
   const out = powershell(command);
@@ -139,6 +149,13 @@ export function resolveRenderEndpointId(friendlyName = VB_CABLE_RENDER_NAME) {
   if (ids.length === 0) {
     throw new RigError(
       `No audio render endpoint named "${friendlyName}". Is VB-Cable installed?`,
+    );
+  }
+  if (!ENDPOINT_ID_SHAPE.test(ids[0])) {
+    throw new RigError(
+      `Endpoint id for "${friendlyName}" has an unexpected shape: ${ids[0]}\n` +
+        `Expected {0.0.0.00000000}.{<guid>}. VLC accepts a malformed id silently and\n` +
+        `plays nowhere, so this is caught here rather than read as a capture defect.`,
     );
   }
   return ids[0];
