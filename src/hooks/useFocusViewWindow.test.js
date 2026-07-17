@@ -1,8 +1,9 @@
 /** @vitest-environment jsdom */
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  isDecorated: vi.fn(async () => true),
   setDecorations: vi.fn(async () => {}),
   setShadow: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
@@ -10,30 +11,51 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
+    isDecorated: mocks.isDecorated,
     setDecorations: mocks.setDecorations,
     setShadow: mocks.setShadow,
   }),
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
 
-import { useFocusViewWindow } from "./useFocusViewWindow.js";
+import { setWindowDecorations, useFocusViewWindow } from "./useFocusViewWindow.js";
 
 describe("useFocusViewWindow", () => {
   beforeEach(() => {
     mocks.setDecorations.mockClear();
+    mocks.isDecorated.mockClear().mockResolvedValue(true);
     mocks.setShadow.mockClear();
     mocks.isTauri.mockReturnValue(true);
   });
 
-  it("applies decorations and shadow from the view flags", () => {
+  it("does not reapply decorations when the window already has the requested chrome", async () => {
+    mocks.isDecorated.mockResolvedValue(false);
+
+    await expect(setWindowDecorations(false)).resolves.toBe(false);
+
+    expect(mocks.setDecorations).not.toHaveBeenCalled();
+  });
+
+  it("does not reapply shadow when startup chrome already matches Focus View", async () => {
+    mocks.isDecorated.mockResolvedValue(false);
+
+    renderHook(() => useFocusViewWindow(true, true));
+
+    await waitFor(() => expect(mocks.isDecorated).toHaveBeenCalled());
+    expect(mocks.setDecorations).not.toHaveBeenCalled();
+    expect(mocks.setShadow).not.toHaveBeenCalled();
+  });
+
+  it("applies decorations and shadow from the view flags", async () => {
+    mocks.isDecorated.mockResolvedValue(false);
     renderHook(() => useFocusViewWindow(false, false));
-    expect(mocks.setDecorations).toHaveBeenCalledWith(true);
+    await waitFor(() => expect(mocks.setDecorations).toHaveBeenCalledWith(true));
     expect(mocks.setShadow).toHaveBeenCalledWith(true);
   });
 
-  it("strips chrome when frameless", () => {
+  it("strips chrome when frameless", async () => {
     renderHook(() => useFocusViewWindow(true, false));
-    expect(mocks.setDecorations).toHaveBeenCalledWith(false);
+    await waitFor(() => expect(mocks.setDecorations).toHaveBeenCalledWith(false));
     expect(mocks.setShadow).toHaveBeenCalledWith(false);
   });
 
@@ -43,7 +65,8 @@ describe("useFocusViewWindow", () => {
     expect(mocks.setShadow).not.toHaveBeenCalled();
   });
 
-  it("re-applies the user's attributes when unsuspended (dock exit)", () => {
+  it("re-applies the user's attributes when unsuspended (dock exit)", async () => {
+    mocks.isDecorated.mockResolvedValue(false);
     const { rerender } = renderHook(
       ({ suspended }) => useFocusViewWindow(false, false, { suspended }),
       {
@@ -53,7 +76,7 @@ describe("useFocusViewWindow", () => {
     expect(mocks.setDecorations).not.toHaveBeenCalled();
 
     rerender({ suspended: false });
-    expect(mocks.setDecorations).toHaveBeenCalledWith(true);
+    await waitFor(() => expect(mocks.setDecorations).toHaveBeenCalledWith(true));
     expect(mocks.setShadow).toHaveBeenCalledWith(true);
   });
 });

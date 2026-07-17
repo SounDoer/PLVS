@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tauri::{Emitter, Manager};
-use tauri_plugin_store::{Store, StoreExt};
+use tauri_plugin_store::StoreExt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct WindowBounds {
@@ -22,6 +21,50 @@ pub struct MonitorRect {
   pub y: i32,
   pub width: u32,
   pub height: u32,
+}
+
+fn clean_active_preset(presets: &Value) -> Option<&Value> {
+  if presets.get("dirty").and_then(Value::as_bool) == Some(true) {
+    return None;
+  }
+  let active_id = presets.get("activeId").and_then(Value::as_str)?;
+  presets
+    .get("list")
+    .and_then(Value::as_array)?
+    .iter()
+    .find(|preset| preset.get("id").and_then(Value::as_str) == Some(active_id))
+}
+
+pub fn clean_active_preset_window_bounds(presets: &Value) -> Option<WindowBounds> {
+  let preset = clean_active_preset(presets)?;
+  if preset
+    .get("dock")
+    .and_then(|dock| dock.get("enabled"))
+    .and_then(Value::as_bool)
+    == Some(true)
+  {
+    return None;
+  }
+  serde_json::from_value(preset.get("windowBounds")?.clone()).ok()
+}
+
+fn focus_view_is_frameless(owner: &Value) -> bool {
+  let focus_view = owner.get("focusView");
+  focus_view
+    .and_then(|view| view.get("autoHideControls"))
+    .and_then(Value::as_bool)
+    == Some(true)
+    || focus_view
+      .and_then(|view| view.get("borderless"))
+      .and_then(Value::as_bool)
+      == Some(true)
+}
+
+pub fn startup_window_is_frameless(settings: &Value, presets: &Value) -> bool {
+  let owner = clean_active_preset(presets)
+    .filter(|preset| preset.get("focusView").is_some())
+    .unwrap_or(settings);
+  focus_view_is_frameless(owner)
 }
 
 const DEFAULT_RESTORED_WIDTH: u32 = 1280;
@@ -153,6 +196,27 @@ pub fn apply_window_bounds<R: tauri::Runtime>(
       .map_err(|e| format!("window maximize: {e}"))?;
   }
 
+  persist_window_bounds(&window, clamped)?;
+
+  Ok(())
+}
+
+fn persist_window_bounds<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+  bounds: WindowBounds,
+) -> Result<(), String> {
+  let store = window
+    .app_handle()
+    .store("plvs-settings.json")
+    .map_err(|error| format!("window bounds store: {error}"))?;
+  store.set(
+    "windowBounds",
+    serde_json::to_value(bounds).unwrap_or_default(),
+  );
+  store
+    .save()
+    .map_err(|error| format!("save window bounds: {error}"))?;
+  let _ = window.app_handle().emit("window-bounds-changed", bounds);
   Ok(())
 }
 
@@ -204,18 +268,13 @@ pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
     }
   };
 
-  store.set(
-    "windowBounds",
-    serde_json::to_value(bounds).unwrap_or_default(),
-  );
-  let _ = store.save();
-  let _ = window.app_handle().emit("window-bounds-changed", bounds);
-  let _: Arc<Store<R>> = store; // keep the Arc type explicit for readers
+  let _ = persist_window_bounds(window, bounds);
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+  use serde_json::json;
 
   fn mon() -> Vec<MonitorRect> {
     vec![MonitorRect {
@@ -313,5 +372,109 @@ mod tests {
     assert_eq!(value["height"], 4);
     assert_eq!(value["isMaximized"], true);
     assert!(value.get("is_maximized").is_none());
+  }
+
+  #[test]
+  fn clean_active_preset_supplies_startup_window_bounds() {
+    let presets = json!({
+      "list": [{
+        "id": "mix",
+        "windowBounds": {
+          "x": 10,
+          "y": 20,
+          "width": 800,
+          "height": 600,
+          "isMaximized": false
+        }
+      }],
+      "activeId": "mix",
+      "dirty": false
+    });
+
+    assert_eq!(
+      clean_active_preset_window_bounds(&presets),
+      Some(WindowBounds {
+        x: 10,
+        y: 20,
+        width: 800,
+        height: 600,
+        is_maximized: false,
+      })
+    );
+  }
+
+  #[test]
+  fn dirty_active_preset_does_not_override_session_window_bounds() {
+    let presets = json!({
+      "list": [{
+        "id": "mix",
+        "windowBounds": {
+          "x": 10,
+          "y": 20,
+          "width": 800,
+          "height": 600,
+          "isMaximized": false
+        }
+      }],
+      "activeId": "mix",
+      "dirty": true
+    });
+
+    assert_eq!(clean_active_preset_window_bounds(&presets), None);
+  }
+
+  #[test]
+  fn dock_preset_does_not_supply_normal_window_bounds_at_startup() {
+    let presets = json!({
+      "list": [{
+        "id": "dock",
+        "dock": { "enabled": true },
+        "windowBounds": {
+          "x": 10,
+          "y": 20,
+          "width": 800,
+          "height": 600,
+          "isMaximized": false
+        }
+      }],
+      "activeId": "dock",
+      "dirty": false
+    });
+
+    assert_eq!(clean_active_preset_window_bounds(&presets), None);
+  }
+
+  #[test]
+  fn clean_active_preset_supplies_startup_frameless_state() {
+    let settings = json!({
+      "focusView": { "autoHideControls": false, "borderless": false }
+    });
+    let presets = json!({
+      "list": [{
+        "id": "mix",
+        "focusView": { "autoHideControls": true, "borderless": false }
+      }],
+      "activeId": "mix",
+      "dirty": false
+    });
+
+    assert!(startup_window_is_frameless(&settings, &presets));
+  }
+
+  #[test]
+  fn dirty_active_preset_leaves_startup_chrome_to_current_settings() {
+    let settings = json!({
+      "focusView": { "autoHideControls": false, "borderless": false }
+    });
+    let presets = json!({
+      "list": [{
+        "id": "mix",
+        "focusView": { "autoHideControls": true, "borderless": true }
+      }],
+      "activeId": "mix",
+      "dirty": true
+    });
+
+    assert!(!startup_window_is_frameless(&settings, &presets));
   }
 }

@@ -28,7 +28,10 @@ use tauri_plugin_store::StoreExt;
 
 pub use audio::{AppAudioBackend, AudioCapture, AudioCaptureSession, DeviceInfo, PcmFrame};
 
-use crate::window_state::{clamp_to_visible, MonitorRect, WindowBounds};
+use crate::window_state::{
+  clamp_to_visible, clean_active_preset_window_bounds, startup_window_is_frameless, MonitorRect,
+  WindowBounds,
+};
 use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -124,13 +127,20 @@ pub fn run() {
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
       // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
-      let saved_bounds: Option<WindowBounds> = store
-        .get("windowBounds")
-        .and_then(|v| serde_json::from_value(v).ok());
+      let saved_bounds: Option<WindowBounds> =
+        clean_active_preset_window_bounds(&presets).or_else(|| {
+          store
+            .get("windowBounds")
+            .and_then(|v| serde_json::from_value(v).ok())
+        });
+      let boot_dock = dock_state;
+      let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
+      let initial_decorations = !boot_docked && !startup_window_is_frameless(&settings, &presets);
 
       let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title("PLVS")
         .resizable(true)
+        .decorations(initial_decorations)
         .visible(false);
       #[cfg(any(target_os = "windows", target_os = "macos"))]
       let builder = builder.transparent(true);
@@ -150,8 +160,6 @@ pub fn run() {
       // so on a scaled display (e.g. 150%) restoring through the builder double-scales and
       // the window grows + drifts on every relaunch. set_size/set_position take physical,
       // matching the save path and the (physical) monitor rects used for clamping.
-      let boot_dock = dock_state;
-      let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       if boot_docked {
         let d = boot_dock.as_ref().expect("boot_docked requires dock state");
         app

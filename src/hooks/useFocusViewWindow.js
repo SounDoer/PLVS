@@ -6,6 +6,8 @@ export async function setWindowDecorations(enabled) {
   if (!isTauri()) return false;
   const win = getCurrentWindow();
   if (typeof win.setDecorations !== "function") return false;
+  const current = typeof win.isDecorated === "function" ? await win.isDecorated() : null;
+  if (current === enabled) return false;
   await win.setDecorations(enabled);
   return true;
 }
@@ -27,7 +29,9 @@ export function useFocusViewWindow(autoHideControls, borderless, { suspended = f
     // a harmless double-set with exitDock's own restore.
     if (suspended) return;
     const frameless = autoHideControls === true || borderless === true;
-    void setWindowDecorations(!frameless).catch(() => {});
-    void setWindowShadow(!frameless).catch(() => {});
+    void (async () => {
+      const decorationsChanged = await setWindowDecorations(!frameless);
+      if (decorationsChanged) await setWindowShadow(!frameless);
+    })().catch(() => {});
   }, [autoHideControls, borderless, suspended]);
 }
