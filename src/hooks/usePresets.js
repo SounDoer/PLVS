@@ -220,14 +220,24 @@ export function usePresets({
         panelControlsById: normalizePresetPanelControls(preset, workspaceState),
         pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
       });
+      let windowBoundsAppliedByDockExit;
       try {
-        await applyDockPreset(presetDock);
+        windowBoundsAppliedByDockExit = await applyDockPreset(presetDock, {
+          bounds: preset.windowBounds,
+          focusView: preset.focusView ? normalizeFocusView(preset.focusView) : undefined,
+          pinned: preset.windowPinned,
+        });
       } catch (error) {
         write({ activeId: null });
         onApplyError(error);
         return false;
       }
-      if (!presetDock.enabled && preset.windowBounds && isTauri()) {
+      if (
+        !presetDock.enabled &&
+        preset.windowBounds &&
+        !windowBoundsAppliedByDockExit &&
+        isTauri()
+      ) {
         try {
           await applyWindowBounds(preset.windowBounds);
         } catch (error) {

@@ -223,8 +223,13 @@ describe("useDockMode", () => {
   it("exitDockMode passes restore attributes through", async () => {
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "bottom" } };
     const { result } = renderHook(() => useDockMode());
-    await act(() => result.current.exitDockMode({ decorations: true, alwaysOnTop: false }));
-    expect(mocks.exitDock).toHaveBeenCalledWith({ decorations: true, alwaysOnTop: false });
+    const bounds = { x: 10, y: 20, width: 800, height: 600, isMaximized: false };
+    await act(() => result.current.exitDockMode({ decorations: true, alwaysOnTop: false, bounds }));
+    expect(mocks.exitDock).toHaveBeenCalledWith({
+      decorations: true,
+      alwaysOnTop: false,
+      bounds,
+    });
     expect(result.current.dockEnabled).toBe(false);
     expect(result.current.reserveSpace).toBe(true);
     expect(mocks.patchPresets).toHaveBeenCalledWith({ dirty: true });

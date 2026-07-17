@@ -181,6 +181,38 @@ describe("usePresets", () => {
     expect(presetsStore.read().activeId).toBe("p1");
   });
 
+  it("does not reapply normal bounds after Dock exit restored the preset bounds", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    const applyDockPreset = vi.fn(async () => true);
+    const windowBounds = { x: 1, y: 2, width: 300, height: 200, isMaximized: false };
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Preset",
+          tree: leaf(["spectrum"]),
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+          windowBounds,
+        },
+      ],
+      activeId: null,
+    });
+    const { result } = renderPresetHook({ applyDockPreset });
+
+    await act(async () => {
+      await result.current.presets.apply("p1");
+    });
+
+    expect(applyDockPreset).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false }),
+      expect.objectContaining({ bounds: windowBounds })
+    );
+    expect(mocks.applyWindowBounds).not.toHaveBeenCalled();
+    expect(presetsStore.read()).toMatchObject({ activeId: "p1", dirty: false });
+  });
+
   it("marks the active preset dirty when window bounds change in Tauri", async () => {
     mocks.isTauri.mockReturnValue(true);
     presetsStore.patch({
@@ -546,17 +578,20 @@ describe("usePresets", () => {
       await act(async () => {
         await result.current.presets.apply(preset.id);
       });
-      expect(applyDockPreset).toHaveBeenCalledWith({
-        enabled: false,
-        edge: "bottom",
-        monitor: null,
-        reserveSpace: false,
-        height: 72,
-        panelsById: {},
-        panelOrder: [],
-        panelSizesById: {},
-        controlsByPanelId: {},
-      });
+      expect(applyDockPreset).toHaveBeenCalledWith(
+        {
+          enabled: false,
+          edge: "bottom",
+          monitor: null,
+          reserveSpace: false,
+          height: 72,
+          panelsById: {},
+          panelOrder: [],
+          panelSizesById: {},
+          controlsByPanelId: {},
+        },
+        expect.objectContaining({ bounds: preset.windowBounds })
+      );
     });
 
     it("rejects an ineligible dock preset before mutating the workspace", async () => {
@@ -617,17 +652,20 @@ describe("usePresets", () => {
       await act(async () => {
         await result.current.presets.apply(preset.id);
       });
-      expect(applyDockPreset).toHaveBeenCalledWith({
-        enabled: false,
-        edge: "bottom",
-        monitor: null,
-        reserveSpace: false,
-        height: undefined,
-        panelsById: undefined,
-        panelOrder: undefined,
-        panelSizesById: undefined,
-        controlsByPanelId: undefined,
-      });
+      expect(applyDockPreset).toHaveBeenCalledWith(
+        {
+          enabled: false,
+          edge: "bottom",
+          monitor: null,
+          reserveSpace: false,
+          height: undefined,
+          panelsById: undefined,
+          panelOrder: undefined,
+          panelSizesById: undefined,
+          controlsByPanelId: undefined,
+        },
+        expect.objectContaining({ bounds: preset.windowBounds })
+      );
     });
 
     it("returns false and clears activeId when applyDockPreset rejects", async () => {
@@ -699,7 +737,8 @@ describe("usePresets", () => {
               statsOrder: ["plr", "psr"],
             },
           }),
-        })
+        }),
+        expect.objectContaining({ bounds: preset.windowBounds })
       );
     });
 
@@ -725,7 +764,8 @@ describe("usePresets", () => {
           modules: expect.anything(),
           controlsByModuleId: expect.anything(),
           statsIds: expect.anything(),
-        })
+        }),
+        expect.objectContaining({ bounds: preset.windowBounds })
       );
     });
   });

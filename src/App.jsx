@@ -233,12 +233,13 @@ function AppContent() {
   // NOTE: there is no in-flight guard against rapid dock transitions (v1 accepts
   // this; a fast toggle spam could interleave enter/exit IPC calls).
   const exitDockRestoringAttributes = useCallback(
-    async ({ reportError = true } = {}) => {
+    async ({ reportError = true, bounds, decorations, alwaysOnTop } = {}) => {
       clearNotice();
       try {
         await exitDockMode({
-          decorations: !(focusView.autoHideControls || focusView.borderless),
-          alwaysOnTop: pinned === true,
+          decorations: decorations ?? !(focusView.autoHideControls || focusView.borderless),
+          alwaysOnTop: alwaysOnTop ?? pinned === true,
+          bounds,
         });
         return { ok: true, error: null };
       } catch (error) {
@@ -286,7 +287,7 @@ function AppContent() {
   // uncaught here on purpose — usePresets.apply wraps this call and clears
   // activeId on failure (mirroring its existing applyWindowBounds handling).
   const applyDockPreset = useCallback(
-    async (presetDock) => {
+    async (presetDock, normalWindow = {}) => {
       clearNotice();
       if (presetDock.enabled) {
         dockLayout.setPanels(presetDock);
@@ -309,9 +310,18 @@ function AppContent() {
         }
         setSelectedOffset(-1);
       } else if (dockEnabled) {
-        const result = await exitDockRestoringAttributes({ reportError: false });
+        const result = await exitDockRestoringAttributes({
+          reportError: false,
+          bounds: normalWindow.bounds,
+          decorations: normalWindow.focusView
+            ? !(normalWindow.focusView.autoHideControls || normalWindow.focusView.borderless)
+            : undefined,
+          alwaysOnTop: typeof normalWindow.pinned === "boolean" ? normalWindow.pinned : undefined,
+        });
         if (!result.ok) throw result.error;
+        return true;
       }
+      return false;
     },
     [
       clearNotice,

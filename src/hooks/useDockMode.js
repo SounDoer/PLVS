@@ -136,11 +136,11 @@ export function useDockMode() {
   );
 
   const exitDockMode = useCallback(
-    ({ decorations, alwaysOnTop }) => {
+    ({ decorations, alwaysOnTop, bounds }) => {
       if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
         const wasEnabled = dockRef.current.enabled;
-        await exitDock({ decorations, alwaysOnTop });
+        await exitDock({ decorations, alwaysOnTop, bounds });
         commitDock((latest) => ({ ...latest, enabled: false }));
         setDockSuspendedState(false);
         if (wasEnabled) presetsStore.patch({ dirty: true });

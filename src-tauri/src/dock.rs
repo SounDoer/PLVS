@@ -429,6 +429,7 @@ pub fn exit_dock<R: tauri::Runtime>(
   flag: tauri::State<'_, DockedFlag>,
   decorations: bool,
   always_on_top: bool,
+  bounds: Option<WindowBounds>,
 ) -> Result<(), String> {
   crate::dock_accessories::hide_all(window.app_handle());
   #[cfg(target_os = "windows")]
@@ -452,11 +453,13 @@ pub fn exit_dock<R: tauri::Runtime>(
     .map_err(|e| format!("always on top: {e}"))?;
 
   let app = window.app_handle();
-  let saved: Option<WindowBounds> = app
-    .store("plvs-settings.json")
-    .ok()
-    .and_then(|s| s.get("windowBounds"))
-    .and_then(|v| serde_json::from_value(v).ok());
+  let saved: Option<WindowBounds> = bounds.or_else(|| {
+    app
+      .store("plvs-settings.json")
+      .ok()
+      .and_then(|s| s.get("windowBounds"))
+      .and_then(|v| serde_json::from_value(v).ok())
+  });
   let monitors: Vec<MonitorRect> = window
     .available_monitors()
     .unwrap_or_default()

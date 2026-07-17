@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import App from "./App.jsx";
-import { presetsStore } from "./persistence/index.js";
+import { presetsStore, settingsStore } from "./persistence/index.js";
 import { isTauri } from "./ipc/env.js";
 import {
   enterDock,
@@ -354,6 +354,60 @@ describe("App smoke", () => {
     expect(setDockReserveSpace).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(presetsStore.read()).toMatchObject({ activeId: "dock-reserved", dirty: false })
+    );
+  });
+
+  it("restores a normal preset's bounds and window attributes in one Dock exit", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY2" },
+    };
+    settingsStore.patch({
+      focusView: { autoHideControls: false, compactPanels: false, borderless: true },
+      windowPinned: true,
+    });
+    const bounds = { x: 10, y: 20, width: 800, height: 600, isMaximized: false };
+    presetsStore.patch({
+      list: [
+        {
+          id: "normal",
+          name: "Normal",
+          tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+          panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+          panelOrder: ["spectrum"],
+          panelControlsById: {},
+          dock: { enabled: false },
+          windowBounds: bounds,
+          windowPinned: false,
+          focusView: { autoHideControls: false, compactPanels: false, borderless: false },
+        },
+      ],
+      activeId: null,
+      dirty: false,
+    });
+    render(<App />);
+    await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
+
+    await act(async () => {
+      tauriEventHandlers.get("dock-accessory://action")({
+        payload: {
+          surface: "dock-editor",
+          type: "apply-preset",
+          revision: 1,
+          payload: { presetId: "normal" },
+        },
+      });
+    });
+
+    await waitFor(() =>
+      expect(exitDock).toHaveBeenCalledWith({
+        decorations: true,
+        alwaysOnTop: false,
+        bounds,
+      })
+    );
+    await waitFor(() =>
+      expect(presetsStore.read()).toMatchObject({ activeId: "normal", dirty: false })
     );
   });
 

@@ -73,8 +73,8 @@ export function enterDock(edge, reserveSpace, monitor, height) {
  * Exit dock mode. `decorations` / `alwaysOnTop` restore the user's normal-form
  * window attributes (dock overrides them at runtime without persisting).
  */
-export function exitDock({ decorations, alwaysOnTop }) {
-  return invoke("exit_dock", { decorations, alwaysOnTop });
+export function exitDock({ decorations, alwaysOnTop, bounds }) {
+  return invoke("exit_dock", { decorations, alwaysOnTop, bounds: bounds ?? null });
 }
 
 /** Read native Dock state plus whether the boot restore has settled. */
