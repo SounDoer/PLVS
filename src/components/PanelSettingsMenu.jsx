@@ -92,7 +92,10 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
       <PopoverContent
         align="end"
         sideOffset={6}
-        className={cn("w-auto p-1", PANEL_SETTINGS_SURFACE_CLASS)}
+        className={cn(
+          "flex max-h-[var(--radix-popover-content-available-height)] w-auto flex-col overflow-hidden p-1",
+          PANEL_SETTINGS_SURFACE_CLASS
+        )}
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <PanelSettingsHeader
@@ -100,7 +103,12 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
           onReset={onPanelControlsReset}
           isDefault={isDefaultPanelControls(props.panelControls)}
         />
-        <PanelSettingsContent {...props} />
+        <div
+          data-panel-settings-scroll
+          className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain"
+        >
+          <PanelSettingsContent {...props} />
+        </div>
       </PopoverContent>
     </Popover>
   );
