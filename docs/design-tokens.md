@@ -447,6 +447,7 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 
 ```
 --ui-waveform-fill-opacity   0.22   Envelope fill opacity
+--ui-waveform-stroke-width   1      Envelope stroke width
 ```
 
 ---

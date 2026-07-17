@@ -55,7 +55,7 @@ function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiv
   };
 }
 
-function drawWaveformCanvas(
+export function drawWaveformCanvas(
   canvas,
   { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, selected }
 ) {
@@ -75,6 +75,7 @@ function drawWaveformCanvas(
       : style.getPropertyValue("--ui-waveform-trace").trim()) || "#fb923c";
   const fillOpacity =
     parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
+  const strokeWidth = parseFloat(style.getPropertyValue("--ui-waveform-stroke-width").trim()) || 1;
 
   ctx.clearRect(0, 0, W, H);
 
@@ -109,7 +110,9 @@ function drawWaveformCanvas(
   ctx.globalAlpha = 1;
 
   ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = window.devicePixelRatio || 1;
+  // WAVEFORM_MAX_DEVICE_PIXEL_RATIO keeps the backing store 1:1 with CSS pixels, so the token
+  // is the width in device pixels as-is. Scaling it by dpr again doubles the trace on HiDPI.
+  ctx.lineWidth = strokeWidth;
   ctx.stroke();
 }
 

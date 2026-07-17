@@ -113,6 +113,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   const waveform = prefs.modules.waveform;
   setCssVar("--ui-waveform-fill-opacity", String(waveform.fillOpacity ?? 0.22));
+  setCssVar("--ui-waveform-stroke-width", String(waveform.strokeWidth ?? 1));
 }
 
 /**

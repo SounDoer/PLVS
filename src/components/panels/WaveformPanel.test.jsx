@@ -6,7 +6,7 @@ import {
   HistoryDataProvider,
   PanelInstanceProvider,
 } from "../../workspace/AudioDataContext.jsx";
-import { WaveformPanel } from "./WaveformPanel.jsx";
+import { drawWaveformCanvas, WaveformPanel } from "./WaveformPanel.jsx";
 
 const { sliceWaveformSubHistoryMock } = vi.hoisted(() => ({
   sliceWaveformSubHistoryMock: vi.fn(() => ({
@@ -81,6 +81,39 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe("drawWaveformCanvas", () => {
+  it("strokes the envelope at the token width and leaves the zero line at 1px", () => {
+    document.documentElement.style.setProperty("--ui-waveform-stroke-width", "2.5");
+    const lineWidths = [];
+    const context = {
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(() => lineWidths.push(context.lineWidth)),
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 40;
+    canvas.getContext = vi.fn(() => context);
+
+    drawWaveformCanvas(canvas, {
+      mins: [-0.75, -0.75],
+      maxes: [0.25, 0.25],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      selected: false,
+    });
+
+    expect(lineWidths).toEqual([1, 2.5]);
+    document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
+  });
 });
 
 describe("WaveformPanel", () => {

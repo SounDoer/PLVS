@@ -42,11 +42,11 @@ export function paintDockWaveformCanvas(
   const traceColor = style.getPropertyValue("--ui-waveform-trace").trim() || "#fb923c";
   const gridColor = style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
   const fillOpacity = cssNumber(style, "--ui-waveform-fill-opacity", 0.22);
+  const strokeWidth = cssNumber(style, "--ui-waveform-stroke-width", 1);
   const rowGap = cssNumber(style, "--ui-dock-gap-row", 0);
   const laneHeight = Math.max(0, (height - rowGap * Math.max(0, channelCount - 1)) / channelCount);
 
   ctx.clearRect(0, 0, width, height);
-  ctx.lineWidth = 1;
 
   for (let channel = 0; channel < channelCount; channel += 1) {
     const laneTop = channel * (laneHeight + rowGap);
@@ -54,6 +54,7 @@ export function paintDockWaveformCanvas(
     const halfHeight = laneHeight / 2;
 
     ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, centerY);
     ctx.lineTo(width, centerY);
@@ -89,6 +90,7 @@ export function paintDockWaveformCanvas(
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.strokeStyle = traceColor;
+    ctx.lineWidth = strokeWidth;
     ctx.stroke();
   }
 }

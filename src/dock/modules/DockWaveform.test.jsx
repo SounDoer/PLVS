@@ -100,6 +100,25 @@ describe("DockWaveform", () => {
     expect(context.stroke).toHaveBeenCalledTimes(2);
   });
 
+  it("strokes the envelope at the token width and leaves the zero line at 1px", () => {
+    const { canvas, context } = mockCanvas();
+    canvas.style.setProperty("--ui-waveform-stroke-width", "2.5");
+    const lineWidths = [];
+    context.stroke = vi.fn(() => lineWidths.push(context.lineWidth));
+
+    paintDockWaveformCanvas(canvas, {
+      mins: [[-0.75, -0.75]],
+      maxes: [[0.25, 0.25]],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      channelCount: 1,
+    });
+
+    expect(lineWidths).toEqual([1, 2.5]);
+  });
+
   it("bounds the rendered envelope buckets by horizontal resolution for long history", () => {
     const history = rows(Array.from({ length: 150_000 }, (_, index) => (index % 100) / 100));
     const envelope = sliceWaveformSubHistory(history, history.length, 0, 2, 300);
