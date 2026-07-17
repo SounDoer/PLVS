@@ -65,6 +65,7 @@ The version must match in three places: `package.json`, `src-tauri/Cargo.toml`, 
 
 **Ask first**
 
+- Moving work off `main`. Work lands on `main` by default and history stays linear, so ignore any generic "never commit to the default branch" habit here. If you judge that a change needs isolating, say so and let the user decide — do not branch silently. Branching here often means a worktree under `.claude/worktrees/`, not switching the checkout in place.
 - Capture smoke is red and you cannot fix the rig.
 
 **Always**
