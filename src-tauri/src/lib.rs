@@ -166,7 +166,12 @@ pub fn run() {
           .state::<dock::DockedFlag>()
           .0
           .store(true, std::sync::atomic::Ordering::Relaxed);
-        if let Err(e) = dock::apply_dock_form(&window, d.edge, d.monitor.as_deref(), d.height) {
+        // Boot: the window was just built in normal form, so a failed dock
+        // restore rolls back to a normal window (shadow on) even when
+        // `initial_decorations` made it borderless.
+        if let Err(e) =
+          dock::apply_dock_form(&window, d.edge, d.monitor.as_deref(), d.height, false)
+        {
           log::warn!("dock restore failed, falling back to normal bounds: {e}");
           app
             .state::<dock::DockedFlag>()

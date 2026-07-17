@@ -250,10 +250,15 @@ struct WindowFormSnapshot {
   decorations: bool,
   resizable: bool,
   always_on_top: bool,
+  /// Passed in, not read back: Tauri exposes no `is_shadow()`. Deriving it from
+  /// `decorations` is what this field replaces — a borderless normal window has
+  /// no title bar but does keep its shadow, so the two are not the same fact.
+  shadow: bool,
 }
 
 fn capture_window_form<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
+  shadow: bool,
 ) -> Result<WindowFormSnapshot, String> {
   let position = window
     .outer_position()
@@ -272,6 +277,7 @@ fn capture_window_form<R: tauri::Runtime>(
     decorations: window.is_decorated().unwrap_or(true),
     resizable: window.is_resizable().unwrap_or(true),
     always_on_top: window.is_always_on_top().unwrap_or(false),
+    shadow,
   })
 }
 
@@ -284,7 +290,7 @@ fn restore_window_form<R: tauri::Runtime>(
   }
   let _ = window.set_resizable(snapshot.resizable);
   let _ = window.set_decorations(snapshot.decorations);
-  let _ = window.set_shadow(snapshot.decorations);
+  let _ = window.set_shadow(snapshot.shadow);
   let _ = window.set_always_on_top(snapshot.always_on_top);
   let _ = window.set_size(tauri::PhysicalSize::new(
     snapshot.bounds.width,
@@ -301,16 +307,21 @@ fn restore_window_form<R: tauri::Runtime>(
 
 /// Force the window into the docked strip form. Attribute overrides here are
 /// runtime-only: stored settings (windowPinned, focusView) are never written.
-/// On Err the window shell has been rolled back to normal form (best effort),
-/// so callers falling back to the normal UI don't inherit a chromeless,
+/// On Err the window shell has been rolled back to its previous form (best
+/// effort), so callers falling back to the normal UI don't inherit a chromeless,
 /// topmost strip window.
+///
+/// `previously_docked` says which form to roll back to, and callers know it
+/// statically. It cannot be read off the `DockedFlag` here: `enter_dock` raises
+/// that flag before calling in, so by this point it always reads "docked".
 pub fn apply_dock_form<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   edge: DockEdge,
   monitor_name: Option<&str>,
   logical_height: u32,
+  previously_docked: bool,
 ) -> Result<Option<String>, String> {
-  let previous_form = capture_window_form(window)?;
+  let previous_form = capture_window_form(window, !previously_docked)?;
   let logical_height = clamp_dock_height(logical_height);
   let (wa, scale, resolved_monitor) = work_area_and_scale(window, monitor_name)?;
   #[cfg(target_os = "windows")]
@@ -361,7 +372,7 @@ pub fn enter_dock<R: tauri::Runtime>(
 ) -> Result<DockStateRecord, String> {
   let previous = read_dock_state(window.app_handle());
   let was_docked = flag.0.load(Ordering::Relaxed);
-  let previous_form = capture_window_form(&window)?;
+  let previous_form = capture_window_form(&window, !was_docked)?;
   let reserve_space = reserve_space_with_support(
     reserve_space.unwrap_or_else(|| {
       previous
@@ -386,7 +397,7 @@ pub fn enter_dock<R: tauri::Runtime>(
       save_window_bounds(&window);
     }
     flag.0.store(true, Ordering::Relaxed);
-    let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height)?;
+    let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, was_docked)?;
     #[cfg(target_os = "windows")]
     if reserve_space {
       crate::appbar::set_reserved(&window, true, edge, height)?;
@@ -603,7 +614,15 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
     return Ok(state);
   }
 
-  state.monitor = apply_dock_form(&window, state.edge, state.monitor.as_deref(), state.height)?;
+  // Resuming a suspended Dock: the guard above already rejected a window that
+  // is not docked, so the form to roll back to is the strip.
+  state.monitor = apply_dock_form(
+    &window,
+    state.edge,
+    state.monitor.as_deref(),
+    state.height,
+    true,
+  )?;
   #[cfg(target_os = "windows")]
   if state.reserve_space
     && crate::appbar::set_reserved(&window, true, state.edge, state.height).is_err()
