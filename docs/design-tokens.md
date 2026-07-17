@@ -421,15 +421,15 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 ### Loudness
 
 ```
---ui-loudness-momentary-stroke-width   1.1    Momentary trace stroke width
---ui-loudness-shortterm-stroke-width   2.1    Short-term trace stroke width
+--ui-loudness-momentary-stroke-width   1.2    Momentary trace stroke width
+--ui-loudness-shortterm-stroke-width   2      Short-term trace stroke width
 --ui-loudness-selection-stroke-width   1.2    Selection overlay stroke width
 ```
 
 ### Vectorscope
 
 ```
---ui-vectorscope-stroke-width    1          Trace stroke width
+--ui-vectorscope-stroke-width    1.2        Trace stroke width
 --ui-vectorscope-axis-opacity    0.8        Axis line opacity
 --ui-vectorscope-grid-dash       "2.6 3.4"  Diagonal grid dash pattern
 ```

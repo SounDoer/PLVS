@@ -114,8 +114,8 @@ export const UI_PREFERENCES = {
     loudness: {
       history: {
         defaultWindowSec: 60,
-        momentaryStrokeWidth: 1.1,
-        shortTermStrokeWidth: 2.1,
+        momentaryStrokeWidth: 1.2,
+        shortTermStrokeWidth: 2,
         selectionStrokeWidth: 1.2,
       },
     },
@@ -134,7 +134,7 @@ export const UI_PREFERENCES = {
       },
     },
     vectorscope: {
-      strokeWidth: 1,
+      strokeWidth: 1.2,
       axisOpacity: 0.8,
       gridDiagInsetPct: 1.2,
       plotRadius: 240,

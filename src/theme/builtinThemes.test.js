@@ -76,9 +76,11 @@ describe("BUILTIN_THEMES", () => {
       expect(momentary).not.toBe(shortTerm);
       expect(Number(loudnessHistory.momentaryStrokeWidth)).toBeGreaterThan(0);
       expect(Number(loudnessHistory.shortTermStrokeWidth)).toBeGreaterThan(0);
+      // Weight still separates the two traces, but less than it used to: colour distance above
+      // carries more of the load now.
       expect(
         Number(loudnessHistory.shortTermStrokeWidth) / Number(loudnessHistory.momentaryStrokeWidth)
-      ).toBeGreaterThanOrEqual(1.75);
+      ).toBeGreaterThanOrEqual(1.6);
       expect(colorDistance(momentary, shortTerm)).toBeGreaterThanOrEqual(45);
     }
   });
