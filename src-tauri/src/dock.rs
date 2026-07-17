@@ -447,11 +447,13 @@ pub fn exit_dock<R: tauri::Runtime>(
   window
     .set_decorations(decorations)
     .map_err(|e| format!("decorations: {e}"))?;
-  let _ = window.set_shadow(decorations);
+  // Normal windows keep the platform shadow even when borderless. Startup
+  // relies on that DWM frame when pairing outer position with inner size; Dock
+  // temporarily disables it for the strip, so restore it before normal bounds.
+  let _ = window.set_shadow(true);
   window
     .set_always_on_top(always_on_top)
     .map_err(|e| format!("always on top: {e}"))?;
-
   let app = window.app_handle();
   let saved: Option<WindowBounds> = bounds.or_else(|| {
     app
