@@ -23,10 +23,8 @@ import {
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
-const VECTOR_TRACE_STROKE_MIN = 0.45;
-const VECTOR_TRACE_STROKE_MAX = 1;
-const VECTOR_TRACE_STROKE_FULL_SIZE_PX = 720;
-const VECTOR_TRACE_STROKE_COMPACT_SIZE_PX = 280;
+// Only for the canvas persistence layer, which cannot resolve the token itself when unset.
+const VECTOR_TRACE_STROKE_FALLBACK = 1;
 const HOLD_SLOW_DELAY_MS = 300;
 const HOLD_SLOW_CANCEL_PX = 4;
 const HOLD_SLOW_SMOOTHING_ALPHA = 0.06;
@@ -60,18 +58,6 @@ function correlationMarkerClass(value) {
 function smoothCorrelation(previous, next) {
   if (previous === null || next === null) return next;
   return previous + (next - previous) * LIVE_CORRELATION_DISPLAY_ALPHA;
-}
-
-export function computeVectorscopeTraceStrokeWidth(plotSizePx) {
-  if (!Number.isFinite(plotSizePx) || plotSizePx <= 0) return VECTOR_TRACE_STROKE_MAX;
-  const t =
-    (Math.max(
-      VECTOR_TRACE_STROKE_COMPACT_SIZE_PX,
-      Math.min(VECTOR_TRACE_STROKE_FULL_SIZE_PX, plotSizePx)
-    ) -
-      VECTOR_TRACE_STROKE_COMPACT_SIZE_PX) /
-    (VECTOR_TRACE_STROKE_FULL_SIZE_PX - VECTOR_TRACE_STROKE_COMPACT_SIZE_PX);
-  return VECTOR_TRACE_STROKE_MAX - (VECTOR_TRACE_STROKE_MAX - VECTOR_TRACE_STROKE_MIN) * t;
 }
 
 export function VectorscopePanel() {
@@ -221,30 +207,6 @@ export function VectorscopePanel() {
   const canPlaceCorrelationMarker =
     hasCorrelationSignal && clampCorrelation(gatedCorrelation) !== null;
   const liveCorrelationDisplayRef = useRef(null);
-  const traceFrameRef = useRef(null);
-  const [traceStrokeWidth, setTraceStrokeWidth] = useState(VECTOR_TRACE_STROKE_MAX);
-  useLayoutEffect(() => {
-    const el = traceFrameRef.current;
-    if (!el) return undefined;
-    let rafId = 0;
-    const measure = () => {
-      rafId = 0;
-      const rect = el.getBoundingClientRect();
-      const plotSizePx = Math.min(rect.width, rect.height);
-      setTraceStrokeWidth(computeVectorscopeTraceStrokeWidth(plotSizePx));
-    };
-    measure();
-    if (typeof ResizeObserver !== "function") return undefined;
-    const ro = new ResizeObserver(() => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(measure);
-    });
-    ro.observe(el);
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      ro.disconnect();
-    };
-  }, []);
   const persistenceCanvasRef = useRef(null);
   // Intentionally no dependency array: a new history row arrives with each frame render, so
   // the canvas must redraw on every render while active. No-op when inactive or in jsdom
@@ -259,9 +221,14 @@ export function VectorscopePanel() {
     const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
-    const stroke = getComputedStyle(canvas).getPropertyValue("--ui-vectorscope-trace").trim();
+    const style = getComputedStyle(canvas);
+    const stroke = style.getPropertyValue("--ui-vectorscope-trace").trim();
     if (stroke) ctx.strokeStyle = stroke;
-    ctx.lineWidth = Math.max(dpr * 0.5, traceStrokeWidth * (width / 260));
+    // Mirrors the SVG trace's non-scaling-stroke: the token is CSS pixels, not plot units.
+    const strokeWidth =
+      parseFloat(style.getPropertyValue("--ui-vectorscope-stroke-width")) ||
+      VECTOR_TRACE_STROKE_FALLBACK;
+    ctx.lineWidth = strokeWidth * dpr;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     drawPersistenceWindow(ctx, persistenceRows, {
@@ -345,7 +312,6 @@ export function VectorscopePanel() {
               />
             </svg>
             <svg
-              ref={traceFrameRef}
               viewBox="0 0 260 260"
               preserveAspectRatio="none"
               className="absolute inset-0 z-[1] block h-full w-full"
@@ -359,7 +325,8 @@ export function VectorscopePanel() {
                       ? "var(--ui-vectorscope-trace-snap)"
                       : "var(--ui-vectorscope-trace)"
                   }
-                  strokeWidth={traceStrokeWidth}
+                  strokeWidth="var(--ui-vectorscope-stroke-width)"
+                  vectorEffect="non-scaling-stroke"
                   opacity="var(--ui-vectorscope-axis-opacity)"
                   strokeLinecap="round"
                 />

@@ -7,7 +7,7 @@ import {
   HistoryDataProvider,
   PanelInstanceProvider,
 } from "../../workspace/AudioDataContext.jsx";
-import { computeVectorscopeTraceStrokeWidth, VectorscopePanel } from "./VectorscopePanel.jsx";
+import { VectorscopePanel } from "./VectorscopePanel.jsx";
 
 function renderPanel(audioData) {
   return render(vectorscopePanelTree(audioData));
@@ -50,15 +50,20 @@ function vectorscopePanelTree(audioData) {
 }
 
 describe("VectorscopePanel", () => {
-  it("keeps vectorscope trace stroke at the default width in compact panes", () => {
-    expect(computeVectorscopeTraceStrokeWidth(240)).toBe(1);
-    expect(computeVectorscopeTraceStrokeWidth(280)).toBe(1);
-  });
+  it("keeps the trace stroke width independent from SVG scaling", () => {
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 } },
+      displayAudio: {
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": { path: "M 0 0 L 100 100", correlation: 0.7, pairX: 0, pairY: 1 },
+        },
+      },
+    });
 
-  it("thins vectorscope trace stroke as the plot grows", () => {
-    expect(computeVectorscopeTraceStrokeWidth(500)).toBeCloseTo(0.725, 3);
-    expect(computeVectorscopeTraceStrokeWidth(720)).toBeCloseTo(0.45, 2);
-    expect(computeVectorscopeTraceStrokeWidth(1200)).toBeCloseTo(0.45, 2);
+    const trace = container.querySelector('path[stroke="var(--ui-vectorscope-trace)"]');
+    expect(trace?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    expect(trace?.getAttribute("stroke-width")).toBe("var(--ui-vectorscope-stroke-width)");
   });
 
   it("shows the no-data empty state when its request has no history at the selected time", () => {
