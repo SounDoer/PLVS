@@ -261,6 +261,21 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("Releases")).toBeTruthy();
   });
 
+  it("shows up to date when the update check succeeds without a newer version", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.0.17"
+        updateStatus="ok"
+        hasUpdate={false}
+        latestVersion={null}
+      />
+    );
+
+    expect(screen.getByText("Up to date")).toBeTruthy();
+    expect(screen.queryByText("Checking...")).toBeNull();
+  });
+
   it("keeps release link visible when update check fails", () => {
     const openExternalUrl = vi.fn();
     render(

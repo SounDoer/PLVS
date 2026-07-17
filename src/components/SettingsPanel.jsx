@@ -220,8 +220,8 @@ export function SettingsPanel({
     updateStatusText = "Ready to restart";
   } else if (installStatus === "error") {
     updateStatusText = "Update failed";
-  } else if (!updateCheckDisabled && latestVersion) {
-    updateStatusText = hasUpdate ? `v${latestVersion} available` : "Up to date";
+  } else if (updateStatus === "ok") {
+    updateStatusText = hasUpdate && latestVersion ? `v${latestVersion} available` : "Up to date";
   }
   const showCliPath = cliPathStatus !== undefined;
   const cliPathSupported = !!cliPathStatus?.supported;
