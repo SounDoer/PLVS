@@ -4,8 +4,29 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "@/lib/utils";
 import { POPOVER_SURFACE_CLASS } from "./surfaceStyles.js";
 
-function Popover(props) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
+function Popover({ open: controlledOpen, defaultOpen = false, onOpenChange, ...props }) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+
+  const setOpen = React.useCallback(
+    (nextOpen) => {
+      if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
+      onOpenChange?.(nextOpen);
+    },
+    [controlledOpen, onOpenChange]
+  );
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnWindowBlur = () => setOpen(false);
+    window.addEventListener("blur", closeOnWindowBlur);
+    return () => window.removeEventListener("blur", closeOnWindowBlur);
+  }, [open, setOpen]);
+
+  return (
+    <PopoverPrimitive.Root data-slot="popover" open={open} onOpenChange={setOpen} {...props} />
+  );
 }
 
 function PopoverTrigger(props) {
