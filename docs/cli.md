@@ -65,8 +65,9 @@ Always run `doctor --json` first to verify that the installed runtime and sideca
 ## Commands
 
 ```powershell
-plvs-cli doctor --json [--out <file>]
-plvs-cli analyze <path> --json [--out <file>]
+plvs-cli doctor [--json] [--out <file>]
+plvs-cli probe <path> --json [--out <file>]
+plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]
 plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]
 plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]
 plvs-cli report <analysis.json> --format markdown [--out <file>]
@@ -74,6 +75,29 @@ plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--ou
 ```
 
 Use `plvs-cli --help`, `plvs-cli help`, or `plvs-cli <command> --help` for the installed command reference.
+
+### probe
+
+`probe` reads media metadata without decoding the complete file. Its `source.audioTracks` array lists every audio track with its absolute ffprobe stream index, codec, sample rate, channel count, and language when available.
+
+```powershell
+plvs-cli probe "C:\media\movie.mkv" --json
+plvs-cli analyze "C:\media\movie.mkv" --track 3 --json
+```
+
+`analyze --track` accepts an index returned by `probe`. Without `--track`, analysis keeps the existing behavior and selects the first audio track.
+
+### analyze quality control
+
+Quality control is opt-in and entirely user-defined. PLVS does not write platform delivery targets into the measurement path.
+
+```powershell
+plvs-cli analyze mix.wav --target-lufs -14 --lufs-tolerance 1 --max-true-peak -1 --json
+```
+
+`--target-lufs` and `--lufs-tolerance` must be supplied together. They accept the measured Integrated LUFS value when it lies within `target ± tolerance`. `--max-true-peak` independently sets a dBTP ceiling.
+
+Without QC options, the report contains `qualityControl.status: "notEvaluated"` and the command does not make a pass/fail claim. With QC options, the status is `pass` or `fail`; a failed or unavailable requested metric returns exit code `1` while preserving the valid measurement report. The top-level analysis `status` remains `ok` because QC failure is not an analysis error.
 
 ### capture
 
@@ -97,13 +121,14 @@ With `--every <n>`, output switches from a single report to **JSONL**: one line 
 plvs-cli capture --device "CABLE Output" --seconds 14400 --every 10 --json --out soak.jsonl
 ```
 
-Sample lines carry `t` (whole seconds elapsed), `integratedLufs`, and `droppedChunks`. A sample line is distinguishable from the final report by the presence of `t`. Process memory is deliberately absent — sample it externally against the PID if you need it.
+Sample lines carry `t` (whole seconds elapsed), `integratedLufs`, and `droppedChunks`. A sample line is distinguishable from the final report by the presence of `t`. The final summary also includes LRA, Momentary Max, Short-term Max, True Peak Max, and combined/per-channel Sample Peak maxima. Process memory is deliberately absent — sample it externally against the PID if you need it.
 
 Silence reports `null` metrics, not `0`: an all-silent capture has no finite loudness, and non-finite values serialize to `null` as they do in `analyze`.
 
 ## Agent Workflow
 
 - Use `doctor --json` first when you need to verify that the installed PLVS runtime and bundled sidecars are usable.
+- Use `probe <path> --json` when you need media metadata or an audio track index without running full analysis.
 - Use `analyze <path> --json` for exactly one local media file.
 - Use `analyze-batch <paths...> --json` for two or more files.
 - Use `analyze-batch --manifest <file.json> --json` when paths are numerous, generated programmatically, or need reproducibility.
@@ -112,7 +137,7 @@ Silence reports `null` metrics, not `0`: an all-silent capture has no finite lou
 
 ## JSON First, Markdown Second
 
-`doctor`, `analyze`, `analyze-batch`, and `capture` currently produce machine-readable JSON. `report --format markdown` reads JSON produced by `analyze` or `analyze-batch` and renders a human-readable Markdown table. `report` does not accept `capture` output.
+`doctor` and `analyze` default to concise human-readable text; add `--json` for their stable machine-readable reports. `probe`, `analyze-batch`, and `capture` require `--json`. `report --format markdown` reads JSON produced by `analyze`, `analyze-batch`, or `capture` and renders a human-readable Markdown table.
 
 This split keeps the analysis commands stable for automation while still giving users readable output when needed.
 
@@ -146,7 +171,7 @@ Do not mix positional paths with `--manifest`. Batch results preserve input orde
 | Code | Meaning                                                        |
 | ---- | -------------------------------------------------------------- |
 | `0`  | Success                                                        |
-| `1`  | Command completed and produced an analysis/report error result |
+| `1`  | Command produced an error result or a requested QC check failed |
 | `2`  | Invalid usage or CLI failure before a valid report             |
 
 For `doctor`, `ok` and `warning` reports exit `0`; an `error` report exits `1`.
@@ -157,6 +182,7 @@ Run the CLI from source with Cargo:
 
 ```powershell
 cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- doctor --json
+cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- probe "C:\media\movie.mkv" --json
 cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- analyze "C:\media\mix.wav" --json
 cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- capture --seconds 5 --json
 ```
@@ -166,6 +192,7 @@ Focused CLI tests:
 ```powershell
 cargo test --manifest-path src-tauri/Cargo.toml --bin plvs-cli
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze
+cargo test --manifest-path src-tauri/Cargo.toml cli_probe
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze_batch
 cargo test --manifest-path src-tauri/Cargo.toml cli_report
 cargo test --manifest-path src-tauri/Cargo.toml cli_capture

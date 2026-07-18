@@ -8,7 +8,7 @@ use std::os::windows::process::CommandExt;
 
 use crate::dsp::summary_meter::SummaryMeter;
 use crate::file_analysis::ffmpeg::decode::{build_decode_args, bytes_to_f32_le_into};
-use crate::file_analysis::probe::probe_file;
+use crate::file_analysis::probe::probe_media_file;
 use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
 use crate::sidecar::locate_sidecar;
 
@@ -83,7 +83,34 @@ impl SummaryPcmChunker {
 }
 
 pub fn analyze_file_to_summary(path: &str) -> Result<FileAnalysisSummaryRun, String> {
-  let probe = probe_file(Path::new(path))?;
+  analyze_file_track_to_summary(path, None)
+}
+
+pub fn analyze_file_track_to_summary(
+  path: &str,
+  track_index: Option<u32>,
+) -> Result<FileAnalysisSummaryRun, String> {
+  let media_probe = probe_media_file(Path::new(path))?;
+  let selected_track = match track_index {
+    Some(index) => media_probe
+      .audio_tracks
+      .iter()
+      .find(|track| track.index == index)
+      .cloned()
+      .ok_or_else(|| format!("Audio track index {index} was not found in media file"))?,
+    None => media_probe
+      .audio_tracks
+      .first()
+      .cloned()
+      .ok_or_else(|| "No audio track found in media file".to_string())?,
+  };
+  let probe = FileAnalysisProbeResult {
+    path: media_probe.path,
+    file_name: media_probe.file_name,
+    container: media_probe.container,
+    duration_ms: media_probe.duration_ms,
+    selected_track,
+  };
   let track = &probe.selected_track;
   let sample_rate = track
     .sample_rate_hz

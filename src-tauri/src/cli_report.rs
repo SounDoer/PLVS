@@ -1,5 +1,8 @@
 use serde_json::Value;
 
+use crate::cli_analyze::{CliAnalyzeReport, CliQualityControlCheckStatus, CliQualityControlStatus};
+use crate::doctor::{DoctorReport, DoctorStatus};
+
 #[derive(Debug, Clone, PartialEq)]
 struct ReportItem {
   file: String,
@@ -19,6 +22,99 @@ pub fn render_markdown_report(input: &str) -> Result<String, String> {
     serde_json::from_str(input).map_err(|err| format!("Unable to parse analysis JSON: {err}"))?;
   let items = normalize_report_items(&value)?;
   Ok(render_items_markdown(&items))
+}
+
+pub fn render_doctor_text(report: &DoctorReport) -> String {
+  let mut output = format!(
+    "PLVS {} doctor: {}\nPlatform: {} {}\nChecks: {} ok, {} warning, {} error, {} skipped\n",
+    report.app.version,
+    doctor_status_label(report.status),
+    report.platform.os,
+    report.platform.arch,
+    report.summary.ok,
+    report.summary.warning,
+    report.summary.error,
+    report.summary.skipped,
+  );
+  for check in &report.checks {
+    output.push_str(&format!(
+      "- [{}] {}\n",
+      doctor_status_label(check.status),
+      check.title
+    ));
+  }
+  output
+}
+
+pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
+  match report {
+    CliAnalyzeReport::Error(report) => {
+      format!(
+        "PLVS analysis error\nFile: {}\n{}\n",
+        report.source.path, report.error.message
+      )
+    }
+    CliAnalyzeReport::Success(report) => {
+      let summary = &report.summary;
+      let mut output = format!(
+        "PLVS analysis\nFile: {}\nTrack: {} ({}, {} Hz, {} ch)\nIntegrated: {}\nLRA: {}\nTrue peak max: {}\nSample peak max: {}\n",
+        report.source.file_name,
+        report.source.selected_track.index,
+        report.source.selected_track.codec,
+        format_optional_integer(report.source.selected_track.sample_rate_hz.map(u64::from)),
+        format_optional_integer(report.source.selected_track.channels.map(u64::from)),
+        format_number(summary.integrated_lufs, 1, " LUFS"),
+        format_number(summary.lra, 1, " LU"),
+        format_dbtp(summary.true_peak_max_dbtp),
+        format_dbfs(summary.sample_peak_max_db),
+      );
+      if report.quality_control.status != CliQualityControlStatus::NotEvaluated {
+        output.push_str(&format!(
+          "QC: {}\n",
+          match report.quality_control.status {
+            CliQualityControlStatus::Pass => "pass",
+            CliQualityControlStatus::Fail => "fail",
+            CliQualityControlStatus::NotEvaluated => "not evaluated",
+          }
+        ));
+        if let Some(check) = &report.quality_control.integrated_lufs {
+          output.push_str(&format!(
+            "- Integrated: {} (target {:.1} ± {:.1} LU, measured {})\n",
+            qc_check_status_label(check.status),
+            check.target,
+            check.tolerance.unwrap_or(0.0),
+            format_number(check.measured, 1, " LUFS"),
+          ));
+        }
+        if let Some(check) = &report.quality_control.true_peak_max_dbtp {
+          output.push_str(&format!(
+            "- True peak max: {} (ceiling {:.1} dBTP, measured {})\n",
+            qc_check_status_label(check.status),
+            check.target,
+            format_dbtp(check.measured),
+          ));
+        }
+      }
+      output
+    }
+  }
+}
+
+fn doctor_status_label(status: DoctorStatus) -> &'static str {
+  match status {
+    DoctorStatus::Ok => "ok",
+    DoctorStatus::Warning => "warning",
+    DoctorStatus::Error => "error",
+    DoctorStatus::Skipped => "skipped",
+  }
+}
+
+fn qc_check_status_label(status: CliQualityControlCheckStatus) -> &'static str {
+  match status {
+    CliQualityControlCheckStatus::Pass => "pass",
+    CliQualityControlCheckStatus::Fail => "fail",
+    CliQualityControlCheckStatus::Unavailable => "unavailable",
+  }
 }
 
 fn normalize_report_items(value: &Value) -> Result<Vec<ReportItem>, String> {
@@ -43,7 +139,11 @@ fn normalize_report_items(value: &Value) -> Result<Vec<ReportItem>, String> {
     return Ok(vec![item_from_analyze_report(value, None)?]);
   }
 
-  Err("Unsupported report input. Expected analyze or analyze-batch JSON.".to_string())
+  if value.get("command").and_then(Value::as_str) == Some("capture") {
+    return Ok(vec![item_from_capture_report(value)?]);
+  }
+
+  Err("Unsupported report input. Expected analyze, analyze-batch, or capture JSON.".to_string())
 }
 
 fn item_from_analyze_report(
@@ -90,6 +190,63 @@ fn item_from_analyze_report(
     sample_peak_max_db: summary.get("samplePeakMaxDb").and_then(Value::as_f64),
     sample_rate_hz: summary.get("sampleRateHz").and_then(Value::as_u64),
     channel_count: summary.get("channelCount").and_then(Value::as_u64),
+  })
+}
+
+fn item_from_capture_report(value: &Value) -> Result<ReportItem, String> {
+  let status = value
+    .get("status")
+    .and_then(Value::as_str)
+    .ok_or_else(|| "Capture JSON is missing status.".to_string())?;
+  let source = value.get("source");
+  let file = source
+    .and_then(|source| source.get("deviceName"))
+    .and_then(Value::as_str)
+    .or_else(|| {
+      source
+        .and_then(|source| source.get("deviceId"))
+        .and_then(Value::as_str)
+    })
+    .unwrap_or("Unknown device")
+    .to_string();
+  if status == "error" {
+    return Ok(ReportItem {
+      file,
+      status: "error".to_string(),
+      error: value
+        .get("error")
+        .and_then(|error| error.get("message"))
+        .and_then(Value::as_str)
+        .map(str::to_string),
+      duration_ms: None,
+      integrated_lufs: None,
+      lra: None,
+      true_peak_max_dbtp: None,
+      sample_peak_max_db: None,
+      sample_rate_hz: None,
+      channel_count: None,
+    });
+  }
+  let summary = value
+    .get("summary")
+    .ok_or_else(|| "Capture JSON is missing summary.".to_string())?;
+  Ok(ReportItem {
+    file,
+    status: status.to_string(),
+    error: None,
+    duration_ms: source
+      .and_then(|source| source.get("capturedMs"))
+      .and_then(Value::as_u64),
+    integrated_lufs: summary.get("integratedLufs").and_then(Value::as_f64),
+    lra: summary.get("lra").and_then(Value::as_f64),
+    true_peak_max_dbtp: summary.get("truePeakMaxDbtp").and_then(Value::as_f64),
+    sample_peak_max_db: summary.get("samplePeakMaxDb").and_then(Value::as_f64),
+    sample_rate_hz: source
+      .and_then(|source| source.get("sampleRateHz"))
+      .and_then(Value::as_u64),
+    channel_count: source
+      .and_then(|source| source.get("channelCount"))
+      .and_then(Value::as_u64),
   })
 }
 
@@ -192,6 +349,10 @@ fn format_count(value: Option<u64>) -> String {
   value.map_or_else(|| "-".to_string(), |value| value.to_string())
 }
 
+fn format_optional_integer(value: Option<u64>) -> String {
+  value.map_or_else(|| "-".to_string(), |value| value.to_string())
+}
+
 fn format_number(value: Option<f64>, precision: usize, suffix: &str) -> String {
   match value {
     Some(value) if value.is_finite() => format!("{value:.precision$}{suffix}"),
@@ -263,5 +424,32 @@ mod tests {
     let err = render_markdown_report(r#"{"command":"doctor"}"#).expect_err("unsupported");
 
     assert!(err.contains("Unsupported report input"));
+  }
+
+  #[test]
+  fn renders_capture_markdown() {
+    let input = r#"{
+      "schemaVersion": 1,
+      "command": "capture",
+      "status": "ok",
+      "source": {
+        "deviceName": "CABLE Output",
+        "capturedMs": 10000,
+        "sampleRateHz": 48000,
+        "channelCount": 2
+      },
+      "summary": {
+        "integratedLufs": -20.02,
+        "lra": 2.5,
+        "truePeakMaxDbtp": -0.8,
+        "samplePeakMaxDb": -3.1
+      }
+    }"#;
+
+    let markdown = render_markdown_report(input).expect("report");
+
+    assert!(markdown.contains(
+      "| CABLE Output | 0:10.0 | -20.0 | 2.5 | -0.8 dBTP | -3.1 dBFS | 48 kHz | 2 | ok |"
+    ));
   }
 }

@@ -7,24 +7,34 @@ use std::fs;
 use std::process::ExitCode;
 
 use crate::audio::capture_summary::CaptureSample;
-use crate::cli_analyze::{run_analyze, CliAnalyzeStatus};
+use crate::cli_analyze::{
+  run_analyze_with_options, CliAnalyzeOptions, CliAnalyzeStatus, CliQualityControlOptions,
+};
 use crate::cli_analyze_batch::{
   read_manifest, run_analyze_batch, CliAnalyzeBatchStatus, DEFAULT_BATCH_CONCURRENCY,
   MAX_BATCH_CONCURRENCY,
 };
 use crate::cli_capture::{run_capture, sample_line, CliCaptureStatus};
-use crate::cli_report::render_markdown_report;
+use crate::cli_probe::{run_probe, CliProbeStatus};
+use crate::cli_report::{render_analyze_text, render_doctor_text, render_markdown_report};
 use crate::doctor::{run_doctor, DoctorStatus};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 enum CliCommand {
   Help(HelpTopic),
   Version,
-  DoctorJson {
+  Doctor {
+    json: bool,
     out: Option<String>,
   },
-  AnalyzeJson {
+  ProbeJson {
     path: String,
+    out: Option<String>,
+  },
+  Analyze {
+    path: String,
+    json: bool,
+    options: CliAnalyzeOptions,
     out: Option<String>,
   },
   AnalyzeBatchJson {
@@ -49,6 +59,7 @@ enum CliCommand {
 enum HelpTopic {
   Root,
   Doctor,
+  Probe,
   Analyze,
   AnalyzeBatch,
   Capture,
@@ -61,13 +72,14 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
       Ok(CliCommand::Help(HelpTopic::Root))
     }
     [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
+    [command, rest @ ..] if command == "probe" => parse_probe_args(rest),
     [command, rest @ ..] if command == "analyze" => parse_analyze_args(rest),
     [command, rest @ ..] if command == "analyze-batch" => parse_analyze_batch_args(rest),
     [command, rest @ ..] if command == "capture" => parse_capture_args(rest),
     [command, rest @ ..] if command == "report" => parse_report_args(rest),
     [command, topic] if command == "help" => parse_help_topic(topic),
     [command, ..] if command == "help" => {
-      Err("Usage: plvs-cli help [doctor|analyze|analyze-batch|capture|report]".to_string())
+      Err("Usage: plvs-cli help [doctor|probe|analyze|analyze-batch|capture|report]".to_string())
     }
     [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
     [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
@@ -82,14 +94,31 @@ fn parse_doctor_args(args: &[String]) -> Result<CliCommand, String> {
   }
 
   let options = parse_json_output_options(args)?;
-  if !options.has_json {
-    return Err("The doctor command currently requires --json.".to_string());
-  }
   if !options.positionals.is_empty() {
-    return Err("Usage: plvs-cli doctor --json [--out <file>]".to_string());
+    return Err("Usage: plvs-cli doctor [--json] [--out <file>]".to_string());
   }
 
-  Ok(CliCommand::DoctorJson { out: options.out })
+  Ok(CliCommand::Doctor {
+    json: options.has_json,
+    out: options.out,
+  })
+}
+
+fn parse_probe_args(args: &[String]) -> Result<CliCommand, String> {
+  if args.iter().any(|arg| is_help_flag(arg)) {
+    return Ok(CliCommand::Help(HelpTopic::Probe));
+  }
+  let options = parse_json_output_options(args)?;
+  if !options.has_json {
+    return Err("The probe command currently requires --json.".to_string());
+  }
+  match options.positionals.as_slice() {
+    [path] if !path.starts_with("--") => Ok(CliCommand::ProbeJson {
+      path: path.clone(),
+      out: options.out,
+    }),
+    _ => Err("Usage: plvs-cli probe <path> --json [--out <file>]".to_string()),
+  }
 }
 
 fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
@@ -97,24 +126,86 @@ fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
     return Ok(CliCommand::Help(HelpTopic::Analyze));
   }
 
-  let options = parse_json_output_options(args)?;
-  if !options.has_json {
-    return Err(
-      "Usage: plvs-cli analyze <path> --json [--out <file>]\nFor multiple files, use: plvs-cli analyze-batch <paths...> --json"
-        .to_string(),
-    );
+  let mut path = None;
+  let mut json = false;
+  let mut out = None;
+  let mut track_index = None;
+  let mut target_lufs = None;
+  let mut lufs_tolerance = None;
+  let mut max_true_peak_dbtp = None;
+  let mut index = 0;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--out" => {
+        out = Some(take_value(args, index, "--out")?);
+        index += 2;
+      }
+      "--track" => {
+        let value = take_value(args, index, "--track")?;
+        track_index = Some(
+          value
+            .parse::<u32>()
+            .map_err(|_| "The --track value must be a non-negative integer".to_string())?,
+        );
+        index += 2;
+      }
+      "--target-lufs" => {
+        target_lufs = Some(parse_finite_number(
+          &take_value(args, index, "--target-lufs")?,
+          "--target-lufs",
+        )?);
+        index += 2;
+      }
+      "--lufs-tolerance" => {
+        let value = parse_finite_number(
+          &take_value(args, index, "--lufs-tolerance")?,
+          "--lufs-tolerance",
+        )?;
+        if value < 0.0 {
+          return Err("The --lufs-tolerance value must not be negative".to_string());
+        }
+        lufs_tolerance = Some(value);
+        index += 2;
+      }
+      "--max-true-peak" => {
+        max_true_peak_dbtp = Some(parse_finite_number(
+          &take_value(args, index, "--max-true-peak")?,
+          "--max-true-peak",
+        )?);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value if path.is_none() => {
+        path = Some(value.to_string());
+        index += 1;
+      }
+      value => return Err(format!("Unexpected argument: {value}")),
+    }
   }
-
-  match options.positionals.as_slice() {
-    [path] if !path.starts_with("--") => Ok(CliCommand::AnalyzeJson {
-      path: path.clone(),
-      out: options.out,
-    }),
-    _ => Err(
-      "Usage: plvs-cli analyze <path> --json [--out <file>]\nFor multiple files, use: plvs-cli analyze-batch <paths...> --json"
-        .to_string(),
-    ),
+  if target_lufs.is_some() != lufs_tolerance.is_some() {
+    return Err("--target-lufs and --lufs-tolerance must be provided together".to_string());
   }
+  let path = path.ok_or_else(|| {
+    "Usage: plvs-cli analyze <path> [--json] [--track <index>] [QC options] [--out <file>]"
+      .to_string()
+  })?;
+  Ok(CliCommand::Analyze {
+    path,
+    json,
+    options: CliAnalyzeOptions {
+      track_index,
+      quality_control: CliQualityControlOptions {
+        target_lufs,
+        lufs_tolerance,
+        max_true_peak_dbtp,
+      },
+    },
+    out,
+  })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -165,9 +256,20 @@ fn is_help_flag(value: &str) -> bool {
   value == "--help" || value == "-h"
 }
 
+fn parse_finite_number(value: &str, flag: &str) -> Result<f64, String> {
+  let parsed = value
+    .parse::<f64>()
+    .map_err(|_| format!("The {flag} value must be a finite number"))?;
+  if !parsed.is_finite() {
+    return Err(format!("The {flag} value must be a finite number"));
+  }
+  Ok(parsed)
+}
+
 fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
   match topic {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
+    "probe" => Ok(CliCommand::Help(HelpTopic::Probe)),
     "analyze" => Ok(CliCommand::Help(HelpTopic::Analyze)),
     "analyze-batch" => Ok(CliCommand::Help(HelpTopic::AnalyzeBatch)),
     "capture" => Ok(CliCommand::Help(HelpTopic::Capture)),
@@ -411,13 +513,16 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor --json [--out <file>]\n  plvs-cli analyze <path> --json [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n  plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with analysis/report errors\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n  plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Doctor => {
-      "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor --json [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nJSON is written to stdout. With --out, the same JSON is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
+    }
+    HelpTopic::Probe => {
+      "PLVS CLI - probe\n\nUsage:\n  plvs-cli probe <path> --json [--out <file>]\n\nReads media metadata without decoding the full file. The audioTracks array contains\nabsolute ffprobe stream indices accepted by analyze --track.\n\nExit codes:\n  0  media metadata was read successfully\n  1  probing completed with an error report\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Analyze => {
-      "PLVS CLI - analyze\n\nUsage:\n  plvs-cli analyze <path> --json [--out <file>]\n\nAnalyzes exactly one local media file without launching the desktop UI.\nJSON is written to stdout. With --out, the same JSON is also written to a file.\nFor multiple files, use analyze-batch.\n\nExit codes:\n  0  file analyzed successfully\n  1  analysis completed with an error report\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI - analyze\n\nUsage:\n  plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nAnalyzes exactly one local media file without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\n--track selects an absolute stream index reported by probe.\nQC is opt-in and user-defined: loudness target and tolerance must be supplied together;\n--max-true-peak is an independent dBTP ceiling. Without these options no pass/fail is produced.\nFor multiple files, use analyze-batch.\n\nExit codes:\n  0  file analyzed successfully and requested QC checks passed\n  1  analysis error or requested QC check failed/unavailable\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::AnalyzeBatch => {
       "PLVS CLI - analyze-batch\n\nUsage:\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n\nManifest format:\n  {\"files\":[\"C:\\\\media\\\\a.wav\",\"C:\\\\media\\\\b.wav\"]}\n\nRules:\n  Do not mix positional paths with --manifest.\n  Results preserve input order.\n  JSON is written to stdout. With --out, the same JSON is also written to a file.\n  --concurrency defaults to 2 and may be 1 through 8.\n\nExit codes:\n  0  all files analyzed successfully\n  1  at least one file produced an error report\n  2  invalid usage or CLI failure before a valid report"
@@ -426,7 +531,7 @@ fn help_text(topic: HelpTopic) -> &'static str {
       "PLVS CLI - capture\n\nUsage:\n  plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]\n\nCaptures live audio from a device without launching the desktop UI and reports\ndelivery metrics. JSON is written to stdout. With --out, the same output is also\nwritten to a file.\n\n--device matches a case-insensitive substring of the device label; it must match\nexactly one device. Omit it to use the default device. With no match, the error\nlists the available devices.\n\n--every <n> emits one JSON line every n seconds (JSONL) instead of a single\nreport; the final line is the same report the non-streaming mode prints.\n\nExit codes:\n  0  capture completed successfully\n  1  capture completed with an error report\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Report => {
-      "PLVS CLI - report\n\nUsage:\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nReads JSON produced by analyze or analyze-batch and renders a human-readable Markdown table.\nMarkdown is written to stdout. With --out, the same Markdown is also written to a file.\n\nExit codes:\n  0  report rendered successfully\n  2  invalid usage, unreadable input, unsupported JSON, or output write failure"
+      "PLVS CLI - report\n\nUsage:\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nReads JSON produced by analyze, analyze-batch, or capture and renders a human-readable Markdown table.\nMarkdown is written to stdout. With --out, the same Markdown is also written to a file.\n\nExit codes:\n  0  report rendered successfully\n  2  invalid usage, unreadable input, unsupported JSON, or output write failure"
     }
   }
 }
@@ -449,17 +554,25 @@ pub fn run(args: &[String]) -> ExitCode {
       println!("PLVS {}", env!("CARGO_PKG_VERSION"));
       ExitCode::SUCCESS
     }
-    CliCommand::DoctorJson { out } => {
+    CliCommand::Doctor { json, out } => {
       let report = run_doctor();
-      match serde_json::to_string(&report) {
-        Ok(json) => {
-          if let Err(err) = emit_json(&json, out.as_deref(), "doctor") {
-            eprintln!("{err}");
+      if json {
+        match serde_json::to_string(&report) {
+          Ok(json) => {
+            if let Err(err) = emit_json(&json, out.as_deref(), "doctor") {
+              eprintln!("{err}");
+              return ExitCode::from(2);
+            }
+          }
+          Err(err) => {
+            eprintln!("Failed to serialize doctor report: {err}");
             return ExitCode::from(2);
           }
         }
-        Err(err) => {
-          eprintln!("Failed to serialize doctor report: {err}");
+      } else {
+        let text = render_doctor_text(&report);
+        if let Err(err) = emit_text(&text, out.as_deref(), "doctor") {
+          eprintln!("{err}");
           return ExitCode::from(2);
         }
       }
@@ -469,25 +582,59 @@ pub fn run(args: &[String]) -> ExitCode {
         DoctorStatus::Ok | DoctorStatus::Warning | DoctorStatus::Skipped => ExitCode::SUCCESS,
       }
     }
-    CliCommand::AnalyzeJson { path, out } => {
-      let report = run_analyze(&path);
+    CliCommand::ProbeJson { path, out } => {
+      let report = run_probe(&path);
       let status = report.status();
       match serde_json::to_string(&report) {
         Ok(json) => {
-          if let Err(err) = emit_json(&json, out.as_deref(), "analyze") {
+          if let Err(err) = emit_json(&json, out.as_deref(), "probe") {
             eprintln!("{err}");
             return ExitCode::from(2);
           }
         }
         Err(err) => {
-          eprintln!("Failed to serialize analyze report: {err}");
+          eprintln!("Failed to serialize probe report: {err}");
+          return ExitCode::from(2);
+        }
+      }
+      match status {
+        CliProbeStatus::Ok => ExitCode::SUCCESS,
+        CliProbeStatus::Error => ExitCode::from(1),
+      }
+    }
+    CliCommand::Analyze {
+      path,
+      json,
+      options,
+      out,
+    } => {
+      let report = run_analyze_with_options(&path, options);
+      let status = report.status();
+      let qc_failed = report.quality_control_failed();
+      if json {
+        match serde_json::to_string(&report) {
+          Ok(json) => {
+            if let Err(err) = emit_json(&json, out.as_deref(), "analyze") {
+              eprintln!("{err}");
+              return ExitCode::from(2);
+            }
+          }
+          Err(err) => {
+            eprintln!("Failed to serialize analyze report: {err}");
+            return ExitCode::from(2);
+          }
+        }
+      } else {
+        let text = render_analyze_text(&report);
+        if let Err(err) = emit_text(&text, out.as_deref(), "analyze") {
+          eprintln!("{err}");
           return ExitCode::from(2);
         }
       }
 
       match status {
-        CliAnalyzeStatus::Ok => ExitCode::SUCCESS,
-        CliAnalyzeStatus::Error => ExitCode::from(1),
+        CliAnalyzeStatus::Ok if !qc_failed => ExitCode::SUCCESS,
+        CliAnalyzeStatus::Ok | CliAnalyzeStatus::Error => ExitCode::from(1),
       }
     }
     CliCommand::AnalyzeBatchJson {
@@ -618,7 +765,10 @@ mod tests {
   fn parses_doctor_json() {
     assert_eq!(
       parse_args(&args(&["doctor", "--json"])),
-      Ok(CliCommand::DoctorJson { out: None })
+      Ok(CliCommand::Doctor {
+        json: true,
+        out: None,
+      })
     );
   }
 
@@ -626,15 +776,22 @@ mod tests {
   fn parses_doctor_out() {
     assert_eq!(
       parse_args(&args(&["doctor", "--json", "--out", "doctor.json"])),
-      Ok(CliCommand::DoctorJson {
+      Ok(CliCommand::Doctor {
+        json: true,
         out: Some("doctor.json".to_string())
       })
     );
   }
 
   #[test]
-  fn rejects_doctor_without_json() {
-    assert!(parse_args(&args(&["doctor"])).is_err());
+  fn parses_human_readable_doctor_without_json() {
+    assert_eq!(
+      parse_args(&args(&["doctor"])),
+      Ok(CliCommand::Doctor {
+        json: false,
+        out: None,
+      })
+    );
   }
 
   #[test]
@@ -691,8 +848,10 @@ mod tests {
   fn parses_analyze_json() {
     assert_eq!(
       parse_args(&args(&["analyze", "mix.wav", "--json"])),
-      Ok(CliCommand::AnalyzeJson {
+      Ok(CliCommand::Analyze {
         path: "mix.wav".to_string(),
+        json: true,
+        options: CliAnalyzeOptions::default(),
         out: None
       })
     );
@@ -704,16 +863,26 @@ mod tests {
       parse_args(&args(&[
         "analyze", "mix.wav", "--json", "--out", "mix.json",
       ])),
-      Ok(CliCommand::AnalyzeJson {
+      Ok(CliCommand::Analyze {
         path: "mix.wav".to_string(),
+        json: true,
+        options: CliAnalyzeOptions::default(),
         out: Some("mix.json".to_string())
       })
     );
   }
 
   #[test]
-  fn rejects_analyze_without_json() {
-    assert!(parse_args(&args(&["analyze", "mix.wav"])).is_err());
+  fn parses_human_readable_analyze_without_json() {
+    assert_eq!(
+      parse_args(&args(&["analyze", "mix.wav"])),
+      Ok(CliCommand::Analyze {
+        path: "mix.wav".to_string(),
+        json: false,
+        options: CliAnalyzeOptions::default(),
+        out: None,
+      })
+    );
   }
 
   #[test]
@@ -724,6 +893,63 @@ mod tests {
   #[test]
   fn rejects_analyze_with_extra_args() {
     assert!(parse_args(&args(&["analyze", "mix.wav", "--json", "--extra"])).is_err());
+  }
+
+  #[test]
+  fn parses_probe_json() {
+    assert_eq!(
+      parse_args(&args(&["probe", "movie.mkv", "--json"])),
+      Ok(CliCommand::ProbeJson {
+        path: "movie.mkv".to_string(),
+        out: None,
+      })
+    );
+  }
+
+  #[test]
+  fn parses_analyze_track_and_custom_quality_control() {
+    assert_eq!(
+      parse_args(&args(&[
+        "analyze",
+        "movie.mkv",
+        "--track",
+        "3",
+        "--target-lufs",
+        "-14",
+        "--lufs-tolerance",
+        "1",
+        "--max-true-peak",
+        "-1",
+        "--json",
+      ])),
+      Ok(CliCommand::Analyze {
+        path: "movie.mkv".to_string(),
+        json: true,
+        options: CliAnalyzeOptions {
+          track_index: Some(3),
+          quality_control: CliQualityControlOptions {
+            target_lufs: Some(-14.0),
+            lufs_tolerance: Some(1.0),
+            max_true_peak_dbtp: Some(-1.0),
+          },
+        },
+        out: None,
+      })
+    );
+  }
+
+  #[test]
+  fn rejects_incomplete_or_invalid_quality_control() {
+    assert!(parse_args(&args(&["analyze", "mix.wav", "--target-lufs", "-14",])).is_err());
+    assert!(parse_args(&args(&[
+      "analyze",
+      "mix.wav",
+      "--target-lufs",
+      "-14",
+      "--lufs-tolerance",
+      "-1",
+    ]))
+    .is_err());
   }
 
   #[test]

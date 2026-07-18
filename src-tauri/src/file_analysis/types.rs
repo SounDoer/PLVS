@@ -25,6 +25,19 @@ pub struct FileAnalysisProbeResult {
   pub selected_track: FileAudioTrackMetadata,
 }
 
+/// Complete media metadata used by CLI discovery before selecting an audio track.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileAnalysisMediaProbeResult {
+  pub path: String,
+  pub file_name: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub container: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub duration_ms: Option<u64>,
+  pub audio_tracks: Vec<FileAudioTrackMetadata>,
+}
+
 /// Authoritative whole-file delivery metrics, read from the final pipeline state on completion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

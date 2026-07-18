@@ -76,8 +76,13 @@ pub struct CliCaptureErrorSource {
 #[serde(rename_all = "camelCase")]
 pub struct CliCaptureSummary {
   pub integrated_lufs: Option<f64>,
+  pub lra: Option<f64>,
+  pub m_max_lufs: Option<f64>,
+  pub st_max_lufs: Option<f64>,
+  pub true_peak_max_dbtp: Option<f64>,
   pub sample_peak_max_l_db: Option<f64>,
   pub sample_peak_max_r_db: Option<f64>,
+  pub sample_peak_max_db: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -138,15 +143,33 @@ pub fn success_report(run: CaptureRun) -> CliCaptureReport {
       channel_count: run.channel_count,
       captured_ms: run.captured_ms,
     },
-    summary: CliCaptureSummary {
-      integrated_lufs: finite_or_none(run.integrated_lufs),
-      sample_peak_max_l_db: finite_or_none(run.sample_peak_max_l_db),
-      sample_peak_max_r_db: finite_or_none(run.sample_peak_max_r_db),
+    summary: {
+      let sample_peak_max_l_db = finite_or_none(run.sample_peak_max_l_db);
+      let sample_peak_max_r_db = finite_or_none(run.sample_peak_max_r_db);
+      CliCaptureSummary {
+        integrated_lufs: finite_or_none(run.integrated_lufs),
+        lra: finite_or_none(run.lra),
+        m_max_lufs: finite_or_none(run.m_max_lufs),
+        st_max_lufs: finite_or_none(run.st_max_lufs),
+        true_peak_max_dbtp: finite_or_none(run.true_peak_max_dbtp),
+        sample_peak_max_l_db,
+        sample_peak_max_r_db,
+        sample_peak_max_db: max_optional(sample_peak_max_l_db, sample_peak_max_r_db),
+      }
     },
     health: CliCaptureHealth {
       dropped_chunks: run.dropped_chunks,
     },
   }))
+}
+
+fn max_optional(a: Option<f64>, b: Option<f64>) -> Option<f64> {
+  match (a, b) {
+    (Some(a), Some(b)) => Some(a.max(b)),
+    (Some(a), None) => Some(a),
+    (None, Some(b)) => Some(b),
+    (None, None) => None,
+  }
 }
 
 pub fn error_report(device_id: &str, message: String) -> CliCaptureReport {
@@ -195,6 +218,10 @@ mod tests {
       channel_count: 2,
       captured_ms: 10000,
       integrated_lufs: -20.02,
+      lra: 2.5,
+      m_max_lufs: -18.4,
+      st_max_lufs: -19.2,
+      true_peak_max_dbtp: -0.8,
       sample_peak_max_l_db: -20.01,
       sample_peak_max_r_db: -26.03,
       dropped_chunks: 0,
@@ -212,6 +239,11 @@ mod tests {
     assert_eq!(json["source"]["deviceId"], "cap-2");
     assert_eq!(json["source"]["sampleRateHz"], 48000);
     assert_eq!(json["summary"]["integratedLufs"], -20.02);
+    assert_eq!(json["summary"]["lra"], 2.5);
+    assert_eq!(json["summary"]["mMaxLufs"], -18.4);
+    assert_eq!(json["summary"]["stMaxLufs"], -19.2);
+    assert_eq!(json["summary"]["truePeakMaxDbtp"], -0.8);
+    assert_eq!(json["summary"]["samplePeakMaxDb"], -20.01);
     assert_eq!(json["health"]["droppedChunks"], 0);
   }
 

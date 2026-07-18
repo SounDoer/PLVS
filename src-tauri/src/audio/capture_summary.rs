@@ -28,6 +28,10 @@ pub struct CaptureRun {
   pub channel_count: u16,
   pub captured_ms: u64,
   pub integrated_lufs: f64,
+  pub lra: f64,
+  pub m_max_lufs: f64,
+  pub st_max_lufs: f64,
+  pub true_peak_max_dbtp: f64,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
   pub dropped_chunks: u64,
@@ -53,7 +57,7 @@ pub fn capture_device_to_summary(
   let dropped_chunks = Arc::new(AtomicU64::new(0));
   let dropped_for_report = dropped_chunks.clone();
   let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
-  let (result_tx, result_rx) = std::sync::mpsc::channel::<(f64, f64, f64)>();
+  let (result_tx, result_rx) = std::sync::mpsc::channel();
   let (sample_tx, sample_rx) = std::sync::mpsc::channel::<CaptureSample>();
 
   let consumer_dropped = dropped_chunks.clone();
@@ -87,11 +91,7 @@ pub fn capture_device_to_summary(
     }
 
     let metrics = meter.finish();
-    let _ = result_tx.send((
-      metrics.integrated_lufs,
-      metrics.sample_peak_max_l_db,
-      metrics.sample_peak_max_r_db,
-    ));
+    let _ = result_tx.send(metrics);
   };
 
   let stream_args = CaptureStreamArgs {
@@ -125,7 +125,7 @@ pub fn capture_device_to_summary(
     on_sample(sample);
   }
 
-  let (integrated_lufs, sample_peak_max_l_db, sample_peak_max_r_db) = result_rx
+  let metrics = result_rx
     .recv()
     .map_err(|_| "Capture produced no metrics".to_string())?;
 
@@ -135,9 +135,13 @@ pub fn capture_device_to_summary(
     sample_rate_hz: sample_rate,
     channel_count: channels,
     captured_ms: seconds * 1000,
-    integrated_lufs,
-    sample_peak_max_l_db,
-    sample_peak_max_r_db,
+    integrated_lufs: metrics.integrated_lufs,
+    lra: metrics.lra,
+    m_max_lufs: metrics.m_max_lufs,
+    st_max_lufs: metrics.st_max_lufs,
+    true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+    sample_peak_max_l_db: metrics.sample_peak_max_l_db,
+    sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     dropped_chunks: dropped_for_report.load(Ordering::Relaxed),
   })
 }

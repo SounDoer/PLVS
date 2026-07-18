@@ -1,6 +1,8 @@
 use serde::Serialize;
 
-use crate::file_analysis::summary::{analyze_file_to_summary, FileAnalysisSummaryRun};
+use crate::file_analysis::summary::{
+  analyze_file_to_summary, analyze_file_track_to_summary, FileAnalysisSummaryRun,
+};
 use crate::file_analysis::types::{
   FileAnalysisProbeResult, FileAnalysisSummaryMetrics, FileAudioTrackMetadata,
 };
@@ -26,6 +28,27 @@ impl CliAnalyzeReport {
       CliAnalyzeReport::Error(_) => CliAnalyzeStatus::Error,
     }
   }
+
+  pub fn quality_control_failed(&self) -> bool {
+    matches!(
+      self,
+      CliAnalyzeReport::Success(report)
+        if report.quality_control.status == CliQualityControlStatus::Fail
+    )
+  }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CliAnalyzeOptions {
+  pub track_index: Option<u32>,
+  pub quality_control: CliQualityControlOptions,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CliQualityControlOptions {
+  pub target_lufs: Option<f64>,
+  pub lufs_tolerance: Option<f64>,
+  pub max_true_peak_dbtp: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -38,6 +61,7 @@ pub struct CliAnalyzeSuccessReport {
   pub source: CliAnalyzeSource,
   pub analysis: CliAnalyzeMetadata,
   pub summary: CliAnalyzeSummary,
+  pub quality_control: CliAnalyzeQualityControl,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -116,6 +140,39 @@ pub struct CliAnalyzeSummary {
   pub dialogue_lra: Option<f64>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CliQualityControlStatus {
+  NotEvaluated,
+  Pass,
+  Fail,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CliQualityControlCheckStatus {
+  Pass,
+  Fail,
+  Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CliAnalyzeQualityControl {
+  pub status: CliQualityControlStatus,
+  pub integrated_lufs: Option<CliQualityControlCheck>,
+  pub true_peak_max_dbtp: Option<CliQualityControlCheck>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CliQualityControlCheck {
+  pub status: CliQualityControlCheckStatus,
+  pub measured: Option<f64>,
+  pub target: f64,
+  pub tolerance: Option<f64>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliAnalyzeError {
@@ -124,12 +181,29 @@ pub struct CliAnalyzeError {
 
 pub fn run_analyze(path: &str) -> CliAnalyzeReport {
   match analyze_file_to_summary(path) {
-    Ok(result) => CliAnalyzeReport::Success(Box::new(success_report(result))),
+    Ok(result) => CliAnalyzeReport::Success(Box::new(success_report(
+      result,
+      CliQualityControlOptions::default(),
+    ))),
     Err(message) => CliAnalyzeReport::Error(Box::new(error_report(path, message))),
   }
 }
 
-fn success_report(result: FileAnalysisSummaryRun) -> CliAnalyzeSuccessReport {
+pub fn run_analyze_with_options(path: &str, options: CliAnalyzeOptions) -> CliAnalyzeReport {
+  match analyze_file_track_to_summary(path, options.track_index) {
+    Ok(result) => {
+      CliAnalyzeReport::Success(Box::new(success_report(result, options.quality_control)))
+    }
+    Err(message) => CliAnalyzeReport::Error(Box::new(error_report(path, message))),
+  }
+}
+
+fn success_report(
+  result: FileAnalysisSummaryRun,
+  quality_control: CliQualityControlOptions,
+) -> CliAnalyzeSuccessReport {
+  let summary = summary_from_metrics(result.summary);
+  let quality_control = evaluate_quality_control(&summary, quality_control);
   CliAnalyzeSuccessReport {
     schema_version: 1,
     command: "analyze".to_string(),
@@ -143,7 +217,8 @@ fn success_report(result: FileAnalysisSummaryRun) -> CliAnalyzeSuccessReport {
         engine: None,
       },
     },
-    summary: summary_from_metrics(result.summary),
+    summary,
+    quality_control,
   }
 }
 
@@ -224,6 +299,62 @@ fn max_optional(a: Option<f64>, b: Option<f64>) -> Option<f64> {
   }
 }
 
+fn evaluate_quality_control(
+  summary: &CliAnalyzeSummary,
+  options: CliQualityControlOptions,
+) -> CliAnalyzeQualityControl {
+  let integrated_lufs = options.target_lufs.map(|target| {
+    let tolerance = options.lufs_tolerance.unwrap_or(0.0);
+    let measured = summary.integrated_lufs;
+    let status = match measured {
+      Some(measured) if (measured - target).abs() <= tolerance => {
+        CliQualityControlCheckStatus::Pass
+      }
+      Some(_) => CliQualityControlCheckStatus::Fail,
+      None => CliQualityControlCheckStatus::Unavailable,
+    };
+    CliQualityControlCheck {
+      status,
+      measured,
+      target,
+      tolerance: Some(tolerance),
+    }
+  });
+  let true_peak_max_dbtp = options.max_true_peak_dbtp.map(|target| {
+    let measured = summary.true_peak_max_dbtp;
+    let status = match measured {
+      Some(measured) if measured <= target => CliQualityControlCheckStatus::Pass,
+      Some(_) => CliQualityControlCheckStatus::Fail,
+      None => CliQualityControlCheckStatus::Unavailable,
+    };
+    CliQualityControlCheck {
+      status,
+      measured,
+      target,
+      tolerance: None,
+    }
+  });
+
+  let requested = integrated_lufs.is_some() || true_peak_max_dbtp.is_some();
+  let failed = [&integrated_lufs, &true_peak_max_dbtp]
+    .into_iter()
+    .flatten()
+    .any(|check| check.status != CliQualityControlCheckStatus::Pass);
+  let status = if !requested {
+    CliQualityControlStatus::NotEvaluated
+  } else if failed {
+    CliQualityControlStatus::Fail
+  } else {
+    CliQualityControlStatus::Pass
+  };
+
+  CliAnalyzeQualityControl {
+    status,
+    integrated_lufs,
+    true_peak_max_dbtp,
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -268,5 +399,70 @@ mod tests {
     assert_eq!(json["status"], "error");
     assert_eq!(json["source"]["path"], "missing.wav");
     assert_eq!(json["error"]["message"], "nope");
+  }
+
+  #[test]
+  fn quality_control_is_not_evaluated_without_user_thresholds() {
+    let summary = summary_from_metrics(summary_with_peaks(-3.0, -4.0));
+    let qc = evaluate_quality_control(&summary, CliQualityControlOptions::default());
+
+    assert_eq!(qc.status, CliQualityControlStatus::NotEvaluated);
+  }
+
+  #[test]
+  fn quality_control_uses_custom_loudness_and_true_peak_thresholds() {
+    let summary = summary_from_metrics(summary_with_peaks(-3.0, -4.0));
+    let qc = evaluate_quality_control(
+      &summary,
+      CliQualityControlOptions {
+        target_lufs: Some(-16.5),
+        lufs_tolerance: Some(1.0),
+        max_true_peak_dbtp: Some(-1.0),
+      },
+    );
+
+    assert_eq!(qc.status, CliQualityControlStatus::Fail);
+    assert_eq!(
+      qc.integrated_lufs.as_ref().map(|check| check.status),
+      Some(CliQualityControlCheckStatus::Pass)
+    );
+    assert_eq!(
+      qc.true_peak_max_dbtp.as_ref().map(|check| check.status),
+      Some(CliQualityControlCheckStatus::Unavailable)
+    );
+  }
+
+  #[test]
+  fn success_report_keeps_ok_status_when_quality_control_fails() {
+    let result = FileAnalysisSummaryRun {
+      probe: FileAnalysisProbeResult {
+        path: "mix.wav".to_string(),
+        file_name: "mix.wav".to_string(),
+        container: Some("wav".to_string()),
+        duration_ms: Some(1000),
+        selected_track: FileAudioTrackMetadata {
+          index: 0,
+          codec: "pcm_f32le".to_string(),
+          sample_rate_hz: Some(48_000),
+          channels: Some(2),
+          language: None,
+        },
+      },
+      decoded_frames: 48_000,
+      summary: summary_with_peaks(-3.0, -4.0),
+    };
+    let report = CliAnalyzeReport::Success(Box::new(success_report(
+      result,
+      CliQualityControlOptions {
+        target_lufs: Some(-14.0),
+        lufs_tolerance: Some(0.5),
+        max_true_peak_dbtp: None,
+      },
+    )));
+    let json = serde_json::to_value(&report).expect("serialize");
+
+    assert_eq!(json["status"], "ok");
+    assert_eq!(json["qualityControl"]["status"], "fail");
+    assert!(report.quality_control_failed());
   }
 }

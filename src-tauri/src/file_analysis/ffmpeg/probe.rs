@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::file_analysis::types::{FileAnalysisProbeResult, FileAudioTrackMetadata};
+use crate::file_analysis::types::{FileAnalysisMediaProbeResult, FileAudioTrackMetadata};
 
 #[derive(Deserialize)]
 struct ProbeRoot {
@@ -38,28 +38,34 @@ struct ProbeTags {
   language: Option<String>,
 }
 
-/// Parse `ffprobe -print_format json -show_streams -show_format` output into the UI metadata shape.
-/// Selects the first audio stream; its absolute `index` is reused verbatim by the decoder's
-/// `-map 0:<index>`.
-pub fn parse_ffprobe_json(
+/// Parse all audio streams from `ffprobe -show_streams -show_format` output.
+pub fn parse_ffprobe_media_json(
   json: &str,
   path: &str,
   file_name: &str,
-) -> Result<FileAnalysisProbeResult, String> {
+) -> Result<FileAnalysisMediaProbeResult, String> {
   let root: ProbeRoot =
     serde_json::from_str(json).map_err(|err| format!("Unable to read media metadata: {err}"))?;
 
-  let audio = root
+  let audio_tracks: Vec<FileAudioTrackMetadata> = root
     .streams
     .iter()
-    .find(|s| s.codec_type == "audio")
-    .ok_or_else(|| "No audio track found in media file".to_string())?;
+    .filter(|stream| stream.codec_type == "audio")
+    .map(|audio| FileAudioTrackMetadata {
+      index: audio.index,
+      codec: audio.codec_name.clone(),
+      sample_rate_hz: audio
+        .sample_rate
+        .as_deref()
+        .and_then(|sample_rate| sample_rate.parse::<u32>().ok()),
+      channels: audio.channels,
+      language: audio.tags.as_ref().and_then(|tags| tags.language.clone()),
+    })
+    .collect();
+  if audio_tracks.is_empty() {
+    return Err("No audio track found in media file".to_string());
+  }
 
-  let sample_rate_hz = audio
-    .sample_rate
-    .as_deref()
-    .and_then(|s| s.parse::<u32>().ok());
-  let language = audio.tags.as_ref().and_then(|t| t.language.clone());
   let container = root
     .format
     .format_name
@@ -73,18 +79,12 @@ pub fn parse_ffprobe_json(
     .and_then(|d| d.parse::<f64>().ok())
     .map(|secs| (secs * 1000.0).round() as u64);
 
-  Ok(FileAnalysisProbeResult {
+  Ok(FileAnalysisMediaProbeResult {
     path: path.to_string(),
     file_name: file_name.to_string(),
     container,
     duration_ms,
-    selected_track: FileAudioTrackMetadata {
-      index: audio.index,
-      codec: audio.codec_name.clone(),
-      sample_rate_hz,
-      channels: audio.channels,
-      language,
-    },
+    audio_tracks,
   })
 }
 
@@ -103,21 +103,42 @@ mod tests {
 
   #[test]
   fn parses_first_audio_stream_metadata() {
-    let result = parse_ffprobe_json(SAMPLE, "/m/clip.mkv", "clip.mkv").expect("parse");
+    let result = parse_ffprobe_media_json(SAMPLE, "/m/clip.mkv", "clip.mkv").expect("parse");
     assert_eq!(result.file_name, "clip.mkv");
     assert_eq!(result.container.as_deref(), Some("mov"));
     assert_eq!(result.duration_ms, Some(180_500));
-    assert_eq!(result.selected_track.index, 1);
-    assert_eq!(result.selected_track.codec, "ac3");
-    assert_eq!(result.selected_track.sample_rate_hz, Some(48_000));
-    assert_eq!(result.selected_track.channels, Some(6));
-    assert_eq!(result.selected_track.language.as_deref(), Some("eng"));
+    assert_eq!(result.audio_tracks[0].index, 1);
+    assert_eq!(result.audio_tracks[0].codec, "ac3");
+    assert_eq!(result.audio_tracks[0].sample_rate_hz, Some(48_000));
+    assert_eq!(result.audio_tracks[0].channels, Some(6));
+    assert_eq!(result.audio_tracks[0].language.as_deref(), Some("eng"));
   }
 
   #[test]
   fn errors_when_no_audio_stream() {
     let json = r#"{"streams":[{"index":0,"codec_type":"video","codec_name":"h264"}],"format":{}}"#;
-    let err = parse_ffprobe_json(json, "/m/x.mp4", "x.mp4").expect_err("no audio");
+    let err = parse_ffprobe_media_json(json, "/m/x.mp4", "x.mp4").expect_err("no audio");
     assert_eq!(err, "No audio track found in media file");
+  }
+
+  #[test]
+  fn parses_all_audio_streams_for_media_probe() {
+    let json = r#"{
+      "streams": [
+        {"index": 0, "codec_type": "video", "codec_name": "h264"},
+        {"index": 1, "codec_type": "audio", "codec_name": "aac",
+         "sample_rate": "48000", "channels": 2, "tags": {"language": "eng"}},
+        {"index": 3, "codec_type": "audio", "codec_name": "ac3",
+         "sample_rate": "48000", "channels": 6, "tags": {"language": "jpn"}}
+      ],
+      "format": {"format_name": "matroska,webm", "duration": "12.5"}
+    }"#;
+
+    let result = parse_ffprobe_media_json(json, "/m/clip.mkv", "clip.mkv").expect("parse");
+
+    assert_eq!(result.audio_tracks.len(), 2);
+    assert_eq!(result.audio_tracks[0].index, 1);
+    assert_eq!(result.audio_tracks[1].index, 3);
+    assert_eq!(result.audio_tracks[1].language.as_deref(), Some("jpn"));
   }
 }
