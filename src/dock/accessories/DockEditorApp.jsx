@@ -85,26 +85,30 @@ export function DockEditorApp() {
     const root = rootRef.current;
     if (!root) return;
     let frame = 0;
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const next = measureDockEditorContent(root);
-        if (!next) return;
-        if (
-          lastSizeRef.current?.width === next.width &&
-          lastSizeRef.current?.height === next.height
-        ) {
-          return;
-        }
-        lastSizeRef.current = next;
-        action("resize-editor", { ...next, view: payload.view });
-      });
+    const measureNow = () => {
+      const next = measureDockEditorContent(root);
+      if (!next) return;
+      if (
+        lastSizeRef.current?.view === payload.view &&
+        lastSizeRef.current?.width === next.width &&
+        lastSizeRef.current?.height === next.height
+      ) {
+        return;
+      }
+      lastSizeRef.current = { ...next, view: payload.view };
+      action("resize-editor", { ...next, view: payload.view });
     };
-    measure();
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measureNow);
+    };
+    // Hidden WKWebViews may not receive an animation frame. Measure once from
+    // the committed DOM so the native window can be sized before it is shown.
+    measureNow();
     const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasure);
     resizeObserver?.observe(root);
-    const mutationObserver = new MutationObserver(measure);
+    const mutationObserver = new MutationObserver(scheduleMeasure);
     mutationObserver.observe(root, { childList: true, subtree: true, characterData: true });
     return () => {
       cancelAnimationFrame(frame);
