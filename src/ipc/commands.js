@@ -124,6 +124,11 @@ export function setDockAccessories({
   });
 }
 
+/** Whether the global cursor is inside any visible Dock surface window. */
+export function cursorOverDockSurfaces() {
+  return invoke("cursor_over_dock_surfaces");
+}
+
 export function exportProfileCommand() {
   return invoke("export_profile");
 }
