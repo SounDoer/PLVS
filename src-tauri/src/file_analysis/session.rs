@@ -15,7 +15,8 @@ use crate::file_analysis::ffmpeg::decode::{
   build_decode_args, bytes_to_f32_le_into, parse_out_time_us,
 };
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
-use crate::file_analysis::probe::probe_file;
+use crate::file_analysis::probe::{probe_file, probe_media_file};
+use crate::file_analysis::summary::FileAnalysisSummaryRun;
 use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, FileAnalysisCompletedPayload, FileAnalysisErrorPayload,
@@ -242,6 +243,57 @@ fn send_frame(
       .map_err(|_| "file analysis frame subscriber disconnected".to_string()),
     None => Err("file analysis frame subscriber missing".to_string()),
   }
+}
+
+/// Headless file analysis with dialogue gating (CLI / automation). Uses the same
+/// `MeterPipeline` path as the desktop file session, without Tauri.
+pub fn analyze_file_track_with_dialogue(
+  path: &str,
+  track_index: Option<u32>,
+  vad_engine: VadEngineKind,
+) -> Result<FileAnalysisSummaryRun, String> {
+  let media_probe = probe_media_file(Path::new(path))?;
+  let selected_track = match track_index {
+    Some(index) => media_probe
+      .audio_tracks
+      .iter()
+      .find(|track| track.index == index)
+      .cloned()
+      .ok_or_else(|| format!("Audio track index {index} was not found in media file"))?,
+    None => media_probe
+      .audio_tracks
+      .first()
+      .cloned()
+      .ok_or_else(|| "No audio track found in media file".to_string())?,
+  };
+  let probe = FileAnalysisProbeResult {
+    path: media_probe.path,
+    file_name: media_probe.file_name,
+    container: media_probe.container,
+    duration_ms: media_probe.duration_ms,
+    selected_track,
+  };
+  let config = WorkerConfig {
+    requests: AnalysisRequests::default(),
+    loudness_weights: None,
+    dialogue_gating: true,
+    dialogue_vad_engine: vad_engine,
+  };
+  let outcome = analyze_file_core(
+    path,
+    Some(&probe),
+    &config,
+    |_frame| Ok(()),
+    |_progress| {},
+    || false,
+  )?;
+  let (decoded_frames, summary) =
+    outcome.ok_or_else(|| "File analysis was cancelled before completion".to_string())?;
+  Ok(FileAnalysisSummaryRun {
+    probe,
+    decoded_frames,
+    summary,
+  })
 }
 
 /// Decode `path` via the ffmpeg sidecar and feed PCM to the metering pipeline. Returns `Ok(None)`

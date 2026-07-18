@@ -6,7 +6,9 @@ use std::thread;
 
 use serde::{Deserialize, Serialize};
 
-use crate::cli_analyze::{run_analyze, CliAnalyzeReport, CliAnalyzeStatus};
+use crate::cli_analyze::{
+  run_analyze_with_options, CliAnalyzeOptions, CliAnalyzeReport, CliAnalyzeStatus,
+};
 
 pub const DEFAULT_BATCH_CONCURRENCY: usize = 2;
 pub const MAX_BATCH_CONCURRENCY: usize = 8;
@@ -64,7 +66,11 @@ pub fn normalize_concurrency(concurrency: usize) -> usize {
   concurrency.clamp(1, MAX_BATCH_CONCURRENCY)
 }
 
-pub fn run_analyze_batch(paths: Vec<String>, concurrency: usize) -> CliAnalyzeBatchReport {
+pub fn run_analyze_batch(
+  paths: Vec<String>,
+  concurrency: usize,
+  options: CliAnalyzeOptions,
+) -> CliAnalyzeBatchReport {
   let total = paths.len();
   let concurrency = normalize_concurrency(concurrency).min(total.max(1));
   let queue = Arc::new(Mutex::new(
@@ -86,7 +92,7 @@ pub fn run_analyze_batch(paths: Vec<String>, concurrency: usize) -> CliAnalyzeBa
         break;
       };
 
-      let report = run_analyze(&path);
+      let report = run_analyze_with_options(&path, options);
       let status = report.status();
       let _ = tx.send((
         index,
@@ -115,7 +121,11 @@ pub fn run_analyze_batch(paths: Vec<String>, concurrency: usize) -> CliAnalyzeBa
     .filter(|result| result.status == CliAnalyzeStatus::Ok)
     .count();
   let error = total.saturating_sub(ok);
-  let status = if error == 0 {
+  let qc_fail = results
+    .iter()
+    .filter(|result| result.report.quality_control_failed())
+    .count();
+  let status = if error == 0 && qc_fail == 0 {
     CliAnalyzeBatchStatus::Ok
   } else if ok == 0 {
     CliAnalyzeBatchStatus::Error

@@ -68,6 +68,26 @@ pub fn render_analyze_text(report: &CliAnalyzeReport) -> String {
         format_dbtp(summary.true_peak_max_dbtp),
         format_dbfs(summary.sample_peak_max_db),
       );
+      if report.analysis.dialogue.enabled {
+        output.push_str(&format!(
+          "Dialogue ({}) integrated: {}\nDialogue LRA: {}\n",
+          report
+            .analysis
+            .dialogue
+            .engine
+            .as_deref()
+            .unwrap_or("unknown"),
+          format_number(summary.dialogue_integrated_lufs, 1, " LUFS"),
+          format_number(summary.dialogue_lra, 1, " LU"),
+        ));
+        if let Some(reference) = report.analysis.reference_lufs {
+          output.push_str(&format!(
+            "Dialogue vs reference ({:.1} LUFS): {}\n",
+            reference,
+            format_number(summary.dialogue_offset_from_reference_lu, 1, " LU"),
+          ));
+        }
+      }
       if report.quality_control.status != CliQualityControlStatus::NotEvaluated {
         output.push_str(&format!(
           "QC: {}\n",

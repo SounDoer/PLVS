@@ -43,6 +43,14 @@ impl VadEngineKind {
       _ => None,
     }
   }
+
+  pub fn as_key(self) -> &'static str {
+    match self {
+      Self::Silero => "silero",
+      Self::FireRed => "firered",
+      Self::Ten => "ten",
+    }
+  }
 }
 
 impl VadDecision {

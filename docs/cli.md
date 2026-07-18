@@ -67,9 +67,9 @@ Always run `doctor --json` first to verify that the installed runtime and sideca
 ```powershell
 plvs-cli doctor [--json] [--out <file>]
 plvs-cli probe <path> --json [--out <file>]
-plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]
-plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]
-plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]
+plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]
+plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]
+plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]
 plvs-cli devices --json [--out <file>]
 plvs-cli report <analysis.json> --format markdown [--out <file>]
 plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]
@@ -99,6 +99,21 @@ plvs-cli analyze mix.wav --target-lufs -14 --lufs-tolerance 1 --max-true-peak -1
 `--target-lufs` and `--lufs-tolerance` must be supplied together. They accept the measured Integrated LUFS value when it lies within `target ± tolerance`. `--max-true-peak` independently sets a dBTP ceiling.
 
 Without QC options, the report contains `qualityControl.status: "notEvaluated"` and the command does not make a pass/fail claim. With QC options, the status is `pass` or `fail`; a failed or unavailable requested metric returns exit code `1` while preserving the valid measurement report. The top-level analysis `status` remains `ok` because QC failure is not an analysis error.
+
+### analyze dialogue
+
+`--dialogue` enables dialogue-gated loudness using the same MeterPipeline / VAD path as the desktop file session. Without it, analysis stays on the lighter SummaryMeter path and dialogue fields remain `null`.
+
+```powershell
+plvs-cli analyze episode.wav --dialogue --json
+plvs-cli analyze episode.wav --dialogue --vad silero --reference-lufs -16 --json
+```
+
+`--vad` accepts `silero`, `firered`, or `ten` and requires `--dialogue`. Omitting `--vad` uses the same default as the desktop app (`firered`).
+
+`--reference-lufs` is a display reference only. When dialogue loudness is available, the report includes `summary.dialogueOffsetFromReferenceLu` (`dialogueIntegratedLufs - referenceLufs`). It does not judge pass/fail; use `--target-lufs` / `--lufs-tolerance` for QC gates.
+
+`analyze-batch` accepts the same dialogue, reference, track, and QC options and applies them to every file.
 
 ### devices
 

@@ -8,7 +8,8 @@ use std::process::ExitCode;
 
 use crate::audio::capture_summary::CaptureSample;
 use crate::cli_analyze::{
-  run_analyze_with_options, CliAnalyzeOptions, CliAnalyzeStatus, CliQualityControlOptions,
+  run_analyze_with_options, CliAnalyzeOptions, CliAnalyzeStatus, CliDialogueOptions,
+  CliQualityControlOptions,
 };
 use crate::cli_analyze_batch::{
   read_manifest, run_analyze_batch, CliAnalyzeBatchStatus, DEFAULT_BATCH_CONCURRENCY,
@@ -19,6 +20,7 @@ use crate::cli_devices::{run_devices, CliDevicesStatus};
 use crate::cli_probe::{run_probe, CliProbeStatus};
 use crate::cli_report::{render_analyze_text, render_doctor_text, render_markdown_report};
 use crate::doctor::{run_doctor, DoctorStatus};
+use crate::dsp::speech::VadEngineKind;
 
 #[derive(Debug, Clone, PartialEq)]
 enum CliCommand {
@@ -42,6 +44,7 @@ enum CliCommand {
     paths: Vec<String>,
     manifest: Option<String>,
     concurrency: usize,
+    options: CliAnalyzeOptions,
     out: Option<String>,
   },
   CaptureJson {
@@ -136,10 +139,7 @@ fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
   let mut path = None;
   let mut json = false;
   let mut out = None;
-  let mut track_index = None;
-  let mut target_lufs = None;
-  let mut lufs_tolerance = None;
-  let mut max_true_peak_dbtp = None;
+  let mut options = ParsedAnalyzeOptions::default();
   let mut index = 0;
   while index < args.len() {
     match args[index].as_str() {
@@ -151,40 +151,7 @@ fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
         out = Some(take_value(args, index, "--out")?);
         index += 2;
       }
-      "--track" => {
-        let value = take_value(args, index, "--track")?;
-        track_index = Some(
-          value
-            .parse::<u32>()
-            .map_err(|_| "The --track value must be a non-negative integer".to_string())?,
-        );
-        index += 2;
-      }
-      "--target-lufs" => {
-        target_lufs = Some(parse_finite_number(
-          &take_value(args, index, "--target-lufs")?,
-          "--target-lufs",
-        )?);
-        index += 2;
-      }
-      "--lufs-tolerance" => {
-        let value = parse_finite_number(
-          &take_value(args, index, "--lufs-tolerance")?,
-          "--lufs-tolerance",
-        )?;
-        if value < 0.0 {
-          return Err("The --lufs-tolerance value must not be negative".to_string());
-        }
-        lufs_tolerance = Some(value);
-        index += 2;
-      }
-      "--max-true-peak" => {
-        max_true_peak_dbtp = Some(parse_finite_number(
-          &take_value(args, index, "--max-true-peak")?,
-          "--max-true-peak",
-        )?);
-        index += 2;
-      }
+      flag if parse_analyze_option_flag(args, &mut index, flag, &mut options)? => {}
       value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
       value if path.is_none() => {
         path = Some(value.to_string());
@@ -193,26 +160,124 @@ fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
       value => return Err(format!("Unexpected argument: {value}")),
     }
   }
-  if target_lufs.is_some() != lufs_tolerance.is_some() {
-    return Err("--target-lufs and --lufs-tolerance must be provided together".to_string());
-  }
+  let options = options.finish()?;
   let path = path.ok_or_else(|| {
-    "Usage: plvs-cli analyze <path> [--json] [--track <index>] [QC options] [--out <file>]"
+    "Usage: plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [QC options] [--out <file>]"
       .to_string()
   })?;
   Ok(CliCommand::Analyze {
     path,
     json,
-    options: CliAnalyzeOptions {
-      track_index,
-      quality_control: CliQualityControlOptions {
-        target_lufs,
-        lufs_tolerance,
-        max_true_peak_dbtp,
-      },
-    },
+    options,
     out,
   })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+struct ParsedAnalyzeOptions {
+  track_index: Option<u32>,
+  target_lufs: Option<f64>,
+  lufs_tolerance: Option<f64>,
+  max_true_peak_dbtp: Option<f64>,
+  dialogue: bool,
+  vad: Option<VadEngineKind>,
+  reference_lufs: Option<f64>,
+}
+
+impl ParsedAnalyzeOptions {
+  fn finish(self) -> Result<CliAnalyzeOptions, String> {
+    if self.target_lufs.is_some() != self.lufs_tolerance.is_some() {
+      return Err("--target-lufs and --lufs-tolerance must be provided together".to_string());
+    }
+    if self.vad.is_some() && !self.dialogue {
+      return Err("--vad requires --dialogue".to_string());
+    }
+    Ok(CliAnalyzeOptions {
+      track_index: self.track_index,
+      quality_control: CliQualityControlOptions {
+        target_lufs: self.target_lufs,
+        lufs_tolerance: self.lufs_tolerance,
+        max_true_peak_dbtp: self.max_true_peak_dbtp,
+      },
+      dialogue: CliDialogueOptions {
+        enabled: self.dialogue,
+        vad: self.vad,
+        reference_lufs: self.reference_lufs,
+      },
+    })
+  }
+}
+
+/// Returns `Ok(true)` when `flag` was an analyze option and `index` was advanced.
+fn parse_analyze_option_flag(
+  args: &[String],
+  index: &mut usize,
+  flag: &str,
+  options: &mut ParsedAnalyzeOptions,
+) -> Result<bool, String> {
+  match flag {
+    "--track" => {
+      let value = take_value(args, *index, "--track")?;
+      options.track_index = Some(
+        value
+          .parse::<u32>()
+          .map_err(|_| "The --track value must be a non-negative integer".to_string())?,
+      );
+      *index += 2;
+      Ok(true)
+    }
+    "--target-lufs" => {
+      options.target_lufs = Some(parse_finite_number(
+        &take_value(args, *index, "--target-lufs")?,
+        "--target-lufs",
+      )?);
+      *index += 2;
+      Ok(true)
+    }
+    "--lufs-tolerance" => {
+      let value = parse_finite_number(
+        &take_value(args, *index, "--lufs-tolerance")?,
+        "--lufs-tolerance",
+      )?;
+      if value < 0.0 {
+        return Err("The --lufs-tolerance value must not be negative".to_string());
+      }
+      options.lufs_tolerance = Some(value);
+      *index += 2;
+      Ok(true)
+    }
+    "--max-true-peak" => {
+      options.max_true_peak_dbtp = Some(parse_finite_number(
+        &take_value(args, *index, "--max-true-peak")?,
+        "--max-true-peak",
+      )?);
+      *index += 2;
+      Ok(true)
+    }
+    "--dialogue" => {
+      options.dialogue = true;
+      *index += 1;
+      Ok(true)
+    }
+    "--vad" => {
+      let value = take_value(args, *index, "--vad")?;
+      options.vad = Some(
+        VadEngineKind::from_key(&value)
+          .ok_or_else(|| "The --vad value must be one of: silero, firered, ten".to_string())?,
+      );
+      *index += 2;
+      Ok(true)
+    }
+    "--reference-lufs" => {
+      options.reference_lufs = Some(parse_finite_number(
+        &take_value(args, *index, "--reference-lufs")?,
+        "--reference-lufs",
+      )?);
+      *index += 2;
+      Ok(true)
+    }
+    _ => Ok(false),
+  }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -296,6 +361,7 @@ fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
   let mut has_json = false;
   let mut out = None;
   let mut concurrency = DEFAULT_BATCH_CONCURRENCY;
+  let mut options = ParsedAnalyzeOptions::default();
   let mut index = 0;
 
   while index < args.len() {
@@ -305,29 +371,15 @@ fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
         index += 1;
       }
       "--out" => {
-        let Some(path) = args.get(index + 1) else {
-          return Err("Missing value for --out".to_string());
-        };
-        if path.starts_with("--") {
-          return Err("Missing value for --out".to_string());
-        }
-        out = Some(path.clone());
+        out = Some(take_value(args, index, "--out")?);
         index += 2;
       }
       "--manifest" => {
-        let Some(path) = args.get(index + 1) else {
-          return Err("Missing value for --manifest".to_string());
-        };
-        if path.starts_with("--") {
-          return Err("Missing value for --manifest".to_string());
-        }
-        manifest = Some(path.clone());
+        manifest = Some(take_value(args, index, "--manifest")?);
         index += 2;
       }
       "--concurrency" => {
-        let Some(value) = args.get(index + 1) else {
-          return Err("Missing value for --concurrency".to_string());
-        };
+        let value = take_value(args, index, "--concurrency")?;
         concurrency = value
           .parse::<usize>()
           .map_err(|_| "The --concurrency value must be a positive integer".to_string())?;
@@ -338,6 +390,7 @@ fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
         }
         index += 2;
       }
+      flag if parse_analyze_option_flag(args, &mut index, flag, &mut options)? => {}
       value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
       value => {
         paths.push(value.to_string());
@@ -360,6 +413,7 @@ fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
     paths,
     manifest,
     concurrency,
+    options: options.finish()?,
     out,
   })
 }
@@ -537,7 +591,7 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n  plvs-cli devices --json [--out <file>]\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use devices --json to list stable capture ids before capture.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]\n  plvs-cli devices --json [--out <file>]\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use devices --json to list stable capture ids before capture.\n  Use analyze --dialogue for dialogue-gated loudness on a file.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Doctor => {
       "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
@@ -546,10 +600,10 @@ fn help_text(topic: HelpTopic) -> &'static str {
       "PLVS CLI - probe\n\nUsage:\n  plvs-cli probe <path> --json [--out <file>]\n\nReads media metadata without decoding the full file. The audioTracks array contains\nabsolute ffprobe stream indices accepted by analyze --track.\n\nExit codes:\n  0  media metadata was read successfully\n  1  probing completed with an error report\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Analyze => {
-      "PLVS CLI - analyze\n\nUsage:\n  plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nAnalyzes exactly one local media file without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\n--track selects an absolute stream index reported by probe.\nQC is opt-in and user-defined: loudness target and tolerance must be supplied together;\n--max-true-peak is an independent dBTP ceiling. Without these options no pass/fail is produced.\nFor multiple files, use analyze-batch.\n\nExit codes:\n  0  file analyzed successfully and requested QC checks passed\n  1  analysis error or requested QC check failed/unavailable\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI - analyze\n\nUsage:\n  plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nAnalyzes exactly one local media file without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\n--track selects an absolute stream index reported by probe.\n--dialogue enables dialogue-gated loudness via the same MeterPipeline path as the desktop file session.\n--vad selects the engine (default firered) and requires --dialogue.\n--reference-lufs is a display reference only; it reports dialogueOffsetFromReferenceLu and does not judge pass/fail.\nQC is opt-in and user-defined: loudness target and tolerance must be supplied together;\n--max-true-peak is an independent dBTP ceiling. Without these options no pass/fail is produced.\nFor multiple files, use analyze-batch.\n\nExit codes:\n  0  file analyzed successfully and requested QC checks passed\n  1  analysis error or requested QC check failed/unavailable\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::AnalyzeBatch => {
-      "PLVS CLI - analyze-batch\n\nUsage:\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n\nManifest format:\n  {\"files\":[\"C:\\\\media\\\\a.wav\",\"C:\\\\media\\\\b.wav\"]}\n\nRules:\n  Do not mix positional paths with --manifest.\n  Results preserve input order.\n  JSON is written to stdout. With --out, the same JSON is also written to a file.\n  --concurrency defaults to 2 and may be 1 through 8.\n\nExit codes:\n  0  all files analyzed successfully\n  1  at least one file produced an error report\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI - analyze-batch\n\nUsage:\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]\n\nManifest format:\n  {\"files\":[\"C:\\\\media\\\\a.wav\",\"C:\\\\media\\\\b.wav\"]}\n\nRules:\n  Do not mix positional paths with --manifest.\n  Results preserve input order.\n  Dialogue, track, reference, and QC options apply to every file in the batch.\n  JSON is written to stdout. With --out, the same JSON is also written to a file.\n  --concurrency defaults to 2 and may be 1 through 8.\n\nExit codes:\n  0  all files analyzed successfully and requested QC checks passed\n  1  at least one file produced an error report or failed a requested QC check\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Capture => {
       "PLVS CLI - capture\n\nUsage:\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n\nCaptures live audio from a device without launching the desktop UI and reports\ndelivery metrics. JSON is written to stdout. With --out, the same output is also\nwritten to a file.\n\n--device accepts a stable id from devices --json (lb-*/cap-*/default), or a\ncase-insensitive substring of the device label that matches exactly one device.\nOmit it to use the default device. With no substring match, the error lists the\navailable devices.\n\n--every <n> emits one JSON line every n seconds (JSONL) instead of a single\nreport; the final line is the same report the non-streaming mode prints.\n\nExit codes:\n  0  capture completed successfully\n  1  capture completed with an error report\n  2  invalid usage or CLI failure before a valid report"
@@ -668,6 +722,7 @@ pub fn run(args: &[String]) -> ExitCode {
       paths,
       manifest,
       concurrency,
+      options,
       out,
     } => {
       let paths = match manifest {
@@ -684,7 +739,7 @@ pub fn run(args: &[String]) -> ExitCode {
         },
         None => paths,
       };
-      let report = run_analyze_batch(paths, concurrency);
+      let report = run_analyze_batch(paths, concurrency, options);
       let status = report.status;
       match serde_json::to_string(&report) {
         Ok(json) => {
@@ -979,6 +1034,7 @@ mod tests {
             lufs_tolerance: Some(1.0),
             max_true_peak_dbtp: Some(-1.0),
           },
+          ..CliAnalyzeOptions::default()
         },
         out: None,
       })
@@ -1014,6 +1070,7 @@ mod tests {
         paths: vec!["a.wav".to_string(), "b.wav".to_string()],
         manifest: None,
         concurrency: 4,
+        options: CliAnalyzeOptions::default(),
         out: None,
       })
     );
@@ -1034,6 +1091,7 @@ mod tests {
         paths: vec!["a.wav".to_string(), "b.wav".to_string()],
         manifest: None,
         concurrency: DEFAULT_BATCH_CONCURRENCY,
+        options: CliAnalyzeOptions::default(),
         out: Some("batch.json".to_string()),
       })
     );
@@ -1052,9 +1110,44 @@ mod tests {
         paths: vec![],
         manifest: Some("files.json".to_string()),
         concurrency: DEFAULT_BATCH_CONCURRENCY,
+        options: CliAnalyzeOptions::default(),
         out: None,
       })
     );
+  }
+
+  #[test]
+  fn parses_analyze_dialogue_and_reference() {
+    assert_eq!(
+      parse_args(&args(&[
+        "analyze",
+        "episode.wav",
+        "--dialogue",
+        "--vad",
+        "silero",
+        "--reference-lufs",
+        "-16",
+        "--json",
+      ])),
+      Ok(CliCommand::Analyze {
+        path: "episode.wav".to_string(),
+        json: true,
+        options: CliAnalyzeOptions {
+          dialogue: CliDialogueOptions {
+            enabled: true,
+            vad: Some(VadEngineKind::Silero),
+            reference_lufs: Some(-16.0),
+          },
+          ..CliAnalyzeOptions::default()
+        },
+        out: None,
+      })
+    );
+  }
+
+  #[test]
+  fn rejects_vad_without_dialogue() {
+    assert!(parse_args(&args(&["analyze", "mix.wav", "--vad", "ten"])).is_err());
   }
 
   #[test]
