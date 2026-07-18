@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { setDockAccessories } from "../ipc/commands.js";
+import { cursorOverDockSurfaces, setDockAccessories } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { shouldShowDockHeader } from "./accessoryVisibility.js";
 
 const ACCESSORY_READY_RETRY_MS = 50;
 const ACCESSORY_READY_ATTEMPTS = 4;
+const CURSOR_RECONCILE_MS = 33;
 
 function initialEditorSize(view) {
   if (view === "presets") return { width: 240, height: 560 };
@@ -33,6 +34,34 @@ export async function setDockAccessoriesWhenReady(
   }
 }
 
+export function createLatestDockAccessoryUpdater({ command = setDockAccessoriesWhenReady } = {}) {
+  let latestRequest = 0;
+  let pending = null;
+  let running = false;
+
+  const drain = async () => {
+    running = true;
+    while (pending !== null) {
+      const current = pending;
+      pending = null;
+      try {
+        await command(current.options);
+      } catch (error) {
+        if (current.request === latestRequest) current.onError?.(error);
+      }
+    }
+    running = false;
+  };
+
+  return {
+    update(options, onError) {
+      latestRequest += 1;
+      pending = { request: latestRequest, options, onError };
+      if (!running) void drain();
+    },
+  };
+}
+
 export function useDockAccessoryVisibility({
   active,
   edge,
@@ -48,10 +77,14 @@ export function useDockAccessoryVisibility({
   const [measuredEditorView, setMeasuredEditorView] = useState(null);
   const editorViewRef = useRef(null);
   const measuredEditorViewRef = useRef(null);
-  const requestRef = useRef(0);
-  const commandQueueRef = useRef(Promise.resolve());
+  const presenceRevisionRef = useRef(0);
+  const accessoryUpdaterRef = useRef(null);
+  if (accessoryUpdaterRef.current === null) {
+    accessoryUpdaterRef.current = createLatestDockAccessoryUpdater();
+  }
 
   const updatePresence = useCallback((key, inside) => {
+    presenceRevisionRef.current += 1;
     setPresence((current) => ({ ...current, [key]: inside }));
     if (inside) setHeaderVisible(true);
   }, []);
@@ -94,6 +127,7 @@ export function useDockAccessoryVisibility({
   useEffect(() => {
     if (!active) {
       const resetTimer = setTimeout(() => {
+        presenceRevisionRef.current += 1;
         editorViewRef.current = null;
         measuredEditorViewRef.current = null;
         setMeasuredEditorView(null);
@@ -119,23 +153,56 @@ export function useDockAccessoryVisibility({
   }, [active, editorView, forceHeaderVisible, presence]);
 
   useEffect(() => {
+    if (!active || editorView !== null || forceHeaderVisible || !isTauri()) {
+      return;
+    }
+    let cancelled = false;
+    let timer = null;
+    const schedule = () => {
+      timer = window.setTimeout(async () => {
+        const revision = presenceRevisionRef.current;
+        try {
+          const inside = await cursorOverDockSurfaces();
+          if (!cancelled && presenceRevisionRef.current === revision) {
+            setPresence((current) => {
+              if (cancelled || presenceRevisionRef.current !== revision) return current;
+              if (inside && !current.stripInside && !current.headerInside) {
+                presenceRevisionRef.current += 1;
+                return { stripInside: true, headerInside: false };
+              }
+              if (!inside && (current.stripInside || current.headerInside)) {
+                presenceRevisionRef.current += 1;
+                return { stripInside: false, headerInside: false };
+              }
+              return current;
+            });
+          }
+        } catch (_) {
+          // DOM pointer events remain the fast path if native reconciliation is unavailable.
+        }
+        if (!cancelled) schedule();
+      }, CURSOR_RECONCILE_MS);
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [active, editorView, forceHeaderVisible]);
+
+  useEffect(() => {
     if (!isTauri()) return;
-    const request = ++requestRef.current;
-    commandQueueRef.current = commandQueueRef.current
-      .catch(() => {})
-      .then(() =>
-        setDockAccessoriesWhenReady({
-          edge,
-          headerVisible: active && headerVisible,
-          editorVisible: active && editorView !== null && measuredEditorView !== null,
-          editorWidth: editorSize.width,
-          editorHeight: editorSize.height,
-          editorAnchorX,
-        })
-      );
-    void commandQueueRef.current.catch((error) => {
-      if (request === requestRef.current) onError?.(error);
-    });
+    accessoryUpdaterRef.current.update(
+      {
+        edge,
+        headerVisible: active && headerVisible,
+        editorVisible: active && editorView !== null && measuredEditorView !== null,
+        editorWidth: editorSize.width,
+        editorHeight: editorSize.height,
+        editorAnchorX,
+      },
+      onError
+    );
   }, [
     active,
     edge,

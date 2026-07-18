@@ -125,6 +125,61 @@ pub fn hide_all<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
   }
 }
 
+fn point_inside(bounds: WindowBounds, x: f64, y: f64) -> bool {
+  x >= bounds.x as f64
+    && x < (bounds.x as f64 + bounds.width as f64)
+    && y >= bounds.y as f64
+    && y < (bounds.y as f64 + bounds.height as f64)
+}
+
+fn visible_window_contains<R: tauri::Runtime>(
+  window: &WebviewWindow<R>,
+  x: f64,
+  y: f64,
+) -> Result<bool, String> {
+  if !window
+    .is_visible()
+    .map_err(|e| format!("{} visibility: {e}", window.label()))?
+  {
+    return Ok(false);
+  }
+  let position = window
+    .outer_position()
+    .map_err(|e| format!("{} position: {e}", window.label()))?;
+  let size = window
+    .inner_size()
+    .map_err(|e| format!("{} size: {e}", window.label()))?;
+  Ok(point_inside(
+    WindowBounds {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height,
+      is_maximized: false,
+    },
+    x,
+    y,
+  ))
+}
+
+#[tauri::command]
+pub fn cursor_over_dock_surfaces<R: tauri::Runtime>(
+  window: WebviewWindow<R>,
+) -> Result<bool, String> {
+  let app = window.app_handle();
+  let cursor = app
+    .cursor_position()
+    .map_err(|e| format!("dock cursor position: {e}"))?;
+  for label in ["main", DOCK_HEADER_LABEL, DOCK_EDITOR_LABEL] {
+    if let Some(surface) = app.get_webview_window(label) {
+      if visible_window_contains(&surface, cursor.x, cursor.y)? {
+        return Ok(true);
+      }
+    }
+  }
+  Ok(false)
+}
+
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub fn set_dock_accessories<R: tauri::Runtime>(
@@ -174,4 +229,28 @@ pub fn set_dock_accessories<R: tauri::Runtime>(
     show_or_hide(&editor, editor_visible, true)?;
   }
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn bounds(x: i32, y: i32, width: u32, height: u32) -> WindowBounds {
+    WindowBounds {
+      x,
+      y,
+      width,
+      height,
+      is_maximized: false,
+    }
+  }
+
+  #[test]
+  fn point_inside_uses_physical_half_open_window_bounds() {
+    let rect = bounds(-1280, 900, 1280, 72);
+    assert!(point_inside(rect, -1280.0, 900.0));
+    assert!(point_inside(rect, -0.1, 971.9));
+    assert!(!point_inside(rect, 0.0, 930.0));
+    assert!(!point_inside(rect, -640.0, 972.0));
+  }
 }
