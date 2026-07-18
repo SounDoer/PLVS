@@ -58,13 +58,14 @@ fn reserve_space_with_support(reserve_space: bool, supported: bool) -> bool {
 }
 
 impl DockStateRecord {
-  fn with_reserve_space_support(mut self, supported: bool) -> Self {
-    self.reserve_space = reserve_space_with_support(self.reserve_space, supported);
+  fn with_platform_support(mut self, dock_supported: bool, reserve_space_supported: bool) -> Self {
+    self.enabled = dock_supported && self.enabled;
+    self.reserve_space = reserve_space_with_support(self.reserve_space, reserve_space_supported);
     self
   }
 
   pub(crate) fn normalize_for_platform(self) -> Self {
-    self.with_reserve_space_support(cfg!(target_os = "windows"))
+    self.with_platform_support(!cfg!(target_os = "macos"), cfg!(target_os = "windows"))
   }
 }
 
@@ -797,7 +798,20 @@ mod tests {
       height: DOCK_DEFAULT_LOGICAL_HEIGHT,
     };
 
-    assert!(!state.with_reserve_space_support(false).reserve_space);
+    assert!(!state.with_platform_support(true, false).reserve_space);
+  }
+
+  #[test]
+  fn dock_state_disables_dock_on_unsupported_platforms() {
+    let state = DockStateRecord {
+      enabled: true,
+      edge: DockEdge::Bottom,
+      monitor: None,
+      reserve_space: false,
+      height: DOCK_DEFAULT_LOGICAL_HEIGHT,
+    };
+
+    assert!(!state.with_platform_support(false, false).enabled);
   }
 
   #[test]

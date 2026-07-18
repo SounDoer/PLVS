@@ -123,12 +123,14 @@ describe("FocusViewPopoverContent", () => {
 
   describe("Dock control", () => {
     it("renders the current position in a compact select", () => {
+      mockPlatform("Win32");
       render(<FocusViewPopoverContent showDock dockEdge="top" />);
 
       expect(screen.getByRole("combobox", { name: "Dock position" }).textContent).toContain("Top");
     });
 
     it("reports edge choices and maps Off back to the existing null value", () => {
+      mockPlatform("Win32");
       const onDockChange = vi.fn();
       const { rerender } = render(
         <FocusViewPopoverContent showDock dockEdge={null} onDockChange={onDockChange} />
@@ -158,6 +160,7 @@ describe("FocusViewPopoverContent", () => {
     });
 
     it("is disabled in FILE mode", () => {
+      mockPlatform("Win32");
       render(
         <FocusViewPopoverContent showDock dockDisabled dockEdge={null} onDockChange={vi.fn()} />
       );
@@ -165,8 +168,14 @@ describe("FocusViewPopoverContent", () => {
     });
 
     it("is hidden when showDock is false (non-Tauri)", () => {
+      mockPlatform("Win32");
       render(<FocusViewPopoverContent showDock={false} />);
       expect(screen.queryByText(/^dock$/i)).toBeNull();
+    });
+
+    it("is hidden on macOS even when the caller enables it", () => {
+      render(<FocusViewPopoverContent showDock />);
+      expect(screen.queryByRole("combobox", { name: "Dock position" })).toBeNull();
     });
   });
 });

@@ -10,18 +10,17 @@ import {
 import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
+import { isWindows, supportsDockMode } from "../lib/platform.js";
 
 function supportsDockReserveSpace() {
-  return (
-    typeof navigator !== "undefined" && /Win/i.test(navigator.platform || navigator.userAgent || "")
-  );
+  return isWindows();
 }
 
 function normalizeDockState(raw) {
   const edge = raw?.edge === "top" ? "top" : "bottom";
   const monitor = typeof raw?.monitor === "string" ? raw.monitor : null;
   return {
-    enabled: raw?.enabled === true,
+    enabled: supportsDockMode() && raw?.enabled === true,
     edge,
     monitor,
     reserveSpace: supportsDockReserveSpace() && raw?.reserveSpace !== false,
@@ -62,7 +61,7 @@ export function useDockMode() {
   }, []);
 
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isTauri() || !supportsDockMode()) return;
     let cancelled = false;
     let retryTimer = null;
     const reconcile = () => {
@@ -89,7 +88,7 @@ export function useDockMode() {
 
   const enterDockMode = useCallback(
     (edge, reserveSpaceOverride, monitorOverride, heightOverride) => {
-      if (!isTauri()) return Promise.resolve();
+      if (!isTauri() || !supportsDockMode()) return Promise.resolve();
       return enqueueTransition(async () => {
         const current = dockRef.current;
         const hasReserveOverride = typeof reserveSpaceOverride === "boolean";

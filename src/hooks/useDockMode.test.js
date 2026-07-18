@@ -151,26 +151,19 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(true);
   });
 
-  it("normalizes reserve-space off on macOS", async () => {
+  it("ignores injected Dock state and Dock entry requests on macOS", async () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", reserveSpace: true },
     };
     const { result } = renderHook(() => useDockMode());
 
+    expect(result.current.dockEnabled).toBe(false);
     expect(result.current.reserveSpace).toBe(false);
+    await act(() => result.current.enterDockMode("bottom"));
+    expect(mocks.enterDock).not.toHaveBeenCalled();
     await act(() => result.current.setReserveSpace(true));
     expect(mocks.setDockReserveSpace).not.toHaveBeenCalled();
-    expect(result.current.reserveSpace).toBe(false);
-  });
-
-  it("downgrades a Windows reserve-space preset to overlay on macOS", async () => {
-    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
-    const { result } = renderHook(() => useDockMode());
-
-    await act(() => result.current.enterDockMode("top", true));
-
-    expect(mocks.enterDock).toHaveBeenCalledWith("top", false, undefined, undefined);
     expect(result.current.reserveSpace).toBe(false);
   });
 

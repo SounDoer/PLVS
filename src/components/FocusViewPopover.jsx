@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { isMacOS, supportsDockMode } from "@/lib/platform.js";
 
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
@@ -41,9 +42,7 @@ export function FocusViewPopoverContent({
   dockDisabled = false,
 }) {
   const normalized = normalizeFocusView(focusView);
-  const isMac =
-    typeof navigator !== "undefined" &&
-    /Mac/i.test(navigator.platform || navigator.userAgent || "");
+  const isMac = isMacOS();
 
   return (
     <div className="grid gap-1">
@@ -102,7 +101,7 @@ export function FocusViewPopoverContent({
           onCheckedChange={setGlassEnabled}
         />
       ) : null}
-      {showDock ? (
+      {showDock && supportsDockMode() ? (
         <>
           <div className="mx-2 border-t border-border/60" />
           <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">

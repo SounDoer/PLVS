@@ -46,6 +46,7 @@ import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
+import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
@@ -289,6 +290,9 @@ function AppContent() {
   const applyDockPreset = useCallback(
     async (presetDock, normalWindow = {}) => {
       clearNotice();
+      // Dock is temporarily unavailable on macOS. Keep the preset and Dock
+      // implementation intact, but apply the preset's non-Dock state only.
+      if (presetDock.enabled && !supportsDockMode()) return false;
       if (presetDock.enabled) {
         dockLayout.setPanels(presetDock);
         const requiresDockTransition =
@@ -388,7 +392,8 @@ function AppContent() {
     setGlassEnabled,
     dock: presetDockState,
     applyDockPreset,
-    canApplyDockPreset: (presetDock) => !presetDock.enabled || sourceMode !== "file",
+    canApplyDockPreset: (presetDock) =>
+      !presetDock.enabled || !supportsDockMode() || sourceMode !== "file",
     onApplyError: onPresetApplyError,
   });
 
@@ -1250,7 +1255,7 @@ function AppContent() {
     setPanelOpacity,
     glassEnabled,
     setGlassEnabled,
-    showDock: isTauri(),
+    showDock: isTauri() && supportsDockMode(),
     dockEdge: docked ? dockEdge : null,
     onDockChange,
     dockDisabled: sourceMode === "file",
