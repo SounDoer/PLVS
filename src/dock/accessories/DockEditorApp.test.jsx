@@ -130,6 +130,31 @@ describe("DockEditorApp window behavior", () => {
     );
   });
 
+  it("publishes the initial size even when a hidden webview receives no animation frame", () => {
+    const animationFrame = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+
+    render(<DockEditorApp />);
+
+    expect(action).toHaveBeenCalledWith(
+      "resize-editor",
+      expect.objectContaining({ view: "presets" })
+    );
+    animationFrame.mockRestore();
+  });
+
+  it("publishes size for a replacement editor even when its dimensions match", () => {
+    const { rerender } = render(<DockEditorApp />);
+    action.mockClear();
+
+    client.payload = { ...PRESETS_PAYLOAD, view: "modules" };
+    rerender(<DockEditorApp />);
+
+    expect(action).toHaveBeenCalledWith(
+      "resize-editor",
+      expect.objectContaining({ view: "modules" })
+    );
+  });
+
   it("lets module settings use their intrinsic width", () => {
     client.payload = {
       ...PRESETS_PAYLOAD,
