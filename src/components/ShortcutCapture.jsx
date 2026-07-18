@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { keyEventToAccelerator, formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
@@ -12,19 +12,20 @@ export function ShortcutCapture({
 }) {
   const [recording, setRecording] = useState(false);
   const [hint, setHint] = useState("");
+  const buttonRef = useRef(null);
 
-  const stopRecording = (el) => {
+  const stopRecording = () => {
     setRecording(false);
     setHint("");
     onRecordingChange(false);
-    el?.blur();
+    buttonRef.current?.blur();
   };
 
   const onKeyDown = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.key === "Escape") {
-      stopRecording(e.currentTarget);
+      stopRecording();
       return;
     }
     const accel = keyEventToAccelerator(e);
@@ -38,12 +39,22 @@ export function ShortcutCapture({
       return;
     }
     onChange(accel);
-    stopRecording(e.currentTarget);
+    stopRecording();
   };
+
+  useEffect(() => {
+    if (!recording) return;
+    // WebViews disagree about whether a clicked button owns keyboard focus.
+    // Capture at the window only while the recorder is active, then remove the
+    // listener immediately so normal application shortcuts are unaffected.
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [recording, onKeyDown]);
 
   return (
     <div className="flex flex-col items-end gap-0.5">
       <Button
+        ref={buttonRef}
         type="button"
         variant="outline"
         size="sm"
@@ -55,8 +66,7 @@ export function ShortcutCapture({
           setHint("");
           onRecordingChange(true);
         }}
-        onKeyDown={recording ? onKeyDown : undefined}
-        onBlur={(e) => stopRecording(e.currentTarget)}
+        onBlur={stopRecording}
       >
         {recording ? "Press a combo…" : formatAcceleratorForDisplay(value, { isMac })}
       </Button>

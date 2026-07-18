@@ -18,6 +18,32 @@ describe("ShortcutCapture", () => {
     expect(onChange).toHaveBeenCalledWith("CmdOrCtrl+Alt+J");
   });
 
+  it("captures from the window on macOS when WKWebView leaves focus on the dialog", () => {
+    const onChange = vi.fn();
+    render(<ShortcutCapture value="CmdOrCtrl+K" onChange={onChange} isMac={true} />);
+    const btn = screen.getByLabelText("Clear shortcut");
+
+    fireEvent.click(btn);
+    fireEvent.keyDown(window, { key: "j", metaKey: true });
+
+    expect(onChange).toHaveBeenCalledWith("CmdOrCtrl+J");
+    expect(btn.textContent).toBe("⌘K");
+  });
+
+  it("uses the same window capture path on Windows", () => {
+    const onChange = vi.fn();
+    render(<ShortcutCapture value="CmdOrCtrl+K" onChange={onChange} isMac={false} />);
+    const btn = screen.getByLabelText("Clear shortcut");
+
+    fireEvent.click(btn);
+    fireEvent.keyDown(window, { key: "j", ctrlKey: true });
+    expect(onChange).toHaveBeenCalledWith("CmdOrCtrl+J");
+    expect(btn.textContent).toBe("Ctrl+K");
+
+    fireEvent.keyDown(window, { key: "m", ctrlKey: true });
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects a combo with no modifier and shows a hint", () => {
     const onChange = vi.fn();
     render(<ShortcutCapture value="CmdOrCtrl+Alt+K" onChange={onChange} isMac={false} />);
