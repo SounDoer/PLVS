@@ -18,9 +18,14 @@ use crate::cli_analyze_batch::{
 use crate::cli_capture::{run_capture, sample_line, CliCaptureStatus};
 use crate::cli_devices::{run_devices, CliDevicesStatus};
 use crate::cli_probe::{run_probe, CliProbeStatus};
+use crate::cli_profile::{
+  render_profile_import_text, render_profile_validate_text, run_profile_export, run_profile_import,
+  run_profile_validate, CliProfileStatus,
+};
 use crate::cli_report::{render_analyze_text, render_doctor_text, render_markdown_report};
 use crate::doctor::{run_doctor, DoctorStatus};
 use crate::dsp::speech::VadEngineKind;
+use crate::profile::ProfileImportOptions;
 
 #[derive(Debug, Clone, PartialEq)]
 enum CliCommand {
@@ -56,6 +61,20 @@ enum CliCommand {
   DevicesJson {
     out: Option<String>,
   },
+  ProfileValidate {
+    path: String,
+    json: bool,
+    out: Option<String>,
+  },
+  ProfileExport {
+    out: Option<String>,
+  },
+  ProfileImport {
+    path: String,
+    options: ProfileImportOptions,
+    json: bool,
+    out: Option<String>,
+  },
   ReportMarkdown {
     input: String,
     out: Option<String>,
@@ -71,6 +90,7 @@ enum HelpTopic {
   AnalyzeBatch,
   Capture,
   Devices,
+  Profile,
   Report,
 }
 
@@ -85,10 +105,11 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, rest @ ..] if command == "analyze-batch" => parse_analyze_batch_args(rest),
     [command, rest @ ..] if command == "capture" => parse_capture_args(rest),
     [command, rest @ ..] if command == "devices" => parse_devices_args(rest),
+    [command, rest @ ..] if command == "profile" => parse_profile_args(rest),
     [command, rest @ ..] if command == "report" => parse_report_args(rest),
     [command, topic] if command == "help" => parse_help_topic(topic),
     [command, ..] if command == "help" => Err(
-      "Usage: plvs-cli help [doctor|probe|analyze|analyze-batch|capture|devices|report]"
+      "Usage: plvs-cli help [doctor|probe|analyze|analyze-batch|capture|devices|profile|report]"
         .to_string(),
     ),
     [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
@@ -346,9 +367,117 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
     "analyze-batch" => Ok(CliCommand::Help(HelpTopic::AnalyzeBatch)),
     "capture" => Ok(CliCommand::Help(HelpTopic::Capture)),
     "devices" => Ok(CliCommand::Help(HelpTopic::Devices)),
+    "profile" => Ok(CliCommand::Help(HelpTopic::Profile)),
     "report" => Ok(CliCommand::Help(HelpTopic::Report)),
     _ => Err(format!("Unknown help topic: {topic}")),
   }
+}
+
+fn parse_profile_args(args: &[String]) -> Result<CliCommand, String> {
+  if args.iter().any(|arg| is_help_flag(arg)) {
+    return Ok(CliCommand::Help(HelpTopic::Profile));
+  }
+  match args {
+    [] => Ok(CliCommand::Help(HelpTopic::Profile)),
+    [subcommand, rest @ ..] if subcommand == "validate" => parse_profile_validate_args(rest),
+    [subcommand, rest @ ..] if subcommand == "export" => parse_profile_export_args(rest),
+    [subcommand, rest @ ..] if subcommand == "import" => parse_profile_import_args(rest),
+    [subcommand, ..] => Err(format!(
+      "Unknown profile subcommand: {subcommand}\nUsage: plvs-cli profile <validate|export|import> ..."
+    )),
+  }
+}
+
+fn parse_profile_validate_args(args: &[String]) -> Result<CliCommand, String> {
+  let mut path = None;
+  let mut json = false;
+  let mut out = None;
+  let mut index = 0;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--out" => {
+        out = Some(take_value(args, index, "--out")?);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value if path.is_none() => {
+        path = Some(value.to_string());
+        index += 1;
+      }
+      value => return Err(format!("Unexpected argument: {value}")),
+    }
+  }
+  let path = path
+    .ok_or_else(|| "Usage: plvs-cli profile validate <file> [--json] [--out <file>]".to_string())?;
+  Ok(CliCommand::ProfileValidate { path, json, out })
+}
+
+fn parse_profile_export_args(args: &[String]) -> Result<CliCommand, String> {
+  let mut out = None;
+  let mut index = 0;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--out" => {
+        out = Some(take_value(args, index, "--out")?);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value => return Err(format!("Unexpected argument: {value}")),
+    }
+  }
+  Ok(CliCommand::ProfileExport { out })
+}
+
+fn parse_profile_import_args(args: &[String]) -> Result<CliCommand, String> {
+  let mut path = None;
+  let mut json = false;
+  let mut out = None;
+  let mut include_window_bounds = false;
+  let mut include_capture_device = false;
+  let mut index = 0;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--out" => {
+        out = Some(take_value(args, index, "--out")?);
+        index += 2;
+      }
+      "--include-window-bounds" => {
+        include_window_bounds = true;
+        index += 1;
+      }
+      "--include-capture-device" => {
+        include_capture_device = true;
+        index += 1;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value if path.is_none() => {
+        path = Some(value.to_string());
+        index += 1;
+      }
+      value => return Err(format!("Unexpected argument: {value}")),
+    }
+  }
+  let path = path.ok_or_else(|| {
+    "Usage: plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]"
+      .to_string()
+  })?;
+  Ok(CliCommand::ProfileImport {
+    path,
+    options: ProfileImportOptions {
+      include_window_bounds,
+      include_capture_device,
+    },
+    json,
+    out,
+  })
 }
 
 fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
@@ -591,7 +720,7 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]\n  plvs-cli devices --json [--out <file>]\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use devices --json to list stable capture ids before capture.\n  Use analyze --dialogue for dialogue-gated loudness on a file.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]\n  plvs-cli devices --json [--out <file>]\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli profile validate <file> [--json] [--out <file>]\n  plvs-cli profile export [--out <file>]\n  plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use devices --json to list stable capture ids before capture.\n  Use analyze --dialogue for dialogue-gated loudness on a file.\n  Use profile export/import to back up or deploy desktop configuration.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Doctor => {
       "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
@@ -610,6 +739,9 @@ fn help_text(topic: HelpTopic) -> &'static str {
     }
     HelpTopic::Devices => {
       "PLVS CLI - devices\n\nUsage:\n  plvs-cli devices --json [--out <file>]\n\nLists capture devices with stable ids, labels, kind, default flag, and backend.\nUse the id values with capture --device. Substring matching remains available for\ninteractive use; ambiguous substrings are still errors.\n\nExit codes:\n  0  devices listed successfully\n  1  enumeration completed with an error report\n  2  invalid usage or CLI failure before a valid report"
+    }
+    HelpTopic::Profile => {
+      "PLVS CLI - profile\n\nUsage:\n  plvs-cli profile validate <file> [--json] [--out <file>]\n  plvs-cli profile export [--out <file>]\n  plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]\n\nReads and writes the installed PLVS configuration store without launching the UI.\nexport writes a .plvsconfig-compatible JSON profile to stdout (and optionally --out).\nimport updates settings/workspace/presets/themes and clear-shortcut prefs.\nWindow bounds and capture device id are kept unchanged unless explicitly included,\nbecause they are machine-specific. Restart the desktop app after import.\n\nExit codes:\n  0  success\n  1  validation/import completed with an error report\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Report => {
       "PLVS CLI - report\n\nUsage:\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nReads JSON produced by analyze, analyze-batch, or capture and renders a human-readable Markdown table.\nMarkdown is written to stdout. With --out, the same Markdown is also written to a file.\n\nExit codes:\n  0  report rendered successfully\n  2  invalid usage, unreadable input, unsupported JSON, or output write failure"
@@ -831,6 +963,86 @@ pub fn run(args: &[String]) -> ExitCode {
         CliCaptureStatus::Error => ExitCode::from(1),
       }
     }
+    CliCommand::ProfileValidate { path, json, out } => {
+      let report = run_profile_validate(&path);
+      if json {
+        match serde_json::to_string(&report) {
+          Ok(json) => {
+            if let Err(err) = emit_json(&json, out.as_deref(), "profile validate") {
+              eprintln!("{err}");
+              return ExitCode::from(2);
+            }
+          }
+          Err(err) => {
+            eprintln!("Failed to serialize profile validate report: {err}");
+            return ExitCode::from(2);
+          }
+        }
+      } else {
+        let text = render_profile_validate_text(&report);
+        if let Err(err) = emit_text(&text, out.as_deref(), "profile validate") {
+          eprintln!("{err}");
+          return ExitCode::from(2);
+        }
+      }
+      match report.status {
+        CliProfileStatus::Ok => ExitCode::SUCCESS,
+        CliProfileStatus::Error => ExitCode::from(1),
+      }
+    }
+    CliCommand::ProfileExport { out } => match run_profile_export() {
+      Ok(profile) => match serde_json::to_string_pretty(&profile) {
+        Ok(json) => {
+          if let Err(err) = emit_text(&format!("{json}\n"), out.as_deref(), "profile export") {
+            eprintln!("{err}");
+            return ExitCode::from(2);
+          }
+          ExitCode::SUCCESS
+        }
+        Err(err) => {
+          eprintln!("Failed to serialize profile export: {err}");
+          ExitCode::from(2)
+        }
+      },
+      Err(err) => {
+        eprintln!("{err}");
+        ExitCode::from(2)
+      }
+    },
+    CliCommand::ProfileImport {
+      path,
+      options,
+      json,
+      out,
+    } => match run_profile_import(&path, options) {
+      Ok(report) => {
+        if json {
+          match serde_json::to_string(&report) {
+            Ok(json) => {
+              if let Err(err) = emit_json(&json, out.as_deref(), "profile import") {
+                eprintln!("{err}");
+                return ExitCode::from(2);
+              }
+            }
+            Err(err) => {
+              eprintln!("Failed to serialize profile import report: {err}");
+              return ExitCode::from(2);
+            }
+          }
+        } else {
+          let text = render_profile_import_text(&report);
+          if let Err(err) = emit_text(&text, out.as_deref(), "profile import") {
+            eprintln!("{err}");
+            return ExitCode::from(2);
+          }
+        }
+        ExitCode::SUCCESS
+      }
+      Err(err) => {
+        eprintln!("{err}");
+        ExitCode::from(1)
+      }
+    },
     CliCommand::ReportMarkdown { input, out } => {
       let contents = match fs::read_to_string(&input) {
         Ok(contents) => contents,
@@ -1287,5 +1499,41 @@ mod tests {
   fn rejects_report_without_markdown_format() {
     assert!(parse_args(&args(&["report", "results.json"])).is_err());
     assert!(parse_args(&args(&["report", "results.json", "--format", "json"])).is_err());
+  }
+
+  #[test]
+  fn parses_profile_validate_and_import() {
+    assert_eq!(
+      parse_args(&args(&["profile", "validate", "studio.json", "--json"])),
+      Ok(CliCommand::ProfileValidate {
+        path: "studio.json".to_string(),
+        json: true,
+        out: None,
+      })
+    );
+    assert_eq!(
+      parse_args(&args(&[
+        "profile",
+        "import",
+        "studio.json",
+        "--include-window-bounds",
+        "--include-capture-device",
+      ])),
+      Ok(CliCommand::ProfileImport {
+        path: "studio.json".to_string(),
+        options: ProfileImportOptions {
+          include_window_bounds: true,
+          include_capture_device: true,
+        },
+        json: false,
+        out: None,
+      })
+    );
+    assert_eq!(
+      parse_args(&args(&["profile", "export", "--out", "studio.json"])),
+      Ok(CliCommand::ProfileExport {
+        out: Some("studio.json".to_string())
+      })
+    );
   }
 }

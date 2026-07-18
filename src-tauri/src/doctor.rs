@@ -186,18 +186,27 @@ fn resolve_runtime_paths() -> DoctorPaths {
   }
 }
 
+/// App config directory used by the desktop store and headless CLI profile commands.
+pub fn resolve_config_dir() -> Option<PathBuf> {
+  resolve_config_dir_inner()
+}
+
+pub fn resolve_data_dir() -> Option<PathBuf> {
+  resolve_data_dir_inner()
+}
+
 #[cfg(windows)]
-fn resolve_config_dir() -> Option<PathBuf> {
+fn resolve_config_dir_inner() -> Option<PathBuf> {
   env::var_os("APPDATA").map(|base| PathBuf::from(base).join(APP_ID))
 }
 
 #[cfg(windows)]
-fn resolve_data_dir() -> Option<PathBuf> {
+fn resolve_data_dir_inner() -> Option<PathBuf> {
   env::var_os("LOCALAPPDATA").map(|base| PathBuf::from(base).join(APP_ID))
 }
 
 #[cfg(target_os = "macos")]
-fn resolve_config_dir() -> Option<PathBuf> {
+fn resolve_config_dir_inner() -> Option<PathBuf> {
   env::var_os("HOME").map(|base| {
     PathBuf::from(base)
       .join("Library")
@@ -207,7 +216,7 @@ fn resolve_config_dir() -> Option<PathBuf> {
 }
 
 #[cfg(target_os = "macos")]
-fn resolve_data_dir() -> Option<PathBuf> {
+fn resolve_data_dir_inner() -> Option<PathBuf> {
   env::var_os("HOME").map(|base| {
     PathBuf::from(base)
       .join("Library")
@@ -217,7 +226,7 @@ fn resolve_data_dir() -> Option<PathBuf> {
 }
 
 #[cfg(all(not(windows), not(target_os = "macos")))]
-fn resolve_config_dir() -> Option<PathBuf> {
+fn resolve_config_dir_inner() -> Option<PathBuf> {
   env::var_os("XDG_CONFIG_HOME")
     .map(PathBuf::from)
     .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
@@ -225,7 +234,7 @@ fn resolve_config_dir() -> Option<PathBuf> {
 }
 
 #[cfg(all(not(windows), not(target_os = "macos")))]
-fn resolve_data_dir() -> Option<PathBuf> {
+fn resolve_data_dir_inner() -> Option<PathBuf> {
   env::var_os("XDG_DATA_HOME")
     .map(PathBuf::from)
     .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".local").join("share")))
@@ -380,8 +389,11 @@ fn check_capabilities() -> DoctorCheck {
         "analyze-batch",
         "capture",
         "devices",
+        "profile",
         "report"
       ],
+      "profileImport": true,
+      "profileExport": true,
       "fileAnalysis": true,
       "liveCapture": true,
       "deviceListing": true,

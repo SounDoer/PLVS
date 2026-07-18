@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
 use tauri::AppHandle;
@@ -9,6 +10,12 @@ const PROFILE_APP: &str = "PLVS";
 const PROFILE_KIND: &str = "configuration-profile";
 const PROFILE_VERSION: i64 = 1;
 const DEFAULT_CLEAR_SHORTCUT: &str = "CmdOrCtrl+K";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ProfileImportOptions {
+  pub include_window_bounds: bool,
+  pub include_capture_device: bool,
+}
 
 const DOMAIN_KEYS: [&str; 4] = [
   "plvs:settings",
@@ -73,7 +80,7 @@ fn normalize_window_bounds(value: Option<&Value>) -> Value {
   })
 }
 
-fn normalize_profile_for_store(profile: Value) -> Map<String, Value> {
+pub fn normalize_profile_for_store(profile: Value) -> Map<String, Value> {
   let obj = profile.as_object();
   let mut out = Map::new();
 
@@ -122,7 +129,7 @@ fn normalize_profile_for_store(profile: Value) -> Map<String, Value> {
   out
 }
 
-fn validate_profile_identity(profile: &Value) -> Result<(), String> {
+pub fn validate_profile_identity(profile: &Value) -> Result<(), String> {
   let Some(obj) = profile.as_object() else {
     return Err("Choose a PLVS configuration file.".into());
   };
@@ -139,6 +146,121 @@ fn validate_profile_identity(profile: &Value) -> Result<(), String> {
     return Err("This PLVS configuration file was made by a newer version.".into());
   }
   Ok(())
+}
+
+pub fn store_file_path() -> Result<PathBuf, String> {
+  let dir = crate::doctor::resolve_config_dir()
+    .ok_or_else(|| "Unable to resolve the PLVS configuration directory.".to_string())?;
+  Ok(dir.join(STORE_FILE))
+}
+
+pub fn read_store_map(path: &Path) -> Result<Map<String, Value>, String> {
+  if !path.exists() {
+    return Ok(Map::new());
+  }
+  let contents =
+    fs::read_to_string(path).map_err(|err| format!("Unable to read settings store: {err}"))?;
+  let value: Value = serde_json::from_str(&contents)
+    .map_err(|err| format!("Unable to parse settings store JSON: {err}"))?;
+  match value {
+    Value::Object(map) => Ok(map),
+    _ => Err("Settings store must be a JSON object.".to_string()),
+  }
+}
+
+pub fn write_store_map(path: &Path, map: &Map<String, Value>) -> Result<(), String> {
+  if let Some(parent) = path.parent() {
+    fs::create_dir_all(parent)
+      .map_err(|err| format!("Unable to create configuration directory: {err}"))?;
+  }
+  let contents = serde_json::to_string_pretty(map)
+    .map_err(|err| format!("Unable to serialize settings store: {err}"))?;
+  fs::write(path, format!("{contents}\n"))
+    .map_err(|err| format!("Unable to write settings store: {err}"))
+}
+
+pub fn build_profile_snapshot_from_store(store: &Map<String, Value>) -> Value {
+  json!({
+    "app": PROFILE_APP,
+    "kind": PROFILE_KIND,
+    "version": PROFILE_VERSION,
+    "exportedAt": chrono_like_utc_now(),
+    "settings": store.get("plvs:settings").cloned().unwrap_or_else(|| json!({})),
+    "workspace": store.get("plvs:workspace").cloned().unwrap_or_else(|| json!({})),
+    "presets": store.get("plvs:presets").cloned().unwrap_or_else(|| json!({})),
+    "themes": store.get("plvs:themes").cloned().unwrap_or_else(|| json!({})),
+    "windowBounds": store.get("windowBounds").cloned().unwrap_or(Value::Null),
+    "captureDeviceId": store.get("captureDeviceId").cloned().unwrap_or_else(|| json!("default")),
+    "clearShortcut": store.get("clearShortcut").cloned().unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
+    "clearGlobal": store.get("clearGlobal").cloned().unwrap_or(json!(false)),
+  })
+}
+
+fn chrono_like_utc_now() -> String {
+  time::OffsetDateTime::now_utc()
+    .format(&time::format_description::well_known::Rfc3339)
+    .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
+}
+
+/// Headless export of the installed configuration profile.
+pub fn export_profile_from_disk() -> Result<Value, String> {
+  let path = store_file_path()?;
+  let store = read_store_map(&path)?;
+  Ok(build_profile_snapshot_from_store(&store))
+}
+
+/// Headless import. By default skips machine-specific window bounds and capture device id.
+pub fn import_profile_to_disk(
+  profile: Value,
+  options: ProfileImportOptions,
+) -> Result<PathBuf, String> {
+  validate_profile_identity(&profile)?;
+  let path = store_file_path()?;
+  let mut store = read_store_map(&path)?;
+  let values = normalize_profile_for_store(profile);
+
+  for key in DOMAIN_KEYS {
+    store.insert(
+      key.to_string(),
+      values.get(key).cloned().unwrap_or_else(|| json!({})),
+    );
+  }
+
+  store.insert(
+    "clearShortcut".into(),
+    values
+      .get("clearShortcut")
+      .cloned()
+      .unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
+  );
+  store.insert(
+    "clearGlobal".into(),
+    values.get("clearGlobal").cloned().unwrap_or(json!(false)),
+  );
+
+  if options.include_window_bounds {
+    match values.get("windowBounds") {
+      Some(Value::Null) | None => {
+        store.remove("windowBounds");
+      }
+      Some(value) => {
+        store.insert("windowBounds".into(), value.clone());
+      }
+    }
+  }
+
+  if options.include_capture_device {
+    store.insert(
+      "captureDeviceId".into(),
+      values
+        .get("captureDeviceId")
+        .cloned()
+        .unwrap_or_else(|| json!("default")),
+    );
+  }
+
+  write_store_map(&path, &store)?;
+  Ok(path)
 }
 
 #[tauri::command]

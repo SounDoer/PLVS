@@ -8,6 +8,7 @@ pub mod cli_devices;
 pub mod cli_main;
 mod cli_path;
 pub mod cli_probe;
+pub mod cli_profile;
 pub mod cli_report;
 mod dock;
 mod dock_accessories;

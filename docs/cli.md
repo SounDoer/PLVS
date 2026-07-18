@@ -71,6 +71,9 @@ plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|fi
 plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]
 plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]
 plvs-cli devices --json [--out <file>]
+plvs-cli profile validate <file> [--json] [--out <file>]
+plvs-cli profile export [--out <file>]
+plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]
 plvs-cli report <analysis.json> --format markdown [--out <file>]
 plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]
 ```
@@ -126,6 +129,20 @@ plvs-cli capture --device "cap-…" --seconds 10 --json
 
 Substring matching remains available for interactive use. Ambiguous substrings are still errors, and a failed substring match still prints the available device labels.
 
+### profile
+
+`profile` backs up and restores the installed desktop configuration store (`plvs-settings.json`) without opening the UI.
+
+```powershell
+plvs-cli profile export --out studio.plvsconfig.json
+plvs-cli profile validate studio.plvsconfig.json
+plvs-cli profile import studio.plvsconfig.json
+```
+
+`export` writes a `.plvsconfig`-compatible JSON document (same `app` / `kind` / `version` envelope as the Settings export).
+
+`import` updates settings, workspace, presets, themes, and clear-shortcut preferences. Window bounds and capture device id are **kept unchanged by default**, because they are machine-specific; pass `--include-window-bounds` and/or `--include-capture-device` to overwrite them. Restart the desktop app after import so it reloads the store.
+
 ### capture
 
 `capture` measures **live audio from a device**, where `analyze` measures a file. It opens the real capture path the desktop app uses, without a window.
@@ -157,6 +174,7 @@ Silence reports `null` metrics, not `0`: an all-silent capture has no finite lou
 - Use `doctor --json` first when you need to verify that the installed PLVS runtime and bundled sidecars are usable. Its checks include device enumeration (skipped on hosts with no sound card), bundled dialogue VAD engines, and the CLI capabilities summary for this build.
 - Use `probe <path> --json` when you need media metadata or an audio track index without running full analysis.
 - Use `devices --json` to discover stable capture ids before automating `capture`.
+- Use `profile export` / `profile import` to back up or deploy desktop configuration; keep window bounds and capture device excluded unless the target machine should inherit them.
 - Use `analyze <path> --json` for exactly one local media file.
 - Use `analyze-batch <paths...> --json` for two or more files.
 - Use `analyze-batch --manifest <file.json> --json` when paths are numerous, generated programmatically, or need reproducibility.
@@ -165,7 +183,7 @@ Silence reports `null` metrics, not `0`: an all-silent capture has no finite lou
 
 ## JSON First, Markdown Second
 
-`doctor` and `analyze` default to concise human-readable text; add `--json` for their stable machine-readable reports. `probe`, `analyze-batch`, `devices`, and `capture` require `--json`. `report --format markdown` reads JSON produced by `analyze`, `analyze-batch`, or `capture` and renders a human-readable Markdown table.
+`doctor`, `analyze`, and `profile validate` / `profile import` default to concise human-readable text; add `--json` for their stable machine-readable reports. `profile export` always writes profile JSON. `probe`, `analyze-batch`, `devices`, and `capture` require `--json`. `report --format markdown` reads JSON produced by `analyze`, `analyze-batch`, or `capture` and renders a human-readable Markdown table.
 
 This split keeps the analysis commands stable for automation while still giving users readable output when needed.
 
@@ -222,6 +240,7 @@ cargo test --manifest-path src-tauri/Cargo.toml --bin plvs-cli
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze
 cargo test --manifest-path src-tauri/Cargo.toml cli_probe
 cargo test --manifest-path src-tauri/Cargo.toml cli_devices
+cargo test --manifest-path src-tauri/Cargo.toml cli_profile
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze_batch
 cargo test --manifest-path src-tauri/Cargo.toml cli_report
 cargo test --manifest-path src-tauri/Cargo.toml cli_capture
