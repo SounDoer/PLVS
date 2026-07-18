@@ -4,6 +4,7 @@ mod audio;
 pub mod cli_analyze;
 pub mod cli_analyze_batch;
 pub mod cli_capture;
+pub mod cli_devices;
 pub mod cli_main;
 mod cli_path;
 pub mod cli_probe;

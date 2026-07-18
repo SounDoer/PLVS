@@ -120,11 +120,12 @@ plvs-cli probe "C:\path\movie.mkv" --json
 plvs-cli analyze "C:\path\file.wav" --json
 plvs-cli analyze "C:\path\mix.wav" --target-lufs -14 --lufs-tolerance 1 --max-true-peak -1 --json
 plvs-cli analyze-batch "C:\path\a.wav" "C:\path\b.wav" --json
+plvs-cli devices --json
 plvs-cli report analysis.json --format markdown
 plvs-cli capture --device "CABLE Output" --seconds 10 --json
 ```
 
-`probe` discovers audio tracks without decoding the complete file. `analyze` measures a file and can optionally apply user-defined QC thresholds; `capture` measures live audio from a device, using the same capture path as the desktop app but without a window. It blocks for `--seconds` of wall clock and holds the device open for that span. Omit `--device` for the system default; a substring that matches nothing lists the available devices.
+`probe` discovers audio tracks without decoding the complete file. `devices` lists stable capture ids for automation. `analyze` measures a file and can optionally apply user-defined QC thresholds; `capture` measures live audio from a device, using the same capture path as the desktop app but without a window. It blocks for `--seconds` of wall clock and holds the device open for that span. Omit `--device` for the system default; pass a stable id from `devices` or a unique label substring.
 
 Use JSON commands for automation, then use `report --format markdown` when a user-readable summary is needed. See [docs/cli.md](docs/cli.md) for `--out`, batch manifests, streaming `capture --every`, and exit codes.
 

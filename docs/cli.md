@@ -70,8 +70,9 @@ plvs-cli probe <path> --json [--out <file>]
 plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]
 plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]
 plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]
+plvs-cli devices --json [--out <file>]
 plvs-cli report <analysis.json> --format markdown [--out <file>]
-plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]
+plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]
 ```
 
 Use `plvs-cli --help`, `plvs-cli help`, or `plvs-cli <command> --help` for the installed command reference.
@@ -99,6 +100,17 @@ plvs-cli analyze mix.wav --target-lufs -14 --lufs-tolerance 1 --max-true-peak -1
 
 Without QC options, the report contains `qualityControl.status: "notEvaluated"` and the command does not make a pass/fail claim. With QC options, the status is `pass` or `fail`; a failed or unavailable requested metric returns exit code `1` while preserving the valid measurement report. The top-level analysis `status` remains `ok` because QC failure is not an analysis error.
 
+### devices
+
+`devices --json` lists every capture row the CLI can open, with stable ids (`lb-*` / `cap-*`), labels, kind (`systemOutput` or `input`), default flag, sample rate, channel count, and backend. Use it when a script needs a stable selector instead of guessing a substring.
+
+```powershell
+plvs-cli devices --json
+plvs-cli capture --device "cap-…" --seconds 10 --json
+```
+
+Substring matching remains available for interactive use. Ambiguous substrings are still errors, and a failed substring match still prints the available device labels.
+
 ### capture
 
 `capture` measures **live audio from a device**, where `analyze` measures a file. It opens the real capture path the desktop app uses, without a window.
@@ -108,7 +120,7 @@ It is unlike the other commands in two ways worth planning around:
 - **It blocks for `--seconds` of wall-clock time.** `capture --seconds 10` takes ten seconds. Every other command returns as fast as it can.
 - **It holds an audio device open** for that span. Still read-only — it never routes or modifies audio — but a device under exclusive-mode use by another application may refuse to open.
 
-`--device` matches a case-insensitive substring of the device label and must match exactly one device; omit it for the system default. There is no `devices` command: a substring that matches nothing prints the available devices, so one wrong guess tells you the real name. A substring matching several devices is an error rather than a guess — virtual cables commonly install as multiple rows (`CABLE Input`, `CABLE Output`, `CABLE In 16ch`), and picking the wrong one silently captures the wrong end of the loop.
+`--device` accepts either a stable id from `devices --json` (`default`, `lb-*`, `cap-*`, or legacy `out:N` / `in:N`) or a case-insensitive substring of the device label that matches exactly one device; omit it for the system default. A substring that matches nothing prints the available devices. A substring matching several devices is an error rather than a guess — virtual cables commonly install as multiple rows (`CABLE Input`, `CABLE Output`, `CABLE In 16ch`), and picking the wrong one silently captures the wrong end of the loop.
 
 ```powershell
 plvs-cli capture --seconds 10 --json                        # default device
@@ -127,8 +139,9 @@ Silence reports `null` metrics, not `0`: an all-silent capture has no finite lou
 
 ## Agent Workflow
 
-- Use `doctor --json` first when you need to verify that the installed PLVS runtime and bundled sidecars are usable.
+- Use `doctor --json` first when you need to verify that the installed PLVS runtime and bundled sidecars are usable. Its checks include device enumeration (skipped on hosts with no sound card), bundled dialogue VAD engines, and the CLI capabilities summary for this build.
 - Use `probe <path> --json` when you need media metadata or an audio track index without running full analysis.
+- Use `devices --json` to discover stable capture ids before automating `capture`.
 - Use `analyze <path> --json` for exactly one local media file.
 - Use `analyze-batch <paths...> --json` for two or more files.
 - Use `analyze-batch --manifest <file.json> --json` when paths are numerous, generated programmatically, or need reproducibility.
@@ -137,7 +150,7 @@ Silence reports `null` metrics, not `0`: an all-silent capture has no finite lou
 
 ## JSON First, Markdown Second
 
-`doctor` and `analyze` default to concise human-readable text; add `--json` for their stable machine-readable reports. `probe`, `analyze-batch`, and `capture` require `--json`. `report --format markdown` reads JSON produced by `analyze`, `analyze-batch`, or `capture` and renders a human-readable Markdown table.
+`doctor` and `analyze` default to concise human-readable text; add `--json` for their stable machine-readable reports. `probe`, `analyze-batch`, `devices`, and `capture` require `--json`. `report --format markdown` reads JSON produced by `analyze`, `analyze-batch`, or `capture` and renders a human-readable Markdown table.
 
 This split keeps the analysis commands stable for automation while still giving users readable output when needed.
 
@@ -193,6 +206,7 @@ Focused CLI tests:
 cargo test --manifest-path src-tauri/Cargo.toml --bin plvs-cli
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze
 cargo test --manifest-path src-tauri/Cargo.toml cli_probe
+cargo test --manifest-path src-tauri/Cargo.toml cli_devices
 cargo test --manifest-path src-tauri/Cargo.toml cli_analyze_batch
 cargo test --manifest-path src-tauri/Cargo.toml cli_report
 cargo test --manifest-path src-tauri/Cargo.toml cli_capture

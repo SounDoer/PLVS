@@ -369,6 +369,62 @@ pub fn resolve_device_id_by_substring(needle: &str) -> Result<String, String> {
   match_device_substring(&devices, needle)
 }
 
+/// True when `selector` is already a capture device id (`default`, stable `lb-*` /
+/// `cap-*`, or legacy `out:N` / `in:N`) rather than a label substring.
+pub fn looks_like_device_id(selector: &str) -> bool {
+  selector.eq_ignore_ascii_case("default")
+    || device_id::is_stable_loopback_id(selector)
+    || device_id::is_stable_capture_id(selector)
+    || device_id::parse_legacy_output_index(selector).is_some()
+    || device_id::parse_legacy_input_index(selector).is_some()
+}
+
+/// Resolve a CLI `--device` value: exact ids pass through after validation;
+/// anything else is treated as a case-insensitive label substring.
+pub fn resolve_device_selector(selector: &str) -> Result<String, String> {
+  if selector.is_empty() || selector.eq_ignore_ascii_case("default") {
+    return Ok("default".to_string());
+  }
+  if looks_like_device_id(selector) {
+    resolve_device(selector)?;
+    return Ok(selector.to_string());
+  }
+  resolve_device_id_by_substring(selector)
+}
+
+/// Stable id of the device that `"default"` currently resolves to, when present
+/// in the enumerated list.
+pub fn default_device_list_id() -> Option<String> {
+  let (device, _) = resolve_default_output().ok()?;
+  let label = device_list_label(&device).ok()?;
+  let devices = build_device_list().ok()?;
+  devices
+    .into_iter()
+    .find(|device| device.is_system_output_monitor && device.label == label)
+    .map(|device| device.id)
+}
+
+/// Enumerate devices for headless CLI listing (same list capture substring matching uses).
+pub fn list_devices_for_cli() -> Result<Vec<DeviceInfo>, String> {
+  build_device_list()
+}
+
+/// Capture backend label used by CLI/doctor reporting.
+pub fn capture_backend_name() -> &'static str {
+  #[cfg(target_os = "windows")]
+  {
+    "wasapi"
+  }
+  #[cfg(target_os = "macos")]
+  {
+    "coreaudio"
+  }
+  #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+  {
+    "cpal"
+  }
+}
+
 #[cfg(test)]
 mod substring_tests {
   use super::match_device_substring;
@@ -429,5 +485,19 @@ mod substring_tests {
       err.contains("Microphone (Realtek High Definition Audio)"),
       "unexpected: {err}"
     );
+  }
+
+  #[test]
+  fn looks_like_device_id_recognizes_stable_and_legacy_forms() {
+    assert!(super::looks_like_device_id("default"));
+    assert!(super::looks_like_device_id(
+      "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ));
+    assert!(super::looks_like_device_id(
+      "cap-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    ));
+    assert!(super::looks_like_device_id("out:0"));
+    assert!(super::looks_like_device_id("in:2"));
+    assert!(!super::looks_like_device_id("CABLE Output"));
   }
 }

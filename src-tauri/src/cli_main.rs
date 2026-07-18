@@ -15,6 +15,7 @@ use crate::cli_analyze_batch::{
   MAX_BATCH_CONCURRENCY,
 };
 use crate::cli_capture::{run_capture, sample_line, CliCaptureStatus};
+use crate::cli_devices::{run_devices, CliDevicesStatus};
 use crate::cli_probe::{run_probe, CliProbeStatus};
 use crate::cli_report::{render_analyze_text, render_doctor_text, render_markdown_report};
 use crate::doctor::{run_doctor, DoctorStatus};
@@ -49,6 +50,9 @@ enum CliCommand {
     every: Option<u64>,
     out: Option<String>,
   },
+  DevicesJson {
+    out: Option<String>,
+  },
   ReportMarkdown {
     input: String,
     out: Option<String>,
@@ -63,6 +67,7 @@ enum HelpTopic {
   Analyze,
   AnalyzeBatch,
   Capture,
+  Devices,
   Report,
 }
 
@@ -76,11 +81,13 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, rest @ ..] if command == "analyze" => parse_analyze_args(rest),
     [command, rest @ ..] if command == "analyze-batch" => parse_analyze_batch_args(rest),
     [command, rest @ ..] if command == "capture" => parse_capture_args(rest),
+    [command, rest @ ..] if command == "devices" => parse_devices_args(rest),
     [command, rest @ ..] if command == "report" => parse_report_args(rest),
     [command, topic] if command == "help" => parse_help_topic(topic),
-    [command, ..] if command == "help" => {
-      Err("Usage: plvs-cli help [doctor|probe|analyze|analyze-batch|capture|report]".to_string())
-    }
+    [command, ..] if command == "help" => Err(
+      "Usage: plvs-cli help [doctor|probe|analyze|analyze-batch|capture|devices|report]"
+        .to_string(),
+    ),
     [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
     [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
     [command, ..] => Err(format!("Unknown command: {command}")),
@@ -273,6 +280,7 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
     "analyze" => Ok(CliCommand::Help(HelpTopic::Analyze)),
     "analyze-batch" => Ok(CliCommand::Help(HelpTopic::AnalyzeBatch)),
     "capture" => Ok(CliCommand::Help(HelpTopic::Capture)),
+    "devices" => Ok(CliCommand::Help(HelpTopic::Devices)),
     "report" => Ok(CliCommand::Help(HelpTopic::Report)),
     _ => Err(format!("Unknown help topic: {topic}")),
   }
@@ -357,7 +365,7 @@ fn parse_analyze_batch_args(args: &[String]) -> Result<CliCommand, String> {
 }
 
 const CAPTURE_USAGE: &str =
-  "Usage: plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]";
+  "Usage: plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]";
 
 fn parse_capture_args(args: &[String]) -> Result<CliCommand, String> {
   if args.iter().any(|arg| is_help_flag(arg)) {
@@ -420,6 +428,22 @@ fn parse_capture_args(args: &[String]) -> Result<CliCommand, String> {
     every,
     out,
   })
+}
+
+fn parse_devices_args(args: &[String]) -> Result<CliCommand, String> {
+  if args.iter().any(|arg| is_help_flag(arg)) {
+    return Ok(CliCommand::Help(HelpTopic::Devices));
+  }
+
+  let options = parse_json_output_options(args)?;
+  if !options.has_json {
+    return Err("The devices command currently requires --json.".to_string());
+  }
+  if !options.positionals.is_empty() {
+    return Err("Usage: plvs-cli devices --json [--out <file>]".to_string());
+  }
+
+  Ok(CliCommand::DevicesJson { out: options.out })
 }
 
 fn take_value(args: &[String], index: usize, flag: &str) -> Result<String, String> {
@@ -513,7 +537,7 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n  plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n  plvs-cli devices --json [--out <file>]\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use devices --json to list stable capture ids before capture.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Doctor => {
       "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
@@ -528,7 +552,10 @@ fn help_text(topic: HelpTopic) -> &'static str {
       "PLVS CLI - analyze-batch\n\nUsage:\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [--out <file>]\n\nManifest format:\n  {\"files\":[\"C:\\\\media\\\\a.wav\",\"C:\\\\media\\\\b.wav\"]}\n\nRules:\n  Do not mix positional paths with --manifest.\n  Results preserve input order.\n  JSON is written to stdout. With --out, the same JSON is also written to a file.\n  --concurrency defaults to 2 and may be 1 through 8.\n\nExit codes:\n  0  all files analyzed successfully\n  1  at least one file produced an error report\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Capture => {
-      "PLVS CLI - capture\n\nUsage:\n  plvs-cli capture [--device <substring>] --seconds <n> [--every <n>] --json [--out <file>]\n\nCaptures live audio from a device without launching the desktop UI and reports\ndelivery metrics. JSON is written to stdout. With --out, the same output is also\nwritten to a file.\n\n--device matches a case-insensitive substring of the device label; it must match\nexactly one device. Omit it to use the default device. With no match, the error\nlists the available devices.\n\n--every <n> emits one JSON line every n seconds (JSONL) instead of a single\nreport; the final line is the same report the non-streaming mode prints.\n\nExit codes:\n  0  capture completed successfully\n  1  capture completed with an error report\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI - capture\n\nUsage:\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n\nCaptures live audio from a device without launching the desktop UI and reports\ndelivery metrics. JSON is written to stdout. With --out, the same output is also\nwritten to a file.\n\n--device accepts a stable id from devices --json (lb-*/cap-*/default), or a\ncase-insensitive substring of the device label that matches exactly one device.\nOmit it to use the default device. With no substring match, the error lists the\navailable devices.\n\n--every <n> emits one JSON line every n seconds (JSONL) instead of a single\nreport; the final line is the same report the non-streaming mode prints.\n\nExit codes:\n  0  capture completed successfully\n  1  capture completed with an error report\n  2  invalid usage or CLI failure before a valid report"
+    }
+    HelpTopic::Devices => {
+      "PLVS CLI - devices\n\nUsage:\n  plvs-cli devices --json [--out <file>]\n\nLists capture devices with stable ids, labels, kind, default flag, and backend.\nUse the id values with capture --device. Substring matching remains available for\ninteractive use; ambiguous substrings are still errors.\n\nExit codes:\n  0  devices listed successfully\n  1  enumeration completed with an error report\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Report => {
       "PLVS CLI - report\n\nUsage:\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nReads JSON produced by analyze, analyze-batch, or capture and renders a human-readable Markdown table.\nMarkdown is written to stdout. With --out, the same Markdown is also written to a file.\n\nExit codes:\n  0  report rendered successfully\n  2  invalid usage, unreadable input, unsupported JSON, or output write failure"
@@ -675,6 +702,26 @@ pub fn run(args: &[String]) -> ExitCode {
       match status {
         CliAnalyzeBatchStatus::Ok => ExitCode::SUCCESS,
         CliAnalyzeBatchStatus::Warning | CliAnalyzeBatchStatus::Error => ExitCode::from(1),
+      }
+    }
+    CliCommand::DevicesJson { out } => {
+      let report = run_devices();
+      let status = report.status();
+      match serde_json::to_string(&report) {
+        Ok(json) => {
+          if let Err(err) = emit_json(&json, out.as_deref(), "devices") {
+            eprintln!("{err}");
+            return ExitCode::from(2);
+          }
+        }
+        Err(err) => {
+          eprintln!("Failed to serialize devices report: {err}");
+          return ExitCode::from(2);
+        }
+      }
+      match status {
+        CliDevicesStatus::Ok => ExitCode::SUCCESS,
+        CliDevicesStatus::Error => ExitCode::from(1),
       }
     }
     CliCommand::CaptureJson {
@@ -1065,6 +1112,21 @@ mod tests {
         out: None,
       })
     );
+  }
+
+  #[test]
+  fn parses_devices_json() {
+    assert_eq!(
+      parse_args(&args(&["devices", "--json", "--out", "devices.json"])),
+      Ok(CliCommand::DevicesJson {
+        out: Some("devices.json".to_string())
+      })
+    );
+  }
+
+  #[test]
+  fn rejects_devices_without_json() {
+    assert!(parse_args(&args(&["devices"])).is_err());
   }
 
   #[test]

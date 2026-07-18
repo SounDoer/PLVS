@@ -7,6 +7,7 @@ use std::{
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use crate::audio::device_enum::{capture_backend_name, list_devices_for_cli};
 use crate::sidecar::locate_sidecar;
 
 #[cfg(windows)]
@@ -119,6 +120,10 @@ pub fn run_doctor() -> DoctorReport {
   ));
   checks.push(check_sidecar("ffmpeg"));
   checks.push(check_sidecar("ffprobe"));
+  checks.push(check_capabilities());
+  checks.push(check_device_enumeration());
+  checks.push(check_dialogue_vad_engines());
+  checks.push(check_cli_host_layout());
 
   let (status, summary) = aggregate_status(&checks);
   DoctorReport {
@@ -361,6 +366,126 @@ fn check_sidecar_at(stem: &str, path: PathBuf) -> DoctorCheck {
 
 fn path_to_string(path: PathBuf) -> String {
   path.to_string_lossy().to_string()
+}
+
+fn check_capabilities() -> DoctorCheck {
+  info_check(
+    "capabilities",
+    "CLI capabilities for this build",
+    json!({
+      "commands": [
+        "doctor",
+        "probe",
+        "analyze",
+        "analyze-batch",
+        "capture",
+        "devices",
+        "report"
+      ],
+      "fileAnalysis": true,
+      "liveCapture": true,
+      "deviceListing": true,
+      "dialogueVadEngines": ["silero", "firered", "ten"],
+      "captureDeviceSelectors": ["default", "stableId", "substring"],
+      "captureBackend": capture_backend_name(),
+    }),
+  )
+}
+
+fn check_device_enumeration() -> DoctorCheck {
+  match list_devices_for_cli() {
+    Ok(devices) if devices.is_empty() => DoctorCheck {
+      id: "device-enumeration".to_string(),
+      status: DoctorStatus::Skipped,
+      severity: DoctorStatus::Warning,
+      title: "No audio devices were enumerated".to_string(),
+      details: json!({
+        "backend": capture_backend_name(),
+        "count": 0,
+        "reason": "empty device list; common on headless CI hosts without a sound card",
+      }),
+    },
+    Ok(devices) => DoctorCheck {
+      id: "device-enumeration".to_string(),
+      status: DoctorStatus::Ok,
+      severity: DoctorStatus::Warning,
+      title: "Audio devices were enumerated".to_string(),
+      details: json!({
+        "backend": capture_backend_name(),
+        "count": devices.len(),
+        "devices": devices.iter().map(|device| json!({
+          "id": device.id,
+          "label": device.label,
+          "kind": if device.is_system_output_monitor { "systemOutput" } else { "input" },
+        })).collect::<Vec<_>>(),
+      }),
+    },
+    Err(error) => DoctorCheck {
+      id: "device-enumeration".to_string(),
+      status: DoctorStatus::Skipped,
+      severity: DoctorStatus::Warning,
+      title: "Audio device enumeration was skipped".to_string(),
+      details: json!({
+        "backend": capture_backend_name(),
+        "count": 0,
+        "reason": error,
+      }),
+    },
+  }
+}
+
+fn check_dialogue_vad_engines() -> DoctorCheck {
+  info_check(
+    "dialogue-vad-engines",
+    "Dialogue VAD engines are bundled in this binary",
+    json!({
+      "engines": [
+        {"id": "silero", "bundled": true},
+        {"id": "firered", "bundled": true},
+        {"id": "ten", "bundled": true}
+      ],
+      "note": "Models are linked into PLVS; they are not separate sidecar files."
+    }),
+  )
+}
+
+fn check_cli_host_layout() -> DoctorCheck {
+  let host = env::current_exe().ok();
+  let dir = host
+    .as_ref()
+    .and_then(|path| path.parent().map(Path::to_path_buf));
+  let cli_name = if cfg!(windows) {
+    "plvs-cli.exe"
+  } else {
+    "plvs-cli"
+  };
+  let host_name = if cfg!(windows) { "plvs.exe" } else { "plvs" };
+  let cli_path = dir.as_ref().map(|path| path.join(cli_name));
+  let sibling_host = dir.as_ref().map(|path| path.join(host_name));
+  let cli_present = cli_path.as_ref().is_some_and(|path| path.is_file());
+  let host_present = host.as_ref().is_some_and(|path| path.is_file())
+    || sibling_host.as_ref().is_some_and(|path| path.is_file());
+
+  DoctorCheck {
+    id: "cli-host-layout".to_string(),
+    status: if host_present {
+      DoctorStatus::Ok
+    } else {
+      DoctorStatus::Warning
+    },
+    severity: DoctorStatus::Warning,
+    title: if host_present {
+      "CLI host binary layout looks usable".to_string()
+    } else {
+      "CLI host binary could not be confirmed".to_string()
+    },
+    details: json!({
+      "hostExecutable": host.as_ref().map(|path| path_to_string(path.clone())),
+      "cliExecutable": cli_path.as_ref().map(|path| path_to_string(path.clone())),
+      "cliPresentBesideHost": cli_present,
+      "note": "Installed builds place plvs-cli next to plvs. Dev cargo runs may omit the companion binary."
+    }),
+  }
 }
 
 #[cfg(test)]

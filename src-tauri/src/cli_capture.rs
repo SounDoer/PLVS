@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::audio::capture_summary::{capture_device_to_summary, CaptureRun, CaptureSample};
-use crate::audio::device_enum::resolve_device_id_by_substring;
+use crate::audio::device_enum::resolve_device_selector;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -195,7 +195,7 @@ pub fn run_capture(
   on_sample: impl FnMut(CaptureSample),
 ) -> Result<CliCaptureReport, String> {
   let device_id = match device_substring {
-    Some(needle) => resolve_device_id_by_substring(needle)?,
+    Some(selector) => resolve_device_selector(selector)?,
     None => "default".to_string(),
   };
 
