@@ -24,6 +24,7 @@ import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { useLoudnessProfile } from "./hooks/useLoudnessProfile.js";
+import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
 import { useDockLayout } from "./dock/useDockLayout.js";
@@ -414,6 +415,42 @@ function AppContent() {
   // consumer below treats as "there is nothing to show".
   const loudnessProfile = useLoudnessProfile();
   const referenceLufs = loudnessProfile.referenceLufs;
+
+  // Missing-stats fulfillment spans every Stats panel: the profile's needs are a session-level
+  // statement, so a row added for it should appear wherever Stats is shown. Union for detection,
+  // append per panel for the fix -- each panel keeps the order its user arranged.
+  const statsPanelIds = useMemo(
+    () =>
+      workspaceState.panelOrder.filter((id) => workspaceState.panelsById[id]?.moduleId === "stats"),
+    [workspaceState]
+  );
+  const loudnessProfileStats = useMemo(() => {
+    if (statsPanelIds.length === 0) return null;
+    const seen = new Set();
+    for (const panelId of statsPanelIds) {
+      for (const id of normalizePanelControls(getPanelControls(workspaceState, panelId))
+        .statsVisibleIds) {
+        seen.add(id);
+      }
+    }
+    return {
+      visibleIds: [...seen],
+      onShowMissing: () => {
+        for (const panelId of statsPanelIds) {
+          const controls = normalizePanelControls(getPanelControls(workspaceState, panelId));
+          const missing = listMissingPreferredMetrics(
+            loudnessProfile.document,
+            controls.statsVisibleIds
+          );
+          if (missing.length === 0) continue;
+          setPanelControlsForPanel(panelId, {
+            ...controls,
+            statsVisibleIds: planShowMissing(controls.statsVisibleIds, missing),
+          });
+        }
+      },
+    };
+  }, [statsPanelIds, workspaceState, loudnessProfile.document, setPanelControlsForPanel]);
   const derivedAnalysisRequests = useMemo(
     () =>
       mergeDockAnalysisRequests(
@@ -1257,6 +1294,8 @@ function AppContent() {
     onDockChange,
     dockDisabled: sourceMode === "file",
     presets,
+    loudnessProfile,
+    loudnessProfileStats,
     setSettingsOpen,
   };
   const fileSummaryProps = {
