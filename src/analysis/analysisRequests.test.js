@@ -115,6 +115,34 @@ describe("analysisRequests", () => {
     });
   });
 
+  it("deduplicates vectorscope modes that use the same pair", () => {
+    const s = state({
+      panelsById: {
+        vectorscope: { id: "vectorscope", moduleId: "vectorscope" },
+        "vectorscope-2": { id: "vectorscope-2", moduleId: "vectorscope" },
+      },
+      panelControlsById: {
+        vectorscope: {
+          ...DEFAULT_PANEL_CONTROLS,
+          vectorscopeMode: "polarSample",
+        },
+        "vectorscope-2": {
+          ...DEFAULT_PANEL_CONTROLS,
+          vectorscopeMode: "polarLevel",
+          vectorscopePolarLevelPeakHold: true,
+        },
+      },
+    });
+
+    expect(deriveAnalysisRequests(s).vectorscopeRequests).toEqual([
+      {
+        key: "vectorscope:pair:0:1",
+        pair: { x: 0, y: 1 },
+        panelIds: ["vectorscope", "vectorscope-2"],
+      },
+    ]);
+  });
+
   it("applies caps by unique request key in panel order", () => {
     const panelsById = Object.fromEntries(
       Array.from({ length: 5 }, (_, i) => [
