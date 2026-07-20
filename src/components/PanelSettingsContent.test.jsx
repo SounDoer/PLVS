@@ -5,6 +5,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
+import { settingsStore } from "@/persistence/index.js";
+import { builtinSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
 import { PanelChromeProvider } from "@/workspace/AudioDataContext.jsx";
 import { PanelDataProviders } from "@/workspace/PanelDataProviders.jsx";
@@ -583,7 +585,8 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Layers")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Configure layers" })).toBeNull();
     const editButton = screen.getByRole("button", { name: "Edit layers" });
-    expect(editButton.textContent).toContain("3 visible");
+    // Off by default, so `ref` is not offered and must not be counted.
+    expect(editButton.textContent).toContain("2 visible");
     fireEvent.click(editButton);
     const momentaryRow = screen.getByRole("checkbox", { name: "Momentary" });
     expect(momentaryRow.getAttribute("data-settings-option-row")).toBe("true");
@@ -600,6 +603,42 @@ describe("PanelSettingsContent", () => {
       ...DEFAULT_PANEL_CONTROLS,
       loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
     });
+  });
+
+  it("counts only the layers it actually offers", () => {
+    // Off filters `ref` out of the list; a summary that still counts it says "3 visible" over a
+    // list of two, and the user has no way to find the third.
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const editButton = screen.getByRole("button", { name: "Edit layers" });
+    expect(editButton.textContent).toContain("2 visible");
+    fireEvent.click(editButton);
+    expect(screen.queryByRole("checkbox", { name: "Reference" })).toBeNull();
+    expect(screen.getAllByRole("checkbox").length).toBe(2);
+  });
+
+  it("counts the ref layer once a profile supplies a reference", () => {
+    settingsStore.patch({
+      loudnessProfiles: { active: builtinSelectionId("ebu-r128"), userProfiles: [] },
+    });
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const editButton = screen.getByRole("button", { name: "Edit layers" });
+    expect(editButton.textContent).toContain("3 visible");
+    fireEvent.click(editButton);
+    expect(screen.getByRole("checkbox", { name: "Reference" })).toBeTruthy();
   });
 
   it("commits Loudness Y range changes", () => {

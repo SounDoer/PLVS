@@ -654,6 +654,12 @@ export function LoudnessSettingsRows({
     referenceLufs == null
       ? LOUDNESS_HISTORY_LAYER_OPTIONS.filter((option) => option.id !== "ref")
       : LOUDNESS_HISTORY_LAYER_OPTIONS;
+  // Count what the list actually offers, not what the panel still remembers. The `ref` id stays
+  // in panel controls through Off so the preference survives, which means the raw length claims
+  // a layer the user cannot see or reach.
+  const visibleCount = visibleLayerIds.filter((id) =>
+    layerOptions.some((option) => option.id === id)
+  ).length;
 
   return (
     <>
@@ -661,7 +667,7 @@ export function LoudnessSettingsRows({
         <div className="flex min-w-0 flex-1 flex-col">
           <InlineDetailTrigger
             ariaLabel={layersOpen ? "Hide layers" : "Edit layers"}
-            summary={visibleSummary(visibleLayerIds.length)}
+            summary={visibleSummary(visibleCount)}
             open={layersOpen}
             onToggle={() => setLayersOpen((open) => !open)}
           />
