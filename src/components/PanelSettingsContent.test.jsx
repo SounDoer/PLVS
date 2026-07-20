@@ -554,42 +554,19 @@ describe("PanelSettingsContent", () => {
     });
   });
 
-  it("renders the loudness reference input before Layers and commits on blur", () => {
-    const onPanelControlsChange = vi.fn();
+  it("offers no reference editor, since the active Loudness Profile owns that value", () => {
     render(
       <PanelSettingsContent
         activeTab="loudness"
         panelControls={DEFAULT_PANEL_CONTROLS}
-        onPanelControlsChange={onPanelControlsChange}
-      />
-    );
-
-    expect(
-      screen
-        .getByLabelText("Loudness reference")
-        .compareDocumentPosition(screen.getByText("Layers")) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-
-    const input = screen.getByLabelText("Loudness reference");
-    expect(input.value).toBe("-23");
-    fireEvent.change(input, { target: { value: "-14" } });
-    fireEvent.blur(input);
-    expect(onPanelControlsChange).toHaveBeenCalledWith({
-      ...DEFAULT_PANEL_CONTROLS,
-      loudnessReferenceLufs: -14,
-    });
-  });
-
-  it("renders the loudness reference input from panel controls", () => {
-    render(
-      <PanelSettingsContent
-        activeTab="loudness"
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, loudnessReferenceLufs: -18 }}
         onPanelControlsChange={vi.fn()}
       />
     );
 
-    expect(screen.getByLabelText("Loudness reference").value).toBe("-18");
+    expect(screen.queryByLabelText("Loudness reference")).toBeNull();
+    expect(screen.queryByText("Ref")).toBeNull();
+    // Layers, including the `ref` toggle, stay here.
+    expect(screen.getByText("Layers")).toBeTruthy();
   });
 
   it("renders Loudness layers as an inline labeled detail and toggles layer ids", () => {

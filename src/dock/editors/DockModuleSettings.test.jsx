@@ -22,7 +22,7 @@ function renderSettings(moduleId, props = {}) {
 describe("DockModuleSettings", () => {
   it.each([
     ["level", "Level mode"],
-    ["loudness", "Loudness reference"],
+    ["loudness", "loudness y range min"],
     ["spectrum", "Spectrum channel"],
     ["correlation", "Vectorscope channel pair"],
     ["stats", "Edit metrics"],
@@ -56,14 +56,15 @@ describe("DockModuleSettings", () => {
     expect(onChange).toHaveBeenCalledWith({ ...controls, showLabels: false });
   });
 
-  it("reuses the normal Loudness Ref, Layers, and Y range settings", () => {
+  it("reuses the normal Loudness Layers and Y range settings", () => {
     const controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness;
     const onChange = renderSettings("loudness");
 
     expect(screen.queryByLabelText("Loudness metric")).toBeNull();
     expect(screen.queryByLabelText("Show loudness sparkline")).toBeNull();
     expect(screen.queryByLabelText("Show loudness reference")).toBeNull();
-    expect(screen.getByLabelText("Loudness reference").value).toBe("-23");
+    // The reference value belongs to the active Loudness Profile, not to this panel.
+    expect(screen.queryByLabelText("Loudness reference")).toBeNull();
     expect(screen.getByLabelText("loudness y range min").value).toBe("-64");
     expect(screen.getByLabelText("loudness y range max").value).toBe("0");
     const settingsRows = screen.getByText("Readouts").closest("div")?.parentElement?.children;

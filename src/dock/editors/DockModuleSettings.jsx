@@ -114,13 +114,9 @@ function SettingsBody({
     return (
       <>
         <LoudnessSettingsRows
-          referenceLufs={controls.loudnessReferenceLufs}
           visibleLayerIds={controls.loudnessHistoryVisibleLayerIds}
           yMinDb={controls.loudnessYMinDb}
           yMaxDb={controls.loudnessYMaxDb}
-          onReferenceChange={(loudnessReferenceLufs) =>
-            onChange({ ...controls, loudnessReferenceLufs })
-          }
           onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) =>
             onChange({ ...controls, loudnessHistoryVisibleLayerIds })
           }
