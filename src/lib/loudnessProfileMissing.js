@@ -4,12 +4,18 @@
 /// be dialogue rows, and showing those is already what drives the dialogue/VAD path -- that stays
 /// an implementation detail here and must not leak into copy (see the design doc, §Missing stats).
 
+import { isRuleEmpty } from "./loudnessProfileCatalog.js";
+
 /// Preferred metrics the profile watches that are not visible in Stats, in the profile's own
-/// order. Metrics the profile only describes (n/a, descriptors) are not required.
+/// order. Metrics the profile only describes (n/a, descriptors) are not required, and neither
+/// are rules the user has added but not yet filled in -- fulfilling those would push rows on
+/// screen for a metric nothing is judging yet.
 export function listMissingPreferredMetrics(document, statsVisibleIds) {
   if (!document) return [];
   const visible = new Set(statsVisibleIds ?? []);
-  return (document.preferredMetricIds ?? []).filter((id) => !visible.has(id));
+  return (document.preferredMetricIds ?? [])
+    .filter((id) => !isRuleEmpty(document.metrics?.[id]))
+    .filter((id) => !visible.has(id));
 }
 
 /// Appends the missing ids, preserving the order of what is already shown. Append-only: the user

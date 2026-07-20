@@ -50,6 +50,37 @@ describe("listMissingPreferredMetrics", () => {
   });
 });
 
+describe("empty rules are not required", () => {
+  it("does not demand a Stats row for a rule with no numbers", () => {
+    const document = {
+      id: "u1",
+      name: "Mine",
+      kind: "user",
+      referenceLufs: null,
+      metrics: {
+        integrated: { role: "target", target: -23, tolerance: { minus: 1, plus: 1 } },
+        correlation: { role: "limit", severity: "warn" },
+      },
+      preferredMetricIds: ["integrated", "correlation"],
+    };
+
+    // Show missing must not push a row on screen for a metric the profile is not yet judging.
+    expect(listMissingPreferredMetrics(document, [])).toEqual(["integrated"]);
+  });
+
+  it("demands it once a bound is filled", () => {
+    const document = {
+      id: "u1",
+      name: "Mine",
+      kind: "user",
+      referenceLufs: null,
+      metrics: { correlation: { role: "limit", min: 0, severity: "warn" } },
+      preferredMetricIds: ["correlation"],
+    };
+    expect(listMissingPreferredMetrics(document, [])).toEqual(["correlation"]);
+  });
+});
+
 describe("planShowMissing", () => {
   it("appends missing ids without reordering what the user already arranged", () => {
     const arranged = ["truePeak", "integrated", "momentary"];
