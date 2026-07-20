@@ -164,7 +164,7 @@ rule**, never as a time threshold. File QC is later.
 | `ebu-r128-live` | EBU R128 Live | −23 | Same as Programme; Integrated tolerance **±1.0**; Integrated is **permanently** provisional (a rule flag, not a timer — realtime Integrated never "settles") |
 | `ebu-r128-s1` | EBU R128 S1 | −23 | Integrated −23; **ST Max ≤ −18** fail; TP max −1 fail; LRA `na` |
 | `atsc-a85` | ATSC A/85 | −24 | Dialogue Integrated target −24 (±2); TP max −2 fail; Dialogue Coverage used for inconclusive when too low; program Integrated watch/fallback only as documented in tips — **not** claimed certified |
-| `streaming-14` | Streaming −14 | −14 | Integrated target −14; TP max −1; framed as playback reference (Spotify Normal / YouTube-class), not reject-on-upload |
+| `streaming-14` | Streaming −14 | −14 | Integrated target −14 **±1.0**, breach severity **warn**; TP max −1 **warn**; framed as playback reference (Spotify Normal / YouTube-class), not reject-on-upload — a hard fail would contradict that framing |
 
 Plus:
 
@@ -192,13 +192,25 @@ certification; ATSC/Netflix-class dialogue uses on-device VAD, not Dolby DI.
 
 ### Entry
 
-- Normal window **and** dock: toolbar **IconButton** + popover, same family as
-  Presets / Modules.
-- Suggested placement: near Presets / Modules (exact slot during implement —
-  must not bury in Settings).
+- Normal window header only: toolbar **IconButton** + popover, same family as
+  Presets / Modules. Slot: after Presets, before Settings.
 - Tooltip: `Loudness Profile`.
-- Active affordance: when selection ≠ Off, icon can use the same “active”
-  treatment as other header tools (foreground), optional.
+- Active affordance: when selection ≠ Off, the icon takes the same “active”
+  foreground treatment as other header tools.
+
+**No dock entry.** The profile still *applies* while docked — it is session
+state, so the reference line, the Stats colouring and the TP Max marker all
+follow it there — but it cannot be *changed* from the dock. Docked is a
+monitoring posture, not a configuration one, and a 40px strip is the wrong
+place to rename or delete library entries. Users configure before docking.
+
+This is also why there is no protocol work here: the dock accessories are
+separate windows driven by a serialisable payload plus a whitelisted action
+list (`accessoryProtocol.js`), with all state owned by the main window. Note
+that letting a dock window call the profile hook directly is **not** an
+available shortcut: `pluginStoreBackend.subscribe()` is a deliberate no-op
+because persistence assumes a single writing process, so a second writer
+would silently clobber settings.
 
 ### Popover IA (Presets-like)
 
@@ -231,6 +243,22 @@ No System Settings page for this in v1.
 | Fail | `signal.bad` |
 
 - Hover tips may explain limit vs value; no top-of-panel summary.
+
+### Dock Stats is a second implementation
+
+`DockStats.jsx` is its own component, not a rendering mode of `StatsPanel`, and
+`dockModuleControls.js` gives it its **own** `statsVisibleIds`. Both facts are
+easy to miss and each produces a split-brain bug:
+
+- Status colouring must be applied in **both** components. Colour one and the
+  same metric under the same profile reads as a breach in the normal window and
+  as neutral in the dock.
+- Missing-stats detection must union **both** id sets, and fulfill must append
+  to both. Otherwise Show missing appears to succeed while the dock keeps
+  hiding the rows the profile needs.
+
+Neither needs the accessory protocol: `dockLayout` lives in the main window and
+`DockStats` is rendered by it.
 
 ### Level Meter — TP Max marker
 
@@ -433,7 +461,8 @@ ST max / TP / dialogue readouts.
 ## Decisions (locked)
 
 1. Feature name: **Loudness Profile**; session singleton.
-2. Single entry: header + dock toolbar popover; switch and manage there only.
+2. Single entry: normal-window header popover; switch and manage there only.
+   No dock entry — the profile applies while docked but is not editable there.
 3. Default: **Off**.
 4. Off: no metric colouring; **hide** Layers `ref`; no reference line; no
    phantom −23.
