@@ -9,6 +9,7 @@ import {
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+  VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
 } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
@@ -855,6 +856,7 @@ export function PanelSettingsContent({
   const [spectrumChannelOpen, setSpectrumChannelOpen] = useState(false);
   const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
   const [vectorscopeChannelOpen, setVectorscopeChannelOpen] = useState(false);
+  const [vectorscopeModeOpen, setVectorscopeModeOpen] = useState(false);
   const [vadOpen, setVadOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
@@ -1284,9 +1286,33 @@ export function PanelSettingsContent({
       : matchedOption && vectorscopeDisplayLabel
         ? vectorscopeDisplayLabel
         : selectedOption.label;
+    const selectedMode =
+      VECTORSCOPE_MODE_OPTIONS.find(
+        (option) => option.id === normalizedPanelControls.vectorscopeMode
+      ) ?? VECTORSCOPE_MODE_OPTIONS[0];
 
     return (
       <SettingsGroup title="Vectorscope">
+        {hasPanelControls && typeof onPanelControlsChange === "function" ? (
+          <SettingsRow label="Mode">
+            <SettingsSelect
+              label={selectedMode.label}
+              ariaLabel="vectorscope mode"
+              options={VECTORSCOPE_MODE_OPTIONS}
+              value={selectedMode.id}
+              open={vectorscopeModeOpen}
+              onOpenChange={setVectorscopeModeOpen}
+              onChange={(vectorscopeMode) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    vectorscopeMode,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
         <SettingsRow label="Channel pair">
           <SettingsSelect
             label={selectedLabel}
@@ -1310,6 +1336,24 @@ export function PanelSettingsContent({
             }}
           />
         </SettingsRow>
+        {hasPanelControls &&
+        typeof onPanelControlsChange === "function" &&
+        selectedMode.id === "polarLevel" ? (
+          <SettingsRow label="Peak hold">
+            <SettingsSwitch
+              aria-label="vectorscope polar level peak hold"
+              checked={normalizedPanelControls.vectorscopePolarLevelPeakHold}
+              onCheckedChange={(vectorscopePolarLevelPeakHold) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    vectorscopePolarLevelPeakHold,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
       </SettingsGroup>
     );
   }

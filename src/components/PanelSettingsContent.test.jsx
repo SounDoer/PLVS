@@ -406,6 +406,59 @@ describe("PanelSettingsContent", () => {
     expect(onVectorscopeChange).toHaveBeenCalledWith({ x: 0, y: 2 });
   });
 
+  it("updates vectorscope mode and only shows Peak hold for Polar Level", () => {
+    const onPanelControlsChange = vi.fn();
+    const props = {
+      activeTab: "vectorscope",
+      channelCount: 2,
+      vectorscopeOptions: [{ key: "0-1", label: "L/R", x: 0, y: 1 }],
+      vectorscopeValueKey: "0-1",
+      vectorscopeDisplayLabel: "L/R",
+      onVectorscopeChange: vi.fn(),
+      panelControls: DEFAULT_PANEL_CONTROLS,
+      onPanelControlsChange,
+    };
+    const { rerender } = render(<PanelSettingsContent {...props} />);
+
+    expect(screen.getByText("Mode")).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: "vectorscope polar level peak hold" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "vectorscope mode" }));
+    fireEvent.click(screen.getByRole("option", { name: "Polar Level" }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ vectorscopeMode: "polarLevel" })
+    );
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopeMode: "polarLevel" }}
+      />
+    );
+    fireEvent.click(screen.getByRole("switch", { name: "vectorscope polar level peak hold" }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ vectorscopePolarLevelPeakHold: true })
+    );
+  });
+
+  it("orders vectorscope Mode before Channel pair before Peak hold", () => {
+    const { container } = render(
+      <PanelSettingsContent
+        activeTab="vectorscope"
+        channelCount={2}
+        vectorscopeOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        vectorscopeValueKey="0-1"
+        vectorscopeDisplayLabel="L/R"
+        onVectorscopeChange={vi.fn()}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopeMode: "polarLevel" }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const text = container.textContent;
+    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel pair"));
+    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Peak hold"));
+  });
+
   it("keeps vectorscope all-pairs options collapsed until opened", () => {
     render(
       <PanelSettingsContent
