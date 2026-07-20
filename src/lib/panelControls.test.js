@@ -4,6 +4,7 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
+  VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
 } from "./panelControls.js";
 import { STATS_OPTIONS } from "./statsCatalog.js";
@@ -79,6 +80,8 @@ describe("panelControls", () => {
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
+      vectorscopeMode: "lissajous",
+      vectorscopePolarLevelPeakHold: false,
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumMaxHold: false,
@@ -209,6 +212,8 @@ describe("panelControls", () => {
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
+      vectorscopeMode: "lissajous",
+      vectorscopePolarLevelPeakHold: false,
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumMaxHold: false,
@@ -295,6 +300,32 @@ describe("panelControls", () => {
     expect(DEFAULT_PANEL_CONTROLS).not.toHaveProperty("vectorscopeEnergyCross");
     expect(normalized).not.toHaveProperty("vectorscopeTraceHold");
     expect(normalized).not.toHaveProperty("vectorscopeEnergyCross");
+  });
+
+  it("normalizes vectorscope display controls", () => {
+    expect(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id)).toEqual([
+      "lissajous",
+      "polarSample",
+      "polarLevel",
+    ]);
+    expect(normalizePanelControls({}).vectorscopeMode).toBe("lissajous");
+    expect(normalizePanelControls({ vectorscopeMode: "polarSample" }).vectorscopeMode).toBe(
+      "polarSample"
+    );
+    expect(normalizePanelControls({ vectorscopeMode: "polarLevel" }).vectorscopeMode).toBe(
+      "polarLevel"
+    );
+    expect(normalizePanelControls({ vectorscopeMode: "unknown" }).vectorscopeMode).toBe(
+      "lissajous"
+    );
+    expect(normalizePanelControls({ vectorscopePolarLevelPeakHold: true })).toHaveProperty(
+      "vectorscopePolarLevelPeakHold",
+      true
+    );
+    expect(normalizePanelControls({ vectorscopePolarLevelPeakHold: "yes" })).toHaveProperty(
+      "vectorscopePolarLevelPeakHold",
+      false
+    );
   });
 });
 

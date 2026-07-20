@@ -15,6 +15,12 @@ export const LEVEL_METER_MODE_OPTIONS = [
   { id: "shortTerm", label: "Short-term" },
 ];
 
+export const VECTORSCOPE_MODE_OPTIONS = [
+  { id: "lissajous", label: "Lissajous" },
+  { id: "polarSample", label: "Polar Sample" },
+  { id: "polarLevel", label: "Polar Level" },
+];
+
 /// Frequency-axis smoothing. Distinct from Speed, which is the time axis. Ids are the wire
 /// values parsed by `parse_octave_smoothing` in src-tauri/src/ipc/commands.rs.
 export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
@@ -30,6 +36,8 @@ export const DEFAULT_PANEL_CONTROLS = {
   levelMeterValueMarker: false,
   levelMeterTpMaxMarker: false,
   vectorscopePair: { x: 0, y: 1 },
+  vectorscopeMode: "lissajous",
+  vectorscopePolarLevelPeakHold: false,
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
   spectrumMaxHold: false,
@@ -68,6 +76,7 @@ const LOUDNESS_HISTORY_LAYER_IDS = new Set(
   LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
 );
 const LEVEL_METER_MODE_IDS = new Set(LEVEL_METER_MODE_OPTIONS.map((option) => option.id));
+const VECTORSCOPE_MODE_IDS = new Set(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id));
 
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -196,6 +205,14 @@ function normalizeLevelMeterTpMaxMarker(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterTpMaxMarker;
 }
 
+function normalizeVectorscopeMode(raw) {
+  return VECTORSCOPE_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.vectorscopeMode;
+}
+
+function normalizeVectorscopePolarLevelPeakHold(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelPeakHold;
+}
+
 function normalizeKnownIds(raw, knownIds, fallback) {
   if (!Array.isArray(raw)) return [...fallback];
 
@@ -270,6 +287,10 @@ export function normalizePanelControls(raw) {
     levelMeterValueMarker: normalizeLevelMeterValueMarker(raw?.levelMeterValueMarker),
     levelMeterTpMaxMarker: normalizeLevelMeterTpMaxMarker(raw?.levelMeterTpMaxMarker),
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
+    vectorscopeMode: normalizeVectorscopeMode(raw?.vectorscopeMode),
+    vectorscopePolarLevelPeakHold: normalizeVectorscopePolarLevelPeakHold(
+      raw?.vectorscopePolarLevelPeakHold
+    ),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),
     spectrumMaxHold: normalizeSpectrumMaxHold(readSpectrumMaxHoldRaw(raw)),

@@ -18,6 +18,8 @@
  *
  * @typedef {{
  *   vectorscopePair: { x: number, y: number },
+ *   vectorscopeMode: 'lissajous' | 'polarSample' | 'polarLevel',
+ *   vectorscopePolarLevelPeakHold: boolean,
  *   spectrumChannel: { type: 'pair', x: number, y: number } | { type: 'single', ch: number },
  *   spectrumView: string,
  *   spectrumMaxHold: boolean,
