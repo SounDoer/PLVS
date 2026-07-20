@@ -27,10 +27,17 @@ render from evaluate(status). Layout Presets snapshot only the active selection
 - EBU R128 Programme Integrated tolerance in UI: **±0.5 LU**.
 - ATSC Dialogue Coverage below **15%** → inconclusive (warn colour) for
   dialogue target evaluation.
-- Cut over by **deleting independent writes** of `loudnessReferenceLufs` from
-  Loudness settings UI; keep the field only as a mirrored/derived value for
-  one release if presets/tests still need it, then prefer reading
-  `activeProfile.referenceLufs` directly in Loudness render paths.
+- **Delete** `loudnessReferenceLufs` from panel controls. No mirrored-for-one-
+  release phase — that is the two-writer state the spec exists to prevent, and
+  it saves no work since `App.jsx`'s read path changes either way. Loudness
+  render paths read `activeProfile.referenceLufs` directly (`null` when Off).
+- `evaluate`'s `sample` is `{ values, integratedReady, dialogueCoverage }`.
+  All three come from the existing frame; **no engine change**. No
+  time-since-Clear input exists or is needed — Live's provisional state is a
+  static rule flag.
+- Level Meter TP Max marker follows the profile (spec §Level Meter). Make the
+  existing `className` conditional; do **not** change any token value.
+- Footer hides its reference item when `referenceLufs` is null.
 - Toolbar icon: `Gauge` from `lucide-react` (swap only if it collides visually
   with another header control in review).
 - Header slot: after **Presets**, before **Settings** (and the same relative
@@ -67,6 +74,14 @@ render from evaluate(status). Layout Presets snapshot only the active selection
 - `src/dock/editors/DockModuleSettings.jsx` — same removal for dock loudness.
 - `src/components/panels/LoudnessPanel.jsx`, `src/dock/modules/DockLoudness.jsx`
   — ref line from active profile; hide `ref` layer when Off.
+- `src/App.jsx` — replace the `referenceLufs` derivation (currently: find first
+  loudness panel → read its `loudnessReferenceLufs`) with a read of the active
+  profile. Feeds both `historyData` and `footer`.
+- `src/components/AppShell.jsx` — hide the footer reference item when null.
+- `src/components/panels/LevelMeterPanel.jsx` (+ tests) — conditional TP Max
+  marker colour.
+- `src/hooks/useMeterSettings.js` (+ tests) — delete the dead `referenceLufs`
+  state / patch / export.
 - Loudness history layer pickers (panel settings / dock) — conditional `ref`
   option.
 - `src/components/panels/StatsPanel.jsx` (+ tests) — colour values from evaluate.
@@ -84,6 +99,10 @@ render from evaluate(status). Layout Presets snapshot only the active selection
 - Rust / DSP changes for v1.
 - File analysis / CLI QC wiring (roadmap only).
 - System Settings page for Loudness Profiles.
+- Touching `src/persistence/profileShape.js`, the `usePresets`
+  `legacyReferenceLufs` fallback, or the `src-tauri/src/profile.rs` fixture.
+  These are old-config compatibility, not dead code — see spec §Persistence.
+- Changing any theme token value (`buildThemeTokens.js`).
 
 ---
 
@@ -111,9 +130,14 @@ No UI. Land testable rule logic first.
 - [ ] **Step 1:** `loudnessProfileEvaluate(document, sample) → { [metricId]: status }`
   statuses: `off` | `na` | `unwatched` | `pending` | `inconclusive` | `ok` |
   `warn` | `fail`
-- [ ] **Step 2:** Cover: Off → all unwatched/off; S1 ST Max fail; Live
-  provisional pending; ATSC low coverage inconclusive; near-band warn; in-range
-  ok; descriptor never fail.
+
+  `sample` is exactly `{ values, integratedReady, dialogueCoverage }` — see
+  spec §Evaluation input contract. Do not add a time/elapsed field.
+- [ ] **Step 2:** Cover: Off → all unwatched/off; S1 ST Max fail;
+  `integratedReady: false` → pending; Live Integrated provisional **regardless
+  of sample** (static rule flag); ATSC `dialogueCoverage` below 15 → 
+  inconclusive; `dialogueCoverage: null` → inconclusive for dialogue rules;
+  near-band warn; in-range ok; descriptor never fail.
 - [ ] **Step 3:** `npm test -- src/lib/loudnessProfileEvaluate.test.js`
 
 ### Task 0.3 — Missing
@@ -189,6 +213,29 @@ Wire profile → ref line + remove numeric input. Can temporarily drive
   `refLayerWanted` (default on); line Y uses profile reference.
 - [ ] **Step 4:** Tests for Off vs EBU selection behaviour
   (`DockLoudness` / `LoudnessPanel` / layer settings as applicable).
+
+### Task 2.3 — `App.jsx` derivation + footer
+
+- [ ] **Step 1:** Replace `App.jsx`'s `referenceLufs` memo (first-loudness-panel
+  → `loudnessReferenceLufs`) with a read of the active profile. It feeds both
+  `historyData` and `footer`, so both follow from this one change.
+- [ ] **Step 2:** `AppShell.jsx` — hide the footer reference item when the value
+  is null. Cold start is Off, so without this the first screen shows `null LUFS`.
+- [ ] **Step 3:** Delete `loudnessReferenceLufs` from `panelControls` defaults +
+  normalize, and fix the tests that referenced it.
+- [ ] **Step 4:** Test: Off → no footer reference item; profile selected →
+  footer shows the profile's value.
+
+### Task 2.4 — Level Meter TP Max marker
+
+- [ ] **Step 1:** Test first: with no profile the marker carries no colour
+  override (inherits `text-primary`); with a profile whose TP limit is exceeded
+  it carries `--ui-signal-tp-max`.
+- [ ] **Step 2:** Make `LevelMeterPanel.jsx`'s `className` on the TP
+  `AxisValueMarker` conditional. Base class already supplies `text-primary` —
+  pass no `className` in the in-range case.
+- [ ] **Step 3:** Confirm `buildThemeTokens.js` and its snapshot test are
+  untouched. If they went red, the change was made in the wrong place.
 
 ---
 
@@ -266,8 +313,12 @@ Wire profile → ref line + remove numeric input. Can temporarily drive
 
 ### Task 6.1 — Dead paths
 
-- [ ] Remove or narrow legacy `settings.referenceLufs` UI if any remains in
-  Settings (product surface should not offer a second Ref editor).
+- [ ] Delete the `referenceLufs` state / `settingsStore.patch` / export from
+  `src/hooks/useMeterSettings.js`, and drop the pass-through in `useSettings.js`.
+  Verified dead: nothing consumes the exported value.
+- [ ] **Do not** touch `usePresets`'s `legacyReferenceLufs`,
+  `profileShape.js`, or `src-tauri/src/profile.rs`. Old-config compatibility;
+  removing them fails only for upgrading users, never on a fresh install.
 - [ ] Update tests that still patch `loudnessReferenceLufs` as the way to move
   the ref line; point them at Loudness Profile selection instead.
 - [ ] Confirm `docs/loudness-references.md` still matches shipped built-ins.
@@ -277,10 +328,13 @@ Wire profile → ref line + remove numeric input. Can temporarily drive
 - [ ] Targeted Vitest for all new/changed files while slicing.
 - [ ] `npm run check` before merge.
 - [ ] Manual smoke (normal + dock):
-  1. Cold start → Off, no ref line, Stats uncoloured.
+  1. Cold start → Off, no ref line, Stats uncoloured, **no footer reference
+     item**, TP Max marker neutral (not red).
   2. Select EBU R128 → ref at −23, Layers shows `ref`.
   3. Select Off → `ref` hidden, line gone.
   4. EBU S1 with ST Max over −18 → value warn/fail colour.
+  4b. TP over the active profile's limit → Level Meter marker turns red; back
+     in range → returns to the M/ST marker colour.
   5. ATSC with dialogue stats hidden → Missing + Show missing appends rows
      (dialogue sidechain follows visibility).
   6. Save Custom as user; restart; still selected.

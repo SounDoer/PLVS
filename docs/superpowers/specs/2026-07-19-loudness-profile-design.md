@@ -113,27 +113,55 @@ Each non-Off profile carries:
 - `severity` for breaches: `fail` | `warn` (descriptors / `na` do not fail)
 - `unit` for display/tips only
 
+#### Evaluation input contract
+
+`loudnessProfileEvaluate(document, sample)` takes exactly this `sample`:
+
+```js
+{
+  values: { [metricId]: number },   // metricId from statsCatalog STATS_CANONICAL_ORDER
+  integratedReady: boolean,
+  dialogueCoverage: number | null,  // percent, null when the dialogue path is inactive
+}
+```
+
+All three are already available from the frame the engine emits
+(`src/lib/tauriFrameApply.js`); **no new engine or DSP data is required**:
+
+- `integratedReady` — the engine emits `-Infinity` for `integrated` until it is
+  ready, so this is `Number.isFinite(displayAudio.integrated)`.
+- `dialogueCoverage` — `displayAudio.dialoguePercent` (already `null` when
+  unavailable). A `null` here also means "dialogue path inactive"; there is no
+  separate flag.
+
+Deliberately **not** in the contract: elapsed time or accumulated gated audio
+since Clear. The engine does not expose it, and wall-clock elapsed
+(`useSessionTimer`) is not a valid proxy — quiet material can run for minutes
+with almost no gated audio. See the Live built-in below for how this is avoided.
+
 Evaluation (per visible Stats row that has a rule):
 
 1. No rule / not in preferred set → treat as unwatched (muted).
 2. `na` → muted (e.g. LRA under Short-form); tip may say N/A.
-3. Insufficient data (integrated not ready, dialogue coverage too low, dialogue
-   path inactive, etc.) → **inconclusive** / pending → **warn colour**.
+3. Insufficient data (`integratedReady === false`, dialogue coverage below the
+   profile's threshold, `dialogueCoverage == null` for a dialogue rule) →
+   **inconclusive** / pending → **warn colour**.
 4. Outside target band or over hard limit → **fail** colour when
    `severity === fail`, else warn.
 5. Near boundary (implementation may use a small fixed margin, e.g. 0.5 LU) →
    warn.
 6. Else → watched in-range → **foreground** (not green).
 
-Realtime is **monitoring**: integrated-style conclusions stay provisional until
-the session has enough gated audio after Clear. File QC is later.
+Realtime is **monitoring**: integrated-style conclusions are provisional. Where
+a profile wants to say so (Live), it does it as a **static property of the
+rule**, never as a time threshold. File QC is later.
 
 ### Built-in short list (v1)
 
 | Id | Name | Reference line | Watched rules (summary) |
 | --- | --- | --- | --- |
 | `ebu-r128` | EBU R128 | −23 | Integrated target −23 (±0.5 production / ±0.2 QC display tol — pick one tol band for v1 UI, document as reference); TP max −1 fail; LRA descriptor; M/ST max watch optional |
-| `ebu-r128-live` | EBU R128 Live | −23 | Same as Programme; Integrated tolerance **±1.0**; live provisional on Integrated |
+| `ebu-r128-live` | EBU R128 Live | −23 | Same as Programme; Integrated tolerance **±1.0**; Integrated is **permanently** provisional (a rule flag, not a timer — realtime Integrated never "settles") |
 | `ebu-r128-s1` | EBU R128 S1 | −23 | Integrated −23; **ST Max ≤ −18** fail; TP max −1 fail; LRA `na` |
 | `atsc-a85` | ATSC A/85 | −24 | Dialogue Integrated target −24 (±2); TP max −2 fail; Dialogue Coverage used for inconclusive when too low; program Integrated watch/fallback only as documented in tips — **not** claimed certified |
 | `streaming-14` | Streaming −14 | −14 | Integrated target −14; TP max −1; framed as playback reference (Spotify Normal / YouTube-class), not reject-on-upload |
@@ -204,6 +232,45 @@ No System Settings page for this in v1.
 
 - Hover tips may explain limit vs value; no top-of-panel summary.
 
+### Level Meter — TP Max marker
+
+The Level Meter already draws a TP Max marker, and it must follow the active
+profile rather than keeping a second opinion about "TP is too hot".
+
+Current state: `LevelMeterPanel.jsx` passes
+`className="text-[color:var(--ui-signal-tp-max)]"` to `AxisValueMarker`
+**unconditionally** — the marker is always that colour, with no threshold check
+anywhere. `buildThemeTokens.js` defines `--ui-signal-tp-max` as an alias of
+`signal.bad`, so today it renders identically to a failure. The token's
+documented meaning (`docs/design-tokens.md`: "TP MAX value text when exceeded")
+describes an intent that was never implemented.
+
+Target state — make that `className` conditional:
+
+| Condition | Colour |
+| --- | --- |
+| No active profile, or TP within the profile's limit | none — inherit `AxisValueMarker`'s base `text-primary` |
+| TP over the active profile's limit | `text-[color:var(--ui-signal-tp-max)]` |
+
+`text-primary` is the theme **accent seed** (`buildThemeTokens.js` maps
+`--primary: accent`), which is what the Momentary / Short-term floating value
+markers on the same meter already use — accent is this app's live-measurement
+colour (Momentary curve, peak-sample line, vectorscope, waveform, spectrum all
+seed from it). An in-range TP Max readout should look like the other readouts on
+its own meter.
+
+**Do not write `text-accent`.** In shadcn's vocabulary `--accent` is a neutral
+hover background, unrelated to the brand colour; PLVS's accent seed feeds
+`--primary`. `text-accent` renders as near-invisible grey.
+
+No token values change, so `buildThemeTokens.js` and its snapshot test are
+untouched. `docs/design-tokens.md`'s existing description becomes accurate as a
+side effect and needs no edit.
+
+Accepted visual change: with no profile selected the TP Max marker is no longer
+red. That is intended — Off means no judgement — but it is a visible change to
+the default first-run appearance.
+
 ### Loudness panel
 
 - **Remove** numeric Reference LUFS control from Loudness settings (workspace +
@@ -219,6 +286,18 @@ No System Settings page for this in v1.
 - When a profile with a target is selected, `ref` control returns; line uses
   profile `referenceLufs`. Default ref layer visibility when entering from Off:
   restore last preference, else default **on**.
+
+### Footer
+
+`App.jsx` derives one `referenceLufs` and fans it out to **two** consumers: the
+loudness history data, and `footer`, which `AppShell.jsx` renders as
+`{footer.referenceLufs} LUFS`.
+
+Under Off the value is `null`, so the footer would read `null LUFS` (or a bare
+` LUFS`). **Hide the footer reference item entirely when the active profile has
+no `referenceLufs`.** This is the same "no phantom −23" rule as the chart; the
+footer is easy to miss because it is not part of the Loudness panel, and Off is
+the cold-start default, so getting it wrong is visible on the very first screen.
 
 ### Missing stats (unified)
 
@@ -253,10 +332,44 @@ loudnessProfiles: {
 
 - Do **not** require migrating old `referenceLufs` / per-panel
   `loudnessReferenceLufs` into meaningful history; cold default is Off.
-- Per-panel `loudnessReferenceLufs` should stop being an independent source of
-  truth: either derived at read time from the active Loudness Profile, or
-  removed in favour of session profile state (implementer’s choice; prefer one
-  writer).
+
+#### Per-panel `loudnessReferenceLufs`: delete it
+
+Not "mirror it for one release" — **delete the panel control outright.** The
+active profile is a session singleton and is the better owner; keeping a
+mirrored copy reintroduces the two-writer ambiguity this section exists to
+prevent, and it does not save any work (the `App.jsx` read path has to change
+either way).
+
+`App.jsx` currently derives `referenceLufs` by finding the first loudness panel
+and reading its `panelControls.loudnessReferenceLufs`. Replace that whole
+derivation with a read of the active profile's `referenceLufs` (`null` when
+Off).
+
+#### Legacy `settings.referenceLufs`: two halves, only one gets removed
+
+These look alike and are not alike. Removing the wrong half causes no visible
+failure on a dev machine and silently drops a field from existing users' config
+round-trips.
+
+**Delete — genuinely dead:** the `referenceLufs` state, `settingsStore.patch`,
+and export in `src/hooks/useMeterSettings.js`. Nothing in the repo consumes the
+exported value; `useSettings.js` passes it through and no caller reads it. It
+only reads and writes itself.
+
+**Keep — old-data compatibility, do not touch:**
+
+- `src/hooks/usePresets.js` `legacyReferenceLufs` fallback
+- `src/persistence/profileShape.js` `normalizeSettings` handling
+- the `src-tauri/src/profile.rs` fixture that asserts the round-trip
+
+These do not drive any UI. They exist so configuration files already on disk
+still import/export losslessly. Deleting them looks harmless on a fresh install
+and breaks upgrading users.
+
+Note the cross-side trap (see AGENTS.md): touching `profileShape` turns a
+frontend Vitest suite red because of Rust-side config expectations, which reads
+like an unrelated frontend failure.
 
 ### Layout Presets → snapshot active only
 
@@ -305,6 +418,14 @@ ST max / TP / dialogue readouts.
 
 - File Analysis / CLI report: evaluate the same profile rules for session
   summary Pass / Fail / Inconclusive.
+
+  **Constraint on v1 field design.** The CLI already ships a competing rules
+  model: `--reference-lufs` (display only) plus `--target-lufs` /
+  `--lufs-tolerance` as the actual QC gate (`docs/cli.md`). v1 deliberately does
+  not touch it, but the convergence direction is that the CLI flags will one day
+  be **derived from a profile**. So a profile's Integrated rule must stay
+  losslessly expressible as a target + tolerance pair. This costs v1 nothing; it
+  only rules out shapes that would strand the CLI later.
 - Additional built-ins: Apple Music −16, Netflix dialogue −27, AES Streaming
   band, regional −24 variants.
 - Optional relative LU display mode for EBU-style metering.
@@ -326,8 +447,20 @@ ST max / TP / dialogue readouts.
    Show missing (may enable dialogue path under the hood without saying so).
 10. Persist library + active in `plvs:settings`; Presets snapshot active (+
     custom draft) only.
-11. File-mode profile QC deferred.
+11. File-mode profile QC deferred, but Integrated rules must stay expressible as
+    target + tolerance so the CLI can derive its flags from a profile later.
 12. No compliance certification claims in UI.
+13. `evaluate` takes `{ values, integratedReady, dialogueCoverage }` and nothing
+    else. No time-since-Clear input; Live's provisional status is a static rule
+    property.
+14. Level Meter TP Max marker follows the active profile: base `text-primary`
+    when in range or no profile, `--ui-signal-tp-max` when over limit. No token
+    values change.
+15. Footer hides its reference item when the active profile has no
+    `referenceLufs`.
+16. `loudnessReferenceLufs` is **deleted** from panel controls, not mirrored.
+17. `useMeterSettings`'s `referenceLufs` is deleted; the `usePresets` /
+    `profileShape` / Rust-fixture compatibility paths are kept.
 
 ## Open at implement time (non-blocking)
 
@@ -335,8 +468,6 @@ ST max / TP / dialogue readouts.
 - Precise Integrated tolerance numbers shown for EBU Programme (±0.5 vs ±0.2
   QC) in tips.
 - ATSC minimum Dialogue Coverage threshold for inconclusive.
-- Whether `loudnessReferenceLufs` remains a mirrored field or is deleted from
-  panel controls after cutover.
 - Popover visual density / edit form control kit (reuse Settings rows where
   possible).
 
