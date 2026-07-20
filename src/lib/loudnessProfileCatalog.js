@@ -20,7 +20,6 @@
 import { STATS_META } from "./statsCatalog.js";
 
 export const LOUDNESS_PROFILE_OFF = "off";
-export const LOUDNESS_PROFILE_CUSTOM = "unsaved-custom";
 
 const BUILTIN_PREFIX = "builtin:";
 const USER_PREFIX = "user:";
@@ -154,10 +153,14 @@ export function createEmptyRule(metricId) {
 
 const BUILTIN_BY_ID = new Map(BUILTIN_LOUDNESS_PROFILES.map((p) => [p.id, p]));
 
-export function createDefaultCustomDraft() {
+/// The starter a New profile opens on. Integrated and True Peak are the two rules every delivery
+/// reference in the catalog shares, and a blank editor with no rows is a dead end.
+///
+/// The name starts empty so Save stays disabled until the user names it.
+export function createProfileDraft() {
   return {
-    id: "custom",
-    name: "Custom",
+    id: "draft",
+    name: "",
     kind: "draft",
     referenceLufs: -23,
     preferredMetricIds: ["integrated", "truePeak"],
@@ -243,7 +246,6 @@ export function userSelectionId(id) {
 /// Parses a selection id into { kind, id }. Unknown shapes read as Off so a corrupt persisted
 /// value degrades to the default rather than throwing.
 export function parseSelection(selection) {
-  if (selection === LOUDNESS_PROFILE_CUSTOM) return { kind: "draft", id: null };
   if (typeof selection === "string") {
     if (selection.startsWith(BUILTIN_PREFIX)) {
       return { kind: "builtin", id: selection.slice(BUILTIN_PREFIX.length) };
@@ -256,12 +258,11 @@ export function parseSelection(selection) {
 }
 
 /// Resolves the active selection to a rule document, or null when there is nothing to evaluate.
-/// Null covers Off, a missing custom draft, and a `user:<id>` that is no longer in the library
-/// (a preset can outlive the profile it referenced).
+/// Null covers Off and a `user:<id>` that is no longer in the library (a preset can outlive the
+/// profile it referenced).
 export function resolveActiveDocument(state) {
   const { kind, id } = parseSelection(state?.active);
   if (kind === "off") return null;
-  if (kind === "draft") return state?.customDraft ?? null;
   if (kind === "builtin") return BUILTIN_BY_ID.get(id) ?? null;
   return (state?.userProfiles ?? []).find((p) => p.id === id) ?? null;
 }

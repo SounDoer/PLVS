@@ -6,7 +6,6 @@
 
 import {
   BUILTIN_LOUDNESS_PROFILES,
-  LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
   isKnownMetricId,
   isUsableTolerance,
@@ -18,7 +17,6 @@ const BUILTIN_IDS = new Set(BUILTIN_LOUDNESS_PROFILES.map((p) => p.id));
 
 export const DEFAULT_LOUDNESS_PROFILES = Object.freeze({
   active: LOUDNESS_PROFILE_OFF,
-  customDraft: null,
   userProfiles: [],
 });
 
@@ -101,11 +99,11 @@ export function normalizeRuleDocument(raw, { kind } = {}) {
 }
 
 /// Resolves the persisted selection, falling back to Off whenever it cannot be honoured: an
-/// unknown built-in, a user profile that has been deleted, or Custom with no draft behind it.
-function normalizeActive(raw, { customDraft, userProfiles }) {
+/// unknown built-in, or a user profile that has been deleted. A selection written by an older
+/// build -- `unsaved-custom` -- parses as unknown and lands here as Off, which is the migration.
+function normalizeActive(raw, { userProfiles }) {
   const { kind, id } = parseSelection(raw);
   if (kind === "off") return LOUDNESS_PROFILE_OFF;
-  if (kind === "draft") return customDraft ? LOUDNESS_PROFILE_CUSTOM : LOUDNESS_PROFILE_OFF;
   if (kind === "builtin") return BUILTIN_IDS.has(id) ? raw : LOUDNESS_PROFILE_OFF;
   return userProfiles.some((p) => p.id === id) ? raw : LOUDNESS_PROFILE_OFF;
 }
@@ -113,8 +111,6 @@ function normalizeActive(raw, { customDraft, userProfiles }) {
 export function normalizeLoudnessProfiles(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     return { ...DEFAULT_LOUDNESS_PROFILES };
-
-  const customDraft = normalizeRuleDocument(raw.customDraft, { kind: "draft" });
 
   const seenIds = new Set();
   const userProfiles = (Array.isArray(raw.userProfiles) ? raw.userProfiles : [])
@@ -126,8 +122,7 @@ export function normalizeLoudnessProfiles(raw) {
     });
 
   return {
-    active: normalizeActive(raw.active, { customDraft, userProfiles }),
-    customDraft,
+    active: normalizeActive(raw.active, { userProfiles }),
     userProfiles,
   };
 }

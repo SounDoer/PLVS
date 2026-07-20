@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Copy, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   BUILTIN_LOUDNESS_PROFILES,
-  LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
   builtinSelectionId,
   userSelectionId,
-  withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
 import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
@@ -27,50 +25,6 @@ const GROUP_LABEL_CLASS =
 
 const INPUT_CLASS =
   "flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
-
-/**
- * Reference editor: a local draft committed on blur or Enter, never per keystroke.
- *
- * Committing every keystroke makes the intermediate states real. Clearing the box to retype
- * lands an empty string, which `Number` reads as a perfectly valid 0 LUFS; typing `-14` passes
- * through `-1` on the way. Both write a profile the user never asked for. Anything unparseable
- * or outside the window snaps back to the committed value.
- */
-function ReferenceInput({ value, readOnly, onCommit }) {
-  const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
-    setDraft(String(value));
-  }, [value]);
-
-  const commit = () => {
-    const parsed = Number(draft.trim());
-    if (draft.trim() !== "" && Number.isFinite(parsed) && parsed >= -70 && parsed <= 0) {
-      onCommit(parsed);
-    } else {
-      setDraft(String(value));
-    }
-  };
-
-  return (
-    <input
-      id="loudness-profile-reference"
-      type="number"
-      aria-label="Loudness Profile reference"
-      min={-70}
-      max={0}
-      step={1}
-      readOnly={readOnly}
-      value={draft}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-      }}
-      className={cn(INPUT_CLASS, "text-right", readOnly && "opacity-60")}
-    />
-  );
-}
 
 function ActiveDot({ active }) {
   return (
@@ -91,12 +45,10 @@ function ActiveDot({ active }) {
  * affordance simply does not appear, which is the correct behaviour when no Stats panel exists.
  */
 export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle = true }) {
-  const [saveName, setSaveName] = useState("");
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
 
-  const { active, document, userProfiles, customDraft, draftBlocksLibraryActions } = profile;
-  const isCustomActive = active === LOUDNESS_PROFILE_CUSTOM;
+  const { active, document, userProfiles, draftBlocksLibraryActions } = profile;
 
   // The editor panel is non-modal, so this list stays reachable while a draft is open. Everything
   // that would discard that draft is refused by the provider; showing it disabled is what makes
@@ -106,16 +58,8 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
 
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
-  // Off has no document to name itself with, and Custom is named after the slot rather than the
-  // draft sitting in it.
-  const selectionLabel = isCustomActive ? "Custom · unsaved" : (document?.name ?? "Off");
-
-  const commitSave = () => {
-    const trimmed = saveName.trim();
-    if (!trimmed) return;
-    profile.saveCustomAs(trimmed);
-    setSaveName("");
-  };
+  // Off has no document to name itself with.
+  const selectionLabel = document?.name ?? "Off";
 
   const startRename = (entry) => {
     setRenamingId(entry.id);
@@ -151,22 +95,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
         >
           <ActiveDot active={active === LOUDNESS_PROFILE_OFF} />
           <span className="min-w-0 flex-1 truncate">Off</span>
-        </button>
-      </div>
-
-      <div className={ROW_CLASS}>
-        <button
-          type="button"
-          aria-label="Use custom Loudness Profile"
-          onClick={profile.selectUnsavedCustom}
-          disabled={blocked}
-          className={cn(ROW_BUTTON_CLASS, blockedClass)}
-        >
-          <ActiveDot active={isCustomActive} />
-          <span className="min-w-0 flex-1 truncate">
-            Custom
-            {customDraft ? <span className="ml-1 text-muted-foreground">· unsaved</span> : null}
-          </span>
         </button>
       </div>
 
@@ -299,56 +227,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
         <p className="px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
           Finish editing to switch profiles.
         </p>
-      ) : null}
-
-      {isCustomActive ? (
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <input
-            type="text"
-            aria-label="Save custom profile as"
-            value={saveName}
-            onChange={(event) => setSaveName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") commitSave();
-            }}
-            placeholder="Save as…"
-            className={INPUT_CLASS}
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-7 px-2 text-[length:var(--ui-fs-control)]"
-            onClick={commitSave}
-            disabled={!saveName.trim()}
-          >
-            Save
-          </Button>
-        </div>
-      ) : null}
-
-      {document ? (
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <label
-            htmlFor="loudness-profile-reference"
-            className="shrink-0 text-[length:var(--ui-fs-control)] text-muted-foreground"
-          >
-            Reference
-          </label>
-          <ReferenceInput
-            value={document.referenceLufs ?? ""}
-            readOnly={document.kind === "builtin"}
-            onCommit={(next) => {
-              // Patch through withReferenceLufs so the anchor rule moves with the line: the
-              // reference is the value Stats judges against, not just the one it draws.
-              const { referenceLufs, metrics } = withReferenceLufs(document, next);
-              if (isCustomActive) profile.updateCustomDraft({ referenceLufs, metrics });
-              else if (document.kind === "user")
-                profile.updateUser(document.id, { referenceLufs, metrics });
-            }}
-          />
-          <span className="shrink-0 text-muted-foreground">LUFS</span>
-        </div>
       ) : null}
 
       {missingIds.length > 0 ? (

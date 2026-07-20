@@ -799,10 +799,16 @@ describe("usePresets Loudness Profile snapshot", () => {
     expect(result.current.profile.referenceLufs).toBe(-14);
   });
 
+  /// Saves one profile through the editor path, which is the only way into the library.
+  function saveProfile(result, name) {
+    act(() => result.current.profile.beginCreate());
+    act(() => result.current.profile.editDraft((d) => ({ ...d, name })));
+    act(() => result.current.profile.saveDraft());
+  }
+
   it("stores the active selection but never the library", async () => {
     const { result } = renderPresetsWithProfile();
-    act(() => result.current.profile.selectUnsavedCustom());
-    act(() => result.current.profile.saveCustomAs("Mine"));
+    saveProfile(result, "Mine");
     await act(async () => {
       await result.current.presets.save("WithLibrary");
     });
@@ -812,10 +818,14 @@ describe("usePresets Loudness Profile snapshot", () => {
     expect(saved).not.toHaveProperty("userProfiles");
   });
 
-  it("round-trips an unsaved custom draft", async () => {
+  it("round-trips a user profile", async () => {
     const { result } = renderPresetsWithProfile();
-    act(() => result.current.profile.selectUnsavedCustom());
-    act(() => result.current.profile.updateCustomDraft({ referenceLufs: -18 }));
+    saveProfile(result, "Mine");
+    act(() =>
+      result.current.profile.updateUser(result.current.profile.userProfiles[0].id, {
+        referenceLufs: -18,
+      })
+    );
     await act(async () => {
       await result.current.presets.save("Draft");
     });
@@ -831,8 +841,7 @@ describe("usePresets Loudness Profile snapshot", () => {
 
   it("falls back to Off when the preset names a profile that has been deleted", async () => {
     const { result } = renderPresetsWithProfile();
-    act(() => result.current.profile.selectUnsavedCustom());
-    act(() => result.current.profile.saveCustomAs("Temporary"));
+    saveProfile(result, "Temporary");
     await act(async () => {
       await result.current.presets.save("Doomed");
     });

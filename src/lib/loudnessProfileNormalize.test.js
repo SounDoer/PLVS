@@ -5,10 +5,9 @@ import {
   normalizeRuleDocument,
 } from "./loudnessProfileNormalize.js";
 import {
-  LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
   builtinSelectionId,
-  createDefaultCustomDraft,
+  createProfileDraft,
   userSelectionId,
 } from "./loudnessProfileCatalog.js";
 
@@ -60,20 +59,23 @@ describe("normalizeLoudnessProfiles active selection", () => {
     });
     expect(state.active).toBe(userSelectionId("u1"));
   });
+});
 
-  it("falls back to Off when Custom is selected with no draft behind it", () => {
-    expect(
-      normalizeLoudnessProfiles({ active: LOUDNESS_PROFILE_CUSTOM, customDraft: null }).active
-    ).toBe(LOUDNESS_PROFILE_OFF);
+describe("the custom slot is gone", () => {
+  it("reads a persisted unsaved-custom selection as Off", () => {
+    const state = normalizeLoudnessProfiles({
+      active: "unsaved-custom",
+      customDraft: { id: "custom", name: "Custom", metrics: {}, preferredMetricIds: [] },
+    });
+    expect(state.active).toBe(LOUDNESS_PROFILE_OFF);
   });
 
-  it("keeps Custom when a draft survives normalization", () => {
+  it("does not carry a customDraft forward", () => {
     const state = normalizeLoudnessProfiles({
-      active: LOUDNESS_PROFILE_CUSTOM,
-      customDraft: createDefaultCustomDraft(),
+      active: "off",
+      customDraft: { id: "custom", name: "Custom", metrics: {}, preferredMetricIds: [] },
     });
-    expect(state.active).toBe(LOUDNESS_PROFILE_CUSTOM);
-    expect(state.customDraft.metrics.integrated.target).toBe(-23);
+    expect(state.customDraft).toBeUndefined();
   });
 });
 
@@ -215,9 +217,11 @@ describe("normalizeRuleDocument", () => {
     expect(document.metrics.dialogueIntegrated.requiresDialogueCoverage).toBe(15);
   });
 
-  it("round-trips the built-in default draft unchanged", () => {
-    const draft = createDefaultCustomDraft();
-    expect(normalizeRuleDocument(draft, { kind: "draft" })).toEqual(draft);
+  it("round-trips the New profile starter unchanged", () => {
+    const draft = createProfileDraft();
+    // The starter is unnamed, and a blank name normalizes to "Untitled" -- everything else has to
+    // survive as written.
+    expect(normalizeRuleDocument(draft, { kind: "draft" })).toEqual({ ...draft, name: "Untitled" });
   });
 });
 

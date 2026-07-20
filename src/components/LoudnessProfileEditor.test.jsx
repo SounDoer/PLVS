@@ -2,11 +2,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
-import { createDefaultCustomDraft } from "@/lib/loudnessProfileCatalog.js";
+import { createProfileDraft } from "@/lib/loudnessProfileCatalog.js";
 
 function editorProps(overrides = {}) {
   return {
-    draft: { editingId: null, document: createDefaultCustomDraft(), dirty: false },
+    draft: { editingId: null, document: createProfileDraft(), dirty: false },
     onEdit: vi.fn(),
     onSave: vi.fn(),
     onCancel: vi.fn(),
@@ -140,7 +140,7 @@ describe("LoudnessProfileEditor", () => {
     renderEditor({
       draft: {
         editingId: null,
-        document: { ...createDefaultCustomDraft(), name: "  " },
+        document: { ...createProfileDraft(), name: "  " },
         dirty: true,
       },
     });
@@ -155,7 +155,7 @@ describe("LoudnessProfileEditor", () => {
 
   it("asks before discarding touched edits", () => {
     const props = renderEditor({
-      draft: { editingId: null, document: createDefaultCustomDraft(), dirty: true },
+      draft: { editingId: null, document: createProfileDraft(), dirty: true },
     });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(props.onCancel).not.toHaveBeenCalled();
@@ -166,7 +166,7 @@ describe("LoudnessProfileEditor", () => {
   it("does not overwrite a field the user is still typing in", () => {
     // Committing happens on blur, so a re-render arriving from elsewhere -- a rename, a preset
     // apply -- must not adopt the incoming value into a focused input.
-    const draft = { editingId: null, document: createDefaultCustomDraft(), dirty: false };
+    const draft = { editingId: null, document: createProfileDraft(), dirty: false };
     const props = { ...editorProps({ draft }) };
     const { rerender } = render(<LoudnessProfileEditor {...props} />);
 
@@ -182,7 +182,7 @@ describe("LoudnessProfileEditor", () => {
   });
 
   it("adopts an incoming value when the field is not focused", () => {
-    const draft = { editingId: null, document: createDefaultCustomDraft(), dirty: false };
+    const draft = { editingId: null, document: createProfileDraft(), dirty: false };
     const props = { ...editorProps({ draft }) };
     const { rerender } = render(<LoudnessProfileEditor {...props} />);
 

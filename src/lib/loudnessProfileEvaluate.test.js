@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loudnessProfileEvaluate } from "./loudnessProfileEvaluate.js";
-import { BUILTIN_LOUDNESS_PROFILES, createDefaultCustomDraft } from "./loudnessProfileCatalog.js";
+import { BUILTIN_LOUDNESS_PROFILES, createProfileDraft } from "./loudnessProfileCatalog.js";
 
 const byId = (id) => BUILTIN_LOUDNESS_PROFILES.find((p) => p.id === id);
 
@@ -167,9 +167,9 @@ describe("loudnessProfileEvaluate", () => {
     });
   });
 
-  it("evaluates the default custom draft like any other document", () => {
+  it("evaluates the New profile starter like any other document", () => {
     const statuses = loudnessProfileEvaluate(
-      createDefaultCustomDraft(),
+      createProfileDraft(),
       sample({ values: { integrated: -23, truePeak: -6 } })
     );
     expect(statuses).toEqual({ integrated: "ok", truePeak: "ok" });

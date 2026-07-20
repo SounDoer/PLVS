@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   BUILTIN_LOUDNESS_PROFILES,
-  LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
   METRIC_RULE_ROLE,
   MIN_DIALOGUE_COVERAGE_PERCENT,
   builtinSelectionId,
-  createDefaultCustomDraft,
+  createProfileDraft,
   createEmptyRule,
   duplicateAsDraft,
   isKnownMetricId,
@@ -126,9 +125,9 @@ describe("loudnessProfileCatalog built-ins", () => {
   });
 });
 
-describe("createDefaultCustomDraft", () => {
+describe("createProfileDraft", () => {
   it("starts at Integrated -23 and TP -1, both watched", () => {
-    const draft = createDefaultCustomDraft();
+    const draft = createProfileDraft();
     expect(draft.kind).toBe("draft");
     expect(draft.referenceLufs).toBe(-23);
     expect(draft.preferredMetricIds).toEqual(["integrated", "truePeak"]);
@@ -136,10 +135,14 @@ describe("createDefaultCustomDraft", () => {
     expect(draft.metrics.truePeak.max).toBe(-1);
   });
 
+  it("starts unnamed, so Save stays disabled until the user names it", () => {
+    expect(createProfileDraft().name).toBe("");
+  });
+
   it("returns a fresh object each call so edits cannot leak between drafts", () => {
-    const first = createDefaultCustomDraft();
+    const first = createProfileDraft();
     first.metrics.integrated.target = -9;
-    expect(createDefaultCustomDraft().metrics.integrated.target).toBe(-23);
+    expect(createProfileDraft().metrics.integrated.target).toBe(-23);
   });
 });
 
@@ -170,7 +173,6 @@ describe("duplicateAsDraft", () => {
 describe("parseSelection", () => {
   it("reads each selection shape", () => {
     expect(parseSelection(LOUDNESS_PROFILE_OFF)).toEqual({ kind: "off", id: null });
-    expect(parseSelection(LOUDNESS_PROFILE_CUSTOM)).toEqual({ kind: "draft", id: null });
     expect(parseSelection(builtinSelectionId("ebu-r128"))).toEqual({
       kind: "builtin",
       id: "ebu-r128",
@@ -183,23 +185,22 @@ describe("parseSelection", () => {
     expect(parseSelection(null).kind).toBe("off");
     expect(parseSelection(42).kind).toBe("off");
     expect(parseSelection("garbage").kind).toBe("off");
+    // The retired scratch-pad selection is just another unrecognised string now. That fall-through
+    // is the whole migration for an older settings blob.
+    expect(parseSelection("unsaved-custom").kind).toBe("off");
   });
 });
 
 describe("resolveActiveDocument", () => {
   const userProfile = { id: "u1", name: "Mine", kind: "user", referenceLufs: -16, metrics: {} };
-  const customDraft = createDefaultCustomDraft();
 
   it("returns null for Off", () => {
     expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_OFF })).toBe(null);
   });
 
-  it("resolves built-in, draft and user selections", () => {
+  it("resolves built-in and user selections", () => {
     expect(resolveActiveDocument({ active: builtinSelectionId("atsc-a85") }).referenceLufs).toBe(
       -24
-    );
-    expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_CUSTOM, customDraft })).toBe(
-      customDraft
     );
     expect(
       resolveActiveDocument({ active: userSelectionId("u1"), userProfiles: [userProfile] })
@@ -212,9 +213,6 @@ describe("resolveActiveDocument", () => {
       resolveActiveDocument({ active: userSelectionId("deleted"), userProfiles: [userProfile] })
     ).toBe(null);
     expect(resolveActiveDocument({ active: builtinSelectionId("removed") })).toBe(null);
-    expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_CUSTOM, customDraft: null })).toBe(
-      null
-    );
   });
 
   it("treats a missing state as Off", () => {
@@ -225,13 +223,13 @@ describe("resolveActiveDocument", () => {
 
 describe("withReferenceLufs", () => {
   it("carries the anchor target along with the reference", () => {
-    const moved = withReferenceLufs(createDefaultCustomDraft(), -16);
+    const moved = withReferenceLufs(createProfileDraft(), -16);
     expect(moved.referenceLufs).toBe(-16);
     expect(moved.metrics.integrated.target).toBe(-16);
   });
 
   it("keeps the user's tolerance band", () => {
-    const draft = createDefaultCustomDraft();
+    const draft = createProfileDraft();
     draft.metrics.integrated.tolerance = { minus: 2, plus: 1 };
     expect(withReferenceLufs(draft, -16).metrics.integrated.tolerance).toEqual({
       minus: 2,
@@ -251,7 +249,7 @@ describe("withReferenceLufs", () => {
   });
 
   it("leaves limits alone", () => {
-    const moved = withReferenceLufs(createDefaultCustomDraft(), -16);
+    const moved = withReferenceLufs(createProfileDraft(), -16);
     expect(moved.metrics.truePeak.max).toBe(-1);
   });
 

@@ -4,11 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
-import {
-  LOUDNESS_PROFILE_CUSTOM,
-  LOUDNESS_PROFILE_OFF,
-  builtinSelectionId,
-} from "../lib/loudnessProfileCatalog.js";
+import { LOUDNESS_PROFILE_OFF, builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
 
 function persisted() {
   return settingsStore.read().loudnessProfiles;
@@ -63,47 +59,13 @@ describe("selecting profiles", () => {
   });
 });
 
-describe("the custom scratch pad", () => {
-  it("seeds a default draft on first use", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.selectUnsavedCustom());
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_CUSTOM);
-    expect(result.current.document.metrics.integrated.target).toBe(-23);
-  });
-
-  it("keeps draft edits when switching away and back", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.selectUnsavedCustom());
-    act(() => result.current.updateCustomDraft({ referenceLufs: -16 }));
-    act(() => result.current.select(builtinSelectionId("ebu-r128")));
-    expect(result.current.referenceLufs).toBe(-23);
-
-    act(() => result.current.selectUnsavedCustom());
-    expect(result.current.referenceLufs).toBe(-16);
-  });
-
-  it("duplicates a built-in into the scratch pad rather than the library", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.duplicateBuiltin("ebu-r128-s1"));
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_CUSTOM);
-    expect(result.current.document.basedOn).toBe("ebu-r128-s1");
-    expect(result.current.document.metrics.shortTermMax.max).toBe(-18);
-    expect(result.current.userProfiles).toEqual([]);
-  });
-
-  it("ignores a duplicate of a built-in that does not exist", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.duplicateBuiltin("nope"));
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-  });
-});
-
 describe("the user library", () => {
-  function withSavedProfile(name = "My Show") {
+  /// Saves one profile through the editor path, which is the only way into the library.
+  function withSavedProfile(name = "My Show", referenceLufs = -16) {
     const hook = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => hook.result.current.selectUnsavedCustom());
-    act(() => hook.result.current.updateCustomDraft({ referenceLufs: -16 }));
-    act(() => hook.result.current.saveCustomAs(name));
+    act(() => hook.result.current.beginCreate());
+    act(() => hook.result.current.editDraft((d) => ({ ...d, name, referenceLufs })));
+    act(() => hook.result.current.saveDraft());
     return hook;
   }
 
@@ -115,15 +77,11 @@ describe("the user library", () => {
     expect(result.current.referenceLufs).toBe(-16);
   });
 
-  it("leaves the scratch pad intact after saving out of it", () => {
-    const { result } = withSavedProfile();
-    expect(result.current.customDraft.referenceLufs).toBe(-16);
-  });
-
   it("gives each saved profile its own identity", () => {
     const { result } = withSavedProfile("First");
-    act(() => result.current.selectUnsavedCustom());
-    act(() => result.current.saveCustomAs("Second"));
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
+    act(() => result.current.saveDraft());
     const [a, b] = result.current.userProfiles;
     expect(a.id).not.toBe(b.id);
     expect(result.current.userProfiles.map((p) => p.name)).toEqual(["First", "Second"]);
@@ -153,8 +111,9 @@ describe("the user library", () => {
 
   it("leaves the selection alone when a different profile is deleted", () => {
     const { result } = withSavedProfile("First");
-    act(() => result.current.selectUnsavedCustom());
-    act(() => result.current.saveCustomAs("Second"));
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
+    act(() => result.current.saveDraft());
     const [first] = result.current.userProfiles;
     act(() => result.current.removeUser(first.id));
     expect(result.current.document.name).toBe("Second");
@@ -167,15 +126,28 @@ describe("the user library", () => {
     expect(second.result.current.userProfiles.map((p) => p.name)).toEqual(["My Show"]);
     expect(second.result.current.document.name).toBe("My Show");
   });
+
+  it("ignores a duplicate of a built-in that does not exist", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginDuplicate("nope"));
+    expect(result.current.draft).toBe(null);
+    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+  });
 });
 
 describe("preset snapshots", () => {
+  /// Saves one profile through the editor path.
+  function saveProfile(hook, name) {
+    act(() => hook.result.current.beginCreate());
+    act(() => hook.result.current.editDraft((d) => ({ ...d, name })));
+    act(() => hook.result.current.saveDraft());
+  }
+
   it("captures the active selection, not the library", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("streaming-14")));
     const snapshot = result.current.snapshotForPreset();
-    expect(snapshot.loudnessProfileActive).toBe(builtinSelectionId("streaming-14"));
-    expect(snapshot).not.toHaveProperty("userProfiles");
+    expect(snapshot).toEqual({ loudnessProfileActive: builtinSelectionId("streaming-14") });
   });
 
   it("round-trips a built-in selection", () => {
@@ -188,52 +160,24 @@ describe("preset snapshots", () => {
     expect(result.current.referenceLufs).toBe(-14);
   });
 
-  it("round-trips an unsaved custom draft", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.selectUnsavedCustom());
-    act(() => result.current.updateCustomDraft({ referenceLufs: -18 }));
-    const snapshot = result.current.snapshotForPreset();
-
-    act(() => result.current.selectOff());
-    act(() => result.current.applyPresetSnapshot(snapshot));
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_CUSTOM);
-    expect(result.current.referenceLufs).toBe(-18);
-  });
-
   it("falls back to Off when the preset names a profile that is gone", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.selectUnsavedCustom());
-    act(() => result.current.saveCustomAs("Temporary"));
-    const snapshot = result.current.snapshotForPreset();
-    const { id } = result.current.userProfiles[0];
+    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+    saveProfile(hook, "Temporary");
+    const snapshot = hook.result.current.snapshotForPreset();
+    const { id } = hook.result.current.userProfiles[0];
 
-    act(() => result.current.removeUser(id));
-    act(() => result.current.applyPresetSnapshot(snapshot));
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    act(() => hook.result.current.removeUser(id));
+    act(() => hook.result.current.applyPresetSnapshot(snapshot));
+    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
   });
 
   it("leaves the library untouched when applying a snapshot", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.selectUnsavedCustom());
-    act(() => result.current.saveCustomAs("Keep me"));
+    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+    saveProfile(hook, "Keep me");
     const snapshot = { loudnessProfileActive: LOUDNESS_PROFILE_OFF };
 
-    act(() => result.current.applyPresetSnapshot(snapshot));
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Keep me"]);
-  });
-
-  it("does not let a built-in preset discard a draft in progress", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.selectUnsavedCustom());
-    act(() => result.current.updateCustomDraft({ referenceLufs: -18 }));
-
-    act(() =>
-      result.current.applyPresetSnapshot({
-        loudnessProfileActive: builtinSelectionId("ebu-r128"),
-        loudnessProfileCustomDraft: null,
-      })
-    );
-    expect(result.current.customDraft.referenceLufs).toBe(-18);
+    act(() => hook.result.current.applyPresetSnapshot(snapshot));
+    expect(hook.result.current.userProfiles.map((p) => p.name)).toEqual(["Keep me"]);
   });
 
   it("ignores an absent snapshot", () => {
@@ -567,12 +511,13 @@ describe("preset divergence", () => {
     expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("marks the active preset dirty when the draft is edited", () => {
+  it("marks the active preset dirty when a profile is written", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.selectUnsavedCustom());
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Mine" })));
     presetsStore.patch({ dirty: false });
 
-    act(() => result.current.updateCustomDraft({ referenceLufs: -18 }));
+    act(() => result.current.saveDraft());
     expect(presetsStore.read().dirty).toBe(true);
   });
 

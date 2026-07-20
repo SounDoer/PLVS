@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { settingsStore } from "../persistence/index.js";
-import { LOUDNESS_PROFILE_CUSTOM, LOUDNESS_PROFILE_OFF } from "../lib/loudnessProfileCatalog.js";
+import { LOUDNESS_PROFILE_OFF } from "../lib/loudnessProfileCatalog.js";
 
 const DEFAULT_VISIBLE = ["momentary", "shortTerm", "integrated"];
 
@@ -30,11 +30,10 @@ function renderPopover({ stats } = {}) {
 }
 
 describe("LoudnessProfilePopoverContent listing", () => {
-  it("lists Off, Custom and every built-in", () => {
+  it("lists Off and every built-in", () => {
     renderPopover();
 
     expect(screen.getByLabelText("Use no Loudness Profile")).toBeTruthy();
-    expect(screen.getByLabelText("Use custom Loudness Profile")).toBeTruthy();
     expect(screen.getByLabelText("Use EBU R128")).toBeTruthy();
     expect(screen.getByLabelText("Use EBU R128 Live")).toBeTruthy();
     expect(screen.getByLabelText("Use EBU R128 S1")).toBeTruthy();
@@ -91,136 +90,50 @@ describe("LoudnessProfilePopoverContent editing", () => {
     expect(hook.result.current.userProfiles).toEqual([]);
   });
 
-  it("offers Save as only while Custom is active", () => {
-    const { rerender } = renderPopover();
+  it("no longer offers the Custom slot", () => {
+    renderPopover();
+    expect(screen.queryByLabelText("Use custom Loudness Profile")).toBeNull();
     expect(screen.queryByLabelText("Save custom profile as")).toBeNull();
-
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-    expect(screen.getByLabelText("Save custom profile as")).toBeTruthy();
+    // The reference now lives in the editor, where it sits beside the rule it anchors.
+    expect(screen.queryByLabelText("Loudness Profile reference")).toBeNull();
   });
 
-  it("saves the draft under a name and lists it under Yours", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
+  /// Saves one profile through the editor path, which is now the only way into the library.
+  function saveProfile(view, name) {
+    act(() => view.hook.result.current.beginCreate());
+    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name })));
+    act(() => view.hook.result.current.saveDraft());
+    view.rerender();
+  }
 
-    fireEvent.change(screen.getByLabelText("Save custom profile as"), {
-      target: { value: "My Show" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    rerender();
+  it("lists a saved profile under Yours", () => {
+    const view = renderPopover();
+    saveProfile(view, "My Show");
 
-    expect(hook.result.current.document.name).toBe("My Show");
     expect(screen.getByText("Yours")).toBeTruthy();
     expect(screen.getByLabelText("Use My Show")).toBeTruthy();
   });
 
-  it("refuses to save a blank name", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-
-    fireEvent.change(screen.getByLabelText("Save custom profile as"), {
-      target: { value: "   " },
-    });
-    expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(true);
-    expect(hook.result.current.userProfiles).toEqual([]);
-  });
-
   it("renames a saved profile inline", () => {
-    const { hook, rerender } = renderPopover();
-    act(() => hook.result.current.selectUnsavedCustom());
-    act(() => hook.result.current.saveCustomAs("Before"));
-    rerender();
+    const view = renderPopover();
+    saveProfile(view, "Before");
 
     fireEvent.click(screen.getByLabelText("Rename Before"));
-    rerender();
+    view.rerender();
     fireEvent.change(screen.getByLabelText("Rename Before"), { target: { value: "After" } });
     fireEvent.click(screen.getByLabelText("Save rename"));
-    rerender();
+    view.rerender();
 
-    expect(hook.result.current.document.name).toBe("After");
+    expect(view.hook.result.current.document.name).toBe("After");
   });
 
   it("deletes a saved profile and falls back to Off", () => {
-    const { hook, rerender } = renderPopover();
-    act(() => hook.result.current.selectUnsavedCustom());
-    act(() => hook.result.current.saveCustomAs("Doomed"));
-    rerender();
+    const view = renderPopover();
+    saveProfile(view, "Doomed");
 
     fireEvent.click(screen.getByLabelText("Delete Doomed"));
-    expect(hook.result.current.userProfiles).toEqual([]);
-    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-  });
-
-  /// Commit is on blur, so every case here has to type *and* leave the field.
-  function editReference(value) {
-    const input = screen.getByLabelText("Loudness Profile reference");
-    fireEvent.change(input, { target: { value } });
-    fireEvent.blur(input);
-    return input;
-  }
-
-  it("edits the reference of the custom draft", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-
-    editReference("-16");
-    expect(hook.result.current.referenceLufs).toBe(-16);
-  });
-
-  it("moves the anchor target with the reference", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-
-    editReference("-16");
-    // The line and the value Stats judges against are one number; -16 must not draw at -16 and
-    // still fail everything that is not -23.
-    expect(hook.result.current.document.metrics.integrated.target).toBe(-16);
-  });
-
-  it("does not read a cleared field as 0 LUFS", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-
-    const input = editReference("");
-    expect(hook.result.current.referenceLufs).toBe(-23);
-    expect(input.value).toBe("-23");
-  });
-
-  it("does not commit the intermediate values of a typed negative number", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-
-    const input = screen.getByLabelText("Loudness Profile reference");
-    for (const step of ["", "-", "-1", "-14"]) {
-      fireEvent.change(input, { target: { value: step } });
-      expect(hook.result.current.referenceLufs).toBe(-23);
-    }
-    fireEvent.blur(input);
-    expect(hook.result.current.referenceLufs).toBe(-14);
-  });
-
-  it("snaps back when the value is outside the accepted window", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-
-    editReference("12");
-    expect(hook.result.current.referenceLufs).toBe(-23);
-  });
-
-  it("shows a built-in's reference read-only", () => {
-    const { rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use EBU R128"));
-    rerender();
-
-    expect(screen.getByLabelText("Loudness Profile reference").readOnly).toBe(true);
+    expect(view.hook.result.current.userProfiles).toEqual([]);
+    expect(view.hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
   });
 });
 
@@ -375,22 +288,12 @@ describe("current selection label", () => {
     expect(label()).toBe("EBU R128 Live");
   });
 
-  it("names the scratch pad rather than the draft inside it", () => {
-    const { rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-    expect(label()).toBe("Custom · unsaved");
-  });
-
   it("names a saved profile", () => {
-    const { rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
-    rerender();
-    fireEvent.change(screen.getByLabelText("Save custom profile as"), {
-      target: { value: "My Show" },
-    });
-    fireEvent.click(screen.getByText("Save"));
-    rerender();
+    const view = renderPopover();
+    act(() => view.hook.result.current.beginCreate());
+    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name: "My Show" })));
+    act(() => view.hook.result.current.saveDraft());
+    view.rerender();
     expect(label()).toBe("My Show");
   });
 });
