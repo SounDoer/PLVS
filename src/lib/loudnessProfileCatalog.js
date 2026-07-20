@@ -149,6 +149,35 @@ export function duplicateAsDraft(builtinId, makeId = defaultMakeId) {
   };
 }
 
+/// The metric the reference value is *about*: the first preferred metric the profile targets.
+/// For the default draft and the EBU/Streaming copies that is `integrated`; for an ATSC copy it
+/// is `dialogueIntegrated`, which is the whole reason this is not hard-coded to `integrated`.
+function anchorMetricId(document) {
+  return (document?.preferredMetricIds ?? []).find(
+    (id) => document.metrics?.[id]?.role === "target"
+  );
+}
+
+/// Moves a document's reference, carrying its anchor target rule along.
+///
+/// These two are one number wearing two hats -- the line drawn on the chart and the value Stats
+/// judges against -- so letting the editor write only `referenceLufs` produces a profile that
+/// draws its line at one loudness and fails you against another. The tolerance band is the
+/// user's, so it rides along unchanged.
+export function withReferenceLufs(document, referenceLufs) {
+  if (!document) return document;
+  const anchor = anchorMetricId(document);
+  if (!anchor) return { ...document, referenceLufs };
+  return {
+    ...document,
+    referenceLufs,
+    metrics: {
+      ...document.metrics,
+      [anchor]: { ...document.metrics[anchor], target: referenceLufs },
+    },
+  };
+}
+
 export function builtinSelectionId(id) {
   return `${BUILTIN_PREFIX}${id}`;
 }

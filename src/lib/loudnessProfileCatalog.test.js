@@ -11,6 +11,7 @@ import {
   parseSelection,
   resolveActiveDocument,
   userSelectionId,
+  withReferenceLufs,
 } from "./loudnessProfileCatalog.js";
 
 const byId = (id) => BUILTIN_LOUDNESS_PROFILES.find((p) => p.id === id);
@@ -214,5 +215,52 @@ describe("resolveActiveDocument", () => {
   it("treats a missing state as Off", () => {
     expect(resolveActiveDocument(undefined)).toBe(null);
     expect(resolveActiveDocument({})).toBe(null);
+  });
+});
+
+describe("withReferenceLufs", () => {
+  it("carries the anchor target along with the reference", () => {
+    const moved = withReferenceLufs(createDefaultCustomDraft(), -16);
+    expect(moved.referenceLufs).toBe(-16);
+    expect(moved.metrics.integrated.target).toBe(-16);
+  });
+
+  it("keeps the user's tolerance band", () => {
+    const draft = createDefaultCustomDraft();
+    draft.metrics.integrated.tolerance = { minus: 2, plus: 1 };
+    expect(withReferenceLufs(draft, -16).metrics.integrated.tolerance).toEqual({
+      minus: 2,
+      plus: 1,
+    });
+  });
+
+  it("moves a dialogue anchor rather than assuming integrated", () => {
+    const moved = withReferenceLufs(
+      duplicateAsDraft("atsc-a85", () => "copy"),
+      -27
+    );
+    expect(moved.metrics.dialogueIntegrated.target).toBe(-27);
+    // ATSC's program Integrated is a descriptor; a descriptor has no target to move.
+    expect(moved.metrics.integrated.target).toBeUndefined();
+  });
+
+  it("leaves limits alone", () => {
+    const moved = withReferenceLufs(createDefaultCustomDraft(), -16);
+    expect(moved.metrics.truePeak.max).toBe(-1);
+  });
+
+  it("still moves the reference when the profile targets nothing", () => {
+    const moved = withReferenceLufs(
+      {
+        id: "x",
+        name: "x",
+        kind: "draft",
+        referenceLufs: -23,
+        metrics: {},
+        preferredMetricIds: [],
+      },
+      -16
+    );
+    expect(moved.referenceLufs).toBe(-16);
   });
 });
