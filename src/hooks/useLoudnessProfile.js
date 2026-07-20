@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { settingsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore } from "../persistence/index.js";
 import {
   LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
@@ -29,10 +29,16 @@ export function useLoudnessProfile() {
 
   useEffect(() => settingsStore.subscribe(() => setState(readState())), []);
 
-  const commit = useCallback((updater) => {
+  /// The active profile is part of the layout preset snapshot, so editing it diverges from the
+  /// preset exactly the way a workspace or dock edit does, and has to say so -- otherwise the
+  /// preset reads as clean while carrying a profile the user has since changed.
+  ///
+  /// `presetDirty: false` is for the one write that is not a divergence: restoring a snapshot.
+  const commit = useCallback((updater, { presetDirty = true } = {}) => {
     setState((prev) => {
       const next = normalizeLoudnessProfiles(updater(prev));
       writeState(next);
+      if (presetDirty) presetsStore.patch({ dirty: true });
       return next;
     });
   }, []);
@@ -136,17 +142,20 @@ export function useLoudnessProfile() {
 
   const applyPresetSnapshot = useCallback(
     (snapshot) =>
-      commit((prev) => {
-        if (!snapshot) return prev;
-        const { kind } = parseSelection(snapshot.loudnessProfileActive);
-        return {
-          ...prev,
-          active: snapshot.loudnessProfileActive,
-          // Only a Custom selection may overwrite the scratch pad; a preset on a built-in has no
-          // business discarding a draft the user is still working on.
-          customDraft: kind === "draft" ? snapshot.loudnessProfileCustomDraft : prev.customDraft,
-        };
-      }),
+      commit(
+        (prev) => {
+          if (!snapshot) return prev;
+          const { kind } = parseSelection(snapshot.loudnessProfileActive);
+          return {
+            ...prev,
+            active: snapshot.loudnessProfileActive,
+            // Only a Custom selection may overwrite the scratch pad; a preset on a built-in has no
+            // business discarding a draft the user is still working on.
+            customDraft: kind === "draft" ? snapshot.loudnessProfileCustomDraft : prev.customDraft,
+          };
+        },
+        { presetDirty: false }
+      ),
     [commit]
   );
 

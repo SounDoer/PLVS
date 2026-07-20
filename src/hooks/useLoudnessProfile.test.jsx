@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { settingsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore } from "../persistence/index.js";
 import { useLoudnessProfile } from "./useLoudnessProfile.js";
 import {
   LOUDNESS_PROFILE_CUSTOM,
@@ -255,5 +255,39 @@ describe("preset snapshots", () => {
     act(() => result.current.select(builtinSelectionId("ebu-r128")));
     act(() => result.current.applyPresetSnapshot(undefined));
     expect(result.current.active).toBe(builtinSelectionId("ebu-r128"));
+  });
+});
+
+describe("preset divergence", () => {
+  beforeEach(() => {
+    presetsStore.reset();
+    presetsStore.patch({ activeId: "p1", dirty: false });
+  });
+
+  it("marks the active preset dirty when the selection changes", () => {
+    const { result } = renderHook(() => useLoudnessProfile());
+    act(() => result.current.select(builtinSelectionId("ebu-r128")));
+    expect(presetsStore.read().dirty).toBe(true);
+  });
+
+  it("marks the active preset dirty when the draft is edited", () => {
+    const { result } = renderHook(() => useLoudnessProfile());
+    act(() => result.current.selectUnsavedCustom());
+    presetsStore.patch({ dirty: false });
+
+    act(() => result.current.updateCustomDraft({ referenceLufs: -18 }));
+    expect(presetsStore.read().dirty).toBe(true);
+  });
+
+  // Applying a preset is the one write that must not diverge from it: the profile it restores is
+  // by definition the profile that preset carries.
+  it("does not dirty the preset it is restoring", () => {
+    const { result } = renderHook(() => useLoudnessProfile());
+    act(() =>
+      result.current.applyPresetSnapshot({
+        loudnessProfileActive: builtinSelectionId("ebu-r128"),
+      })
+    );
+    expect(presetsStore.read().dirty).toBe(false);
   });
 });
