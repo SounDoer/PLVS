@@ -107,6 +107,16 @@ describe("Polar Level", () => {
     expect([...smoothPolarBins(bins)]).toEqual([0.25, 0.5, 0.25]);
   });
 
+  it("keeps a bin's level independent of samples in other directions", () => {
+    const monoOnly = aggregatePolarLevel([{ pairs: new Float32Array([0.5, 0.5]) }]);
+    const mixedPairs = [0.5, 0.5];
+    for (let index = 0; index < 100; index += 1) mixedPairs.push(0.5, -0.5);
+    const mixed = aggregatePolarLevel([{ pairs: new Float32Array(mixedPairs) }]);
+    const center = Math.floor(POLAR_LEVEL_BIN_COUNT / 2);
+
+    expect(mixed[center]).toBeCloseTo(monoOnly[center], 10);
+  });
+
   it("uses fast attack and slower release", () => {
     const zero = new Float64Array([0]);
     const one = new Float64Array([1]);

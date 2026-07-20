@@ -7,6 +7,7 @@ export const POLAR_LEVEL_ATTACK_MS = 60;
 export const POLAR_LEVEL_RELEASE_MS = 350;
 
 const INV_SQRT2 = 1 / Math.sqrt(2);
+const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 
 function clampSample(value) {
   return Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0));
@@ -88,19 +89,21 @@ export function smoothPolarBins(bins) {
 
 export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
   const energy = new Float64Array(binCount);
-  let sampleCount = 0;
+  const sampleCounts = new Uint32Array(binCount);
   for (const row of rows ?? []) {
     const pairs = row?.pairs ?? [];
     for (let index = 0; index + 1 < pairs.length; index += 2) {
       const point = projectPairToPolar(pairs[index], pairs[index + 1]);
+      if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
       const bin = binIndexForAngle(point.angle, binCount);
       energy[bin] += point.radius * point.radius;
-      sampleCount += 1;
+      sampleCounts[bin] += 1;
     }
   }
-  if (sampleCount === 0) return energy;
   for (let index = 0; index < energy.length; index += 1) {
-    energy[index] = Math.sqrt(energy[index] / sampleCount);
+    if (sampleCounts[index] > 0) {
+      energy[index] = Math.sqrt(energy[index] / sampleCounts[index]);
+    }
   }
   return smoothPolarBins(energy);
 }
