@@ -39,7 +39,6 @@ function hasPanelSettings({
   spectrumValueKey = "",
   onSpectrumViewChange,
   onSpectrumMaxHoldToggle,
-  vectorscopeOptions = [],
   panelControls,
   onPanelControlsChange,
 }) {
@@ -72,9 +71,8 @@ function hasPanelSettings({
 
   return (
     activeTab === "vectorscope" &&
-    Number.isFinite(channelCount) &&
-    channelCount > 2 &&
-    vectorscopeOptions.length > 0
+    panelControls != null &&
+    typeof onPanelControlsChange === "function"
   );
 }
 

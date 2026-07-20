@@ -104,4 +104,20 @@ describe("PanelSettingsMenu", () => {
     expect(screen.getByLabelText("spectrogram y range min")).toBeTruthy();
     expect(screen.getByLabelText("spectrogram y range max")).toBeTruthy();
   });
+
+  it("renders Vectorscope settings for stereo sources", () => {
+    render(
+      <PanelSettingsMenu
+        activeTab="vectorscope"
+        channelCount={2}
+        vectorscopeOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+    expect(screen.getByLabelText("vectorscope mode")).toBeTruthy();
+    expect(screen.queryByLabelText("vectorscope channel pair")).toBeNull();
+  });
 });

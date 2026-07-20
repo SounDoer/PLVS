@@ -984,7 +984,7 @@ function AppContent() {
       vectorscopeOptions: vectorscopePairOptions,
       spectrumOptions: spectrumChannelOptions,
       channelCount,
-      vectorscopeSettingsAvailable: channelCount > 2 && vectorscopePairOptions.length > 0,
+      vectorscopeSettingsAvailable: true,
       presets: {
         list: presets.list.map(({ id, name }) => ({ id, name })),
         activeId: presets.activeId,
