@@ -180,3 +180,73 @@ describe("loudnessProfileEvaluate", () => {
     expect(statuses.integrated).toBe("pending");
   });
 });
+
+describe("empty rules", () => {
+  const withRule = (metricId, rule) => ({
+    id: "u1",
+    name: "Mine",
+    kind: "user",
+    referenceLufs: null,
+    metrics: { [metricId]: rule },
+    preferredMetricIds: [metricId],
+  });
+
+  it("does not crash on a target rule with no band", () => {
+    // This threw TypeError before the guard: evaluateTarget reads rule.tolerance.minus.
+    expect(() =>
+      loudnessProfileEvaluate(withRule("integrated", { role: "target", target: -23 }), {
+        values: { integrated: -30 },
+        integratedReady: true,
+        dialogueCoverage: null,
+      })
+    ).not.toThrow();
+  });
+
+  it("does not judge a target rule with no target", () => {
+    const statuses = loudnessProfileEvaluate(
+      withRule("integrated", { role: "target", severity: "fail" }),
+      { values: { integrated: -30 }, integratedReady: true, dialogueCoverage: null }
+    );
+    expect(statuses.integrated).toBe("unwatched");
+  });
+
+  it("does not report an empty integrated rule as pending", () => {
+    // Pending is a claim about the engine, not about the profile. An unfilled rule has no
+    // opinion to be pending on.
+    const statuses = loudnessProfileEvaluate(
+      withRule("integrated", { role: "target", severity: "fail" }),
+      { values: {}, integratedReady: false, dialogueCoverage: null }
+    );
+    expect(statuses.integrated).toBe("unwatched");
+  });
+
+  it("does not judge a limit rule with neither bound", () => {
+    // Previously this returned "ok" -- an unfilled rule reporting a pass.
+    const statuses = loudnessProfileEvaluate(
+      withRule("correlation", { role: "limit", severity: "warn" }),
+      { values: { correlation: -1 }, integratedReady: true, dialogueCoverage: null }
+    );
+    expect(statuses.correlation).toBe("unwatched");
+  });
+
+  it("judges as soon as one bound is filled", () => {
+    const statuses = loudnessProfileEvaluate(
+      withRule("correlation", { role: "limit", min: 0, severity: "fail" }),
+      { values: { correlation: -1 }, integratedReady: true, dialogueCoverage: null }
+    );
+    expect(statuses.correlation).toBe("fail");
+  });
+
+  it("still judges a fully filled target", () => {
+    const statuses = loudnessProfileEvaluate(
+      withRule("integrated", {
+        role: "target",
+        target: -23,
+        tolerance: { minus: 1, plus: 1 },
+        severity: "fail",
+      }),
+      { values: { integrated: -30 }, integratedReady: true, dialogueCoverage: null }
+    );
+    expect(statuses.integrated).toBe("fail");
+  });
+});

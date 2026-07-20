@@ -8,6 +8,8 @@
 /// Returns a status per metric the document addresses. A metric absent from the result is
 /// unwatched; callers render that as muted, so Off (a null document) yields an empty map.
 
+import { isRuleEmpty } from "./loudnessProfileCatalog.js";
+
 /// Distance from a band edge at which a passing value is already worth a warning.
 const NEAR_BOUNDARY_MARGIN = 0.5;
 
@@ -39,6 +41,10 @@ function evaluateTarget(rule, value) {
 
 function evaluateMetric(metricId, rule, sample) {
   if (rule.role === "descriptor" || rule.role === "watch") return "unwatched";
+
+  // Before anything else, including the readiness checks: a rule the user has not filled in has
+  // no opinion, so it cannot be pending or inconclusive either.
+  if (isRuleEmpty(rule)) return "unwatched";
 
   // Integrated-family readouts are meaningless until the engine says they are ready.
   if (metricId === "integrated" && !sample.integratedReady) return "pending";

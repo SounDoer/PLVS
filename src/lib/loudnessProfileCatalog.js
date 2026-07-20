@@ -220,11 +220,17 @@ export function isKnownMetricId(metricId) {
 
 /// A rule the user has added but not yet filled in. It judges nothing and demands nothing, and
 /// it has to survive a round-trip: the alternative is a row that vanishes when the panel closes.
+///
+/// A target needs both halves. With a target but no band, `evaluateTarget` would compare against
+/// a zero-width band, which the near-boundary margin turns into a permanent warning that can
+/// never read ok -- a half-typed rule should be silent, not shouting. Defaulting the band instead
+/// would mean inventing a threshold, which is the thing this feature exists to avoid.
+///
 /// `descriptor` and `na` are deliberate annotations rather than half-finished rules, so they are
 /// never empty.
 export function isRuleEmpty(rule) {
   if (!rule) return true;
-  if (rule.role === "target") return !Number.isFinite(rule.target);
+  if (rule.role === "target") return !Number.isFinite(rule.target) || !rule.tolerance;
   if (rule.role === "limit") return !Number.isFinite(rule.max) && !Number.isFinite(rule.min);
   return false;
 }

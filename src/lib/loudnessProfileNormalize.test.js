@@ -122,7 +122,7 @@ describe("normalizeRuleDocument", () => {
     expect(Object.keys(document.metrics)).toEqual(["integrated"]);
   });
 
-  it("gives a target a default band when missing or invalid", () => {
+  it("keeps a target with no usable band, but does not invent one", () => {
     const document = normalizeRuleDocument({
       id: "u1",
       metrics: {
@@ -130,19 +130,17 @@ describe("normalizeRuleDocument", () => {
         truePeak: { role: "target", target: -1, tolerance: { minus: -1, plus: 1 } },
       },
     });
-    // A target rule with a value always survives, with either the provided band or zero as default.
+    // The rule survives so the editor still shows the row; with no band, nothing judges it.
     expect(document.metrics.integrated).toEqual({
       role: "target",
       severity: "warn",
       target: -23,
-      tolerance: { minus: 0, plus: 0 },
     });
-    // Invalid tolerance is treated as absent, so we also use the default.
+    // An invalid band degrades to absent rather than to the harshest possible band.
     expect(document.metrics.truePeak).toEqual({
       role: "target",
       severity: "warn",
       target: -1,
-      tolerance: { minus: 0, plus: 0 },
     });
   });
 
@@ -262,20 +260,25 @@ describe("empty rules", () => {
     });
   });
 
-  it("gives a target a zero band when none was stored", () => {
+  it("leaves a target unfilled when its band is missing or corrupt", () => {
     const state = normalizeLoudnessProfiles({
       active: "off",
       userProfiles: [
         {
           id: "u1",
           name: "Mine",
-          metrics: { integrated: { role: "target", target: -20 } },
-          preferredMetricIds: ["integrated"],
+          metrics: {
+            integrated: { role: "target", target: -23 },
+            shortTerm: { role: "target", target: -20, tolerance: { minus: -1, plus: 1 } },
+          },
+          preferredMetricIds: ["integrated", "shortTerm"],
         },
       ],
     });
-    // A target always carries a band, so evaluateTarget never has to guess.
-    expect(state.userProfiles[0].metrics.integrated.tolerance).toEqual({ minus: 0, plus: 0 });
+    const { metrics } = state.userProfiles[0];
+    // Kept, so the editor still shows the row -- but with no band, so nothing judges it.
+    expect(metrics.integrated).toEqual({ role: "target", severity: "warn", target: -23 });
+    expect(metrics.shortTerm.tolerance).toBeUndefined();
   });
 
   it("still rejects an unknown role", () => {

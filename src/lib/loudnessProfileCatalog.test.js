@@ -277,6 +277,12 @@ describe("isRuleEmpty", () => {
     );
   });
 
+  it("calls a target with no band empty, whatever its target", () => {
+    // A zero-width band is permanently warn under the near-boundary margin, so a half-typed
+    // target must be inert rather than default-banded.
+    expect(isRuleEmpty({ role: "target", target: -23 })).toBe(true);
+  });
+
   it("calls a limit rule with neither bound empty", () => {
     expect(isRuleEmpty({ role: "limit", severity: "fail" })).toBe(true);
   });

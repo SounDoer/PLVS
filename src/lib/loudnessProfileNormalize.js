@@ -46,13 +46,13 @@ function normalizeRule(raw) {
   };
 
   if (raw.role === "target") {
+    // Each half is kept only if usable, and `isRuleEmpty` treats a rule missing either half as
+    // unfilled. A corrupt band therefore degrades to "not judged" rather than to the harshest
+    // possible judgement.
     const target = Number(raw.target);
-    // A target always carries a band so evaluation never has to guess one. Without a target
-    // there is nothing to band, and the rule stays empty until the user fills it in.
-    if (Number.isFinite(target)) {
-      rule.target = target;
-      rule.tolerance = normalizeTolerance(raw.tolerance) ?? { minus: 0, plus: 0 };
-    }
+    if (Number.isFinite(target)) rule.target = target;
+    const tolerance = normalizeTolerance(raw.tolerance);
+    if (tolerance) rule.tolerance = tolerance;
   }
 
   if (raw.role === "limit") {
