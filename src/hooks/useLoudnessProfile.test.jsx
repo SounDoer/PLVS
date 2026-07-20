@@ -25,11 +25,6 @@ describe("useLoudnessProfile cold start", () => {
     expect(result.current.referenceLufs).toBe(null);
     expect(result.current.userProfiles).toEqual([]);
   });
-
-  it("wants the ref layer by default", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
-    expect(result.current.refLayerWanted).toBe(true);
-  });
 });
 
 describe("selecting profiles", () => {
@@ -168,18 +163,6 @@ describe("the user library", () => {
     const second = renderHook(() => useLoudnessProfile());
     expect(second.result.current.userProfiles.map((p) => p.name)).toEqual(["My Show"]);
     expect(second.result.current.document.name).toBe("My Show");
-  });
-});
-
-describe("ref layer intent", () => {
-  it("persists the user's last wish about the ref layer", () => {
-    const { result, unmount } = renderHook(() => useLoudnessProfile());
-    act(() => result.current.setRefLayerWanted(false));
-    expect(persisted().refLayerWanted).toBe(false);
-    unmount();
-
-    const second = renderHook(() => useLoudnessProfile());
-    expect(second.result.current.refLayerWanted).toBe(false);
   });
 });
 

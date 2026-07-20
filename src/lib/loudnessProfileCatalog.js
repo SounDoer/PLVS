@@ -8,7 +8,7 @@
 /// Metric ids are `statsCatalog` ids, so a rule can address any row Stats can already show.
 ///
 /// A MetricRule is:
-///   role      "target" | "limit" | "watch" | "descriptor" | "na"
+///   role      "target" | "limit" | "descriptor" | "na"
 ///   target / tolerance {minus, plus}   for role "target"
 ///   max / min                          for role "limit"
 ///   severity  "fail" | "warn"          breach severity; descriptors and "na" never breach

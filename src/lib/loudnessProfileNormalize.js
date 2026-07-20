@@ -12,14 +12,13 @@ import {
   parseSelection,
 } from "./loudnessProfileCatalog.js";
 
-const VALID_ROLES = new Set(["target", "limit", "watch", "descriptor", "na"]);
+const VALID_ROLES = new Set(["target", "limit", "descriptor", "na"]);
 const BUILTIN_IDS = new Set(BUILTIN_LOUDNESS_PROFILES.map((p) => p.id));
 
 export const DEFAULT_LOUDNESS_PROFILES = Object.freeze({
   active: LOUDNESS_PROFILE_OFF,
   customDraft: null,
   userProfiles: [],
-  refLayerWanted: true,
 });
 
 function normalizeReference(raw) {
@@ -131,6 +130,5 @@ export function normalizeLoudnessProfiles(raw) {
     active: normalizeActive(raw.active, { customDraft, userProfiles }),
     customDraft,
     userProfiles,
-    refLayerWanted: raw.refLayerWanted !== false,
   };
 }

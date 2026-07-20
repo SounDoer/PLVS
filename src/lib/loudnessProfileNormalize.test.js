@@ -32,12 +32,6 @@ describe("normalizeLoudnessProfiles cold start", () => {
       expect(normalizeLoudnessProfiles(raw).active).toBe(LOUDNESS_PROFILE_OFF);
     }
   });
-
-  it("wants the ref layer unless it was explicitly turned off", () => {
-    expect(normalizeLoudnessProfiles({}).refLayerWanted).toBe(true);
-    expect(normalizeLoudnessProfiles({ refLayerWanted: false }).refLayerWanted).toBe(false);
-    expect(normalizeLoudnessProfiles({ refLayerWanted: "no" }).refLayerWanted).toBe(true);
-  });
 });
 
 describe("normalizeLoudnessProfiles active selection", () => {

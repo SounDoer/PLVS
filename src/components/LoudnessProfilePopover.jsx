@@ -10,7 +10,7 @@ import {
   userSelectionId,
   withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
-import { listMissingPreferredMetrics, planShowMissing } from "@/lib/loudnessProfileMissing.js";
+import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
 
 const ROW_CLASS =
@@ -100,6 +100,10 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
 
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
+  // Off has no document to name itself with, and Custom is named after the slot rather than the
+  // draft sitting in it.
+  const selectionLabel = isCustomActive ? "Custom · unsaved" : (document?.name ?? "Off");
+
   const commitSave = () => {
     const trimmed = saveName.trim();
     if (!trimmed) return;
@@ -122,6 +126,14 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
   return (
     <>
       {showTitle ? <p className={GROUP_LABEL_CLASS}>Loudness Profile</p> : null}
+
+      {/* The active dots alone make you scan the whole list to find where you are. */}
+      <p
+        data-loudness-profile-selection
+        className="truncate px-2 pb-1.5 text-[length:var(--ui-fs-control)] text-foreground"
+      >
+        {selectionLabel}
+      </p>
 
       <div className={ROW_CLASS}>
         <button
@@ -309,7 +321,7 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
             variant="secondary"
             size="sm"
             className="mt-1 h-7 px-2 text-[length:var(--ui-fs-control)]"
-            onClick={() => stats.onShowMissing(planShowMissing(stats.visibleIds, missingIds))}
+            onClick={stats.onShowMissing}
           >
             Show missing
           </Button>

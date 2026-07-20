@@ -125,11 +125,6 @@ export function useLoudnessProfile() {
     [commit]
   );
 
-  const setRefLayerWanted = useCallback(
-    (wanted) => commit((prev) => ({ ...prev, refLayerWanted: wanted === true })),
-    [commit]
-  );
-
   /// Layout presets snapshot which profile was active, never the library itself -- the same way
   /// a view snapshot records the active theme rather than every theme.
   const snapshotForPreset = useCallback(
@@ -164,7 +159,6 @@ export function useLoudnessProfile() {
     document,
     userProfiles: state.userProfiles,
     customDraft: state.customDraft,
-    refLayerWanted: state.refLayerWanted,
     referenceLufs: document?.referenceLufs ?? null,
     select,
     selectOff,
@@ -175,7 +169,6 @@ export function useLoudnessProfile() {
     updateUser,
     renameUser,
     removeUser,
-    setRefLayerWanted,
     snapshotForPreset,
     applyPresetSnapshot,
   };

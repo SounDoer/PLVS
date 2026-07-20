@@ -242,7 +242,9 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
     expect(copy).not.toMatch(/gating|sidechain|VAD/i);
   });
 
-  it("appends the missing ids without reordering the existing ones", () => {
+  // The popover only asks; which ids each Stats surface ends up with is the caller's business,
+  // because every surface keeps its own order and has to be appended to separately.
+  it("hands the fulfill decision to the caller", () => {
     const onShowMissing = vi.fn();
     const { rerender } = renderPopover({
       stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing },
@@ -251,7 +253,7 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
     rerender();
     fireEvent.click(screen.getByRole("button", { name: "Show missing" }));
 
-    expect(onShowMissing).toHaveBeenCalledWith([...DEFAULT_VISIBLE, "truePeak"]);
+    expect(onShowMissing).toHaveBeenCalledTimes(1);
   });
 
   it("drops the affordance when everything it needs is already shown", () => {
@@ -270,5 +272,40 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
     rerender();
 
     expect(screen.queryByText(/Missing stats/)).toBeNull();
+  });
+});
+
+describe("current selection label", () => {
+  const label = () => document.querySelector("[data-loudness-profile-selection]").textContent;
+
+  it("names Off at cold start", () => {
+    renderPopover();
+    expect(label()).toBe("Off");
+  });
+
+  it("names the active built-in", () => {
+    const { rerender } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Use EBU R128 Live"));
+    rerender();
+    expect(label()).toBe("EBU R128 Live");
+  });
+
+  it("names the scratch pad rather than the draft inside it", () => {
+    const { rerender } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
+    rerender();
+    expect(label()).toBe("Custom · unsaved");
+  });
+
+  it("names a saved profile", () => {
+    const { rerender } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
+    rerender();
+    fireEvent.change(screen.getByLabelText("Save custom profile as"), {
+      target: { value: "My Show" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+    rerender();
+    expect(label()).toBe("My Show");
   });
 });

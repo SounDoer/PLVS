@@ -108,7 +108,9 @@ Each non-Off profile carries:
 
 `MetricRule`:
 
-- `role`: `target` | `limit` | `watch` | `descriptor` | `na`
+- `role`: `target` | `limit` | `descriptor` | `na` - a "watched" metric is a
+  `target` or `limit` that the profile also lists in `preferredMetricIds`, so
+  there is no separate `watch` role
 - optional `target`, `tolerance: { minus, plus }`, `max`, `min`
 - `severity` for breaches: `fail` | `warn` (descriptors / `na` do not fail)
 - `unit` for display/tips only
@@ -277,8 +279,19 @@ Target state — make that `className` conditional:
 
 | Condition | Colour |
 | --- | --- |
-| No active profile, or TP within the profile's limit | none — inherit `AxisValueMarker`'s base `text-primary` |
-| TP over the active profile's limit | `text-[color:var(--ui-signal-tp-max)]` |
+| No active profile, or TP clear of the profile's limit | none - inherit `AxisValueMarker`'s base `text-primary` |
+| TP at, over, or within `NEAR_BOUNDARY_MARGIN` of the limit | `text-[color:var(--ui-signal-tp-max)]` |
+
+The marker reads its status from `loudnessProfileEvaluate`, which returns `warn` inside the
+near-boundary margin and `fail` past the limit; the marker colours on both. Two reasons not to
+narrow this to `fail`:
+
+- Streaming -14 sets its TP rule to `severity: warn`, so it can never produce `fail`. Colouring
+  only on `fail` would leave that profile's marker permanently neutral no matter how hot TP ran -
+  the marker would have to grow a second opinion about breaches, which is the exact split this
+  section exists to prevent.
+- On a live meter, arriving *at* -1.0 is the moment worth seeing. A marker that stays neutral
+  until you are past the limit tells you only after it is too late to act.
 
 `text-primary` is the theme **accent seed** (`buildThemeTokens.js` maps
 `--primary: accent`), which is what the Momentary / Short-term floating value
@@ -308,9 +321,10 @@ the default first-run appearance.
 - When selection is **Off** (`referenceLufs == null`):
   - **Hide** the `ref` layer control.
   - Do not draw a reference line.
-  - Persist the user’s previous “wanted ref visible” preference separately if
-    needed so returning to a profile can restore it; do not leave a phantom −23
-    line under Off.
+  - Do not leave a phantom -23 line under Off. No separate "wanted ref visible"
+    field is needed: `loudnessHistoryVisibleLayerIds` keeps its `ref` entry
+    untouched while Off merely filters the control out and the chart declines to
+    draw, so the preference survives on its own and returns with the profile.
 - When a profile with a target is selected, `ref` control returns; line uses
   profile `referenceLufs`. Default ref layer visibility when entering from Off:
   restore last preference, else default **on**.
@@ -353,8 +367,7 @@ Suggested fields (names flexible at implement time):
 loudnessProfiles: {
   active: "off" | "unsaved-custom" | "builtin:<id>" | "user:<id>",
   customDraft: RuleDocument | null,
-  userProfiles: RuleDocument[],
-  refLayerWanted: boolean   // last user intent for ref visibility when available
+  userProfiles: RuleDocument[]
 }
 ```
 
@@ -387,13 +400,20 @@ only reads and writes itself.
 
 **Keep — old-data compatibility, do not touch:**
 
-- `src/hooks/usePresets.js` `legacyReferenceLufs` fallback
 - `src/persistence/profileShape.js` `normalizeSettings` handling
 - the `src-tauri/src/profile.rs` fixture that asserts the round-trip
 
 These do not drive any UI. They exist so configuration files already on disk
 still import/export losslessly. Deleting them looks harmless on a fresh install
 and breaks upgrading users.
+
+**Also deleted, against this section's first draft:** `usePresets.js`'s
+`legacyReferenceLufs` fallback, along with the `normalizePresetPanelControls`
+helper around it. It was listed here as a keep, but its only job was to seed a
+panel's `loudnessReferenceLufs` - and decision 16 deletes that control outright,
+so there is no longer a field for it to seed. Keeping it would have meant keeping
+a reader with no writer. The two compatibility paths above are the ones that
+matter, and they are untouched.
 
 Note the cross-side trap (see AGENTS.md): touching `profileShape` turns a
 frontend Vitest suite red because of Rust-side config expectations, which reads
@@ -465,7 +485,8 @@ ST max / TP / dialogue readouts.
    No dock entry — the profile applies while docked but is not editable there.
 3. Default: **Off**.
 4. Off: no metric colouring; **hide** Layers `ref`; no reference line; no
-   phantom −23.
+   phantom -23. The ref preference needs no field of its own - the panel's layer
+   ids already survive Off untouched.
 5. Unsaved Custom default rules: Integrated −23 + TP −1.
 6. Built-ins v1: EBU R128, EBU R128 Live, EBU R128 S1, ATSC A/85, Streaming −14
    (all read-only; edit via Duplicate).
@@ -483,13 +504,15 @@ ST max / TP / dialogue readouts.
     else. No time-since-Clear input; Live's provisional status is a static rule
     property.
 14. Level Meter TP Max marker follows the active profile: base `text-primary`
-    when in range or no profile, `--ui-signal-tp-max` when over limit. No token
-    values change.
+    when clear of the limit or no profile, `--ui-signal-tp-max` once the shared
+    evaluation says `warn` or `fail` - i.e. from the near-boundary margin
+    onwards, not only past the limit. No token values change.
 15. Footer hides its reference item when the active profile has no
     `referenceLufs`.
 16. `loudnessReferenceLufs` is **deleted** from panel controls, not mirrored.
-17. `useMeterSettings`'s `referenceLufs` is deleted; the `usePresets` /
-    `profileShape` / Rust-fixture compatibility paths are kept.
+17. `useMeterSettings`'s `referenceLufs` is deleted, and so is `usePresets`'s
+    `legacyReferenceLufs` fallback - it only fed the panel control that decision
+    16 removes. The `profileShape` / Rust-fixture compatibility paths are kept.
 
 ## Open at implement time (non-blocking)
 
