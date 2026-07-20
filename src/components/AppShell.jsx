@@ -99,13 +99,15 @@ export function AppShell({
                 >
                   <span className={FOOTER_LABEL}>Device</span>
                   <span className={FOOTER_VALUE}>{footer.deviceLabel}</span>
-                  {/* No active Loudness Profile means no reference to report, so the whole item
-                      goes rather than reading as an empty value. */}
-                  {Number.isFinite(footer.referenceLufs) ? (
+                  {/* Which regime you are monitoring under is the fact worth a permanent slot;
+                      the reference value is already drawn on the chart as the line it describes.
+                      Labelled Loudness, not Profile: that word belongs to Configuration Profile,
+                      and this item sits directly beside Preset. */}
+                  {footer.loudnessProfileName ? (
                     <>
                       <div className={FOOTER_DIVIDER} />
-                      <span className={FOOTER_LABEL}>Ref</span>
-                      <span className={FOOTER_VALUE}>{footer.referenceLufs} LUFS</span>
+                      <span className={FOOTER_LABEL}>Loudness</span>
+                      <span className={FOOTER_VALUE}>{footer.loudnessProfileName}</span>
                     </>
                   ) : null}
                   <div className={FOOTER_DIVIDER} />

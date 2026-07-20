@@ -1349,7 +1349,11 @@ function AppContent() {
   };
   const footer = {
     deviceLabel: footerDeviceLabel,
-    referenceLufs,
+    // The draft outranks the selection, so a profile being edited names the footer too. An
+    // unnamed new profile reads Untitled, matching normalizeRuleDocument's fallback.
+    loudnessProfileName: loudnessProfile.document
+      ? loudnessProfile.document.name || "Untitled"
+      : null,
     activePresetName,
     hasUpdate: updateInfo?.hasUpdate,
     onOpenSettings: () => setSettingsOpen(true),
