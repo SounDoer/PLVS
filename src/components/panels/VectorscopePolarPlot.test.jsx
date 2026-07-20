@@ -50,6 +50,21 @@ describe("VectorscopePolarPlot", () => {
     expect(ctx.fill).toHaveBeenCalledTimes(2);
   });
 
+  it("leaves Polar Sample empty at the silence floor", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    render(
+      <VectorscopePolarPlot
+        mode="polarSample"
+        rows={[{ pairs: new Float32Array([0, 0, 0.000001, 0]), ageMs: 0, timestampMs: 100 }]}
+        firstLabel="L"
+        secondLabel="R"
+      />
+    );
+
+    expect(ctx.fill).not.toHaveBeenCalled();
+  });
+
   it("draws a filled Polar Level envelope", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
@@ -66,6 +81,7 @@ describe("VectorscopePolarPlot", () => {
     expect(container.querySelector('[data-vectorscope-polar="polarLevel"]')).toBeTruthy();
     expect(ctx.fill).toHaveBeenCalledOnce();
     expect(ctx.closePath).toHaveBeenCalled();
+    expect(ctx.moveTo).toHaveBeenCalledWith(100, 150);
   });
 
   it("hides endpoint labels in compact plots", () => {

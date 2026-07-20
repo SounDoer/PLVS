@@ -16,6 +16,7 @@ const ARC_ALPHA = 0.35;
 const FILL_ALPHA = 0.2;
 const OUTLINE_ALPHA = 0.86;
 const PEAK_ALPHA = 0.58;
+const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 
 function resolveTraceColor(element) {
   return getComputedStyle(element).getPropertyValue("--ui-vectorscope-trace").trim() || "#7dd3fc";
@@ -63,11 +64,9 @@ function drawPolarSample(ctx, rows, extent, geometry, color, dpr, snapshot) {
   for (const row of rows) {
     ctx.globalAlpha = snapshot ? 0.9 : polarSampleAlpha(row.ageMs);
     for (let index = 0; index + 1 < row.pairs.length; index += 2) {
-      const projected = projectedCanvasPoint(
-        projectPairToPolar(row.pairs[index], row.pairs[index + 1]),
-        extent,
-        geometry
-      );
+      const point = projectPairToPolar(row.pairs[index], row.pairs[index + 1]);
+      if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
+      const projected = projectedCanvasPoint(point, extent, geometry);
       ctx.beginPath();
       ctx.arc(projected.x, projected.y, pointRadius, 0, Math.PI * 2);
       ctx.fill();
@@ -87,12 +86,11 @@ function envelopePoint(index, value, count, extent, geometry) {
 
 function traceEnvelope(ctx, envelope, extent, geometry) {
   ctx.beginPath();
-  ctx.moveTo(geometry.centerX - geometry.radius, geometry.baselineY);
+  ctx.moveTo(geometry.centerX, geometry.baselineY);
   for (let index = 0; index < envelope.length; index += 1) {
     const point = envelopePoint(index, envelope[index], envelope.length, extent, geometry);
     ctx.lineTo(point.x, point.y);
   }
-  ctx.lineTo(geometry.centerX + geometry.radius, geometry.baselineY);
   ctx.closePath();
 }
 
