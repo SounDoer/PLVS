@@ -3,9 +3,11 @@ import {
   BUILTIN_LOUDNESS_PROFILES,
   LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
+  METRIC_RULE_SHAPE,
   MIN_DIALOGUE_COVERAGE_PERCENT,
   builtinSelectionId,
   createDefaultCustomDraft,
+  createEmptyRule,
   duplicateAsDraft,
   isKnownMetricId,
   isRuleEmpty,
@@ -15,6 +17,7 @@ import {
   userSelectionId,
   withReferenceLufs,
 } from "./loudnessProfileCatalog.js";
+import { STATS_CANONICAL_ORDER } from "./statsCatalog.js";
 
 const byId = (id) => BUILTIN_LOUDNESS_PROFILES.find((p) => p.id === id);
 
@@ -357,5 +360,36 @@ describe("anchorMetricId via withReferenceLufs", () => {
     // The real target rule follows the line; the unfilled one is not the anchor.
     expect(moved.metrics.dialogueIntegrated.target).toBe(-16);
     expect(moved.metrics.integrated.target).toBeUndefined();
+  });
+});
+
+describe("METRIC_RULE_SHAPE", () => {
+  it("shapes every metric Stats can show", () => {
+    // A metric the editor can add but cannot shape would be unreachable.
+    for (const id of STATS_CANONICAL_ORDER) {
+      expect(METRIC_RULE_SHAPE[id], id).toBeTruthy();
+      expect(["target", "limit"]).toContain(METRIC_RULE_SHAPE[id].role);
+    }
+  });
+
+  it("shapes nothing Stats cannot show", () => {
+    for (const id of Object.keys(METRIC_RULE_SHAPE)) {
+      expect(STATS_CANONICAL_ORDER, id).toContain(id);
+    }
+  });
+
+  it("builds an empty rule in the metric's own shape", () => {
+    expect(createEmptyRule("truePeak")).toEqual({ role: "limit", severity: "fail" });
+    expect(createEmptyRule("integrated")).toEqual({ role: "target", severity: "fail" });
+  });
+
+  it("builds nothing for an unknown metric", () => {
+    expect(createEmptyRule("nonsense")).toBe(null);
+  });
+
+  it("builds rules that read as empty", () => {
+    for (const id of STATS_CANONICAL_ORDER) {
+      expect(isRuleEmpty(createEmptyRule(id)), id).toBe(true);
+    }
   });
 });

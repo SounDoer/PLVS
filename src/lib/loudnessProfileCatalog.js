@@ -117,6 +117,41 @@ export const BUILTIN_LOUDNESS_PROFILES = [
   },
 ];
 
+/// The rule shape each Stats metric can wear.
+///
+/// `role` is an implementation concept -- nobody thinks "I want a limit rule on True Peak", they
+/// think "TP must not exceed -1" -- so the editor reads the shape from here instead of asking.
+/// `limit` carries both `min` and `max`, which makes ceiling, floor and band the same shape with
+/// different fields left blank; `reading` only decides which input leads and what the hint says.
+///
+/// Deliberately no default numbers. Inventing a threshold for Side/Mid or PSR would be exactly
+/// the fabricated-standard behaviour this feature exists to avoid.
+export const METRIC_RULE_SHAPE = {
+  momentary: { role: "target", reading: "sits-at" },
+  shortTerm: { role: "target", reading: "sits-at" },
+  integrated: { role: "target", reading: "sits-at" },
+  dialogueIntegrated: { role: "target", reading: "sits-at" },
+  momentaryMax: { role: "limit", reading: "ceiling" },
+  shortTermMax: { role: "limit", reading: "ceiling" },
+  truePeak: { role: "limit", reading: "ceiling" },
+  dialogueCoverage: { role: "limit", reading: "floor" },
+  correlation: { role: "limit", reading: "floor" },
+  psr: { role: "limit", reading: "floor" },
+  plr: { role: "limit", reading: "floor" },
+  lra: { role: "limit", reading: "band" },
+  dialogueRange: { role: "limit", reading: "band" },
+  dialogueOffset: { role: "limit", reading: "band" },
+  sideToMid: { role: "limit", reading: "band" },
+};
+
+/// A rule in the metric's own shape with nothing filled in. Severity defaults to `fail`; the
+/// editor exposes it, and a user who wants a softer breach says so.
+export function createEmptyRule(metricId) {
+  const shape = METRIC_RULE_SHAPE[metricId];
+  if (!shape) return null;
+  return { role: shape.role, severity: "fail" };
+}
+
 const BUILTIN_BY_ID = new Map(BUILTIN_LOUDNESS_PROFILES.map((p) => [p.id, p]));
 
 export function createDefaultCustomDraft() {
