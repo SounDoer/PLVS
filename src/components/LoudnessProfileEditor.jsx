@@ -23,8 +23,13 @@ const NUM_INPUT_CLASS =
  */
 function RuleNumber({ ariaLabel, value, onCommit }) {
   const [text, setText] = useState(value == null ? "" : String(value));
+  const inputRef = useRef(null);
 
+  // Only adopt an incoming value when the user is not mid-edit. Without this, a re-render from
+  // anywhere else -- a rename, a preset apply, the live preview settling -- overwrites whatever
+  // is half-typed in a focused field, and the keystrokes vanish with nothing to show for them.
   useEffect(() => {
+    if (inputRef.current && globalThis.document?.activeElement === inputRef.current) return;
     setText(value == null ? "" : String(value));
   }, [value]);
 
@@ -41,6 +46,7 @@ function RuleNumber({ ariaLabel, value, onCommit }) {
 
   return (
     <input
+      ref={inputRef}
       type="number"
       aria-label={ariaLabel}
       value={text}
@@ -109,7 +115,7 @@ function RuleRow({ metricId, rule, onPatch, onRemove }) {
 
       <select
         aria-label={`${label} severity`}
-        value={rule.severity ?? "fail"}
+        value={rule.severity ?? "warn"}
         onChange={(event) => onPatch({ severity: event.target.value })}
         className="h-6 rounded-md border border-input bg-transparent px-1 text-[length:var(--ui-fs-control)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >

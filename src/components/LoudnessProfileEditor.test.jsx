@@ -4,8 +4,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { createDefaultCustomDraft } from "@/lib/loudnessProfileCatalog.js";
 
-function renderEditor(overrides = {}) {
-  const props = {
+function editorProps(overrides = {}) {
+  return {
     draft: { editingId: null, document: createDefaultCustomDraft(), dirty: false },
     onEdit: vi.fn(),
     onSave: vi.fn(),
@@ -14,6 +14,10 @@ function renderEditor(overrides = {}) {
     onMove: vi.fn(),
     ...overrides,
   };
+}
+
+function renderEditor(overrides = {}) {
+  const props = editorProps(overrides);
   render(<LoudnessProfileEditor {...props} />);
   return props;
 }
@@ -157,6 +161,36 @@ describe("LoudnessProfileEditor", () => {
     expect(props.onCancel).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
     expect(props.onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not overwrite a field the user is still typing in", () => {
+    // Committing happens on blur, so a re-render arriving from elsewhere -- a rename, a preset
+    // apply -- must not adopt the incoming value into a focused input.
+    const draft = { editingId: null, document: createDefaultCustomDraft(), dirty: false };
+    const props = { ...editorProps({ draft }) };
+    const { rerender } = render(<LoudnessProfileEditor {...props} />);
+
+    const input = screen.getByLabelText("Integrated tolerance plus");
+    input.focus();
+    fireEvent.change(input, { target: { value: "1.2" } });
+
+    const moved = structuredClone(draft.document);
+    moved.metrics.integrated.tolerance.plus = 2;
+    rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
+
+    expect(input.value).toBe("1.2");
+  });
+
+  it("adopts an incoming value when the field is not focused", () => {
+    const draft = { editingId: null, document: createDefaultCustomDraft(), dirty: false };
+    const props = { ...editorProps({ draft }) };
+    const { rerender } = render(<LoudnessProfileEditor {...props} />);
+
+    const moved = structuredClone(draft.document);
+    moved.metrics.integrated.tolerance.plus = 2;
+    rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
+
+    expect(screen.getByLabelText("Integrated tolerance plus").value).toBe("2");
   });
 
   it("carries the honesty note", () => {
