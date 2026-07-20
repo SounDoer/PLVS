@@ -2,8 +2,10 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
-import { MetricsDataProvider } from "../../workspace/AudioDataContext.jsx";
+import { FrameDataProvider, MetricsDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DockStats } from "./DockStats.jsx";
+import { settingsStore } from "../../persistence/index.js";
+import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
 
 const METRICS = [
   { id: "momentary", shortLabel: "M", unit: "LUFS", value: "-18.1" },
@@ -43,11 +45,13 @@ function statsControls(statsVisibleIds, statsOrder = statsVisibleIds) {
   };
 }
 
-function renderWith(statsMetrics, controls, shared = {}, heightMode = "standard") {
+function renderWith(statsMetrics, controls, shared = {}, heightMode = "standard", displayAudio) {
   return render(
-    <MetricsDataProvider value={{ statsMetrics, ...shared }}>
-      <DockStats controls={controls} heightMode={heightMode} />
-    </MetricsDataProvider>
+    <FrameDataProvider value={{ displayAudio }}>
+      <MetricsDataProvider value={{ statsMetrics, ...shared }}>
+        <DockStats controls={controls} heightMode={heightMode} />
+      </MetricsDataProvider>
+    </FrameDataProvider>
   );
 }
 
@@ -195,5 +199,36 @@ describe("DockStats", () => {
   it("renders the empty state when no metrics are selected", () => {
     renderWith(METRICS, statsControls([]));
     expect(screen.getByText("No stats selected")).toBeTruthy();
+  });
+});
+
+describe("DockStats profile status colours", () => {
+  afterEach(() => settingsStore.reset());
+
+  const visible = statsControls(["integrated"]);
+
+  // METRICS supplies the display string; displayAudio supplies the number status is judged on.
+  function valueClass() {
+    return screen.getByText("-20.1").className;
+  }
+
+  it("leaves values uncoloured while the profile is Off", () => {
+    renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
+    expect(valueClass()).toContain("text-foreground");
+    expect(valueClass()).not.toContain("--ui-signal");
+  });
+
+  it("colours a breach the same way the normal Stats panel does", () => {
+    // The dock is a second implementation; the same metric under the same profile must not
+    // read as a breach in one panel and neutral in the other.
+    settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+    renderWith(METRICS, visible, {}, "standard", { integrated: -18 });
+    expect(valueClass()).toContain("--ui-signal-bad");
+  });
+
+  it("keeps an in-range watched value at foreground", () => {
+    settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+    renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
+    expect(valueClass()).toContain("text-foreground");
   });
 });

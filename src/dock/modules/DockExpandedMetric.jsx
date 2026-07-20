@@ -10,6 +10,7 @@ export function DockExpandedMetric({
   align = "start",
   indicator = null,
   unitVisibility = "default",
+  valueClassName = "text-foreground",
 }) {
   const showUnit = Boolean(unit) && value !== "-";
   const unitVisibilityClass =
@@ -31,7 +32,9 @@ export function DockExpandedMetric({
         <span className="min-w-0 truncate">{label}</span>
       </span>
       <span className="mt-1 flex min-w-0 max-w-full items-baseline gap-[var(--ui-dock-gap-column)] overflow-hidden whitespace-nowrap leading-none">
-        <span className="shrink-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold tabular-nums text-foreground">
+        <span
+          className={`shrink-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold tabular-nums ${valueClassName}`}
+        >
           {value}
         </span>
         {showUnit ? (

@@ -81,7 +81,3 @@ export function loudnessProfileEvaluate(document, sample) {
 
   return statuses;
 }
-
-/// Colour intent per status, so Stats and the Level Meter cannot drift apart.
-export const STATUS_IS_BREACH = new Set(["fail"]);
-export const STATUS_IS_CAUTION = new Set(["warn", "pending", "inconclusive"]);

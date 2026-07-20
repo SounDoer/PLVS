@@ -32,6 +32,7 @@ import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
 import { mergeDockAnalysisRequests } from "./dock/dockAnalysisRequest.js";
+import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
 import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -424,33 +425,62 @@ function AppContent() {
       workspaceState.panelOrder.filter((id) => workspaceState.panelsById[id]?.moduleId === "stats"),
     [workspaceState]
   );
+  // Dock Stats is a second implementation with its own visible ids (dockModuleControls), so both
+  // sets have to be unioned for detection and both appended to on fulfill. Missing either half
+  // makes Show missing look like it worked while one surface keeps hiding the rows.
+  const dockStatsPanelIds = useMemo(
+    () =>
+      Object.values(dockLayout.panelsById ?? {})
+        .filter((panel) => panel?.moduleId === "stats")
+        .map((panel) => panel.id),
+    [dockLayout.panelsById]
+  );
   const loudnessProfileStats = useMemo(() => {
-    if (statsPanelIds.length === 0) return null;
+    if (statsPanelIds.length === 0 && dockStatsPanelIds.length === 0) return null;
+
+    const workspaceControls = statsPanelIds.map((panelId) => ({
+      panelId,
+      controls: normalizePanelControls(getPanelControls(workspaceState, panelId)),
+      apply: setPanelControlsForPanel,
+    }));
+    const dockControls = dockStatsPanelIds.map((panelId) => ({
+      panelId,
+      controls: normalizeDockModuleControls("stats", dockLayout.controlsByPanelId?.[panelId]),
+      apply: dockLayout.setPanelControls,
+    }));
+    const everyStatsSurface = [...workspaceControls, ...dockControls];
+
     const seen = new Set();
-    for (const panelId of statsPanelIds) {
-      for (const id of normalizePanelControls(getPanelControls(workspaceState, panelId))
-        .statsVisibleIds) {
-        seen.add(id);
-      }
+    for (const { controls } of everyStatsSurface) {
+      for (const id of controls.statsVisibleIds) seen.add(id);
     }
+
     return {
       visibleIds: [...seen],
       onShowMissing: () => {
-        for (const panelId of statsPanelIds) {
-          const controls = normalizePanelControls(getPanelControls(workspaceState, panelId));
+        for (const { panelId, controls, apply } of everyStatsSurface) {
           const missing = listMissingPreferredMetrics(
             loudnessProfile.document,
             controls.statsVisibleIds
           );
           if (missing.length === 0) continue;
-          setPanelControlsForPanel(panelId, {
+          apply(panelId, {
             ...controls,
             statsVisibleIds: planShowMissing(controls.statsVisibleIds, missing),
           });
         }
       },
     };
-  }, [statsPanelIds, workspaceState, loudnessProfile.document, setPanelControlsForPanel]);
+  }, [
+    statsPanelIds,
+    dockStatsPanelIds,
+    workspaceState,
+    dockLayout.controlsByPanelId,
+    dockLayout.setPanelControls,
+    dockLayout.panelsById,
+    loudnessProfile.document,
+    setPanelControlsForPanel,
+  ]);
   const derivedAnalysisRequests = useMemo(
     () =>
       mergeDockAnalysisRequests(
