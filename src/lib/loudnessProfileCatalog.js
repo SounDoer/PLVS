@@ -172,11 +172,25 @@ const defaultMakeId = () => `${crypto.randomUUID()}`;
 
 /// Duplicating a built-in yields an unsaved draft, never a library entry: the design routes all
 /// edits of a built-in through Duplicate -> Save as.
+///
+/// `descriptor` and `na` rules do not come along. They are authoring annotations meaning "we
+/// deliberately do not judge this", which a user profile already says by not mentioning the
+/// metric -- and the editor has no way to show or remove a rule in either role, so carrying them
+/// would leave rules the user cannot reach. Behaviourally lossless: `loudnessStatusValueClass`
+/// maps `na` and an absent status to the same class.
 export function duplicateAsDraft(builtinId, makeId = defaultMakeId) {
   const source = BUILTIN_BY_ID.get(builtinId);
   if (!source) return null;
+  const clone = structuredClone(source);
+  const metrics = Object.fromEntries(
+    Object.entries(clone.metrics).filter(
+      ([, rule]) => rule.role !== "descriptor" && rule.role !== "na"
+    )
+  );
   return {
-    ...structuredClone(source),
+    ...clone,
+    metrics,
+    preferredMetricIds: clone.preferredMetricIds.filter((id) => Object.hasOwn(metrics, id)),
     id: makeId(),
     name: `${source.name} (copy)`,
     kind: "draft",

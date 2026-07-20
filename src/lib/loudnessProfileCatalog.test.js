@@ -245,8 +245,9 @@ describe("withReferenceLufs", () => {
       -27
     );
     expect(moved.metrics.dialogueIntegrated.target).toBe(-27);
-    // ATSC's program Integrated is a descriptor; a descriptor has no target to move.
-    expect(moved.metrics.integrated.target).toBeUndefined();
+    // ATSC's program Integrated is a descriptor, so the copy does not carry it at all -- there is
+    // no second target for the reference to land on by mistake.
+    expect(moved.metrics.integrated).toBeUndefined();
   });
 
   it("leaves limits alone", () => {
@@ -391,5 +392,36 @@ describe("METRIC_RULE_SHAPE", () => {
     for (const id of STATS_CANONICAL_ORDER) {
       expect(isRuleEmpty(createEmptyRule(id)), id).toBe(true);
     }
+  });
+});
+
+describe("duplicateAsDraft drops annotations", () => {
+  it("drops descriptor rules the editor cannot show", () => {
+    const copy = duplicateAsDraft("ebu-r128", () => "copy");
+    expect(copy.metrics.integrated).toBeTruthy();
+    expect(copy.metrics.truePeak).toBeTruthy();
+    // lra and shortTermMax are descriptors on this built-in: authoring notes saying "we do not
+    // judge this", which a user profile says by not mentioning the metric at all.
+    expect(copy.metrics.lra).toBeUndefined();
+    expect(copy.metrics.shortTermMax).toBeUndefined();
+  });
+
+  it("drops na rules", () => {
+    const copy = duplicateAsDraft("ebu-r128-s1", () => "copy");
+    expect(copy.metrics.lra).toBeUndefined();
+    expect(copy.metrics.shortTermMax).toBeTruthy();
+  });
+
+  it("keeps preferred ids in step with the rules that survived", () => {
+    const copy = duplicateAsDraft("atsc-a85", () => "copy");
+    // dialogueCoverage is preferred on ATSC but only a descriptor, so it goes with the rule.
+    expect(copy.preferredMetricIds).toEqual(["dialogueIntegrated", "truePeak"]);
+  });
+
+  it("still records what it was copied from", () => {
+    const copy = duplicateAsDraft("ebu-r128", () => "copy");
+    expect(copy.basedOn).toBe("ebu-r128");
+    expect(copy.kind).toBe("draft");
+    expect(copy.name).toBe("EBU R128 (copy)");
   });
 });
