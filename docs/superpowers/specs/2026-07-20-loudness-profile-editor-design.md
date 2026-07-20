@@ -4,7 +4,7 @@
 **Status:** Draft
 **Extends:** `docs/superpowers/specs/2026-07-19-loudness-profile-design.md`
 **Revises (product behaviour):** that spec's §Popover IA item 2, its
-`unsaved-custom` selection, and decision 5.
+`unsaved-custom` selection, and decisions 5 and 15.
 
 ## Summary
 
@@ -275,6 +275,33 @@ columns and a target rule needs five:
 - Severity is a two-item select. `Fail` reads as `signal.bad`, `Warn` as
   `signal.warn`; the parent spec's status→colour table is unchanged.
 
+### Footer reports the profile, not the number
+
+The footer item becomes the active profile's **name**, and still disappears under
+Off. It moves up a level: which regime you are monitoring under is the fact worth
+a permanent slot, and the reference value is already drawn on the chart as the
+line it describes.
+
+```
+Device  Realtek…  │  Loudness  EBU R128  │  Preset  My Layout
+```
+
+The label is **`Loudness`**, not `Profile`. The parent spec's Naming section
+forbids shortening the feature to "Profile" because Configuration Profile already
+owns that word, and the footer is the worst place to break that rule: the item
+sits directly beside `Preset`, so `Profile  …  Preset  …` reads as two spellings
+of one thing. `Loudness Profile` in full is too long for a row of one-word labels.
+
+While a draft is previewing, the footer shows the draft's name — the footer
+reports what is in effect, and the draft outranks the selection. A new profile
+with an empty name reads `Untitled`, matching `normalizeRuleDocument`'s existing
+fallback.
+
+`FOOTER_VALUE` already carries `min-w-0 truncate`, so a long user-authored name
+needs no new handling. `App.jsx` stops fanning `referenceLufs` out to `footer`;
+it still derives it for the loudness history data, which is its only remaining
+consumer.
+
 ### Save and Cancel
 
 - **Save** requires a non-empty name; the button is disabled otherwise. It writes
@@ -296,6 +323,7 @@ columns and a target rule needs five:
 | `LoudnessProfileEditor.jsx` | New. The panel. Presentational: takes a draft and callbacks. |
 | `LoudnessProfilePopover.jsx` | Drop the Custom row, the Save-as field and the Reference input; add the pencil and New profile. |
 | `usePresets.js` | Drop `loudnessProfileCustomDraft` from the snapshot. |
+| `AppShell.jsx` | Footer item shows the profile name, not the reference value. |
 
 ## Testing
 
@@ -316,6 +344,8 @@ Component tests:
 - Save inserts a new profile, or replaces an existing one, and selects it.
 - Selection changes dirty the active preset; library edits do not.
 - The popover no longer offers Custom.
+- The footer names the active profile, names a previewing draft instead, and
+  disappears under Off.
 
 Assert visible behaviour and store snapshots, not private state shape.
 
