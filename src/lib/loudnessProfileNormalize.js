@@ -8,6 +8,7 @@ import {
   BUILTIN_LOUDNESS_PROFILES,
   LOUDNESS_PROFILE_OFF,
   isKnownMetricId,
+  isUsableThreshold,
   isUsableTolerance,
   parseSelection,
 } from "./loudnessProfileCatalog.js";
@@ -41,19 +42,21 @@ function normalizeRule(raw) {
     severity: raw.severity === "fail" ? "fail" : "warn",
   };
 
+  // Every threshold goes through `isUsableThreshold`, never `Number`: a blank field is `null` or
+  // `""`, both of which coerce to a perfectly good 0, and persisting that 0 invents a delivery
+  // number the user never chose. Blank means "not judged".
   if (raw.role === "target") {
     // Each half is kept only if usable, and `isRuleEmpty` treats a rule missing either half as
     // unfilled. A corrupt band therefore degrades to "not judged" rather than to the harshest
     // possible judgement.
-    const target = Number(raw.target);
-    if (Number.isFinite(target)) rule.target = target;
+    if (isUsableThreshold(raw.target)) rule.target = raw.target;
     const tolerance = normalizeTolerance(raw.tolerance);
     if (tolerance) rule.tolerance = tolerance;
   }
 
   if (raw.role === "limit") {
-    if (Number.isFinite(Number(raw.max))) rule.max = Number(raw.max);
-    if (Number.isFinite(Number(raw.min))) rule.min = Number(raw.min);
+    if (isUsableThreshold(raw.max)) rule.max = raw.max;
+    if (isUsableThreshold(raw.min)) rule.min = raw.min;
   }
 
   if (raw.provisional === true) rule.provisional = true;

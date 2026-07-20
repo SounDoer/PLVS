@@ -285,6 +285,40 @@ describe("empty rules", () => {
     expect(metrics.shortTerm.tolerance).toBeUndefined();
   });
 
+  it("drops a target, max or min that is not a number", () => {
+    // Same strictness `isUsableTolerance` already applies to the band. `Number(null)` and
+    // `Number("")` are both a perfectly good 0, and a 0 nobody typed is an invented threshold.
+    for (const blank of [null, "", "  ", undefined, "-23", true, {}]) {
+      const target = normalizeRuleDocument({
+        id: "u1",
+        metrics: {
+          integrated: { role: "target", target: blank, tolerance: { minus: 1, plus: 1 } },
+        },
+      });
+      expect(target.metrics.integrated.target).toBeUndefined();
+
+      const limit = normalizeRuleDocument({
+        id: "u1",
+        metrics: { truePeak: { role: "limit", max: blank, min: blank } },
+      });
+      expect(limit.metrics.truePeak.max).toBeUndefined();
+      expect(limit.metrics.truePeak.min).toBeUndefined();
+    }
+  });
+
+  it("keeps a threshold the user really typed, including zero", () => {
+    const document = normalizeRuleDocument({
+      id: "u1",
+      metrics: {
+        integrated: { role: "target", target: 0, tolerance: { minus: 1, plus: 1 } },
+        truePeak: { role: "limit", max: 0, min: -6 },
+      },
+    });
+    expect(document.metrics.integrated.target).toBe(0);
+    expect(document.metrics.truePeak.max).toBe(0);
+    expect(document.metrics.truePeak.min).toBe(-6);
+  });
+
   it("still rejects an unknown role", () => {
     const state = normalizeLoudnessProfiles({
       active: "off",

@@ -221,6 +221,11 @@ function anchorMetricId(document) {
 /// judges against -- so letting the editor write only `referenceLufs` produces a profile that
 /// draws its line at one loudness and fails you against another. The tolerance band is the
 /// user's, so it rides along unchanged.
+///
+/// A cleared reference is `null` -- a real value meaning "no line" -- but the target it carries is
+/// then blank, and blank in a rule is `undefined`, the same thing `RuleRow` writes for an emptied
+/// field. Passing the `null` straight through would give the panel two spellings of blank and hand
+/// the normalizer a value it has to reject anyway.
 export function withReferenceLufs(document, referenceLufs) {
   if (!document) return document;
   const anchor = anchorMetricId(document);
@@ -230,7 +235,7 @@ export function withReferenceLufs(document, referenceLufs) {
     referenceLufs,
     metrics: {
       ...document.metrics,
-      [anchor]: { ...document.metrics[anchor], target: referenceLufs },
+      [anchor]: { ...document.metrics[anchor], target: referenceLufs ?? undefined },
     },
   };
 }
@@ -273,20 +278,28 @@ export function isKnownMetricId(metricId) {
   return Object.hasOwn(STATS_META, metricId);
 }
 
+/// A number somebody actually typed: the one test every threshold in a rule has to pass.
+///
+/// Strict about the type, not just the value. An untouched form field is `""` and a cleared one
+/// arrives as `null`; `Number` reads both as a perfectly good 0, so a coercing check turns a blank
+/// box into a threshold nobody chose -- a target at 0 LUFS that fails every real signal, or a
+/// zero-width band that the near-boundary margin turns into a warning no value can escape.
+///
+/// Every threshold shares this so the guard cannot be closed on one field and left open on its
+/// siblings, which is how `target`, `max` and `min` came to be coerced while the band was not.
+export function isUsableThreshold(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 /// A band both halves of which are usable.
 ///
 /// Exported because the normalizer and `isRuleEmpty` have to agree on this exactly: when they
 /// disagree, a half-typed band reads as filled and then evaluates against `target + undefined`,
 /// which is NaN -- and every comparison against NaN is false, so the rule silently passes
 /// everything.
-///
-/// Strict about the type, not just the value. An untouched form field is `""`, which `Number`
-/// reads as a perfectly good 0 -- and a zero-width band is a threshold the user never chose, one
-/// that the near-boundary margin then turns into a warning no value can escape.
 export function isUsableTolerance(tolerance) {
   const { minus, plus } = tolerance ?? {};
-  if (typeof minus !== "number" || typeof plus !== "number") return false;
-  if (!Number.isFinite(minus) || !Number.isFinite(plus)) return false;
+  if (!isUsableThreshold(minus) || !isUsableThreshold(plus)) return false;
   return minus >= 0 && plus >= 0;
 }
 

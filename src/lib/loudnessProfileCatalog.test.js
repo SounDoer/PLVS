@@ -16,6 +16,7 @@ import {
   userSelectionId,
   withReferenceLufs,
 } from "./loudnessProfileCatalog.js";
+import { normalizeRuleDocument } from "./loudnessProfileNormalize.js";
 import { STATS_CANONICAL_ORDER } from "./statsCatalog.js";
 
 const byId = (id) => BUILTIN_LOUDNESS_PROFILES.find((p) => p.id === id);
@@ -266,6 +267,18 @@ describe("withReferenceLufs", () => {
       -16
     );
     expect(moved.referenceLufs).toBe(-16);
+  });
+
+  it("unfills the anchor when the reference is cleared, rather than anchoring it at zero", () => {
+    const cleared = withReferenceLufs(createProfileDraft(), null);
+    // `null` is a real reference value -- it means "no line" -- but it is not a target anybody
+    // typed, so the rule it anchors goes back to unfilled instead of judging against 0 LUFS.
+    expect(cleared.referenceLufs).toBe(null);
+    expect(cleared.metrics.integrated.target).toBeUndefined();
+    expect(isRuleEmpty(cleared.metrics.integrated)).toBe(true);
+    expect(
+      normalizeRuleDocument(cleared, { kind: "draft" }).metrics.integrated.target
+    ).toBeUndefined();
   });
 });
 
