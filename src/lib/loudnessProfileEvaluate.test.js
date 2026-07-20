@@ -247,6 +247,21 @@ describe("empty rules", () => {
     expect(statuses.integrated).toBe("unwatched");
   });
 
+  it("does not judge a target whose band is still blank in the form", () => {
+    // Typing a target before its tolerance must not invent a zero-width band, which the
+    // near-boundary margin turns into a warning no value can escape.
+    const statuses = loudnessProfileEvaluate(
+      withRule("integrated", {
+        role: "target",
+        target: -23,
+        tolerance: { minus: "", plus: "" },
+        severity: "fail",
+      }),
+      { values: { integrated: -23 }, integratedReady: true, dialogueCoverage: null }
+    );
+    expect(statuses.integrated).toBe("unwatched");
+  });
+
   it("still judges a fully filled target", () => {
     const statuses = loudnessProfileEvaluate(
       withRule("integrated", {

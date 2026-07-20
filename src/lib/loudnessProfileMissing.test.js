@@ -39,10 +39,18 @@ describe("listMissingPreferredMetrics", () => {
     ]);
   });
 
-  it("does not require metrics the profile merely describes", () => {
-    // S1 marks LRA n/a and Programme only describes it: neither should ever be demanded.
-    expect(listMissingPreferredMetrics(byId("ebu-r128-s1"), [])).not.toContain("lra");
+  it("demands a metric the profile only describes when it is preferred", () => {
+    // ATSC describes dialogue coverage rather than judging it, and still needs the row on screen:
+    // without coverage there is no way to read the dialogue-anchored rule.
+    expect(byId("atsc-a85").metrics.dialogueCoverage.role).toBe("descriptor");
+    expect(listMissingPreferredMetrics(byId("atsc-a85"), [])).toContain("dialogueCoverage");
+  });
+
+  it("leaves a described metric alone when the profile does not prefer it", () => {
+    // Programme describes LRA but never lists it, and preference is the only thing that demands
+    // a row. S1 marks the same metric n/a, likewise unlisted.
     expect(listMissingPreferredMetrics(byId("ebu-r128"), [])).not.toContain("lra");
+    expect(listMissingPreferredMetrics(byId("ebu-r128-s1"), [])).not.toContain("lra");
   });
 
   it("treats an empty Stats panel as missing everything it prefers", () => {

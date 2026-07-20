@@ -328,6 +328,15 @@ describe("isUsableTolerance", () => {
   it("accepts a zero band, which is a band the user chose", () => {
     expect(isUsableTolerance({ minus: 0, plus: 0 })).toBe(true);
   });
+
+  it("rejects the shapes an untouched form field produces", () => {
+    // The live preview feeds unnormalized drafts straight to evaluation, so "" and null arrive
+    // here directly. Number() reads both as a perfectly good 0.
+    expect(isUsableTolerance({ minus: "", plus: "" })).toBe(false);
+    expect(isUsableTolerance({ minus: 1, plus: "" })).toBe(false);
+    expect(isUsableTolerance({ minus: null, plus: null })).toBe(false);
+    expect(isUsableTolerance({ minus: "1", plus: "1" })).toBe(false);
+  });
 });
 
 describe("a half-typed band", () => {
@@ -376,6 +385,28 @@ describe("METRIC_RULE_ROLE", () => {
     for (const id of Object.keys(METRIC_RULE_ROLE)) {
       expect(STATS_CANONICAL_ORDER, id).toContain(id);
     }
+  });
+
+  it("assigns the role each metric's rule actually needs", () => {
+    // Set equality alone would let a swapped role through, and a target on LRA would ask the
+    // user for a band around a range statistic.
+    expect(METRIC_RULE_ROLE).toEqual({
+      momentary: "target",
+      shortTerm: "target",
+      integrated: "target",
+      dialogueIntegrated: "target",
+      momentaryMax: "limit",
+      shortTermMax: "limit",
+      truePeak: "limit",
+      dialogueCoverage: "limit",
+      correlation: "limit",
+      psr: "limit",
+      plr: "limit",
+      lra: "limit",
+      dialogueRange: "limit",
+      dialogueOffset: "limit",
+      sideToMid: "limit",
+    });
   });
 
   it("builds an empty rule in the metric's own shape", () => {

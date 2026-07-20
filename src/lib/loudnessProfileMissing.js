@@ -6,10 +6,11 @@
 
 import { isRuleEmpty } from "./loudnessProfileCatalog.js";
 
-/// Preferred metrics the profile watches that are not visible in Stats, in the profile's own
-/// order. Metrics the profile only describes (n/a, descriptors) are not required, and neither
-/// are rules the user has added but not yet filled in -- fulfilling those would push rows on
-/// screen for a metric nothing is judging yet.
+/// Preferred metrics the profile needs that are not visible in Stats, in the profile's own order.
+/// A rule the user has added but not yet filled in is skipped -- fulfilling it would push a row on
+/// screen for a metric nothing is judging yet. A metric the profile only describes is still
+/// demanded when it is preferred, because a descriptor earns its row by giving another rule the
+/// context to be read against.
 export function listMissingPreferredMetrics(document, statsVisibleIds) {
   if (!document) return [];
   const visible = new Set(statsVisibleIds ?? []);

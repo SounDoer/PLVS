@@ -272,13 +272,19 @@ export function isKnownMetricId(metricId) {
   return Object.hasOwn(STATS_META, metricId);
 }
 
-/// A band both halves of which are usable. Exported because the normalizer and `isRuleEmpty` have
-/// to agree on this exactly: when they disagree, a half-typed band reads as filled and then
-/// evaluates against `target + undefined`, which is NaN -- and every comparison against NaN is
-/// false, so the rule silently passes everything.
+/// A band both halves of which are usable.
+///
+/// Exported because the normalizer and `isRuleEmpty` have to agree on this exactly: when they
+/// disagree, a half-typed band reads as filled and then evaluates against `target + undefined`,
+/// which is NaN -- and every comparison against NaN is false, so the rule silently passes
+/// everything.
+///
+/// Strict about the type, not just the value. An untouched form field is `""`, which `Number`
+/// reads as a perfectly good 0 -- and a zero-width band is a threshold the user never chose, one
+/// that the near-boundary margin then turns into a warning no value can escape.
 export function isUsableTolerance(tolerance) {
-  const minus = Number(tolerance?.minus);
-  const plus = Number(tolerance?.plus);
+  const { minus, plus } = tolerance ?? {};
+  if (typeof minus !== "number" || typeof plus !== "number") return false;
   if (!Number.isFinite(minus) || !Number.isFinite(plus)) return false;
   return minus >= 0 && plus >= 0;
 }
