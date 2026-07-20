@@ -148,11 +148,16 @@ function fmtSideToMid(displayAudio) {
 }
 
 /**
- * Assemble the full ordered list of stat readouts from the live/display audio object.
+ * Raw numeric value per stat id, before any formatting.
+ *
+ * Shared with Loudness Profile evaluation, which has to compare numbers rather than the display
+ * strings. Keeping one mapping from engine fields to stat ids is the point: a second copy would
+ * be free to drift from what the panel actually shows.
+ *
  * @param {object} displayAudio
- * @returns {{ id: string, label: string, value: string, unit: string, hint: string }[]}
+ * @returns {Record<string, number>} non-finite where the metric has no usable value
  */
-export function buildStatsMetrics(displayAudio) {
+export function buildStatsValues(displayAudio) {
   const psr =
     Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.shortTerm)
       ? displayAudio.tpMax - displayAudio.shortTerm
@@ -161,23 +166,54 @@ export function buildStatsMetrics(displayAudio) {
     Number.isFinite(displayAudio.tpMax) && Number.isFinite(displayAudio.integrated)
       ? displayAudio.tpMax - displayAudio.integrated
       : -Infinity;
+  const dialogueOffset =
+    Number.isFinite(displayAudio.dialogueIntegrated) && Number.isFinite(displayAudio.integrated)
+      ? displayAudio.dialogueIntegrated - displayAudio.integrated
+      : -Infinity;
+
+  return {
+    momentary: displayAudio.momentary,
+    shortTerm: displayAudio.shortTerm,
+    integrated: displayAudio.integrated,
+    momentaryMax: displayAudio.mMax,
+    shortTermMax: displayAudio.stMax,
+    lra: displayAudio.lra,
+    psr,
+    plr,
+    dialogueCoverage: displayAudio.dialoguePercent,
+    dialogueIntegrated: displayAudio.dialogueIntegrated,
+    dialogueRange: displayAudio.dialogueLra,
+    dialogueOffset,
+    truePeak: displayAudio.tpMax,
+    correlation: displayAudio.correlation,
+    sideToMid: displayAudio.sideToMidDb,
+  };
+}
+
+/**
+ * Assemble the full ordered list of stat readouts from the live/display audio object.
+ * @param {object} displayAudio
+ * @returns {{ id: string, label: string, value: string, unit: string, hint: string }[]}
+ */
+export function buildStatsMetrics(displayAudio) {
+  const raw = buildStatsValues(displayAudio);
 
   const value = {
-    momentary: fmtMetric(displayAudio.momentary),
-    shortTerm: fmtMetric(displayAudio.shortTerm),
-    integrated: fmtMetric(displayAudio.integrated),
-    momentaryMax: fmtMetric(displayAudio.mMax),
-    shortTermMax: fmtMetric(displayAudio.stMax),
-    lra: fmtMetric(displayAudio.lra),
-    psr: fmtMetric(psr),
-    plr: fmtMetric(plr),
-    dialogueCoverage: Number.isFinite(displayAudio.dialoguePercent)
-      ? `${displayAudio.dialoguePercent.toFixed(0)}`
+    momentary: fmtMetric(raw.momentary),
+    shortTerm: fmtMetric(raw.shortTerm),
+    integrated: fmtMetric(raw.integrated),
+    momentaryMax: fmtMetric(raw.momentaryMax),
+    shortTermMax: fmtMetric(raw.shortTermMax),
+    lra: fmtMetric(raw.lra),
+    psr: fmtMetric(raw.psr),
+    plr: fmtMetric(raw.plr),
+    dialogueCoverage: Number.isFinite(raw.dialogueCoverage)
+      ? `${raw.dialogueCoverage.toFixed(0)}`
       : "-",
-    dialogueIntegrated: fmtMetric(displayAudio.dialogueIntegrated),
-    dialogueRange: fmtMetric(displayAudio.dialogueLra),
+    dialogueIntegrated: fmtMetric(raw.dialogueIntegrated),
+    dialogueRange: fmtMetric(raw.dialogueRange),
     dialogueOffset: dialogueOffsetText(displayAudio.dialogueIntegrated, displayAudio.integrated),
-    truePeak: fmtMetric(displayAudio.tpMax),
+    truePeak: fmtMetric(raw.truePeak),
     correlation: fmtCorrelation(displayAudio),
     sideToMid: fmtSideToMid(displayAudio),
   };
