@@ -139,10 +139,22 @@ function AppContent() {
     glassEnabled,
     setGlassEnabled,
   } = settings;
+  // Hoisted above useDockMode and usePresets: dock entry cancels an open profile
+  // draft, and preset capture and apply both need its snapshot helpers. One
+  // writer for the reference too - null when Off, which every consumer treats as
+  // "there is nothing to show". Reading it this early is safe: it is a context
+  // read with no ordering constraints of its own.
+  const loudnessProfile = useLoudnessProfile();
   // Dock hooks run first: `docked` suspends the always-on-top and focus-view
   // window overrides below (Rust owns strip chrome + topmost while docked),
-  // and preset capture/apply reads dock state. useDockMode depends on no
-  // other hook, so hoisting it above useAlwaysOnTop is safe.
+  // and preset capture/apply reads dock state. useDockMode depends only on the
+  // profile controller above, so hoisting it above useAlwaysOnTop is safe.
+  //
+  // The dock is a monitoring posture: AppShell renders the settings overlays
+  // (and so the profile editor) only when undocked, and the strip has no profile
+  // popover, so a draft carried in would keep outranking the persisted selection
+  // for DockStats with no way to see, name, save or cancel it. Cancelling on
+  // entry matches how applyPresetSnapshot already treats a draft it cannot honour.
   const {
     dockEnabled,
     dockEdge,
@@ -158,7 +170,7 @@ function AppContent() {
     resizeDockHeight,
     suspendDockMode,
     resumeDockMode,
-  } = useDockMode();
+  } = useDockMode({ onEnterDock: loudnessProfile.cancelDraft });
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
   // Suspended while docked: a preset apply may flip the stored pin to false
@@ -388,10 +400,6 @@ function AppContent() {
     ]
   );
 
-  // Hoisted above usePresets: preset capture and apply both need its snapshot helpers.
-  // One writer for the reference too - null when Off, which every consumer treats as
-  // "there is nothing to show".
-  const loudnessProfile = useLoudnessProfile();
   const presets = usePresets({
     windowPinned: pinned,
     setWindowPinned: setPinned,

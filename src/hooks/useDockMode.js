@@ -33,8 +33,12 @@ function normalizeDockState(raw) {
  * this hook mirrors it for rendering and drives enter/exit transitions.
  * Attribute restores (decorations / always-on-top) are passed by the caller so
  * stored user settings are never rewritten by the dock override.
+ *
+ * `onEnterDock` runs once a dock entry has actually landed, for the state the
+ * dock has no surface to finish. Passed in rather than reached for: the dock
+ * knows it is a monitoring posture, not which editors that strands.
  */
-export function useDockMode() {
+export function useDockMode({ onEnterDock } = {}) {
   const [dock, setDock] = useState(() =>
     normalizeDockState(
       typeof window !== "undefined" ? window.__PLVS_INITIAL_STATE__?.dockState : undefined
@@ -128,10 +132,13 @@ export function useDockMode() {
           height: clampDockHeight(resolved?.height ?? heightOverride ?? latest.height),
         }));
         setDockSuspendedState(false);
+        // After the transition lands, never before: a rejected `enterDock` leaves the window a
+        // normal one, with the panels it stranded still on screen and still finishable.
+        onEnterDock?.();
         if (changed) presetsStore.patch({ dirty: true });
       });
     },
-    [commitDock, enqueueTransition]
+    [commitDock, enqueueTransition, onEnterDock]
   );
 
   const exitDockMode = useCallback(
