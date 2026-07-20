@@ -196,7 +196,26 @@ export function LoudnessProfileProvider({ children }) {
     [commit]
   );
 
-  const renameUser = useCallback((id, name) => updateUser(id, { name }), [updateUser]);
+  /// Rename is the one library action a dirty draft does not block, because it destroys nothing --
+  /// but only once the open draft comes with it.
+  ///
+  /// `saveDraft` writes `draft.document` wholesale, and that document is the clone `beginEdit`
+  /// took, so a library-only rename is reverted by the next Save. Left unpatched the other way
+  /// round it is just as visible: the draft outranks the selection, so the editor's name box, the
+  /// popover's label and the footer would all keep reading the old name.
+  ///
+  /// Read and written through `draftRef`, the synchronous source of truth here: a rename committed
+  /// in the same tick as an edit must see that edit. See the `draftRef` comment above.
+  const renameUser = useCallback(
+    (id, name) => {
+      const current = draftRef.current;
+      if (current?.editingId === id) {
+        putDraft({ ...current, document: { ...current.document, name } });
+      }
+      updateUser(id, { name });
+    },
+    [putDraft, updateUser]
+  );
 
   /// Deleting the active profile drops the session to Off; normalize would do it anyway, but
   /// doing it here keeps the transition explicit.

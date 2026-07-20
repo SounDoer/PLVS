@@ -52,7 +52,8 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
 
   // The editor panel is non-modal, so this list stays reachable while a draft is open. Everything
   // that would discard that draft is refused by the provider; showing it disabled is what makes
-  // the refusal legible. Rename is not one of them -- it destroys nothing.
+  // the refusal legible. Rename is not one of them: the provider renames the open draft along with
+  // the library entry, so nothing is lost and the two cannot disagree.
   const blocked = draftBlocksLibraryActions === true;
   const blockedClass = "disabled:opacity-40";
 

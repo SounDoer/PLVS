@@ -94,6 +94,40 @@ describe("the user library", () => {
     expect(result.current.document.name).toBe("Renamed");
   });
 
+  it("renames the open draft along with the profile it is editing", () => {
+    const { result } = withSavedProfile();
+    const { id } = result.current.userProfiles[0];
+    act(() => result.current.beginEdit(id));
+    act(() => result.current.renameUser(id, "Renamed In Popover"));
+    // The draft outranks the selection for every reader, so a draft still carrying the old name
+    // is the name the editor's box, the popover's label and the footer all show.
+    expect(result.current.draft.document.name).toBe("Renamed In Popover");
+    expect(result.current.document.name).toBe("Renamed In Popover");
+  });
+
+  it("keeps the new name when the renamed draft is saved", () => {
+    const { result } = withSavedProfile();
+    const { id } = result.current.userProfiles[0];
+    act(() => result.current.beginEdit(id));
+    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -20 })));
+    act(() => result.current.renameUser(id, "Renamed In Popover"));
+    act(() => result.current.saveDraft());
+    // saveDraft writes the draft document wholesale, so a stale clone silently reverts the rename.
+    expect(result.current.userProfiles[0].name).toBe("Renamed In Popover");
+    expect(result.current.userProfiles[0].referenceLufs).toBe(-20);
+  });
+
+  it("leaves a draft editing some other profile alone", () => {
+    const { result } = withSavedProfile("First");
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
+    act(() => result.current.saveDraft());
+    const [first, second] = result.current.userProfiles;
+    act(() => result.current.beginEdit(second.id));
+    act(() => result.current.renameUser(first.id, "First Renamed"));
+    expect(result.current.draft.document.name).toBe("Second");
+  });
+
   it("edits a saved profile's rules", () => {
     const { result } = withSavedProfile();
     const { id } = result.current.userProfiles[0];
