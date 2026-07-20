@@ -44,16 +44,20 @@ export function LoudnessProfileProvider({ children }) {
 
   useEffect(() => settingsStore.subscribe(() => setState(readState())), []);
 
-  /// The active profile is part of the layout preset snapshot, so editing it diverges from the
-  /// preset exactly the way a workspace or dock edit does, and has to say so -- otherwise the
-  /// preset reads as clean while carrying a profile the user has since changed.
+  /// Layout presets snapshot which profile is active and nothing else, so only a change of
+  /// selection diverges from the preset -- editing a profile's rules does not.
   ///
-  /// `presetDirty: false` is for the one write that is not a divergence: restoring a snapshot.
+  /// Comparing `active` before and after is what makes that correct: two library operations move
+  /// the selection as a side effect, and a per-call-site flag gets both wrong. Saving a draft
+  /// selects what it saved; deleting the active profile falls back to Off.
+  ///
+  /// `presetDirty: false` is for the one selection change that is not a divergence: restoring a
+  /// snapshot.
   const commit = useCallback((updater, { presetDirty = true } = {}) => {
     setState((prev) => {
       const next = normalizeLoudnessProfiles(updater(prev));
       writeState(next);
-      if (presetDirty) presetsStore.patch({ dirty: true });
+      if (presetDirty && next.active !== prev.active) presetsStore.patch({ dirty: true });
       return next;
     });
   }, []);

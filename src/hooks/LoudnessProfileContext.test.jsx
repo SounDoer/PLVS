@@ -505,24 +505,64 @@ describe("preset divergence", () => {
     presetsStore.patch({ activeId: "p1", dirty: false });
   });
 
-  it("marks the active preset dirty when the selection changes", () => {
+  const clean = () => presetsStore.patch({ dirty: false });
+
+  it("marks the preset dirty when the selection changes", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("ebu-r128")));
     expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("marks the active preset dirty when a profile is written", () => {
+  it("marks it dirty when saving a draft selects what it saved", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.beginCreate());
     act(() => result.current.editDraft((d) => ({ ...d, name: "Mine" })));
-    presetsStore.patch({ dirty: false });
-
+    clean();
     act(() => result.current.saveDraft());
     expect(presetsStore.read().dirty).toBe(true);
   });
 
-  // Applying a preset is the one write that must not diverge from it: the profile it restores is
-  // by definition the profile that preset carries.
+  it("marks it dirty when deleting the active profile falls back to Off", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Doomed" })));
+    act(() => result.current.saveDraft());
+    const { id } = result.current.userProfiles[0];
+    clean();
+
+    act(() => result.current.removeUser(id));
+    expect(presetsStore.read().dirty).toBe(true);
+  });
+
+  it("leaves it clean when a rename does not move the selection", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Before" })));
+    act(() => result.current.saveDraft());
+    const { id } = result.current.userProfiles[0];
+    clean();
+
+    act(() => result.current.renameUser(id, "After"));
+    // The preset snapshots an id, not the rules behind it, so this is not a divergence.
+    expect(presetsStore.read().dirty).toBe(false);
+  });
+
+  it("leaves it clean when deleting a profile that was not active", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Keep" })));
+    act(() => result.current.saveDraft());
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Spare" })));
+    act(() => result.current.saveDraft());
+    const spare = result.current.userProfiles.find((p) => p.name === "Keep");
+    act(() => result.current.select(builtinSelectionId("ebu-r128")));
+    clean();
+
+    act(() => result.current.removeUser(spare.id));
+    expect(presetsStore.read().dirty).toBe(false);
+  });
+
   it("does not dirty the preset it is restoring", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() =>
