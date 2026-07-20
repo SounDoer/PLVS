@@ -12,16 +12,16 @@ import {
 
 const PLOT_PADDING_CSS_PX = 10;
 const POINT_RADIUS_CSS_PX = 1.15;
-const ARC_ALPHA = 0.35;
-const FILL_ALPHA = 0.2;
-const OUTLINE_ALPHA = 0.86;
-const PEAK_ALPHA = 0.58;
+const PEAK_ALPHA = 0.35;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 const POLAR_LEVEL_FIXED_EXTENT = Math.SQRT2;
 const POLAR_LEVEL_FLOOR_DB = -48;
+const POLAR_LEVEL_WEDGE_WIDTH_RATIO = 0.5;
 
-function resolveTraceColor(element) {
-  return getComputedStyle(element).getPropertyValue("--ui-vectorscope-trace").trim() || "#7dd3fc";
+function resolveTraceColors(style) {
+  const traceColor = style.getPropertyValue("--ui-vectorscope-trace").trim() || "#7dd3fc";
+  const gridColor = style.getPropertyValue("--ui-vectorscope-grid-stroke").trim() || traceColor;
+  return { traceColor, gridColor };
 }
 
 function resizeCanvas(canvas) {
@@ -42,7 +42,7 @@ function drawGrid(ctx, geometry, color, lineWidth) {
   const { centerX, baselineY, radius } = geometry;
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.globalAlpha = ARC_ALPHA;
+  ctx.globalAlpha = 1;
   ctx.lineWidth = lineWidth;
   ctx.beginPath();
   ctx.arc(centerX, baselineY, radius, Math.PI, 0);
@@ -77,41 +77,72 @@ function drawPolarSample(ctx, rows, extent, geometry, color, dpr, snapshot) {
   ctx.globalAlpha = 1;
 }
 
-function envelopePoint(index, value, count, extent, geometry) {
-  const angle = -Math.PI / 2 + (index / Math.max(1, count - 1)) * Math.PI;
+function polarLevelRadius(value, extent, geometry) {
   const levelDb =
     value > 0 ? 20 * Math.log10(value / Math.max(extent, 1e-9)) : POLAR_LEVEL_FLOOR_DB;
-  const normalizedRadius = Math.max(
+  const normalized = Math.max(
     0,
     Math.min(1, (levelDb - POLAR_LEVEL_FLOOR_DB) / -POLAR_LEVEL_FLOOR_DB)
   );
+  return normalized * geometry.radius;
+}
+
+function envelopePoint(index, value, count, extent, geometry) {
+  const angle = -Math.PI / 2 + (index / Math.max(1, count - 1)) * Math.PI;
+  const radius = polarLevelRadius(value, extent, geometry);
   return {
-    x: geometry.centerX + Math.sin(angle) * normalizedRadius * geometry.radius,
-    y: geometry.baselineY - Math.cos(angle) * normalizedRadius * geometry.radius,
+    x: geometry.centerX + Math.sin(angle) * radius,
+    y: geometry.baselineY - Math.cos(angle) * radius,
   };
 }
 
-function traceEnvelope(ctx, envelope, extent, geometry) {
+function traceLevelWedge(ctx, index, value, count, extent, geometry) {
+  const binAngle = Math.PI / Math.max(1, count - 1);
+  const centerAngle = -Math.PI / 2 + index * binAngle;
+  const halfWidth = (binAngle * POLAR_LEVEL_WEDGE_WIDTH_RATIO) / 2;
+  const startAngle = Math.max(-Math.PI / 2, centerAngle - halfWidth);
+  const endAngle = Math.min(Math.PI / 2, centerAngle + halfWidth);
+  const radius = polarLevelRadius(value, extent, geometry);
+  if (radius <= 0) return false;
+
   ctx.beginPath();
   ctx.moveTo(geometry.centerX, geometry.baselineY);
-  for (let index = 0; index < envelope.length; index += 1) {
+  ctx.lineTo(
+    geometry.centerX + Math.sin(startAngle) * radius,
+    geometry.baselineY - Math.cos(startAngle) * radius
+  );
+  ctx.lineTo(
+    geometry.centerX + Math.sin(endAngle) * radius,
+    geometry.baselineY - Math.cos(endAngle) * radius
+  );
+  ctx.closePath();
+  return true;
+}
+
+function traceEnvelope(ctx, envelope, extent, geometry) {
+  if (!envelope?.length) return false;
+
+  ctx.beginPath();
+  const first = envelopePoint(0, envelope[0], envelope.length, extent, geometry);
+  ctx.moveTo(first.x, first.y);
+  for (let index = 1; index < envelope.length; index += 1) {
     const point = envelopePoint(index, envelope[index], envelope.length, extent, geometry);
     ctx.lineTo(point.x, point.y);
   }
-  ctx.closePath();
+  return true;
 }
 
-function drawPolarLevel(ctx, envelope, held, extent, geometry, color, lineWidth) {
-  ctx.fillStyle = color;
-  ctx.strokeStyle = color;
+function drawPolarLevel(ctx, envelope, held, extent, geometry, wedgeColor, lineWidth) {
+  ctx.fillStyle = wedgeColor;
   ctx.lineWidth = lineWidth;
-  traceEnvelope(ctx, envelope, extent, geometry);
-  ctx.globalAlpha = FILL_ALPHA;
-  ctx.fill();
-  ctx.globalAlpha = OUTLINE_ALPHA;
-  ctx.stroke();
-  if (held) {
-    traceEnvelope(ctx, held, extent, geometry);
+  ctx.globalAlpha = 1;
+  for (let index = 0; index < envelope.length; index += 1) {
+    if (traceLevelWedge(ctx, index, envelope[index], envelope.length, extent, geometry)) {
+      ctx.fill();
+    }
+  }
+  if (held && traceEnvelope(ctx, held, extent, geometry)) {
+    ctx.strokeStyle = wedgeColor;
     ctx.globalAlpha = PEAK_ALPHA;
     ctx.stroke();
   }
@@ -156,12 +187,12 @@ export function VectorscopePolarPlot({
 
     const { dpr, width, height } = resizeCanvas(canvas);
     const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
-    const color = resolveTraceColor(canvas);
+    const style = getComputedStyle(canvas);
+    const { traceColor, gridColor } = resolveTraceColors(style);
     const lineWidth =
-      (parseFloat(getComputedStyle(canvas).getPropertyValue("--ui-vectorscope-stroke-width")) ||
-        1) * dpr;
+      (parseFloat(style.getPropertyValue("--ui-vectorscope-stroke-width")) || 1) * dpr;
     ctx.clearRect(0, 0, width, height);
-    drawGrid(ctx, geometry, color, Math.max(0.5 * dpr, lineWidth * 0.5));
+    drawGrid(ctx, geometry, gridColor, Math.max(0.5 * dpr, lineWidth * 0.5));
 
     const newestTimestamp = effectiveRows.at(-1)?.timestampMs;
     const now = Number.isFinite(newestTimestamp) ? newestTimestamp : performance.now();
@@ -177,7 +208,7 @@ export function VectorscopePolarPlot({
         ? targetExtent
         : updatePolarExtent(extentRef.current, targetExtent, elapsedMs, hasSignal);
       const extent = extentRef.current ?? targetExtent;
-      drawPolarSample(ctx, effectiveRows, extent, geometry, color, dpr, snapshot);
+      drawPolarSample(ctx, effectiveRows, extent, geometry, traceColor, dpr, snapshot);
       return;
     }
 
@@ -194,7 +225,7 @@ export function VectorscopePolarPlot({
       peakHoldRef.current,
       POLAR_LEVEL_FIXED_EXTENT,
       geometry,
-      color,
+      traceColor,
       lineWidth
     );
   });

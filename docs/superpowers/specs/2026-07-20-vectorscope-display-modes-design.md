@@ -17,7 +17,7 @@ Polar Level
 `Lissajous` is the existing X/Y phase trace, renamed from the informal product term
 “Trace.” `Polar Sample` folds the same real L/R samples into an upper semicircle and renders
 them as a short-persistence point cloud. `Polar Level` aggregates the same samples by polar
-angle and renders a filled stereo-energy envelope.
+angle and renders separated radial level wedges.
 
 The first slice is frontend-only. It reuses the existing request-keyed vectorscope history
 slab (~40 ms rows, ~25 updates/s) for both Polar modes and leaves the Rust audio/DSP/IPC path
@@ -35,13 +35,13 @@ unchanged. The existing high-rate Rust-generated SVG path remains the Lissajous 
 - Correlation remains visible in all three modes.
 - Polar views do not show ±45° safety guides in this slice.
 - Polar views show the selected channel labels at the left and right ends.
-- All modes use stable automatic magnification.
+- Lissajous and Polar Sample use stable automatic magnification; Polar Level uses a fixed dB scale.
 - Polar Sample uses a fixed ~400 ms afterglow.
-- Polar Level uses a filled envelope with an outline and fast-attack/slow-release motion.
+- Polar Level uses separated radial wedges with fast-attack/slow-release motion.
 - Polar Level exposes a per-instance `Peak hold` toggle, default off.
 - Peak hold is indefinite and resets through the existing global Clear action.
 - Silence fades Polar Sample to empty, collapses Polar Level, clears correlation through the
-  existing signal gate, and freezes automatic magnification so noise is not expanded.
+  existing signal gate, and freezes Polar Sample magnification so noise is not expanded.
 - Snapshot mode preserves the selected display mode.
 - Dock Vectorscope supports and persists all three modes independently.
 - The existing hold-to-slow gesture remains Lissajous-only.
@@ -118,7 +118,7 @@ Snapshot behavior:
 
 - Lissajous renders the selected row as today.
 - Polar Sample renders the selected row as a point cloud without temporal fading.
-- Polar Level aggregates the selected row and renders its settled envelope immediately.
+- Polar Level aggregates the selected row and renders its settled wedges immediately.
 - The runtime Peak hold outline is hidden in snapshot mode. Peak hold represents the live period
   since Clear and must not be presented as historical state that was never stored.
 
@@ -149,12 +149,11 @@ Interpretation:
 
 No ±45° guides or danger-region fill are drawn.
 
-## Stable Automatic Magnification
+## Polar Scaling
 
-Automatic magnification is shared conceptually by all three modes but held independently by each
-panel instance.
+Polar Sample automatic magnification is held independently by each panel instance.
 
-For Polar modes, derive the target extent from the maximum projected radius in the active sample
+For Polar Sample, derive the target extent from the maximum projected radius in the active sample
 window. Maintain a display extent with time-based behavior:
 
 - when target extent grows, accept it immediately so the drawing shrinks before clipping;
@@ -166,6 +165,10 @@ window. Maintain a display extent with time-based behavior:
 The implementation must be time-based rather than frame-count-based so 25 Hz and irregular UI
 frames behave consistently. Exact release tuning is an implementation constant covered by pure
 tests and visual verification; it is not a user setting in this slice.
+
+Polar Level does not use automatic magnification. Map each displayed bin from linear amplitude to
+a fixed `-48...0 dBFS` radius, clamped to the center and outer arc. The fixed coordinate system
+prevents whole-plot breathing and keeps indefinite Peak hold values inside the plot.
 
 Lissajous keeps its existing Rust-side extent hold. A later payload unification may move all three
 modes to the same frontend extent implementation, but that is not required here.
@@ -198,7 +201,7 @@ For each window:
    contribution to window RMS energy;
 4. apply a small fixed neighboring-bin smoothing kernel to avoid a jagged polygon without
    inventing temporal samples;
-5. apply the shared automatic magnification;
+5. map levels onto a fixed `-48...0 dBFS` radial scale;
 6. update the displayed bin envelope with fast attack and slow release.
 
 Attack/release behavior is time-based:
@@ -206,17 +209,20 @@ Attack/release behavior is time-based:
 - bins grow quickly when new energy exceeds the displayed value;
 - bins shrink more slowly when energy falls;
 - snapshot mode bypasses temporal smoothing and displays the selected row’s aggregate directly;
-- silence drives the envelope toward zero while leaving the magnification extent frozen.
+- silence drives the envelope toward zero.
 
-Render one closed filled Canvas path plus its outline. Fill and outline use the existing
-Vectorscope trace token with different alpha; no new mode colors are introduced.
+Render each of the 64 bins as an independent wedge from the bottom-center origin to its current
+level radius. A wedge occupies roughly half of its bin's angular width so adjacent directions
+remain visually distinct. Do not connect or fill the current-level endpoints into a closed
+envelope. Wedges use `--ui-vectorscope-trace` at full opacity; no new mode colors are introduced.
 
 ## Polar Level Peak Hold
 
 When `vectorscopePolarLevelPeakHold` is enabled:
 
-- keep a per-bin maximum of the displayed Polar Level envelope;
-- render the maxima as an unfilled thin outline;
+- keep a per-bin maximum of the displayed Polar Level wedge lengths;
+- connect the maxima from left to right as one unfilled open polyline;
+- draw the polyline with `--ui-vectorscope-trace` at `0.35` alpha;
 - maxima do not decay;
 - toggling Peak hold off hides and discards the held values;
 - toggling it on starts a fresh hold from the current envelope;
@@ -258,7 +264,10 @@ Plot behavior:
 
 - Correlation rail and readout retain their current position and behavior in every mode.
 - Lissajous retains the current diagonal grid and corner pair labels.
-- Polar modes replace the diagonal grid with a subtle semicircle baseline/arc only.
+- Polar modes replace the diagonal grid with a semicircle baseline/arc using
+  `--ui-vectorscope-grid-stroke` at full opacity.
+- Polar Level draws separated current-level wedges and, when enabled, an open Peak hold polyline
+  connecting maxima from left to right; it never fills the area between current-level endpoints.
 - Polar modes show the selected first-channel label at the left end and second-channel label at
   the right end; no `Center` label is shown.
 - Lissajous alone owns the existing hold-to-slow pointer gesture.
@@ -286,8 +295,8 @@ Keep data math separate from Canvas operations:
   and reset epoch;
 - the existing Lissajous SVG implementation remains in its current adapters for this slice.
 
-Canvas is selected for Polar modes because point persistence and a repeatedly updated filled
-envelope are bounded pixel rendering tasks. SVG path strings remain only for existing Lissajous.
+Canvas is selected for Polar modes because point persistence and repeatedly updated radial wedges
+are bounded pixel rendering tasks. SVG path strings remain only for existing Lissajous.
 
 ## Performance Bounds
 
@@ -324,6 +333,7 @@ UI tests cover:
 - settings order and mode-specific Peak hold visibility;
 - immediate mode switching;
 - correct renderer and grid per mode;
+- separated Polar Level wedges without a connected current-level fill;
 - endpoint labels in Polar modes;
 - Correlation present in all modes;
 - snapshot mode preserving the selected mode;
@@ -349,8 +359,9 @@ UI tests cover:
 - Polar Sample is visibly continuous at the existing history cadence and fades to empty on silence.
 - Polar Level is stable, reacts quickly to new energy, releases smoothly, and does not visibly
   jitter under steady input.
-- Automatic magnification does not visibly breathe under steady input, clips neither sudden loud
-  input nor expands silence/noise.
+- Polar Level uses a fixed `-48...0 dBFS` scale, does not breathe under steady input, and keeps
+  Peak hold inside the outer arc.
+- Polar Sample automatic magnification clips neither sudden loud input nor expands silence/noise.
 - Peak hold is optional, defaults off, holds indefinitely, and resets through Clear.
 - Snapshot and Dock behavior matches this spec.
 - No Rust audio/DSP/IPC code changes are required.
