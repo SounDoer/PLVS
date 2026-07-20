@@ -11,6 +11,9 @@ export function DockExpandedMetric({
   indicator = null,
   unitVisibility = "default",
   valueClassName = "text-foreground",
+  // Marks the readout as a named stat so the cross-surface colour guard can find it here too;
+  // omitted by callers whose value is not a catalog metric.
+  statId,
 }) {
   const showUnit = Boolean(unit) && value !== "-";
   const unitVisibilityClass =
@@ -33,6 +36,7 @@ export function DockExpandedMetric({
       </span>
       <span className="mt-1 flex min-w-0 max-w-full items-baseline gap-[var(--ui-dock-gap-column)] overflow-hidden whitespace-nowrap leading-none">
         <span
+          data-stat-value={statId}
           className={`shrink-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold tabular-nums ${valueClassName}`}
         >
           {value}

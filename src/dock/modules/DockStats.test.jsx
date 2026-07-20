@@ -11,7 +11,10 @@ import { DockStats } from "./DockStats.jsx";
 import { StatsPanel } from "../../components/panels/StatsPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
 import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
-import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
+import {
+  LoudnessProfileProvider,
+  useLoudnessProfile,
+} from "../../hooks/LoudnessProfileContext.jsx";
 
 const METRICS = [
   { id: "momentary", shortLabel: "M", unit: "LUFS", value: "-18.1" },
@@ -246,17 +249,23 @@ describe("Dock Stats and the main window under one provider", () => {
 
   // Both surfaces rendered in one tree, sharing one LoudnessProfileProvider: the same metric under
   // the same profile must not read as a breach in one surface and neutral in the other.
-  function renderBothSurfaces(displayAudio) {
+  function renderBothSurfaces(displayAudio, { heightMode = "standard", onProfile } = {}) {
+    function ProfileHandle() {
+      onProfile?.(useLoudnessProfile());
+      return null;
+    }
+
     return render(
       <LoudnessProfileProvider>
         <FrameDataProvider value={{ displayAudio }}>
           <MetricsDataProvider value={{ statsMetrics: METRICS }}>
+            <ProfileHandle />
             <PanelInstanceProvider
               value={{ panelControls: { statsVisibleIds: ["truePeak"], statsOrder: ["truePeak"] } }}
             >
               <StatsPanel />
             </PanelInstanceProvider>
-            <DockStats controls={statsControls(["truePeak"])} />
+            <DockStats controls={statsControls(["truePeak"])} heightMode={heightMode} />
           </MetricsDataProvider>
         </FrameDataProvider>
       </LoudnessProfileProvider>
@@ -285,4 +294,35 @@ describe("Dock Stats and the main window under one provider", () => {
     expect(classes).toHaveLength(2);
     for (const className of classes) expect(className).toContain("text-foreground");
   });
+
+  // A persisted selection cannot diverge between two providers -- both would read the same store.
+  // A preview draft never reaches the store, so this is the case that actually fails if the two
+  // surfaces ever stop sharing one provider.
+  for (const heightMode of ["standard", "expanded"]) {
+    it(`follows an unsaved draft in both surfaces (${heightMode} dock)`, () => {
+      settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+      let profile;
+      const { container } = renderBothSurfaces(
+        { tpMax: -5 },
+        { heightMode, onProfile: (p) => (profile = p) }
+      );
+
+      // -5 dBTP clears EBU R128's -1 limit, so both surfaces start neutral.
+      for (const className of truePeakValueClasses(container)) {
+        expect(className).toContain("text-foreground");
+      }
+
+      act(() => profile.beginCreate());
+      act(() =>
+        profile.editDraft((d) => ({
+          ...d,
+          metrics: { ...d.metrics, truePeak: { role: "limit", severity: "fail", max: -12 } },
+        }))
+      );
+
+      const classes = truePeakValueClasses(container);
+      expect(classes).toHaveLength(2);
+      for (const className of classes) expect(className).toContain("--ui-signal-bad");
+    });
+  }
 });

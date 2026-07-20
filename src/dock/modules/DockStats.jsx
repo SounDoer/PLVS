@@ -133,6 +133,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
                   value={value}
                   unit={unit}
                   unitVisibility="tight"
+                  statId={id}
                   valueClassName={loudnessStatusValueClass(statuses[id])}
                   indicator={
                     id === "dialogueCoverage" ? (
