@@ -1,7 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
-import { useFrameData } from "../../workspace/AudioDataContext.jsx";
+import { selectPolarWindow } from "../../math/vectorscopePolarMath.js";
+import { VectorscopePolarPlot } from "../../components/panels/VectorscopePolarPlot.jsx";
+import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
+import { normalizeDockModuleControls } from "../dockModuleControls.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -47,12 +50,16 @@ function computePlotSize(width, height, expanded = false) {
 /** Compact live Vectorscope with a dedicated correlation readout. */
 export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();
+  const historyData = useHistoryData();
   const contentRef = useRef(null);
   const displayCorrelationRef = useRef(null);
   const [plotSize, setPlotSize] = useState(48);
   const [contentWidth, setContentWidth] = useState(0);
-  const pair = controls.pair ?? { x: 0, y: 1 };
-  const key = dockVectorscopeKey({ pair });
+  const normalizedControls = normalizeDockModuleControls("correlation", controls);
+  const pair = normalizedControls.pair;
+  const mode = normalizedControls.mode;
+  const isLissajous = mode === "lissajous";
+  const key = dockVectorscopeKey(normalizedControls);
   const result = displayAudio?.vectorscopeResultsByKey?.[key];
   const pairX = Number.isFinite(result?.pairX) ? result.pairX : pair.x;
   const pairY = Number.isFinite(result?.pairY) ? result.pairY : pair.y;
@@ -77,6 +84,9 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const labels = getPeakMeterChannelLabels(labelCount, peakLabelContext || {});
   const firstLabel = labels[pairX] ?? `Ch ${pairX + 1}`;
   const secondLabel = labels[pairY] ?? `Ch ${pairY + 1}`;
+  const polarSlab = isLissajous ? null : historyData?.getVectorscopeHistoryForKey?.(key);
+  const polarRows = polarSlab ? selectPolarWindow(polarSlab) : [];
+  const hasSignal = hasPairSignal(displayAudio?.peakDb, pairX, pairY);
   const expanded = heightMode === "expanded";
   const correlationLabel =
     expanded && contentWidth >= CORRELATION_FULL_LABEL_MIN_WIDTH_PX ? "Correlation" : "Corr";
@@ -110,46 +120,60 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
           className="relative shrink-0 overflow-hidden"
           style={{ width: plotSize, height: plotSize }}
         >
-          <svg
-            className="pointer-events-none absolute inset-0 block h-full w-full"
-            viewBox="0 0 260 260"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <line
-              x1="0"
-              y1="0"
-              x2="260"
-              y2="260"
-              stroke="var(--ui-vectorscope-grid-stroke)"
-              strokeWidth="0.35"
-              strokeDasharray="var(--ui-vectorscope-grid-dash)"
-              vectorEffect="non-scaling-stroke"
-            />
-            <line
-              x1="260"
-              y1="0"
-              x2="0"
-              y2="260"
-              stroke="var(--ui-vectorscope-grid-stroke)"
-              strokeWidth="0.35"
-              strokeDasharray="var(--ui-vectorscope-grid-dash)"
-              vectorEffect="non-scaling-stroke"
-            />
-            {result?.path ? (
-              <path
-                data-testid="dock-vectorscope-trace"
-                d={result.path}
-                fill="none"
-                stroke="var(--ui-vectorscope-trace)"
-                strokeWidth="var(--ui-vectorscope-stroke-width)"
-                opacity="var(--ui-vectorscope-axis-opacity)"
-                strokeLinecap="round"
+          {isLissajous ? (
+            <svg
+              className="pointer-events-none absolute inset-0 block h-full w-full"
+              viewBox="0 0 260 260"
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              <line
+                x1="0"
+                y1="0"
+                x2="260"
+                y2="260"
+                stroke="var(--ui-vectorscope-grid-stroke)"
+                strokeWidth="0.35"
+                strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
               />
-            ) : null}
-          </svg>
-          {plotSize >= 44 ? (
+              <line
+                x1="260"
+                y1="0"
+                x2="0"
+                y2="260"
+                stroke="var(--ui-vectorscope-grid-stroke)"
+                strokeWidth="0.35"
+                strokeDasharray="var(--ui-vectorscope-grid-dash)"
+                vectorEffect="non-scaling-stroke"
+              />
+              {result?.path ? (
+                <path
+                  data-testid="dock-vectorscope-trace"
+                  d={result.path}
+                  fill="none"
+                  stroke="var(--ui-vectorscope-trace)"
+                  strokeWidth="var(--ui-vectorscope-stroke-width)"
+                  opacity="var(--ui-vectorscope-axis-opacity)"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ) : null}
+            </svg>
+          ) : (
+            <VectorscopePolarPlot
+              mode={mode}
+              rows={polarRows}
+              hasSignal={hasSignal}
+              firstLabel={firstLabel}
+              secondLabel={secondLabel}
+              showLabels={plotSize >= 44}
+              peakHoldEnabled={normalizedControls.polarLevelPeakHold}
+              resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
+              identityKey={key}
+            />
+          )}
+          {isLissajous && plotSize >= 44 ? (
             <>
               <span className="absolute left-0.5 top-0 max-w-[45%] truncate font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
                 {firstLabel}

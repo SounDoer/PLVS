@@ -1,14 +1,28 @@
 /** @vitest-environment jsdom */
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { FrameDataProvider } from "../../workspace/AudioDataContext.jsx";
+import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
 import { DockVectorscope } from "./DockVectorscope.jsx";
 
-const controls = { pair: { x: 0, y: 1 } };
+const controls = { pair: { x: 0, y: 1 }, mode: "lissajous", polarLevelPeakHold: false };
 const key = dockVectorscopeKey(controls);
 
-function renderWith(result, peakDb = [-12, -10], heightMode = "standard") {
+function slab(rows) {
+  return {
+    length: rows.length,
+    timestampAt: (index) => rows[index].timestampMs,
+    rowAt: (index) => rows[index],
+  };
+}
+
+function renderWith(
+  result,
+  peakDb = [-12, -10],
+  heightMode = "standard",
+  selectedControls = controls,
+  historyData = {}
+) {
   return render(
     <FrameDataProvider
       value={{
@@ -19,7 +33,9 @@ function renderWith(result, peakDb = [-12, -10], heightMode = "standard") {
         },
       }}
     >
-      <DockVectorscope controls={controls} heightMode={heightMode} />
+      <HistoryDataProvider value={historyData}>
+        <DockVectorscope controls={selectedControls} heightMode={heightMode} />
+      </HistoryDataProvider>
     </FrameDataProvider>
   );
 }
@@ -117,5 +133,26 @@ describe("DockVectorscope", () => {
     renderWith({ path: "M 20 20", correlation: 0, pairX: 0, pairY: 1 }, [-Infinity, -Infinity]);
     expect(screen.getByText("-")).toBeTruthy();
     expect(screen.queryByTestId("dock-vectorscope-correlation-marker")).toBeNull();
+  });
+
+  it.each([
+    ["polarSample", false],
+    ["polarLevel", true],
+  ])("renders %s from the keyed history slab", (mode, polarLevelPeakHold) => {
+    const getVectorscopeHistoryForKey = vi.fn(() =>
+      slab([{ timestampMs: 1000, pairs: [0.5, -0.5] }])
+    );
+    renderWith(
+      { path: "M 0 0", correlation: 0.25, pairX: 0, pairY: 1 },
+      undefined,
+      "standard",
+      { ...controls, mode, polarLevelPeakHold },
+      { getVectorscopeHistoryForKey, vectorscopeResetEpoch: 2 }
+    );
+
+    expect(document.querySelector(`[data-vectorscope-polar="${mode}"]`)).toBeTruthy();
+    expect(screen.queryByTestId("dock-vectorscope-trace")).toBeNull();
+    expect(getVectorscopeHistoryForKey).toHaveBeenCalledWith(key);
+    expect(screen.getByTestId("dock-vectorscope-correlation-rail")).toBeTruthy();
   });
 });
