@@ -1,0 +1,218 @@
+import { describe, expect, it } from "vitest";
+import {
+  BUILTIN_LOUDNESS_PROFILES,
+  LOUDNESS_PROFILE_CUSTOM,
+  LOUDNESS_PROFILE_OFF,
+  MIN_DIALOGUE_COVERAGE_PERCENT,
+  builtinSelectionId,
+  createDefaultCustomDraft,
+  duplicateAsDraft,
+  isKnownMetricId,
+  parseSelection,
+  resolveActiveDocument,
+  userSelectionId,
+} from "./loudnessProfileCatalog.js";
+
+const byId = (id) => BUILTIN_LOUDNESS_PROFILES.find((p) => p.id === id);
+
+describe("loudnessProfileCatalog built-ins", () => {
+  it("ships the v1 short list in order", () => {
+    expect(BUILTIN_LOUDNESS_PROFILES.map((p) => p.id)).toEqual([
+      "ebu-r128",
+      "ebu-r128-live",
+      "ebu-r128-s1",
+      "atsc-a85",
+      "streaming-14",
+    ]);
+  });
+
+  it("gives every built-in a reference line, a name and preferred metrics", () => {
+    for (const profile of BUILTIN_LOUDNESS_PROFILES) {
+      expect(profile.kind).toBe("builtin");
+      expect(typeof profile.name).toBe("string");
+      expect(profile.name.length).toBeGreaterThan(0);
+      expect(Number.isFinite(profile.referenceLufs)).toBe(true);
+      expect(profile.preferredMetricIds.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("addresses only metrics that Stats can actually show", () => {
+    for (const profile of BUILTIN_LOUDNESS_PROFILES) {
+      for (const metricId of Object.keys(profile.metrics)) {
+        expect(isKnownMetricId(metricId), `${profile.id} -> ${metricId}`).toBe(true);
+      }
+      for (const metricId of profile.preferredMetricIds) {
+        expect(isKnownMetricId(metricId), `${profile.id} preferred -> ${metricId}`).toBe(true);
+      }
+    }
+  });
+
+  it("only prefers metrics it has a rule for", () => {
+    for (const profile of BUILTIN_LOUDNESS_PROFILES) {
+      for (const metricId of profile.preferredMetricIds) {
+        expect(profile.metrics[metricId], `${profile.id} -> ${metricId}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("keeps every target expressible as a target + tolerance pair", () => {
+    // The CLI's --target-lufs / --lufs-tolerance are meant to be derived from a profile later
+    // (design doc, Roadmap). A target rule that could not round-trip through that pair would
+    // strand the CLI.
+    for (const profile of BUILTIN_LOUDNESS_PROFILES) {
+      for (const [metricId, rule] of Object.entries(profile.metrics)) {
+        if (rule.role !== "target") continue;
+        expect(Number.isFinite(rule.target), `${profile.id} -> ${metricId}`).toBe(true);
+        expect(Number.isFinite(rule.tolerance.minus)).toBe(true);
+        expect(Number.isFinite(rule.tolerance.plus)).toBe(true);
+      }
+    }
+  });
+
+  it("uses the reference lines the design pins", () => {
+    expect(byId("ebu-r128").referenceLufs).toBe(-23);
+    expect(byId("ebu-r128-live").referenceLufs).toBe(-23);
+    expect(byId("ebu-r128-s1").referenceLufs).toBe(-23);
+    expect(byId("atsc-a85").referenceLufs).toBe(-24);
+    expect(byId("streaming-14").referenceLufs).toBe(-14);
+  });
+
+  it("widens the Integrated tolerance for Live and marks it permanently provisional", () => {
+    expect(byId("ebu-r128").metrics.integrated.tolerance).toEqual({ minus: 0.5, plus: 0.5 });
+    expect(byId("ebu-r128-live").metrics.integrated.tolerance).toEqual({ minus: 1, plus: 1 });
+    expect(byId("ebu-r128-live").metrics.integrated.provisional).toBe(true);
+    // Programme is not provisional: only Live claims its Integrated never settles.
+    expect(byId("ebu-r128").metrics.integrated.provisional).toBeUndefined();
+  });
+
+  it("caps Short-term Max at -18 for S1 and marks LRA not applicable", () => {
+    expect(byId("ebu-r128-s1").metrics.shortTermMax).toMatchObject({ max: -18, severity: "fail" });
+    expect(byId("ebu-r128-s1").metrics.lra.role).toBe("na");
+  });
+
+  it("anchors ATSC on dialogue with a coverage floor and a -2 true peak limit", () => {
+    const atsc = byId("atsc-a85");
+    expect(atsc.metrics.dialogueIntegrated).toMatchObject({
+      target: -24,
+      tolerance: { minus: 2, plus: 2 },
+      requiresDialogueCoverage: MIN_DIALOGUE_COVERAGE_PERCENT,
+    });
+    expect(atsc.metrics.truePeak.max).toBe(-2);
+    // Programme Integrated is shown, never judged: the profile is dialogue-anchored.
+    expect(atsc.metrics.integrated.role).toBe("descriptor");
+  });
+
+  it("treats Streaming -14 as a playback reference rather than a hard gate", () => {
+    const streaming = byId("streaming-14");
+    expect(streaming.metrics.integrated.target).toBe(-14);
+    expect(streaming.metrics.integrated.severity).toBe("warn");
+    expect(streaming.metrics.truePeak).toMatchObject({ max: -1, severity: "warn" });
+  });
+
+  it("never lets a descriptor or n/a rule fail", () => {
+    for (const profile of BUILTIN_LOUDNESS_PROFILES) {
+      for (const rule of Object.values(profile.metrics)) {
+        if (rule.role === "descriptor" || rule.role === "na") {
+          expect(rule.severity).not.toBe("fail");
+        }
+      }
+    }
+  });
+});
+
+describe("createDefaultCustomDraft", () => {
+  it("starts at Integrated -23 and TP -1, both watched", () => {
+    const draft = createDefaultCustomDraft();
+    expect(draft.kind).toBe("draft");
+    expect(draft.referenceLufs).toBe(-23);
+    expect(draft.preferredMetricIds).toEqual(["integrated", "truePeak"]);
+    expect(draft.metrics.integrated.target).toBe(-23);
+    expect(draft.metrics.truePeak.max).toBe(-1);
+  });
+
+  it("returns a fresh object each call so edits cannot leak between drafts", () => {
+    const first = createDefaultCustomDraft();
+    first.metrics.integrated.target = -9;
+    expect(createDefaultCustomDraft().metrics.integrated.target).toBe(-23);
+  });
+});
+
+describe("duplicateAsDraft", () => {
+  it("copies a built-in into an editable draft that remembers its origin", () => {
+    const draft = duplicateAsDraft("ebu-r128-s1", () => "generated-id");
+    expect(draft).toMatchObject({
+      id: "generated-id",
+      kind: "draft",
+      basedOn: "ebu-r128-s1",
+      referenceLufs: -23,
+    });
+    expect(draft.name).toContain("EBU R128 S1");
+    expect(draft.metrics.shortTermMax.max).toBe(-18);
+  });
+
+  it("deep-copies, so editing the draft cannot mutate the built-in", () => {
+    const draft = duplicateAsDraft("ebu-r128", () => "generated-id");
+    draft.metrics.integrated.target = -9;
+    expect(byId("ebu-r128").metrics.integrated.target).toBe(-23);
+  });
+
+  it("returns null for an unknown built-in", () => {
+    expect(duplicateAsDraft("nope", () => "generated-id")).toBe(null);
+  });
+});
+
+describe("parseSelection", () => {
+  it("reads each selection shape", () => {
+    expect(parseSelection(LOUDNESS_PROFILE_OFF)).toEqual({ kind: "off", id: null });
+    expect(parseSelection(LOUDNESS_PROFILE_CUSTOM)).toEqual({ kind: "draft", id: null });
+    expect(parseSelection(builtinSelectionId("ebu-r128"))).toEqual({
+      kind: "builtin",
+      id: "ebu-r128",
+    });
+    expect(parseSelection(userSelectionId("abc"))).toEqual({ kind: "user", id: "abc" });
+  });
+
+  it("degrades unknown or malformed values to Off rather than throwing", () => {
+    expect(parseSelection(undefined).kind).toBe("off");
+    expect(parseSelection(null).kind).toBe("off");
+    expect(parseSelection(42).kind).toBe("off");
+    expect(parseSelection("garbage").kind).toBe("off");
+  });
+});
+
+describe("resolveActiveDocument", () => {
+  const userProfile = { id: "u1", name: "Mine", kind: "user", referenceLufs: -16, metrics: {} };
+  const customDraft = createDefaultCustomDraft();
+
+  it("returns null for Off", () => {
+    expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_OFF })).toBe(null);
+  });
+
+  it("resolves built-in, draft and user selections", () => {
+    expect(resolveActiveDocument({ active: builtinSelectionId("atsc-a85") }).referenceLufs).toBe(
+      -24
+    );
+    expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_CUSTOM, customDraft })).toBe(
+      customDraft
+    );
+    expect(
+      resolveActiveDocument({ active: userSelectionId("u1"), userProfiles: [userProfile] })
+    ).toBe(userProfile);
+  });
+
+  it("returns null when the selection points at something that is gone", () => {
+    // A layout preset can outlive the user profile it referenced.
+    expect(
+      resolveActiveDocument({ active: userSelectionId("deleted"), userProfiles: [userProfile] })
+    ).toBe(null);
+    expect(resolveActiveDocument({ active: builtinSelectionId("removed") })).toBe(null);
+    expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_CUSTOM, customDraft: null })).toBe(
+      null
+    );
+  });
+
+  it("treats a missing state as Off", () => {
+    expect(resolveActiveDocument(undefined)).toBe(null);
+    expect(resolveActiveDocument({})).toBe(null);
+  });
+});
