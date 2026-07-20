@@ -1,7 +1,10 @@
 /** @vitest-environment jsdom */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSettingsOverlays } from "./AppSettingsOverlays.jsx";
+import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
+import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
+import { settingsStore } from "../persistence/index.js";
 
 const mocks = vi.hoisted(() => ({
   exportConfiguration: vi.fn(),
@@ -168,5 +171,74 @@ describe("AppSettingsOverlays", () => {
 
     expect(screen.getByTestId("theme-disabled").textContent).toBe("true");
     expect(screen.getByTestId("theme-editor").textContent).toBe("true");
+  });
+});
+
+/// The whole path in one tree: popover, provider and mounted panel. The unit tests either side of
+/// this one can both pass while the panel is wired to nothing, which is the failure that matters.
+describe("Loudness Profile editor wiring", () => {
+  afterEach(() => settingsStore.reset());
+
+  function renderWired() {
+    const hook = { result: { current: null } };
+    function Harness() {
+      hook.result.current = useLoudnessProfile();
+      return (
+        <>
+          <LoudnessProfilePopoverContent profile={hook.result.current} />
+          <AppSettingsOverlays
+            settings={makeSettings()}
+            channelSettings={{
+              channelCount: 2,
+              channelLabelTokens: [],
+              channelLabelHasOverride: false,
+              setChannelLabelToken: vi.fn(),
+              resetChannelLabels: vi.fn(),
+            }}
+            updateControls={{
+              updateInfo: null,
+              refreshUpdateCheck: vi.fn(),
+              installStatus: "idle",
+              install: vi.fn(),
+              restartToApply: vi.fn(),
+            }}
+            appVersion="0.0.0"
+            loudnessProfile={hook.result.current}
+          />
+        </>
+      );
+    }
+    render(
+      <LoudnessProfileProvider>
+        <Harness />
+      </LoudnessProfileProvider>
+    );
+    return hook;
+  }
+
+  it("stays closed until an entry point asks for it", () => {
+    renderWired();
+    expect(screen.queryByRole("dialog", { name: "Loudness Profile editor" })).toBeNull();
+  });
+
+  it("opens the panel on the draft the popover started", () => {
+    renderWired();
+    fireEvent.click(screen.getByLabelText("Duplicate EBU R128 S1"));
+
+    expect(screen.getByRole("dialog", { name: "Loudness Profile editor" })).toBeTruthy();
+    expect(screen.getByLabelText("Loudness Profile name").value).toBe("EBU R128 S1 (copy)");
+  });
+
+  it("repaints what Stats reads as the panel is edited", () => {
+    const hook = renderWired();
+    fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
+
+    const input = screen.getByLabelText("Integrated target");
+    fireEvent.change(input, { target: { value: "-16" } });
+    fireEvent.blur(input);
+
+    // `document` is the one every reader judges against, so an uncommitted keystroke reaching it
+    // is the preview working end to end -- not just the draft object changing shape.
+    expect(hook.result.current.document.metrics.integrated.target).toBe(-16);
   });
 });

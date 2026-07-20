@@ -1399,6 +1399,7 @@ function AppContent() {
     >
       <AppSettingsOverlays
         settings={settings}
+        loudnessProfile={loudnessProfile}
         channelSettings={{
           channelCount,
           channelLabelTokens,

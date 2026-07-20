@@ -79,11 +79,14 @@ describe("LoudnessProfilePopoverContent listing", () => {
 });
 
 describe("LoudnessProfilePopoverContent editing", () => {
-  it("duplicates a built-in into the custom scratch pad", () => {
+  // Duplicating opens an editor draft and writes nothing: the selection is still whatever it was,
+  // and the library is untouched until Save. Where the draft lands is covered under
+  // "editor entry points".
+  it("duplicates a built-in without touching the selection or the library", () => {
     const { hook } = renderPopover();
     fireEvent.click(screen.getByLabelText("Duplicate EBU R128 S1"));
 
-    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_CUSTOM);
+    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
     expect(hook.result.current.document.basedOn).toBe("ebu-r128-s1");
     expect(hook.result.current.userProfiles).toEqual([]);
   });
@@ -279,6 +282,35 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
     rerender();
 
     expect(screen.queryByText(/Missing stats/)).toBeNull();
+  });
+});
+
+describe("editor entry points", () => {
+  it("opens the editor on a user profile", () => {
+    const { hook, rerender } = renderPopover();
+    act(() => hook.result.current.beginCreate());
+    act(() => hook.result.current.editDraft((d) => ({ ...d, name: "Mine" })));
+    act(() => hook.result.current.saveDraft());
+    rerender();
+
+    fireEvent.click(screen.getByLabelText("Edit Mine"));
+    expect(hook.result.current.draft.editingId).toBe(hook.result.current.userProfiles[0].id);
+  });
+
+  it("opens the editor on a duplicate of a built-in", () => {
+    const { hook } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Duplicate EBU R128 S1"));
+
+    expect(hook.result.current.draft.document.basedOn).toBe("ebu-r128-s1");
+    expect(hook.result.current.draft.editingId).toBe(null);
+  });
+
+  it("opens the editor on a new profile", () => {
+    const { hook } = renderPopover();
+    fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
+
+    expect(hook.result.current.draft.editingId).toBe(null);
+    expect(hook.result.current.draft.document.metrics.integrated).toBeTruthy();
   });
 });
 

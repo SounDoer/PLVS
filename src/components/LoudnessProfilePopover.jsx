@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Pencil, Trash2, X } from "lucide-react";
+import { Check, Copy, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -181,7 +181,7 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
               type="button"
               aria-label={`Duplicate ${builtin.name}`}
               title="Duplicate to edit"
-              onClick={() => profile.duplicateBuiltin(builtin.id)}
+              onClick={() => profile.beginDuplicate(builtin.id)}
               className={cn(ICON_BUTTON_CLASS, "mr-1.5")}
             >
               <Copy className="size-[length:var(--ui-icon-management-action)]" />
@@ -240,6 +240,15 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
             </button>
             <button
               type="button"
+              aria-label={`Edit ${entry.name}`}
+              title="Edit rules"
+              onClick={() => profile.beginEdit(entry.id)}
+              className={ICON_BUTTON_CLASS}
+            >
+              <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
+            </button>
+            <button
+              type="button"
               aria-label={`Rename ${entry.name}`}
               onClick={() => startRename(entry)}
               className={ICON_BUTTON_CLASS}
@@ -257,6 +266,18 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
           </div>
         );
       })}
+
+      <div className={ROW_CLASS}>
+        <button
+          type="button"
+          aria-label="New Loudness Profile"
+          onClick={profile.beginCreate}
+          className={ROW_BUTTON_CLASS}
+        >
+          <Plus className="size-[length:var(--ui-icon-management-action)] text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">New profile</span>
+        </button>
+      </div>
 
       {isCustomActive ? (
         <div className="flex items-center gap-2 px-2 py-1.5">
