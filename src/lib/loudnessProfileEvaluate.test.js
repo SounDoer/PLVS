@@ -237,6 +237,16 @@ describe("empty rules", () => {
     expect(statuses.correlation).toBe("fail");
   });
 
+  it("does not pass everything when only half the band is typed", () => {
+    // target + undefined is NaN; every comparison against NaN is false, so an unguarded rule
+    // here would report a value 23 LU over target as ok.
+    const statuses = loudnessProfileEvaluate(
+      withRule("integrated", { role: "target", target: -23, tolerance: { minus: 1 } }),
+      { values: { integrated: 0 }, integratedReady: true, dialogueCoverage: null }
+    );
+    expect(statuses.integrated).toBe("unwatched");
+  });
+
   it("still judges a fully filled target", () => {
     const statuses = loudnessProfileEvaluate(
       withRule("integrated", {

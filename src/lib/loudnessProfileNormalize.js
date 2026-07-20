@@ -9,6 +9,7 @@ import {
   LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
   isKnownMetricId,
+  isUsableTolerance,
   parseSelection,
 } from "./loudnessProfileCatalog.js";
 
@@ -29,11 +30,8 @@ function normalizeReference(raw) {
 }
 
 function normalizeTolerance(raw) {
-  const minus = Number(raw?.minus);
-  const plus = Number(raw?.plus);
-  if (!Number.isFinite(minus) || !Number.isFinite(plus)) return null;
-  if (minus < 0 || plus < 0) return null;
-  return { minus, plus };
+  if (!isUsableTolerance(raw)) return null;
+  return { minus: Number(raw.minus), plus: Number(raw.plus) };
 }
 
 function normalizeRule(raw) {
@@ -81,8 +79,9 @@ export function normalizeRuleDocument(raw, { kind } = {}) {
     if (rule) metrics[metricId] = rule;
   }
 
-  // Preferring a metric with no surviving rule would strand "missing stats": the row could be
-  // demanded but never judged.
+  // A rule addressing an unknown metric is dropped above, and its preferred id goes with it.
+  // An empty rule is the deliberate exception: it survives, and stays preferred, because the row
+  // being filled in is the point.
   const preferredMetricIds = (Array.isArray(raw.preferredMetricIds) ? raw.preferredMetricIds : [])
     .filter((id) => Object.hasOwn(metrics, id))
     .filter((id, index, all) => all.indexOf(id) === index);

@@ -9,6 +9,7 @@ import {
   duplicateAsDraft,
   isKnownMetricId,
   isRuleEmpty,
+  isUsableTolerance,
   parseSelection,
   resolveActiveDocument,
   userSelectionId,
@@ -298,7 +299,63 @@ describe("isRuleEmpty", () => {
     expect(isRuleEmpty({ role: "na" })).toBe(false);
   });
 
+  it("calls a band with no target empty", () => {
+    expect(isRuleEmpty({ role: "target", tolerance: { minus: 1, plus: 1 } })).toBe(true);
+  });
+
   it("calls a missing rule empty", () => {
     expect(isRuleEmpty(undefined)).toBe(true);
+  });
+});
+
+describe("isUsableTolerance", () => {
+  it("needs both halves", () => {
+    expect(isUsableTolerance({ minus: 1, plus: 1 })).toBe(true);
+    expect(isUsableTolerance({ minus: 1 })).toBe(false);
+    expect(isUsableTolerance({ plus: 1 })).toBe(false);
+    expect(isUsableTolerance(undefined)).toBe(false);
+  });
+
+  it("rejects a negative half", () => {
+    expect(isUsableTolerance({ minus: -1, plus: 1 })).toBe(false);
+    expect(isUsableTolerance({ minus: 1, plus: -1 })).toBe(false);
+  });
+
+  it("accepts a zero band, which is a band the user chose", () => {
+    expect(isUsableTolerance({ minus: 0, plus: 0 })).toBe(true);
+  });
+});
+
+describe("a half-typed band", () => {
+  it("reads as empty rather than as a band with a NaN edge", () => {
+    // minus typed, plus not yet. Truthiness would call this filled, and evaluation would then
+    // compare against target + undefined -- NaN, which every comparison reads as false.
+    expect(isRuleEmpty({ role: "target", target: -23, tolerance: { minus: 1 } })).toBe(true);
+  });
+});
+
+describe("anchorMetricId via withReferenceLufs", () => {
+  it("skips an empty target rule when moving the reference", () => {
+    const document = {
+      id: "u1",
+      name: "Mine",
+      kind: "user",
+      referenceLufs: -24,
+      metrics: {
+        integrated: { role: "target", severity: "fail" },
+        dialogueIntegrated: {
+          role: "target",
+          target: -24,
+          tolerance: { minus: 2, plus: 2 },
+          severity: "fail",
+        },
+      },
+      preferredMetricIds: ["integrated", "dialogueIntegrated"],
+    };
+
+    const moved = withReferenceLufs(document, -16);
+    // The real target rule follows the line; the unfilled one is not the anchor.
+    expect(moved.metrics.dialogueIntegrated.target).toBe(-16);
+    expect(moved.metrics.integrated.target).toBeUndefined();
   });
 });

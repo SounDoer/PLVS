@@ -152,10 +152,15 @@ export function duplicateAsDraft(builtinId, makeId = defaultMakeId) {
 /// The metric the reference value is *about*: the first preferred metric the profile targets.
 /// For the default draft and the EBU/Streaming copies that is `integrated`; for an ATSC copy it
 /// is `dialogueIntegrated`, which is the whole reason this is not hard-coded to `integrated`.
+///
+/// Empty rules are skipped -- an unfilled rule at the front of the list would absorb the anchor
+/// and leave the real target rule behind, moving the chart line while Stats kept judging against
+/// the old number, which is the split this function exists to prevent.
 function anchorMetricId(document) {
-  return (document?.preferredMetricIds ?? []).find(
-    (id) => document.metrics?.[id]?.role === "target"
-  );
+  return (document?.preferredMetricIds ?? []).find((id) => {
+    const rule = document.metrics?.[id];
+    return rule?.role === "target" && !isRuleEmpty(rule);
+  });
 }
 
 /// Moves a document's reference, carrying its anchor target rule along.
@@ -228,9 +233,21 @@ export function isKnownMetricId(metricId) {
 ///
 /// `descriptor` and `na` are deliberate annotations rather than half-finished rules, so they are
 /// never empty.
+/// A band both halves of which are usable. Exported because the normalizer and `isRuleEmpty` have
+/// to agree on this exactly: when they disagree, a half-typed band reads as filled and then
+/// evaluates against `target + undefined`, which is NaN -- and every comparison against NaN is
+/// false, so the rule silently passes everything.
+export function isUsableTolerance(tolerance) {
+  const minus = Number(tolerance?.minus);
+  const plus = Number(tolerance?.plus);
+  if (!Number.isFinite(minus) || !Number.isFinite(plus)) return false;
+  return minus >= 0 && plus >= 0;
+}
+
 export function isRuleEmpty(rule) {
   if (!rule) return true;
-  if (rule.role === "target") return !Number.isFinite(rule.target) || !rule.tolerance;
+  if (rule.role === "target")
+    return !Number.isFinite(rule.target) || !isUsableTolerance(rule.tolerance);
   if (rule.role === "limit") return !Number.isFinite(rule.max) && !Number.isFinite(rule.min);
   return false;
 }
