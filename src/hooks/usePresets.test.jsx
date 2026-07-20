@@ -37,6 +37,9 @@ vi.mock("../ipc/events.js", () => ({
 }));
 
 import { usePresets } from "./usePresets.js";
+import { useLoudnessProfile } from "./useLoudnessProfile.js";
+import { settingsStore } from "../persistence/index.js";
+import { LOUDNESS_PROFILE_OFF, builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
 
 function wrapper({ children }) {
   return <WorkspaceProvider>{children}</WorkspaceProvider>;
@@ -48,6 +51,24 @@ function renderPresetHook(presetOptions = {}) {
       presets: usePresets(presetOptions),
       workspace: useWorkspaceStore(),
     }),
+    { wrapper }
+  );
+}
+
+/// Presets and the profile wired together the way App does, so a round-trip has to survive the
+/// real capture -> persist -> apply path.
+function renderPresetsWithProfile() {
+  return renderHook(
+    () => {
+      const profile = useLoudnessProfile();
+      return {
+        profile,
+        presets: usePresets({
+          snapshotLoudnessProfile: profile.snapshotForPreset,
+          applyLoudnessProfileSnapshot: profile.applyPresetSnapshot,
+        }),
+      };
+    },
     { wrapper }
   );
 }
@@ -749,5 +770,77 @@ describe("usePresets", () => {
         expect.objectContaining({ bounds: preset.windowBounds })
       );
     });
+  });
+});
+
+describe("usePresets Loudness Profile snapshot", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    settingsStore.reset();
+  });
+
+  it("restores the built-in that was active when the preset was saved", async () => {
+    const { result } = renderPresetsWithProfile();
+    act(() => result.current.profile.select(builtinSelectionId("streaming-14")));
+    await act(async () => {
+      await result.current.presets.save("Streaming");
+    });
+    const savedId = presetsStore.read().list[0].id;
+
+    act(() => result.current.profile.selectOff());
+    await act(async () => {
+      await result.current.presets.apply(savedId);
+    });
+
+    expect(result.current.profile.referenceLufs).toBe(-14);
+  });
+
+  it("stores the active selection but never the library", async () => {
+    const { result } = renderPresetsWithProfile();
+    act(() => result.current.profile.selectUnsavedCustom());
+    act(() => result.current.profile.saveCustomAs("Mine"));
+    await act(async () => {
+      await result.current.presets.save("WithLibrary");
+    });
+
+    const saved = presetsStore.read().list[0];
+    expect(saved.loudnessProfileActive).toBeTruthy();
+    expect(saved).not.toHaveProperty("userProfiles");
+  });
+
+  it("round-trips an unsaved custom draft", async () => {
+    const { result } = renderPresetsWithProfile();
+    act(() => result.current.profile.selectUnsavedCustom());
+    act(() => result.current.profile.updateCustomDraft({ referenceLufs: -18 }));
+    await act(async () => {
+      await result.current.presets.save("Draft");
+    });
+    const savedId = presetsStore.read().list[0].id;
+
+    act(() => result.current.profile.selectOff());
+    await act(async () => {
+      await result.current.presets.apply(savedId);
+    });
+
+    expect(result.current.profile.referenceLufs).toBe(-18);
+  });
+
+  it("falls back to Off when the preset names a profile that has been deleted", async () => {
+    const { result } = renderPresetsWithProfile();
+    act(() => result.current.profile.selectUnsavedCustom());
+    act(() => result.current.profile.saveCustomAs("Temporary"));
+    await act(async () => {
+      await result.current.presets.save("Doomed");
+    });
+    const savedId = presetsStore.read().list[0].id;
+
+    act(() => result.current.profile.removeUser(result.current.profile.userProfiles[0].id));
+    await act(async () => {
+      await result.current.presets.apply(savedId);
+    });
+
+    // Off, and crucially the library is left alone rather than resurrected.
+    expect(result.current.profile.active).toBe(LOUDNESS_PROFILE_OFF);
+    expect(result.current.profile.userProfiles).toEqual([]);
   });
 });

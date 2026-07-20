@@ -58,6 +58,10 @@ export function usePresets({
   applyDockPreset = async () => {},
   canApplyDockPreset = () => true,
   onApplyError = () => {},
+  // Which Loudness Profile was active, never the library itself -- the same way a view snapshot
+  // records the active theme rather than every theme.
+  snapshotLoudnessProfile = () => ({}),
+  applyLoudnessProfileSnapshot = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
@@ -140,9 +144,11 @@ export function usePresets({
         panelSizesById: clone(dock.panelSizesById ?? {}),
         controlsByPanelId: clone(dock.controlsByPanelId ?? {}),
       },
+      ...snapshotLoudnessProfile(),
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
   }, [
+    snapshotLoudnessProfile,
     windowPinned,
     focusView,
     panelOpacity,
@@ -254,6 +260,7 @@ export function usePresets({
       if (typeof preset.glassEnabled === "boolean") {
         setGlassEnabled(preset.glassEnabled);
       }
+      applyLoudnessProfileSnapshot(preset);
       write({ activeId: id, dirty: false });
       return true;
     },
@@ -267,6 +274,7 @@ export function usePresets({
       canApplyDockPreset,
       onApplyError,
       suppressPresetDivergence,
+      applyLoudnessProfileSnapshot,
       write,
     ]
   );

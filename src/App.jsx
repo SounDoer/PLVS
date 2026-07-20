@@ -384,6 +384,10 @@ function AppContent() {
     ]
   );
 
+  // Hoisted above usePresets: preset capture and apply both need its snapshot helpers.
+  // One writer for the reference too - null when Off, which every consumer treats as
+  // "there is nothing to show".
+  const loudnessProfile = useLoudnessProfile();
   const presets = usePresets({
     windowPinned: pinned,
     setWindowPinned: setPinned,
@@ -398,6 +402,8 @@ function AppContent() {
     canApplyDockPreset: (presetDock) =>
       !presetDock.enabled || !supportsDockMode() || sourceMode !== "file",
     onApplyError: onPresetApplyError,
+    snapshotLoudnessProfile: loudnessProfile.snapshotForPreset,
+    applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,
   });
 
   const historyRetentionSec = settings.historyRetentionSec;
@@ -412,9 +418,6 @@ function AppContent() {
       firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
     );
   }, [workspaceState]);
-  // One writer for the reference: the active Loudness Profile. Null when Off, which every
-  // consumer below treats as "there is nothing to show".
-  const loudnessProfile = useLoudnessProfile();
   const referenceLufs = loudnessProfile.referenceLufs;
 
   // Missing-stats fulfillment spans every Stats panel: the profile's needs are a session-level
