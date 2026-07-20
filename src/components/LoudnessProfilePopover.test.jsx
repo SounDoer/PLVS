@@ -144,15 +144,65 @@ describe("LoudnessProfilePopoverContent editing", () => {
     expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
   });
 
+  /// Commit is on blur, so every case here has to type *and* leave the field.
+  function editReference(value) {
+    const input = screen.getByLabelText("Loudness Profile reference");
+    fireEvent.change(input, { target: { value } });
+    fireEvent.blur(input);
+    return input;
+  }
+
   it("edits the reference of the custom draft", () => {
     const { hook, rerender } = renderPopover();
     fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
     rerender();
 
-    fireEvent.change(screen.getByLabelText("Loudness Profile reference"), {
-      target: { value: "-16" },
-    });
+    editReference("-16");
     expect(hook.result.current.referenceLufs).toBe(-16);
+  });
+
+  it("moves the anchor target with the reference", () => {
+    const { hook, rerender } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
+    rerender();
+
+    editReference("-16");
+    // The line and the value Stats judges against are one number; -16 must not draw at -16 and
+    // still fail everything that is not -23.
+    expect(hook.result.current.document.metrics.integrated.target).toBe(-16);
+  });
+
+  it("does not read a cleared field as 0 LUFS", () => {
+    const { hook, rerender } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
+    rerender();
+
+    const input = editReference("");
+    expect(hook.result.current.referenceLufs).toBe(-23);
+    expect(input.value).toBe("-23");
+  });
+
+  it("does not commit the intermediate values of a typed negative number", () => {
+    const { hook, rerender } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
+    rerender();
+
+    const input = screen.getByLabelText("Loudness Profile reference");
+    for (const step of ["", "-", "-1", "-14"]) {
+      fireEvent.change(input, { target: { value: step } });
+      expect(hook.result.current.referenceLufs).toBe(-23);
+    }
+    fireEvent.blur(input);
+    expect(hook.result.current.referenceLufs).toBe(-14);
+  });
+
+  it("snaps back when the value is outside the accepted window", () => {
+    const { hook, rerender } = renderPopover();
+    fireEvent.click(screen.getByLabelText("Use custom Loudness Profile"));
+    rerender();
+
+    editReference("12");
+    expect(hook.result.current.referenceLufs).toBe(-23);
   });
 
   it("shows a built-in's reference read-only", () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Copy, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import {
   LOUDNESS_PROFILE_OFF,
   builtinSelectionId,
   userSelectionId,
+  withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
 import { listMissingPreferredMetrics, planShowMissing } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
@@ -26,6 +27,50 @@ const GROUP_LABEL_CLASS =
 
 const INPUT_CLASS =
   "flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+/**
+ * Reference editor: a local draft committed on blur or Enter, never per keystroke.
+ *
+ * Committing every keystroke makes the intermediate states real. Clearing the box to retype
+ * lands an empty string, which `Number` reads as a perfectly valid 0 LUFS; typing `-14` passes
+ * through `-1` on the way. Both write a profile the user never asked for. Anything unparseable
+ * or outside the window snaps back to the committed value.
+ */
+function ReferenceInput({ value, readOnly, onCommit }) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = Number(draft.trim());
+    if (draft.trim() !== "" && Number.isFinite(parsed) && parsed >= -70 && parsed <= 0) {
+      onCommit(parsed);
+    } else {
+      setDraft(String(value));
+    }
+  };
+
+  return (
+    <input
+      id="loudness-profile-reference"
+      type="number"
+      aria-label="Loudness Profile reference"
+      min={-70}
+      max={0}
+      step={1}
+      readOnly={readOnly}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+      }}
+      className={cn(INPUT_CLASS, "text-right", readOnly && "opacity-60")}
+    />
+  );
+}
 
 function ActiveDot({ active }) {
   return (
@@ -235,23 +280,17 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
           >
             Reference
           </label>
-          <input
-            id="loudness-profile-reference"
-            type="number"
-            aria-label="Loudness Profile reference"
-            min={-70}
-            max={0}
-            step={1}
-            readOnly={document.kind === "builtin"}
+          <ReferenceInput
             value={document.referenceLufs ?? ""}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              if (!Number.isFinite(next)) return;
-              if (isCustomActive) profile.updateCustomDraft({ referenceLufs: next });
+            readOnly={document.kind === "builtin"}
+            onCommit={(next) => {
+              // Patch through withReferenceLufs so the anchor rule moves with the line: the
+              // reference is the value Stats judges against, not just the one it draws.
+              const { referenceLufs, metrics } = withReferenceLufs(document, next);
+              if (isCustomActive) profile.updateCustomDraft({ referenceLufs, metrics });
               else if (document.kind === "user")
-                profile.updateUser(document.id, { referenceLufs: next });
+                profile.updateUser(document.id, { referenceLufs, metrics });
             }}
-            className={cn(INPUT_CLASS, "text-right", document.kind === "builtin" && "opacity-60")}
           />
           <span className="shrink-0 text-muted-foreground">LUFS</span>
         </div>
