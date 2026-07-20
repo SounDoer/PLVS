@@ -255,6 +255,92 @@ describe("single instance", () => {
   });
 });
 
+describe("preview draft", () => {
+  it("outranks the persisted selection for every reader", () => {
+    const both = renderHook(() => ({ a: useLoudnessProfile(), b: useLoudnessProfile() }), {
+      wrapper,
+    });
+    act(() => both.result.current.a.select(builtinSelectionId("ebu-r128")));
+    act(() => both.result.current.a.beginCreate());
+    act(() => both.result.current.a.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+
+    expect(both.result.current.b.referenceLufs).toBe(-16);
+  });
+
+  it("never reaches the settings store", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Scratch" })));
+
+    expect(settingsStore.read().loudnessProfiles?.userProfiles ?? []).toEqual([]);
+  });
+
+  it("cannot dirty a preset, because nothing is written", () => {
+    presetsStore.reset();
+    presetsStore.patch({ activeId: "p1", dirty: false });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+
+    expect(presetsStore.read().dirty).toBe(false);
+  });
+
+  it("cancel throws the draft away and restores what was showing", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.select(builtinSelectionId("ebu-r128")));
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+    act(() => result.current.cancelDraft());
+
+    expect(result.current.draft).toBe(null);
+    expect(result.current.referenceLufs).toBe(-23);
+    expect(result.current.userProfiles).toEqual([]);
+  });
+
+  it("saving a new draft inserts it and selects it", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "My Show", referenceLufs: -20 })));
+    act(() => result.current.saveDraft());
+
+    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["My Show"]);
+    expect(result.current.document.name).toBe("My Show");
+    expect(result.current.referenceLufs).toBe(-20);
+    expect(result.current.draft).toBe(null);
+  });
+
+  it("saving an edited profile replaces it rather than adding a second", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Before" })));
+    act(() => result.current.saveDraft());
+    const { id } = result.current.userProfiles[0];
+
+    act(() => result.current.beginEdit(id));
+    act(() => result.current.editDraft((d) => ({ ...d, name: "After" })));
+    act(() => result.current.saveDraft());
+
+    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["After"]);
+  });
+
+  it("tracks whether the draft has been touched", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    expect(result.current.draft.dirty).toBe(false);
+    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+    expect(result.current.draft.dirty).toBe(true);
+  });
+
+  it("opens a duplicate of a built-in as an unsaved draft", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginDuplicate("ebu-r128-s1"));
+
+    expect(result.current.draft.document.basedOn).toBe("ebu-r128-s1");
+    expect(result.current.draft.editingId).toBe(null);
+    expect(result.current.userProfiles).toEqual([]);
+  });
+});
+
 describe("preset divergence", () => {
   beforeEach(() => {
     presetsStore.reset();

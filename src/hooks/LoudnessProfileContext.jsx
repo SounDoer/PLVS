@@ -49,7 +49,61 @@ export function LoudnessProfileProvider({ children }) {
     });
   }, []);
 
-  const document = useMemo(() => resolveActiveDocument(state), [state]);
+  /// The preview overlay: a draft that outranks the persisted selection for every reader without
+  /// ever reaching disk.
+  ///
+  /// `{ editingId: string | null, document: RuleDocument, dirty: boolean }`; `editingId` is null
+  /// for a profile that is not in the library yet.
+  ///
+  /// ThemeEditor previews by mutating the real selection and eagerly upserting new themes, so it
+  /// needs `wasNewRef` / `prevRef` to unwind on cancel. An overlay has no side effects to unwind:
+  /// cancel is throwing an object away.
+  const [draft, setDraft] = useState(null);
+
+  const beginCreate = useCallback(() => {
+    setDraft({ editingId: null, document: createDefaultCustomDraft(), dirty: false });
+  }, []);
+
+  const beginDuplicate = useCallback((builtinId) => {
+    const next = duplicateAsDraft(builtinId);
+    if (!next) return;
+    setDraft({ editingId: null, document: next, dirty: false });
+  }, []);
+
+  const beginEdit = useCallback(
+    (id) => {
+      const found = state.userProfiles.find((p) => p.id === id);
+      if (!found) return;
+      setDraft({ editingId: id, document: structuredClone(found), dirty: false });
+    },
+    [state.userProfiles]
+  );
+
+  const editDraft = useCallback((mutate) => {
+    setDraft((prev) => (prev ? { ...prev, document: mutate(prev.document), dirty: true } : prev));
+  }, []);
+
+  const cancelDraft = useCallback(() => setDraft(null), []);
+
+  /// The only path out of the overlay that writes anything. Insert when `editingId` is null,
+  /// replace in place otherwise -- editing twice must not leave two entries behind.
+  const saveDraft = useCallback(() => {
+    if (!draft) return;
+    const id = draft.editingId ?? crypto.randomUUID();
+    const saved = { ...draft.document, id, kind: "user" };
+    commit((prev) => ({
+      ...prev,
+      active: userSelectionId(id),
+      userProfiles: draft.editingId
+        ? prev.userProfiles.map((p) => (p.id === id ? saved : p))
+        : [...prev.userProfiles, saved],
+    }));
+    setDraft(null);
+  }, [commit, draft]);
+
+  // The draft outranks the selection: while one exists, Stats colours, the reference line, the
+  // footer and the TP Max marker all follow what the user is typing.
+  const document = useMemo(() => draft?.document ?? resolveActiveDocument(state), [draft, state]);
 
   const select = useCallback(
     (selection) => commit((prev) => ({ ...prev, active: selection })),
@@ -167,6 +221,13 @@ export function LoudnessProfileProvider({ children }) {
       userProfiles: state.userProfiles,
       customDraft: state.customDraft,
       referenceLufs: document?.referenceLufs ?? null,
+      draft,
+      beginCreate,
+      beginDuplicate,
+      beginEdit,
+      editDraft,
+      cancelDraft,
+      saveDraft,
       select,
       selectOff,
       selectUnsavedCustom,
@@ -182,6 +243,13 @@ export function LoudnessProfileProvider({ children }) {
     [
       state,
       document,
+      draft,
+      beginCreate,
+      beginDuplicate,
+      beginEdit,
+      editDraft,
+      cancelDraft,
+      saveDraft,
       select,
       selectOff,
       selectUnsavedCustom,
