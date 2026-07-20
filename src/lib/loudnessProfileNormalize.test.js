@@ -122,7 +122,7 @@ describe("normalizeRuleDocument", () => {
     expect(Object.keys(document.metrics)).toEqual(["integrated"]);
   });
 
-  it("drops a target rule with no usable band", () => {
+  it("gives a target a default band when missing or invalid", () => {
     const document = normalizeRuleDocument({
       id: "u1",
       metrics: {
@@ -130,15 +130,31 @@ describe("normalizeRuleDocument", () => {
         truePeak: { role: "target", target: -1, tolerance: { minus: -1, plus: 1 } },
       },
     });
-    expect(document.metrics).toEqual({});
+    // A target rule with a value always survives, with either the provided band or zero as default.
+    expect(document.metrics.integrated).toEqual({
+      role: "target",
+      severity: "warn",
+      target: -23,
+      tolerance: { minus: 0, plus: 0 },
+    });
+    // Invalid tolerance is treated as absent, so we also use the default.
+    expect(document.metrics.truePeak).toEqual({
+      role: "target",
+      severity: "warn",
+      target: -1,
+      tolerance: { minus: 0, plus: 0 },
+    });
   });
 
-  it("drops a limit rule with neither max nor min", () => {
+  it("keeps a limit rule with neither max nor min", () => {
     const document = normalizeRuleDocument({
       id: "u1",
       metrics: { truePeak: { role: "limit" } },
     });
-    expect(document.metrics).toEqual({});
+    // Empty limit rules survive normalization until the user fills in bounds.
+    expect(document.metrics).toEqual({
+      truePeak: { role: "limit", severity: "warn" },
+    });
   });
 
   it("drops rules with an unknown role", () => {
@@ -204,5 +220,69 @@ describe("normalizeRuleDocument", () => {
   it("round-trips the built-in default draft unchanged", () => {
     const draft = createDefaultCustomDraft();
     expect(normalizeRuleDocument(draft, { kind: "draft" })).toEqual(draft);
+  });
+});
+
+describe("empty rules", () => {
+  it("keeps a target rule the user has not filled in", () => {
+    const state = normalizeLoudnessProfiles({
+      active: "off",
+      userProfiles: [
+        {
+          id: "u1",
+          name: "Mine",
+          metrics: { integrated: { role: "target", severity: "fail" } },
+          preferredMetricIds: ["integrated"],
+        },
+      ],
+    });
+    expect(state.userProfiles[0].metrics.integrated).toEqual({
+      role: "target",
+      severity: "fail",
+    });
+    // Preferring it is what keeps the row on screen; the row is the thing being filled in.
+    expect(state.userProfiles[0].preferredMetricIds).toEqual(["integrated"]);
+  });
+
+  it("keeps a limit rule with neither bound", () => {
+    const state = normalizeLoudnessProfiles({
+      active: "off",
+      userProfiles: [
+        {
+          id: "u1",
+          name: "Mine",
+          metrics: { correlation: { role: "limit", severity: "warn" } },
+          preferredMetricIds: ["correlation"],
+        },
+      ],
+    });
+    expect(state.userProfiles[0].metrics.correlation).toEqual({
+      role: "limit",
+      severity: "warn",
+    });
+  });
+
+  it("gives a target a zero band when none was stored", () => {
+    const state = normalizeLoudnessProfiles({
+      active: "off",
+      userProfiles: [
+        {
+          id: "u1",
+          name: "Mine",
+          metrics: { integrated: { role: "target", target: -20 } },
+          preferredMetricIds: ["integrated"],
+        },
+      ],
+    });
+    // A target always carries a band, so evaluateTarget never has to guess.
+    expect(state.userProfiles[0].metrics.integrated.tolerance).toEqual({ minus: 0, plus: 0 });
+  });
+
+  it("still rejects an unknown role", () => {
+    const state = normalizeLoudnessProfiles({
+      active: "off",
+      userProfiles: [{ id: "u1", name: "Mine", metrics: { integrated: { role: "nonsense" } } }],
+    });
+    expect(state.userProfiles[0].metrics).toEqual({});
   });
 });

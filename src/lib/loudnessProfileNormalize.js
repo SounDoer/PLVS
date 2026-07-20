@@ -47,17 +47,17 @@ function normalizeRule(raw) {
 
   if (raw.role === "target") {
     const target = Number(raw.target);
-    const tolerance = normalizeTolerance(raw.tolerance);
-    // A target rule without a usable band cannot judge anything.
-    if (!Number.isFinite(target) || !tolerance) return null;
-    rule.target = target;
-    rule.tolerance = tolerance;
+    // A target always carries a band so evaluation never has to guess one. Without a target
+    // there is nothing to band, and the rule stays empty until the user fills it in.
+    if (Number.isFinite(target)) {
+      rule.target = target;
+      rule.tolerance = normalizeTolerance(raw.tolerance) ?? { minus: 0, plus: 0 };
+    }
   }
 
   if (raw.role === "limit") {
     if (Number.isFinite(Number(raw.max))) rule.max = Number(raw.max);
     if (Number.isFinite(Number(raw.min))) rule.min = Number(raw.min);
-    if (rule.max === undefined && rule.min === undefined) return null;
   }
 
   if (raw.provisional === true) rule.provisional = true;

@@ -8,6 +8,7 @@ import {
   createDefaultCustomDraft,
   duplicateAsDraft,
   isKnownMetricId,
+  isRuleEmpty,
   parseSelection,
   resolveActiveDocument,
   userSelectionId,
@@ -262,5 +263,36 @@ describe("withReferenceLufs", () => {
       -16
     );
     expect(moved.referenceLufs).toBe(-16);
+  });
+});
+
+describe("isRuleEmpty", () => {
+  it("calls a target rule with no target empty", () => {
+    expect(isRuleEmpty({ role: "target", severity: "fail" })).toBe(true);
+  });
+
+  it("calls a target rule with a target filled", () => {
+    expect(isRuleEmpty({ role: "target", target: -23, tolerance: { minus: 1, plus: 1 } })).toBe(
+      false
+    );
+  });
+
+  it("calls a limit rule with neither bound empty", () => {
+    expect(isRuleEmpty({ role: "limit", severity: "fail" })).toBe(true);
+  });
+
+  it("accepts either bound as filled", () => {
+    expect(isRuleEmpty({ role: "limit", max: -1 })).toBe(false);
+    expect(isRuleEmpty({ role: "limit", min: 0 })).toBe(false);
+  });
+
+  // descriptor and na are deliberate annotations, not half-finished rules.
+  it("does not call descriptor or na empty", () => {
+    expect(isRuleEmpty({ role: "descriptor" })).toBe(false);
+    expect(isRuleEmpty({ role: "na" })).toBe(false);
+  });
+
+  it("calls a missing rule empty", () => {
+    expect(isRuleEmpty(undefined)).toBe(true);
   });
 });
