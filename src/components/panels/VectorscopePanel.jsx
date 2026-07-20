@@ -15,6 +15,8 @@ import {
   selectPersistenceWindow,
   drawPersistenceWindow,
 } from "../../math/vectorscopePersistence.js";
+import { selectPolarWindow } from "../../math/vectorscopePolarMath.js";
+import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
 import {
   SnapshotEmptyState,
   SNAPSHOT_NO_DATA_MESSAGE,
@@ -78,6 +80,9 @@ export function VectorscopePanel() {
     getVectorscopeHistoryForKey,
   } = useHistoryData();
   const { panelControls, analysisStatus } = usePanelInstanceData();
+  const normalizedPanelControls = normalizePanelControls(panelControls);
+  const vectorscopeMode = normalizedPanelControls.vectorscopeMode;
+  const isLissajous = vectorscopeMode === "lissajous";
   const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
@@ -103,6 +108,7 @@ export function VectorscopePanel() {
   const onTracePointerDown = useCallback(
     (e) => {
       if (
+        !isLissajous ||
         isSnapshot ||
         !historyChartInteractive ||
         (e.button != null && e.button !== 0) ||
@@ -119,7 +125,7 @@ export function VectorscopePanel() {
         setHoldSlowActive(true);
       }, HOLD_SLOW_DELAY_MS);
     },
-    [clearPendingHoldSlow, historyChartInteractive, isSnapshot]
+    [clearPendingHoldSlow, historyChartInteractive, isLissajous, isSnapshot]
   );
   const onTracePointerMove = useCallback(
     (e) => {
@@ -142,7 +148,6 @@ export function VectorscopePanel() {
   const liveVectorscopeResult = isSnapshot
     ? null
     : displayAudio?.vectorscopeResultsByKey?.[vectorscopeKey];
-  const normalizedPanelControls = normalizePanelControls(panelControls);
   // The panel's own pair (snapshot/pending fall back to its per-instance controls, not the global).
   const controlPair = normalizedPanelControls.vectorscopePair ?? {
     x: pairX,
@@ -188,12 +193,15 @@ export function VectorscopePanel() {
   // Hold slow mode: phosphor persistence window — real samples from the recent history slab,
   // drawn with age-based fading. Falls back to the live path when history is unavailable.
   // Display-only — frame intake and history writes are unaffected.
-  const persistenceSlab =
-    !isSnapshot && holdSlowActive ? (getVectorscopeHistoryForKey?.(vectorscopeKey) ?? null) : null;
+  const needsHistorySlab = !isSnapshot && (holdSlowActive || !isLissajous);
+  const persistenceSlab = needsHistorySlab
+    ? (getVectorscopeHistoryForKey?.(vectorscopeKey) ?? null)
+    : null;
   const persistenceRows = persistenceSlab
     ? selectPersistenceWindow(persistenceSlab, PERSISTENCE_WINDOW_MS)
     : [];
-  const persistenceActive = persistenceRows.length > 0;
+  const persistenceActive = isLissajous && persistenceRows.length > 0;
+  const polarRows = !isLissajous && persistenceSlab ? selectPolarWindow(persistenceSlab) : [];
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
@@ -284,54 +292,59 @@ export function VectorscopePanel() {
           onPointerLeave={onTracePointerUp}
         >
           <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
-            <svg
-              className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              aria-hidden
-            >
-              <line
-                x1={vsGridDiagInset}
-                y1={vsGridDiagInset}
-                x2={vsGridDiagFar}
-                y2={vsGridDiagFar}
-                stroke="var(--ui-vectorscope-grid-stroke)"
-                strokeWidth="0.35"
-                strokeDasharray="var(--ui-vectorscope-grid-dash)"
-                vectorEffect="non-scaling-stroke"
-              />
-              <line
-                x1={vsGridDiagFar}
-                y1={vsGridDiagInset}
-                x2={vsGridDiagInset}
-                y2={vsGridDiagFar}
-                stroke="var(--ui-vectorscope-grid-stroke)"
-                strokeWidth="0.35"
-                strokeDasharray="var(--ui-vectorscope-grid-dash)"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-            <svg
-              viewBox="0 0 260 260"
-              preserveAspectRatio="none"
-              className="absolute inset-0 z-[1] block h-full w-full"
-            >
-              {!persistenceActive && panelVectorPath && (
-                <path
-                  d={panelVectorPath}
-                  fill="none"
-                  stroke={
-                    selectedOffset >= 0
-                      ? "var(--ui-vectorscope-trace-snap)"
-                      : "var(--ui-vectorscope-trace)"
-                  }
-                  strokeWidth="var(--ui-vectorscope-stroke-width)"
-                  vectorEffect="non-scaling-stroke"
-                  opacity="var(--ui-vectorscope-axis-opacity)"
-                  strokeLinecap="round"
-                />
-              )}
-            </svg>
+            {isLissajous ? (
+              <>
+                <svg
+                  data-vectorscope-lissajous-grid
+                  className="pointer-events-none absolute inset-0 z-0 block h-full w-full"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  aria-hidden
+                >
+                  <line
+                    x1={vsGridDiagInset}
+                    y1={vsGridDiagInset}
+                    x2={vsGridDiagFar}
+                    y2={vsGridDiagFar}
+                    stroke="var(--ui-vectorscope-grid-stroke)"
+                    strokeWidth="0.35"
+                    strokeDasharray="var(--ui-vectorscope-grid-dash)"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <line
+                    x1={vsGridDiagFar}
+                    y1={vsGridDiagInset}
+                    x2={vsGridDiagInset}
+                    y2={vsGridDiagFar}
+                    stroke="var(--ui-vectorscope-grid-stroke)"
+                    strokeWidth="0.35"
+                    strokeDasharray="var(--ui-vectorscope-grid-dash)"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                <svg
+                  viewBox="0 0 260 260"
+                  preserveAspectRatio="none"
+                  className="absolute inset-0 z-[1] block h-full w-full"
+                >
+                  {!persistenceActive && panelVectorPath && (
+                    <path
+                      d={panelVectorPath}
+                      fill="none"
+                      stroke={
+                        selectedOffset >= 0
+                          ? "var(--ui-vectorscope-trace-snap)"
+                          : "var(--ui-vectorscope-trace)"
+                      }
+                      strokeWidth="var(--ui-vectorscope-stroke-width)"
+                      vectorEffect="non-scaling-stroke"
+                      opacity="var(--ui-vectorscope-axis-opacity)"
+                      strokeLinecap="round"
+                    />
+                  )}
+                </svg>
+              </>
+            ) : null}
             {persistenceActive && (
               <canvas
                 ref={persistenceCanvasRef}
@@ -340,23 +353,39 @@ export function VectorscopePanel() {
                 aria-hidden
               />
             )}
+            {!isLissajous ? (
+              <VectorscopePolarPlot
+                mode={vectorscopeMode}
+                rows={polarRows}
+                snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
+                hasSignal={hasCorrelationSignal}
+                firstLabel={axisXLabel}
+                secondLabel={axisYLabel}
+                peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}
+                identityKey={`${vectorscopeKey}:${px}:${py}`}
+              />
+            ) : null}
           </div>
-          <span
-            className={cn(
-              CAPTION_TEXT,
-              "absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
-            )}
-          >
-            {axisXLabel}
-          </span>
-          <span
-            className={cn(
-              CAPTION_TEXT,
-              "absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
-            )}
-          >
-            {axisYLabel}
-          </span>
+          {isLissajous ? (
+            <span
+              className={cn(
+                CAPTION_TEXT,
+                "absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
+              )}
+            >
+              {axisXLabel}
+            </span>
+          ) : null}
+          {isLissajous ? (
+            <span
+              className={cn(
+                CAPTION_TEXT,
+                "absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
+              )}
+            >
+              {axisYLabel}
+            </span>
+          ) : null}
         </div>
       </div>
       <div

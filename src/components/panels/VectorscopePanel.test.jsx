@@ -50,6 +50,21 @@ function vectorscopePanelTree(audioData) {
 }
 
 describe("VectorscopePanel", () => {
+  function mockCanvas() {
+    return vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      save: vi.fn(),
+      restore: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      closePath: vi.fn(),
+      arc: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+    });
+  }
+
   it("keeps the trace stroke width independent from SVG scaling", () => {
     const { container } = renderPanel({
       selectedOffset: -1,
@@ -125,6 +140,49 @@ describe("VectorscopePanel", () => {
 
     const trace = container.querySelector('path[stroke="var(--ui-vectorscope-trace)"]');
     expect(trace?.getAttribute("d")).toBe(path);
+  });
+
+  it("renders Polar Sample from the request-keyed history slab", () => {
+    mockCanvas();
+    const pairs = new Float32Array([1, 1, 0, 1]);
+    const slab = {
+      length: 1,
+      timestampAt: () => 100,
+      rowAt: () => ({ pairs, timestampMs: 100 }),
+    };
+    const { container } = renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: "polarSample" },
+      getVectorscopeHistoryForKey: () => slab,
+      displayAudio: {
+        peakDb: [-12, -12],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": { path: "M 0 0", correlation: 0.7, pairX: 0, pairY: 1 },
+        },
+      },
+    });
+
+    expect(container.querySelector('[data-vectorscope-polar="polarSample"]')).toBeTruthy();
+    expect(container.querySelector("[data-vectorscope-lissajous-grid]")).toBeNull();
+    expect(container.querySelector("[data-vectorscope-correlation-rail]")).toBeTruthy();
+  });
+
+  it("keeps Polar Level selected in snapshot mode", () => {
+    mockCanvas();
+    const { container } = renderPanel({
+      selectedOffset: 2,
+      panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: "polarLevel" },
+      resolveVectorscopeSnapshotForKey: () => ({
+        missing: false,
+        path: "M 10 10",
+        pairs: new Float32Array([1, 1]),
+        correlation: 0.5,
+        hasSignal: true,
+      }),
+    });
+
+    expect(container.querySelector('[data-vectorscope-polar="polarLevel"]')).toBeTruthy();
+    expect(container.querySelector('path[stroke="var(--ui-vectorscope-trace-snap)"]')).toBeNull();
   });
 
   it("renders a persistent correlation rail instead of the numeric footer", () => {
