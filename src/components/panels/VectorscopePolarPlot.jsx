@@ -17,6 +17,8 @@ const FILL_ALPHA = 0.2;
 const OUTLINE_ALPHA = 0.86;
 const PEAK_ALPHA = 0.58;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
+const POLAR_LEVEL_FIXED_EXTENT = Math.SQRT2;
+const POLAR_LEVEL_FLOOR_DB = -48;
 
 function resolveTraceColor(element) {
   return getComputedStyle(element).getPropertyValue("--ui-vectorscope-trace").trim() || "#7dd3fc";
@@ -77,7 +79,12 @@ function drawPolarSample(ctx, rows, extent, geometry, color, dpr, snapshot) {
 
 function envelopePoint(index, value, count, extent, geometry) {
   const angle = -Math.PI / 2 + (index / Math.max(1, count - 1)) * Math.PI;
-  const normalizedRadius = value / Math.max(extent, 1e-9);
+  const levelDb =
+    value > 0 ? 20 * Math.log10(value / Math.max(extent, 1e-9)) : POLAR_LEVEL_FLOOR_DB;
+  const normalizedRadius = Math.max(
+    0,
+    Math.min(1, (levelDb - POLAR_LEVEL_FLOOR_DB) / -POLAR_LEVEL_FLOOR_DB)
+  );
   return {
     x: geometry.centerX + Math.sin(angle) * normalizedRadius * geometry.radius,
     y: geometry.baselineY - Math.cos(angle) * normalizedRadius * geometry.radius,
@@ -164,13 +171,12 @@ export function VectorscopePolarPlot({
     lastTimestampRef.current = now;
 
     if (effectiveRows.length === 0) return;
-    const targetExtent = polarWindowExtent(effectiveRows);
-    extentRef.current = snapshot
-      ? targetExtent
-      : updatePolarExtent(extentRef.current, targetExtent, elapsedMs, hasSignal);
-    const extent = extentRef.current ?? targetExtent;
-
     if (mode === "polarSample") {
+      const targetExtent = polarWindowExtent(effectiveRows);
+      extentRef.current = snapshot
+        ? targetExtent
+        : updatePolarExtent(extentRef.current, targetExtent, elapsedMs, hasSignal);
+      const extent = extentRef.current ?? targetExtent;
       drawPolarSample(ctx, effectiveRows, extent, geometry, color, dpr, snapshot);
       return;
     }
@@ -186,7 +192,7 @@ export function VectorscopePolarPlot({
       ctx,
       envelopeRef.current,
       peakHoldRef.current,
-      extent,
+      POLAR_LEVEL_FIXED_EXTENT,
       geometry,
       color,
       lineWidth

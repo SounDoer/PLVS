@@ -84,6 +84,54 @@ describe("VectorscopePolarPlot", () => {
     expect(ctx.moveTo).toHaveBeenCalledWith(100, 150);
   });
 
+  it("uses a fixed decibel scale for Polar Level", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: new Float32Array([0.25, 0.25]), ageMs: 0, timestampMs: 100 }]}
+        hasSignal
+        firstLabel="L"
+        secondLabel="R"
+      />
+    );
+
+    const topmostY = Math.min(...ctx.lineTo.mock.calls.map(([, y]) => y));
+    expect(topmostY).toBeGreaterThan(90);
+    expect(topmostY).toBeLessThan(100);
+  });
+
+  it("keeps Peak hold inside the fixed Polar Level arc after the signal falls", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const { rerender } = render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
+        hasSignal
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+      />
+    );
+    ctx.lineTo.mockClear();
+
+    rerender(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: new Float32Array([0.25, 0.25]), ageMs: 0, timestampMs: 2100 }]}
+        hasSignal
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+      />
+    );
+
+    const topmostY = Math.min(...ctx.lineTo.mock.calls.map(([, y]) => y));
+    expect(topmostY).toBeGreaterThanOrEqual(60);
+  });
+
   it("hides endpoint labels in compact plots", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
