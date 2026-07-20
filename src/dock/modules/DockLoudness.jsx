@@ -92,6 +92,11 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
   };
   const sparkSamples = Math.round((controls?.dockHistoryWindowSec ?? 60) / HIST_SAMPLE_SEC);
   const historyLength = histSourceList.length;
+  // The live history ring is mutated in place. Once it reaches capacity, both its reference and
+  // length stay stable while shift+push advances the samples, so length alone would freeze these
+  // memos. The newest timestamp is the advancing version signal after the ring fills.
+  const latestSampleTimestampMs =
+    historyLength > 0 ? histSourceList[historyLength - 1]?.timestampMs : undefined;
   const momentaryPath = useMemo(
     () =>
       buildHistoryPath(
@@ -102,9 +107,9 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
         (value) => loudnessHistY(value, SPARK_H, yRange),
         SPARK_W
       ),
-    // The history array is mutated in place; length is the advancing version signal.
+    // The history array is mutated in place; length advances while filling and timestamp after.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [histSourceList, historyLength, sparkSamples, yRange.min, yRange.max]
+    [histSourceList, historyLength, latestSampleTimestampMs, sparkSamples, yRange.min, yRange.max]
   );
   const shortTermPath = useMemo(
     () =>
@@ -117,7 +122,7 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
         SPARK_W
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [histSourceList, historyLength, sparkSamples, yRange.min, yRange.max]
+    [histSourceList, historyLength, latestSampleTimestampMs, sparkSamples, yRange.min, yRange.max]
   );
   const useOverGradient = showReference && Number.isFinite(referenceLufs);
   const referenceOffset = loudnessHistY(referenceLufs, SPARK_H, yRange) / SPARK_H;

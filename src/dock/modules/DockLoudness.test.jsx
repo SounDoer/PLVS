@@ -105,6 +105,36 @@ describe("DockLoudness", () => {
     expect(document.querySelector("svg line")).toBeNull();
   });
 
+  it("keeps the history paths advancing after the live ring fills", () => {
+    const histSourceList = [
+      { m: -20, st: -21, timestampMs: 1000 },
+      { m: -20, st: -21, timestampMs: 1100 },
+      { m: -20, st: -21, timestampMs: 1200 },
+      { m: -20, st: -21, timestampMs: 1300 },
+    ];
+    const displayAudio = { momentary: -20, shortTerm: -21, integrated: -22 };
+    const view = renderWith({ displayAudio, histSourceList });
+    const firstMomentaryPath = screen.getByTestId("dock-loudness-momentary").getAttribute("d");
+    const firstShortTermPath = screen.getByTestId("dock-loudness-short-term").getAttribute("d");
+
+    histSourceList.shift();
+    histSourceList.push({ m: -6, st: -8, timestampMs: 1400 });
+    view.rerender(
+      <FrameDataProvider value={{ displayAudio }}>
+        <HistoryDataProvider value={{ histSourceList }}>
+          <DockLoudness controls={DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness} />
+        </HistoryDataProvider>
+      </FrameDataProvider>
+    );
+
+    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("d")).not.toBe(
+      firstMomentaryPath
+    );
+    expect(screen.getByTestId("dock-loudness-short-term").getAttribute("d")).not.toBe(
+      firstShortTermPath
+    );
+  });
+
   it("hides unselected history layers and disables the reference gradient", () => {
     const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
     renderWith({
