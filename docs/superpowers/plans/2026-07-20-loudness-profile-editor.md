@@ -142,7 +142,9 @@ describe("empty rules", () => {
       ],
     });
     // A target always carries a band, so evaluateTarget never has to guess.
-    expect(state.userProfiles[0].metrics.integrated.tolerance).toEqual({ minus: 0, plus: 0 });
+    // Superseded by 6facec91: the shipped behaviour leaves the band unset instead, and the
+    // rule stays unfilled. See the note further down this task.
+    expect(state.userProfiles[0].metrics.integrated.tolerance).toBeUndefined();
   });
 
   it("still rejects an unknown role", () => {
@@ -182,6 +184,22 @@ export function isRuleEmpty(rule) {
 - [ ] **Step 4: Let empty rules through normalization**
 
 In `src/lib/loudnessProfileNormalize.js`, replace the two role blocks inside `normalizeRule`:
+
+> **Superseded during execution — do not copy the block below.** Defaulting the band to
+> `{minus: 0, plus: 0}` was wrong: a zero-width band meets `NEAR_BOUNDARY_MARGIN` in
+> `evaluateTarget` and becomes a warning no value can escape, so typing a target before its
+> tolerance lit the row permanently. It is also an invented threshold, which this feature forbids.
+> `6facec91` replaced it with the shipped version — each half kept only when usable, and
+> `isRuleEmpty` treating a rule missing either half as unfilled:
+>
+> ```js
+>   if (raw.role === "target") {
+>     const target = Number(raw.target);
+>     if (Number.isFinite(target)) rule.target = target;
+>     const tolerance = normalizeTolerance(raw.tolerance);
+>     if (tolerance) rule.tolerance = tolerance;
+>   }
+> ```
 
 ```js
   if (raw.role === "target") {
