@@ -3,7 +3,7 @@ import {
   BUILTIN_LOUDNESS_PROFILES,
   LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
-  METRIC_RULE_SHAPE,
+  METRIC_RULE_ROLE,
   MIN_DIALOGUE_COVERAGE_PERCENT,
   builtinSelectionId,
   createDefaultCustomDraft,
@@ -364,17 +364,16 @@ describe("anchorMetricId via withReferenceLufs", () => {
   });
 });
 
-describe("METRIC_RULE_SHAPE", () => {
+describe("METRIC_RULE_ROLE", () => {
   it("shapes every metric Stats can show", () => {
     // A metric the editor can add but cannot shape would be unreachable.
     for (const id of STATS_CANONICAL_ORDER) {
-      expect(METRIC_RULE_SHAPE[id], id).toBeTruthy();
-      expect(["target", "limit"]).toContain(METRIC_RULE_SHAPE[id].role);
+      expect(["target", "limit"], id).toContain(METRIC_RULE_ROLE[id]);
     }
   });
 
   it("shapes nothing Stats cannot show", () => {
-    for (const id of Object.keys(METRIC_RULE_SHAPE)) {
+    for (const id of Object.keys(METRIC_RULE_ROLE)) {
       expect(STATS_CANONICAL_ORDER, id).toContain(id);
     }
   });

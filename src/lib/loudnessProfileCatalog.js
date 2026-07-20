@@ -120,36 +120,36 @@ export const BUILTIN_LOUDNESS_PROFILES = [
 /// The rule shape each Stats metric can wear.
 ///
 /// `role` is an implementation concept -- nobody thinks "I want a limit rule on True Peak", they
-/// think "TP must not exceed -1" -- so the editor reads the shape from here instead of asking.
-/// `limit` carries both `min` and `max`, which makes ceiling, floor and band the same shape with
-/// different fields left blank; `reading` only decides which input leads and what the hint says.
+/// think "TP must not exceed -1" -- so the editor reads a metric's shape from here instead of
+/// asking the user to choose one. `limit` carries both `min` and `max`, which makes ceiling,
+/// floor and band the same shape with different fields left blank.
 ///
 /// Deliberately no default numbers. Inventing a threshold for Side/Mid or PSR would be exactly
 /// the fabricated-standard behaviour this feature exists to avoid.
-export const METRIC_RULE_SHAPE = {
-  momentary: { role: "target", reading: "sits-at" },
-  shortTerm: { role: "target", reading: "sits-at" },
-  integrated: { role: "target", reading: "sits-at" },
-  dialogueIntegrated: { role: "target", reading: "sits-at" },
-  momentaryMax: { role: "limit", reading: "ceiling" },
-  shortTermMax: { role: "limit", reading: "ceiling" },
-  truePeak: { role: "limit", reading: "ceiling" },
-  dialogueCoverage: { role: "limit", reading: "floor" },
-  correlation: { role: "limit", reading: "floor" },
-  psr: { role: "limit", reading: "floor" },
-  plr: { role: "limit", reading: "floor" },
-  lra: { role: "limit", reading: "band" },
-  dialogueRange: { role: "limit", reading: "band" },
-  dialogueOffset: { role: "limit", reading: "band" },
-  sideToMid: { role: "limit", reading: "band" },
+export const METRIC_RULE_ROLE = {
+  momentary: "target",
+  shortTerm: "target",
+  integrated: "target",
+  dialogueIntegrated: "target",
+  momentaryMax: "limit",
+  shortTermMax: "limit",
+  truePeak: "limit",
+  dialogueCoverage: "limit",
+  correlation: "limit",
+  psr: "limit",
+  plr: "limit",
+  lra: "limit",
+  dialogueRange: "limit",
+  dialogueOffset: "limit",
+  sideToMid: "limit",
 };
 
 /// A rule in the metric's own shape with nothing filled in. Severity defaults to `fail`; the
 /// editor exposes it, and a user who wants a softer breach says so.
 export function createEmptyRule(metricId) {
-  const shape = METRIC_RULE_SHAPE[metricId];
-  if (!shape) return null;
-  return { role: shape.role, severity: "fail" };
+  const role = METRIC_RULE_ROLE[metricId];
+  if (!role) return null;
+  return { role, severity: "fail" };
 }
 
 const BUILTIN_BY_ID = new Map(BUILTIN_LOUDNESS_PROFILES.map((p) => [p.id, p]));
@@ -272,16 +272,6 @@ export function isKnownMetricId(metricId) {
   return Object.hasOwn(STATS_META, metricId);
 }
 
-/// A rule the user has added but not yet filled in. It judges nothing and demands nothing, and
-/// it has to survive a round-trip: the alternative is a row that vanishes when the panel closes.
-///
-/// A target needs both halves. With a target but no band, `evaluateTarget` would compare against
-/// a zero-width band, which the near-boundary margin turns into a permanent warning that can
-/// never read ok -- a half-typed rule should be silent, not shouting. Defaulting the band instead
-/// would mean inventing a threshold, which is the thing this feature exists to avoid.
-///
-/// `descriptor` and `na` are deliberate annotations rather than half-finished rules, so they are
-/// never empty.
 /// A band both halves of which are usable. Exported because the normalizer and `isRuleEmpty` have
 /// to agree on this exactly: when they disagree, a half-typed band reads as filled and then
 /// evaluates against `target + undefined`, which is NaN -- and every comparison against NaN is
@@ -293,6 +283,16 @@ export function isUsableTolerance(tolerance) {
   return minus >= 0 && plus >= 0;
 }
 
+/// A rule the user has added but not yet filled in. It judges nothing and demands nothing, and
+/// it has to survive a round-trip: the alternative is a row that vanishes when the panel closes.
+///
+/// A target needs both halves. With a target but no band, `evaluateTarget` would compare against
+/// a zero-width band, which the near-boundary margin turns into a permanent warning that can
+/// never read ok -- a half-typed rule should be silent, not shouting. Defaulting the band instead
+/// would mean inventing a threshold, which is the thing this feature exists to avoid.
+///
+/// `descriptor` and `na` are deliberate annotations rather than half-finished rules, so they are
+/// never empty.
 export function isRuleEmpty(rule) {
   if (!rule) return true;
   if (rule.role === "target")
