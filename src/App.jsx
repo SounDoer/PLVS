@@ -23,6 +23,7 @@ import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
+import { useLoudnessProfile } from "./hooks/useLoudnessProfile.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
 import { useDockLayout } from "./dock/useDockLayout.js";
@@ -409,14 +410,10 @@ function AppContent() {
       firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
     );
   }, [workspaceState]);
-  const referenceLufs = useMemo(() => {
-    const loudnessPanelId = workspaceState.panelOrder.find(
-      (id) => workspaceState.panelsById[id]?.moduleId === "loudness"
-    );
-    return normalizePanelControls(
-      loudnessPanelId ? getPanelControls(workspaceState, loudnessPanelId) : undefined
-    ).loudnessReferenceLufs;
-  }, [workspaceState]);
+  // One writer for the reference: the active Loudness Profile. Null when Off, which every
+  // consumer below treats as "there is nothing to show".
+  const loudnessProfile = useLoudnessProfile();
+  const referenceLufs = loudnessProfile.referenceLufs;
   const derivedAnalysisRequests = useMemo(
     () =>
       mergeDockAnalysisRequests(

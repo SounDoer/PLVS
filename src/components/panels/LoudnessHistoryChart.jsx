@@ -58,8 +58,9 @@ export function LoudnessHistoryChart({
     : [];
   const showMomentary = visibleLayerIds.includes("momentary");
   const showShortTerm = visibleLayerIds.includes("shortTerm");
-  const showReference = visibleLayerIds.includes("ref");
-  const useOverGradient = showReference && Number.isFinite(referenceLufs);
+  // With no active profile there is no reference to draw, so a stale `ref` id must not count as
+  // a selected layer -- otherwise the empty state hides behind a layer that renders nothing.
+  const showReference = visibleLayerIds.includes("ref") && Number.isFinite(referenceLufs);
   const hasSelectedLayer = showMomentary || showShortTerm || showReference;
   const loudnessYRange = useMemo(
     () => ({ min: loudnessYMinDb, max: loudnessYMaxDb }),
@@ -336,7 +337,7 @@ export function LoudnessHistoryChart({
           className="relative z-[1] h-full w-full pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
         >
           <defs>
-            {useOverGradient && refTopFrac != null ? (
+            {showReference && refTopFrac != null ? (
               <>
                 <linearGradient
                   id={mGradId}
@@ -377,7 +378,7 @@ export function LoudnessHistoryChart({
             <path
               d={displayHistoryPathM}
               fill="none"
-              stroke={useOverGradient ? `url(#${mGradId})` : mStrokeNormal}
+              stroke={showReference ? `url(#${mGradId})` : mStrokeNormal}
               strokeWidth="var(--ui-loudness-momentary-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
@@ -386,7 +387,7 @@ export function LoudnessHistoryChart({
             <path
               d={displayHistoryPathST}
               fill="none"
-              stroke={useOverGradient ? `url(#${stGradId})` : stStrokeNormal}
+              stroke={showReference ? `url(#${stGradId})` : stStrokeNormal}
               strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />

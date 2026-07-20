@@ -1,4 +1,3 @@
-import { normalizeReferenceLufs } from "../settings/defaults.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import {
   DEFAULT_PANEL_CONTROLS,
@@ -37,7 +36,6 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   }),
   loudness: Object.freeze({
     showReadouts: true,
-    loudnessReferenceLufs: DEFAULT_PANEL_CONTROLS.loudnessReferenceLufs,
     loudnessHistoryVisibleLayerIds: Object.freeze([
       ...DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds,
     ]),
@@ -188,9 +186,6 @@ export function normalizeDockModuleControls(moduleId, raw) {
       );
       return {
         showReadouts: bool(raw?.showReadouts, defaults.showReadouts),
-        loudnessReferenceLufs: normalizeReferenceLufs(
-          raw?.loudnessReferenceLufs ?? raw?.referenceLufs
-        ),
         loudnessHistoryVisibleLayerIds: normalizeDockLoudnessLayerIds(
           raw?.loudnessHistoryVisibleLayerIds
         ),

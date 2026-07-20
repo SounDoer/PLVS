@@ -77,6 +77,26 @@ describe("LoudnessPanel", () => {
     expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
   });
 
+  it("treats `ref` as unselected when no profile supplies a reference", () => {
+    // Off leaves the layer id in place but nulls the reference, and a layer that can draw
+    // nothing must not keep the empty state hidden.
+    renderPanel({
+      referenceLufs: null,
+      panelControls: { loudnessHistoryVisibleLayerIds: ["ref"] },
+    });
+
+    expect(screen.getByText("No layers selected")).toBeTruthy();
+  });
+
+  it("counts `ref` as a selected layer once a profile supplies a reference", () => {
+    renderPanel({
+      referenceLufs: -23,
+      panelControls: { loudnessHistoryVisibleLayerIds: ["ref"] },
+    });
+
+    expect(screen.queryByText("No layers selected")).toBeNull();
+  });
+
   // Regression: once the live history ring fills, its length caps and its reference stays stable
   // (push+shift mutate in place). A path memo keyed only on totalSamples/reference would then freeze
   // even though newer samples keep shifting in. Keying on the newest sample's timestamp keeps the

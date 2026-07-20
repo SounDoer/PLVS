@@ -70,30 +70,6 @@ describe("WorkspaceContext fullscreenId", () => {
     );
     expect(captured.pinnedPanelsById).toEqual({});
   });
-
-  it("seeds missing loudness reference controls from legacy settings", () => {
-    settingsStore.patch({ referenceLufs: -14 });
-    localStorage.setItem(
-      "plvs:workspace",
-      JSON.stringify({
-        ...DEFAULT_WORKSPACE_STATE,
-        panelControlsById: {
-          ...DEFAULT_WORKSPACE_STATE.panelControlsById,
-          loudness: {
-            ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
-            loudnessReferenceLufs: undefined,
-          },
-        },
-      })
-    );
-    let captured = null;
-    render(
-      <WorkspaceProvider>
-        <Probe onState={(s) => (captured = s)} />
-      </WorkspaceProvider>
-    );
-    expect(captured.panelControlsById.loudness.loudnessReferenceLufs).toBe(-14);
-  });
 });
 
 describe("WorkspaceContext initState unknown module guard", () => {

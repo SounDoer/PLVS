@@ -213,8 +213,10 @@ describe("App smoke", () => {
 
     expect(screen.getByText("Device")).toBeTruthy();
     expect(screen.getByText("Not connected")).toBeTruthy();
-    expect(screen.getByText("Ref")).toBeTruthy();
     expect(screen.getByText("Preset")).toBeTruthy();
+    // The Loudness Profile defaults to Off, so there is no reference to report and the item is
+    // absent rather than showing an empty value.
+    expect(screen.queryByText("Ref")).toBeNull();
   });
 
   it("uses the formatted default device label in the footer", async () => {

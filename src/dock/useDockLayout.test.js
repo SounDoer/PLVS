@@ -34,7 +34,6 @@ describe("useDockLayout", () => {
       level: { mode: "peak", readout: "live", showLabels: true },
       loudness: {
         showReadouts: true,
-        loudnessReferenceLufs: -23,
         loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
         loudnessYMinDb: -64,
         loudnessYMaxDb: 0,

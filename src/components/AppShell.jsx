@@ -99,9 +99,15 @@ export function AppShell({
                 >
                   <span className={FOOTER_LABEL}>Device</span>
                   <span className={FOOTER_VALUE}>{footer.deviceLabel}</span>
-                  <div className={FOOTER_DIVIDER} />
-                  <span className={FOOTER_LABEL}>Ref</span>
-                  <span className={FOOTER_VALUE}>{footer.referenceLufs} LUFS</span>
+                  {/* No active Loudness Profile means no reference to report, so the whole item
+                      goes rather than reading as an empty value. */}
+                  {Number.isFinite(footer.referenceLufs) ? (
+                    <>
+                      <div className={FOOTER_DIVIDER} />
+                      <span className={FOOTER_LABEL}>Ref</span>
+                      <span className={FOOTER_VALUE}>{footer.referenceLufs} LUFS</span>
+                    </>
+                  ) : null}
                   <div className={FOOTER_DIVIDER} />
                   <span className={FOOTER_LABEL}>Preset</span>
                   <span className={FOOTER_VALUE}>{footer.activePresetName}</span>

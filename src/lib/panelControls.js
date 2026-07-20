@@ -1,6 +1,5 @@
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE, normalizeDialogueVadEngine } from "./dialogueVadEngines.js";
-import { normalizeReferenceLufs } from "../settings/defaults.js";
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -43,7 +42,6 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumYMinDb: -96,
   spectrogramYMinFreq: 20,
   spectrogramYMaxFreq: 20000,
-  loudnessReferenceLufs: -23,
   loudnessYMinDb: -64,
   loudnessYMaxDb: 0,
   levelMeterYMinDb: -60,
@@ -290,7 +288,6 @@ export function normalizePanelControls(raw) {
     spectrumYMinDb: spectrumYRange.min,
     spectrogramYMinFreq: spectrogramYRange.min,
     spectrogramYMaxFreq: spectrogramYRange.max,
-    loudnessReferenceLufs: normalizeReferenceLufs(raw?.loudnessReferenceLufs),
     loudnessYMinDb: loudnessYRange.min,
     loudnessYMaxDb: loudnessYRange.max,
     levelMeterYMinDb: levelMeterYRange.min,
