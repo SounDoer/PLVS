@@ -293,7 +293,9 @@ describe("editor entry points", () => {
     act(() => hook.result.current.saveDraft());
     rerender();
 
-    fireEvent.click(screen.getByLabelText("Edit Mine"));
+    // "Edit Mine" beside "Rename Mine" reads as two words for the same thing; the row says which
+    // is which only in a title attribute, which a screen reader need not announce.
+    fireEvent.click(screen.getByLabelText("Edit Mine rules"));
     expect(hook.result.current.draft.editingId).toBe(hook.result.current.userProfiles[0].id);
   });
 
@@ -311,6 +313,50 @@ describe("editor entry points", () => {
 
     expect(hook.result.current.draft.editingId).toBe(null);
     expect(hook.result.current.draft.document.metrics.integrated).toBeTruthy();
+  });
+});
+
+describe("a dirty draft blocks the library", () => {
+  /// Saves one profile, then opens a dirty draft on top of it.
+  function withDirtyDraft() {
+    const view = renderPopover();
+    act(() => view.hook.result.current.beginCreate());
+    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name: "Mine" })));
+    act(() => view.hook.result.current.saveDraft());
+    act(() => view.hook.result.current.beginCreate());
+    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
+    view.rerender();
+    return view;
+  }
+
+  const blocked = () => [
+    screen.getByLabelText("Use no Loudness Profile"),
+    screen.getByLabelText("Use EBU R128"),
+    screen.getByLabelText("Duplicate EBU R128 S1"),
+    screen.getByLabelText("Use Mine"),
+    screen.getByLabelText("Edit Mine rules"),
+    screen.getByLabelText("Delete Mine"),
+    screen.getByLabelText("New Loudness Profile"),
+  ];
+
+  it("disables the rows that would discard it", () => {
+    withDirtyDraft();
+    for (const button of blocked()) expect(button.disabled).toBe(true);
+    expect(screen.getByText("Finish editing to switch profiles.")).toBeTruthy();
+  });
+
+  it("leaves Rename alone, which destroys nothing", () => {
+    withDirtyDraft();
+    expect(screen.getByLabelText("Rename Mine").disabled).toBe(false);
+  });
+
+  it("re-enables everything once the draft is put away", () => {
+    const { hook, rerender } = withDirtyDraft();
+    act(() => hook.result.current.cancelDraft());
+    rerender();
+
+    for (const button of blocked()) expect(button.disabled).toBe(false);
+    expect(screen.queryByText("Finish editing to switch profiles.")).toBeNull();
   });
 });
 

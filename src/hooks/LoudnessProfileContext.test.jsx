@@ -239,8 +239,13 @@ describe("preset snapshots", () => {
   it("ignores an absent snapshot", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("ebu-r128")));
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
+
     act(() => result.current.applyPresetSnapshot(undefined));
     expect(result.current.active).toBe(builtinSelectionId("ebu-r128"));
+    // Nothing was restored, so nothing was worth the draft.
+    expect(result.current.draft.document.name).toBe("Half typed");
   });
 });
 
@@ -420,6 +425,133 @@ describe("preview draft", () => {
     expect(result.current.draft.document.metrics.correlation).toBeTruthy();
     expect(result.current.document.metrics.correlation).toBeTruthy();
     expect(result.current.document.preferredMetricIds).toContain("correlation");
+  });
+});
+
+describe("a draft versus the library", () => {
+  /// Saves one profile through the editor path and leaves the draft closed.
+  function withProfile(name = "Mine") {
+    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => hook.result.current.beginCreate());
+    act(() => hook.result.current.editDraft((d) => ({ ...d, name })));
+    act(() => hook.result.current.saveDraft());
+    return hook;
+  }
+
+  it("closes the panel when the profile it edits is deleted with nothing typed", () => {
+    const { result } = withProfile();
+    const { id } = result.current.userProfiles[0];
+    act(() => result.current.beginEdit(id));
+    act(() => result.current.removeUser(id));
+
+    expect(result.current.draft).toBe(null);
+    expect(result.current.userProfiles).toEqual([]);
+  });
+
+  it("refuses to delete the profile a dirty draft is editing", () => {
+    const { result } = withProfile();
+    const { id } = result.current.userProfiles[0];
+    act(() => result.current.beginEdit(id));
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
+    act(() => result.current.removeUser(id));
+
+    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Mine"]);
+    expect(result.current.draft.document.name).toBe("Half typed");
+  });
+
+  it("inserts rather than writing nothing when the edited profile has vanished", () => {
+    // Reaching past the guards deliberately. Batched into one tick, the delete has not re-rendered
+    // yet, so beginEdit still finds the profile in its render closure and opens a draft on an id
+    // the library no longer holds. The guards cannot see this one; the fallback inside saveDraft
+    // is what stands between it and a Save that writes nothing and closes anyway.
+    const { result } = withProfile();
+    const { id } = result.current.userProfiles[0];
+    act(() => {
+      result.current.removeUser(id);
+      result.current.beginEdit(id);
+    });
+    expect(result.current.draft.editingId).toBe(id);
+    expect(result.current.userProfiles).toEqual([]);
+
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Rescued" })));
+    act(() => result.current.saveDraft());
+
+    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Rescued"]);
+  });
+
+  it("leaves a dirty draft alone when another editor entry point is used", () => {
+    const { result } = withProfile("Beta");
+    const { id } = result.current.userProfiles[0];
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
+
+    act(() => result.current.beginEdit(id));
+    expect(result.current.draft.document.name).toBe("Half typed");
+    act(() => result.current.beginCreate());
+    expect(result.current.draft.document.name).toBe("Half typed");
+    act(() => result.current.beginDuplicate("ebu-r128-s1"));
+    expect(result.current.draft.document.name).toBe("Half typed");
+  });
+
+  it("replaces an untouched draft from any editor entry point", () => {
+    const { result } = withProfile("Beta");
+    const { id } = result.current.userProfiles[0];
+
+    act(() => result.current.beginCreate());
+    act(() => result.current.beginEdit(id));
+    expect(result.current.draft.editingId).toBe(id);
+
+    act(() => result.current.beginDuplicate("ebu-r128-s1"));
+    expect(result.current.draft.document.basedOn).toBe("ebu-r128-s1");
+
+    act(() => result.current.beginCreate());
+    expect(result.current.draft.document.basedOn).toBeUndefined();
+  });
+
+  it("refuses a selection change under a dirty draft, including the preset divergence", () => {
+    presetsStore.reset();
+    presetsStore.patch({ activeId: "p1", dirty: false });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
+
+    act(() => result.current.select(builtinSelectionId("ebu-r128-live")));
+    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    act(() => result.current.selectOff());
+    expect(result.current.draft.document.name).toBe("Half typed");
+    expect(presetsStore.read().dirty).toBe(false);
+  });
+
+  it("cancels an untouched draft and applies the selection", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.select(builtinSelectionId("ebu-r128")));
+
+    expect(result.current.draft).toBe(null);
+    expect(result.current.referenceLufs).toBe(-23);
+  });
+
+  it("lets a preset apply win over a dirty draft", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+
+    act(() =>
+      result.current.applyPresetSnapshot({
+        loudnessProfileActive: builtinSelectionId("ebu-r128"),
+      })
+    );
+    expect(result.current.draft).toBe(null);
+    expect(result.current.referenceLufs).toBe(-23);
+  });
+
+  it("tells the popover when the library is blocked", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(result.current.draftBlocksLibraryActions).toBe(false);
+    act(() => result.current.beginCreate());
+    expect(result.current.draftBlocksLibraryActions).toBe(false);
+    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+    expect(result.current.draftBlocksLibraryActions).toBe(true);
   });
 });
 

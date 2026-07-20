@@ -95,8 +95,14 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
 
-  const { active, document, userProfiles, customDraft } = profile;
+  const { active, document, userProfiles, customDraft, draftBlocksLibraryActions } = profile;
   const isCustomActive = active === LOUDNESS_PROFILE_CUSTOM;
+
+  // The editor panel is non-modal, so this list stays reachable while a draft is open. Everything
+  // that would discard that draft is refused by the provider; showing it disabled is what makes
+  // the refusal legible. Rename is not one of them -- it destroys nothing.
+  const blocked = draftBlocksLibraryActions === true;
+  const blockedClass = "disabled:opacity-40";
 
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
@@ -140,7 +146,8 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
           type="button"
           aria-label="Use no Loudness Profile"
           onClick={profile.selectOff}
-          className={ROW_BUTTON_CLASS}
+          disabled={blocked}
+          className={cn(ROW_BUTTON_CLASS, blockedClass)}
         >
           <ActiveDot active={active === LOUDNESS_PROFILE_OFF} />
           <span className="min-w-0 flex-1 truncate">Off</span>
@@ -152,7 +159,8 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
           type="button"
           aria-label="Use custom Loudness Profile"
           onClick={profile.selectUnsavedCustom}
-          className={ROW_BUTTON_CLASS}
+          disabled={blocked}
+          className={cn(ROW_BUTTON_CLASS, blockedClass)}
         >
           <ActiveDot active={isCustomActive} />
           <span className="min-w-0 flex-1 truncate">
@@ -171,7 +179,8 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
               type="button"
               aria-label={`Use ${builtin.name}`}
               onClick={() => profile.select(selection)}
-              className={ROW_BUTTON_CLASS}
+              disabled={blocked}
+              className={cn(ROW_BUTTON_CLASS, blockedClass)}
             >
               <ActiveDot active={active === selection} />
               <span className="min-w-0 flex-1 truncate">{builtin.name}</span>
@@ -182,7 +191,8 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
               aria-label={`Duplicate ${builtin.name}`}
               title="Duplicate to edit"
               onClick={() => profile.beginDuplicate(builtin.id)}
-              className={cn(ICON_BUTTON_CLASS, "mr-1.5")}
+              disabled={blocked}
+              className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
             >
               <Copy className="size-[length:var(--ui-icon-management-action)]" />
             </button>
@@ -233,17 +243,21 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
               type="button"
               aria-label={`Use ${entry.name}`}
               onClick={() => profile.select(selection)}
-              className={ROW_BUTTON_CLASS}
+              disabled={blocked}
+              className={cn(ROW_BUTTON_CLASS, blockedClass)}
             >
               <ActiveDot active={active === selection} />
               <span className="min-w-0 flex-1 truncate">{entry.name}</span>
             </button>
             <button
               type="button"
-              aria-label={`Edit ${entry.name}`}
+              // "Edit" and "Rename" sit next to each other and read as synonyms in sequence; the
+              // title that tells them apart is not reliably announced.
+              aria-label={`Edit ${entry.name} rules`}
               title="Edit rules"
               onClick={() => profile.beginEdit(entry.id)}
-              className={ICON_BUTTON_CLASS}
+              disabled={blocked}
+              className={cn(ICON_BUTTON_CLASS, blockedClass)}
             >
               <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
             </button>
@@ -259,7 +273,8 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
               type="button"
               aria-label={`Delete ${entry.name}`}
               onClick={() => profile.removeUser(entry.id)}
-              className={cn(ICON_BUTTON_CLASS, "mr-1.5")}
+              disabled={blocked}
+              className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
             >
               <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
             </button>
@@ -272,12 +287,19 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
           type="button"
           aria-label="New Loudness Profile"
           onClick={profile.beginCreate}
-          className={ROW_BUTTON_CLASS}
+          disabled={blocked}
+          className={cn(ROW_BUTTON_CLASS, blockedClass)}
         >
           <Plus className="size-[length:var(--ui-icon-management-action)] text-muted-foreground" />
           <span className="min-w-0 flex-1 truncate">New profile</span>
         </button>
       </div>
+
+      {blocked ? (
+        <p className="px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
+          Finish editing to switch profiles.
+        </p>
+      ) : null}
 
       {isCustomActive ? (
         <div className="flex items-center gap-2 px-2 py-1.5">
