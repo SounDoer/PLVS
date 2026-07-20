@@ -40,7 +40,7 @@ function evaluateTarget(rule, value) {
 }
 
 function evaluateMetric(metricId, rule, sample) {
-  if (rule.role === "descriptor" || rule.role === "watch") return "unwatched";
+  if (rule.role === "descriptor") return "unwatched";
 
   // Before anything else, including the readiness checks: a rule the user has not filled in has
   // no opinion, so it cannot be pending or inconclusive either.
