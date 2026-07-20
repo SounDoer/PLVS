@@ -89,7 +89,35 @@ describe("DockModuleSettings", () => {
 
     fireEvent.click(screen.getByLabelText("Vectorscope channel pair"));
     fireEvent.click(screen.getByRole("option", { name: "Ls/Rs" }));
-    expect(onChange).toHaveBeenCalledWith({ pair: { x: 2, y: 3 } });
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,
+      pair: { x: 2, y: 3 },
+    });
+  });
+
+  it("shows Vectorscope mode first and Peak hold only for Polar Level", () => {
+    const controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation;
+    const onChange = renderSettings("correlation");
+
+    const modeRow = screen.getByText("Mode").closest("div.grid");
+    const pairRow = screen.getByText("Channel pair").closest("div.grid");
+    expect(modeRow.compareDocumentPosition(pairRow) & 4).toBeTruthy();
+    expect(screen.queryByLabelText("Vectorscope peak hold")).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("Vectorscope mode"));
+    fireEvent.click(screen.getByRole("option", { name: "Polar Level" }));
+    expect(onChange).toHaveBeenCalledWith({ ...controls, mode: "polarLevel" });
+  });
+
+  it("toggles Peak hold in Polar Level mode", () => {
+    const controls = {
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,
+      mode: "polarLevel",
+    };
+    const onChange = renderSettings("correlation", { controls });
+
+    fireEvent.click(screen.getByLabelText("Vectorscope peak hold"));
+    expect(onChange).toHaveBeenCalledWith({ ...controls, polarLevelPeakHold: true });
   });
 
   it("uses runtime Spectrum channels and only shows View for a pair", () => {

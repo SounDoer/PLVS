@@ -4,6 +4,7 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+  VECTORSCOPE_MODE_OPTIONS,
 } from "../lib/panelControls.js";
 
 const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
@@ -15,6 +16,7 @@ const LOUDNESS_HISTORY_LAYER_IDS = new Set(
 );
 const LEVEL_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
 const LEVEL_READOUTS = new Set(["live", "truePeakMax", "playbackMax"]);
+const VECTORSCOPE_MODES = new Set(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id));
 const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",
   loudness: "loudness",
@@ -58,6 +60,8 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   }),
   correlation: Object.freeze({
     pair: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.vectorscopePair }),
+    mode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
+    polarLevelPeakHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelPeakHold,
   }),
   stats: Object.freeze({
     statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
@@ -229,6 +233,8 @@ export function normalizeDockModuleControls(moduleId, raw) {
     case "correlation":
       return {
         pair: pair(raw?.pair, defaults.pair),
+        mode: VECTORSCOPE_MODES.has(raw?.mode) ? raw.mode : defaults.mode,
+        polarLevelPeakHold: bool(raw?.polarLevelPeakHold, defaults.polarLevelPeakHold),
       };
     case "stats":
       return {

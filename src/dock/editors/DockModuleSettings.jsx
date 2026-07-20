@@ -13,7 +13,7 @@ import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { isDefaultDockModuleControls } from "../dockModuleControls.js";
-import { LEVEL_METER_MODE_OPTIONS } from "../../lib/panelControls.js";
+import { LEVEL_METER_MODE_OPTIONS, VECTORSCOPE_MODE_OPTIONS } from "../../lib/panelControls.js";
 
 function SelectField({ label, value, options, onChange }) {
   const [open, setOpen] = useState(false);
@@ -203,17 +203,38 @@ function SettingsBody({
         : [{ value: "0-1", label: "L/R" }];
     const pairValue = `${controls.pair?.x ?? 0}-${controls.pair?.y ?? 1}`;
     return (
-      <SettingsRow label="Channel pair">
-        <SelectField
-          label="Vectorscope channel pair"
-          value={pairValue}
-          options={pairOptions}
-          onChange={(value) => {
-            const selected = vectorscopeOptions?.find((option) => option.key === value);
-            if (selected) onChange({ ...controls, pair: { x: selected.x, y: selected.y } });
-          }}
-        />
-      </SettingsRow>
+      <>
+        <SettingsRow label="Mode">
+          <SelectField
+            label="Vectorscope mode"
+            value={controls.mode}
+            options={VECTORSCOPE_MODE_OPTIONS.map(({ id, label }) => ({ value: id, label }))}
+            onChange={(mode) => onChange({ ...controls, mode })}
+          />
+        </SettingsRow>
+        <SettingsRow label="Channel pair">
+          <SelectField
+            label="Vectorscope channel pair"
+            value={pairValue}
+            options={pairOptions}
+            onChange={(value) => {
+              const selected = vectorscopeOptions?.find((option) => option.key === value);
+              if (selected) onChange({ ...controls, pair: { x: selected.x, y: selected.y } });
+            }}
+          />
+        </SettingsRow>
+        {controls.mode === "polarLevel" ? (
+          <SettingsRow label="Peak hold">
+            <SettingsSwitch
+              aria-label="Vectorscope peak hold"
+              checked={controls.polarLevelPeakHold}
+              onCheckedChange={(polarLevelPeakHold) =>
+                onChange({ ...controls, polarLevelPeakHold })
+              }
+            />
+          </SettingsRow>
+        ) : null}
+      </>
     );
   }
   if (moduleId === "stats") {

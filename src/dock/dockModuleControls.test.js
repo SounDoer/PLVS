@@ -33,7 +33,11 @@ describe("normalizeDockControlsByModuleId", () => {
       minDb: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
       maxDb: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
     });
-    expect(controls.correlation.pair).toEqual(DEFAULT_PANEL_CONTROLS.vectorscopePair);
+    expect(controls.correlation).toMatchObject({
+      pair: DEFAULT_PANEL_CONTROLS.vectorscopePair,
+      mode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
+      polarLevelPeakHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelPeakHold,
+    });
     expect(controls.spectrogram).toMatchObject({
       channel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
       minFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
@@ -197,6 +201,26 @@ describe("normalizeDockModuleControls", () => {
     expect(stats.statsVisibleIds).toEqual(["truePeak", "lra", "integrated", "psr", "plr"]);
     expect(stats.statsOrder.slice(0, 3)).toEqual(["plr", "psr", "integrated"]);
     expect(stats.statsOrder).toHaveLength(15);
+  });
+
+  it("normalizes Vectorscope display controls", () => {
+    expect(
+      normalizeDockModuleControls("correlation", {
+        pair: { x: 2, y: 3 },
+        mode: "polarLevel",
+        polarLevelPeakHold: true,
+      })
+    ).toEqual({
+      pair: { x: 2, y: 3 },
+      mode: "polarLevel",
+      polarLevelPeakHold: true,
+    });
+    expect(
+      normalizeDockModuleControls("correlation", {
+        mode: "unknown",
+        polarLevelPeakHold: "yes",
+      })
+    ).toMatchObject({ mode: "lissajous", polarLevelPeakHold: false });
   });
 
   it("returns null for modules without controls", () => {
