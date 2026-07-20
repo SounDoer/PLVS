@@ -17,7 +17,10 @@ import {
   resolveActiveDocument,
   userSelectionId,
 } from "../lib/loudnessProfileCatalog.js";
-import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
+import {
+  normalizeLoudnessProfiles,
+  normalizeRuleDocument,
+} from "../lib/loudnessProfileNormalize.js";
 
 /// Session state for the active Loudness Profile plus the user library.
 ///
@@ -134,7 +137,18 @@ export function LoudnessProfileProvider({ children }) {
 
   // The draft outranks the selection: while one exists, Stats colours, the reference line, the
   // footer and the TP Max marker all follow what the user is typing.
-  const document = useMemo(() => draft?.document ?? resolveActiveDocument(state), [draft, state]);
+  //
+  // Normalized here, and only here. The editor renders `draft.document` raw so its inputs show
+  // exactly what was typed; everything that *judges* reads this, and it has to agree with what
+  // Save would persist -- otherwise the meter answers "is this threshold sane" about a document
+  // the persistence layer would reject.
+  const document = useMemo(
+    () =>
+      draft
+        ? normalizeRuleDocument(draft.document, { kind: draft.document.kind })
+        : resolveActiveDocument(state),
+    [draft, state]
+  );
 
   const select = useCallback(
     (selection) => commit((prev) => ({ ...prev, active: selection })),

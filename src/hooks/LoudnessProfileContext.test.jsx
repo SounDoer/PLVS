@@ -394,6 +394,33 @@ describe("preview draft", () => {
 
     expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Strict"]);
   });
+
+  it("previews what Save would persist, not what was typed", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: "not-a-number" })));
+
+    // The editor still shows the raw text it is bound to...
+    expect(result.current.draft.document.referenceLufs).toBe("not-a-number");
+    // ...but nothing judges against it, and the chart draws no line.
+    expect(result.current.referenceLufs).toBe(null);
+  });
+
+  it("keeps a half-typed rule visible to the editor and inert everywhere else", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() =>
+      result.current.editDraft((d) => ({
+        ...d,
+        metrics: { ...d.metrics, correlation: { role: "limit", severity: "fail" } },
+        preferredMetricIds: [...d.preferredMetricIds, "correlation"],
+      }))
+    );
+
+    expect(result.current.draft.document.metrics.correlation).toBeTruthy();
+    expect(result.current.document.metrics.correlation).toBeTruthy();
+    expect(result.current.document.preferredMetricIds).toContain("correlation");
+  });
 });
 
 describe("preset divergence", () => {
