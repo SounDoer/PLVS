@@ -1,19 +1,14 @@
 import { useEffect, useState } from "react";
 import { settingsStore } from "../persistence/index.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
-import { normalizeReferenceLufs } from "../settings/defaults.js";
 
+/// Note this no longer owns a loudness reference. That value belongs to the active Loudness
+/// Profile; the `referenceLufs` key it used to mirror here survives on disk and is still
+/// normalized by `profileShape` so old configuration files round-trip.
 export function useMeterSettings() {
-  const [referenceLufs, setReferenceLufsState] = useState(() =>
-    normalizeReferenceLufs(settingsStore.read().referenceLufs)
-  );
   const [channelLabelOverrides, setChannelLabelOverridesState] = useState(() =>
     sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
   );
-
-  function setReferenceLufs(nextReferenceLufs) {
-    setReferenceLufsState(normalizeReferenceLufs(nextReferenceLufs));
-  }
 
   function setChannelLabelOverrides(nextOverrides) {
     setChannelLabelOverridesState((prev) =>
@@ -24,17 +19,13 @@ export function useMeterSettings() {
   }
 
   useEffect(() => {
-    settingsStore.patch({
-      referenceLufs,
-      channelLabelOverrides,
-    });
-  }, [referenceLufs, channelLabelOverrides]);
+    settingsStore.patch({ channelLabelOverrides });
+  }, [channelLabelOverrides]);
 
   useEffect(
     () =>
       settingsStore.subscribe(() => {
         const settings = settingsStore.read();
-        setReferenceLufsState(normalizeReferenceLufs(settings.referenceLufs));
         setChannelLabelOverridesState(
           sanitizeChannelLabelOverrides(settings.channelLabelOverrides)
         );
@@ -43,8 +34,6 @@ export function useMeterSettings() {
   );
 
   return {
-    referenceLufs,
-    setReferenceLufs,
     channelLabelOverrides,
     setChannelLabelOverrides,
   };
