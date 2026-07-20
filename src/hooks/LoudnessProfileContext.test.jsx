@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
@@ -338,6 +339,60 @@ describe("preview draft", () => {
     expect(result.current.draft.document.basedOn).toBe("ebu-r128-s1");
     expect(result.current.draft.editingId).toBe(null);
     expect(result.current.userProfiles).toEqual([]);
+  });
+
+  it("saves the edit that landed in the same tick as the save", () => {
+    // An Enter handler that commits the focused field and then saves batches both into one tick.
+    // Reading the draft from the render closure would persist the document as it was before the
+    // edit, losing the user's last keystroke with no error.
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => {
+      result.current.editDraft((d) => ({ ...d, name: "Typed" }));
+      result.current.saveDraft();
+    });
+
+    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Typed"]);
+  });
+
+  it("does not insert twice when Save is double-clicked", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Once" })));
+    act(() => {
+      result.current.saveDraft();
+      result.current.saveDraft();
+    });
+
+    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Once"]);
+  });
+
+  it("composes two edits landing in the same tick", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() => {
+      result.current.editDraft((d) => ({ ...d, name: "First" }));
+      result.current.editDraft((d) => ({ ...d, referenceLufs: -16 }));
+    });
+
+    expect(result.current.draft.document.name).toBe("First");
+    expect(result.current.draft.document.referenceLufs).toBe(-16);
+  });
+
+  it("inserts once under StrictMode, which re-invokes state updaters", () => {
+    // The original approach called commit() inside a setDraft updater. StrictMode double-invokes
+    // updaters, and crypto.randomUUID() inside one yields two ids and two library entries.
+    const strictWrapper = ({ children }) => (
+      <StrictMode>
+        <LoudnessProfileProvider>{children}</LoudnessProfileProvider>
+      </StrictMode>
+    );
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper: strictWrapper });
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Strict" })));
+    act(() => result.current.saveDraft());
+
+    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Strict"]);
   });
 });
 

@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import {
   LOUDNESS_PROFILE_CUSTOM,
@@ -60,46 +68,69 @@ export function LoudnessProfileProvider({ children }) {
   /// cancel is throwing an object away.
   const [draft, setDraft] = useState(null);
 
-  const beginCreate = useCallback(() => {
-    setDraft({ editingId: null, document: createDefaultCustomDraft(), dirty: false });
+  /// The ref mirrors the draft synchronously, the way `useThemeEditor` keeps a `draftRef`, and for
+  /// the same reason: save has to read the draft as it is, not as it was last rendered. Two calls
+  /// batched into one tick -- an Enter handler committing a field before saving, a debounced edit
+  /// landing with the click -- would otherwise both see the pre-edit document.
+  ///
+  /// The alternative, reading the draft inside a `setDraft` updater, is not available: StrictMode
+  /// re-invokes updaters, so a `commit` (and its `crypto.randomUUID()`) in there inserts twice.
+  const draftRef = useRef(null);
+
+  const putDraft = useCallback((next) => {
+    draftRef.current = next;
+    setDraft(next);
   }, []);
 
-  const beginDuplicate = useCallback((builtinId) => {
-    const next = duplicateAsDraft(builtinId);
-    if (!next) return;
-    setDraft({ editingId: null, document: next, dirty: false });
-  }, []);
+  const beginCreate = useCallback(() => {
+    putDraft({ editingId: null, document: createDefaultCustomDraft(), dirty: false });
+  }, [putDraft]);
+
+  const beginDuplicate = useCallback(
+    (builtinId) => {
+      const next = duplicateAsDraft(builtinId);
+      if (!next) return;
+      putDraft({ editingId: null, document: next, dirty: false });
+    },
+    [putDraft]
+  );
 
   const beginEdit = useCallback(
     (id) => {
       const found = state.userProfiles.find((p) => p.id === id);
       if (!found) return;
-      setDraft({ editingId: id, document: structuredClone(found), dirty: false });
+      putDraft({ editingId: id, document: structuredClone(found), dirty: false });
     },
-    [state.userProfiles]
+    [putDraft, state.userProfiles]
   );
 
-  const editDraft = useCallback((mutate) => {
-    setDraft((prev) => (prev ? { ...prev, document: mutate(prev.document), dirty: true } : prev));
-  }, []);
+  const editDraft = useCallback(
+    (mutate) => {
+      const prev = draftRef.current;
+      if (!prev) return;
+      putDraft({ ...prev, document: mutate(prev.document), dirty: true });
+    },
+    [putDraft]
+  );
 
-  const cancelDraft = useCallback(() => setDraft(null), []);
+  const cancelDraft = useCallback(() => putDraft(null), [putDraft]);
 
   /// The only path out of the overlay that writes anything. Insert when `editingId` is null,
   /// replace in place otherwise -- editing twice must not leave two entries behind.
   const saveDraft = useCallback(() => {
-    if (!draft) return;
-    const id = draft.editingId ?? crypto.randomUUID();
-    const saved = { ...draft.document, id, kind: "user" };
+    const current = draftRef.current;
+    if (!current) return;
+    const id = current.editingId ?? crypto.randomUUID();
+    const saved = { ...current.document, id, kind: "user" };
     commit((prev) => ({
       ...prev,
       active: userSelectionId(id),
-      userProfiles: draft.editingId
+      userProfiles: current.editingId
         ? prev.userProfiles.map((p) => (p.id === id ? saved : p))
         : [...prev.userProfiles, saved],
     }));
-    setDraft(null);
-  }, [commit, draft]);
+    putDraft(null);
+  }, [commit, putDraft]);
 
   // The draft outranks the selection: while one exists, Stats colours, the reference line, the
   // footer and the TP Max marker all follow what the user is typing.
