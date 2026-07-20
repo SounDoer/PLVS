@@ -114,6 +114,7 @@ function AppContent() {
     clearFiles,
   } = useMeterRuntime();
   const onClearRef = useRef(null);
+  const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
   const settings = useSettings({ onClearRef });
   const {
     settingsOpen,
@@ -904,6 +905,7 @@ function AppContent() {
     stopFileAnalysis,
     activeFileSession,
     getFileAnalysisSettings: currentFileAnalysisSettings,
+    onClearSucceeded: () => setVectorscopeResetEpoch((epoch) => epoch + 1),
   });
   onClearRef.current = clearAll;
 
@@ -1189,6 +1191,7 @@ function AppContent() {
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
     getVectorscopeHistoryForKey: (key) => intakeRef.current.getVisualVectorscopeHistByKey(key),
+    vectorscopeResetEpoch,
     getSpectrogramSnapsForKey,
   };
   // frameData/historyData change at frame/history-sample rate by nature, so memoizing

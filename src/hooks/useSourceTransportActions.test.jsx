@@ -85,4 +85,25 @@ describe("useSourceTransportActions", () => {
       UI_PREFERENCES.modules.loudness.history.defaultWindowSec
     );
   });
+
+  it("signals display reset only after a successful Clear", async () => {
+    const onClearSucceeded = vi.fn();
+    const successful = renderActions({
+      clearActiveSource: vi.fn().mockResolvedValue(true),
+      onClearSucceeded,
+    });
+    await act(async () => {
+      await successful.result.current.clearAll();
+    });
+    expect(onClearSucceeded).toHaveBeenCalledOnce();
+
+    const failed = renderActions({
+      clearActiveSource: vi.fn().mockResolvedValue(false),
+      onClearSucceeded,
+    });
+    await act(async () => {
+      await failed.result.current.clearAll();
+    });
+    expect(onClearSucceeded).toHaveBeenCalledOnce();
+  });
 });

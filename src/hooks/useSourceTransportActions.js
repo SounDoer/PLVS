@@ -21,6 +21,7 @@ export function useSourceTransportActions({
   stopFileAnalysis,
   activeFileSession,
   getFileAnalysisSettings,
+  onClearSucceeded,
 }) {
   const resetHistoryViewport = useCallback(() => {
     setHistoryOffsetSec(0);
@@ -29,8 +30,11 @@ export function useSourceTransportActions({
 
   const clearAll = useCallback(async () => {
     const cleared = await clearActiveSource();
-    if (cleared) resetHistoryViewport();
-  }, [clearActiveSource, resetHistoryViewport]);
+    if (cleared) {
+      resetHistoryViewport();
+      onClearSucceeded?.();
+    }
+  }, [clearActiveSource, onClearSucceeded, resetHistoryViewport]);
 
   const beginFileAnalysis = useCallback(
     (path) => {

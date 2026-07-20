@@ -78,6 +78,7 @@ export function VectorscopePanel() {
     resolveVectorscopeSnapshotForKey,
     historyChartInteractive,
     getVectorscopeHistoryForKey,
+    vectorscopeResetEpoch = 0,
   } = useHistoryData();
   const { panelControls, analysisStatus } = usePanelInstanceData();
   const normalizedPanelControls = normalizePanelControls(panelControls);
@@ -362,6 +363,7 @@ export function VectorscopePanel() {
                 firstLabel={axisXLabel}
                 secondLabel={axisYLabel}
                 peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}
+                resetEpoch={vectorscopeResetEpoch}
                 identityKey={`${vectorscopeKey}:${px}:${py}`}
               />
             ) : null}
