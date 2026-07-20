@@ -225,6 +225,58 @@ describe("normalizeRuleDocument", () => {
   });
 });
 
+describe("the last two coercion sites", () => {
+  const document = (raw) =>
+    normalizeLoudnessProfiles({
+      active: "off",
+      userProfiles: [{ id: "u1", name: "Mine", ...raw }],
+    }).userProfiles[0];
+
+  it("does not read a blank reference as a line at 0 LUFS", () => {
+    // Number("") is 0, which sits inside the -70..0 window.
+    for (const raw of ["", "  ", true]) {
+      expect(document({ referenceLufs: raw, metrics: {} }).referenceLufs, String(raw)).toBe(null);
+    }
+  });
+
+  it("still accepts a real reference, including zero", () => {
+    expect(document({ referenceLufs: 0, metrics: {} }).referenceLufs).toBe(0);
+    expect(document({ referenceLufs: -23, metrics: {} }).referenceLufs).toBe(-23);
+  });
+
+  it("does not read a blank dialogue-coverage floor as never inconclusive", () => {
+    // A floor of 0 lets a dialogue rule conclude on almost no dialogue -- the opposite of what
+    // an absent threshold should mean.
+    const metrics = {
+      dialogueIntegrated: {
+        role: "target",
+        target: -24,
+        tolerance: { minus: 2, plus: 2 },
+        requiresDialogueCoverage: null,
+      },
+    };
+    expect(
+      document({ metrics, preferredMetricIds: ["dialogueIntegrated"] }).metrics.dialogueIntegrated
+        .requiresDialogueCoverage
+    ).toBeUndefined();
+  });
+
+  it("keeps a real coverage floor", () => {
+    const metrics = {
+      dialogueIntegrated: {
+        role: "target",
+        target: -24,
+        tolerance: { minus: 2, plus: 2 },
+        requiresDialogueCoverage: 15,
+      },
+    };
+    expect(
+      document({ metrics, preferredMetricIds: ["dialogueIntegrated"] }).metrics.dialogueIntegrated
+        .requiresDialogueCoverage
+    ).toBe(15);
+  });
+});
+
 describe("empty rules", () => {
   it("keeps a target rule the user has not filled in", () => {
     const state = normalizeLoudnessProfiles({

@@ -22,10 +22,12 @@ export const DEFAULT_LOUDNESS_PROFILES = Object.freeze({
 });
 
 function normalizeReference(raw) {
-  if (raw == null) return null;
-  const n = Number(raw);
+  // `isUsableThreshold` rather than `Number`, for the same reason as every other threshold here:
+  // `Number("")` is a perfectly good 0, which sits inside the window below and would draw a
+  // reference line at 0 LUFS that nobody asked for.
+  if (!isUsableThreshold(raw)) return null;
   // Same window the legacy reference input accepted.
-  return Number.isFinite(n) && n >= -70 && n <= 0 ? n : null;
+  return raw >= -70 && raw <= 0 ? raw : null;
 }
 
 function normalizeTolerance(raw) {
@@ -60,8 +62,10 @@ function normalizeRule(raw) {
   }
 
   if (raw.provisional === true) rule.provisional = true;
-  if (Number.isFinite(Number(raw.requiresDialogueCoverage))) {
-    rule.requiresDialogueCoverage = Number(raw.requiresDialogueCoverage);
+  // Coerced, this is the dangerous direction: `Number(null)` is 0, a coverage floor of zero, which
+  // reads as "never inconclusive" and lets a dialogue rule conclude on almost no dialogue.
+  if (isUsableThreshold(raw.requiresDialogueCoverage)) {
+    rule.requiresDialogueCoverage = raw.requiresDialogueCoverage;
   }
 
   return rule;
