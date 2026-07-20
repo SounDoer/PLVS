@@ -80,12 +80,13 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       resolved.targetTimestampMs,
       keyToleranceMs
     );
-    if (missing) return { missing: true, path: "", correlation: -Infinity };
+    if (missing) return { missing: true, path: "", pairs: null, correlation: -Infinity };
     const snap = typeof entries?.rowAt === "function" ? entries.rowAt(index) : entries[index];
     const pairs = snap?.pairs ?? [];
     return {
       missing: false,
       path: buildVectorscopeSvgFromPairs(pairs),
+      pairs,
       correlation: Number.isFinite(snap?.correlation) ? snap.correlation : -Infinity,
       sideToMidDb: Number.isFinite(snap?.sideToMidDb) ? snap.sideToMidDb : -Infinity,
       midEnergy: Number.isFinite(snap?.midEnergy) ? snap.midEnergy : 0,

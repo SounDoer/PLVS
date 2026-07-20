@@ -131,5 +131,28 @@ describe("useSnapshot", () => {
     expect(snap.missing).toBe(false);
     expect(snap.hasSignal).toBe(true);
     expect(snap.correlation).toBe(0.5);
+    expect(snap.pairs).toBeInstanceOf(Float32Array);
+    expect([...snap.pairs]).toEqual([0.25, -0.25]);
+  });
+
+  it("returns no vectorscope pairs when the selected request snapshot is missing", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    intake.snapshotVisualVectorscopeByKey = () => ({});
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    expect(result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1")).toEqual({
+      missing: true,
+      path: "",
+      pairs: null,
+      correlation: -Infinity,
+    });
   });
 });
