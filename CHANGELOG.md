@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-07-20
+
+### Added
+- CLI commands for probing media tracks and applying opt-in loudness and true-peak quality-control thresholds.
+- CLI device listing and richer doctor diagnostics for capture devices, bundled VAD engines, and build capabilities.
+- Dialogue-gated CLI analysis with selectable VAD engines, dialogue metrics, reference offsets, and batch-analysis support.
+- CLI profile validation, export, and import for managing desktop configuration without launching the UI.
+
+### Changed
+- Dock mode is now limited to Windows and disabled on macOS.
+
+### Fixed
+- Keyboard shortcuts are captured consistently regardless of the currently focused control.
+- Dock accessory windows remain open reliably while moving the pointer between related windows.
+- Hidden Dock editors are measured before display, preventing incorrect initial sizing.
+- Dock loudness history continues advancing after the retained history ring reaches capacity.
+
 ## [0.9.3] - 2026-07-17
 
 ### Changed
