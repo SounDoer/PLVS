@@ -1,8 +1,9 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render as renderInDom, screen } from "@testing-library/react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
+import { LoudnessProfileProvider } from "@/hooks/LoudnessProfileContext.jsx";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { settingsStore } from "@/persistence/index.js";
@@ -35,6 +36,12 @@ vi.mock("framer-motion", () => ({
 vi.mock("@/ipc/openExternal.js", () => ({
   openExternalUrl: vi.fn(),
 }));
+
+/// PanelSettingsContent reads the profile, which now lives in a provider rather than a per-caller
+/// hook, so every render in this file needs one in its tree.
+function render(ui, options) {
+  return renderInDom(ui, { wrapper: LoudnessProfileProvider, ...options });
+}
 
 function TestPanelDataProviders({ value = {}, panelChromeData = value, children }) {
   return (

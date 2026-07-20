@@ -37,12 +37,16 @@ vi.mock("../ipc/events.js", () => ({
 }));
 
 import { usePresets } from "./usePresets.js";
-import { useLoudnessProfile } from "./useLoudnessProfile.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import { settingsStore } from "../persistence/index.js";
 import { LOUDNESS_PROFILE_OFF, builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
 
 function wrapper({ children }) {
-  return <WorkspaceProvider>{children}</WorkspaceProvider>;
+  return (
+    <WorkspaceProvider>
+      <LoudnessProfileProvider>{children}</LoudnessProfileProvider>
+    </WorkspaceProvider>
+  );
 }
 
 function renderPresetHook(presetOptions = {}) {

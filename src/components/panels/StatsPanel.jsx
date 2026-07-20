@@ -6,7 +6,7 @@ import {
   usePanelInstanceData,
 } from "../../workspace/AudioDataContext.jsx";
 import { HoverTip } from "@/components/HoverTip";
-import { useLoudnessProfile } from "../../hooks/useLoudnessProfile.js";
+import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 import { buildStatsValues } from "../../lib/statsCatalog.js";
 import { loudnessStatusValueClass } from "../../lib/loudnessProfileStatusClasses.js";
@@ -43,7 +43,9 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint, status })
         <span className="@max-[240px]:hidden">{label}</span>
         <span className="hidden @max-[240px]:inline">{shortLabel ?? label}</span>
       </span>
-      <span className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
+      {/* data-stat-value: the one thing Stats and Dock Stats must agree on, addressable so a
+          test can compare the two surfaces' colouring directly. */}
+      <span data-stat-value={id} className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
         {value}
       </span>
       <span className={unitClass} style={{ width: `${unitColumnRem}rem` }}>

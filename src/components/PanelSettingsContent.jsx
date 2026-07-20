@@ -16,7 +16,7 @@ import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
 import { openExternalUrl } from "@/ipc/openExternal.js";
-import { useLoudnessProfile } from "@/hooks/useLoudnessProfile.js";
+import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";

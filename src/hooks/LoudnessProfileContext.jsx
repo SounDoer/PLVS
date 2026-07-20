@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import {
   LOUDNESS_PROFILE_CUSTOM,
@@ -15,6 +15,12 @@ import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
 ///
 /// One writer: everything that used to read a per-panel `loudnessReferenceLufs` now reads
 /// `document.referenceLufs` from here (null when Off). See the design doc, §Persistence.
+///
+/// One instance too, not one per consumer: Stats, Dock Stats, the Level Meter and the panel
+/// settings all read the same document, and a preview draft has to be visible to every one of
+/// them at once -- a draft held in any single consumer would be invisible to the other three.
+
+const LoudnessProfileContext = createContext(null);
 
 function readState() {
   return normalizeLoudnessProfiles(settingsStore.read().loudnessProfiles);
@@ -24,7 +30,7 @@ function writeState(next) {
   settingsStore.patch({ loudnessProfiles: next });
 }
 
-export function useLoudnessProfile() {
+export function LoudnessProfileProvider({ children }) {
   const [state, setState] = useState(readState);
 
   useEffect(() => settingsStore.subscribe(() => setState(readState())), []);
@@ -154,22 +160,52 @@ export function useLoudnessProfile() {
     [commit]
   );
 
-  return {
-    active: state.active,
-    document,
-    userProfiles: state.userProfiles,
-    customDraft: state.customDraft,
-    referenceLufs: document?.referenceLufs ?? null,
-    select,
-    selectOff,
-    selectUnsavedCustom,
-    duplicateBuiltin,
-    updateCustomDraft,
-    saveCustomAs,
-    updateUser,
-    renameUser,
-    removeUser,
-    snapshotForPreset,
-    applyPresetSnapshot,
-  };
+  const value = useMemo(
+    () => ({
+      active: state.active,
+      document,
+      userProfiles: state.userProfiles,
+      customDraft: state.customDraft,
+      referenceLufs: document?.referenceLufs ?? null,
+      select,
+      selectOff,
+      selectUnsavedCustom,
+      duplicateBuiltin,
+      updateCustomDraft,
+      saveCustomAs,
+      updateUser,
+      renameUser,
+      removeUser,
+      snapshotForPreset,
+      applyPresetSnapshot,
+    }),
+    [
+      state,
+      document,
+      select,
+      selectOff,
+      selectUnsavedCustom,
+      duplicateBuiltin,
+      updateCustomDraft,
+      saveCustomAs,
+      updateUser,
+      renameUser,
+      removeUser,
+      snapshotForPreset,
+      applyPresetSnapshot,
+    ]
+  );
+
+  return (
+    <LoudnessProfileContext.Provider value={value}>{children}</LoudnessProfileContext.Provider>
+  );
+}
+
+/// Throws outside the provider on purpose: a component rendered outside it would silently read a
+/// second, unshared copy of the profile, which is exactly the dock/main split this owner exists
+/// to prevent.
+export function useLoudnessProfile() {
+  const value = useContext(LoudnessProfileContext);
+  if (!value) throw new Error("useLoudnessProfile must be used inside LoudnessProfileProvider");
+  return value;
 }

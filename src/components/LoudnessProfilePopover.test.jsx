@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
-import { useLoudnessProfile } from "../hooks/useLoudnessProfile.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { settingsStore } from "../persistence/index.js";
 import { LOUDNESS_PROFILE_CUSTOM, LOUDNESS_PROFILE_OFF } from "../lib/loudnessProfileCatalog.js";
 
@@ -13,13 +13,20 @@ afterEach(() => settingsStore.reset());
 /// Renders the popover against the real hook, so a click has to survive the whole
 /// state -> persistence -> re-render path rather than just calling a spy.
 function renderPopover({ stats } = {}) {
-  const hook = renderHook(() => useLoudnessProfile());
-  const view = render(
-    <LoudnessProfilePopoverContent profile={hook.result.current} stats={stats} />
+  // The hook lives inside the popover's own tree, not beside it: one provider instance means the
+  // profile the test drives and the profile the popover renders are the same state.
+  const hook = { result: { current: null } };
+  function Harness() {
+    hook.result.current = useLoudnessProfile();
+    return <LoudnessProfilePopoverContent profile={hook.result.current} stats={stats} />;
+  }
+  const tree = (
+    <LoudnessProfileProvider>
+      <Harness />
+    </LoudnessProfileProvider>
   );
-  const rerender = () =>
-    view.rerender(<LoudnessProfilePopoverContent profile={hook.result.current} stats={stats} />);
-  return { hook, rerender };
+  const view = render(tree);
+  return { hook, rerender: () => view.rerender(tree) };
 }
 
 describe("LoudnessProfilePopoverContent listing", () => {

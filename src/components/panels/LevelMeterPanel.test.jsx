@@ -5,6 +5,7 @@ import { FrameDataProvider, PanelInstanceProvider } from "../../workspace/AudioD
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
 import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 
 function selectProfile(selection) {
   settingsStore.patch({ loudnessProfiles: { active: selection } });
@@ -35,7 +36,7 @@ function panel(value = {}) {
 }
 
 function renderPanel(value = {}) {
-  return render(panel(value));
+  return render(panel(value), { wrapper: LoudnessProfileProvider });
 }
 
 afterEach(() => {

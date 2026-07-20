@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
-import { useLoudnessProfile } from "./useLoudnessProfile.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import {
   LOUDNESS_PROFILE_CUSTOM,
   LOUDNESS_PROFILE_OFF,
@@ -13,13 +13,15 @@ function persisted() {
   return settingsStore.read().loudnessProfiles;
 }
 
+const wrapper = ({ children }) => <LoudnessProfileProvider>{children}</LoudnessProfileProvider>;
+
 beforeEach(() => {
   settingsStore.reset();
 });
 
 describe("useLoudnessProfile cold start", () => {
   it("starts Off with no document and no reference", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
     expect(result.current.document).toBe(null);
     expect(result.current.referenceLufs).toBe(null);
@@ -29,24 +31,24 @@ describe("useLoudnessProfile cold start", () => {
 
 describe("selecting profiles", () => {
   it("resolves a built-in and exposes its reference", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("atsc-a85")));
     expect(result.current.document.name).toBe("ATSC A/85");
     expect(result.current.referenceLufs).toBe(-24);
   });
 
   it("persists the selection so it survives a remount", () => {
-    const first = renderHook(() => useLoudnessProfile());
+    const first = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => first.result.current.select(builtinSelectionId("ebu-r128")));
     first.unmount();
 
-    const second = renderHook(() => useLoudnessProfile());
+    const second = renderHook(() => useLoudnessProfile(), { wrapper });
     expect(second.result.current.active).toBe(builtinSelectionId("ebu-r128"));
     expect(second.result.current.referenceLufs).toBe(-23);
   });
 
   it("drops back to Off with no reference", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("ebu-r128")));
     act(() => result.current.selectOff());
     expect(result.current.document).toBe(null);
@@ -54,7 +56,7 @@ describe("selecting profiles", () => {
   });
 
   it("refuses a selection that cannot be honoured", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("not-a-standard")));
     expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
   });
@@ -62,14 +64,14 @@ describe("selecting profiles", () => {
 
 describe("the custom scratch pad", () => {
   it("seeds a default draft on first use", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.selectUnsavedCustom());
     expect(result.current.active).toBe(LOUDNESS_PROFILE_CUSTOM);
     expect(result.current.document.metrics.integrated.target).toBe(-23);
   });
 
   it("keeps draft edits when switching away and back", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.selectUnsavedCustom());
     act(() => result.current.updateCustomDraft({ referenceLufs: -16 }));
     act(() => result.current.select(builtinSelectionId("ebu-r128")));
@@ -80,7 +82,7 @@ describe("the custom scratch pad", () => {
   });
 
   it("duplicates a built-in into the scratch pad rather than the library", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.duplicateBuiltin("ebu-r128-s1"));
     expect(result.current.active).toBe(LOUDNESS_PROFILE_CUSTOM);
     expect(result.current.document.basedOn).toBe("ebu-r128-s1");
@@ -89,7 +91,7 @@ describe("the custom scratch pad", () => {
   });
 
   it("ignores a duplicate of a built-in that does not exist", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.duplicateBuiltin("nope"));
     expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
   });
@@ -97,7 +99,7 @@ describe("the custom scratch pad", () => {
 
 describe("the user library", () => {
   function withSavedProfile(name = "My Show") {
-    const hook = renderHook(() => useLoudnessProfile());
+    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => hook.result.current.selectUnsavedCustom());
     act(() => hook.result.current.updateCustomDraft({ referenceLufs: -16 }));
     act(() => hook.result.current.saveCustomAs(name));
@@ -160,7 +162,7 @@ describe("the user library", () => {
   it("survives a remount with the library intact", () => {
     const first = withSavedProfile();
     first.unmount();
-    const second = renderHook(() => useLoudnessProfile());
+    const second = renderHook(() => useLoudnessProfile(), { wrapper });
     expect(second.result.current.userProfiles.map((p) => p.name)).toEqual(["My Show"]);
     expect(second.result.current.document.name).toBe("My Show");
   });
@@ -168,7 +170,7 @@ describe("the user library", () => {
 
 describe("preset snapshots", () => {
   it("captures the active selection, not the library", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("streaming-14")));
     const snapshot = result.current.snapshotForPreset();
     expect(snapshot.loudnessProfileActive).toBe(builtinSelectionId("streaming-14"));
@@ -176,7 +178,7 @@ describe("preset snapshots", () => {
   });
 
   it("round-trips a built-in selection", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("streaming-14")));
     const snapshot = result.current.snapshotForPreset();
 
@@ -186,7 +188,7 @@ describe("preset snapshots", () => {
   });
 
   it("round-trips an unsaved custom draft", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.selectUnsavedCustom());
     act(() => result.current.updateCustomDraft({ referenceLufs: -18 }));
     const snapshot = result.current.snapshotForPreset();
@@ -198,7 +200,7 @@ describe("preset snapshots", () => {
   });
 
   it("falls back to Off when the preset names a profile that is gone", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.selectUnsavedCustom());
     act(() => result.current.saveCustomAs("Temporary"));
     const snapshot = result.current.snapshotForPreset();
@@ -210,7 +212,7 @@ describe("preset snapshots", () => {
   });
 
   it("leaves the library untouched when applying a snapshot", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.selectUnsavedCustom());
     act(() => result.current.saveCustomAs("Keep me"));
     const snapshot = { loudnessProfileActive: LOUDNESS_PROFILE_OFF };
@@ -220,7 +222,7 @@ describe("preset snapshots", () => {
   });
 
   it("does not let a built-in preset discard a draft in progress", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.selectUnsavedCustom());
     act(() => result.current.updateCustomDraft({ referenceLufs: -18 }));
 
@@ -234,10 +236,22 @@ describe("preset snapshots", () => {
   });
 
   it("ignores an absent snapshot", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("ebu-r128")));
     act(() => result.current.applyPresetSnapshot(undefined));
     expect(result.current.active).toBe(builtinSelectionId("ebu-r128"));
+  });
+});
+
+describe("single instance", () => {
+  it("shows one consumer's selection to another", () => {
+    // Two consumers under one provider must agree; four independent hook instances could not
+    // share a draft, which is what the preview overlay needs.
+    const both = renderHook(() => ({ a: useLoudnessProfile(), b: useLoudnessProfile() }), {
+      wrapper,
+    });
+    act(() => both.result.current.a.select(builtinSelectionId("ebu-r128")));
+    expect(both.result.current.b.referenceLufs).toBe(-23);
   });
 });
 
@@ -248,13 +262,13 @@ describe("preset divergence", () => {
   });
 
   it("marks the active preset dirty when the selection changes", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.select(builtinSelectionId("ebu-r128")));
     expect(presetsStore.read().dirty).toBe(true);
   });
 
   it("marks the active preset dirty when the draft is edited", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.selectUnsavedCustom());
     presetsStore.patch({ dirty: false });
 
@@ -265,7 +279,7 @@ describe("preset divergence", () => {
   // Applying a preset is the one write that must not diverge from it: the profile it restores is
   // by definition the profile that preset carries.
   it("does not dirty the preset it is restoring", () => {
-    const { result } = renderHook(() => useLoudnessProfile());
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() =>
       result.current.applyPresetSnapshot({
         loudnessProfileActive: builtinSelectionId("ebu-r128"),

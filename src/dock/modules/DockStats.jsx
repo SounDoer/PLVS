@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
 import { STATS_META, buildStatsValues } from "../../lib/statsCatalog.js";
-import { useLoudnessProfile } from "../../hooks/useLoudnessProfile.js";
+import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 import { loudnessStatusValueClass } from "../../lib/loudnessProfileStatusClasses.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
@@ -165,6 +165,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
                     <span className="min-w-0 truncate">{label}</span>
                   </span>
                   <span
+                    data-stat-value={id}
                     className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(statuses[id])}`}
                   >
                     {value}

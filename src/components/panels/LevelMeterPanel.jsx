@@ -21,7 +21,7 @@ import {
   useLevelMeterPlaybackMax,
   useLevelMeterPlaybackMaxChannels,
 } from "../../hooks/useLevelMeterPlaybackMax.js";
-import { useLoudnessProfile } from "../../hooks/useLoudnessProfile.js";
+import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 
 const LEVEL_MODE_META = {

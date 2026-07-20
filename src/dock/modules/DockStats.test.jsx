@@ -2,10 +2,16 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
-import { FrameDataProvider, MetricsDataProvider } from "../../workspace/AudioDataContext.jsx";
+import {
+  FrameDataProvider,
+  MetricsDataProvider,
+  PanelInstanceProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { DockStats } from "./DockStats.jsx";
+import { StatsPanel } from "../../components/panels/StatsPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
 import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 
 const METRICS = [
   { id: "momentary", shortLabel: "M", unit: "LUFS", value: "-18.1" },
@@ -47,11 +53,13 @@ function statsControls(statsVisibleIds, statsOrder = statsVisibleIds) {
 
 function renderWith(statsMetrics, controls, shared = {}, heightMode = "standard", displayAudio) {
   return render(
-    <FrameDataProvider value={{ displayAudio }}>
-      <MetricsDataProvider value={{ statsMetrics, ...shared }}>
-        <DockStats controls={controls} heightMode={heightMode} />
-      </MetricsDataProvider>
-    </FrameDataProvider>
+    <LoudnessProfileProvider>
+      <FrameDataProvider value={{ displayAudio }}>
+        <MetricsDataProvider value={{ statsMetrics, ...shared }}>
+          <DockStats controls={controls} heightMode={heightMode} />
+        </MetricsDataProvider>
+      </FrameDataProvider>
+    </LoudnessProfileProvider>
   );
 }
 
@@ -230,5 +238,51 @@ describe("DockStats profile status colours", () => {
     settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
     renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
     expect(valueClass()).toContain("text-foreground");
+  });
+});
+
+describe("Dock Stats and the main window under one provider", () => {
+  afterEach(() => settingsStore.reset());
+
+  // Both surfaces rendered in one tree, sharing one LoudnessProfileProvider: the same metric under
+  // the same profile must not read as a breach in one surface and neutral in the other.
+  function renderBothSurfaces(displayAudio) {
+    return render(
+      <LoudnessProfileProvider>
+        <FrameDataProvider value={{ displayAudio }}>
+          <MetricsDataProvider value={{ statsMetrics: METRICS }}>
+            <PanelInstanceProvider
+              value={{ panelControls: { statsVisibleIds: ["truePeak"], statsOrder: ["truePeak"] } }}
+            >
+              <StatsPanel />
+            </PanelInstanceProvider>
+            <DockStats controls={statsControls(["truePeak"])} />
+          </MetricsDataProvider>
+        </FrameDataProvider>
+      </LoudnessProfileProvider>
+    );
+  }
+
+  function truePeakValueClasses(container) {
+    return [...container.querySelectorAll("[data-stat-value='truePeak']")].map(
+      (node) => node.className
+    );
+  }
+
+  it("colours a breached metric identically in both surfaces", () => {
+    settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+    const { container } = renderBothSurfaces({ tpMax: 0 });
+
+    const classes = truePeakValueClasses(container);
+    expect(classes).toHaveLength(2);
+    for (const className of classes) expect(className).toContain("--ui-signal-bad");
+  });
+
+  it("leaves the metric neutral in both surfaces while the profile is Off", () => {
+    const { container } = renderBothSurfaces({ tpMax: 0 });
+
+    const classes = truePeakValueClasses(container);
+    expect(classes).toHaveLength(2);
+    for (const className of classes) expect(className).toContain("text-foreground");
   });
 });

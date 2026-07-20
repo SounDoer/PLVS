@@ -23,7 +23,7 @@ import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
-import { useLoudnessProfile } from "./hooks/useLoudnessProfile.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
@@ -84,7 +84,11 @@ export default function App() {
   return (
     <WorkspaceProvider>
       <MeterRuntimeProvider>
-        <AppContent />
+        {/* Inside MeterRuntime and outside AppContent: dockLayout is a hook in AppContent and
+            DockStats is rendered by it, so one provider covers both windows' worth of Stats. */}
+        <LoudnessProfileProvider>
+          <AppContent />
+        </LoudnessProfileProvider>
       </MeterRuntimeProvider>
     </WorkspaceProvider>
   );

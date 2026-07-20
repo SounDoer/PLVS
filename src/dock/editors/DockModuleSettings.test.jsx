@@ -3,18 +3,21 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
 import { DockModuleSettings } from "./DockModuleSettings.jsx";
+import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 
 function renderSettings(moduleId, props = {}) {
   const onChange = vi.fn();
   render(
-    <DockModuleSettings
-      moduleId={moduleId}
-      controls={DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId]}
-      onChange={onChange}
-      onReset={vi.fn()}
-      onBack={vi.fn()}
-      {...props}
-    />
+    <LoudnessProfileProvider>
+      <DockModuleSettings
+        moduleId={moduleId}
+        controls={DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId]}
+        onChange={onChange}
+        onReset={vi.fn()}
+        onBack={vi.fn()}
+        {...props}
+      />
+    </LoudnessProfileProvider>
   );
   return onChange;
 }

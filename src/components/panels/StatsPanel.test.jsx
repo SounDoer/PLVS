@@ -9,6 +9,7 @@ import {
 import { StatsPanel } from "./StatsPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
 import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 
 const statsMetrics = [
   {
@@ -70,17 +71,19 @@ function renderPanel(visibleIds) {
 
 function renderStatsPanel({ shared, panelControls, displayAudio }) {
   return render(
-    <FrameDataProvider value={{ displayAudio }}>
-      <MetricsDataProvider
-        value={{
-          ...shared,
-        }}
-      >
-        <PanelInstanceProvider value={{ panelControls }}>
-          <StatsPanel />
-        </PanelInstanceProvider>
-      </MetricsDataProvider>
-    </FrameDataProvider>
+    <LoudnessProfileProvider>
+      <FrameDataProvider value={{ displayAudio }}>
+        <MetricsDataProvider
+          value={{
+            ...shared,
+          }}
+        >
+          <PanelInstanceProvider value={{ panelControls }}>
+            <StatsPanel />
+          </PanelInstanceProvider>
+        </MetricsDataProvider>
+      </FrameDataProvider>
+    </LoudnessProfileProvider>
   );
 }
 
