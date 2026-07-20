@@ -21,6 +21,8 @@ import {
   useLevelMeterPlaybackMax,
   useLevelMeterPlaybackMaxChannels,
 } from "../../hooks/useLevelMeterPlaybackMax.js";
+import { useLoudnessProfile } from "../../hooks/useLoudnessProfile.js";
+import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -139,6 +141,7 @@ function AxisValueMarker({
 export function LevelMeterPanel() {
   const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useFrameData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
+  const { document: loudnessProfileDocument } = useLoudnessProfile();
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]
@@ -312,6 +315,13 @@ export function LevelMeterPanel() {
   }
 
   const showTpMaxMarker = isPeak && showTpMaxMarkerSetting && hasTpMaxValue;
+  // The marker follows the active Loudness Profile rather than holding a second opinion about
+  // what counts as too hot. Evaluating through the shared rule engine is what keeps the two
+  // from drifting; with no profile there is no limit, so the readout stays neutral.
+  const tpMaxStatus = loudnessProfileEvaluate(loudnessProfileDocument, {
+    values: { truePeak: displayAudio?.tpMax },
+  }).truePeak;
+  const tpMaxOverLimit = tpMaxStatus === "fail" || tpMaxStatus === "warn";
   const peakYAxisWidthClass =
     isPeak && showTpMaxMarkerSetting ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
   return (
@@ -370,7 +380,9 @@ export function LevelMeterPanel() {
                   value={displayAudio?.tpMax}
                   yRange={levelMeterYRange}
                   dataAttribute="data-level-tp-max-marker"
-                  className="text-[color:var(--ui-signal-tp-max)]"
+                  // In range, inherit AxisValueMarker's text-primary so the readout matches the
+                  // M/ST markers on this same meter.
+                  className={tpMaxOverLimit ? "text-[color:var(--ui-signal-tp-max)]" : undefined}
                   onReset={onResetTpMax}
                   resetLabel="Click to reset TP Max"
                 />

@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { FrameDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
+import { settingsStore } from "../../persistence/index.js";
+import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+
+function selectProfile(selection) {
+  settingsStore.patch({ loudnessProfiles: { active: selection } });
+}
 
 function panel(value = {}) {
   const { panelControls = { levelMeterMode: "peak" }, onPanelControlsChange, ...shared } = value;
@@ -35,6 +41,7 @@ function renderPanel(value = {}) {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  settingsStore.reset();
 });
 
 describe("LevelMeterPanel", () => {
@@ -189,6 +196,48 @@ describe("LevelMeterPanel", () => {
     expect(screen.getAllByText("-").length).toBeGreaterThan(0);
   });
 
+  it("leaves the TP Max marker neutral when no profile sets a limit", () => {
+    // Off means nothing to judge against, so the marker reads like the M/ST markers on this
+    // same meter rather than announcing a breach that no rule defines.
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
+
+    const marker = container.querySelector("[data-level-tp-max-marker]");
+    expect(marker.className).toContain("text-primary");
+    expect(marker.className).not.toContain("--ui-signal-tp-max");
+  });
+
+  it("colours the TP Max marker once the active profile's limit is exceeded", () => {
+    // EBU R128 caps true peak at -1 dBTP and the fixture sits at -1.
+    selectProfile(builtinSelectionId("ebu-r128"));
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
+
+    expect(container.querySelector("[data-level-tp-max-marker]").className).toContain(
+      "--ui-signal-tp-max"
+    );
+  });
+
+  it("keeps the TP Max marker neutral while the level is inside the profile's limit", () => {
+    selectProfile(builtinSelectionId("ebu-r128"));
+    const { container } = renderPanel({
+      displayAudio: {
+        peakDb: [-9.9, -10],
+        rmsDb: [-18.2, -19.4],
+        momentary: -22.4,
+        shortTerm: -18.6,
+        tpMax: -12,
+      },
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
+
+    expect(container.querySelector("[data-level-tp-max-marker]").className).not.toContain(
+      "--ui-signal-tp-max"
+    );
+  });
+
   it("does not carry the Peak TP Max marker into RMS mode", () => {
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "rms", levelMeterTpMaxMarker: true },
@@ -231,7 +280,6 @@ describe("LevelMeterPanel", () => {
     expect(container.querySelector("[data-level-value-marker]")).toBeNull();
     const marker = container.querySelector("[data-level-tp-max-marker]");
     expect(marker?.textContent).toBe("-1.0");
-    expect(marker?.className).toContain("text-[color:var(--ui-signal-tp-max)]");
     expect(screen.queryByText("dBTP")).toBeNull();
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
   });
