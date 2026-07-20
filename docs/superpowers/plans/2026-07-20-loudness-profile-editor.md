@@ -412,17 +412,16 @@ The editor must never ask the user to pick a `role`. Each metric declares the sh
 Append to `src/lib/loudnessProfileCatalog.test.js`:
 
 ```js
-describe("METRIC_RULE_SHAPE", () => {
+describe("METRIC_RULE_ROLE", () => {
   it("shapes every metric Stats can show", () => {
     // A metric the editor can add but cannot shape would be unreachable.
     for (const id of STATS_CANONICAL_ORDER) {
-      expect(METRIC_RULE_SHAPE[id], id).toBeTruthy();
-      expect(["target", "limit"]).toContain(METRIC_RULE_SHAPE[id].role);
+      expect(["target", "limit"], id).toContain(METRIC_RULE_ROLE[id]);
     }
   });
 
   it("shapes nothing Stats cannot show", () => {
-    for (const id of Object.keys(METRIC_RULE_SHAPE)) {
+    for (const id of Object.keys(METRIC_RULE_ROLE)) {
       expect(STATS_CANONICAL_ORDER, id).toContain(id);
     }
   });
@@ -444,12 +443,12 @@ describe("METRIC_RULE_SHAPE", () => {
 });
 ```
 
-Add `METRIC_RULE_SHAPE` and `createEmptyRule` to the file's catalog import list, and `STATS_CANONICAL_ORDER` from `./statsCatalog.js`.
+Add `METRIC_RULE_ROLE` and `createEmptyRule` to the file's catalog import list, and `STATS_CANONICAL_ORDER` from `./statsCatalog.js`.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/lib/loudnessProfileCatalog.test.js`
-Expected: FAIL — `METRIC_RULE_SHAPE is not defined`.
+Expected: FAIL — `METRIC_RULE_ROLE is not defined`.
 
 - [ ] **Step 3: Add the table and the factory**
 
@@ -459,36 +458,38 @@ In `src/lib/loudnessProfileCatalog.js`, after `BUILTIN_LOUDNESS_PROFILES`:
 /// The rule shape each Stats metric can wear.
 ///
 /// `role` is an implementation concept -- nobody thinks "I want a limit rule on True Peak", they
-/// think "TP must not exceed -1" -- so the editor reads the shape from here instead of asking.
-/// `limit` carries both `min` and `max`, which makes ceiling, floor and band the same shape with
-/// different fields left blank; `reading` only decides which input leads and what the hint says.
+/// think "TP must not exceed -1" -- so the editor reads a metric's shape from here instead of
+/// asking the user to choose one. `limit` carries both `min` and `max`, which makes ceiling,
+/// floor and band the same shape with different fields left blank.
+///
+/// A flat metric-to-role map: a per-entry object earned nothing once `reading` had no reader.
 ///
 /// Deliberately no default numbers. Inventing a threshold for Side/Mid or PSR would be exactly
 /// the fabricated-standard behaviour this feature exists to avoid.
-export const METRIC_RULE_SHAPE = {
-  momentary: { role: "target", reading: "sits-at" },
-  shortTerm: { role: "target", reading: "sits-at" },
-  integrated: { role: "target", reading: "sits-at" },
-  dialogueIntegrated: { role: "target", reading: "sits-at" },
-  momentaryMax: { role: "limit", reading: "ceiling" },
-  shortTermMax: { role: "limit", reading: "ceiling" },
-  truePeak: { role: "limit", reading: "ceiling" },
-  dialogueCoverage: { role: "limit", reading: "floor" },
-  correlation: { role: "limit", reading: "floor" },
-  psr: { role: "limit", reading: "floor" },
-  plr: { role: "limit", reading: "floor" },
-  lra: { role: "limit", reading: "band" },
-  dialogueRange: { role: "limit", reading: "band" },
-  dialogueOffset: { role: "limit", reading: "band" },
-  sideToMid: { role: "limit", reading: "band" },
+export const METRIC_RULE_ROLE = {
+  momentary: "target",
+  shortTerm: "target",
+  integrated: "target",
+  dialogueIntegrated: "target",
+  momentaryMax: "limit",
+  shortTermMax: "limit",
+  truePeak: "limit",
+  dialogueCoverage: "limit",
+  correlation: "limit",
+  psr: "limit",
+  plr: "limit",
+  lra: "limit",
+  dialogueRange: "limit",
+  dialogueOffset: "limit",
+  sideToMid: "limit",
 };
 
 /// A rule in the metric's own shape with nothing filled in. Severity defaults to `fail`; the
 /// editor exposes it, and a user who wants a softer breach says so.
 export function createEmptyRule(metricId) {
-  const shape = METRIC_RULE_SHAPE[metricId];
-  if (!shape) return null;
-  return { role: shape.role, severity: "fail" };
+  const role = METRIC_RULE_ROLE[metricId];
+  if (!role) return null;
+  return { role, severity: "fail" };
 }
 ```
 
@@ -1158,6 +1159,8 @@ git commit -m "feat(loudness): preview a profile draft without writing it anywhe
 
 Presentational: it takes a draft and callbacks and owns no profile state.
 
+A blank band field leaves the band unset, so the rule stays inert rather than acquiring a zero-width band the user never chose — `isUsableTolerance` rejects it either way, and the two layers agreeing is deliberate.
+
 **Files:**
 - Create: `src/components/LoudnessProfileEditor.jsx`
 - Test: `src/components/LoudnessProfileEditor.test.jsx`
@@ -1284,7 +1287,7 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clampPanelPos } from "@/lib/dragClamp.js";
 import {
-  METRIC_RULE_SHAPE,
+  METRIC_RULE_ROLE,
   createEmptyRule,
   withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
@@ -1356,7 +1359,7 @@ function RuleRow({ metricId, rule, onPatch, onRemove }) {
             ariaLabel={`${label} tolerance minus`}
             value={rule.tolerance?.minus ?? null}
             onCommit={(next) =>
-              onPatch({ tolerance: { ...(rule.tolerance ?? { plus: 0 }), minus: next ?? 0 } })
+              onPatch({ tolerance: { ...rule.tolerance, minus: next ?? undefined } })
             }
           />
           <span className="text-muted-foreground">+</span>
@@ -1364,7 +1367,7 @@ function RuleRow({ metricId, rule, onPatch, onRemove }) {
             ariaLabel={`${label} tolerance plus`}
             value={rule.tolerance?.plus ?? null}
             onCommit={(next) =>
-              onPatch({ tolerance: { ...(rule.tolerance ?? { minus: 0 }), plus: next ?? 0 } })
+              onPatch({ tolerance: { ...rule.tolerance, plus: next ?? undefined } })
             }
           />
         </>
@@ -1425,7 +1428,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
   const { document } = draft;
   const ruleIds = document.preferredMetricIds ?? [];
   const addable = STATS_CANONICAL_ORDER.filter(
-    (id) => METRIC_RULE_SHAPE[id] && !ruleIds.includes(id)
+    (id) => METRIC_RULE_ROLE[id] && !ruleIds.includes(id)
   );
 
   function patchRule(metricId, patch) {
