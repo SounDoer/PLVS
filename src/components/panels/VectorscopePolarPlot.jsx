@@ -155,9 +155,15 @@ export function VectorscopePolarPlot({
   const peakHoldRef = useRef(null);
   const lastTimestampRef = useRef(null);
   const stateIdentityRef = useRef("");
+  const redrawRef = useRef({ signature: null, snapshotPairs: null });
   const snapshot = snapshotPairs != null;
   const effectiveRows = snapshot ? [{ pairs: snapshotPairs, ageMs: 0, timestampMs: 0 }] : rows;
-  const stateIdentity = `${mode}:${identityKey}:${resetEpoch}:${peakHoldEnabled}`;
+  // Peak hold is a pure overlay: enabling/disabling it must not disturb the live envelope, and
+  // updatePolarPeakHold already discards held values when disabled and reseeds from the current
+  // envelope when re-enabled. So it stays out of the state-reset identity (including it here would
+  // wipe envelopeRef on every toggle and pop the live fill). It still affects the drawn output, so
+  // it is part of the redraw signature below.
+  const stateIdentity = `${mode}:${identityKey}:${resetEpoch}`;
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -173,15 +179,31 @@ export function VectorscopePolarPlot({
     }
 
     const { dpr, width, height } = resizeCanvas(canvas);
-    const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
     const style = getComputedStyle(canvas);
     const { traceColor, gridColor } = resolveTraceColors(style);
     const lineWidth =
       (parseFloat(style.getPropertyValue("--ui-vectorscope-stroke-width")) || 1) * dpr;
+    const newestTimestamp = effectiveRows.at(-1)?.timestampMs;
+
+    // Skip the full redraw when nothing that affects the picture has changed. The parent re-renders
+    // at frame cadence (~60/s) while the history slab only advances ~25/s, so without this guard
+    // every idle frame re-aggregates the window and repaints an identical image. The signature
+    // covers every input the draw reads; snapshot rows are compared by reference since their
+    // timestamp is a constant. resizeCanvas only clears the backing store when the size actually
+    // changes, and any size change is in the signature, so a skipped render never leaves it blank.
+    const signature = `${stateIdentity}|${peakHoldEnabled}|${snapshot}|${width}x${height}|${dpr}|${newestTimestamp}|${traceColor}|${gridColor}|${lineWidth}|${effectiveRows.length}`;
+    if (
+      redrawRef.current.signature === signature &&
+      redrawRef.current.snapshotPairs === snapshotPairs
+    ) {
+      return;
+    }
+    redrawRef.current = { signature, snapshotPairs };
+
+    const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
     ctx.clearRect(0, 0, width, height);
     drawGrid(ctx, geometry, gridColor, Math.max(0.5 * dpr, lineWidth * 0.5));
 
-    const newestTimestamp = effectiveRows.at(-1)?.timestampMs;
     const now = Number.isFinite(newestTimestamp) ? newestTimestamp : performance.now();
     const elapsedMs = Number.isFinite(lastTimestampRef.current)
       ? Math.max(0, now - lastTimestampRef.current)

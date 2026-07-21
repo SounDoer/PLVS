@@ -37,6 +37,8 @@ export default defineConfig({
     // of assertions. A file that needs the DOM and forgets the docblock fails loudly.
     environment: "node",
     globals: true,
+    // Silences jsdom's "getContext not implemented" stderr spam from canvas-backed components.
+    setupFiles: ["./vitest.setup.js"],
     // Nested git worktrees live under .claude/ with their own node_modules. Their test files sit
     // outside the default node_modules exclude, and importing them pulls in a second React copy
     // that breaks unrelated suites in this repo. Spread the defaults — setting exclude replaces
