@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   POLAR_LEVEL_BIN_COUNT,
+  POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS,
   aggregatePolarLevel,
   buildPolarLevelPeakHoldTable,
   polarLevelPeakHoldAt,
@@ -135,34 +136,35 @@ describe("Polar Level", () => {
 });
 
 describe("polar level snapshot peak-hold reconstruction", () => {
-  it("accumulates a per-row prefix maximum that grows forward and recedes backward", () => {
-    const built = buildPolarLevelPeakHoldTable(
-      slab([
-        { pairs: new Float32Array([0.1, 0.1]) },
-        { pairs: new Float32Array([1, 1]) },
-        { pairs: new Float32Array([0.1, 0.1]) },
-      ])
-    );
-    const quiet = polarLevelPeakHoldAt(built, 0);
-    const loud = polarLevelPeakHoldAt(built, 1);
-    const after = polarLevelPeakHoldAt(built, 2);
+  it("accumulates a bucketed prefix maximum that grows across ~1s buckets", () => {
+    const bucket = POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS;
+    // Fill the first bucket with quiet rows and put a loud row at the start of the next bucket.
+    const rows = Array.from({ length: bucket + 1 }, (_, i) => ({
+      pairs: new Float32Array(i === bucket ? [1, 1] : [0.1, 0.1]),
+    }));
+    const built = buildPolarLevelPeakHoldTable(slab(rows));
+    const first = polarLevelPeakHoldAt(built, 0);
+    const lastOfBucket0 = polarLevelPeakHoldAt(built, bucket - 1);
+    const loud = polarLevelPeakHoldAt(built, bucket);
 
-    // Scrubbing back to index 0 shows only the quiet material; the loud transient at index 1 lifts
-    // the hold and, being a running maximum, it stays lifted at index 2 (does not decay in history).
-    expect(Math.max(...quiet)).toBeCloseTo(0.1414, 2);
+    // Within one bucket the hold is constant (the loud row in the next bucket is not reached yet);
+    // crossing into the next bucket lifts it, and as a running maximum it never recedes below a peak.
+    expect(Math.max(...first)).toBeCloseTo(0.1414, 2);
+    expect([...lastOfBucket0]).toEqual([...first]);
     expect(Math.max(...loud)).toBeCloseTo(Math.SQRT2, 5);
-    expect(Math.max(...after)).toBeCloseTo(Math.max(...loud), 5);
-    expect(Math.max(...loud)).toBeGreaterThan(Math.max(...quiet));
+    expect(Math.max(...loud)).toBeGreaterThan(Math.max(...first));
   });
 
-  it("does not show a direction before its row is reached", () => {
-    const built = buildPolarLevelPeakHoldTable(
-      slab([{ pairs: new Float32Array([1, 0]) }, { pairs: new Float32Array([0, 1]) }])
-    );
-    // Row 0 is hard-left (angle < 0), so the right half of the fan is still empty at index 0 and
-    // only fills once row 1 (hard-right) is included.
+  it("does not show a direction before its bucket is reached", () => {
+    const bucket = POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS;
+    const rows = Array.from({ length: bucket + 1 }, (_, i) => {
+      if (i === 0) return { pairs: new Float32Array([1, 0]) }; // hard-left in bucket 0
+      if (i === bucket) return { pairs: new Float32Array([0, 1]) }; // hard-right in bucket 1
+      return { pairs: new Float32Array([0, 0]) }; // silence (skipped below the floor)
+    });
+    const built = buildPolarLevelPeakHoldTable(slab(rows));
     const atLeft = polarLevelPeakHoldAt(built, 0);
-    const atBoth = polarLevelPeakHoldAt(built, 1);
+    const atBoth = polarLevelPeakHoldAt(built, bucket);
     expect(Math.max(...atLeft.subarray(POLAR_LEVEL_BIN_COUNT / 2 + 1))).toBeCloseTo(0, 5);
     expect(Math.max(...atBoth.subarray(POLAR_LEVEL_BIN_COUNT / 2 + 1))).toBeCloseTo(1, 5);
   });

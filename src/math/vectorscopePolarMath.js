@@ -98,25 +98,39 @@ export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
 
 // Snapshot Peak hold reconstruction. The live per-bin hold is a running maximum since Clear that is
 // never stored (design: runtime-only). To show what the hold looked like at a scrubbed historical
-// moment T, replay it from the frozen history: for each row build the cumulative per-bin raw peak
-// (a prefix maximum), so any row index yields the hold accumulated up to that row. Built once per
-// frozen slab (Clear empties the slab, so row 0 is the reset point); each scrub then costs one
-// smoothing pass. Raw (pre-smooth) peaks are stored so the smoothing matches aggregatePolarLevel.
+// moment T, replay it from the frozen history: build the cumulative per-bin raw peak (a prefix
+// maximum), so a row index yields the hold accumulated up to that row. Built once per frozen slab
+// (Clear empties the slab, so row 0 is the reset point). Raw (pre-smooth) peaks are stored so the
+// smoothing matches aggregatePolarLevel.
+//
+// The hold is a slow-moving running maximum, so it only needs coarse time resolution: rows are
+// bucketed into ~1s groups and one cumulative prefix is stored per bucket, shrinking the table ~25x
+// versus one entry per row. Scrubbing within a bucket shows the same hold — a <=1s look-ahead to the
+// bucket's end, visually imperceptible for a monotonic hold. The build still visits every sample (a
+// true maximum cannot skip samples), so build cost is unchanged; only memory shrinks.
+export const POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS = 25;
+
 export function buildPolarLevelPeakHoldTable(slab, binCount = POLAR_LEVEL_BIN_COUNT) {
   const length = slab?.length ?? 0;
-  const table = new Float64Array(length * binCount);
+  const bucketRows = POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS;
+  const bucketCount = Math.ceil(length / bucketRows);
+  const table = new Float64Array(bucketCount * binCount);
   const running = new Float64Array(binCount);
   for (let index = 0; index < length; index += 1) {
     accumulatePairsIntoBins(slab.rowAt(index)?.pairs ?? [], running, binCount);
-    table.set(running, index * binCount);
+    // Store the cumulative max at each bucket's last row (and at a trailing partial bucket).
+    if ((index + 1) % bucketRows === 0 || index === length - 1) {
+      table.set(running, Math.floor(index / bucketRows) * binCount);
+    }
   }
-  return { table, binCount, length };
+  return { table, binCount, length, bucketRows };
 }
 
 export function polarLevelPeakHoldAt(built, index) {
   if (!built || index < 0 || index >= built.length) return null;
-  const { table, binCount } = built;
-  return smoothPolarBins(table.subarray(index * binCount, (index + 1) * binCount));
+  const { table, binCount, bucketRows } = built;
+  const bucket = Math.floor(index / bucketRows);
+  return smoothPolarBins(table.subarray(bucket * binCount, (bucket + 1) * binCount));
 }
 
 function timeAlpha(elapsedMs, timeMs) {
