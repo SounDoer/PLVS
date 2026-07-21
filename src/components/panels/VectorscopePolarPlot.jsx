@@ -3,9 +3,8 @@ import { useLayoutEffect, useRef } from "react";
 import {
   aggregatePolarLevel,
   polarSampleAlpha,
-  polarWindowExtent,
+  POLAR_LEVEL_WINDOW_MS,
   projectPairToPolar,
-  updatePolarExtent,
   updatePolarLevelEnvelope,
   updatePolarPeakHold,
 } from "../../math/vectorscopePolarMath.js";
@@ -14,10 +13,8 @@ const PLOT_PADDING_CSS_PX = 10;
 const POINT_RADIUS_CSS_PX = 1.15;
 const PEAK_ALPHA = 0.35;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
-const POLAR_LEVEL_FIXED_EXTENT = Math.SQRT2;
-const POLAR_LEVEL_FLOOR_DB = -48;
-const POLAR_LEVEL_WEDGE_WIDTH_RATIO = 0.5;
-
+const POLAR_FIXED_EXTENT = Math.SQRT2;
+const POLAR_FLOOR_DB = -48;
 function resolveTraceColors(style) {
   const traceColor = style.getPropertyValue("--ui-vectorscope-trace").trim() || "#7dd3fc";
   const gridColor = style.getPropertyValue("--ui-vectorscope-grid-stroke").trim() || traceColor;
@@ -52,15 +49,21 @@ function drawGrid(ctx, geometry, color, lineWidth) {
   ctx.restore();
 }
 
-function projectedCanvasPoint(point, extent, geometry) {
-  const scale = geometry.radius / Math.max(extent, 1e-9);
+function fixedDbRadius(value, geometry) {
+  const levelDb = value > 0 ? 20 * Math.log10(value / POLAR_FIXED_EXTENT) : POLAR_FLOOR_DB;
+  const normalized = Math.max(0, Math.min(1, (levelDb - POLAR_FLOOR_DB) / -POLAR_FLOOR_DB));
+  return normalized * geometry.radius;
+}
+
+function projectedSamplePoint(point, geometry) {
+  const radius = fixedDbRadius(point.radius, geometry);
   return {
-    x: geometry.centerX + point.x * scale,
-    y: geometry.baselineY - point.y * scale,
+    x: geometry.centerX + Math.sin(point.angle) * radius,
+    y: geometry.baselineY - Math.cos(point.angle) * radius,
   };
 }
 
-function drawPolarSample(ctx, rows, extent, geometry, color, dpr, snapshot) {
+function drawPolarSample(ctx, rows, geometry, color, dpr, snapshot) {
   ctx.fillStyle = color;
   const pointRadius = POINT_RADIUS_CSS_PX * dpr;
   for (const row of rows) {
@@ -68,7 +71,7 @@ function drawPolarSample(ctx, rows, extent, geometry, color, dpr, snapshot) {
     for (let index = 0; index + 1 < row.pairs.length; index += 2) {
       const point = projectPairToPolar(row.pairs[index], row.pairs[index + 1]);
       if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
-      const projected = projectedCanvasPoint(point, extent, geometry);
+      const projected = projectedSamplePoint(point, geometry);
       ctx.beginPath();
       ctx.arc(projected.x, projected.y, pointRadius, 0, Math.PI * 2);
       ctx.fill();
@@ -77,71 +80,58 @@ function drawPolarSample(ctx, rows, extent, geometry, color, dpr, snapshot) {
   ctx.globalAlpha = 1;
 }
 
-function polarLevelRadius(value, extent, geometry) {
-  const levelDb =
-    value > 0 ? 20 * Math.log10(value / Math.max(extent, 1e-9)) : POLAR_LEVEL_FLOOR_DB;
-  const normalized = Math.max(
-    0,
-    Math.min(1, (levelDb - POLAR_LEVEL_FLOOR_DB) / -POLAR_LEVEL_FLOOR_DB)
-  );
-  return normalized * geometry.radius;
+function polarLevelRadius(value, geometry) {
+  // Use the exact same fixed dB transfer as Polar Sample. With per-direction peak aggregation this
+  // makes the level fan the filled outer envelope of the Sample dot cloud: identical radial scale,
+  // so the two modes are visually consistent. dB (not linear) compresses the wide dynamic range so
+  // quiet material still reaches out instead of collapsing to a tiny central blob.
+  return fixedDbRadius(value, geometry);
 }
 
-function envelopePoint(index, value, count, extent, geometry) {
+function envelopePoint(index, value, count, geometry) {
   const angle = -Math.PI / 2 + (index / Math.max(1, count - 1)) * Math.PI;
-  const radius = polarLevelRadius(value, extent, geometry);
+  const radius = polarLevelRadius(value, geometry);
   return {
     x: geometry.centerX + Math.sin(angle) * radius,
     y: geometry.baselineY - Math.cos(angle) * radius,
   };
 }
 
-function traceLevelWedge(ctx, index, value, count, extent, geometry) {
-  const binAngle = Math.PI / Math.max(1, count - 1);
-  const centerAngle = -Math.PI / 2 + index * binAngle;
-  const halfWidth = (binAngle * POLAR_LEVEL_WEDGE_WIDTH_RATIO) / 2;
-  const startAngle = Math.max(-Math.PI / 2, centerAngle - halfWidth);
-  const endAngle = Math.min(Math.PI / 2, centerAngle + halfWidth);
-  const radius = polarLevelRadius(value, extent, geometry);
-  if (radius <= 0) return false;
+function traceLevelFan(ctx, envelope, geometry) {
+  if (!envelope?.length) return false;
 
   ctx.beginPath();
   ctx.moveTo(geometry.centerX, geometry.baselineY);
-  ctx.lineTo(
-    geometry.centerX + Math.sin(startAngle) * radius,
-    geometry.baselineY - Math.cos(startAngle) * radius
-  );
-  ctx.lineTo(
-    geometry.centerX + Math.sin(endAngle) * radius,
-    geometry.baselineY - Math.cos(endAngle) * radius
-  );
+  for (let index = 0; index < envelope.length; index += 1) {
+    const point = envelopePoint(index, envelope[index], envelope.length, geometry);
+    ctx.lineTo(point.x, point.y);
+  }
+  ctx.lineTo(geometry.centerX, geometry.baselineY);
   ctx.closePath();
   return true;
 }
 
-function traceEnvelope(ctx, envelope, extent, geometry) {
+function traceEnvelope(ctx, envelope, geometry) {
   if (!envelope?.length) return false;
 
   ctx.beginPath();
-  const first = envelopePoint(0, envelope[0], envelope.length, extent, geometry);
+  const first = envelopePoint(0, envelope[0], envelope.length, geometry);
   ctx.moveTo(first.x, first.y);
   for (let index = 1; index < envelope.length; index += 1) {
-    const point = envelopePoint(index, envelope[index], envelope.length, extent, geometry);
+    const point = envelopePoint(index, envelope[index], envelope.length, geometry);
     ctx.lineTo(point.x, point.y);
   }
   return true;
 }
 
-function drawPolarLevel(ctx, envelope, held, extent, geometry, wedgeColor, lineWidth) {
+function drawPolarLevel(ctx, envelope, held, geometry, wedgeColor, lineWidth) {
   ctx.fillStyle = wedgeColor;
   ctx.lineWidth = lineWidth;
   ctx.globalAlpha = 1;
-  for (let index = 0; index < envelope.length; index += 1) {
-    if (traceLevelWedge(ctx, index, envelope[index], envelope.length, extent, geometry)) {
-      ctx.fill();
-    }
+  if (traceLevelFan(ctx, envelope, geometry)) {
+    ctx.fill();
   }
-  if (held && traceEnvelope(ctx, held, extent, geometry)) {
+  if (held && traceEnvelope(ctx, held, geometry)) {
     ctx.strokeStyle = wedgeColor;
     ctx.globalAlpha = PEAK_ALPHA;
     ctx.stroke();
@@ -153,7 +143,6 @@ export function VectorscopePolarPlot({
   mode,
   rows = [],
   snapshotPairs = null,
-  hasSignal = false,
   firstLabel,
   secondLabel,
   showLabels = true,
@@ -162,7 +151,6 @@ export function VectorscopePolarPlot({
   identityKey = "",
 }) {
   const canvasRef = useRef(null);
-  const extentRef = useRef(null);
   const envelopeRef = useRef(null);
   const peakHoldRef = useRef(null);
   const lastTimestampRef = useRef(null);
@@ -179,7 +167,6 @@ export function VectorscopePolarPlot({
 
     if (stateIdentityRef.current !== stateIdentity) {
       stateIdentityRef.current = stateIdentity;
-      extentRef.current = null;
       envelopeRef.current = null;
       peakHoldRef.current = null;
       lastTimestampRef.current = null;
@@ -203,31 +190,21 @@ export function VectorscopePolarPlot({
 
     if (effectiveRows.length === 0) return;
     if (mode === "polarSample") {
-      const targetExtent = polarWindowExtent(effectiveRows);
-      extentRef.current = snapshot
-        ? targetExtent
-        : updatePolarExtent(extentRef.current, targetExtent, elapsedMs, hasSignal);
-      const extent = extentRef.current ?? targetExtent;
-      drawPolarSample(ctx, effectiveRows, extent, geometry, traceColor, dpr, snapshot);
+      drawPolarSample(ctx, effectiveRows, geometry, traceColor, dpr, snapshot);
       return;
     }
 
-    const targetEnvelope = aggregatePolarLevel(effectiveRows);
+    const levelRows = effectiveRows.filter(
+      (row) => !Number.isFinite(row.ageMs) || row.ageMs <= POLAR_LEVEL_WINDOW_MS
+    );
+    const targetEnvelope = aggregatePolarLevel(levelRows);
     envelopeRef.current = updatePolarLevelEnvelope(envelopeRef.current, targetEnvelope, elapsedMs, {
       settled: snapshot,
     });
     peakHoldRef.current = updatePolarPeakHold(peakHoldRef.current, envelopeRef.current, {
       enabled: peakHoldEnabled && !snapshot,
     });
-    drawPolarLevel(
-      ctx,
-      envelopeRef.current,
-      peakHoldRef.current,
-      POLAR_LEVEL_FIXED_EXTENT,
-      geometry,
-      traceColor,
-      lineWidth
-    );
+    drawPolarLevel(ctx, envelopeRef.current, peakHoldRef.current, geometry, traceColor, lineWidth);
   });
 
   return (

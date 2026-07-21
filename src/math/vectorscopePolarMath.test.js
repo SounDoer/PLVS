@@ -3,11 +3,9 @@ import {
   POLAR_LEVEL_BIN_COUNT,
   aggregatePolarLevel,
   polarSampleAlpha,
-  polarWindowExtent,
   projectPairToPolar,
   selectPolarWindow,
   smoothPolarBins,
-  updatePolarExtent,
   updatePolarLevelEnvelope,
   updatePolarPeakHold,
 } from "./vectorscopePolarMath.js";
@@ -44,7 +42,7 @@ describe("vectorscope polar projection", () => {
   });
 });
 
-describe("vectorscope polar window and extent", () => {
+describe("vectorscope polar window", () => {
   it("selects 400 ms relative to the newest row without copying pairs", () => {
     const oldPairs = new Float32Array([0, 0]);
     const edgePairs = new Float32Array([0.5, 0.5]);
@@ -67,26 +65,6 @@ describe("vectorscope polar window and extent", () => {
     expect(polarSampleAlpha(400)).toBe(0);
     expect(polarSampleAlpha(800)).toBe(0);
   });
-
-  it("computes the largest folded radius", () => {
-    expect(polarWindowExtent([{ pairs: new Float32Array([0.25, 0.25, 1, -1]) }])).toBeCloseTo(
-      Math.sqrt(2)
-    );
-  });
-
-  it("shrinks immediately, expands slowly, and freezes on silence", () => {
-    expect(updatePolarExtent(0.5, 1, 16, true)).toBe(1);
-    const released = updatePolarExtent(1, 0.5, 100, true);
-    expect(released).toBeGreaterThan(0.5);
-    expect(released).toBeLessThan(1);
-    expect(updatePolarExtent(released, 0.02, 100, false)).toBe(released);
-  });
-
-  it("is time-based across frame cadences", () => {
-    const once = updatePolarExtent(1, 0.2, 100, true);
-    const twice = updatePolarExtent(updatePolarExtent(1, 0.2, 50, true), 0.2, 50, true);
-    expect(twice).toBeCloseTo(once, 10);
-  });
 });
 
 describe("Polar Level", () => {
@@ -102,19 +80,31 @@ describe("Polar Level", () => {
     }
   });
 
-  it("smooths neighboring bins symmetrically", () => {
+  it("fills valleys without attenuating peaks", () => {
     const bins = new Float64Array([0, 1, 0]);
-    expect([...smoothPolarBins(bins)]).toEqual([0.25, 0.5, 0.25]);
+    // The peak stays at 1 (never cut) while the zero valleys are lifted toward the neighbour average,
+    // so a concentrated direction keeps its true height instead of being halved by the kernel.
+    expect([...smoothPolarBins(bins)]).toEqual([0.25, 1, 0.25]);
   });
 
-  it("keeps a bin's level independent of samples in other directions", () => {
+  it("gives each direction its own peak amplitude, independent of other directions", () => {
     const monoOnly = aggregatePolarLevel([{ pairs: new Float32Array([0.5, 0.5]) }]);
     const mixedPairs = [0.5, 0.5];
     for (let index = 0; index < 100; index += 1) mixedPairs.push(0.5, -0.5);
     const mixed = aggregatePolarLevel([{ pairs: new Float32Array(mixedPairs) }]);
     const center = Math.floor(POLAR_LEVEL_BIN_COUNT / 2);
 
-    expect(mixed[center]).toBeCloseTo(monoOnly[center], 10);
+    // The centered sample keeps its own peak amplitude no matter how many side samples pile up
+    // elsewhere: per-direction peak, neither averaged down nor density-weighted (Ozone's rays).
+    expect(mixed[center]).toBeCloseTo(monoOnly[center]);
+  });
+
+  it("takes the loudest sample per direction, not an average", () => {
+    const center = Math.floor(POLAR_LEVEL_BIN_COUNT / 2);
+    const loudPlusQuiet = aggregatePolarLevel([{ pairs: new Float32Array([1, 1, 0.2, 0.2]) }]);
+    const loudAlone = aggregatePolarLevel([{ pairs: new Float32Array([1, 1]) }]);
+    // Adding a quiet centered sample must not drag the center bin below the loud one's peak.
+    expect(loudPlusQuiet[center]).toBeCloseTo(loudAlone[center]);
   });
 
   it("uses fast attack and slower release", () => {

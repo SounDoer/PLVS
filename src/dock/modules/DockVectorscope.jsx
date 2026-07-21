@@ -86,7 +86,6 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const secondLabel = labels[pairY] ?? `Ch ${pairY + 1}`;
   const polarSlab = isLissajous ? null : historyData?.getVectorscopeHistoryForKey?.(key);
   const polarRows = polarSlab ? selectPolarWindow(polarSlab) : [];
-  const hasSignal = hasPairSignal(displayAudio?.peakDb, pairX, pairY);
   const expanded = heightMode === "expanded";
   const correlationLabel =
     expanded && contentWidth >= CORRELATION_FULL_LABEL_MIN_WIDTH_PX ? "Correlation" : "Corr";
@@ -164,7 +163,6 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
             <VectorscopePolarPlot
               mode={mode}
               rows={polarRows}
-              hasSignal={hasSignal}
               firstLabel={firstLabel}
               secondLabel={secondLabel}
               showLabels={plotSize >= 44}

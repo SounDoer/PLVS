@@ -1,10 +1,14 @@
-import { VS_EXTENT_FLOOR } from "./vectorscopeMath.js";
-
 export const POLAR_SAMPLE_WINDOW_MS = 400;
 export const POLAR_LEVEL_BIN_COUNT = 64;
-export const POLAR_EXTENT_RELEASE_MS = 700;
-export const POLAR_LEVEL_ATTACK_MS = 60;
-export const POLAR_LEVEL_RELEASE_MS = 350;
+// Polar Level aggregates a shorter window than Polar Sample so the leading edge reads as real-time.
+// A fast attack pushes rays out to the current level (Ozone's "outer portion for real-time"); the
+// release lets them shrink back toward the center. Release is kept moderate rather than long: since
+// each direction holds its window peak, a long release would pin every recently-active direction out
+// and the fan would look permanently fat. A shorter release lets it breathe with the real energy
+// distribution; a slightly slower attack ignores one-off micro-transients that would flare it wide.
+export const POLAR_LEVEL_WINDOW_MS = 180;
+export const POLAR_LEVEL_ATTACK_MS = 20;
+export const POLAR_LEVEL_RELEASE_MS = 220;
 
 const INV_SQRT2 = 1 / Math.sqrt(2);
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
@@ -50,62 +54,43 @@ export function polarSampleAlpha(ageMs, windowMs = POLAR_SAMPLE_WINDOW_MS) {
   return 0.9 * (1 - Math.max(0, Math.min(1, ageMs / windowMs)));
 }
 
-export function polarWindowExtent(rows) {
-  let extent = 0;
-  for (const row of rows ?? []) {
-    const pairs = row?.pairs ?? [];
-    for (let index = 0; index + 1 < pairs.length; index += 2) {
-      extent = Math.max(extent, projectPairToPolar(pairs[index], pairs[index + 1]).radius);
-    }
-  }
-  return Math.max(VS_EXTENT_FLOOR, extent);
-}
-
-export function updatePolarExtent(previous, target, elapsedMs, hasSignal) {
-  const validTarget = Math.max(VS_EXTENT_FLOOR, Number.isFinite(target) ? target : VS_EXTENT_FLOOR);
-  if (!hasSignal) return Number.isFinite(previous) ? previous : null;
-  if (!Number.isFinite(previous)) return validTarget;
-  if (validTarget >= previous) return validTarget;
-  const elapsed = Math.max(0, Number.isFinite(elapsedMs) ? elapsedMs : 0);
-  const retained = Math.exp(-elapsed / POLAR_EXTENT_RELEASE_MS);
-  return validTarget + (previous - validTarget) * retained;
-}
-
 function binIndexForAngle(angle, binCount) {
   const normalized = (angle + Math.PI / 2) / Math.PI;
   return Math.max(0, Math.min(binCount - 1, Math.round(normalized * (binCount - 1))));
 }
 
 export function smoothPolarBins(bins) {
+  // Valley-filling smooth: lift each bin toward its neighbour average but never below its own value.
+  // This de-jags the polygon without ever attenuating a peak, so a concentrated direction (e.g. a
+  // mono signal that lands in a single bin) still reaches its true radius instead of being shrunk by
+  // the kernel. A plain low-pass would halve an isolated bin (~-6 dB) and make such content read small.
   const output = new Float64Array(bins.length);
   for (let index = 0; index < bins.length; index += 1) {
     const left = bins[Math.max(0, index - 1)];
     const center = bins[index];
     const right = bins[Math.min(bins.length - 1, index + 1)];
-    output[index] = left * 0.25 + center * 0.5 + right * 0.25;
+    const blended = left * 0.25 + center * 0.5 + right * 0.25;
+    output[index] = Math.max(center, blended);
   }
   return output;
 }
 
 export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
-  const energy = new Float64Array(binCount);
-  const sampleCounts = new Uint32Array(binCount);
+  const peak = new Float64Array(binCount);
   for (const row of rows ?? []) {
     const pairs = row?.pairs ?? [];
     for (let index = 0; index + 1 < pairs.length; index += 2) {
       const point = projectPairToPolar(pairs[index], pairs[index + 1]);
       if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
       const bin = binIndexForAngle(point.angle, binCount);
-      energy[bin] += point.radius * point.radius;
-      sampleCounts[bin] += 1;
+      if (point.radius > peak[bin]) peak[bin] = point.radius;
     }
   }
-  for (let index = 0; index < energy.length; index += 1) {
-    if (sampleCounts[index] > 0) {
-      energy[index] = Math.sqrt(energy[index] / sampleCounts[index]);
-    }
-  }
-  return smoothPolarBins(energy);
+  // Per-direction peak amplitude: each bin is the loudest sample pointing that way in the window,
+  // independent of the other directions. Paired with a full-scale reference (see Polar Scaling) this
+  // is Ozone's model — a full-scale sample reaches the arc, real clipping (radius = sqrt(2)) hits it
+  // exactly, and nothing overshoots. No magnification, so quiet material is honestly smaller.
+  return smoothPolarBins(peak);
 }
 
 function timeAlpha(elapsedMs, timeMs) {

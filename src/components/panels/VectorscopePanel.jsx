@@ -359,7 +359,6 @@ export function VectorscopePanel() {
                 mode={vectorscopeMode}
                 rows={polarRows}
                 snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
-                hasSignal={hasCorrelationSignal}
                 firstLabel={axisXLabel}
                 secondLabel={axisYLabel}
                 peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}

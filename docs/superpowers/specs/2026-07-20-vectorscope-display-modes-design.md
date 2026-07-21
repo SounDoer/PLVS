@@ -17,7 +17,7 @@ Polar Level
 `Lissajous` is the existing X/Y phase trace, renamed from the informal product term
 “Trace.” `Polar Sample` folds the same real L/R samples into an upper semicircle and renders
 them as a short-persistence point cloud. `Polar Level` aggregates the same samples by polar
-angle and renders separated radial level wedges.
+angle and renders a continuous filled level fan.
 
 The first slice is frontend-only. It reuses the existing request-keyed vectorscope history
 slab (~40 ms rows, ~25 updates/s) for both Polar modes and leaves the Rust audio/DSP/IPC path
@@ -35,13 +35,17 @@ unchanged. The existing high-rate Rust-generated SVG path remains the Lissajous 
 - Correlation remains visible in all three modes.
 - Polar views do not show ±45° safety guides in this slice.
 - Polar views show the selected channel labels at the left and right ends.
-- Lissajous and Polar Sample use stable automatic magnification; Polar Level uses a fixed dB scale.
+- Lissajous keeps stable automatic magnification. Polar Sample and Polar Level share one fixed
+  `-48...0 dBFS` radial transfer, so they read at the same scale: Sample plots every sample, Level
+  fills to the per-direction peak, making the level fan the filled outer envelope of the Sample dot
+  cloud. Both are absolute (louder reaches nearer the arc), so none of the Polar modes track a
+  per-window peak extent and none of them breathe.
 - Polar Sample uses a fixed ~400 ms afterglow.
-- Polar Level uses separated radial wedges with fast-attack/slow-release motion.
+- Polar Level renders a continuous filled fan with fast-attack/slow-release motion.
 - Polar Level exposes a per-instance `Peak hold` toggle, default off.
 - Peak hold is indefinite and resets through the existing global Clear action.
-- Silence fades Polar Sample to empty, collapses Polar Level, clears correlation through the
-  existing signal gate, and freezes Polar Sample magnification so noise is not expanded.
+- Silence fades Polar Sample to empty, collapses Polar Level, and clears correlation through the
+  existing signal gate. Neither Polar mode magnifies, so noise is never expanded.
 - Snapshot mode preserves the selected display mode.
 - Dock Vectorscope supports and persists all three modes independently.
 - The existing hold-to-slow gesture remains Lissajous-only.
@@ -118,7 +122,7 @@ Snapshot behavior:
 
 - Lissajous renders the selected row as today.
 - Polar Sample renders the selected row as a point cloud without temporal fading.
-- Polar Level aggregates the selected row and renders its settled wedges immediately.
+- Polar Level aggregates the selected row and renders its settled fan immediately.
 - The runtime Peak hold outline is hidden in snapshot mode. Peak hold represents the live period
   since Clear and must not be presented as historical state that was never stored.
 
@@ -145,33 +149,39 @@ Interpretation:
 - centered mono maps to the top center regardless of waveform polarity;
 - left/right imbalance moves toward the corresponding side;
 - opposite-polarity content approaches the semicircle ends;
-- radius retains the sample magnitude before display magnification.
+- radius retains the sample magnitude before the fixed dB mapping.
 
 No ±45° guides or danger-region fill are drawn.
 
 ## Polar Scaling
 
-Polar Sample automatic magnification is held independently by each panel instance.
+No Polar mode tracks a per-window peak extent, so none of them breathe/pump the way an
+auto-magnified plot does. Both Polar modes share **one radial transfer** so they read as the same
+picture at the same scale:
 
-For Polar Sample, derive the target extent from the maximum projected radius in the active sample
-window. Maintain a display extent with time-based behavior:
+- **Polar Sample** maps each drawn sample's projected radius through a fixed `-48...0 dBFS`
+  transfer (`sqrt(2)` = full scale reaches the arc, `<= -48 dBFS` clamps to the center). A point's
+  distance from the center reflects its own instantaneous level, not the loudest sample in the
+  window. The logarithmic axis lets quiet material still spread across the plot instead of
+  collapsing into a tiny central cluster.
+- **Polar Level** maps each aggregated bin through the **same** `-48...0 dBFS` transfer, where
+  `binLevel` is the per-direction *peak* amplitude (see Level aggregation). Because Level takes the
+  peak sample per direction and Sample plots every sample, the level fan is exactly the **filled
+  outer envelope of the Sample dot cloud** — same radial scale, so the two modes stay visually
+  consistent in size. Only genuine full-scale audio reaches the arc.
 
-- when target extent grows, accept it immediately so the drawing shrinks before clipping;
-- when target extent falls, release toward it slowly so the drawing expands without pumping;
-- clamp to the existing vectorscope extent floor and preserve plot padding;
-- when the selected pair has no signal, keep the last display extent instead of magnifying noise;
-- initialize from the first valid signal window.
+Why the choices: a shared dB transfer keeps Level and Sample consistent (the earlier linear,
+full-scale-referenced Level looked correct in isolation but collapsed to a small blob next to the
+dB-spread Sample cloud — same audio, wildly different sizes). dB (not linear) compresses the wide
+dynamic range so quiet material still reaches out instead of crushing to the center, matching how
+Ozone's level view fills the plot. Level stays absolute — louder reaches nearer the arc, quieter
+sits inside — and the slow release (see below) keeps the outer extent populated between peaks.
 
-The implementation must be time-based rather than frame-count-based so 25 Hz and irregular UI
-frames behave consistently. Exact release tuning is an implementation constant covered by pure
-tests and visual verification; it is not a user setting in this slice.
+Because the scale is absolute (never normalized against the current or held peak), Peak hold is a
+pure overlay: the held outline sits outside the live fill and never rescales it.
 
-Polar Level does not use automatic magnification. Map each displayed bin from linear amplitude to
-a fixed `-48...0 dBFS` radius, clamped to the center and outer arc. The fixed coordinate system
-prevents whole-plot breathing and keeps indefinite Peak hold values inside the plot.
-
-Lissajous keeps its existing Rust-side extent hold. A later payload unification may move all three
-modes to the same frontend extent implementation, but that is not required here.
+Lissajous keeps its existing Rust-side extent hold; that automatic magnification is out of scope
+for this slice.
 
 ## Polar Sample
 
@@ -182,7 +192,7 @@ Polar Sample uses Canvas 2D and redraws from a bounded history window.
 - Newest points use the current Vectorscope trace token at high opacity.
 - Opacity falls continuously with row age and reaches zero at the window edge.
 - Point size scales with device pixel ratio and is clamped for small Dock plots.
-- All rows in one draw use one shared automatic magnification extent.
+- Every point uses the fixed `-48...0 dBFS` radius; there is no per-window magnification.
 - On silence, stop adding visible points; the existing rows fade out naturally.
 - Snapshot mode draws its single selected row at full point opacity.
 
@@ -190,37 +200,44 @@ The fixed 400 ms persistence is intentionally not exposed as a setting in this s
 
 ## Polar Level
 
-Polar Level aggregates the same projected points into a fixed number of angular bins across the
-semicircle. Use a constant bin count sufficient for a smooth envelope (initial target: 64 bins).
+Polar Level aggregates projected points into a fixed number of angular bins across the semicircle.
+Use a constant bin count sufficient for a smooth envelope (initial target: 64 bins). It aggregates a
+shorter window than Polar Sample (~180 ms rather than 400 ms) so the fan tracks the signal instead
+of trailing a long moving average.
 
 For each window:
 
 1. assign each projected sample to an angular bin;
-2. accumulate squared radius in that bin;
-3. normalize by the total sample count, then take the square root so bin length represents its
-   contribution to window RMS energy;
-4. apply a small fixed neighboring-bin smoothing kernel to avoid a jagged polygon without
-   inventing temporal samples;
-5. map levels onto a fixed `-48...0 dBFS` radial scale;
-6. update the displayed bin envelope with fast attack and slow release.
+2. keep the **maximum** projected radius seen in that bin (the peak amplitude pointing that way),
+   independent of how many samples land in it or in other directions;
+3. apply a **valley-filling** neighbouring-bin smooth (lift each bin toward its neighbour average but
+   never below its own value) to de-jag the polygon without ever attenuating a peak — a plain
+   low-pass would halve an isolated bin (~-6 dB) and make concentrated/mono content read small;
+4. update the displayed bin envelope with near-instant attack and a long release;
+5. map bin levels onto the shared `-48...0 dBFS` radial transfer (see Polar Scaling).
 
-Attack/release behavior is time-based:
+Attack/release is asymmetric — rays shoot out to the real-time level, then recede toward the center:
 
-- bins grow quickly when new energy exceeds the displayed value;
-- bins shrink more slowly when energy falls;
+- bins grow fast when new energy exceeds the displayed value (~20 ms), so the outer edge reflects the
+  current level (Ozone's "outer portion for real-time analysis"), while still ignoring one-off
+  micro-transients that would flare the fan wide;
+- bins recede at a moderate release (~220 ms) when energy falls. Because each direction holds its
+  window peak, a long release would pin every recently-active direction out and the fan would look
+  permanently fat; the moderate release lets it breathe with the real energy distribution while still
+  reading as a short afterglow rather than snapping;
 - snapshot mode bypasses temporal smoothing and displays the selected row’s aggregate directly;
 - silence drives the envelope toward zero.
 
-Render each of the 64 bins as an independent wedge from the bottom-center origin to its current
-level radius. A wedge occupies roughly half of its bin's angular width so adjacent directions
-remain visually distinct. Do not connect or fill the current-level endpoints into a closed
-envelope. Wedges use `--ui-vectorscope-trace` at full opacity; no new mode colors are introduced.
+Render the current-level bins as one continuous filled fan: sweep from the bottom-center origin
+across every bin tip in angular order and back to the origin, then fill the enclosed area. This
+matches the Waves PAZ / iZotope Ozone polar level look. Fill uses `--ui-vectorscope-trace` at full
+opacity; no new mode colors are introduced.
 
 ## Polar Level Peak Hold
 
 When `vectorscopePolarLevelPeakHold` is enabled:
 
-- keep a per-bin maximum of the displayed Polar Level wedge lengths;
+- keep a per-bin maximum of the displayed Polar Level fan radii;
 - connect the maxima from left to right as one unfilled open polyline;
 - draw the polyline with `--ui-vectorscope-trace` at `0.35` alpha;
 - maxima do not decay;
@@ -242,8 +259,7 @@ Polar renderers observe this epoch and reset:
 
 - Polar Level attack/release state;
 - Polar Level Peak hold bins;
-- Polar Sample local draw state if any;
-- automatic magnification initialization where appropriate.
+- Polar Sample local draw state if any.
 
 This is a display reset signal only. Existing history and backend Clear behavior remains
 authoritative.
@@ -266,8 +282,8 @@ Plot behavior:
 - Lissajous retains the current diagonal grid and corner pair labels.
 - Polar modes replace the diagonal grid with a semicircle baseline/arc using
   `--ui-vectorscope-grid-stroke` at full opacity.
-- Polar Level draws separated current-level wedges and, when enabled, an open Peak hold polyline
-  connecting maxima from left to right; it never fills the area between current-level endpoints.
+- Polar Level draws one continuous filled current-level fan and, when enabled, an open Peak hold
+  polyline connecting maxima from left to right.
 - Polar modes show the selected first-channel label at the left end and second-channel label at
   the right end; no `Center` label is shown.
 - Lissajous alone owns the existing hold-to-slow pointer gesture.
@@ -295,7 +311,7 @@ Keep data math separate from Canvas operations:
   and reset epoch;
 - the existing Lissajous SVG implementation remains in its current adapters for this slice.
 
-Canvas is selected for Polar modes because point persistence and repeatedly updated radial wedges
+Canvas is selected for Polar modes because point persistence and the repeatedly updated filled fan
 are bounded pixel rendering tasks. SVG path strings remain only for existing Lissajous.
 
 ## Performance Bounds
@@ -315,9 +331,8 @@ Pure math tests cover:
 
 - folded Mid/Side projection for centered, left, right, and opposite-polarity pairs;
 - 400 ms row selection relative to newest timestamp;
-- stable extent immediate shrink / slow expansion / silence freeze;
 - Polar Sample age-to-alpha mapping;
-- Polar Level bin assignment, RMS-energy normalization, neighboring-bin smoothing;
+- Polar Level bin assignment, per-direction peak aggregation, valley-filling peak-preserving smoothing;
 - time-based fast attack and slow release;
 - Peak hold accumulation and reset.
 
@@ -333,7 +348,8 @@ UI tests cover:
 - settings order and mode-specific Peak hold visibility;
 - immediate mode switching;
 - correct renderer and grid per mode;
-- separated Polar Level wedges without a connected current-level fill;
+- Polar Level rendered as a single continuous filled fan;
+- Polar Sample points placed on the fixed dB scale independent of window loudness;
 - endpoint labels in Polar modes;
 - Correlation present in all modes;
 - snapshot mode preserving the selected mode;
@@ -359,9 +375,13 @@ UI tests cover:
 - Polar Sample is visibly continuous at the existing history cadence and fades to empty on silence.
 - Polar Level is stable, reacts quickly to new energy, releases smoothly, and does not visibly
   jitter under steady input.
-- Polar Level uses a fixed `-48...0 dBFS` scale, does not breathe under steady input, and keeps
-  Peak hold inside the outer arc.
-- Polar Sample automatic magnification clips neither sudden loud input nor expands silence/noise.
+- Polar Level renders a filled fan on the same `-48...0 dBFS` transfer as Polar Sample, so it reads
+  as the filled outer envelope of the Sample dot cloud at a consistent size. Its outer edge jumps to
+  new energy in real time and recedes toward the center as a slow afterglow (Ozone's shrinking-rays
+  history), it does not breathe under steady input, and Peak hold is an outer overlay that never
+  rescales the live fill.
+- Polar Sample uses a fixed `-48...0 dBFS` scale and never breathes: a point's radius depends only
+  on its own level, not on the loudest sample in the window.
 - Peak hold is optional, defaults off, holds indefinitely, and resets through Clear.
 - Snapshot and Dock behavior matches this spec.
 - No Rust audio/DSP/IPC code changes are required.
