@@ -5,6 +5,7 @@ import { VectorscopePolarPlot } from "../../components/panels/VectorscopePolarPl
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
+import { useHoverTip } from "@/components/HoverTip";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -59,6 +60,14 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const pair = normalizedControls.pair;
   const mode = normalizedControls.mode;
   const isLissajous = mode === "lissajous";
+  const [peakHoldResetKey, setPeakHoldResetKey] = useState(0);
+  const canResetPeakHold = mode === "polarLevel" && normalizedControls.polarLevelPeakHold;
+  const {
+    anchorRef: peakHoldResetRef,
+    showTip: showPeakHoldResetTip,
+    hideTip: hidePeakHoldResetTip,
+    tipNode: peakHoldResetTip,
+  } = useHoverTip({ tip: "Click to reset Peak hold", side: "top" });
   const key = dockVectorscopeKey(normalizedControls);
   const result = displayAudio?.vectorscopeResultsByKey?.[key];
   const pairX = Number.isFinite(result?.pairX) ? result.pairX : pair.x;
@@ -116,9 +125,15 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
       >
         <div
           data-testid="dock-vectorscope-plot"
-          className="relative shrink-0 overflow-hidden"
+          data-peak-hold-reset={canResetPeakHold ? "true" : undefined}
+          ref={canResetPeakHold ? peakHoldResetRef : undefined}
+          className={`relative shrink-0 overflow-hidden ${canResetPeakHold ? "cursor-pointer" : ""}`}
           style={{ width: plotSize, height: plotSize }}
+          onClick={canResetPeakHold ? () => setPeakHoldResetKey((k) => k + 1) : undefined}
+          onMouseEnter={canResetPeakHold ? showPeakHoldResetTip : undefined}
+          onMouseLeave={canResetPeakHold ? hidePeakHoldResetTip : undefined}
         >
+          {peakHoldResetTip}
           {isLissajous ? (
             <svg
               className="pointer-events-none absolute inset-0 block h-full w-full"
@@ -167,6 +182,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               secondLabel={secondLabel}
               showLabels={plotSize >= 44}
               peakHoldEnabled={normalizedControls.polarLevelPeakHold}
+              peakHoldResetKey={peakHoldResetKey}
               resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
               identityKey={key}
             />

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
@@ -154,5 +154,29 @@ describe("DockVectorscope", () => {
     expect(screen.queryByTestId("dock-vectorscope-trace")).toBeNull();
     expect(getVectorscopeHistoryForKey).toHaveBeenCalledWith(key);
     expect(screen.getByTestId("dock-vectorscope-correlation-rail")).toBeTruthy();
+  });
+
+  it("offers click-to-reset for a Polar Level Dock module with Peak hold on", () => {
+    const polarControls = { pair: { x: 0, y: 1 }, mode: "polarLevel", polarLevelPeakHold: true };
+    renderWith(null, [-12, -10], "standard", polarControls);
+    const plot = screen.getByTestId("dock-vectorscope-plot");
+    expect(plot.getAttribute("data-peak-hold-reset")).toBe("true");
+    expect(plot.className).toContain("cursor-pointer");
+    fireEvent.mouseEnter(plot);
+    expect(screen.getByText("Click to reset Peak hold")).toBeTruthy();
+    fireEvent.click(plot);
+  });
+
+  it("hides the Dock reset affordance for Lissajous and Peak hold off", () => {
+    for (const polarControls of [
+      { pair: { x: 0, y: 1 }, mode: "lissajous", polarLevelPeakHold: true },
+      { pair: { x: 0, y: 1 }, mode: "polarLevel", polarLevelPeakHold: false },
+    ]) {
+      const { unmount } = renderWith(null, [-12, -10], "standard", polarControls);
+      expect(screen.getByTestId("dock-vectorscope-plot").hasAttribute("data-peak-hold-reset")).toBe(
+        false
+      );
+      unmount();
+    }
   });
 });
