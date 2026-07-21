@@ -233,6 +233,39 @@ describe("VectorscopePanel", () => {
     }
   });
 
+  it("anchors Lissajous to the header and polar modes to the correlation rail", () => {
+    for (const [mode, alignment] of [
+      ["lissajous", "justify-start"],
+      ["polarSample", "justify-end"],
+      ["polarLevel", "justify-end"],
+    ]) {
+      const { container, unmount } = renderPanel({
+        selectedOffset: -1,
+        panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: mode },
+      });
+      const stage = container.querySelector("[data-vectorscope-plot-stage]");
+
+      expect(stage?.className).toContain(alignment);
+      expect(stage?.className).not.toContain("justify-center");
+      unmount();
+    }
+  });
+
+  it("reserves a label row below the polar drawing", () => {
+    for (const mode of ["polarSample", "polarLevel"]) {
+      const { container, unmount } = renderPanel({
+        selectedOffset: -1,
+        panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: mode },
+      });
+      const polarStage = container.querySelector("[data-vectorscope-polar-stage]");
+
+      expect(polarStage?.className).toContain(
+        "bottom-[calc(var(--ui-fs-axis)_+_var(--ui-vector-corner-inset))]"
+      );
+      unmount();
+    }
+  });
+
   it("places the rail marker from correlation when the selected pair has signal", () => {
     const { container } = renderPanel({
       selectedOffset: -1,

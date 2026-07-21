@@ -298,7 +298,13 @@ export function VectorscopePanel() {
         "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-0">
+      <div
+        data-vectorscope-plot-stage
+        className={cn(
+          "flex min-h-0 flex-1 flex-col items-center gap-0",
+          isLissajous ? "justify-start" : "justify-end"
+        )}
+      >
         <div
           data-vectorscope-plot
           data-peak-hold-reset={canResetPeakHold ? "true" : undefined}
@@ -378,19 +384,24 @@ export function VectorscopePanel() {
               />
             )}
             {!isLissajous ? (
-              <VectorscopePolarPlot
-                mode={vectorscopeMode}
-                rows={polarRows}
-                snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
-                snapshotPeakHold={isSnapshot ? snapResolved?.peakHold : null}
-                firstLabel={axisXLabel}
-                secondLabel={axisYLabel}
-                showLabels={false}
-                peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}
-                peakHoldResetKey={peakHoldResetKey}
-                resetEpoch={vectorscopeResetEpoch}
-                identityKey={`${vectorscopeKey}:${px}:${py}`}
-              />
+              <div
+                data-vectorscope-polar-stage
+                className="absolute inset-x-0 top-0 bottom-[calc(var(--ui-fs-axis)_+_var(--ui-vector-corner-inset))]"
+              >
+                <VectorscopePolarPlot
+                  mode={vectorscopeMode}
+                  rows={polarRows}
+                  snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
+                  snapshotPeakHold={isSnapshot ? snapResolved?.peakHold : null}
+                  firstLabel={axisXLabel}
+                  secondLabel={axisYLabel}
+                  showLabels={false}
+                  peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}
+                  peakHoldResetKey={peakHoldResetKey}
+                  resetEpoch={vectorscopeResetEpoch}
+                  identityKey={`${vectorscopeKey}:${px}:${py}`}
+                />
+              </div>
             ) : null}
           </div>
           <div
