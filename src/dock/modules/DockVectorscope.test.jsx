@@ -167,6 +167,54 @@ describe("DockVectorscope", () => {
     fireEvent.click(plot);
   });
 
+  it("gives a Polar mode a 2:1 plot that fills the dock height", () => {
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 300,
+      height: 80,
+      top: 0,
+      right: 300,
+      bottom: 80,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    renderWith(null, [-12, -10], "standard", {
+      pair: { x: 0, y: 1 },
+      mode: "polarLevel",
+      polarLevelPeakHold: false,
+    });
+    // availHeight 80, availWidth 300 - 8 - 72 = 220 → height fills to 80, width = 2 * 80 = 160.
+    const plot = screen.getByTestId("dock-vectorscope-plot");
+    expect(plot.style.height).toBe("80px");
+    expect(plot.style.width).toBe("160px");
+    rect.mockRestore();
+  });
+
+  it("keeps Lissajous square in the dock", () => {
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 300,
+      height: 80,
+      top: 0,
+      right: 300,
+      bottom: 80,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    renderWith(null, [-12, -10], "standard", {
+      pair: { x: 0, y: 1 },
+      mode: "lissajous",
+      polarLevelPeakHold: false,
+    });
+    // side = min(80, 220) = 80: unchanged square.
+    const plot = screen.getByTestId("dock-vectorscope-plot");
+    expect(plot.style.height).toBe("80px");
+    expect(plot.style.width).toBe("80px");
+    rect.mockRestore();
+  });
+
   it("hides the Dock reset affordance for Lissajous and Peak hold off", () => {
     for (const polarControls of [
       { pair: { x: 0, y: 1 }, mode: "lissajous", polarLevelPeakHold: true },

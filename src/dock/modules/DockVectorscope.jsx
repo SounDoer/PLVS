@@ -37,15 +37,21 @@ function formatCorrelation(value) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }
 
-function computePlotSize(width, height, expanded = false) {
-  if (!Number.isFinite(width) || !Number.isFinite(height)) return 48;
-  if (expanded) {
-    return Math.max(32, Math.floor(Math.min(width, height - EXPANDED_CORRELATION_HEIGHT_PX)));
+function computePlotBox(width, height, expanded, isPolar) {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return { w: 48, h: 48 };
+  // Standard layout puts the correlation rail beside the plot (reserve its width); expanded stacks
+  // it below (reserve its height).
+  const availHeight = expanded ? height - EXPANDED_CORRELATION_HEIGHT_PX : height;
+  const availWidth = expanded ? width : width - CONTENT_GAP_PX - CORRELATION_MIN_WIDTH_PX;
+  if (isPolar) {
+    // The polar plot is an upper semicircle — a diameter wide by a radius tall, i.e. 2:1. A square
+    // box would leave the top half empty, so give it a 2:1 box: height fills the available height,
+    // width is twice that (capped by the available width so it never overruns the correlation rail).
+    const h = Math.max(32, Math.floor(Math.min(availHeight, availWidth / 2)));
+    return { w: h * 2, h };
   }
-  return Math.max(
-    32,
-    Math.floor(Math.min(height, width - CONTENT_GAP_PX - CORRELATION_MIN_WIDTH_PX))
-  );
+  const side = Math.max(32, Math.floor(Math.min(availHeight, availWidth)));
+  return { w: side, h: side };
 }
 
 /** Compact live Vectorscope with a dedicated correlation readout. */
@@ -54,8 +60,9 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const historyData = useHistoryData();
   const contentRef = useRef(null);
   const displayCorrelationRef = useRef(null);
-  const [plotSize, setPlotSize] = useState(48);
+  const [plotBox, setPlotBox] = useState({ w: 48, h: 48 });
   const [contentWidth, setContentWidth] = useState(0);
+  const plotMin = Math.min(plotBox.w, plotBox.h);
   const normalizedControls = normalizeDockModuleControls("correlation", controls);
   const pair = normalizedControls.pair;
   const mode = normalizedControls.mode;
@@ -105,14 +112,14 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
     const measure = () => {
       const rect = content.getBoundingClientRect();
       setContentWidth(rect.width);
-      setPlotSize(computePlotSize(rect.width, rect.height, expanded));
+      setPlotBox(computePlotBox(rect.width, rect.height, expanded, !isLissajous));
     };
     measure();
     if (typeof ResizeObserver !== "function") return undefined;
     const observer = new ResizeObserver(measure);
     observer.observe(content);
     return () => observer.disconnect();
-  }, [expanded]);
+  }, [expanded, isLissajous]);
 
   return (
     <div className="h-full min-w-0 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]">
@@ -128,7 +135,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
           data-peak-hold-reset={canResetPeakHold ? "true" : undefined}
           ref={canResetPeakHold ? peakHoldResetRef : undefined}
           className={`relative shrink-0 overflow-hidden ${canResetPeakHold ? "cursor-pointer" : ""}`}
-          style={{ width: plotSize, height: plotSize }}
+          style={{ width: plotBox.w, height: plotBox.h }}
           onClick={canResetPeakHold ? () => setPeakHoldResetKey((k) => k + 1) : undefined}
           onMouseEnter={canResetPeakHold ? showPeakHoldResetTip : undefined}
           onMouseLeave={canResetPeakHold ? hidePeakHoldResetTip : undefined}
@@ -180,14 +187,14 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               rows={polarRows}
               firstLabel={firstLabel}
               secondLabel={secondLabel}
-              showLabels={plotSize >= 44}
+              showLabels={plotMin >= 44}
               peakHoldEnabled={normalizedControls.polarLevelPeakHold}
               peakHoldResetKey={peakHoldResetKey}
               resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
               identityKey={key}
             />
           )}
-          {isLissajous && plotSize >= 44 ? (
+          {isLissajous && plotMin >= 44 ? (
             <>
               <span className="absolute left-0.5 top-0 max-w-[45%] truncate font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
                 {firstLabel}
