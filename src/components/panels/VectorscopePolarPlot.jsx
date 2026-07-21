@@ -204,27 +204,35 @@ export function VectorscopePolarPlot({
     ctx.clearRect(0, 0, width, height);
     drawGrid(ctx, geometry, gridColor, Math.max(0.5 * dpr, lineWidth * 0.5));
 
-    const now = Number.isFinite(newestTimestamp) ? newestTimestamp : performance.now();
-    const elapsedMs = Number.isFinite(lastTimestampRef.current)
-      ? Math.max(0, now - lastTimestampRef.current)
-      : 0;
-    lastTimestampRef.current = now;
-
     if (effectiveRows.length === 0) return;
     if (mode === "polarSample") {
       drawPolarSample(ctx, effectiveRows, geometry, traceColor, dpr, snapshot);
       return;
     }
 
+    if (snapshot) {
+      // A snapshot is a look-back at stored history, so it must not touch the live envelope or
+      // peak-hold accumulators (which represent the live period since Clear) — leaving them frozen
+      // lets both resume seamlessly on return to live. Draw the selected row's settled fan directly
+      // and overlay the preserved live peak-hold outline so the hold stays visible while scrubbing.
+      const snapshotEnvelope = aggregatePolarLevel(effectiveRows);
+      drawPolarLevel(ctx, snapshotEnvelope, peakHoldRef.current, geometry, traceColor, lineWidth);
+      return;
+    }
+
+    const now = Number.isFinite(newestTimestamp) ? newestTimestamp : performance.now();
+    const elapsedMs = Number.isFinite(lastTimestampRef.current)
+      ? Math.max(0, now - lastTimestampRef.current)
+      : 0;
+    lastTimestampRef.current = now;
+
     const levelRows = effectiveRows.filter(
       (row) => !Number.isFinite(row.ageMs) || row.ageMs <= POLAR_LEVEL_WINDOW_MS
     );
     const targetEnvelope = aggregatePolarLevel(levelRows);
-    envelopeRef.current = updatePolarLevelEnvelope(envelopeRef.current, targetEnvelope, elapsedMs, {
-      settled: snapshot,
-    });
+    envelopeRef.current = updatePolarLevelEnvelope(envelopeRef.current, targetEnvelope, elapsedMs);
     peakHoldRef.current = updatePolarPeakHold(peakHoldRef.current, envelopeRef.current, {
-      enabled: peakHoldEnabled && !snapshot,
+      enabled: peakHoldEnabled,
     });
     drawPolarLevel(ctx, envelopeRef.current, peakHoldRef.current, geometry, traceColor, lineWidth);
   });

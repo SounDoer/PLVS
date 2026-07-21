@@ -332,13 +332,26 @@ describe("VectorscopePolarPlot", () => {
     expect(screen.queryByText("R")).toBeNull();
   });
 
-  it("does not draw a Peak hold outline in snapshot mode", () => {
+  it("keeps the live Peak hold outline visible after entering snapshot", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
-    render(
+    const { rerender } = render(
       <VectorscopePolarPlot
         mode="polarLevel"
-        snapshotPairs={new Float32Array([1, 1])}
+        rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
+        hasSignal
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+      />
+    );
+    ctx.stroke.mockClear();
+    ctx.strokedPaths.length = 0;
+
+    rerender(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        snapshotPairs={new Float32Array([0.25, 0.25])}
         hasSignal
         firstLabel="L"
         secondLabel="R"
@@ -346,7 +359,11 @@ describe("VectorscopePolarPlot", () => {
       />
     );
 
-    // Snapshot mode draws only the grid; current wedges have no outline.
-    expect(ctx.stroke).toHaveBeenCalledOnce();
+    // The live-accumulated hold survives the snapshot look-back rather than being discarded:
+    // the snapshot render draws the grid plus the preserved open hold outline (never a closed fan).
+    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    const heldPath = ctx.strokedPaths.at(-1);
+    expect(heldPath[0].command).toBe("moveTo");
+    expect(heldPath.some(({ command }) => command === "closePath")).toBe(false);
   });
 });
