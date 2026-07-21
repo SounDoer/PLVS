@@ -13,6 +13,7 @@ const CORRELATION_MIN_WIDTH_PX = 72;
 const CONTENT_GAP_PX = 8;
 const EXPANDED_CORRELATION_HEIGHT_PX = 44;
 const CORRELATION_FULL_LABEL_MIN_WIDTH_PX = 184;
+const PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX = 44;
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -62,7 +63,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const displayCorrelationRef = useRef(null);
   const [plotBox, setPlotBox] = useState({ w: 48, h: 48 });
   const [contentWidth, setContentWidth] = useState(0);
-  const plotMin = Math.min(plotBox.w, plotBox.h);
+  const [contentHeight, setContentHeight] = useState(0);
   const normalizedControls = normalizeDockModuleControls("correlation", controls);
   const pair = normalizedControls.pair;
   const mode = normalizedControls.mode;
@@ -103,6 +104,11 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const polarSlab = isLissajous ? null : historyData?.getVectorscopeHistoryForKey?.(key);
   const polarRows = polarSlab ? selectPolarWindow(polarSlab) : [];
   const expanded = heightMode === "expanded";
+  const availablePlotHeight = Math.max(
+    0,
+    contentHeight - (expanded ? EXPANDED_CORRELATION_HEIGHT_PX : 0)
+  );
+  const showPairLabels = availablePlotHeight >= PAIR_LABEL_MIN_AVAILABLE_HEIGHT_PX;
   const correlationLabel =
     expanded && contentWidth >= CORRELATION_FULL_LABEL_MIN_WIDTH_PX ? "Correlation" : "Corr";
 
@@ -112,6 +118,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
     const measure = () => {
       const rect = content.getBoundingClientRect();
       setContentWidth(rect.width);
+      setContentHeight(rect.height);
       setPlotBox(computePlotBox(rect.width, rect.height, expanded, !isLissajous));
     };
     measure();
@@ -143,26 +150,27 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
           {peakHoldResetTip}
           {isLissajous ? (
             <svg
+              data-testid="dock-vectorscope-lissajous-grid"
               className="pointer-events-none absolute inset-0 block h-full w-full"
               viewBox="0 0 260 260"
               preserveAspectRatio="none"
               aria-hidden
             >
               <line
-                x1="0"
-                y1="0"
-                x2="260"
-                y2="260"
+                x1="4"
+                y1="4"
+                x2="256"
+                y2="256"
                 stroke="var(--ui-vectorscope-grid-stroke)"
                 strokeWidth="0.35"
                 strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
               />
               <line
-                x1="260"
-                y1="0"
-                x2="0"
-                y2="260"
+                x1="256"
+                y1="4"
+                x2="4"
+                y2="256"
                 stroke="var(--ui-vectorscope-grid-stroke)"
                 strokeWidth="0.35"
                 strokeDasharray="var(--ui-vectorscope-grid-dash)"
@@ -182,27 +190,37 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               ) : null}
             </svg>
           ) : (
-            <VectorscopePolarPlot
-              mode={mode}
-              rows={polarRows}
-              firstLabel={firstLabel}
-              secondLabel={secondLabel}
-              showLabels={plotMin >= 44}
-              peakHoldEnabled={normalizedControls.polarLevelPeakHold}
-              peakHoldResetKey={peakHoldResetKey}
-              resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
-              identityKey={key}
-            />
+            <div
+              data-testid="dock-vectorscope-polar-stage"
+              className={
+                showPairLabels
+                  ? "absolute inset-x-0 top-0 bottom-[calc(var(--ui-dock-fs-label)_+_2px)]"
+                  : "absolute inset-0"
+              }
+            >
+              <VectorscopePolarPlot
+                mode={mode}
+                rows={polarRows}
+                firstLabel={firstLabel}
+                secondLabel={secondLabel}
+                showLabels={false}
+                peakHoldEnabled={normalizedControls.polarLevelPeakHold}
+                peakHoldResetKey={peakHoldResetKey}
+                resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
+                identityKey={key}
+              />
+            </div>
           )}
-          {isLissajous && plotMin >= 44 ? (
-            <>
-              <span className="absolute left-0.5 top-0 max-w-[45%] truncate font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
-                {firstLabel}
-              </span>
-              <span className="absolute right-0.5 top-0 max-w-[45%] truncate text-right font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
-                {secondLabel}
-              </span>
-            </>
+          {showPairLabels ? (
+            <div
+              data-testid="dock-vectorscope-pair-labels"
+              className={`pointer-events-none absolute inset-x-0 flex justify-between px-0.5 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground ${
+                isLissajous ? "top-0" : "bottom-0"
+              }`}
+            >
+              <span className="max-w-[45%] truncate">{firstLabel}</span>
+              <span className="max-w-[45%] truncate text-right">{secondLabel}</span>
+            </div>
           ) : null}
         </div>
 

@@ -57,7 +57,7 @@ describe("DockVectorscope", () => {
     expect(screen.getByTestId("dock-vectorscope-trace").getAttribute("d")).toBe("M 0 0 L 260 260");
     expect(screen.getByText("+0.50")).toBeTruthy();
     expect(screen.getByTestId("dock-vectorscope-correlation-marker").style.left).toBe("75%");
-    expect(screen.getByText("L").className).toContain("var(--ui-dock-fs-label)");
+    expect(screen.getByText("L").parentElement?.className).toContain("var(--ui-dock-fs-label)");
     expect(screen.getByText("-1").parentElement?.className).toContain("var(--ui-dock-fs-caption)");
     expect(screen.getByText("+0.50").className).toContain("var(--ui-dock-fs-value)");
     expect(screen.getByTestId("dock-vectorscope-correlation-readout").textContent).toBe(
@@ -154,6 +154,113 @@ describe("DockVectorscope", () => {
     expect(screen.queryByTestId("dock-vectorscope-trace")).toBeNull();
     expect(getVectorscopeHistoryForKey).toHaveBeenCalledWith(key);
     expect(screen.getByTestId("dock-vectorscope-correlation-rail")).toBeTruthy();
+  });
+
+  it.each(["lissajous", "polarSample", "polarLevel"])(
+    "uses Dock-owned pair labels in %s mode",
+    (mode) => {
+      const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+        width: 220,
+        height: 72,
+        top: 0,
+        right: 220,
+        bottom: 72,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+      renderWith(null, [-12, -10], "standard", {
+        pair: { x: 0, y: 1 },
+        mode,
+        polarLevelPeakHold: false,
+      });
+
+      const pairLabels = screen.getByTestId("dock-vectorscope-pair-labels");
+      expect(pairLabels.className).toContain("var(--ui-dock-fs-label)");
+      if (mode !== "lissajous") {
+        expect(document.querySelector("[data-vectorscope-polar] > span")).toBeNull();
+      }
+      rect.mockRestore();
+    }
+  );
+
+  it.each(["lissajous", "polarSample", "polarLevel"])(
+    "uses the same available-height boundary for pair labels in %s mode",
+    (mode) => {
+      const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+      rect.mockReturnValue({
+        width: 220,
+        height: 43,
+        top: 0,
+        right: 220,
+        bottom: 43,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+      const hidden = renderWith(null, [-12, -10], "standard", {
+        pair: { x: 0, y: 1 },
+        mode,
+        polarLevelPeakHold: false,
+      });
+      expect(screen.queryByTestId("dock-vectorscope-pair-labels")).toBeNull();
+      hidden.unmount();
+
+      rect.mockReturnValue({
+        width: 220,
+        height: 44,
+        top: 0,
+        right: 220,
+        bottom: 44,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+      renderWith(null, [-12, -10], "standard", {
+        pair: { x: 0, y: 1 },
+        mode,
+        polarLevelPeakHold: false,
+      });
+      expect(screen.getByTestId("dock-vectorscope-pair-labels")).toBeTruthy();
+      rect.mockRestore();
+    }
+  );
+
+  it("reserves a Dock label row below the polar drawing", () => {
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 220,
+      height: 72,
+      top: 0,
+      right: 220,
+      bottom: 72,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    renderWith(null, [-12, -10], "standard", {
+      pair: { x: 0, y: 1 },
+      mode: "polarSample",
+      polarLevelPeakHold: false,
+    });
+
+    expect(screen.getByTestId("dock-vectorscope-polar-stage").className).toContain(
+      "bottom-[calc(var(--ui-dock-fs-label)_+_2px)]"
+    );
+    rect.mockRestore();
+  });
+
+  it("insets the Lissajous grid away from the corner labels", () => {
+    renderWith(null);
+    const lines = screen.getByTestId("dock-vectorscope-lissajous-grid").querySelectorAll("line");
+
+    expect(lines[0].getAttribute("x1")).toBe("4");
+    expect(lines[0].getAttribute("y1")).toBe("4");
+    expect(lines[1].getAttribute("x1")).toBe("256");
+    expect(lines[1].getAttribute("y1")).toBe("4");
   });
 
   it("offers click-to-reset for a Polar Level Dock module with Peak hold on", () => {
