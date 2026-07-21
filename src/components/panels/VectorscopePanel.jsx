@@ -7,6 +7,7 @@ import {
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
+import { useHoverTip } from "@/components/HoverTip";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
@@ -144,6 +145,17 @@ export function VectorscopePanel() {
   const onTracePointerUp = useCallback(() => {
     releaseHoldSlow();
   }, [releaseHoldSlow]);
+  const [peakHoldResetKey, setPeakHoldResetKey] = useState(0);
+  const canResetPeakHold =
+    !isSnapshot &&
+    vectorscopeMode === "polarLevel" &&
+    normalizedPanelControls.vectorscopePolarLevelPeakHold;
+  const {
+    anchorRef: peakHoldResetRef,
+    showTip: showPeakHoldResetTip,
+    hideTip: hidePeakHoldResetTip,
+    tipNode: peakHoldResetTip,
+  } = useHoverTip({ tip: "Click to reset Peak hold", side: "top" });
   const snapResolved = isSnapshot
     ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey, {
         withPeakHold:
@@ -289,14 +301,20 @@ export function VectorscopePanel() {
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-0">
         <div
           data-vectorscope-plot
-          className="relative w-full"
+          data-peak-hold-reset={canResetPeakHold ? "true" : undefined}
+          ref={canResetPeakHold ? peakHoldResetRef : undefined}
+          className={cn("relative w-full", canResetPeakHold && "cursor-pointer")}
           style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}
           onPointerDown={onTracePointerDown}
           onPointerMove={onTracePointerMove}
           onPointerUp={onTracePointerUp}
           onPointerCancel={onTracePointerUp}
           onPointerLeave={onTracePointerUp}
+          onClick={canResetPeakHold ? () => setPeakHoldResetKey((k) => k + 1) : undefined}
+          onMouseEnter={canResetPeakHold ? showPeakHoldResetTip : undefined}
+          onMouseLeave={canResetPeakHold ? hidePeakHoldResetTip : undefined}
         >
+          {peakHoldResetTip}
           <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             {isLissajous ? (
               <>
@@ -368,6 +386,7 @@ export function VectorscopePanel() {
                 firstLabel={axisXLabel}
                 secondLabel={axisYLabel}
                 peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}
+                peakHoldResetKey={peakHoldResetKey}
                 resetEpoch={vectorscopeResetEpoch}
                 identityKey={`${vectorscopeKey}:${px}:${py}`}
               />
