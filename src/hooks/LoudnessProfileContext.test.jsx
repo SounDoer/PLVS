@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
-import { LOUDNESS_PROFILE_OFF, builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
+import {
+  LOUDNESS_PROFILE_OFF,
+  builtinSelectionId,
+  userSelectionId,
+} from "../lib/loudnessProfileCatalog.js";
 
 function persisted() {
   return settingsStore.read().loudnessProfiles;
@@ -133,6 +137,72 @@ describe("the user library", () => {
     const { id } = result.current.userProfiles[0];
     act(() => result.current.updateUser(id, { referenceLufs: -20 }));
     expect(result.current.referenceLufs).toBe(-20);
+  });
+
+  describe("editing a profile does not change which one is active", () => {
+    it("saves the rules but stays Off when editing from Off", () => {
+      const { result } = withSavedProfile("Mine", -16);
+      const { id } = result.current.userProfiles[0];
+      act(() => result.current.selectOff());
+      expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+
+      act(() => result.current.beginEdit(id));
+      act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -20 })));
+      act(() => result.current.saveDraft());
+
+      // Editing rules is not a request to start monitoring against them.
+      expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+      // ...but the edit still lands in the library.
+      expect(result.current.userProfiles[0].referenceLufs).toBe(-20);
+    });
+
+    it("restores the profile that was active, not the one edited", () => {
+      const { result } = withSavedProfile("First");
+      act(() => result.current.beginCreate());
+      act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
+      act(() => result.current.saveDraft());
+      const [first, second] = result.current.userProfiles;
+
+      act(() => result.current.select(builtinSelectionId("ebu-r128")));
+      act(() => result.current.beginEdit(second.id));
+      act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -18 })));
+      act(() => result.current.saveDraft());
+
+      expect(result.current.active).toBe(builtinSelectionId("ebu-r128"));
+      expect(result.current.userProfiles.find((p) => p.id === second.id).referenceLufs).toBe(-18);
+      // First is untouched; the point is only that Second did not steal the selection.
+      expect(first.name).toBe("First");
+    });
+
+    it("keeps the edited profile active when it was already active", () => {
+      const { result } = withSavedProfile("Mine", -16);
+      const { id } = result.current.userProfiles[0];
+      // withSavedProfile leaves it active; edit it in place.
+      act(() => result.current.beginEdit(id));
+      act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -20 })));
+      act(() => result.current.saveDraft());
+      expect(result.current.active).toBe(userSelectionId(id));
+      expect(result.current.referenceLufs).toBe(-20);
+    });
+
+    it("still selects a brand-new profile on save", () => {
+      const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+      act(() => hook.result.current.beginCreate());
+      act(() => hook.result.current.editDraft((d) => ({ ...d, name: "Fresh" })));
+      act(() => hook.result.current.saveDraft());
+      // Creating is a request to use what you made, so this selection is intended.
+      expect(hook.result.current.document.name).toBe("Fresh");
+      expect(hook.result.current.active).not.toBe(LOUDNESS_PROFILE_OFF);
+    });
+
+    it("still selects a duplicated built-in on save", () => {
+      const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+      act(() => hook.result.current.beginDuplicate("ebu-r128"));
+      act(() => hook.result.current.editDraft((d) => ({ ...d, name: "R128 mine" })));
+      act(() => hook.result.current.saveDraft());
+      expect(hook.result.current.document.name).toBe("R128 mine");
+      expect(hook.result.current.active).not.toBe(LOUDNESS_PROFILE_OFF);
+    });
   });
 
   it("drops to Off when the active profile is deleted", () => {

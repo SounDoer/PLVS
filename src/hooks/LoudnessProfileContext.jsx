@@ -65,8 +65,9 @@ export function LoudnessProfileProvider({ children }) {
   /// The preview overlay: a draft that outranks the persisted selection for every reader without
   /// ever reaching disk.
   ///
-  /// `{ editingId: string | null, document: RuleDocument, dirty: boolean }`; `editingId` is null
-  /// for a profile that is not in the library yet.
+  /// `{ editingId, document, dirty, resumeSelection? }`. `editingId` is null for a profile not in
+  /// the library yet; `resumeSelection` is the selection to restore on Save and is only carried by
+  /// an edit of an existing profile (see `beginEdit` and `saveDraft`).
   ///
   /// ThemeEditor previews by mutating the real selection and eagerly upserting new themes, so it
   /// needs `wasNewRef` / `prevRef` to unwind on cancel. An overlay has no side effects to unwind:
@@ -121,9 +122,18 @@ export function LoudnessProfileProvider({ children }) {
       if (draftBlocks()) return;
       const found = state.userProfiles.find((p) => p.id === id);
       if (!found) return;
-      putDraft({ editingId: id, document: structuredClone(found), dirty: false });
+      // Editing a profile's rules must not change which profile is being monitored -- editing from
+      // Off should not silently start judging against the edited rules. Capture the selection now
+      // so Save can restore it. Create and duplicate carry no `resumeSelection`: they select what
+      // they made, which is what the user just asked to create.
+      putDraft({
+        editingId: id,
+        resumeSelection: state.active,
+        document: structuredClone(found),
+        dirty: false,
+      });
     },
-    [draftBlocks, putDraft, state.userProfiles]
+    [draftBlocks, putDraft, state.userProfiles, state.active]
   );
 
   const editDraft = useCallback(
@@ -149,9 +159,13 @@ export function LoudnessProfileProvider({ children }) {
     if (!current) return;
     const id = current.editingId ?? crypto.randomUUID();
     const saved = { ...current.document, id, kind: "user" };
+    // An edit restores the selection it began under, so changing a profile's rules never changes
+    // which profile -- or whether any profile -- is being monitored. A new or duplicated draft has
+    // no prior selection to keep and selects what it created.
+    const nextActive = current.editingId ? current.resumeSelection : userSelectionId(id);
     commit((prev) => ({
       ...prev,
-      active: userSelectionId(id),
+      active: nextActive,
       userProfiles: prev.userProfiles.some((p) => p.id === id)
         ? prev.userProfiles.map((p) => (p.id === id ? saved : p))
         : [...prev.userProfiles, saved],
