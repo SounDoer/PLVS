@@ -4,10 +4,14 @@
 **Status:** Approved
 
 > **Amendment 2026-07-21:** The original decision hid the runtime Peak hold outline in snapshot
-> mode. That is reversed: the Peak hold outline now stays visible while scrubbing a snapshot, and
-> the held values survive the snapshot look-back (they still reset only through Clear). The outline
-> represents the live-since-Clear accumulation overlaid on the historical frame. The sections below
-> that describe hiding it in snapshot are superseded by this note.
+> mode. That is reversed: in snapshot the Peak hold outline is **reconstructed for the scrubbed
+> moment T** from the frozen history — the per-bin running maximum accumulated from Clear up to T —
+> so it grows as you scrub forward and recedes as you scrub back, tracking the historical state
+> rather than freezing the live value. It is built once per frozen view as a per-row prefix maximum
+> (`buildPolarLevelPeakHoldTable`) and looked up per scrub (`polarLevelPeakHoldAt`); the panel opts
+> in only for Polar Level with Peak hold on. The live runtime hold is left untouched during snapshot
+> so it resumes on return to live, and still resets only through Clear. The sections below that
+> describe hiding it in snapshot are superseded by this note.
 
 ## Summary
 
@@ -129,9 +133,10 @@ Snapshot behavior:
 - Lissajous renders the selected row as today.
 - Polar Sample renders the selected row as a point cloud without temporal fading.
 - Polar Level aggregates the selected row and renders its settled fan immediately.
-- The runtime Peak hold outline stays visible in snapshot mode (see Amendment 2026-07-21). The
-  held values are preserved across the look-back and are not reset by entering or leaving snapshot;
-  they overlay the historical frame and still reset only through Clear.
+- The Peak hold outline in snapshot mode is reconstructed for the scrubbed moment from the frozen
+  history (see Amendment 2026-07-21): the running maximum accumulated from Clear up to that row, so
+  it grows/recedes with scrubbing. The live runtime hold is left untouched and resumes on return to
+  live; both still reset only through Clear.
 
 ## Shared Polar Projection
 
@@ -253,8 +258,8 @@ When `vectorscopePolarLevelPeakHold` is enabled:
 - changing channel pair or mode discards held values for that panel;
 - the existing global Clear action discards held values in every full-panel and Dock instance;
 - Peak hold values are runtime-only and are not persisted or placed in history;
-- snapshot mode keeps the runtime hold outline visible and preserves the held values (see
-  Amendment 2026-07-21).
+- snapshot mode shows a hold outline reconstructed from history for the scrubbed moment, and leaves
+  the live runtime hold untouched (see Amendment 2026-07-21).
 
 The boolean toggle is persisted; the measured held values are not.
 
@@ -361,7 +366,8 @@ UI tests cover:
 - endpoint labels in Polar modes;
 - Correlation present in all modes;
 - snapshot mode preserving the selected mode;
-- Peak hold outline preserved and visible in snapshot mode, reset only by Clear;
+- Peak hold outline reconstructed from history for the scrubbed moment in snapshot mode, growing
+  and receding as you scrub, reset only by Clear;
 - hold-to-slow active only in Lissajous;
 - Dock standard/expanded mode rendering and small-size label hiding.
 

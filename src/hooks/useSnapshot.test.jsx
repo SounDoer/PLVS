@@ -153,6 +153,40 @@ describe("useSnapshot", () => {
       path: "",
       pairs: null,
       correlation: -Infinity,
+      peakHold: null,
     });
+  });
+
+  it("reconstructs the Polar Level peak hold only when requested", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    intake.snapshotVisualVectorscopeByKey = () => ({
+      "vectorscope:pair:0:1": {
+        length: 1,
+        timestampAt: () => 1000,
+        rowAt: () => ({ timestampMs: 1000, pairs: new Float32Array([1, 1]), correlation: 0.5 }),
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const withHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1", {
+      withPeakHold: true,
+    });
+    expect(withHold.peakHold).toBeInstanceOf(Float64Array);
+    expect(withHold.peakHold).toHaveLength(64);
+    // Full-scale mono reaches the arc-scale extent (sqrt(2)); reconstruction reflects the row.
+    expect(Math.max(...withHold.peakHold)).toBeCloseTo(Math.SQRT2, 5);
+
+    // Without the opt-in (Lissajous/Sample, or Peak hold off) the table is never built.
+    expect(
+      result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1").peakHold
+    ).toBeNull();
   });
 });

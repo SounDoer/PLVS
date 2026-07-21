@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   POLAR_LEVEL_BIN_COUNT,
   aggregatePolarLevel,
+  buildPolarLevelPeakHoldTable,
+  polarLevelPeakHoldAt,
   polarSampleAlpha,
   projectPairToPolar,
   selectPolarWindow,
@@ -129,5 +131,47 @@ describe("Polar Level", () => {
         reset: true,
       }),
     ]).toEqual([0.1, 0.1]);
+  });
+});
+
+describe("polar level snapshot peak-hold reconstruction", () => {
+  it("accumulates a per-row prefix maximum that grows forward and recedes backward", () => {
+    const built = buildPolarLevelPeakHoldTable(
+      slab([
+        { pairs: new Float32Array([0.1, 0.1]) },
+        { pairs: new Float32Array([1, 1]) },
+        { pairs: new Float32Array([0.1, 0.1]) },
+      ])
+    );
+    const quiet = polarLevelPeakHoldAt(built, 0);
+    const loud = polarLevelPeakHoldAt(built, 1);
+    const after = polarLevelPeakHoldAt(built, 2);
+
+    // Scrubbing back to index 0 shows only the quiet material; the loud transient at index 1 lifts
+    // the hold and, being a running maximum, it stays lifted at index 2 (does not decay in history).
+    expect(Math.max(...quiet)).toBeCloseTo(0.1414, 2);
+    expect(Math.max(...loud)).toBeCloseTo(Math.SQRT2, 5);
+    expect(Math.max(...after)).toBeCloseTo(Math.max(...loud), 5);
+    expect(Math.max(...loud)).toBeGreaterThan(Math.max(...quiet));
+  });
+
+  it("does not show a direction before its row is reached", () => {
+    const built = buildPolarLevelPeakHoldTable(
+      slab([{ pairs: new Float32Array([1, 0]) }, { pairs: new Float32Array([0, 1]) }])
+    );
+    // Row 0 is hard-left (angle < 0), so the right half of the fan is still empty at index 0 and
+    // only fills once row 1 (hard-right) is included.
+    const atLeft = polarLevelPeakHoldAt(built, 0);
+    const atBoth = polarLevelPeakHoldAt(built, 1);
+    expect(Math.max(...atLeft.subarray(POLAR_LEVEL_BIN_COUNT / 2 + 1))).toBeCloseTo(0, 5);
+    expect(Math.max(...atBoth.subarray(POLAR_LEVEL_BIN_COUNT / 2 + 1))).toBeCloseTo(1, 5);
+  });
+
+  it("returns null outside the built range", () => {
+    expect(polarLevelPeakHoldAt(buildPolarLevelPeakHoldTable(slab([])), 0)).toBeNull();
+    const built = buildPolarLevelPeakHoldTable(slab([{ pairs: new Float32Array([1, 1]) }]));
+    expect(polarLevelPeakHoldAt(built, -1)).toBeNull();
+    expect(polarLevelPeakHoldAt(built, 1)).toBeNull();
+    expect(polarLevelPeakHoldAt(null, 0)).toBeNull();
   });
 });

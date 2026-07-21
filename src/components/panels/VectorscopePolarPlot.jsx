@@ -143,6 +143,7 @@ export function VectorscopePolarPlot({
   mode,
   rows = [],
   snapshotPairs = null,
+  snapshotPeakHold = null,
   firstLabel,
   secondLabel,
   showLabels = true,
@@ -155,7 +156,7 @@ export function VectorscopePolarPlot({
   const peakHoldRef = useRef(null);
   const lastTimestampRef = useRef(null);
   const stateIdentityRef = useRef("");
-  const redrawRef = useRef({ signature: null, snapshotPairs: null });
+  const redrawRef = useRef({ signature: null, snapshotPairs: null, snapshotPeakHold: null });
   const snapshot = snapshotPairs != null;
   const effectiveRows = snapshot ? [{ pairs: snapshotPairs, ageMs: 0, timestampMs: 0 }] : rows;
   // Peak hold is a pure overlay: enabling/disabling it must not disturb the live envelope, and
@@ -194,11 +195,12 @@ export function VectorscopePolarPlot({
     const signature = `${stateIdentity}|${peakHoldEnabled}|${snapshot}|${width}x${height}|${dpr}|${newestTimestamp}|${traceColor}|${gridColor}|${lineWidth}|${effectiveRows.length}`;
     if (
       redrawRef.current.signature === signature &&
-      redrawRef.current.snapshotPairs === snapshotPairs
+      redrawRef.current.snapshotPairs === snapshotPairs &&
+      redrawRef.current.snapshotPeakHold === snapshotPeakHold
     ) {
       return;
     }
-    redrawRef.current = { signature, snapshotPairs };
+    redrawRef.current = { signature, snapshotPairs, snapshotPeakHold };
 
     const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
     ctx.clearRect(0, 0, width, height);
@@ -214,9 +216,11 @@ export function VectorscopePolarPlot({
       // A snapshot is a look-back at stored history, so it must not touch the live envelope or
       // peak-hold accumulators (which represent the live period since Clear) — leaving them frozen
       // lets both resume seamlessly on return to live. Draw the selected row's settled fan directly
-      // and overlay the preserved live peak-hold outline so the hold stays visible while scrubbing.
+      // and overlay the Peak hold reconstructed for the scrubbed moment (grows/recedes with the
+      // history up to that row), supplied by the panel; the live runtime hold is not shown here.
       const snapshotEnvelope = aggregatePolarLevel(effectiveRows);
-      drawPolarLevel(ctx, snapshotEnvelope, peakHoldRef.current, geometry, traceColor, lineWidth);
+      const held = peakHoldEnabled ? (snapshotPeakHold ?? null) : null;
+      drawPolarLevel(ctx, snapshotEnvelope, held, geometry, traceColor, lineWidth);
       return;
     }
 

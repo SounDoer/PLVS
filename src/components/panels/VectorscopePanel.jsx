@@ -144,7 +144,12 @@ export function VectorscopePanel() {
   const onTracePointerUp = useCallback(() => {
     releaseHoldSlow();
   }, [releaseHoldSlow]);
-  const snapResolved = isSnapshot ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey) : null;
+  const snapResolved = isSnapshot
+    ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey, {
+        withPeakHold:
+          vectorscopeMode === "polarLevel" && normalizedPanelControls.vectorscopePolarLevelPeakHold,
+      })
+    : null;
   const snapshotMissing = snapResolved?.missing === true;
   const liveVectorscopeResult = isSnapshot
     ? null
@@ -359,6 +364,7 @@ export function VectorscopePanel() {
                 mode={vectorscopeMode}
                 rows={polarRows}
                 snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
+                snapshotPeakHold={isSnapshot ? snapResolved?.peakHold : null}
                 firstLabel={axisXLabel}
                 secondLabel={axisYLabel}
                 peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}

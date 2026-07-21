@@ -332,26 +332,14 @@ describe("VectorscopePolarPlot", () => {
     expect(screen.queryByText("R")).toBeNull();
   });
 
-  it("keeps the live Peak hold outline visible after entering snapshot", () => {
+  it("draws the reconstructed Peak hold outline supplied for a snapshot", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
-    const { rerender } = render(
-      <VectorscopePolarPlot
-        mode="polarLevel"
-        rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
-        hasSignal
-        firstLabel="L"
-        secondLabel="R"
-        peakHoldEnabled
-      />
-    );
-    ctx.stroke.mockClear();
-    ctx.strokedPaths.length = 0;
-
-    rerender(
+    render(
       <VectorscopePolarPlot
         mode="polarLevel"
         snapshotPairs={new Float32Array([0.25, 0.25])}
+        snapshotPeakHold={new Float64Array(64).fill(0.7)}
         hasSignal
         firstLabel="L"
         secondLabel="R"
@@ -359,11 +347,30 @@ describe("VectorscopePolarPlot", () => {
       />
     );
 
-    // The live-accumulated hold survives the snapshot look-back rather than being discarded:
-    // the snapshot render draws the grid plus the preserved open hold outline (never a closed fan).
+    // Snapshot draws the grid plus the reconstructed hold outline (an open polyline, not a closed
+    // fan) from the supplied envelope — the history-derived hold for the scrubbed moment.
     expect(ctx.stroke).toHaveBeenCalledTimes(2);
     const heldPath = ctx.strokedPaths.at(-1);
     expect(heldPath[0].command).toBe("moveTo");
     expect(heldPath.some(({ command }) => command === "closePath")).toBe(false);
+  });
+
+  it("omits the snapshot Peak hold outline when none is supplied", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        snapshotPairs={new Float32Array([1, 1])}
+        snapshotPeakHold={null}
+        hasSignal
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+      />
+    );
+
+    // No reconstructed hold (Peak hold off, or the request had no history): grid stroke only.
+    expect(ctx.stroke).toHaveBeenCalledOnce();
   });
 });

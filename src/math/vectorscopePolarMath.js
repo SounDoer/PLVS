@@ -75,22 +75,48 @@ export function smoothPolarBins(bins) {
   return output;
 }
 
+function accumulatePairsIntoBins(pairs, peak, binCount) {
+  for (let index = 0; index + 1 < pairs.length; index += 2) {
+    const point = projectPairToPolar(pairs[index], pairs[index + 1]);
+    if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
+    const bin = binIndexForAngle(point.angle, binCount);
+    if (point.radius > peak[bin]) peak[bin] = point.radius;
+  }
+}
+
 export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
   const peak = new Float64Array(binCount);
   for (const row of rows ?? []) {
-    const pairs = row?.pairs ?? [];
-    for (let index = 0; index + 1 < pairs.length; index += 2) {
-      const point = projectPairToPolar(pairs[index], pairs[index + 1]);
-      if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
-      const bin = binIndexForAngle(point.angle, binCount);
-      if (point.radius > peak[bin]) peak[bin] = point.radius;
-    }
+    accumulatePairsIntoBins(row?.pairs ?? [], peak, binCount);
   }
   // Per-direction peak amplitude: each bin is the loudest sample pointing that way in the window,
   // independent of the other directions. Paired with a full-scale reference (see Polar Scaling) this
   // is Ozone's model — a full-scale sample reaches the arc, real clipping (radius = sqrt(2)) hits it
   // exactly, and nothing overshoots. No magnification, so quiet material is honestly smaller.
   return smoothPolarBins(peak);
+}
+
+// Snapshot Peak hold reconstruction. The live per-bin hold is a running maximum since Clear that is
+// never stored (design: runtime-only). To show what the hold looked like at a scrubbed historical
+// moment T, replay it from the frozen history: for each row build the cumulative per-bin raw peak
+// (a prefix maximum), so any row index yields the hold accumulated up to that row. Built once per
+// frozen slab (Clear empties the slab, so row 0 is the reset point); each scrub then costs one
+// smoothing pass. Raw (pre-smooth) peaks are stored so the smoothing matches aggregatePolarLevel.
+export function buildPolarLevelPeakHoldTable(slab, binCount = POLAR_LEVEL_BIN_COUNT) {
+  const length = slab?.length ?? 0;
+  const table = new Float64Array(length * binCount);
+  const running = new Float64Array(binCount);
+  for (let index = 0; index < length; index += 1) {
+    accumulatePairsIntoBins(slab.rowAt(index)?.pairs ?? [], running, binCount);
+    table.set(running, index * binCount);
+  }
+  return { table, binCount, length };
+}
+
+export function polarLevelPeakHoldAt(built, index) {
+  if (!built || index < 0 || index >= built.length) return null;
+  const { table, binCount } = built;
+  return smoothPolarBins(table.subarray(index * binCount, (index + 1) * binCount));
 }
 
 function timeAlpha(elapsedMs, timeMs) {
