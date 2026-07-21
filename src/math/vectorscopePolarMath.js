@@ -103,11 +103,10 @@ export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
 // (Clear empties the slab, so row 0 is the reset point). Raw (pre-smooth) peaks are stored so the
 // smoothing matches aggregatePolarLevel.
 //
-// The hold is a slow-moving running maximum, so it only needs coarse time resolution: rows are
-// bucketed into ~1s groups and one cumulative prefix is stored per bucket, shrinking the table ~25x
-// versus one entry per row. Scrubbing within a bucket shows the same hold — a <=1s look-ahead to the
-// bucket's end, visually imperceptible for a monotonic hold. The build still visits every sample (a
-// true maximum cannot skip samples), so build cost is unchanged; only memory shrinks.
+// Rows are bucketed into ~1s groups and one cumulative prefix is stored per completed bucket,
+// shrinking the table ~25x versus one entry per row. Lookup starts from the previous bucket's
+// prefix and replays at most one bucket, preserving exact selected-time semantics without storing
+// every row's envelope.
 export const POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS = 25;
 
 export function buildPolarLevelPeakHoldTable(slab, binCount = POLAR_LEVEL_BIN_COUNT) {
@@ -123,14 +122,21 @@ export function buildPolarLevelPeakHoldTable(slab, binCount = POLAR_LEVEL_BIN_CO
       table.set(running, Math.floor(index / bucketRows) * binCount);
     }
   }
-  return { table, binCount, length, bucketRows };
+  return { table, binCount, length, bucketRows, slab };
 }
 
 export function polarLevelPeakHoldAt(built, index) {
   if (!built || index < 0 || index >= built.length) return null;
-  const { table, binCount, bucketRows } = built;
+  const { table, binCount, bucketRows, slab } = built;
   const bucket = Math.floor(index / bucketRows);
-  return smoothPolarBins(table.subarray(bucket * binCount, (bucket + 1) * binCount));
+  const running = new Float64Array(binCount);
+  if (bucket > 0) {
+    running.set(table.subarray((bucket - 1) * binCount, bucket * binCount));
+  }
+  for (let rowIndex = bucket * bucketRows; rowIndex <= index; rowIndex += 1) {
+    accumulatePairsIntoBins(slab.rowAt(rowIndex)?.pairs ?? [], running, binCount);
+  }
+  return smoothPolarBins(running);
 }
 
 function timeAlpha(elapsedMs, timeMs) {

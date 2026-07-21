@@ -136,6 +136,14 @@ describe("Polar Level", () => {
 });
 
 describe("polar level snapshot peak-hold reconstruction", () => {
+  it("does not include a later peak from the selected row's bucket", () => {
+    const rows = [{ pairs: new Float32Array([0.1, 0.1]) }, { pairs: new Float32Array([1, 1]) }];
+    const built = buildPolarLevelPeakHoldTable(slab(rows));
+
+    expect(Math.max(...polarLevelPeakHoldAt(built, 0))).toBeCloseTo(Math.SQRT2 * 0.1, 5);
+    expect(Math.max(...polarLevelPeakHoldAt(built, 1))).toBeCloseTo(Math.SQRT2, 5);
+  });
+
   it("accumulates a bucketed prefix maximum that grows across ~1s buckets", () => {
     const bucket = POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS;
     // Fill the first bucket with quiet rows and put a loud row at the start of the next bucket.

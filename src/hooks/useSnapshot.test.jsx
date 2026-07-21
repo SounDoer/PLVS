@@ -157,7 +157,7 @@ describe("useSnapshot", () => {
     });
   });
 
-  it("reconstructs the Polar Level peak hold only when requested", () => {
+  it("reconstructs Polar Level peak hold after entering history in another mode", () => {
     const samples = {
       loudness: [{ timestampMs: 1000 }],
       corr: [0.5],
@@ -176,6 +176,11 @@ describe("useSnapshot", () => {
       useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
     );
 
+    // Entering history in Lissajous/Polar Sample resolves the frozen pairs without building a hold.
+    const withoutHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1");
+    expect(withoutHold.peakHold).toBeNull();
+
+    // Switching the already-frozen history view to Polar Level + Peak hold reconstructs it lazily.
     const withHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1", {
       withPeakHold: true,
     });
@@ -183,10 +188,5 @@ describe("useSnapshot", () => {
     expect(withHold.peakHold).toHaveLength(64);
     // Full-scale mono reaches the arc-scale extent (sqrt(2)); reconstruction reflects the row.
     expect(Math.max(...withHold.peakHold)).toBeCloseTo(Math.SQRT2, 5);
-
-    // Without the opt-in (Lissajous/Sample, or Peak hold off) the table is never built.
-    expect(
-      result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1").peakHold
-    ).toBeNull();
   });
 });
