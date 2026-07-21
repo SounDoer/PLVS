@@ -385,6 +385,7 @@ export function VectorscopePanel() {
                 snapshotPeakHold={isSnapshot ? snapResolved?.peakHold : null}
                 firstLabel={axisXLabel}
                 secondLabel={axisYLabel}
+                showLabels={false}
                 peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}
                 peakHoldResetKey={peakHoldResetKey}
                 resetEpoch={vectorscopeResetEpoch}
@@ -392,31 +393,24 @@ export function VectorscopePanel() {
               />
             ) : null}
           </div>
-          {isLissajous ? (
-            <span
-              className={cn(
-                CAPTION_TEXT,
-                "absolute left-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
-              )}
-            >
-              {axisXLabel}
-            </span>
-          ) : null}
-          {isLissajous ? (
-            <span
-              className={cn(
-                CAPTION_TEXT,
-                "absolute right-[var(--ui-vector-corner-inset)] top-[var(--ui-vector-corner-inset)]"
-              )}
-            >
-              {axisYLabel}
-            </span>
-          ) : null}
+          <div
+            data-vectorscope-pair-labels
+            className={cn(
+              CAPTION_TEXT,
+              "pointer-events-none absolute inset-x-0 flex justify-between px-[var(--ui-vector-corner-inset)] font-medium",
+              isLissajous
+                ? "top-[var(--ui-vector-corner-inset)]"
+                : "bottom-[var(--ui-vector-corner-inset)]"
+            )}
+          >
+            <span className="max-w-[42%] truncate">{axisXLabel}</span>
+            <span className="max-w-[42%] truncate text-right">{axisYLabel}</span>
+          </div>
         </div>
       </div>
       <div
         data-vectorscope-correlation-rail
-        className="mt-[var(--ui-chart-axis-gap)] h-3 shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
+        className="mt-[var(--ui-chart-axis-gap)] h-3 shrink-0 px-[var(--ui-vector-corner-inset)]"
       >
         <div
           className={cn(
@@ -448,7 +442,7 @@ export function VectorscopePanel() {
         data-vectorscope-correlation-axis
         className={cn(
           CAPTION_TEXT,
-          "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0 px-[calc(var(--ui-vector-corner-inset)*0.5)]"
+          "mt-[var(--ui-chart-axis-gap)] h-[var(--ui-chart-x-axis-row-h)] w-full shrink-0 px-[var(--ui-vector-corner-inset)]"
         )}
       >
         <div className="relative h-full w-full" aria-hidden>

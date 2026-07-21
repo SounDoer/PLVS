@@ -213,6 +213,26 @@ describe("VectorscopePanel", () => {
     expect(rail?.className).not.toContain("@max-[220px]:hidden");
   });
 
+  it("aligns pair labels and correlation endpoints to shared vertical guides", () => {
+    for (const mode of ["lissajous", "polarSample", "polarLevel"]) {
+      const { container, unmount } = renderPanel({
+        selectedOffset: -1,
+        panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: mode },
+      });
+      const pairLabels = container.querySelector("[data-vectorscope-pair-labels]");
+      const rail = container.querySelector("[data-vectorscope-correlation-rail]");
+      const axis = container.querySelector("[data-vectorscope-correlation-axis]");
+
+      expect(pairLabels?.className).toContain("px-[var(--ui-vector-corner-inset)]");
+      expect(rail?.className).toContain("px-[var(--ui-vector-corner-inset)]");
+      expect(axis?.className).toContain("px-[var(--ui-vector-corner-inset)]");
+      if (mode !== "lissajous") {
+        expect(container.querySelector("[data-vectorscope-polar] > span")).toBeNull();
+      }
+      unmount();
+    }
+  });
+
   it("places the rail marker from correlation when the selected pair has signal", () => {
     const { container } = renderPanel({
       selectedOffset: -1,
