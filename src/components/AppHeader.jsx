@@ -217,6 +217,20 @@ export function AppHeader({
           <PopoverTrigger asChild>
             <span>
               <IconButton
+                icon={<Gauge className="size-[length:var(--ui-icon-shell-action)]" />}
+                tip="Loudness Profile"
+                className={loudnessProfile?.active !== "off" ? "text-foreground" : undefined}
+              />
+            </span>
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={6} className="w-64 p-1">
+            <LoudnessProfilePopoverContent profile={loudnessProfile} stats={loudnessProfileStats} />
+          </PopoverContent>
+        </Popover>
+        <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
+          <PopoverTrigger asChild>
+            <span>
+              <IconButton
                 icon={<LayoutGrid className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Modules"
               />
@@ -269,20 +283,6 @@ export function AppHeader({
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
             <PresetsPopoverContent presets={presets} />
-          </PopoverContent>
-        </Popover>
-        <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
-          <PopoverTrigger asChild>
-            <span>
-              <IconButton
-                icon={<Gauge className="size-[length:var(--ui-icon-shell-action)]" />}
-                tip="Loudness Profile"
-                className={loudnessProfile?.active !== "off" ? "text-foreground" : undefined}
-              />
-            </span>
-          </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className="w-64 p-1">
-            <LoudnessProfilePopoverContent profile={loudnessProfile} stats={loudnessProfileStats} />
           </PopoverContent>
         </Popover>
         <IconButton

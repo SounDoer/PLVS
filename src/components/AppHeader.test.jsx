@@ -131,14 +131,14 @@ describe("AppHeader", () => {
     expect(screen.getByText("Realtek USB Audio")).toBeTruthy();
   });
 
-  it("seats Loudness Profile between Presets and Settings", () => {
+  it("seats Loudness Profile between Devices and Modules", () => {
     const { container } = renderHeader();
     const buttons = within(container.querySelector("header"))
       .getAllByRole("button")
       .map((button) => button.ariaLabel);
 
-    expect(buttons.indexOf("Presets")).toBeLessThan(buttons.indexOf("Loudness Profile"));
-    expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Settings"));
+    expect(buttons.indexOf("Devices")).toBeLessThan(buttons.indexOf("Loudness Profile"));
+    expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Modules"));
   });
 
   it("marks the Loudness Profile trigger active only when a profile is selected", () => {

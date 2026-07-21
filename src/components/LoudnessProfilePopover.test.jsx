@@ -273,27 +273,9 @@ describe("a dirty draft blocks the library", () => {
   });
 });
 
-describe("current selection label", () => {
-  const label = () => document.querySelector("[data-loudness-profile-selection]").textContent;
-
-  it("names Off at cold start", () => {
+describe("current selection indicator", () => {
+  it("does not repeat the active profile name above the list", () => {
     renderPopover();
-    expect(label()).toBe("Off");
-  });
-
-  it("names the active built-in", () => {
-    const { rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use EBU R128 Live"));
-    rerender();
-    expect(label()).toBe("EBU R128 Live");
-  });
-
-  it("names a saved profile", () => {
-    const view = renderPopover();
-    act(() => view.hook.result.current.beginCreate());
-    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name: "My Show" })));
-    act(() => view.hook.result.current.saveDraft());
-    view.rerender();
-    expect(label()).toBe("My Show");
+    expect(document.querySelector("[data-loudness-profile-selection]")).toBeNull();
   });
 });

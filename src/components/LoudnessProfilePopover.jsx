@@ -59,9 +59,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
 
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
-  // Off has no document to name itself with.
-  const selectionLabel = document?.name ?? "Off";
-
   const startRename = (entry) => {
     setRenamingId(entry.id);
     setRenameDraft(entry.name ?? "");
@@ -77,14 +74,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
   return (
     <>
       {showTitle ? <p className={GROUP_LABEL_CLASS}>Loudness Profile</p> : null}
-
-      {/* The active dots alone make you scan the whole list to find where you are. */}
-      <p
-        data-loudness-profile-selection
-        className="truncate px-2 pb-1.5 text-[length:var(--ui-fs-control)] text-foreground"
-      >
-        {selectionLabel}
-      </p>
 
       <div className={ROW_CLASS}>
         <button
