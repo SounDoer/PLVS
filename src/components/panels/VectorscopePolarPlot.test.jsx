@@ -373,4 +373,81 @@ describe("VectorscopePolarPlot", () => {
     // No reconstructed hold (Peak hold off, or the request had no history): grid stroke only.
     expect(ctx.stroke).toHaveBeenCalledOnce();
   });
+
+  it("resets the live Peak hold when peakHoldResetKey changes", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const heldTop = () =>
+      Math.min(
+        ...ctx.strokedPaths
+          .at(-1)
+          .filter((e) => e.command === "moveTo" || e.command === "lineTo")
+          .map((e) => e.y)
+      );
+
+    const { rerender } = render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+      />
+    );
+    // A loud transient sets a high hold; a later quiet frame does not lower it (peak hold holds).
+    rerender(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 2100 }]}
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+      />
+    );
+    const beforeReset = heldTop();
+
+    // Bumping the reset key drops the hold to the current (quiet) envelope.
+    rerender(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 4100 }]}
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+        peakHoldResetKey={1}
+      />
+    );
+    // Higher y = closer to the baseline = smaller radius: reset pulled the hold in to the quiet level.
+    expect(heldTop()).toBeGreaterThan(beforeReset);
+  });
+
+  it("ignores peakHoldResetKey in snapshot mode", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const held = new Float64Array(64).fill(0.7);
+    const { rerender } = render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        snapshotPairs={new Float32Array([0.25, 0.25])}
+        snapshotPeakHold={held}
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+      />
+    );
+    const before = ctx.strokedPaths.at(-1);
+    rerender(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        snapshotPairs={new Float32Array([0.25, 0.25])}
+        snapshotPeakHold={held}
+        firstLabel="L"
+        secondLabel="R"
+        peakHoldEnabled
+        peakHoldResetKey={1}
+      />
+    );
+    // Snapshot draws the supplied reconstructed hold regardless of the reset key.
+    expect(ctx.strokedPaths.at(-1)).toEqual(before);
+  });
 });

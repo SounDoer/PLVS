@@ -148,6 +148,7 @@ export function VectorscopePolarPlot({
   secondLabel,
   showLabels = true,
   peakHoldEnabled = false,
+  peakHoldResetKey = 0,
   resetEpoch = 0,
   identityKey = "",
 }) {
@@ -157,6 +158,7 @@ export function VectorscopePolarPlot({
   const lastTimestampRef = useRef(null);
   const stateIdentityRef = useRef("");
   const redrawRef = useRef({ signature: null, snapshotPairs: null, snapshotPeakHold: null });
+  const peakHoldResetKeyRef = useRef(peakHoldResetKey);
   const snapshot = snapshotPairs != null;
   const effectiveRows = snapshot ? [{ pairs: snapshotPairs, ageMs: 0, timestampMs: 0 }] : rows;
   // Peak hold is a pure overlay: enabling/disabling it must not disturb the live envelope, and
@@ -179,6 +181,15 @@ export function VectorscopePolarPlot({
       lastTimestampRef.current = null;
     }
 
+    // A per-instance reset nonce clears only the Peak hold — the live envelope and timestamp are
+    // left alone so the fan does not jump. The live path's updatePolarPeakHold then reseeds the
+    // hold from the current envelope. In snapshot the hold is drawn from snapshotPeakHold, so this
+    // has no visible effect there.
+    if (peakHoldResetKeyRef.current !== peakHoldResetKey) {
+      peakHoldResetKeyRef.current = peakHoldResetKey;
+      peakHoldRef.current = null;
+    }
+
     const { dpr, width, height } = resizeCanvas(canvas);
     const style = getComputedStyle(canvas);
     const { traceColor, gridColor } = resolveTraceColors(style);
@@ -192,7 +203,7 @@ export function VectorscopePolarPlot({
     // covers every input the draw reads; snapshot rows are compared by reference since their
     // timestamp is a constant. resizeCanvas only clears the backing store when the size actually
     // changes, and any size change is in the signature, so a skipped render never leaves it blank.
-    const signature = `${stateIdentity}|${peakHoldEnabled}|${snapshot}|${width}x${height}|${dpr}|${newestTimestamp}|${traceColor}|${gridColor}|${lineWidth}|${effectiveRows.length}`;
+    const signature = `${stateIdentity}|${peakHoldEnabled}|${snapshot}|${width}x${height}|${dpr}|${newestTimestamp}|${traceColor}|${gridColor}|${lineWidth}|${effectiveRows.length}|${peakHoldResetKey}`;
     if (
       redrawRef.current.signature === signature &&
       redrawRef.current.snapshotPairs === snapshotPairs &&
