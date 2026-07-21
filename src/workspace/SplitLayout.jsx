@@ -14,7 +14,7 @@ import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.js
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
-import { PANEL_HELP_BY_MODULE_ID } from "../components/panels/chartHelp.js";
+import { resolvePanelHelpItems } from "../components/panels/chartHelp.js";
 import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import {
   resolvePanelDefinition,
@@ -291,8 +291,10 @@ function FullscreenOverlay() {
   const def = fullscreenId ? resolvePanelDefinition(state, fullscreenId) : null;
   const Component = def?.Component ?? null;
   const fullscreenModuleId = fullscreenId ? resolvePanelModuleId(state, fullscreenId) : null;
-  const helpItems = fullscreenModuleId ? PANEL_HELP_BY_MODULE_ID[fullscreenModuleId] : null;
   const panelControls = fullscreenId ? getPanelControls(state, fullscreenId) : null;
+  const helpItems = fullscreenModuleId
+    ? resolvePanelHelpItems(fullscreenModuleId, panelControls)
+    : null;
   const isPinned = Boolean(fullscreenId && state.pinnedPanelsById?.[fullscreenId]);
   const onPanelControlsChange = useCallback(
     (nextPanelControls) => {

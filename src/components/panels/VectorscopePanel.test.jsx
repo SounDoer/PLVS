@@ -224,6 +224,7 @@ describe("VectorscopePanel", () => {
       const axis = container.querySelector("[data-vectorscope-correlation-axis]");
 
       expect(pairLabels?.className).toContain("px-[var(--ui-vector-corner-inset)]");
+      expect(pairLabels?.className).not.toContain("font-medium");
       expect(rail?.className).toContain("px-[var(--ui-vector-corner-inset)]");
       expect(axis?.className).toContain("px-[var(--ui-vector-corner-inset)]");
       if (mode !== "lissajous") {
@@ -577,7 +578,7 @@ describe("VectorscopePanel hold slow mode", () => {
     expect(lastLiveTrace(container)?.getAttribute("d")).toBe("M 1 1 L 11 11");
   });
 
-  it("offers click-to-reset for a live Polar Level panel with Peak hold on", () => {
+  it("offers click-to-reset without a plot hover tooltip", () => {
     const { container } = renderPanel({
       selectedOffset: -1,
       panelControls: {
@@ -591,7 +592,7 @@ describe("VectorscopePanel hold slow mode", () => {
     expect(plot.getAttribute("data-peak-hold-reset")).toBe("true");
     expect(plot.className).toContain("cursor-pointer");
     fireEvent.mouseEnter(plot);
-    expect(screen.getByText("Click to reset Peak hold")).toBeTruthy();
+    expect(screen.queryByText("Click to reset Peak hold")).toBeNull();
     // Clicking is wired and does not throw.
     fireEvent.click(plot);
   });

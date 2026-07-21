@@ -129,12 +129,28 @@ export const WAVEFORM_HELP = [
   },
 ];
 
-export const VECTORSCOPE_HELP = [
+export const VECTORSCOPE_LISSAJOUS_HELP = [
   {
     title: "Persistence",
     items: ["Left hold - Slow trace decay"],
   },
 ];
+
+export const VECTORSCOPE_POLAR_LEVEL_HELP = [
+  {
+    title: "Peak hold",
+    items: ["Click plot - Reset Peak hold"],
+  },
+];
+
+function resolveVectorscopeHelp(controls) {
+  const mode = controls?.vectorscopeMode ?? "lissajous";
+  if (mode === "lissajous") return VECTORSCOPE_LISSAJOUS_HELP;
+  if (mode === "polarLevel" && controls?.vectorscopePolarLevelPeakHold === true) {
+    return VECTORSCOPE_POLAR_LEVEL_HELP;
+  }
+  return null;
+}
 
 export const PANEL_HELP_BY_MODULE_ID = {
   levelMeter: LEVEL_METER_HELP,
@@ -142,5 +158,10 @@ export const PANEL_HELP_BY_MODULE_ID = {
   spectrum: SPECTRUM_HELP,
   spectrogram: SPECTROGRAM_HELP,
   waveform: WAVEFORM_HELP,
-  vectorscope: VECTORSCOPE_HELP,
+  vectorscope: resolveVectorscopeHelp,
 };
+
+export function resolvePanelHelpItems(moduleId, controls) {
+  const help = PANEL_HELP_BY_MODULE_ID[moduleId];
+  return typeof help === "function" ? help(controls) : (help ?? null);
+}

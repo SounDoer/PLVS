@@ -7,7 +7,6 @@ import {
 import { vectorscopeRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { cn } from "@/lib/utils";
-import { useHoverTip } from "@/components/HoverTip";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { CAPTION_TEXT, PANEL_MIN_SPECTRUM } from "@/lib/shellLayout";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
@@ -150,12 +149,6 @@ export function VectorscopePanel() {
     !isSnapshot &&
     vectorscopeMode === "polarLevel" &&
     normalizedPanelControls.vectorscopePolarLevelPeakHold;
-  const {
-    anchorRef: peakHoldResetRef,
-    showTip: showPeakHoldResetTip,
-    hideTip: hidePeakHoldResetTip,
-    tipNode: peakHoldResetTip,
-  } = useHoverTip({ tip: "Click to reset Peak hold", side: "top" });
   const snapResolved = isSnapshot
     ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey, {
         withPeakHold:
@@ -308,7 +301,6 @@ export function VectorscopePanel() {
         <div
           data-vectorscope-plot
           data-peak-hold-reset={canResetPeakHold ? "true" : undefined}
-          ref={canResetPeakHold ? peakHoldResetRef : undefined}
           className={cn("relative w-full", canResetPeakHold && "cursor-pointer")}
           style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}
           onPointerDown={onTracePointerDown}
@@ -317,10 +309,7 @@ export function VectorscopePanel() {
           onPointerCancel={onTracePointerUp}
           onPointerLeave={onTracePointerUp}
           onClick={canResetPeakHold ? () => setPeakHoldResetKey((k) => k + 1) : undefined}
-          onMouseEnter={canResetPeakHold ? showPeakHoldResetTip : undefined}
-          onMouseLeave={canResetPeakHold ? hidePeakHoldResetTip : undefined}
         >
-          {peakHoldResetTip}
           <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             {isLissajous ? (
               <>
@@ -408,7 +397,7 @@ export function VectorscopePanel() {
             data-vectorscope-pair-labels
             className={cn(
               CAPTION_TEXT,
-              "pointer-events-none absolute inset-x-0 flex justify-between px-[var(--ui-vector-corner-inset)] font-medium",
+              "pointer-events-none absolute inset-x-0 flex justify-between px-[var(--ui-vector-corner-inset)]",
               isLissajous
                 ? "top-[var(--ui-vector-corner-inset)]"
                 : "bottom-[var(--ui-vector-corner-inset)]"

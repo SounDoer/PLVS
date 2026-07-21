@@ -13,7 +13,7 @@ import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.js
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
-import { PANEL_HELP_BY_MODULE_ID } from "../components/panels/chartHelp.js";
+import { resolvePanelHelpItems } from "../components/panels/chartHelp.js";
 import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import {
   resolvePanelDefinition,
@@ -119,8 +119,8 @@ export function LeafView({ node, path, style }) {
   const activeTab = visibleTabs.includes(node.activeTab) ? node.activeTab : visibleTabs[0];
   const ActiveComponent = activeTab ? resolvePanelDefinition(state, activeTab)?.Component : null;
   const activeModuleId = activeTab ? resolvePanelModuleId(state, activeTab) : null;
-  const helpItems = activeModuleId ? PANEL_HELP_BY_MODULE_ID[activeModuleId] : null;
   const panelControls = activeTab ? getPanelControls(state, activeTab) : null;
+  const helpItems = activeModuleId ? resolvePanelHelpItems(activeModuleId, panelControls) : null;
   const onPanelControlsChange = useCallback(
     (nextPanelControls) => {
       if (!activeTab) return;

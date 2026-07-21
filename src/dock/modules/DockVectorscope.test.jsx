@@ -263,14 +263,14 @@ describe("DockVectorscope", () => {
     expect(lines[1].getAttribute("y1")).toBe("4");
   });
 
-  it("offers click-to-reset for a Polar Level Dock module with Peak hold on", () => {
+  it("offers click-to-reset without a plot hover tooltip", () => {
     const polarControls = { pair: { x: 0, y: 1 }, mode: "polarLevel", polarLevelPeakHold: true };
     renderWith(null, [-12, -10], "standard", polarControls);
     const plot = screen.getByTestId("dock-vectorscope-plot");
     expect(plot.getAttribute("data-peak-hold-reset")).toBe("true");
     expect(plot.className).toContain("cursor-pointer");
     fireEvent.mouseEnter(plot);
-    expect(screen.getByText("Click to reset Peak hold")).toBeTruthy();
+    expect(screen.queryByText("Click to reset Peak hold")).toBeNull();
     fireEvent.click(plot);
   });
 
