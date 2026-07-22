@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -20,6 +20,8 @@ async function buildMenu({
   onTogglePin,
   deviceName,
   onToggleWindow,
+  onQuit,
+  updateBusy,
 }) {
   const win = getCurrentWindow();
   const isVisible = await win.isVisible();
@@ -28,6 +30,7 @@ async function buildMenu({
     items: [
       await MenuItem.new({
         text: isVisible ? "Hide Window" : "Show Window",
+        enabled: !updateBusy,
         action: onToggleWindow,
       }),
       await MenuItem.new({
@@ -46,7 +49,8 @@ async function buildMenu({
       await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
         text: "Quit",
-        action: () => exit(0),
+        enabled: !updateBusy,
+        action: onQuit,
       }),
     ],
   });
@@ -60,11 +64,16 @@ export function useTray({
   deviceName,
   onToggleWindow,
   colorScheme,
+  updateBusy = false,
 }) {
   const trayRef = useRef(null);
   const togglePinRef = useRef(togglePin);
   const onStartClickRef = useRef(onStartClick);
   const onToggleWindowRef = useRef(onToggleWindow);
+  const updateBusyRef = useRef(updateBusy);
+  useLayoutEffect(() => {
+    updateBusyRef.current = updateBusy;
+  }, [updateBusy]);
 
   useEffect(() => {
     togglePinRef.current = togglePin;
@@ -75,17 +84,21 @@ export function useTray({
   useEffect(() => {
     onToggleWindowRef.current = onToggleWindow;
   }, [onToggleWindow]);
-
   // Stable callbacks that always call the latest ref
   const stableTogglePin = useCallback(() => togglePinRef.current(), []);
   const stableToggleCapture = useCallback(() => onStartClickRef.current(), []);
-  const stableToggleWindow = useCallback(() => onToggleWindowRef.current(), []);
+  const stableToggleWindow = useCallback(() => {
+    if (!updateBusyRef.current) onToggleWindowRef.current();
+  }, []);
+  const stableQuit = useCallback(() => {
+    if (!updateBusyRef.current) exit(0);
+  }, []);
 
   // Snapshot of state for the creation effect (refs keep it current after creation)
-  const creationStateRef = useRef({ running, pinned, deviceName, colorScheme });
+  const creationStateRef = useRef({ running, pinned, deviceName, colorScheme, updateBusy });
   useEffect(() => {
-    creationStateRef.current = { running, pinned, deviceName, colorScheme };
-  }, [running, pinned, deviceName, colorScheme]);
+    creationStateRef.current = { running, pinned, deviceName, colorScheme, updateBusy };
+  }, [running, pinned, deviceName, colorScheme, updateBusy]);
 
   // Create tray once on mount
   useEffect(() => {
@@ -93,7 +106,13 @@ export function useTray({
     let cancelled = false;
 
     (async () => {
-      const { running: r, pinned: p, deviceName: d, colorScheme: cs } = creationStateRef.current;
+      const {
+        running: r,
+        pinned: p,
+        deviceName: d,
+        colorScheme: cs,
+        updateBusy: u,
+      } = creationStateRef.current;
       const menu = await buildMenu({
         running: r,
         pinned: p,
@@ -101,6 +120,8 @@ export function useTray({
         onTogglePin: stableTogglePin,
         deviceName: d,
         onToggleWindow: stableToggleWindow,
+        onQuit: stableQuit,
+        updateBusy: u,
       });
 
       const iconName = cs === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
@@ -131,7 +152,7 @@ export function useTray({
         // State (e.g. deviceName) may have changed while the tray was being created.
         // Rebuild the menu once with whatever is current to avoid showing stale values.
         const cur = creationStateRef.current;
-        if (cur.running !== r || cur.pinned !== p || cur.deviceName !== d) {
+        if (cur.running !== r || cur.pinned !== p || cur.deviceName !== d || cur.updateBusy !== u) {
           const updatedMenu = await buildMenu({
             running: cur.running,
             pinned: cur.pinned,
@@ -139,6 +160,8 @@ export function useTray({
             onTogglePin: stableTogglePin,
             deviceName: cur.deviceName,
             onToggleWindow: stableToggleWindow,
+            onQuit: stableQuit,
+            updateBusy: cur.updateBusy,
           });
           await tray.setMenu(updatedMenu);
         }
@@ -165,12 +188,23 @@ export function useTray({
         onTogglePin: stableTogglePin,
         deviceName,
         onToggleWindow: stableToggleWindow,
+        onQuit: stableQuit,
+        updateBusy,
       });
       // trayRef may have been cleared by unmount cleanup during the await above;
       // re-check before touching it to avoid an unhandled rejection on teardown.
       await trayRef.current?.setMenu(menu);
     })();
-  }, [running, pinned, deviceName, stableToggleCapture, stableTogglePin, stableToggleWindow]);
+  }, [
+    running,
+    pinned,
+    deviceName,
+    updateBusy,
+    stableToggleCapture,
+    stableTogglePin,
+    stableQuit,
+    stableToggleWindow,
+  ]);
 
   // Update tray icon when color scheme changes
   useEffect(() => {

@@ -10,6 +10,7 @@ import { UpdateDialog } from "./UpdateDialog.jsx";
 export function AppSettingsOverlays({ settings, channelSettings, updateControls, appVersion }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [selectedUpdate, setSelectedUpdate] = useState(null);
   const {
     configurationBusy,
     configurationStatus,
@@ -26,12 +27,18 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
 
   function openUpdateDialog() {
     resetInstall();
+    setSelectedUpdate({
+      version: updateInfo?.latestVersion,
+      releaseNotes: updateInfo?.releaseNotes,
+      update: updateInfo?.update,
+    });
     setUpdateDialogOpen(true);
   }
 
   function closeUpdateDialog() {
     resetInstall();
     setUpdateDialogOpen(false);
+    setSelectedUpdate(null);
   }
 
   return (
@@ -95,10 +102,10 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
 
       <UpdateDialog
         open={updateDialogOpen}
-        version={updateInfo?.latestVersion}
-        releaseNotes={updateInfo?.releaseNotes}
+        version={selectedUpdate?.version}
+        releaseNotes={selectedUpdate?.releaseNotes}
         installStatus={installStatus}
-        onConfirm={() => install(updateInfo?.update)}
+        onConfirm={() => install(selectedUpdate?.update)}
         onCancel={closeUpdateDialog}
         onRestart={restartToApply}
         openExternalUrl={openExternalUrl}

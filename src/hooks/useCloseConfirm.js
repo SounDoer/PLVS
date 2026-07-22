@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { exit } from "@tauri-apps/plugin-process";
 import { isTauri } from "../ipc/env.js";
 import { settingsStore } from "../persistence/index.js";
 
-export function useCloseConfirm({ onHideWindow }) {
+export function useCloseConfirm({ onHideWindow, closeBlocked = false }) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const closeBlockedRef = useRef(closeBlocked);
+  useLayoutEffect(() => {
+    closeBlockedRef.current = closeBlocked;
+  }, [closeBlocked]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -13,6 +17,7 @@ export function useCloseConfirm({ onHideWindow }) {
     getCurrentWindow()
       .onCloseRequested(async (e) => {
         e.preventDefault();
+        if (closeBlockedRef.current) return;
         const saved = settingsStore.read().closeAction ?? null;
         if (saved === "tray") {
           await onHideWindow();

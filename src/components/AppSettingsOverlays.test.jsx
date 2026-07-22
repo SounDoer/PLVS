@@ -138,23 +138,32 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}) {
     resetInstall: vi.fn(),
     ...updateOverrides,
   };
-
-  const view = render(
+  const channelSettings = {
+    channelCount: 2,
+    channelLabelTokens: [],
+    channelLabelHasOverride: false,
+    setChannelLabelToken: vi.fn(),
+    resetChannelLabels: vi.fn(),
+  };
+  const renderView = () => (
     <AppSettingsOverlays
       settings={settings}
-      channelSettings={{
-        channelCount: 2,
-        channelLabelTokens: [],
-        channelLabelHasOverride: false,
-        setChannelLabelToken: vi.fn(),
-        resetChannelLabels: vi.fn(),
-      }}
+      channelSettings={channelSettings}
       updateControls={updateControls}
       appVersion="0.0.0"
     />
   );
 
-  return { ...view, updateControls };
+  const view = render(renderView());
+
+  return {
+    ...view,
+    updateControls,
+    rerenderUpdate(nextUpdateControls) {
+      Object.assign(updateControls, nextUpdateControls);
+      view.rerender(renderView());
+    },
+  };
 }
 
 describe("AppSettingsOverlays", () => {
@@ -229,6 +238,38 @@ describe("AppSettingsOverlays", () => {
     expect(screen.getByRole("button", { name: "Update" })).toBeTruthy();
     expect(resetInstall).toHaveBeenCalledTimes(2);
     expect(install).not.toHaveBeenCalled();
+  });
+
+  it("keeps the opened update stable when a background check replaces updateInfo", () => {
+    const firstUpdate = { downloadAndInstall: vi.fn() };
+    const secondUpdate = { downloadAndInstall: vi.fn() };
+    const install = vi.fn();
+    const { rerenderUpdate } = renderOverlays(makeSettings(), {
+      updateInfo: {
+        hasUpdate: true,
+        latestVersion: "0.9.5",
+        releaseNotes: "First release notes",
+        update: firstUpdate,
+      },
+      install,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    rerenderUpdate({
+      updateInfo: {
+        hasUpdate: true,
+        latestVersion: "0.9.6",
+        releaseNotes: "Second release notes",
+        update: secondUpdate,
+      },
+    });
+
+    expect(screen.getByText("0.9.5")).toBeTruthy();
+    expect(screen.getByText("First release notes")).toBeTruthy();
+    expect(screen.queryByText("Second release notes")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
+    expect(install).toHaveBeenCalledWith(firstUpdate);
   });
 
   it("renders the theme editor when custom theme editing is active", () => {

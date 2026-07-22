@@ -57,6 +57,44 @@ describe("useApplyUpdate", () => {
     expect(result.current.installStatus).toBe("restarting");
   });
 
+  it("passes a finite timeout to the updater download", async () => {
+    const update = { downloadAndInstall: vi.fn().mockResolvedValue() };
+    relaunchMock.mockResolvedValue();
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => {
+      await result.current.install(update);
+    });
+
+    expect(update.downloadAndInstall).toHaveBeenCalledWith(undefined, {
+      timeout: 10 * 60 * 1000,
+    });
+  });
+
+  it("ignores a concurrent install request before React state updates", async () => {
+    let resolveInstall;
+    const pendingInstall = new Promise((resolve) => {
+      resolveInstall = resolve;
+    });
+    const update = { downloadAndInstall: vi.fn().mockReturnValue(pendingInstall) };
+    relaunchMock.mockResolvedValue();
+    const { result } = renderHook(() => useApplyUpdate());
+
+    let firstInstall;
+    let secondInstall;
+    act(() => {
+      firstInstall = result.current.install(update);
+      secondInstall = result.current.install(update);
+    });
+
+    expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveInstall();
+      await Promise.all([firstInstall, secondInstall]);
+    });
+  });
+
   it("reports an install error without trying to relaunch", async () => {
     const update = {
       downloadAndInstall: vi.fn().mockRejectedValue(new Error("download failed")),

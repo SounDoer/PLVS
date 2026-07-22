@@ -31,7 +31,9 @@ import { closeTrayIcon, PLVS_TRAY_ID } from "../lib/trayIconLifecycle.js";
 import { useTray } from "./useTray.js";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Image } from "@tauri-apps/api/image";
+import { MenuItem } from "@tauri-apps/api/menu";
 import { resolveResource } from "@tauri-apps/api/path";
+import { exit } from "@tauri-apps/plugin-process";
 
 const defaultProps = {
   running: false,
@@ -111,6 +113,41 @@ describe("useTray", () => {
 
     expect(firstToggleWindow).not.toHaveBeenCalled();
     expect(secondToggleWindow).toHaveBeenCalledTimes(1);
+  });
+
+  it("rebuilds the tray with window and quit actions disabled while updating", async () => {
+    const setMenu = vi.fn();
+    const onToggleWindow = vi.fn();
+    TrayIcon.new.mockResolvedValue({ setMenu, close: vi.fn() });
+    const { rerender } = renderHook(
+      ({ updateBusy }) => useTray({ ...defaultProps, onToggleWindow, updateBusy }),
+      {
+        initialProps: { updateBusy: false },
+      }
+    );
+    await act(async () => {});
+    const trayAction = TrayIcon.new.mock.calls[0][0].action;
+    const staleQuitAction = MenuItem.new.mock.calls
+      .map(([options]) => options)
+      .find((options) => options.text === "Quit").action;
+    MenuItem.new.mockClear();
+
+    rerender({ updateBusy: true });
+    await act(async () => {});
+
+    const menuItems = MenuItem.new.mock.calls.map(([options]) => options);
+    expect(menuItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: "Hide Window", enabled: false }),
+        expect.objectContaining({ text: "Quit", enabled: false }),
+      ])
+    );
+    expect(setMenu).toHaveBeenCalled();
+
+    trayAction({ type: "Click", button: "Left" });
+    expect(onToggleWindow).not.toHaveBeenCalled();
+    staleQuitAction();
+    expect(exit).not.toHaveBeenCalled();
   });
 
   it("closes an orphaned tray if effect is cancelled before TrayIcon.new resolves", async () => {

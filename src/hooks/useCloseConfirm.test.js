@@ -96,6 +96,40 @@ describe("useCloseConfirm", () => {
     expect(mockExit).toHaveBeenCalledWith(0);
   });
 
+  it("blocks close requests during an update even when quit is saved", async () => {
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "quit" }));
+    const onHideWindow = vi.fn();
+    const { result } = renderHook(() => useCloseConfirm({ onHideWindow, closeBlocked: true }));
+
+    await act(async () => {
+      await closeRequestedCallback.current({ preventDefault: vi.fn() });
+    });
+
+    expect(mockExit).not.toHaveBeenCalled();
+    expect(onHideWindow).not.toHaveBeenCalled();
+    expect(result.current.dialogOpen).toBe(false);
+  });
+
+  it("blocks a close request captured before the update became busy", async () => {
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "quit" }));
+    const onHideWindow = vi.fn();
+    const { rerender } = renderHook(
+      ({ closeBlocked }) => useCloseConfirm({ onHideWindow, closeBlocked }),
+      {
+        initialProps: { closeBlocked: false },
+      }
+    );
+    const staleCloseCallback = closeRequestedCallback.current;
+
+    rerender({ closeBlocked: true });
+    await act(async () => {
+      await staleCloseCallback({ preventDefault: vi.fn() });
+    });
+
+    expect(mockExit).not.toHaveBeenCalled();
+    expect(onHideWindow).not.toHaveBeenCalled();
+  });
+
   it("handleConfirm('tray', false) calls onHideWindow and closes dialog", async () => {
     const onHideWindow = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useCloseConfirm({ onHideWindow }));

@@ -190,11 +190,15 @@ function AppContent() {
     });
   }, [docked, resumeDockMode, suspendDockMode]);
 
+  const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
+  const { installStatus, install, restartToApply, resetInstall } = useApplyUpdate();
+  const updateBusy = installStatus === "installing" || installStatus === "restarting";
+
   const {
     dialogOpen: closeDialogOpen,
     handleConfirm: handleCloseConfirm,
     handleCancel: handleCloseCancel,
-  } = useCloseConfirm({ onHideWindow });
+  } = useCloseConfirm({ onHideWindow, closeBlocked: updateBusy });
 
   const audioOutputs = useMemo(
     () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
@@ -441,8 +445,6 @@ function AppContent() {
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
   const spectrumMaxHoldUi = normalizedPanelControls.spectrumMaxHold;
-  const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
-  const { installStatus, install, restartToApply, resetInstall } = useApplyUpdate();
 
   const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
 
@@ -1088,6 +1090,7 @@ function AppContent() {
     deviceName,
     onToggleWindow,
     colorScheme: resolvedTheme.colorScheme,
+    updateBusy,
   });
 
   useAppKeyboardShortcuts({
