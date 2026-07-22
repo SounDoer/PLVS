@@ -110,8 +110,8 @@ export function drawWaveformCanvas(
   ctx.globalAlpha = 1;
 
   ctx.strokeStyle = strokeColor;
-  // WAVEFORM_MAX_DEVICE_PIXEL_RATIO keeps the backing store 1:1 with CSS pixels, so the token
-  // is the width in device pixels as-is. Scaling it by dpr again doubles the trace on HiDPI.
+  // WAVEFORM_MAX_DEVICE_PIXEL_RATIO caps the backing store width at 1:1 with CSS pixels, so the
+  // token is the width in device pixels as-is. Scaling it by dpr again doubles the trace on HiDPI.
   ctx.lineWidth = strokeWidth;
   ctx.stroke();
 }
@@ -444,7 +444,10 @@ function WaveformLane({
   }, []);
 
   useCanvasSize(canvasRef, containerRef, scheduleDraw, {
-    maxDevicePixelRatio: WAVEFORM_MAX_DEVICE_PIXEL_RATIO,
+    // Cap width only: bucket count (decimation cost) tracks canvas width, so the fullscreen-perf
+    // cap stays there. Height keeps full DPR so the near-zero envelope renders at real vertical
+    // resolution instead of a sub-pixel hairline that flickers as it scrolls.
+    maxDevicePixelRatioX: WAVEFORM_MAX_DEVICE_PIXEL_RATIO,
   });
 
   useEffect(() => {

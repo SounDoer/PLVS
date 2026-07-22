@@ -43,7 +43,10 @@ export function paintDockWaveformCanvas(
   const gridColor = style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
   const fillOpacity = cssNumber(style, "--ui-waveform-fill-opacity", 0.22);
   const strokeWidth = cssNumber(style, "--ui-waveform-stroke-width", 1);
-  const rowGap = cssNumber(style, "--ui-dock-gap-row", 0);
+  // The backing store height now uses full DPR while width is capped, so it is no longer 1:1 with
+  // CSS pixels. Convert the CSS-px row gap into backing pixels before laying out the lanes.
+  const vScale = canvas.clientHeight > 0 ? height / canvas.clientHeight : 1;
+  const rowGap = cssNumber(style, "--ui-dock-gap-row", 0) * vScale;
   const laneHeight = Math.max(0, (height - rowGap * Math.max(0, channelCount - 1)) / channelCount);
 
   ctx.clearRect(0, 0, width, height);
@@ -129,7 +132,9 @@ export function DockWaveform({ controls }) {
     );
   }, []);
   useCanvasSize(canvasRef, plotRef, onCanvasResize, {
-    maxDevicePixelRatio: MAX_DEVICE_PIXEL_RATIO,
+    // Width capped for decimation cost; height stays full DPR so the near-zero envelope keeps real
+    // vertical resolution instead of flickering as a sub-pixel hairline (see WaveformPanel).
+    maxDevicePixelRatioX: MAX_DEVICE_PIXEL_RATIO,
   });
 
   const envelope = useMemo(

@@ -92,6 +92,33 @@ describe("useCanvasSize", () => {
     expect(canvasRef.current.height).toBe(300);
   });
 
+  it("caps width only, leaving height at full DPR, with maxDevicePixelRatioX", () => {
+    vi.stubGlobal("devicePixelRatio", 2);
+    const { canvasRef, containerRef } = makeRefs(400, 300);
+    renderHook(() =>
+      useCanvasSize(canvasRef, containerRef, undefined, { maxDevicePixelRatioX: 1 })
+    );
+    triggerResize();
+    flushRaf();
+    expect(canvasRef.current.width).toBe(400); // capped at DPR 1
+    expect(canvasRef.current.height).toBe(600); // full DPR 2
+  });
+
+  it("lets a per-axis override win over maxDevicePixelRatio", () => {
+    vi.stubGlobal("devicePixelRatio", 2);
+    const { canvasRef, containerRef } = makeRefs(400, 300);
+    renderHook(() =>
+      useCanvasSize(canvasRef, containerRef, undefined, {
+        maxDevicePixelRatio: 1,
+        maxDevicePixelRatioY: 2,
+      })
+    );
+    triggerResize();
+    flushRaf();
+    expect(canvasRef.current.width).toBe(400); // falls back to shared cap of 1
+    expect(canvasRef.current.height).toBe(600); // Y override keeps full DPR
+  });
+
   it("coalesces multiple resize notifications into one animation frame", () => {
     const { canvasRef, containerRef } = makeRefs(400, 300);
     renderHook(() => useCanvasSize(canvasRef, containerRef));
