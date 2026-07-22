@@ -12,13 +12,18 @@ afterEach(() => {
 });
 
 describe("checkForUpdate", () => {
-  it("returns hasUpdate + the raw update handle when a newer version exists", async () => {
-    const fakeUpdate = { version: "0.1.10", downloadAndInstall: vi.fn() };
+  it("returns release notes and the raw update handle when a newer version exists", async () => {
+    const fakeUpdate = {
+      version: "0.1.10",
+      body: "### Fixed\n- Safer update flow.",
+      downloadAndInstall: vi.fn(),
+    };
     checkMock.mockResolvedValue(fakeUpdate);
 
     await expect(checkForUpdate()).resolves.toEqual({
       hasUpdate: true,
       latestVersion: "0.1.10",
+      releaseNotes: "### Fixed\n- Safer update flow.",
       releaseUrl: RELEASES_URL,
       update: fakeUpdate,
     });

@@ -20,6 +20,7 @@ export async function checkForUpdate() {
     return {
       hasUpdate: true,
       latestVersion: update.version,
+      releaseNotes: update.body ?? "",
       releaseUrl: RELEASES_URL,
       update,
     };
