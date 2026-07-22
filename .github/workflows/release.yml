@@ -273,13 +273,13 @@ jobs:
         with:
           name: updater-descriptor-macos
 
-      - name: Prepare release notes from CHANGELOG
-        run: node scripts/changelog-release-body.mjs "${{ github.ref_name }}" release-notes.md
+      - name: Prepare updater changelog
+        run: node scripts/changelog-release-body.mjs "${{ github.ref_name }}" updater-notes.md --changelog-only
 
       - name: Build latest.json
         run: |
           VERSION="${{ github.ref_name }}"
-          node scripts/build-updater-manifest.mjs "${VERSION#v}" release-notes.md latest.json updater-windows.json updater-macos.json
+          node scripts/build-updater-manifest.mjs "${VERSION#v}" updater-notes.md latest.json updater-windows.json updater-macos.json
 
       - name: Attach latest.json to GitHub Release
         uses: softprops/action-gh-release@v3

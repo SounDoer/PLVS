@@ -9,12 +9,16 @@ import { fileURLToPath } from "node:url";
 
 const tagArg = process.argv[2] ?? "";
 const outFile = process.argv[3] ?? "";
+const mode = process.argv[4] ?? "";
+const changelogOnly = mode === "--changelog-only";
 const semver = tagArg.replace(/^v/i, "").trim();
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const changelogPath = join(root, "CHANGELOG.md");
 
-if (!semver || !outFile) {
-  console.error("Usage: node scripts/changelog-release-body.mjs <tag> <outfile.md>");
+if (!semver || !outFile || (mode && !changelogOnly)) {
+  console.error(
+    "Usage: node scripts/changelog-release-body.mjs <tag> <outfile.md> [--changelog-only]"
+  );
   process.exit(1);
 }
 
@@ -23,6 +27,11 @@ const headerNeedle = `## [${semver}]`;
 const idx = changelog.indexOf(headerNeedle);
 let body;
 if (idx === -1) {
+  if (changelogOnly) {
+    console.error(`Missing CHANGELOG.md section: ## [${semver}]`);
+    process.exit(1);
+  }
+
   body = [
     `## PLVS v${semver}`,
     "",
@@ -65,7 +74,7 @@ const installSection = [
   "### Windows",
   `- **Installer**: Download \`PLVS_${semver}_x64-setup.exe\` and double-click to run.`,
   `- **Portable**: Download \`PLVS-v${semver}-x64-portable.exe\` and run directly — no installation required.`,
-  "- SmartScreen may warn on first launch (unsigned build). Click \"More info\" → \"Run anyway\".",
+  '- SmartScreen may warn on first launch (unsigned build). Click "More info" → "Run anyway".',
   "",
   "### macOS (Apple Silicon)",
   `- Download \`PLVS-v${semver}-aarch64.dmg\`, open it and drag PLVS to Applications.`,
@@ -77,4 +86,5 @@ const installSection = [
   "",
 ].join("\n");
 
-writeFileSync(outFile, `${body}\n${installSection}\n`, "utf8");
+const output = changelogOnly ? `${body}\n` : `${body}\n${installSection}\n`;
+writeFileSync(outFile, output, "utf8");
