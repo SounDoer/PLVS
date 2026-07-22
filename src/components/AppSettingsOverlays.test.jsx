@@ -31,6 +31,7 @@ vi.mock("../hooks/useCliPathSettings.js", () => ({
 vi.mock("./SettingsPanel.jsx", () => ({
   SettingsPanel: ({
     onOpenFeedback,
+    onInstallUpdate,
     themeControlsDisabled,
     cliPathStatus,
     interfaceSize,
@@ -42,6 +43,9 @@ vi.mock("./SettingsPanel.jsx", () => ({
       <span data-testid="interface-size">{interfaceSize}</span>
       <button type="button" onClick={() => setInterfaceSize("large")}>
         Set interface size
+      </button>
+      <button type="button" onClick={onInstallUpdate}>
+        Update
       </button>
       <button type="button" onClick={onOpenFeedback}>
         Feedback
@@ -62,6 +66,22 @@ vi.mock("./FeedbackDialog.jsx", () => ({
 
 vi.mock("./ThemeEditor.jsx", () => ({
   ThemeEditor: ({ dirty }) => <div data-testid="theme-editor">{String(dirty)}</div>,
+}));
+
+vi.mock("./UpdateDialog.jsx", () => ({
+  UpdateDialog: ({ open, version, releaseNotes, onConfirm, onCancel }) =>
+    open ? (
+      <div role="dialog" aria-label="update">
+        <span>{version}</span>
+        <span>{releaseNotes}</span>
+        <button type="button" onClick={onCancel}>
+          Cancel update
+        </button>
+        <button type="button" onClick={onConfirm}>
+          Confirm update
+        </button>
+      </div>
+    ) : null,
 }));
 
 function makeSettings(overrides = {}) {
@@ -108,8 +128,18 @@ function makeSettings(overrides = {}) {
   };
 }
 
-function renderOverlays(settings = makeSettings()) {
-  return render(
+function renderOverlays(settings = makeSettings(), updateOverrides = {}) {
+  const updateControls = {
+    updateInfo: null,
+    refreshUpdateCheck: vi.fn(),
+    installStatus: "idle",
+    install: vi.fn(),
+    restartToApply: vi.fn(),
+    resetInstall: vi.fn(),
+    ...updateOverrides,
+  };
+
+  const view = render(
     <AppSettingsOverlays
       settings={settings}
       channelSettings={{
@@ -119,16 +149,12 @@ function renderOverlays(settings = makeSettings()) {
         setChannelLabelToken: vi.fn(),
         resetChannelLabels: vi.fn(),
       }}
-      updateControls={{
-        updateInfo: null,
-        refreshUpdateCheck: vi.fn(),
-        installStatus: "idle",
-        install: vi.fn(),
-        restartToApply: vi.fn(),
-      }}
+      updateControls={updateControls}
       appVersion="0.0.0"
     />
   );
+
+  return { ...view, updateControls };
 }
 
 describe("AppSettingsOverlays", () => {
@@ -153,6 +179,56 @@ describe("AppSettingsOverlays", () => {
 
     expect(settings.setSettingsOpen).toHaveBeenCalledWith(false);
     expect(screen.getByRole("dialog", { name: "feedback" })).toBeTruthy();
+  });
+
+  it("opens the changelog dialog before starting an update", () => {
+    const update = { downloadAndInstall: vi.fn() };
+    const install = vi.fn();
+    const resetInstall = vi.fn();
+    renderOverlays(makeSettings(), {
+      updateInfo: {
+        hasUpdate: true,
+        latestVersion: "0.9.5",
+        releaseNotes: "### Fixed",
+        update,
+      },
+      install,
+      resetInstall,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+
+    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
+    expect(screen.getByText("0.9.5")).toBeTruthy();
+    expect(screen.getByText("### Fixed")).toBeTruthy();
+    expect(resetInstall).toHaveBeenCalledTimes(1);
+    expect(install).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
+    expect(install).toHaveBeenCalledWith(update);
+  });
+
+  it("closes the changelog dialog without installing when canceled", () => {
+    const install = vi.fn();
+    const resetInstall = vi.fn();
+    renderOverlays(makeSettings(), {
+      updateInfo: {
+        hasUpdate: true,
+        latestVersion: "0.9.5",
+        releaseNotes: "### Fixed",
+        update: { downloadAndInstall: vi.fn() },
+      },
+      install,
+      resetInstall,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel update" }));
+
+    expect(screen.queryByRole("dialog", { name: "update" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Update" })).toBeTruthy();
+    expect(resetInstall).toHaveBeenCalledTimes(2);
+    expect(install).not.toHaveBeenCalled();
   });
 
   it("renders the theme editor when custom theme editing is active", () => {

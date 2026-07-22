@@ -442,7 +442,7 @@ function AppContent() {
   const spectrumViewUi = normalizedPanelControls.spectrumView;
   const spectrumMaxHoldUi = normalizedPanelControls.spectrumMaxHold;
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
-  const { installStatus, install, restartToApply } = useApplyUpdate();
+  const { installStatus, install, restartToApply, resetInstall } = useApplyUpdate();
 
   const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
 
@@ -1342,6 +1342,7 @@ function AppContent() {
           installStatus,
           install,
           restartToApply,
+          resetInstall,
         }}
         appVersion={APP_VERSION}
       />

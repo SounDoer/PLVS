@@ -5,9 +5,11 @@ import { useConfigurationProfileActions } from "../hooks/useConfigurationProfile
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { ThemeEditor } from "./ThemeEditor.jsx";
+import { UpdateDialog } from "./UpdateDialog.jsx";
 
 export function AppSettingsOverlays({ settings, channelSettings, updateControls, appVersion }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const {
     configurationBusy,
     configurationStatus,
@@ -18,8 +20,19 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
   const { cliPathStatus, cliPathBusy, setCliPathEnabled } = useCliPathSettings({
     settingsOpen: settings.settingsOpen,
   });
-  const { updateInfo, refreshUpdateCheck, installStatus, install, restartToApply } = updateControls;
+  const { updateInfo, refreshUpdateCheck, installStatus, install, restartToApply, resetInstall } =
+    updateControls;
   const { editor, editorPos, moveEditor } = settings;
+
+  function openUpdateDialog() {
+    resetInstall();
+    setUpdateDialogOpen(true);
+  }
+
+  function closeUpdateDialog() {
+    resetInstall();
+    setUpdateDialogOpen(false);
+  }
 
   return (
     <>
@@ -44,9 +57,7 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
         hasUpdate={updateInfo?.hasUpdate}
         updateStatus={updateInfo?.status}
         onCheckForUpdate={refreshUpdateCheck}
-        installStatus={installStatus}
-        onInstallUpdate={() => install(updateInfo?.update)}
-        onRestartToApply={restartToApply}
+        onInstallUpdate={openUpdateDialog}
         openExternalUrl={openExternalUrl}
         autostartEnabled={settings.autostartEnabled}
         setAutostartEnabled={settings.setAutostartEnabled}
@@ -80,6 +91,17 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
           settings.setSettingsOpen(false);
           setFeedbackOpen(true);
         }}
+      />
+
+      <UpdateDialog
+        open={updateDialogOpen}
+        version={updateInfo?.latestVersion}
+        releaseNotes={updateInfo?.releaseNotes}
+        installStatus={installStatus}
+        onConfirm={() => install(updateInfo?.update)}
+        onCancel={closeUpdateDialog}
+        onRestart={restartToApply}
+        openExternalUrl={openExternalUrl}
       />
 
       {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
