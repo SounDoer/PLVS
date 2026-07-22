@@ -19,7 +19,7 @@ describe("useApplyUpdate", () => {
     expect(result.current.installStatus).toBe("idle");
   });
 
-  it("moves to installing then ready on a successful download+install", async () => {
+  it("stays installing until downloadAndInstall completes", async () => {
     let resolveInstall;
     const update = {
       downloadAndInstall: vi.fn(
@@ -32,25 +32,90 @@ describe("useApplyUpdate", () => {
     const { result } = renderHook(() => useApplyUpdate());
 
     act(() => {
-      result.current.install(update);
+      void result.current.install(update);
     });
     expect(result.current.installStatus).toBe("installing");
 
+    relaunchMock.mockResolvedValue();
     await act(async () => {
       resolveInstall();
     });
-    await waitFor(() => expect(result.current.installStatus).toBe("ready"));
+    await waitFor(() => expect(relaunchMock).toHaveBeenCalledTimes(1));
   });
 
-  it("moves to error when downloadAndInstall rejects", async () => {
-    const update = { downloadAndInstall: vi.fn().mockRejectedValue(new Error("boom")) };
+  it("automatically relaunches after a successful installation", async () => {
+    const update = { downloadAndInstall: vi.fn().mockResolvedValue() };
+    relaunchMock.mockResolvedValue();
     const { result } = renderHook(() => useApplyUpdate());
 
     await act(async () => {
       await result.current.install(update);
     });
 
-    expect(result.current.installStatus).toBe("error");
+    expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
+    expect(relaunchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.installStatus).toBe("restarting");
+  });
+
+  it("reports an install error without trying to relaunch", async () => {
+    const update = {
+      downloadAndInstall: vi.fn().mockRejectedValue(new Error("download failed")),
+    };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => {
+      await result.current.install(update);
+    });
+
+    expect(result.current.installStatus).toBe("install-error");
+    expect(relaunchMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a restart error after installation succeeds", async () => {
+    const update = { downloadAndInstall: vi.fn().mockResolvedValue() };
+    relaunchMock.mockRejectedValueOnce(new Error("relaunch failed"));
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => {
+      await result.current.install(update);
+    });
+
+    expect(result.current.installStatus).toBe("restart-error");
+  });
+
+  it("retries only relaunch after a restart error", async () => {
+    const update = { downloadAndInstall: vi.fn().mockResolvedValue() };
+    relaunchMock
+      .mockRejectedValueOnce(new Error("relaunch failed"))
+      .mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => {
+      await result.current.install(update);
+    });
+    await act(async () => {
+      await result.current.restartToApply();
+    });
+
+    expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
+    expect(relaunchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.installStatus).toBe("restarting");
+  });
+
+  it("resets a dismissed error before the dialog is reopened", async () => {
+    const update = {
+      downloadAndInstall: vi.fn().mockRejectedValue(new Error("download failed")),
+    };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => {
+      await result.current.install(update);
+    });
+    act(() => {
+      result.current.resetInstall();
+    });
+
+    expect(result.current.installStatus).toBe("idle");
   });
 
   it("does nothing when install is called with no update handle", async () => {
@@ -61,15 +126,6 @@ describe("useApplyUpdate", () => {
     });
 
     expect(result.current.installStatus).toBe("idle");
-  });
-
-  it("relaunches the app on restartToApply", () => {
-    const { result } = renderHook(() => useApplyUpdate());
-
-    act(() => {
-      result.current.restartToApply();
-    });
-
-    expect(relaunchMock).toHaveBeenCalledTimes(1);
+    expect(relaunchMock).not.toHaveBeenCalled();
   });
 });

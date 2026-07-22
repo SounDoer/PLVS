@@ -8,20 +8,35 @@ import { relaunch } from "@tauri-apps/plugin-process";
 export function useApplyUpdate() {
   const [installStatus, setInstallStatus] = useState("idle");
 
-  const install = useCallback(async (update) => {
-    if (!update) return;
-    setInstallStatus("installing");
+  const restartToApply = useCallback(async () => {
+    setInstallStatus("restarting");
     try {
-      await update.downloadAndInstall();
-      setInstallStatus("ready");
+      await relaunch();
     } catch {
-      setInstallStatus("error");
+      setInstallStatus("restart-error");
     }
   }, []);
 
-  const restartToApply = useCallback(() => {
-    relaunch();
+  const install = useCallback(
+    async (update) => {
+      if (!update) return;
+
+      setInstallStatus("installing");
+      try {
+        await update.downloadAndInstall();
+      } catch {
+        setInstallStatus("install-error");
+        return;
+      }
+
+      await restartToApply();
+    },
+    [restartToApply]
+  );
+
+  const resetInstall = useCallback(() => {
+    setInstallStatus("idle");
   }, []);
 
-  return { installStatus, install, restartToApply };
+  return { installStatus, install, restartToApply, resetInstall };
 }
