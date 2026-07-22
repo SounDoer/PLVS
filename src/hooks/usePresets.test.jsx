@@ -37,9 +37,16 @@ vi.mock("../ipc/events.js", () => ({
 }));
 
 import { usePresets } from "./usePresets.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
+import { settingsStore } from "../persistence/index.js";
+import { LOUDNESS_PROFILE_OFF, builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
 
 function wrapper({ children }) {
-  return <WorkspaceProvider>{children}</WorkspaceProvider>;
+  return (
+    <WorkspaceProvider>
+      <LoudnessProfileProvider>{children}</LoudnessProfileProvider>
+    </WorkspaceProvider>
+  );
 }
 
 function renderPresetHook(presetOptions = {}) {
@@ -48,6 +55,24 @@ function renderPresetHook(presetOptions = {}) {
       presets: usePresets(presetOptions),
       workspace: useWorkspaceStore(),
     }),
+    { wrapper }
+  );
+}
+
+/// Presets and the profile wired together the way App does, so a round-trip has to survive the
+/// real capture -> persist -> apply path.
+function renderPresetsWithProfile() {
+  return renderHook(
+    () => {
+      const profile = useLoudnessProfile();
+      return {
+        profile,
+        presets: usePresets({
+          snapshotLoudnessProfile: profile.snapshotForPreset,
+          applyLoudnessProfileSnapshot: profile.applyPresetSnapshot,
+        }),
+      };
+    },
     { wrapper }
   );
 }
@@ -345,73 +370,6 @@ describe("usePresets", () => {
     });
     expect(setFocusView).not.toHaveBeenCalled();
     expect(presetsStore.read().activeId).toBe("p1");
-  });
-
-  it("preserves the current loudness reference when applying an older preset", async () => {
-    presetsStore.patch({
-      list: [
-        {
-          id: "p1",
-          name: "Preset",
-          tree: leaf(["loudness"]),
-          panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
-          panelOrder: ["loudness"],
-          panelControlsById: {
-            loudness: {
-              ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
-              loudnessReferenceLufs: undefined,
-            },
-          },
-        },
-      ],
-      activeId: null,
-    });
-    const { result } = renderPresetHook();
-    act(() => {
-      result.current.workspace.setPanelControlsForPanel("loudness", {
-        ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
-        loudnessReferenceLufs: -18,
-      });
-    });
-
-    await act(async () => {
-      await result.current.presets.apply("p1");
-    });
-
-    expect(result.current.workspace.state.panelControlsById.loudness.loudnessReferenceLufs).toBe(
-      -18
-    );
-  });
-
-  it("round-trips loudness reference through panel controls", async () => {
-    const { result } = renderPresetHook();
-    act(() => {
-      result.current.workspace.setPanelControlsForPanel("loudness", {
-        ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
-        loudnessReferenceLufs: -14,
-      });
-    });
-
-    await act(async () => {
-      await result.current.presets.save("Streaming");
-    });
-
-    const savedId = presetsStore.read().list[0].id;
-    expect(presetsStore.read().list[0].panelControlsById.loudness.loudnessReferenceLufs).toBe(-14);
-
-    act(() => {
-      result.current.workspace.setPanelControlsForPanel("loudness", {
-        ...DEFAULT_WORKSPACE_STATE.panelControlsById.loudness,
-        loudnessReferenceLufs: -23,
-      });
-    });
-    await act(async () => {
-      await result.current.presets.apply(savedId);
-    });
-
-    expect(result.current.workspace.state.panelControlsById.loudness.loudnessReferenceLufs).toBe(
-      -14
-    );
   });
 
   it("leaves activeId null when window apply fails", async () => {
@@ -816,5 +774,86 @@ describe("usePresets", () => {
         expect.objectContaining({ bounds: preset.windowBounds })
       );
     });
+  });
+});
+
+describe("usePresets Loudness Profile snapshot", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    settingsStore.reset();
+  });
+
+  it("restores the built-in that was active when the preset was saved", async () => {
+    const { result } = renderPresetsWithProfile();
+    act(() => result.current.profile.select(builtinSelectionId("streaming-14")));
+    await act(async () => {
+      await result.current.presets.save("Streaming");
+    });
+    const savedId = presetsStore.read().list[0].id;
+
+    act(() => result.current.profile.selectOff());
+    await act(async () => {
+      await result.current.presets.apply(savedId);
+    });
+
+    expect(result.current.profile.referenceLufs).toBe(-14);
+  });
+
+  /// Saves one profile through the editor path, which is the only way into the library.
+  function saveProfile(result, name) {
+    act(() => result.current.profile.beginCreate());
+    act(() => result.current.profile.editDraft((d) => ({ ...d, name })));
+    act(() => result.current.profile.saveDraft());
+  }
+
+  it("stores the active selection but never the library", async () => {
+    const { result } = renderPresetsWithProfile();
+    saveProfile(result, "Mine");
+    await act(async () => {
+      await result.current.presets.save("WithLibrary");
+    });
+
+    const saved = presetsStore.read().list[0];
+    expect(saved.loudnessProfileActive).toBeTruthy();
+    expect(saved).not.toHaveProperty("userProfiles");
+  });
+
+  it("round-trips a user profile", async () => {
+    const { result } = renderPresetsWithProfile();
+    saveProfile(result, "Mine");
+    act(() =>
+      result.current.profile.updateUser(result.current.profile.userProfiles[0].id, {
+        referenceLufs: -18,
+      })
+    );
+    await act(async () => {
+      await result.current.presets.save("Draft");
+    });
+    const savedId = presetsStore.read().list[0].id;
+
+    act(() => result.current.profile.selectOff());
+    await act(async () => {
+      await result.current.presets.apply(savedId);
+    });
+
+    expect(result.current.profile.referenceLufs).toBe(-18);
+  });
+
+  it("falls back to Off when the preset names a profile that has been deleted", async () => {
+    const { result } = renderPresetsWithProfile();
+    saveProfile(result, "Temporary");
+    await act(async () => {
+      await result.current.presets.save("Doomed");
+    });
+    const savedId = presetsStore.read().list[0].id;
+
+    act(() => result.current.profile.removeUser(result.current.profile.userProfiles[0].id));
+    await act(async () => {
+      await result.current.presets.apply(savedId);
+    });
+
+    // Off, and crucially the library is left alone rather than resurrected.
+    expect(result.current.profile.active).toBe(LOUDNESS_PROFILE_OFF);
+    expect(result.current.profile.userProfiles).toEqual([]);
   });
 });

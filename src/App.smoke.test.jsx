@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import App from "./App.jsx";
 import { presetsStore, settingsStore } from "./persistence/index.js";
 import { isTauri } from "./ipc/env.js";
@@ -183,6 +183,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// "Loudness" also names a panel and a profile's name also fills the editor's name field, so
+// footer assertions have to be scoped to the footer rather than to the whole document.
+const footer = () => within(document.querySelector("footer"));
+
 describe("App smoke", () => {
   it("mounts the full app shell", async () => {
     render(<App />);
@@ -211,10 +215,49 @@ describe("App smoke", () => {
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
-    expect(screen.getByText("Device")).toBeTruthy();
-    expect(screen.getByText("Not connected")).toBeTruthy();
-    expect(screen.getByText("Ref")).toBeTruthy();
-    expect(screen.getByText("Preset")).toBeTruthy();
+    expect(footer().getByText("Device")).toBeTruthy();
+    expect(footer().getByText("Not connected")).toBeTruthy();
+    expect(footer().getByText("Preset")).toBeTruthy();
+    // Off by default, so there is no profile to name and the whole item is absent.
+    expect(footer().queryByText("Loudness")).toBeNull();
+  });
+
+  it("names the active Loudness Profile in the footer", async () => {
+    settingsStore.patch({
+      loudnessProfiles: { active: "builtin:ebu-r128", userProfiles: [] },
+    });
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    expect(footer().getByText("Loudness")).toBeTruthy();
+    expect(footer().getByText("EBU R128")).toBeTruthy();
+  });
+
+  it("does not label the footer item Profile", async () => {
+    // Configuration Profile owns that word, and this item sits directly beside Preset, where two
+    // spellings of one idea read as the same control.
+    settingsStore.patch({
+      loudnessProfiles: { active: "builtin:ebu-r128", userProfiles: [] },
+    });
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    expect(footer().queryByText("Profile")).toBeNull();
+  });
+
+  it("names an open draft in the footer, Untitled while it is unnamed", async () => {
+    settingsStore.patch({
+      loudnessProfiles: { active: "builtin:ebu-r128", userProfiles: [] },
+    });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Loudness Profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
+
+    // The draft outranks the selection, so the footer stops naming EBU R128 and follows the
+    // document being edited — blank, which normalizes to Untitled.
+    await waitFor(() => expect(footer().getByText("Untitled")).toBeTruthy());
+    expect(footer().queryByText("EBU R128")).toBeNull();
   });
 
   it("uses the formatted default device label in the footer", async () => {

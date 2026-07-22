@@ -95,7 +95,6 @@ describe("panelControls", () => {
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
-      loudnessReferenceLufs: -23,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,
@@ -143,9 +142,10 @@ describe("panelControls", () => {
     );
   });
 
-  it("normalizes the loudness reference", () => {
-    expect(normalizePanelControls({ loudnessReferenceLufs: -14 }).loudnessReferenceLufs).toBe(-14);
-    expect(normalizePanelControls({ loudnessReferenceLufs: 5 }).loudnessReferenceLufs).toBe(-23);
+  it("does not carry a loudness reference: the active Loudness Profile owns it", () => {
+    expect(normalizePanelControls({ loudnessReferenceLufs: -14 })).not.toHaveProperty(
+      "loudnessReferenceLufs"
+    );
   });
 
   it("defaults statsOrder to the full STATS_CANONICAL_ORDER", () => {
@@ -227,7 +227,6 @@ describe("panelControls", () => {
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
-      loudnessReferenceLufs: -23,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,

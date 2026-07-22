@@ -17,6 +17,7 @@ import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
 import { openExternalUrl } from "@/ipc/openExternal.js";
+import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
@@ -199,47 +200,6 @@ export function SettingsRangeInput({
         className={inputClass}
         style={{ width: `${maxWidthCh}ch` }}
       />
-    </div>
-  );
-}
-
-function SettingsLufsInput({ value, onCommit }) {
-  const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
-    setDraft(String(value));
-  }, [value]);
-
-  const commit = () => {
-    if (draft.trim() === "") {
-      setDraft(String(value));
-      return;
-    }
-    const parsed = Number(draft);
-    if (Number.isFinite(parsed) && parsed >= -70 && parsed <= 0) {
-      onCommit(parsed);
-    } else {
-      setDraft(String(value));
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-1 shrink-0">
-      <input
-        aria-label="Loudness reference"
-        type="number"
-        min={-70}
-        max={0}
-        step={1}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-        }}
-        className="h-6 w-14 rounded-md border border-transparent bg-transparent px-1.5 py-0 text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums text-popover-foreground transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      />
-      <span className="text-muted-foreground/60 shrink-0">LUFS</span>
     </div>
   );
 }
@@ -678,27 +638,37 @@ export function StatsMetricsSettingsRow({
   );
 }
 
+/// No Ref input: the reference value is owned by the active Loudness Profile, so a second
+/// editor here would be a competing writer. The `ref` layer toggle stays.
 export function LoudnessSettingsRows({
-  referenceLufs,
   visibleLayerIds,
   yMinDb,
   yMaxDb,
-  onReferenceChange,
   onVisibleLayerIdsChange,
   onYRangeChange,
 }) {
   const [layersOpen, setLayersOpen] = useState(false);
+  const { referenceLufs } = useLoudnessProfile();
+  // With no active profile there is no reference line, so offering its toggle would be a control
+  // that does nothing.
+  const layerOptions =
+    referenceLufs == null
+      ? LOUDNESS_HISTORY_LAYER_OPTIONS.filter((option) => option.id !== "ref")
+      : LOUDNESS_HISTORY_LAYER_OPTIONS;
+  // Count what the list actually offers, not what the panel still remembers. The `ref` id stays
+  // in panel controls through Off so the preference survives, which means the raw length claims
+  // a layer the user cannot see or reach.
+  const visibleCount = visibleLayerIds.filter((id) =>
+    layerOptions.some((option) => option.id === id)
+  ).length;
 
   return (
     <>
-      <SettingsRow label="Ref">
-        <SettingsLufsInput value={referenceLufs} onCommit={onReferenceChange} />
-      </SettingsRow>
       <SettingsRow label="Layers" expanded={layersOpen}>
         <div className="flex min-w-0 flex-1 flex-col">
           <InlineDetailTrigger
             ariaLabel={layersOpen ? "Hide layers" : "Edit layers"}
-            summary={visibleSummary(visibleLayerIds.length)}
+            summary={visibleSummary(visibleCount)}
             open={layersOpen}
             onToggle={() => setLayersOpen((open) => !open)}
           />
@@ -706,7 +676,7 @@ export function LoudnessSettingsRows({
             <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
               <MultiSelectList
                 label="Layers"
-                options={LOUDNESS_HISTORY_LAYER_OPTIONS}
+                options={layerOptions}
                 selectedIds={visibleLayerIds}
                 onToggle={(id) => onVisibleLayerIdsChange(toggleId(visibleLayerIds, id))}
               />
@@ -1046,18 +1016,9 @@ export function PanelSettingsContent({
     return (
       <SettingsGroup title="Loudness">
         <LoudnessSettingsRows
-          referenceLufs={normalizedPanelControls.loudnessReferenceLufs}
           visibleLayerIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
           yMinDb={normalizedPanelControls.loudnessYMinDb}
           yMaxDb={normalizedPanelControls.loudnessYMaxDb}
-          onReferenceChange={(loudnessReferenceLufs) => {
-            onPanelControlsChange(
-              normalizePanelControls({
-                ...normalizedPanelControls,
-                loudnessReferenceLufs,
-              })
-            );
-          }}
           onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) => {
             onPanelControlsChange(
               normalizePanelControls({

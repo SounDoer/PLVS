@@ -1,8 +1,18 @@
 import { useState } from "react";
-import { Bookmark, Focus, FolderOpen, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
+import {
+  Bookmark,
+  Focus,
+  FolderOpen,
+  Gauge,
+  LayoutGrid,
+  Settings,
+  Trash2,
+  Volume2,
+} from "lucide-react";
 import { IconButton } from "./IconButton.jsx";
 import { SourceTransportCluster } from "./SourceTransportCluster.jsx";
 import { PresetsPopoverContent } from "./PresetsPopover.jsx";
+import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { FocusViewPopoverContent } from "./FocusViewPopover.jsx";
 import { ModulesPopoverContent } from "../workspace/WorkspaceToolbar.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -49,6 +59,8 @@ function AudioDeviceOption({ device, selected, onSelect }) {
 }
 
 export function AppHeader({
+  loudnessProfile,
+  loudnessProfileStats,
   autoHideControls,
   onPointerEnter,
   onPointerLeave,
@@ -201,6 +213,20 @@ export function AppHeader({
               </PopoverContent>
             </Popover>
           ))}
+        <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
+          <PopoverTrigger asChild>
+            <span>
+              <IconButton
+                icon={<Gauge className="size-[length:var(--ui-icon-shell-action)]" />}
+                tip="Loudness Profile"
+                className={loudnessProfile?.active !== "off" ? "text-foreground" : undefined}
+              />
+            </span>
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={6} className="w-64 p-1">
+            <LoudnessProfilePopoverContent profile={loudnessProfile} stats={loudnessProfileStats} />
+          </PopoverContent>
+        </Popover>
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
           <PopoverTrigger asChild>
             <span>

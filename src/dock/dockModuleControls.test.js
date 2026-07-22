@@ -14,7 +14,6 @@ describe("normalizeDockControlsByModuleId", () => {
 
     expect(controls.level.mode).toBe(DEFAULT_PANEL_CONTROLS.levelMeterMode);
     expect(controls.loudness).toMatchObject({
-      loudnessReferenceLufs: DEFAULT_PANEL_CONTROLS.loudnessReferenceLufs,
       loudnessYMinDb: DEFAULT_PANEL_CONTROLS.loudnessYMinDb,
       loudnessYMaxDb: DEFAULT_PANEL_CONTROLS.loudnessYMaxDb,
     });
@@ -82,7 +81,6 @@ describe("normalizeDockControlsByModuleId", () => {
   it("normalizes each family without retaining unrelated fields", () => {
     const controls = normalizeDockControlsByModuleId({
       loudness: {
-        loudnessReferenceLufs: -18,
         loudnessHistoryVisibleLayerIds: ["shortTerm", "ghost", "shortTerm"],
         loudnessYMinDb: -42,
         loudnessYMaxDb: -12,
@@ -102,7 +100,6 @@ describe("normalizeDockControlsByModuleId", () => {
     });
     expect(controls.loudness).toEqual({
       showReadouts: true,
-      loudnessReferenceLufs: -18,
       loudnessHistoryVisibleLayerIds: ["shortTerm"],
       loudnessYMinDb: -42,
       loudnessYMaxDb: -12,
@@ -122,7 +119,7 @@ describe("normalizeDockControlsByModuleId", () => {
     expect(controls.waveform).toBeUndefined();
   });
 
-  it("migrates the legacy Dock Loudness reference and adopts the normal layer defaults", () => {
+  it("drops the legacy Dock Loudness reference and adopts the normal layer defaults", () => {
     expect(
       normalizeDockControlsByModuleId({
         loudness: {
@@ -134,7 +131,6 @@ describe("normalizeDockControlsByModuleId", () => {
       }).loudness
     ).toEqual({
       showReadouts: true,
-      loudnessReferenceLufs: -18,
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,

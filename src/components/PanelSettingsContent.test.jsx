@@ -1,10 +1,13 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render as renderInDom, screen } from "@testing-library/react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
+import { LoudnessProfileProvider } from "@/hooks/LoudnessProfileContext.jsx";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
+import { settingsStore } from "@/persistence/index.js";
+import { builtinSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
 import { PanelChromeProvider } from "@/workspace/AudioDataContext.jsx";
 import { PanelDataProviders } from "@/workspace/PanelDataProviders.jsx";
@@ -33,6 +36,12 @@ vi.mock("framer-motion", () => ({
 vi.mock("@/ipc/openExternal.js", () => ({
   openExternalUrl: vi.fn(),
 }));
+
+/// PanelSettingsContent reads the profile, which now lives in a provider rather than a per-caller
+/// hook, so every render in this file needs one in its tree.
+function render(ui, options) {
+  return renderInDom(ui, { wrapper: LoudnessProfileProvider, ...options });
+}
 
 function TestPanelDataProviders({ value = {}, panelChromeData = value, children }) {
   return (
@@ -607,42 +616,19 @@ describe("PanelSettingsContent", () => {
     });
   });
 
-  it("renders the loudness reference input before Layers and commits on blur", () => {
-    const onPanelControlsChange = vi.fn();
+  it("offers no reference editor, since the active Loudness Profile owns that value", () => {
     render(
       <PanelSettingsContent
         activeTab="loudness"
         panelControls={DEFAULT_PANEL_CONTROLS}
-        onPanelControlsChange={onPanelControlsChange}
-      />
-    );
-
-    expect(
-      screen
-        .getByLabelText("Loudness reference")
-        .compareDocumentPosition(screen.getByText("Layers")) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-
-    const input = screen.getByLabelText("Loudness reference");
-    expect(input.value).toBe("-23");
-    fireEvent.change(input, { target: { value: "-14" } });
-    fireEvent.blur(input);
-    expect(onPanelControlsChange).toHaveBeenCalledWith({
-      ...DEFAULT_PANEL_CONTROLS,
-      loudnessReferenceLufs: -14,
-    });
-  });
-
-  it("renders the loudness reference input from panel controls", () => {
-    render(
-      <PanelSettingsContent
-        activeTab="loudness"
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, loudnessReferenceLufs: -18 }}
         onPanelControlsChange={vi.fn()}
       />
     );
 
-    expect(screen.getByLabelText("Loudness reference").value).toBe("-18");
+    expect(screen.queryByLabelText("Loudness reference")).toBeNull();
+    expect(screen.queryByText("Ref")).toBeNull();
+    // Layers, including the `ref` toggle, stay here.
+    expect(screen.getByText("Layers")).toBeTruthy();
   });
 
   it("renders Loudness layers as an inline labeled detail and toggles layer ids", () => {
@@ -659,7 +645,8 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Layers")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Configure layers" })).toBeNull();
     const editButton = screen.getByRole("button", { name: "Edit layers" });
-    expect(editButton.textContent).toContain("3 visible");
+    // Off by default, so `ref` is not offered and must not be counted.
+    expect(editButton.textContent).toContain("2 visible");
     fireEvent.click(editButton);
     const momentaryRow = screen.getByRole("checkbox", { name: "Momentary" });
     expect(momentaryRow.getAttribute("data-settings-option-row")).toBe("true");
@@ -676,6 +663,42 @@ describe("PanelSettingsContent", () => {
       ...DEFAULT_PANEL_CONTROLS,
       loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
     });
+  });
+
+  it("counts only the layers it actually offers", () => {
+    // Off filters `ref` out of the list; a summary that still counts it says "3 visible" over a
+    // list of two, and the user has no way to find the third.
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const editButton = screen.getByRole("button", { name: "Edit layers" });
+    expect(editButton.textContent).toContain("2 visible");
+    fireEvent.click(editButton);
+    expect(screen.queryByRole("checkbox", { name: "Reference" })).toBeNull();
+    expect(screen.getAllByRole("checkbox").length).toBe(2);
+  });
+
+  it("counts the ref layer once a profile supplies a reference", () => {
+    settingsStore.patch({
+      loudnessProfiles: { active: builtinSelectionId("ebu-r128"), userProfiles: [] },
+    });
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const editButton = screen.getByRole("button", { name: "Edit layers" });
+    expect(editButton.textContent).toContain("3 visible");
+    fireEvent.click(editButton);
+    expect(screen.getByRole("checkbox", { name: "Reference" })).toBeTruthy();
   });
 
   it("commits Loudness Y range changes", () => {

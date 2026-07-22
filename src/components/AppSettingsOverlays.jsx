@@ -3,14 +3,24 @@ import { openExternalUrl } from "../ipc/openExternal.js";
 import { useCliPathSettings } from "../hooks/useCliPathSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
+import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { ThemeEditor } from "./ThemeEditor.jsx";
 import { UpdateDialog } from "./UpdateDialog.jsx";
 
-export function AppSettingsOverlays({ settings, channelSettings, updateControls, appVersion }) {
+export function AppSettingsOverlays({
+  settings,
+  channelSettings,
+  updateControls,
+  appVersion,
+  loudnessProfile,
+}) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState(null);
+  // Held here, beside the theme editor's position, because both panels are floating overlays this
+  // component owns; nothing outside it needs to know where they sit.
+  const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
   const {
     configurationBusy,
     configurationStatus,
@@ -125,6 +135,17 @@ export function AppSettingsOverlays({ settings, channelSettings, updateControls,
           dirty={editor.dirty}
           pos={editorPos}
           onMove={moveEditor}
+        />
+      ) : null}
+
+      {loudnessProfile?.draft ? (
+        <LoudnessProfileEditor
+          draft={loudnessProfile.draft}
+          onEdit={loudnessProfile.editDraft}
+          onSave={loudnessProfile.saveDraft}
+          onCancel={loudnessProfile.cancelDraft}
+          pos={loudnessProfilePos}
+          onMove={setLoudnessProfilePos}
         />
       ) : null}
     </>

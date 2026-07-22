@@ -1,8 +1,15 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { MetricsDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import {
+  FrameDataProvider,
+  MetricsDataProvider,
+  PanelInstanceProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { StatsPanel } from "./StatsPanel.jsx";
+import { settingsStore } from "../../persistence/index.js";
+import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 
 const statsMetrics = [
   {
@@ -62,19 +69,39 @@ function renderPanel(visibleIds) {
   });
 }
 
-function renderStatsPanel({ shared, panelControls }) {
+function renderStatsPanel({ shared, panelControls, displayAudio }) {
   return render(
-    <MetricsDataProvider
-      value={{
-        ...shared,
-      }}
-    >
-      <PanelInstanceProvider value={{ panelControls }}>
-        <StatsPanel />
-      </PanelInstanceProvider>
-    </MetricsDataProvider>
+    <LoudnessProfileProvider>
+      <FrameDataProvider value={{ displayAudio }}>
+        <MetricsDataProvider
+          value={{
+            ...shared,
+          }}
+        >
+          <PanelInstanceProvider value={{ panelControls }}>
+            <StatsPanel />
+          </PanelInstanceProvider>
+        </MetricsDataProvider>
+      </FrameDataProvider>
+    </LoudnessProfileProvider>
   );
 }
+
+function valueClassFor(label) {
+  // The value sits next to its label inside the row; colour is applied to the value alone.
+  return screen.getByText(label).parentElement.nextElementSibling.className;
+}
+
+function renderWithProfile({ selection, displayAudio, visibleIds }) {
+  if (selection) settingsStore.patch({ loudnessProfiles: { active: selection } });
+  return renderStatsPanel({
+    shared: { statsMetrics, dialogueActiveNow: true },
+    panelControls: { statsVisibleIds: visibleIds },
+    displayAudio,
+  });
+}
+
+afterEach(() => settingsStore.reset());
 
 describe("StatsPanel", () => {
   it("renders only visible stats", () => {
@@ -176,5 +203,69 @@ describe("StatsPanel", () => {
       .getAllByText(/Momentary|Integrated|Short-term Dynamics/)
       .map((el) => el.textContent);
     expect(labels).toEqual(["Short-term Dynamics", "Integrated", "Momentary"]);
+  });
+});
+
+describe("StatsPanel profile status colours", () => {
+  const inRange = {
+    integrated: -23,
+    shortTerm: -18,
+    stMax: -20,
+    tpMax: -6,
+    momentary: -20,
+    lra: 3,
+  };
+
+  it("colours nothing while the profile is Off", () => {
+    renderWithProfile({ displayAudio: inRange, visibleIds: ["integrated"] });
+
+    const className = valueClassFor("Integrated");
+    expect(className).toContain("text-foreground");
+    expect(className).not.toContain("--ui-signal");
+  });
+
+  it("leaves a watched, in-range value at foreground rather than a 'good' colour", () => {
+    renderWithProfile({
+      selection: builtinSelectionId("ebu-r128"),
+      displayAudio: inRange,
+      visibleIds: ["integrated"],
+    });
+
+    const className = valueClassFor("Integrated");
+    expect(className).toContain("text-foreground");
+    expect(className).not.toContain("--ui-signal");
+  });
+
+  it("fails a value outside the profile's band", () => {
+    renderWithProfile({
+      selection: builtinSelectionId("ebu-r128"),
+      displayAudio: { ...inRange, integrated: -18 },
+      visibleIds: ["integrated"],
+    });
+
+    expect(valueClassFor("Integrated")).toContain("--ui-signal-bad");
+  });
+
+  it("warns while Integrated is not yet ready", () => {
+    renderWithProfile({
+      selection: builtinSelectionId("ebu-r128"),
+      displayAudio: { ...inRange, integrated: -Infinity },
+      visibleIds: ["integrated"],
+    });
+
+    expect(valueClassFor("Integrated")).toContain("--ui-signal-warn");
+  });
+
+  it("leaves metrics the profile only describes uncoloured", () => {
+    // Programme carries an LRA descriptor but does not watch it.
+    renderWithProfile({
+      selection: builtinSelectionId("ebu-r128"),
+      displayAudio: { ...inRange, lra: 40 },
+      visibleIds: ["integrated", "lra"],
+    });
+
+    const className = valueClassFor("Loudness Range");
+    expect(className).toContain("text-foreground");
+    expect(className).not.toContain("--ui-signal");
   });
 });

@@ -7,6 +7,7 @@ import { WorkspaceProvider } from "./WorkspaceContext.jsx";
 import { DragProvider } from "./DragContext.jsx";
 import { MetricsDataProvider } from "./AudioDataContext.jsx";
 import { LeafView } from "./LeafView.jsx";
+import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
 
 vi.mock("framer-motion", () => ({
   motion: {
@@ -83,8 +84,10 @@ describe("ModulesPopoverContent", () => {
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
           <MetricsDataProvider value={{ statsMetrics: [] }}>
-            <ModulesPopoverContent />
-            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
+            <LoudnessProfileProvider>
+              <ModulesPopoverContent />
+              <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
+            </LoudnessProfileProvider>
           </MetricsDataProvider>
         </DragProvider>
       </WorkspaceProvider>

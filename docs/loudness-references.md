@@ -1,9 +1,14 @@
 # Loudness reference profiles
 
 > **Product behaviour** for session-level Loudness Profiles (Off / built-ins /
-> custom, Stats colouring, toolbar entry, persistence) is specified in
-> [`docs/superpowers/specs/2026-07-19-loudness-profile-design.md`](superpowers/specs/2026-07-19-loudness-profile-design.md).
+> user profiles, Stats colouring, toolbar entry, persistence) is specified in
+> [`docs/superpowers/specs/2026-07-19-loudness-profile-design.md`](superpowers/specs/2026-07-19-loudness-profile-design.md),
+> and the rule editor that supersedes that spec's `unsaved-custom` slot is in
+> [`docs/superpowers/specs/2026-07-20-loudness-profile-editor-design.md`](superpowers/specs/2026-07-20-loudness-profile-editor-design.md).
 > This page remains a short **source bibliography** for reference targets.
+>
+> A user profile's numbers are the user's own. Only the built-ins below carry
+> cited targets, which is what this bibliography is for.
 
 Overlays and profile targets are **UI / QC guides**. They do **not** change the
 measurement engine, and they are **not** platform or regulatory certification.

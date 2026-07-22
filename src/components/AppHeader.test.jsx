@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 import { AppHeader } from "./AppHeader.jsx";
 
@@ -88,6 +88,7 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "Modules" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Views" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Presets" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Loudness Profile" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
   });
 
@@ -128,6 +129,29 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "Microphone (USB Interface)" })).toBeTruthy();
     expect(screen.getByText("Speakers")).toBeTruthy();
     expect(screen.getByText("Realtek USB Audio")).toBeTruthy();
+  });
+
+  it("seats Loudness Profile between Devices and Modules", () => {
+    const { container } = renderHeader();
+    const buttons = within(container.querySelector("header"))
+      .getAllByRole("button")
+      .map((button) => button.ariaLabel);
+
+    expect(buttons.indexOf("Devices")).toBeLessThan(buttons.indexOf("Loudness Profile"));
+    expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Modules"));
+  });
+
+  it("marks the Loudness Profile trigger active only when a profile is selected", () => {
+    renderHeader({ loudnessProfile: { active: "off" } });
+    expect(
+      screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
+    ).toBe(false);
+
+    cleanup();
+    renderHeader({ loudnessProfile: { active: "builtin:ebu-r128" } });
+    expect(
+      screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
+    ).toBe(true);
   });
 
   it("orders Focus View before Presets and reflects Focus View active state", () => {

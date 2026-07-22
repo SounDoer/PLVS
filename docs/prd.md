@@ -207,6 +207,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **File 模式**：本地音频文件离线分析——ffprobe 元数据、FFmpeg sidecar 解码、media-time 历史、scrub、会话内历史（read-only）。  
 - **对白门控响度**：可选；基于按需选择的 on-device VAD 引擎（Silero 默认，可切 FireRedVAD / TEN VAD），输出 Coverage / Range / Offset / Active 指标。  
 - **主题**：自定义主题 + 主题编辑器，派生乐器配色与主题驱动的 spectrogram colormap。  
+- **响度参考档（Loudness Profile，用户故事 14）**：会话级规则集，内置交付参考（EBU R128 / R128 Live / R128 S1 / ATSC A/85 / Streaming −14）与用户自建档；驱动 Loudness 参考线、Stats 数值配色与 Level Meter 的 TP Max 标记；自建档带实时预览的规则编辑器。测量仍为 ITU-R BS.1770 路径，**内置档是交付参考而非平台或法规认证**。  
 - **多声道**：Level Meter 逐通道显示；自动识别 mono / stereo / 5.1 / 7.1；手动 Stereo / 5.1 / 7.1；Loudness 按 Stereo / 5.1 / 7.1 L1 路径计算；Spectrum 与 Vectorscope 支持声道/声道对选择。  
 - **历史**：Rust 侧 ring / 会话内历史与快照交互（详情见架构文档）。  
 - **CI/分发**：GitHub Actions 构建 **Windows + macOS** 产物；Release 附着策略以工作流与 README 为准。  

@@ -80,12 +80,12 @@ function DockLoudnessExpandedReadouts({ displayAudio }) {
 /** Compact Loudness history with the normal panel's layers and M/ST/I readouts. */
 export function DockLoudness({ controls, heightMode = "standard" }) {
   const { displayAudio } = useFrameData();
-  const { histSourceList = [] } = useHistoryData() ?? {};
+  const { histSourceList = [], referenceLufs = null } = useHistoryData() ?? {};
   const visibleLayerIds = controls?.loudnessHistoryVisibleLayerIds ?? DEFAULT_VISIBLE_LAYER_IDS;
   const showMomentary = visibleLayerIds.includes("momentary");
   const showShortTerm = visibleLayerIds.includes("shortTerm");
-  const showReference = visibleLayerIds.includes("ref");
-  const referenceLufs = controls?.loudnessReferenceLufs ?? -23;
+  // Null reference means the profile is Off: no line, whatever the layer ids still say.
+  const showReference = visibleLayerIds.includes("ref") && Number.isFinite(referenceLufs);
   const yRange = {
     min: controls?.loudnessYMinDb ?? -64,
     max: controls?.loudnessYMaxDb ?? 0,

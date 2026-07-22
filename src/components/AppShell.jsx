@@ -99,9 +99,17 @@ export function AppShell({
                 >
                   <span className={FOOTER_LABEL}>Device</span>
                   <span className={FOOTER_VALUE}>{footer.deviceLabel}</span>
-                  <div className={FOOTER_DIVIDER} />
-                  <span className={FOOTER_LABEL}>Ref</span>
-                  <span className={FOOTER_VALUE}>{footer.referenceLufs} LUFS</span>
+                  {/* Which regime you are monitoring under is the fact worth a permanent slot;
+                      the reference value is already drawn on the chart as the line it describes.
+                      Labelled Loudness, not Profile: that word belongs to Configuration Profile,
+                      and this item sits directly beside Preset. */}
+                  {footer.loudnessProfileName ? (
+                    <>
+                      <div className={FOOTER_DIVIDER} />
+                      <span className={FOOTER_LABEL}>Loudness</span>
+                      <span className={FOOTER_VALUE}>{footer.loudnessProfileName}</span>
+                    </>
+                  ) : null}
                   <div className={FOOTER_DIVIDER} />
                   <span className={FOOTER_LABEL}>Preset</span>
                   <span className={FOOTER_VALUE}>{footer.activePresetName}</span>

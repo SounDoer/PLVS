@@ -1,20 +1,29 @@
 import { cn } from "@/lib/utils";
 import { UI_PREFERENCES } from "../../uiPreferences";
-import { useMetricsData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
+import {
+  useFrameData,
+  useMetricsData,
+  usePanelInstanceData,
+} from "../../workspace/AudioDataContext.jsx";
 import { HoverTip } from "@/components/HoverTip";
+import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
+import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
+import { buildStatsValues } from "../../lib/statsCatalog.js";
+import { loudnessStatusValueClass } from "../../lib/loudnessProfileStatusClasses.js";
 
 const METRIC_ROW_LAYOUT =
   "flex min-h-[var(--ui-metric-row-min-h)] items-center gap-[var(--ui-metric-row-gap)] px-[var(--ui-metric-row-pad-x)]";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
-function MetricRow({ id, label, shortLabel, value, unit, active, hint }) {
+function MetricRow({ id, label, shortLabel, value, unit, active, hint, status }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.stats.metrics;
   const labelClass =
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-tight text-muted-foreground";
   const valueClass = cn(
     METRIC_NUMERIC,
-    "shrink-0 text-right text-[length:var(--ui-fs-metric-value)] font-semibold leading-none text-foreground"
+    "shrink-0 text-right text-[length:var(--ui-fs-metric-value)] font-semibold leading-none",
+    loudnessStatusValueClass(status)
   );
   const unitClass =
     "@max-[180px]:hidden shrink-0 text-right text-[length:var(--ui-fs-metric-meta)] font-medium leading-none text-muted-foreground";
@@ -34,7 +43,9 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint }) {
         <span className="@max-[240px]:hidden">{label}</span>
         <span className="hidden @max-[240px]:inline">{shortLabel ?? label}</span>
       </span>
-      <span className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
+      {/* data-stat-value: the one thing Stats and Dock Stats must agree on, addressable so a
+          test can compare the two surfaces' colouring directly. */}
+      <span data-stat-value={id} className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
         {value}
       </span>
       <span className={unitClass} style={{ width: `${unitColumnRem}rem` }}>
@@ -52,7 +63,9 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint }) {
 
 export function StatsPanel() {
   const { statsMetrics, dialogueActiveNow } = useMetricsData();
+  const { displayAudio } = useFrameData() ?? {};
   const { panelControls } = usePanelInstanceData();
+  const { document: loudnessProfileDocument } = useLoudnessProfile();
   const statsVisibleIds = panelControls?.statsVisibleIds;
   const statsOrder = panelControls?.statsOrder;
   const visibleIds = Array.isArray(statsVisibleIds) ? statsVisibleIds : [];
@@ -63,6 +76,15 @@ export function StatsPanel() {
     : allMetrics;
   const visibleMetrics = orderedMetrics.filter((metric) => visibleIds.includes(metric.id));
 
+  const values = displayAudio ? buildStatsValues(displayAudio) : {};
+  const statuses = loudnessProfileEvaluate(loudnessProfileDocument, {
+    values,
+    integratedReady: Number.isFinite(values.integrated),
+    dialogueCoverage: Number.isFinite(displayAudio?.dialoguePercent)
+      ? displayAudio.dialoguePercent
+      : null,
+  });
+
   return (
     <div className="@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
@@ -72,6 +94,7 @@ export function StatsPanel() {
               <MetricRow
                 key={metric.id}
                 {...metric}
+                status={statuses[metric.id]}
                 active={metric.id === "dialogueCoverage" && dialogueActiveNow}
               />
             ))

@@ -7,8 +7,7 @@ import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { normalizePinnedPanelsById } from "../workspace/reducer.js";
-import { presetsStore, settingsStore } from "../persistence/index.js";
-import { normalizeReferenceLufs } from "../settings/defaults.js";
+import { presetsStore } from "../persistence/index.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 
 const EMPTY_PRESETS = { list: [], activeId: null, dirty: false };
@@ -36,23 +35,6 @@ async function readWindowBounds() {
   }
 }
 
-function normalizePresetPanelControls(preset, currentWorkspaceState) {
-  const rawControls = preset.panelControlsById ?? {};
-  const normalized = normalizePanelControlsById(preset.panelsById, rawControls);
-  const legacyReferenceLufs = normalizeReferenceLufs(settingsStore.read().referenceLufs);
-  for (const [id, panel] of Object.entries(preset.panelsById ?? {})) {
-    if (panel?.moduleId !== "loudness") continue;
-    if (rawControls?.[id]?.loudnessReferenceLufs != null) continue;
-    const currentReference =
-      currentWorkspaceState.panelControlsById?.[id]?.loudnessReferenceLufs ?? legacyReferenceLufs;
-    normalized[id] = {
-      ...normalized[id],
-      loudnessReferenceLufs: normalizeReferenceLufs(currentReference),
-    };
-  }
-  return normalized;
-}
-
 export function usePresets({
   windowPinned = false,
   setWindowPinned = () => {},
@@ -76,6 +58,10 @@ export function usePresets({
   applyDockPreset = async () => {},
   canApplyDockPreset = () => true,
   onApplyError = () => {},
+  // Which Loudness Profile was active, never the library itself -- the same way a view snapshot
+  // records the active theme rather than every theme.
+  snapshotLoudnessProfile = () => ({}),
+  applyLoudnessProfileSnapshot = () => {},
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
@@ -158,9 +144,11 @@ export function usePresets({
         panelSizesById: clone(dock.panelSizesById ?? {}),
         controlsByPanelId: clone(dock.controlsByPanelId ?? {}),
       },
+      ...snapshotLoudnessProfile(),
     };
     return windowBounds ? { ...snapshot, windowBounds } : snapshot;
   }, [
+    snapshotLoudnessProfile,
     windowPinned,
     focusView,
     panelOpacity,
@@ -218,7 +206,7 @@ export function usePresets({
         tree: clone(preset.tree),
         panelsById: clone(preset.panelsById),
         panelOrder: [...preset.panelOrder],
-        panelControlsById: normalizePresetPanelControls(preset, workspaceState),
+        panelControlsById: normalizePanelControlsById(preset.panelsById, preset.panelControlsById),
         pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
       });
       const presetFocusView = preset.focusView ? normalizeFocusView(preset.focusView) : null;
@@ -272,6 +260,7 @@ export function usePresets({
       if (typeof preset.glassEnabled === "boolean") {
         setGlassEnabled(preset.glassEnabled);
       }
+      applyLoudnessProfileSnapshot(preset);
       write({ activeId: id, dirty: false });
       return true;
     },
@@ -285,7 +274,7 @@ export function usePresets({
       canApplyDockPreset,
       onApplyError,
       suppressPresetDivergence,
-      workspaceState,
+      applyLoudnessProfileSnapshot,
       write,
     ]
   );

@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
-import { STATS_META } from "../../lib/statsCatalog.js";
+import { STATS_META, buildStatsValues } from "../../lib/statsCatalog.js";
+import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
+import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
+import { loudnessStatusValueClass } from "../../lib/loudnessProfileStatusClasses.js";
+import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
 import {
   computeDockStatsColumnCount,
@@ -46,7 +50,19 @@ function useDockStatsColumnCount(containerRef, enabled, minCellWidth) {
  */
 export function DockStats({ controls, heightMode = "standard" }) {
   const { statsMetrics, dialogueActiveNow } = useMetricsData() ?? {};
+  const { displayAudio } = useFrameData() ?? {};
+  const { document: loudnessProfileDocument } = useLoudnessProfile();
   const normalizedControls = normalizeDockModuleControls("stats", controls);
+  // The dock is a second implementation of Stats, so it has to evaluate too: the same metric
+  // under the same profile must not read as a breach here and neutral in the normal window.
+  const rawValues = displayAudio ? buildStatsValues(displayAudio) : {};
+  const statuses = loudnessProfileEvaluate(loudnessProfileDocument, {
+    values: rawValues,
+    integratedReady: Number.isFinite(rawValues.integrated),
+    dialogueCoverage: Number.isFinite(displayAudio?.dialoguePercent)
+      ? displayAudio.dialoguePercent
+      : null,
+  });
   const byId = new Map((statsMetrics ?? []).map((m) => [m.id, m]));
   const selected = new Set(normalizedControls.statsVisibleIds);
   const orderedMetrics = normalizedControls.statsOrder
@@ -117,6 +133,8 @@ export function DockStats({ controls, heightMode = "standard" }) {
                   value={value}
                   unit={unit}
                   unitVisibility="tight"
+                  statId={id}
+                  valueClassName={loudnessStatusValueClass(statuses[id])}
                   indicator={
                     id === "dialogueCoverage" ? (
                       <span
@@ -147,7 +165,10 @@ export function DockStats({ controls, heightMode = "standard" }) {
                     ) : null}
                     <span className="min-w-0 truncate">{label}</span>
                   </span>
-                  <span className="w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums text-foreground">
+                  <span
+                    data-stat-value={id}
+                    className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(statuses[id])}`}
+                  >
                     {value}
                   </span>
                 </>

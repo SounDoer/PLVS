@@ -22,10 +22,16 @@ vi.mock("../ipc/commands.js", () => ({
   setDockSuspended: mocks.setDockSuspended,
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
-vi.mock("../persistence/index.js", () => ({
+// Only presetsStore is faked; the dock/profile hand-off below drives the real settingsStore.
+vi.mock("../persistence/index.js", async () => ({
+  ...(await vi.importActual("../persistence/index.js")),
   presetsStore: { patch: mocks.patchPresets },
 }));
 
+import { createElement } from "react";
+import { settingsStore } from "../persistence/index.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
+import { builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
 import { useDockMode } from "./useDockMode.js";
 
 describe("useDockMode", () => {
@@ -297,5 +303,61 @@ describe("useDockMode", () => {
     await expect(act(() => result.current.enterDockMode("top"))).rejects.toThrow();
     expect(result.current.dockEnabled).toBe(false);
     expect(mocks.patchPresets).not.toHaveBeenCalled();
+  });
+});
+
+/// The dock is a monitoring posture, not a configuration one: the Loudness Profile editor is not
+/// rendered while docked and the strip has no profile popover, so a draft carried into the dock
+/// would keep outranking the persisted selection for DockStats and the dock's reference line with
+/// no way for the user to see, name, save or cancel it.
+describe("useDockMode hands off an open configuration draft", () => {
+  beforeEach(() => {
+    mocks.enterDock.mockClear().mockResolvedValue(undefined);
+    mocks.getDockState.mockReset().mockResolvedValue(undefined);
+    mocks.isTauri.mockReturnValue(true);
+    mocks.patchPresets.mockClear();
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
+    delete window.__PLVS_INITIAL_STATE__;
+    settingsStore.reset();
+  });
+
+  function renderDockWithProfile() {
+    return renderHook(
+      () => {
+        const profile = useLoudnessProfile();
+        const dock = useDockMode({ onEnterDock: profile.cancelDraft });
+        return { profile, dock };
+      },
+      {
+        wrapper: ({ children }) => createElement(LoudnessProfileProvider, null, children),
+      }
+    );
+  }
+
+  it("cancels a dirty draft when the app enters dock mode", async () => {
+    const { result } = renderDockWithProfile();
+    act(() => result.current.profile.select(builtinSelectionId("ebu-r128")));
+    act(() => result.current.profile.beginCreate());
+    act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+    expect(result.current.profile.referenceLufs).toBe(-16);
+
+    await act(() => result.current.dock.enterDockMode("bottom"));
+
+    expect(result.current.profile.draft).toBe(null);
+    // What DockStats colours against reverts to the selection the user last persisted.
+    expect(result.current.profile.document.name).toBe("EBU R128");
+    expect(result.current.profile.referenceLufs).toBe(-23);
+  });
+
+  it("keeps the draft when the dock transition fails", async () => {
+    mocks.enterDock.mockRejectedValueOnce(new Error("apply_dock_form failed"));
+    const { result } = renderDockWithProfile();
+    act(() => result.current.profile.beginCreate());
+    act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -16 })));
+
+    await expect(act(() => result.current.dock.enterDockMode("bottom"))).rejects.toThrow();
+
+    // The window never became a strip, so the editor is still on screen and still reachable.
+    expect(result.current.profile.draft.document.referenceLufs).toBe(-16);
   });
 });

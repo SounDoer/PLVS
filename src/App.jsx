@@ -23,6 +23,8 @@ import { useSettings } from "./hooks/useSettings";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
+import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
 import { useDockLayout } from "./dock/useDockLayout.js";
@@ -30,6 +32,7 @@ import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
 import { mergeDockAnalysisRequests } from "./dock/dockAnalysisRequest.js";
+import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
 import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
@@ -81,7 +84,11 @@ export default function App() {
   return (
     <WorkspaceProvider>
       <MeterRuntimeProvider>
-        <AppContent />
+        {/* Inside MeterRuntime and outside AppContent: dockLayout is a hook in AppContent and
+            DockStats is rendered by it, so one provider covers both windows' worth of Stats. */}
+        <LoudnessProfileProvider>
+          <AppContent />
+        </LoudnessProfileProvider>
       </MeterRuntimeProvider>
     </WorkspaceProvider>
   );
@@ -133,10 +140,22 @@ function AppContent() {
     glassEnabled,
     setGlassEnabled,
   } = settings;
+  // Hoisted above useDockMode and usePresets: dock entry cancels an open profile
+  // draft, and preset capture and apply both need its snapshot helpers. One
+  // writer for the reference too - null when Off, which every consumer treats as
+  // "there is nothing to show". Reading it this early is safe: it is a context
+  // read with no ordering constraints of its own.
+  const loudnessProfile = useLoudnessProfile();
   // Dock hooks run first: `docked` suspends the always-on-top and focus-view
   // window overrides below (Rust owns strip chrome + topmost while docked),
-  // and preset capture/apply reads dock state. useDockMode depends on no
-  // other hook, so hoisting it above useAlwaysOnTop is safe.
+  // and preset capture/apply reads dock state. useDockMode depends only on the
+  // profile controller above, so hoisting it above useAlwaysOnTop is safe.
+  //
+  // The dock is a monitoring posture: AppShell renders the settings overlays
+  // (and so the profile editor) only when undocked, and the strip has no profile
+  // popover, so a draft carried in would keep outranking the persisted selection
+  // for DockStats with no way to see, name, save or cancel it. Cancelling on
+  // entry matches how applyPresetSnapshot already treats a draft it cannot honour.
   const {
     dockEnabled,
     dockEdge,
@@ -152,7 +171,7 @@ function AppContent() {
     resizeDockHeight,
     suspendDockMode,
     resumeDockMode,
-  } = useDockMode();
+  } = useDockMode({ onEnterDock: loudnessProfile.cancelDraft });
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
   // Suspended while docked: a preset apply may flip the stored pin to false
@@ -400,6 +419,8 @@ function AppContent() {
     canApplyDockPreset: (presetDock) =>
       !presetDock.enabled || !supportsDockMode() || sourceMode !== "file",
     onApplyError: onPresetApplyError,
+    snapshotLoudnessProfile: loudnessProfile.snapshotForPreset,
+    applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,
   });
 
   const historyRetentionSec = settings.historyRetentionSec;
@@ -414,14 +435,72 @@ function AppContent() {
       firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
     );
   }, [workspaceState]);
-  const referenceLufs = useMemo(() => {
-    const loudnessPanelId = workspaceState.panelOrder.find(
-      (id) => workspaceState.panelsById[id]?.moduleId === "loudness"
-    );
-    return normalizePanelControls(
-      loudnessPanelId ? getPanelControls(workspaceState, loudnessPanelId) : undefined
-    ).loudnessReferenceLufs;
-  }, [workspaceState]);
+  const referenceLufs = loudnessProfile.referenceLufs;
+
+  // Missing-stats fulfillment spans every Stats panel: the profile's needs are a session-level
+  // statement, so a row added for it should appear wherever Stats is shown. Union for detection,
+  // append per panel for the fix -- each panel keeps the order its user arranged.
+  const statsPanelIds = useMemo(
+    () =>
+      workspaceState.panelOrder.filter((id) => workspaceState.panelsById[id]?.moduleId === "stats"),
+    [workspaceState]
+  );
+  // Dock Stats is a second implementation with its own visible ids (dockModuleControls), so both
+  // sets have to be unioned for detection and both appended to on fulfill. Missing either half
+  // makes Show missing look like it worked while one surface keeps hiding the rows.
+  const dockStatsPanelIds = useMemo(
+    () =>
+      Object.values(dockLayout.panelsById ?? {})
+        .filter((panel) => panel?.moduleId === "stats")
+        .map((panel) => panel.id),
+    [dockLayout.panelsById]
+  );
+  const loudnessProfileStats = useMemo(() => {
+    if (statsPanelIds.length === 0 && dockStatsPanelIds.length === 0) return null;
+
+    const workspaceControls = statsPanelIds.map((panelId) => ({
+      panelId,
+      controls: normalizePanelControls(getPanelControls(workspaceState, panelId)),
+      apply: setPanelControlsForPanel,
+    }));
+    const dockControls = dockStatsPanelIds.map((panelId) => ({
+      panelId,
+      controls: normalizeDockModuleControls("stats", dockLayout.controlsByPanelId?.[panelId]),
+      apply: dockLayout.setPanelControls,
+    }));
+    const everyStatsSurface = [...workspaceControls, ...dockControls];
+
+    const seen = new Set();
+    for (const { controls } of everyStatsSurface) {
+      for (const id of controls.statsVisibleIds) seen.add(id);
+    }
+
+    return {
+      visibleIds: [...seen],
+      onShowMissing: () => {
+        for (const { panelId, controls, apply } of everyStatsSurface) {
+          const missing = listMissingPreferredMetrics(
+            loudnessProfile.document,
+            controls.statsVisibleIds
+          );
+          if (missing.length === 0) continue;
+          apply(panelId, {
+            ...controls,
+            statsVisibleIds: planShowMissing(controls.statsVisibleIds, missing),
+          });
+        }
+      },
+    };
+  }, [
+    statsPanelIds,
+    dockStatsPanelIds,
+    workspaceState,
+    dockLayout.controlsByPanelId,
+    dockLayout.setPanelControls,
+    dockLayout.panelsById,
+    loudnessProfile.document,
+    setPanelControlsForPanel,
+  ]);
   const derivedAnalysisRequests = useMemo(
     () =>
       mergeDockAnalysisRequests(
@@ -1266,6 +1345,8 @@ function AppContent() {
     onDockChange,
     dockDisabled: sourceMode === "file",
     presets,
+    loudnessProfile,
+    loudnessProfileStats,
     setSettingsOpen,
   };
   const fileSummaryProps = {
@@ -1282,7 +1363,11 @@ function AppContent() {
   };
   const footer = {
     deviceLabel: footerDeviceLabel,
-    referenceLufs,
+    // The draft outranks the selection, so a profile being edited names the footer too. An
+    // unnamed new profile reads Untitled, matching normalizeRuleDocument's fallback.
+    loudnessProfileName: loudnessProfile.document
+      ? loudnessProfile.document.name || "Untitled"
+      : null,
     activePresetName,
     hasUpdate: updateInfo?.hasUpdate,
     onOpenSettings: () => setSettingsOpen(true),
@@ -1332,6 +1417,7 @@ function AppContent() {
     >
       <AppSettingsOverlays
         settings={settings}
+        loudnessProfile={loudnessProfile}
         channelSettings={{
           channelCount,
           channelLabelTokens,

@@ -10,10 +10,12 @@ function renderWith({
   histSourceList = [],
   controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
   heightMode = "standard",
+  // Null is the Off default: the reference comes from the active Loudness Profile.
+  referenceLufs = null,
 }) {
   return render(
     <FrameDataProvider value={{ displayAudio }}>
-      <HistoryDataProvider value={{ histSourceList }}>
+      <HistoryDataProvider value={{ histSourceList, referenceLufs }}>
         <DockLoudness controls={controls} heightMode={heightMode} />
       </HistoryDataProvider>
     </FrameDataProvider>
@@ -96,6 +98,7 @@ describe("DockLoudness", () => {
     renderWith({
       displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
       histSourceList: rows,
+      referenceLufs: -23,
     });
 
     const momentary = screen.getByTestId("dock-loudness-momentary");
@@ -140,6 +143,7 @@ describe("DockLoudness", () => {
     renderWith({
       displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
       histSourceList: rows,
+      referenceLufs: -23,
       controls: {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
         loudnessHistoryVisibleLayerIds: ["momentary"],
@@ -150,6 +154,23 @@ describe("DockLoudness", () => {
       "var(--ui-loudness-momentary)"
     );
     expect(screen.queryByTestId("dock-loudness-short-term")).toBeNull();
+  });
+
+  it("drops the reference gradient when no profile is active, whatever the layer ids say", () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
+    renderWith({
+      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
+      histSourceList: rows,
+      referenceLufs: null,
+    });
+
+    // `ref` is still in the default layer ids; the null reference is what silences it.
+    expect(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness.loudnessHistoryVisibleLayerIds).toContain(
+      "ref"
+    );
+    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("stroke")).toBe(
+      "var(--ui-loudness-momentary)"
+    );
   });
 
   it("uses the configured Y range and renders dashes for non-finite readouts", () => {

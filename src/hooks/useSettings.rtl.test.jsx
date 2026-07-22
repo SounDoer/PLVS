@@ -58,33 +58,14 @@ describe("useSettings", () => {
     expect(result.current.editor.draft.name).toBe("Custom");
   });
 
-  it("defaults referenceLufs to -23 when localStorage is empty", () => {
-    localStorage.clear();
-    const { result } = renderHook(() => useSettings());
-    expect(result.current.referenceLufs).toBe(-23);
-  });
-
-  it("reads referenceLufs from localStorage", () => {
+  it("exposes no loudness reference: the active Loudness Profile owns it", () => {
     localStorage.setItem("plvs:settings", JSON.stringify({ referenceLufs: -14 }));
     const { result } = renderHook(() => useSettings());
-    expect(result.current.referenceLufs).toBe(-14);
-  });
 
-  it("persists referenceLufs from the settings hook", async () => {
-    const { result } = renderHook(() => useSettings());
-    act(() => {
-      result.current.setReferenceLufs(-18);
-    });
-    await waitFor(() => {
-      expect(JSON.parse(localStorage.getItem("plvs:settings")).referenceLufs).toBe(-18);
-    });
-    expect(result.current.referenceLufs).toBe(-18);
-  });
-
-  it("resets referenceLufs to -23 when stored value is out of range", () => {
-    localStorage.setItem("plvs:settings", JSON.stringify({ referenceLufs: 5 }));
-    const { result } = renderHook(() => useSettings());
-    expect(result.current.referenceLufs).toBe(-23);
+    expect(result.current).not.toHaveProperty("referenceLufs");
+    expect(result.current).not.toHaveProperty("setReferenceLufs");
+    // The stored key stays put: profileShape still round-trips it for old config files.
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).referenceLufs).toBe(-14);
   });
 
   it("persists appearance and themeId from the settings hook", async () => {

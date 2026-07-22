@@ -34,6 +34,7 @@ export function LoudnessPanel({ compact = false }) {
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,
+    referenceLufs,
   } = useHistoryData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
 
@@ -43,7 +44,8 @@ export function LoudnessPanel({ compact = false }) {
   );
   const loudnessYMinDb = normalizedPanelControls.loudnessYMinDb;
   const loudnessYMaxDb = normalizedPanelControls.loudnessYMaxDb;
-  const referenceLufs = normalizedPanelControls.loudnessReferenceLufs;
+  // Owned by the active Loudness Profile and delivered through the history context; null when
+  // the profile is Off, which is what keeps a phantom reference line off the chart.
   const targetLufs = referenceLufs;
   const loudnessYRange = useMemo(
     () => ({ min: loudnessYMinDb, max: loudnessYMaxDb }),
