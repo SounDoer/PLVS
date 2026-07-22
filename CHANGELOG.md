@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-21
+
+### Added
+- Vectorscope Polar display modes (Polar Level, Polar Sample) for both the panel and Dock, including click-to-reset Peak hold and Peak hold reconstruction while scrubbing snapshots.
+- In-app updater now shows a changelog confirmation dialog before installing and relaunches automatically after install.
+
+### Changed
+- Polar Level now reads on a consistent Ozone/PAZ-style scale instead of shrinking whenever Peak hold is enabled.
+- Snapshot Peak hold reconstruction uses ~25x less memory on long retention windows.
+
+### Fixed
+- Vectorscope pair-label alignment, spacing, and Dock behavior are unified across display modes.
+- Snapshot Peak hold no longer shows a look-ahead of future samples.
+- Updater release notes stay focused on actual changes.
+
 ## [0.9.4] - 2026-07-20
 
 ### Added
