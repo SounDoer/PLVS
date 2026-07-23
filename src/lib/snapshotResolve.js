@@ -34,16 +34,34 @@ function clampTimestampToEntries(entries, timestampMs) {
 
 export function nearestTimestampIndex(entries, targetMs) {
   if (!hasTimestampEntries(entries) || !Number.isFinite(targetMs)) return -1;
-  let bestIdx = 0;
-  let bestDistance = Math.abs(timestampAt(entries, 0) - targetMs);
-  for (let i = 1; i < lengthOf(entries); i += 1) {
-    const distance = Math.abs(timestampAt(entries, i) - targetMs);
-    if (distance <= bestDistance) {
-      bestDistance = distance;
-      bestIdx = i;
+
+  const length = lengthOf(entries);
+  const upperBound = (value, low = 0) => {
+    let high = length;
+    while (low < high) {
+      const mid = low + Math.floor((high - low) / 2);
+      if (timestampAt(entries, mid) <= value) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
     }
+    return low;
+  };
+
+  const afterTarget = upperBound(targetMs);
+  if (afterTarget === length) return length - 1;
+
+  const laterTimestamp = timestampAt(entries, afterTarget);
+  const earlierIdx = afterTarget - 1;
+  if (earlierIdx >= 0 && targetMs - timestampAt(entries, earlierIdx) < laterTimestamp - targetMs) {
+    return earlierIdx;
   }
-  return bestIdx;
+
+  if (afterTarget + 1 < length && timestampAt(entries, afterTarget + 1) === laterTimestamp) {
+    return upperBound(laterTimestamp, afterTarget + 1) - 1;
+  }
+  return afterTarget;
 }
 
 /**

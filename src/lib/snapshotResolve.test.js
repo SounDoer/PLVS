@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveSnapshot, resolveKeyedVisualIndex } from "./snapshotResolve.js";
+import {
+  nearestTimestampIndex,
+  resolveSnapshot,
+  resolveKeyedVisualIndex,
+} from "./snapshotResolve.js";
 
 /**
  * resolveSnapshot owns the two-timeline reconciliation that used to live inline in
@@ -21,6 +25,26 @@ function viewOf(rows) {
 
 const liveAudio = { correlation: 0.9, peak: -1 };
 
+function linearNearestTimestampIndex(entries, targetMs) {
+  if (
+    entries.length === 0 ||
+    !Number.isFinite(entries[0].timestampMs) ||
+    !Number.isFinite(targetMs)
+  ) {
+    return -1;
+  }
+  let bestIdx = 0;
+  let bestDistance = Math.abs(entries[0].timestampMs - targetMs);
+  for (let i = 1; i < entries.length; i += 1) {
+    const distance = Math.abs(entries[i].timestampMs - targetMs);
+    if (distance <= bestDistance) {
+      bestDistance = distance;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
 function baseView(overrides = {}) {
   return {
     selectedOffset: -1,
@@ -33,6 +57,106 @@ function baseView(overrides = {}) {
     ...overrides,
   };
 }
+
+describe("nearestTimestampIndex", () => {
+  it("supports arrays and chronological history views", () => {
+    const rows = [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1300 }];
+    expect(nearestTimestampIndex(rows, 1140)).toBe(1);
+    expect(nearestTimestampIndex(viewOf(rows), 1140)).toBe(1);
+  });
+
+  it("returns -1 for empty history or a non-finite target", () => {
+    expect(nearestTimestampIndex([], 1000)).toBe(-1);
+    expect(nearestTimestampIndex(viewOf([]), 1000)).toBe(-1);
+    expect(nearestTimestampIndex([{}], 1000)).toBe(-1);
+    expect(nearestTimestampIndex(viewOf([{}]), 1000)).toBe(-1);
+    expect(nearestTimestampIndex([{ timestampMs: 1000 }], NaN)).toBe(-1);
+    expect(nearestTimestampIndex([{ timestampMs: 1000 }], Infinity)).toBe(-1);
+  });
+
+  it("resolves before-first, after-last, gaps, and midpoint ties", () => {
+    const rows = [
+      { timestampMs: 1000 },
+      { timestampMs: 1040 },
+      { timestampMs: 5000 },
+      { timestampMs: 5040 },
+    ];
+    expect(nearestTimestampIndex(rows, 0)).toBe(0);
+    expect(nearestTimestampIndex(rows, 9000)).toBe(3);
+    expect(nearestTimestampIndex(rows, 3020)).toBe(2);
+    expect(nearestTimestampIndex(rows, 1020)).toBe(1);
+  });
+
+  it("matches linear last-tie semantics for duplicate timestamps", () => {
+    const rows = [
+      { timestampMs: 1000 },
+      { timestampMs: 1000 },
+      { timestampMs: 1000 },
+      { timestampMs: 1100 },
+      { timestampMs: 1100 },
+      { timestampMs: 1300 },
+    ];
+    expect(nearestTimestampIndex(rows, 1000)).toBe(2);
+    expect(nearestTimestampIndex(rows, 1050)).toBe(4);
+    expect(nearestTimestampIndex(rows, 1100)).toBe(4);
+    expect(nearestTimestampIndex(rows, 1200)).toBe(5);
+  });
+
+  it("matches the previous linear implementation across deterministic randomized histories", () => {
+    let state = 0x5eed1234;
+    const random = () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state / 0x1_0000_0000;
+    };
+
+    for (let history = 0; history < 50; history += 1) {
+      const rows = [];
+      let timestampMs = Math.floor(random() * 1000);
+      const length = 1 + Math.floor(random() * 200);
+      for (let i = 0; i < length; i += 1) {
+        timestampMs += random() < 0.25 ? 0 : 1 + Math.floor(random() * 500);
+        rows.push({ timestampMs });
+      }
+
+      const targets = [
+        rows[0].timestampMs - 1000,
+        rows.at(-1).timestampMs + 1000,
+        ...Array.from({ length: 100 }, () => {
+          const span = rows.at(-1).timestampMs - rows[0].timestampMs + 2000;
+          return rows[0].timestampMs - 1000 + random() * span;
+        }),
+      ];
+      for (const target of targets) {
+        const expected = linearNearestTimestampIndex(rows, target);
+        expect(nearestTimestampIndex(rows, target)).toBe(expected);
+        expect(nearestTimestampIndex(viewOf(rows), target)).toBe(expected);
+      }
+    }
+  });
+
+  it("reads a 360,000-row lazy view only logarithmically", () => {
+    let reads = 0;
+    const length = 360_000;
+    const view = {
+      length,
+      timestampAt(index) {
+        reads += 1;
+        return index * 40;
+      },
+      rowAt(index) {
+        return { timestampMs: index * 40 };
+      },
+    };
+
+    expect(nearestTimestampIndex(view, 7_654_321)).toBe(
+      linearNearestTimestampIndex(
+        [{ timestampMs: 7_654_320 }, { timestampMs: 7_654_360 }],
+        7_654_321
+      ) + 191_358
+    );
+    expect(reads).toBeLessThanOrEqual(30);
+  });
+});
 
 describe("resolveSnapshot", () => {
   it("passes through live data when no snapshot is selected", () => {
