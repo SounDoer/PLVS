@@ -316,7 +316,7 @@ describe("Dock Stats and the main window under one provider", () => {
       act(() =>
         profile.editDraft((d) => ({
           ...d,
-          metrics: { ...d.metrics, truePeak: { role: "limit", severity: "fail", max: -12 } },
+          rules: [{ metricId: "truePeak", op: ">", value: -12, severity: "fail" }],
         }))
       );
 

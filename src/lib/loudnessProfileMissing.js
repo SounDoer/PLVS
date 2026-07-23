@@ -4,19 +4,15 @@
 /// be dialogue rows, and showing those is already what drives the dialogue/VAD path -- that stays
 /// an implementation detail here and must not leak into copy (see the design doc, §Missing stats).
 
-import { isRuleEmpty } from "./loudnessProfileCatalog.js";
+import { watchedMetricIds } from "./loudnessProfileCatalog.js";
 
-/// Preferred metrics the profile needs that are not visible in Stats, in the profile's own order.
-/// A rule the user has added but not yet filled in is skipped -- fulfilling it would push a row on
-/// screen for a metric nothing is judging yet. A metric the profile only describes is still
-/// demanded when it is preferred, because a descriptor earns its row by giving another rule the
-/// context to be read against.
+/// Watched metrics the profile needs that are not visible in Stats, in the profile's own order. A
+/// rule the user has added but not yet filled in is not watched, so it is skipped -- fulfilling it
+/// would push a row on screen for a metric nothing is judging yet.
 export function listMissingPreferredMetrics(document, statsVisibleIds) {
   if (!document) return [];
   const visible = new Set(statsVisibleIds ?? []);
-  return (document.preferredMetricIds ?? [])
-    .filter((id) => !isRuleEmpty(document.metrics?.[id]))
-    .filter((id) => !visible.has(id));
+  return watchedMetricIds(document).filter((id) => !visible.has(id));
 }
 
 /// Appends the missing ids, preserving the order of what is already shown. Append-only: the user

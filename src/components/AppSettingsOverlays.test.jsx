@@ -350,12 +350,16 @@ describe("Loudness Profile editor wiring", () => {
     const hook = renderWired();
     fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
 
-    const input = screen.getByLabelText("Integrated target");
+    const input = screen.getByLabelText("Rule 1 value");
     fireEvent.change(input, { target: { value: "-16" } });
     fireEvent.blur(input);
 
     // `document` is the one every reader judges against, so an uncommitted keystroke reaching it
     // is the preview working end to end -- not just the draft object changing shape.
-    expect(hook.result.current.document.metrics.integrated.target).toBe(-16);
+    expect(hook.result.current.document.rules[0]).toMatchObject({
+      metricId: "integrated",
+      op: ">",
+      value: -16,
+    });
   });
 });

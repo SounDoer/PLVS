@@ -1,19 +1,20 @@
 /// Loudness Profile catalog: the Off/built-in/draft definitions and the selection-id helpers.
 ///
 /// A rule document is the unit the rest of the feature consumes:
-///   { id, name, kind, basedOn?, referenceLufs, metrics, preferredMetricIds }
-/// `referenceLufs` drives the Loudness `ref` line and the footer reading; `null` means the
-/// profile has no target and both surfaces hide (see the design doc, §Footer).
+///   { id, name, kind, basedOn?, referenceLufs, rules }
+/// `referenceLufs` only draws the Loudness `ref` guide line and the footer reading; it judges
+/// nothing. `null` means "no line". `rules` is a flat list; one metric may carry several.
 ///
-/// Metric ids are `statsCatalog` ids, so a rule can address any row Stats can already show.
+/// A rule is one atomic breach condition:
+///   metricId   a `statsCatalog` id -- any row Stats can already show
+///   op         ">" | "<"          -- the side that breaches ("above" / "below")
+///   value      the threshold (a number somebody typed; blank = not judged)
+///   severity   "warn" | "fail"    -- how bad the breach is
 ///
-/// A MetricRule is:
-///   role      "target" | "limit" | "descriptor" | "na"
-///   target / tolerance {minus, plus}   for role "target"
-///   max / min                          for role "limit"
-///   severity  "fail" | "warn"          breach severity; descriptors and "na" never breach
-///   provisional                        conclusions never settle (realtime Live), not a timer
-///   requiresDialogueCoverage           percent below which the rule is inconclusive
+/// Two automatic, metric-level gates are not expressed as rules (nobody configures them):
+/// `integrated` reads `pending` until the engine says it is ready, and the dialogue-anchored
+/// metrics read `inconclusive` until enough dialogue is present. "Only warn, never fail" (realtime
+/// Integrated) is just a rule authored with `severity: "warn"`.
 ///
 /// Built-ins are references with clear rules, not certification. See the design doc.
 
@@ -24,23 +25,46 @@ export const LOUDNESS_PROFILE_OFF = "off";
 const BUILTIN_PREFIX = "builtin:";
 const USER_PREFIX = "user:";
 
-/// Below this dialogue coverage the dialogue-anchored rules cannot conclude.
+/// Below this dialogue coverage the dialogue-anchored metrics cannot conclude.
 export const MIN_DIALOGUE_COVERAGE_PERCENT = 15;
 
-function target(value, minus, plus, extra = {}) {
-  return { role: "target", target: value, tolerance: { minus, plus }, severity: "fail", ...extra };
+/// Metrics whose reading is meaningless until enough of the recent audio is dialogue. Any rule on
+/// one of these is gated automatically -- the user neither sets nor sees the coverage floor.
+export const DIALOGUE_GATED_METRIC_IDS = new Set(["dialogueIntegrated"]);
+
+/// Metrics that only mean anything once the engine reports them settled.
+export const READINESS_GATED_METRIC_IDS = new Set(["integrated"]);
+
+/// The Stats metrics a rule may address. Deliberately no default numbers: inventing a threshold for
+/// Side/Mid or PSR would be the fabricated-standard behaviour this feature exists to avoid.
+export const RULEABLE_METRIC_IDS = [
+  "momentary",
+  "shortTerm",
+  "integrated",
+  "dialogueIntegrated",
+  "momentaryMax",
+  "shortTermMax",
+  "truePeak",
+  "dialogueCoverage",
+  "correlation",
+  "psr",
+  "plr",
+  "lra",
+  "dialogueRange",
+  "dialogueOffset",
+  "sideToMid",
+];
+
+const RULEABLE_METRIC_SET = new Set(RULEABLE_METRIC_IDS);
+
+function rule(metricId, op, value, severity = "fail") {
+  return { metricId, op, value, severity };
 }
 
-function limitMax(value) {
-  return { role: "limit", max: value, severity: "fail" };
+/// A target band `t ± (minus, plus)` expressed as the two breach rules it really is.
+function band(metricId, t, minus, plus, severity = "fail") {
+  return [rule(metricId, ">", t + plus, severity), rule(metricId, "<", t - minus, severity)];
 }
-
-function watchMax(value) {
-  return { role: "limit", max: value, severity: "warn" };
-}
-
-const DESCRIPTOR = { role: "descriptor", severity: "warn" };
-const NOT_APPLICABLE = { role: "na", severity: "warn" };
 
 export const BUILTIN_LOUDNESS_PROFILES = [
   {
@@ -48,126 +72,65 @@ export const BUILTIN_LOUDNESS_PROFILES = [
     name: "EBU R128",
     kind: "builtin",
     referenceLufs: -23,
-    preferredMetricIds: ["integrated", "truePeak"],
-    metrics: {
-      integrated: target(-23, 0.5, 0.5),
-      truePeak: limitMax(-1),
-      lra: DESCRIPTOR,
-      shortTermMax: DESCRIPTOR,
-    },
+    rules: [...band("integrated", -23, 0.5, 0.5), rule("truePeak", ">", -1)],
   },
   {
     id: "ebu-r128-live",
     name: "EBU R128 Live",
     kind: "builtin",
     referenceLufs: -23,
-    preferredMetricIds: ["integrated", "truePeak"],
-    metrics: {
-      // Realtime Integrated never settles, so this is provisional by construction rather than
-      // after some elapsed time. There is no gated-audio clock to wait on.
-      integrated: target(-23, 1, 1, { provisional: true }),
-      truePeak: limitMax(-1),
-      lra: DESCRIPTOR,
-      shortTermMax: DESCRIPTOR,
-    },
+    // Realtime Integrated never settles, so it only warns -- it is never certain enough to fail on.
+    rules: [...band("integrated", -23, 1, 1, "warn"), rule("truePeak", ">", -1)],
   },
   {
     id: "ebu-r128-s1",
     name: "EBU R128 S1",
     kind: "builtin",
     referenceLufs: -23,
-    preferredMetricIds: ["integrated", "shortTermMax", "truePeak"],
-    metrics: {
-      integrated: target(-23, 0.5, 0.5),
-      shortTermMax: limitMax(-18),
-      truePeak: limitMax(-1),
-      // Short-form programmes are too short for LRA to mean anything.
-      lra: NOT_APPLICABLE,
-    },
+    // Short-form programmes are too short for LRA to mean anything, so S1 simply does not judge it.
+    rules: [
+      ...band("integrated", -23, 0.5, 0.5),
+      rule("shortTermMax", ">", -18),
+      rule("truePeak", ">", -1),
+    ],
   },
   {
     id: "atsc-a85",
     name: "ATSC A/85",
     kind: "builtin",
     referenceLufs: -24,
-    preferredMetricIds: ["dialogueIntegrated", "dialogueCoverage", "truePeak"],
-    metrics: {
-      dialogueIntegrated: target(-24, 2, 2, {
-        requiresDialogueCoverage: MIN_DIALOGUE_COVERAGE_PERCENT,
-      }),
-      truePeak: limitMax(-2),
-      dialogueCoverage: DESCRIPTOR,
-      integrated: DESCRIPTOR,
-    },
+    // dialogueIntegrated is coverage-gated automatically (see DIALOGUE_GATED_METRIC_IDS).
+    rules: [...band("dialogueIntegrated", -24, 2, 2), rule("truePeak", ">", -2)],
   },
   {
     id: "streaming-14",
     name: "Streaming −14",
     kind: "builtin",
+    // A playback-normalisation reference, not an upload gate: loose band, warn rather than fail.
     referenceLufs: -14,
-    preferredMetricIds: ["integrated", "truePeak"],
-    metrics: {
-      // A playback-normalisation reference, not an upload gate, so the band is loose and the
-      // breach is a warning rather than a failure.
-      integrated: { ...target(-14, 1, 1), severity: "warn" },
-      truePeak: watchMax(-1),
-      lra: DESCRIPTOR,
-    },
+    rules: [...band("integrated", -14, 1, 1, "warn"), rule("truePeak", ">", -1, "warn")],
   },
 ];
 
-/// The rule shape each Stats metric can wear.
-///
-/// `role` is an implementation concept -- nobody thinks "I want a limit rule on True Peak", they
-/// think "TP must not exceed -1" -- so the editor reads a metric's shape from here instead of
-/// asking the user to choose one. `limit` carries both `min` and `max`, which makes ceiling,
-/// floor and band the same shape with different fields left blank.
-///
-/// Deliberately no default numbers. Inventing a threshold for Side/Mid or PSR would be exactly
-/// the fabricated-standard behaviour this feature exists to avoid.
-export const METRIC_RULE_ROLE = {
-  momentary: "target",
-  shortTerm: "target",
-  integrated: "target",
-  dialogueIntegrated: "target",
-  momentaryMax: "limit",
-  shortTermMax: "limit",
-  truePeak: "limit",
-  dialogueCoverage: "limit",
-  correlation: "limit",
-  psr: "limit",
-  plr: "limit",
-  lra: "limit",
-  dialogueRange: "limit",
-  dialogueOffset: "limit",
-  sideToMid: "limit",
-};
-
-/// A rule in the metric's own shape with nothing filled in. Severity defaults to `fail`; the
-/// editor exposes it, and a user who wants a softer breach says so.
+/// A rule the user has just added but not filled in. Severity defaults to `fail`; a user who wants
+/// a softer breach changes it. `op` defaults to `>` (a ceiling), the commonest case.
 export function createEmptyRule(metricId) {
-  const role = METRIC_RULE_ROLE[metricId];
-  if (!role) return null;
-  return { role, severity: "fail" };
+  if (!RULEABLE_METRIC_SET.has(metricId)) return null;
+  return { metricId, op: ">", value: undefined, severity: "fail" };
 }
 
 const BUILTIN_BY_ID = new Map(BUILTIN_LOUDNESS_PROFILES.map((p) => [p.id, p]));
 
-/// The starter a New profile opens on. Integrated and True Peak are the two rules every delivery
-/// reference in the catalog shares, and a blank editor with no rows is a dead end.
-///
-/// The name starts empty so Save stays disabled until the user names it.
+/// The starter a New profile opens on. Integrated and True Peak are the rules every delivery
+/// reference in the catalog shares, and a blank editor is a dead end. The name starts empty so
+/// Save stays disabled until the user names it.
 export function createProfileDraft() {
   return {
     id: "draft",
     name: "",
     kind: "draft",
     referenceLufs: -23,
-    preferredMetricIds: ["integrated", "truePeak"],
-    metrics: {
-      integrated: target(-23, 0.5, 0.5),
-      truePeak: limitMax(-1),
-    },
+    rules: [...band("integrated", -23, 0.5, 0.5), rule("truePeak", ">", -1)],
   };
 }
 
@@ -175,25 +138,12 @@ const defaultMakeId = () => `${crypto.randomUUID()}`;
 
 /// Duplicating a built-in yields an unsaved draft, never a library entry: the design routes all
 /// edits of a built-in through Duplicate -> Save as.
-///
-/// `descriptor` and `na` rules do not come along. They are authoring annotations meaning "we
-/// deliberately do not judge this", which a user profile already says by not mentioning the
-/// metric -- and the editor has no way to show or remove a rule in either role, so carrying them
-/// would leave rules the user cannot reach. Behaviourally lossless: `loudnessStatusValueClass`
-/// maps `na` and an absent status to the same class.
 export function duplicateAsDraft(builtinId, makeId = defaultMakeId) {
   const source = BUILTIN_BY_ID.get(builtinId);
   if (!source) return null;
   const clone = structuredClone(source);
-  const metrics = Object.fromEntries(
-    Object.entries(clone.metrics).filter(
-      ([, rule]) => rule.role !== "descriptor" && rule.role !== "na"
-    )
-  );
   return {
     ...clone,
-    metrics,
-    preferredMetricIds: clone.preferredMetricIds.filter((id) => Object.hasOwn(metrics, id)),
     id: makeId(),
     name: `${source.name} (copy)`,
     kind: "draft",
@@ -201,43 +151,24 @@ export function duplicateAsDraft(builtinId, makeId = defaultMakeId) {
   };
 }
 
-/// The metric the reference value is *about*: the first preferred metric the profile targets.
-/// For the default draft and the EBU/Streaming copies that is `integrated`; for an ATSC copy it
-/// is `dialogueIntegrated`, which is the whole reason this is not hard-coded to `integrated`.
-///
-/// Empty rules are skipped -- an unfilled rule at the front of the list would absorb the anchor
-/// and leave the real target rule behind, moving the chart line while Stats kept judging against
-/// the old number, which is the split this function exists to prevent.
-function anchorMetricId(document) {
-  return (document?.preferredMetricIds ?? []).find((id) => {
-    const rule = document.metrics?.[id];
-    return rule?.role === "target" && !isRuleEmpty(rule);
-  });
-}
-
-/// Moves a document's reference, carrying its anchor target rule along.
-///
-/// These two are one number wearing two hats -- the line drawn on the chart and the value Stats
-/// judges against -- so letting the editor write only `referenceLufs` produces a profile that
-/// draws its line at one loudness and fails you against another. The tolerance band is the
-/// user's, so it rides along unchanged.
-///
-/// A cleared reference is `null` -- a real value meaning "no line" -- but the target it carries is
-/// then blank, and blank in a rule is `undefined`, the same thing `RuleRow` writes for an emptied
-/// field. Passing the `null` straight through would give the panel two spellings of blank and hand
-/// the normalizer a value it has to reject anyway.
+/// Sets a document's reference. Reference is decoupled from judgement now -- it only draws the
+/// guide line -- so this writes nothing but the field.
 export function withReferenceLufs(document, referenceLufs) {
   if (!document) return document;
-  const anchor = anchorMetricId(document);
-  if (!anchor) return { ...document, referenceLufs };
-  return {
-    ...document,
-    referenceLufs,
-    metrics: {
-      ...document.metrics,
-      [anchor]: { ...document.metrics[anchor], target: referenceLufs ?? undefined },
-    },
-  };
+  return { ...document, referenceLufs };
+}
+
+/// The metrics a profile actually judges: those carrying at least one filled-in rule, in first-seen
+/// order. This is the "watched" set the label highlight, missing-stats and footer read off.
+export function watchedMetricIds(document) {
+  const seen = [];
+  const set = new Set();
+  for (const r of document?.rules ?? []) {
+    if (isRuleEmpty(r) || set.has(r.metricId)) continue;
+    set.add(r.metricId);
+    seen.push(r.metricId);
+  }
+  return seen;
 }
 
 export function builtinSelectionId(id) {
@@ -275,48 +206,20 @@ export function resolveActiveDocument(state) {
 /// Every metric a rule can address must be a real Stats row, otherwise the rule is unreachable
 /// and "missing stats" could never be satisfied.
 export function isKnownMetricId(metricId) {
-  return Object.hasOwn(STATS_META, metricId);
+  return Object.hasOwn(STATS_META, metricId) && RULEABLE_METRIC_SET.has(metricId);
 }
 
-/// A number somebody actually typed: the one test every threshold in a rule has to pass.
+/// A number somebody actually typed: the one test every threshold has to pass.
 ///
 /// Strict about the type, not just the value. An untouched form field is `""` and a cleared one
 /// arrives as `null`; `Number` reads both as a perfectly good 0, so a coercing check turns a blank
-/// box into a threshold nobody chose -- a target at 0 LUFS that fails every real signal, or a
-/// zero-width band that the near-boundary margin turns into a warning no value can escape.
-///
-/// Every threshold shares this so the guard cannot be closed on one field and left open on its
-/// siblings, which is how `target`, `max` and `min` came to be coerced while the band was not.
+/// box into a threshold nobody chose.
 export function isUsableThreshold(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-/// A band both halves of which are usable.
-///
-/// Exported because the normalizer and `isRuleEmpty` have to agree on this exactly: when they
-/// disagree, a half-typed band reads as filled and then evaluates against `target + undefined`,
-/// which is NaN -- and every comparison against NaN is false, so the rule silently passes
-/// everything.
-export function isUsableTolerance(tolerance) {
-  const { minus, plus } = tolerance ?? {};
-  if (!isUsableThreshold(minus) || !isUsableThreshold(plus)) return false;
-  return minus >= 0 && plus >= 0;
-}
-
-/// A rule the user has added but not yet filled in. It judges nothing and demands nothing, and
-/// it has to survive a round-trip: the alternative is a row that vanishes when the panel closes.
-///
-/// A target needs both halves. With a target but no band, `evaluateTarget` would compare against
-/// a zero-width band, which the near-boundary margin turns into a permanent warning that can
-/// never read ok -- a half-typed rule should be silent, not shouting. Defaulting the band instead
-/// would mean inventing a threshold, which is the thing this feature exists to avoid.
-///
-/// `descriptor` and `na` are deliberate annotations rather than half-finished rules, so they are
-/// never empty.
+/// A rule the user has added but not filled in. It judges nothing and has to survive a round-trip:
+/// the alternative is a row that vanishes when the panel closes.
 export function isRuleEmpty(rule) {
-  if (!rule) return true;
-  if (rule.role === "target")
-    return !Number.isFinite(rule.target) || !isUsableTolerance(rule.tolerance);
-  if (rule.role === "limit") return !Number.isFinite(rule.max) && !Number.isFinite(rule.min);
-  return false;
+  return !rule || !isUsableThreshold(rule.value);
 }

@@ -4,11 +4,18 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clampPanelPos } from "@/lib/dragClamp.js";
 import {
-  METRIC_RULE_ROLE,
+  RULEABLE_METRIC_IDS,
   createEmptyRule,
   withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
-import { STATS_CANONICAL_ORDER, STATS_META } from "@/lib/statsCatalog.js";
+import { STATS_META } from "@/lib/statsCatalog.js";
+
+/// A new rule opens on Integrated: the metric every delivery reference judges. The user re-picks it
+/// from the row's own metric select.
+const DEFAULT_RULE_METRIC = "integrated";
+
+const SELECT_CLASS =
+  "h-6 rounded-md border border-input bg-transparent px-1 text-[length:var(--ui-fs-control)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 const NUM_INPUT_CLASS =
   "h-6 w-14 rounded-md border border-transparent bg-transparent px-1 py-0 text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -60,64 +67,50 @@ function RuleNumber({ ariaLabel, value, onCommit }) {
   );
 }
 
-/// One rule. The shape comes from the metric, never from the user: nobody thinks "I want a limit
-/// rule on True Peak", they think "TP must not exceed -1".
-function RuleRow({ metricId, rule, onPatch, onRemove }) {
-  const meta = STATS_META[metricId];
-  const label = meta?.label ?? metricId;
+/// One rule: `metric  op  value  severity`. Reads as the breach sentence it is -- "True Peak above
+/// −1 → Fail" -- so which side breaches is never in doubt.
+function RuleRow({ index, rule, onPatch, onRemove }) {
+  const meta = STATS_META[rule.metricId];
+  const position = index + 1;
 
   return (
     <div className="flex items-center gap-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
-      <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
+      <select
+        aria-label={`Rule ${position} metric`}
+        value={rule.metricId}
+        onChange={(event) => onPatch({ metricId: event.target.value })}
+        className={`${SELECT_CLASS} min-w-0 flex-1`}
+      >
+        {RULEABLE_METRIC_IDS.map((id) => (
+          <option key={id} value={id}>
+            {STATS_META[id]?.label ?? id}
+          </option>
+        ))}
+      </select>
 
-      {rule.role === "target" ? (
-        <>
-          <RuleNumber
-            ariaLabel={`${label} target`}
-            value={rule.target ?? null}
-            onCommit={(next) => onPatch({ target: next ?? undefined })}
-          />
-          <span className="text-muted-foreground">−</span>
-          <RuleNumber
-            ariaLabel={`${label} tolerance minus`}
-            value={rule.tolerance?.minus ?? null}
-            onCommit={(next) =>
-              onPatch({ tolerance: { ...rule.tolerance, minus: next ?? undefined } })
-            }
-          />
-          <span className="text-muted-foreground">+</span>
-          <RuleNumber
-            ariaLabel={`${label} tolerance plus`}
-            value={rule.tolerance?.plus ?? null}
-            onCommit={(next) =>
-              onPatch({ tolerance: { ...rule.tolerance, plus: next ?? undefined } })
-            }
-          />
-        </>
-      ) : (
-        <>
-          <span className="text-muted-foreground">≥</span>
-          <RuleNumber
-            ariaLabel={`${label} minimum`}
-            value={rule.min ?? null}
-            onCommit={(next) => onPatch({ min: next ?? undefined })}
-          />
-          <span className="text-muted-foreground">≤</span>
-          <RuleNumber
-            ariaLabel={`${label} maximum`}
-            value={rule.max ?? null}
-            onCommit={(next) => onPatch({ max: next ?? undefined })}
-          />
-        </>
-      )}
+      <select
+        aria-label={`Rule ${position} operator`}
+        value={rule.op}
+        onChange={(event) => onPatch({ op: event.target.value })}
+        className={SELECT_CLASS}
+      >
+        <option value=">">&gt;</option>
+        <option value="<">&lt;</option>
+      </select>
+
+      <RuleNumber
+        ariaLabel={`Rule ${position} value`}
+        value={rule.value ?? null}
+        onCommit={(next) => onPatch({ value: next ?? undefined })}
+      />
 
       <span className="w-8 shrink-0 text-right text-muted-foreground/60">{meta?.unit}</span>
 
       <select
-        aria-label={`${label} severity`}
+        aria-label={`Rule ${position} severity`}
         value={rule.severity ?? "warn"}
         onChange={(event) => onPatch({ severity: event.target.value })}
-        className="h-6 rounded-md border border-input bg-transparent px-1 text-[length:var(--ui-fs-control)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className={SELECT_CLASS}
       >
         <option value="fail">Fail</option>
         <option value="warn">Warn</option>
@@ -125,7 +118,7 @@ function RuleRow({ metricId, rule, onPatch, onRemove }) {
 
       <button
         type="button"
-        aria-label={`Remove ${label}`}
+        aria-label={`Remove rule ${position}`}
         onClick={onRemove}
         className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
@@ -147,42 +140,28 @@ function RuleRow({ metricId, rule, onPatch, onRemove }) {
  */
 export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, onMove }) {
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
   const ref = useRef(null);
   const dragRef = useRef(null);
 
   const ruleDocument = draft.document;
-  const ruleIds = ruleDocument.preferredMetricIds ?? [];
-  const addable = STATS_CANONICAL_ORDER.filter(
-    (id) => METRIC_RULE_ROLE[id] && !ruleIds.includes(id)
-  );
+  const rules = ruleDocument.rules ?? [];
 
-  function patchRule(metricId, patch) {
+  function patchRule(index, patch) {
     onEdit((d) => ({
       ...d,
-      metrics: { ...d.metrics, [metricId]: { ...d.metrics[metricId], ...patch } },
+      rules: (d.rules ?? []).map((rule, i) => (i === index ? { ...rule, ...patch } : rule)),
     }));
   }
 
-  function addMetric(metricId) {
-    setAddOpen(false);
+  function addRule() {
     onEdit((d) => ({
       ...d,
-      metrics: { ...d.metrics, [metricId]: createEmptyRule(metricId) },
-      preferredMetricIds: [...(d.preferredMetricIds ?? []), metricId],
+      rules: [...(d.rules ?? []), createEmptyRule(DEFAULT_RULE_METRIC)],
     }));
   }
 
-  function removeMetric(metricId) {
-    onEdit((d) => {
-      const metrics = { ...d.metrics };
-      delete metrics[metricId];
-      return {
-        ...d,
-        metrics,
-        preferredMetricIds: (d.preferredMetricIds ?? []).filter((id) => id !== metricId),
-      };
-    });
+  function removeRule(index) {
+    onEdit((d) => ({ ...d, rules: (d.rules ?? []).filter((_, i) => i !== index) }));
   }
 
   function handleCancel() {
@@ -253,16 +232,20 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           </div>
 
           <div className="border-t border-border/40 pt-1">
-            {ruleIds.map((metricId) =>
-              ruleDocument.metrics?.[metricId] ? (
+            {rules.length > 0 ? (
+              rules.map((rule, index) => (
                 <RuleRow
-                  key={metricId}
-                  metricId={metricId}
-                  rule={ruleDocument.metrics[metricId]}
-                  onPatch={(patch) => patchRule(metricId, patch)}
-                  onRemove={() => removeMetric(metricId)}
+                  key={index}
+                  index={index}
+                  rule={rule}
+                  onPatch={(patch) => patchRule(index, patch)}
+                  onRemove={() => removeRule(index)}
                 />
-              ) : null
+              ))
+            ) : (
+              <p className="px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
+                No rules — this profile only draws its reference line.
+              </p>
             )}
           </div>
 
@@ -271,28 +254,13 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
               type="button"
               variant="ghost"
               size="sm"
-              aria-label="Add metric"
-              onClick={() => setAddOpen((open) => !open)}
+              aria-label="Add rule"
+              onClick={addRule}
               className="h-7 gap-1 px-2 text-[length:var(--ui-fs-control)]"
             >
               <Plus className="size-[length:var(--ui-icon-management-action)]" />
-              Add metric
+              Add rule
             </Button>
-            {addOpen ? (
-              <div className="mt-1 flex flex-col rounded border border-border/60 p-1">
-                {addable.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-label={`Add ${STATS_META[id]?.label ?? id}`}
-                    onClick={() => addMetric(id)}
-                    className="rounded px-1.5 py-1 text-left text-[length:var(--ui-fs-control)] hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    {STATS_META[id]?.label ?? id}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </div>
 
           <p className="text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">

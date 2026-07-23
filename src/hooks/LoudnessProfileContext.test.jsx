@@ -465,14 +465,15 @@ describe("preview draft", () => {
     act(() =>
       result.current.editDraft((d) => ({
         ...d,
-        metrics: { ...d.metrics, correlation: { role: "limit", severity: "fail" } },
-        preferredMetricIds: [...d.preferredMetricIds, "correlation"],
+        rules: [...d.rules, { metricId: "correlation", op: ">", severity: "fail" }],
       }))
     );
 
-    expect(result.current.draft.document.metrics.correlation).toBeTruthy();
-    expect(result.current.document.metrics.correlation).toBeTruthy();
-    expect(result.current.document.preferredMetricIds).toContain("correlation");
+    // The editor keeps the unfilled row; the normalized document keeps it too (it survives a
+    // round-trip) but it judges nothing.
+    const draftRule = result.current.draft.document.rules.at(-1);
+    expect(draftRule).toMatchObject({ metricId: "correlation" });
+    expect(result.current.document.rules.at(-1)).toMatchObject({ metricId: "correlation" });
   });
 });
 

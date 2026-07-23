@@ -225,7 +225,9 @@ describe("editor entry points", () => {
     fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
 
     expect(hook.result.current.draft.editingId).toBe(null);
-    expect(hook.result.current.draft.document.metrics.integrated).toBeTruthy();
+    expect(hook.result.current.draft.document.rules.some((r) => r.metricId === "integrated")).toBe(
+      true
+    );
   });
 });
 

@@ -30,100 +30,118 @@ function appliedDocument(props, call = 0) {
 }
 
 describe("LoudnessProfileEditor", () => {
+  // createProfileDraft() opens on: integrated >-22.5 fail, integrated <-23.5 fail, truePeak >-1 fail.
+
   it("lists a row per rule, in the profile's own order", () => {
     renderEditor();
-    expect(screen.getByText("Integrated")).toBeTruthy();
-    expect(screen.getByText("True Peak Max")).toBeTruthy();
+    expect(screen.getByLabelText("Rule 1 metric").value).toBe("integrated");
+    expect(screen.getByLabelText("Rule 2 metric").value).toBe("integrated");
+    expect(screen.getByLabelText("Rule 3 metric").value).toBe("truePeak");
   });
 
-  it("renders a target rule as target and band", () => {
+  it("renders each rule as metric, operator and value", () => {
     renderEditor();
-    expect(screen.getByLabelText("Integrated target").value).toBe("-23");
-    expect(screen.getByLabelText("Integrated tolerance minus").value).toBe("0.5");
-    expect(screen.getByLabelText("Integrated tolerance plus").value).toBe("0.5");
+    expect(screen.getByLabelText("Rule 1 operator").value).toBe(">");
+    expect(screen.getByLabelText("Rule 1 value").value).toBe("-22.5");
+    expect(screen.getByLabelText("Rule 2 operator").value).toBe("<");
+    expect(screen.getByLabelText("Rule 2 value").value).toBe("-23.5");
+    expect(screen.getByLabelText("Rule 3 value").value).toBe("-1");
   });
 
-  it("renders a limit rule as two bounds, either blank", () => {
-    renderEditor();
-    expect(screen.getByLabelText("True Peak Max maximum").value).toBe("-1");
-    expect(screen.getByLabelText("True Peak Max minimum").value).toBe("");
-  });
-
-  it("commits a number on blur, not per keystroke", () => {
+  it("commits a value on blur, not per keystroke", () => {
     const props = renderEditor();
-    const input = screen.getByLabelText("Integrated target");
+    const input = screen.getByLabelText("Rule 3 value");
     fireEvent.change(input, { target: { value: "-2" } });
     expect(props.onEdit).not.toHaveBeenCalled();
     fireEvent.blur(input);
     expect(props.onEdit).toHaveBeenCalledTimes(1);
-    expect(appliedDocument(props).metrics.integrated.target).toBe(-2);
+    expect(appliedDocument(props).rules[2].value).toBe(-2);
   });
 
-  it("commits a number on Enter", () => {
+  it("commits a value on Enter", () => {
     const props = renderEditor();
-    const input = screen.getByLabelText("True Peak Max maximum");
+    const input = screen.getByLabelText("Rule 3 value");
     // Enter commits by blurring, and jsdom only fires blur on a focused element.
     input.focus();
     fireEvent.change(input, { target: { value: "-2" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(props.onEdit).toHaveBeenCalledTimes(1);
-    expect(appliedDocument(props).metrics.truePeak.max).toBe(-2);
+    expect(appliedDocument(props).rules[2].value).toBe(-2);
   });
 
-  it("leaves a cleared band unset rather than zero", () => {
+  it("leaves a cleared value unset rather than zero", () => {
     const props = renderEditor();
-    const input = screen.getByLabelText("Integrated tolerance minus");
+    const input = screen.getByLabelText("Rule 1 value");
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.blur(input);
-    const tolerance = appliedDocument(props).metrics.integrated.tolerance;
-    expect(tolerance.minus).toBeUndefined();
-    expect(tolerance.plus).toBe(0.5);
+    expect(appliedDocument(props).rules[0].value).toBeUndefined();
   });
 
-  it("moves the anchor target with the reference", () => {
+  it("sets the reference without touching the rules", () => {
     const props = renderEditor();
     const input = screen.getByLabelText("Loudness Profile reference");
     fireEvent.change(input, { target: { value: "-16" } });
     fireEvent.blur(input);
     const next = appliedDocument(props);
     expect(next.referenceLufs).toBe(-16);
-    expect(next.metrics.integrated.target).toBe(-16);
+    expect(next.rules).toEqual(props.draft.document.rules);
   });
 
-  it("offers only metrics not already in the profile", () => {
-    renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Add metric" }));
-    expect(screen.getByRole("button", { name: "Add Correlation" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Add Integrated" })).toBeNull();
-  });
-
-  it("adds a metric as an empty rule in the metric's own shape", () => {
+  it("changes a rule's metric from its own select", () => {
     const props = renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Add metric" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add Correlation" }));
+    fireEvent.change(screen.getByLabelText("Rule 3 metric"), { target: { value: "correlation" } });
+    expect(appliedDocument(props).rules[2].metricId).toBe("correlation");
+  });
+
+  it("changes a rule's operator", () => {
+    const props = renderEditor();
+    fireEvent.change(screen.getByLabelText("Rule 3 operator"), { target: { value: "<" } });
+    expect(appliedDocument(props).rules[2].op).toBe("<");
+  });
+
+  it("adds a blank rule on Integrated", () => {
+    const props = renderEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
     const next = appliedDocument(props);
-    expect(next.metrics.correlation).toEqual({ role: "limit", severity: "fail" });
-    expect(next.preferredMetricIds).toContain("correlation");
+    expect(next.rules).toHaveLength(4);
+    expect(next.rules[3]).toEqual({
+      metricId: "integrated",
+      op: ">",
+      value: undefined,
+      severity: "fail",
+    });
   });
 
   it("removes a rule", () => {
     const props = renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Remove True Peak Max" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove rule 3" }));
     expect(props.onEdit).toHaveBeenCalledTimes(1);
     const next = appliedDocument(props);
-    expect(next.metrics.truePeak).toBeUndefined();
-    expect(next.preferredMetricIds).not.toContain("truePeak");
+    expect(next.rules).toHaveLength(2);
+    expect(next.rules.some((r) => r.metricId === "truePeak")).toBe(false);
   });
 
   it("exposes severity per rule", () => {
     renderEditor();
-    expect(screen.getByLabelText("Integrated severity").value).toBe("fail");
+    expect(screen.getByLabelText("Rule 1 severity").value).toBe("fail");
   });
 
   it("changes severity per rule", () => {
     const props = renderEditor();
-    fireEvent.change(screen.getByLabelText("Integrated severity"), { target: { value: "warn" } });
-    expect(appliedDocument(props).metrics.integrated.severity).toBe("warn");
+    fireEvent.change(screen.getByLabelText("Rule 1 severity"), { target: { value: "warn" } });
+    expect(appliedDocument(props).rules[0].severity).toBe("warn");
+  });
+
+  it("shows an empty-state and still allows saving a rule-less profile", () => {
+    renderEditor({
+      draft: {
+        editingId: null,
+        document: { ...createProfileDraft(), name: "Bare", rules: [] },
+        dirty: true,
+      },
+    });
+    expect(screen.getByText(/only draws its reference line/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(false);
   });
 
   it("never rewrites the document id", () => {
@@ -170,15 +188,15 @@ describe("LoudnessProfileEditor", () => {
     const props = { ...editorProps({ draft }) };
     const { rerender } = render(<LoudnessProfileEditor {...props} />);
 
-    const input = screen.getByLabelText("Integrated tolerance plus");
+    const input = screen.getByLabelText("Rule 1 value");
     input.focus();
-    fireEvent.change(input, { target: { value: "1.2" } });
+    fireEvent.change(input, { target: { value: "-30" } });
 
     const moved = structuredClone(draft.document);
-    moved.metrics.integrated.tolerance.plus = 2;
+    moved.rules[0].value = -18;
     rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
 
-    expect(input.value).toBe("1.2");
+    expect(input.value).toBe("-30");
   });
 
   it("adopts an incoming value when the field is not focused", () => {
@@ -187,10 +205,10 @@ describe("LoudnessProfileEditor", () => {
     const { rerender } = render(<LoudnessProfileEditor {...props} />);
 
     const moved = structuredClone(draft.document);
-    moved.metrics.integrated.tolerance.plus = 2;
+    moved.rules[0].value = -18;
     rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
 
-    expect(screen.getByLabelText("Integrated tolerance plus").value).toBe("2");
+    expect(screen.getByLabelText("Rule 1 value").value).toBe("-18");
   });
 
   it("carries the honesty note", () => {

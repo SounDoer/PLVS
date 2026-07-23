@@ -9,11 +9,10 @@ import {
   LOUDNESS_PROFILE_OFF,
   isKnownMetricId,
   isUsableThreshold,
-  isUsableTolerance,
   parseSelection,
 } from "./loudnessProfileCatalog.js";
 
-const VALID_ROLES = new Set(["target", "limit", "descriptor", "na"]);
+const VALID_OPS = new Set([">", "<"]);
 const BUILTIN_IDS = new Set(BUILTIN_LOUDNESS_PROFILES.map((p) => p.id));
 
 export const DEFAULT_LOUDNESS_PROFILES = Object.freeze({
@@ -22,82 +21,48 @@ export const DEFAULT_LOUDNESS_PROFILES = Object.freeze({
 });
 
 function normalizeReference(raw) {
-  // `isUsableThreshold` rather than `Number`, for the same reason as every other threshold here:
-  // `Number("")` is a perfectly good 0, which sits inside the window below and would draw a
-  // reference line at 0 LUFS that nobody asked for.
+  // `isUsableThreshold` rather than `Number`: `Number("")` is a perfectly good 0, which would draw
+  // a reference line at 0 LUFS that nobody asked for.
   if (!isUsableThreshold(raw)) return null;
   // Same window the legacy reference input accepted.
   return raw >= -70 && raw <= 0 ? raw : null;
 }
 
-function normalizeTolerance(raw) {
-  if (!isUsableTolerance(raw)) return null;
-  return { minus: Number(raw.minus), plus: Number(raw.plus) };
+function normalizeSeverity(raw) {
+  return raw === "fail" ? "fail" : "warn";
 }
 
 function normalizeRule(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  if (!VALID_ROLES.has(raw.role)) return null;
+  if (!isKnownMetricId(raw.metricId)) return null;
+  if (!VALID_OPS.has(raw.op)) return null;
 
-  const rule = {
-    role: raw.role,
-    severity: raw.severity === "fail" ? "fail" : "warn",
-  };
-
-  // Every threshold goes through `isUsableThreshold`, never `Number`: a blank field is `null` or
-  // `""`, both of which coerce to a perfectly good 0, and persisting that 0 invents a delivery
-  // number the user never chose. Blank means "not judged".
-  if (raw.role === "target") {
-    // Each half is kept only if usable, and `isRuleEmpty` treats a rule missing either half as
-    // unfilled. A corrupt band therefore degrades to "not judged" rather than to the harshest
-    // possible judgement.
-    if (isUsableThreshold(raw.target)) rule.target = raw.target;
-    const tolerance = normalizeTolerance(raw.tolerance);
-    if (tolerance) rule.tolerance = tolerance;
-  }
-
-  if (raw.role === "limit") {
-    if (isUsableThreshold(raw.max)) rule.max = raw.max;
-    if (isUsableThreshold(raw.min)) rule.min = raw.min;
-  }
-
-  if (raw.provisional === true) rule.provisional = true;
-  // Coerced, this is the dangerous direction: `Number(null)` is 0, a coverage floor of zero, which
-  // reads as "never inconclusive" and lets a dialogue rule conclude on almost no dialogue.
-  if (isUsableThreshold(raw.requiresDialogueCoverage)) {
-    rule.requiresDialogueCoverage = raw.requiresDialogueCoverage;
-  }
-
+  const rule = { metricId: raw.metricId, op: raw.op, severity: normalizeSeverity(raw.severity) };
+  // The value goes through `isUsableThreshold`, never `Number`: a blank field is `null` or `""`,
+  // both of which coerce to a perfectly good 0, and persisting that invents a threshold nobody
+  // chose. A rule with no usable value survives as an empty (unfilled) row.
+  if (isUsableThreshold(raw.value)) rule.value = raw.value;
   return rule;
 }
 
-/// A rule document survives with whatever rules are still valid; unknown metric ids are dropped
-/// so a profile written by a newer build cannot address rows this build cannot show.
+/// A rule document survives with whatever rules are still valid; rules on unknown metric ids are
+/// dropped so a profile written by a newer build cannot address rows this build cannot show.
 export function normalizeRuleDocument(raw, { kind } = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   if (typeof raw.id !== "string" || raw.id.length === 0) return null;
 
-  const metrics = {};
-  for (const [metricId, rawRule] of Object.entries(raw.metrics ?? {})) {
-    if (!isKnownMetricId(metricId)) continue;
+  const rules = [];
+  for (const rawRule of Array.isArray(raw.rules) ? raw.rules : []) {
     const rule = normalizeRule(rawRule);
-    if (rule) metrics[metricId] = rule;
+    if (rule) rules.push(rule);
   }
-
-  // A rule addressing an unknown metric is dropped above, and its preferred id goes with it.
-  // An empty rule is the deliberate exception: it survives, and stays preferred, because the row
-  // being filled in is the point.
-  const preferredMetricIds = (Array.isArray(raw.preferredMetricIds) ? raw.preferredMetricIds : [])
-    .filter((id) => Object.hasOwn(metrics, id))
-    .filter((id, index, all) => all.indexOf(id) === index);
 
   const document = {
     id: raw.id,
     name: typeof raw.name === "string" && raw.name.length > 0 ? raw.name : "Untitled",
     kind: kind ?? (raw.kind === "draft" ? "draft" : "user"),
     referenceLufs: normalizeReference(raw.referenceLufs),
-    metrics,
-    preferredMetricIds,
+    rules,
   };
 
   if (typeof raw.basedOn === "string" && raw.basedOn.length > 0) document.basedOn = raw.basedOn;
@@ -106,8 +71,7 @@ export function normalizeRuleDocument(raw, { kind } = {}) {
 }
 
 /// Resolves the persisted selection, falling back to Off whenever it cannot be honoured: an
-/// unknown built-in, or a user profile that has been deleted. A selection written by an older
-/// build -- `unsaved-custom` -- parses as unknown and lands here as Off, which is the migration.
+/// unknown built-in, or a user profile that has been deleted.
 function normalizeActive(raw, { userProfiles }) {
   const { kind, id } = parseSelection(raw);
   if (kind === "off") return LOUDNESS_PROFILE_OFF;
