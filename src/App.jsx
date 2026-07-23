@@ -649,9 +649,14 @@ function AppContent() {
   }, [historyRetentionSec, setHistoryOffsetSec, setHistoryWindowSec, setSelectedOffset]);
 
   const latestTimestampMs = useMemo(() => {
-    const last = histSourceList.length > 0 ? histSourceList[histSourceList.length - 1] : null;
+    const last =
+      histSourceList.length > 0
+        ? typeof histSourceList.rowAt === "function"
+          ? histSourceList.rowAt(histSourceList.length - 1)
+          : histSourceList[histSourceList.length - 1]
+        : null;
     return Number.isFinite(last?.timestampMs) ? last.timestampMs : undefined;
-  }, [histSourceList]);
+  }, [histSourceList, histSourceList.version]);
 
   const sourceTransportState = deriveSourceTransportState({
     sourceMode,

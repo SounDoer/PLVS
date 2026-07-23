@@ -81,13 +81,17 @@ export function LoudnessPanel({ compact = false }) {
   const targetColumns = plotWidthPx > 0 ? plotWidthPx : undefined;
   // histSourceList is a stable, mutated-in-place ring buffer, so its reference never changes between
   // frames even as samples are appended. totalSamples alone is not enough to key the memo: once the
-  // ring fills, its length caps and stops changing even though push+shift keeps advancing the data, so
+  // ring fills, its length caps and stops changing even though pushes keep advancing the data, so
   // the memo would freeze the curve on long (> retention) sessions. The newest sample's timestamp keeps
   // advancing every tick regardless of fill state, so keying on it captures new data without freezing,
   // and still avoids rebuilding the (decimated) path on unrelated re-renders (hover, sibling state).
   // buildHistoryPath caps node count at the pixel budget.
   const latestSampleTimestampMs =
-    totalSamples > 0 ? histSourceList[totalSamples - 1]?.timestampMs : undefined;
+    totalSamples > 0
+      ? typeof histSourceList.rowAt === "function"
+        ? histSourceList.rowAt(totalSamples - 1)?.timestampMs
+        : histSourceList[totalSamples - 1]?.timestampMs
+      : undefined;
   const displayHistoryPathMForRange = useMemo(
     () =>
       buildHistoryPath(

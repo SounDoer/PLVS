@@ -5,6 +5,7 @@ export class RingBuffer {
     this._buf = new Array(capacity);
     this._head = 0;
     this._size = 0;
+    this._version = 0;
   }
 
   push(value) {
@@ -15,6 +16,7 @@ export class RingBuffer {
     } else {
       this._head = (this._head + 1) % this._cap;
     }
+    this._version++;
   }
 
   // 0 = oldest, length-1 = newest
@@ -23,12 +25,24 @@ export class RingBuffer {
     return this._buf[(this._head + i) % this._cap];
   }
 
+  rowAt(i) {
+    return this.at(i);
+  }
+
+  timestampAt(i) {
+    return this.at(i)?.timestampMs;
+  }
+
   get length() {
     return this._size;
   }
 
   get capacity() {
     return this._cap;
+  }
+
+  get version() {
+    return this._version;
   }
 
   toArray() {
@@ -43,5 +57,18 @@ export class RingBuffer {
     this._buf.fill(undefined);
     this._head = 0;
     this._size = 0;
+    this._version++;
+  }
+
+  *[Symbol.iterator]() {
+    for (let i = 0; i < this._size; i++) yield this.at(i);
+  }
+
+  map(callback) {
+    const out = new Array(this._size);
+    for (let i = 0; i < this._size; i++) {
+      out[i] = callback(this.at(i), i, this);
+    }
+    return out;
   }
 }

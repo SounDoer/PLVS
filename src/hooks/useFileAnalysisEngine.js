@@ -16,8 +16,13 @@ export function detectHistoryTruncation(intake, histMaxSamples, durationMs) {
   if (loudness.length < histMaxSamples || !Number.isFinite(durationMs) || durationMs <= 0) {
     return { historyTruncated: false, historyCoveredMs: undefined };
   }
-  const firstTs = loudness[0]?.timestampMs ?? 0;
-  const lastTs = loudness[loudness.length - 1]?.timestampMs ?? 0;
+  const first = typeof loudness.rowAt === "function" ? loudness.rowAt(0) : loudness[0];
+  const last =
+    typeof loudness.rowAt === "function"
+      ? loudness.rowAt(loudness.length - 1)
+      : loudness[loudness.length - 1];
+  const firstTs = first?.timestampMs ?? 0;
+  const lastTs = last?.timestampMs ?? 0;
   const coveredMs = Math.max(0, lastTs - firstTs);
   if (coveredMs >= durationMs * 0.98) {
     return { historyTruncated: false, historyCoveredMs: undefined };

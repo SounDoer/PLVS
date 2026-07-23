@@ -18,12 +18,18 @@ function vectorscopePairsHaveSignal(pairs) {
   return false;
 }
 
+function snapshotRows(view) {
+  if (!view) return [];
+  if (typeof view.toArray === "function") return view.toArray();
+  return Array.from(view);
+}
+
 function freezeSnapshot(intake) {
   return {
-    loudness: [...intake.getLoudnessHistory()],
-    corr: [...intake.getCorrSnap()],
-    audio: [...intake.getAudioSnap()],
-    channelMetadata: [...(intake.getChannelMetadataSnap?.() ?? [])],
+    loudness: snapshotRows(intake.getLoudnessHistory()),
+    corr: snapshotRows(intake.getCorrSnap()),
+    audio: snapshotRows(intake.getAudioSnap()),
+    channelMetadata: snapshotRows(intake.getChannelMetadataSnap?.()),
     spectrumByKey: intake.snapshotVisualSpectrumByKey?.() ?? {},
     vectorscopeByKey: intake.snapshotVisualVectorscopeByKey?.() ?? {},
   };

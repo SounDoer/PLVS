@@ -133,11 +133,6 @@ function buildAudioSnap(row) {
   };
 }
 
-function ringPush(arr, value, max) {
-  arr.push(value);
-  if (arr.length > max) arr.shift();
-}
-
 function createTimestampDomain() {
   return {
     offsetMs: 0,
@@ -153,12 +148,12 @@ function createTimestampDomain() {
  */
 export class FrameIntake {
   constructor() {
-    this._loudnessHist = [];
-    this._histCapacity = 0;
-    this._audioSnap = [];
-    this._corrSnap = [];
-    this._frequencyChannelMarkers = [];
-    this._channelMetadataSnap = [];
+    this._histCapacity = 1;
+    this._loudnessHist = new RingBuffer(1);
+    this._audioSnap = new RingBuffer(1);
+    this._corrSnap = new RingBuffer(1);
+    this._frequencyChannelMarkers = new RingBuffer(1);
+    this._channelMetadataSnap = new RingBuffer(1);
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist = new RingBuffer(1); // lazily resized on first pushVisualHistRow
     // Request-keyed visual history: one slab/ring per active analysis request key. They are created
@@ -172,6 +167,20 @@ export class FrameIntake {
       frequencyLabel: "L/R",
       vectorscopePairLabel: "L/R",
     };
+  }
+
+  _rebuildScalarHistory(capacity) {
+    const loudnessHist = new RingBuffer(capacity);
+    const audioSnap = new RingBuffer(capacity);
+    const corrSnap = new RingBuffer(capacity);
+    const frequencyChannelMarkers = new RingBuffer(capacity);
+    const channelMetadataSnap = new RingBuffer(capacity);
+    this._histCapacity = capacity;
+    this._loudnessHist = loudnessHist;
+    this._audioSnap = audioSnap;
+    this._corrSnap = corrSnap;
+    this._frequencyChannelMarkers = frequencyChannelMarkers;
+    this._channelMetadataSnap = channelMetadataSnap;
   }
 
   beginCaptureSession() {
@@ -236,37 +245,24 @@ export class FrameIntake {
    */
   pushHistRow(row, histMaxSamples) {
     if (histMaxSamples !== this._histCapacity) {
-      this._loudnessHist = [];
-      this._audioSnap = [];
-      this._corrSnap = [];
-      this._frequencyChannelMarkers = [];
-      this._channelMetadataSnap = [];
-      this._histCapacity = histMaxSamples;
+      this._rebuildScalarHistory(histMaxSamples);
     }
     const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._histTimestamp);
     const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
-    ringPush(
-      this._loudnessHist,
-      {
-        m: hm,
-        st: hst,
-        waveformMin: snapshotNumericArray(row.waveformMin),
-        waveformMax: snapshotNumericArray(row.waveformMax),
-        waveformSubPairs: snapshotFloat32Array(row.waveformSubPairs),
-        waveformSubCount: row.waveformSubCount ?? 0,
-        timestampMs,
-      },
-      histMaxSamples
-    );
-    ringPush(this._audioSnap, buildAudioSnap(row), histMaxSamples);
-    ringPush(
-      this._corrSnap,
-      Number.isFinite(row.correlation) ? row.correlation : -Infinity,
-      histMaxSamples
-    );
-    ringPush(this._frequencyChannelMarkers, this._pendingFrequencyMarker, histMaxSamples);
-    ringPush(this._channelMetadataSnap, { ...this._currentChannelMetadata }, histMaxSamples);
+    this._loudnessHist.push({
+      m: hm,
+      st: hst,
+      waveformMin: snapshotNumericArray(row.waveformMin),
+      waveformMax: snapshotNumericArray(row.waveformMax),
+      waveformSubPairs: snapshotFloat32Array(row.waveformSubPairs),
+      waveformSubCount: row.waveformSubCount ?? 0,
+      timestampMs,
+    });
+    this._audioSnap.push(buildAudioSnap(row));
+    this._corrSnap.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
+    this._frequencyChannelMarkers.push(this._pendingFrequencyMarker);
+    this._channelMetadataSnap.push({ ...this._currentChannelMetadata });
     this._pendingFrequencyMarker = null;
   }
 
@@ -387,11 +383,11 @@ export class FrameIntake {
   }
 
   reset() {
-    this._loudnessHist = [];
-    this._audioSnap = [];
-    this._corrSnap = [];
-    this._frequencyChannelMarkers = [];
-    this._channelMetadataSnap = [];
+    this._loudnessHist.clear();
+    this._audioSnap.clear();
+    this._corrSnap.clear();
+    this._frequencyChannelMarkers.clear();
+    this._channelMetadataSnap.clear();
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist.clear();
     this._visualSpectrumHistByKey = new Map();

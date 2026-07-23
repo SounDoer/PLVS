@@ -3,6 +3,13 @@ import { LOUDNESS_HISTORY_LAYER_OPTIONS } from "../lib/panelControls.js";
 import { hzFromFrac } from "./spectrogramMath.js";
 import { inWindowRange } from "./spectrogramTimeline.js";
 
+function rowAt(entries, index) {
+  if (!entries) return undefined;
+  if (typeof entries.rowAt === "function") return entries.rowAt(index);
+  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
+  return entries[index];
+}
+
 /**
  * Formats a history hover age as a human-readable "X ago" string.
  * @param {number} sec
@@ -92,7 +99,7 @@ export function computeHistoryHoverPoint(
   const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
   const hoverIndex = histSourceList.length - 1 - Math.round(fromEndSamples);
   if (hoverIndex < 0 || hoverIndex >= histSourceList.length) return null;
-  const point = histSourceList[hoverIndex];
+  const point = rowAt(histSourceList, hoverIndex);
   if (!point) return null;
   const offsetSec = Math.max(0, (histSourceList.length - 1 - hoverIndex) * sampleSec);
   const yValue = resolveHistoryHoverYValue(point, visibleLayerIds);

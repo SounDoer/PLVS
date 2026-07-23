@@ -7,16 +7,29 @@
  * and frequency markers.
  */
 
+function rowAt(entries, index) {
+  if (!entries) return undefined;
+  if (typeof entries.rowAt === "function") return entries.rowAt(index);
+  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
+  return entries[index];
+}
+
+function timestampAt(entries, index) {
+  if (!entries) return undefined;
+  if (typeof entries.timestampAt === "function") return entries.timestampAt(index);
+  return rowAt(entries, index)?.timestampMs;
+}
+
 function hasTimestamps(entries) {
-  return Array.isArray(entries) && entries.length > 0 && Number.isFinite(entries[0]?.timestampMs);
+  return entries?.length > 0 && Number.isFinite(timestampAt(entries, 0));
 }
 
 function sampleIntervalMsNear(entries, index) {
-  const current = entries[index]?.timestampMs;
-  const prev = entries[index - 1]?.timestampMs;
+  const current = timestampAt(entries, index);
+  const prev = timestampAt(entries, index - 1);
   if (Number.isFinite(current) && Number.isFinite(prev) && current > prev) return current - prev;
 
-  const next = entries[index + 1]?.timestampMs;
+  const next = timestampAt(entries, index + 1);
   if (Number.isFinite(current) && Number.isFinite(next) && next > current) return next - current;
 
   return NaN;
@@ -69,7 +82,7 @@ export function spectrogramTimeWindow(
   const newestIdx = total - 1 - offset;
   const requested = Math.max(1, Math.floor(visibleSamples || 0));
   const oldestIdx = newestIdx - requested + 1;
-  const newestMs = historyEntries[newestIdx].timestampMs;
+  const newestMs = timestampAt(historyEntries, newestIdx);
   const intervalMs =
     Number.isFinite(historySampleMs) && historySampleMs > 0
       ? historySampleMs
@@ -78,7 +91,7 @@ export function spectrogramTimeWindow(
   return {
     oldestMs: shouldExtrapolateLeft
       ? newestMs - (requested - 1) * intervalMs
-      : historyEntries[Math.max(0, oldestIdx)].timestampMs,
+      : timestampAt(historyEntries, Math.max(0, oldestIdx)),
     newestMs,
   };
 }

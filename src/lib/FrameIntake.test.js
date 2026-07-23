@@ -76,7 +76,7 @@ describe("FrameIntake", () => {
       10
     );
 
-    expect(intake.getLoudnessHistory()[0].timestampMs).toBe(1200);
+    expect(intake.getLoudnessHistory().rowAt(0).timestampMs).toBe(1200);
     expect(intake.getVisualWaveformHist().at(0).timestampMs).toBe(1240);
   });
 
@@ -90,10 +90,10 @@ describe("FrameIntake", () => {
 
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
 
-    expect(intake.getFrequencyChannelMarkers()).toEqual([
+    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
       { type: "frequencyChannelChange", from: "L/R", to: "C" },
     ]);
-    expect(intake.getChannelMetadataSnap()).toEqual([
+    expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "C", vectorscopePairLabel: "L/R" },
     ]);
   });
@@ -109,8 +109,8 @@ describe("FrameIntake", () => {
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
 
     expect(intake.getLoudnessHistory()).toHaveLength(2);
-    expect(intake.getFrequencyChannelMarkers()).toEqual([null, null]);
-    expect(intake.getChannelMetadataSnap()).toEqual([
+    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([null, null]);
+    expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
       { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
     ]);
@@ -123,7 +123,7 @@ describe("FrameIntake", () => {
 
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
 
-    expect(intake.getChannelMetadataSnap()).toEqual([
+    expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "LFE", vectorscopePairLabel: "L/R" },
     ]);
   });
@@ -134,7 +134,7 @@ describe("FrameIntake", () => {
 
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
 
-    expect(intake.getChannelMetadataSnap()).toEqual([
+    expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "", vectorscopePairLabel: "" },
     ]);
   });
@@ -146,7 +146,7 @@ describe("FrameIntake", () => {
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
 
-    expect(intake.getFrequencyChannelMarkers()).toEqual([
+    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
       { type: "frequencyChannelChange", from: "L/R", to: "C" },
       null,
     ]);
@@ -159,8 +159,8 @@ describe("FrameIntake", () => {
 
     intake.reset();
 
-    expect(intake.getFrequencyChannelMarkers()).toEqual([]);
-    expect(intake.getChannelMetadataSnap()).toEqual([]);
+    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([]);
+    expect(intake.getChannelMetadataSnap().toArray()).toEqual([]);
   });
 
   it("pushHistRow records loudness values correctly", () => {
@@ -181,6 +181,43 @@ describe("FrameIntake", () => {
     expect(intake.getCorrSnap()).toHaveLength(HIST_MAX);
   });
 
+  it("keeps all scalar columns aligned after wraparound without Array.shift", () => {
+    const intake = new FrameIntake();
+    const originalShift = Array.prototype.shift;
+    let shiftCalls = 0;
+    Array.prototype.shift = function countedShift() {
+      shiftCalls += 1;
+      return originalShift.call(this);
+    };
+    try {
+      for (let index = 0; index < 6; index += 1) {
+        intake.setCurrentChannelMetadata({
+          frequencyLabel: `f-${index}`,
+          vectorscopePairLabel: `v-${index}`,
+        });
+        intake.pushHistRow(makeRow({ timestampMs: index * 100, correlation: index }), 3);
+      }
+    } finally {
+      Array.prototype.shift = originalShift;
+    }
+    expect(shiftCalls).toBe(0);
+    expect(
+      intake
+        .getLoudnessHistory()
+        .toArray()
+        .map((row) => row.timestampMs)
+    ).toEqual([300, 400, 500]);
+    expect(intake.getAudioSnap().length).toBe(3);
+    expect(intake.getCorrSnap().toArray()).toEqual([3, 4, 5]);
+    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([null, null, null]);
+    expect(
+      intake
+        .getChannelMetadataSnap()
+        .toArray()
+        .map((row) => row.frequencyLabel)
+    ).toEqual(["f-3", "f-4", "f-5"]);
+  });
+
   it("pushHistRow rebuilds scalar rings when histMaxSamples changes", () => {
     const intake = new FrameIntake();
     for (let i = 0; i < 3; i++) {
@@ -189,19 +226,32 @@ describe("FrameIntake", () => {
     expect(intake.getLoudnessHistory()).toHaveLength(3);
     expect(intake.getAudioSnap()).toHaveLength(3);
     expect(intake.getCorrSnap()).toHaveLength(3);
+    const previous = [
+      intake.getLoudnessHistory(),
+      intake.getAudioSnap(),
+      intake.getCorrSnap(),
+      intake.getFrequencyChannelMarkers(),
+      intake.getChannelMetadataSnap(),
+    ];
 
     intake.pushHistRow(makeRow(), HIST_MAX + 2, SR);
 
-    expect(intake.getLoudnessHistory()).toHaveLength(1);
-    expect(intake.getAudioSnap()).toHaveLength(1);
-    expect(intake.getCorrSnap()).toHaveLength(1);
+    const rebuilt = [
+      intake.getLoudnessHistory(),
+      intake.getAudioSnap(),
+      intake.getCorrSnap(),
+      intake.getFrequencyChannelMarkers(),
+      intake.getChannelMetadataSnap(),
+    ];
+    expect(rebuilt.every((ring) => ring.length === 1 && ring.capacity === HIST_MAX + 2)).toBe(true);
+    expect(rebuilt.every((ring, index) => ring !== previous[index])).toBe(true);
   });
 
   it("pushHistRow treats non-finite as -Infinity", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(makeRow({ lufsMomentary: NaN, correlation: undefined }), HIST_MAX, SR);
-    expect(intake.getLoudnessHistory()[0].m).toBe(-Infinity);
-    expect(intake.getCorrSnap()[0]).toBe(-Infinity);
+    expect(intake.getLoudnessHistory().rowAt(0).m).toBe(-Infinity);
+    expect(intake.getCorrSnap().rowAt(0)).toBe(-Infinity);
   });
 
   it("pushFrame without histTick does not touch the hist rings", () => {
@@ -223,10 +273,17 @@ describe("FrameIntake", () => {
     for (let i = 0; i < 3; i++) {
       intake.pushHistRow(makeRow(), HIST_MAX);
     }
+    const rings = [
+      intake.getLoudnessHistory(),
+      intake.getAudioSnap(),
+      intake.getCorrSnap(),
+      intake.getFrequencyChannelMarkers(),
+      intake.getChannelMetadataSnap(),
+    ];
     intake.reset();
-    expect(intake.getLoudnessHistory()).toHaveLength(0);
-    expect(intake.getAudioSnap()).toHaveLength(0);
-    expect(intake.getCorrSnap()).toHaveLength(0);
+    expect(rings.every((ring) => ring.length === 0)).toBe(true);
+    expect(rings.every((ring) => ring._buf.every((entry) => entry === undefined))).toBe(true);
+    expect(intake.getLoudnessHistory()).toBe(rings[0]);
   });
 
   it("audioSnap has expected shape", () => {
@@ -236,7 +293,7 @@ describe("FrameIntake", () => {
       HIST_MAX,
       SR
     );
-    const snap = intake.getAudioSnap()[0];
+    const snap = intake.getAudioSnap().rowAt(0);
     expect(snap.momentary).toBe(-20);
     expect(snap.correlation).toBe(0.5);
     expect(snap.vectorscopePairX).toBe(2);
@@ -250,7 +307,7 @@ describe("FrameIntake", () => {
       HIST_MAX
     );
 
-    const snap = intake.getAudioSnap()[0];
+    const snap = intake.getAudioSnap().rowAt(0);
     expect(snap.peakDb[0]).toBeCloseTo(-6.0206, 4);
     expect(snap.peakDb[1]).toBeCloseTo(-2.4988, 4);
   });
@@ -586,7 +643,7 @@ describe("FrameIntake", () => {
     const loudness = intake.getLoudnessHistory();
     const spectrogram = intake.getSpectrogramSnapsForKey(key);
 
-    expect(loudness[1].timestampMs).toBeGreaterThan(loudness[0].timestampMs);
+    expect(loudness.rowAt(1).timestampMs).toBeGreaterThan(loudness.rowAt(0).timestampMs);
     expect(spectrogram.timestampAt(1)).toBeGreaterThan(spectrogram.timestampAt(0));
   });
 
@@ -597,7 +654,7 @@ describe("FrameIntake", () => {
     intake.pushHistRow(makeRow({ timestampMs: 40 }), HIST_MAX);
 
     const loudness = intake.getLoudnessHistory();
-    expect(loudness[1].timestampMs).toBe(40);
+    expect(loudness.rowAt(1).timestampMs).toBe(40);
   });
 
   it("continues hist and visual timelines independently after a session boundary", () => {
@@ -623,7 +680,7 @@ describe("FrameIntake", () => {
     const loudness = intake.getLoudnessHistory();
     const spectrogram = intake.getSpectrogramSnapsForKey(key);
 
-    expect(loudness[1].timestampMs).toBe(1001);
+    expect(loudness.rowAt(1).timestampMs).toBe(1001);
     expect(spectrogram.timestampAt(1)).toBe(1041);
   });
 
@@ -734,8 +791,8 @@ describe("FrameIntake", () => {
     intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
     intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
 
-    expect(intake.getLoudnessHistory()[0].waveformSubPairs).toBe(
-      intake.getLoudnessHistory()[1].waveformSubPairs
+    expect(intake.getLoudnessHistory().rowAt(0).waveformSubPairs).toBe(
+      intake.getLoudnessHistory().rowAt(1).waveformSubPairs
     );
   });
 });

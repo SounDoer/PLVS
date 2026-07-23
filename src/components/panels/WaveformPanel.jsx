@@ -47,11 +47,15 @@ function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiv
   if (endIndex < startIndex) {
     return { startIndex: -1, endIndex: -1, startRow: null, endRow: null };
   }
+  const rowAt = (index) =>
+    typeof histSourceList.rowAt === "function"
+      ? histSourceList.rowAt(index)
+      : histSourceList[index];
   return {
     startIndex,
     endIndex,
-    startRow: histSourceList[startIndex] ?? null,
-    endRow: histSourceList[endIndex] ?? null,
+    startRow: rowAt(startIndex) ?? null,
+    endRow: rowAt(endIndex) ?? null,
   };
 }
 

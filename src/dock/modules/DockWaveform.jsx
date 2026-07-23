@@ -105,7 +105,10 @@ export function DockWaveform({ controls }) {
   const canvasRef = useRef(null);
   const plotRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const latestRow = histSourceList[histSourceList.length - 1];
+  const latestRow =
+    typeof histSourceList.rowAt === "function"
+      ? histSourceList.rowAt(histSourceList.length - 1)
+      : histSourceList[histSourceList.length - 1];
   const historyLength = histSourceList.length;
   const detectedChannelCount =
     frameData.channelCount ||

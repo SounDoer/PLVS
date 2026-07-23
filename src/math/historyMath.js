@@ -4,6 +4,13 @@ export const HISTORY_MAX_WINDOW_SEC = 7200;
 /** Number of segments for the horizontal time-axis tick labels on the loudness history chart. */
 export const HISTORY_TIME_TICK_STEPS = 4;
 
+function rowAt(entries, index) {
+  if (!entries) return undefined;
+  if (typeof entries.rowAt === "function") return entries.rowAt(index);
+  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
+  return entries[index];
+}
+
 /**
  * Build human-readable time labels (e.g. `0s`, `1m30s`) along the history X axis.
  * @param {number} historyOffsetSec Viewport offset in seconds (older samples to the left).
@@ -137,7 +144,7 @@ export function buildHistoryPath(
   if (count <= cols) {
     let d = "";
     for (let i = start; i <= end; i++) {
-      d += `${i === start ? "M" : " L"} ${xOf(i)} ${toY(histSourceList[i][key])}`;
+      d += `${i === start ? "M" : " L"} ${xOf(i)} ${toY(rowAt(histSourceList, i)[key])}`;
     }
     return d;
   }
@@ -149,7 +156,7 @@ export function buildHistoryPath(
   const maxY = new Array(cols).fill(-Infinity);
   for (let i = start; i <= end; i++) {
     const b = Math.min(cols - 1, Math.floor(((i - start) / count) * cols));
-    const y = toY(histSourceList[i][key]);
+    const y = toY(rowAt(histSourceList, i)[key]);
     if (y < minY[b]) minY[b] = y;
     if (y > maxY[b]) maxY[b] = y;
   }

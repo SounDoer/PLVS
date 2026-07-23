@@ -100,10 +100,14 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
   const sparkSamples = Math.round((controls?.dockHistoryWindowSec ?? 60) / HIST_SAMPLE_SEC);
   const historyLength = histSourceList.length;
   // The live history ring is mutated in place. Once it reaches capacity, both its reference and
-  // length stay stable while shift+push advances the samples, so length alone would freeze these
+  // length stay stable while pushes advance the samples, so length alone would freeze these
   // memos. The newest timestamp is the advancing version signal after the ring fills.
   const latestSampleTimestampMs =
-    historyLength > 0 ? histSourceList[historyLength - 1]?.timestampMs : undefined;
+    historyLength > 0
+      ? typeof histSourceList.rowAt === "function"
+        ? histSourceList.rowAt(historyLength - 1)?.timestampMs
+        : histSourceList[historyLength - 1]?.timestampMs
+      : undefined;
   const momentaryPath = useMemo(
     () =>
       buildHistoryPath(

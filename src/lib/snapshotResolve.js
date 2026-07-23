@@ -15,10 +15,17 @@ function lengthOf(entries) {
   return entries ? entries.length : 0;
 }
 
+function rowAt(entries, index) {
+  if (!entries) return undefined;
+  if (typeof entries.rowAt === "function") return entries.rowAt(index);
+  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
+  return entries[index];
+}
+
 function timestampAt(entries, i) {
   if (!entries) return undefined;
   if (typeof entries.timestampAt === "function") return entries.timestampAt(i);
-  return entries[i]?.timestampMs;
+  return rowAt(entries, i)?.timestampMs;
 }
 
 function hasTimestampEntries(entries) {
@@ -115,7 +122,7 @@ export function resolveSnapshot(view) {
 
   const rawTargetTimestampMs =
     selectedOffset >= 0 && hasTimestampEntries(histSourceList)
-      ? histSourceList[histSourceList.length - 1].timestampMs - selectedOffset * 1000
+      ? rowAt(histSourceList, lengthOf(histSourceList) - 1).timestampMs - selectedOffset * 1000
       : null;
   const targetTimestampMs = clampTimestampToEntries(histSourceList, rawTargetTimestampMs);
 
@@ -128,16 +135,14 @@ export function resolveSnapshot(view) {
       ? nearestTimestampIndex(histSourceList, targetTimestampMs)
       : fallbackSnapIdx;
 
-  const audioSnapIdx = snapIdx >= 0 ? Math.min(audioList.length - 1, snapIdx) : -1;
+  const audioSnapIdx = snapIdx >= 0 ? Math.min(lengthOf(audioList) - 1, snapIdx) : -1;
 
-  const displayAudio =
-    audioSnapIdx >= 0 && audioList[audioSnapIdx] ? audioList[audioSnapIdx] : liveAudio;
+  const snapAudio = audioSnapIdx >= 0 ? rowAt(audioList, audioSnapIdx) : undefined;
+  const displayAudio = snapAudio ?? liveAudio;
+  const snapCorrelation = rowAt(corrList, snapIdx);
   const correlation =
-    snapIdx >= 0 && Number.isFinite(corrList[snapIdx])
-      ? corrList[snapIdx]
-      : displayAudio.correlation;
-  const channelMetadata =
-    snapIdx >= 0 && channelMetadataList[snapIdx] ? channelMetadataList[snapIdx] : null;
+    snapIdx >= 0 && Number.isFinite(snapCorrelation) ? snapCorrelation : displayAudio.correlation;
+  const channelMetadata = snapIdx >= 0 ? (rowAt(channelMetadataList, snapIdx) ?? null) : null;
 
   return {
     snapIdx,

@@ -1,5 +1,12 @@
 const MAX_WAVEFORM_SUB_SAMPLES_PER_BUCKET = 16;
 
+function rowAt(entries, index) {
+  if (!entries) return undefined;
+  if (typeof entries.rowAt === "function") return entries.rowAt(index);
+  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
+  return entries[index];
+}
+
 /**
  * Decimate the visible sub-block history to one min/max bucket per device pixel,
  * with bucket boundaries anchored to absolute entry-index position so that
@@ -59,7 +66,7 @@ export function sliceWaveformSubHistory(
   };
 
   for (let e = start; e <= end; e++) {
-    const row = histSourceList[e];
+    const row = rowAt(histSourceList, e);
     const pairs = row.waveformSubPairs;
     const subCount = row.waveformSubCount | 0;
     const wmin = row.waveformMin ?? [];
