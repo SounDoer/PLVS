@@ -85,6 +85,26 @@ export function historyPerformanceHarnessOptionsFromSearch(search) {
   };
 }
 
+export function startHistoryPerformanceHarnessController({
+  start,
+  intake,
+  fullVisual,
+  publishAudio,
+  requestKeys,
+}) {
+  intake.reset();
+  return start({
+    intake,
+    fullVisual,
+    publishAudio,
+    ...requestKeys,
+  });
+}
+
+export function updateHistoryPerformanceHarnessController(controller, requestKeys) {
+  controller?.updateRequestKeys(requestKeys);
+}
+
 function errorDetails(prefix, error) {
   return `${prefix}: ${error?.message || String(error)}`;
 }
@@ -544,6 +564,12 @@ function AppContent() {
   const spectrumMaxHoldUi = normalizedPanelControls.spectrumMaxHold;
 
   const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
+  const historyPerformanceControllerRef = useRef(null);
+  const historyPerformanceRequestKeysRef = useRef(null);
+  historyPerformanceRequestKeysRef.current = {
+    spectrumKeys: analysisRequests.spectrum.map((request) => request.key),
+    vectorscopeKeys: analysisRequests.vectorscope.map((request) => request.key),
+  };
 
   useEffect(() => {
     if (!import.meta.env.DEV) return undefined;
@@ -553,22 +579,32 @@ function AppContent() {
     // desktop runtime so a query parameter can never compete with the real audio engine.
     if (isTauri()) return undefined;
     let disposed = false;
-    let controller = null;
     void import("./dev/historyPerformanceHarness.js").then(({ startHistoryPerformanceHarness }) => {
       if (disposed) return;
-      controller = startHistoryPerformanceHarness({
+      historyPerformanceControllerRef.current = startHistoryPerformanceHarnessController({
+        start: startHistoryPerformanceHarness,
         intake: intakeRef.current,
         fullVisual: options.fullVisual,
-        spectrumKeys: analysisRequests.spectrum.map((request) => request.key),
-        vectorscopeKeys: analysisRequests.vectorscope.map((request) => request.key),
+        requestKeys: historyPerformanceRequestKeysRef.current,
         publishAudio: (nextAudio) => setAudio((current) => ({ ...current, ...nextAudio })),
       });
     });
     return () => {
       disposed = true;
-      controller?.cancel();
+      historyPerformanceControllerRef.current?.cancel();
+      historyPerformanceControllerRef.current = null;
     };
-  }, [analysisRequests, intakeRef, setAudio]);
+  }, [intakeRef, setAudio]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
+    if (!options.enabled || isTauri()) return;
+    updateHistoryPerformanceHarnessController(
+      historyPerformanceControllerRef.current,
+      historyPerformanceRequestKeysRef.current
+    );
+  }, [analysisRequests]);
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
   // list updatePanelControls in their deps. If its identity changed per dispatch it would

@@ -118,6 +118,43 @@ describe("history performance harness", () => {
     expect(resolveKeyedVisualIndex(vectorscope, 40, 0)).toEqual({ index: 1, missing: false });
   });
 
+  it("updates only future visual rows without backfilling or restarting timestamps", async () => {
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const pushVisualHistRow = vi.spyOn(intake, "pushVisualHistRow");
+    const controller = startHistoryPerformanceHarness({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 2,
+      visualBatchSize: 1,
+      spectrumKeys: ["spectrum:old"],
+      vectorscopeKeys: ["vectorscope:old"],
+    });
+
+    scheduler.runIdle();
+    controller.updateRequestKeys({
+      spectrumKeys: ["spectrum:new"],
+      vectorscopeKeys: ["vectorscope:new"],
+    });
+    scheduler.runAllIdle();
+    await controller.seeded;
+    scheduler.tickIntervals(1);
+
+    const rows = pushVisualHistRow.mock.calls.map(([row]) => row);
+    expect(Object.keys(rows[0].spectrumByKey)).toEqual(["spectrum:old"]);
+    expect(Object.keys(rows[0].vectorscopeByKey)).toEqual(["vectorscope:old"]);
+    expect(Object.keys(rows[1].spectrumByKey)).toEqual(["spectrum:new"]);
+    expect(Object.keys(rows[1].vectorscopeByKey)).toEqual(["vectorscope:new"]);
+    expect(Object.keys(rows[2].spectrumByKey)).toEqual(["spectrum:new"]);
+    expect(rows.map((row) => row.timestampMs)).toEqual([0, 40, 80]);
+    expect(intake.getVisualSpectrumHistByKey("spectrum:old")).toHaveLength(1);
+    expect(intake.getVisualSpectrumHistByKey("spectrum:new")).toHaveLength(2);
+    expect(intake.getVisualSpectrumHistByKey("spectrum:new").timestampAt(0)).toBe(40);
+
+    controller.cancel();
+  });
+
   it("seeds injected small counts in bounded idle batches with exact cadence and capacity", async () => {
     const scheduler = createScheduler();
     const intake = createIntakeSpy();

@@ -237,7 +237,14 @@ export function seedHistoryPerformance({
   };
 
   schedule(scalarRows > 0 ? runScalarBatch : runVisualBatch);
-  return { done, cancel };
+  return {
+    done,
+    cancel,
+    updateRequestKeys(next = {}) {
+      spectrumKeys = next.spectrumKeys;
+      vectorscopeKeys = next.vectorscopeKeys;
+    },
+  };
 }
 
 export function startHistoryPerformanceHarness(options = {}) {
@@ -249,6 +256,8 @@ export function startHistoryPerformanceHarness(options = {}) {
   let visualTimestampMs = visualRows * VISUAL_CADENCE_MS;
   let nextScalarTimestampMs = scalarRows * SCALAR_CADENCE_MS;
   let liveScalarIndex = scalarRows;
+  let spectrumKeys = options.spectrumKeys;
+  let vectorscopeKeys = options.vectorscopeKeys;
   const payload = visualPayload(options.fullVisual ?? false);
   const scalarCapacity = Math.max(1, scalarRows);
   const visualCapacity = Math.max(1, visualRows);
@@ -259,7 +268,7 @@ export function startHistoryPerformanceHarness(options = {}) {
     liveIntervalId = scheduler.setInterval(() => {
       if (cancelled) return;
       options.intake.pushVisualHistRow(
-        visualRow(visualTimestampMs, payload, options.spectrumKeys, options.vectorscopeKeys),
+        visualRow(visualTimestampMs, payload, spectrumKeys, vectorscopeKeys),
         visualCapacity
       );
       while (visualTimestampMs >= nextScalarTimestampMs) {
@@ -276,6 +285,11 @@ export function startHistoryPerformanceHarness(options = {}) {
 
   return {
     seeded,
+    updateRequestKeys(next = {}) {
+      spectrumKeys = next.spectrumKeys;
+      vectorscopeKeys = next.vectorscopeKeys;
+      seed.updateRequestKeys(next);
+    },
     cancel() {
       if (cancelled) return;
       cancelled = true;

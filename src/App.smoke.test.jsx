@@ -1,7 +1,11 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
-import App, { historyPerformanceHarnessOptionsFromSearch } from "./App.jsx";
+import App, {
+  historyPerformanceHarnessOptionsFromSearch,
+  startHistoryPerformanceHarnessController,
+  updateHistoryPerformanceHarnessController,
+} from "./App.jsx";
 import { presetsStore, settingsStore } from "./persistence/index.js";
 import { isTauri } from "./ipc/env.js";
 import {
@@ -211,6 +215,46 @@ describe("history performance harness query", () => {
       enabled: false,
       fullVisual: false,
     });
+  });
+
+  it("updates request keys without restarting and resets intake before every real restart", () => {
+    const events = [];
+    const controller = {
+      cancel: vi.fn(),
+      updateRequestKeys: vi.fn((keys) => events.push(["update", keys])),
+    };
+    const start = vi.fn((options) => {
+      events.push(["start", options.spectrumKeys]);
+      return controller;
+    });
+    const intake = {
+      reset: vi.fn(() => events.push(["reset"])),
+    };
+    const options = {
+      intake,
+      start,
+      fullVisual: false,
+      publishAudio: vi.fn(),
+      requestKeys: {
+        spectrumKeys: ["spectrum:first"],
+        vectorscopeKeys: ["vectorscope:first"],
+      },
+    };
+
+    const first = startHistoryPerformanceHarnessController(options);
+    updateHistoryPerformanceHarnessController(first, {
+      spectrumKeys: ["spectrum:next"],
+      vectorscopeKeys: ["vectorscope:next"],
+    });
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(controller.updateRequestKeys).toHaveBeenCalledTimes(1);
+    expect(events.slice(0, 2)).toEqual([["reset"], ["start", ["spectrum:first"]]]);
+
+    first.cancel();
+    startHistoryPerformanceHarnessController(options);
+    expect(events.at(-2)).toEqual(["reset"]);
+    expect(events.at(-1)).toEqual(["start", ["spectrum:first"]]);
   });
 });
 
