@@ -237,3 +237,84 @@ export function buildHistoryPathFromIndex(
   }
   return d;
 }
+
+export function buildLoudnessHistoryPathsFromIndex(
+  histSourceList,
+  displayIndex,
+  visibleSamples,
+  effectiveOffsetSamples,
+  toY,
+  viewWidth = 600,
+  targetColumns = viewWidth
+) {
+  const empty = { m: "", st: "" };
+  if (!histSourceList.length) return empty;
+  const total = histSourceList.length;
+  const winSamples = Math.max(2, visibleSamples);
+  const offSamples = Math.max(0, Math.min(Math.max(0, total - 1), effectiveOffsetSamples));
+  const newestVisible = total - 1 - offSamples;
+  const oldestVisible = newestVisible - winSamples + 1;
+  const start = Math.max(0, oldestVisible);
+  const end = Math.min(total - 1, newestVisible);
+  if (end < start) return empty;
+  const count = end - start + 1;
+  if (count < 2) return empty;
+
+  const cols = Math.max(1, Math.floor(targetColumns));
+  if (count <= cols) {
+    return {
+      m: buildHistoryPath(
+        histSourceList,
+        "m",
+        visibleSamples,
+        effectiveOffsetSamples,
+        toY,
+        viewWidth,
+        targetColumns
+      ),
+      st: buildHistoryPath(
+        histSourceList,
+        "st",
+        visibleSamples,
+        effectiveOffsetSamples,
+        toY,
+        viewWidth,
+        targetColumns
+      ),
+    };
+  }
+
+  const xOf = (idx) => ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
+  displayIndex.beginQueryBatch();
+  const retainedStartSequence = displayIndex.retainedStartSequence;
+  const rawRowAt = (sequence) => rowAt(histSourceList, sequence - retainedStartSequence);
+  const paths = { m: "", st: "" };
+  let first = true;
+  for (let bucket = 0; bucket < cols; bucket += 1) {
+    const bucketStart = start + Math.ceil((bucket * count) / cols);
+    const bucketEnd = start + Math.ceil(((bucket + 1) * count) / cols) - 1;
+    if (bucketEnd < bucketStart) continue;
+    const range = displayIndex.queryRangeValues(
+      retainedStartSequence + bucketStart,
+      retainedStartSequence + bucketEnd,
+      rawRowAt
+    );
+    if (!range) continue;
+
+    const x = xOf(start + ((bucket + 0.5) * count) / cols);
+    // toY must be monotonic; sort transformed source extrema in screen space.
+    const mFirstY = toY(range.mins[0]);
+    const mSecondY = toY(range.maxes[0]);
+    const mMinY = Math.min(mFirstY, mSecondY);
+    const mMaxY = Math.max(mFirstY, mSecondY);
+    paths.m += `${first ? "M" : " L"} ${x} ${mMaxY} L ${x} ${mMinY}`;
+
+    const stFirstY = toY(range.mins[1]);
+    const stSecondY = toY(range.maxes[1]);
+    const stMinY = Math.min(stFirstY, stSecondY);
+    const stMaxY = Math.max(stFirstY, stSecondY);
+    paths.st += `${first ? "M" : " L"} ${x} ${stMaxY} L ${x} ${stMinY}`;
+    first = false;
+  }
+  return paths;
+}

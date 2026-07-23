@@ -5,7 +5,7 @@ import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
 import { LoudnessHistoryChart } from "./LoudnessHistoryChart";
 import {
   buildHistoryPath,
-  buildHistoryPathFromIndex,
+  buildLoudnessHistoryPathsFromIndex,
   HISTORY_TIME_TICK_STEPS,
 } from "../../math/historyMath";
 import { useChartHover } from "../../hooks/useChartHover";
@@ -90,79 +90,57 @@ export function LoudnessPanel({ compact = false }) {
   // the memo would freeze the curve on long (> retention) sessions. The newest sample's timestamp keeps
   // advancing every tick regardless of fill state, so keying on it captures new data without freezing,
   // and still avoids rebuilding the (decimated) path on unrelated re-renders (hover, sibling state).
-  // buildHistoryPath caps node count at the pixel budget.
+  // The combined indexed builder shares each display-column query across M and ST.
   const latestSampleTimestampMs =
     totalSamples > 0
       ? typeof histSourceList.rowAt === "function"
         ? histSourceList.rowAt(totalSamples - 1)?.timestampMs
         : histSourceList[totalSamples - 1]?.timestampMs
       : undefined;
-  const displayHistoryPathMForRange = useMemo(
-    () =>
-      loudnessDisplayIndex
-        ? buildHistoryPathFromIndex(
+  const displayHistoryPathsForRange = useMemo(() => {
+    const toY = (value) => loudnessHistY(value, 220, loudnessYRange);
+    return loudnessDisplayIndex
+      ? buildLoudnessHistoryPathsFromIndex(
+          histSourceList,
+          loudnessDisplayIndex,
+          visibleSamples,
+          effectiveOffsetSamples,
+          toY,
+          600,
+          targetColumns
+        )
+      : {
+          m: buildHistoryPath(
             histSourceList,
-            loudnessDisplayIndex,
             "m",
             visibleSamples,
             effectiveOffsetSamples,
-            (v) => loudnessHistY(v, 220, loudnessYRange),
-            600,
-            targetColumns
-          )
-        : buildHistoryPath(
-            histSourceList,
-            "m",
-            visibleSamples,
-            effectiveOffsetSamples,
-            (v) => loudnessHistY(v, 220, loudnessYRange),
+            toY,
             600,
             targetColumns
           ),
-    [
-      histSourceList,
-      loudnessDisplayIndex,
-      totalSamples,
-      latestSampleTimestampMs,
-      visibleSamples,
-      effectiveOffsetSamples,
-      loudnessYRange,
-      targetColumns,
-    ]
-  );
-  const displayHistoryPathSTForRange = useMemo(
-    () =>
-      loudnessDisplayIndex
-        ? buildHistoryPathFromIndex(
-            histSourceList,
-            loudnessDisplayIndex,
-            "st",
-            visibleSamples,
-            effectiveOffsetSamples,
-            (v) => loudnessHistY(v, 220, loudnessYRange),
-            600,
-            targetColumns
-          )
-        : buildHistoryPath(
+          st: buildHistoryPath(
             histSourceList,
             "st",
             visibleSamples,
             effectiveOffsetSamples,
-            (v) => loudnessHistY(v, 220, loudnessYRange),
+            toY,
             600,
             targetColumns
           ),
-    [
-      histSourceList,
-      loudnessDisplayIndex,
-      totalSamples,
-      latestSampleTimestampMs,
-      visibleSamples,
-      effectiveOffsetSamples,
-      loudnessYRange,
-      targetColumns,
-    ]
-  );
+        };
+  }, [
+    histSourceList,
+    loudnessDisplayIndex,
+    totalSamples,
+    latestSampleTimestampMs,
+    visibleSamples,
+    effectiveOffsetSamples,
+    loudnessYRange,
+    targetColumns,
+  ]);
+  const displayHistoryPathMForRange = displayHistoryPathsForRange.m;
+  const displayHistoryPathSTForRange = displayHistoryPathsForRange.st;
   const onLoudnessYRangeChange = useCallback(
     (newMin, newMax) => {
       onPanelControlsChange?.(

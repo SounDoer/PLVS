@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   getHistoryViewport,
   buildHistoryPath,
   buildHistoryPathFromIndex,
+  buildLoudnessHistoryPathsFromIndex,
   buildLoudnessYAxisTicks,
   HISTORY_MIN_WINDOW_SEC,
   HISTORY_MAX_WINDOW_SEC,
@@ -237,6 +238,53 @@ describe("buildHistoryPath", () => {
     expect(index.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
       columns * (2 * Math.ceil(Math.log2(capacity)) + 2)
     );
+  });
+
+  it("builds both indexed traces exactly with one vector query per display column", () => {
+    const capacity = 4096;
+    const rows = Array.from({ length: capacity }, (_, sequence) => ({
+      m: sequence % 53 === 0 ? -Infinity : -45 + (sequence % 31),
+      st: sequence % 79 === 0 ? -Infinity : -50 + (sequence % 23),
+      timestampMs: sequence * 100,
+    }));
+    const index = new LoudnessHistoryIndex(capacity);
+    rows.forEach((row) => index.append(row));
+    const vectorQuery = vi.spyOn(index._index, "queryRange");
+    const columns = 300;
+    const toY = (value) => (Number.isFinite(value) ? 220 - value * 2 : 999);
+
+    const paths = buildLoudnessHistoryPathsFromIndex(
+      rows,
+      index,
+      capacity - 137,
+      43,
+      toY,
+      600,
+      columns
+    );
+
+    expect(paths).toEqual({
+      m: buildHistoryPath(rows, "m", capacity - 137, 43, toY, 600, columns),
+      st: buildHistoryPath(rows, "st", capacity - 137, 43, toY, 600, columns),
+    });
+    expect(vectorQuery).toHaveBeenCalledTimes(columns);
+    expect(index.batchQueryStats().queries).toBe(columns);
+  });
+
+  it("keeps the combined raw path exact when samples fit within columns", () => {
+    const rows = [
+      { m: -30, st: -31 },
+      { m: -20, st: -24 },
+      { m: -10, st: -18 },
+    ];
+    const index = new LoudnessHistoryIndex(3);
+    rows.forEach((row) => index.append(row));
+    const toY = (value) => value * -2;
+
+    expect(buildLoudnessHistoryPathsFromIndex(rows, index, 5, 0, toY, 600, 600)).toEqual({
+      m: buildHistoryPath(rows, "m", 5, 0, toY, 600, 600),
+      st: buildHistoryPath(rows, "st", 5, 0, toY, 600, 600),
+    });
   });
 });
 

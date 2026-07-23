@@ -3,7 +3,7 @@ import { loudnessHistY } from "../../config/scales.js";
 import { loudnessTraceGradientStops } from "../../lib/loudnessTraceColor.js";
 import { RuleGradient } from "../../components/panels/LoudnessRuleGradient.jsx";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
-import { buildHistoryPath, buildHistoryPathFromIndex } from "../../math/historyMath.js";
+import { buildHistoryPath, buildLoudnessHistoryPathsFromIndex } from "../../math/historyMath.js";
 import { fmtMetric } from "../../math/formatMath.js";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
@@ -109,26 +109,23 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
         ? histSourceList.rowAt(historyLength - 1)?.timestampMs
         : histSourceList[historyLength - 1]?.timestampMs
       : undefined;
-  const momentaryPath = useMemo(
-    () =>
-      loudnessDisplayIndex
-        ? buildHistoryPathFromIndex(
+  const historyPaths = useMemo(
+    () => {
+      const toY = (value) => loudnessHistY(value, SPARK_H, yRange);
+      return loudnessDisplayIndex
+        ? buildLoudnessHistoryPathsFromIndex(
             histSourceList,
             loudnessDisplayIndex,
-            "m",
             sparkSamples,
             0,
-            (value) => loudnessHistY(value, SPARK_H, yRange),
+            toY,
             SPARK_W
           )
-        : buildHistoryPath(
-            histSourceList,
-            "m",
-            sparkSamples,
-            0,
-            (value) => loudnessHistY(value, SPARK_H, yRange),
-            SPARK_W
-          ),
+        : {
+            m: buildHistoryPath(histSourceList, "m", sparkSamples, 0, toY, SPARK_W),
+            st: buildHistoryPath(histSourceList, "st", sparkSamples, 0, toY, SPARK_W),
+          };
+    },
     // The history array is mutated in place; length advances while filling and timestamp after.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -141,37 +138,8 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
       yRange.max,
     ]
   );
-  const shortTermPath = useMemo(
-    () =>
-      loudnessDisplayIndex
-        ? buildHistoryPathFromIndex(
-            histSourceList,
-            loudnessDisplayIndex,
-            "st",
-            sparkSamples,
-            0,
-            (value) => loudnessHistY(value, SPARK_H, yRange),
-            SPARK_W
-          )
-        : buildHistoryPath(
-            histSourceList,
-            "st",
-            sparkSamples,
-            0,
-            (value) => loudnessHistY(value, SPARK_H, yRange),
-            SPARK_W
-          ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      histSourceList,
-      loudnessDisplayIndex,
-      historyLength,
-      latestSampleTimestampMs,
-      sparkSamples,
-      yRange.min,
-      yRange.max,
-    ]
-  );
+  const momentaryPath = historyPaths.m;
+  const shortTermPath = historyPaths.st;
   const showReferenceLine = showReference && Number.isFinite(referenceLufs);
   const referenceY = showReferenceLine ? loudnessHistY(referenceLufs, SPARK_H, yRange) : null;
   const mStops = loudnessTraceGradientStops(momentaryRules, yRange, "var(--ui-loudness-momentary)");

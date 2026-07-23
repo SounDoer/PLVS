@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
 import { DockLoudness } from "./DockLoudness.jsx";
@@ -171,6 +171,7 @@ describe("DockLoudness", () => {
     }));
     const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
     rows.forEach((row) => loudnessDisplayIndex.append(row));
+    const vectorQuery = vi.spyOn(loudnessDisplayIndex._index, "queryRange");
     let rowReads = 0;
     const histSourceList = {
       length: rows.length,
@@ -190,6 +191,7 @@ describe("DockLoudness", () => {
     expect(loudnessDisplayIndex.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
       120 * (2 * Math.ceil(Math.log2(capacity)) + 2)
     );
+    expect(vectorQuery).toHaveBeenCalledTimes(120);
   });
 
   it("hides unselected history layers and disables the reference gradient", () => {

@@ -176,4 +176,50 @@ describe("LoudnessPanel", () => {
       600 * (2 * Math.ceil(Math.log2(capacity)) + 2)
     );
   });
+
+  it("shares column queries across both trace memos and updates on the latest timestamp", () => {
+    const capacity = 1000;
+    const rows = Array.from({ length: capacity }, (_, sequence) => ({
+      m: -30 + (sequence % 17),
+      st: -32 + (sequence % 19),
+      timestampMs: sequence * 100,
+    }));
+    const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
+    rows.forEach((row) => loudnessDisplayIndex.append(row));
+    const vectorQuery = vi.spyOn(loudnessDisplayIndex._index, "queryRange");
+    const histSourceList = {
+      length: rows.length,
+      rowAt(index) {
+        return rows[index];
+      },
+    };
+    const shared = {
+      histSourceList,
+      loudnessDisplayIndex,
+      totalSamples: capacity,
+      visibleSamples: capacity,
+      effectiveOffsetSamples: 0,
+    };
+    const panelControls = { loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm"] };
+    const tree = (hasHistoryData = true) => (
+      <HistoryDataProvider value={{ ...baseAudioData, ...shared, hasHistoryData }}>
+        <PanelInstanceProvider value={{ panelControls }}>
+          <LoudnessPanel />
+        </PanelInstanceProvider>
+      </HistoryDataProvider>
+    );
+
+    const view = render(tree());
+    expect(vectorQuery).toHaveBeenCalledTimes(600);
+
+    view.rerender(tree(false));
+    expect(vectorQuery).toHaveBeenCalledTimes(600);
+
+    rows.shift();
+    const nextRow = { m: -6, st: -8, timestampMs: capacity * 100 };
+    rows.push(nextRow);
+    loudnessDisplayIndex.append(nextRow);
+    view.rerender(tree());
+    expect(vectorQuery).toHaveBeenCalledTimes(1200);
+  });
 });

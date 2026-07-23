@@ -31,6 +31,16 @@ export class LoudnessHistoryIndex {
   queryRange(key, startSequence, endSequence, rawRowAt) {
     const valueIndex = KEY_INDEX[key];
     if (valueIndex === undefined) throw new TypeError(`unsupported loudness history key: ${key}`);
+    const result = this.queryRangeValues(startSequence, endSequence, rawRowAt);
+    return result
+      ? {
+          min: result.mins[valueIndex],
+          max: result.maxes[valueIndex],
+        }
+      : null;
+  }
+
+  queryRangeValues(startSequence, endSequence, rawRowAt) {
     const result = this._index.queryRange(startSequence, endSequence, (sequence) => {
       const row = rawRowAt(sequence);
       if (!row) return row;
@@ -42,12 +52,7 @@ export class LoudnessHistoryIndex {
     this._batchQueryStats.nodesVisited += stats.nodesVisited;
     this._batchQueryStats.rawRowsVisited += stats.rawRowsVisited;
     this._batchQueryStats.summaryBucketsVisited += stats.summaryBucketsVisited;
-    return result
-      ? {
-          min: result.mins[valueIndex],
-          max: result.maxes[valueIndex],
-        }
-      : null;
+    return result;
   }
 
   beginQueryBatch() {

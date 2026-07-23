@@ -4,7 +4,7 @@ import { VISUAL_HISTORY_CHUNK_ROWS } from "../src/lib/historyChunkConfig.js";
 import { nearestTimestampIndex } from "../src/lib/snapshotResolve.js";
 import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "../src/lib/VectorscopeHistorySlab.js";
-import { buildHistoryPath, buildHistoryPathFromIndex } from "../src/math/historyMath.js";
+import { buildHistoryPath, buildLoudnessHistoryPathsFromIndex } from "../src/math/historyMath.js";
 import { LoudnessHistoryIndex } from "../src/math/loudnessHistoryIndex.js";
 import { sliceWaveformSubHistory } from "../src/math/waveformMath.js";
 
@@ -51,7 +51,11 @@ function averageTime(callback, iterations = 20) {
   for (let index = 0; index < iterations; index += 1) benchmarkSink = callback();
   const elapsed = (performance.now() - started) / iterations;
   benchmarkChecksum +=
-    typeof benchmarkSink === "string" ? benchmarkSink.length : benchmarkSink.bucketCount;
+    typeof benchmarkSink === "string"
+      ? benchmarkSink.length
+      : (benchmarkSink.m?.length ?? 0) +
+        (benchmarkSink.st?.length ?? 0) +
+        (benchmarkSink.bucketCount ?? 0);
   return elapsed;
 }
 
@@ -137,30 +141,28 @@ const rows = mainRows();
 const loudnessIndex = new LoudnessHistoryIndex(HIST_ROWS);
 for (const row of rows) loudnessIndex.append(row);
 for (const viewWidth of [600, 1200]) {
-  for (const key of ["m", "st"]) {
-    reportTime(`loudness ${key.toUpperCase()} reference / 240m / ${viewWidth}px`, () =>
-      buildHistoryPath(rows, key, HIST_ROWS, 0, (value) => value, viewWidth, viewWidth)
-    );
-    reportTime(`loudness ${key.toUpperCase()} indexed / 240m / ${viewWidth}px`, () =>
-      buildHistoryPathFromIndex(
-        rows,
-        loudnessIndex,
-        key,
-        HIST_ROWS,
-        0,
-        (value) => value,
-        viewWidth,
-        viewWidth
-      )
-    );
-    const stats = loudnessIndex.batchQueryStats();
-    console.log(
-      `loudness ${key.toUpperCase()} indexed nodes / ${viewWidth}px: ` +
-        `${stats.nodesVisited} (raw rows=${stats.rawRowsVisited}, summaries=${stats.summaryBucketsVisited})`
-    );
-    benchmarkChecksum +=
-      stats.nodesVisited + stats.rawRowsVisited + stats.summaryBucketsVisited + stats.queries;
-  }
+  reportTime(`loudness M+ST reference / 240m / ${viewWidth}px`, () => ({
+    m: buildHistoryPath(rows, "m", HIST_ROWS, 0, (value) => value, viewWidth, viewWidth),
+    st: buildHistoryPath(rows, "st", HIST_ROWS, 0, (value) => value, viewWidth, viewWidth),
+  }));
+  reportTime(`loudness M+ST indexed / 240m / ${viewWidth}px`, () =>
+    buildLoudnessHistoryPathsFromIndex(
+      rows,
+      loudnessIndex,
+      HIST_ROWS,
+      0,
+      (value) => value,
+      viewWidth,
+      viewWidth
+    )
+  );
+  const stats = loudnessIndex.batchQueryStats();
+  console.log(
+    `loudness M+ST indexed nodes / ${viewWidth}px: ` +
+      `${stats.nodesVisited} (raw rows=${stats.rawRowsVisited}, summaries=${stats.summaryBucketsVisited})`
+  );
+  benchmarkChecksum +=
+    stats.nodesVisited + stats.rawRowsVisited + stats.summaryBucketsVisited + stats.queries;
 }
 reportTime("waveform / 240m / 600px", () => {
   return sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, 600);
