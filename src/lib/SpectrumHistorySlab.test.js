@@ -375,6 +375,35 @@ describe("SpectrumHistorySlab", () => {
     );
   });
 
+  it("treats non-finite timestamps symmetrically on both sides of a gap query", () => {
+    const slab = new SpectrumHistorySlab(5, []);
+    for (const timestampMs of [1000, 1040, Number.NaN, 1120, 1200]) {
+      slab.push({ bands: [], dbList: [], timestampMs });
+    }
+
+    expect(slab.timestampGapBoundaries(0, slab.length - 1, 72)).toEqual([
+      { previousTimestampMs: 1120, nextTimestampMs: 1200 },
+    ]);
+    expect(slab.lastGapQueryStats()).toEqual({
+      chunksInspected: 1,
+      rowsScanned: 5,
+    });
+    expect(slab.freeze().timestampGapBoundaries(0, slab.length - 1, 72)).toEqual([
+      { previousTimestampMs: 1120, nextTimestampMs: 1200 },
+    ]);
+  });
+
+  it("uses a strict threshold for timestamp gap boundaries", () => {
+    const slab = new SpectrumHistorySlab(3, []);
+    for (const timestampMs of [1000, 1072, 1145]) {
+      slab.push({ bands: [], dbList: [], timestampMs });
+    }
+
+    expect(slab.timestampGapBoundaries(0, slab.length - 1, 72)).toEqual([
+      { previousTimestampMs: 1072, nextTimestampMs: 1145 },
+    ]);
+  });
+
   it("skips row scans for 240 minutes of continuous zero-band timestamps", () => {
     const rowCount = 360_000;
     const slab = new SpectrumHistorySlab(rowCount, []);

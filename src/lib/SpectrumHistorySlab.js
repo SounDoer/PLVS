@@ -90,9 +90,17 @@ function emptyGapQueryStats() {
 }
 
 function appendGapIfNeeded(out, previousTimestampMs, nextTimestampMs, maxGapMs) {
-  if (nextTimestampMs - previousTimestampMs > maxGapMs) {
+  if (
+    Number.isFinite(previousTimestampMs) &&
+    Number.isFinite(nextTimestampMs) &&
+    nextTimestampMs - previousTimestampMs > maxGapMs
+  ) {
     out.push({ previousTimestampMs, nextTimestampMs });
   }
+}
+
+function readableTimestamp(timestampMs) {
+  return Number.isFinite(timestampMs) ? timestampMs : NaN;
 }
 
 function timestampGapBoundariesInChunks(
@@ -198,7 +206,9 @@ export class SpectrumHistorySlab {
     const sequence = this._sequenceAt(index);
     if (sequence == null) return NaN;
     const chunk = this._chunkForSequence(sequence);
-    return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
+    return readableTimestamp(
+      chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)]
+    );
   }
 
   timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
@@ -410,7 +420,9 @@ export class FrozenSpectrumHistory {
     const sequence = this._sequenceAt(index);
     if (sequence == null) return NaN;
     const chunk = this._chunkForSequence(sequence);
-    return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
+    return readableTimestamp(
+      chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)]
+    );
   }
 
   timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
