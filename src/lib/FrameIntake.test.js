@@ -471,6 +471,7 @@ describe("FrameIntake", () => {
     for (let index = 0; index < capacity; index += 1) {
       intake.pushVisualHistRow(visualRow(index, index === capacity - 1), capacity);
     }
+    intake.pushVisualHistRow(visualRow(capacity, false), capacity);
 
     const liveSpectrumSealed = intake.getVisualSpectrumHistByKey(spectrumSealedKey);
     const liveSpectrumTail = intake.getVisualSpectrumHistByKey(spectrumTailKey);
@@ -496,7 +497,7 @@ describe("FrameIntake", () => {
     expect(frozenSpectrumSealed.storageStats()).toMatchObject({
       retainedRows: capacity,
       sharedSealedChunks: 1,
-      copiedTailRows: 1,
+      copiedTailRows: 2,
     });
     expect(frozenSpectrumTail.storageStats()).toMatchObject({
       retainedRows: 1,
@@ -519,7 +520,7 @@ describe("FrameIntake", () => {
     expect(frozenVectorscopeSealed.storageStats()).toMatchObject({
       retainedRows: capacity,
       sharedSealedChunks: 1,
-      copiedTailRows: 1,
+      copiedTailRows: 2,
     });
     expect(frozenVectorscopeTail.storageStats()).toMatchObject({
       retainedRows: 1,
@@ -528,17 +529,17 @@ describe("FrameIntake", () => {
     });
     expect(frozenVectorscopeSealed.storageStats().copiedTailBytes).toBeGreaterThan(0);
 
-    intake.pushVisualHistRow(visualRow(capacity, true), capacity);
-    intake.pushVisualHistRow(visualRow(capacity + 1), capacity);
+    intake.pushVisualHistRow(visualRow(capacity + 1, true), capacity);
+    intake.pushVisualHistRow(visualRow(capacity + 2), capacity);
 
-    expect(liveSpectrumSealed.timestampAt(0)).toBe(1080);
-    expect(frozenSpectrumSealed.timestampAt(0)).toBe(1000);
-    expect(frozenSpectrumSealed.timestampAt(capacity - 1)).toBe(1000 + (capacity - 1) * 40);
+    expect(liveSpectrumSealed.timestampAt(0)).toBe(1120);
+    expect(frozenSpectrumSealed.timestampAt(0)).toBe(1040);
+    expect(frozenSpectrumSealed.timestampAt(capacity - 1)).toBe(1000 + capacity * 40);
     expect(liveSpectrumTail.length).toBe(2);
     expect(frozenSpectrumTail.length).toBe(1);
     expect(Array.from(frozenSpectrumTail.rowAt(0).dbList)).toEqual([-30, -40]);
-    expect(liveVectorscopeSealed.timestampAt(0)).toBe(1080);
-    expect(frozenVectorscopeSealed.timestampAt(0)).toBe(1000);
+    expect(liveVectorscopeSealed.timestampAt(0)).toBe(1120);
+    expect(frozenVectorscopeSealed.timestampAt(0)).toBe(1040);
     expect(liveVectorscopeTail.length).toBe(2);
     expect(frozenVectorscopeTail.length).toBe(1);
     expect(Array.from(frozenVectorscopeTail.rowAt(0).pairs)).toEqual([
