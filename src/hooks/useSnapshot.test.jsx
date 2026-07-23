@@ -359,6 +359,78 @@ describe("useSnapshot", () => {
     expect(spectrum.timestampReads()).toBeGreaterThan(readsAfterFirstSession);
   });
 
+  it("retains keyed results only for the current snapshot target", () => {
+    const rows = Array.from({ length: 32 }, (_, index) => ({
+      timestampMs: 1000 + index * 100,
+    }));
+    const spectrum = countingVisualView(
+      rows.map(({ timestampMs }, index) => ({
+        timestampMs,
+        bands: [{ fCenter: 100 }],
+        dbList: [-30 + index],
+      }))
+    );
+    const vectorscope = countingVisualView(
+      rows.map(({ timestampMs }, index) => ({
+        timestampMs,
+        pairs: new Float32Array([index / 32, index / 32]),
+        correlation: 0.5,
+      }))
+    );
+    const intake = createIntake({
+      loudness: rows,
+      corr: rows.map(() => 0.5),
+      audio: rows.map(() => ({ correlation: 0.5 })),
+    });
+    intake.snapshotVisualSpectrumByKey = () => ({ spectrum: spectrum.view });
+    intake.snapshotVisualVectorscopeByKey = () => ({ vectorscope: vectorscope.view });
+    const baseProps = { selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0.8 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: baseProps,
+    });
+
+    const firstSpectrum = result.current.resolveSpectrumSnapshotForKey("spectrum");
+    const firstVectorscope = result.current.resolveVectorscopeSnapshotForKey("vectorscope");
+    const readsAtFirstTarget = {
+      spectrum: spectrum.timestampReads(),
+      vectorscope: vectorscope.timestampReads(),
+    };
+    expect(result.current.resolveSpectrumSnapshotForKey("spectrum")).toBe(firstSpectrum);
+    expect(result.current.resolveVectorscopeSnapshotForKey("vectorscope")).toBe(firstVectorscope);
+    expect(spectrum.timestampReads()).toBe(readsAtFirstTarget.spectrum);
+    expect(vectorscope.timestampReads()).toBe(readsAtFirstTarget.vectorscope);
+
+    for (let index = 1; index <= 24; index += 1) {
+      rerender({ ...baseProps, selectedOffset: index * 0.1 });
+      result.current.resolveSpectrumSnapshotForKey("spectrum");
+      result.current.resolveVectorscopeSnapshotForKey("vectorscope");
+    }
+    const readsBeforeReturning = {
+      spectrum: spectrum.timestampReads(),
+      vectorscope: vectorscope.timestampReads(),
+    };
+
+    rerender(baseProps);
+    const returnedSpectrum = result.current.resolveSpectrumSnapshotForKey("spectrum");
+    const returnedVectorscope = result.current.resolveVectorscopeSnapshotForKey("vectorscope");
+
+    expect(returnedSpectrum).not.toBe(firstSpectrum);
+    expect(returnedVectorscope).not.toBe(firstVectorscope);
+    expect(spectrum.timestampReads()).toBeGreaterThan(readsBeforeReturning.spectrum);
+    expect(vectorscope.timestampReads()).toBeGreaterThan(readsBeforeReturning.vectorscope);
+
+    const readsAfterReturning = {
+      spectrum: spectrum.timestampReads(),
+      vectorscope: vectorscope.timestampReads(),
+    };
+    expect(result.current.resolveSpectrumSnapshotForKey("spectrum")).toBe(returnedSpectrum);
+    expect(result.current.resolveVectorscopeSnapshotForKey("vectorscope")).toBe(
+      returnedVectorscope
+    );
+    expect(spectrum.timestampReads()).toBe(readsAfterReturning.spectrum);
+    expect(vectorscope.timestampReads()).toBe(readsAfterReturning.vectorscope);
+  });
+
   it("updates displayAudio on every live-mode audio rerender", () => {
     const intake = createIntake({ loudness: [], corr: [], audio: [] });
     const firstAudio = { correlation: 0.2 };

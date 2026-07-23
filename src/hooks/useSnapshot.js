@@ -83,8 +83,13 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   const keyToleranceMs = VISUAL_HIST_SAMPLE_SEC * 1000;
   const snapshotSpectrumByKey = snapSource?.spectrumByKey ?? null;
   const keyedResultCache = useMemo(
-    () => ({ snapSource, spectrum: new Map(), vectorscope: new Map() }),
-    [snapSource]
+    () => ({
+      snapSource,
+      targetTimestampMs: resolved.targetTimestampMs,
+      spectrum: new Map(),
+      vectorscope: new Map(),
+    }),
+    [snapSource, resolved.targetTimestampMs]
   );
   // Cache the Peak hold prefix table per frozen vectorscope view. The frozen view is stable for the
   // whole snapshot session, so the O(samples) table build runs once per key; scrubbing then costs a
