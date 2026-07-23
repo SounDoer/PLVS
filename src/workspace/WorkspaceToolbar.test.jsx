@@ -51,6 +51,18 @@ describe("ModulesPopoverContent", () => {
     expect(row?.querySelector("svg")).toBeTruthy();
   });
 
+  it("stretches module rows across the popover width", () => {
+    render(
+      <WorkspaceProvider>
+        <ModulesPopoverContent />
+      </WorkspaceProvider>
+    );
+
+    const row = screen.getByText("Level Meter").closest(".group");
+    expect(row?.parentElement?.classList.contains("w-full")).toBe(true);
+    expect(row?.parentElement?.classList.contains("w-max")).toBe(false);
+  });
+
   it("arms then resets the layout via the Reset control", () => {
     render(
       <WorkspaceProvider>

@@ -145,7 +145,7 @@ export function ModulesPopoverContent() {
 
   return (
     <>
-      <div className="grid w-max min-w-44 max-w-full gap-0.5">
+      <div className="grid w-full min-w-0 gap-0.5">
         {panelIds.map((panelId) => (
           <PanelRow key={panelId} panelId={panelId} />
         ))}

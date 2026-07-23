@@ -20,6 +20,8 @@ import { SHELL_HEADER, SHELL_HEADER_ACTIONS, SHELL_HEADER_OVERLAY } from "@/lib/
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { cn } from "@/lib/utils";
 
+const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(24rem,92vw)] p-1";
+
 function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
     <button
@@ -170,7 +172,7 @@ export function AppHeader({
                   />
                 </span>
               </PopoverTrigger>
-              <PopoverContent align="end" sideOffset={6} className="w-auto max-w-[92vw] p-1">
+              <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
                 <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
                   Devices
                 </p>
@@ -223,7 +225,7 @@ export function AppHeader({
               />
             </span>
           </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className="w-64 p-1">
+          <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
             <LoudnessProfilePopoverContent profile={loudnessProfile} stats={loudnessProfileStats} />
           </PopoverContent>
         </Popover>
@@ -236,7 +238,7 @@ export function AppHeader({
               />
             </span>
           </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className="w-max min-w-44 max-w-[92vw] p-1">
+          <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
             <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
               Modules
             </p>
@@ -253,7 +255,7 @@ export function AppHeader({
               />
             </span>
           </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className="w-56 p-1">
+          <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
             <FocusViewPopoverContent
               pinned={pinned}
               setPinned={setPinned}
@@ -281,7 +283,7 @@ export function AppHeader({
               />
             </span>
           </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className="w-60 p-1">
+          <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
             <PresetsPopoverContent presets={presets} />
           </PopoverContent>
         </Popover>

@@ -68,7 +68,8 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
             if (e.key === "Enter") handleSave();
           }}
           placeholder="New preset name"
-          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          size={15}
+          className="h-7 min-w-0 max-w-full shrink [field-sizing:content] rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
         <Button
           type="button"

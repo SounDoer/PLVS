@@ -178,6 +178,29 @@ describe("AppHeader", () => {
     expect(screen.getByText("No presets yet. Save the current view to start.")).toBeTruthy();
   });
 
+  it("gives every toolbar popover the shared adaptive width range", () => {
+    const loudnessProfile = {
+      active: "off",
+      document: null,
+      profiles: [],
+      draftBlocksLibraryActions: false,
+      selectOff: vi.fn(),
+      beginCreate: vi.fn(),
+    };
+
+    for (const name of ["Devices", "Loudness Profile", "Modules", "Views", "Presets"]) {
+      renderHeader({ loudnessProfile });
+      fireEvent.click(screen.getByRole("button", { name }));
+
+      const content = document.querySelector('[data-slot="popover-content"]');
+      expect(content.className).toContain("w-max");
+      expect(content.className).toContain("min-w-40");
+      expect(content.className).toContain("max-w-[min(24rem,92vw)]");
+
+      cleanup();
+    }
+  });
+
   it("holds auto-hidden controls while toolbar popovers are open", () => {
     const holdFocusControls = vi.fn();
     renderHeader({ autoHideControls: true, holdFocusControls });

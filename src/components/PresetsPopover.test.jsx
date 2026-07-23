@@ -26,6 +26,15 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByRole("textbox", { name: "New preset name" })).toBeTruthy();
   });
 
+  it("sizes the new preset name input from its content", () => {
+    render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
+    const input = screen.getByRole("textbox", { name: "New preset name" });
+    expect(input.classList.contains("[field-sizing:content]")).toBe(true);
+    expect(input.getAttribute("size")).toBe("15");
+    expect(input.classList.contains("w-44")).toBe(false);
+    expect(input.classList.contains("flex-1")).toBe(false);
+  });
+
   it("disables Save when the name input is empty", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
     expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(true);
