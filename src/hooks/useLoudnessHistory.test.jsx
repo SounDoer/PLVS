@@ -43,6 +43,15 @@ describe("useLoudnessHistory time axis", () => {
     }
     expect(ticks[ticks.length - 1]).toBe(0);
   });
+
+  it("returns viewport and time-axis data without owning rendered history paths", () => {
+    const { result } = renderHook(() => useLoudnessHistory({ ...baseProps, sourceMode: "live" }));
+
+    expect(result.current.visibleSamples).toBeGreaterThan(0);
+    expect(result.current.historyTimeTicks.length).toBeGreaterThan(0);
+    expect(result.current).not.toHaveProperty("displayHistoryPathM");
+    expect(result.current).not.toHaveProperty("displayHistoryPathST");
+  });
 });
 
 describe("useLoudnessHistory window clamp", () => {

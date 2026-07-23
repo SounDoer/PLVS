@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loudnessHistY, LOUDNESS_TICKS } from "../config/scales";
+import { LOUDNESS_TICKS } from "../config/scales";
 import {
-  buildHistoryPath,
   buildHistoryTimeAxisLabels,
   buildMediaTimeAxisLabels,
   getHistoryViewport,
@@ -14,8 +13,6 @@ import { DEFAULT_REFERENCE_LUFS } from "../settings/defaults.js";
 
 export const HIST_SAMPLE_SEC = 0.1;
 export const VISUAL_HIST_SAMPLE_SEC = 0.04;
-
-const CHART_HEIGHT_PX = 220;
 
 /**
  * History viewport state, derived display data, and loudness metrics for LoudnessPanel.
@@ -61,7 +58,7 @@ export function useLoudnessHistory({
     return () => clearTimeout(t);
   }, [isHudTimerActive, historyHudHold]);
 
-  // --- Viewport & display paths ---
+  // --- Viewport & display data ---
 
   const totalSamples = histSourceList.length;
   // File mode shows a fixed-extent recording: cap the window to the whole file so zoom-out can never
@@ -85,21 +82,6 @@ export function useLoudnessHistory({
     historyOffsetSec,
     HIST_SAMPLE_SEC,
     historyMaxWindowSec
-  );
-
-  const displayHistoryPathM = buildHistoryPath(
-    histSourceList,
-    "m",
-    visibleSamples,
-    effectiveOffsetSamples,
-    (v) => loudnessHistY(v, CHART_HEIGHT_PX)
-  );
-  const displayHistoryPathST = buildHistoryPath(
-    histSourceList,
-    "st",
-    visibleSamples,
-    effectiveOffsetSamples,
-    (v) => loudnessHistY(v, CHART_HEIGHT_PX)
   );
 
   const selectedHistSteps =
@@ -158,8 +140,6 @@ export function useLoudnessHistory({
     effectiveOffsetSamples,
     effectiveOffsetSec,
     // Display
-    displayHistoryPathM,
-    displayHistoryPathST,
     selectedHistSteps,
     showSelLine,
     selLineX,
