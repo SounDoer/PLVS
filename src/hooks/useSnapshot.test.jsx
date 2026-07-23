@@ -342,18 +342,34 @@ describe("useSnapshot", () => {
     expect(spectrumFreezes).toBe(1);
     expect(vectorscopeFreezes).toBe(1);
     expect(result.current.snapshotSpectrumByKey.spectrum).toBe(frozenSpectrum);
-    expect(frozenSpectrum.constructor.name).toBe("FrozenSpectrumHistory");
-    expect(frozenVectorscope.constructor.name).toBe("FrozenVectorscopeHistory");
+    expect(frozenSpectrum.length).toBe(2);
+    expect(frozenSpectrum.timestampAt(1)).toBe(1100);
+    expect(frozenSpectrum.rowAt(1).dbList).toBeInstanceOf(Float32Array);
+    expect(frozenVectorscope.length).toBe(2);
+    expect(frozenVectorscope.timestampAt(1)).toBe(1100);
+    expect(frozenVectorscope.rowAt(1).pairs).toBeInstanceOf(Float32Array);
     expect(spectrum.data.dbList).toBeInstanceOf(Float32Array);
     expect(spectrum.data.dbList.buffer).toBe(frozenSpectrum.rowAt(1).dbList.buffer);
     expect(vectorscope.pairs).toBeInstanceOf(Float32Array);
     expect(vectorscope.pairs.buffer).toBe(frozenVectorscope.rowAt(1).pairs.buffer);
 
+    spectrumSlab.push({ bands, dbList: [-10, -5], timestampMs: 1200 });
+    vectorscopeSlab.push({
+      pairs: [0.75, -0.75],
+      correlation: 0.25,
+      timestampMs: 1200,
+    });
     rerender({ ...baseProps, selectedOffset: 0.1 });
     result.current.resolveSpectrumSnapshotForKey("spectrum");
     result.current.resolveVectorscopeSnapshotForKey("vectorscope");
     expect(spectrumFreezes).toBe(1);
     expect(vectorscopeFreezes).toBe(1);
+    expect(frozenSpectrum.length).toBe(2);
+    expect(frozenSpectrum.timestampAt(1)).toBe(1100);
+    expect(frozenSpectrum.timestampAt(2)).toBeNaN();
+    expect(frozenVectorscope.length).toBe(2);
+    expect(frozenVectorscope.timestampAt(1)).toBe(1100);
+    expect(frozenVectorscope.timestampAt(2)).toBeNaN();
   });
 
   it("separates Vectorscope result caches by peak-hold mode", () => {
