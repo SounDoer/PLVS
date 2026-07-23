@@ -76,6 +76,15 @@ import packageInfo from "../package.json";
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 
+export function historyPerformanceHarnessOptionsFromSearch(search) {
+  const params = new URLSearchParams(search);
+  const enabled = params.get("historyPerf") === "240m";
+  return {
+    enabled,
+    fullVisual: enabled && params.get("historyPerfFullVisual") === "1",
+  };
+}
+
 function errorDetails(prefix, error) {
   return `${prefix}: ${error?.message || String(error)}`;
 }
@@ -538,8 +547,8 @@ function AppContent() {
 
   useEffect(() => {
     if (!import.meta.env.DEV) return undefined;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("historyPerf") !== "240m") return undefined;
+    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
+    if (!options.enabled) return undefined;
     // `npm run dev` is browser-only and has no Tauri capture. Keep this harness out of the
     // desktop runtime so a query parameter can never compete with the real audio engine.
     if (isTauri()) return undefined;
@@ -549,7 +558,9 @@ function AppContent() {
       if (disposed) return;
       controller = startHistoryPerformanceHarness({
         intake: intakeRef.current,
-        fullVisual: params.get("historyPerfFullVisual") === "1",
+        fullVisual: options.fullVisual,
+        spectrumKeys: analysisRequests.spectrum.map((request) => request.key),
+        vectorscopeKeys: analysisRequests.vectorscope.map((request) => request.key),
         publishAudio: (nextAudio) => setAudio((current) => ({ ...current, ...nextAudio })),
       });
     });
@@ -557,7 +568,7 @@ function AppContent() {
       disposed = true;
       controller?.cancel();
     };
-  }, [intakeRef, setAudio]);
+  }, [analysisRequests, intakeRef, setAudio]);
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
   // list updatePanelControls in their deps. If its identity changed per dispatch it would

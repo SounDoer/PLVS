@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
-import App from "./App.jsx";
+import App, { historyPerformanceHarnessOptionsFromSearch } from "./App.jsx";
 import { presetsStore, settingsStore } from "./persistence/index.js";
 import { isTauri } from "./ipc/env.js";
 import {
@@ -197,6 +197,22 @@ afterEach(() => {
 // "Loudness" also names a panel and a profile's name also fills the editor's name field, so
 // footer assertions have to be scoped to the footer rather than to the whole document.
 const footer = () => within(document.querySelector("footer"));
+
+describe("history performance harness query", () => {
+  it("parses the options used by the App effect", () => {
+    expect(historyPerformanceHarnessOptionsFromSearch("?historyPerf=240m")).toEqual({
+      enabled: true,
+      fullVisual: false,
+    });
+    expect(
+      historyPerformanceHarnessOptionsFromSearch("?historyPerf=240m&historyPerfFullVisual=1")
+    ).toEqual({ enabled: true, fullVisual: true });
+    expect(historyPerformanceHarnessOptionsFromSearch("?historyPerf=60m")).toEqual({
+      enabled: false,
+      fullVisual: false,
+    });
+  });
+});
 
 describe("App smoke", () => {
   it("mounts the full app shell", async () => {

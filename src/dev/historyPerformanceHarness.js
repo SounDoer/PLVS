@@ -2,8 +2,8 @@ const DEFAULT_SCALAR_ROWS = 144_000;
 const DEFAULT_VISUAL_ROWS = 360_000;
 const SCALAR_CADENCE_MS = 100;
 const VISUAL_CADENCE_MS = 40;
-const SPECTRUM_KEY = "spectrum:single:0:combined";
-const VECTORSCOPE_KEY = "vectorscope:pair:0:1";
+const DEFAULT_SPECTRUM_KEY = "spectrum:pair:0:1:combined:sp25:tilt300:smoff";
+const DEFAULT_VECTORSCOPE_KEY = "vectorscope:pair:0:1";
 
 function defaultScheduler() {
   const requestIdle =
@@ -107,26 +107,26 @@ function visualPayload(fullVisual) {
   return { bandCentersHz, smoothDb, pairs };
 }
 
-function visualRow(timestampMs, payload) {
+function keyedEntries(keys, fallbackKey, value) {
+  return Object.fromEntries((keys?.length ? keys : [fallbackKey]).map((key) => [key, value]));
+}
+
+function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys) {
   return {
     timestampMs,
     waveformMin: [],
     waveformMax: [],
-    spectrumByKey: {
-      [SPECTRUM_KEY]: {
-        bandCentersHz: payload.bandCentersHz,
-        smoothDb: payload.smoothDb,
-      },
-    },
-    vectorscopeByKey: {
-      [VECTORSCOPE_KEY]: {
-        pairs: payload.pairs,
-        correlation: 0.75,
-        sideToMidDb: -8,
-        midEnergy: 0.5,
-        sideEnergy: 0.2,
-      },
-    },
+    spectrumByKey: keyedEntries(spectrumKeys, DEFAULT_SPECTRUM_KEY, {
+      bandCentersHz: payload.bandCentersHz,
+      smoothDb: payload.smoothDb,
+    }),
+    vectorscopeByKey: keyedEntries(vectorscopeKeys, DEFAULT_VECTORSCOPE_KEY, {
+      pairs: payload.pairs,
+      correlation: 0.75,
+      sideToMidDb: -8,
+      midEnergy: 0.5,
+      sideEnergy: 0.2,
+    }),
   };
 }
 
@@ -150,6 +150,8 @@ export function seedHistoryPerformance({
   scalarRows = DEFAULT_SCALAR_ROWS,
   visualRows = DEFAULT_VISUAL_ROWS,
   fullVisual = false,
+  spectrumKeys,
+  vectorscopeKeys,
   scheduler = defaultScheduler(),
   scalarBatchSize = 1_000,
   visualBatchSize = 2_000,
@@ -203,17 +205,19 @@ export function seedHistoryPerformance({
     const end = Math.min(visualRows, visualCompleted + visualBatchSize);
     while (visualCompleted < end) {
       intake.pushVisualHistRow(
-        visualRow(visualCompleted * VISUAL_CADENCE_MS, payload),
+        visualRow(visualCompleted * VISUAL_CADENCE_MS, payload, spectrumKeys, vectorscopeKeys),
         Math.max(1, visualRows)
       );
       visualCompleted += 1;
     }
     report({ phase: "visual", completed: visualCompleted, total: visualRows, fullVisual }, cancel);
+    if (cancelled) return;
     if (visualCompleted < visualRows) {
       schedule(runVisualBatch);
       return;
     }
     report({ phase: "complete", completed: total, total, fullVisual }, cancel);
+    if (cancelled) return;
     settleDone({ cancelled: false, scalarCompleted, visualCompleted });
   };
   const runScalarBatch = () => {
@@ -228,6 +232,7 @@ export function seedHistoryPerformance({
     }
     if (latest) publishAudio?.(meterAudioFromScalarRow(latest));
     report({ phase: "scalar", completed: scalarCompleted, total: scalarRows, fullVisual }, cancel);
+    if (cancelled) return;
     schedule(scalarCompleted < scalarRows ? runScalarBatch : runVisualBatch);
   };
 
@@ -253,7 +258,10 @@ export function startHistoryPerformanceHarness(options = {}) {
     if (result.cancelled || cancelled) return result;
     liveIntervalId = scheduler.setInterval(() => {
       if (cancelled) return;
-      options.intake.pushVisualHistRow(visualRow(visualTimestampMs, payload), visualCapacity);
+      options.intake.pushVisualHistRow(
+        visualRow(visualTimestampMs, payload, options.spectrumKeys, options.vectorscopeKeys),
+        visualCapacity
+      );
       while (visualTimestampMs >= nextScalarTimestampMs) {
         const row = scalarRow(liveScalarIndex, nextScalarTimestampMs);
         options.intake.pushHistRow(row, scalarCapacity);

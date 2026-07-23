@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { deriveAnalysisRequests } from "../analysis/analysisRequests.js";
+import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
+import { FrameIntake } from "../lib/FrameIntake.js";
+import { resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
 import {
   seedHistoryPerformance,
   startHistoryPerformanceHarness,
@@ -64,6 +68,56 @@ function createIntakeSpy() {
 }
 
 describe("history performance harness", () => {
+  it("stores visual rows under active keys from the analysis request resolver", async () => {
+    const requests = deriveAnalysisRequests({
+      tree: {
+        type: "leaf",
+        tabs: ["spectrum-panel", "vectorscope-panel"],
+        activeTab: "spectrum-panel",
+      },
+      panelsById: {
+        "spectrum-panel": { id: "spectrum-panel", moduleId: "spectrum" },
+        "vectorscope-panel": { id: "vectorscope-panel", moduleId: "vectorscope" },
+      },
+      panelOrder: ["spectrum-panel", "vectorscope-panel"],
+      panelControlsById: {
+        "spectrum-panel": {
+          ...DEFAULT_PANEL_CONTROLS,
+          spectrumSpeedPercent: 75,
+          spectrumTiltDbPerOctave: 1.5,
+          spectrumOctaveSmoothing: "1/3",
+        },
+        "vectorscope-panel": {
+          ...DEFAULT_PANEL_CONTROLS,
+          vectorscopePair: { x: 1, y: 2 },
+        },
+      },
+    });
+    const spectrumKey = requests.spectrumRequests[0].key;
+    const vectorscopeKey = requests.vectorscopeRequests[0].key;
+    expect(spectrumKey).toContain(":sp75:tilt150:sm");
+
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const controller = seedHistoryPerformance({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 2,
+      spectrumKeys: [spectrumKey],
+      vectorscopeKeys: [vectorscopeKey],
+    });
+    scheduler.runAllIdle();
+    await controller.done;
+
+    const spectrum = intake.getVisualSpectrumHistByKey(spectrumKey);
+    const vectorscope = intake.getVisualVectorscopeHistByKey(vectorscopeKey);
+    expect(spectrum).toHaveLength(2);
+    expect(vectorscope).toHaveLength(2);
+    expect(resolveKeyedVisualIndex(spectrum, 40, 0)).toEqual({ index: 1, missing: false });
+    expect(resolveKeyedVisualIndex(vectorscope, 40, 0)).toEqual({ index: 1, missing: false });
+  });
+
   it("seeds injected small counts in bounded idle batches with exact cadence and capacity", async () => {
     const scheduler = createScheduler();
     const intake = createIntakeSpy();
@@ -185,6 +239,94 @@ describe("history performance harness", () => {
 
     expect(intake.pushHistRow).toHaveBeenCalledTimes(1);
     expect(intake.pushVisualHistRow).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["scalar", "visual"])(
+    "stops scheduling and ends progress at cancelled after synchronous %s cancellation",
+    async (cancelPhase) => {
+      const scheduler = createScheduler();
+      const intake = createIntakeSpy();
+      const phases = [];
+      let controller;
+      controller = seedHistoryPerformance({
+        intake,
+        scheduler,
+        scalarRows: cancelPhase === "scalar" ? 2 : 0,
+        visualRows: 2,
+        scalarBatchSize: 1,
+        visualBatchSize: 1,
+        onProgress(progress) {
+          phases.push(progress.phase);
+          if (progress.phase === cancelPhase) controller.cancel();
+        },
+      });
+
+      scheduler.runIdle();
+      expect(scheduler.pendingIdle()).toBe(0);
+      scheduler.runAllIdle();
+      const result = await controller.done;
+
+      expect(result.cancelled).toBe(true);
+      expect(phases.at(-1)).toBe("cancelled");
+      expect(phases).not.toContain("complete");
+      expect(scheduler.pendingIdle()).toBe(0);
+    }
+  );
+
+  it("keeps cancelled as the final phase when complete progress synchronously cancels", async () => {
+    const scheduler = createScheduler();
+    const intake = createIntakeSpy();
+    const phases = [];
+    let controller;
+    controller = seedHistoryPerformance({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 1,
+      onProgress(progress) {
+        phases.push(progress.phase);
+        if (progress.phase === "complete") controller.cancel();
+      },
+    });
+
+    scheduler.runIdle();
+    expect(scheduler.pendingIdle()).toBe(0);
+    scheduler.runAllIdle();
+    const result = await controller.done;
+
+    expect(result.cancelled).toBe(true);
+    expect(phases).toEqual(["visual", "complete", "cancelled"]);
+    expect(scheduler.pendingIdle()).toBe(0);
+  });
+
+  it("stops the batch when a progress event listener synchronously cancels", async () => {
+    const scheduler = createScheduler();
+    const intake = createIntakeSpy();
+    const phases = [];
+    const globalTarget = {
+      dispatchEvent(event) {
+        phases.push(event.detail.phase);
+        if (event.detail.phase === "visual") this.__PLVS_HISTORY_PERF__.cancel();
+      },
+    };
+    const controller = seedHistoryPerformance({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 2,
+      visualBatchSize: 1,
+      globalTarget,
+    });
+
+    scheduler.runIdle();
+    expect(scheduler.pendingIdle()).toBe(0);
+    scheduler.runAllIdle();
+    const result = await controller.done;
+
+    expect(result.cancelled).toBe(true);
+    expect(phases.at(-1)).toBe("cancelled");
+    expect(phases).not.toContain("complete");
+    expect(scheduler.pendingIdle()).toBe(0);
   });
 
   it("continues 40 ms live visual appends and approximately 100 ms scalar publishes", async () => {
