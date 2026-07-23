@@ -93,10 +93,8 @@ dedicated Y-axis tick.
 | ------------------------------ | ---------------- | --------------------------------------- |
 | `--ui-loudness-momentary`      | `#fb923c`        | Loudness M live primary data trace      |
 | `--ui-loudness-momentary-snap` | `#fcd34d`        | Loudness M snapshot trace               |
-| `--ui-loudness-momentary-over` | `#ff5a1f`        | Loudness M over-reference shade         |
 | `--ui-loudness-shortterm`      | `#c66a2a`        | Loudness ST live sibling data trace     |
 | `--ui-loudness-shortterm-snap` | `#f2b27a`        | Loudness ST snapshot sibling trace      |
-| `--ui-loudness-shortterm-over` | `#ff4a0a`        | Loudness ST over-reference shade        |
 | `--ui-loudness-selection`      | `#fcd34d`        | Selected-offset baseline                |
 | `--ui-loudness-grid`           | `color-mix(...)` | Loudness and waveform grid lines        |
 | `--ui-vectorscope-trace`       | `#fb923c`        | Vectorscope path (live)                 |

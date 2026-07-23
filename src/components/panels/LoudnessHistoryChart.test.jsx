@@ -57,14 +57,14 @@ function renderChart(loudnessHistoryVisibleLayerIds) {
 }
 
 describe("LoudnessHistoryChart", () => {
-  it("renders the momentary path with an over-gradient stroke when ref is on", () => {
+  it("renders the momentary path with a plain stroke and draws the reference line when ref is on", () => {
     const { container } = renderChart(["momentary", "ref"]);
 
     const path = container.querySelector("svg path");
     expect(container.querySelectorAll("svg path")).toHaveLength(1);
     expect(path?.getAttribute("d")).toBe(baseProps.displayHistoryPathM);
-    expect(path?.getAttribute("stroke") ?? "").toMatch(/^url\(#/);
-    expect(screen.queryByText("Ref -23 LUFS")).toBeNull();
+    expect(path?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
+    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeTruthy();
   });
 
   it("keeps data trace stroke widths independent from SVG scaling", () => {
@@ -240,24 +240,26 @@ describe("LoudnessHistoryChart", () => {
     expect(screen.queryByLabelText("Short-term trace")).toBeNull();
   });
 
-  it("applies an over-reference gradient stroke to M and ST when the reference layer is on", () => {
+  it("draws plain M and ST strokes plus a reference line when the reference layer is on", () => {
     const { container } = renderChart(["momentary", "shortTerm", "ref"]);
     const paths = container.querySelectorAll("svg path");
 
     expect(paths).toHaveLength(2);
-    expect(paths[0]?.getAttribute("stroke") ?? "").toMatch(/^url\(#/);
-    expect(paths[1]?.getAttribute("stroke") ?? "").toMatch(/^url\(#/);
+    expect(paths[0]?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
+    expect(paths[1]?.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
+    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeTruthy();
   });
 
-  it("uses a solid trace stroke when the reference layer is off", () => {
+  it("draws no reference line when the reference layer is off", () => {
     const { container } = renderChart(["momentary", "shortTerm"]);
     const paths = container.querySelectorAll("svg path");
 
     expect(paths[0]?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
     expect(paths[1]?.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
+    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeNull();
   });
 
-  it("keeps the over-reference gradient in snapshot mode", () => {
+  it("keeps a plain snapshot stroke and still draws the reference line in snapshot mode", () => {
     const { container } = render(
       <LoudnessHistoryChart
         {...baseProps}
@@ -267,7 +269,8 @@ describe("LoudnessHistoryChart", () => {
     );
     const path = container.querySelector("svg path");
 
-    expect(path?.getAttribute("stroke") ?? "").toMatch(/^url\(#/);
+    expect(path?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary-snap)");
+    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeTruthy();
   });
 
   it("does not render a reference line or tolerance band", () => {

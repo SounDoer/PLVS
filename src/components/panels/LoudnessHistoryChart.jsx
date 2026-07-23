@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
@@ -140,8 +140,6 @@ export function LoudnessHistoryChart({
     ? loudnessFromTopFrac(referenceLufs, loudnessYRange)
     : null;
 
-  const mGradId = useId().replace(/:/g, "");
-  const stGradId = useId().replace(/:/g, "");
   const chartYDragRef = useRef(null);
   const [chartDragging, setChartDragging] = useState(false);
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
@@ -336,49 +334,11 @@ export function LoudnessHistoryChart({
           preserveAspectRatio="none"
           className="relative z-[1] h-full w-full pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
         >
-          <defs>
-            {showReference && refTopFrac != null ? (
-              <>
-                <linearGradient
-                  id={mGradId}
-                  gradientUnits="userSpaceOnUse"
-                  x1={0}
-                  y1={0}
-                  x2={0}
-                  y2={220}
-                >
-                  <stop offset={0} style={{ stopColor: "var(--ui-loudness-momentary-over)" }} />
-                  <stop
-                    offset={refTopFrac}
-                    style={{ stopColor: "var(--ui-loudness-momentary-over)" }}
-                  />
-                  <stop offset={refTopFrac} style={{ stopColor: mStrokeNormal }} />
-                  <stop offset={1} style={{ stopColor: mStrokeNormal }} />
-                </linearGradient>
-                <linearGradient
-                  id={stGradId}
-                  gradientUnits="userSpaceOnUse"
-                  x1={0}
-                  y1={0}
-                  x2={0}
-                  y2={220}
-                >
-                  <stop offset={0} style={{ stopColor: "var(--ui-loudness-shortterm-over)" }} />
-                  <stop
-                    offset={refTopFrac}
-                    style={{ stopColor: "var(--ui-loudness-shortterm-over)" }}
-                  />
-                  <stop offset={refTopFrac} style={{ stopColor: stStrokeNormal }} />
-                  <stop offset={1} style={{ stopColor: stStrokeNormal }} />
-                </linearGradient>
-              </>
-            ) : null}
-          </defs>
           {showMomentary && displayHistoryPathM && (
             <path
               d={displayHistoryPathM}
               fill="none"
-              stroke={showReference ? `url(#${mGradId})` : mStrokeNormal}
+              stroke={mStrokeNormal}
               strokeWidth="var(--ui-loudness-momentary-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
@@ -387,11 +347,27 @@ export function LoudnessHistoryChart({
             <path
               d={displayHistoryPathST}
               fill="none"
-              stroke={showReference ? `url(#${stGradId})` : stStrokeNormal}
+              stroke={stStrokeNormal}
               strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
           )}
+          {/* Reference guide line: the profile's target loudness, drawn only when the `ref` layer
+              is on. It judges nothing -- it is a place to aim the eye. */}
+          {showReference && refTopFrac != null ? (
+            <line
+              data-testid="loudness-reference-line"
+              x1={0}
+              x2={600}
+              y1={refTopFrac * 220}
+              y2={refTopFrac * 220}
+              stroke="var(--muted-foreground)"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+              vectorEffect="non-scaling-stroke"
+              opacity={0.7}
+            />
+          ) : null}
           {selectedOffset >= 0 && showSelLine ? (
             <line
               x1={selLineX}

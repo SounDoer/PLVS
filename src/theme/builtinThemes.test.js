@@ -59,19 +59,10 @@ describe("BUILTIN_THEMES", () => {
       const loudnessHistory = UI_PREFERENCES.modules.loudness.history;
 
       const momentary = tokens["--ui-loudness-momentary"];
-      const momentaryOver = tokens["--ui-loudness-momentary-over"];
       const shortTerm = tokens["--ui-loudness-shortterm"];
-      const shortTermOver = tokens["--ui-loudness-shortterm-over"];
 
       expectHexColor(momentary);
-      expectHexColor(momentaryOver);
       expectHexColor(shortTerm);
-      expectHexColor(shortTermOver);
-
-      expect(momentaryOver).not.toBe(momentary);
-      expect(shortTermOver).not.toBe(shortTerm);
-      expect(colorDistance(momentary, momentaryOver)).toBeGreaterThanOrEqual(45);
-      expect(colorDistance(shortTerm, shortTermOver)).toBeGreaterThanOrEqual(45);
 
       expect(momentary).not.toBe(shortTerm);
       expect(Number(loudnessHistory.momentaryStrokeWidth)).toBeGreaterThan(0);

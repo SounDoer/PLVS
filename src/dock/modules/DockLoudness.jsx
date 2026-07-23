@@ -1,4 +1,4 @@
-import { useId, useMemo } from "react";
+import { useMemo } from "react";
 import { loudnessHistY } from "../../config/scales.js";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { buildHistoryPath } from "../../math/historyMath.js";
@@ -124,10 +124,8 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [histSourceList, historyLength, latestSampleTimestampMs, sparkSamples, yRange.min, yRange.max]
   );
-  const useOverGradient = showReference && Number.isFinite(referenceLufs);
-  const referenceOffset = loudnessHistY(referenceLufs, SPARK_H, yRange) / SPARK_H;
-  const momentaryGradientId = useId().replace(/:/g, "");
-  const shortTermGradientId = useId().replace(/:/g, "");
+  const showReferenceLine = showReference && Number.isFinite(referenceLufs);
+  const referenceY = showReferenceLine ? loudnessHistY(referenceLufs, SPARK_H, yRange) : null;
   const expanded = heightMode === "expanded";
 
   return (
@@ -148,58 +146,12 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
           role="img"
           aria-label="Loudness history"
         >
-          <defs>
-            {useOverGradient ? (
-              <>
-                <linearGradient
-                  id={momentaryGradientId}
-                  gradientUnits="userSpaceOnUse"
-                  x1={0}
-                  y1={0}
-                  x2={0}
-                  y2={SPARK_H}
-                >
-                  <stop offset={0} style={{ stopColor: "var(--ui-loudness-momentary-over)" }} />
-                  <stop
-                    offset={referenceOffset}
-                    style={{ stopColor: "var(--ui-loudness-momentary-over)" }}
-                  />
-                  <stop
-                    offset={referenceOffset}
-                    style={{ stopColor: "var(--ui-loudness-momentary)" }}
-                  />
-                  <stop offset={1} style={{ stopColor: "var(--ui-loudness-momentary)" }} />
-                </linearGradient>
-                <linearGradient
-                  id={shortTermGradientId}
-                  gradientUnits="userSpaceOnUse"
-                  x1={0}
-                  y1={0}
-                  x2={0}
-                  y2={SPARK_H}
-                >
-                  <stop offset={0} style={{ stopColor: "var(--ui-loudness-shortterm-over)" }} />
-                  <stop
-                    offset={referenceOffset}
-                    style={{ stopColor: "var(--ui-loudness-shortterm-over)" }}
-                  />
-                  <stop
-                    offset={referenceOffset}
-                    style={{ stopColor: "var(--ui-loudness-shortterm)" }}
-                  />
-                  <stop offset={1} style={{ stopColor: "var(--ui-loudness-shortterm)" }} />
-                </linearGradient>
-              </>
-            ) : null}
-          </defs>
           {showMomentary && momentaryPath ? (
             <path
               data-testid="dock-loudness-momentary"
               d={momentaryPath}
               fill="none"
-              stroke={
-                useOverGradient ? `url(#${momentaryGradientId})` : "var(--ui-loudness-momentary)"
-              }
+              stroke="var(--ui-loudness-momentary)"
               strokeWidth="var(--ui-loudness-momentary-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
@@ -209,11 +161,23 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
               data-testid="dock-loudness-short-term"
               d={shortTermPath}
               fill="none"
-              stroke={
-                useOverGradient ? `url(#${shortTermGradientId})` : "var(--ui-loudness-shortterm)"
-              }
+              stroke="var(--ui-loudness-shortterm)"
               strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
               vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+          {referenceY != null ? (
+            <line
+              data-testid="dock-loudness-reference-line"
+              x1={0}
+              x2={SPARK_W}
+              y1={referenceY}
+              y2={referenceY}
+              stroke="var(--muted-foreground)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+              vectorEffect="non-scaling-stroke"
+              opacity={0.7}
             />
           ) : null}
         </svg>

@@ -103,9 +103,10 @@ describe("DockLoudness", () => {
 
     const momentary = screen.getByTestId("dock-loudness-momentary");
     const shortTerm = screen.getByTestId("dock-loudness-short-term");
-    expect(momentary.getAttribute("stroke")).toMatch(/^url\(#/);
-    expect(shortTerm.getAttribute("stroke")).toMatch(/^url\(#/);
-    expect(document.querySelector("svg line")).toBeNull();
+    expect(momentary.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
+    expect(shortTerm.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
+    // The reference now shows as a guide line rather than tinting the traces.
+    expect(screen.getByTestId("dock-loudness-reference-line")).toBeTruthy();
   });
 
   it("keeps the history paths advancing after the live ring fills", () => {

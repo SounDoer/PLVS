@@ -2,7 +2,6 @@ import { hexToOklch, oklchToHex, transform } from "./colorTransform.js";
 
 // Scheme-aware deltas tuned to match hand-tuned anchors within rgb-distance 30.
 const SNAP = { dark: { dL: 0.12, dC: -0.006, dH: 36 }, light: { dL: -0.16, dC: -0.02, dH: 18 } };
-const OVER = { dark: { dL: -0.075, dC: 0.052, dH: -18 }, light: { dL: -0.05, dC: 0.08, dH: -28 } };
 const SIBLING = {
   dark: { dL: -0.138, dC: -0.02, dH: -4.4 },
   light: { dL: -0.18, dC: -0.02, dH: -6 },
@@ -17,7 +16,6 @@ export function buildThemeTokens(theme) {
   const { accent, accentSecondary, signal } = theme.seeds;
 
   const snap = (hex) => oklchToHex(transform(hexToOklch(hex), SNAP[scheme]));
-  const over = (hex) => oklchToHex(transform(hexToOklch(hex), OVER[scheme]));
   const sibling = (hex) => oklchToHex(transform(hexToOklch(hex), SIBLING[scheme]));
 
   const accentSnap = snap(accent);
@@ -31,10 +29,8 @@ export function buildThemeTokens(theme) {
     "--ring": accent,
     "--ui-loudness-momentary": accent,
     "--ui-loudness-momentary-snap": accentSnap,
-    "--ui-loudness-momentary-over": over(accent),
     "--ui-loudness-shortterm": shortterm,
     "--ui-loudness-shortterm-snap": snap(shortterm),
-    "--ui-loudness-shortterm-over": over(shortterm),
     "--ui-loudness-selection": accentSnap,
     "--ui-loudness-grid": `color-mix(in srgb, var(--border) ${gridPct}%, transparent)`,
     "--ui-vectorscope-trace": accent,

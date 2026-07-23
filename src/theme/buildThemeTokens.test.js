@@ -15,7 +15,6 @@ function dist(a, b) {
 const DARK_ANCHORS = {
   "--ui-loudness-momentary": "#fb923c",
   "--ui-loudness-momentary-snap": "#fcd34d",
-  "--ui-loudness-momentary-over": "#ff5a1f",
   "--ui-loudness-shortterm": "#c66a2a",
   "--ui-spectrum-secondary": "#38bdf8",
   "--ui-meter-gradient-bottom": "#34d399",
@@ -26,10 +25,8 @@ describe("buildThemeTokens", () => {
     const REQUIRED = [
       "--ui-loudness-momentary",
       "--ui-loudness-momentary-snap",
-      "--ui-loudness-momentary-over",
       "--ui-loudness-shortterm",
       "--ui-loudness-shortterm-snap",
-      "--ui-loudness-shortterm-over",
       "--ui-loudness-selection",
       "--ui-loudness-grid",
       "--ui-vectorscope-trace",
