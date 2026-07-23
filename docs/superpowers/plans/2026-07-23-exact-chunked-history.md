@@ -1019,7 +1019,7 @@ structural counts.
 Close other memory-heavy applications first:
 
 ```powershell
-npm run benchmark:history -- --full-visual
+npm run benchmark:history:full
 ```
 
 Expected: stores all 360,000 rows at production widths, snapshot shares sealed
