@@ -8,9 +8,10 @@ import {
 import { HoverTip } from "@/components/HoverTip";
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
+import { watchedMetricIds } from "../../lib/loudnessProfileCatalog.js";
 import { buildStatsValues } from "../../lib/statsCatalog.js";
 import {
-  loudnessStatusLabelClass,
+  loudnessLabelClass,
   loudnessStatusValueClass,
 } from "../../lib/loudnessProfileStatusClasses.js";
 
@@ -19,11 +20,11 @@ const METRIC_ROW_LAYOUT =
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
-function MetricRow({ id, label, shortLabel, value, unit, active, hint, status }) {
+function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, watched }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.stats.metrics;
   const labelClass = cn(
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-tight",
-    loudnessStatusLabelClass(status)
+    loudnessLabelClass(watched)
   );
   const valueClass = cn(
     METRIC_NUMERIC,
@@ -89,6 +90,7 @@ export function StatsPanel() {
       ? displayAudio.dialoguePercent
       : null,
   });
+  const watchedIds = new Set(watchedMetricIds(loudnessProfileDocument));
 
   return (
     <div className="@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
@@ -100,6 +102,7 @@ export function StatsPanel() {
                 key={metric.id}
                 {...metric}
                 status={statuses[metric.id]}
+                watched={watchedIds.has(metric.id)}
                 active={metric.id === "dialogueCoverage" && dialogueActiveNow}
               />
             ))

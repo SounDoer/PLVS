@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Check, Copy, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -23,9 +22,6 @@ const ICON_BUTTON_CLASS =
 const GROUP_LABEL_CLASS =
   "px-2 pt-2 pb-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground";
 
-const INPUT_CLASS =
-  "flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
-
 function ActiveDot({ active }) {
   return (
     <span
@@ -45,31 +41,15 @@ function ActiveDot({ active }) {
  * affordance simply does not appear, which is the correct behaviour when no Stats panel exists.
  */
 export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle = true }) {
-  const [renamingId, setRenamingId] = useState(null);
-  const [renameDraft, setRenameDraft] = useState("");
-
   const { active, document, userProfiles, draftBlocksLibraryActions } = profile;
 
   // The editor panel is non-modal, so this list stays reachable while a draft is open. Everything
   // that would discard that draft is refused by the provider; showing it disabled is what makes
-  // the refusal legible. Rename is not one of them: the provider renames the open draft along with
-  // the library entry, so nothing is lost and the two cannot disagree.
+  // the refusal legible. Renaming now lives inside that editor, beside the name.
   const blocked = draftBlocksLibraryActions === true;
   const blockedClass = "disabled:opacity-40";
 
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
-
-  const startRename = (entry) => {
-    setRenamingId(entry.id);
-    setRenameDraft(entry.name ?? "");
-  };
-
-  const commitRename = (id) => {
-    const trimmed = renameDraft.trim();
-    if (!trimmed) return;
-    profile.renameUser(id, trimmed);
-    setRenamingId(null);
-  };
 
   return (
     <>
@@ -121,40 +101,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
       {userProfiles.length > 0 ? <p className={GROUP_LABEL_CLASS}>Yours</p> : null}
       {userProfiles.map((entry) => {
         const selection = userSelectionId(entry.id);
-        if (renamingId === entry.id) {
-          return (
-            <div key={entry.id} className="flex items-center gap-1.5 rounded px-1.5 py-1">
-              <input
-                type="text"
-                aria-label={`Rename ${entry.name}`}
-                value={renameDraft}
-                onChange={(event) => setRenameDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") commitRename(entry.id);
-                  if (event.key === "Escape") setRenamingId(null);
-                }}
-                className={INPUT_CLASS}
-              />
-              <button
-                type="button"
-                aria-label="Save rename"
-                onClick={() => commitRename(entry.id)}
-                disabled={!renameDraft.trim()}
-                className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40"
-              >
-                <Check className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
-              <button
-                type="button"
-                aria-label="Cancel rename"
-                onClick={() => setRenamingId(null)}
-                className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <X className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
-            </div>
-          );
-        }
         return (
           <div key={entry.id} className={cn(ROW_CLASS, "group")}>
             <button
@@ -178,14 +124,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
               className={cn(ICON_BUTTON_CLASS, blockedClass)}
             >
               <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
-            </button>
-            <button
-              type="button"
-              aria-label={`Rename ${entry.name}`}
-              onClick={() => startRename(entry)}
-              className={ICON_BUTTON_CLASS}
-            >
-              <Pencil className="size-[length:var(--ui-icon-management-action)]" />
             </button>
             <button
               type="button"

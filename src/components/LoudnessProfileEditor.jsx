@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Plus, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { clampPanelPos } from "@/lib/dragClamp.js";
 import {
   RULEABLE_METRIC_IDS,
@@ -14,8 +21,11 @@ import { STATS_META } from "@/lib/statsCatalog.js";
 /// from the row's own metric select.
 const DEFAULT_RULE_METRIC = "integrated";
 
-const SELECT_CLASS =
-  "h-6 rounded-md border border-input bg-transparent px-1 text-[length:var(--ui-fs-control)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+// Matches the compact, borderless-until-hover selects the other panels use (see FocusViewPopover).
+const TRIGGER_CLASS =
+  "h-6 w-auto rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+const CONTENT_CLASS =
+  "min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
 const NUM_INPUT_CLASS =
   "h-6 w-14 rounded-md border border-transparent bg-transparent px-1 py-0 text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -75,28 +85,31 @@ function RuleRow({ index, rule, onPatch, onRemove }) {
 
   return (
     <div className="flex items-center gap-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
-      <select
-        aria-label={`Rule ${position} metric`}
-        value={rule.metricId}
-        onChange={(event) => onPatch({ metricId: event.target.value })}
-        className={`${SELECT_CLASS} min-w-0 flex-1`}
-      >
-        {RULEABLE_METRIC_IDS.map((id) => (
-          <option key={id} value={id}>
-            {STATS_META[id]?.label ?? id}
-          </option>
-        ))}
-      </select>
+      <Select value={rule.metricId} onValueChange={(value) => onPatch({ metricId: value })}>
+        <SelectTrigger
+          aria-label={`Rule ${position} metric`}
+          className={`${TRIGGER_CLASS} min-w-0 flex-1`}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className={CONTENT_CLASS}>
+          {RULEABLE_METRIC_IDS.map((id) => (
+            <SelectItem key={id} value={id}>
+              {STATS_META[id]?.label ?? id}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      <select
-        aria-label={`Rule ${position} operator`}
-        value={rule.op}
-        onChange={(event) => onPatch({ op: event.target.value })}
-        className={SELECT_CLASS}
-      >
-        <option value=">">&gt;</option>
-        <option value="<">&lt;</option>
-      </select>
+      <Select value={rule.op} onValueChange={(value) => onPatch({ op: value })}>
+        <SelectTrigger aria-label={`Rule ${position} operator`} className={TRIGGER_CLASS}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className={CONTENT_CLASS}>
+          <SelectItem value=">">&gt;</SelectItem>
+          <SelectItem value="<">&lt;</SelectItem>
+        </SelectContent>
+      </Select>
 
       <RuleNumber
         ariaLabel={`Rule ${position} value`}
@@ -106,15 +119,18 @@ function RuleRow({ index, rule, onPatch, onRemove }) {
 
       <span className="w-8 shrink-0 text-right text-muted-foreground/60">{meta?.unit}</span>
 
-      <select
-        aria-label={`Rule ${position} severity`}
+      <Select
         value={rule.severity ?? "warn"}
-        onChange={(event) => onPatch({ severity: event.target.value })}
-        className={SELECT_CLASS}
+        onValueChange={(value) => onPatch({ severity: value })}
       >
-        <option value="fail">Fail</option>
-        <option value="warn">Warn</option>
-      </select>
+        <SelectTrigger aria-label={`Rule ${position} severity`} className={TRIGGER_CLASS}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className={CONTENT_CLASS}>
+          <SelectItem value="fail">Fail</SelectItem>
+          <SelectItem value="warn">Warn</SelectItem>
+        </SelectContent>
+      </Select>
 
       <button
         type="button"
@@ -142,6 +158,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
   const [discardOpen, setDiscardOpen] = useState(false);
   const ref = useRef(null);
   const dragRef = useRef(null);
+  const nameInputRef = useRef(null);
 
   const ruleDocument = draft.document;
   const rules = ruleDocument.rules ?? [];
@@ -210,14 +227,30 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           className="flex cursor-move items-center border-b border-border px-3 py-2"
         >
           <input
+            ref={nameInputRef}
             aria-label="Loudness Profile name"
             value={ruleDocument.name ?? ""}
             onChange={(event) => {
               const { value } = event.target;
               onEdit((d) => ({ ...d, name: value }));
             }}
-            className="w-full bg-transparent text-[length:var(--ui-fs-panel-title)] font-semibold focus-visible:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[length:var(--ui-fs-panel-title)] font-semibold focus-visible:outline-none"
           />
+          <button
+            type="button"
+            aria-label="Rename profile"
+            title="Rename"
+            // The header is a drag handle; stop the pointer so a click on the icon does not start a
+            // drag, then hand focus to the name field.
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => {
+              nameInputRef.current?.focus();
+              nameInputRef.current?.select();
+            }}
+            className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <Pencil className="size-[length:var(--ui-icon-management-action)]" />
+          </button>
         </div>
 
         <div className="flex flex-col gap-2 overflow-y-auto px-3 py-1">

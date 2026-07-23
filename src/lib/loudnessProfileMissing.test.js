@@ -18,9 +18,9 @@ describe("listMissingPreferredMetrics", () => {
     expect(listMissingPreferredMetrics(document, ["integrated"])).toEqual(["truePeak"]);
   });
 
-  it("does not demand a metric whose only rule is unfilled", () => {
+  it("demands a watched metric even when its only rule is unfilled", () => {
     const document = doc([{ metricId: "truePeak", op: ">", severity: "fail" }]);
-    expect(listMissingPreferredMetrics(document, [])).toEqual([]);
+    expect(listMissingPreferredMetrics(document, [])).toEqual(["truePeak"]);
   });
 
   it("demands each watched metric once", () => {

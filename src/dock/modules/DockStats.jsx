@@ -3,8 +3,9 @@ import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
 import { STATS_META, buildStatsValues } from "../../lib/statsCatalog.js";
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
+import { watchedMetricIds } from "../../lib/loudnessProfileCatalog.js";
 import {
-  loudnessStatusLabelClass,
+  loudnessLabelClass,
   loudnessStatusValueClass,
 } from "../../lib/loudnessProfileStatusClasses.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
@@ -66,6 +67,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
       ? displayAudio.dialoguePercent
       : null,
   });
+  const watchedIds = new Set(watchedMetricIds(loudnessProfileDocument));
   const byId = new Map((statsMetrics ?? []).map((m) => [m.id, m]));
   const selected = new Set(normalizedControls.statsVisibleIds);
   const orderedMetrics = normalizedControls.statsOrder
@@ -137,7 +139,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
                   unit={unit}
                   unitVisibility="tight"
                   statId={id}
-                  labelClassName={loudnessStatusLabelClass(statuses[id])}
+                  labelClassName={loudnessLabelClass(watchedIds.has(id))}
                   valueClassName={loudnessStatusValueClass(statuses[id])}
                   indicator={
                     id === "dialogueCoverage" ? (
@@ -156,7 +158,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
                   <span
                     data-testid="dock-stat-label"
                     title={label}
-                    className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${loudnessStatusLabelClass(statuses[id])}`}
+                    className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${loudnessLabelClass(watchedIds.has(id))}`}
                   >
                     {id === "dialogueCoverage" ? (
                       <span

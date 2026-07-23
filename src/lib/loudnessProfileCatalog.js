@@ -158,13 +158,14 @@ export function withReferenceLufs(document, referenceLufs) {
   return { ...document, referenceLufs };
 }
 
-/// The metrics a profile actually judges: those carrying at least one filled-in rule, in first-seen
-/// order. This is the "watched" set the label highlight, missing-stats and footer read off.
+/// The metrics a profile watches: every metric that carries a rule, in first-seen order. A metric
+/// is watched the moment a rule is added, filled in or not -- adding the rule is the intent. This
+/// is the set the label highlight, missing-stats and footer read off.
 export function watchedMetricIds(document) {
   const seen = [];
   const set = new Set();
   for (const r of document?.rules ?? []) {
-    if (isRuleEmpty(r) || set.has(r.metricId)) continue;
+    if (!r || set.has(r.metricId)) continue;
     set.add(r.metricId);
     seen.push(r.metricId);
   }

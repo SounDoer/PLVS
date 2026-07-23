@@ -241,9 +241,9 @@ describe("LevelMeterPanel", () => {
     expect(className).not.toContain("--ui-signal");
   });
 
-  it("dims the M/ST marker to muted when the active profile does not watch it", () => {
-    // R128 has no rule for Momentary, so the readout marker reads as "not part of this profile"
-    // rather than keeping its accent colour.
+  it("keeps the M/ST marker white when the active profile does not watch it", () => {
+    // R128 has no rule for Momentary. The marker stays foreground rather than dimming -- only an
+    // actual warn/fail pulls a colour -- but it is no longer the accent readout either.
     selectProfile(builtinSelectionId("ebu-r128"));
     const { container } = renderPanel({
       displayAudio: { peakDb: [-9, -9], rmsDb: [-18, -18], momentary: -22.4, shortTerm: -18.6 },
@@ -251,8 +251,8 @@ describe("LevelMeterPanel", () => {
     });
 
     const marker = container.querySelector("[data-level-value-marker]");
-    expect(marker.className).toContain("text-muted-foreground");
-    expect(marker.className).not.toContain("text-primary");
+    expect(marker.className).toContain("text-foreground");
+    expect(marker.className).not.toContain("text-muted-foreground");
   });
 
   it("does not carry the Peak TP Max marker into RMS mode", () => {

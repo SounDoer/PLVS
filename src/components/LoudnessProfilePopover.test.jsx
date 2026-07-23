@@ -114,17 +114,10 @@ describe("LoudnessProfilePopoverContent editing", () => {
     expect(screen.getByLabelText("Use My Show")).toBeTruthy();
   });
 
-  it("renames a saved profile inline", () => {
+  it("no longer offers an inline rename (renaming moved into the editor)", () => {
     const view = renderPopover();
     saveProfile(view, "Before");
-
-    fireEvent.click(screen.getByLabelText("Rename Before"));
-    view.rerender();
-    fireEvent.change(screen.getByLabelText("Rename Before"), { target: { value: "After" } });
-    fireEvent.click(screen.getByLabelText("Save rename"));
-    view.rerender();
-
-    expect(view.hook.result.current.document.name).toBe("After");
+    expect(screen.queryByLabelText("Rename Before")).toBeNull();
   });
 
   it("deletes a saved profile and falls back to Off", () => {
@@ -206,8 +199,6 @@ describe("editor entry points", () => {
     act(() => hook.result.current.saveDraft());
     rerender();
 
-    // "Edit Mine" beside "Rename Mine" reads as two words for the same thing; the row says which
-    // is which only in a title attribute, which a screen reader need not announce.
     fireEvent.click(screen.getByLabelText("Edit Mine rules"));
     expect(hook.result.current.draft.editingId).toBe(hook.result.current.userProfiles[0].id);
   });
@@ -258,11 +249,6 @@ describe("a dirty draft blocks the library", () => {
     withDirtyDraft();
     for (const button of blocked()) expect(button.disabled).toBe(true);
     expect(screen.getByText("Finish editing to switch profiles.")).toBeTruthy();
-  });
-
-  it("leaves Rename alone, which destroys nothing", () => {
-    withDirtyDraft();
-    expect(screen.getByLabelText("Rename Mine").disabled).toBe(false);
   });
 
   it("re-enables everything once the draft is put away", () => {

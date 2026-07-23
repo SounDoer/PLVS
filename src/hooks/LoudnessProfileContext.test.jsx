@@ -91,52 +91,14 @@ describe("the user library", () => {
     expect(result.current.userProfiles.map((p) => p.name)).toEqual(["First", "Second"]);
   });
 
-  it("renames without disturbing the selection", () => {
-    const { result } = withSavedProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.renameUser(id, "Renamed"));
-    expect(result.current.document.name).toBe("Renamed");
-  });
-
-  it("renames the open draft along with the profile it is editing", () => {
+  it("keeps a saved draft's edits, including a rename, when it is saved", () => {
     const { result } = withSavedProfile();
     const { id } = result.current.userProfiles[0];
     act(() => result.current.beginEdit(id));
-    act(() => result.current.renameUser(id, "Renamed In Popover"));
-    // The draft outranks the selection for every reader, so a draft still carrying the old name
-    // is the name the editor's box, the popover's label and the footer all show.
-    expect(result.current.draft.document.name).toBe("Renamed In Popover");
-    expect(result.current.document.name).toBe("Renamed In Popover");
-  });
-
-  it("keeps the new name when the renamed draft is saved", () => {
-    const { result } = withSavedProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.beginEdit(id));
-    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -20 })));
-    act(() => result.current.renameUser(id, "Renamed In Popover"));
+    act(() => result.current.editDraft((d) => ({ ...d, name: "Renamed", referenceLufs: -20 })));
     act(() => result.current.saveDraft());
-    // saveDraft writes the draft document wholesale, so a stale clone silently reverts the rename.
-    expect(result.current.userProfiles[0].name).toBe("Renamed In Popover");
+    expect(result.current.userProfiles[0].name).toBe("Renamed");
     expect(result.current.userProfiles[0].referenceLufs).toBe(-20);
-  });
-
-  it("leaves a draft editing some other profile alone", () => {
-    const { result } = withSavedProfile("First");
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
-    act(() => result.current.saveDraft());
-    const [first, second] = result.current.userProfiles;
-    act(() => result.current.beginEdit(second.id));
-    act(() => result.current.renameUser(first.id, "First Renamed"));
-    expect(result.current.draft.document.name).toBe("Second");
-  });
-
-  it("edits a saved profile's rules", () => {
-    const { result } = withSavedProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.updateUser(id, { referenceLufs: -20 }));
-    expect(result.current.referenceLufs).toBe(-20);
   });
 
   describe("editing a profile does not change which one is active", () => {
@@ -639,7 +601,7 @@ describe("preset divergence", () => {
     expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("leaves it clean when a rename does not move the selection", () => {
+  it("leaves it clean when editing a profile does not move the selection", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.beginCreate());
     act(() => result.current.editDraft((d) => ({ ...d, name: "Before" })));
@@ -647,8 +609,10 @@ describe("preset divergence", () => {
     const { id } = result.current.userProfiles[0];
     clean();
 
-    act(() => result.current.renameUser(id, "After"));
-    // The preset snapshots an id, not the rules behind it, so this is not a divergence.
+    act(() => result.current.beginEdit(id));
+    act(() => result.current.editDraft((d) => ({ ...d, name: "After" })));
+    act(() => result.current.saveDraft());
+    // The preset snapshots an id, not the rules behind it, so editing is not a divergence.
     expect(presetsStore.read().dirty).toBe(false);
   });
 

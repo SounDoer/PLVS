@@ -166,14 +166,14 @@ describe("watchedMetricIds", () => {
     expect(watchedMetricIds(document)).toEqual(["integrated", "truePeak"]);
   });
 
-  it("skips empty rules", () => {
+  it("counts a metric as watched even when its only rule is unfilled", () => {
     const document = {
       rules: [
         { metricId: "lra", op: ">", severity: "fail" },
         { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
       ],
     };
-    expect(watchedMetricIds(document)).toEqual(["truePeak"]);
+    expect(watchedMetricIds(document)).toEqual(["lra", "truePeak"]);
   });
 });
 

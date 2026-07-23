@@ -34,16 +34,22 @@ describe("LoudnessProfileEditor", () => {
 
   it("lists a row per rule, in the profile's own order", () => {
     renderEditor();
-    expect(screen.getByLabelText("Rule 1 metric").value).toBe("integrated");
-    expect(screen.getByLabelText("Rule 2 metric").value).toBe("integrated");
-    expect(screen.getByLabelText("Rule 3 metric").value).toBe("truePeak");
+    expect(screen.getByRole("combobox", { name: "Rule 1 metric" }).textContent).toContain(
+      "Integrated"
+    );
+    expect(screen.getByRole("combobox", { name: "Rule 2 metric" }).textContent).toContain(
+      "Integrated"
+    );
+    expect(screen.getByRole("combobox", { name: "Rule 3 metric" }).textContent).toContain(
+      "True Peak Max"
+    );
   });
 
   it("renders each rule as metric, operator and value", () => {
     renderEditor();
-    expect(screen.getByLabelText("Rule 1 operator").value).toBe(">");
+    expect(screen.getByRole("combobox", { name: "Rule 1 operator" }).textContent).toBe(">");
     expect(screen.getByLabelText("Rule 1 value").value).toBe("-22.5");
-    expect(screen.getByLabelText("Rule 2 operator").value).toBe("<");
+    expect(screen.getByRole("combobox", { name: "Rule 2 operator" }).textContent).toBe("<");
     expect(screen.getByLabelText("Rule 2 value").value).toBe("-23.5");
     expect(screen.getByLabelText("Rule 3 value").value).toBe("-1");
   });
@@ -89,13 +95,19 @@ describe("LoudnessProfileEditor", () => {
 
   it("changes a rule's metric from its own select", () => {
     const props = renderEditor();
-    fireEvent.change(screen.getByLabelText("Rule 3 metric"), { target: { value: "correlation" } });
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Rule 3 metric" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Correlation" }));
     expect(appliedDocument(props).rules[2].metricId).toBe("correlation");
   });
 
   it("changes a rule's operator", () => {
     const props = renderEditor();
-    fireEvent.change(screen.getByLabelText("Rule 3 operator"), { target: { value: "<" } });
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Rule 3 operator" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "<" }));
     expect(appliedDocument(props).rules[2].op).toBe("<");
   });
 
@@ -123,12 +135,15 @@ describe("LoudnessProfileEditor", () => {
 
   it("exposes severity per rule", () => {
     renderEditor();
-    expect(screen.getByLabelText("Rule 1 severity").value).toBe("fail");
+    expect(screen.getByRole("combobox", { name: "Rule 1 severity" }).textContent).toBe("Fail");
   });
 
   it("changes severity per rule", () => {
     const props = renderEditor();
-    fireEvent.change(screen.getByLabelText("Rule 1 severity"), { target: { value: "warn" } });
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Rule 1 severity" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Warn" }));
     expect(appliedDocument(props).rules[0].severity).toBe("warn");
   });
 
@@ -142,6 +157,13 @@ describe("LoudnessProfileEditor", () => {
     });
     expect(screen.getByText(/only draws its reference line/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(false);
+  });
+
+  it("focuses the name field from the rename icon", () => {
+    renderEditor();
+    const input = screen.getByLabelText("Loudness Profile name");
+    fireEvent.click(screen.getByRole("button", { name: "Rename profile" }));
+    expect(document.activeElement).toBe(input);
   });
 
   it("never rewrites the document id", () => {

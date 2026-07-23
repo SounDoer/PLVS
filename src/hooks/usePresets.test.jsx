@@ -821,11 +821,10 @@ describe("usePresets Loudness Profile snapshot", () => {
   it("round-trips a user profile", async () => {
     const { result } = renderPresetsWithProfile();
     saveProfile(result, "Mine");
-    act(() =>
-      result.current.profile.updateUser(result.current.profile.userProfiles[0].id, {
-        referenceLufs: -18,
-      })
-    );
+    const { id } = result.current.profile.userProfiles[0];
+    act(() => result.current.profile.beginEdit(id));
+    act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -18 })));
+    act(() => result.current.profile.saveDraft());
     await act(async () => {
       await result.current.presets.save("Draft");
     });
