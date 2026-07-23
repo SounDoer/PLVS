@@ -4,6 +4,7 @@ import {
   FrozenSpectrumHistory,
   EMPTY_SPECTRUM_VIEW,
 } from "./SpectrumHistorySlab.js";
+import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 
 const bands = [{ fCenter: 100 }, { fCenter: 200 }, { fCenter: 400 }];
 
@@ -22,16 +23,21 @@ describe("SpectrumHistorySlab", () => {
     expect(slab.toArray().map((row) => row.timestampMs)).toEqual([1000, 1040]);
   });
 
-  it("overwrites the oldest rows after capacity is full", () => {
-    const slab = new SpectrumHistorySlab(2, bands);
+  it("retains the exact capacity while advancing through a partial oldest chunk", () => {
+    const capacity = VISUAL_HISTORY_CHUNK_ROWS + 3;
+    const slab = new SpectrumHistorySlab(capacity, bands);
 
-    slab.push({ bands, dbList: [1, 2, 3], timestampMs: 1 });
-    slab.push({ bands, dbList: [4, 5, 6], timestampMs: 2 });
-    slab.push({ bands, dbList: [7, 8, 9], timestampMs: 3 });
+    for (let i = 0; i < capacity + 7; i += 1) {
+      slab.push({ bands, dbList: [i, i + 1, i + 2], timestampMs: i });
+    }
 
-    expect(slab.length).toBe(2);
-    expect(slab.toArray().map((row) => row.timestampMs)).toEqual([2, 3]);
-    expect(Array.from(slab.at(1).dbList)).toEqual([7, 8, 9]);
+    expect(slab.length).toBe(capacity);
+    expect(slab.timestampAt(0)).toBe(7);
+    expect(slab.timestampAt(capacity - 1)).toBe(capacity + 6);
+    expect(slab.storageStats()).toMatchObject({
+      chunkCount: 2,
+      retainedRows: capacity,
+    });
   });
 
   it("allocates the secondary curve lazily", () => {
@@ -56,10 +62,17 @@ describe("SpectrumHistorySlab", () => {
   it("fills missing primary values with -Infinity and truncates extras", () => {
     const slab = new SpectrumHistorySlab(4, bands);
 
-    slab.push({ bands, dbList: [-1], timestampMs: 1 });
+    slab.push({
+      bands,
+      dbList: [-1],
+      dbListB: [-2, Number.NaN],
+      timestampMs: Number.NaN,
+    });
     slab.push({ bands, dbList: [-2, -3, -4, -5], timestampMs: 2 });
 
     expect(Array.from(slab.at(0).dbList)).toEqual([-1, -Infinity, -Infinity]);
+    expect(Array.from(slab.at(0).dbListB)).toEqual([-2, NaN, NaN]);
+    expect(slab.at(0).timestampMs).toBe(-Infinity);
     expect(Array.from(slab.at(1).dbList)).toEqual([-2, -3, -4]);
   });
 
@@ -69,36 +82,55 @@ describe("SpectrumHistorySlab", () => {
     expect(slab.matchesBands(bands)).toBe(true);
     expect(slab.matchesBands([{ fCenter: 100 }, { fCenter: 300 }, { fCenter: 400 }])).toBe(false);
     expect(slab.matchesBands([{ fCenter: 100 }, { fCenter: 200 }])).toBe(false);
+    expect(() =>
+      slab.push({
+        bands: [{ fCenter: 100 }],
+        dbList: [-1],
+        timestampMs: 1,
+      })
+    ).toThrow(/different band grid/);
   });
 
-  it("clear releases backing arrays and resets length", () => {
+  it("clear releases chunks and can rebuild on the next push", () => {
     const slab = new SpectrumHistorySlab(4, bands);
 
     slab.push({ bands, dbList: [-1, -2, -3], timestampMs: 1 });
-    const before = slab.dbA;
+    const before = slab.rowAt(0).dbList.buffer;
 
     slab.clear();
 
     expect(slab.length).toBe(0);
-    expect(slab.dbA).toBeNull();
-    expect(slab.timestamps).toBeNull();
-    expect(before).toBeInstanceOf(Float32Array);
+    expect(slab.storageStats()).toEqual({
+      chunkCount: 0,
+      retainedRows: 0,
+      sharedSealedChunks: 0,
+      copiedTailRows: 0,
+      copiedTailBytes: 0,
+    });
+
+    slab.push({ bands, dbList: [-4, -5, -6], timestampMs: 2 });
+    expect(slab.length).toBe(1);
+    expect(slab.rowAt(0).dbList.buffer).not.toBe(before);
   });
 
-  it("returns row views backed by one contiguous Float32Array", () => {
-    const slab = new SpectrumHistorySlab(4, bands);
+  it("seals full chunks and appends into a new active chunk", () => {
+    const slab = new SpectrumHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 1, bands);
 
-    slab.push({ bands, dbList: [-10, -20, -30], timestampMs: 1 });
-    slab.push({ bands, dbList: [-11, -21, -31], timestampMs: 2 });
+    for (let i = 0; i <= VISUAL_HISTORY_CHUNK_ROWS; i += 1) {
+      slab.push({ bands, dbList: [-i, -i, -i], timestampMs: i });
+    }
 
     const first = slab.at(0).dbList;
-    const second = slab.at(1).dbList;
+    const lastInSealed = slab.at(VISUAL_HISTORY_CHUNK_ROWS - 1).dbList;
+    const active = slab.at(VISUAL_HISTORY_CHUNK_ROWS).dbList;
 
     expect(first).toBeInstanceOf(Float32Array);
-    expect(second).toBeInstanceOf(Float32Array);
-    expect(first.buffer).toBe(slab.dbA.buffer);
-    expect(second.buffer).toBe(slab.dbA.buffer);
-    expect(first.byteOffset).not.toBe(second.byteOffset);
+    expect(first.buffer).toBe(lastInSealed.buffer);
+    expect(active.buffer).not.toBe(first.buffer);
+    expect(slab.storageStats()).toMatchObject({
+      chunkCount: 2,
+      retainedRows: VISUAL_HISTORY_CHUNK_ROWS + 1,
+    });
   });
 
   it("exposes version, timestampAt, and rowAt over wrap-around", () => {
@@ -111,6 +143,7 @@ describe("SpectrumHistorySlab", () => {
 
     expect(slab.length).toBe(2);
     expect(slab.version).toBeGreaterThan(v0);
+    expect(slab.version).toBe(v0 + 3);
     expect(slab.timestampAt(0)).toBe(1040);
     expect(slab.timestampAt(1)).toBe(1080);
     expect(slab.timestampAt(2)).toBeNaN();
@@ -119,23 +152,98 @@ describe("SpectrumHistorySlab", () => {
     expect(slab.rowAt(5)).toBeUndefined();
   });
 
-  it("freeze() copies the ring and is immune to later pushes", () => {
-    const bands = [{ fCenter: 100 }, { fCenter: 200 }];
-    const slab = new SpectrumHistorySlab(2, bands);
-    slab.push({ bands, dbList: [-10, -20], dbListB: [-1, -2], timestampMs: 1000 });
-    slab.push({ bands, dbList: [-30, -40], dbListB: [-3, -4], timestampMs: 1040 });
+  it("freeze() shares sealed chunks, clones the active tail, and survives eviction", () => {
+    const slab = new SpectrumHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 2, bands);
+    for (let i = 0; i < VISUAL_HISTORY_CHUNK_ROWS + 1; i += 1) {
+      slab.push({
+        bands,
+        dbList: [i, i + 1, i + 2],
+        dbListB: i === VISUAL_HISTORY_CHUNK_ROWS ? [i + 3, i + 4, i + 5] : undefined,
+        timestampMs: i,
+      });
+    }
 
     const frozen = slab.freeze();
-    slab.push({ bands, dbList: [-50, -60], timestampMs: 1080 }); // overwrites slot 0 in the live ring
+    const frozenSealedBuffer = frozen.rowAt(0).dbList.buffer;
+    const frozenTailBuffer = frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS).dbList.buffer;
+    const liveTailBuffer = slab.rowAt(VISUAL_HISTORY_CHUNK_ROWS).dbList.buffer;
 
     expect(frozen).toBeInstanceOf(FrozenSpectrumHistory);
-    expect(frozen.length).toBe(2);
-    expect(frozen.timestampAt(0)).toBe(1000);
-    expect(Array.from(frozen.rowAt(0).dbList)).toEqual([-10, -20]);
-    expect(Array.from(frozen.rowAt(0).dbListB)).toEqual([-1, -2]);
-    expect(Array.from(frozen.rowAt(1).dbList)).toEqual([-30, -40]);
-    // Live ring moved on; frozen snapshot did not.
-    expect(Array.from(slab.rowAt(1).dbList)).toEqual([-50, -60]);
+    expect(frozenSealedBuffer).toBe(slab.rowAt(0).dbList.buffer);
+    expect(frozenTailBuffer).not.toBe(liveTailBuffer);
+    expect(frozen.storageStats()).toMatchObject({
+      chunkCount: 2,
+      retainedRows: VISUAL_HISTORY_CHUNK_ROWS + 1,
+      sharedSealedChunks: 1,
+      copiedTailRows: 1,
+    });
+
+    for (let i = 0; i < VISUAL_HISTORY_CHUNK_ROWS + 3; i += 1) {
+      slab.push({ bands, dbList: [-i, -i, -i], timestampMs: 10_000 + i });
+    }
+
+    expect(frozen.timestampAt(0)).toBe(0);
+    expect(frozen.timestampAt(VISUAL_HISTORY_CHUNK_ROWS)).toBe(VISUAL_HISTORY_CHUNK_ROWS);
+    expect(Array.from(frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS).dbListB)).toEqual([
+      VISUAL_HISTORY_CHUNK_ROWS + 3,
+      VISUAL_HISTORY_CHUNK_ROWS + 4,
+      VISUAL_HISTORY_CHUNK_ROWS + 5,
+    ]);
+    expect(frozen.rowAt(0).dbList.buffer).toBe(frozenSealedBuffer);
+  });
+
+  it("freeze() copies no payload when the latest chunk is exactly full", () => {
+    const slab = new SpectrumHistorySlab(VISUAL_HISTORY_CHUNK_ROWS, bands);
+    for (let i = 0; i < VISUAL_HISTORY_CHUNK_ROWS; i += 1) {
+      slab.push({ bands, dbList: [i, i, i], timestampMs: i });
+    }
+
+    const frozen = slab.freeze();
+
+    expect(frozen.rowAt(0).dbList.buffer).toBe(slab.rowAt(0).dbList.buffer);
+    expect(frozen.storageStats()).toEqual({
+      chunkCount: 1,
+      retainedRows: VISUAL_HISTORY_CHUNK_ROWS,
+      sharedSealedChunks: 1,
+      copiedTailRows: 0,
+      copiedTailBytes: 0,
+    });
+  });
+
+  it("keeps secondary storage lazy per chunk while hasSecondary stays sticky", () => {
+    const slab = new SpectrumHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 1, bands);
+    slab.push({ bands, dbList: [1, 2, 3], dbListB: [4, 5, 6], timestampMs: 0 });
+    for (let i = 1; i <= VISUAL_HISTORY_CHUNK_ROWS; i += 1) {
+      slab.push({ bands, dbList: [i, i, i], timestampMs: i });
+    }
+
+    expect(slab.hasSecondary).toBe(true);
+    expect(Array.from(slab.rowAt(0).dbListB)).toEqual([4, 5, 6]);
+    expect(slab.rowAt(VISUAL_HISTORY_CHUNK_ROWS).dbListB).toHaveLength(0);
+    expect(slab.storageStats().chunkCount).toBe(2);
+  });
+
+  it("handles small capacities and empty freezes", () => {
+    const slab = new SpectrumHistorySlab(1, bands);
+    const empty = slab.freeze();
+
+    expect(empty.length).toBe(0);
+    expect(empty.version).toBe(0);
+    expect(empty.timestampAt(0)).toBeNaN();
+    expect(empty.rowAt(0)).toBeUndefined();
+    expect(empty.storageStats()).toEqual({
+      chunkCount: 0,
+      retainedRows: 0,
+      sharedSealedChunks: 0,
+      copiedTailRows: 0,
+      copiedTailBytes: 0,
+    });
+
+    slab.push({ bands, dbList: [1], timestampMs: Number.NaN });
+    slab.push({ bands, dbList: [2, 3, 4], timestampMs: 2 });
+    expect(slab.length).toBe(1);
+    expect(slab.timestampAt(0)).toBe(2);
+    expect(Array.from(slab.rowAt(0).dbList)).toEqual([2, 3, 4]);
   });
 
   it("EMPTY_SPECTRUM_VIEW is an empty read-only view", () => {
@@ -144,7 +252,7 @@ describe("SpectrumHistorySlab", () => {
     expect(EMPTY_SPECTRUM_VIEW.rowAt(0)).toBeUndefined();
   });
 
-  it("can return copied rows for snapshot freeze safety", () => {
+  it("honors toArray copyRows without exposing copied buffers", () => {
     const slab = new SpectrumHistorySlab(2, bands);
 
     slab.push({ bands, dbList: [1, 2, 3], timestampMs: 1 });
@@ -153,9 +261,11 @@ describe("SpectrumHistorySlab", () => {
     const live = slab.toArray();
     const frozen = slab.toArray({ copyRows: true });
 
-    slab.push({ bands, dbList: [7, 8, 9], timestampMs: 3 });
+    expect(live[0].dbList.buffer).toBe(slab.rowAt(0).dbList.buffer);
+    expect(frozen[0].dbList.buffer).not.toBe(live[0].dbList.buffer);
+    live[0].dbList[0] = 99;
 
-    expect(Array.from(live[0].dbList)).toEqual([7, 8, 9]);
+    expect(Array.from(slab.rowAt(0).dbList)).toEqual([99, 2, 3]);
     expect(Array.from(frozen[0].dbList)).toEqual([1, 2, 3]);
   });
 });

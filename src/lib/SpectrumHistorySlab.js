@@ -1,3 +1,10 @@
+import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
+import {
+  chunkIdForSequence,
+  chunkOffsetForSequence,
+  findChunkForSequence,
+} from "./historyChunkMath.js";
+
 const EMPTY_F32 = new Float32Array(0);
 
 function centerOf(band) {
@@ -25,19 +32,69 @@ function copySecondaryRow(target, offset, bandCount, values) {
   }
 }
 
+function createChunk(sequenceStart, bands, bandCount) {
+  return {
+    sequenceStart,
+    rowCapacity: VISUAL_HISTORY_CHUNK_ROWS,
+    rowCount: 0,
+    sealed: false,
+    bands,
+    timestamps: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
+    dbA: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
+    dbB: null,
+    hasB: null,
+  };
+}
+
+function cloneChunk(chunk) {
+  return {
+    sequenceStart: chunk.sequenceStart,
+    rowCapacity: chunk.rowCapacity,
+    rowCount: chunk.rowCount,
+    sealed: true,
+    bands: chunk.bands,
+    timestamps: chunk.timestamps.slice(),
+    dbA: chunk.dbA.slice(),
+    dbB: chunk.dbB?.slice() ?? null,
+    hasB: chunk.hasB?.slice() ?? null,
+  };
+}
+
+function chunkPayloadBytes(chunk) {
+  return (
+    chunk.timestamps.byteLength +
+    chunk.dbA.byteLength +
+    (chunk.dbB?.byteLength ?? 0) +
+    (chunk.hasB?.byteLength ?? 0)
+  );
+}
+
+function rowFromChunk(chunk, sequence, bandCount, bands, copyRows) {
+  const row = chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
+  const offset = row * bandCount;
+  const dbList = chunk.dbA.subarray(offset, offset + bandCount);
+  const dbListB =
+    chunk.dbB && chunk.hasB?.[row] ? chunk.dbB.subarray(offset, offset + bandCount) : EMPTY_F32;
+  return {
+    bands,
+    dbList: copyRows ? Float32Array.from(dbList) : dbList,
+    dbListB: copyRows && dbListB.length ? Float32Array.from(dbListB) : dbListB,
+    timestampMs: chunk.timestamps[row],
+  };
+}
+
 export class SpectrumHistorySlab {
   constructor(capacity, bands) {
     if (capacity <= 0) throw new RangeError("SpectrumHistorySlab capacity must be > 0");
     this._cap = capacity;
     this._bands = bands ?? [];
     this._bandCount = this._bands.length;
-    this._head = 0;
-    this._size = 0;
+    this._chunks = [];
+    this._firstChunkId = 0;
+    this._startSequence = 0;
+    this._nextSequence = 0;
     this._version = 0;
-    this._timestamps = new Float64Array(capacity);
-    this._dbA = new Float32Array(capacity * this._bandCount);
-    this._dbB = null;
-    this._hasB = null;
+    this._hasSecondary = false;
   }
 
   get capacity() {
@@ -45,7 +102,7 @@ export class SpectrumHistorySlab {
   }
 
   get length() {
-    return this._size;
+    return this._nextSequence - this._startSequence;
   }
 
   get bandCount() {
@@ -57,19 +114,7 @@ export class SpectrumHistorySlab {
   }
 
   get hasSecondary() {
-    return this._dbB != null;
-  }
-
-  get dbA() {
-    return this._dbA;
-  }
-
-  get dbB() {
-    return this._dbB;
-  }
-
-  get timestamps() {
-    return this._timestamps;
+    return this._hasSecondary;
   }
 
   get version() {
@@ -77,9 +122,10 @@ export class SpectrumHistorySlab {
   }
 
   timestampAt(index) {
-    if (index < 0 || index >= this._size || !this._timestamps) return NaN;
-    const slot = (this._head + index) % this._cap;
-    return this._timestamps[slot];
+    const sequence = this._sequenceAt(index);
+    if (sequence == null) return NaN;
+    const chunk = this._chunkForSequence(sequence);
+    return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
   }
 
   rowAt(index) {
@@ -87,33 +133,36 @@ export class SpectrumHistorySlab {
   }
 
   freeze() {
-    const n = this._size;
-    const bc = this._bandCount;
-    const timestamps = new Float64Array(n);
-    const dbA = new Float32Array(n * bc);
-    let dbB = null;
-    let hasB = null;
-    if (this._dbB) {
-      dbB = new Float32Array(n * bc);
-      hasB = new Uint8Array(n);
-    }
-    for (let i = 0; i < n; i += 1) {
-      const slot = (this._head + i) % this._cap;
-      timestamps[i] = this._timestamps[slot];
-      dbA.set(this._dbA.subarray(slot * bc, slot * bc + bc), i * bc);
-      if (dbB) {
-        dbB.set(this._dbB.subarray(slot * bc, slot * bc + bc), i * bc);
-        hasB[i] = this._hasB[slot];
+    const startSequence = this._startSequence;
+    const endSequence = this._nextSequence;
+    const chunks = [];
+    let sharedSealedChunks = 0;
+    let copiedTailRows = 0;
+    let copiedTailBytes = 0;
+
+    for (const chunk of this._chunks) {
+      const chunkEnd = chunk.sequenceStart + chunk.rowCount;
+      if (chunkEnd <= startSequence || chunk.sequenceStart >= endSequence) continue;
+      if (chunk.sealed) {
+        chunks.push(chunk);
+        sharedSealedChunks += 1;
+      } else {
+        const copied = cloneChunk(chunk);
+        chunks.push(copied);
+        copiedTailRows = chunk.rowCount;
+        copiedTailBytes = chunkPayloadBytes(copied);
       }
     }
+
     return new FrozenSpectrumHistory({
       bands: this._bands,
-      bandCount: bc,
-      size: n,
-      timestamps,
-      dbA,
-      dbB,
-      hasB,
+      bandCount: this._bandCount,
+      chunks,
+      startSequence,
+      endSequence,
+      sharedSealedChunks,
+      copiedTailRows,
+      copiedTailBytes,
     });
   }
 
@@ -125,81 +174,130 @@ export class SpectrumHistorySlab {
     if (!this.matchesBands(bands)) {
       throw new RangeError("SpectrumHistorySlab cannot store rows with a different band grid");
     }
-    if (!this._dbA || !this._timestamps) {
-      this._timestamps = new Float64Array(this._cap);
-      this._dbA = new Float32Array(this._cap * this._bandCount);
-    }
-
-    const slot = (this._head + this._size) % this._cap;
-    const offset = slot * this._bandCount;
-    this._timestamps[slot] = Number.isFinite(timestampMs) ? timestampMs : -Infinity;
-    copyPrimaryRow(this._dbA, offset, this._bandCount, dbList);
-
-    if (dbListB?.length || this._dbB) {
-      if (!this._dbB) {
-        this._dbB = new Float32Array(this._cap * this._bandCount);
-        this._hasB = new Uint8Array(this._cap);
+    const sequence = this._nextSequence;
+    let active = this._chunks[this._chunks.length - 1];
+    if (!active || active.sealed) {
+      active = createChunk(sequence, this._bands, this._bandCount);
+      if (this._chunks.length === 0) {
+        this._firstChunkId = chunkIdForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
       }
-      copySecondaryRow(this._dbB, offset, this._bandCount, dbListB);
-      this._hasB[slot] = dbListB?.length ? 1 : 0;
+      this._chunks.push(active);
     }
 
-    if (this._size < this._cap) {
-      this._size += 1;
-    } else {
-      this._head = (this._head + 1) % this._cap;
+    const row = chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
+    const offset = row * this._bandCount;
+    active.timestamps[row] = Number.isFinite(timestampMs) ? timestampMs : -Infinity;
+    copyPrimaryRow(active.dbA, offset, this._bandCount, dbList);
+
+    if (dbListB?.length) {
+      if (!active.dbB) {
+        active.dbB = new Float32Array(active.rowCapacity * this._bandCount);
+        active.hasB = new Uint8Array(active.rowCapacity);
+      }
+      copySecondaryRow(active.dbB, offset, this._bandCount, dbListB);
+      active.hasB[row] = 1;
+      this._hasSecondary = true;
     }
+
+    active.rowCount += 1;
+    active.sealed = active.rowCount === active.rowCapacity;
+    this._nextSequence += 1;
+    this._startSequence = Math.max(this._startSequence, this._nextSequence - this._cap);
+    this._dropExpiredChunks();
     this._version += 1;
   }
 
   at(index, { copyRows = false } = {}) {
-    if (index < 0 || index >= this._size || !this._dbA || !this._timestamps) return undefined;
-    const slot = (this._head + index) % this._cap;
-    const offset = slot * this._bandCount;
-    const dbList = this._dbA.subarray(offset, offset + this._bandCount);
-    const dbListB =
-      this._dbB && this._hasB?.[slot]
-        ? this._dbB.subarray(offset, offset + this._bandCount)
-        : EMPTY_F32;
-    return {
-      bands: this._bands,
-      dbList: copyRows ? Float32Array.from(dbList) : dbList,
-      dbListB: copyRows && dbListB.length ? Float32Array.from(dbListB) : dbListB,
-      timestampMs: this._timestamps[slot],
-    };
+    const sequence = this._sequenceAt(index);
+    if (sequence == null) return undefined;
+    return rowFromChunk(
+      this._chunkForSequence(sequence),
+      sequence,
+      this._bandCount,
+      this._bands,
+      copyRows
+    );
   }
 
   toArray(options) {
-    const out = new Array(this._size);
-    for (let i = 0; i < this._size; i += 1) {
+    const out = new Array(this.length);
+    for (let i = 0; i < this.length; i += 1) {
       out[i] = this.at(i, options);
     }
     return out;
   }
 
   clear() {
-    this._timestamps = null;
-    this._dbA = null;
-    this._dbB = null;
-    this._hasB = null;
-    this._head = 0;
-    this._size = 0;
+    this._chunks = [];
+    const offset = chunkOffsetForSequence(this._nextSequence, VISUAL_HISTORY_CHUNK_ROWS);
+    if (offset !== 0) this._nextSequence += VISUAL_HISTORY_CHUNK_ROWS - offset;
+    this._startSequence = this._nextSequence;
+    this._firstChunkId = chunkIdForSequence(this._nextSequence, VISUAL_HISTORY_CHUNK_ROWS);
+    this._hasSecondary = false;
+  }
+
+  storageStats() {
+    return {
+      chunkCount: this._chunks.length,
+      retainedRows: this.length,
+      sharedSealedChunks: 0,
+      copiedTailRows: 0,
+      copiedTailBytes: 0,
+    };
+  }
+
+  _sequenceAt(index) {
+    if (index < 0 || index >= this.length) return null;
+    return this._startSequence + index;
+  }
+
+  _chunkForSequence(sequence) {
+    return findChunkForSequence(
+      this._chunks,
+      this._firstChunkId,
+      sequence,
+      VISUAL_HISTORY_CHUNK_ROWS
+    );
+  }
+
+  _dropExpiredChunks() {
+    while (
+      this._chunks.length > 0 &&
+      this._chunks[0].sequenceStart + this._chunks[0].rowCount <= this._startSequence
+    ) {
+      this._chunks.shift();
+      this._firstChunkId += 1;
+    }
   }
 }
 
 export class FrozenSpectrumHistory {
-  constructor({ bands, bandCount, size, timestamps, dbA, dbB, hasB }) {
+  constructor({
+    bands,
+    bandCount,
+    chunks,
+    startSequence,
+    endSequence,
+    sharedSealedChunks,
+    copiedTailRows,
+    copiedTailBytes,
+  }) {
     this._bands = bands ?? [];
     this._bandCount = bandCount;
-    this._size = size;
-    this._timestamps = timestamps;
-    this._dbA = dbA;
-    this._dbB = dbB ?? null;
-    this._hasB = hasB ?? null;
+    this._chunks = chunks;
+    this._startSequence = startSequence;
+    this._endSequence = endSequence;
+    this._firstChunkId =
+      chunks.length > 0
+        ? chunkIdForSequence(chunks[0].sequenceStart, VISUAL_HISTORY_CHUNK_ROWS)
+        : 0;
+    this._sharedSealedChunks = sharedSealedChunks;
+    this._copiedTailRows = copiedTailRows;
+    this._copiedTailBytes = copiedTailBytes;
   }
 
   get length() {
-    return this._size;
+    return this._endSequence - this._startSequence;
   }
 
   get version() {
@@ -207,19 +305,46 @@ export class FrozenSpectrumHistory {
   }
 
   timestampAt(index) {
-    if (index < 0 || index >= this._size) return NaN;
-    return this._timestamps[index];
+    const sequence = this._sequenceAt(index);
+    if (sequence == null) return NaN;
+    const chunk = this._chunkForSequence(sequence);
+    return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
   }
 
   rowAt(index) {
-    if (index < 0 || index >= this._size) return undefined;
-    const offset = index * this._bandCount;
-    const dbList = this._dbA.subarray(offset, offset + this._bandCount);
-    const dbListB =
-      this._dbB && this._hasB?.[index]
-        ? this._dbB.subarray(offset, offset + this._bandCount)
-        : EMPTY_F32;
-    return { bands: this._bands, dbList, dbListB, timestampMs: this._timestamps[index] };
+    const sequence = this._sequenceAt(index);
+    if (sequence == null) return undefined;
+    return rowFromChunk(
+      this._chunkForSequence(sequence),
+      sequence,
+      this._bandCount,
+      this._bands,
+      false
+    );
+  }
+
+  storageStats() {
+    return {
+      chunkCount: this._chunks.length,
+      retainedRows: this.length,
+      sharedSealedChunks: this._sharedSealedChunks,
+      copiedTailRows: this._copiedTailRows,
+      copiedTailBytes: this._copiedTailBytes,
+    };
+  }
+
+  _sequenceAt(index) {
+    if (index < 0 || index >= this.length) return null;
+    return this._startSequence + index;
+  }
+
+  _chunkForSequence(sequence) {
+    return findChunkForSequence(
+      this._chunks,
+      this._firstChunkId,
+      sequence,
+      VISUAL_HISTORY_CHUNK_ROWS
+    );
   }
 }
 
