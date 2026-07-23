@@ -241,8 +241,11 @@ describe("sliceWaveformSubHistoryFromIndex", () => {
     expect(randomCases).toBe(192);
   });
 
-  it("does not read retained source rows for wide windows and bounds summary work", () => {
-    const rows = Array.from({ length: 4_097 }, (_, sequence) => randomEntry(() => 0.25, sequence));
+  it("does not read finite 240-minute source rows and bounds wide-window summary work", () => {
+    const rows = Array.from({ length: 144_000 }, (_, sequence) => ({
+      waveformMin: [-0.5 - (sequence % 7) / 100, -0.4],
+      waveformMax: [0.5 + (sequence % 11) / 100, 0.4],
+    }));
     const index = new WaveformHistoryIndex(rows.length);
     rows.forEach((row) => index.append(row));
     let sourceReads = 0;
@@ -254,10 +257,11 @@ describe("sliceWaveformSubHistoryFromIndex", () => {
       },
     };
 
-    const result = sliceWaveformSubHistoryFromIndex(source, index, rows.length, 3.5, 8, 600);
+    const result = sliceWaveformSubHistoryFromIndex(source, index, rows.length, 0, 8, 600);
 
     expect(result.bucketCount).toBeGreaterThanOrEqual(600);
     expect(sourceReads).toBe(0);
+    expect(index.batchQueryStats().rawRowsVisited).toBe(0);
     expect(index.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
       result.bucketCount * (2 * Math.ceil(Math.log2(rows.length)) + 2)
     );
@@ -284,5 +288,87 @@ describe("sliceWaveformSubHistoryFromIndex", () => {
     expectSameWaveform(actual, expected);
     expect(sourceReads).toBeLessThanOrEqual(102);
     expect(index.batchQueryStats().queries).toBe(0);
+  });
+
+  it("preserves order-sensitive NaN buckets by falling back for a wide visible range", () => {
+    const rows = [
+      { waveformMin: [NaN], waveformMax: [0.1] },
+      { waveformMin: [-0.8], waveformMax: [0.8] },
+      { waveformMin: [-0.2], waveformMax: [0.2] },
+      { waveformMin: [-0.4], waveformMax: [0.4] },
+      { waveformMin: [NaN], waveformMax: [0.9] },
+      { waveformMin: [-0.7], waveformMax: [NaN] },
+    ];
+    const index = new WaveformHistoryIndex(rows.length);
+    rows.forEach((row) => index.append(row));
+    let sourceReads = 0;
+    const source = {
+      length: rows.length,
+      rowAt(entry) {
+        sourceReads += 1;
+        return rows[entry];
+      },
+    };
+
+    const expected = sliceWaveformSubHistory(rows, 6, 0, 1, 2);
+    const actual = sliceWaveformSubHistoryFromIndex(source, index, 6, 0, 1, 2);
+
+    expectSameWaveform(actual, expected);
+    expect(Number.isNaN(actual.mins[0][0])).toBe(true);
+    expect(actual.mins[0][1]).toBe(-0.7);
+    expect(sourceReads).toBe(6);
+    expect(index.batchQueryStats().queries).toBe(0);
+  });
+
+  it("keeps the indexed zero-read path when NaN rows are outside the wide visible range", () => {
+    const rows = Array.from({ length: 8 }, (_, entry) => ({
+      waveformMin: [entry === 0 ? NaN : -entry],
+      waveformMax: [entry],
+    }));
+    const index = new WaveformHistoryIndex(rows.length);
+    rows.forEach((row) => index.append(row));
+    let sourceReads = 0;
+    const source = {
+      length: rows.length,
+      rowAt(entry) {
+        sourceReads += 1;
+        return rows[entry];
+      },
+    };
+
+    const expected = sliceWaveformSubHistory(rows, 4, 0, 1, 2);
+    const actual = sliceWaveformSubHistoryFromIndex(source, index, 4, 0, 1, 2);
+
+    expectSameWaveform(actual, expected);
+    expect(sourceReads).toBe(0);
+    expect(index.batchQueryStats().queries).toBeGreaterThan(0);
+  });
+
+  it("matches the reference from a frozen index after live NaN eviction", () => {
+    const rows = [
+      { waveformMin: [-0.1], waveformMax: [0.1] },
+      { waveformMin: [-0.2], waveformMax: [0.2] },
+      { waveformMin: [-0.3], waveformMax: [0.3] },
+      { waveformMin: [NaN], waveformMax: [0.4] },
+      { waveformMin: [-0.5], waveformMax: [0.5] },
+      { waveformMin: [-0.6], waveformMax: [0.6] },
+    ];
+    const index = new WaveformHistoryIndex(rows.length);
+    rows.forEach((row) => index.append(row));
+    const frozen = index.freeze();
+    const frozenRows = rows.map((row) => ({
+      waveformMin: [...row.waveformMin],
+      waveformMax: [...row.waveformMax],
+    }));
+    for (let entry = 0; entry < rows.length; entry += 1) {
+      index.append({ waveformMin: [-1], waveformMax: [1] });
+    }
+
+    const expected = sliceWaveformSubHistory(frozenRows, 6, 0, 1, 2);
+    const actual = sliceWaveformSubHistoryFromIndex(frozenRows, frozen, 6, 0, 1, 2);
+
+    expectSameWaveform(actual, expected);
+    expect(frozen.hasNaNInRange(0, 5)).toBe(true);
+    expect(index.hasNaNInRange(0, 5)).toBe(false);
   });
 });

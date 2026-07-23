@@ -140,6 +140,7 @@ export function sliceWaveformSubHistoryFromIndex(
   const total = histSourceList.length;
   const windowSamples = Math.max(1, visibleSamples);
   const coordsPerBucket = windowSamples / W;
+  if (index) index.beginQueryBatch();
   if (!index || coordsPerBucket < 1) {
     return sliceWaveformSubHistory(
       histSourceList,
@@ -169,8 +170,21 @@ export function sliceWaveformSubHistoryFromIndex(
 
   const retainedStart = index.retainedStartSequence;
   const retainedEnd = index.retainedEndSequence - 1;
+  if (
+    index.hasNaNInRange?.(
+      Math.max(retainedStart, retainedStart + start),
+      Math.min(retainedEnd, retainedStart + end)
+    )
+  ) {
+    return sliceWaveformSubHistory(
+      histSourceList,
+      visibleSamples,
+      effectiveOffsetSamples,
+      channelCount,
+      pixelWidth
+    );
+  }
   const hasData = new Array(bucketCount).fill(false);
-  index.beginQueryBatch();
 
   for (let bucket = 0; bucket < bucketCount; bucket += 1) {
     const firstEntry = Math.max(

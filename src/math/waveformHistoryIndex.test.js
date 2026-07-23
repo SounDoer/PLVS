@@ -95,4 +95,32 @@ describe("WaveformHistoryIndex", () => {
     index.append(rows[0]);
     expect(index.retainedEndSequence).toBe(1);
   });
+
+  it("tracks sparse NaN sequences with inclusive range and eviction semantics", () => {
+    const index = new WaveformHistoryIndex(4);
+    index.append({ waveformMin: [-0.1], waveformMax: [0.1] });
+    index.append({ waveformMin: [NaN], waveformMax: [0.2] });
+    index.append({ waveformMin: [-0.3], waveformMax: [NaN] });
+    index.append({ waveformMin: [-Infinity], waveformMax: [Infinity] });
+    const frozen = index.freeze();
+
+    expect(index.hasNaNInRange(0, 0)).toBe(false);
+    expect(index.hasNaNInRange(1, 1)).toBe(true);
+    expect(index.hasNaNInRange(2, 2)).toBe(true);
+    expect(index.hasNaNInRange(3, 3)).toBe(false);
+    expect(index.hasNaNInRange(-100, 100)).toBe(true);
+
+    index.append({ waveformMin: [-0.5], waveformMax: [0.5] });
+    expect(index.retainedStartSequence).toBe(1);
+    expect(index.hasNaNInRange(0, 0)).toBe(false);
+    index.append({ waveformMin: [-0.6], waveformMax: [0.6] });
+    expect(index.retainedStartSequence).toBe(2);
+    expect(index.hasNaNInRange(0, 1)).toBe(false);
+    expect(index.hasNaNInRange(2, 2)).toBe(true);
+    index.append({ waveformMin: [-0.7], waveformMax: [0.7] });
+    expect(index.hasNaNInRange(0, 2)).toBe(false);
+
+    expect(frozen.hasNaNInRange(1, 2)).toBe(true);
+    expect(frozen.hasNaNInRange(3, 3)).toBe(false);
+  });
 });

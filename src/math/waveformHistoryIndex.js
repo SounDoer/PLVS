@@ -18,22 +18,50 @@ function valuesFromRow(row) {
   };
 }
 
+function rowHasNaN(row) {
+  for (const values of [row.waveformMin, row.waveformMax]) {
+    if (!values) continue;
+    for (let index = 0; index < values.length; index += 1) {
+      if (Number.isNaN(values[index])) return true;
+    }
+  }
+  return false;
+}
+
+function sequenceAt(sequences, index) {
+  return typeof sequences.at === "function" ? sequences.at(index) : sequences[index];
+}
+
+function lowerBound(sequences, target) {
+  let low = 0;
+  let high = sequences.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (sequenceAt(sequences, middle) < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
 export class WaveformHistoryIndex {
-  constructor(capacityOrIndex, frozen = false, rawRows = null) {
+  constructor(capacityOrIndex, frozen = false, rawRows = null, nanSequences = null) {
     this._index =
       typeof capacityOrIndex === "number"
         ? new PowerOfTwoMinMaxIndex(capacityOrIndex)
         : capacityOrIndex;
     this._frozen = frozen;
     this._rawRows = rawRows ?? new RingBuffer(capacityOrIndex);
+    this._nanSequences = nanSequences ?? new RingBuffer(capacityOrIndex);
     this._batchQueryStats = emptyBatchStats();
   }
 
   append(row) {
     if (this._frozen) throw new TypeError("cannot append to a frozen WaveformHistoryIndex");
+    const sequence = this._index.retainedEndSequence;
     const { mins, maxes } = valuesFromRow(row);
-    this._index.append(this._index.retainedEndSequence, mins, maxes);
+    this._index.append(sequence, mins, maxes);
     this._rawRows.push({ mins, maxes });
+    if (rowHasNaN(row)) this._nanSequences.push(sequence);
   }
 
   queryRange(startSequence, endSequence) {
@@ -63,11 +91,20 @@ export class WaveformHistoryIndex {
     return { ...this._batchQueryStats };
   }
 
+  hasNaNInRange(startSequence, endSequence) {
+    const start = Math.max(startSequence, this.retainedStartSequence);
+    const end = Math.min(endSequence, this.retainedEndSequence - 1);
+    if (start > end) return false;
+    const index = lowerBound(this._nanSequences, start);
+    return index < this._nanSequences.length && sequenceAt(this._nanSequences, index) <= end;
+  }
+
   freeze() {
     return new WaveformHistoryIndex(
       this._index.freeze(),
       true,
-      Object.freeze(this._rawRows.toArray())
+      Object.freeze(this._rawRows.toArray()),
+      Object.freeze(this._nanSequences.toArray())
     );
   }
 
@@ -75,6 +112,7 @@ export class WaveformHistoryIndex {
     if (this._frozen) throw new TypeError("cannot clear a frozen WaveformHistoryIndex");
     this._index.clear();
     this._rawRows.clear();
+    this._nanSequences.clear();
     this.beginQueryBatch();
   }
 
