@@ -211,6 +211,16 @@ describe("history performance harness", () => {
     expect(intake.pushHistRow).toHaveBeenCalledTimes(2);
     expect(intake.pushHistRow.mock.calls.map(([row]) => row.timestampMs)).toEqual([200, 300]);
     expect(publishAudio).toHaveBeenCalledTimes(2);
+    const firstPublished = publishAudio.mock.calls[0][0];
+    const firstStored = intake.pushHistRow.mock.calls[0][0];
+    expect(firstPublished).toMatchObject({
+      momentary: firstStored.lufsMomentary,
+      shortTerm: firstStored.lufsShortTerm,
+      correlation: firstStored.correlation,
+      peakDb: firstStored.peakDb,
+    });
+    expect(firstPublished).not.toHaveProperty("lufsMomentary");
+    expect(firstPublished).not.toHaveProperty("lufsShortTerm");
 
     controller.cancel();
     scheduler.tickIntervals(2);

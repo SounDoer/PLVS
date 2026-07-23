@@ -60,6 +60,38 @@ function scalarRow(index, timestampMs) {
   };
 }
 
+function meterAudioFromScalarRow(row) {
+  return {
+    peakDb: row.peakDb,
+    rmsDb: row.rmsDb,
+    peakHoldDb: row.peakHoldDb,
+    momentary: row.lufsMomentary,
+    shortTerm: row.lufsShortTerm,
+    integrated: row.integrated,
+    mMax: row.lufsMMax,
+    stMax: row.lufsStMax,
+    lra: row.lra,
+    tpL: row.sampleLDb,
+    tpR: row.sampleRDb,
+    truePeakL: row.truePeakL,
+    truePeakR: row.truePeakR,
+    tpMax: row.truePeakMaxDbtp,
+    samplePeakMaxL: row.samplePeakMaxL,
+    samplePeakMaxR: row.samplePeakMaxR,
+    sampleL: row.sampleLDb,
+    sampleR: row.sampleRDb,
+    samplePeak: row.truePeakMaxDbtp,
+    correlation: row.correlation,
+    sideToMidDb: row.sideToMidDb,
+    vectorscopePairX: row.vectorscopePairX,
+    vectorscopePairY: row.vectorscopePairY,
+    dialogueIntegrated: row.dialogueIntegrated,
+    dialogueLra: row.dialogueLra,
+    dialoguePercent: row.dialoguePercent,
+    dialogueActiveNow: row.dialogueActiveNow,
+  };
+}
+
 function visualPayload(fullVisual) {
   // Full mode intentionally represents the production payload: at 360k rows, 958 Spectrum
   // bands plus 200 Vectorscope floats retain roughly 1.3 GiB+ before object/chunk overhead.
@@ -194,7 +226,7 @@ export function seedHistoryPerformance({
       intake.pushHistRow(latest, Math.max(1, scalarRows));
       scalarCompleted += 1;
     }
-    if (latest) publishAudio?.(latest);
+    if (latest) publishAudio?.(meterAudioFromScalarRow(latest));
     report({ phase: "scalar", completed: scalarCompleted, total: scalarRows, fullVisual }, cancel);
     schedule(scalarCompleted < scalarRows ? runScalarBatch : runVisualBatch);
   };
@@ -225,7 +257,7 @@ export function startHistoryPerformanceHarness(options = {}) {
       while (visualTimestampMs >= nextScalarTimestampMs) {
         const row = scalarRow(liveScalarIndex, nextScalarTimestampMs);
         options.intake.pushHistRow(row, scalarCapacity);
-        options.publishAudio?.(row);
+        options.publishAudio?.(meterAudioFromScalarRow(row));
         liveScalarIndex += 1;
         nextScalarTimestampMs += SCALAR_CADENCE_MS;
       }
