@@ -223,6 +223,54 @@ describe("FrameIntake", () => {
     expect(intake.getCorrSnap()).toHaveLength(HIST_MAX);
   });
 
+  it("keeps the loudness index sequence range aligned with retained scalar rows", () => {
+    const intake = new FrameIntake();
+    for (let sequence = 0; sequence < 9; sequence += 1) {
+      intake.pushHistRow(
+        makeRow({
+          lufsMomentary: -30 + sequence,
+          lufsShortTerm: -40 + sequence,
+          timestampMs: sequence * 100,
+        }),
+        4,
+        SR
+      );
+    }
+
+    const rows = intake.getLoudnessHistory();
+    const index = intake.getLoudnessDisplayIndex();
+    expect(index.capacity).toBe(rows.capacity);
+    expect(index.retainedStartSequence).toBe(5);
+    expect(index.retainedEndSequence).toBe(9);
+    expect(rows.toArray().map((row) => row.timestampMs)).toEqual([500, 600, 700, 800]);
+    expect(
+      index.queryRange("m", 5, 8, (sequence) => rows.rowAt(sequence - index.retainedStartSequence))
+    ).toEqual({ min: -25, max: -22 });
+    expect(
+      index.queryRange("st", 5, 8, (sequence) => rows.rowAt(sequence - index.retainedStartSequence))
+    ).toEqual({ min: -35, max: -32 });
+  });
+
+  it("rebuilds and clears the loudness index with scalar history", () => {
+    const intake = new FrameIntake();
+    intake.pushHistRow(makeRow({ lufsMomentary: -20 }), 3, SR);
+    const original = intake.getLoudnessDisplayIndex();
+    const frozen = intake.snapshotLoudnessDisplayIndex();
+
+    intake.pushHistRow(makeRow({ lufsMomentary: -10 }), 5, SR);
+    const rebuilt = intake.getLoudnessDisplayIndex();
+    expect(rebuilt).not.toBe(original);
+    expect(rebuilt.capacity).toBe(5);
+    expect(rebuilt.retainedStartSequence).toBe(0);
+    expect(rebuilt.retainedEndSequence).toBe(1);
+    expect(frozen.retainedEndSequence).toBe(1);
+
+    intake.reset();
+    expect(rebuilt.retainedStartSequence).toBe(0);
+    expect(rebuilt.retainedEndSequence).toBe(0);
+    expect(intake.getLoudnessHistory()).toHaveLength(0);
+  });
+
   it("keeps all scalar columns aligned after wraparound without Array.shift", () => {
     const intake = new FrameIntake();
     const originalShift = Array.prototype.shift;

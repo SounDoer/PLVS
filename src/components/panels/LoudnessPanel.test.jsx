@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 
 import { HistoryDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LoudnessPanel } from "./LoudnessPanel.jsx";
+import { LoudnessHistoryIndex } from "../../math/loudnessHistoryIndex.js";
 
 beforeEach(() => {
   class ResizeObserverStub {
@@ -141,5 +142,38 @@ describe("LoudnessPanel", () => {
 
     expect(before).toBeTruthy();
     expect(after).not.toBe(before);
+  });
+
+  it("does not scan 144k retained rows for a full-window indexed path", () => {
+    const capacity = 144_000;
+    const rows = Array.from({ length: capacity }, (_, sequence) => ({
+      m: -30 + (sequence % 17),
+      st: -32 + (sequence % 19),
+      timestampMs: sequence * 100,
+    }));
+    const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
+    rows.forEach((row) => loudnessDisplayIndex.append(row));
+    let rowReads = 0;
+    const histSourceList = {
+      length: rows.length,
+      rowAt(index) {
+        rowReads += 1;
+        return rows[index];
+      },
+    };
+
+    renderPanel({
+      histSourceList,
+      loudnessDisplayIndex,
+      totalSamples: capacity,
+      visibleSamples: capacity,
+      effectiveOffsetSamples: 0,
+      panelControls: { loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm"] },
+    });
+
+    expect(rowReads).toBeLessThanOrEqual(4 * 600 + 2);
+    expect(loudnessDisplayIndex.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
+      600 * (2 * Math.ceil(Math.log2(capacity)) + 2)
+    );
   });
 });

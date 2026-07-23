@@ -105,6 +105,38 @@ describe("useSnapshot", () => {
     expect(result.current.frequencyMarkerIndex).toBe(liveMarkers);
   });
 
+  it("returns the source-matched loudness index and keeps the frozen index stable", () => {
+    const samples = {
+      loudness: [{ m: -20, st: -21, timestampMs: 1000 }],
+      corr: [0.1],
+      audio: [{ correlation: 0.1 }],
+    };
+    const intake = createIntake(samples);
+    const liveIndex = { source: "live", retainedEndSequence: 1 };
+    const frozenIndex = { source: "frozen", retainedEndSequence: 1 };
+    intake.getLoudnessDisplayIndex = () => liveIndex;
+    intake.snapshotLoudnessDisplayIndex = () => frozenIndex;
+    const baseProps = { sampleSec: 0.1, intake, audio: { correlation: 0.1 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, selectedOffset: -1 },
+    });
+
+    expect(result.current.loudnessDisplayIndex).toBe(liveIndex);
+
+    rerender({ ...baseProps, selectedOffset: 0 });
+    expect(result.current.loudnessDisplayIndex).toBe(frozenIndex);
+
+    liveIndex.retainedEndSequence = 2;
+    samples.loudness.push({ m: -10, st: -11, timestampMs: 1100 });
+    rerender({ ...baseProps, selectedOffset: 0.1 });
+    expect(result.current.loudnessDisplayIndex).toBe(frozenIndex);
+    expect(result.current.loudnessDisplayIndex.retainedEndSequence).toBe(1);
+
+    rerender({ ...baseProps, selectedOffset: -1 });
+    expect(result.current.loudnessDisplayIndex).toBe(liveIndex);
+    expect(result.current.loudnessDisplayIndex.retainedEndSequence).toBe(2);
+  });
+
   it("returns channel metadata for the selected snapshot tick", () => {
     const intake = {
       getLoudnessHistory: () => [

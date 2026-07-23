@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
 import { DockLoudness } from "./DockLoudness.jsx";
+import { LoudnessHistoryIndex } from "../../math/loudnessHistoryIndex.js";
 
 function renderWith({
   displayAudio,
   histSourceList = [],
+  loudnessDisplayIndex = null,
   controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness,
   heightMode = "standard",
   // Null is the Off default: the reference comes from the active Loudness Profile.
@@ -18,7 +20,13 @@ function renderWith({
   return render(
     <FrameDataProvider value={{ displayAudio }}>
       <HistoryDataProvider
-        value={{ histSourceList, referenceLufs, momentaryRules, shortTermRules }}
+        value={{
+          histSourceList,
+          loudnessDisplayIndex,
+          referenceLufs,
+          momentaryRules,
+          shortTermRules,
+        }}
       >
         <DockLoudness controls={controls} heightMode={heightMode} />
       </HistoryDataProvider>
@@ -151,6 +159,36 @@ describe("DockLoudness", () => {
     );
     expect(screen.getByTestId("dock-loudness-short-term").getAttribute("d")).not.toBe(
       firstShortTermPath
+    );
+  });
+
+  it("uses output-bounded indexed reads with a full retained history", () => {
+    const capacity = 144_000;
+    const rows = Array.from({ length: capacity }, (_, sequence) => ({
+      m: -30 + (sequence % 17),
+      st: -32 + (sequence % 19),
+      timestampMs: sequence * 100,
+    }));
+    const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
+    rows.forEach((row) => loudnessDisplayIndex.append(row));
+    let rowReads = 0;
+    const histSourceList = {
+      length: rows.length,
+      rowAt(index) {
+        rowReads += 1;
+        return rows[index];
+      },
+    };
+
+    renderWith({
+      displayAudio: { momentary: -20, shortTerm: -21, integrated: -22 },
+      histSourceList,
+      loudnessDisplayIndex,
+    });
+
+    expect(rowReads).toBeLessThanOrEqual(4 * 120 + 2);
+    expect(loudnessDisplayIndex.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
+      120 * (2 * Math.ceil(Math.log2(capacity)) + 2)
     );
   });
 

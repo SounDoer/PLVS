@@ -171,3 +171,69 @@ export function buildHistoryPath(
   }
   return d;
 }
+
+export function buildHistoryPathFromIndex(
+  histSourceList,
+  displayIndex,
+  key,
+  visibleSamples,
+  effectiveOffsetSamples,
+  toY,
+  viewWidth = 600,
+  targetColumns = viewWidth
+) {
+  if (!histSourceList.length) return "";
+  const total = histSourceList.length;
+  const winSamples = Math.max(2, visibleSamples);
+  const offSamples = Math.max(0, Math.min(Math.max(0, total - 1), effectiveOffsetSamples));
+  const newestVisible = total - 1 - offSamples;
+  const oldestVisible = newestVisible - winSamples + 1;
+  const start = Math.max(0, oldestVisible);
+  const end = Math.min(total - 1, newestVisible);
+  if (end < start) return "";
+  const count = end - start + 1;
+  if (count < 2) return "";
+
+  const xOf = (idx) => ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
+  const cols = Math.max(1, Math.floor(targetColumns));
+  if (count <= cols) {
+    return buildHistoryPath(
+      histSourceList,
+      key,
+      visibleSamples,
+      effectiveOffsetSamples,
+      toY,
+      viewWidth,
+      targetColumns
+    );
+  }
+
+  displayIndex.beginQueryBatch();
+  const retainedStartSequence = displayIndex.retainedStartSequence;
+  const rawRowAt = (sequence) => rowAt(histSourceList, sequence - retainedStartSequence);
+  let d = "";
+  let first = true;
+  for (let bucket = 0; bucket < cols; bucket += 1) {
+    const bucketStart = start + Math.ceil((bucket * count) / cols);
+    const bucketEnd = start + Math.ceil(((bucket + 1) * count) / cols) - 1;
+    if (bucketEnd < bucketStart) continue;
+    const range = displayIndex.queryRange(
+      key,
+      retainedStartSequence + bucketStart,
+      retainedStartSequence + bucketEnd,
+      rawRowAt
+    );
+    if (!range) continue;
+
+    // toY must be monotonic. Applying it to both source extrema and sorting in screen space
+    // preserves the reference envelope for both increasing and decreasing chart scales.
+    const firstY = toY(range.min);
+    const secondY = toY(range.max);
+    const minY = Math.min(firstY, secondY);
+    const maxY = Math.max(firstY, secondY);
+    const x = xOf(start + ((bucket + 0.5) * count) / cols);
+    d += `${first ? "M" : " L"} ${x} ${maxY} L ${x} ${minY}`;
+    first = false;
+  }
+  return d;
+}

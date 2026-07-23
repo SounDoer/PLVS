@@ -2,6 +2,7 @@ import { RingBuffer } from "./RingBuffer.js";
 import { SparseHistoryMarkers } from "./SparseHistoryMarkers.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
+import { LoudnessHistoryIndex } from "../math/loudnessHistoryIndex.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -151,6 +152,7 @@ export class FrameIntake {
   constructor() {
     this._histCapacity = 1;
     this._loudnessHist = new RingBuffer(1);
+    this._loudnessDisplayIndex = new LoudnessHistoryIndex(1);
     this._audioSnap = new RingBuffer(1);
     this._corrSnap = new RingBuffer(1);
     this._frequencyChannelMarkers = new RingBuffer(1);
@@ -173,6 +175,7 @@ export class FrameIntake {
 
   _rebuildScalarHistory(capacity) {
     const loudnessHist = new RingBuffer(capacity);
+    const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
     const audioSnap = new RingBuffer(capacity);
     const corrSnap = new RingBuffer(capacity);
     const frequencyChannelMarkers = new RingBuffer(capacity);
@@ -180,6 +183,7 @@ export class FrameIntake {
     const channelMetadataSnap = new RingBuffer(capacity);
     this._histCapacity = capacity;
     this._loudnessHist = loudnessHist;
+    this._loudnessDisplayIndex = loudnessDisplayIndex;
     this._audioSnap = audioSnap;
     this._corrSnap = corrSnap;
     this._frequencyChannelMarkers = frequencyChannelMarkers;
@@ -254,7 +258,7 @@ export class FrameIntake {
     const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._histTimestamp);
     const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
-    this._loudnessHist.push({
+    const loudnessRow = {
       m: hm,
       st: hst,
       waveformMin: snapshotNumericArray(row.waveformMin),
@@ -262,7 +266,9 @@ export class FrameIntake {
       waveformSubPairs: snapshotFloat32Array(row.waveformSubPairs),
       waveformSubCount: row.waveformSubCount ?? 0,
       timestampMs,
-    });
+    };
+    this._loudnessHist.push(loudnessRow);
+    this._loudnessDisplayIndex.append(loudnessRow);
     this._audioSnap.push(buildAudioSnap(row));
     this._corrSnap.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
     this._frequencyChannelMarkers.push(this._pendingFrequencyMarker);
@@ -350,6 +356,12 @@ export class FrameIntake {
   getLoudnessHistory() {
     return this._loudnessHist;
   }
+  getLoudnessDisplayIndex() {
+    return this._loudnessDisplayIndex;
+  }
+  snapshotLoudnessDisplayIndex() {
+    return this._loudnessDisplayIndex.freeze();
+  }
   getAudioSnap() {
     return this._audioSnap;
   }
@@ -395,6 +407,7 @@ export class FrameIntake {
 
   reset() {
     this._loudnessHist.clear();
+    this._loudnessDisplayIndex.clear();
     this._audioSnap.clear();
     this._corrSnap.clear();
     this._frequencyChannelMarkers.clear();

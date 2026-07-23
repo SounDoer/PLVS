@@ -3,7 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
 import { LoudnessHistoryChart } from "./LoudnessHistoryChart";
-import { buildHistoryPath, HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
+import {
+  buildHistoryPath,
+  buildHistoryPathFromIndex,
+  HISTORY_TIME_TICK_STEPS,
+} from "../../math/historyMath";
 import { useChartHover } from "../../hooks/useChartHover";
 import { computeHistoryHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
@@ -31,6 +35,7 @@ export function LoudnessPanel({ compact = false }) {
     historyTimeTicks,
     effectiveOffsetSec,
     histSourceList,
+    loudnessDisplayIndex,
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,
@@ -94,17 +99,29 @@ export function LoudnessPanel({ compact = false }) {
       : undefined;
   const displayHistoryPathMForRange = useMemo(
     () =>
-      buildHistoryPath(
-        histSourceList,
-        "m",
-        visibleSamples,
-        effectiveOffsetSamples,
-        (v) => loudnessHistY(v, 220, loudnessYRange),
-        600,
-        targetColumns
-      ),
+      loudnessDisplayIndex
+        ? buildHistoryPathFromIndex(
+            histSourceList,
+            loudnessDisplayIndex,
+            "m",
+            visibleSamples,
+            effectiveOffsetSamples,
+            (v) => loudnessHistY(v, 220, loudnessYRange),
+            600,
+            targetColumns
+          )
+        : buildHistoryPath(
+            histSourceList,
+            "m",
+            visibleSamples,
+            effectiveOffsetSamples,
+            (v) => loudnessHistY(v, 220, loudnessYRange),
+            600,
+            targetColumns
+          ),
     [
       histSourceList,
+      loudnessDisplayIndex,
       totalSamples,
       latestSampleTimestampMs,
       visibleSamples,
@@ -115,17 +132,29 @@ export function LoudnessPanel({ compact = false }) {
   );
   const displayHistoryPathSTForRange = useMemo(
     () =>
-      buildHistoryPath(
-        histSourceList,
-        "st",
-        visibleSamples,
-        effectiveOffsetSamples,
-        (v) => loudnessHistY(v, 220, loudnessYRange),
-        600,
-        targetColumns
-      ),
+      loudnessDisplayIndex
+        ? buildHistoryPathFromIndex(
+            histSourceList,
+            loudnessDisplayIndex,
+            "st",
+            visibleSamples,
+            effectiveOffsetSamples,
+            (v) => loudnessHistY(v, 220, loudnessYRange),
+            600,
+            targetColumns
+          )
+        : buildHistoryPath(
+            histSourceList,
+            "st",
+            visibleSamples,
+            effectiveOffsetSamples,
+            (v) => loudnessHistY(v, 220, loudnessYRange),
+            600,
+            targetColumns
+          ),
     [
       histSourceList,
+      loudnessDisplayIndex,
       totalSamples,
       latestSampleTimestampMs,
       visibleSamples,

@@ -4,14 +4,14 @@ import { VISUAL_HISTORY_CHUNK_ROWS } from "../src/lib/historyChunkConfig.js";
 import { nearestTimestampIndex } from "../src/lib/snapshotResolve.js";
 import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "../src/lib/VectorscopeHistorySlab.js";
-import { buildHistoryPath } from "../src/math/historyMath.js";
+import { buildHistoryPath, buildHistoryPathFromIndex } from "../src/math/historyMath.js";
+import { LoudnessHistoryIndex } from "../src/math/loudnessHistoryIndex.js";
 import { sliceWaveformSubHistory } from "../src/math/waveformMath.js";
 
 const HIST_ROWS = 144_000;
 const VISUAL_ROWS = 360_000;
 const SPECTRUM_BANDS = 958;
 const VECTOR_VALUES = 200;
-const VIEW_WIDTH = 600;
 let benchmarkSink;
 let benchmarkChecksum = 0;
 
@@ -58,6 +58,7 @@ function averageTime(callback, iterations = 20) {
 function reportTime(label, callback, iterations) {
   const elapsed = averageTime(callback, iterations);
   console.log(`${label}: ${elapsed.toFixed(3)} ms`);
+  return elapsed;
 }
 
 function freezeVisualHistory() {
@@ -133,14 +134,36 @@ function freezeVisualHistory() {
 }
 
 const rows = mainRows();
-reportTime("loudness M / 240m / 600px", () => {
-  return buildHistoryPath(rows, "m", HIST_ROWS, 0, (value) => value, VIEW_WIDTH, VIEW_WIDTH);
-});
-reportTime("loudness ST / 240m / 600px", () => {
-  return buildHistoryPath(rows, "st", HIST_ROWS, 0, (value) => value, VIEW_WIDTH, VIEW_WIDTH);
-});
+const loudnessIndex = new LoudnessHistoryIndex(HIST_ROWS);
+for (const row of rows) loudnessIndex.append(row);
+for (const viewWidth of [600, 1200]) {
+  for (const key of ["m", "st"]) {
+    reportTime(`loudness ${key.toUpperCase()} reference / 240m / ${viewWidth}px`, () =>
+      buildHistoryPath(rows, key, HIST_ROWS, 0, (value) => value, viewWidth, viewWidth)
+    );
+    reportTime(`loudness ${key.toUpperCase()} indexed / 240m / ${viewWidth}px`, () =>
+      buildHistoryPathFromIndex(
+        rows,
+        loudnessIndex,
+        key,
+        HIST_ROWS,
+        0,
+        (value) => value,
+        viewWidth,
+        viewWidth
+      )
+    );
+    const stats = loudnessIndex.batchQueryStats();
+    console.log(
+      `loudness ${key.toUpperCase()} indexed nodes / ${viewWidth}px: ` +
+        `${stats.nodesVisited} (raw rows=${stats.rawRowsVisited}, summaries=${stats.summaryBucketsVisited})`
+    );
+    benchmarkChecksum +=
+      stats.nodesVisited + stats.rawRowsVisited + stats.summaryBucketsVisited + stats.queries;
+  }
+}
 reportTime("waveform / 240m / 600px", () => {
-  return sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, VIEW_WIDTH);
+  return sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, 600);
 });
 
 const timestamps = visualTimestampView();

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   getHistoryViewport,
   buildHistoryPath,
+  buildHistoryPathFromIndex,
   buildLoudnessYAxisTicks,
   HISTORY_MIN_WINDOW_SEC,
   HISTORY_MAX_WINDOW_SEC,
@@ -10,6 +11,29 @@ import {
   buildMediaTimeAxisLabels,
   mediaTimeAxisRangeSec,
 } from "./historyMath";
+import { LoudnessHistoryIndex } from "./loudnessHistoryIndex.js";
+
+function makeRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+function indexedRows(rows, capacity) {
+  const retained = rows.slice(-capacity);
+  const index = new LoudnessHistoryIndex(capacity);
+  rows.forEach((row) => index.append(row));
+  return {
+    retained,
+    index,
+    view: {
+      length: retained.length,
+      rowAt: (logicalIndex) => retained[logicalIndex],
+    },
+  };
+}
 
 describe("getHistoryViewport", () => {
   it("clamps window below minimum", () => {
@@ -144,6 +168,75 @@ describe("buildHistoryPath", () => {
     const list = Array.from({ length: 6000 }, (_, i) => ({ m: i === 3000 ? 0 : -60 }));
     const path = buildHistoryPath(list, "m", 6000, 0, (v) => v, 600, 600);
     expect(path).toContain(" 0 "); // the spike's y-value is present
+  });
+
+  it("matches the raw reference exactly across randomized startup, wrap, offsets, and widths", () => {
+    let randomCases = 0;
+    for (let seed = 1; seed <= 8; seed += 1) {
+      const random = makeRandom(seed);
+      for (const capacity of [17, 61, 257]) {
+        const rowCount = Math.floor(random() * capacity * 3);
+        const rows = Array.from({ length: rowCount }, (_, index) => ({
+          m: index % 47 === 0 ? -Infinity : Math.round((random() * 60 - 60) * 100) / 100,
+          st: index % 71 === 0 ? -Infinity : Math.round((random() * 50 - 55) * 100) / 100,
+          timestampMs: index * 100,
+        }));
+        const { retained, index, view } = indexedRows(rows, capacity);
+        for (const width of [600, 1200]) {
+          for (const key of ["m", "st"]) {
+            for (let query = 0; query < 7; query += 1) {
+              const visible = 2 + Math.floor(random() * (capacity * 2));
+              const offset = Math.floor(random() * (capacity + 4));
+              const columns = 1 + Math.floor(random() * width);
+              // Monotonic and finite for -Infinity, matching the chart-scale requirement.
+              const toY = (value) => (Number.isFinite(value) ? 220 - value * 2 : 999);
+              expect(
+                buildHistoryPathFromIndex(view, index, key, visible, offset, toY, width, columns)
+              ).toBe(buildHistoryPath(retained, key, visible, offset, toY, width, columns));
+              randomCases += 1;
+            }
+          }
+        }
+      }
+    }
+    expect(randomCases).toBe(672);
+  });
+
+  it("bounds full-window raw reads and index nodes by output columns", () => {
+    const capacity = 144_000;
+    const rows = Array.from({ length: capacity }, (_, sequence) => ({
+      m: -30 + (sequence % 17),
+      st: -32 + (sequence % 19),
+      timestampMs: sequence * 100,
+    }));
+    const index = new LoudnessHistoryIndex(capacity);
+    rows.forEach((row) => index.append(row));
+    let rowReads = 0;
+    const view = {
+      length: rows.length,
+      rowAt(logicalIndex) {
+        rowReads += 1;
+        return rows[logicalIndex];
+      },
+    };
+    const columns = 1200;
+
+    const path = buildHistoryPathFromIndex(
+      view,
+      index,
+      "m",
+      capacity,
+      0,
+      (value) => value,
+      1200,
+      columns
+    );
+
+    expect((path.match(/[ML]/g) ?? []).length).toBeLessThanOrEqual(columns * 2);
+    expect(rowReads).toBeLessThanOrEqual(columns * 2);
+    expect(index.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
+      columns * (2 * Math.ceil(Math.log2(capacity)) + 2)
+    );
   });
 });
 

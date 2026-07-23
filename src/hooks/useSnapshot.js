@@ -27,6 +27,7 @@ function snapshotRows(view) {
 function freezeSnapshot(intake, liveAudioFallback) {
   return {
     loudness: snapshotRows(intake.getLoudnessHistory()),
+    loudnessDisplayIndex: intake.snapshotLoudnessDisplayIndex?.() ?? null,
     corr: snapshotRows(intake.getCorrSnap()),
     audio: snapshotRows(intake.getAudioSnap()),
     channelMetadata: snapshotRows(intake.getChannelMetadataSnap?.()),
@@ -58,6 +59,9 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   );
 
   const histSourceList = snapSource ? snapSource.loudness : intake.getLoudnessHistory();
+  const loudnessDisplayIndex = snapSource
+    ? snapSource.loudnessDisplayIndex
+    : (intake.getLoudnessDisplayIndex?.() ?? null);
   const resolveLiveAudio = snapSource
     ? (snapSource.audio.at(-1) ?? snapSource.liveAudioFallback)
     : audio;
@@ -199,6 +203,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
 
   return {
     histSourceList,
+    loudnessDisplayIndex,
     frequencyMarkerIndex: snapSource
       ? snapSource.frequencyMarkerIndex
       : (intake.getSparseFrequencyChannelMarkers?.() ?? null),
