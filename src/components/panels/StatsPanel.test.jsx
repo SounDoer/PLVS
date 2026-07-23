@@ -88,8 +88,13 @@ function renderStatsPanel({ shared, panelControls, displayAudio }) {
 }
 
 function valueClassFor(label) {
-  // The value sits next to its label inside the row; colour is applied to the value alone.
+  // The value sits next to its label inside the row; warn/fail colour is applied to the value.
   return screen.getByText(label).parentElement.nextElementSibling.className;
+}
+
+function labelClassFor(label) {
+  // The "watched vs unwatched" signal lives on the label wrapper, not the value.
+  return screen.getByText(label).parentElement.className;
 }
 
 function renderWithProfile({ selection, displayAudio, visibleIds }) {
@@ -219,21 +224,27 @@ describe("StatsPanel profile status colours", () => {
   it("colours nothing while the profile is Off", () => {
     renderWithProfile({ displayAudio: inRange, visibleIds: ["integrated"] });
 
-    const className = valueClassFor("Integrated");
-    expect(className).toContain("text-foreground");
-    expect(className).not.toContain("--ui-signal");
+    const value = valueClassFor("Integrated");
+    expect(value).toContain("text-foreground");
+    expect(value).not.toContain("--ui-signal");
+    // Off leaves every label muted -- the no-profile look.
+    expect(labelClassFor("Integrated")).toContain("text-muted-foreground");
   });
 
-  it("leaves a watched, in-range value at foreground rather than a 'good' colour", () => {
+  it("keeps a watched, in-range value white but brightens its label", () => {
     renderWithProfile({
       selection: builtinSelectionId("ebu-r128"),
       displayAudio: inRange,
       visibleIds: ["integrated"],
     });
 
-    const className = valueClassFor("Integrated");
-    expect(className).toContain("text-foreground");
-    expect(className).not.toContain("--ui-signal");
+    const value = valueClassFor("Integrated");
+    expect(value).toContain("text-foreground");
+    expect(value).not.toContain("--ui-signal");
+    // The watched label brightens to foreground so it stands out from unwatched rows.
+    const label = labelClassFor("Integrated");
+    expect(label).toContain("text-foreground");
+    expect(label).not.toContain("text-muted-foreground");
   });
 
   it("fails a value outside the profile's band", () => {
@@ -244,6 +255,7 @@ describe("StatsPanel profile status colours", () => {
     });
 
     expect(valueClassFor("Integrated")).toContain("--ui-signal-bad");
+    expect(labelClassFor("Integrated")).toContain("text-foreground");
   });
 
   it("warns while Integrated is not yet ready", () => {
@@ -256,7 +268,7 @@ describe("StatsPanel profile status colours", () => {
     expect(valueClassFor("Integrated")).toContain("--ui-signal-warn");
   });
 
-  it("leaves metrics the profile only describes uncoloured", () => {
+  it("leaves an unwatched metric's value white and its label muted", () => {
     // Programme carries an LRA descriptor but does not watch it.
     renderWithProfile({
       selection: builtinSelectionId("ebu-r128"),
@@ -264,8 +276,21 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated", "lra"],
     });
 
-    const className = valueClassFor("Loudness Range");
-    expect(className).toContain("text-foreground");
-    expect(className).not.toContain("--ui-signal");
+    const value = valueClassFor("Loudness Range");
+    expect(value).toContain("text-foreground");
+    expect(value).not.toContain("--ui-signal");
+    expect(labelClassFor("Loudness Range")).toContain("text-muted-foreground");
+  });
+
+  it("mutes the label of a metric the active profile never names", () => {
+    // R128 has no rule for Momentary at all, so it is not in the profile document.
+    renderWithProfile({
+      selection: builtinSelectionId("ebu-r128"),
+      displayAudio: inRange,
+      visibleIds: ["integrated", "momentary"],
+    });
+
+    expect(valueClassFor("Momentary")).toContain("text-foreground");
+    expect(labelClassFor("Momentary")).toContain("text-muted-foreground");
   });
 });

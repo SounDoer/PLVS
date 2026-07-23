@@ -3,7 +3,10 @@ import { useMetricsData } from "../../workspace/AudioDataContext.jsx";
 import { STATS_META, buildStatsValues } from "../../lib/statsCatalog.js";
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
-import { loudnessStatusValueClass } from "../../lib/loudnessProfileStatusClasses.js";
+import {
+  loudnessStatusLabelClass,
+  loudnessStatusValueClass,
+} from "../../lib/loudnessProfileStatusClasses.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
 import {
@@ -134,6 +137,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
                   unit={unit}
                   unitVisibility="tight"
                   statId={id}
+                  labelClassName={loudnessStatusLabelClass(statuses[id])}
                   valueClassName={loudnessStatusValueClass(statuses[id])}
                   indicator={
                     id === "dialogueCoverage" ? (
@@ -152,7 +156,7 @@ export function DockStats({ controls, heightMode = "standard" }) {
                   <span
                     data-testid="dock-stat-label"
                     title={label}
-                    className="flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground"
+                    className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${loudnessStatusLabelClass(statuses[id])}`}
                   >
                     {id === "dialogueCoverage" ? (
                       <span

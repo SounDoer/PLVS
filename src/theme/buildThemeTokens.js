@@ -47,7 +47,6 @@ export function buildThemeTokens(theme) {
     "--ui-waveform-trace": accent,
     "--ui-waveform-trace-snap": accentSnap,
     "--ui-signal-peak-sample": accent,
-    "--ui-signal-tp-max": signal.bad,
     "--ui-signal-bad": signal.bad,
     "--ui-signal-warn": signal.warn,
     "--ui-signal-good": signal.good,

@@ -209,19 +209,21 @@ describe("LevelMeterPanel", () => {
     expect(marker.className).not.toContain("--ui-signal-tp-max");
   });
 
-  it("colours the TP Max marker once the active profile's limit is exceeded", () => {
-    // EBU R128 caps true peak at -1 dBTP and the fixture sits at -1.
+  it("fails the TP Max marker once the active profile's limit is exceeded", () => {
+    // EBU R128 caps true peak at -1 dBTP; 0 dBTP is a clear breach, so the marker follows the
+    // same fail colour the Stats row shows.
     selectProfile(builtinSelectionId("ebu-r128"));
     const { container } = renderPanel({
+      displayAudio: { peakDb: [-1, -1], rmsDb: [-9, -9], tpMax: 0 },
       panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
     });
 
     expect(container.querySelector("[data-level-tp-max-marker]").className).toContain(
-      "--ui-signal-tp-max"
+      "--ui-signal-bad"
     );
   });
 
-  it("keeps the TP Max marker neutral while the level is inside the profile's limit", () => {
+  it("keeps the TP Max marker at foreground while inside the profile's limit", () => {
     selectProfile(builtinSelectionId("ebu-r128"));
     const { container } = renderPanel({
       displayAudio: {
@@ -234,9 +236,23 @@ describe("LevelMeterPanel", () => {
       panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
     });
 
-    expect(container.querySelector("[data-level-tp-max-marker]").className).not.toContain(
-      "--ui-signal-tp-max"
-    );
+    const className = container.querySelector("[data-level-tp-max-marker]").className;
+    expect(className).toContain("text-foreground");
+    expect(className).not.toContain("--ui-signal");
+  });
+
+  it("dims the M/ST marker to muted when the active profile does not watch it", () => {
+    // R128 has no rule for Momentary, so the readout marker reads as "not part of this profile"
+    // rather than keeping its accent colour.
+    selectProfile(builtinSelectionId("ebu-r128"));
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-9, -9], rmsDb: [-18, -18], momentary: -22.4, shortTerm: -18.6 },
+      panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
+    });
+
+    const marker = container.querySelector("[data-level-value-marker]");
+    expect(marker.className).toContain("text-muted-foreground");
+    expect(marker.className).not.toContain("text-primary");
   });
 
   it("does not carry the Peak TP Max marker into RMS mode", () => {

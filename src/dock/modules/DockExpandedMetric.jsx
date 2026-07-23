@@ -10,6 +10,7 @@ export function DockExpandedMetric({
   align = "start",
   indicator = null,
   unitVisibility = "default",
+  labelClassName = "text-muted-foreground",
   valueClassName = "text-foreground",
   // Marks the readout as a named stat so the cross-surface colour guard can find it here too;
   // omitted by callers whose value is not a catalog metric.
@@ -30,7 +31,9 @@ export function DockExpandedMetric({
       data-testid="dock-expanded-metric"
       className={`@container flex min-w-0 flex-col overflow-hidden ${alignment}`}
     >
-      <span className="flex max-w-full items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none text-muted-foreground">
+      <span
+        className={`flex max-w-full items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${labelClassName}`}
+      >
         {indicator}
         <span className="min-w-0 truncate">{label}</span>
       </span>

@@ -23,6 +23,7 @@ import {
 } from "../../hooks/useLevelMeterPlaybackMax.js";
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
+import { loudnessMeterMarkerClass } from "../../lib/loudnessProfileStatusClasses.js";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -142,6 +143,9 @@ export function LevelMeterPanel() {
   const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useFrameData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
   const { document: loudnessProfileDocument } = useLoudnessProfile();
+  // With no profile the readout markers keep their accent colour; under one they follow the same
+  // status the Stats panel shows, so a metric never reads as fine here and hot there.
+  const profileActive = Boolean(loudnessProfileDocument);
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]
@@ -213,6 +217,11 @@ export function LevelMeterPanel() {
   if (!isPeakFamily) {
     const readoutValue = showPlaybackMax ? playbackMaxValue : liveLevelValue;
     const showMarker = showLevelValueMarker && Number.isFinite(readoutValue);
+    // levelMeterMode is the profile metric id here ("momentary" / "shortTerm"), so the marker
+    // follows the same rule the Stats row for this metric does.
+    const markerStatus = loudnessProfileEvaluate(loudnessProfileDocument, {
+      values: { [levelMeterMode]: readoutValue },
+    })[levelMeterMode];
     const yAxisWidthClass = showMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
     return (
       <div
@@ -266,7 +275,11 @@ export function LevelMeterPanel() {
                   );
                 })}
                 {showMarker ? (
-                  <AxisValueMarker value={readoutValue} yRange={levelMeterYRange} />
+                  <AxisValueMarker
+                    value={readoutValue}
+                    yRange={levelMeterYRange}
+                    className={loudnessMeterMarkerClass(markerStatus, profileActive)}
+                  />
                 ) : null}
               </div>
             </div>
@@ -317,11 +330,10 @@ export function LevelMeterPanel() {
   const showTpMaxMarker = isPeak && showTpMaxMarkerSetting && hasTpMaxValue;
   // The marker follows the active Loudness Profile rather than holding a second opinion about
   // what counts as too hot. Evaluating through the shared rule engine is what keeps the two
-  // from drifting; with no profile there is no limit, so the readout stays neutral.
+  // from drifting; with no profile there is no limit, so the readout keeps its accent colour.
   const tpMaxStatus = loudnessProfileEvaluate(loudnessProfileDocument, {
     values: { truePeak: displayAudio?.tpMax },
   }).truePeak;
-  const tpMaxOverLimit = tpMaxStatus === "fail" || tpMaxStatus === "warn";
   const peakYAxisWidthClass =
     isPeak && showTpMaxMarkerSetting ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
   return (
@@ -380,9 +392,7 @@ export function LevelMeterPanel() {
                   value={displayAudio?.tpMax}
                   yRange={levelMeterYRange}
                   dataAttribute="data-level-tp-max-marker"
-                  // In range, inherit AxisValueMarker's text-primary so the readout matches the
-                  // M/ST markers on this same meter.
-                  className={tpMaxOverLimit ? "text-[color:var(--ui-signal-tp-max)]" : undefined}
+                  className={loudnessMeterMarkerClass(tpMaxStatus, profileActive)}
                   onReset={onResetTpMax}
                   resetLabel="Click to reset TP Max"
                 />

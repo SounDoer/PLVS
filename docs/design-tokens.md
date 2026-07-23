@@ -116,7 +116,6 @@ Values that carry a pass/warn/fail meaning — not brand-derived.
 | Token                     | Value     | Role                            |
 | ------------------------- | --------- | ------------------------------- |
 | `--ui-signal-peak-sample` | `#fb923c` | Peak hold line — sample peak    |
-| `--ui-signal-tp-max`      | `#f97373` | TP MAX value text when exceeded |
 | `--ui-signal-bad`         | `#f97373` | General error / clip state      |
 | `--ui-signal-warn`        | `#fbbf24` | General warning state           |
 | `--ui-signal-good`        | `#34d399` | General safe / healthy state    |

@@ -18,7 +18,6 @@ const DARK_ANCHORS = {
   "--ui-loudness-momentary-over": "#ff5a1f",
   "--ui-loudness-shortterm": "#c66a2a",
   "--ui-spectrum-secondary": "#38bdf8",
-  "--ui-signal-tp-max": "#f97373",
   "--ui-meter-gradient-bottom": "#34d399",
 };
 
@@ -43,7 +42,6 @@ describe("buildThemeTokens", () => {
       "--ui-waveform-trace",
       "--ui-waveform-trace-snap",
       "--ui-signal-peak-sample",
-      "--ui-signal-tp-max",
       "--ui-signal-bad",
       "--ui-signal-warn",
       "--ui-signal-good",
@@ -74,13 +72,12 @@ describe("buildThemeTokens", () => {
     expect(t["--ui-waveform-trace-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
   });
 
-  it("maps signal seed straight onto meter and tp-max", () => {
+  it("maps signal seed straight onto meter and signal tokens", () => {
     const t = buildThemeTokens(BUILTIN_THEMES["plvs-dark"]);
     const { signal } = BUILTIN_THEMES["plvs-dark"].seeds;
     expect(t["--ui-meter-gradient-bottom"]).toBe(signal.good);
     expect(t["--ui-meter-gradient-mid"]).toBe(signal.warn);
     expect(t["--ui-meter-gradient-top"]).toBe(signal.bad);
-    expect(t["--ui-signal-tp-max"]).toBe(signal.bad);
     expect(t["--ui-signal-bad"]).toBe(signal.bad);
     expect(t["--ui-signal-warn"]).toBe(signal.warn);
     expect(t["--ui-signal-good"]).toBe(signal.good);
