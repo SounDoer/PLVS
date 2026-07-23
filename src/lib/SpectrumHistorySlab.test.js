@@ -210,6 +210,72 @@ describe("SpectrumHistorySlab", () => {
     });
   });
 
+  it("reports only retained active-tail rows when cloning the full backing", () => {
+    const slab = new SpectrumHistorySlab(1, bands);
+    for (let i = 0; i < 10; i += 1) {
+      slab.push({ bands, dbList: [i, i + 1, i + 2], timestampMs: i });
+    }
+
+    const frozen = slab.freeze();
+
+    expect(frozen.length).toBe(1);
+    expect(frozen.timestampAt(0)).toBe(9);
+    expect(frozen.storageStats()).toMatchObject({
+      retainedRows: 1,
+      copiedTailRows: 1,
+    });
+    expect(frozen.storageStats().copiedTailBytes).toBeGreaterThan(0);
+  });
+
+  it("freezes a partial oldest sealed chunk, sealed middle, and active tail together", () => {
+    const endSequence = VISUAL_HISTORY_CHUNK_ROWS * 2 + 5;
+    const capacity = endSequence - 7;
+    const slab = new SpectrumHistorySlab(capacity, bands);
+    for (let i = 0; i < endSequence; i += 1) {
+      slab.push({ bands, dbList: [i, i + 1, i + 2], timestampMs: i });
+    }
+
+    const frozen = slab.freeze();
+    const lastIndex = capacity - 1;
+    const middleIndex = VISUAL_HISTORY_CHUNK_ROWS - 7;
+    const liveFirstBuffer = slab.rowAt(0).dbList.buffer;
+    const liveMiddleBuffer = slab.rowAt(middleIndex).dbList.buffer;
+    const liveTailBuffer = slab.rowAt(lastIndex).dbList.buffer;
+
+    expect(slab.length).toBe(capacity);
+    expect(frozen.length).toBe(capacity);
+    expect(slab.timestampAt(0)).toBe(7);
+    expect(frozen.timestampAt(0)).toBe(7);
+    expect(slab.timestampAt(lastIndex)).toBe(endSequence - 1);
+    expect(frozen.timestampAt(lastIndex)).toBe(endSequence - 1);
+    expect(Array.from(frozen.rowAt(0).dbList)).toEqual([7, 8, 9]);
+    expect(Array.from(frozen.rowAt(lastIndex).dbList)).toEqual([
+      endSequence - 1,
+      endSequence,
+      endSequence + 1,
+    ]);
+    expect(frozen.rowAt(0).dbList.buffer).toBe(liveFirstBuffer);
+    expect(frozen.rowAt(middleIndex).dbList.buffer).toBe(liveMiddleBuffer);
+    expect(frozen.rowAt(lastIndex).dbList.buffer).not.toBe(liveTailBuffer);
+    expect(frozen.storageStats()).toEqual({
+      chunkCount: 3,
+      retainedRows: capacity,
+      sharedSealedChunks: 2,
+      copiedTailRows: 5,
+      copiedTailBytes: 20_480,
+    });
+
+    for (let i = 0; i < VISUAL_HISTORY_CHUNK_ROWS * 2; i += 1) {
+      slab.push({ bands, dbList: [-i, -i, -i], timestampMs: 10_000 + i });
+    }
+
+    expect(slab.timestampAt(0)).toBe(10_002);
+    expect(frozen.timestampAt(0)).toBe(7);
+    expect(frozen.timestampAt(lastIndex)).toBe(endSequence - 1);
+    expect(Array.from(frozen.rowAt(0).dbList)).toEqual([7, 8, 9]);
+    expect(frozen.rowAt(0).dbList.buffer).toBe(liveFirstBuffer);
+  });
+
   it("keeps secondary storage lazy per chunk while hasSecondary stays sticky", () => {
     const slab = new SpectrumHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 1, bands);
     slab.push({ bands, dbList: [1, 2, 3], dbListB: [4, 5, 6], timestampMs: 0 });

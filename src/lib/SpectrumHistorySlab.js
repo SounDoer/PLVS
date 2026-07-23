@@ -149,7 +149,8 @@ export class SpectrumHistorySlab {
       } else {
         const copied = cloneChunk(chunk);
         chunks.push(copied);
-        copiedTailRows = chunk.rowCount;
+        copiedTailRows =
+          Math.min(chunkEnd, endSequence) - Math.max(chunk.sequenceStart, startSequence);
         copiedTailBytes = chunkPayloadBytes(copied);
       }
     }
