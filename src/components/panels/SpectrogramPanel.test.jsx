@@ -11,6 +11,7 @@ import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
+import { SparseHistoryMarkers } from "../../lib/SparseHistoryMarkers.js";
 
 vi.mock("../../hooks/useSpectrogramCanvas", () => ({
   useSpectrogramCanvas: vi.fn(),
@@ -257,6 +258,74 @@ describe("SpectrogramPanel", () => {
     });
 
     expect(container.querySelector('line[stroke-dasharray="2 4"]')).toBeTruthy();
+  });
+
+  it("queries sparse frequency markers and preserves their exact x positions", () => {
+    const frequencyMarkerIndex = new SparseHistoryMarkers(5);
+    frequencyMarkerIndex.push(null);
+    frequencyMarkerIndex.push({ type: "frequencyChannelChange", from: "L/R", to: "C" });
+    frequencyMarkerIndex.push(null);
+    frequencyMarkerIndex.push({ type: "frequencyChannelChange", from: "C", to: "LFE" });
+    frequencyMarkerIndex.push(null);
+
+    const { container } = renderPanel({
+      channelCount: 6,
+      spectrumChannelOptions: [
+        { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+        { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+      ],
+      frequencyMarkerIndex,
+      frequencyMarkerRef: {
+        current: [
+          { type: "frequencyChannelChange", from: "wrong", to: "fallback" },
+          null,
+          null,
+          null,
+          null,
+        ],
+      },
+      histSourceList: Array.from({ length: 5 }, (_, index) => ({ timestampMs: index * 100 })),
+      totalSamples: 5,
+      effectiveOffsetSamples: 0,
+      visibleSamples: 4,
+    });
+
+    const lines = Array.from(container.querySelectorAll('line[stroke-dasharray="2 4"]'));
+    expect(lines.map((line) => Number(line.getAttribute("x1")))).toEqual([0, 2000 / 3]);
+    expect(lines.map((line) => line.querySelector("title")?.textContent)).toEqual([
+      "Frequency channel changed: L/R -> C",
+      "Frequency channel changed: C -> LFE",
+    ]);
+  });
+
+  it("queries 240 minutes of sparse markers without scanning retained rows", () => {
+    const rowCount = 360_000;
+    const frequencyMarkerIndex = new SparseHistoryMarkers(rowCount);
+    for (let index = 0; index < rowCount; index += 1) {
+      frequencyMarkerIndex.push(
+        index === rowCount - 1 ? { type: "frequencyChannelChange", from: "L/R", to: "C" } : null
+      );
+    }
+
+    const { container } = renderPanel({
+      channelCount: 6,
+      spectrumChannelOptions: [
+        { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+        { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
+      ],
+      frequencyMarkerIndex,
+      histSourceList: [{ timestampMs: 0 }, { timestampMs: rowCount * 100 }],
+      totalSamples: rowCount,
+      effectiveOffsetSamples: 0,
+      visibleSamples: 100,
+    });
+
+    expect(container.querySelector('line[stroke-dasharray="2 4"]')).toBeTruthy();
+    expect(frequencyMarkerIndex.lastQueryStats()).toMatchObject({
+      markersReturned: 1,
+      markersInspected: 1,
+    });
+    expect(frequencyMarkerIndex.lastQueryStats().binarySearchReads).toBeLessThanOrEqual(2);
   });
 
   it("draws a data-availability boundary line where this view's history starts mid-window", () => {

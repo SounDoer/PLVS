@@ -1,4 +1,5 @@
 import { RingBuffer } from "./RingBuffer.js";
+import { SparseHistoryMarkers } from "./SparseHistoryMarkers.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
 
@@ -153,6 +154,7 @@ export class FrameIntake {
     this._audioSnap = new RingBuffer(1);
     this._corrSnap = new RingBuffer(1);
     this._frequencyChannelMarkers = new RingBuffer(1);
+    this._sparseFrequencyChannelMarkers = new SparseHistoryMarkers(1);
     this._channelMetadataSnap = new RingBuffer(1);
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist = new RingBuffer(1); // lazily resized on first pushVisualHistRow
@@ -174,12 +176,14 @@ export class FrameIntake {
     const audioSnap = new RingBuffer(capacity);
     const corrSnap = new RingBuffer(capacity);
     const frequencyChannelMarkers = new RingBuffer(capacity);
+    const sparseFrequencyChannelMarkers = new SparseHistoryMarkers(capacity);
     const channelMetadataSnap = new RingBuffer(capacity);
     this._histCapacity = capacity;
     this._loudnessHist = loudnessHist;
     this._audioSnap = audioSnap;
     this._corrSnap = corrSnap;
     this._frequencyChannelMarkers = frequencyChannelMarkers;
+    this._sparseFrequencyChannelMarkers = sparseFrequencyChannelMarkers;
     this._channelMetadataSnap = channelMetadataSnap;
   }
 
@@ -262,6 +266,7 @@ export class FrameIntake {
     this._audioSnap.push(buildAudioSnap(row));
     this._corrSnap.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
     this._frequencyChannelMarkers.push(this._pendingFrequencyMarker);
+    this._sparseFrequencyChannelMarkers.push(this._pendingFrequencyMarker);
     this._channelMetadataSnap.push({ ...this._currentChannelMetadata });
     this._pendingFrequencyMarker = null;
   }
@@ -354,6 +359,12 @@ export class FrameIntake {
   getFrequencyChannelMarkers() {
     return this._frequencyChannelMarkers;
   }
+  getSparseFrequencyChannelMarkers() {
+    return this._sparseFrequencyChannelMarkers;
+  }
+  snapshotSparseFrequencyChannelMarkers() {
+    return this._sparseFrequencyChannelMarkers.freeze();
+  }
   getChannelMetadataSnap() {
     return this._channelMetadataSnap;
   }
@@ -387,6 +398,7 @@ export class FrameIntake {
     this._audioSnap.clear();
     this._corrSnap.clear();
     this._frequencyChannelMarkers.clear();
+    this._sparseFrequencyChannelMarkers.clear();
     this._channelMetadataSnap.clear();
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist.clear();

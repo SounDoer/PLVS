@@ -153,6 +153,47 @@ describe("FrameIntake", () => {
     ]);
   });
 
+  it("keeps sparse frequency markers aligned with retained history rows", () => {
+    const intake = new FrameIntake();
+    for (let index = 0; index < 6; index += 1) {
+      if (index === 1 || index === 4) {
+        intake.setPendingFrequencyMarker({ from: `${index}`, to: `${index + 1}` });
+      }
+      intake.pushHistRow(makeRow({ timestampMs: index * 100 }), 3, SR);
+    }
+
+    expect(intake.getSparseFrequencyChannelMarkers().query(0, 2)).toEqual([
+      {
+        sequence: 4,
+        logicalIndex: 1,
+        marker: { type: "frequencyChannelChange", from: "4", to: "5" },
+      },
+    ]);
+    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
+      null,
+      { type: "frequencyChannelChange", from: "4", to: "5" },
+      null,
+    ]);
+  });
+
+  it("rebuilds and clears the sparse marker index with scalar history", () => {
+    const intake = new FrameIntake();
+    intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });
+    intake.pushHistRow(makeRow(), 3, SR);
+    const original = intake.getSparseFrequencyChannelMarkers();
+    const frozen = intake.snapshotSparseFrequencyChannelMarkers();
+
+    intake.pushHistRow(makeRow(), 4, SR);
+    const rebuilt = intake.getSparseFrequencyChannelMarkers();
+    expect(rebuilt).not.toBe(original);
+    expect(rebuilt.capacity).toBe(4);
+    expect(rebuilt.query(0, 0)).toEqual([]);
+    expect(frozen.query(0, 0)).toHaveLength(1);
+
+    intake.reset();
+    expect(rebuilt.query(0, 0)).toEqual([]);
+  });
+
   it("reset clears frequency markers and channel metadata history", () => {
     const intake = new FrameIntake();
     intake.setPendingFrequencyMarker({ from: "L/R", to: "C" });

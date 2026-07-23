@@ -80,6 +80,31 @@ describe("useSnapshot", () => {
     expect(result.current.displayAudio).toBe(liveAudio);
   });
 
+  it("returns a sparse frequency marker index from the matching live or frozen source", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.1],
+      audio: [{ correlation: 0.1 }],
+    };
+    const intake = createIntake(samples);
+    const liveMarkers = { source: "live" };
+    const frozenMarkers = { source: "frozen" };
+    intake.getSparseFrequencyChannelMarkers = () => liveMarkers;
+    intake.snapshotSparseFrequencyChannelMarkers = () => frozenMarkers;
+    const baseProps = { sampleSec: 0.1, intake, audio: { correlation: 0.1 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, selectedOffset: -1 },
+    });
+
+    expect(result.current.frequencyMarkerIndex).toBe(liveMarkers);
+
+    rerender({ ...baseProps, selectedOffset: 0 });
+    expect(result.current.frequencyMarkerIndex).toBe(frozenMarkers);
+
+    rerender({ ...baseProps, selectedOffset: -1 });
+    expect(result.current.frequencyMarkerIndex).toBe(liveMarkers);
+  });
+
   it("returns channel metadata for the selected snapshot tick", () => {
     const intake = {
       getLoudnessHistory: () => [

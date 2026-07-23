@@ -38,6 +38,7 @@ function createChunk(sequenceStart, bands, bandCount) {
     rowCapacity: VISUAL_HISTORY_CHUNK_ROWS,
     rowCount: 0,
     sealed: false,
+    maxInternalTimestampDeltaMs: -Infinity,
     bands,
     timestamps: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
     dbA: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
@@ -52,6 +53,7 @@ function cloneChunk(chunk) {
     rowCapacity: chunk.rowCapacity,
     rowCount: chunk.rowCount,
     sealed: true,
+    maxInternalTimestampDeltaMs: chunk.maxInternalTimestampDeltaMs,
     bands: chunk.bands,
     timestamps: chunk.timestamps.slice(),
     dbA: chunk.dbA.slice(),
@@ -83,6 +85,76 @@ function rowFromChunk(chunk, sequence, bandCount, bands, copyRows) {
   };
 }
 
+function emptyGapQueryStats() {
+  return { chunksInspected: 0, rowsScanned: 0 };
+}
+
+function appendGapIfNeeded(out, previousTimestampMs, nextTimestampMs, maxGapMs) {
+  if (nextTimestampMs - previousTimestampMs > maxGapMs) {
+    out.push({ previousTimestampMs, nextTimestampMs });
+  }
+}
+
+function timestampGapBoundariesInChunks(
+  chunks,
+  retainedStartSequence,
+  retainedEndSequence,
+  startIndex,
+  endIndex,
+  maxGapMs
+) {
+  const stats = emptyGapQueryStats();
+  const out = [];
+  const retainedLength = retainedEndSequence - retainedStartSequence;
+  const firstIndex = Math.max(0, Math.ceil(startIndex));
+  const lastIndex = Math.min(retainedLength - 1, Math.floor(endIndex));
+  if (firstIndex >= lastIndex || !(maxGapMs >= 0)) return { boundaries: out, stats };
+
+  const firstSequence = retainedStartSequence + firstIndex;
+  const lastSequence = retainedStartSequence + lastIndex;
+  let previousChunk = null;
+
+  for (const chunk of chunks) {
+    const chunkFirstSequence = chunk.sequenceStart;
+    const chunkLastSequence = chunk.sequenceStart + chunk.rowCount - 1;
+    if (chunkLastSequence < firstSequence) {
+      previousChunk = chunk;
+      continue;
+    }
+    if (chunkFirstSequence > lastSequence) break;
+    stats.chunksInspected += 1;
+
+    if (previousChunk) {
+      const previousSequence = previousChunk.sequenceStart + previousChunk.rowCount - 1;
+      if (previousSequence >= firstSequence && chunkFirstSequence <= lastSequence) {
+        appendGapIfNeeded(
+          out,
+          previousChunk.timestamps[previousChunk.rowCount - 1],
+          chunk.timestamps[0],
+          maxGapMs
+        );
+      }
+    }
+
+    const scanFirstSequence = Math.max(firstSequence, chunkFirstSequence);
+    const scanLastSequence = Math.min(lastSequence, chunkLastSequence);
+    if (scanFirstSequence < scanLastSequence && chunk.maxInternalTimestampDeltaMs > maxGapMs) {
+      stats.rowsScanned += scanLastSequence - scanFirstSequence + 1;
+      let previousTimestampMs =
+        chunk.timestamps[chunkOffsetForSequence(scanFirstSequence, VISUAL_HISTORY_CHUNK_ROWS)];
+      for (let sequence = scanFirstSequence + 1; sequence <= scanLastSequence; sequence += 1) {
+        const nextTimestampMs =
+          chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
+        appendGapIfNeeded(out, previousTimestampMs, nextTimestampMs, maxGapMs);
+        previousTimestampMs = nextTimestampMs;
+      }
+    }
+    previousChunk = chunk;
+  }
+
+  return { boundaries: out, stats };
+}
+
 export class SpectrumHistorySlab {
   constructor(capacity, bands) {
     if (capacity <= 0) throw new RangeError("SpectrumHistorySlab capacity must be > 0");
@@ -95,6 +167,7 @@ export class SpectrumHistorySlab {
     this._nextSequence = 0;
     this._version = 0;
     this._hasSecondary = false;
+    this._lastGapQueryStats = emptyGapQueryStats();
   }
 
   get capacity() {
@@ -126,6 +199,23 @@ export class SpectrumHistorySlab {
     if (sequence == null) return NaN;
     const chunk = this._chunkForSequence(sequence);
     return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
+  }
+
+  timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
+    const result = timestampGapBoundariesInChunks(
+      this._chunks,
+      this._startSequence,
+      this._nextSequence,
+      startIndex,
+      endIndex,
+      maxGapMs
+    );
+    this._lastGapQueryStats = result.stats;
+    return result.boundaries;
+  }
+
+  lastGapQueryStats() {
+    return { ...this._lastGapQueryStats };
   }
 
   rowAt(index) {
@@ -187,7 +277,16 @@ export class SpectrumHistorySlab {
 
     const row = chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
     const offset = row * this._bandCount;
-    active.timestamps[row] = Number.isFinite(timestampMs) ? timestampMs : -Infinity;
+    const storedTimestampMs = Number.isFinite(timestampMs) ? timestampMs : -Infinity;
+    active.timestamps[row] = storedTimestampMs;
+    if (row > 0) {
+      const previousTimestampMs = active.timestamps[row - 1];
+      const deltaMs =
+        Number.isFinite(previousTimestampMs) && Number.isFinite(storedTimestampMs)
+          ? storedTimestampMs - previousTimestampMs
+          : Infinity;
+      active.maxInternalTimestampDeltaMs = Math.max(active.maxInternalTimestampDeltaMs, deltaMs);
+    }
     copyPrimaryRow(active.dbA, offset, this._bandCount, dbList);
 
     if (dbListB?.length) {
@@ -235,6 +334,7 @@ export class SpectrumHistorySlab {
     this._startSequence = this._nextSequence;
     this._firstChunkId = chunkIdForSequence(this._nextSequence, VISUAL_HISTORY_CHUNK_ROWS);
     this._hasSecondary = false;
+    this._lastGapQueryStats = emptyGapQueryStats();
   }
 
   storageStats() {
@@ -295,6 +395,7 @@ export class FrozenSpectrumHistory {
     this._sharedSealedChunks = sharedSealedChunks;
     this._copiedTailRows = copiedTailRows;
     this._copiedTailBytes = copiedTailBytes;
+    this._lastGapQueryStats = emptyGapQueryStats();
   }
 
   get length() {
@@ -310,6 +411,23 @@ export class FrozenSpectrumHistory {
     if (sequence == null) return NaN;
     const chunk = this._chunkForSequence(sequence);
     return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
+  }
+
+  timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
+    const result = timestampGapBoundariesInChunks(
+      this._chunks,
+      this._startSequence,
+      this._endSequence,
+      startIndex,
+      endIndex,
+      maxGapMs
+    );
+    this._lastGapQueryStats = result.stats;
+    return result.boundaries;
+  }
+
+  lastGapQueryStats() {
+    return { ...this._lastGapQueryStats };
   }
 
   rowAt(index) {
@@ -354,6 +472,12 @@ export const EMPTY_SPECTRUM_VIEW = {
   version: 0,
   timestampAt() {
     return NaN;
+  },
+  timestampGapBoundaries() {
+    return [];
+  },
+  lastGapQueryStats() {
+    return emptyGapQueryStats();
   },
   rowAt() {
     return undefined;

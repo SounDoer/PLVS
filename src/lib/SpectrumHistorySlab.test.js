@@ -334,4 +334,59 @@ describe("SpectrumHistorySlab", () => {
     expect(Array.from(slab.rowAt(0).dbList)).toEqual([99, 2, 3]);
     expect(Array.from(frozen[0].dbList)).toEqual([1, 2, 3]);
   });
+
+  it("queries internal and cross-chunk timestamp gaps while clipping the logical range", () => {
+    const rowCount = VISUAL_HISTORY_CHUNK_ROWS * 2 + 4;
+    const slab = new SpectrumHistorySlab(rowCount - 3, []);
+    let timestampMs = 0;
+    for (let index = 0; index < rowCount; index += 1) {
+      if (index === VISUAL_HISTORY_CHUNK_ROWS - 2) timestampMs += 400;
+      if (index === VISUAL_HISTORY_CHUNK_ROWS) timestampMs += 800;
+      slab.push({ bands: [], dbList: [], timestampMs });
+      timestampMs += 40;
+    }
+
+    const internalGapIndex = VISUAL_HISTORY_CHUNK_ROWS - 2 - 3;
+    expect(slab.timestampGapBoundaries(0, slab.length - 1, 72)).toEqual([
+      {
+        previousTimestampMs: slab.timestampAt(internalGapIndex - 1),
+        nextTimestampMs: slab.timestampAt(internalGapIndex),
+      },
+      {
+        previousTimestampMs: slab.timestampAt(VISUAL_HISTORY_CHUNK_ROWS - 1 - 3),
+        nextTimestampMs: slab.timestampAt(VISUAL_HISTORY_CHUNK_ROWS - 3),
+      },
+    ]);
+    expect(slab.lastGapQueryStats()).toMatchObject({
+      chunksInspected: 3,
+      rowsScanned: VISUAL_HISTORY_CHUNK_ROWS - 3,
+    });
+
+    expect(slab.timestampGapBoundaries(internalGapIndex + 1, slab.length - 1, 72)).toEqual([
+      {
+        previousTimestampMs: slab.timestampAt(VISUAL_HISTORY_CHUNK_ROWS - 1 - 3),
+        nextTimestampMs: slab.timestampAt(VISUAL_HISTORY_CHUNK_ROWS - 3),
+      },
+    ]);
+
+    const frozen = slab.freeze();
+    expect(frozen.timestampGapBoundaries(0, frozen.length - 1, 72)).toEqual(
+      slab.timestampGapBoundaries(0, slab.length - 1, 72)
+    );
+  });
+
+  it("skips row scans for 240 minutes of continuous zero-band timestamps", () => {
+    const rowCount = 360_000;
+    const slab = new SpectrumHistorySlab(rowCount, []);
+    for (let index = 0; index < rowCount; index += 1) {
+      slab.push({ bands: [], dbList: [], timestampMs: index * 40 });
+    }
+
+    expect(slab.timestampGapBoundaries(0, slab.length - 1, 72)).toEqual([]);
+    expect(slab.lastGapQueryStats()).toEqual({
+      chunksInspected: Math.ceil(rowCount / VISUAL_HISTORY_CHUNK_ROWS),
+      rowsScanned: 0,
+    });
+    expect(slab.freeze().timestampGapBoundaries(0, slab.length - 1, 72)).toEqual([]);
+  });
 });

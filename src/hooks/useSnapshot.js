@@ -30,6 +30,7 @@ function freezeSnapshot(intake, liveAudioFallback) {
     corr: snapshotRows(intake.getCorrSnap()),
     audio: snapshotRows(intake.getAudioSnap()),
     channelMetadata: snapshotRows(intake.getChannelMetadataSnap?.()),
+    frequencyMarkerIndex: intake.snapshotSparseFrequencyChannelMarkers?.() ?? null,
     spectrumByKey: intake.snapshotVisualSpectrumByKey?.() ?? {},
     vectorscopeByKey: intake.snapshotVisualVectorscopeByKey?.() ?? {},
     liveAudioFallback,
@@ -198,6 +199,9 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
 
   return {
     histSourceList,
+    frequencyMarkerIndex: snapSource
+      ? snapSource.frequencyMarkerIndex
+      : (intake.getSparseFrequencyChannelMarkers?.() ?? null),
     displayAudio: resolved.displayAudio,
     hasHistoryData: resolved.hasHistoryData,
     correlation: resolved.correlation,

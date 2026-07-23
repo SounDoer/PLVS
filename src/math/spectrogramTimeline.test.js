@@ -6,6 +6,7 @@ import {
   spectrogramDataBoundaryMarkers,
   spectrogramDataBoundaries,
 } from "./spectrogramTimeline.js";
+import { SpectrumHistorySlab } from "../lib/SpectrumHistorySlab.js";
 
 const SAMPLE_MS = 40;
 
@@ -24,6 +25,12 @@ function frames(startMs, endMs, step = SAMPLE_MS) {
   const rows = [];
   for (let ts = startMs; ts <= endMs; ts += step) rows.push({ timestampMs: ts });
   return viewOf(rows);
+}
+
+function slabOf(timestamps) {
+  const slab = new SpectrumHistorySlab(Math.max(1, timestamps.length), []);
+  for (const timestampMs of timestamps) slab.push({ bands: [], dbList: [], timestampMs });
+  return slab;
 }
 
 describe("spectrogramTimeWindow", () => {
@@ -128,5 +135,55 @@ describe("spectrogramDataBoundaryMarkers", () => {
     expect(spectrogramDataBoundaryMarkers(frames(900, 1500), 1000, 2000, SAMPLE_MS)).toEqual([
       { ts: 1540, label: "Data ends here" },
     ]);
+  });
+
+  it.each([
+    {
+      name: "continuous",
+      timestamps: Array.from({ length: 31 }, (_, index) => 800 + index * 40),
+      oldestMs: 1000,
+      newestMs: 1800,
+    },
+    {
+      name: "interior gap",
+      timestamps: [
+        ...Array.from({ length: 11 }, (_, index) => 800 + index * 40),
+        ...Array.from({ length: 11 }, (_, index) => 1600 + index * 40),
+      ],
+      oldestMs: 900,
+      newestMs: 1900,
+    },
+    {
+      name: "boundary jitter",
+      timestamps: [900, 941, 979, 1022, 1061, 1099, 1300, 1342, 1380, 1421],
+      oldestMs: 940,
+      newestMs: 1381,
+    },
+    {
+      name: "window clip",
+      timestamps: [800, 840, 880, 1200, 1240, 1280, 1800, 1840, 1880],
+      oldestMs: 1200,
+      newestMs: 1840,
+    },
+  ])("matches the reference fallback for $name", ({ timestamps, oldestMs, newestMs }) => {
+    const fallback = viewOf(timestamps.map((timestampMs) => ({ timestampMs })));
+    const optimized = slabOf(timestamps);
+
+    expect(spectrogramDataBoundaryMarkers(optimized, oldestMs, newestMs, SAMPLE_MS)).toEqual(
+      spectrogramDataBoundaryMarkers(fallback, oldestMs, newestMs, SAMPLE_MS)
+    );
+  });
+
+  it("does not scan a 240 minute continuous timestamp payload", () => {
+    const rowCount = 360_000;
+    const optimized = new SpectrumHistorySlab(rowCount, []);
+    for (let index = 0; index < rowCount; index += 1) {
+      optimized.push({ bands: [], dbList: [], timestampMs: index * SAMPLE_MS });
+    }
+
+    expect(
+      spectrogramDataBoundaryMarkers(optimized, 0, (rowCount - 1) * SAMPLE_MS, SAMPLE_MS)
+    ).toEqual([]);
+    expect(optimized.lastGapQueryStats().rowsScanned).toBe(0);
   });
 });

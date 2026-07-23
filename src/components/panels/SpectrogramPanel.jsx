@@ -38,6 +38,7 @@ export function SpectrogramPanel({ compact = false }) {
   const { channelCount, spectrumChannelOptions, resolvedThemeId } = useFrameData();
   const {
     frequencyMarkerRef,
+    frequencyMarkerIndex,
     effectiveOffsetSamples,
     visibleSamples,
     selectedOffset,
@@ -166,16 +167,21 @@ export function SpectrogramPanel({ compact = false }) {
   const markers = frequencyMarkerRef?.current ?? [];
   let visibleFrequencyMarkers = [];
   const showFrequencyMarkers = channelCount > 2 && (spectrumChannelOptions?.length ?? 0) > 0;
-  if (showFrequencyMarkers && markers.length && visibleSamples > 0 && totalSamples > 0) {
+  if (showFrequencyMarkers && visibleSamples > 0 && totalSamples > 0) {
     const newestVisible = totalSamples - 1 - effectiveOffsetSamples;
     const oldestVisible = newestVisible - visibleSamples + 1;
-    visibleFrequencyMarkers = markers
-      .map((marker, idx) => ({ marker, idx }))
-      .filter(({ marker, idx }) => marker && idx >= oldestVisible && idx <= newestVisible)
-      .map(({ marker, idx }) => ({
-        marker,
-        x: ((idx - oldestVisible) / Math.max(1, visibleSamples - 1)) * 1000,
-      }));
+    const visibleMarkers =
+      typeof frequencyMarkerIndex?.query === "function"
+        ? frequencyMarkerIndex
+            .query(oldestVisible, newestVisible)
+            .map(({ marker, logicalIndex }) => ({ marker, idx: logicalIndex }))
+        : markers
+            .map((marker, idx) => ({ marker, idx }))
+            .filter(({ marker, idx }) => marker && idx >= oldestVisible && idx <= newestVisible);
+    visibleFrequencyMarkers = visibleMarkers.map(({ marker, idx }) => ({
+      marker,
+      x: ((idx - oldestVisible) / Math.max(1, visibleSamples - 1)) * 1000,
+    }));
   }
 
   const spectrogramSnaps =

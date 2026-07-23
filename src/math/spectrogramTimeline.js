@@ -147,6 +147,35 @@ export function spectrogramDataBoundaryMarkers(
   // Scan one sample beyond the window on each side so edge frames see their true neighbors.
   const startScan = Math.max(0, lowerBound(view, oldestMs - 2 * sampleMs));
   const endScan = Math.min(view.length - 1, upperBound(view, newestMs + 2 * sampleMs) - 1);
+  if (typeof view.timestampGapBoundaries === "function") {
+    const marks = [];
+    const appendStart = (ts) => {
+      if (ts > oldestMs + eps && ts < newestMs - eps) {
+        marks.push({ ts, label: "Data starts here" });
+      }
+    };
+    const appendEnd = (ts) => {
+      const endEdge = ts + sampleMs;
+      if (endEdge > oldestMs + eps && endEdge < newestMs - eps) {
+        marks.push({ ts: endEdge, label: "Data ends here" });
+      }
+    };
+
+    if (startScan === 0) appendStart(view.timestampAt(0));
+    const queryStart = Math.max(0, startScan - 1);
+    const queryEnd = Math.min(view.length - 1, endScan + 1);
+    for (const { previousTimestampMs, nextTimestampMs } of view.timestampGapBoundaries(
+      queryStart,
+      queryEnd,
+      gapThresh
+    )) {
+      appendEnd(previousTimestampMs);
+      appendStart(nextTimestampMs);
+    }
+    if (endScan === view.length - 1) appendEnd(view.timestampAt(view.length - 1));
+    return marks;
+  }
+
   const marks = [];
   for (let i = startScan; i <= endScan; i += 1) {
     const ts = view.timestampAt(i);

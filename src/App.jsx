@@ -557,6 +557,7 @@ function AppContent() {
 
   const {
     histSourceList,
+    frequencyMarkerIndex,
     displayAudio,
     hasHistoryData,
     correlation,
@@ -1281,6 +1282,7 @@ function AppContent() {
     historyTimeAxisActive: isTimeAxisActive,
     captureCurrentSnapshot,
     frequencyMarkerRef,
+    frequencyMarkerIndex,
     effectiveOffsetSamples,
     visibleSamples,
     totalSamples,
