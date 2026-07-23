@@ -49,6 +49,15 @@ describe("PowerOfTwoMinMaxIndex", () => {
     expect(() => index.append(0, [0], [0])).toThrow(RangeError);
   });
 
+  it("does not allocate backing storage for raw width-one rows", () => {
+    const capacity = 144_000;
+    const index = new PowerOfTwoMinMaxIndex(capacity);
+
+    expect(index._levels[0]).toBeUndefined();
+    expect(index._levels[1].capacity).toBe(Math.ceil(capacity / 2) + 2);
+    expect(index.freeze()._levels[0]).toBeUndefined();
+  });
+
   it("queries one row and reports an exact raw visit", () => {
     const index = new PowerOfTwoMinMaxIndex(4);
     const rows = [];

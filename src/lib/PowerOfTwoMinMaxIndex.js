@@ -150,7 +150,11 @@ class FrozenPowerOfTwoMinMaxIndex extends MinMaxIndexView {
     super();
     this._capacity = source._capacity;
     this._maxLevel = source._maxLevel;
-    this._levels = Object.freeze(source._levels.map((level) => Object.freeze(level.toArray())));
+    const levels = new Array(this._maxLevel + 1);
+    for (let level = 1; level <= this._maxLevel; level++) {
+      levels[level] = Object.freeze(source._levels[level].toArray());
+    }
+    this._levels = Object.freeze(levels);
     this._retainedStartSequence = source._retainedStartSequence;
     this._retainedEndSequence = source._retainedEndSequence;
     this._valueCount = source._valueCount;
@@ -171,10 +175,11 @@ export class PowerOfTwoMinMaxIndex extends MinMaxIndexView {
     }
     this._capacity = capacityRows;
     this._maxLevel = Math.floor(Math.log2(capacityRows));
-    this._levels = Array.from({ length: this._maxLevel + 1 }, (_, level) => {
+    this._levels = new Array(this._maxLevel + 1);
+    for (let level = 1; level <= this._maxLevel; level++) {
       const width = 2 ** level;
-      return new RingBuffer(Math.ceil(capacityRows / width) + 2);
-    });
+      this._levels[level] = new RingBuffer(Math.ceil(capacityRows / width) + 2);
+    }
     this._pending = new Array(this._maxLevel + 1);
     this._retainedStartSequence = 0;
     this._retainedEndSequence = 0;
@@ -225,7 +230,9 @@ export class PowerOfTwoMinMaxIndex extends MinMaxIndexView {
   }
 
   clear() {
-    for (const level of this._levels) level.clear();
+    for (let level = 1; level <= this._maxLevel; level++) {
+      this._levels[level].clear();
+    }
     this._pending.fill(undefined);
     this._retainedStartSequence = 0;
     this._retainedEndSequence = 0;
