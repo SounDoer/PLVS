@@ -71,6 +71,7 @@ import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
 import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
+import { historyPerformanceQuery } from "./dev/historyPerformanceQuery.js";
 import packageInfo from "../package.json";
 
 const APP_VERSION = packageInfo.version;
@@ -535,6 +536,30 @@ function AppContent() {
   const spectrumMaxHoldUi = normalizedPanelControls.spectrumMaxHold;
 
   const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
+
+  useEffect(() => {
+    const options = historyPerformanceQuery({
+      dev: import.meta.env.DEV,
+      search: window.location.search,
+    });
+    // `npm run dev` is browser-only and has no Tauri capture. Keep this harness out of the
+    // desktop runtime so a query parameter can never compete with the real audio engine.
+    if (!options.enabled || isTauri()) return undefined;
+    let disposed = false;
+    let controller = null;
+    void import("./dev/historyPerformanceHarness.js").then(({ startHistoryPerformanceHarness }) => {
+      if (disposed) return;
+      controller = startHistoryPerformanceHarness({
+        intake: intakeRef.current,
+        fullVisual: options.fullVisual,
+        publishAudio: (nextAudio) => setAudio((current) => ({ ...current, ...nextAudio })),
+      });
+    });
+    return () => {
+      disposed = true;
+      controller?.cancel();
+    };
+  }, [intakeRef, setAudio]);
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
   // list updatePanelControls in their deps. If its identity changed per dispatch it would

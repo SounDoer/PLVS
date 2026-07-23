@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:history-perf": "vite --open \"/?historyPerf=240m\"",
     "prepare": "simple-git-hooks",
     "theme:generate": "node scripts/generate-theme-fallbacks.mjs",
     "agent:generate": "node scripts/generate-agent-discovery.mjs",

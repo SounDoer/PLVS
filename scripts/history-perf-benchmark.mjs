@@ -1,5 +1,7 @@
 import { performance } from "node:perf_hooks";
+import { pathToFileURL } from "node:url";
 
+import { FrameIntake } from "../src/lib/FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../src/lib/historyChunkConfig.js";
 import { nearestTimestampIndex } from "../src/lib/snapshotResolve.js";
 import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
@@ -16,77 +18,112 @@ const HIST_ROWS = 144_000;
 const VISUAL_ROWS = 360_000;
 const SPECTRUM_BANDS = 958;
 const VECTOR_VALUES = 200;
+const VIEW_WIDTHS = [600, 1200];
 let benchmarkSink;
-let benchmarkChecksum = 0;
 
-function mainRows() {
-  const waveformSubPairs = new Float32Array(0);
+export function parseBenchmarkArgs(args) {
+  return { fullVisual: args.includes("--full-visual") };
+}
 
+export function projectedVisualBytes() {
+  const spectrumPrimary = VISUAL_ROWS * SPECTRUM_BANDS * Float32Array.BYTES_PER_ELEMENT;
+  const vectorscopePairs = VISUAL_ROWS * VECTOR_VALUES * Float32Array.BYTES_PER_ELEMENT;
+  return { spectrumPrimary, vectorscopePairs, total: spectrumPrimary + vectorscopePairs };
+}
+
+function assertStructure(condition, message) {
+  if (!condition) throw new Error(`history benchmark structural assertion failed: ${message}`);
+}
+
+function averageMs(callback, iterations = 10) {
+  for (let index = 0; index < 2; index += 1) benchmarkSink = callback();
+  const started = performance.now();
+  for (let index = 0; index < iterations; index += 1) benchmarkSink = callback();
+  return (performance.now() - started) / iterations;
+}
+
+function makeRows() {
+  const emptyPairs = new Float32Array(0);
   return Array.from({ length: HIST_ROWS }, (_, index) => ({
     m: -20 + Math.sin(index / 41),
     st: -22 + Math.cos(index / 67),
     waveformMin: [-0.5, -0.4],
     waveformMax: [0.5, 0.4],
-    waveformSubPairs,
+    waveformSubPairs: emptyPairs,
     waveformSubCount: 0,
     timestampMs: index * 100,
   }));
 }
 
-function visualTimestampView() {
+function timestampView() {
   let reads = 0;
   return {
-    get length() {
-      return VISUAL_ROWS;
-    },
+    length: VISUAL_ROWS,
     timestampAt(index) {
       reads += 1;
       return index >= 0 && index < VISUAL_ROWS ? index * 40 : NaN;
     },
-    reads() {
-      return reads;
-    },
+    reads: () => reads,
   };
 }
 
-function averageTime(callback, iterations = 20) {
-  for (let index = 0; index < 3; index += 1) benchmarkSink = callback();
+function benchmarkScalarNoShift() {
+  const intake = new FrameIntake();
+  const capacity = 64;
+  let shiftCalls = 0;
+  const originalShift = Array.prototype.shift;
+  Array.prototype.shift = function instrumentedShift(...args) {
+    shiftCalls += 1;
+    return originalShift.apply(this, args);
+  };
   const started = performance.now();
-  for (let index = 0; index < iterations; index += 1) benchmarkSink = callback();
-  const elapsed = (performance.now() - started) / iterations;
-  benchmarkChecksum +=
-    typeof benchmarkSink === "string"
-      ? benchmarkSink.length
-      : (benchmarkSink.m?.length ?? 0) +
-        (benchmarkSink.st?.length ?? 0) +
-        (benchmarkSink.bucketCount ?? 0);
-  return elapsed;
+  try {
+    for (let index = 0; index <= capacity; index += 1) {
+      intake.pushHistRow(
+        {
+          timestampMs: index * 100,
+          lufsMomentary: -20,
+          lufsShortTerm: -22,
+          waveformMin: [-0.5, -0.4],
+          waveformMax: [0.5, 0.4],
+          waveformSubPairs: [],
+          waveformSubCount: 0,
+          correlation: 0.75,
+        },
+        capacity
+      );
+    }
+  } finally {
+    Array.prototype.shift = originalShift;
+  }
+  assertStructure(
+    shiftCalls === 0,
+    `scalar FrameIntake push called Array.shift ${shiftCalls} times`
+  );
+  assertStructure(
+    intake.getLoudnessHistory().length === capacity,
+    "scalar FrameIntake did not retain exact capacity"
+  );
+  return {
+    proxyCapacity: capacity,
+    retainedRows: intake.getLoudnessHistory().length,
+    shiftCalls,
+    elapsedMs: performance.now() - started,
+  };
 }
 
-function reportTime(label, callback, iterations) {
-  const elapsed = averageTime(callback, iterations);
-  console.log(`${label}: ${elapsed.toFixed(3)} ms`);
-  return elapsed;
-}
-
-function freezeVisualHistory() {
-  const retainedRows = VISUAL_HISTORY_CHUNK_ROWS + 1;
-  const bands = Array.from({ length: SPECTRUM_BANDS }, (_, index) => ({
+function benchmarkVisualFreeze({ rows, bands, pairValues }) {
+  const bandGrid = Array.from({ length: bands }, (_, index) => ({
     fCenter: 20 * 2 ** (index / 96),
   }));
-  const spectrumValues = new Float32Array(SPECTRUM_BANDS).fill(-30);
-  const vectorscopePairs = new Float32Array(VECTOR_VALUES).fill(0.25);
-  const spectrum = new SpectrumHistorySlab(retainedRows, bands);
-  const vectorscope = new VectorscopeHistorySlab(retainedRows, VECTOR_VALUES);
-
-  for (let index = 0; index < retainedRows; index += 1) {
-    spectrum.push({
-      bands,
-      dbList: spectrumValues,
-      timestampMs: index * 40,
-    });
+  const spectrumValues = new Float32Array(bands).fill(-30);
+  const vectorscopeValues = new Float32Array(pairValues).fill(0.25);
+  const spectrum = new SpectrumHistorySlab(rows, bandGrid);
+  const vectorscope = new VectorscopeHistorySlab(rows, pairValues);
+  for (let index = 0; index < rows; index += 1) {
+    spectrum.push({ bands: bandGrid, dbList: spectrumValues, timestampMs: index * 40 });
     vectorscope.push({
-      pairs: vectorscopePairs,
+      pairs: vectorscopeValues,
       correlation: 0.5,
       sideToMidDb: -6,
       midEnergy: 0.5,
@@ -95,139 +132,200 @@ function freezeVisualHistory() {
     });
   }
 
-  const cases = [
-    ["Spectrum", "spectrum:single:0:combined", spectrum, "dbList"],
-    ["Vectorscope", "vectorscope:pair:0:1", vectorscope, "pairs"],
-  ];
-  const totals = {
-    retainedRows: 0,
-    sharedSealedChunks: 0,
-    copiedTailRows: 0,
-    copiedTailBytes: 0,
-    elapsedMs: 0,
-  };
-
-  for (const [kind, key, slab, rowField] of cases) {
+  const freezeOne = (key, slab) => {
     const started = performance.now();
     const frozen = slab.freeze();
     const elapsedMs = performance.now() - started;
     const stats = frozen.storageStats();
-    const firstRow = frozen.rowAt(0);
-    const lastRow = frozen.rowAt(frozen.length - 1);
+    assertStructure(stats.retainedRows === rows, `${key} retained ${stats.retainedRows}/${rows}`);
+    assertStructure(
+      stats.copiedTailRows <= VISUAL_HISTORY_CHUNK_ROWS,
+      `${key} copied ${stats.copiedTailRows} tail rows`
+    );
+    assertStructure(
+      rows <= VISUAL_HISTORY_CHUNK_ROWS || stats.sharedSealedChunks > 0,
+      `${key} shared no sealed chunks`
+    );
     benchmarkSink = frozen;
-    benchmarkChecksum +=
-      frozen.length +
-      stats.sharedSealedChunks +
-      stats.copiedTailRows +
-      stats.copiedTailBytes +
-      firstRow[rowField][0] +
-      lastRow[rowField][lastRow[rowField].length - 1];
-    totals.retainedRows += stats.retainedRows;
-    totals.sharedSealedChunks += stats.sharedSealedChunks;
-    totals.copiedTailRows += stats.copiedTailRows;
-    totals.copiedTailBytes += stats.copiedTailBytes;
-    totals.elapsedMs += elapsedMs;
-    console.log(
-      `freeze ${kind} ${key}: retained rows=${stats.retainedRows}, ` +
-        `shared sealed chunks=${stats.sharedSealedChunks}, copied tail rows=${stats.copiedTailRows}, ` +
-        `copied tail bytes=${stats.copiedTailBytes}, time=${elapsedMs.toFixed(3)} ms`
+    return { key, ...stats, elapsedMs };
+  };
+
+  const perKey = [
+    freezeOne("spectrum:single:0:combined", spectrum),
+    freezeOne("vectorscope:pair:0:1", vectorscope),
+  ];
+  return {
+    perKey,
+    retainedRows: perKey.reduce((sum, item) => sum + item.retainedRows, 0),
+    sharedSealedChunks: perKey.reduce((sum, item) => sum + item.sharedSealedChunks, 0),
+    copiedTailRows: perKey.reduce((sum, item) => sum + item.copiedTailRows, 0),
+    copiedTailBytes: perKey.reduce((sum, item) => sum + item.copiedTailBytes, 0),
+    elapsedMs: perKey.reduce((sum, item) => sum + item.elapsedMs, 0),
+  };
+}
+
+function benchmarkNearestTimestamp() {
+  const timestamps = timestampView();
+  const target = (VISUAL_ROWS - 2.5) * 40;
+  const iterations = 100;
+  const before = timestamps.reads();
+  const elapsedMs = averageMs(() => nearestTimestampIndex(timestamps, target), iterations);
+  const readsPerLookup = (timestamps.reads() - before) / (iterations + 2);
+  assertStructure(readsPerLookup <= 24, `nearest lookup read ${readsPerLookup} timestamps`);
+  return { elapsedMs, readsPerLookup };
+}
+
+function benchmarkIndexes(rows) {
+  const loudness = new LoudnessHistoryIndex(HIST_ROWS);
+  const waveform = new WaveformHistoryIndex(HIST_ROWS);
+  for (const row of rows) {
+    loudness.append(row);
+    waveform.append(row);
+  }
+
+  const results = [];
+  for (const width of VIEW_WIDTHS) {
+    const loudnessReferenceMs = averageMs(() => ({
+      m: buildHistoryPath(rows, "m", HIST_ROWS, 0, (value) => value, width, width),
+      st: buildHistoryPath(rows, "st", HIST_ROWS, 0, (value) => value, width, width),
+    }));
+    const loudnessIndexedMs = averageMs(() =>
+      buildLoudnessHistoryPathsFromIndex(
+        rows,
+        loudness,
+        HIST_ROWS,
+        0,
+        (value) => value,
+        width,
+        width
+      )
     );
-  }
-
-  console.log(
-    `freeze total: retained rows=${totals.retainedRows}, ` +
-      `shared sealed chunks=${totals.sharedSealedChunks}, copied tail rows=${totals.copiedTailRows}, ` +
-      `copied tail bytes=${totals.copiedTailBytes}, time=${totals.elapsedMs.toFixed(3)} ms`
-  );
-}
-
-const rows = mainRows();
-const loudnessIndex = new LoudnessHistoryIndex(HIST_ROWS);
-for (const row of rows) loudnessIndex.append(row);
-for (const viewWidth of [600, 1200]) {
-  reportTime(`loudness M+ST reference / 240m / ${viewWidth}px`, () => ({
-    m: buildHistoryPath(rows, "m", HIST_ROWS, 0, (value) => value, viewWidth, viewWidth),
-    st: buildHistoryPath(rows, "st", HIST_ROWS, 0, (value) => value, viewWidth, viewWidth),
-  }));
-  reportTime(`loudness M+ST indexed / 240m / ${viewWidth}px`, () =>
-    buildLoudnessHistoryPathsFromIndex(
-      rows,
-      loudnessIndex,
-      HIST_ROWS,
-      0,
-      (value) => value,
-      viewWidth,
-      viewWidth
-    )
-  );
-  const stats = loudnessIndex.batchQueryStats();
-  console.log(
-    `loudness M+ST indexed nodes / ${viewWidth}px: ` +
-      `${stats.nodesVisited} (raw rows=${stats.rawRowsVisited}, summaries=${stats.summaryBucketsVisited})`
-  );
-  benchmarkChecksum +=
-    stats.nodesVisited + stats.rawRowsVisited + stats.summaryBucketsVisited + stats.queries;
-}
-const waveformIndex = new WaveformHistoryIndex(HIST_ROWS);
-for (const row of rows) waveformIndex.append(row);
-let waveformSourceReads = 0;
-const waveformSource = {
-  length: rows.length,
-  rowAt(index) {
-    waveformSourceReads += 1;
-    return rows[index];
-  },
-};
-for (const viewWidth of [600, 1200]) {
-  reportTime(`waveform reference / 240m / ${viewWidth}px`, () =>
-    sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, viewWidth)
-  );
-  waveformSourceReads = 0;
-  reportTime(`waveform indexed / 240m / ${viewWidth}px`, () =>
-    sliceWaveformSubHistoryFromIndex(waveformSource, waveformIndex, HIST_ROWS, 0, 2, viewWidth)
-  );
-  const stats = waveformIndex.batchQueryStats();
-  const nodeBound = (viewWidth + 2) * (2 * Math.ceil(Math.log2(waveformIndex.capacity)) + 2);
-  if (waveformSourceReads !== 0) {
-    throw new Error(`waveform indexed ${viewWidth}px read ${waveformSourceReads} retained rows`);
-  }
-  if (stats.nodesVisited > nodeBound) {
-    throw new Error(
-      `waveform indexed ${viewWidth}px visited ${stats.nodesVisited} nodes (bound ${nodeBound})`
+    const loudnessStats = loudness.batchQueryStats();
+    const loudnessBound = (width * 2 + 4) * (2 * Math.ceil(Math.log2(HIST_ROWS)) + 2);
+    assertStructure(
+      loudnessStats.nodesVisited <= loudnessBound,
+      `${width}px loudness visited ${loudnessStats.nodesVisited}/${loudnessBound} nodes`
     );
+
+    let waveformSourceReads = 0;
+    const waveformSource = {
+      length: rows.length,
+      rowAt(index) {
+        waveformSourceReads += 1;
+        return rows[index];
+      },
+    };
+    const waveformReferenceMs = averageMs(() =>
+      sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, width)
+    );
+    waveformSourceReads = 0;
+    const waveformIndexedMs = averageMs(() =>
+      sliceWaveformSubHistoryFromIndex(waveformSource, waveform, HIST_ROWS, 0, 2, width)
+    );
+    const waveformStats = waveform.batchQueryStats();
+    const waveformBound = (width + 2) * (2 * Math.ceil(Math.log2(HIST_ROWS)) + 2);
+    assertStructure(
+      waveformStats.nodesVisited <= waveformBound,
+      `${width}px waveform visited ${waveformStats.nodesVisited}/${waveformBound} nodes`
+    );
+    assertStructure(waveformSourceReads === 0, `${width}px waveform read retained source rows`);
+    results.push({
+      width,
+      loudness: {
+        referenceMs: loudnessReferenceMs,
+        indexedMs: loudnessIndexedMs,
+        ...loudnessStats,
+        nodeBound: loudnessBound,
+      },
+      waveform: {
+        referenceMs: waveformReferenceMs,
+        indexedMs: waveformIndexedMs,
+        ...waveformStats,
+        sourceReads: waveformSourceReads,
+        nodeBound: waveformBound,
+      },
+    });
   }
-  console.log(
-    `waveform indexed nodes / ${viewWidth}px: ${stats.nodesVisited} ` +
-      `(raw index leaves=${stats.rawRowsVisited}, summaries=${stats.summaryBucketsVisited}, ` +
-      `retained source reads=${waveformSourceReads})`
-  );
-  benchmarkChecksum +=
-    stats.nodesVisited +
-    stats.rawRowsVisited +
-    stats.summaryBucketsVisited +
-    stats.queries +
-    waveformSourceReads;
+
+  const freezeStarted = performance.now();
+  const frozenLoudness = loudness.freeze();
+  const frozenWaveform = waveform.freeze();
+  benchmarkSink = [frozenLoudness, frozenWaveform];
+  return {
+    views: results,
+    freeze: {
+      elapsedMs: performance.now() - freezeStarted,
+      loudnessRetainedRows:
+        frozenLoudness.retainedEndSequence - frozenLoudness.retainedStartSequence,
+      waveformRetainedRows:
+        frozenWaveform.retainedEndSequence - frozenWaveform.retainedStartSequence,
+    },
+  };
 }
 
-const timestamps = visualTimestampView();
-const targetTimestampMs = (VISUAL_ROWS - 2.5) * 40;
-for (let index = 0; index < 3; index += 1) {
-  benchmarkSink = nearestTimestampIndex(timestamps, targetTimestampMs);
+function measuredMemoryBytes() {
+  const memory = process.memoryUsage();
+  return { arrayBuffers: memory.arrayBuffers, external: memory.external, rss: memory.rss };
 }
-const lookupIterations = 100;
-const readsBefore = timestamps.reads();
-const started = performance.now();
-for (let index = 0; index < lookupIterations; index += 1) {
-  benchmarkSink = nearestTimestampIndex(timestamps, targetTimestampMs);
-}
-const lookupMs = (performance.now() - started) / lookupIterations;
-const readsPerLookup = (timestamps.reads() - readsBefore) / lookupIterations;
-benchmarkChecksum += benchmarkSink;
 
-const mib = (bytes) => (bytes / 1024 / 1024).toFixed(1);
-console.log(`nearest visual timestamp / 240m: ${lookupMs.toFixed(3)} ms`);
-console.log(`nearest timestamp reads/lookup: ${readsPerLookup}`);
-console.log(`projected Spectrum primary: ${mib(VISUAL_ROWS * SPECTRUM_BANDS * 4)} MiB`);
-console.log(`projected Vectorscope pairs: ${mib(VISUAL_ROWS * VECTOR_VALUES * 4)} MiB`);
-freezeVisualHistory();
-console.log(`benchmark checksum: ${benchmarkChecksum}`);
+export function runBenchmark({ fullVisual = false } = {}) {
+  const rows = makeRows();
+  const indexes = benchmarkIndexes(rows);
+  const nearest = benchmarkNearestTimestamp();
+  const scalar = benchmarkScalarNoShift();
+  const safeRows = VISUAL_HISTORY_CHUNK_ROWS + 1;
+  const safeVisualFreeze = benchmarkVisualFreeze({
+    rows: safeRows,
+    bands: SPECTRUM_BANDS,
+    pairValues: VECTOR_VALUES,
+  });
+  const projected = projectedVisualBytes();
+  const result = {
+    mode: fullVisual ? "full-visual" : "safe",
+    scalarRows: HIST_ROWS,
+    visualRows: VISUAL_ROWS,
+    widths: indexes.views,
+    nearest,
+    indexFreeze: indexes.freeze,
+    scalar,
+    visualFreeze: safeVisualFreeze,
+    projectedVisualBytes: projected,
+    fullVisual: null,
+  };
+
+  if (fullVisual) {
+    // This deliberately allocates and fills all production-width rows. It is expected to retain
+    // roughly 1.3 GiB+ of typed payload; there is no silent precision or row-count downgrade.
+    const memoryBefore = measuredMemoryBytes();
+    const started = performance.now();
+    const freeze = benchmarkVisualFreeze({
+      rows: VISUAL_ROWS,
+      bands: SPECTRUM_BANDS,
+      pairValues: VECTOR_VALUES,
+    });
+    const memoryAfter = measuredMemoryBytes();
+    result.fullVisual = {
+      rows: VISUAL_ROWS,
+      spectrumBands: SPECTRUM_BANDS,
+      vectorscopeFloatValues: VECTOR_VALUES,
+      elapsedMs: performance.now() - started,
+      memoryBefore,
+      memoryAfter,
+      measuredDelta: {
+        arrayBuffers: memoryAfter.arrayBuffers - memoryBefore.arrayBuffers,
+        external: memoryAfter.external - memoryBefore.external,
+        rss: memoryAfter.rss - memoryBefore.rss,
+      },
+      freeze,
+    };
+  }
+
+  console.log(JSON.stringify(result, null, 2));
+  console.log(`HISTORY_PERF_RESULT=${JSON.stringify(result)}`);
+  return result;
+}
+
+const isMain =
+  process.argv[1] != null &&
+  pathToFileURL(process.argv[1]).href.toLowerCase() === import.meta.url.toLowerCase();
+if (isMain) runBenchmark(parseBenchmarkArgs(process.argv.slice(2)));
