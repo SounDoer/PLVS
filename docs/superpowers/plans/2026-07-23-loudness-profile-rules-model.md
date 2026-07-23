@@ -14,7 +14,9 @@ floor, a band, or several escalating thresholds).
 `-editor-design.md` (roles, tolerance, min/max, N/A, the near-boundary auto-warn). The provider,
 draft-preview, popover-entry and persistence-domain decisions from that work still stand.
 
-**Status:** Draft — pending review before execution. Design settled in the 2026-07-23 discussion.
+**Status:** Implemented (2026-07-23). Migration was intentionally dropped — the feature had no
+external users yet, so old persisted blobs are not converted. Phases A and B landed together (the
+editor and provider write the document shape, so they could not go green separately).
 
 ---
 
