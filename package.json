@@ -15,6 +15,7 @@
     "prebuild": "npm run theme:generate && npm run agent:generate",
     "build": "vite build",
     "benchmark:history": "node scripts/history-perf-benchmark.mjs",
+    "benchmark:history-chunks": "node scripts/history-chunk-size-benchmark.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
