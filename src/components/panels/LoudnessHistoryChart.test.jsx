@@ -273,6 +273,28 @@ describe("LoudnessHistoryChart", () => {
     expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeTruthy();
   });
 
+  it("tints the momentary trace with a gradient when its own rule breaches", () => {
+    const { container } = render(
+      <LoudnessHistoryChart
+        {...baseProps}
+        loudnessHistoryVisibleLayerIds={["momentary"]}
+        momentaryRules={[{ metricId: "momentary", op: ">", value: -10, severity: "fail" }]}
+      />
+    );
+    const path = container.querySelector("svg path");
+    expect(path?.getAttribute("stroke") ?? "").toMatch(/^url\(#/);
+    expect(container.querySelector("linearGradient")).toBeTruthy();
+  });
+
+  it("keeps the momentary trace plain when it has no rules", () => {
+    const { container } = render(
+      <LoudnessHistoryChart {...baseProps} loudnessHistoryVisibleLayerIds={["momentary"]} />
+    );
+    expect(container.querySelector("svg path")?.getAttribute("stroke")).toBe(
+      "var(--ui-loudness-momentary)"
+    );
+  });
+
   it("does not render a reference line or tolerance band", () => {
     const { container } = renderChart(["ref"]);
 

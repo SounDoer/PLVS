@@ -1,5 +1,7 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { loudnessHistY } from "../../config/scales.js";
+import { loudnessTraceGradientStops } from "../../lib/loudnessTraceColor.js";
+import { RuleGradient } from "../../components/panels/LoudnessRuleGradient.jsx";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { buildHistoryPath } from "../../math/historyMath.js";
 import { fmtMetric } from "../../math/formatMath.js";
@@ -80,7 +82,12 @@ function DockLoudnessExpandedReadouts({ displayAudio }) {
 /** Compact Loudness history with the normal panel's layers and M/ST/I readouts. */
 export function DockLoudness({ controls, heightMode = "standard" }) {
   const { displayAudio } = useFrameData();
-  const { histSourceList = [], referenceLufs = null } = useHistoryData() ?? {};
+  const {
+    histSourceList = [],
+    referenceLufs = null,
+    momentaryRules,
+    shortTermRules,
+  } = useHistoryData() ?? {};
   const visibleLayerIds = controls?.loudnessHistoryVisibleLayerIds ?? DEFAULT_VISIBLE_LAYER_IDS;
   const showMomentary = visibleLayerIds.includes("momentary");
   const showShortTerm = visibleLayerIds.includes("shortTerm");
@@ -126,6 +133,14 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
   );
   const showReferenceLine = showReference && Number.isFinite(referenceLufs);
   const referenceY = showReferenceLine ? loudnessHistY(referenceLufs, SPARK_H, yRange) : null;
+  const mStops = loudnessTraceGradientStops(momentaryRules, yRange, "var(--ui-loudness-momentary)");
+  const stStops = loudnessTraceGradientStops(
+    shortTermRules,
+    yRange,
+    "var(--ui-loudness-shortterm)"
+  );
+  const mGradId = useId().replace(/:/g, "");
+  const stGradId = useId().replace(/:/g, "");
   const expanded = heightMode === "expanded";
 
   return (
@@ -146,12 +161,16 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
           role="img"
           aria-label="Loudness history"
         >
+          <defs>
+            {mStops ? <RuleGradient id={mGradId} stops={mStops} height={SPARK_H} /> : null}
+            {stStops ? <RuleGradient id={stGradId} stops={stStops} height={SPARK_H} /> : null}
+          </defs>
           {showMomentary && momentaryPath ? (
             <path
               data-testid="dock-loudness-momentary"
               d={momentaryPath}
               fill="none"
-              stroke="var(--ui-loudness-momentary)"
+              stroke={mStops ? `url(#${mGradId})` : "var(--ui-loudness-momentary)"}
               strokeWidth="var(--ui-loudness-momentary-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
@@ -161,7 +180,7 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
               data-testid="dock-loudness-short-term"
               d={shortTermPath}
               fill="none"
-              stroke="var(--ui-loudness-shortterm)"
+              stroke={stStops ? `url(#${stGradId})` : "var(--ui-loudness-shortterm)"}
               strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />

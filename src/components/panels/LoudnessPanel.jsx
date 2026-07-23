@@ -35,6 +35,8 @@ export function LoudnessPanel({ compact = false }) {
     visibleSamples,
     totalSamples,
     referenceLufs,
+    momentaryRules,
+    shortTermRules,
   } = useHistoryData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
 
@@ -200,6 +202,8 @@ export function LoudnessPanel({ compact = false }) {
           historyTickSteps={historyTickSteps}
           showLatestEdgeHint={effectiveOffsetSec > 0}
           referenceLufs={referenceLufs}
+          momentaryRules={momentaryRules}
+          shortTermRules={shortTermRules}
           onHistoryHoverMove={onHistoryHoverMove}
           onHistoryHoverLeave={onHistoryHoverLeave}
         />

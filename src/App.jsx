@@ -436,6 +436,15 @@ function AppContent() {
     );
   }, [workspaceState]);
   const referenceLufs = loudnessProfile.referenceLufs;
+  // Only the two metrics the history chart draws can tint their traces; split them out here so the
+  // panel and the dock read the same rules from one place.
+  const loudnessTraceRules = useMemo(() => {
+    const rules = loudnessProfile.document?.rules ?? [];
+    return {
+      momentary: rules.filter((rule) => rule.metricId === "momentary"),
+      shortTerm: rules.filter((rule) => rule.metricId === "shortTerm"),
+    };
+  }, [loudnessProfile.document]);
 
   // Missing-stats fulfillment spans every Stats panel: the profile's needs are a session-level
   // statement, so a row added for it should appear wherever Stats is shown. Union for detection,
@@ -1247,6 +1256,8 @@ function AppContent() {
     setSelectedOffset,
     running,
     referenceLufs,
+    momentaryRules: loudnessTraceRules.momentary,
+    shortTermRules: loudnessTraceRules.shortTerm,
     hasHistoryData,
     historyChartInteractive,
     showSelLine,

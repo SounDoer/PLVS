@@ -12,10 +12,14 @@ function renderWith({
   heightMode = "standard",
   // Null is the Off default: the reference comes from the active Loudness Profile.
   referenceLufs = null,
+  momentaryRules,
+  shortTermRules,
 }) {
   return render(
     <FrameDataProvider value={{ displayAudio }}>
-      <HistoryDataProvider value={{ histSourceList, referenceLufs }}>
+      <HistoryDataProvider
+        value={{ histSourceList, referenceLufs, momentaryRules, shortTermRules }}
+      >
         <DockLoudness controls={controls} heightMode={heightMode} />
       </HistoryDataProvider>
     </FrameDataProvider>
@@ -107,6 +111,17 @@ describe("DockLoudness", () => {
     expect(shortTerm.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
     // The reference now shows as a guide line rather than tinting the traces.
     expect(screen.getByTestId("dock-loudness-reference-line")).toBeTruthy();
+  });
+
+  it("tints the momentary trace with a gradient when its own rule breaches", () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({ m: -30 + i * 0.1, st: -28 + i * 0.2 }));
+    renderWith({
+      displayAudio: { momentary: -18.2, shortTerm: -19.4, integrated: -20.1 },
+      histSourceList: rows,
+      momentaryRules: [{ metricId: "momentary", op: ">", value: -10, severity: "fail" }],
+    });
+
+    expect(screen.getByTestId("dock-loudness-momentary").getAttribute("stroke")).toMatch(/^url\(#/);
   });
 
   it("keeps the history paths advancing after the live ring fills", () => {

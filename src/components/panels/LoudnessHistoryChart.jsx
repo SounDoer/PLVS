@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { loudnessTraceGradientStops } from "@/lib/loudnessTraceColor.js";
+import { RuleGradient } from "./LoudnessRuleGradient.jsx";
 import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
@@ -50,6 +52,8 @@ export function LoudnessHistoryChart({
   historyTickSteps,
   showLatestEdgeHint = false,
   referenceLufs,
+  momentaryRules,
+  shortTermRules,
   onHistoryHoverMove,
   onHistoryHoverLeave,
 }) {
@@ -139,6 +143,18 @@ export function LoudnessHistoryChart({
   const refTopFrac = Number.isFinite(referenceLufs)
     ? loudnessFromTopFrac(referenceLufs, loudnessYRange)
     : null;
+
+  // A trace tints where its own rules breach; with no rules (all built-ins) it stays plain.
+  const mStops = useMemo(
+    () => loudnessTraceGradientStops(momentaryRules, loudnessYRange, mStrokeNormal),
+    [momentaryRules, loudnessYRange, mStrokeNormal]
+  );
+  const stStops = useMemo(
+    () => loudnessTraceGradientStops(shortTermRules, loudnessYRange, stStrokeNormal),
+    [shortTermRules, loudnessYRange, stStrokeNormal]
+  );
+  const mGradId = useId().replace(/:/g, "");
+  const stGradId = useId().replace(/:/g, "");
 
   const chartYDragRef = useRef(null);
   const [chartDragging, setChartDragging] = useState(false);
@@ -334,11 +350,15 @@ export function LoudnessHistoryChart({
           preserveAspectRatio="none"
           className="relative z-[1] h-full w-full pt-[var(--ui-chart-inset-top)] pb-[var(--ui-chart-inset-bottom)]"
         >
+          <defs>
+            {mStops ? <RuleGradient id={mGradId} stops={mStops} /> : null}
+            {stStops ? <RuleGradient id={stGradId} stops={stStops} /> : null}
+          </defs>
           {showMomentary && displayHistoryPathM && (
             <path
               d={displayHistoryPathM}
               fill="none"
-              stroke={mStrokeNormal}
+              stroke={mStops ? `url(#${mGradId})` : mStrokeNormal}
               strokeWidth="var(--ui-loudness-momentary-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
@@ -347,7 +367,7 @@ export function LoudnessHistoryChart({
             <path
               d={displayHistoryPathST}
               fill="none"
-              stroke={stStrokeNormal}
+              stroke={stStops ? `url(#${stGradId})` : stStrokeNormal}
               strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
