@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-23
+
+### Added
+- Loudness Profile: a rule-based profile editor (per-metric tolerances, reference line, watched-metric marking) replacing the old single numeric reference, with active-profile status surfaced in Stats, the footer, and the Level Meter TP Max marker, and profiles snapshotted into layout presets.
+- History storage keeps an exact min-max summary index so zoomed-out views stay accurate without rescanning raw samples.
+
+### Changed
+- Loudness, Spectrum, Spectrogram, Vectorscope, and Waveform history rendering now scale to long capture sessions (chunked storage, binary-search timestamp resolution, ring buffers) instead of scanning or copying the full retained history on every frame.
+- Toolbar popovers use tighter adaptive layouts.
+
+### Fixed
+- Waveform envelope keeps full vertical resolution and no longer flickers while idle, and preserves non-finite gaps correctly.
+- Spectrogram and Spectrum history correctly preserve gap boundaries and retained tail rows.
+- Stats metric labels no longer clip descenders.
+- Numerous Loudness Profile editing edge cases (blank thresholds, half-typed rules, draft persistence across presets and Dock mode, renaming).
+
 ## [0.10.0] - 2026-07-21
 
 ### Added
