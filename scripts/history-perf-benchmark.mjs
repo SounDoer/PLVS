@@ -9,17 +9,17 @@ const VISUAL_ROWS = 360_000;
 const SPECTRUM_BANDS = 958;
 const VECTOR_VALUES = 200;
 const VIEW_WIDTH = 600;
+let benchmarkSink;
+let benchmarkChecksum = 0;
 
 function mainRows() {
-  const waveformMin = [-0.5, -0.4];
-  const waveformMax = [0.5, 0.4];
   const waveformSubPairs = new Float32Array(0);
 
   return Array.from({ length: HIST_ROWS }, (_, index) => ({
     m: -20 + Math.sin(index / 41),
     st: -22 + Math.cos(index / 67),
-    waveformMin,
-    waveformMax,
+    waveformMin: [-0.5, -0.4],
+    waveformMax: [0.5, 0.4],
     waveformSubPairs,
     waveformSubCount: 0,
     timestampMs: index * 100,
@@ -43,10 +43,13 @@ function visualTimestampView() {
 }
 
 function averageTime(callback, iterations = 20) {
-  for (let index = 0; index < 3; index += 1) callback();
+  for (let index = 0; index < 3; index += 1) benchmarkSink = callback();
   const started = performance.now();
-  for (let index = 0; index < iterations; index += 1) callback();
-  return (performance.now() - started) / iterations;
+  for (let index = 0; index < iterations; index += 1) benchmarkSink = callback();
+  const elapsed = (performance.now() - started) / iterations;
+  benchmarkChecksum +=
+    typeof benchmarkSink === "string" ? benchmarkSink.length : benchmarkSink.bucketCount;
+  return elapsed;
 }
 
 function reportTime(label, callback, iterations) {
@@ -56,31 +59,33 @@ function reportTime(label, callback, iterations) {
 
 const rows = mainRows();
 reportTime("loudness M / 240m / 600px", () => {
-  buildHistoryPath(rows, "m", HIST_ROWS, 0, (value) => value, VIEW_WIDTH, VIEW_WIDTH);
+  return buildHistoryPath(rows, "m", HIST_ROWS, 0, (value) => value, VIEW_WIDTH, VIEW_WIDTH);
 });
 reportTime("loudness ST / 240m / 600px", () => {
-  buildHistoryPath(rows, "st", HIST_ROWS, 0, (value) => value, VIEW_WIDTH, VIEW_WIDTH);
+  return buildHistoryPath(rows, "st", HIST_ROWS, 0, (value) => value, VIEW_WIDTH, VIEW_WIDTH);
 });
 reportTime("waveform / 240m / 600px", () => {
-  sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, VIEW_WIDTH);
+  return sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, VIEW_WIDTH);
 });
 
 const timestamps = visualTimestampView();
 const targetTimestampMs = (VISUAL_ROWS - 2.5) * 40;
 for (let index = 0; index < 3; index += 1) {
-  nearestTimestampIndex(timestamps, targetTimestampMs);
+  benchmarkSink = nearestTimestampIndex(timestamps, targetTimestampMs);
 }
 const lookupIterations = 100;
 const readsBefore = timestamps.reads();
 const started = performance.now();
 for (let index = 0; index < lookupIterations; index += 1) {
-  nearestTimestampIndex(timestamps, targetTimestampMs);
+  benchmarkSink = nearestTimestampIndex(timestamps, targetTimestampMs);
 }
 const lookupMs = (performance.now() - started) / lookupIterations;
 const readsPerLookup = (timestamps.reads() - readsBefore) / lookupIterations;
+benchmarkChecksum += benchmarkSink;
 
 const mib = (bytes) => (bytes / 1024 / 1024).toFixed(1);
 console.log(`nearest visual timestamp / 240m: ${lookupMs.toFixed(3)} ms`);
 console.log(`nearest timestamp reads/lookup: ${readsPerLookup}`);
 console.log(`projected Spectrum primary: ${mib(VISUAL_ROWS * SPECTRUM_BANDS * 4)} MiB`);
-console.log(`projected Vectorscope: ${mib(VISUAL_ROWS * VECTOR_VALUES * 4)} MiB`);
+console.log(`projected Vectorscope pairs: ${mib(VISUAL_ROWS * VECTOR_VALUES * 4)} MiB`);
+console.log(`benchmark checksum: ${benchmarkChecksum}`);
