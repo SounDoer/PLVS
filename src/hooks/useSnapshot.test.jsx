@@ -14,6 +14,39 @@ function createIntake(samples) {
   };
 }
 
+function countingTimestampRows(timestamps) {
+  let reads = 0;
+  return {
+    rows: timestamps.map((timestampMs) => ({
+      get timestampMs() {
+        reads += 1;
+        return timestampMs;
+      },
+    })),
+    reads: () => reads,
+  };
+}
+
+function countingVisualView(rows) {
+  let timestampReads = 0;
+  let rowReads = 0;
+  return {
+    view: {
+      length: rows.length,
+      timestampAt(index) {
+        timestampReads += 1;
+        return rows[index]?.timestampMs ?? NaN;
+      },
+      rowAt(index) {
+        rowReads += 1;
+        return rows[index];
+      },
+    },
+    timestampReads: () => timestampReads,
+    rowReads: () => rowReads,
+  };
+}
+
 describe("useSnapshot", () => {
   it("freezes history data while scrubbing and returns to live data afterward", () => {
     const samples = {
@@ -188,5 +221,155 @@ describe("useSnapshot", () => {
     expect(withHold.peakHold).toHaveLength(64);
     // Full-scale mono reaches the arc-scale extent (sqrt(2)); reconstruction reflects the row.
     expect(Math.max(...withHold.peakHold)).toBeCloseTo(Math.SQRT2, 5);
+  });
+
+  it("memoizes main snapshot resolution across live audio rerenders", () => {
+    const loudness = countingTimestampRows([1000, 1100]);
+    const intake = createIntake({
+      loudness: loudness.rows,
+      corr: [0.1, 0.2],
+      audio: [{ correlation: 0.1 }, { correlation: 0.2 }],
+    });
+    const baseProps = { selectedOffset: 0, sampleSec: 0.1, intake };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, audio: { correlation: 0.8 } },
+    });
+    const readsAfterResolve = loudness.reads();
+    const spectrumResolver = result.current.resolveSpectrumSnapshotForKey;
+    const vectorscopeResolver = result.current.resolveVectorscopeSnapshotForKey;
+
+    rerender({ ...baseProps, audio: { correlation: -0.8 } });
+
+    expect(loudness.reads()).toBe(readsAfterResolve);
+    expect(result.current.resolveSpectrumSnapshotForKey).toBe(spectrumResolver);
+    expect(result.current.resolveVectorscopeSnapshotForKey).toBe(vectorscopeResolver);
+
+    rerender({ ...baseProps, selectedOffset: 0.1, audio: { correlation: 0.4 } });
+    expect(loudness.reads()).toBeGreaterThan(readsAfterResolve);
+  });
+
+  it("memoizes Spectrum results per key and target without refreezing while scrubbing", () => {
+    const spectrum = countingVisualView([
+      {
+        timestampMs: 1000,
+        bands: [{ fCenter: 100 }, { fCenter: 1000 }],
+        dbList: [-30, -20],
+      },
+      {
+        timestampMs: 1100,
+        bands: [{ fCenter: 100 }, { fCenter: 1000 }],
+        dbList: [-24, -18],
+      },
+    ]);
+    let freezes = 0;
+    const intake = createIntake({
+      loudness: [{ timestampMs: 1000 }, { timestampMs: 1100 }],
+      corr: [0.1, 0.2],
+      audio: [{ correlation: 0.1 }, { correlation: 0.2 }],
+    });
+    intake.snapshotVisualSpectrumByKey = () => {
+      freezes += 1;
+      return { spectrum: spectrum.view };
+    };
+    const baseProps = { selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0.8 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: baseProps,
+    });
+
+    const first = result.current.resolveSpectrumSnapshotForKey("spectrum");
+    const readsAfterFirst = spectrum.timestampReads();
+    const rowReadsAfterFirst = spectrum.rowReads();
+    const second = result.current.resolveSpectrumSnapshotForKey("spectrum");
+
+    expect(second).toBe(first);
+    expect(spectrum.timestampReads()).toBe(readsAfterFirst);
+    expect(spectrum.rowReads()).toBe(rowReadsAfterFirst);
+
+    rerender({ ...baseProps, selectedOffset: 0.1 });
+    const atEarlierTarget = result.current.resolveSpectrumSnapshotForKey("spectrum");
+    expect(atEarlierTarget).not.toBe(first);
+    expect(spectrum.timestampReads()).toBeGreaterThan(readsAfterFirst);
+    expect(freezes).toBe(1);
+  });
+
+  it("separates Vectorscope result caches by peak-hold mode", () => {
+    const vectorscope = countingVisualView([
+      {
+        timestampMs: 1000,
+        pairs: new Float32Array([0.25, 0.25]),
+        correlation: 0.5,
+      },
+    ]);
+    const intake = createIntake({
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    });
+    intake.snapshotVisualVectorscopeByKey = () => ({ vectorscope: vectorscope.view });
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const withoutHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope");
+    const readsWithoutHold = vectorscope.timestampReads();
+    expect(result.current.resolveVectorscopeSnapshotForKey("vectorscope")).toBe(withoutHold);
+    expect(vectorscope.timestampReads()).toBe(readsWithoutHold);
+
+    const withHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope", {
+      withPeakHold: true,
+    });
+    const readsWithHold = vectorscope.timestampReads();
+    expect(withHold).not.toBe(withoutHold);
+    expect(withHold.peakHold).toBeInstanceOf(Float64Array);
+    expect(
+      result.current.resolveVectorscopeSnapshotForKey("vectorscope", { withPeakHold: true })
+    ).toBe(withHold);
+    expect(vectorscope.timestampReads()).toBe(readsWithHold);
+  });
+
+  it("starts fresh keyed caches for a new snapshot session and caches missing results", () => {
+    const spectrum = countingVisualView([
+      {
+        timestampMs: 1000,
+        bands: [{ fCenter: 100 }],
+        dbList: [-30],
+      },
+    ]);
+    const intake = createIntake({
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.1],
+      audio: [{ correlation: 0.1 }],
+    });
+    intake.snapshotVisualSpectrumByKey = () => ({ spectrum: spectrum.view });
+    const baseProps = { selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0.8 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: baseProps,
+    });
+
+    const first = result.current.resolveSpectrumSnapshotForKey("spectrum");
+    const readsAfterFirstSession = spectrum.timestampReads();
+    const missing = result.current.resolveSpectrumSnapshotForKey("missing");
+    expect(result.current.resolveSpectrumSnapshotForKey("missing")).toBe(missing);
+
+    rerender({ ...baseProps, selectedOffset: -1 });
+    rerender(baseProps);
+    const nextSession = result.current.resolveSpectrumSnapshotForKey("spectrum");
+
+    expect(nextSession).not.toBe(first);
+    expect(spectrum.timestampReads()).toBeGreaterThan(readsAfterFirstSession);
+  });
+
+  it("updates displayAudio on every live-mode audio rerender", () => {
+    const intake = createIntake({ loudness: [], corr: [], audio: [] });
+    const firstAudio = { correlation: 0.2 };
+    const nextAudio = { correlation: 0.9 };
+    const baseProps = { selectedOffset: -1, sampleSec: 0.1, intake };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, audio: firstAudio },
+    });
+
+    rerender({ ...baseProps, audio: nextAudio });
+
+    expect(result.current.displayAudio).toBe(nextAudio);
   });
 });
