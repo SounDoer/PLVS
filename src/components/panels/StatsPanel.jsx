@@ -23,7 +23,7 @@ const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, watched }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.stats.metrics;
   const labelClass = cn(
-    "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-tight",
+    "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-normal",
     loudnessLabelClass(watched)
   );
   const valueClass = cn(
