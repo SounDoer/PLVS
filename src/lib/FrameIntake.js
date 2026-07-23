@@ -3,6 +3,7 @@ import { SparseHistoryMarkers } from "./SparseHistoryMarkers.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
 import { LoudnessHistoryIndex } from "../math/loudnessHistoryIndex.js";
+import { WaveformHistoryIndex } from "../math/waveformHistoryIndex.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -153,6 +154,7 @@ export class FrameIntake {
     this._histCapacity = 1;
     this._loudnessHist = new RingBuffer(1);
     this._loudnessDisplayIndex = new LoudnessHistoryIndex(1);
+    this._waveformHistoryIndex = new WaveformHistoryIndex(1);
     this._audioSnap = new RingBuffer(1);
     this._corrSnap = new RingBuffer(1);
     this._frequencyChannelMarkers = new RingBuffer(1);
@@ -176,6 +178,7 @@ export class FrameIntake {
   _rebuildScalarHistory(capacity) {
     const loudnessHist = new RingBuffer(capacity);
     const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
+    const waveformHistoryIndex = new WaveformHistoryIndex(capacity);
     const audioSnap = new RingBuffer(capacity);
     const corrSnap = new RingBuffer(capacity);
     const frequencyChannelMarkers = new RingBuffer(capacity);
@@ -184,6 +187,7 @@ export class FrameIntake {
     this._histCapacity = capacity;
     this._loudnessHist = loudnessHist;
     this._loudnessDisplayIndex = loudnessDisplayIndex;
+    this._waveformHistoryIndex = waveformHistoryIndex;
     this._audioSnap = audioSnap;
     this._corrSnap = corrSnap;
     this._frequencyChannelMarkers = frequencyChannelMarkers;
@@ -269,6 +273,7 @@ export class FrameIntake {
     };
     this._loudnessHist.push(loudnessRow);
     this._loudnessDisplayIndex.append(loudnessRow);
+    this._waveformHistoryIndex.append(loudnessRow);
     this._audioSnap.push(buildAudioSnap(row));
     this._corrSnap.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
     this._frequencyChannelMarkers.push(this._pendingFrequencyMarker);
@@ -362,6 +367,12 @@ export class FrameIntake {
   snapshotLoudnessDisplayIndex() {
     return this._loudnessDisplayIndex.freeze();
   }
+  getWaveformHistoryIndex() {
+    return this._waveformHistoryIndex;
+  }
+  snapshotWaveformHistoryIndex() {
+    return this._waveformHistoryIndex.freeze();
+  }
   getAudioSnap() {
     return this._audioSnap;
   }
@@ -408,6 +419,7 @@ export class FrameIntake {
   reset() {
     this._loudnessHist.clear();
     this._loudnessDisplayIndex.clear();
+    this._waveformHistoryIndex.clear();
     this._audioSnap.clear();
     this._corrSnap.clear();
     this._frequencyChannelMarkers.clear();

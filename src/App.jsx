@@ -558,6 +558,7 @@ function AppContent() {
   const {
     histSourceList,
     loudnessDisplayIndex,
+    waveformHistoryIndex,
     frequencyMarkerIndex,
     displayAudio,
     hasHistoryData,
@@ -1289,6 +1290,7 @@ function AppContent() {
     totalSamples,
     histSourceList,
     loudnessDisplayIndex,
+    waveformHistoryIndex,
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,

@@ -8,8 +8,16 @@ import {
 } from "../../workspace/AudioDataContext.jsx";
 import { drawWaveformCanvas, WaveformPanel } from "./WaveformPanel.jsx";
 
-const { sliceWaveformSubHistoryMock } = vi.hoisted(() => ({
+const { sliceWaveformSubHistoryMock, sliceWaveformSubHistoryFromIndexMock } = vi.hoisted(() => ({
   sliceWaveformSubHistoryMock: vi.fn(() => ({
+    mins: [[], []],
+    maxes: [[], []],
+    bucketCount: 1,
+    fracPhase: 0,
+    firstBucket: -1,
+    lastBucket: -1,
+  })),
+  sliceWaveformSubHistoryFromIndexMock: vi.fn(() => ({
     mins: [[], []],
     maxes: [[], []],
     bucketCount: 1,
@@ -21,10 +29,12 @@ const { sliceWaveformSubHistoryMock } = vi.hoisted(() => ({
 
 vi.mock("../../math/waveformMath.js", () => ({
   sliceWaveformSubHistory: sliceWaveformSubHistoryMock,
+  sliceWaveformSubHistoryFromIndex: sliceWaveformSubHistoryFromIndexMock,
 }));
 
 const baseAudioData = {
   histSourceList: [],
+  waveformHistoryIndex: null,
   visibleSamples: 0,
   effectiveOffsetSamples: 0,
   channelCount: 0,
@@ -68,6 +78,7 @@ function waveformPanelTree(value = {}, props = {}) {
 
 beforeEach(() => {
   sliceWaveformSubHistoryMock.mockClear();
+  sliceWaveformSubHistoryFromIndexMock.mockClear();
 
   class ResizeObserverStub {
     observe() {}
@@ -209,6 +220,30 @@ describe("WaveformPanel", () => {
     );
 
     expect(sliceWaveformSubHistoryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the source-matched waveform index and preserves plain-history fallback", () => {
+    const history = [{ timestampMs: 1000, waveformMin: [-0.2], waveformMax: [0.3] }];
+    const index = { retainedEndSequence: 1 };
+    const { rerender } = renderPanel({
+      histSourceList: history,
+      waveformHistoryIndex: index,
+      visibleSamples: 1,
+      channelCount: 2,
+    });
+
+    expect(sliceWaveformSubHistoryFromIndexMock).toHaveBeenCalledWith(history, index, 1, 0, 2, 0);
+    expect(sliceWaveformSubHistoryMock).not.toHaveBeenCalled();
+
+    rerender(
+      waveformPanelTree({
+        histSourceList: history,
+        waveformHistoryIndex: null,
+        visibleSamples: 1,
+        channelCount: 2,
+      })
+    );
+    expect(sliceWaveformSubHistoryMock).toHaveBeenCalledWith(history, 1, 0, 2, 0);
   });
 
   it("does not slice waveform history while the panel instance is hidden", () => {

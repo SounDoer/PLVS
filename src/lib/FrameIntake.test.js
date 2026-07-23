@@ -271,6 +271,49 @@ describe("FrameIntake", () => {
     expect(intake.getLoudnessHistory()).toHaveLength(0);
   });
 
+  it("keeps the waveform index aligned with scalar history through wrap", () => {
+    const intake = new FrameIntake();
+    for (let sequence = 0; sequence < 9; sequence += 1) {
+      intake.pushHistRow(
+        makeRow({
+          waveformMin: [-sequence / 10, sequence % 2 ? -sequence / 20 : undefined],
+          waveformMax: [sequence / 10],
+          timestampMs: sequence * 100,
+        }),
+        4,
+        SR
+      );
+    }
+
+    const rows = intake.getLoudnessHistory();
+    const index = intake.getWaveformHistoryIndex();
+    expect(index.capacity).toBe(rows.capacity);
+    expect(index.retainedStartSequence).toBe(5);
+    expect(index.retainedEndSequence).toBe(9);
+    expect(index.queryRange(5, 8)).toEqual({
+      mins: [-0.8, -0.35],
+      maxes: [0.8, 0],
+    });
+  });
+
+  it("rebuilds, freezes, and clears the waveform index with scalar history", () => {
+    const intake = new FrameIntake();
+    intake.pushHistRow(makeRow({ waveformMin: [-0.2], waveformMax: [0.4] }), 3, SR);
+    const original = intake.getWaveformHistoryIndex();
+    const frozen = intake.snapshotWaveformHistoryIndex();
+
+    intake.pushHistRow(makeRow({ waveformMin: [-0.8], waveformMax: [0.9] }), 5, SR);
+    const rebuilt = intake.getWaveformHistoryIndex();
+    expect(rebuilt).not.toBe(original);
+    expect(rebuilt.capacity).toBe(5);
+    expect(rebuilt.retainedEndSequence).toBe(1);
+    expect(frozen.queryRange(0, 0)).toEqual({ mins: [-0.2], maxes: [0.4] });
+
+    intake.reset();
+    expect(rebuilt.retainedStartSequence).toBe(0);
+    expect(rebuilt.retainedEndSequence).toBe(0);
+  });
+
   it("keeps all scalar columns aligned after wraparound without Array.shift", () => {
     const intake = new FrameIntake();
     const originalShift = Array.prototype.shift;

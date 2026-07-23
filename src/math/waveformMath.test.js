@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { sliceWaveformSubHistory } from "./waveformMath.js";
+import { sliceWaveformSubHistory, sliceWaveformSubHistoryFromIndex } from "./waveformMath.js";
+import { WaveformHistoryIndex } from "./waveformHistoryIndex.js";
 
 const SUBS = 19;
 function flatEntry(amp) {
@@ -143,5 +144,145 @@ describe("sliceWaveformSubHistory", () => {
 
     expect(Math.max(...r.maxes[0])).toBeCloseTo(0.2, 5);
     expect(Math.min(...r.mins[0])).toBeCloseTo(-0.2, 5);
+  });
+});
+
+function makeRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+function randomEntry(random, sequence) {
+  const channelCount = 1 + Math.floor(random() * 8);
+  let minCount = Math.max(0, channelCount - Math.floor(random() * 3));
+  let maxCount = Math.max(0, channelCount - Math.floor(random() * 3));
+  if (minCount === 0 && maxCount === 0) maxCount = 1;
+  const waveformMin = Array.from(
+    { length: minCount },
+    (_, channel) =>
+      -Math.round((random() * 0.9 + channel / 100 + sequence / 1_000_000) * 100_000) / 100_000
+  );
+  const waveformMax = Array.from(
+    { length: maxCount },
+    (_, channel) =>
+      Math.round((random() * 0.9 + channel / 100 + sequence / 1_000_000) * 100_000) / 100_000
+  );
+  const waveformSubCount = 3 + Math.floor(random() * 8);
+  const waveformSubPairs = new Float32Array(waveformSubCount * channelCount * 2);
+  for (let sub = 0; sub < waveformSubCount; sub += 1) {
+    for (let channel = 0; channel < channelCount; channel += 1) {
+      const amplitude = 0.05 + random() * 0.8;
+      const base = (sub * channelCount + channel) * 2;
+      waveformSubPairs[base] = -amplitude;
+      waveformSubPairs[base + 1] = amplitude;
+    }
+  }
+  return { waveformMin, waveformMax, waveformSubCount, waveformSubPairs };
+}
+
+function expectSameWaveform(actual, expected) {
+  expect(actual.bucketCount).toBe(expected.bucketCount);
+  expect(actual.firstBucket).toBe(expected.firstBucket);
+  expect(actual.lastBucket).toBe(expected.lastBucket);
+  expect(actual.fracPhase).toBeCloseTo(expected.fracPhase, 12);
+  expect(actual.mins).toEqual(expected.mins);
+  expect(actual.maxes).toEqual(expected.maxes);
+}
+
+describe("sliceWaveformSubHistoryFromIndex", () => {
+  it("matches the reference across randomized startup, wrap, offsets, widths, and channels", () => {
+    let randomCases = 0;
+    for (let seed = 1; seed <= 8; seed += 1) {
+      const random = makeRandom(seed);
+      const capacity = 1_250 + seed * 7;
+      const index = new WaveformHistoryIndex(capacity);
+      const retained = [];
+      const appendCount = seed % 2 === 0 ? capacity + 137 : 310 + seed;
+      for (let sequence = 0; sequence < appendCount; sequence += 1) {
+        const row = randomEntry(random, sequence);
+        index.append(row);
+        retained.push(row);
+        if (retained.length > capacity) retained.splice(0, 1);
+      }
+
+      for (const pixelWidth of [600, 1200]) {
+        for (const visibleSamples of [
+          Math.max(1, Math.floor(retained.length / 3)),
+          pixelWidth,
+          pixelWidth + 137,
+          capacity + 500,
+        ]) {
+          for (const offset of [0, 1, 7.25]) {
+            const channelCount = 1 + Math.floor(random() * 8);
+            const expected = sliceWaveformSubHistory(
+              retained,
+              visibleSamples,
+              offset,
+              channelCount,
+              pixelWidth
+            );
+            const actual = sliceWaveformSubHistoryFromIndex(
+              retained,
+              index,
+              visibleSamples,
+              offset,
+              channelCount,
+              pixelWidth
+            );
+            expectSameWaveform(actual, expected);
+            randomCases += 1;
+          }
+        }
+      }
+    }
+    expect(randomCases).toBe(192);
+  });
+
+  it("does not read retained source rows for wide windows and bounds summary work", () => {
+    const rows = Array.from({ length: 4_097 }, (_, sequence) => randomEntry(() => 0.25, sequence));
+    const index = new WaveformHistoryIndex(rows.length);
+    rows.forEach((row) => index.append(row));
+    let sourceReads = 0;
+    const source = {
+      length: rows.length,
+      rowAt(entry) {
+        sourceReads += 1;
+        return rows[entry];
+      },
+    };
+
+    const result = sliceWaveformSubHistoryFromIndex(source, index, rows.length, 3.5, 8, 600);
+
+    expect(result.bucketCount).toBeGreaterThanOrEqual(600);
+    expect(sourceReads).toBe(0);
+    expect(index.batchQueryStats().nodesVisited).toBeLessThanOrEqual(
+      result.bucketCount * (2 * Math.ceil(Math.log2(rows.length)) + 2)
+    );
+  });
+
+  it("falls back to raw sub-pairs at close zoom with output-bounded source reads", () => {
+    const rows = Array.from({ length: 2_000 }, (_, sequence) =>
+      sequence === 1_990 ? spikeEntry(0.2, 0.95, 9) : randomEntry(() => 0.2, sequence)
+    );
+    const index = new WaveformHistoryIndex(rows.length);
+    rows.forEach((row) => index.append(row));
+    let sourceReads = 0;
+    const source = {
+      length: rows.length,
+      rowAt(entry) {
+        sourceReads += 1;
+        return rows[entry];
+      },
+    };
+
+    const expected = sliceWaveformSubHistory(rows, 100, 2.25, 1, 600);
+    const actual = sliceWaveformSubHistoryFromIndex(source, index, 100, 2.25, 1, 600);
+
+    expectSameWaveform(actual, expected);
+    expect(sourceReads).toBeLessThanOrEqual(102);
+    expect(index.batchQueryStats().queries).toBe(0);
   });
 });

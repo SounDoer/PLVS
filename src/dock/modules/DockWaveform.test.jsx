@@ -7,7 +7,9 @@ import {
   dockWaveformAggregationStride,
   DockWaveform,
   paintDockWaveformCanvas,
+  sliceDockWaveformHistory,
 } from "./DockWaveform.jsx";
+import { WaveformHistoryIndex } from "../../math/waveformHistoryIndex.js";
 
 beforeAll(() => {
   class ResizeObserverStub {
@@ -126,6 +128,26 @@ describe("DockWaveform", () => {
     expect(envelope.bucketCount).toBeLessThanOrEqual(302);
     expect(envelope.mins).toHaveLength(2);
     expect(envelope.maxes).toHaveLength(2);
+  });
+
+  it("uses indexed full-window values without reading retained history rows", () => {
+    const history = rows(Array.from({ length: 4_097 }, (_, index) => ((index * 17) % 100) / 100));
+    const index = new WaveformHistoryIndex(history.length);
+    history.forEach((row) => index.append(row));
+    let reads = 0;
+    const source = {
+      length: history.length,
+      rowAt(entry) {
+        reads += 1;
+        return history[entry];
+      },
+    };
+
+    const expected = sliceWaveformSubHistory(history, history.length, 0, 2, 600);
+    const actual = sliceDockWaveformHistory(source, index, history.length, 2, 600);
+
+    expect(actual).toEqual(expected);
+    expect(reads).toBe(0);
   });
 
   it("keeps short windows at full cadence and throttles sub-pixel long-window rebuilds", () => {

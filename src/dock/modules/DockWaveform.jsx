@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { useCanvasSize } from "../../hooks/useCanvasSize.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
-import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
+import {
+  sliceWaveformSubHistory,
+  sliceWaveformSubHistoryFromIndex,
+} from "../../math/waveformMath.js";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
 
@@ -25,6 +28,25 @@ function clampAmplitude(value) {
 export function dockWaveformAggregationStride(visibleRowCount, pixelWidth) {
   const rowsPerPixel = Math.max(1, visibleRowCount) / Math.max(1, pixelWidth);
   return Math.max(1, Math.min(MAX_AGGREGATION_STRIDE, Math.floor(rowsPerPixel / 2)));
+}
+
+export function sliceDockWaveformHistory(
+  histSourceList,
+  waveformHistoryIndex,
+  visibleSamples,
+  channelCount,
+  pixelWidth
+) {
+  return waveformHistoryIndex
+    ? sliceWaveformSubHistoryFromIndex(
+        histSourceList,
+        waveformHistoryIndex,
+        visibleSamples,
+        0,
+        channelCount,
+        pixelWidth
+      )
+    : sliceWaveformSubHistory(histSourceList, visibleSamples, 0, channelCount, pixelWidth);
 }
 
 /** Paint all channel envelopes into one bounded canvas. */
@@ -101,7 +123,7 @@ export function paintDockWaveformCanvas(
 /** Compact, latest-locked waveform with one labeled lane per available channel. */
 export function DockWaveform({ controls }) {
   const frameData = useFrameData() ?? {};
-  const { histSourceList = [] } = useHistoryData() ?? {};
+  const { histSourceList = [], waveformHistoryIndex = null } = useHistoryData() ?? {};
   const canvasRef = useRef(null);
   const plotRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -142,9 +164,16 @@ export function DockWaveform({ controls }) {
 
   const envelope = useMemo(
     () =>
-      sliceWaveformSubHistory(histSourceList, visibleSamples, 0, channelCount, canvasSize.width),
+      sliceDockWaveformHistory(
+        histSourceList,
+        waveformHistoryIndex,
+        visibleSamples,
+        channelCount,
+        canvasSize.width
+      ),
     [
       histSourceList,
+      waveformHistoryIndex,
       historyVersion,
       latestTimestampMs === null ? latestRow : null,
       visibleSamples,

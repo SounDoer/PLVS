@@ -115,3 +115,104 @@ export function sliceWaveformSubHistory(
 
   return { mins, maxes, bucketCount, fracPhase, firstBucket: firstJ, lastBucket: lastJ };
 }
+
+function firstEntryForWholeTickBucket(bucket, kStart, coordsPerBucket) {
+  const target = bucket + kStart;
+  let entry = Math.floor(target * coordsPerBucket - 0.5);
+  while (Math.floor((entry + 0.5) / coordsPerBucket) < target) entry += 1;
+  while (Math.floor((entry - 1 + 0.5) / coordsPerBucket) >= target) entry -= 1;
+  return entry;
+}
+
+/**
+ * Match sliceWaveformSubHistory exactly while querying whole-tick bounds from
+ * the lossless history index for windows at or beyond one entry per pixel.
+ */
+export function sliceWaveformSubHistoryFromIndex(
+  histSourceList,
+  index,
+  visibleSamples,
+  effectiveOffsetSamples,
+  channelCount,
+  pixelWidth
+) {
+  const W = Math.max(1, Math.floor(pixelWidth));
+  const total = histSourceList.length;
+  const windowSamples = Math.max(1, visibleSamples);
+  const coordsPerBucket = windowSamples / W;
+  if (!index || coordsPerBucket < 1) {
+    return sliceWaveformSubHistory(
+      histSourceList,
+      visibleSamples,
+      effectiveOffsetSamples,
+      channelCount,
+      pixelWidth
+    );
+  }
+
+  const off = Math.max(0, Math.min(Math.max(0, total - 1), effectiveOffsetSamples));
+  const newestVisible = total - 1 - off;
+  const oldestVisible = newestVisible - windowSamples + 1;
+
+  const kStart = Math.floor(oldestVisible / coordsPerBucket);
+  const kEnd = Math.floor((newestVisible + 1) / coordsPerBucket);
+  const bucketCount = Math.max(1, kEnd - kStart + 1);
+  const fracPhase = oldestVisible / coordsPerBucket - kStart;
+
+  const mins = Array.from({ length: channelCount }, () => new Array(bucketCount).fill(0));
+  const maxes = Array.from({ length: channelCount }, () => new Array(bucketCount).fill(0));
+  if (total === 0) return { mins, maxes, bucketCount, fracPhase, firstBucket: -1, lastBucket: -1 };
+
+  const start = Math.max(0, Math.floor(oldestVisible));
+  const end = Math.min(total - 1, Math.ceil(newestVisible));
+  if (end < start) return { mins, maxes, bucketCount, fracPhase, firstBucket: -1, lastBucket: -1 };
+
+  const retainedStart = index.retainedStartSequence;
+  const retainedEnd = index.retainedEndSequence - 1;
+  const hasData = new Array(bucketCount).fill(false);
+  index.beginQueryBatch();
+
+  for (let bucket = 0; bucket < bucketCount; bucket += 1) {
+    const firstEntry = Math.max(
+      start,
+      firstEntryForWholeTickBucket(bucket, kStart, coordsPerBucket)
+    );
+    const lastEntry = Math.min(
+      end,
+      firstEntryForWholeTickBucket(bucket + 1, kStart, coordsPerBucket) - 1
+    );
+    const firstSequence = Math.max(retainedStart, retainedStart + firstEntry);
+    const lastSequence = Math.min(retainedEnd, retainedStart + lastEntry);
+    if (firstSequence > lastSequence) continue;
+
+    const result = index.queryRange(firstSequence, lastSequence);
+    if (!result) continue;
+    for (let channel = 0; channel < channelCount; channel += 1) {
+      mins[channel][bucket] = result.mins[channel] ?? 0;
+      maxes[channel][bucket] = result.maxes[channel] ?? 0;
+    }
+    hasData[bucket] = true;
+  }
+
+  const firstJ = hasData.indexOf(true);
+  const lastJ = hasData.lastIndexOf(true);
+  if (firstJ >= 0) {
+    for (let bucket = firstJ + 1; bucket <= lastJ; bucket += 1) {
+      if (!hasData[bucket]) {
+        for (let channel = 0; channel < channelCount; channel += 1) {
+          mins[channel][bucket] = mins[channel][bucket - 1];
+          maxes[channel][bucket] = maxes[channel][bucket - 1];
+        }
+      }
+    }
+  }
+
+  return {
+    mins,
+    maxes,
+    bucketCount,
+    fracPhase,
+    firstBucket: firstJ,
+    lastBucket: lastJ,
+  };
+}

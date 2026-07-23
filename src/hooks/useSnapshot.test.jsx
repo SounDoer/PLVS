@@ -137,6 +137,29 @@ describe("useSnapshot", () => {
     expect(result.current.loudnessDisplayIndex.retainedEndSequence).toBe(2);
   });
 
+  it("returns the waveform index from the matching live or frozen history source", () => {
+    const samples = {
+      loudness: [{ waveformMin: [-0.2], waveformMax: [0.3], timestampMs: 1000 }],
+      corr: [0.1],
+      audio: [{ correlation: 0.1 }],
+    };
+    const intake = createIntake(samples);
+    const liveIndex = { source: "live" };
+    const frozenIndex = { source: "frozen" };
+    intake.getWaveformHistoryIndex = () => liveIndex;
+    intake.snapshotWaveformHistoryIndex = () => frozenIndex;
+    const baseProps = { sampleSec: 0.1, intake, audio: { correlation: 0.1 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, selectedOffset: -1 },
+    });
+
+    expect(result.current.waveformHistoryIndex).toBe(liveIndex);
+    rerender({ ...baseProps, selectedOffset: 0 });
+    expect(result.current.waveformHistoryIndex).toBe(frozenIndex);
+    rerender({ ...baseProps, selectedOffset: -1 });
+    expect(result.current.waveformHistoryIndex).toBe(liveIndex);
+  });
+
   it("returns channel metadata for the selected snapshot tick", () => {
     const intake = {
       getLoudnessHistory: () => [

@@ -6,7 +6,11 @@ import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "../src/lib/VectorscopeHistorySlab.js";
 import { buildHistoryPath, buildLoudnessHistoryPathsFromIndex } from "../src/math/historyMath.js";
 import { LoudnessHistoryIndex } from "../src/math/loudnessHistoryIndex.js";
-import { sliceWaveformSubHistory } from "../src/math/waveformMath.js";
+import {
+  sliceWaveformSubHistory,
+  sliceWaveformSubHistoryFromIndex,
+} from "../src/math/waveformMath.js";
+import { WaveformHistoryIndex } from "../src/math/waveformHistoryIndex.js";
 
 const HIST_ROWS = 144_000;
 const VISUAL_ROWS = 360_000;
@@ -164,9 +168,46 @@ for (const viewWidth of [600, 1200]) {
   benchmarkChecksum +=
     stats.nodesVisited + stats.rawRowsVisited + stats.summaryBucketsVisited + stats.queries;
 }
-reportTime("waveform / 240m / 600px", () => {
-  return sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, 600);
-});
+const waveformIndex = new WaveformHistoryIndex(HIST_ROWS);
+for (const row of rows) waveformIndex.append(row);
+let waveformSourceReads = 0;
+const waveformSource = {
+  length: rows.length,
+  rowAt(index) {
+    waveformSourceReads += 1;
+    return rows[index];
+  },
+};
+for (const viewWidth of [600, 1200]) {
+  reportTime(`waveform reference / 240m / ${viewWidth}px`, () =>
+    sliceWaveformSubHistory(rows, HIST_ROWS, 0, 2, viewWidth)
+  );
+  waveformSourceReads = 0;
+  reportTime(`waveform indexed / 240m / ${viewWidth}px`, () =>
+    sliceWaveformSubHistoryFromIndex(waveformSource, waveformIndex, HIST_ROWS, 0, 2, viewWidth)
+  );
+  const stats = waveformIndex.batchQueryStats();
+  const nodeBound = (viewWidth + 2) * (2 * Math.ceil(Math.log2(waveformIndex.capacity)) + 2);
+  if (waveformSourceReads !== 0) {
+    throw new Error(`waveform indexed ${viewWidth}px read ${waveformSourceReads} retained rows`);
+  }
+  if (stats.nodesVisited > nodeBound) {
+    throw new Error(
+      `waveform indexed ${viewWidth}px visited ${stats.nodesVisited} nodes (bound ${nodeBound})`
+    );
+  }
+  console.log(
+    `waveform indexed nodes / ${viewWidth}px: ${stats.nodesVisited} ` +
+      `(raw index leaves=${stats.rawRowsVisited}, summaries=${stats.summaryBucketsVisited}, ` +
+      `retained source reads=${waveformSourceReads})`
+  );
+  benchmarkChecksum +=
+    stats.nodesVisited +
+    stats.rawRowsVisited +
+    stats.summaryBucketsVisited +
+    stats.queries +
+    waveformSourceReads;
+}
 
 const timestamps = visualTimestampView();
 const targetTimestampMs = (VISUAL_ROWS - 2.5) * 40;

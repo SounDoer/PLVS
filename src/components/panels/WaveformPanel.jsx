@@ -9,7 +9,10 @@ import { CAPTION_TEXT, PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shell
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
-import { sliceWaveformSubHistory } from "../../math/waveformMath.js";
+import {
+  sliceWaveformSubHistory,
+  sliceWaveformSubHistoryFromIndex,
+} from "../../math/waveformMath.js";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
@@ -143,6 +146,7 @@ export function WaveformPanel({ compact = false }) {
 function WaveformPanelContent({ compact, audioData }) {
   const {
     histSourceList,
+    waveformHistoryIndex,
     visibleSamples,
     effectiveOffsetSamples,
     channelCount,
@@ -203,15 +207,25 @@ function WaveformPanelContent({ compact, audioData }) {
   );
   const { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket } = useMemo(
     () =>
-      sliceWaveformSubHistory(
-        waveformSourceList,
-        visibleSamples ?? 0,
-        effectiveOffsetSamples ?? 0,
-        effectiveChannels,
-        canvasW
-      ),
+      waveformHistoryIndex
+        ? sliceWaveformSubHistoryFromIndex(
+            waveformSourceList,
+            waveformHistoryIndex,
+            visibleSamples ?? 0,
+            effectiveOffsetSamples ?? 0,
+            effectiveChannels,
+            canvasW
+          )
+        : sliceWaveformSubHistory(
+            waveformSourceList,
+            visibleSamples ?? 0,
+            effectiveOffsetSamples ?? 0,
+            effectiveChannels,
+            canvasW
+          ),
     [
       waveformSourceList,
+      waveformHistoryIndex,
       visibleSamples,
       effectiveOffsetSamples,
       effectiveChannels,
