@@ -1,84 +1,33 @@
 import { describe, it, expect } from "vitest";
 import {
-  BUILTIN_LOUDNESS_PROFILES,
   LOUDNESS_PROFILE_OFF,
   RULEABLE_METRIC_IDS,
-  builtinSelectionId,
   createEmptyRule,
   createProfileDraft,
-  duplicateAsDraft,
+  createStarterProfile,
   isKnownMetricId,
   isRuleEmpty,
   isUsableThreshold,
   parseSelection,
+  profileSelectionId,
   resolveActiveDocument,
-  userSelectionId,
   watchedMetricIds,
   withReferenceLufs,
 } from "./loudnessProfileCatalog.js";
 import { STATS_META } from "./statsCatalog.js";
 
-const VALID_OPS = new Set([">", "<"]);
-const VALID_SEVERITIES = new Set(["warn", "fail"]);
-
-function ruleFor(profile, metricId, op) {
-  return profile.rules.find((r) => r.metricId === metricId && r.op === op);
-}
-
-describe("loudnessProfileCatalog built-ins", () => {
-  it("gives every built-in an id, name, reference and a rules array", () => {
-    for (const p of BUILTIN_LOUDNESS_PROFILES) {
-      expect(typeof p.id).toBe("string");
-      expect(typeof p.name).toBe("string");
-      expect(p.kind).toBe("builtin");
-      expect(Number.isFinite(p.referenceLufs)).toBe(true);
-      expect(Array.isArray(p.rules)).toBe(true);
-    }
-  });
-
-  it("only writes valid, addressable rules", () => {
-    for (const p of BUILTIN_LOUDNESS_PROFILES) {
-      for (const rule of p.rules) {
-        expect(isKnownMetricId(rule.metricId)).toBe(true);
-        expect(VALID_OPS.has(rule.op)).toBe(true);
-        expect(Number.isFinite(rule.value)).toBe(true);
-        expect(VALID_SEVERITIES.has(rule.severity)).toBe(true);
-      }
-    }
-  });
-
-  it("expresses EBU R128 as a ±0.5 Integrated band and a -1 True Peak ceiling", () => {
-    const p = BUILTIN_LOUDNESS_PROFILES.find((x) => x.id === "ebu-r128");
-    expect(p.referenceLufs).toBe(-23);
-    expect(ruleFor(p, "integrated", ">")).toMatchObject({ value: -22.5, severity: "fail" });
-    expect(ruleFor(p, "integrated", "<")).toMatchObject({ value: -23.5, severity: "fail" });
-    expect(ruleFor(p, "truePeak", ">")).toMatchObject({ value: -1, severity: "fail" });
-  });
-
-  it("only warns on realtime Integrated for R128 Live", () => {
-    const p = BUILTIN_LOUDNESS_PROFILES.find((x) => x.id === "ebu-r128-live");
-    expect(ruleFor(p, "integrated", ">")).toMatchObject({ value: -22, severity: "warn" });
-    expect(ruleFor(p, "integrated", "<")).toMatchObject({ value: -24, severity: "warn" });
-    expect(ruleFor(p, "truePeak", ">").severity).toBe("fail");
-  });
-
-  it("caps Short-term Max at -18 for S1", () => {
-    const p = BUILTIN_LOUDNESS_PROFILES.find((x) => x.id === "ebu-r128-s1");
-    expect(ruleFor(p, "shortTermMax", ">")).toMatchObject({ value: -18, severity: "fail" });
-  });
-
-  it("anchors ATSC on dialogue with a -2 true peak limit", () => {
-    const p = BUILTIN_LOUDNESS_PROFILES.find((x) => x.id === "atsc-a85");
-    expect(p.referenceLufs).toBe(-24);
-    expect(ruleFor(p, "dialogueIntegrated", ">")).toMatchObject({ value: -22 });
-    expect(ruleFor(p, "dialogueIntegrated", "<")).toMatchObject({ value: -26 });
-    expect(ruleFor(p, "truePeak", ">").value).toBe(-2);
-  });
-
-  it("treats Streaming -14 as a warn-only playback reference", () => {
-    const p = BUILTIN_LOUDNESS_PROFILES.find((x) => x.id === "streaming-14");
-    expect(p.referenceLufs).toBe(-14);
-    for (const rule of p.rules) expect(rule.severity).toBe("warn");
+describe("createStarterProfile", () => {
+  it("creates the starter profile with an injected id", () => {
+    expect(createStarterProfile(() => "starter-id")).toEqual({
+      id: "starter-id",
+      name: "I −23 ±0.5 · TP ≤ −1",
+      referenceLufs: -23,
+      rules: [
+        { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+        { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+        { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+      ],
+    });
   });
 });
 
@@ -104,40 +53,26 @@ describe("createEmptyRule", () => {
 });
 
 describe("createProfileDraft", () => {
-  it("starts unnamed, at reference -23, watching Integrated and True Peak", () => {
-    const draft = createProfileDraft();
-    expect(draft.name).toBe("");
-    expect(draft.referenceLufs).toBe(-23);
-    expect(watchedMetricIds(draft)).toEqual(["integrated", "truePeak"]);
+  it("creates an empty untitled draft", () => {
+    expect(createProfileDraft()).toEqual({
+      id: "draft",
+      name: "Untitled",
+      referenceLufs: null,
+      rules: [],
+    });
   });
 
   it("returns an independent object each call", () => {
     const a = createProfileDraft();
     const b = createProfileDraft();
-    a.rules[0].value = 999;
-    expect(b.rules[0].value).not.toBe(999);
-  });
-});
-
-describe("duplicateAsDraft", () => {
-  it("copies a built-in into an editable draft that remembers its origin", () => {
-    const draft = duplicateAsDraft("ebu-r128-s1", () => "new-id");
-    expect(draft.id).toBe("new-id");
-    expect(draft.kind).toBe("draft");
-    expect(draft.basedOn).toBe("ebu-r128-s1");
-    expect(draft.name).toBe("EBU R128 S1 (copy)");
-    expect(watchedMetricIds(draft)).toContain("shortTermMax");
-  });
-
-  it("deep-copies so editing the draft cannot mutate the built-in", () => {
-    const draft = duplicateAsDraft("ebu-r128", () => "x");
-    draft.rules[0].value = 0;
-    const source = BUILTIN_LOUDNESS_PROFILES.find((p) => p.id === "ebu-r128");
-    expect(source.rules[0].value).not.toBe(0);
-  });
-
-  it("returns null for an unknown built-in", () => {
-    expect(duplicateAsDraft("nope")).toBeNull();
+    a.name = "Changed";
+    a.rules.push({ metricId: "truePeak", op: ">", value: -1, severity: "fail" });
+    expect(b).toEqual({
+      id: "draft",
+      name: "Untitled",
+      referenceLufs: null,
+      rules: [],
+    });
   });
 });
 
@@ -191,22 +126,29 @@ describe("isRuleEmpty", () => {
 });
 
 describe("selection helpers", () => {
-  it("round-trips built-in and user selection ids", () => {
-    expect(parseSelection(builtinSelectionId("ebu-r128"))).toEqual({
-      kind: "builtin",
-      id: "ebu-r128",
-    });
-    expect(parseSelection(userSelectionId("abc"))).toEqual({ kind: "user", id: "abc" });
-    expect(parseSelection(LOUDNESS_PROFILE_OFF)).toEqual({ kind: "off", id: null });
+  it("round-trips a generic profile selection id", () => {
+    expect(profileSelectionId("abc")).toBe("profile:abc");
+    expect(parseSelection(profileSelectionId("abc"))).toEqual({ kind: "profile", id: "abc" });
   });
 
-  it("resolves the active selection to a document or null", () => {
-    expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_OFF })).toBeNull();
-    expect(resolveActiveDocument({ active: builtinSelectionId("ebu-r128") }).id).toBe("ebu-r128");
-    const mine = { id: "abc", name: "Mine", kind: "user", referenceLufs: null, rules: [] };
-    expect(resolveActiveDocument({ active: userSelectionId("abc"), userProfiles: [mine] })).toBe(
+  it("treats Off, empty profile ids, legacy prefixes and unknown values as Off", () => {
+    expect(parseSelection(LOUDNESS_PROFILE_OFF)).toEqual({ kind: "off", id: null });
+    expect(parseSelection("profile:")).toEqual({ kind: "off", id: null });
+    expect(parseSelection("builtin:ebu-r128")).toEqual({ kind: "off", id: null });
+    expect(parseSelection("user:abc")).toEqual({ kind: "off", id: null });
+    expect(parseSelection("other")).toEqual({ kind: "off", id: null });
+  });
+
+  it("resolves only flat profile selections from state.profiles", () => {
+    const mine = { id: "abc", name: "Mine", referenceLufs: null, rules: [] };
+    expect(resolveActiveDocument({ active: profileSelectionId("abc"), profiles: [mine] })).toBe(
       mine
     );
+    expect(resolveActiveDocument({ active: LOUDNESS_PROFILE_OFF })).toBeNull();
+    expect(
+      resolveActiveDocument({ active: profileSelectionId("missing"), profiles: [mine] })
+    ).toBeNull();
+    expect(resolveActiveDocument({ active: "user:abc", profiles: [mine] })).toBeNull();
   });
 });
 

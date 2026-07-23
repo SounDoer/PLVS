@@ -1,4 +1,6 @@
 import { DEFAULT_CLEAR_SHORTCUT } from "../lib/clearShortcutPrefs.js";
+import { LOUDNESS_PROFILE_OFF, parseSelection } from "../lib/loudnessProfileCatalog.js";
+import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 import {
   normalizePanelOpacity,
@@ -67,6 +69,9 @@ function normalizeSettings(settings) {
   if ("channelLabelOverrides" in next) {
     next.channelLabelOverrides = sanitizeChannelLabelOverrides(next.channelLabelOverrides);
   }
+  if ("loudnessProfiles" in next) {
+    next.loudnessProfiles = normalizeLoudnessProfiles(next.loudnessProfiles);
+  }
   if ("appearance" in next && next.appearance !== "fixed" && next.appearance !== "system") {
     delete next.appearance;
   }
@@ -76,15 +81,27 @@ function normalizeSettings(settings) {
   return next;
 }
 
-function normalizePresets(presets) {
+function normalizePresets(presets, loudnessProfiles) {
   if (!isPlainObject(presets)) return { list: [], activeId: null };
-  const list = (Array.isArray(presets.list) ? presets.list : []).filter(
-    (preset) =>
-      isPlainObject(preset) &&
-      typeof preset.id === "string" &&
-      typeof preset.name === "string" &&
-      hasKnownModulesOnly(preset)
-  );
+  const profileIds = new Set((loudnessProfiles?.profiles ?? []).map((profile) => profile.id));
+  const list = (Array.isArray(presets.list) ? presets.list : [])
+    .filter(
+      (preset) =>
+        isPlainObject(preset) &&
+        typeof preset.id === "string" &&
+        typeof preset.name === "string" &&
+        hasKnownModulesOnly(preset)
+    )
+    .map((preset) => {
+      const { kind, id } = parseSelection(preset.loudnessProfileActive);
+      return {
+        ...preset,
+        loudnessProfileActive:
+          kind === "profile" && profileIds.has(id)
+            ? preset.loudnessProfileActive
+            : LOUDNESS_PROFILE_OFF,
+      };
+    });
   const activeId =
     typeof presets.activeId === "string" && list.some((preset) => preset.id === presets.activeId)
       ? presets.activeId
@@ -114,14 +131,15 @@ function normalizeClearShortcut(value) {
 }
 
 export function buildProfileSnapshot(raw = {}, { exportedAt = new Date().toISOString() } = {}) {
+  const settings = normalizeSettings(raw.settings);
   return {
     app: PROFILE_APP,
     kind: PROFILE_KIND,
     version: PROFILE_VERSION,
     exportedAt,
-    settings: normalizeSettings(raw.settings),
+    settings,
     workspace: clonePlainObject(raw.workspace),
-    presets: normalizePresets(raw.presets),
+    presets: normalizePresets(raw.presets, settings.loudnessProfiles),
     themes: normalizeThemes(raw.themes),
     windowBounds: normalizeWindowBounds(raw.windowBounds),
     captureDeviceId: normalizeCaptureDeviceId(raw.captureDeviceId),

@@ -1,6 +1,27 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
+
+const TEST_PRESET = {
+  id: "p1",
+  name: "Preset",
+  tree: { type: "leaf", tabs: ["levelMeter-1"], activeTab: "levelMeter-1" },
+  panelsById: { "levelMeter-1": { id: "levelMeter-1", moduleId: "levelMeter" } },
+  panelOrder: ["levelMeter-1"],
+  panelControlsById: {},
+  loudnessProfileActive: "profile:test-profile",
+};
+
 async function importProfileModule({ tauri = false, commandMocks = {} } = {}) {
   vi.resetModules();
   vi.doMock("../ipc/env.js", () => ({ isTauri: () => tauri }));
@@ -66,16 +87,69 @@ describe("profile API", () => {
       app: "PLVS",
       kind: "configuration-profile",
       version: 1,
-      settings: { referenceLufs: -18 },
+      settings: {
+        referenceLufs: -18,
+        loudnessProfiles: { active: "profile:test-profile", profiles: [TEST_PROFILE] },
+      },
       workspace: { panelOrder: ["x"] },
-      presets: { list: [], activeId: null },
+      presets: {
+        list: [{ ...TEST_PRESET, loudnessProfileActive: "profile:missing" }],
+        activeId: "p1",
+      },
       themes: { themes: {}, order: [] },
       captureDeviceId: "in:2",
     });
-    const { settingsStore, workspaceStore } = await import("./index.js");
+    const { settingsStore, workspaceStore, presetsStore } = await import("./index.js");
     expect(settingsStore.read()).toMatchObject({ referenceLufs: -18 });
     expect(workspaceStore.read()).toEqual({ panelOrder: ["x"] });
+    expect(presetsStore.read()).toEqual({
+      list: [{ ...TEST_PRESET, loudnessProfileActive: "off" }],
+      activeId: "p1",
+    });
     expect(localStorage.getItem("plvs.captureDeviceId")).toBe("in:2");
+  });
+
+  it("round-trips flat loudness profiles through browser export and import", async () => {
+    const { exportProfile, importProfile } = await importProfileModule({ tauri: false });
+    const { settingsStore, presetsStore } = await import("./index.js");
+    const loudnessProfiles = {
+      active: "profile:test-profile",
+      profiles: [TEST_PROFILE],
+    };
+    settingsStore.patch({ loudnessProfiles });
+    presetsStore.patch({ list: [TEST_PRESET], activeId: "p1" });
+
+    const exported = await exportProfile();
+    settingsStore.reset();
+    presetsStore.reset();
+    await importProfile(exported);
+
+    expect(settingsStore.read().loudnessProfiles).toEqual(loudnessProfiles);
+    expect(presetsStore.read()).toEqual({ list: [TEST_PRESET], activeId: "p1" });
+  });
+
+  it("resets every browser persistence domain", async () => {
+    const { settingsStore, workspaceStore, presetsStore, themesStore } = await import("./index.js");
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: "profile:test-profile",
+        profiles: [TEST_PROFILE],
+      },
+    });
+    workspaceStore.patch({ panelOrder: ["levelMeter-1"] });
+    presetsStore.patch({ list: [TEST_PRESET], activeId: "p1" });
+    themesStore.patch({
+      themes: { custom: { id: "custom", name: "Custom" } },
+      order: ["custom"],
+    });
+    const { resetProfile } = await importProfileModule({ tauri: false });
+
+    await resetProfile();
+
+    expect(settingsStore.read()).toEqual({});
+    expect(workspaceStore.read()).toEqual({});
+    expect(presetsStore.read()).toEqual({});
+    expect(themesStore.read()).toEqual({});
   });
 
   it("uses Rust commands under Tauri", async () => {

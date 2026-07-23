@@ -18,6 +18,17 @@ const VALID_PRESET = {
   panelControlsById: {},
 };
 
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
+
 describe("profileShape", () => {
   it("defines the PLVS profile identity", () => {
     expect(PROFILE_APP).toBe("PLVS");
@@ -82,6 +93,62 @@ describe("profileShape", () => {
       buildProfileSnapshot({ settings: { interfaceSize: "huge" } }).settings.interfaceSize
     ).toBe("default");
   });
+
+  it("round-trips the flat loudness profile library", () => {
+    const loudnessProfiles = {
+      active: "profile:test-profile",
+      profiles: [TEST_PROFILE],
+    };
+
+    expect(
+      buildProfileSnapshot({ settings: { loudnessProfiles } }).settings.loudnessProfiles
+    ).toEqual(loudnessProfiles);
+  });
+
+  it("keeps a preset selection that exists in the settings profile library", () => {
+    const profile = buildProfileSnapshot({
+      settings: {
+        loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] },
+      },
+      presets: {
+        list: [{ ...VALID_PRESET, loudnessProfileActive: "profile:test-profile" }],
+        activeId: "p1",
+      },
+    });
+
+    expect(profile.presets.list[0].loudnessProfileActive).toBe("profile:test-profile");
+  });
+
+  it("turns a dangling preset profile selection Off", () => {
+    const profile = buildProfileSnapshot({
+      settings: {
+        loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] },
+      },
+      presets: {
+        list: [{ ...VALID_PRESET, loudnessProfileActive: "profile:missing" }],
+        activeId: "p1",
+      },
+    });
+
+    expect(profile.presets.list[0].loudnessProfileActive).toBe("off");
+  });
+
+  it.each([undefined, ["builtin", "ebu-r128"].join(":"), ["user", "test-profile"].join(":")])(
+    "turns a missing or legacy preset selection Off (%s)",
+    (loudnessProfileActive) => {
+      const preset = { ...VALID_PRESET };
+      if (loudnessProfileActive !== undefined) preset.loudnessProfileActive = loudnessProfileActive;
+
+      const profile = buildProfileSnapshot({
+        settings: {
+          loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] },
+        },
+        presets: { list: [preset], activeId: "p1" },
+      });
+
+      expect(profile.presets.list[0].loudnessProfileActive).toBe("off");
+    }
+  );
 
   it("rejects unrelated JSON", () => {
     expect(() => normalizeImportedProfile({ app: "Other" })).toThrow(ProfileValidationError);

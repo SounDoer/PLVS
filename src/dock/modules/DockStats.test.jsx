@@ -10,11 +10,31 @@ import {
 import { DockStats } from "./DockStats.jsx";
 import { StatsPanel } from "../../components/panels/StatsPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
-import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
 import {
   LoudnessProfileProvider,
   useLoudnessProfile,
 } from "../../hooks/LoudnessProfileContext.jsx";
+
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
+
+function selectTestProfile() {
+  settingsStore.patch({
+    loudnessProfiles: {
+      active: profileSelectionId(TEST_PROFILE.id),
+      profiles: [TEST_PROFILE],
+    },
+  });
+}
 
 const METRICS = [
   { id: "momentary", shortLabel: "M", unit: "LUFS", value: "-18.1" },
@@ -232,13 +252,13 @@ describe("DockStats profile status colours", () => {
   it("colours a breach the same way the normal Stats panel does", () => {
     // The dock is a second implementation; the same metric under the same profile must not
     // read as a breach in one panel and neutral in the other.
-    settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+    selectTestProfile();
     renderWith(METRICS, visible, {}, "standard", { integrated: -18 });
     expect(valueClass()).toContain("--ui-signal-bad");
   });
 
   it("keeps an in-range watched value at foreground", () => {
-    settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+    selectTestProfile();
     renderWith(METRICS, visible, {}, "standard", { integrated: -23 });
     expect(valueClass()).toContain("text-foreground");
   });
@@ -279,7 +299,7 @@ describe("Dock Stats and the main window under one provider", () => {
   }
 
   it("colours a breached metric identically in both surfaces", () => {
-    settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+    selectTestProfile();
     const { container } = renderBothSurfaces({ tpMax: 0 });
 
     const classes = truePeakValueClasses(container);
@@ -300,14 +320,14 @@ describe("Dock Stats and the main window under one provider", () => {
   // surfaces ever stop sharing one provider.
   for (const heightMode of ["standard", "expanded"]) {
     it(`follows an unsaved draft in both surfaces (${heightMode} dock)`, () => {
-      settingsStore.patch({ loudnessProfiles: { active: builtinSelectionId("ebu-r128") } });
+      selectTestProfile();
       let profile;
       const { container } = renderBothSurfaces(
         { tpMax: -5 },
         { heightMode, onProfile: (p) => (profile = p) }
       );
 
-      // -5 dBTP clears EBU R128's -1 limit, so both surfaces start neutral.
+      // -5 dBTP clears the test profile's -1 limit, so both surfaces start neutral.
       for (const className of truePeakValueClasses(container)) {
         expect(className).toContain("text-foreground");
       }

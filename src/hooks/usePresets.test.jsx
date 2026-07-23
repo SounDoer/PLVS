@@ -39,7 +39,18 @@ vi.mock("../ipc/events.js", () => ({
 import { usePresets } from "./usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import { settingsStore } from "../persistence/index.js";
-import { LOUDNESS_PROFILE_OFF, builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
+import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfileCatalog.js";
+
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
 
 function wrapper({ children }) {
   return (
@@ -781,13 +792,17 @@ describe("usePresets Loudness Profile snapshot", () => {
   beforeEach(() => {
     localStorage.clear();
     settingsStore.reset();
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [] } });
   });
 
-  it("restores the built-in that was active when the preset was saved", async () => {
+  it("restores the profile that was active when the preset was saved", async () => {
+    settingsStore.patch({
+      loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] },
+    });
     const { result } = renderPresetsWithProfile();
-    act(() => result.current.profile.select(builtinSelectionId("streaming-14")));
+    act(() => result.current.profile.select(profileSelectionId(TEST_PROFILE.id)));
     await act(async () => {
-      await result.current.presets.save("Streaming");
+      await result.current.presets.save("Test");
     });
     const savedId = presetsStore.read().list[0].id;
 
@@ -796,7 +811,7 @@ describe("usePresets Loudness Profile snapshot", () => {
       await result.current.presets.apply(savedId);
     });
 
-    expect(result.current.profile.referenceLufs).toBe(-14);
+    expect(result.current.profile.referenceLufs).toBe(-23);
   });
 
   /// Saves one profile through the editor path, which is the only way into the library.
@@ -815,13 +830,13 @@ describe("usePresets Loudness Profile snapshot", () => {
 
     const saved = presetsStore.read().list[0];
     expect(saved.loudnessProfileActive).toBeTruthy();
-    expect(saved).not.toHaveProperty("userProfiles");
+    expect(saved).not.toHaveProperty("profiles");
   });
 
   it("round-trips a user profile", async () => {
     const { result } = renderPresetsWithProfile();
     saveProfile(result, "Mine");
-    const { id } = result.current.profile.userProfiles[0];
+    const { id } = result.current.profile.profiles[0];
     act(() => result.current.profile.beginEdit(id));
     act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -18 })));
     act(() => result.current.profile.saveDraft());
@@ -846,13 +861,13 @@ describe("usePresets Loudness Profile snapshot", () => {
     });
     const savedId = presetsStore.read().list[0].id;
 
-    act(() => result.current.profile.removeUser(result.current.profile.userProfiles[0].id));
+    act(() => result.current.profile.removeProfile(result.current.profile.profiles[0].id));
     await act(async () => {
       await result.current.presets.apply(savedId);
     });
 
     // Off, and crucially the library is left alone rather than resurrected.
     expect(result.current.profile.active).toBe(LOUDNESS_PROFILE_OFF);
-    expect(result.current.profile.userProfiles).toEqual([]);
+    expect(result.current.profile.profiles).toEqual([]);
   });
 });

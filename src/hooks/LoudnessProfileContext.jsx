@@ -11,9 +11,8 @@ import { presetsStore, settingsStore } from "../persistence/index.js";
 import {
   LOUDNESS_PROFILE_OFF,
   createProfileDraft,
-  duplicateAsDraft,
+  profileSelectionId,
   resolveActiveDocument,
-  userSelectionId,
 } from "../lib/loudnessProfileCatalog.js";
 import {
   normalizeLoudnessProfiles,
@@ -39,10 +38,40 @@ function writeState(next) {
   settingsStore.patch({ loudnessProfiles: next });
 }
 
+function replacePresetProfileSelection(selection) {
+  const raw = presetsStore.read();
+  const list = Array.isArray(raw.list) ? raw.list : [];
+  let changed = false;
+  const nextList = list.map((preset) => {
+    if (preset?.loudnessProfileActive !== selection) return preset;
+    changed = true;
+    return { ...preset, loudnessProfileActive: LOUDNESS_PROFILE_OFF };
+  });
+  if (changed) presetsStore.patch({ list: nextList });
+}
+
 export function LoudnessProfileProvider({ children }) {
   const [state, setState] = useState(readState);
+  const initialStateRef = useRef(state);
+  const stateRef = useRef(state);
 
-  useEffect(() => settingsStore.subscribe(() => setState(readState())), []);
+  useEffect(() => {
+    const syncState = () => {
+      const next = readState();
+      stateRef.current = next;
+      setState(next);
+    };
+    const unsubscribe = settingsStore.subscribe(syncState);
+    const raw = settingsStore.read().loudnessProfiles;
+    if (!raw || typeof raw !== "object" || !Array.isArray(raw.profiles)) {
+      stateRef.current = initialStateRef.current;
+      setState(initialStateRef.current);
+      writeState(initialStateRef.current);
+    } else {
+      syncState();
+    }
+    return unsubscribe;
+  }, []);
 
   /// Layout presets snapshot which profile is active and nothing else, so only a change of
   /// selection diverges from the preset -- editing a profile's rules does not.
@@ -54,12 +83,12 @@ export function LoudnessProfileProvider({ children }) {
   /// `presetDirty: false` is for the one selection change that is not a divergence: restoring a
   /// snapshot.
   const commit = useCallback((updater, { presetDirty = true } = {}) => {
-    setState((prev) => {
-      const next = normalizeLoudnessProfiles(updater(prev));
-      writeState(next);
-      if (presetDirty && next.active !== prev.active) presetsStore.patch({ dirty: true });
-      return next;
-    });
+    const prev = stateRef.current;
+    const next = normalizeLoudnessProfiles(updater(prev));
+    stateRef.current = next;
+    setState(next);
+    writeState(next);
+    if (presetDirty && next.active !== prev.active) presetsStore.patch({ dirty: true });
   }, []);
 
   /// The preview overlay: a draft that outranks the persisted selection for every reader without
@@ -107,25 +136,15 @@ export function LoudnessProfileProvider({ children }) {
     putDraft({ editingId: null, document: createProfileDraft(), dirty: false });
   }, [draftBlocks, putDraft]);
 
-  const beginDuplicate = useCallback(
-    (builtinId) => {
-      if (draftBlocks()) return;
-      const next = duplicateAsDraft(builtinId);
-      if (!next) return;
-      putDraft({ editingId: null, document: next, dirty: false });
-    },
-    [draftBlocks, putDraft]
-  );
-
   const beginEdit = useCallback(
     (id) => {
       if (draftBlocks()) return;
-      const found = state.userProfiles.find((p) => p.id === id);
+      const found = state.profiles.find((profile) => profile.id === id);
       if (!found) return;
       // Editing a profile's rules must not change which profile is being monitored -- editing from
       // Off should not silently start judging against the edited rules. Capture the selection now
-      // so Save can restore it. Create and duplicate carry no `resumeSelection`: they select what
-      // they made, which is what the user just asked to create.
+      // so Save can restore it. Create carries no `resumeSelection`: it selects what it made,
+      // which is what the user just asked to create.
       putDraft({
         editingId: id,
         resumeSelection: state.active,
@@ -133,7 +152,7 @@ export function LoudnessProfileProvider({ children }) {
         dirty: false,
       });
     },
-    [draftBlocks, putDraft, state.userProfiles, state.active]
+    [draftBlocks, putDraft, state.profiles, state.active]
   );
 
   const editDraft = useCallback(
@@ -158,17 +177,17 @@ export function LoudnessProfileProvider({ children }) {
     const current = draftRef.current;
     if (!current) return;
     const id = current.editingId ?? crypto.randomUUID();
-    const saved = { ...current.document, id, kind: "user" };
+    const saved = { ...current.document, id };
     // An edit restores the selection it began under, so changing a profile's rules never changes
-    // which profile -- or whether any profile -- is being monitored. A new or duplicated draft has
-    // no prior selection to keep and selects what it created.
-    const nextActive = current.editingId ? current.resumeSelection : userSelectionId(id);
+    // which profile -- or whether any profile -- is being monitored. A new draft has no prior
+    // selection to keep and selects what it created.
+    const nextActive = current.editingId ? current.resumeSelection : profileSelectionId(id);
     commit((prev) => ({
       ...prev,
       active: nextActive,
-      userProfiles: prev.userProfiles.some((p) => p.id === id)
-        ? prev.userProfiles.map((p) => (p.id === id ? saved : p))
-        : [...prev.userProfiles, saved],
+      profiles: prev.profiles.some((profile) => profile.id === id)
+        ? prev.profiles.map((profile) => (profile.id === id ? saved : profile))
+        : [...prev.profiles, saved],
     }));
     putDraft(null);
   }, [commit, putDraft]);
@@ -181,10 +200,7 @@ export function LoudnessProfileProvider({ children }) {
   // Save would persist -- otherwise the meter answers "is this threshold sane" about a document
   // the persistence layer would reject.
   const document = useMemo(
-    () =>
-      draft
-        ? normalizeRuleDocument(draft.document, { kind: draft.document.kind })
-        : resolveActiveDocument(state),
+    () => (draft ? normalizeRuleDocument(draft.document) : resolveActiveDocument(state)),
     [draft, state]
   );
 
@@ -207,18 +223,20 @@ export function LoudnessProfileProvider({ children }) {
   /// Delete sits two icons from Edit in the same row, so the draft has to be dealt with here. A
   /// dirty draft blocks the delete; a clean one is closed, because leaving the panel open on a
   /// profile that no longer exists is how Save came to write nothing at all.
-  const removeUser = useCallback(
+  const removeProfile = useCallback(
     (id) => {
       if (draftBlocks()) return;
       // Broader than "cancel the draft that edits this id" on purpose: that narrower rule is the
       // one that matters, and stating it as a special case would invite someone to relax the
       // general one and take it with them.
       if (draftRef.current) cancelDraft();
-      commit((prev) => {
-        const userProfiles = prev.userProfiles.filter((p) => p.id !== id);
-        const active = prev.active === userSelectionId(id) ? LOUDNESS_PROFILE_OFF : prev.active;
-        return { ...prev, userProfiles, active };
-      });
+      const selection = profileSelectionId(id);
+      commit((prev) => ({
+        ...prev,
+        active: prev.active === selection ? LOUDNESS_PROFILE_OFF : prev.active,
+        profiles: prev.profiles.filter((profile) => profile.id !== id),
+      }));
+      replacePresetProfileSelection(selection);
     },
     [cancelDraft, commit, draftBlocks]
   );
@@ -248,21 +266,20 @@ export function LoudnessProfileProvider({ children }) {
     () => ({
       active: state.active,
       document,
-      userProfiles: state.userProfiles,
+      profiles: state.profiles,
       referenceLufs: document?.referenceLufs ?? null,
       draft,
       // The provider already refuses these; the popover renders them disabled because a button
       // that silently does nothing is worse than one that looks disabled.
       draftBlocksLibraryActions: draft?.dirty === true,
       beginCreate,
-      beginDuplicate,
       beginEdit,
       editDraft,
       cancelDraft,
       saveDraft,
       select,
       selectOff,
-      removeUser,
+      removeProfile,
       snapshotForPreset,
       applyPresetSnapshot,
     }),
@@ -271,14 +288,13 @@ export function LoudnessProfileProvider({ children }) {
       document,
       draft,
       beginCreate,
-      beginDuplicate,
       beginEdit,
       editDraft,
       cancelDraft,
       saveDraft,
       select,
       selectOff,
-      removeUser,
+      removeProfile,
       snapshotForPreset,
       applyPresetSnapshot,
     ]

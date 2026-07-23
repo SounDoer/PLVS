@@ -58,7 +58,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 ### 5.2 计量声明（期望管理）
 
 - **响度**：测量内核遵循 **ITU-R BS.1770**；制作实践与门控等遵循 **EBU R128** 体系表述（版本与实现细节见下半）。本产品 **不声称**法定/认证计量或第三方平台「背书」。  
-- **交付参考**：可在 **同一套测量结果**上叠加 **参考目标/虚线/区间**（含流媒体/平台公开指南）；**持续扩充**参考集合属于产品演进方向。  
+- **用户规则**：用户可在 **同一套测量结果**上定义 **参考线/区间/规则**，用于自己的监测与判断；产品不承诺持续扩充按平台命名的预设集合。
 - **频谱**：采用 **FFT 型 RTA 的常见工程实践**（带内能量按 **Hz 连续边界** 与各 FFT bin 的**分数重叠**聚合，而非整档扣整数 bin；**STFT** 固定 **hop=N/4**、**4 帧**带内线性功率非相干平均后再转 dB）；纵轴为 **dBFS 域**带内谱功率（与 Peak 的采样峰值 dBFS **同参考域、不同定义**）；**不声称** IEC 61260 滤波器组计量路径；与响度 **不可横向等同**。第一版对外承诺 **Spectrum 为固定口径的参考视图（B）**，实现口径见 **`docs/architecture.md`** 的 DSP 层说明。  
 - **多声道**  
   - **Loudness**：标准布局走 **正统多声道积分（L1）**；当前范围覆盖 **Stereo + 5.1 + 7.1（A）**。  
@@ -140,7 +140,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 11. 作为 **Windows 用户**，我希望 **无需虚拟声卡即可听系统播放并测量**。  
 12. 作为 **macOS 用户**，我希望 **在支持的系统版本上使用原生 tap 路径**，以便 **避免旧网页版那套路由**。  
 13. 作为 **下载用户**，我希望 **知道 SmartScreen/Gatekeeper 的处理方式**，以便 **顺利首次运行**。  
-14. 作为 **未来平台交付用户**，我希望 **在同一 LUFS 读数上看到参考目标/虚线**，以便 **对照平台指南**。  
+14. 作为 **混音师**，我希望 **Loudness Profile 是会话级、自定义优先的规则集**：首次配置提供一个 **按实际参数命名、可编辑、可删除**的示例，其余由用户自建；它驱动 **Loudness 参考线、Stats 数值配色与 Level Meter 的 TP Max 标记**，不提供或暗示 **平台、广播或法规认证预设**，而响度测量仍遵循 **ITU-R BS.1770**。
 15. 作为 **环绕内容用户**，我希望 **在识别布局时看到正统多声道响度**，以便 **不与立体声糊弄语义**。  
 16. 作为 **环绕内容用户**，我希望 **在布局未知时被明确提示并降级**，以便 **知道此刻不是“认证环绕读数”**。  
 17. 作为 **贡献者**，我希望 **许可证与第三方归属清晰**，以便 **合规分发与再分发**。  
@@ -207,7 +207,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **File 模式**：本地音频文件离线分析——ffprobe 元数据、FFmpeg sidecar 解码、media-time 历史、scrub、会话内历史（read-only）。  
 - **对白门控响度**：可选；基于按需选择的 on-device VAD 引擎（Silero 默认，可切 FireRedVAD / TEN VAD），输出 Coverage / Range / Offset / Active 指标。  
 - **主题**：自定义主题 + 主题编辑器，派生乐器配色与主题驱动的 spectrogram colormap。  
-- **响度参考档（Loudness Profile，用户故事 14）**：会话级规则集，内置交付参考（EBU R128 / R128 Live / R128 S1 / ATSC A/85 / Streaming −14）与用户自建档；驱动 Loudness 参考线、Stats 数值配色与 Level Meter 的 TP Max 标记；自建档带实时预览的规则编辑器。测量仍为 ITU-R BS.1770 路径，**内置档是交付参考而非平台或法规认证**。  
+- **响度参考档（Loudness Profile，用户故事 14）**：会话级、自定义优先的规则集；首次配置提供一个按实际参数命名且可编辑、可删除的示例，其余由用户自建；驱动 Loudness 参考线、Stats 数值配色与 Level Meter 的 TP Max 标记，并提供带实时预览的规则编辑器。产品不提供或暗示平台、广播或法规认证预设；测量仍为 ITU-R BS.1770 路径。
 - **多声道**：Level Meter 逐通道显示；自动识别 mono / stereo / 5.1 / 7.1；手动 Stereo / 5.1 / 7.1；Loudness 按 Stereo / 5.1 / 7.1 L1 路径计算；Spectrum 与 Vectorscope 支持声道/声道对选择。  
 - **历史**：Rust 侧 ring / 会话内历史与快照交互（详情见架构文档）。  
 - **CI/分发**：GitHub Actions 构建 **Windows + macOS** 产物；Release 附着策略以工作流与 README 为准。  

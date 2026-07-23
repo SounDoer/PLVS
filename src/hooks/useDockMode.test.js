@@ -31,8 +31,19 @@ vi.mock("../persistence/index.js", async () => ({
 import { createElement } from "react";
 import { settingsStore } from "../persistence/index.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
-import { builtinSelectionId } from "../lib/loudnessProfileCatalog.js";
+import { profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 import { useDockMode } from "./useDockMode.js";
+
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
 
 describe("useDockMode", () => {
   beforeEach(() => {
@@ -335,8 +346,11 @@ describe("useDockMode hands off an open configuration draft", () => {
   }
 
   it("cancels a dirty draft when the app enters dock mode", async () => {
+    settingsStore.patch({
+      loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] },
+    });
     const { result } = renderDockWithProfile();
-    act(() => result.current.profile.select(builtinSelectionId("ebu-r128")));
+    act(() => result.current.profile.select(profileSelectionId(TEST_PROFILE.id)));
     act(() => result.current.profile.beginCreate());
     act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -16 })));
     expect(result.current.profile.referenceLufs).toBe(-16);
@@ -345,7 +359,7 @@ describe("useDockMode hands off an open configuration draft", () => {
 
     expect(result.current.profile.draft).toBe(null);
     // What DockStats colours against reverts to the selection the user last persisted.
-    expect(result.current.profile.document.name).toBe("EBU R128");
+    expect(result.current.profile.document.name).toBe("Test profile");
     expect(result.current.profile.referenceLufs).toBe(-23);
   });
 

@@ -19,6 +19,17 @@ import { emitTo } from "@tauri-apps/api/event";
 
 const tauriEventHandlers = vi.hoisted(() => new Map());
 
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
+
 // Default browser mode (isTauri -> false) keeps the mount deterministic; individual
 // tests flip it to exercise the Tauri capture path against the mocked IPC surface.
 vi.mock("./ipc/env.js", () => ({ isTauri: vi.fn(() => false) }));
@@ -224,20 +235,20 @@ describe("App smoke", () => {
 
   it("names the active Loudness Profile in the footer", async () => {
     settingsStore.patch({
-      loudnessProfiles: { active: "builtin:ebu-r128", userProfiles: [] },
+      loudnessProfiles: { active: "profile:test-profile", profiles: [TEST_PROFILE] },
     });
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
     expect(footer().getByText("Loudness")).toBeTruthy();
-    expect(footer().getByText("EBU R128")).toBeTruthy();
+    expect(footer().getByText("Test profile")).toBeTruthy();
   });
 
   it("does not label the footer item Profile", async () => {
     // Configuration Profile owns that word, and this item sits directly beside Preset, where two
     // spellings of one idea read as the same control.
     settingsStore.patch({
-      loudnessProfiles: { active: "builtin:ebu-r128", userProfiles: [] },
+      loudnessProfiles: { active: "profile:test-profile", profiles: [TEST_PROFILE] },
     });
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
@@ -247,17 +258,17 @@ describe("App smoke", () => {
 
   it("names an open draft in the footer, Untitled while it is unnamed", async () => {
     settingsStore.patch({
-      loudnessProfiles: { active: "builtin:ebu-r128", userProfiles: [] },
+      loudnessProfiles: { active: "profile:test-profile", profiles: [TEST_PROFILE] },
     });
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Loudness Profile" }));
     fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
 
-    // The draft outranks the selection, so the footer stops naming EBU R128 and follows the
+    // The draft outranks the selection, so the footer stops naming Test profile and follows the
     // document being edited — blank, which normalizes to Untitled.
     await waitFor(() => expect(footer().getByText("Untitled")).toBeTruthy());
-    expect(footer().queryByText("EBU R128")).toBeNull();
+    expect(footer().queryByText("Test profile")).toBeNull();
   });
 
   it("uses the formatted default device label in the footer", async () => {

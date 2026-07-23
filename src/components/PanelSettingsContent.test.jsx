@@ -7,7 +7,7 @@ import { LoudnessProfileProvider } from "@/hooks/LoudnessProfileContext.jsx";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { settingsStore } from "@/persistence/index.js";
-import { builtinSelectionId } from "@/lib/loudnessProfileCatalog.js";
+import { profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
 import { PanelChromeProvider } from "@/workspace/AudioDataContext.jsx";
 import { PanelDataProviders } from "@/workspace/PanelDataProviders.jsx";
@@ -15,6 +15,13 @@ import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
 import { SplitLayout } from "@/workspace/SplitLayout.jsx";
 import { WorkspaceProvider, useWorkspaceStore } from "@/workspace/WorkspaceContext.jsx";
+
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [],
+};
 
 vi.mock("framer-motion", () => ({
   motion: {
@@ -685,7 +692,10 @@ describe("PanelSettingsContent", () => {
 
   it("counts the ref layer once a profile supplies a reference", () => {
     settingsStore.patch({
-      loudnessProfiles: { active: builtinSelectionId("ebu-r128"), userProfiles: [] },
+      loudnessProfiles: {
+        active: profileSelectionId(TEST_PROFILE.id),
+        profiles: [TEST_PROFILE],
+      },
     });
     render(
       <PanelSettingsContent

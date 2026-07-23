@@ -1,123 +1,148 @@
 /** @vitest-environment jsdom */
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
-import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
-import { settingsStore } from "../persistence/index.js";
-import { LOUDNESS_PROFILE_OFF } from "../lib/loudnessProfileCatalog.js";
+import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 
 const DEFAULT_VISIBLE = ["momentary", "shortTerm", "integrated"];
 
-afterEach(() => settingsStore.reset());
+const STARTER = {
+  id: "starter",
+  name: "I −23 ±0.5 · TP ≤ −1",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
 
-/// Renders the popover against the real hook, so a click has to survive the whole
-/// state -> persistence -> re-render path rather than just calling a spy.
-function renderPopover({ stats } = {}) {
-  // The hook lives inside the popover's own tree, not beside it: one provider instance means the
-  // profile the test drives and the profile the popover renders are the same state.
-  const hook = { result: { current: null } };
-  function Harness() {
-    hook.result.current = useLoudnessProfile();
-    return <LoudnessProfilePopoverContent profile={hook.result.current} stats={stats} />;
-  }
-  const tree = (
-    <LoudnessProfileProvider>
-      <Harness />
-    </LoudnessProfileProvider>
+const SAVED = {
+  id: "saved",
+  name: "My Show",
+  referenceLufs: -14,
+  rules: [{ metricId: "dialogueIntegrated", op: "<", value: -16, severity: "warn" }],
+};
+
+function makeController(overrides = {}) {
+  return {
+    active: LOUDNESS_PROFILE_OFF,
+    document: null,
+    profiles: [STARTER, SAVED],
+    draftBlocksLibraryActions: false,
+    select: vi.fn(),
+    selectOff: vi.fn(),
+    beginEdit: vi.fn(),
+    beginCreate: vi.fn(),
+    removeProfile: vi.fn(),
+    ...overrides,
+  };
+}
+
+function renderPopover({ overrides, stats, showTitle = true } = {}) {
+  const profile = makeController(overrides);
+  const view = render(
+    <LoudnessProfilePopoverContent profile={profile} stats={stats} showTitle={showTitle} />
   );
-  const view = render(tree);
-  return { hook, rerender: () => view.rerender(tree) };
+  return { profile, ...view };
 }
 
 describe("LoudnessProfilePopoverContent listing", () => {
-  it("lists Off and every built-in", () => {
+  it("lists Off, profiles in controller order, and New profile", () => {
     renderPopover();
 
-    expect(screen.getByLabelText("Use no Loudness Profile")).toBeTruthy();
-    expect(screen.getByLabelText("Use EBU R128")).toBeTruthy();
-    expect(screen.getByLabelText("Use EBU R128 Live")).toBeTruthy();
-    expect(screen.getByLabelText("Use EBU R128 S1")).toBeTruthy();
-    expect(screen.getByLabelText("Use ATSC A/85")).toBeTruthy();
-    expect(screen.getByLabelText("Use Streaming −14")).toBeTruthy();
+    const labels = screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label"))
+      .filter((label) => label?.startsWith("Use ") || label === "New Loudness Profile");
+    expect(labels).toEqual([
+      "Use no Loudness Profile",
+      `Use ${STARTER.name}`,
+      `Use ${SAVED.name}`,
+      "New Loudness Profile",
+    ]);
   });
 
-  it("shows each built-in's reference so the list is readable without opening anything", () => {
+  it("shows no grouping labels, duplicate action, or right-side reference LUFS", () => {
     renderPopover();
-    expect(screen.getByLabelText("Use ATSC A/85").textContent).toContain("-24 LUFS");
-  });
 
-  it("has no user group until something is saved", () => {
-    renderPopover();
+    expect(screen.queryByText("Built-in")).toBeNull();
     expect(screen.queryByText("Yours")).toBeNull();
+    expect(screen.queryByText("-23 LUFS")).toBeNull();
+    expect(screen.queryByLabelText(/Duplicate/)).toBeNull();
   });
 
-  it("applies a built-in on row click", () => {
-    const { hook } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use EBU R128 S1"));
-    expect(hook.result.current.referenceLufs).toBe(-23);
-    expect(hook.result.current.document.name).toBe("EBU R128 S1");
+  it("optionally hides the title", () => {
+    renderPopover({ showTitle: false });
+    expect(screen.queryByText("Loudness Profile")).toBeNull();
   });
 
-  it("returns to Off on row click", () => {
-    const { hook, rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use EBU R128"));
-    rerender();
+  it("marks the active profile and selects rows by profile selection id", () => {
+    const { profile } = renderPopover({
+      overrides: { active: profileSelectionId(SAVED.id), document: SAVED },
+    });
+    const row = screen.getByRole("button", { name: `Use ${SAVED.name}` });
+
+    expect(row.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      screen.getByRole("button", { name: `Use ${STARTER.name}` }).getAttribute("aria-pressed")
+    ).toBe("false");
+    expect(
+      screen.getByRole("button", { name: "Use no Loudness Profile" }).getAttribute("aria-pressed")
+    ).toBe("false");
+    fireEvent.click(row);
+    expect(profile.select).toHaveBeenCalledWith(profileSelectionId(SAVED.id));
+  });
+
+  it("selects Off and starts a new profile", () => {
+    const { profile } = renderPopover();
+
     fireEvent.click(screen.getByLabelText("Use no Loudness Profile"));
-    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-    expect(hook.result.current.referenceLufs).toBe(null);
+    fireEvent.click(screen.getByLabelText("New Loudness Profile"));
+
+    expect(profile.selectOff).toHaveBeenCalledTimes(1);
+    expect(profile.beginCreate).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("LoudnessProfilePopoverContent editing", () => {
-  // Duplicating opens an editor draft and writes nothing: the selection is still whatever it was,
-  // and the library is untouched until Save. Where the draft lands is covered under
-  // "editor entry points".
-  it("duplicates a built-in without touching the selection or the library", () => {
-    const { hook } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Duplicate EBU R128 S1"));
-
-    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-    expect(hook.result.current.document.basedOn).toBe("ebu-r128-s1");
-    expect(hook.result.current.userProfiles).toEqual([]);
-  });
-
-  it("no longer offers the Custom slot", () => {
+  it("offers the same edit and delete actions for starter and saved profiles", () => {
     renderPopover();
-    expect(screen.queryByLabelText("Use custom Loudness Profile")).toBeNull();
-    expect(screen.queryByLabelText("Save custom profile as")).toBeNull();
-    // The reference now lives in the editor, where it sits beside the rule it anchors.
-    expect(screen.queryByLabelText("Loudness Profile reference")).toBeNull();
+
+    for (const entry of [STARTER, SAVED]) {
+      expect(screen.getByLabelText(`Edit ${entry.name} rules`)).toBeTruthy();
+      expect(screen.getByLabelText(`Delete ${entry.name}`)).toBeTruthy();
+    }
   });
 
-  /// Saves one profile through the editor path, which is now the only way into the library.
-  function saveProfile(view, name) {
-    act(() => view.hook.result.current.beginCreate());
-    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name })));
-    act(() => view.hook.result.current.saveDraft());
-    view.rerender();
-  }
+  it("opens the selected profile in the editor", () => {
+    const { profile } = renderPopover();
 
-  it("lists a saved profile under Yours", () => {
-    const view = renderPopover();
-    saveProfile(view, "My Show");
+    fireEvent.click(screen.getByLabelText(`Edit ${STARTER.name} rules`));
+    fireEvent.click(screen.getByLabelText(`Edit ${SAVED.name} rules`));
 
-    expect(screen.getByText("Yours")).toBeTruthy();
-    expect(screen.getByLabelText("Use My Show")).toBeTruthy();
+    expect(profile.beginEdit).toHaveBeenNthCalledWith(1, STARTER.id);
+    expect(profile.beginEdit).toHaveBeenNthCalledWith(2, SAVED.id);
   });
 
-  it("no longer offers an inline rename (renaming moved into the editor)", () => {
-    const view = renderPopover();
-    saveProfile(view, "Before");
-    expect(screen.queryByLabelText("Rename Before")).toBeNull();
+  it("arms deletion first and cancellation does not delete", () => {
+    const { profile } = renderPopover();
+
+    fireEvent.click(screen.getByLabelText(`Delete ${SAVED.name}`));
+    expect(profile.removeProfile).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(`Confirm delete ${SAVED.name}`)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(`Cancel delete ${SAVED.name}`));
+
+    expect(profile.removeProfile).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(`Delete ${SAVED.name}`)).toBeTruthy();
   });
 
-  it("deletes a saved profile and falls back to Off", () => {
-    const view = renderPopover();
-    saveProfile(view, "Doomed");
+  it("deletes only after inline confirmation", () => {
+    const { profile } = renderPopover();
 
-    fireEvent.click(screen.getByLabelText("Delete Doomed"));
-    expect(view.hook.result.current.userProfiles).toEqual([]);
-    expect(view.hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    fireEvent.click(screen.getByLabelText(`Delete ${STARTER.name}`));
+    fireEvent.click(screen.getByLabelText(`Confirm delete ${STARTER.name}`));
+
+    expect(profile.removeProfile).toHaveBeenCalledWith(STARTER.id);
   });
 });
 
@@ -128,21 +153,19 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
   });
 
   it("names the missing rows once a profile needs them", () => {
-    const { rerender } = renderPopover({
+    renderPopover({
+      overrides: { active: profileSelectionId(STARTER.id), document: STARTER },
       stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing: vi.fn() },
     });
-    fireEvent.click(screen.getByLabelText("Use EBU R128"));
-    rerender();
 
     expect(screen.getByText(/Missing stats: True Peak Max/)).toBeTruthy();
   });
 
   it("never mentions dialogue gating, only the rows themselves", () => {
-    const { rerender } = renderPopover({
+    renderPopover({
+      overrides: { active: profileSelectionId(SAVED.id), document: SAVED },
       stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing: vi.fn() },
     });
-    fireEvent.click(screen.getByLabelText("Use ATSC A/85"));
-    rerender();
 
     const copy = screen.getByText(/Missing stats/).textContent;
     expect(copy).toContain("Dialogue Integrated");
@@ -153,101 +176,54 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
   // because every surface keeps its own order and has to be appended to separately.
   it("hands the fulfill decision to the caller", () => {
     const onShowMissing = vi.fn();
-    const { rerender } = renderPopover({
+    renderPopover({
+      overrides: { active: profileSelectionId(STARTER.id), document: STARTER },
       stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing },
     });
-    fireEvent.click(screen.getByLabelText("Use EBU R128"));
-    rerender();
     fireEvent.click(screen.getByRole("button", { name: "Show missing" }));
 
     expect(onShowMissing).toHaveBeenCalledTimes(1);
   });
 
   it("drops the affordance when everything it needs is already shown", () => {
-    const { rerender } = renderPopover({
+    renderPopover({
+      overrides: { active: profileSelectionId(STARTER.id), document: STARTER },
       stats: { visibleIds: [...DEFAULT_VISIBLE, "truePeak"], onShowMissing: vi.fn() },
     });
-    fireEvent.click(screen.getByLabelText("Use EBU R128"));
-    rerender();
 
     expect(screen.queryByText(/Missing stats/)).toBeNull();
   });
 
   it("stays silent when there is no Stats panel to fulfill into", () => {
-    const { rerender } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Use ATSC A/85"));
-    rerender();
+    renderPopover({ overrides: { active: profileSelectionId(SAVED.id), document: SAVED } });
 
     expect(screen.queryByText(/Missing stats/)).toBeNull();
   });
 });
 
-describe("editor entry points", () => {
-  it("opens the editor on a user profile", () => {
-    const { hook, rerender } = renderPopover();
-    act(() => hook.result.current.beginCreate());
-    act(() => hook.result.current.editDraft((d) => ({ ...d, name: "Mine" })));
-    act(() => hook.result.current.saveDraft());
-    rerender();
-
-    fireEvent.click(screen.getByLabelText("Edit Mine rules"));
-    expect(hook.result.current.draft.editingId).toBe(hook.result.current.userProfiles[0].id);
-  });
-
-  it("opens the editor on a duplicate of a built-in", () => {
-    const { hook } = renderPopover();
-    fireEvent.click(screen.getByLabelText("Duplicate EBU R128 S1"));
-
-    expect(hook.result.current.draft.document.basedOn).toBe("ebu-r128-s1");
-    expect(hook.result.current.draft.editingId).toBe(null);
-  });
-
-  it("opens the editor on a new profile", () => {
-    const { hook } = renderPopover();
-    fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
-
-    expect(hook.result.current.draft.editingId).toBe(null);
-    expect(hook.result.current.draft.document.rules.some((r) => r.metricId === "integrated")).toBe(
-      true
-    );
-  });
-});
-
 describe("a dirty draft blocks the library", () => {
-  /// Saves one profile, then opens a dirty draft on top of it.
-  function withDirtyDraft() {
-    const view = renderPopover();
-    act(() => view.hook.result.current.beginCreate());
-    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name: "Mine" })));
-    act(() => view.hook.result.current.saveDraft());
-    act(() => view.hook.result.current.beginCreate());
-    act(() => view.hook.result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
-    view.rerender();
-    return view;
-  }
-
-  const blocked = () => [
+  const actions = () => [
     screen.getByLabelText("Use no Loudness Profile"),
-    screen.getByLabelText("Use EBU R128"),
-    screen.getByLabelText("Duplicate EBU R128 S1"),
-    screen.getByLabelText("Use Mine"),
-    screen.getByLabelText("Edit Mine rules"),
-    screen.getByLabelText("Delete Mine"),
+    screen.getByLabelText(`Use ${STARTER.name}`),
+    screen.getByLabelText(`Edit ${STARTER.name} rules`),
+    screen.getByLabelText(`Delete ${STARTER.name}`),
+    screen.getByLabelText(`Use ${SAVED.name}`),
+    screen.getByLabelText(`Edit ${SAVED.name} rules`),
+    screen.getByLabelText(`Delete ${SAVED.name}`),
     screen.getByLabelText("New Loudness Profile"),
   ];
 
   it("disables the rows that would discard it", () => {
-    withDirtyDraft();
-    for (const button of blocked()) expect(button.disabled).toBe(true);
+    renderPopover({ overrides: { draftBlocksLibraryActions: true } });
+
+    for (const button of actions()) expect(button.disabled).toBe(true);
     expect(screen.getByText("Finish editing to switch profiles.")).toBeTruthy();
   });
 
-  it("re-enables everything once the draft is put away", () => {
-    const { hook, rerender } = withDirtyDraft();
-    act(() => hook.result.current.cancelDraft());
-    rerender();
+  it("leaves every action enabled without a dirty draft", () => {
+    renderPopover();
 
-    for (const button of blocked()) expect(button.disabled).toBe(false);
+    for (const button of actions()) expect(button.disabled).toBe(false);
     expect(screen.queryByText("Finish editing to switch profiles.")).toBeNull();
   });
 });

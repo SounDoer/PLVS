@@ -2,16 +2,22 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
-import { createProfileDraft } from "@/lib/loudnessProfileCatalog.js";
 
-// A named draft by default, so the editor opens with a static title and the rule rows in focus.
-// The name-editing tests pass an unnamed draft (which opens straight into the name field).
-const namedDraft = () => ({ ...createProfileDraft(), name: "Draft" });
-const unnamedDraft = () => ({ ...createProfileDraft(), name: "" });
+const threeRuleDocument = (overrides = {}) => ({
+  id: "draft",
+  name: "Draft",
+  referenceLufs: null,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+  ...overrides,
+});
 
 function editorProps(overrides = {}) {
   return {
-    draft: { editingId: null, document: namedDraft(), dirty: false },
+    draft: { editingId: "profile-id", document: threeRuleDocument(), dirty: false },
     onEdit: vi.fn(),
     onSave: vi.fn(),
     onCancel: vi.fn(),
@@ -35,8 +41,6 @@ function appliedDocument(props, call = 0) {
 }
 
 describe("LoudnessProfileEditor", () => {
-  // createProfileDraft() opens on: integrated >-22.5 fail, integrated <-23.5 fail, truePeak >-1 fail.
-
   it("lists a row per rule, in the profile's own order", () => {
     renderEditor();
     expect(screen.getByRole("combobox", { name: "Rule 1 metric" }).textContent).toContain(
@@ -156,17 +160,17 @@ describe("LoudnessProfileEditor", () => {
     renderEditor({
       draft: {
         editingId: null,
-        document: { ...createProfileDraft(), name: "Bare", rules: [] },
+        document: threeRuleDocument({ name: "Bare", rules: [] }),
         dirty: true,
       },
     });
-    expect(screen.getByText(/only draws its reference line/i)).toBeTruthy();
+    expect(screen.getByText("No rules — this profile does not judge any metrics.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(false);
   });
 
   it("shows a named profile statically and opens editing from the rename icon", () => {
     renderEditor({
-      draft: { editingId: "x", document: { ...createProfileDraft(), name: "Mine" }, dirty: false },
+      draft: { editingId: "x", document: threeRuleDocument({ name: "Mine" }), dirty: false },
     });
     // Named: the title is static until the pencil is clicked.
     expect(screen.queryByLabelText("Loudness Profile name")).toBeNull();
@@ -174,14 +178,57 @@ describe("LoudnessProfileEditor", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Loudness Profile name"));
   });
 
-  it("opens a fresh unnamed draft straight into the name field", () => {
-    renderEditor({ draft: { editingId: null, document: unnamedDraft(), dirty: false } });
-    expect(screen.getByLabelText("Loudness Profile name")).toBeTruthy();
+  it("resets name editing when the rendered draft changes from existing to new", () => {
+    const props = editorProps({
+      draft: {
+        editingId: "existing",
+        document: threeRuleDocument({ name: "Existing" }),
+        dirty: false,
+      },
+    });
+    const { rerender } = render(<LoudnessProfileEditor {...props} />);
+    expect(screen.queryByLabelText("Loudness Profile name")).toBeNull();
+
+    rerender(
+      <LoudnessProfileEditor
+        {...props}
+        draft={{
+          editingId: null,
+          document: threeRuleDocument({ name: "Untitled", rules: [] }),
+          dirty: false,
+        }}
+      />
+    );
+
+    const input = screen.getByLabelText("Loudness Profile name");
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("Untitled");
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("Untitled".length);
+  });
+
+  it("opens a fresh draft with Untitled focused and selected", () => {
+    renderEditor({
+      draft: {
+        editingId: null,
+        document: threeRuleDocument({ name: "Untitled", rules: [] }),
+        dirty: false,
+      },
+    });
+    const input = screen.getByLabelText("Loudness Profile name");
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe("Untitled");
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("Untitled".length);
   });
 
   it("commits the name on blur and never rewrites the document id", () => {
     const props = renderEditor({
-      draft: { editingId: null, document: unnamedDraft(), dirty: false },
+      draft: {
+        editingId: null,
+        document: threeRuleDocument({ name: "Untitled", rules: [] }),
+        dirty: false,
+      },
     });
     const input = screen.getByLabelText("Loudness Profile name");
     fireEvent.change(input, { target: { value: "Mine" } });
@@ -193,7 +240,7 @@ describe("LoudnessProfileEditor", () => {
 
   it("discards a name edit on Escape", () => {
     const props = renderEditor({
-      draft: { editingId: "x", document: { ...createProfileDraft(), name: "Mine" }, dirty: false },
+      draft: { editingId: "x", document: threeRuleDocument({ name: "Mine" }), dirty: false },
     });
     fireEvent.click(screen.getByRole("button", { name: "Rename profile" }));
     const input = screen.getByLabelText("Loudness Profile name");
@@ -203,15 +250,39 @@ describe("LoudnessProfileEditor", () => {
     expect(props.onEdit).not.toHaveBeenCalled();
   });
 
-  it("refuses to save an unnamed profile", () => {
-    renderEditor({
+  it("saves the default Untitled draft without requiring a rename", () => {
+    const props = renderEditor({
       draft: {
         editingId: null,
-        document: { ...createProfileDraft(), name: "  " },
-        dirty: true,
+        document: threeRuleDocument({ name: "Untitled", rules: [] }),
+        dirty: false,
       },
     });
-    expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("commits a cleared name before saving", () => {
+    const props = renderEditor({
+      draft: {
+        editingId: null,
+        document: threeRuleDocument({ name: "Untitled", rules: [] }),
+        dirty: false,
+      },
+    });
+    const input = screen.getByLabelText("Loudness Profile name");
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
+
+    expect(appliedDocument(props).name).toBe("");
+    expect(props.onSave).toHaveBeenCalledTimes(1);
+    expect(props.onEdit.mock.invocationCallOrder[0]).toBeLessThan(
+      props.onSave.mock.invocationCallOrder[0]
+    );
   });
 
   it("cancels straight away when nothing was touched", () => {
@@ -222,7 +293,7 @@ describe("LoudnessProfileEditor", () => {
 
   it("asks before discarding touched edits", () => {
     const props = renderEditor({
-      draft: { editingId: null, document: createProfileDraft(), dirty: true },
+      draft: { editingId: null, document: threeRuleDocument(), dirty: true },
     });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(props.onCancel).not.toHaveBeenCalled();
@@ -233,7 +304,7 @@ describe("LoudnessProfileEditor", () => {
   it("does not overwrite a field the user is still typing in", () => {
     // Committing happens on blur, so a re-render arriving from elsewhere -- a rename, a preset
     // apply -- must not adopt the incoming value into a focused input.
-    const draft = { editingId: null, document: createProfileDraft(), dirty: false };
+    const draft = { editingId: "profile-id", document: threeRuleDocument(), dirty: false };
     const props = { ...editorProps({ draft }) };
     const { rerender } = render(<LoudnessProfileEditor {...props} />);
 
@@ -249,7 +320,7 @@ describe("LoudnessProfileEditor", () => {
   });
 
   it("adopts an incoming value when the field is not focused", () => {
-    const draft = { editingId: null, document: createProfileDraft(), dirty: false };
+    const draft = { editingId: "profile-id", document: threeRuleDocument(), dirty: false };
     const props = { ...editorProps({ draft }) };
     const { rerender } = render(<LoudnessProfileEditor {...props} />);
 

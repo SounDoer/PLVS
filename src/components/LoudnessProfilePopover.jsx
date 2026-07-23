@@ -1,12 +1,8 @@
-import { Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  BUILTIN_LOUDNESS_PROFILES,
-  LOUDNESS_PROFILE_OFF,
-  builtinSelectionId,
-  userSelectionId,
-} from "@/lib/loudnessProfileCatalog.js";
+import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
 
@@ -41,7 +37,7 @@ function ActiveDot({ active }) {
  * affordance simply does not appear, which is the correct behaviour when no Stats panel exists.
  */
 export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle = true }) {
-  const { active, document, userProfiles, draftBlocksLibraryActions } = profile;
+  const { active, document, profiles, draftBlocksLibraryActions } = profile;
 
   // The editor panel is non-modal, so this list stays reachable while a draft is open. Everything
   // that would discard that draft is refused by the provider; showing it disabled is what makes
@@ -59,6 +55,7 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
         <button
           type="button"
           aria-label="Use no Loudness Profile"
+          aria-pressed={active === LOUDNESS_PROFILE_OFF}
           onClick={profile.selectOff}
           disabled={blocked}
           className={cn(ROW_BUTTON_CLASS, blockedClass)}
@@ -68,44 +65,14 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
         </button>
       </div>
 
-      <p className={GROUP_LABEL_CLASS}>Built-in</p>
-      {BUILTIN_LOUDNESS_PROFILES.map((builtin) => {
-        const selection = builtinSelectionId(builtin.id);
-        return (
-          <div key={builtin.id} className={cn(ROW_CLASS, "group")}>
-            <button
-              type="button"
-              aria-label={`Use ${builtin.name}`}
-              onClick={() => profile.select(selection)}
-              disabled={blocked}
-              className={cn(ROW_BUTTON_CLASS, blockedClass)}
-            >
-              <ActiveDot active={active === selection} />
-              <span className="min-w-0 flex-1 truncate">{builtin.name}</span>
-              <span className="shrink-0 text-muted-foreground">{builtin.referenceLufs} LUFS</span>
-            </button>
-            <button
-              type="button"
-              aria-label={`Duplicate ${builtin.name}`}
-              title="Duplicate to edit"
-              onClick={() => profile.beginDuplicate(builtin.id)}
-              disabled={blocked}
-              className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
-            >
-              <Copy className="size-[length:var(--ui-icon-management-action)]" />
-            </button>
-          </div>
-        );
-      })}
-
-      {userProfiles.length > 0 ? <p className={GROUP_LABEL_CLASS}>Yours</p> : null}
-      {userProfiles.map((entry) => {
-        const selection = userSelectionId(entry.id);
+      {profiles.map((entry) => {
+        const selection = profileSelectionId(entry.id);
         return (
           <div key={entry.id} className={cn(ROW_CLASS, "group")}>
             <button
               type="button"
               aria-label={`Use ${entry.name}`}
+              aria-pressed={active === selection}
               onClick={() => profile.select(selection)}
               disabled={blocked}
               className={cn(ROW_BUTTON_CLASS, blockedClass)}
@@ -125,15 +92,26 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
             >
               <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
             </button>
-            <button
-              type="button"
-              aria-label={`Delete ${entry.name}`}
-              onClick={() => profile.removeUser(entry.id)}
-              disabled={blocked}
-              className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
-            >
-              <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-            </button>
+            <InlineConfirm
+              onConfirm={() => profile.removeProfile(entry.id)}
+              confirmLabel={`Confirm delete ${entry.name}`}
+              cancelLabel={`Cancel delete ${entry.name}`}
+              className="mr-1.5"
+              trigger={(arm) => (
+                <button
+                  type="button"
+                  aria-label={`Delete ${entry.name}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    arm();
+                  }}
+                  disabled={blocked}
+                  className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
+                >
+                  <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
+                </button>
+              )}
+            />
           </div>
         );
       })}

@@ -1,19 +1,21 @@
 # Loudness reference profiles
 
-> **Product behaviour** for session-level Loudness Profiles (Off / built-ins /
-> user profiles, Stats colouring, toolbar entry, persistence) is specified in
-> [`docs/superpowers/specs/2026-07-19-loudness-profile-design.md`](superpowers/specs/2026-07-19-loudness-profile-design.md),
-> and the rule editor that supersedes that spec's `unsaved-custom` slot is in
-> [`docs/superpowers/specs/2026-07-20-loudness-profile-editor-design.md`](superpowers/specs/2026-07-20-loudness-profile-editor-design.md).
-> This page remains a short **source bibliography** for reference targets.
+> **LEGACY — HISTORICAL SOURCES ONLY**
 >
-> A user profile's numbers are the user's own. Only the built-ins below carry
-> cited targets, which is what this bibliography is for.
+> This page records the historical parameter sources for the former built-in
+> EBU, ATSC, and Streaming profiles. PLVS no longer provides or recommends
+> these as product presets. The product now favors transparent parameters and
+> user-defined rules, especially for contexts such as game audio where
+> broadcast-delivery presets are usually not useful. This material is retained
+> only for historical traceability.
+>
+> Current product behaviour is specified in
+> [`2026-07-23-loudness-profile-flat-library-design.md`](superpowers/specs/2026-07-23-loudness-profile-flat-library-design.md).
 
 Overlays and profile targets are **UI / QC guides**. They do **not** change the
 measurement engine, and they are **not** platform or regulatory certification.
 
-## Sources (v1 built-ins)
+## Historical sources
 
 ### EBU R128 / EBU R128 Live (−23 LUFS)
 
@@ -36,4 +38,4 @@ measurement engine, and they are **not** platform or regulatory certification.
   `https://support.spotify.com/artists/article/loudness-normalization/`
 - YouTube does not consistently publish a single official LUFS target in help
   docs; **−14 LUFS** is the common observed / industry reference used for the
-  merged Streaming −14 built-in.
+  former merged Streaming −14 built-in.

@@ -5,20 +5,14 @@
 /// ability to start the app. Cold default is Off (see the design doc, §Active selection).
 
 import {
-  BUILTIN_LOUDNESS_PROFILES,
   LOUDNESS_PROFILE_OFF,
+  createStarterProfile,
   isKnownMetricId,
   isUsableThreshold,
   parseSelection,
 } from "./loudnessProfileCatalog.js";
 
 const VALID_OPS = new Set([">", "<"]);
-const BUILTIN_IDS = new Set(BUILTIN_LOUDNESS_PROFILES.map((p) => p.id));
-
-export const DEFAULT_LOUDNESS_PROFILES = Object.freeze({
-  active: LOUDNESS_PROFILE_OFF,
-  userProfiles: [],
-});
 
 function normalizeReference(raw) {
   // `isUsableThreshold` rather than `Number`: `Number("")` is a perfectly good 0, which would draw
@@ -47,7 +41,7 @@ function normalizeRule(raw) {
 
 /// A rule document survives with whatever rules are still valid; rules on unknown metric ids are
 /// dropped so a profile written by a newer build cannot address rows this build cannot show.
-export function normalizeRuleDocument(raw, { kind } = {}) {
+export function normalizeRuleDocument(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   if (typeof raw.id !== "string" || raw.id.length === 0) return null;
 
@@ -59,33 +53,29 @@ export function normalizeRuleDocument(raw, { kind } = {}) {
 
   const document = {
     id: raw.id,
-    name: typeof raw.name === "string" && raw.name.length > 0 ? raw.name : "Untitled",
-    kind: kind ?? (raw.kind === "draft" ? "draft" : "user"),
+    name: typeof raw.name === "string" && raw.name.trim().length > 0 ? raw.name : "Untitled",
     referenceLufs: normalizeReference(raw.referenceLufs),
     rules,
   };
 
-  if (typeof raw.basedOn === "string" && raw.basedOn.length > 0) document.basedOn = raw.basedOn;
-
   return document;
 }
 
-/// Resolves the persisted selection, falling back to Off whenever it cannot be honoured: an
-/// unknown built-in, or a user profile that has been deleted.
-function normalizeActive(raw, { userProfiles }) {
+/// Resolves the persisted selection, falling back to Off whenever the selected profile is absent.
+function normalizeActive(raw, profiles) {
   const { kind, id } = parseSelection(raw);
-  if (kind === "off") return LOUDNESS_PROFILE_OFF;
-  if (kind === "builtin") return BUILTIN_IDS.has(id) ? raw : LOUDNESS_PROFILE_OFF;
-  return userProfiles.some((p) => p.id === id) ? raw : LOUDNESS_PROFILE_OFF;
+  if (kind !== "profile") return LOUDNESS_PROFILE_OFF;
+  return profiles.some((profile) => profile.id === id) ? raw : LOUDNESS_PROFILE_OFF;
 }
 
-export function normalizeLoudnessProfiles(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw))
-    return { ...DEFAULT_LOUDNESS_PROFILES };
+export function normalizeLoudnessProfiles(raw, { makeId } = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.profiles)) {
+    return { active: LOUDNESS_PROFILE_OFF, profiles: [createStarterProfile(makeId)] };
+  }
 
   const seenIds = new Set();
-  const userProfiles = (Array.isArray(raw.userProfiles) ? raw.userProfiles : [])
-    .map((entry) => normalizeRuleDocument(entry, { kind: "user" }))
+  const profiles = raw.profiles
+    .map((entry) => normalizeRuleDocument(entry))
     .filter((profile) => {
       if (!profile || seenIds.has(profile.id)) return false;
       seenIds.add(profile.id);
@@ -93,7 +83,7 @@ export function normalizeLoudnessProfiles(raw) {
     });
 
   return {
-    active: normalizeActive(raw.active, { userProfiles }),
-    userProfiles,
+    active: normalizeActive(raw.active, profiles),
+    profiles,
   };
 }

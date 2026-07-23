@@ -1,13 +1,9 @@
 import { describe, it, expect } from "vitest";
-import {
-  DEFAULT_LOUDNESS_PROFILES,
-  normalizeLoudnessProfiles,
-  normalizeRuleDocument,
-} from "./loudnessProfileNormalize.js";
-import { builtinSelectionId, userSelectionId } from "./loudnessProfileCatalog.js";
+import { normalizeLoudnessProfiles, normalizeRuleDocument } from "./loudnessProfileNormalize.js";
+import { profileSelectionId } from "./loudnessProfileCatalog.js";
 
 function rawDoc(rules, extra = {}) {
-  return { id: "u1", name: "Mine", kind: "user", referenceLufs: -23, rules, ...extra };
+  return { id: "u1", name: "Mine", referenceLufs: -23, rules, ...extra };
 }
 
 describe("normalizeRuleDocument", () => {
@@ -63,10 +59,20 @@ describe("normalizeRuleDocument", () => {
     expect(normalizeRuleDocument(rawDoc([], { referenceLufs: "" })).referenceLufs).toBeNull();
   });
 
-  it("defaults a missing name and carries basedOn through", () => {
-    const doc = normalizeRuleDocument({ id: "u1", rules: [], basedOn: "ebu-r128" });
-    expect(doc.name).toBe("Untitled");
-    expect(doc.basedOn).toBe("ebu-r128");
+  it("returns a flat document without legacy kind or basedOn fields", () => {
+    const doc = normalizeRuleDocument(rawDoc([], { kind: "user", basedOn: "ebu-r128" }));
+    expect(doc).toEqual({
+      id: "u1",
+      name: "Mine",
+      referenceLufs: -23,
+      rules: [],
+    });
+  });
+
+  it("defaults a missing, empty, or blank name to Untitled", () => {
+    expect(normalizeRuleDocument({ id: "u1", rules: [] }).name).toBe("Untitled");
+    expect(normalizeRuleDocument({ id: "u1", name: "", rules: [] }).name).toBe("Untitled");
+    expect(normalizeRuleDocument({ id: "u1", name: "   ", rules: [] }).name).toBe("Untitled");
   });
 
   it("allows a document with zero rules", () => {
@@ -76,25 +82,59 @@ describe("normalizeRuleDocument", () => {
 });
 
 describe("normalizeLoudnessProfiles", () => {
-  it("defaults a non-object blob to Off with an empty library", () => {
-    expect(normalizeLoudnessProfiles(null)).toEqual(DEFAULT_LOUDNESS_PROFILES);
-    expect(normalizeLoudnessProfiles(42)).toEqual(DEFAULT_LOUDNESS_PROFILES);
+  it("cold-seeds malformed storage with exactly one injectable starter profile", () => {
+    const expected = {
+      active: "off",
+      profiles: [
+        {
+          id: "starter-id",
+          name: "I −23 ±0.5 · TP ≤ −1",
+          referenceLufs: -23,
+          rules: [
+            { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+            { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+            { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+          ],
+        },
+      ],
+    };
+    const options = { makeId: () => "starter-id" };
+
+    expect(normalizeLoudnessProfiles(null, options)).toEqual(expected);
+    expect(normalizeLoudnessProfiles(42, options)).toEqual(expected);
+    expect(normalizeLoudnessProfiles([], options)).toEqual(expected);
+    expect(normalizeLoudnessProfiles({}, options)).toEqual(expected);
+    expect(normalizeLoudnessProfiles({ userProfiles: [rawDoc([])] }, options)).toEqual(expected);
   });
 
-  it("normalizes user profiles and drops duplicate ids", () => {
-    const result = normalizeLoudnessProfiles({
-      userProfiles: [rawDoc([]), rawDoc([]), { id: "u2", rules: [] }],
+  it("preserves an explicitly empty profile library", () => {
+    expect(normalizeLoudnessProfiles({ active: "off", profiles: [] })).toEqual({
+      active: "off",
+      profiles: [],
     });
-    expect(result.userProfiles.map((p) => p.id)).toEqual(["u1", "u2"]);
+  });
+
+  it("normalizes profiles and drops invalid entries and duplicate ids in order", () => {
+    const result = normalizeLoudnessProfiles({
+      profiles: [rawDoc([]), null, rawDoc([]), { id: "u2", name: "", rules: [] }],
+    });
+    expect(result.profiles.map((p) => p.id)).toEqual(["u1", "u2"]);
+    expect(result.profiles[1].name).toBe("Untitled");
+    expect(result).not.toHaveProperty("userProfiles");
   });
 
   it("keeps a valid active selection", () => {
-    const result = normalizeLoudnessProfiles({ active: builtinSelectionId("ebu-r128") });
-    expect(result.active).toBe(builtinSelectionId("ebu-r128"));
+    const active = profileSelectionId("u1");
+    const result = normalizeLoudnessProfiles({ active, profiles: [rawDoc([])] });
+    expect(result.active).toBe(active);
   });
 
-  it("falls back to Off for an unknown built-in or a deleted user profile", () => {
-    expect(normalizeLoudnessProfiles({ active: builtinSelectionId("gone") }).active).toBe("off");
-    expect(normalizeLoudnessProfiles({ active: userSelectionId("gone") }).active).toBe("off");
+  it("falls back to Off for dangling and legacy-prefixed selections", () => {
+    const profiles = [rawDoc([])];
+    expect(normalizeLoudnessProfiles({ active: profileSelectionId("gone"), profiles }).active).toBe(
+      "off"
+    );
+    expect(normalizeLoudnessProfiles({ active: "builtin:ebu-r128", profiles }).active).toBe("off");
+    expect(normalizeLoudnessProfiles({ active: "user:u1", profiles }).active).toBe("off");
   });
 });

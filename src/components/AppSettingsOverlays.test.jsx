@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { AppSettingsOverlays } from "./AppSettingsOverlays.jsx";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
@@ -340,16 +340,17 @@ describe("Loudness Profile editor wiring", () => {
 
   it("opens the panel on the draft the popover started", () => {
     renderWired();
-    fireEvent.click(screen.getByLabelText("Duplicate EBU R128 S1"));
+    fireEvent.click(screen.getByLabelText("Edit I −23 ±0.5 · TP ≤ −1 rules"));
 
-    expect(screen.getByRole("dialog", { name: "Loudness Profile editor" })).toBeTruthy();
-    // A named duplicate shows its title statically until the rename pencil is clicked.
-    expect(screen.getByText("EBU R128 S1 (copy)")).toBeTruthy();
+    const editor = screen.getByRole("dialog", { name: "Loudness Profile editor" });
+    expect(editor).toBeTruthy();
+    expect(within(editor).getByText("I −23 ±0.5 · TP ≤ −1")).toBeTruthy();
   });
 
   it("repaints what Stats reads as the panel is edited", () => {
     const hook = renderWired();
     fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
 
     const input = screen.getByLabelText("Rule 1 value");
     fireEvent.change(input, { target: { value: "-16" } });

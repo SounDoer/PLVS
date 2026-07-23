@@ -1,7 +1,10 @@
 # Loudness Profile editor — design
 
 **Date:** 2026-07-20
-**Status:** Draft
+**Status:** Superseded
+
+**Superseded by:** [`2026-07-23-loudness-profile-flat-library-design.md`](2026-07-23-loudness-profile-flat-library-design.md)
+
 **Extends:** `docs/superpowers/specs/2026-07-19-loudness-profile-design.md`
 **Revises (product behaviour):** that spec's §Popover IA item 2, its
 `unsaved-custom` selection, and decisions 5 and 15.

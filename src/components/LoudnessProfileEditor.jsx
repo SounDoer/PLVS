@@ -163,12 +163,19 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
   const ruleDocument = draft.document;
   const rules = ruleDocument.rules ?? [];
 
-  // The name edits presets-style: static until the pencil (or an unnamed new draft) opens an input,
-  // so selecting the text never fights the header's drag handle. A fresh, unnamed draft opens
-  // straight into the name field. `skipNameCommit` lets Escape blur without committing.
-  const [renaming, setRenaming] = useState(() => !(draft.document.name ?? "").trim());
-  const [nameDraft, setNameDraft] = useState(draft.document.name ?? "");
+  // The name edits presets-style: existing profiles stay static until the pencil opens an input,
+  // while every new draft opens straight into its prefilled name. `skipNameCommit` lets Escape blur
+  // without committing.
+  const [renaming, setRenaming] = useState(() => draft.editingId === null);
+  const [nameDraft, setNameDraft] = useState(draft.document.name ?? "Untitled");
+  const incomingNameRef = useRef(draft.document.name ?? "Untitled");
   const skipNameCommit = useRef(false);
+  incomingNameRef.current = draft.document.name ?? "Untitled";
+
+  useEffect(() => {
+    setNameDraft(incomingNameRef.current);
+    setRenaming(draft.editingId === null);
+  }, [draft.editingId]);
 
   useEffect(() => {
     if (renaming) {
@@ -321,7 +328,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
               ))
             ) : (
               <p className="px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
-                No rules — this profile only draws its reference line.
+                No rules — this profile does not judge any metrics.
               </p>
             )}
           </div>
@@ -345,9 +352,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           <Button variant="ghost" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={onSave} disabled={!(ruleDocument.name ?? "").trim()}>
-            Save
-          </Button>
+          <Button onClick={onSave}>Save</Button>
         </div>
       </div>
 

@@ -8,8 +8,19 @@ import {
 } from "../../workspace/AudioDataContext.jsx";
 import { StatsPanel } from "./StatsPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
-import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
 import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
+
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [
+    { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+    { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+  ],
+};
 
 const statsMetrics = [
   {
@@ -98,7 +109,11 @@ function labelClassFor(label) {
 }
 
 function renderWithProfile({ selection, displayAudio, visibleIds }) {
-  if (selection) settingsStore.patch({ loudnessProfiles: { active: selection } });
+  if (selection) {
+    settingsStore.patch({
+      loudnessProfiles: { active: selection, profiles: [TEST_PROFILE] },
+    });
+  }
   return renderStatsPanel({
     shared: { statsMetrics, dialogueActiveNow: true },
     panelControls: { statsVisibleIds: visibleIds },
@@ -233,7 +248,7 @@ describe("StatsPanel profile status colours", () => {
 
   it("keeps a watched, in-range value white but brightens its label", () => {
     renderWithProfile({
-      selection: builtinSelectionId("ebu-r128"),
+      selection: profileSelectionId(TEST_PROFILE.id),
       displayAudio: inRange,
       visibleIds: ["integrated"],
     });
@@ -249,7 +264,7 @@ describe("StatsPanel profile status colours", () => {
 
   it("fails a value outside the profile's band", () => {
     renderWithProfile({
-      selection: builtinSelectionId("ebu-r128"),
+      selection: profileSelectionId(TEST_PROFILE.id),
       displayAudio: { ...inRange, integrated: -18 },
       visibleIds: ["integrated"],
     });
@@ -260,7 +275,7 @@ describe("StatsPanel profile status colours", () => {
 
   it("warns while Integrated is not yet ready", () => {
     renderWithProfile({
-      selection: builtinSelectionId("ebu-r128"),
+      selection: profileSelectionId(TEST_PROFILE.id),
       displayAudio: { ...inRange, integrated: -Infinity },
       visibleIds: ["integrated"],
     });
@@ -269,9 +284,9 @@ describe("StatsPanel profile status colours", () => {
   });
 
   it("leaves an unwatched metric's value white and its label muted", () => {
-    // Programme carries an LRA descriptor but does not watch it.
+    // The test profile carries no LRA rule, so it does not watch it.
     renderWithProfile({
-      selection: builtinSelectionId("ebu-r128"),
+      selection: profileSelectionId(TEST_PROFILE.id),
       displayAudio: { ...inRange, lra: 40 },
       visibleIds: ["integrated", "lra"],
     });
@@ -283,9 +298,9 @@ describe("StatsPanel profile status colours", () => {
   });
 
   it("mutes the label of a metric the active profile never names", () => {
-    // R128 has no rule for Momentary at all, so it is not in the profile document.
+    // The test profile has no rule for Momentary, so it is not in the profile document.
     renderWithProfile({
-      selection: builtinSelectionId("ebu-r128"),
+      selection: profileSelectionId(TEST_PROFILE.id),
       displayAudio: inRange,
       visibleIds: ["integrated", "momentary"],
     });

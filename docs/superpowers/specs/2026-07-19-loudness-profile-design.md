@@ -1,7 +1,10 @@
 # Loudness Profile — design
 
 **Date:** 2026-07-19  
-**Status:** Draft  
+**Status:** Superseded
+
+**Superseded by:** [`2026-07-23-loudness-profile-flat-library-design.md`](2026-07-23-loudness-profile-flat-library-design.md)
+
 **Revises / supersedes (product behaviour):** the thin UI-overlay notes in
 `docs/loudness-references.md` and the free-form `loudnessReferenceLufs` /
 legacy `settings.referenceLufs` editing model for Loudness reference.

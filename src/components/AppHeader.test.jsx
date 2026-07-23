@@ -148,7 +148,7 @@ describe("AppHeader", () => {
     ).toBe(false);
 
     cleanup();
-    renderHeader({ loudnessProfile: { active: "builtin:ebu-r128" } });
+    renderHeader({ loudnessProfile: { active: "profile:test" } });
     expect(
       screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
     ).toBe(true);

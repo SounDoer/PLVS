@@ -4,11 +4,20 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { FrameDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
-import { builtinSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
 import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 
+const TEST_PROFILE = {
+  id: "test-profile",
+  name: "Test profile",
+  referenceLufs: -23,
+  rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
+};
+
 function selectProfile(selection) {
-  settingsStore.patch({ loudnessProfiles: { active: selection } });
+  settingsStore.patch({
+    loudnessProfiles: { active: selection, profiles: [TEST_PROFILE] },
+  });
 }
 
 function panel(value = {}) {
@@ -210,9 +219,9 @@ describe("LevelMeterPanel", () => {
   });
 
   it("fails the TP Max marker once the active profile's limit is exceeded", () => {
-    // EBU R128 caps true peak at -1 dBTP; 0 dBTP is a clear breach, so the marker follows the
-    // same fail colour the Stats row shows.
-    selectProfile(builtinSelectionId("ebu-r128"));
+    // The test profile caps true peak at -1 dBTP; 0 dBTP is a clear breach, so the marker follows
+    // the same fail colour the Stats row shows.
+    selectProfile(profileSelectionId(TEST_PROFILE.id));
     const { container } = renderPanel({
       displayAudio: { peakDb: [-1, -1], rmsDb: [-9, -9], tpMax: 0 },
       panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
@@ -224,7 +233,7 @@ describe("LevelMeterPanel", () => {
   });
 
   it("keeps the TP Max marker at foreground while inside the profile's limit", () => {
-    selectProfile(builtinSelectionId("ebu-r128"));
+    selectProfile(profileSelectionId(TEST_PROFILE.id));
     const { container } = renderPanel({
       displayAudio: {
         peakDb: [-9.9, -10],
@@ -242,9 +251,9 @@ describe("LevelMeterPanel", () => {
   });
 
   it("keeps the M/ST marker white when the active profile does not watch it", () => {
-    // R128 has no rule for Momentary. The marker stays foreground rather than dimming -- only an
-    // actual warn/fail pulls a colour -- but it is no longer the accent readout either.
-    selectProfile(builtinSelectionId("ebu-r128"));
+    // The test profile has no Momentary rule. The marker stays foreground rather than dimming --
+    // only an actual warn/fail pulls a colour -- but it is no longer the accent readout either.
+    selectProfile(profileSelectionId(TEST_PROFILE.id));
     const { container } = renderPanel({
       displayAudio: { peakDb: [-9, -9], rmsDb: [-18, -18], momentary: -22.4, shortTerm: -18.6 },
       panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },

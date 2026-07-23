@@ -1,402 +1,202 @@
 /** @vitest-environment jsdom */
-import { StrictMode } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
-import { act, renderHook } from "@testing-library/react";
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { StrictMode, useLayoutEffect } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { presetsStore, resetAll, settingsStore } from "../persistence/index.js";
+import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
-import {
-  LOUDNESS_PROFILE_OFF,
-  builtinSelectionId,
-  userSelectionId,
-} from "../lib/loudnessProfileCatalog.js";
-
-function persisted() {
-  return settingsStore.read().loudnessProfiles;
-}
 
 const wrapper = ({ children }) => <LoudnessProfileProvider>{children}</LoudnessProfileProvider>;
 
+function profile(id, name = id, referenceLufs = null) {
+  return { id, name, referenceLufs, rules: [] };
+}
+
+function seed(profiles, active = LOUDNESS_PROFILE_OFF) {
+  settingsStore.patch({ loudnessProfiles: { active, profiles } });
+}
+
+function saveProfile(hook, name = "Mine", referenceLufs = -16) {
+  act(() => hook.result.current.beginCreate());
+  act(() => hook.result.current.editDraft((document) => ({ ...document, name, referenceLufs })));
+  act(() => hook.result.current.saveDraft());
+}
+
 beforeEach(() => {
+  vi.restoreAllMocks();
   settingsStore.reset();
+  presetsStore.reset();
 });
 
-describe("useLoudnessProfile cold start", () => {
-  it("starts Off with no document and no reference", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-    expect(result.current.document).toBe(null);
-    expect(result.current.referenceLufs).toBe(null);
-    expect(result.current.userProfiles).toEqual([]);
-  });
-});
-
-describe("selecting profiles", () => {
-  it("resolves a built-in and exposes its reference", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("atsc-a85")));
-    expect(result.current.document.name).toBe("ATSC A/85");
-    expect(result.current.referenceLufs).toBe(-24);
-  });
-
-  it("persists the selection so it survives a remount", () => {
-    const first = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => first.result.current.select(builtinSelectionId("ebu-r128")));
-    first.unmount();
-
-    const second = renderHook(() => useLoudnessProfile(), { wrapper });
-    expect(second.result.current.active).toBe(builtinSelectionId("ebu-r128"));
-    expect(second.result.current.referenceLufs).toBe(-23);
-  });
-
-  it("drops back to Off with no reference", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("ebu-r128")));
-    act(() => result.current.selectOff());
-    expect(result.current.document).toBe(null);
-    expect(result.current.referenceLufs).toBe(null);
-  });
-
-  it("refuses a selection that cannot be honoured", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("not-a-standard")));
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-  });
-});
-
-describe("the user library", () => {
-  /// Saves one profile through the editor path, which is the only way into the library.
-  function withSavedProfile(name = "My Show", referenceLufs = -16) {
+describe("cold initialization", () => {
+  it("uses one starter identity for first render and persisted Configuration", async () => {
     const hook = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => hook.result.current.beginCreate());
-    act(() => hook.result.current.editDraft((d) => ({ ...d, name, referenceLufs })));
-    act(() => hook.result.current.saveDraft());
-    return hook;
-  }
+    const starterId = hook.result.current.profiles[0].id;
 
-  it("saves the draft as a named profile and selects it", () => {
-    const { result } = withSavedProfile();
-    expect(result.current.userProfiles).toHaveLength(1);
-    expect(result.current.document.name).toBe("My Show");
-    expect(result.current.document.kind).toBe("user");
-    expect(result.current.referenceLufs).toBe(-16);
-  });
-
-  it("gives each saved profile its own identity", () => {
-    const { result } = withSavedProfile("First");
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
-    act(() => result.current.saveDraft());
-    const [a, b] = result.current.userProfiles;
-    expect(a.id).not.toBe(b.id);
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["First", "Second"]);
-  });
-
-  it("keeps a saved draft's edits, including a rename, when it is saved", () => {
-    const { result } = withSavedProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.beginEdit(id));
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Renamed", referenceLufs: -20 })));
-    act(() => result.current.saveDraft());
-    expect(result.current.userProfiles[0].name).toBe("Renamed");
-    expect(result.current.userProfiles[0].referenceLufs).toBe(-20);
-  });
-
-  describe("editing a profile does not change which one is active", () => {
-    it("saves the rules but stays Off when editing from Off", () => {
-      const { result } = withSavedProfile("Mine", -16);
-      const { id } = result.current.userProfiles[0];
-      act(() => result.current.selectOff());
-      expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-
-      act(() => result.current.beginEdit(id));
-      act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -20 })));
-      act(() => result.current.saveDraft());
-
-      // Editing rules is not a request to start monitoring against them.
-      expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-      // ...but the edit still lands in the library.
-      expect(result.current.userProfiles[0].referenceLufs).toBe(-20);
-    });
-
-    it("restores the profile that was active, not the one edited", () => {
-      const { result } = withSavedProfile("First");
-      act(() => result.current.beginCreate());
-      act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
-      act(() => result.current.saveDraft());
-      const [first, second] = result.current.userProfiles;
-
-      act(() => result.current.select(builtinSelectionId("ebu-r128")));
-      act(() => result.current.beginEdit(second.id));
-      act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -18 })));
-      act(() => result.current.saveDraft());
-
-      expect(result.current.active).toBe(builtinSelectionId("ebu-r128"));
-      expect(result.current.userProfiles.find((p) => p.id === second.id).referenceLufs).toBe(-18);
-      // First is untouched; the point is only that Second did not steal the selection.
-      expect(first.name).toBe("First");
-    });
-
-    it("keeps the edited profile active when it was already active", () => {
-      const { result } = withSavedProfile("Mine", -16);
-      const { id } = result.current.userProfiles[0];
-      // withSavedProfile leaves it active; edit it in place.
-      act(() => result.current.beginEdit(id));
-      act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -20 })));
-      act(() => result.current.saveDraft());
-      expect(result.current.active).toBe(userSelectionId(id));
-      expect(result.current.referenceLufs).toBe(-20);
-    });
-
-    it("still selects a brand-new profile on save", () => {
-      const hook = renderHook(() => useLoudnessProfile(), { wrapper });
-      act(() => hook.result.current.beginCreate());
-      act(() => hook.result.current.editDraft((d) => ({ ...d, name: "Fresh" })));
-      act(() => hook.result.current.saveDraft());
-      // Creating is a request to use what you made, so this selection is intended.
-      expect(hook.result.current.document.name).toBe("Fresh");
-      expect(hook.result.current.active).not.toBe(LOUDNESS_PROFILE_OFF);
-    });
-
-    it("still selects a duplicated built-in on save", () => {
-      const hook = renderHook(() => useLoudnessProfile(), { wrapper });
-      act(() => hook.result.current.beginDuplicate("ebu-r128"));
-      act(() => hook.result.current.editDraft((d) => ({ ...d, name: "R128 mine" })));
-      act(() => hook.result.current.saveDraft());
-      expect(hook.result.current.document.name).toBe("R128 mine");
-      expect(hook.result.current.active).not.toBe(LOUDNESS_PROFILE_OFF);
-    });
-  });
-
-  it("drops to Off when the active profile is deleted", () => {
-    const { result } = withSavedProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.removeUser(id));
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-    expect(result.current.userProfiles).toEqual([]);
-  });
-
-  it("leaves the selection alone when a different profile is deleted", () => {
-    const { result } = withSavedProfile("First");
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Second" })));
-    act(() => result.current.saveDraft());
-    const [first] = result.current.userProfiles;
-    act(() => result.current.removeUser(first.id));
-    expect(result.current.document.name).toBe("Second");
-  });
-
-  it("survives a remount with the library intact", () => {
-    const first = withSavedProfile();
-    first.unmount();
-    const second = renderHook(() => useLoudnessProfile(), { wrapper });
-    expect(second.result.current.userProfiles.map((p) => p.name)).toEqual(["My Show"]);
-    expect(second.result.current.document.name).toBe("My Show");
-  });
-
-  it("ignores a duplicate of a built-in that does not exist", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginDuplicate("nope"));
-    expect(result.current.draft).toBe(null);
-    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-  });
-});
-
-describe("preset snapshots", () => {
-  /// Saves one profile through the editor path.
-  function saveProfile(hook, name) {
-    act(() => hook.result.current.beginCreate());
-    act(() => hook.result.current.editDraft((d) => ({ ...d, name })));
-    act(() => hook.result.current.saveDraft());
-  }
-
-  it("captures the active selection, not the library", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("streaming-14")));
-    const snapshot = result.current.snapshotForPreset();
-    expect(snapshot).toEqual({ loudnessProfileActive: builtinSelectionId("streaming-14") });
-  });
-
-  it("round-trips a built-in selection", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("streaming-14")));
-    const snapshot = result.current.snapshotForPreset();
-
-    act(() => result.current.selectOff());
-    act(() => result.current.applyPresetSnapshot(snapshot));
-    expect(result.current.referenceLufs).toBe(-14);
-  });
-
-  it("falls back to Off when the preset names a profile that is gone", () => {
-    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
-    saveProfile(hook, "Temporary");
-    const snapshot = hook.result.current.snapshotForPreset();
-    const { id } = hook.result.current.userProfiles[0];
-
-    act(() => hook.result.current.removeUser(id));
-    act(() => hook.result.current.applyPresetSnapshot(snapshot));
     expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    expect(hook.result.current.document).toBe(null);
+    await waitFor(() =>
+      expect(settingsStore.read().loudnessProfiles?.profiles[0].id).toBe(starterId)
+    );
   });
 
-  it("leaves the library untouched when applying a snapshot", () => {
-    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
-    saveProfile(hook, "Keep me");
-    const snapshot = { loudnessProfileActive: LOUDNESS_PROFILE_OFF };
+  it("preserves an explicitly empty library without seeding it", () => {
+    seed([]);
+    const first = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(first.result.current.profiles).toEqual([]);
+    expect(settingsStore.read().loudnessProfiles.profiles).toEqual([]);
+    first.unmount();
 
-    act(() => hook.result.current.applyPresetSnapshot(snapshot));
-    expect(hook.result.current.userProfiles.map((p) => p.name)).toEqual(["Keep me"]);
+    const second = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(second.result.current.profiles).toEqual([]);
   });
 
-  it("ignores an absent snapshot", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("ebu-r128")));
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
+  it("does not recreate a deleted starter after remount", async () => {
+    const first = renderHook(() => useLoudnessProfile(), { wrapper });
+    await waitFor(() => expect(settingsStore.read().loudnessProfiles?.profiles).toHaveLength(1));
+    act(() => first.result.current.removeProfile(first.result.current.profiles[0].id));
+    expect(settingsStore.read().loudnessProfiles.profiles).toEqual([]);
+    first.unmount();
 
-    act(() => result.current.applyPresetSnapshot(undefined));
-    expect(result.current.active).toBe(builtinSelectionId("ebu-r128"));
-    // Nothing was restored, so nothing was worth the draft.
-    expect(result.current.draft.document.name).toBe("Half typed");
+    const second = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(second.result.current.profiles).toEqual([]);
+  });
+
+  it("seeds the exact cold library after reset and provider remount", async () => {
+    const custom = profile("custom", "Custom", -18);
+    seed([custom], profileSelectionId(custom.id));
+    const first = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(first.result.current.active).toBe(profileSelectionId(custom.id));
+
+    act(() => resetAll());
+    first.unmount();
+    const second = renderHook(() => useLoudnessProfile(), { wrapper });
+    await waitFor(() => expect(settingsStore.read().loudnessProfiles?.profiles).toHaveLength(1));
+
+    const expectedStarter = {
+      name: "I −23 ±0.5 · TP ≤ −1",
+      referenceLufs: -23,
+      rules: [
+        { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+        { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+        { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+      ],
+    };
+    expect(second.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    expect(second.result.current.profiles).toHaveLength(1);
+    expect(second.result.current.profiles[0]).toMatchObject(expectedStarter);
+    expect(settingsStore.read().loudnessProfiles).toMatchObject({
+      active: LOUDNESS_PROFILE_OFF,
+      profiles: [expectedStarter],
+    });
+  });
+
+  it("observes a store update between render and the provider effect", () => {
+    const external = profile("external", "External", -20);
+    const hook = renderHook(
+      () => {
+        const value = useLoudnessProfile();
+        useLayoutEffect(() => seed([external], profileSelectionId(external.id)), []);
+        return value;
+      },
+      { wrapper }
+    );
+
+    expect(hook.result.current.profiles).toEqual([external]);
+    expect(hook.result.current.active).toBe(profileSelectionId(external.id));
+    expect(settingsStore.read().loudnessProfiles.profiles).toEqual([external]);
   });
 });
 
-describe("single instance", () => {
-  it("shows one consumer's selection to another", () => {
-    // Two consumers under one provider must agree; four independent hook instances could not
-    // share a draft, which is what the preview overlay needs.
-    const both = renderHook(() => ({ a: useLoudnessProfile(), b: useLoudnessProfile() }), {
-      wrapper,
+describe("public flat-library API", () => {
+  it("exposes profiles/removeProfile without legacy or duplicate APIs", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(result.current.profiles).toHaveLength(1);
+    expect(result.current.removeProfile).toBeTypeOf("function");
+    expect(result.current).not.toHaveProperty("userProfiles");
+    expect(result.current).not.toHaveProperty("removeUser");
+    expect(result.current).not.toHaveProperty("beginDuplicate");
+  });
+
+  it("creates an immediately savable inert Untitled profile and selects it", () => {
+    seed([]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    expect(result.current.draft.document).toEqual({
+      id: "draft",
+      name: "Untitled",
+      referenceLufs: null,
+      rules: [],
     });
-    act(() => both.result.current.a.select(builtinSelectionId("ebu-r128")));
-    expect(both.result.current.b.referenceLufs).toBe(-23);
-  });
-});
 
-describe("preview draft", () => {
-  it("outranks the persisted selection for every reader", () => {
-    const both = renderHook(() => ({ a: useLoudnessProfile(), b: useLoudnessProfile() }), {
-      wrapper,
+    act(() => result.current.saveDraft());
+    expect(result.current.profiles).toHaveLength(1);
+    expect(result.current.profiles[0]).toMatchObject({
+      name: "Untitled",
+      referenceLufs: null,
+      rules: [],
     });
-    act(() => both.result.current.a.select(builtinSelectionId("ebu-r128")));
-    act(() => both.result.current.a.beginCreate());
-    act(() => both.result.current.a.editDraft((d) => ({ ...d, referenceLufs: -16 })));
-
-    expect(both.result.current.b.referenceLufs).toBe(-16);
+    expect(result.current.profiles[0].id).not.toBe("draft");
+    expect(result.current.profiles[0]).not.toHaveProperty("kind");
+    expect(result.current.profiles[0]).not.toHaveProperty("basedOn");
+    expect(result.current.active).toBe(profileSelectionId(result.current.profiles[0].id));
+    expect(result.current.document).toEqual(result.current.profiles[0]);
+    expect(settingsStore.read().loudnessProfiles).toEqual({
+      active: result.current.active,
+      profiles: result.current.profiles,
+    });
   });
 
-  it("never reaches the settings store", () => {
+  it("edits any seeded profile while preserving the selection it started under", () => {
+    const starter = profile("starter", "Starter", -23);
+    const other = profile("other", "Other", -18);
+    seed([starter, other], profileSelectionId(other.id));
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Scratch" })));
 
-    expect(settingsStore.read().loudnessProfiles?.userProfiles ?? []).toEqual([]);
-  });
-
-  it("cannot dirty a preset, because nothing is written", () => {
-    presetsStore.reset();
-    presetsStore.patch({ activeId: "p1", dirty: false });
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
-
-    expect(presetsStore.read().dirty).toBe(false);
-  });
-
-  it("cancel throws the draft away and restores what was showing", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("ebu-r128")));
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
-    act(() => result.current.cancelDraft());
-
-    expect(result.current.draft).toBe(null);
-    expect(result.current.referenceLufs).toBe(-23);
-    expect(result.current.userProfiles).toEqual([]);
-  });
-
-  it("saving a new draft inserts it and selects it", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "My Show", referenceLufs: -20 })));
+    act(() => result.current.beginEdit(starter.id));
+    expect(result.current.draft.document.name).toBe("Starter");
+    act(() => result.current.editDraft((document) => ({ ...document, referenceLufs: -20 })));
     act(() => result.current.saveDraft());
 
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["My Show"]);
-    expect(result.current.document.name).toBe("My Show");
-    expect(result.current.referenceLufs).toBe(-20);
-    expect(result.current.draft).toBe(null);
-  });
-
-  it("saving an edited profile replaces it rather than adding a second", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Before" })));
-    act(() => result.current.saveDraft());
-    const { id } = result.current.userProfiles[0];
-
-    act(() => result.current.beginEdit(id));
-    act(() => result.current.editDraft((d) => ({ ...d, name: "After" })));
-    act(() => result.current.saveDraft());
-
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["After"]);
-  });
-
-  it("tracks whether the draft has been touched", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    expect(result.current.draft.dirty).toBe(false);
-    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
-    expect(result.current.draft.dirty).toBe(true);
-  });
-
-  it("opens a duplicate of a built-in as an unsaved draft", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginDuplicate("ebu-r128-s1"));
-
-    expect(result.current.draft.document.basedOn).toBe("ebu-r128-s1");
-    expect(result.current.draft.editingId).toBe(null);
-    expect(result.current.userProfiles).toEqual([]);
-  });
-
-  it("saves the edit that landed in the same tick as the save", () => {
-    // An Enter handler that commits the focused field and then saves batches both into one tick.
-    // Reading the draft from the render closure would persist the document as it was before the
-    // edit, losing the user's last keystroke with no error.
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => {
-      result.current.editDraft((d) => ({ ...d, name: "Typed" }));
-      result.current.saveDraft();
+    expect(result.current.active).toBe(profileSelectionId(other.id));
+    expect(result.current.profiles.find(({ id }) => id === starter.id).referenceLufs).toBe(-20);
+    expect(settingsStore.read().loudnessProfiles).toEqual({
+      active: profileSelectionId(other.id),
+      profiles: result.current.profiles,
     });
-
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Typed"]);
   });
 
-  it("does not insert twice when Save is double-clicked", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Once" })));
-    act(() => {
-      result.current.saveDraft();
-      result.current.saveDraft();
-    });
+  it("restores a saved profile, its rules, and active selection after remount", () => {
+    seed([]);
+    const first = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => first.result.current.beginCreate());
+    act(() =>
+      first.result.current.editDraft((document) => ({
+        ...document,
+        name: "Ruleful",
+        rules: [
+          {
+            metricId: "integrated",
+            op: ">",
+            value: -22,
+            severity: "fail",
+          },
+        ],
+      }))
+    );
+    act(() => first.result.current.saveDraft());
+    const saved = first.result.current.profiles[0];
+    const active = profileSelectionId(saved.id);
+    first.unmount();
 
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Once"]);
+    const second = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(second.result.current.profiles).toEqual([saved]);
+    expect(second.result.current.document).toEqual(saved);
+    expect(second.result.current.active).toBe(active);
   });
 
-  it("composes two edits landing in the same tick", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => {
-      result.current.editDraft((d) => ({ ...d, name: "First" }));
-      result.current.editDraft((d) => ({ ...d, referenceLufs: -16 }));
-    });
-
-    expect(result.current.draft.document.name).toBe("First");
-    expect(result.current.draft.document.referenceLufs).toBe(-16);
-  });
-
-  it("inserts once under StrictMode, which re-invokes state updaters", () => {
-    // The original approach called commit() inside a setDraft updater. StrictMode double-invokes
-    // updaters, and crypto.randomUUID() inside one yields two ids and two library entries.
+  it("saves a same-tick final edit and inserts only once under StrictMode", () => {
+    seed([]);
     const strictWrapper = ({ children }) => (
       <StrictMode>
         <LoudnessProfileProvider>{children}</LoudnessProfileProvider>
@@ -404,241 +204,204 @@ describe("preview draft", () => {
     );
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper: strictWrapper });
     act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Strict" })));
-    act(() => result.current.saveDraft());
-
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Strict"]);
+    act(() => {
+      result.current.editDraft((document) => ({ ...document, name: "Typed" }));
+      result.current.saveDraft();
+      result.current.saveDraft();
+    });
+    expect(result.current.profiles.map(({ name }) => name)).toEqual(["Typed"]);
   });
+});
 
-  it("previews what Save would persist, not what was typed", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: "not-a-number" })));
-
-    // The editor still shows the raw text it is bound to...
-    expect(result.current.draft.document.referenceLufs).toBe("not-a-number");
-    // ...but nothing judges against it, and the chart draws no line.
-    expect(result.current.referenceLufs).toBe(null);
-  });
-
-  it("keeps a half-typed rule visible to the editor and inert everywhere else", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
+describe("preview draft", () => {
+  it("is shared, normalized without metadata, and never persisted", () => {
+    const both = renderHook(() => ({ first: useLoudnessProfile(), second: useLoudnessProfile() }), {
+      wrapper,
+    });
+    const before = settingsStore.read().loudnessProfiles;
+    act(() => both.result.current.first.beginCreate());
     act(() =>
-      result.current.editDraft((d) => ({
-        ...d,
-        rules: [...d.rules, { metricId: "correlation", op: ">", severity: "fail" }],
+      both.result.current.first.editDraft((document) => ({
+        ...document,
+        kind: "user",
+        basedOn: "legacy",
+        referenceLufs: "not-a-number",
       }))
     );
 
-    // The editor keeps the unfilled row; the normalized document keeps it too (it survives a
-    // round-trip) but it judges nothing.
-    const draftRule = result.current.draft.document.rules.at(-1);
-    expect(draftRule).toMatchObject({ metricId: "correlation" });
-    expect(result.current.document.rules.at(-1)).toMatchObject({ metricId: "correlation" });
+    expect(both.result.current.second.referenceLufs).toBe(null);
+    expect(both.result.current.second.document).not.toHaveProperty("kind");
+    expect(both.result.current.second.document).not.toHaveProperty("basedOn");
+    expect(settingsStore.read().loudnessProfiles).toEqual(before);
+  });
+
+  it("keeps a half-filled rule visible but inert", () => {
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginCreate());
+    act(() =>
+      result.current.editDraft((document) => ({
+        ...document,
+        rules: [{ metricId: "correlation", op: ">", severity: "fail" }],
+      }))
+    );
+    expect(result.current.draft.document.rules[0].value).toBeUndefined();
+    expect(result.current.document.rules[0].value).toBeUndefined();
   });
 });
 
-describe("a draft versus the library", () => {
-  /// Saves one profile through the editor path and leaves the draft closed.
-  function withProfile(name = "Mine") {
-    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => hook.result.current.beginCreate());
-    act(() => hook.result.current.editDraft((d) => ({ ...d, name })));
-    act(() => hook.result.current.saveDraft());
-    return hook;
-  }
-
-  it("closes the panel when the profile it edits is deleted with nothing typed", () => {
-    const { result } = withProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.beginEdit(id));
-    act(() => result.current.removeUser(id));
-
-    expect(result.current.draft).toBe(null);
-    expect(result.current.userProfiles).toEqual([]);
-  });
-
-  it("refuses to delete the profile a dirty draft is editing", () => {
-    const { result } = withProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.beginEdit(id));
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
-    act(() => result.current.removeUser(id));
-
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Mine"]);
-    expect(result.current.draft.document.name).toBe("Half typed");
-  });
-
-  it("inserts rather than writing nothing when the edited profile has vanished", () => {
-    // Reaching past the guards deliberately. Batched into one tick, the delete has not re-rendered
-    // yet, so beginEdit still finds the profile in its render closure and opens a draft on an id
-    // the library no longer holds. The guards cannot see this one; the fallback inside saveDraft
-    // is what stands between it and a Save that writes nothing and closes anyway.
-    const { result } = withProfile();
-    const { id } = result.current.userProfiles[0];
-    act(() => {
-      result.current.removeUser(id);
-      result.current.beginEdit(id);
-    });
-    expect(result.current.draft.editingId).toBe(id);
-    expect(result.current.userProfiles).toEqual([]);
-
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Rescued" })));
-    act(() => result.current.saveDraft());
-
-    expect(result.current.userProfiles.map((p) => p.name)).toEqual(["Rescued"]);
-  });
-
-  it("leaves a dirty draft alone when another editor entry point is used", () => {
-    const { result } = withProfile("Beta");
-    const { id } = result.current.userProfiles[0];
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
-
-    act(() => result.current.beginEdit(id));
-    expect(result.current.draft.document.name).toBe("Half typed");
-    act(() => result.current.beginCreate());
-    expect(result.current.draft.document.name).toBe("Half typed");
-    act(() => result.current.beginDuplicate("ebu-r128-s1"));
-    expect(result.current.draft.document.name).toBe("Half typed");
-  });
-
-  it("replaces an untouched draft from any editor entry point", () => {
-    const { result } = withProfile("Beta");
-    const { id } = result.current.userProfiles[0];
-
-    act(() => result.current.beginCreate());
-    act(() => result.current.beginEdit(id));
-    expect(result.current.draft.editingId).toBe(id);
-
-    act(() => result.current.beginDuplicate("ebu-r128-s1"));
-    expect(result.current.draft.document.basedOn).toBe("ebu-r128-s1");
-
-    act(() => result.current.beginCreate());
-    expect(result.current.draft.document.basedOn).toBeUndefined();
-  });
-
-  it("refuses a selection change under a dirty draft, including the preset divergence", () => {
-    presetsStore.reset();
-    presetsStore.patch({ activeId: "p1", dirty: false });
+describe("draft versus library actions", () => {
+  it("blocks deletion and selection under a dirty draft", () => {
+    const mine = profile("mine", "Mine");
+    seed([mine]);
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Half typed" })));
+    act(() => result.current.beginEdit(mine.id));
+    act(() => result.current.editDraft((document) => ({ ...document, name: "Half typed" })));
+    act(() => result.current.removeProfile(mine.id));
+    act(() => result.current.select(profileSelectionId(mine.id)));
 
-    act(() => result.current.select(builtinSelectionId("ebu-r128-live")));
+    expect(result.current.profiles).toEqual([mine]);
     expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-    act(() => result.current.selectOff());
     expect(result.current.draft.document.name).toBe("Half typed");
-    expect(presetsStore.read().dirty).toBe(false);
-  });
-
-  it("cancels an untouched draft and applies the selection", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.select(builtinSelectionId("ebu-r128")));
-
-    expect(result.current.draft).toBe(null);
-    expect(result.current.referenceLufs).toBe(-23);
-  });
-
-  it("lets a preset apply win over a dirty draft", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
-
-    act(() =>
-      result.current.applyPresetSnapshot({
-        loudnessProfileActive: builtinSelectionId("ebu-r128"),
-      })
-    );
-    expect(result.current.draft).toBe(null);
-    expect(result.current.referenceLufs).toBe(-23);
-  });
-
-  it("tells the popover when the library is blocked", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    expect(result.current.draftBlocksLibraryActions).toBe(false);
-    act(() => result.current.beginCreate());
-    expect(result.current.draftBlocksLibraryActions).toBe(false);
-    act(() => result.current.editDraft((d) => ({ ...d, referenceLufs: -16 })));
     expect(result.current.draftBlocksLibraryActions).toBe(true);
   });
-});
 
-describe("preset divergence", () => {
-  beforeEach(() => {
-    presetsStore.reset();
-    presetsStore.patch({ activeId: "p1", dirty: false });
+  it("closes a clean draft when deleting or selecting", () => {
+    const mine = profile("mine", "Mine");
+    seed([mine]);
+    const first = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => first.result.current.beginEdit(mine.id));
+    act(() => first.result.current.removeProfile(mine.id));
+    expect(first.result.current.draft).toBe(null);
+    expect(first.result.current.profiles).toEqual([]);
   });
 
-  const clean = () => presetsStore.patch({ dirty: false });
-
-  it("marks the preset dirty when the selection changes", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.select(builtinSelectionId("ebu-r128")));
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks it dirty when saving a draft selects what it saved", () => {
+  it("lets preset apply cancel a dirty draft", () => {
+    const mine = profile("mine", "Mine", -20);
+    seed([mine]);
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Mine" })));
-    clean();
-    act(() => result.current.saveDraft());
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("marks it dirty when deleting the active profile falls back to Off", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Doomed" })));
-    act(() => result.current.saveDraft());
-    const { id } = result.current.userProfiles[0];
-    clean();
-
-    act(() => result.current.removeUser(id));
-    expect(presetsStore.read().dirty).toBe(true);
-  });
-
-  it("leaves it clean when editing a profile does not move the selection", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Before" })));
-    act(() => result.current.saveDraft());
-    const { id } = result.current.userProfiles[0];
-    clean();
-
-    act(() => result.current.beginEdit(id));
-    act(() => result.current.editDraft((d) => ({ ...d, name: "After" })));
-    act(() => result.current.saveDraft());
-    // The preset snapshots an id, not the rules behind it, so editing is not a divergence.
-    expect(presetsStore.read().dirty).toBe(false);
-  });
-
-  it("leaves it clean when deleting a profile that was not active", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Keep" })));
-    act(() => result.current.saveDraft());
-    act(() => result.current.beginCreate());
-    act(() => result.current.editDraft((d) => ({ ...d, name: "Spare" })));
-    act(() => result.current.saveDraft());
-    const spare = result.current.userProfiles.find((p) => p.name === "Keep");
-    act(() => result.current.select(builtinSelectionId("ebu-r128")));
-    clean();
-
-    act(() => result.current.removeUser(spare.id));
-    expect(presetsStore.read().dirty).toBe(false);
-  });
-
-  it("does not dirty the preset it is restoring", () => {
-    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.editDraft((document) => ({ ...document, name: "Half typed" })));
     act(() =>
       result.current.applyPresetSnapshot({
-        loudnessProfileActive: builtinSelectionId("ebu-r128"),
+        loudnessProfileActive: profileSelectionId(mine.id),
+      })
+    );
+    expect(result.current.draft).toBe(null);
+    expect(result.current.document).toEqual(mine);
+  });
+});
+
+describe("profile deletion", () => {
+  it("switches an active deleted profile to Off", () => {
+    const mine = profile("mine", "Mine");
+    seed([mine], profileSelectionId(mine.id));
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.removeProfile(mine.id));
+    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    expect(result.current.document).toBe(null);
+  });
+
+  it("permanently clears every matching preset reference and preserves unrelated state", () => {
+    const doomed = profile("doomed", "Same name");
+    seed([doomed]);
+    presetsStore.patch({
+      list: [
+        { id: "a", name: "A", loudnessProfileActive: profileSelectionId(doomed.id) },
+        { id: "b", name: "B", loudnessProfileActive: profileSelectionId("other") },
+        { id: "c", name: "C", loudnessProfileActive: profileSelectionId(doomed.id) },
+        { id: "d", name: "D" },
+      ],
+      activeId: "b",
+      dirty: false,
+    });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.removeProfile(doomed.id));
+
+    expect(presetsStore.read()).toMatchObject({ activeId: "b", dirty: false });
+    expect(presetsStore.read().list).toEqual([
+      { id: "a", name: "A", loudnessProfileActive: LOUDNESS_PROFILE_OFF },
+      { id: "b", name: "B", loudnessProfileActive: profileSelectionId("other") },
+      { id: "c", name: "C", loudnessProfileActive: LOUDNESS_PROFILE_OFF },
+      { id: "d", name: "D" },
+    ]);
+
+    act(() => result.current.beginCreate());
+    act(() => result.current.editDraft((document) => ({ ...document, name: doomed.name })));
+    act(() => result.current.saveDraft());
+    expect(presetsStore.read().list[0].loudnessProfileActive).toBe(LOUDNESS_PROFILE_OFF);
+  });
+});
+
+describe("preset snapshots and dirty state", () => {
+  it("writes settings and preset dirty exactly once for one StrictMode selection commit", () => {
+    const mine = profile("mine", "Mine");
+    seed([mine]);
+    presetsStore.patch({ list: [], activeId: "preset", dirty: false });
+    const settingsPatch = vi.spyOn(settingsStore, "patch");
+    const presetsPatch = vi.spyOn(presetsStore, "patch");
+    const strictWrapper = ({ children }) => (
+      <StrictMode>
+        <LoudnessProfileProvider>{children}</LoudnessProfileProvider>
+      </StrictMode>
+    );
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper: strictWrapper });
+    settingsPatch.mockClear();
+    presetsPatch.mockClear();
+
+    act(() => result.current.select(profileSelectionId(mine.id)));
+
+    expect(settingsPatch).toHaveBeenCalledTimes(1);
+    expect(presetsPatch).toHaveBeenCalledTimes(1);
+    expect(presetsPatch).toHaveBeenCalledWith({ dirty: true });
+  });
+
+  it("round-trips an opaque active selection and normalizes a dangling one to Off", () => {
+    const mine = profile("mine", "Mine");
+    seed([mine], profileSelectionId(mine.id));
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(result.current.snapshotForPreset()).toEqual({
+      loudnessProfileActive: profileSelectionId(mine.id),
+    });
+
+    act(() =>
+      result.current.applyPresetSnapshot({
+        loudnessProfileActive: profileSelectionId("gone"),
+      })
+    );
+    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+  });
+
+  it("marks selection changes dirty but not rule edits or preset restore", () => {
+    const mine = profile("mine", "Mine");
+    seed([mine]);
+    presetsStore.patch({ list: [], activeId: "preset", dirty: false });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+
+    act(() => result.current.select(profileSelectionId(mine.id)));
+    expect(presetsStore.read().dirty).toBe(true);
+    act(() => presetsStore.patch({ dirty: false }));
+    act(() => result.current.beginEdit(mine.id));
+    act(() => result.current.editDraft((document) => ({ ...document, name: "Renamed" })));
+    act(() => result.current.saveDraft());
+    expect(presetsStore.read().dirty).toBe(false);
+
+    act(() => result.current.selectOff());
+    expect(presetsStore.read().dirty).toBe(true);
+    act(() => presetsStore.patch({ dirty: false }));
+    act(() =>
+      result.current.applyPresetSnapshot({
+        loudnessProfileActive: profileSelectionId(mine.id),
       })
     );
     expect(presetsStore.read().dirty).toBe(false);
+  });
+
+  it("marks deleting the active profile dirty without a second updater side effect", () => {
+    const mine = profile("mine", "Mine");
+    seed([mine], profileSelectionId(mine.id));
+    presetsStore.patch({ list: [], activeId: "preset", dirty: false });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.removeProfile(mine.id));
+    expect(presetsStore.read().dirty).toBe(true);
   });
 });
