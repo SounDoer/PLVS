@@ -2,6 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useSnapshot } from "./useSnapshot.js";
+import { SpectrumHistorySlab } from "../lib/SpectrumHistorySlab.js";
+import { VectorscopeHistorySlab } from "../lib/VectorscopeHistorySlab.js";
 
 const emptyHist = { toArray: () => [] };
 
@@ -290,6 +292,68 @@ describe("useSnapshot", () => {
     expect(atEarlierTarget).not.toBe(first);
     expect(spectrum.timestampReads()).toBeGreaterThan(readsAfterFirst);
     expect(freezes).toBe(1);
+  });
+
+  it("freezes visual slabs once per snapshot session and resolves their typed row views", () => {
+    const bands = [{ fCenter: 100 }, { fCenter: 1000 }];
+    const spectrumSlab = new SpectrumHistorySlab(4, bands);
+    const vectorscopeSlab = new VectorscopeHistorySlab(4, 2);
+    for (const [index, timestampMs] of [1000, 1100].entries()) {
+      spectrumSlab.push({
+        bands,
+        dbList: [-30 + index, -20 + index],
+        timestampMs,
+      });
+      vectorscopeSlab.push({
+        pairs: [0.25 + index, -0.25 - index],
+        correlation: 0.5,
+        timestampMs,
+      });
+    }
+
+    let spectrumFreezes = 0;
+    let vectorscopeFreezes = 0;
+    let frozenSpectrum;
+    let frozenVectorscope;
+    const intake = createIntake({
+      loudness: [{ timestampMs: 1000 }, { timestampMs: 1100 }],
+      corr: [0.5, 0.5],
+      audio: [{ correlation: 0.5 }, { correlation: 0.5 }],
+    });
+    intake.snapshotVisualSpectrumByKey = () => {
+      spectrumFreezes += 1;
+      frozenSpectrum = spectrumSlab.freeze();
+      return { spectrum: frozenSpectrum };
+    };
+    intake.snapshotVisualVectorscopeByKey = () => {
+      vectorscopeFreezes += 1;
+      frozenVectorscope = vectorscopeSlab.freeze();
+      return { vectorscope: frozenVectorscope };
+    };
+    const baseProps = { sampleSec: 0.1, intake, audio: { correlation: 0.8 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, selectedOffset: -1 },
+    });
+
+    rerender({ ...baseProps, selectedOffset: 0 });
+    const spectrum = result.current.resolveSpectrumSnapshotForKey("spectrum");
+    const vectorscope = result.current.resolveVectorscopeSnapshotForKey("vectorscope");
+
+    expect(spectrumFreezes).toBe(1);
+    expect(vectorscopeFreezes).toBe(1);
+    expect(result.current.snapshotSpectrumByKey.spectrum).toBe(frozenSpectrum);
+    expect(frozenSpectrum.constructor.name).toBe("FrozenSpectrumHistory");
+    expect(frozenVectorscope.constructor.name).toBe("FrozenVectorscopeHistory");
+    expect(spectrum.data.dbList).toBeInstanceOf(Float32Array);
+    expect(spectrum.data.dbList.buffer).toBe(frozenSpectrum.rowAt(1).dbList.buffer);
+    expect(vectorscope.pairs).toBeInstanceOf(Float32Array);
+    expect(vectorscope.pairs.buffer).toBe(frozenVectorscope.rowAt(1).pairs.buffer);
+
+    rerender({ ...baseProps, selectedOffset: 0.1 });
+    result.current.resolveSpectrumSnapshotForKey("spectrum");
+    result.current.resolveVectorscopeSnapshotForKey("vectorscope");
+    expect(spectrumFreezes).toBe(1);
+    expect(vectorscopeFreezes).toBe(1);
   });
 
   it("separates Vectorscope result caches by peak-hold mode", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FrameIntake, buildSpectrumDataSnapshot } from "./FrameIntake.js";
+import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 
 const HIST_MAX = 5;
 const SR = 48000;
@@ -424,6 +425,126 @@ describe("FrameIntake", () => {
     expect(frozen.timestampAt(0)).toBe(1000);
     expect(Array.from(frozen.rowAt(0).pairs)).toEqual([expect.closeTo(0.1), expect.closeTo(0.2)]);
     expect(frozen.rowAt(1).correlation).toBe(0.2);
+  });
+
+  it("freezes every retained visual key by sharing sealed chunks and copying tails", () => {
+    const intake = new FrameIntake();
+    const capacity = VISUAL_HISTORY_CHUNK_ROWS + 1;
+    const spectrumSealedKey = "spectrum:single:0:combined";
+    const spectrumTailKey = "spectrum:single:1:combined";
+    const vectorscopeSealedKey = "vectorscope:pair:0:1";
+    const vectorscopeTailKey = "vectorscope:pair:2:3";
+    const visualRow = (index, includeTailKeys = false) => ({
+      timestampMs: 1000 + index * 40,
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumByKey: {
+        [spectrumSealedKey]: {
+          bandCentersHz: [100, 200],
+          smoothDb: [-10 - index, -20 - index],
+        },
+        ...(includeTailKeys
+          ? {
+              [spectrumTailKey]: {
+                bandCentersHz: [400, 800],
+                smoothDb: [-30, -40],
+              },
+            }
+          : {}),
+      },
+      vectorscopeByKey: {
+        [vectorscopeSealedKey]: {
+          pairs: [index / capacity, -index / capacity],
+          correlation: 0.5,
+        },
+        ...(includeTailKeys
+          ? {
+              [vectorscopeTailKey]: {
+                pairs: [0.25, -0.25],
+                correlation: -0.5,
+              },
+            }
+          : {}),
+      },
+    });
+
+    for (let index = 0; index < capacity; index += 1) {
+      intake.pushVisualHistRow(visualRow(index, index === capacity - 1), capacity);
+    }
+
+    const liveSpectrumSealed = intake.getVisualSpectrumHistByKey(spectrumSealedKey);
+    const liveSpectrumTail = intake.getVisualSpectrumHistByKey(spectrumTailKey);
+    const liveVectorscopeSealed = intake.getVisualVectorscopeHistByKey(vectorscopeSealedKey);
+    const liveVectorscopeTail = intake.getVisualVectorscopeHistByKey(vectorscopeTailKey);
+    const spectrumByKey = intake.snapshotVisualSpectrumByKey();
+    const vectorscopeByKey = intake.snapshotVisualVectorscopeByKey();
+
+    expect(Object.keys(spectrumByKey)).toEqual([spectrumSealedKey, spectrumTailKey]);
+    expect(Object.keys(vectorscopeByKey)).toEqual([vectorscopeSealedKey, vectorscopeTailKey]);
+
+    const frozenSpectrumSealed = spectrumByKey[spectrumSealedKey];
+    const frozenSpectrumTail = spectrumByKey[spectrumTailKey];
+    expect(frozenSpectrumSealed.rowAt(0).dbList.buffer).toBe(
+      liveSpectrumSealed.rowAt(0).dbList.buffer
+    );
+    expect(frozenSpectrumSealed.rowAt(capacity - 1).dbList.buffer).not.toBe(
+      liveSpectrumSealed.rowAt(capacity - 1).dbList.buffer
+    );
+    expect(frozenSpectrumTail.rowAt(0).dbList.buffer).not.toBe(
+      liveSpectrumTail.rowAt(0).dbList.buffer
+    );
+    expect(frozenSpectrumSealed.storageStats()).toMatchObject({
+      retainedRows: capacity,
+      sharedSealedChunks: 1,
+      copiedTailRows: 1,
+    });
+    expect(frozenSpectrumTail.storageStats()).toMatchObject({
+      retainedRows: 1,
+      sharedSealedChunks: 0,
+      copiedTailRows: 1,
+    });
+    expect(frozenSpectrumSealed.storageStats().copiedTailBytes).toBeGreaterThan(0);
+
+    const frozenVectorscopeSealed = vectorscopeByKey[vectorscopeSealedKey];
+    const frozenVectorscopeTail = vectorscopeByKey[vectorscopeTailKey];
+    expect(frozenVectorscopeSealed.rowAt(0).pairs.buffer).toBe(
+      liveVectorscopeSealed.rowAt(0).pairs.buffer
+    );
+    expect(frozenVectorscopeSealed.rowAt(capacity - 1).pairs.buffer).not.toBe(
+      liveVectorscopeSealed.rowAt(capacity - 1).pairs.buffer
+    );
+    expect(frozenVectorscopeTail.rowAt(0).pairs.buffer).not.toBe(
+      liveVectorscopeTail.rowAt(0).pairs.buffer
+    );
+    expect(frozenVectorscopeSealed.storageStats()).toMatchObject({
+      retainedRows: capacity,
+      sharedSealedChunks: 1,
+      copiedTailRows: 1,
+    });
+    expect(frozenVectorscopeTail.storageStats()).toMatchObject({
+      retainedRows: 1,
+      sharedSealedChunks: 0,
+      copiedTailRows: 1,
+    });
+    expect(frozenVectorscopeSealed.storageStats().copiedTailBytes).toBeGreaterThan(0);
+
+    intake.pushVisualHistRow(visualRow(capacity, true), capacity);
+    intake.pushVisualHistRow(visualRow(capacity + 1), capacity);
+
+    expect(liveSpectrumSealed.timestampAt(0)).toBe(1080);
+    expect(frozenSpectrumSealed.timestampAt(0)).toBe(1000);
+    expect(frozenSpectrumSealed.timestampAt(capacity - 1)).toBe(1000 + (capacity - 1) * 40);
+    expect(liveSpectrumTail.length).toBe(2);
+    expect(frozenSpectrumTail.length).toBe(1);
+    expect(Array.from(frozenSpectrumTail.rowAt(0).dbList)).toEqual([-30, -40]);
+    expect(liveVectorscopeSealed.timestampAt(0)).toBe(1080);
+    expect(frozenVectorscopeSealed.timestampAt(0)).toBe(1000);
+    expect(liveVectorscopeTail.length).toBe(2);
+    expect(frozenVectorscopeTail.length).toBe(1);
+    expect(Array.from(frozenVectorscopeTail.rowAt(0).pairs)).toEqual([
+      expect.closeTo(0.25),
+      expect.closeTo(-0.25),
+    ]);
   });
 
   it("recreates a request-keyed spectrum slab when the band grid changes", () => {
