@@ -61,6 +61,7 @@ export function useAudioEngine({
   const {
     frameRef,
     selectedOffsetRef,
+    latestAudioRef,
     setAudio,
     setSelectedOffset,
     raiseNotice,
@@ -158,6 +159,8 @@ export function useAudioEngine({
             frameRef,
             defaultSampleRateRef,
             setAudio,
+            latestAudioRef,
+            shouldPublishDisplay: () => selectedOffsetRef.current < 0,
             ackFrames: (seq) => {
               void ackFrames(seq);
             },

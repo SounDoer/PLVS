@@ -4,6 +4,59 @@ function currentValue(value) {
   return value && typeof value === "object" && "current" in value ? value.current : value;
 }
 
+export function reduceMeterAudioFrame(previous, frame) {
+  const m = Number.isFinite(frame.lufsMomentary) ? frame.lufsMomentary : -Infinity;
+  const st = Number.isFinite(frame.lufsShortTerm) ? frame.lufsShortTerm : -Infinity;
+  return {
+    ...previous,
+    peakDb: Array.isArray(frame.peakDb) ? frame.peakDb : previous.peakDb,
+    rmsDb: Array.isArray(frame.rmsDb) ? frame.rmsDb : (previous.rmsDb ?? []),
+    peakHoldDb: Array.isArray(frame.peakHoldDb) ? frame.peakHoldDb : previous.peakHoldDb,
+    momentary: m,
+    shortTerm: st,
+    mMax: Number.isFinite(frame.lufsMMax) ? frame.lufsMMax : -Infinity,
+    stMax: Number.isFinite(frame.lufsStMax) ? frame.lufsStMax : -Infinity,
+    integrated: Number.isFinite(frame.integrated) ? frame.integrated : -Infinity,
+    lra: Number.isFinite(frame.lra) ? frame.lra : -Infinity,
+    truePeakL: Number.isFinite(frame.truePeakL) ? frame.truePeakL : -Infinity,
+    truePeakR: Number.isFinite(frame.truePeakR) ? frame.truePeakR : -Infinity,
+    samplePeak: Number.isFinite(frame.truePeakMaxDbtp) ? frame.truePeakMaxDbtp : -Infinity,
+    tpMax: Number.isFinite(frame.truePeakMaxDbtp) ? frame.truePeakMaxDbtp : -Infinity,
+    tpL: Number.isFinite(frame.sampleLDb) ? frame.sampleLDb : -Infinity,
+    tpR: Number.isFinite(frame.sampleRDb) ? frame.sampleRDb : -Infinity,
+    sampleL: Number.isFinite(frame.sampleLDb) ? frame.sampleLDb : -Infinity,
+    sampleR: Number.isFinite(frame.sampleRDb) ? frame.sampleRDb : -Infinity,
+    samplePeakMaxL: Number.isFinite(frame.sampleLDb)
+      ? Math.max(previous.samplePeakMaxL, frame.sampleLDb)
+      : previous.samplePeakMaxL,
+    samplePeakMaxR: Number.isFinite(frame.sampleRDb)
+      ? Math.max(previous.samplePeakMaxR, frame.sampleRDb)
+      : previous.samplePeakMaxR,
+    correlation: Number.isFinite(frame.correlation) ? frame.correlation : -Infinity,
+    sideToMidDb: Number.isFinite(frame.sideToMidDb) ? frame.sideToMidDb : -Infinity,
+    vectorscopePairX: Number.isFinite(frame.vectorscopePairX)
+      ? frame.vectorscopePairX
+      : (previous.vectorscopePairX ?? 0),
+    vectorscopePairY: Number.isFinite(frame.vectorscopePairY)
+      ? frame.vectorscopePairY
+      : (previous.vectorscopePairY ?? 1),
+    spectrumResultsByKey:
+      frame.spectrumResultsByKey && typeof frame.spectrumResultsByKey === "object"
+        ? frame.spectrumResultsByKey
+        : (previous.spectrumResultsByKey ?? {}),
+    vectorscopeResultsByKey:
+      frame.vectorscopeResultsByKey && typeof frame.vectorscopeResultsByKey === "object"
+        ? frame.vectorscopeResultsByKey
+        : (previous.vectorscopeResultsByKey ?? {}),
+    dialogueIntegrated: Number.isFinite(frame.dialogueIntegrated)
+      ? frame.dialogueIntegrated
+      : -Infinity,
+    dialogueLra: Number.isFinite(frame.dialogueLra) ? frame.dialogueLra : 0,
+    dialoguePercent: Number.isFinite(frame.dialoguePercent) ? frame.dialoguePercent : null,
+    dialogueActiveNow: !!frame.dialogueActiveNow,
+  };
+}
+
 /**
  * Shared Tauri `AudioFramePayload` handler.
  * @param {object} opts
@@ -20,11 +73,13 @@ export function buildTauriFrameApply({
   frameRef,
   defaultSampleRateRef,
   setAudio,
+  latestAudioRef,
   ackFrames,
   // Gate the shared live-display write so a background analysis (one whose session is not the
   // active/displayed one) keeps filling its own intake and acking the bridge without hijacking the
   // shared `audio` state that the non-scrub panels render from. Defaults to always-on for live mode.
   shouldDriveDisplay = () => true,
+  shouldPublishDisplay = () => true,
 }) {
   const applyFrame = (f) => {
     frameRef.current += 1;
@@ -34,8 +89,6 @@ export function buildTauriFrameApply({
     if (ackFrames && frameRef.current % 6 === 0 && Number.isFinite(f.seq)) {
       ackFrames(f.seq);
     }
-    const m = Number.isFinite(f.lufsMomentary) ? f.lufsMomentary : -Infinity;
-    const st = Number.isFinite(f.lufsShortTerm) ? f.lufsShortTerm : -Infinity;
     const defaultSampleRate = defaultSampleRateRef.current ?? 48000;
 
     intake.pushFrame(
@@ -48,52 +101,10 @@ export function buildTauriFrameApply({
 
     if (!shouldDriveDisplay()) return;
 
-    setAudio((prev) => ({
-      ...prev,
-      peakDb: Array.isArray(f.peakDb) ? f.peakDb : prev.peakDb,
-      rmsDb: Array.isArray(f.rmsDb) ? f.rmsDb : (prev.rmsDb ?? []),
-      peakHoldDb: Array.isArray(f.peakHoldDb) ? f.peakHoldDb : prev.peakHoldDb,
-      momentary: m,
-      shortTerm: st,
-      mMax: Number.isFinite(f.lufsMMax) ? f.lufsMMax : -Infinity,
-      stMax: Number.isFinite(f.lufsStMax) ? f.lufsStMax : -Infinity,
-      integrated: Number.isFinite(f.integrated) ? f.integrated : -Infinity,
-      lra: Number.isFinite(f.lra) ? f.lra : -Infinity,
-      truePeakL: Number.isFinite(f.truePeakL) ? f.truePeakL : -Infinity,
-      truePeakR: Number.isFinite(f.truePeakR) ? f.truePeakR : -Infinity,
-      samplePeak: Number.isFinite(f.truePeakMaxDbtp) ? f.truePeakMaxDbtp : -Infinity,
-      tpMax: Number.isFinite(f.truePeakMaxDbtp) ? f.truePeakMaxDbtp : -Infinity,
-      tpL: Number.isFinite(f.sampleLDb) ? f.sampleLDb : -Infinity,
-      tpR: Number.isFinite(f.sampleRDb) ? f.sampleRDb : -Infinity,
-      sampleL: Number.isFinite(f.sampleLDb) ? f.sampleLDb : -Infinity,
-      sampleR: Number.isFinite(f.sampleRDb) ? f.sampleRDb : -Infinity,
-      samplePeakMaxL: Number.isFinite(f.sampleLDb)
-        ? Math.max(prev.samplePeakMaxL, f.sampleLDb)
-        : prev.samplePeakMaxL,
-      samplePeakMaxR: Number.isFinite(f.sampleRDb)
-        ? Math.max(prev.samplePeakMaxR, f.sampleRDb)
-        : prev.samplePeakMaxR,
-      correlation: Number.isFinite(f.correlation) ? f.correlation : -Infinity,
-      sideToMidDb: Number.isFinite(f.sideToMidDb) ? f.sideToMidDb : -Infinity,
-      vectorscopePairX: Number.isFinite(f.vectorscopePairX)
-        ? f.vectorscopePairX
-        : (prev.vectorscopePairX ?? 0),
-      vectorscopePairY: Number.isFinite(f.vectorscopePairY)
-        ? f.vectorscopePairY
-        : (prev.vectorscopePairY ?? 1),
-      spectrumResultsByKey:
-        f.spectrumResultsByKey && typeof f.spectrumResultsByKey === "object"
-          ? f.spectrumResultsByKey
-          : (prev.spectrumResultsByKey ?? {}),
-      vectorscopeResultsByKey:
-        f.vectorscopeResultsByKey && typeof f.vectorscopeResultsByKey === "object"
-          ? f.vectorscopeResultsByKey
-          : (prev.vectorscopeResultsByKey ?? {}),
-      dialogueIntegrated: Number.isFinite(f.dialogueIntegrated) ? f.dialogueIntegrated : -Infinity,
-      dialogueLra: Number.isFinite(f.dialogueLra) ? f.dialogueLra : 0,
-      dialoguePercent: Number.isFinite(f.dialoguePercent) ? f.dialoguePercent : null,
-      dialogueActiveNow: !!f.dialogueActiveNow,
-    }));
+    const next = reduceMeterAudioFrame(latestAudioRef.current, f);
+    latestAudioRef.current = next;
+    if (!shouldPublishDisplay()) return;
+    setAudio(next);
   };
 
   return { applyFrame };

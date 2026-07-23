@@ -16,6 +16,7 @@ vi.mock("../ipc/commands.js", () => ({
   setLoudnessWeights: vi.fn(),
   setDialogueGating: vi.fn(),
   setDialogueVadEngine: vi.fn(),
+  ackFrames: vi.fn(),
 }));
 
 import {
@@ -34,17 +35,26 @@ function useHarness({
   halt,
   histMaxSamples = 10,
   visualMaxSamples = 10,
+  selectedOffset = -1,
   ...props
 }) {
   const audioRef = useRef(null);
   const frameRef = useRef(0);
-  const selectedOffsetRef = useRef(-1);
+  const selectedOffsetRef = useRef(selectedOffset);
+  const latestAudioRef = useRef({
+    peakDb: [],
+    rmsDb: [],
+    peakHoldDb: [],
+    samplePeakMaxL: -Infinity,
+    samplePeakMaxR: -Infinity,
+  });
   const loudnessWeightsRef = useRef(null);
   const dialogueGatingRef = useRef(false);
   const dialogueVadEngineRef = useRef("silero");
   const display = {
     frameRef,
     selectedOffsetRef,
+    latestAudioRef,
     setAudio,
     setSelectedOffset,
     raiseNotice,
@@ -65,7 +75,7 @@ function useHarness({
     ...props,
   });
 
-  return { audioRef, frameRef };
+  return { audioRef, frameRef, latestAudioRef, selectedOffsetRef };
 }
 
 describe("useAudioEngine", () => {
@@ -181,5 +191,33 @@ describe("useAudioEngine", () => {
     await waitFor(() =>
       expect(props.raiseNotice).toHaveBeenCalledWith("error", "Error: Audio unavailable")
     );
+  });
+
+  it("keeps reducing active live frames without publishing while snapshot is open", async () => {
+    const setAudio = vi.fn();
+    const intake = { reset: vi.fn(), pushFrame: vi.fn() };
+    const { result } = renderHook(() =>
+      useHarness({
+        selectedOffset: 0,
+        intake,
+        setAudio,
+        raiseNotice: vi.fn(),
+        halt: vi.fn(),
+        setSelectedOffset: vi.fn(),
+        resetTimer: vi.fn(),
+        setShowClock: vi.fn(),
+      })
+    );
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+
+    const onFrame = startAudioCapture.mock.calls[0][0].onFrame;
+    onFrame({ peakDb: [-6], peakHoldDb: [], lufsMomentary: -9 });
+
+    expect(intake.pushFrame).toHaveBeenCalledOnce();
+    expect(result.current.latestAudioRef.current).toMatchObject({
+      peakDb: [-6],
+      momentary: -9,
+    });
+    expect(setAudio).not.toHaveBeenCalled();
   });
 });

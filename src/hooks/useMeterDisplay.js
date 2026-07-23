@@ -67,21 +67,28 @@ export const CLEARED_METER_AUDIO = {
 };
 
 export function useMeterDisplay() {
-  const [audio, setAudio] = useState({ ...INITIAL_METER_AUDIO });
+  const [audio, setAudioState] = useState({ ...INITIAL_METER_AUDIO });
   const [selectedOffset, setSelectedOffsetState] = useState(-1);
   const [selectedSnapshotTimeMs, setSelectedSnapshotTimeMs] = useState(null);
   const [notice, setNotice] = useState(null);
   const [showClock, setShowClock] = useState(false);
   const selectedOffsetRef = useRef(-1);
+  const latestAudioRef = useRef(audio);
   const snapshotBaseElapsedMsRef = useRef(null);
   const frameRef = useRef(0);
   const guardTimerRef = useRef(null);
   const clock = useSessionTimer();
 
+  const setAudio = useCallback((nextAudio) => {
+    const next = typeof nextAudio === "function" ? nextAudio(latestAudioRef.current) : nextAudio;
+    latestAudioRef.current = next;
+    setAudioState(next);
+  }, []);
+
   const setSelectedOffset = useCallback(
     (nextOffset) => {
-      const value =
-        typeof nextOffset === "function" ? nextOffset(selectedOffsetRef.current) : nextOffset;
+      const previous = selectedOffsetRef.current;
+      const value = typeof nextOffset === "function" ? nextOffset(previous) : nextOffset;
       selectedOffsetRef.current = value;
       if (value >= 0) {
         if (!Number.isFinite(snapshotBaseElapsedMsRef.current)) {
@@ -93,8 +100,11 @@ export function useMeterDisplay() {
         setSelectedSnapshotTimeMs(null);
       }
       setSelectedOffsetState(value);
+      if (previous >= 0 && value < 0) {
+        setAudio(latestAudioRef.current);
+      }
     },
-    [clock.elapsedMsRef]
+    [clock.elapsedMsRef, setAudio]
   );
 
   useEffect(() => {
@@ -135,11 +145,12 @@ export function useMeterDisplay() {
     }
   };
 
-  const clearAudio = () => setAudio({ ...CLEARED_METER_AUDIO });
+  const clearAudio = useCallback(() => setAudio({ ...CLEARED_METER_AUDIO }), [setAudio]);
 
   return {
     audio,
     setAudio,
+    latestAudioRef,
     selectedOffset,
     setSelectedOffset,
     selectedSnapshotTimeMs,

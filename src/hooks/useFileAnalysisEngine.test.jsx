@@ -44,13 +44,14 @@ vi.mock("../ipc/env.js", () => ({
 }));
 
 vi.mock("../lib/tauriFrameApply.js", () => ({
-  buildTauriFrameApply: () => ({
+  buildTauriFrameApply: vi.fn(() => ({
     applyFrame: vi.fn(),
-  }),
+  })),
 }));
 
 import { probeFileAnalysis, startFileAnalysis, stopFileAnalysis } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
 function Harness({
   enabled = true,
@@ -62,9 +63,12 @@ function Harness({
   setAnalyzingFileId = vi.fn(),
   setFileSession,
   raiseNotice = vi.fn(),
+  shouldDriveDisplay = () => true,
+  selectedOffset = -1,
 }) {
   const audioRef = useRef(null);
-  const selectedOffsetRef = useRef(-1);
+  const selectedOffsetRef = useRef(selectedOffset);
+  const latestAudioRef = useRef({ peakDb: [] });
   const frameRef = useRef(0);
   const defaultSampleRateRef = useRef(48000);
 
@@ -84,13 +88,16 @@ function Harness({
     display: {
       frameRef,
       selectedOffsetRef,
+      latestAudioRef,
       setAudio: vi.fn(),
       setSelectedOffset: vi.fn(),
       raiseNotice,
     },
+    shouldDriveDisplay,
   });
 
   window.__fileApi = api;
+  window.__selectedOffsetRef = selectedOffsetRef;
   return null;
 }
 
@@ -125,6 +132,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.clearAllMocks();
   delete window.__fileApi;
+  delete window.__selectedOffsetRef;
 });
 
 describe("useFileAnalysisEngine", () => {
@@ -159,6 +167,19 @@ describe("useFileAnalysisEngine", () => {
         onFrame: expect.any(Function),
       })
     );
+  });
+
+  it("keeps the active-session gate separate from snapshot publication", async () => {
+    const shouldDriveDisplay = vi.fn(() => true);
+    renderHarness({ shouldDriveDisplay });
+    await waitFor(() => expect(buildTauriFrameApply).toHaveBeenCalledOnce());
+
+    const options = buildTauriFrameApply.mock.calls[0][0];
+    expect(options.shouldDriveDisplay).toBe(shouldDriveDisplay);
+    expect(options.latestAudioRef).toEqual(expect.objectContaining({ current: { peakDb: [] } }));
+    expect(options.shouldPublishDisplay()).toBe(true);
+    window.__selectedOffsetRef.current = 0;
+    expect(options.shouldPublishDisplay()).toBe(false);
   });
 
   it("updates progress only for the targeted session id", async () => {

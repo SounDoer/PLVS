@@ -45,7 +45,8 @@ export function useFileAnalysisEngine({
   display,
   shouldDriveDisplay,
 }) {
-  const { frameRef, selectedOffsetRef, setAudio, setSelectedOffset, raiseNotice } = display;
+  const { frameRef, selectedOffsetRef, latestAudioRef, setAudio, setSelectedOffset, raiseNotice } =
+    display;
   const activePathRef = useRef(null);
 
   const stop = useCallback(async () => {
@@ -137,8 +138,10 @@ export function useFileAnalysisEngine({
           frameRef,
           defaultSampleRateRef,
           setAudio,
+          latestAudioRef,
           ackFrames: () => {},
           shouldDriveDisplay,
+          shouldPublishDisplay: () => selectedOffsetRef.current < 0,
         });
         const channel = await startFileAnalysis({
           path: filePath,
