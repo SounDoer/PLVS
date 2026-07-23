@@ -163,6 +163,35 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
   const ruleDocument = draft.document;
   const rules = ruleDocument.rules ?? [];
 
+  // The name edits presets-style: static until the pencil (or an unnamed new draft) opens an input,
+  // so selecting the text never fights the header's drag handle. A fresh, unnamed draft opens
+  // straight into the name field. `skipNameCommit` lets Escape blur without committing.
+  const [renaming, setRenaming] = useState(() => !(draft.document.name ?? "").trim());
+  const [nameDraft, setNameDraft] = useState(draft.document.name ?? "");
+  const skipNameCommit = useRef(false);
+
+  useEffect(() => {
+    if (renaming) {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    }
+  }, [renaming]);
+
+  function startRename() {
+    setNameDraft(ruleDocument.name ?? "");
+    setRenaming(true);
+  }
+
+  function commitName() {
+    if (skipNameCommit.current) {
+      skipNameCommit.current = false;
+      setRenaming(false);
+      return;
+    }
+    onEdit((d) => ({ ...d, name: nameDraft }));
+    setRenaming(false);
+  }
+
   function patchRule(index, patch) {
     onEdit((d) => ({
       ...d,
@@ -224,33 +253,48 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          className="flex cursor-move items-center border-b border-border px-3 py-2"
+          className="flex cursor-move items-center gap-1.5 border-b border-border px-3 py-2"
         >
-          <input
-            ref={nameInputRef}
-            aria-label="Loudness Profile name"
-            value={ruleDocument.name ?? ""}
-            onChange={(event) => {
-              const { value } = event.target;
-              onEdit((d) => ({ ...d, name: value }));
-            }}
-            className="min-w-0 flex-1 bg-transparent text-[length:var(--ui-fs-panel-title)] font-semibold focus-visible:outline-none"
-          />
-          <button
-            type="button"
-            aria-label="Rename profile"
-            title="Rename"
-            // The header is a drag handle; stop the pointer so a click on the icon does not start a
-            // drag, then hand focus to the name field.
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => {
-              nameInputRef.current?.focus();
-              nameInputRef.current?.select();
-            }}
-            className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-          </button>
+          {renaming ? (
+            <input
+              ref={nameInputRef}
+              aria-label="Loudness Profile name"
+              value={nameDraft}
+              onChange={(event) => setNameDraft(event.target.value)}
+              // The header is a drag handle; stop the pointer so selecting text never drags the
+              // window.
+              onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+                if (event.key === "Escape") {
+                  skipNameCommit.current = true;
+                  event.currentTarget.blur();
+                }
+              }}
+              onBlur={commitName}
+              className="min-w-0 flex-1 bg-transparent text-[length:var(--ui-fs-panel-title)] font-semibold focus-visible:outline-none"
+            />
+          ) : (
+            <>
+              <span className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-panel-title)] font-semibold">
+                {ruleDocument.name?.trim() ? (
+                  ruleDocument.name
+                ) : (
+                  <span className="text-muted-foreground">Untitled</span>
+                )}
+              </span>
+              <button
+                type="button"
+                aria-label="Rename profile"
+                title="Rename"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={startRename}
+                className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <Pencil className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex flex-col gap-2 overflow-y-auto px-3 py-1">
@@ -295,10 +339,6 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
               Add rule
             </Button>
           </div>
-
-          <p className="text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
-            Delivery reference, not a certification. Dialogue metrics use on-device detection.
-          </p>
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">

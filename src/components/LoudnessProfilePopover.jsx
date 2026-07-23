@@ -176,12 +176,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
           </Button>
         </div>
       ) : null}
-
-      {document ? (
-        <p className="border-t border-border/40 px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
-          Delivery reference, not a certification. Dialogue metrics use on-device detection.
-        </p>
-      ) : null}
     </>
   );
 }

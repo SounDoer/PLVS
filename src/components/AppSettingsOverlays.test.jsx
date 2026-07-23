@@ -343,7 +343,8 @@ describe("Loudness Profile editor wiring", () => {
     fireEvent.click(screen.getByLabelText("Duplicate EBU R128 S1"));
 
     expect(screen.getByRole("dialog", { name: "Loudness Profile editor" })).toBeTruthy();
-    expect(screen.getByLabelText("Loudness Profile name").value).toBe("EBU R128 S1 (copy)");
+    // A named duplicate shows its title statically until the rename pencil is clicked.
+    expect(screen.getByText("EBU R128 S1 (copy)")).toBeTruthy();
   });
 
   it("repaints what Stats reads as the panel is edited", () => {

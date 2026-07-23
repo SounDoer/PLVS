@@ -4,9 +4,14 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { createProfileDraft } from "@/lib/loudnessProfileCatalog.js";
 
+// A named draft by default, so the editor opens with a static title and the rule rows in focus.
+// The name-editing tests pass an unnamed draft (which opens straight into the name field).
+const namedDraft = () => ({ ...createProfileDraft(), name: "Draft" });
+const unnamedDraft = () => ({ ...createProfileDraft(), name: "" });
+
 function editorProps(overrides = {}) {
   return {
-    draft: { editingId: null, document: createProfileDraft(), dirty: false },
+    draft: { editingId: null, document: namedDraft(), dirty: false },
     onEdit: vi.fn(),
     onSave: vi.fn(),
     onCancel: vi.fn(),
@@ -159,21 +164,43 @@ describe("LoudnessProfileEditor", () => {
     expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(false);
   });
 
-  it("focuses the name field from the rename icon", () => {
-    renderEditor();
-    const input = screen.getByLabelText("Loudness Profile name");
+  it("shows a named profile statically and opens editing from the rename icon", () => {
+    renderEditor({
+      draft: { editingId: "x", document: { ...createProfileDraft(), name: "Mine" }, dirty: false },
+    });
+    // Named: the title is static until the pencil is clicked.
+    expect(screen.queryByLabelText("Loudness Profile name")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Rename profile" }));
-    expect(document.activeElement).toBe(input);
+    expect(document.activeElement).toBe(screen.getByLabelText("Loudness Profile name"));
   });
 
-  it("never rewrites the document id", () => {
-    const props = renderEditor();
-    fireEvent.change(screen.getByLabelText("Loudness Profile name"), {
-      target: { value: "Mine" },
+  it("opens a fresh unnamed draft straight into the name field", () => {
+    renderEditor({ draft: { editingId: null, document: unnamedDraft(), dirty: false } });
+    expect(screen.getByLabelText("Loudness Profile name")).toBeTruthy();
+  });
+
+  it("commits the name on blur and never rewrites the document id", () => {
+    const props = renderEditor({
+      draft: { editingId: null, document: unnamedDraft(), dirty: false },
     });
+    const input = screen.getByLabelText("Loudness Profile name");
+    fireEvent.change(input, { target: { value: "Mine" } });
+    fireEvent.blur(input);
     const next = appliedDocument(props);
     expect(next.name).toBe("Mine");
     expect(next.id).toBe(props.draft.document.id);
+  });
+
+  it("discards a name edit on Escape", () => {
+    const props = renderEditor({
+      draft: { editingId: "x", document: { ...createProfileDraft(), name: "Mine" }, dirty: false },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Rename profile" }));
+    const input = screen.getByLabelText("Loudness Profile name");
+    fireEvent.change(input, { target: { value: "Changed" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.blur(input);
+    expect(props.onEdit).not.toHaveBeenCalled();
   });
 
   it("refuses to save an unnamed profile", () => {
@@ -231,10 +258,5 @@ describe("LoudnessProfileEditor", () => {
     rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
 
     expect(screen.getByLabelText("Rule 1 value").value).toBe("-18");
-  });
-
-  it("carries the honesty note", () => {
-    renderEditor();
-    expect(screen.getByText(/not a certification/i)).toBeTruthy();
   });
 });

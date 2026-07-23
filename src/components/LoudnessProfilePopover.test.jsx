@@ -66,15 +66,6 @@ describe("LoudnessProfilePopoverContent listing", () => {
     expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
     expect(hook.result.current.referenceLufs).toBe(null);
   });
-
-  it("carries the honesty note whenever a profile is active", () => {
-    const { rerender } = renderPopover();
-    expect(screen.queryByText(/not a certification/i)).toBeNull();
-
-    fireEvent.click(screen.getByLabelText("Use ATSC A/85"));
-    rerender();
-    expect(screen.getByText(/not a certification/i)).toBeTruthy();
-  });
 });
 
 describe("LoudnessProfilePopoverContent editing", () => {
