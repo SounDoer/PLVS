@@ -1,16 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import {
-  CircleHelp,
-  ExternalLink,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Terminal,
-  Trash2,
-  X,
-} from "lucide-react";
+import { CircleHelp, ExternalLink, Pencil, RotateCcw, Terminal, Trash2, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { AddButton } from "@/components/AddButton";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -472,18 +464,11 @@ export function SettingsPanel({
                   ) : null}
                   {appearance === "fixed" ? (
                     <div className="px-1.5 py-0.5">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
+                      <AddButton
+                        label="Add Theme"
                         disabled={themeControlsDisabled}
                         onClick={createCustomTheme}
-                        aria-label="New theme"
-                        className="h-7 w-full px-2 text-[length:var(--ui-fs-display)]"
-                      >
-                        <Plus className="size-[1.15em]" />
-                        New Theme
-                      </Button>
+                      />
                     </div>
                   ) : null}
                 </SettingsSection>

@@ -323,7 +323,7 @@ describe("App smoke", () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Loudness Profile" }));
-    fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Loudness Profile" }));
 
     // The draft outranks the selection, so the footer stops naming Test profile and follows the
     // document being edited — blank, which normalizes to Untitled.

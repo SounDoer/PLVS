@@ -6,7 +6,7 @@ import {
   MANAGEMENT_ROW_CLASS,
   ManagementIconAction,
 } from "../../components/ManagementRow.jsx";
-import { Button } from "../../components/ui/button.jsx";
+import { AddButton } from "../../components/AddButton.jsx";
 import { cn } from "../../lib/utils.js";
 import { MODULE_REGISTRY } from "../../workspace/registry.jsx";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
@@ -300,17 +300,11 @@ export function DockModulesEditor({
               })}
             </div>
           ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
+          <AddButton
+            label="Add Module"
             aria-expanded={adding}
             onClick={() => setAdding((current) => !current)}
-            className="h-7 w-full px-2 text-xs"
-          >
-            <Plus className="size-3.5" />
-            Add Module
-          </Button>
+          />
         </div>
       </div>
     </DockEditorShell>

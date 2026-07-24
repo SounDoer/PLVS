@@ -178,7 +178,7 @@ describe("LoudnessProfileEditor", () => {
 
   it("adds a blank rule on Integrated", () => {
     const props = renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Rule" }));
     const next = appliedDocument(props);
     expect(next.rules).toHaveLength(4);
     expect(next.rules[3]).toEqual({

@@ -1,4 +1,4 @@
-import { Check, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import {
@@ -6,7 +6,7 @@ import {
   MANAGEMENT_ROW_CLASS,
   ManagementIconAction,
 } from "@/components/ManagementRow.jsx";
-import { Button } from "@/components/ui/button";
+import { AddButton } from "@/components/AddButton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { MODULE_REGISTRY } from "./registry.jsx";
@@ -102,14 +102,7 @@ function AddPanelControl() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="h-7 min-w-0 flex-1 px-2 text-[length:var(--ui-fs-control)]"
-        >
-          <Plus className="size-[1.15em]" />
-          Add Panel
-        </Button>
+        <AddButton label="Add Panel" className="min-w-0" />
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-max min-w-44 max-w-[92vw] p-1">
         {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => (

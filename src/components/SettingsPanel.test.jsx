@@ -195,7 +195,7 @@ describe("SettingsPanel", () => {
     expect(themePicker).toBeTruthy();
     expect(screen.getByRole("button", { name: "Edit theme" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete theme" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "New theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
   });
 
   it("hides edit/delete for built-in themes", () => {
@@ -210,7 +210,7 @@ describe("SettingsPanel", () => {
 
     expect(screen.queryByRole("button", { name: "Edit theme" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete theme" })).toBeNull();
-    expect(screen.getByRole("button", { name: "New theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
   });
 
   it("locks theme controls while the theme editor is open", () => {
@@ -230,7 +230,7 @@ describe("SettingsPanel", () => {
     ).toBeTruthy();
     expect(screen.getByLabelText("Appearance").disabled).toBe(true);
     expect(screen.getByLabelText("Theme").disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "New theme" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Add Theme" }).disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Edit theme" }).disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Delete theme" }).disabled).toBe(true);
   });

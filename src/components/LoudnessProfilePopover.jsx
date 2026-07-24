@@ -1,5 +1,6 @@
-import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { SlidersHorizontal, Trash2 } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { AddButton } from "@/components/AddButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
@@ -116,17 +117,13 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
         );
       })}
 
-      <div className={ROW_CLASS}>
-        <button
-          type="button"
-          aria-label="New Loudness Profile"
+      <div className="px-1.5 py-1">
+        <AddButton
+          label="Add Profile"
+          aria-label="Add Loudness Profile"
           onClick={profile.beginCreate}
           disabled={blocked}
-          className={cn(ROW_BUTTON_CLASS, blockedClass)}
-        >
-          <Plus className="size-[length:var(--ui-icon-management-action)] text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate">New profile</span>
-        </button>
+        />
       </div>
 
       {blocked ? (

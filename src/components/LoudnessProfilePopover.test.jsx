@@ -47,18 +47,18 @@ function renderPopover({ overrides, stats, showTitle = true } = {}) {
 }
 
 describe("LoudnessProfilePopoverContent listing", () => {
-  it("lists Off, profiles in controller order, and New profile", () => {
+  it("lists Off, profiles in controller order, and Add Profile", () => {
     renderPopover();
 
     const labels = screen
       .getAllByRole("button")
       .map((button) => button.getAttribute("aria-label"))
-      .filter((label) => label?.startsWith("Use ") || label === "New Loudness Profile");
+      .filter((label) => label?.startsWith("Use ") || label === "Add Loudness Profile");
     expect(labels).toEqual([
       "Use no Loudness Profile",
       `Use ${STARTER.name}`,
       `Use ${SAVED.name}`,
-      "New Loudness Profile",
+      "Add Loudness Profile",
     ]);
   });
 
@@ -97,7 +97,7 @@ describe("LoudnessProfilePopoverContent listing", () => {
     const { profile } = renderPopover();
 
     fireEvent.click(screen.getByLabelText("Use no Loudness Profile"));
-    fireEvent.click(screen.getByLabelText("New Loudness Profile"));
+    fireEvent.click(screen.getByLabelText("Add Loudness Profile"));
 
     expect(profile.selectOff).toHaveBeenCalledTimes(1);
     expect(profile.beginCreate).toHaveBeenCalledTimes(1);
@@ -210,7 +210,7 @@ describe("a dirty draft blocks the library", () => {
     screen.getByLabelText(`Use ${SAVED.name}`),
     screen.getByLabelText(`Edit ${SAVED.name} rules`),
     screen.getByLabelText(`Delete ${SAVED.name}`),
-    screen.getByLabelText("New Loudness Profile"),
+    screen.getByLabelText("Add Loudness Profile"),
   ];
 
   it("disables the rows that would discard it", () => {

@@ -349,8 +349,8 @@ describe("Loudness Profile editor wiring", () => {
 
   it("repaints what Stats reads as the panel is edited", () => {
     const hook = renderWired();
-    fireEvent.click(screen.getByRole("button", { name: "New Loudness Profile" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Loudness Profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Rule" }));
 
     const input = screen.getByLabelText("Rule 1 value");
     fireEvent.change(input, { target: { value: "-16" } });

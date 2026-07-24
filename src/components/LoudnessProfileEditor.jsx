@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Pencil, Plus, X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AddButton } from "@/components/AddButton";
 import { useHoverTip } from "@/components/HoverTip";
 import {
   Select,
@@ -404,17 +405,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           </div>
 
           <div className="border-t border-border/40 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label="Add rule"
-              onClick={addRule}
-              className="h-7 gap-1 px-2 text-[length:var(--ui-fs-control)]"
-            >
-              <Plus className="size-[length:var(--ui-icon-management-action)]" />
-              Add rule
-            </Button>
+            <AddButton label="Add Rule" onClick={addRule} />
           </div>
         </div>
 
