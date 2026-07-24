@@ -7,6 +7,7 @@ import {
   ManagementIconAction,
 } from "../../components/ManagementRow.jsx";
 import { AddButton } from "../../components/AddButton.jsx";
+import { TruncatingLabel } from "../../components/TruncatingLabel.jsx";
 import { cn } from "../../lib/utils.js";
 import { MODULE_REGISTRY } from "../../workspace/registry.jsx";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
@@ -124,7 +125,7 @@ function DockModuleRow({
           <def.Icon />
         </span>
       ) : null}
-      <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
+      <TruncatingLabel text={title} className="min-w-0 flex-1 text-left text-foreground" />
       <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
         {dockEntry?.settingsFamily &&
         (panel.moduleId !== "vectorscope" || vectorscopeSettingsAvailable) ? (
@@ -257,7 +258,14 @@ export function DockModulesEditor({
     <DockEditorShell title="Modules">
       <div className="flex min-h-full flex-col p-1">
         {orderedPanels.length ? (
-          <div ref={listRef} data-testid="dock-module-order-list" className="grid gap-px">
+          <div
+            ref={listRef}
+            data-testid="dock-module-order-list"
+            // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the panel width; a bare grid
+            // sizes its implicit auto column to the longest name and overflows the max-w cap, so the
+            // row `truncate` never kicks in and a long module name bursts the panel.
+            className="grid grid-cols-1 gap-px"
+          >
             {orderedPanels.map((panel) => (
               <DockModuleRow
                 key={panel.id}
@@ -281,7 +289,7 @@ export function DockModulesEditor({
 
         <div className="mt-1 border-t border-border/30 pt-1">
           {adding ? (
-            <div className="grid gap-px pb-1">
+            <div className="grid grid-cols-1 gap-px pb-1">
               {DOCK_PANEL_MODULE_IDS.map((id) => {
                 const entry = MODULE_REGISTRY[id] ?? DOCK_ONLY_PANEL_META[id];
                 return (
