@@ -55,7 +55,7 @@ ten-vad-rs = "0.1.7"
 window-vibrancy = "0.6"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winreg = "0.55"
+winreg = "0.56"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Gdi",
