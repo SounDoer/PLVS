@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-07-24
+
+### Changed
+- Unified all editor rename forms behind one shared component.
+- Unified add/new entry points behind a single AddButton.
+- Rule metric order in the profile editor now derives from the Stats panel.
+
+### Fixed
+- Long names no longer truncate incorrectly in capped popovers.
+- Rename inputs no longer widen w-max list panels.
+- Profile editor rule columns align on a shared grid; Reference is folded into the grid to reclaim metric width.
+- Clipped metrics now show a tooltip.
+- Number fields are sized in ch and settle at metric precision.
+
 ## [0.11.0] - 2026-07-23
 
 ### Added
