@@ -15,7 +15,7 @@ import {
   createEmptyRule,
   withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
-import { STATS_META } from "@/lib/statsCatalog.js";
+import { STATS_META, roundToStatPrecision, statDecimals } from "@/lib/statsCatalog.js";
 
 /// A new rule opens on Integrated: the metric every delivery reference judges. The user re-picks it
 /// from the row's own metric select.
@@ -27,8 +27,12 @@ const TRIGGER_CLASS =
 const CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
+// Sized in `ch`, not rem: the field's font-size is `--ui-fs-control`, which grows with the
+// Interface Size preference, so a fixed rem width clips its own value at the larger settings and
+// only there. 7ch clears the widest thing `fmtMetric` can produce (`-100.0`). The spinner goes
+// because stepping a delivery threshold by 1 is never what anyone wants, and it overlaps the text.
 const NUM_INPUT_CLASS =
-  "h-6 w-14 rounded-md border border-transparent bg-transparent px-1 py-0 text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /**
  * One numeric field, committed on blur or Enter.
@@ -37,9 +41,15 @@ const NUM_INPUT_CLASS =
  * through `-1` on the way. Both would write a rule the user never asked for. Blank is a real
  * value here -- it means "not judged" -- so an empty commit clears the field rather than snapping
  * back.
+ *
+ * Commits are rounded to what the Stats panel shows for `metricId`, so a threshold is never finer
+ * than the reading it judges, and the settled field is padded to that same number of decimals.
+ * Half-typed input is left alone -- the padding only lands once the user is done, or the trailing
+ * dot in `14.` would be filled in from under the cursor.
  */
-function RuleNumber({ ariaLabel, value, onCommit }) {
-  const [text, setText] = useState(value == null ? "" : String(value));
+function RuleNumber({ ariaLabel, metricId, value, onCommit }) {
+  const settled = (v) => (v == null ? "" : v.toFixed(statDecimals(metricId)));
+  const [text, setText] = useState(() => settled(value));
   const inputRef = useRef(null);
 
   // Only adopt an incoming value when the user is not mid-edit. Without this, a re-render from
@@ -47,8 +57,8 @@ function RuleNumber({ ariaLabel, value, onCommit }) {
   // is half-typed in a focused field, and the keystrokes vanish with nothing to show for them.
   useEffect(() => {
     if (inputRef.current && globalThis.document?.activeElement === inputRef.current) return;
-    setText(value == null ? "" : String(value));
-  }, [value]);
+    setText(value == null ? "" : value.toFixed(statDecimals(metricId)));
+  }, [value, metricId]);
 
   const commit = () => {
     const trimmed = text.trim();
@@ -57,8 +67,14 @@ function RuleNumber({ ariaLabel, value, onCommit }) {
       return;
     }
     const parsed = Number(trimmed);
-    if (Number.isFinite(parsed)) onCommit(parsed);
-    else setText(value == null ? "" : String(value));
+    if (Number.isFinite(parsed)) {
+      const rounded = roundToStatPrecision(metricId, parsed);
+      // Rounding and padding both leave the box disagreeing with what was committed, and the
+      // effect above will not correct it when the committed number is unchanged. Re-render the
+      // field itself.
+      setText(settled(rounded));
+      onCommit(rounded);
+    } else setText(settled(value));
   };
 
   return (
@@ -113,11 +129,13 @@ function RuleRow({ index, rule, onPatch, onRemove }) {
 
       <RuleNumber
         ariaLabel={`Rule ${position} value`}
+        metricId={rule.metricId}
         value={rule.value ?? null}
         onCommit={(next) => onPatch({ value: next ?? undefined })}
       />
 
-      <span className="w-8 shrink-0 text-right text-muted-foreground/60">{meta?.unit}</span>
+      {/* `ch`, not rem, for the same reason as the field beside it. `dBTP` is the widest unit. */}
+      <span className="w-[4.5ch] shrink-0 text-right text-muted-foreground/60">{meta?.unit}</span>
 
       <Select
         value={rule.severity ?? "warn"}
@@ -199,10 +217,21 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
     setRenaming(false);
   }
 
+  /// Repointing a rule at another metric clears its threshold. A number typed for one metric is
+  /// not a number for the next -- `-23.5` LUFS carried onto Dialogue Coverage is a nonsense
+  /// percentage the row would nonetheless present as a setting the user chose. Blank is a real
+  /// state here (the rule judges nothing), so the row is honest about needing a new value rather
+  /// than quietly keeping the old one at the wrong precision.
   function patchRule(index, patch) {
     onEdit((d) => ({
       ...d,
-      rules: (d.rules ?? []).map((rule, i) => (i === index ? { ...rule, ...patch } : rule)),
+      rules: (d.rules ?? []).map((rule, i) => {
+        if (i !== index) return rule;
+        const next = { ...rule, ...patch };
+        if (patch.metricId !== undefined && patch.metricId !== rule.metricId)
+          next.value = undefined;
+        return next;
+      }),
     }));
   }
 
@@ -309,6 +338,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
             <span className="shrink-0 text-muted-foreground">Reference</span>
             <RuleNumber
               ariaLabel="Loudness Profile reference"
+              metricId="integrated"
               value={ruleDocument.referenceLufs ?? null}
               onCommit={(next) => onEdit((d) => withReferenceLufs(d, next))}
             />

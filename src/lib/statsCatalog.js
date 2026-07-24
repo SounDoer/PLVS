@@ -113,6 +113,24 @@ export const STATS_CANONICAL_ORDER = [
   "sideToMid",
 ];
 
+/// Decimals the readout shows. Anything not listed goes through `fmtMetric`, which is fixed at 1.
+/// Editors round to this so a typed threshold can never be finer than the number it is judged
+/// against -- a rule of `-23.04` against a panel reading `-23.0` fails with nothing on screen to
+/// explain it.
+const STAT_DECIMALS = { correlation: 2, dialogueCoverage: 0 };
+
+/// @returns {number} decimals for `metricId`, defaulting to the 1 that `fmtMetric` renders.
+export function statDecimals(metricId) {
+  return STAT_DECIMALS[metricId] ?? 1;
+}
+
+/// Round `value` to what the panel can show for `metricId`. Non-finite input passes through.
+export function roundToStatPrecision(metricId, value) {
+  if (!Number.isFinite(value)) return value;
+  const factor = 10 ** statDecimals(metricId);
+  return Math.round(value * factor) / factor;
+}
+
 export const STATS_OPTIONS = STATS_CANONICAL_ORDER.map((id) => ({
   id,
   label: STATS_META[id].label,

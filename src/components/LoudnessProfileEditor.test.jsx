@@ -60,7 +60,8 @@ describe("LoudnessProfileEditor", () => {
     expect(screen.getByLabelText("Rule 1 value").value).toBe("-22.5");
     expect(screen.getByRole("combobox", { name: "Rule 2 operator" }).textContent).toBe("<");
     expect(screen.getByLabelText("Rule 2 value").value).toBe("-23.5");
-    expect(screen.getByLabelText("Rule 3 value").value).toBe("-1");
+    // Padded to the metric's decimals: the rule holds -1, the field reads -1.0.
+    expect(screen.getByLabelText("Rule 3 value").value).toBe("-1.0");
   });
 
   it("commits a value on blur, not per keystroke", () => {
@@ -92,6 +93,31 @@ describe("LoudnessProfileEditor", () => {
     expect(appliedDocument(props).rules[0].value).toBeUndefined();
   });
 
+  it("rounds a value to the precision its metric is displayed at", () => {
+    const props = renderEditor();
+    const input = screen.getByLabelText("Rule 1 value");
+    fireEvent.change(input, { target: { value: "-23.456789" } });
+    fireEvent.blur(input);
+    expect(appliedDocument(props).rules[0].value).toBe(-23.5);
+    expect(input.value).toBe("-23.5");
+  });
+
+  it("keeps two decimals on Correlation, which reads at two", () => {
+    const props = renderEditor({
+      draft: {
+        editingId: "profile-id",
+        document: threeRuleDocument({
+          rules: [{ metricId: "correlation", op: "<", value: 0.5, severity: "warn" }],
+        }),
+        dirty: false,
+      },
+    });
+    const input = screen.getByLabelText("Rule 1 value");
+    fireEvent.change(input, { target: { value: "0.318" } });
+    fireEvent.blur(input);
+    expect(appliedDocument(props).rules[0].value).toBe(0.32);
+  });
+
   it("sets the reference without touching the rules", () => {
     const props = renderEditor();
     const input = screen.getByLabelText("Loudness Profile reference");
@@ -109,6 +135,36 @@ describe("LoudnessProfileEditor", () => {
     });
     fireEvent.click(screen.getByRole("option", { name: "Correlation" }));
     expect(appliedDocument(props).rules[2].metricId).toBe("correlation");
+  });
+
+  it("clears the threshold when a rule is repointed at another metric", () => {
+    const props = renderEditor();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Rule 3 metric" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Correlation" }));
+    expect(appliedDocument(props).rules[2].value).toBeUndefined();
+    expect(appliedDocument(props).rules[0].value).toBe(-22.5);
+  });
+
+  // Re-picking the metric a rule already has does not reach `onEdit` at all -- Radix suppresses
+  // the change -- so the threshold survives by never being touched.
+  it("does not edit at all when a rule is re-picked on the metric it already has", () => {
+    const props = renderEditor();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Rule 1 metric" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Integrated" }));
+    expect(props.onEdit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the threshold when only the operator changes", () => {
+    const props = renderEditor();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Rule 3 operator" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "<" }));
+    expect(appliedDocument(props).rules[2].value).toBe(-1);
   });
 
   it("changes a rule's operator", () => {
@@ -328,6 +384,54 @@ describe("LoudnessProfileEditor", () => {
     moved.rules[0].value = -18;
     rerender(<LoudnessProfileEditor {...props} draft={{ ...draft, document: moved }} />);
 
-    expect(screen.getByLabelText("Rule 1 value").value).toBe("-18");
+    expect(screen.getByLabelText("Rule 1 value").value).toBe("-18.0");
+  });
+
+  it("pads a settled value out to the metric's decimals", () => {
+    const props = renderEditor();
+    const input = screen.getByLabelText("Rule 1 value");
+    fireEvent.change(input, { target: { value: "14" } });
+    fireEvent.blur(input);
+    expect(appliedDocument(props).rules[0].value).toBe(14);
+    expect(input.value).toBe("14.0");
+  });
+
+  it("pads Correlation out to two decimals", () => {
+    renderEditor({
+      draft: {
+        editingId: "profile-id",
+        document: threeRuleDocument({
+          rules: [{ metricId: "correlation", op: "<", value: 0.5, severity: "warn" }],
+        }),
+        dirty: false,
+      },
+    });
+    expect(screen.getByLabelText("Rule 1 value").value).toBe("0.50");
+  });
+
+  it("leaves Dialogue Coverage whole, which reads at no decimals", () => {
+    const props = renderEditor({
+      draft: {
+        editingId: "profile-id",
+        document: threeRuleDocument({
+          rules: [{ metricId: "dialogueCoverage", op: "<", value: 60, severity: "warn" }],
+        }),
+        dirty: false,
+      },
+    });
+    const input = screen.getByLabelText("Rule 1 value");
+    expect(input.value).toBe("60");
+    fireEvent.change(input, { target: { value: "61.7" } });
+    fireEvent.blur(input);
+    expect(appliedDocument(props).rules[0].value).toBe(62);
+    expect(input.value).toBe("62");
+  });
+
+  it("keeps half-typed input untouched until it settles", () => {
+    renderEditor();
+    const input = screen.getByLabelText("Rule 1 value");
+    input.focus();
+    fireEvent.change(input, { target: { value: "-2" } });
+    expect(input.value).toBe("-2");
   });
 });

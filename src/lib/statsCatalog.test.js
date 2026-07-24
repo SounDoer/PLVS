@@ -5,6 +5,7 @@ import {
   STATS_OPTIONS,
   dialogueOffsetText,
   buildStatsMetrics,
+  roundToStatPrecision,
 } from "./statsCatalog.js";
 
 describe("statsCatalog", () => {
@@ -107,6 +108,13 @@ describe("statsCatalog", () => {
     // PSR = tpMax - shortTerm = -1 - (-18) = 17.0
     expect(byId.psr.value).toBe("17.0");
     expect(byId.dialogueCoverage.value).toBe("62");
+  });
+
+  it("rounds to the decimals each metric is displayed at", () => {
+    expect(roundToStatPrecision("integrated", -23.456789)).toBe(-23.5);
+    expect(roundToStatPrecision("correlation", 0.318)).toBe(0.32);
+    expect(roundToStatPrecision("dialogueCoverage", 61.7)).toBe(62);
+    expect(roundToStatPrecision("integrated", undefined)).toBeUndefined();
   });
 
   it("shows a dash for Correlation when the value is not finite", () => {
