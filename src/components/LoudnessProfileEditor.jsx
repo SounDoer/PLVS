@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useHoverTip } from "@/components/HoverTip";
 import {
   Select,
   SelectContent,
@@ -22,8 +23,10 @@ import { STATS_META, roundToStatPrecision, statDecimals } from "@/lib/statsCatal
 const DEFAULT_RULE_METRIC = "integrated";
 
 // Matches the compact, borderless-until-hover selects the other panels use (see FocusViewPopover).
+// No width here on purpose: the base trigger is `w-full`, so each select fills its grid column and
+// its chevron lands on the column's right edge, lining up down the list (see RuleRow).
 const TRIGGER_CLASS =
-  "h-6 w-auto rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-6 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
 const CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
@@ -32,7 +35,7 @@ const CONTENT_CLASS =
 // only there. 7ch clears the widest thing `fmtMetric` can produce (`-100.0`). The spinner goes
 // because stepping a delivery threshold by 1 is never what anyone wants, and it overlaps the text.
 const NUM_INPUT_CLASS =
-  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-center font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /**
  * One numeric field, committed on blur or Enter.
@@ -93,18 +96,32 @@ function RuleNumber({ ariaLabel, metricId, value, onCommit }) {
   );
 }
 
-/// One rule: `metric  op  value  severity`. Reads as the breach sentence it is -- "True Peak above
-/// −1 → Fail" -- so which side breaches is never in doubt.
-function RuleRow({ index, rule, onPatch, onRemove }) {
+/// The metric select, with a themed tip that appears only when the label is too long for this
+/// narrow column. Mouse-only, never focus: a focus tip would latch open when Radix returns focus to
+/// the trigger after a pick. The tip shows the full name the clamp is hiding.
+function MetricSelect({ position, rule, onPatch }) {
   const meta = STATS_META[rule.metricId];
-  const position = index + 1;
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+    tip: meta?.label ?? rule.metricId,
+    side: "top",
+    align: "start",
+  });
+
+  // Only reveal when the clamped value span actually overflows -- a label that fits needs no tip.
+  const showIfClipped = () => {
+    const span = anchorRef.current?.querySelector(":scope > span");
+    if (span && span.scrollWidth > span.clientWidth + 1) showTip();
+  };
 
   return (
-    <div className="flex items-center gap-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
+    <>
       <Select value={rule.metricId} onValueChange={(value) => onPatch({ metricId: value })}>
         <SelectTrigger
+          ref={anchorRef}
           aria-label={`Rule ${position} metric`}
-          className={`${TRIGGER_CLASS} min-w-0 flex-1`}
+          onMouseEnter={showIfClipped}
+          onMouseLeave={hideTip}
+          className={`${TRIGGER_CLASS} w-full min-w-0`}
         >
           <SelectValue />
         </SelectTrigger>
@@ -116,6 +133,21 @@ function RuleRow({ index, rule, onPatch, onRemove }) {
           ))}
         </SelectContent>
       </Select>
+      {tipNode}
+    </>
+  );
+}
+
+/// One rule: `metric  op  value  severity`. Reads as the breach sentence it is -- "True Peak above
+/// −1 → Fail" -- so which side breaches is never in doubt. The row is `display:contents`: its six
+/// cells drop into the shared grid in RuleList so every column lines up across rows.
+function RuleRow({ index, rule, onPatch, onRemove }) {
+  const meta = STATS_META[rule.metricId];
+  const position = index + 1;
+
+  return (
+    <div className="contents">
+      <MetricSelect position={position} rule={rule} onPatch={onPatch} />
 
       <Select value={rule.op} onValueChange={(value) => onPatch({ op: value })}>
         <SelectTrigger aria-label={`Rule ${position} operator`} className={TRIGGER_CLASS}>
@@ -134,8 +166,7 @@ function RuleRow({ index, rule, onPatch, onRemove }) {
         onCommit={(next) => onPatch({ value: next ?? undefined })}
       />
 
-      {/* `ch`, not rem, for the same reason as the field beside it. `dBTP` is the widest unit. */}
-      <span className="w-[4.5ch] shrink-0 text-right text-muted-foreground/60">{meta?.unit}</span>
+      <span className="text-muted-foreground/60">{meta?.unit}</span>
 
       <Select
         value={rule.severity ?? "warn"}
@@ -347,15 +378,20 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
 
           <div className="border-t border-border/40 pt-1">
             {rules.length > 0 ? (
-              rules.map((rule, index) => (
-                <RuleRow
-                  key={index}
-                  index={index}
-                  rule={rule}
-                  onPatch={(patch) => patchRule(index, patch)}
-                  onRemove={() => removeRule(index)}
-                />
-              ))
+              // One grid for the whole list, not per row: the shared `auto` columns size to the
+              // widest op / value / unit / severity across every rule, so the columns line up down
+              // the list. Metric takes the slack (`minmax(0,1fr)`); each RuleRow is display:contents.
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1.5 gap-y-0.5 text-[length:var(--ui-fs-control)]">
+                {rules.map((rule, index) => (
+                  <RuleRow
+                    key={index}
+                    index={index}
+                    rule={rule}
+                    onPatch={(patch) => patchRule(index, patch)}
+                    onRemove={() => removeRule(index)}
+                  />
+                ))}
+              </div>
             ) : (
               <p className="px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
                 No rules — this profile does not judge any metrics.
