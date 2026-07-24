@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-07-24
+
+### Fixed
+- Dock Modules and Presets menus now use the same adaptive, capped width as the header popovers, so long custom module names no longer burst the panel; overflowing names truncate with a clipped-only hover tip.
+
 ## [0.11.1] - 2026-07-24
 
 ### Changed
