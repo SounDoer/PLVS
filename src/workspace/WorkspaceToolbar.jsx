@@ -42,6 +42,9 @@ function PanelRow({ panelId }) {
             if (event.key === "Enter") commitRename();
             if (event.key === "Escape") setEditing(false);
           }}
+          // `size={1}`, not the default 20: the popover is `w-max`, so an input's intrinsic width
+          // would jerk it out to the max cap. This lets `flex-1` fill the width the rows already set.
+          size={1}
           className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           autoFocus
         />

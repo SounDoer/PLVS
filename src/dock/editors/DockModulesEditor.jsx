@@ -81,6 +81,9 @@ function DockModuleRow({
             if (event.key === "Enter") commitRename();
             if (event.key === "Escape") setEditing(false);
           }}
+          // `size={1}`, not the default 20: keeps the input's intrinsic width from widening the
+          // shrink-to-fit editor; `flex-1` fills the width the module rows already set.
+          size={1}
           className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           autoFocus
         />

@@ -105,6 +105,10 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                         if (e.key === "Enter") commitRename(preset.id);
                         if (e.key === "Escape") cancelRename();
                       }}
+                      // `size={1}`, not the default 20: the popover is `w-max`, so an input's
+                      // intrinsic width would jerk it out to the max cap. `flex-1` fills the width
+                      // the preset rows already set.
+                      size={1}
                       className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                     <button
