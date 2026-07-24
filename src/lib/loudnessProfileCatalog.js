@@ -16,7 +16,7 @@
 /// metrics read `inconclusive` until enough dialogue is present. "Only warn, never fail" (realtime
 /// Integrated) is just a rule authored with `severity: "warn"`.
 
-import { STATS_META } from "./statsCatalog.js";
+import { STATS_CANONICAL_ORDER, STATS_META } from "./statsCatalog.js";
 
 export const LOUDNESS_PROFILE_OFF = "off";
 
@@ -32,25 +32,17 @@ export const DIALOGUE_GATED_METRIC_IDS = new Set(["dialogueIntegrated"]);
 /// Metrics that only mean anything once the engine reports them settled.
 export const READINESS_GATED_METRIC_IDS = new Set(["integrated"]);
 
-/// The Stats metrics a rule may address. Deliberately no default numbers: inventing a threshold for
-/// Side/Mid or PSR would be the fabricated-standard behaviour this feature exists to avoid.
-export const RULEABLE_METRIC_IDS = [
-  "momentary",
-  "shortTerm",
-  "integrated",
-  "dialogueIntegrated",
-  "momentaryMax",
-  "shortTermMax",
-  "truePeak",
-  "dialogueCoverage",
-  "correlation",
-  "psr",
-  "plr",
-  "lra",
-  "dialogueRange",
-  "dialogueOffset",
-  "sideToMid",
-];
+/// Metrics a rule may never address. Empty today -- every Stats row is ruleable -- but the seam is
+/// where a future metric that has no sensible threshold gets excluded.
+const NON_RULEABLE_METRIC_IDS = new Set();
+
+/// The Stats metrics a rule may address, in the Stats panel's own default order so the dropdown
+/// reads the way the panel does; a new metric inherits its place from `STATS_CANONICAL_ORDER`
+/// rather than being slotted here by hand. Deliberately no default numbers: inventing a threshold
+/// for Side/Mid or PSR would be the fabricated-standard behaviour this feature exists to avoid.
+export const RULEABLE_METRIC_IDS = STATS_CANONICAL_ORDER.filter(
+  (id) => !NON_RULEABLE_METRIC_IDS.has(id)
+);
 
 const RULEABLE_METRIC_SET = new Set(RULEABLE_METRIC_IDS);
 

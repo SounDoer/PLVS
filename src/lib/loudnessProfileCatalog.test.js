@@ -14,7 +14,7 @@ import {
   watchedMetricIds,
   withReferenceLufs,
 } from "./loudnessProfileCatalog.js";
-import { STATS_META } from "./statsCatalog.js";
+import { STATS_CANONICAL_ORDER, STATS_META } from "./statsCatalog.js";
 
 describe("createStarterProfile", () => {
   it("creates the starter profile with an injected id", () => {
@@ -34,6 +34,14 @@ describe("createStarterProfile", () => {
 describe("RULEABLE_METRIC_IDS", () => {
   it("addresses only metrics Stats can show", () => {
     for (const id of RULEABLE_METRIC_IDS) expect(STATS_META[id]).toBeTruthy();
+  });
+
+  // The dropdown reads in the Stats panel's default order, and a new metric inherits its place from
+  // STATS_CANONICAL_ORDER. Nothing is excluded today, so the two are identical; if a metric ever
+  // becomes non-ruleable this locks the survivors to still be in canonical order.
+  it("keeps the Stats panel's default order", () => {
+    const expected = STATS_CANONICAL_ORDER.filter((id) => RULEABLE_METRIC_IDS.includes(id));
+    expect(RULEABLE_METRIC_IDS).toEqual(expected);
   });
 });
 
