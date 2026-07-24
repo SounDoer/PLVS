@@ -195,7 +195,7 @@ describe("AppHeader", () => {
       const content = document.querySelector('[data-slot="popover-content"]');
       expect(content.className).toContain("w-max");
       expect(content.className).toContain("min-w-40");
-      expect(content.className).toContain("max-w-[min(24rem,92vw)]");
+      expect(content.className).toContain("max-w-[min(18rem,92vw)]");
 
       cleanup();
     }

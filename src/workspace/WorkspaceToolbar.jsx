@@ -7,6 +7,7 @@ import {
   ManagementIconAction,
 } from "@/components/ManagementRow.jsx";
 import { AddButton } from "@/components/AddButton";
+import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { MODULE_REGISTRY } from "./registry.jsx";
@@ -42,20 +43,23 @@ function PanelRow({ panelId }) {
             if (event.key === "Enter") commitRename();
             if (event.key === "Escape") setEditing(false);
           }}
-          // `size={1}`, not the default 20: the popover is `w-max`, so an input's intrinsic width
-          // would jerk it out to the max cap. This lets `flex-1` fill the width the rows already set.
+          // `size={1}` + `flex-1`: fill the row without the input's text inflating the `w-max`
+          // popover; `min-w-0` scrolls a long value inside the field instead of pushing the
+          // shrink-0 confirm/cancel buttons off-panel.
           size={1}
-          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           autoFocus
         />
         <ManagementIconAction
           label={`Save ${title} name`}
           icon={<Check className="size-[length:var(--ui-icon-management-action)]" />}
+          className="shrink-0"
           onClick={commitRename}
         />
         <ManagementIconAction
           label={`Cancel ${title} rename`}
           icon={<X className="size-[length:var(--ui-icon-management-action)]" />}
+          className="shrink-0"
           onClick={() => setEditing(false)}
         />
       </div>
@@ -73,7 +77,7 @@ function PanelRow({ panelId }) {
           <def.Icon className="size-[1.25em]" />
         </span>
       ) : null}
-      <span className="min-w-0 flex-1 truncate text-left text-foreground">{title}</span>
+      <TruncatingLabel text={title} className="min-w-0 flex-1 text-left text-foreground" />
       <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
         <ManagementIconAction
           label={`Rename ${title}`}
@@ -141,7 +145,10 @@ export function ModulesPopoverContent() {
 
   return (
     <>
-      <div className="grid w-full min-w-0 gap-0.5">
+      {/* `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
+          makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
+          so `truncate` on the rows never kicks in. */}
+      <div className="grid grid-cols-1 w-full min-w-0 gap-0.5">
         {panelIds.map((panelId) => (
           <PanelRow key={panelId} panelId={panelId} />
         ))}

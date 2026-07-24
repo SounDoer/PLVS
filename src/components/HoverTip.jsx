@@ -141,6 +141,23 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
 }
 
 /**
+ * `useHoverTip` that reveals only when text is actually clipped -- the tip is the escape hatch for a
+ * name too long for its column, so a name that fits needs none. Mouse-only, never focus: a focus tip
+ * would latch open when focus returns to the anchor (e.g. a Radix trigger after a pick).
+ *
+ * `showIfClipped(el)` measures `el` (default: the anchor) and shows the tip when its content
+ * overflows its box. Callers whose clipped text is a descendant (a Select's value span) pass that
+ * element instead of the anchor.
+ */
+export function useTruncationTip({ tip, side = "top", align = "start" }) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, side, align });
+  const showIfClipped = (el = anchorRef.current) => {
+    if (el && el.scrollWidth > el.clientWidth + 1) showTip();
+  };
+  return { anchorRef, showIfClipped, hideTip, tipNode };
+}
+
+/**
  * Wraps children with a hover-reveal text tip (custom CSS, themed via tokens).
  * The tip is portaled to the document body and fixed-positioned so it does not
  * affect scrollable ancestors or the children's accessible name.

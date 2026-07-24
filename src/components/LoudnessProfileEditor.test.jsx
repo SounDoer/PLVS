@@ -306,6 +306,32 @@ describe("LoudnessProfileEditor", () => {
     expect(props.onEdit).not.toHaveBeenCalled();
   });
 
+  it("commits a name edit from the confirm button", () => {
+    const props = renderEditor({
+      draft: { editingId: "x", document: threeRuleDocument({ name: "Mine" }), dirty: false },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Rename profile" }));
+    fireEvent.change(screen.getByLabelText("Loudness Profile name"), {
+      target: { value: "Renamed" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile name" }));
+    expect(appliedDocument(props).name).toBe("Renamed");
+    expect(screen.queryByLabelText("Loudness Profile name")).toBeNull();
+  });
+
+  it("discards a name edit from the cancel button", () => {
+    const props = renderEditor({
+      draft: { editingId: "x", document: threeRuleDocument({ name: "Mine" }), dirty: false },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Rename profile" }));
+    fireEvent.change(screen.getByLabelText("Loudness Profile name"), {
+      target: { value: "Changed" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel rename" }));
+    expect(props.onEdit).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Loudness Profile name")).toBeNull();
+  });
+
   it("saves the default Untitled draft without requiring a rename", () => {
     const props = renderEditor({
       draft: {

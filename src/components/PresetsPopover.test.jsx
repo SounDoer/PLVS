@@ -26,13 +26,15 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByRole("textbox", { name: "New preset name" })).toBeTruthy();
   });
 
-  it("sizes the new preset name input from its content", () => {
+  it("fills the row without its content driving the panel width", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
     const input = screen.getByRole("textbox", { name: "New preset name" });
-    expect(input.classList.contains("[field-sizing:content]")).toBe(true);
-    expect(input.getAttribute("size")).toBe("15");
-    expect(input.classList.contains("w-44")).toBe(false);
-    expect(input.classList.contains("flex-1")).toBe(false);
+    // `size={1}` + `flex-1` + `min-w-0`: fills the row and scrolls internally rather than letting a
+    // long value inflate the `w-max` popover or push the Save button off-panel.
+    expect(input.getAttribute("size")).toBe("1");
+    expect(input.classList.contains("flex-1")).toBe(true);
+    expect(input.classList.contains("min-w-0")).toBe(true);
+    expect(input.classList.contains("[field-sizing:content]")).toBe(false);
   });
 
   it("disables Save when the name input is empty", () => {

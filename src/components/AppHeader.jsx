@@ -20,7 +20,7 @@ import { SHELL_HEADER, SHELL_HEADER_ACTIONS, SHELL_HEADER_OVERLAY } from "@/lib/
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { cn } from "@/lib/utils";
 
-const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(24rem,92vw)] p-1";
+const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(18rem,92vw)] p-1";
 
 function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (

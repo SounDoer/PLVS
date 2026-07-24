@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Pencil, X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/AddButton";
-import { useHoverTip } from "@/components/HoverTip";
+import { useTruncationTip } from "@/components/HoverTip";
 import {
   Select,
   SelectContent,
@@ -37,6 +37,11 @@ const CONTENT_CLASS =
 // Interface Size preference, so a fixed rem width clips its own value at the larger settings and
 // only there. 7ch clears the widest thing `fmtMetric` can produce (`-100.0`). The spinner goes
 // because stepping a delivery threshold by 1 is never what anyone wants, and it overlaps the text.
+// The muted icon buttons in the editor header (rename pencil, and the confirm/cancel that replace it
+// while renaming). `onPointerDown` on each stops the drag handle from grabbing the click.
+const HEADER_ACTION_CLASS =
+  "shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
 const NUM_INPUT_CLASS =
   "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
@@ -104,17 +109,9 @@ function RuleNumber({ ariaLabel, metricId, value, onCommit }) {
 /// the trigger after a pick. The tip shows the full name the clamp is hiding.
 function MetricSelect({ position, rule, onPatch }) {
   const meta = STATS_META[rule.metricId];
-  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+  const { anchorRef, showIfClipped, hideTip, tipNode } = useTruncationTip({
     tip: meta?.label ?? rule.metricId,
-    side: "top",
-    align: "start",
   });
-
-  // Only reveal when the clamped value span actually overflows -- a label that fits needs no tip.
-  const showIfClipped = () => {
-    const span = anchorRef.current?.querySelector(":scope > span");
-    if (span && span.scrollWidth > span.clientWidth + 1) showTip();
-  };
 
   return (
     <>
@@ -122,7 +119,8 @@ function MetricSelect({ position, rule, onPatch }) {
         <SelectTrigger
           ref={anchorRef}
           aria-label={`Rule ${position} metric`}
-          onMouseEnter={showIfClipped}
+          // The clamped text is the SelectValue span inside the trigger, not the trigger itself.
+          onMouseEnter={() => showIfClipped(anchorRef.current?.querySelector(":scope > span"))}
           onMouseLeave={hideTip}
           className={`${TRIGGER_CLASS} w-full min-w-0`}
         >
@@ -251,6 +249,12 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
     setRenaming(false);
   }
 
+  /// The cancel button's explicit path, twin of Escape: close the field, keep the stored name.
+  function cancelName() {
+    setNameDraft(incomingNameRef.current);
+    setRenaming(false);
+  }
+
   /// Repointing a rule at another metric clears its threshold. A number typed for one metric is
   /// not a number for the next -- `-23.5` LUFS carried onto Dialogue Coverage is a nonsense
   /// percentage the row would nonetheless present as a setting the user chose. Blank is a real
@@ -326,24 +330,48 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           className="flex cursor-move items-center gap-1.5 border-b border-border px-3 py-2"
         >
           {renaming ? (
-            <input
-              ref={nameInputRef}
-              aria-label="Loudness Profile name"
-              value={nameDraft}
-              onChange={(event) => setNameDraft(event.target.value)}
-              // The header is a drag handle; stop the pointer so selecting text never drags the
-              // window.
-              onPointerDown={(event) => event.stopPropagation()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
-                if (event.key === "Escape") {
-                  skipNameCommit.current = true;
-                  event.currentTarget.blur();
-                }
-              }}
-              onBlur={commitName}
-              className="min-w-0 flex-1 bg-transparent text-[length:var(--ui-fs-panel-title)] font-semibold focus-visible:outline-none"
-            />
+            <>
+              <input
+                ref={nameInputRef}
+                aria-label="Loudness Profile name"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                // The header is a drag handle; stop the pointer so selecting text never drags the
+                // window.
+                onPointerDown={(event) => event.stopPropagation()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                  if (event.key === "Escape") {
+                    skipNameCommit.current = true;
+                    event.currentTarget.blur();
+                  }
+                }}
+                onBlur={commitName}
+                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
+                  explicitly rather than racing the input's blur. */}
+              <button
+                type="button"
+                aria-label="Save profile name"
+                onPointerDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={commitName}
+                className={HEADER_ACTION_CLASS}
+              >
+                <Check className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+              <button
+                type="button"
+                aria-label="Cancel rename"
+                onPointerDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={cancelName}
+                className={HEADER_ACTION_CLASS}
+              >
+                <X className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+            </>
           ) : (
             <>
               <span className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-panel-title)] font-semibold">
@@ -359,7 +387,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
                 title="Rename"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={startRename}
-                className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className={HEADER_ACTION_CLASS}
               >
                 <Pencil className="size-[length:var(--ui-icon-management-action)]" />
               </button>

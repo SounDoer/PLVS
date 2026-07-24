@@ -29,6 +29,33 @@ describe("ThemeEditor", () => {
     expect(dialog.textContent).not.toContain("light");
   });
 
+  it("shows the name statically and opens editing from the rename icon", () => {
+    render(<ThemeEditor {...BASE_PROPS} />);
+    expect(screen.queryByLabelText("Theme name")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Rename theme" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Theme name"));
+  });
+
+  it("commits a name edit from the confirm button", () => {
+    const onName = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} onName={onName} />);
+    fireEvent.click(screen.getByRole("button", { name: "Rename theme" }));
+    fireEvent.change(screen.getByLabelText("Theme name"), { target: { value: "Renamed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save theme name" }));
+    expect(onName).toHaveBeenCalledWith("Renamed");
+    expect(screen.queryByLabelText("Theme name")).toBeNull();
+  });
+
+  it("discards a name edit from the cancel button", () => {
+    const onName = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} onName={onName} />);
+    fireEvent.click(screen.getByRole("button", { name: "Rename theme" }));
+    fireEvent.change(screen.getByLabelText("Theme name"), { target: { value: "Changed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel rename" }));
+    expect(onName).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Theme name")).toBeNull();
+  });
+
   it("uses an app dialog when cancelling dirty edits", () => {
     const onCancel = vi.fn();
     const confirmSpy = vi.spyOn(window, "confirm");

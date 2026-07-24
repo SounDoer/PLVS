@@ -1,6 +1,7 @@
 import { SlidersHorizontal, Trash2 } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { AddButton } from "@/components/AddButton";
+import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
@@ -79,7 +80,7 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
               className={cn(ROW_BUTTON_CLASS, blockedClass)}
             >
               <ActiveDot active={active === selection} />
-              <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+              <TruncatingLabel text={entry.name} className="min-w-0 flex-1" />
             </button>
             <button
               type="button"

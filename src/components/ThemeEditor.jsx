@@ -1,9 +1,15 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
+
+// Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
+// matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
+const HEADER_ACTION_CLASS =
+  "shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 const SHELL_GROUPS = [
   {
@@ -56,6 +62,46 @@ export function ThemeEditor({
   onMove,
 }) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+
+  // The name edits like the Loudness Profile editor: static until the pencil opens an input, which
+  // commits on blur / Enter / the confirm button and reverts on Escape / the cancel button.
+  // `skipNameCommit` lets Escape blur without committing.
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState(draft.name ?? "");
+  const skipNameCommit = useRef(false);
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!renaming) setNameDraft(draft.name ?? "");
+  }, [draft.name, renaming]);
+
+  useEffect(() => {
+    if (renaming) {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    }
+  }, [renaming]);
+
+  function startRename() {
+    setNameDraft(draft.name ?? "");
+    setRenaming(true);
+  }
+
+  function commitName() {
+    if (skipNameCommit.current) {
+      skipNameCommit.current = false;
+      setRenaming(false);
+      return;
+    }
+    onName(nameDraft);
+    setRenaming(false);
+  }
+
+  /// The cancel button's explicit path, twin of Escape: close the field, keep the stored name.
+  function cancelName() {
+    setNameDraft(draft.name ?? "");
+    setRenaming(false);
+  }
 
   function handleCancel() {
     if (!dirty) {
@@ -111,14 +157,72 @@ export function ThemeEditor({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          className="flex cursor-move items-center justify-between border-b border-border px-3 py-2"
+          className="flex cursor-move items-center gap-1.5 border-b border-border px-3 py-2"
         >
-          <input
-            aria-label="Theme name"
-            value={draft.name}
-            onInput={(e) => onName(e.target.value)}
-            className="bg-transparent text-[length:var(--ui-fs-panel-title)] font-semibold"
-          />
+          {renaming ? (
+            <>
+              <input
+                ref={nameInputRef}
+                aria-label="Theme name"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                // The header is a drag handle; stop the pointer so selecting text never drags the
+                // window.
+                onPointerDown={(event) => event.stopPropagation()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                  if (event.key === "Escape") {
+                    skipNameCommit.current = true;
+                    event.currentTarget.blur();
+                  }
+                }}
+                onBlur={commitName}
+                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
+                  explicitly rather than racing the input's blur. */}
+              <button
+                type="button"
+                aria-label="Save theme name"
+                onPointerDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={commitName}
+                className={HEADER_ACTION_CLASS}
+              >
+                <Check className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+              <button
+                type="button"
+                aria-label="Cancel rename"
+                onPointerDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={cancelName}
+                className={HEADER_ACTION_CLASS}
+              >
+                <X className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-panel-title)] font-semibold">
+                {draft.name?.trim() ? (
+                  draft.name
+                ) : (
+                  <span className="text-muted-foreground">Untitled</span>
+                )}
+              </span>
+              <button
+                type="button"
+                aria-label="Rename theme"
+                title="Rename"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={startRename}
+                className={HEADER_ACTION_CLASS}
+              >
+                <Pencil className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto px-3 py-2">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -68,14 +69,17 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
             if (e.key === "Enter") handleSave();
           }}
           placeholder="New preset name"
-          size={15}
-          className="h-7 min-w-0 max-w-full shrink [field-sizing:content] rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          // `size={1}` + `flex-1`: fill the row without the input's own text inflating the `w-max`
+          // popover, and `min-w-0` lets a long value scroll inside the field instead of pushing the
+          // shrink-0 Save button off-panel. The panel adapts to the saved names, not to typing.
+          size={1}
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
         <Button
           type="button"
           variant="secondary"
           size="sm"
-          className="h-7 px-2 text-[length:var(--ui-fs-control)]"
+          className="h-7 shrink-0 px-2 text-[length:var(--ui-fs-control)]"
           onClick={handleSave}
           disabled={!name.trim()}
         >
@@ -87,7 +91,10 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
           No presets yet. Save the current view to start.
         </p>
       ) : (
-        <div className="grid gap-0.5 p-1">
+        // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
+        // makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
+        // so `truncate` on the rows never kicks in.
+        <div className="grid grid-cols-1 gap-0.5 p-1">
           {presets.list.map((preset) => {
             const isActive = preset.id === presets.activeId;
             const isDirty = isActive && presets.dirty === true;
@@ -105,18 +112,19 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                         if (e.key === "Enter") commitRename(preset.id);
                         if (e.key === "Escape") cancelRename();
                       }}
-                      // `size={1}`, not the default 20: the popover is `w-max`, so an input's
-                      // intrinsic width would jerk it out to the max cap. `flex-1` fills the width
-                      // the preset rows already set.
+                      // `size={1}` + `flex-1`: fill the row without the input's text inflating the
+                      // `w-max` popover; `min-w-0` scrolls a long value inside the field instead of
+                      // pushing the shrink-0 confirm/cancel buttons off-panel.
                       size={1}
-                      className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      autoFocus
+                      className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                     <button
                       type="button"
                       aria-label="Save rename"
                       onClick={() => commitRename(preset.id)}
                       disabled={!(drafts[preset.id] ?? "").trim()}
-                      className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40"
+                      className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40"
                     >
                       <Check className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -124,7 +132,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       type="button"
                       aria-label="Cancel rename"
                       onClick={cancelRename}
-                      className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <X className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -148,10 +156,10 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                           isActive ? "bg-primary" : "bg-muted-foreground/20"
                         )}
                       />
-                      <span className="min-w-0 flex-1 truncate text-foreground">
-                        {preset.name}
-                        {isDirty ? " *" : ""}
-                      </span>
+                      <TruncatingLabel
+                        text={`${preset.name}${isDirty ? " *" : ""}`}
+                        className="min-w-0 flex-1 text-foreground"
+                      />
                     </button>
                     <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <button
