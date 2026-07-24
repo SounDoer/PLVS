@@ -24,9 +24,11 @@ const DEFAULT_RULE_METRIC = "integrated";
 
 // Matches the compact, borderless-until-hover selects the other panels use (see FocusViewPopover).
 // No width here on purpose: the base trigger is `w-full`, so each select fills its grid column and
-// its chevron lands on the column's right edge, lining up down the list (see RuleRow).
+// its chevron lands on the column's right edge, lining up down the list (see RuleRow). `gap-1`
+// tightens the base `gap-2` between label and chevron (tailwind-merge keeps this one), buying the
+// metric column a few px of text so the widest labels (`Momentary Max`) clear the clamp.
 const TRIGGER_CLASS =
-  "h-6 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
 const CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
@@ -365,8 +367,15 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         </div>
 
         <div className="flex flex-col gap-2 overflow-y-auto px-3 py-1">
-          <div className="flex items-center gap-2 text-[length:var(--ui-fs-control)]">
-            <span className="shrink-0 text-muted-foreground">Reference</span>
+          {/* Reference and the rules share one grid so the value and unit columns line up across
+              both. Reference is the profile's anchor, not a rule, but it reads as the plain first
+              row: metric and value columns filled, op / severity / remove empty. Each RuleRow is
+              display:contents, dropping its cells into this grid. */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-0.5 text-[length:var(--ui-fs-control)]">
+            {/* `px-2` matches the metric trigger's text inset so Reference lines up with the metric
+                names below; no color class means it inherits the same foreground they use. */}
+            <span className="px-2">Reference</span>
+            <span />
             <RuleNumber
               ariaLabel="Loudness Profile reference"
               metricId="integrated"
@@ -374,26 +383,21 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
               onCommit={(next) => onEdit((d) => withReferenceLufs(d, next))}
             />
             <span className="text-muted-foreground/60">LUFS</span>
-          </div>
+            <span />
+            <span />
 
-          <div className="border-t border-border/40 pt-1">
             {rules.length > 0 ? (
-              // One grid for the whole list, not per row: the shared `auto` columns size to the
-              // widest op / value / unit / severity across every rule, so the columns line up down
-              // the list. Metric takes the slack (`minmax(0,1fr)`); each RuleRow is display:contents.
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1.5 gap-y-0.5 text-[length:var(--ui-fs-control)]">
-                {rules.map((rule, index) => (
-                  <RuleRow
-                    key={index}
-                    index={index}
-                    rule={rule}
-                    onPatch={(patch) => patchRule(index, patch)}
-                    onRemove={() => removeRule(index)}
-                  />
-                ))}
-              </div>
+              rules.map((rule, index) => (
+                <RuleRow
+                  key={index}
+                  index={index}
+                  rule={rule}
+                  onPatch={(patch) => patchRule(index, patch)}
+                  onRemove={() => removeRule(index)}
+                />
+              ))
             ) : (
-              <p className="px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
+              <p className="col-span-full px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
                 No rules — this profile does not judge any metrics.
               </p>
             )}
