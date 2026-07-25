@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-07-25
+
+### Added
+- Tray menu now includes a device switcher and preset selection.
+- The update dialog shows every version's notes across a multi-release upgrade.
+
+### Fixed
+- Tray menu no longer freezes while audio devices load, and now marks the active preset.
+- Update dialog heading fits multi-version notes.
+- Native right-click menu is suppressed in dock accessory windows.
+- Popover panels no longer pre-highlight their first option.
+
 ## [0.11.2] - 2026-07-24
 
 ### Fixed
