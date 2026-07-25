@@ -29,9 +29,9 @@ vi.mock("@tauri-apps/api/path", () => ({
 vi.mock("@tauri-apps/plugin-process", () => ({ exit: vi.fn() }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../lib/platform.js", () => ({ isMacOS: vi.fn(() => false) }));
-vi.mock("../lib/audioDeviceLabels.js", () => ({
-  formatAudioDeviceLabel: (label) => label,
-}));
+// Intentionally NOT mocked: formatAudioDeviceLabel returns an object
+// ({ primary, secondary, full }), and the real function must run so a test
+// catches any attempt to use that object as a menu item's text.
 
 import { closeTrayIcon, PLVS_TRAY_ID } from "../lib/trayIconLifecycle.js";
 import { useTray } from "./useTray.js";
@@ -176,6 +176,24 @@ describe("useTray", () => {
     expect(onSelectDevice).toHaveBeenCalledWith("out-1");
   });
 
+  it("renders device labels as strings via the real formatter", async () => {
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        safeAudioDeviceId: "out-1",
+        audioOutputs: [
+          { id: "out-1", label: "Speakers (Realtek) — 2ch 48000Hz", isSystemOutputMonitor: true },
+        ],
+      })
+    );
+    await act(async () => {});
+    // Compact single-line form: primary + (secondary), dropping the format tail.
+    expect(findText(submenuOptions(), "Device: Speakers (Realtek)")).toBeTruthy();
+    const speakers = findText(checkItemOptions(), "Speakers (Realtek)");
+    expect(speakers).toBeTruthy();
+    expect(typeof speakers.text).toBe("string");
+  });
+
   it("labels the Device parent Automatic and checks it when default is selected", async () => {
     renderHook(() =>
       useTray({ ...defaultProps, safeAudioDeviceId: "default", defaultOutputLabel: "" })
@@ -225,6 +243,31 @@ describe("useTray", () => {
     expect(findText(menuItemOptions(), "No presets")).toMatchObject({ enabled: false });
   });
 
+  it("shows the active preset name on the Presets parent, marking dirty and falling back to None", async () => {
+    // No active preset -> None.
+    const { rerender } = renderHook((props) => useTray(props), {
+      initialProps: defaultProps,
+    });
+    await act(async () => {});
+    expect(findText(submenuOptions(), "Presets: None")).toBeTruthy();
+
+    // Active + dirty -> "<name> (modified)".
+    rerender({
+      ...defaultProps,
+      presets: {
+        list: [
+          { id: "p1", name: "Mixing" },
+          { id: "p2", name: "Mastering" },
+        ],
+        activeId: "p2",
+        dirty: true,
+        apply: vi.fn(),
+      },
+    });
+    await act(async () => {});
+    expect(findText(submenuOptions(), "Presets: Mastering (modified)")).toBeTruthy();
+  });
+
   it("disables Presets and Quit but not Start/Stop or Device while updating (macOS)", async () => {
     isMacOS.mockReturnValue(true);
     const setMenu = vi.fn();
@@ -247,7 +290,7 @@ describe("useTray", () => {
     const subs = submenuOptions();
     expect(findText(items, "Hide Window")).toMatchObject({ enabled: false });
     expect(findText(items, "Quit")).toMatchObject({ enabled: false });
-    expect(findText(subs, "Presets")).toMatchObject({ enabled: false });
+    expect(findText(subs, "Presets: None")).toMatchObject({ enabled: false });
     // Start/Stop is never gated.
     expect(findText(items, "Start")).not.toMatchObject({ enabled: false });
     // Device submenu is never gated.

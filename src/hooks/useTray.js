@@ -15,12 +15,19 @@ import {
   setCurrentTrayIcon,
 } from "../lib/trayIconLifecycle.js";
 
+// formatAudioDeviceLabel returns { primary, secondary, full }; a menu item's
+// text must be a single string. Reconstruct the picker's compact form.
+function menuDeviceText(label) {
+  const { primary, secondary } = formatAudioDeviceLabel(label);
+  return secondary ? `${primary} (${secondary})` : primary;
+}
+
 function deviceLabelFor({ safeAudioDeviceId, audioOutputs, audioInputs, defaultOutputLabel }) {
   if (safeAudioDeviceId === "default") {
-    return defaultOutputLabel ? formatAudioDeviceLabel(defaultOutputLabel) : "Automatic";
+    return defaultOutputLabel ? menuDeviceText(defaultOutputLabel) : "Automatic";
   }
   const match = [...audioOutputs, ...audioInputs].find((d) => d.id === safeAudioDeviceId);
-  return match ? formatAudioDeviceLabel(match.label) : "Automatic";
+  return match ? menuDeviceText(match.label) : "Automatic";
 }
 
 async function buildDeviceItems({ audioOutputs, audioInputs, safeAudioDeviceId, onSelectDevice }) {
@@ -41,7 +48,7 @@ async function buildDeviceItems({ audioOutputs, audioInputs, safeAudioDeviceId, 
     for (const d of devices) {
       items.push(
         await CheckMenuItem.new({
-          text: formatAudioDeviceLabel(d.label),
+          text: menuDeviceText(d.label),
           checked: safeAudioDeviceId === d.id,
           action: () => onSelectDevice(d.id),
         })
@@ -49,6 +56,12 @@ async function buildDeviceItems({ audioOutputs, audioInputs, safeAudioDeviceId, 
     }
   }
   return items;
+}
+
+function presetLabelFor({ presetList, presetActiveId, presetDirty }) {
+  const active = presetList.find((p) => p.id === presetActiveId);
+  if (!active) return "None";
+  return presetDirty ? `${active.name} (modified)` : active.name;
 }
 
 async function buildPresetItems({ presetList, presetActiveId, presetDirty, onApplyPreset }) {
@@ -123,7 +136,7 @@ async function buildMenu(cfg) {
       }),
     }),
     await Submenu.new({
-      text: "Presets",
+      text: `Presets: ${presetLabelFor({ presetList, presetActiveId, presetDirty })}`,
       enabled: !updateBusy,
       items: await buildPresetItems({ presetList, presetActiveId, presetDirty, onApplyPreset }),
     }),
