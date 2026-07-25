@@ -253,6 +253,22 @@ Dock panel display controls 位于 `workspaceStore.dock.controlsByPanelId`，独
 `panelControlsById`；旧 `controlsByModuleId` 仅作为兼容字段保留。measurement runtime 和 channel label
 semantics 仍共享。
 
+### Dock live 交互边界（有意精简）
+
+Dock 只复用普通面板 live 交互的一个子集，其余是**刻意不做**，不是遗漏——要更细的调节或翻历史就进普通模式 / snapshot。别对着代码反复核对，现状如下：
+
+Dock 有的：
+
+- **TP-max reset**（`DockLevel`，点读数复位真峰值最大值）
+- **Vectorscope peak-hold reset**（`DockVectorscope` polarLevel，点图复位峰值保持）
+- **时间窗缩放**（`DockWaveform` / `DockLoudness` / `DockSpectrogram`：滚轮缩放 + 右键双击复位 + 窗口秒数 HUD）。实现是普通 `useHistoryInteraction` 的精简子集，另走 `useDockHistoryViewport`，只有窗宽、无时间偏移、缩放不以光标为锚。
+
+Dock 刻意没有的：
+
+- **数值轴缩放/平移**（普通模式 `useAxisInteraction` 提供 Level/Spectrum/Spectrogram/Loudness 的轴缩放）——dock 条太窄，无可抓的轴。
+- **时间轴平移到历史 / scrub 选择**——dock 是 live-only viewport，翻历史交给 snapshot。
+- **Spectrum 长按稳曲线**、**Vectorscope hold-slow 拖影**——两个「按住」手势；前者可行但收益低，后者一半已由 dock 常驻的 correlation 平滑覆盖、另一半（Lissajous phosphor）成本高回报低，均评估后不做。
+
 ---
 
 ## 8. 平台说明
