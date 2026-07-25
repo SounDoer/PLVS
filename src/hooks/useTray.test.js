@@ -12,7 +12,9 @@ vi.mock("@tauri-apps/api/tray", () => ({
 }));
 vi.mock("@tauri-apps/api/menu", () => ({
   Menu: { new: vi.fn().mockResolvedValue({}) },
+  Submenu: { new: vi.fn().mockResolvedValue({}) },
   MenuItem: { new: vi.fn().mockResolvedValue({}) },
+  CheckMenuItem: { new: vi.fn().mockResolvedValue({}) },
   PredefinedMenuItem: { new: vi.fn().mockResolvedValue({}) },
 }));
 vi.mock("@tauri-apps/api/window", () => ({
@@ -26,28 +28,44 @@ vi.mock("@tauri-apps/api/path", () => ({
 }));
 vi.mock("@tauri-apps/plugin-process", () => ({ exit: vi.fn() }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
+vi.mock("../lib/platform.js", () => ({ isMacOS: vi.fn(() => false) }));
+vi.mock("../lib/audioDeviceLabels.js", () => ({
+  formatAudioDeviceLabel: (label) => label,
+}));
 
 import { closeTrayIcon, PLVS_TRAY_ID } from "../lib/trayIconLifecycle.js";
 import { useTray } from "./useTray.js";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Image } from "@tauri-apps/api/image";
-import { MenuItem } from "@tauri-apps/api/menu";
+import { MenuItem, CheckMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { resolveResource } from "@tauri-apps/api/path";
 import { exit } from "@tauri-apps/plugin-process";
+import { isMacOS } from "../lib/platform.js";
 
 const defaultProps = {
   running: false,
-  pinned: false,
-  togglePin: vi.fn(),
   onStartClick: vi.fn(),
-  deviceName: "Test Device",
   onToggleWindow: vi.fn(),
   colorScheme: "dark",
+  updateBusy: false,
+  audioOutputs: [],
+  audioInputs: [],
+  safeAudioDeviceId: "default",
+  defaultOutputLabel: "",
+  onSelectDevice: vi.fn(),
+  presets: { list: [], activeId: null, dirty: false, apply: vi.fn() },
 };
+
+// Collects the options object passed to every top-level MenuItem.new call.
+const menuItemOptions = () => MenuItem.new.mock.calls.map(([o]) => o);
+const checkItemOptions = () => CheckMenuItem.new.mock.calls.map(([o]) => o);
+const submenuOptions = () => Submenu.new.mock.calls.map(([o]) => o);
+const findText = (options, text) => options.find((o) => o.text === text);
 
 describe("useTray", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isMacOS.mockReturnValue(false);
     TrayIcon.getById.mockResolvedValue(null);
     TrayIcon.removeById.mockResolvedValue(undefined);
     TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), close: vi.fn() });
@@ -69,7 +87,6 @@ describe("useTray", () => {
     renderHook(() => useTray({ ...defaultProps, colorScheme: "light" }));
     await act(async () => {});
     expect(resolveResource).toHaveBeenCalledWith("icons/tray-light.png");
-    expect(Image.fromPath).toHaveBeenCalledWith("/fake/tray.png");
     expect(TrayIcon.new).toHaveBeenCalledWith(
       expect.objectContaining({ icon: { __type: "MockImage" } })
     );
@@ -84,10 +101,8 @@ describe("useTray", () => {
   it("removes any existing singleton tray before creating a new one", async () => {
     const existingClose = vi.fn();
     TrayIcon.getById.mockResolvedValue({ close: existingClose });
-
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
-
     expect(TrayIcon.getById).toHaveBeenCalledWith(PLVS_TRAY_ID);
     expect(existingClose).toHaveBeenCalledTimes(1);
     expect(TrayIcon.removeById).toHaveBeenCalledWith(PLVS_TRAY_ID);
@@ -99,60 +114,154 @@ describe("useTray", () => {
     const secondToggleWindow = vi.fn();
     const { rerender } = renderHook(
       ({ onToggleWindow }) => useTray({ ...defaultProps, onToggleWindow }),
-      {
-        initialProps: { onToggleWindow: firstToggleWindow },
-      }
+      { initialProps: { onToggleWindow: firstToggleWindow } }
     );
     await act(async () => {});
-
     const trayAction = TrayIcon.new.mock.calls[0][0].action;
     rerender({ onToggleWindow: secondToggleWindow });
     await act(async () => {});
-
     trayAction({ type: "Click", button: "Left" });
-
     expect(firstToggleWindow).not.toHaveBeenCalled();
     expect(secondToggleWindow).toHaveBeenCalledTimes(1);
   });
 
-  it("rebuilds the tray with window and quit actions disabled while updating", async () => {
+  it("omits Show/Hide and Pin items on Windows", async () => {
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    const texts = menuItemOptions().map((o) => o.text);
+    expect(texts).not.toContain("Hide Window");
+    expect(texts).not.toContain("Show Window");
+    expect(texts).not.toContain("Pin Window");
+    expect(texts).not.toContain("Unpin Window");
+  });
+
+  it("includes a platform Show/Hide item on macOS", async () => {
+    isMacOS.mockReturnValue(true);
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    // isVisible mock resolves true -> "Hide Window"
+    expect(findText(menuItemOptions(), "Hide Window")).toBeTruthy();
+  });
+
+  it("builds the Device submenu with the current device labelled and checked", async () => {
+    const onSelectDevice = vi.fn();
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        onSelectDevice,
+        safeAudioDeviceId: "mic-1",
+        audioOutputs: [{ id: "out-1", label: "Speakers", isSystemOutputMonitor: true }],
+        audioInputs: [{ id: "mic-1", label: "USB Mic" }],
+      })
+    );
+    await act(async () => {});
+
+    // Parent label reflects the selected device.
+    expect(findText(submenuOptions(), "Device: USB Mic")).toBeTruthy();
+
+    // Group headers present (disabled MenuItems).
+    const headers = menuItemOptions();
+    expect(findText(headers, "Output")).toMatchObject({ enabled: false });
+    expect(findText(headers, "Input")).toMatchObject({ enabled: false });
+
+    // The selected device's CheckMenuItem is checked; Automatic is not.
+    const checks = checkItemOptions();
+    expect(findText(checks, "USB Mic")).toMatchObject({ checked: true });
+    expect(findText(checks, "Automatic (default system output)")).toMatchObject({
+      checked: false,
+    });
+
+    // Clicking a device forwards its id.
+    findText(checks, "Speakers").action();
+    expect(onSelectDevice).toHaveBeenCalledWith("out-1");
+  });
+
+  it("labels the Device parent Automatic and checks it when default is selected", async () => {
+    renderHook(() =>
+      useTray({ ...defaultProps, safeAudioDeviceId: "default", defaultOutputLabel: "" })
+    );
+    await act(async () => {});
+    expect(findText(submenuOptions(), "Device: Automatic")).toBeTruthy();
+    expect(findText(checkItemOptions(), "Automatic (default system output)")).toMatchObject({
+      checked: true,
+    });
+  });
+
+  it("uses the resolved default output label in the Device parent when available", async () => {
+    renderHook(() =>
+      useTray({ ...defaultProps, safeAudioDeviceId: "default", defaultOutputLabel: "Realtek" })
+    );
+    await act(async () => {});
+    expect(findText(submenuOptions(), "Device: Realtek")).toBeTruthy();
+  });
+
+  it("builds the Presets submenu with the active preset checked and dirty marked", async () => {
+    const apply = vi.fn();
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        presets: {
+          list: [
+            { id: "p1", name: "Mixing" },
+            { id: "p2", name: "Mastering" },
+          ],
+          activeId: "p2",
+          dirty: true,
+          apply,
+        },
+      })
+    );
+    await act(async () => {});
+    const checks = checkItemOptions();
+    expect(findText(checks, "Mixing")).toMatchObject({ checked: false });
+    expect(findText(checks, "Mastering (modified)")).toMatchObject({ checked: true });
+    findText(checks, "Mixing").action();
+    expect(apply).toHaveBeenCalledWith("p1");
+  });
+
+  it("shows a disabled No presets item when the list is empty", async () => {
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    expect(findText(menuItemOptions(), "No presets")).toMatchObject({ enabled: false });
+  });
+
+  it("disables Presets and Quit but not Start/Stop or Device while updating (macOS)", async () => {
+    isMacOS.mockReturnValue(true);
     const setMenu = vi.fn();
     const onToggleWindow = vi.fn();
     TrayIcon.new.mockResolvedValue({ setMenu, close: vi.fn() });
     const { rerender } = renderHook(
       ({ updateBusy }) => useTray({ ...defaultProps, onToggleWindow, updateBusy }),
-      {
-        initialProps: { updateBusy: false },
-      }
+      { initialProps: { updateBusy: false } }
     );
     await act(async () => {});
     const trayAction = TrayIcon.new.mock.calls[0][0].action;
-    const staleQuitAction = MenuItem.new.mock.calls
-      .map(([options]) => options)
-      .find((options) => options.text === "Quit").action;
+    const staleQuit = findText(menuItemOptions(), "Quit").action;
     MenuItem.new.mockClear();
+    Submenu.new.mockClear();
 
     rerender({ updateBusy: true });
     await act(async () => {});
 
-    const menuItems = MenuItem.new.mock.calls.map(([options]) => options);
-    expect(menuItems).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ text: "Hide Window", enabled: false }),
-        expect.objectContaining({ text: "Quit", enabled: false }),
-      ])
-    );
+    const items = menuItemOptions();
+    const subs = submenuOptions();
+    expect(findText(items, "Hide Window")).toMatchObject({ enabled: false });
+    expect(findText(items, "Quit")).toMatchObject({ enabled: false });
+    expect(findText(subs, "Presets")).toMatchObject({ enabled: false });
+    // Start/Stop is never gated.
+    expect(findText(items, "Start")).not.toMatchObject({ enabled: false });
+    // Device submenu is never gated.
+    expect(findText(subs, "Device: Automatic")).not.toMatchObject({ enabled: false });
     expect(setMenu).toHaveBeenCalled();
 
+    // Double-guard: stale gated callbacks are no-ops while busy.
     trayAction({ type: "Click", button: "Left" });
     expect(onToggleWindow).not.toHaveBeenCalled();
-    staleQuitAction();
+    staleQuit();
     expect(exit).not.toHaveBeenCalled();
   });
 
   it("closes an orphaned tray if effect is cancelled before TrayIcon.new resolves", async () => {
-    // Simulate the StrictMode race: cleanup fires while TrayIcon.new is still pending.
-    // The orphaned tray instance must be closed even though it was created after cancellation.
     let resolveTrayNew;
     const orphanClose = vi.fn();
     TrayIcon.new.mockImplementation(
@@ -161,18 +270,12 @@ describe("useTray", () => {
           resolveTrayNew = () => res({ setMenu: vi.fn(), close: orphanClose });
         })
     );
-
     const { unmount } = renderHook(() => useTray(defaultProps));
-    // Flush microtasks until TrayIcon.new is called (buildMenu, resolveResource,
-    // Image.fromPath all resolve immediately; TrayIcon.new stays pending)
     await act(async () => {});
-    // Unmount before TrayIcon.new resolves — simulates StrictMode cleanup
     unmount();
-    // Now resolve the pending TrayIcon.new
     await act(async () => {
       resolveTrayNew();
     });
-
     expect(orphanClose).toHaveBeenCalledTimes(1);
   });
 
@@ -181,11 +284,9 @@ describe("useTray", () => {
     const existingClose = vi.fn();
     TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), close: currentClose });
     TrayIcon.getById.mockResolvedValue({ close: existingClose });
-
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     await closeTrayIcon();
-
     expect(currentClose).toHaveBeenCalled();
     expect(existingClose).toHaveBeenCalled();
     expect(TrayIcon.removeById).toHaveBeenCalledWith(PLVS_TRAY_ID);
