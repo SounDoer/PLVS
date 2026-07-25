@@ -10,6 +10,7 @@ import { DockModuleSettings } from "../editors/DockModuleSettings.jsx";
 import { DockPresetsRow } from "../editors/DockPresetsRow.jsx";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
 import { panelModuleIdForDockModuleId } from "../dockLayout.js";
+import { useSuppressNativeContextMenu } from "../../hooks/useSuppressNativeContextMenu.js";
 
 export const DOCK_EDITOR_BLUR_CLOSE_DELAY_MS = 100;
 
@@ -37,6 +38,7 @@ export function DockEditorApp() {
   const pointerActiveRef = useRef(false);
   const lastSizeRef = useRef(null);
   const onHoverModule = useCallback((panelId) => action("hover-module", { panelId }), [action]);
+  useSuppressNativeContextMenu();
 
   useEffect(() => {
     const onKeyDown = (event) => {
