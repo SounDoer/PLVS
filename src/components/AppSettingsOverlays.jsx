@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { openExternalUrl } from "../ipc/openExternal.js";
+import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useCliPathSettings } from "../hooks/useCliPathSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
@@ -39,7 +40,7 @@ export function AppSettingsOverlays({
     resetInstall();
     setSelectedUpdate({
       version: updateInfo?.latestVersion,
-      releaseNotes: updateInfo?.releaseNotes,
+      releaseNotes: sliceChangelogSince(updateInfo?.releaseNotes, appVersion),
       update: updateInfo?.update,
     });
     setUpdateDialogOpen(true);

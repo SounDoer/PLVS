@@ -1,23 +1,32 @@
 #!/usr/bin/env node
 /**
- * Extract the CHANGELOG section for a semver tag (e.g. v0.0.11 -> ## [0.0.11]) to a file for GitHub Releases.
- * Usage: node scripts/changelog-release-body.mjs <tag> <outfile.md>
+ * Extract CHANGELOG sections for a semver tag (e.g. v0.0.11 -> ## [0.0.11]) to a file for GitHub Releases.
+ * Modes:
+ *   (default)               the tag's section body + install instructions (GitHub Release page)
+ *   --changelog-only        the tag's section body only, no header (legacy single-version updater notes)
+ *   --changelog-cumulative  the tag's section plus up to 19 older ones, headers kept, no install block.
+ *                           Lets the updater client show every version an upgrade spans, sliced by the
+ *                           installed version. Capped at MAX_CUMULATIVE_SECTIONS to bound manifest size.
+ * Usage: node scripts/changelog-release-body.mjs <tag> <outfile.md> [--changelog-only|--changelog-cumulative]
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const MAX_CUMULATIVE_SECTIONS = 20;
+
 const tagArg = process.argv[2] ?? "";
 const outFile = process.argv[3] ?? "";
 const mode = process.argv[4] ?? "";
 const changelogOnly = mode === "--changelog-only";
+const cumulative = mode === "--changelog-cumulative";
 const semver = tagArg.replace(/^v/i, "").trim();
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const changelogPath = join(root, "CHANGELOG.md");
 
-if (!semver || !outFile || (mode && !changelogOnly)) {
+if (!semver || !outFile || (mode && !changelogOnly && !cumulative)) {
   console.error(
-    "Usage: node scripts/changelog-release-body.mjs <tag> <outfile.md> [--changelog-only]"
+    "Usage: node scripts/changelog-release-body.mjs <tag> <outfile.md> [--changelog-only|--changelog-cumulative]"
   );
   process.exit(1);
 }
@@ -25,6 +34,25 @@ if (!semver || !outFile || (mode && !changelogOnly)) {
 const changelog = readFileSync(changelogPath, "utf8");
 const headerNeedle = `## [${semver}]`;
 const idx = changelog.indexOf(headerNeedle);
+
+if (cumulative) {
+  if (idx === -1) {
+    console.error(`Missing CHANGELOG.md section: ## [${semver}]`);
+    process.exit(1);
+  }
+  const from = changelog.slice(idx);
+  const sectionOffsets = [];
+  const sectionRe = /^## \[[^\]]+\]/gm;
+  let match;
+  while ((match = sectionRe.exec(from))) sectionOffsets.push(match.index);
+  const cumulativeBody =
+    sectionOffsets.length > MAX_CUMULATIVE_SECTIONS
+      ? from.slice(0, sectionOffsets[MAX_CUMULATIVE_SECTIONS]).trim()
+      : from.trim();
+  writeFileSync(outFile, `${cumulativeBody}\n`, "utf8");
+  process.exit(0);
+}
+
 let body;
 if (idx === -1) {
   if (changelogOnly) {

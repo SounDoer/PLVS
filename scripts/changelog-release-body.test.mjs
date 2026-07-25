@@ -48,4 +48,36 @@ describe("changelog-release-body", () => {
     expect(() => run("v999.999.999", outFile, "--changelog-only")).toThrow();
     expect(existsSync(outFile)).toBe(false);
   });
+
+  it("emits the tag plus older sections with headers in cumulative mode", () => {
+    const dir = mkdtempSync(join(tmpdir(), "updater-cumulative-"));
+    const outFile = join(dir, "updater.md");
+
+    run("v0.11.2", outFile, "--changelog-cumulative");
+
+    const body = readFileSync(outFile, "utf8");
+    expect(body).toContain("## [0.11.2]");
+    expect(body).toContain("## [0.11.1]");
+    expect(body).not.toContain("## 安装");
+    expect(body).not.toContain("## Installation");
+  });
+
+  it("caps cumulative output at 20 sections", () => {
+    const dir = mkdtempSync(join(tmpdir(), "updater-cumulative-cap-"));
+    const outFile = join(dir, "updater.md");
+
+    run("v0.11.2", outFile, "--changelog-cumulative");
+
+    const body = readFileSync(outFile, "utf8");
+    const headerCount = (body.match(/^## \[/gm) ?? []).length;
+    expect(headerCount).toBe(20);
+  });
+
+  it("fails cumulative generation when the tagged section is absent", () => {
+    const dir = mkdtempSync(join(tmpdir(), "updater-cumulative-missing-"));
+    const outFile = join(dir, "updater.md");
+
+    expect(() => run("v999.999.999", outFile, "--changelog-cumulative")).toThrow();
+    expect(existsSync(outFile)).toBe(false);
+  });
 });

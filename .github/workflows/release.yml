@@ -274,7 +274,7 @@ jobs:
           name: updater-descriptor-macos
 
       - name: Prepare updater changelog
-        run: node scripts/changelog-release-body.mjs "${{ github.ref_name }}" updater-notes.md --changelog-only
+        run: node scripts/changelog-release-body.mjs "${{ github.ref_name }}" updater-notes.md --changelog-cumulative
 
       - name: Build latest.json
         run: |
