@@ -64,17 +64,32 @@ Removed: `Pin/Unpin Window` (both platforms); `Show/Hide Window` (Windows only �
 left-click `action` covers it). The old disabled `<device name>` row is absorbed into the
 Input submenu's parent label.
 
-Platform detection: `platform() === "macos"` from `@tauri-apps/plugin-os`.
+Platform detection: `isMacOS()` from `@/lib/platform.js` (already used across the app; no
+new dependency — it reads `navigator.platform` / `userAgent`).
 
 ## Input Device Submenu
 
-- **Parent label:** `Input: <label>`.
-  - When `captureDeviceId === "default"`, `<label>` is `defaultOutputLabel` (the resolved
-    system-output name from `useAudioDevices`); if that is empty, fall back to `Default`.
-  - Otherwise `<label>` is the matching entry's `label` from `audioDevices`.
-- **Children:** a `Default (system output)` entry followed by each `audioDevices` item,
-  each a `CheckMenuItem`. The `✓` sits on the entry matching the current `captureDeviceId`
-  (`"default"` checks the Default entry).
+Mirrors the in-app device picker (`AppHeader`): the same three-way grouping, the same
+labels, so the two never disagree. The device the app captures may be a system-output
+monitor, so the parent is labelled `Device:` (not `Input:`), and the groups reuse the app's
+`Automatic` / `Output` / `Input` wording.
+
+- **Parent label:** `Device: <label>`.
+  - When the selection is `"default"`, `<label>` is `formatAudioDeviceLabel(defaultOutputLabel)`
+    (the resolved system-output name); if `defaultOutputLabel` is empty, fall back to
+    `Automatic`.
+  - Otherwise `<label>` is `formatAudioDeviceLabel` of the matching device's `label`.
+- **Selection source:** use `safeAudioDeviceId` (already falls back to `"default"` when the
+  stored id is gone), not the raw `captureDeviceId`, for the `✓`.
+- **Children** (a `CheckMenuItem` per device, `✓` on the selected one):
+  - `Automatic (default system output)` — checked when `safeAudioDeviceId === "default"`.
+  - If `audioOutputs.length`: a `Separator`, a disabled `Output` header item, then each
+    `audioOutputs` device.
+  - If `audioInputs.length`: a `Separator`, a disabled `Input` header item, then each
+    `audioInputs` device.
+  - `audioOutputs` = devices with `isSystemOutputMonitor === true`; `audioInputs` = the
+    rest. Both are already computed in `App.jsx` and passed in.
+  - Device labels use `formatAudioDeviceLabel(device.label)` from `@/lib/audioDeviceLabels.js`.
 - **On click:** `onSelectDevice(id)` (= `setCaptureDeviceIdAndPersist`). The capture engine
   restarts on its own via the existing `captureDeviceId` effect — the tray does not restart
   it.
@@ -125,19 +140,20 @@ useTray({
   running, onStartClick,           // Start/Stop — unchanged
   onToggleWindow,                  // macOS menu item only; Windows still uses the left-click action
   colorScheme, updateBusy,         // unchanged
-  audioDevices,                    // [{ id, label }]
-  captureDeviceId,
-  defaultOutputLabel,
+  audioOutputs,                    // [{ id, label, isSystemOutputMonitor }] — monitors
+  audioInputs,                     // [{ id, label }] — real inputs
+  safeAudioDeviceId,               // current selection, "default" when the stored id is gone
+  defaultOutputLabel,              // resolved system-output name for the Automatic label
   onSelectDevice,                  // = setCaptureDeviceIdAndPersist
   presets,                         // { list, activeId, dirty, apply }
 })
 ```
 
-- **Removed:** `pinned`, `togglePin` (Pin item gone); `deviceName` (replaced by the Input
+- **Removed:** `pinned`, `togglePin` (Pin item gone); `deviceName` (replaced by the Device
   parent label).
-- **Added:** the four device fields and the `presets` bundle. All already exist in
-  `App.jsx` (returns of `useAudioDevices` and `usePresets`) — this only threads more props
-  through, no new state.
+- **Added:** the five device fields and the `presets` bundle. All already exist in
+  `App.jsx` (`audioOutputs`, `audioInputs`, `safeAudioDeviceId` memos, plus the returns of
+  `useAudioDevices` and `usePresets`) — this only threads more props through, no new state.
 - `buildMenu` extracts `buildDeviceSubmenu` and `buildPresetsSubmenu` helpers so the main
   builder does not grow unwieldy.
 - **Left-click `action` unchanged:** Windows still calls `onToggleWindow` directly on left
@@ -154,6 +170,9 @@ useTray({
 - **Applying a preset while the window is hidden** may move/show the window (presets carry
   window bounds and dock state). This is acceptable and matches applying a preset from the
   in-app UI.
+- **`CheckMenuItem`** comes from `@tauri-apps/api/menu` (alongside `MenuItem` /
+  `PredefinedMenuItem`). Disabled group headers (`Output`, `Input`) are plain `MenuItem`
+  with `enabled: false`, matching the existing disabled-item pattern.
 
 ## Out of Scope
 
@@ -167,8 +186,9 @@ useTray({
 
 - Windows omits Show/Hide; macOS includes it.
 - Pin/Unpin absent on both.
-- Input parent label reflects `captureDeviceId` / `defaultOutputLabel`; `✓` on the active
-  device; click calls `onSelectDevice`.
+- Device parent label reflects `safeAudioDeviceId` / `defaultOutputLabel`; `✓` on the
+  selected device; `Output` / `Input` group headers present when those groups are non-empty;
+  click calls `onSelectDevice`.
 - Presets list with `✓` on `activeId`; `(modified)` when dirty; disabled `No presets` when
   empty; click calls `presets.apply`.
 - `updateBusy` disables Presets (and Show/Hide, Quit) but not Start/Stop or Input device.
