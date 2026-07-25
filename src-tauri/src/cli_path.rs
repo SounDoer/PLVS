@@ -161,7 +161,7 @@ fn write_user_path(path: &str) -> Result<(), String> {
       "Path",
       &RegValue {
         vtype: value_type,
-        bytes,
+        bytes: bytes.into(),
       },
     )
     .map_err(|e| format!("write user PATH: {e}"))
