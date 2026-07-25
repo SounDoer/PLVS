@@ -206,7 +206,7 @@ function AppContent() {
   // Suspended while docked: a preset apply may flip the stored pin to false
   // while the strip must stay topmost; when docked flips false the effect
   // re-asserts the user's value.
-  const { pinned, setPinned, togglePin } = useAlwaysOnTop({ suspended: docked });
+  const { pinned, setPinned } = useAlwaysOnTop({ suspended: docked });
   // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
   // when docked flips false the effect re-runs and re-asserts the user's values.
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
@@ -1250,13 +1250,16 @@ function AppContent() {
 
   useTray({
     running,
-    pinned,
-    togglePin,
     onStartClick,
-    deviceName,
     onToggleWindow,
     colorScheme: resolvedTheme.colorScheme,
     updateBusy,
+    audioOutputs,
+    audioInputs,
+    safeAudioDeviceId,
+    defaultOutputLabel,
+    onSelectDevice: setCaptureDeviceIdAndPersist,
+    presets,
   });
 
   useAppKeyboardShortcuts({

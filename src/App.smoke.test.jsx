@@ -96,7 +96,9 @@ vi.mock("@tauri-apps/api/tray", () => ({
 
 vi.mock("@tauri-apps/api/menu", () => ({
   Menu: { new: vi.fn().mockResolvedValue({}) },
+  Submenu: { new: vi.fn().mockResolvedValue({}) },
   MenuItem: { new: vi.fn().mockResolvedValue({}) },
+  CheckMenuItem: { new: vi.fn().mockResolvedValue({}) },
   PredefinedMenuItem: { new: vi.fn().mockResolvedValue({}) },
 }));
 
