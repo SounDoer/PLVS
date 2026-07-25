@@ -72,10 +72,10 @@ vi.mock("./ThemeEditor.jsx", () => ({
 }));
 
 vi.mock("./UpdateDialog.jsx", () => ({
-  UpdateDialog: ({ open, version, releaseNotes, onConfirm, onCancel }) =>
+  UpdateDialog: ({ open, currentVersion, releaseNotes, onConfirm, onCancel }) =>
     open ? (
       <div role="dialog" aria-label="update">
-        <span>{version}</span>
+        <span>{currentVersion}</span>
         <span>{releaseNotes}</span>
         <button type="button" onClick={onCancel}>
           Cancel update
@@ -211,7 +211,7 @@ describe("AppSettingsOverlays", () => {
     fireEvent.click(screen.getByRole("button", { name: "Update" }));
 
     expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
-    expect(screen.getByText("0.9.5")).toBeTruthy();
+    expect(screen.getByText("0.0.0")).toBeTruthy();
     expect(screen.getByText("### Fixed")).toBeTruthy();
     expect(resetInstall).toHaveBeenCalledTimes(1);
     expect(install).not.toHaveBeenCalled();
@@ -267,7 +267,6 @@ describe("AppSettingsOverlays", () => {
       },
     });
 
-    expect(screen.getByText("0.9.5")).toBeTruthy();
     expect(screen.getByText("First release notes")).toBeTruthy();
     expect(screen.queryByText("Second release notes")).toBeNull();
 

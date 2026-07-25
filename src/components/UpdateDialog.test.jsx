@@ -5,7 +5,7 @@ import { UpdateDialog } from "./UpdateDialog.jsx";
 
 const BASE_PROPS = {
   open: true,
-  version: "0.9.5",
+  currentVersion: "0.9.4",
   releaseNotes: "### Fixed\n- Safer updates",
   installStatus: "idle",
   onConfirm: vi.fn(),
@@ -32,10 +32,15 @@ describe("UpdateDialog", () => {
       />
     );
 
-    expect(screen.getByText("What's new in v0.9.5")).toBeTruthy();
+    expect(screen.getByText("What's new since v0.9.4")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Fixed" })).toBeTruthy();
     expect(screen.getByText("Safer updates")).toBeTruthy();
     expect(container.querySelector("[data-unsafe]")).toBeNull();
+  });
+
+  it("shows a neutral heading when the installed version is unknown", () => {
+    render(<UpdateDialog {...BASE_PROPS} currentVersion={undefined} />);
+    expect(screen.getByText("What's new")).toBeTruthy();
   });
 
   it("opens Markdown links through the external URL handler", () => {

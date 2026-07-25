@@ -39,7 +39,6 @@ export function AppSettingsOverlays({
   function openUpdateDialog() {
     resetInstall();
     setSelectedUpdate({
-      version: updateInfo?.latestVersion,
       releaseNotes: sliceChangelogSince(updateInfo?.releaseNotes, appVersion),
       update: updateInfo?.update,
     });
@@ -113,7 +112,7 @@ export function AppSettingsOverlays({
 
       <UpdateDialog
         open={updateDialogOpen}
-        version={selectedUpdate?.version}
+        currentVersion={appVersion}
         releaseNotes={selectedUpdate?.releaseNotes}
         installStatus={installStatus}
         onConfirm={() => install(selectedUpdate?.update)}
