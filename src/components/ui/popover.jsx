@@ -38,7 +38,20 @@ function PopoverAnchor(props) {
 }
 
 const PopoverContent = React.forwardRef(
-  ({ className, align = "center", sideOffset = 4, collisionPadding = 8, ...props }, ref) => (
+  (
+    {
+      className,
+      align = "center",
+      sideOffset = 4,
+      collisionPadding = 8,
+      // Keep focus on the trigger when the panel opens, so the first option
+      // isn't highlighted as if it were pre-selected. Panels that genuinely
+      // want to focus something can still pass their own onOpenAutoFocus.
+      onOpenAutoFocus = (event) => event.preventDefault(),
+      ...props
+    },
+    ref
+  ) => (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         ref={ref}
@@ -46,6 +59,7 @@ const PopoverContent = React.forwardRef(
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
+        onOpenAutoFocus={onOpenAutoFocus}
         className={cn(
           "z-50 w-72 origin-[var(--radix-popover-content-transform-origin)] p-4",
           POPOVER_SURFACE_CLASS,

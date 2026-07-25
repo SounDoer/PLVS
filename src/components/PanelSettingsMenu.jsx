@@ -94,7 +94,6 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
           "flex max-h-[var(--radix-popover-content-available-height)] w-auto flex-col overflow-hidden p-1",
           PANEL_SETTINGS_SURFACE_CLASS
         )}
-        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <PanelSettingsHeader
           title={title}
