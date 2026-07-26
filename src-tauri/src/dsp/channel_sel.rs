@@ -4,6 +4,7 @@ pub enum SpectrumChannelSel {
   /// Average of two channels (0-based indices). Default: (0, 1) = L+R.
   Pair(u16, u16),
   /// Single channel (0-based index).
+  #[allow(dead_code)]
   Single(u16),
 }
 

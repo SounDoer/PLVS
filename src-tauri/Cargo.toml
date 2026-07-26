@@ -48,6 +48,7 @@ tauri-plugin-dialog = "2.7.1"
 tauri-plugin-updater = "2"
 firered-vad = "0.1.0"
 ten-vad-rs = "0.1.7"
+crossbeam-queue = "0.3.13"
 
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.
@@ -71,3 +72,10 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+[dev-dependencies]
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "spectral_fft_count"
+harness = false

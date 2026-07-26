@@ -606,6 +606,266 @@ mod tests {
     );
   }
 
+  #[test]
+  fn file_chunker_drives_shared_runtime_with_media_time_without_raising_visual_cadence() {
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let pipeline_chunk_frames = file_pipeline_chunk_frames(sr);
+    let pipeline_chunk_ms = (pipeline_chunk_frames as u64 * 1000).div_ceil(sr as u64);
+    let chunk_count = 20_usize;
+    let request_key = "file-spectrum".to_string();
+    let config = WorkerConfig {
+      requests: AnalysisRequests {
+        spectrum: vec![SpectrumAnalysisRequest {
+          key: request_key.clone(),
+          channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+          view: "combined".to_string(),
+          speed_percent: 50.0,
+          tilt_db_per_octave: 4.5,
+          octave_smoothing: "off".to_string(),
+        }],
+        vectorscope: vec![],
+      },
+      ..default_config()
+    };
+    let frames = pipeline_chunk_frames * chunk_count;
+    let pcm = sine_stereo_f32(sr, frames, 0.25, 440.0);
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let mut chunker = FilePcmHistoryChunker::new(sr, channels);
+    let mut visual_timestamps = Vec::new();
+    let mut on_frame = |frame: AudioFramePayload| {
+      visual_timestamps.extend(
+        frame
+          .visual_hist_batch
+          .iter()
+          .map(|entry| entry.timestamp_ms),
+      );
+      Ok(())
+    };
+
+    for source_chunk in pcm.chunks(777) {
+      chunker
+        .push_pcm(&mut pipeline, source_chunk, &config, &mut on_frame)
+        .expect("push file PCM");
+    }
+    chunker
+      .flush(&mut pipeline, &config, &mut on_frame)
+      .expect("flush file PCM");
+    if let Some(frame) = pipeline.flush_file_batch(&config.requests) {
+      on_frame(frame).expect("flush frame");
+    }
+
+    let shared = pipeline
+      .shared_runtime_cached_snapshot_for_test(&request_key)
+      .expect("file request must use MeterPipeline's shared runtime");
+    assert!(shared.output_present);
+    assert_eq!(
+      pipeline.shared_runtime_sample_clock_for_test(),
+      frames as u64
+    );
+    let expected_visual_timestamps: Vec<u64> = (1..=chunk_count as u64)
+      .map(|chunk| chunk * pipeline_chunk_ms)
+      .collect();
+    assert_eq!(
+      visual_timestamps, expected_visual_timestamps,
+      "file visual cadence must remain one checkpoint per existing 100 ms pipeline chunk"
+    );
+    let attempts = pipeline.shared_runtime_file_attempts_for_test(&request_key);
+    let expected_attempts: Vec<(u64, bool)> = expected_visual_timestamps
+      .iter()
+      .copied()
+      .enumerate()
+      .map(|(index, timestamp)| (timestamp, index >= 3))
+      .collect();
+    assert_eq!(
+      attempts, expected_attempts,
+      "FFT_BIG=16384 first fits after four 4800-frame chunks, never on wall time"
+    );
+    let expected_output_checkpoints: Vec<u64> =
+      expected_visual_timestamps.iter().copied().skip(3).collect();
+    assert_eq!(
+      pipeline.shared_runtime_output_checkpoints_for_test(&request_key),
+      expected_output_checkpoints,
+      "a one-checkpoint file result must fail; every post-warmup chunk is observable"
+    );
+    assert_eq!(
+      pipeline.shared_runtime_last_output_dsp_time_for_test(&request_key),
+      Some(shared.state.primary.envelope_last_time)
+    );
+    assert_eq!(expected_output_checkpoints.len(), 17);
+    assert_eq!(expected_output_checkpoints.first(), Some(&400));
+    assert_eq!(expected_output_checkpoints.last(), Some(&2_000));
+  }
+
+  #[test]
+  fn file_shared_ballistics_use_dsp_time_while_checkpoints_use_media_time() {
+    use crate::dsp::shared_spectral_engine::SpectralDspTime;
+    use crate::dsp::{OctaveSmoothing, SpectrumChannelSel, SpectrumMeter, SpectrumView};
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let chunk_frames = file_pipeline_chunk_frames(sr);
+    let request_key = "divergent-timelines".to_string();
+    let requests = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: request_key.clone(),
+        channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+        view: "combined".to_string(),
+        speed_percent: 100.0,
+        tilt_db_per_octave: 4.5,
+        octave_smoothing: "off".to_string(),
+      }],
+      vectorscope: vec![],
+    };
+    let loud = sine_stereo_f32(sr, chunk_frames, 0.8, 440.0);
+    let silence = vec![0.0_f32; chunk_frames * channels as usize];
+    let held_dsp_time = SpectralDspTime::from_monotonic_seconds(1.0);
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let mut legacy = SpectrumMeter::new(sr as f64);
+    legacy.set_display_controls(100.0, 4.5, OctaveSmoothing::Off);
+    let mut visual_timestamps = Vec::new();
+
+    for chunk in 1..=20_u64 {
+      pipeline.set_dsp_time_for_test(held_dsp_time);
+      let pcm = if chunk <= 10 { &loud } else { &silence };
+      legacy.push_pair(
+        pcm,
+        channels,
+        held_dsp_time.as_seconds(),
+        SpectrumChannelSel::Pair(0, 1),
+        SpectrumView::Combined,
+      );
+      if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
+        pcm,
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+        chunk * 100,
+      ) {
+        visual_timestamps.extend(
+          frame
+            .visual_hist_batch
+            .iter()
+            .map(|entry| entry.timestamp_ms),
+        );
+      }
+    }
+    if let Some(frame) = pipeline.flush_file_batch(&requests) {
+      visual_timestamps.extend(
+        frame
+          .visual_hist_batch
+          .iter()
+          .map(|entry| entry.timestamp_ms),
+      );
+    }
+
+    let expected_media_times: Vec<u64> = (1..=20).map(|chunk| chunk * 100).collect();
+    assert_eq!(visual_timestamps, expected_media_times);
+    assert_eq!(
+      pipeline.shared_runtime_output_checkpoints_for_test(&request_key),
+      (4..=20).map(|chunk| chunk * 100).collect::<Vec<_>>()
+    );
+    let before_seek = pipeline
+      .shared_runtime_cached_snapshot_for_test(&request_key)
+      .expect("shared output after warmup");
+    let (_, legacy_smooth, legacy_peak) = legacy.last_output();
+    let legacy_before_seek = (legacy_smooth.to_vec(), legacy_peak.to_vec());
+    assert_eq!(
+      before_seek.state.primary.envelope_last_time,
+      held_dsp_time.as_seconds()
+    );
+    assert_rows_match_legacy(
+      &before_seek.smooth_db,
+      &legacy_before_seek.0,
+      "held-time smooth",
+    );
+    assert_rows_match_legacy(
+      &before_seek.peak_db,
+      &legacy_before_seek.1,
+      "held-time peak",
+    );
+
+    pipeline.set_file_media_time_for_test(9_000);
+    let after_media_seek = pipeline
+      .shared_runtime_cached_snapshot_for_test(&request_key)
+      .expect("shared output after media seek");
+    assert_eq!(
+      after_media_seek.state.primary.envelope_last_time,
+      held_dsp_time.as_seconds()
+    );
+    assert_eq!(
+      after_media_seek.peak_db, before_seek.peak_db,
+      "media time alone must not advance peak hold/decay"
+    );
+    assert_eq!(
+      pipeline.shared_runtime_output_checkpoints_for_test(&request_key),
+      (4..=20).map(|chunk| chunk * 100).collect::<Vec<_>>(),
+      "empty seek must not create a visual checkpoint"
+    );
+
+    let advanced_dsp_time = SpectralDspTime::from_monotonic_seconds(4.0);
+    pipeline.set_dsp_time_for_test(advanced_dsp_time);
+    legacy.push_pair(
+      &[],
+      channels,
+      advanced_dsp_time.as_seconds(),
+      SpectrumChannelSel::Pair(0, 1),
+      SpectrumView::Combined,
+    );
+    let _ = pipeline.push_pcm_f32_with_requests_at_media_time(
+      &[],
+      ChannelLayoutSetting::Auto,
+      &requests,
+      None,
+      false,
+      VadEngineKind::default(),
+      9_000,
+    );
+    let after_dsp_advance = pipeline
+      .shared_runtime_cached_snapshot_for_test(&request_key)
+      .expect("shared output after DSP time advance");
+    let (_, legacy_smooth, legacy_peak) = legacy.last_output();
+    let legacy_after_dsp = (legacy_smooth.to_vec(), legacy_peak.to_vec());
+    assert_eq!(
+      after_dsp_advance.state.primary.envelope_last_time,
+      advanced_dsp_time.as_seconds()
+    );
+    assert!(
+      after_dsp_advance
+        .peak_db
+        .iter()
+        .zip(&after_media_seek.peak_db)
+        .any(|(advanced, held)| advanced < &(held - 0.1)),
+      "advancing DSP time must release at least one held peak"
+    );
+    assert_rows_match_legacy(
+      &after_dsp_advance.smooth_db,
+      &legacy_after_dsp.0,
+      "advanced-time smooth",
+    );
+    assert_rows_match_legacy(
+      &after_dsp_advance.peak_db,
+      &legacy_after_dsp.1,
+      "advanced-time peak",
+    );
+  }
+
+  fn assert_rows_match_legacy(actual: &[f64], legacy: &[f64], label: &str) {
+    const DIRECT_ROUTE_TOLERANCE_DB: f64 = 0.0225;
+    assert_eq!(actual.len(), legacy.len(), "{label} length");
+    for (index, (&actual, &legacy)) in actual.iter().zip(legacy).enumerate() {
+      assert!(
+        (actual - legacy).abs() <= DIRECT_ROUTE_TOLERANCE_DB,
+        "{label}[{index}]: shared={actual}, legacy={legacy}"
+      );
+    }
+  }
+
   /// Drive the chunker over `pcm` split into `chunk_samples`-sized source reads, then flush.
   /// Returns (decoded_frames, loudness_ticks, visual_ticks, last_timestamp_ms).
   fn run_chunker(

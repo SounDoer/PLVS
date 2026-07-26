@@ -1,5 +1,5 @@
-use realfft::RealFftPlanner;
-use rustfft::num_complex::Complex;
+#[cfg(test)]
+use super::spectral_transform::SpectralTransform;
 
 pub const FFT_BIG: usize = 16384;
 pub const FFT_MID: usize = 4096;
@@ -19,6 +19,42 @@ pub const OVERLAP_SMALL: usize = 2; // calmer high-band updates while keeping th
 /// continuous across bands instead, which is the convention this display is built on — see the
 /// module docs of `dsp::spectrum`. Pinned by `calibration_mid_band_full_scale_sine_near_zero`.
 pub const CAL_OFFSET_DB: f64 = 16.5;
+
+pub(crate) fn spectrum_frequency_bounds(sample_rate: f64) -> (f64, f64) {
+  (20.0, 20_000.0_f64.min(sample_rate * 0.499))
+}
+
+pub(crate) fn attack_release_ms_for_speed_percent(percent: f64) -> (f64, f64) {
+  let percent = percent.clamp(0.0, 100.0);
+  if percent <= 0.0 {
+    return (0.0, 0.0);
+  }
+  let normalized = percent / 100.0;
+  let exponent = (15.0_f64.log10() / 200.0_f64.log10()).ln() / 0.5_f64.ln();
+  let release_ms = 10.0 * 200.0_f64.powf(normalized.powf(exponent));
+  (release_ms * 0.2, release_ms)
+}
+
+pub(crate) fn analysis_average_sec_for_speed_percent(percent: f64) -> f64 {
+  let percent = percent.clamp(0.0, 100.0);
+  if percent <= 0.0 {
+    0.0
+  } else {
+    ANALYSIS_AVERAGE_SEC * (percent / 100.0)
+  }
+}
+
+fn crossover_blend(hz: f64, crossover_hz: f64) -> f64 {
+  let lo = crossover_hz * 2_f64.powf(-XFADE_HALF_OCT);
+  let hi = crossover_hz * 2_f64.powf(XFADE_HALF_OCT);
+  if hz <= lo {
+    0.0
+  } else if hz >= hi {
+    1.0
+  } else {
+    (hz.log2() - lo.log2()) / (hi.log2() - lo.log2())
+  }
+}
 
 /// Fixed log-frequency render grid spanning [min_hz, max_hz] at GRID_POINTS_PER_OCT points/octave.
 pub struct LogGrid {
@@ -42,23 +78,17 @@ impl LogGrid {
 
 /// One windowed-rFFT analyzer at a fixed size. Produces per-bin PSD (power / Hz),
 /// averaged by real time so different FFT sizes share comparable display ballistics.
+#[cfg(test)]
 pub struct StftAnalyzer {
   size: usize,
-  hop: usize,
-  r2c: std::sync::Arc<dyn realfft::RealToComplex<f32>>,
-  scratch_in: Vec<f32>,
-  scratch_spec: Vec<Complex<f32>>,
-  window: Vec<f32>,
-  ring: Vec<f32>,
-  write: usize,
-  filled: usize,
-  ingested: u64,
+  transform: SpectralTransform,
   smoothed_psd: Vec<f64>,
   average_initialized: bool,
   analysis_average_sec: f64,
   sample_rate: f64,
 }
 
+#[cfg(test)]
 impl StftAnalyzer {
   pub fn new(size: usize, sample_rate: f64) -> Self {
     let overlap = match size {
@@ -66,25 +96,9 @@ impl StftAnalyzer {
       FFT_SMALL => OVERLAP_SMALL,
       _ => OVERLAP_MID,
     };
-    let mut planner = RealFftPlanner::<f32>::new();
-    let r2c = planner.plan_fft_forward(size);
-    let scratch_spec = r2c.make_output_vec();
-    let mut window = vec![0.0_f32; size];
-    for (n, w) in window.iter_mut().enumerate() {
-      *w = (0.5 * (1.0 - (2.0 * std::f64::consts::PI * n as f64 / (size - 1).max(1) as f64).cos()))
-        as f32;
-    }
     Self {
       size,
-      hop: size / overlap,
-      r2c,
-      scratch_in: vec![0.0_f32; size],
-      scratch_spec,
-      window,
-      ring: vec![0.0_f32; size],
-      write: 0,
-      filled: 0,
-      ingested: 0,
+      transform: SpectralTransform::new(size, overlap, 0),
       smoothed_psd: Vec::new(),
       average_initialized: false,
       analysis_average_sec: ANALYSIS_AVERAGE_SEC,
@@ -92,12 +106,14 @@ impl StftAnalyzer {
     }
   }
 
+  #[cfg(test)]
+  #[allow(dead_code)]
   pub fn bin_width_hz(&self) -> f64 {
     self.sample_rate / self.size as f64
   }
 
   pub fn ready(&self) -> bool {
-    self.filled >= self.size && self.average_initialized
+    self.average_initialized
   }
 
   pub fn set_analysis_average_sec(&mut self, seconds: f64) {
@@ -110,45 +126,26 @@ impl StftAnalyzer {
 
   /// Push one mono sample; runs an STFT whenever a hop boundary is crossed.
   pub fn push_sample(&mut self, s: f32) {
-    let w = self.write % self.size;
-    self.ring[w] = s;
-    self.write = self.write.wrapping_add(1);
-    self.filled = (self.filled + 1).min(self.size);
-    self.ingested = self.ingested.wrapping_add(1);
-    if self.filled >= self.size && self.ingested.is_multiple_of(self.hop as u64) {
-      self.run_fft();
-    }
-  }
-
-  fn run_fft(&mut self) {
-    let n = self.size as f64;
-    for (i, slot) in self.scratch_in.iter_mut().enumerate() {
-      let idx = (self.write.wrapping_sub(self.size) + i) % self.size;
-      *slot = self.ring[idx] * self.window[i];
-    }
-    self
-      .r2c
-      .process(&mut self.scratch_in, &mut self.scratch_spec)
-      .expect("fft");
-    let bin_count = self.scratch_spec.len();
-    let bw = self.bin_width_hz();
+    let bw = self.sample_rate / self.size as f64;
+    let hop = self.transform.hop_size();
+    let hop_sec = hop as f64 / self.sample_rate;
+    let Some(frame) = self.transform.push_sample(s) else {
+      return;
+    };
+    debug_assert_eq!(frame.fft_size, self.size);
+    debug_assert!(frame.sample_clock.is_multiple_of(hop as u64));
+    let bin_count = frame.bins.len();
     if self.smoothed_psd.len() != bin_count {
       self.smoothed_psd = vec![0.0_f64; bin_count];
       self.average_initialized = false;
     }
-    let hop_sec = self.hop as f64 / self.sample_rate;
     let alpha = if self.analysis_average_sec <= 0.0 {
       1.0
     } else {
       1.0 - (-hop_sec / self.analysis_average_sec).exp()
     };
-    for (k, c) in self.scratch_spec.iter().enumerate() {
-      let m = (c.re * c.re + c.im * c.im).sqrt() as f64;
-      let m_norm = if k == 0 || k + 1 == bin_count {
-        m / n
-      } else {
-        m * 2.0 / n
-      };
+    for (k, c) in frame.bins.iter().enumerate() {
+      let m_norm = (c.re * c.re + c.im * c.im).sqrt() as f64;
       let power = m_norm.max(1e-12).powi(2);
       let psd = power / bw; // power per Hz
       if self.average_initialized {
@@ -162,16 +159,13 @@ impl StftAnalyzer {
 
   /// Where one frequency reads from: the bins to interpolate and the fraction between them.
   /// Fixed by size and sample rate, so it is resolved once and replayed every frame.
+  #[cfg(test)]
   pub fn bin_tap(&self, hz: f64) -> BinTap {
-    let bin_count = self.size / 2 + 1; // matches `r2c.make_output_vec()`
-    let pos = hz / self.bin_width_hz();
-    let k0 = pos.floor().clamp(0.0, (bin_count - 1) as f64) as usize;
-    let k1 = (k0 + 1).min(bin_count - 1);
-    let frac = (pos - k0 as f64).clamp(0.0, 1.0);
-    BinTap { k0, k1, frac }
+    BinTap::new(self.size, self.sample_rate, hz)
   }
 
   /// Time-averaged PSD at a resolved tap.
+  #[cfg(test)]
   pub fn psd_at_tap(&self, tap: BinTap) -> f64 {
     if !self.average_initialized {
       return 1e-20;
@@ -195,6 +189,23 @@ pub struct BinTap {
   k0: usize,
   k1: usize,
   frac: f64,
+}
+
+impl BinTap {
+  fn new(fft_size: usize, sample_rate: f64, hz: f64) -> Self {
+    let bin_count = fft_size / 2 + 1; // matches `r2c.make_output_vec()`
+    let pos = hz / (sample_rate / fft_size as f64);
+    let k0 = pos.floor().clamp(0.0, (bin_count - 1) as f64) as usize;
+    let k1 = (k0 + 1).min(bin_count - 1);
+    let frac = (pos - k0 as f64).clamp(0.0, 1.0);
+    Self { k0, k1, frac }
+  }
+
+  fn read(self, psd: &[f64]) -> f64 {
+    let a = psd[self.k0];
+    let b = psd[self.k1];
+    (a * (1.0 - self.frac) + b * self.frac).max(1e-20)
+  }
 }
 
 /// Fractional-octave smoothing width for the render grid. This is the frequency axis; the
@@ -229,7 +240,7 @@ impl OctaveSmoothing {
   /// The grid is uniform in log frequency, so a fractional-octave window is a *constant* number
   /// of points everywhere — 1/N octave spans `GRID_POINTS_PER_OCT / N`, half of that each side.
   /// No per-point width search, and the same window at 30 Hz as at 15 kHz.
-  fn half_width_points(self) -> Option<usize> {
+  pub(crate) fn half_width_points(self) -> Option<usize> {
     let denom = match self {
       Self::Off => return None,
       Self::OneTwelfth => 12.0,
@@ -247,16 +258,23 @@ impl OctaveSmoothing {
 /// to it loses that neighbour entirely. Differencing two such totals then returns noise for
 /// quiet windows. At ~1k points and a ≤33-wide window the direct loop is not worth optimising
 /// into that bug.
+#[cfg(test)]
 fn box_average(src: &[f64], half: usize) -> Vec<f64> {
+  let mut output = Vec::with_capacity(src.len());
+  box_average_into(src, half, &mut output);
+  output
+}
+
+pub(crate) fn box_average_into(src: &[f64], half: usize, output: &mut Vec<f64>) {
   let n = src.len();
-  (0..n)
-    .map(|i| {
-      let lo = i.saturating_sub(half);
-      let hi = (i + half + 1).min(n);
-      let sum: f64 = src[lo..hi].iter().sum();
-      sum / (hi - lo) as f64
-    })
-    .collect()
+  output.clear();
+  output.reserve(n.saturating_sub(output.capacity()));
+  output.extend((0..n).map(|i| {
+    let lo = i.saturating_sub(half);
+    let hi = (i + half + 1).min(n);
+    let sum: f64 = src[lo..hi].iter().sum();
+    sum / (hi - lo) as f64
+  }));
 }
 
 /// One grid point's read plan: where each analyzer is sampled and the two crossover weights.
@@ -270,51 +288,76 @@ struct GridTap {
   b_hi: f64,
 }
 
-pub struct MultiResBank {
-  big: StftAnalyzer,
-  mid: StftAnalyzer,
-  small: StftAnalyzer,
-  grid: LogGrid,
+pub(crate) struct SpectrumGrid {
+  freqs: Vec<f64>,
   taps: Vec<GridTap>,
 }
 
-impl MultiResBank {
-  pub fn new(sample_rate: f64, min_hz: f64, max_hz: f64) -> Self {
-    let big = StftAnalyzer::new(FFT_BIG, sample_rate);
-    let mid = StftAnalyzer::new(FFT_MID, sample_rate);
-    let small = StftAnalyzer::new(FFT_SMALL, sample_rate);
+impl SpectrumGrid {
+  pub(crate) fn new(sample_rate: f64, min_hz: f64, max_hz: f64) -> Self {
     let grid = LogGrid::new(min_hz, max_hz);
     let taps = grid
       .freqs
       .iter()
       .map(|&f| GridTap {
-        big: big.bin_tap(f),
-        mid: mid.bin_tap(f),
-        small: small.bin_tap(f),
-        b_lo: Self::blend(f, XOVER_LO_HZ), // 0=big, 1=mid
-        b_hi: Self::blend(f, XOVER_HI_HZ), // 0=lowmid(mid), 1=small
+        big: BinTap::new(FFT_BIG, sample_rate, f),
+        mid: BinTap::new(FFT_MID, sample_rate, f),
+        small: BinTap::new(FFT_SMALL, sample_rate, f),
+        b_lo: crossover_blend(f, XOVER_LO_HZ),
+        b_hi: crossover_blend(f, XOVER_HI_HZ),
       })
       .collect();
+    Self {
+      freqs: grid.freqs,
+      taps,
+    }
+  }
+
+  pub(crate) fn freqs(&self) -> &[f64] {
+    &self.freqs
+  }
+
+  pub(crate) fn linear_row_into(
+    &self,
+    big: &[f64],
+    mid: &[f64],
+    small: &[f64],
+    output: &mut Vec<f64>,
+  ) {
+    output.clear();
+    output.reserve(self.taps.len().saturating_sub(output.capacity()));
+    output.extend(self.taps.iter().map(|t| {
+      let lowmid = t.big.read(big) * (1.0 - t.b_lo) + t.mid.read(mid) * t.b_lo;
+      lowmid * (1.0 - t.b_hi) + t.small.read(small) * t.b_hi
+    }));
+  }
+}
+
+#[cfg(test)]
+pub struct MultiResBank {
+  big: StftAnalyzer,
+  mid: StftAnalyzer,
+  small: StftAnalyzer,
+  grid: SpectrumGrid,
+}
+
+#[cfg(test)]
+impl MultiResBank {
+  pub fn new(sample_rate: f64, min_hz: f64, max_hz: f64) -> Self {
+    let big = StftAnalyzer::new(FFT_BIG, sample_rate);
+    let mid = StftAnalyzer::new(FFT_MID, sample_rate);
+    let small = StftAnalyzer::new(FFT_SMALL, sample_rate);
+    let grid = SpectrumGrid::new(sample_rate, min_hz, max_hz);
     Self {
       big,
       mid,
       small,
       grid,
-      taps,
-    }
-  }
-
-  pub fn analysis_average_sec_for_speed_percent(percent: f64) -> f64 {
-    let p = percent.clamp(0.0, 100.0);
-    if p <= 0.0 {
-      0.0
-    } else {
-      ANALYSIS_AVERAGE_SEC * (p / 100.0)
     }
   }
 
   pub fn grid_freqs(&self) -> &[f64] {
-    &self.grid.freqs
+    self.grid.freqs()
   }
 
   pub fn set_analysis_average_sec(&mut self, seconds: f64) {
@@ -334,34 +377,18 @@ impl MultiResBank {
     self.small.push_sample(s);
   }
 
-  /// Blend weight in [0,1] for the *upper* analyzer of a crossover at `xover_hz`.
-  /// 0 below the fade band (use lower analyzer), 1 above it (use upper analyzer).
-  fn blend(hz: f64, xover_hz: f64) -> f64 {
-    let lo = xover_hz * 2_f64.powf(-XFADE_HALF_OCT);
-    let hi = xover_hz * 2_f64.powf(XFADE_HALF_OCT);
-    if hz <= lo {
-      0.0
-    } else if hz >= hi {
-      1.0
-    } else {
-      (hz.log2() - lo.log2()) / (hi.log2() - lo.log2())
-    }
-  }
-
   /// Linear PSD per grid point, combining the three analyzers.
   /// Reads the precomputed tap table; the arithmetic below is deliberately in the same order as
   /// the naive form so the row stays bit-identical (floating point is not associative).
   fn psd_linear_row(&self) -> Vec<f64> {
-    self
-      .taps
-      .iter()
-      .map(|t| {
-        // Low/mid blend then mid/high blend, all in linear PSD.
-        let lowmid =
-          self.big.psd_at_tap(t.big) * (1.0 - t.b_lo) + self.mid.psd_at_tap(t.mid) * t.b_lo;
-        lowmid * (1.0 - t.b_hi) + self.small.psd_at_tap(t.small) * t.b_hi
-      })
-      .collect()
+    let mut row = Vec::with_capacity(self.grid.taps.len());
+    self.grid.linear_row_into(
+      &self.big.smoothed_psd,
+      &self.mid.smoothed_psd,
+      &self.small.smoothed_psd,
+      &mut row,
+    );
+    row
   }
 
   /// PSD-dB per grid point. `cal_offset_db` is added here.
@@ -441,22 +468,16 @@ mod tests {
     let mid = StftAnalyzer::new(FFT_MID, sr);
     let small = StftAnalyzer::new(FFT_SMALL, sr);
 
-    assert_eq!(big.hop, FFT_BIG / 8);
-    assert_eq!(mid.hop, FFT_MID / 4);
-    assert_eq!(small.hop, FFT_SMALL / 2);
+    assert_eq!(big.transform.hop_size(), FFT_BIG / 8);
+    assert_eq!(mid.transform.hop_size(), FFT_MID / 4);
+    assert_eq!(small.transform.hop_size(), FFT_SMALL / 2);
   }
 
   #[test]
   fn analysis_average_scales_across_full_speed_range() {
-    assert_eq!(
-      MultiResBank::analysis_average_sec_for_speed_percent(0.0),
-      0.0
-    );
-    assert!((MultiResBank::analysis_average_sec_for_speed_percent(50.0) - 0.075).abs() < 1e-9);
-    assert!(
-      (MultiResBank::analysis_average_sec_for_speed_percent(100.0) - ANALYSIS_AVERAGE_SEC).abs()
-        < 1e-9
-    );
+    assert_eq!(analysis_average_sec_for_speed_percent(0.0), 0.0);
+    assert!((analysis_average_sec_for_speed_percent(50.0) - 0.075).abs() < 1e-9);
+    assert!((analysis_average_sec_for_speed_percent(100.0) - ANALYSIS_AVERAGE_SEC).abs() < 1e-9);
   }
 
   #[test]

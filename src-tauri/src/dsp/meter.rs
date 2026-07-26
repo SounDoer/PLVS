@@ -8,11 +8,14 @@ use crate::engine::ChannelLayoutSetting;
 pub struct PcmContext<'a> {
   pub interleaved: &'a [f32],
   pub channels: u16,
+  #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
   pub now_sec: f64,
   pub channel_layout: ChannelLayoutSetting,
   pub loudness_weights: Option<Vec<f64>>,
   pub vectorscope_pair: (u16, u16),
+  #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
   pub spectrum_channel: SpectrumChannelSel,
+  #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
   pub spectrum_view: SpectrumView,
   /// When true, run the speech-activity sidechain and populate the dialogue-gated readouts.
   pub dialogue_gating: bool,
