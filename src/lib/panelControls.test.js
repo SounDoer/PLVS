@@ -128,6 +128,16 @@ describe("panelControls", () => {
       ],
       dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+      stereoMapMode: "position",
+      stereoMapPair: { first: 0, second: 1 },
+      stereoMapHold: false,
+      stereoMapSpeedPercent: 25,
+      stereoMapOctaveSmoothing: "1/12",
+      stereoMapXMinFreq: 20,
+      stereoMapXMaxFreq: 20000,
+      stereoMapMonoLossYMinDb: -24,
+      stereoMapMsRatioYMinDb: -48,
+      stereoMapMsRatioYMaxDb: 24,
     });
   });
 
@@ -235,6 +245,16 @@ describe("panelControls", () => {
       statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
       dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["ref"],
+      stereoMapMode: "position",
+      stereoMapPair: { first: 0, second: 1 },
+      stereoMapHold: false,
+      stereoMapSpeedPercent: 25,
+      stereoMapOctaveSmoothing: "1/12",
+      stereoMapXMinFreq: 20,
+      stereoMapXMaxFreq: 20000,
+      stereoMapMonoLossYMinDb: -24,
+      stereoMapMsRatioYMinDb: -48,
+      stereoMapMsRatioYMaxDb: 24,
     });
   });
 
@@ -439,5 +459,135 @@ describe("spectrum display controls normalization", () => {
       spectrumXMinFreq: 1000,
       spectrumXMaxFreq: 4000,
     });
+  });
+});
+
+describe("stereo map panel controls normalization", () => {
+  it("defaults to Position, the Vectorscope pair fallback, Hold off, and 1/12 oct smoothing", () => {
+    const result = normalizePanelControls({});
+    expect(result.stereoMapMode).toBe("position");
+    expect(result.stereoMapPair).toEqual({ first: 0, second: 1 });
+    expect(result.stereoMapHold).toBe(false);
+    expect(result.stereoMapSpeedPercent).toBe(25);
+    expect(result.stereoMapOctaveSmoothing).toBe("1/12");
+    expect(result.stereoMapXMinFreq).toBe(20);
+    expect(result.stereoMapXMaxFreq).toBe(20000);
+    expect(result.stereoMapMonoLossYMinDb).toBe(-24);
+    expect(result.stereoMapMsRatioYMinDb).toBe(-48);
+    expect(result.stereoMapMsRatioYMaxDb).toBe(24);
+  });
+
+  it("accepts every Stereo Map mode", () => {
+    for (const mode of ["position", "correlation", "monoLossDb", "msRatioDb"]) {
+      expect(normalizePanelControls({ stereoMapMode: mode }).stereoMapMode).toBe(mode);
+    }
+  });
+
+  it("falls back to Position for an unknown or legacy mode value", () => {
+    expect(normalizePanelControls({ stereoMapMode: "width" }).stereoMapMode).toBe("position");
+    expect(normalizePanelControls({ stereoMapMode: "" }).stereoMapMode).toBe("position");
+    expect(normalizePanelControls({ stereoMapMode: null }).stereoMapMode).toBe("position");
+  });
+
+  it("normalizes a valid stereoMapPair, using {first, second} rather than Vectorscope's {x, y}", () => {
+    expect(
+      normalizePanelControls({ stereoMapPair: { first: 2, second: 4 } }).stereoMapPair
+    ).toEqual({ first: 2, second: 4 });
+  });
+
+  it("falls back to the default pair for a malformed or legacy stereoMapPair", () => {
+    expect(normalizePanelControls({ stereoMapPair: { x: 2, y: 4 } }).stereoMapPair).toEqual({
+      first: 0,
+      second: 1,
+    });
+    expect(
+      normalizePanelControls({ stereoMapPair: { first: 2, second: "bad" } }).stereoMapPair
+    ).toEqual({
+      first: 0,
+      second: 1,
+    });
+    expect(normalizePanelControls({ stereoMapPair: null }).stereoMapPair).toEqual({
+      first: 0,
+      second: 1,
+    });
+  });
+
+  it("normalizes the Hold toggle", () => {
+    expect(normalizePanelControls({ stereoMapHold: true }).stereoMapHold).toBe(true);
+    expect(normalizePanelControls({ stereoMapHold: false }).stereoMapHold).toBe(false);
+    expect(normalizePanelControls({ stereoMapHold: "yes" }).stereoMapHold).toBe(false);
+  });
+
+  it("clamps Speed to 0..100 percent, same convention as Spectrum", () => {
+    expect(normalizePanelControls({ stereoMapSpeedPercent: -1 }).stereoMapSpeedPercent).toBe(0);
+    expect(normalizePanelControls({ stereoMapSpeedPercent: 101 }).stereoMapSpeedPercent).toBe(100);
+    expect(normalizePanelControls({ stereoMapSpeedPercent: 60 }).stereoMapSpeedPercent).toBe(60);
+    expect(normalizePanelControls({ stereoMapSpeedPercent: "75" }).stereoMapSpeedPercent).toBe(25);
+  });
+
+  it("accepts every Spectrum octave-smoothing option and falls back to 1/12 oct otherwise", () => {
+    for (const id of ["off", "1/12", "1/6", "1/3"]) {
+      expect(
+        normalizePanelControls({ stereoMapOctaveSmoothing: id }).stereoMapOctaveSmoothing
+      ).toBe(id);
+    }
+    expect(
+      normalizePanelControls({ stereoMapOctaveSmoothing: "1/24" }).stereoMapOctaveSmoothing
+    ).toBe("1/12");
+  });
+
+  it("clamps the X range to 20 Hz..20 kHz with a minimum one-octave span", () => {
+    expect(
+      normalizePanelControls({ stereoMapXMinFreq: 1000, stereoMapXMaxFreq: 4000 })
+    ).toMatchObject({ stereoMapXMinFreq: 1000, stereoMapXMaxFreq: 4000 });
+    expect(normalizePanelControls({ stereoMapXMinFreq: 5 }).stereoMapXMinFreq).toBe(20);
+    expect(normalizePanelControls({ stereoMapXMaxFreq: 30000 }).stereoMapXMaxFreq).toBe(20000);
+  });
+
+  it("clamps the Mono Loss lower bound to -60..-6 dB, defaulting to -24 dB", () => {
+    expect(normalizePanelControls({}).stereoMapMonoLossYMinDb).toBe(-24);
+    expect(normalizePanelControls({ stereoMapMonoLossYMinDb: -12 }).stereoMapMonoLossYMinDb).toBe(
+      -12
+    );
+    expect(normalizePanelControls({ stereoMapMonoLossYMinDb: -90 }).stereoMapMonoLossYMinDb).toBe(
+      -60
+    );
+    expect(normalizePanelControls({ stereoMapMonoLossYMinDb: 0 }).stereoMapMonoLossYMinDb).toBe(-6);
+  });
+
+  it("clamps the M/S Ratio range to -96..+48 dB and keeps 0 dB inside it", () => {
+    expect(
+      normalizePanelControls({ stereoMapMsRatioYMinDb: -96, stereoMapMsRatioYMaxDb: 48 })
+    ).toMatchObject({ stereoMapMsRatioYMinDb: -96, stereoMapMsRatioYMaxDb: 48 });
+    // A lower bound pushed above zero snaps to zero rather than being repaired against the other bound.
+    expect(
+      normalizePanelControls({ stereoMapMsRatioYMinDb: 10, stereoMapMsRatioYMaxDb: 20 })
+        .stereoMapMsRatioYMinDb
+    ).toBe(0);
+    expect(
+      normalizePanelControls({ stereoMapMsRatioYMinDb: -20, stereoMapMsRatioYMaxDb: -10 })
+        .stereoMapMsRatioYMaxDb
+    ).toBe(0);
+    expect(normalizePanelControls({ stereoMapMsRatioYMinDb: -200 }).stereoMapMsRatioYMinDb).toBe(
+      -96
+    );
+    expect(normalizePanelControls({ stereoMapMsRatioYMaxDb: 200 }).stereoMapMsRatioYMaxDb).toBe(48);
+  });
+
+  it("round-trips through normalization without drifting (preset save/apply idempotence)", () => {
+    const once = normalizePanelControls({
+      stereoMapMode: "msRatioDb",
+      stereoMapPair: { first: 2, second: 5 },
+      stereoMapHold: true,
+      stereoMapSpeedPercent: 60,
+      stereoMapOctaveSmoothing: "1/6",
+      stereoMapXMinFreq: 100,
+      stereoMapXMaxFreq: 8000,
+      stereoMapMonoLossYMinDb: -40,
+      stereoMapMsRatioYMinDb: -30,
+      stereoMapMsRatioYMaxDb: 30,
+    });
+    const twice = normalizePanelControls(once);
+    expect(twice).toEqual(once);
   });
 });

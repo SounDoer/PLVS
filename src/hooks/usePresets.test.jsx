@@ -437,6 +437,48 @@ describe("usePresets", () => {
     expect(presetsStore.read().activeId).toBe("p1");
   });
 
+  it("round-trips Stereo Map panel controls through save and apply", async () => {
+    // Stereo Map's own panel module and Add Panel registration land in a later task; this exercises
+    // the control-normalization/persistence layer this task owns by carrying stereoMap* keys on an
+    // already-registered panel's controls object, the same flat, module-agnostic shape every panel
+    // instance's controls already use.
+    const { result } = renderPresetHook();
+    const panelId = result.current.workspace.state.panelOrder.find(
+      (id) => result.current.workspace.state.panelsById[id].moduleId === "spectrum"
+    );
+    const stereoMapControls = {
+      stereoMapMode: "msRatioDb",
+      stereoMapPair: { first: 0, second: 1 },
+      stereoMapHold: true,
+      stereoMapSpeedPercent: 60,
+      stereoMapOctaveSmoothing: "1/6",
+      stereoMapXMinFreq: 100,
+      stereoMapXMaxFreq: 8000,
+      stereoMapMonoLossYMinDb: -40,
+      stereoMapMsRatioYMinDb: -30,
+      stereoMapMsRatioYMaxDb: 30,
+    };
+    act(() => {
+      result.current.workspace.setPanelControlsForPanel(panelId, stereoMapControls);
+    });
+
+    await act(async () => {
+      await result.current.presets.save("StereoMap");
+    });
+    const saved = presetsStore.read().list[0];
+    expect(saved.panelControlsById[panelId]).toMatchObject(stereoMapControls);
+
+    act(() =>
+      result.current.workspace.setPanelControlsForPanel(panelId, { stereoMapMode: "position" })
+    );
+    await act(async () => {
+      await result.current.presets.apply(saved.id);
+    });
+    expect(result.current.workspace.state.panelControlsById[panelId]).toMatchObject(
+      stereoMapControls
+    );
+  });
+
   it("filters out presets referencing unknown module ids", () => {
     presetsStore.patch({
       list: [
