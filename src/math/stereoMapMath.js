@@ -124,15 +124,6 @@ function projectPoint(value, opacity, lowerBound, upperBound) {
   return { state: "finite", value, opacity };
 }
 
-function energyDb(primitive) {
-  if (!primitive) return null;
-  const { pl, pr, scale } = primitive;
-  if (scale === 0) return 10 * ENERGY_FLOOR_LOG10 + CAL_OFFSET_DB;
-
-  const log10Energy = Math.log10(scale) + Math.log10(pl + pr);
-  return 10 * Math.max(log10Energy, ENERGY_FLOOR_LOG10) + CAL_OFFSET_DB;
-}
-
 /**
  * Derive and clip one primitive point. Primitive non-finites are invalid; formula infinities
  * remain valid and project to an explicit range state.
