@@ -58,7 +58,88 @@ function baseAudioData(overrides = {}) {
   };
 }
 
+// StereoMapPlot renders its curve on <canvas> (see StereoMapPlot.jsx). jsdom has no real canvas
+// implementation, so `getContext` returns null and the plot silently skips drawing unless a test
+// mocks it — fine for tests that only check panel-level DOM (axis labels, empty states, hover
+// text), but tests that need to know what the curve/Hold outlines actually drew must opt in via
+// `mockCanvas()`.
+function contextStub() {
+  let currentPath = [];
+  const filledPaths = [];
+  const strokedPaths = [];
+  const strokedColors = [];
+  const ctx = {
+    filledPaths,
+    strokedPaths,
+    strokedColors,
+    fillStyle: "",
+    strokeStyle: "",
+    globalAlpha: 1,
+    lineWidth: 1,
+    lineCap: "butt",
+    save: vi.fn(),
+    restore: vi.fn(),
+    clearRect: vi.fn(),
+    beginPath: vi.fn(() => {
+      currentPath = [];
+    }),
+    closePath: vi.fn(() => {
+      currentPath.push({ command: "closePath" });
+    }),
+    moveTo: vi.fn((x, y) => {
+      currentPath.push({ command: "moveTo", x, y });
+    }),
+    lineTo: vi.fn((x, y) => {
+      currentPath.push({ command: "lineTo", x, y });
+    }),
+    fill: vi.fn(() => {
+      filledPaths.push(currentPath.map((entry) => ({ ...entry })));
+    }),
+    stroke: vi.fn(() => {
+      strokedPaths.push(currentPath.map((entry) => ({ ...entry })));
+      strokedColors.push(ctx.strokeStyle);
+    }),
+  };
+  return ctx;
+}
+
+// Distinct resolved colors per token so a stroke's color unambiguously identifies whether it came
+// from the Hold outline (always the primary token) or the curve itself (signal/blend tokens).
+function mockStereoMapColors() {
+  return vi.spyOn(window, "getComputedStyle").mockReturnValue({
+    getPropertyValue: (name) =>
+      ({
+        "--ui-stereo-map-primary": "#111111",
+        "--ui-stereo-map-primary-snap": "#111111",
+        "--ui-stereo-map-secondary": "#222222",
+        "--ui-stereo-map-secondary-snap": "#222222",
+        "--ui-signal-bad": "#444444",
+        "--ui-signal-warn": "#333333",
+        "--ui-signal-good": "#555555",
+        "--border": "#666666",
+      })[name] ?? "",
+  });
+}
+const STEREO_MAP_PRIMARY_CSS = "rgb(17, 17, 17)";
+
 describe("StereoMapPanel", () => {
+  function mockCanvas() {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    return ctx;
+  }
+
+  // One stub canvas per <canvas> element, for tests that render more than one panel and need to
+  // tell their draws apart.
+  function mockCanvasPerElement() {
+    const ctxByCanvas = new WeakMap();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function () {
+      if (!ctxByCanvas.has(this)) ctxByCanvas.set(this, contextStub());
+      return ctxByCanvas.get(this);
+    });
+    return ctxByCanvas;
+  }
+
   beforeEach(() => {
     // Hover's raf-scheduled state update needs to run synchronously in jsdom for assertions to
     // see it immediately, and the chart's own bounding rect needs a real size so xFrac math
@@ -81,6 +162,17 @@ describe("StereoMapPanel", () => {
       x: 0,
       y: 0,
       toJSON: () => ({}),
+    });
+    // Canvas sizing reads clientWidth/clientHeight (not getBoundingClientRect); match the chart's
+    // assumed 1000x260 above so tests that mock the canvas see the same coordinate space the old
+    // SVG viewBox used.
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientWidth", {
+      configurable: true,
+      get: () => 1000,
+    });
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientHeight", {
+      configurable: true,
+      get: () => 260,
     });
   });
 
@@ -167,7 +259,8 @@ describe("StereoMapPanel", () => {
   });
 
   it("fades low-energy bands and breaks the curve instead of drawing a false zero", () => {
-    const { container } = renderPanel(
+    const ctx = mockCanvas();
+    renderPanel(
       baseAudioData({
         panelControls: {
           stereoMapPair: { first: 0, second: 1 },
@@ -184,17 +277,17 @@ describe("StereoMapPanel", () => {
 
     // Two valid bands (0 and 1) with an invalid band (2) between them and the grid edge means the
     // curve cannot be one unbroken run: it must render as a single segment (band0-band1), not a
-    // path spanning all three bands.
-    const segments = container.querySelectorAll(
-      '[data-stereo-map-plot="position"] [data-stereo-map-segment]'
-    );
-    expect(segments.length).toBe(1);
+    // curve spanning all three bands. One grid-line stroke plus exactly one segment stroke/fill.
+    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    expect(ctx.fill).toHaveBeenCalledTimes(1);
   });
 
   it("shows Hold outlines only when toggled, while accumulation continues underneath", () => {
     // Live Hold is read from the shared per-Analysis-Key slab (see StereoMapHistorySlab), not a
     // per-panel accumulator, so a real slab that already has a row appended stands in for
     // "accumulation happened while Hold was off".
+    const ctx = mockCanvas();
+    const colorSpy = mockStereoMapColors();
     const slab = new StereoMapHistorySlab(10);
     slab.append({
       timestampMs: 0,
@@ -214,8 +307,10 @@ describe("StereoMapPanel", () => {
         stereoMapHold: false,
       },
     });
-    const { container, rerender } = renderPanel(audioData);
-    expect(container.querySelector("[data-stereo-map-hold]")).toBeNull();
+    const { rerender } = renderPanel(audioData);
+    // Hold's outline is always stroked in the primary token, distinct from Correlation's
+    // Bad/Warn/Good curve colors — its absence/presence is what "no outline drawn" means here.
+    expect(ctx.strokedColors).not.toContain(STEREO_MAP_PRIMARY_CSS);
 
     rerender(
       <FrameDataProvider
@@ -239,10 +334,12 @@ describe("StereoMapPanel", () => {
 
     // Hold was accumulating the whole time (per the design's "visibility only" contract), so
     // toggling it on immediately shows a recorded outline rather than an empty one.
-    expect(container.querySelector('[data-stereo-map-hold="hold"]')).toBeTruthy();
+    expect(ctx.strokedColors).toContain(STEREO_MAP_PRIMARY_CSS);
+    colorSpy.mockRestore();
   });
 
   it("shares live Hold accumulation across every consumer of the same Analysis Key", () => {
+    const ctxByCanvas = mockCanvasPerElement();
     const slab = new StereoMapHistorySlab(10);
     slab.append({
       timestampMs: 0,
@@ -266,10 +363,15 @@ describe("StereoMapPanel", () => {
       baseAudioData({ getStereoMapHistoryForKey, panelControls: sharedControls })
     );
 
-    const holdA = containerA.querySelector('[data-stereo-map-hold="max"]')?.getAttribute("points");
-    const holdB = containerB.querySelector('[data-stereo-map-hold="max"]')?.getAttribute("points");
-    expect(holdA).toBeTruthy();
-    expect(holdA).toBe(holdB);
+    const ctxA = ctxByCanvas.get(containerA.querySelector("canvas"));
+    const ctxB = ctxByCanvas.get(containerB.querySelector("canvas"));
+    // Position mode draws two Hold outlines (maximum, then minimum) after the curve segments; all
+    // three bands are valid here, so each is a single stroked run. Comparing the maximum outline's
+    // path (the second-to-last stroke) is the canvas equivalent of the old `points` attribute check.
+    const maxPathA = ctxA.strokedPaths.at(-2);
+    const maxPathB = ctxB.strokedPaths.at(-2);
+    expect(maxPathA).toBeTruthy();
+    expect(maxPathA).toEqual(maxPathB);
 
     // A consumer of a different Analysis Key (different pair) has no slab in this lookup and
     // therefore no Hold at all — sharing is scoped to the key, not global.
@@ -279,7 +381,9 @@ describe("StereoMapPanel", () => {
         panelControls: { ...sharedControls, stereoMapPair: { first: 2, second: 3 } },
       })
     );
-    expect(containerC.querySelector("[data-stereo-map-hold]")).toBeNull();
+    const ctxC = ctxByCanvas.get(containerC.querySelector("canvas"));
+    // Pair 2:3 has no live row (pending) and no Hold slab for this key: only the grid-line stroke.
+    expect(ctxC.stroke).toHaveBeenCalledTimes(1);
   });
 
   it("shows the current value, energy, and Hold on hover", () => {
@@ -340,7 +444,8 @@ describe("StereoMapPanel", () => {
   });
 
   it("shows pending (no data) for a request whose key has not produced a frame yet", () => {
-    const { container } = renderPanel(
+    const ctx = mockCanvas();
+    renderPanel(
       baseAudioData({
         panelControls: { stereoMapPair: { first: 2, second: 3 } },
         displayAudio: { stereoMapResultsByKey: { [KEY]: primitiveRow() } },
@@ -348,10 +453,10 @@ describe("StereoMapPanel", () => {
     );
 
     // The panel's own key (pair 2:3) has no entry in stereoMapResultsByKey, so it must render an
-    // empty chart rather than the pair 0:1 data sitting under a different key.
-    expect(
-      container.querySelector('[data-stereo-map-plot="position"] [data-stereo-map-segment]')
-    ).toBeNull();
+    // empty chart (grid line only, no curve) rather than the pair 0:1 data sitting under a
+    // different key.
+    expect(ctx.fill).not.toHaveBeenCalled();
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
   });
 
   it("shows the over-cap empty state when its request is over the active cap", () => {
@@ -372,14 +477,15 @@ describe("StereoMapPanel", () => {
   });
 
   it("never flashes another request key's data when the pair changes", () => {
-    const { container, rerender } = renderPanel(
+    const ctx = mockCanvas();
+    const { rerender } = renderPanel(
       baseAudioData({
         panelControls: { stereoMapPair: { first: 0, second: 1 } },
       })
     );
-    expect(
-      container.querySelector('[data-stereo-map-plot="position"] [data-stereo-map-segment]')
-    ).toBeTruthy();
+    expect(ctx.fill).toHaveBeenCalled();
+    const fillCallsForPair01 = ctx.fill.mock.calls.length;
+    const clearRectCallsBefore = ctx.clearRect.mock.calls.length;
 
     rerender(
       <FrameDataProvider
@@ -399,9 +505,10 @@ describe("StereoMapPanel", () => {
       </FrameDataProvider>
     );
 
-    expect(
-      container.querySelector('[data-stereo-map-plot="position"] [data-stereo-map-segment]')
-    ).toBeNull();
+    // The redraw for the new (empty) request key clears the canvas and adds no new curve fills —
+    // the pair 0:1 curve never lingers on screen under the pair 2:3 key.
+    expect(ctx.clearRect.mock.calls.length).toBeGreaterThan(clearRectCallsBefore);
+    expect(ctx.fill.mock.calls.length).toBe(fillCallsForPair01);
   });
 
   it("keeps the same request key and reuses current/history primitives across a Mode change", () => {

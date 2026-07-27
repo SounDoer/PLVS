@@ -1,10 +1,16 @@
+import { useLayoutEffect, useRef } from "react";
+
 import { rangedFreqToXFrac, rangedHistY } from "../../config/scales";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 
-// Same viewBox convention as Spectrum's inline SVG, so the curve, grid, and hover overlay all
-// share one coordinate system across panels.
+// Same viewBox convention as Spectrum's inline SVG (and this component's own former SVG
+// implementation), so the curve, grid, and hover overlay all share one coordinate system across
+// panels. Canvas needs real pixel dimensions rather than a viewBox, so these virtual units are
+// mapped to the backing store's physical pixels at draw time (see scaleX/scaleY below).
 const VIEW_W = 1000;
 const VIEW_H = 260;
+
+const FALLBACK_COLOR = { r: 128, g: 128, b: 128 };
 
 function xFor(hz, xMinHz, xMaxHz) {
   return rangedFreqToXFrac(hz, xMinHz, xMaxHz) * VIEW_W;
@@ -25,23 +31,6 @@ function channelBlendT(value, range) {
   return clamp01((value - range.lowerBound) / span);
 }
 
-function channelBlendColor(t, primaryVar, secondaryVar) {
-  const pct = clamp01(t) * 100;
-  return `color-mix(in srgb, ${primaryVar} ${pct}%, ${secondaryVar})`;
-}
-
-// Continuous Bad -> Warn -> Good, derived from the existing signal tokens. t=0 is fully Bad,
-// t=0.5 is fully Warn, t=1 is fully Good.
-function threeStopSignalColor(t) {
-  const clamped = clamp01(t);
-  if (clamped <= 0.5) {
-    const pct = (clamped / 0.5) * 100;
-    return `color-mix(in srgb, var(--ui-signal-warn) ${pct}%, var(--ui-signal-bad))`;
-  }
-  const pct = ((clamped - 0.5) / 0.5) * 100;
-  return `color-mix(in srgb, var(--ui-signal-good) ${pct}%, var(--ui-signal-warn))`;
-}
-
 // Correlation: -1 (anti-phase) is Bad, +1 (in phase) is Good.
 function correlationColorT(value) {
   return clamp01((value + 1) / 2);
@@ -54,21 +43,87 @@ function monoLossColorT(value, range) {
   return clamp01((value - range.lowerBound) / span);
 }
 
-function segmentColor(mode, value, range, primaryVar, secondaryVar) {
+/** Parses a resolved CSS color (hex or rgb()/rgba()) into {r,g,b}. Returns null if unparseable. */
+function parseColor(raw) {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  let match = /^#([0-9a-f]{3})$/i.exec(value);
+  if (match) {
+    const [r, g, b] = match[1];
+    return { r: parseInt(r + r, 16), g: parseInt(g + g, 16), b: parseInt(b + b, 16) };
+  }
+  match = /^#([0-9a-f]{6})$/i.exec(value);
+  if (match) {
+    const hex = match[1];
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+    };
+  }
+  match = /^#([0-9a-f]{8})$/i.exec(value);
+  if (match) {
+    const hex = match[1];
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+    };
+  }
+  match = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(value);
+  if (match) return { r: +match[1], g: +match[2], b: +match[3] };
+  return null;
+}
+
+function rgbToCss({ r, g, b }) {
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+// Canvas equivalent of `color-mix(in srgb, colorA pct%, colorB)`: a plain per-channel lerp in
+// sRGB, colorA weighted by pct/100.
+function mixColors(pctOfA, colorA, colorB) {
+  const t = clamp01(pctOfA / 100);
+  return rgbToCss({
+    r: Math.round(colorA.r * t + colorB.r * (1 - t)),
+    g: Math.round(colorA.g * t + colorB.g * (1 - t)),
+    b: Math.round(colorA.b * t + colorB.b * (1 - t)),
+  });
+}
+
+function channelBlendColor(t, primary, secondary) {
+  return mixColors(clamp01(t) * 100, primary, secondary);
+}
+
+// Continuous Bad -> Warn -> Good, derived from the existing signal tokens. t=0 is fully Bad,
+// t=0.5 is fully Warn, t=1 is fully Good.
+function threeStopSignalColor(t, warn, bad, good) {
+  const clamped = clamp01(t);
+  if (clamped <= 0.5) {
+    return mixColors((clamped / 0.5) * 100, warn, bad);
+  }
+  return mixColors(((clamped - 0.5) / 0.5) * 100, good, warn);
+}
+
+function segmentColor(mode, value, range, colors) {
   switch (mode) {
     case STEREO_MAP_MODES.POSITION:
-      return channelBlendColor(channelBlendT(value, range), primaryVar, secondaryVar);
+      return channelBlendColor(channelBlendT(value, range), colors.primary, colors.secondary);
     case STEREO_MAP_MODES.CORRELATION:
-      return threeStopSignalColor(correlationColorT(value));
+      return threeStopSignalColor(correlationColorT(value), colors.warn, colors.bad, colors.good);
     case STEREO_MAP_MODES.MONO_LOSS_DB:
-      return threeStopSignalColor(monoLossColorT(value, range));
+      return threeStopSignalColor(
+        monoLossColorT(value, range),
+        colors.warn,
+        colors.bad,
+        colors.good
+      );
     case STEREO_MAP_MODES.MS_RATIO_DB:
       // Side-dominant (positive) reuses Spectrum's Mid/Side "secondary" token, Mid-dominant
       // (negative) reuses "primary" — the same pairing Spectrum's M/S view uses. Side is not
       // tinted as dangerous; it is simply the other side of the same pair of colors as Mid.
-      return value >= 0 ? secondaryVar : primaryVar;
+      return value >= 0 ? colors.secondaryCss : colors.primaryCss;
     default:
-      return primaryVar;
+      return colors.primaryCss;
   }
 }
 
@@ -123,15 +178,108 @@ function buildHoldRuns(bandCentersHz, values, xMinHz, xMaxHz, range) {
   return runs;
 }
 
-function polylinePoints(run) {
-  return run.map((point) => `${point.x},${point.y}`).join(" ");
+function buildHoldGroups(mode, bandCentersHz, holdValues, xMinHz, xMaxHz, range) {
+  const holdGroups = [];
+  if (!holdValues) return holdGroups;
+  if (mode === STEREO_MAP_MODES.POSITION) {
+    if (holdValues.maximum) {
+      holdGroups.push({
+        key: "max",
+        runs: buildHoldRuns(bandCentersHz, holdValues.maximum, xMinHz, xMaxHz, range),
+      });
+    }
+    if (holdValues.minimum) {
+      holdGroups.push({
+        key: "min",
+        runs: buildHoldRuns(bandCentersHz, holdValues.minimum, xMinHz, xMaxHz, range),
+      });
+    }
+  } else {
+    holdGroups.push({
+      key: "hold",
+      runs: buildHoldRuns(bandCentersHz, holdValues, xMinHz, xMaxHz, range),
+    });
+  }
+  return holdGroups;
+}
+
+function resizeCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  return { dpr, width, height };
+}
+
+function resolveColors(style, paletteKey) {
+  const primaryVarName =
+    paletteKey === "snap" ? "--ui-stereo-map-primary-snap" : "--ui-stereo-map-primary";
+  const secondaryVarName =
+    paletteKey === "snap" ? "--ui-stereo-map-secondary-snap" : "--ui-stereo-map-secondary";
+  const primary = parseColor(style.getPropertyValue(primaryVarName)) || FALLBACK_COLOR;
+  const secondary = parseColor(style.getPropertyValue(secondaryVarName)) || FALLBACK_COLOR;
+  const warn = parseColor(style.getPropertyValue("--ui-signal-warn")) || FALLBACK_COLOR;
+  const bad = parseColor(style.getPropertyValue("--ui-signal-bad")) || FALLBACK_COLOR;
+  const good = parseColor(style.getPropertyValue("--ui-signal-good")) || FALLBACK_COLOR;
+  return {
+    primary,
+    secondary,
+    warn,
+    bad,
+    good,
+    primaryCss: rgbToCss(primary),
+    secondaryCss: rgbToCss(secondary),
+  };
+}
+
+function hashNumArray(arr) {
+  if (!arr) return "null";
+  let h = arr.length;
+  for (let index = 0; index < arr.length; index += 1) {
+    const v = arr[index];
+    h = (h * 33 + (Number.isFinite(v) ? Math.round(v * 1000) : -1)) | 0;
+  }
+  return h;
+}
+
+function hashPoints(points) {
+  let h = points.length;
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index];
+    if (!point) {
+      h = (h * 33 + 7) | 0;
+      continue;
+    }
+    const value = Number.isFinite(point.value) ? Math.round(point.value * 1000) : -999999;
+    const opacity = Number.isFinite(point.opacity) ? Math.round(point.opacity * 1000) : 1000;
+    const state = point.state === "invalid" ? 1 : 0;
+    h = (h * 33 + value) | 0;
+    h = (h * 33 + opacity) | 0;
+    h = (h * 33 + state) | 0;
+  }
+  return h;
+}
+
+function hashHoldValues(mode, holdValues) {
+  if (!holdValues) return "null";
+  if (mode === STEREO_MAP_MODES.POSITION) {
+    return `${hashNumArray(holdValues.maximum)}:${hashNumArray(holdValues.minimum)}`;
+  }
+  return String(hashNumArray(holdValues));
 }
 
 /**
- * Renders one Stereo Map curve: filled area to the zero baseline, per-segment Good/Warn/Bad or
- * channel-blend coloring, low-energy opacity fade, curve breaks at invalid bands, and optional
- * Hold outlines. Pure presentation — every value here is already derived by the caller
+ * Renders one Stereo Map curve on canvas: filled area to the zero baseline, per-segment Good/Warn/
+ * Bad or channel-blend coloring, low-energy opacity fade, curve breaks at invalid bands, and
+ * optional Hold outlines. Pure presentation — every value here is already derived by the caller
  * (`stereoMapMath.js` / `stereoMapHold.js`); this component does no DSP.
+ *
+ * Canvas instead of per-band SVG elements: with up to ~958 bands the old SVG built ~2 DOM nodes per
+ * band (a filled polygon + a stroked line), rebuilt from scratch on every render — during snapshot
+ * scrubbing that happens on nearly every mouse-move tick and was the source of visible jank. Canvas
+ * draw calls are O(bands) work but O(1) DOM nodes, and a redraw-skip signature (mirroring
+ * VectorscopePolarPlot) avoids repainting entirely when nothing that affects the picture changed.
  */
 export function StereoMapPlot({
   mode,
@@ -144,107 +292,130 @@ export function StereoMapPlot({
   xMaxHz = 20000,
   paletteKey = "live",
 }) {
-  const primaryVar =
-    paletteKey === "snap" ? "var(--ui-stereo-map-primary-snap)" : "var(--ui-stereo-map-primary)";
-  const secondaryVar =
-    paletteKey === "snap"
-      ? "var(--ui-stereo-map-secondary-snap)"
-      : "var(--ui-stereo-map-secondary)";
-  const baselineY = yFor(0, range);
-  const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range);
+  const canvasRef = useRef(null);
+  const redrawRef = useRef(null);
 
-  const holdGroups = [];
-  if (holdValues) {
-    if (mode === STEREO_MAP_MODES.POSITION) {
-      if (holdValues.maximum) {
-        holdGroups.push({
-          key: "max",
-          runs: buildHoldRuns(bandCentersHz, holdValues.maximum, xMinHz, xMaxHz, range),
-        });
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext?.("2d");
+    if (!ctx) return;
+
+    const { dpr, width, height } = resizeCanvas(canvas);
+    const style = getComputedStyle(canvas);
+    const colors = resolveColors(style, paletteKey);
+    const borderColor = style.getPropertyValue("--border").trim() || "#888888";
+    const gridOpacity = parseFloat(style.getPropertyValue("--ui-spectrum-grid-opacity")) || 0.08;
+    const fillOpacity =
+      parseFloat(style.getPropertyValue("--ui-spectrum-fill-top-opacity")) || 0.18;
+    const strokeWidthCss = parseFloat(style.getPropertyValue("--ui-spectrum-stroke-width")) || 2;
+    const lineWidth = strokeWidthCss * dpr;
+
+    // Skip the full redraw when nothing that affects the picture has changed. Parent components
+    // (Panel/Dock) rebuild `points`/`bandCentersHz`/`holdValues` as fresh arrays on every render, so
+    // reference equality would never hold; hashing them is still far cheaper than the draw calls it
+    // guards (color resolution + path building per segment), which is the actual cost being skipped.
+    const signature = [
+      mode,
+      paletteKey,
+      holdVisible,
+      range.lowerBound,
+      range.upperBound,
+      xMinHz,
+      xMaxHz,
+      width,
+      height,
+      dpr,
+      colors.primaryCss,
+      colors.secondaryCss,
+      rgbToCss(colors.warn),
+      rgbToCss(colors.bad),
+      rgbToCss(colors.good),
+      borderColor,
+      gridOpacity,
+      fillOpacity,
+      lineWidth,
+      hashNumArray(bandCentersHz),
+      hashPoints(points),
+      hashHoldValues(mode, holdValues),
+    ].join("|");
+    if (redrawRef.current === signature) return;
+    redrawRef.current = signature;
+
+    const scaleX = width / VIEW_W;
+    const scaleY = height / VIEW_H;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Baseline grid line at value=0.
+    const baselineY = yFor(0, range) * scaleY;
+    ctx.save();
+    ctx.strokeStyle = borderColor;
+    ctx.globalAlpha = gridOpacity;
+    ctx.lineWidth = Math.max(1, dpr);
+    ctx.beginPath();
+    ctx.moveTo(0, baselineY);
+    ctx.lineTo(width, baselineY);
+    ctx.stroke();
+    ctx.restore();
+
+    const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range);
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+    for (const run of runs) {
+      for (let segmentIndex = 0; segmentIndex < run.length - 1; segmentIndex += 1) {
+        const point = run[segmentIndex];
+        const next = run[segmentIndex + 1];
+        const color = segmentColor(mode, (point.value + next.value) / 2, range, colors);
+        const opacity = Math.min(point.opacity, next.opacity);
+        const px = point.x * scaleX;
+        const py = point.y * scaleY;
+        const nx = next.x * scaleX;
+        const ny = next.y * scaleY;
+
+        ctx.globalAlpha = opacity * fillOpacity;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(px, baselineY);
+        ctx.lineTo(px, py);
+        ctx.lineTo(nx, ny);
+        ctx.lineTo(nx, baselineY);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = opacity;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(nx, ny);
+        ctx.stroke();
       }
-      if (holdValues.minimum) {
-        holdGroups.push({
-          key: "min",
-          runs: buildHoldRuns(bandCentersHz, holdValues.minimum, xMinHz, xMaxHz, range),
-        });
-      }
-    } else {
-      holdGroups.push({
-        key: "hold",
-        runs: buildHoldRuns(bandCentersHz, holdValues, xMinHz, xMaxHz, range),
-      });
     }
-  }
+    ctx.globalAlpha = 1;
+
+    if (holdVisible) {
+      const holdGroups = buildHoldGroups(mode, bandCentersHz, holdValues, xMinHz, xMaxHz, range);
+      ctx.strokeStyle = colors.primaryCss;
+      ctx.lineWidth = lineWidth;
+      ctx.globalAlpha = 0.45;
+      for (const { runs: holdRuns } of holdGroups) {
+        for (const run of holdRuns) {
+          if (run.length === 0) continue;
+          ctx.beginPath();
+          ctx.moveTo(run[0].x * scaleX, run[0].y * scaleY);
+          for (let index = 1; index < run.length; index += 1) {
+            ctx.lineTo(run[index].x * scaleX, run[index].y * scaleY);
+          }
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  });
 
   return (
-    <svg
-      data-stereo-map-plot={mode}
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      preserveAspectRatio="none"
-      className="block h-full w-full"
-    >
-      <g pointerEvents="none" aria-hidden>
-        <line
-          data-stereo-map-grid
-          x1={0}
-          x2={VIEW_W}
-          y1={baselineY}
-          y2={baselineY}
-          stroke="var(--border)"
-          strokeWidth={1}
-          vectorEffect="non-scaling-stroke"
-          style={{ strokeOpacity: "var(--ui-spectrum-grid-opacity, 0.08)" }}
-        />
-      </g>
-      {runs.map((run, runIndex) =>
-        run.slice(0, -1).map((point, segmentIndex) => {
-          const next = run[segmentIndex + 1];
-          const color = segmentColor(
-            mode,
-            (point.value + next.value) / 2,
-            range,
-            primaryVar,
-            secondaryVar
-          );
-          const opacity = Math.min(point.opacity, next.opacity);
-          return (
-            <g key={`run-${runIndex}-${segmentIndex}`} opacity={opacity}>
-              <polygon
-                points={`${point.x},${baselineY} ${point.x},${point.y} ${next.x},${next.y} ${next.x},${baselineY}`}
-                fill={color}
-                fillOpacity="var(--ui-spectrum-fill-top-opacity, 0.18)"
-              />
-              <line
-                data-stereo-map-segment
-                x1={point.x}
-                y1={point.y}
-                x2={next.x}
-                y2={next.y}
-                stroke={color}
-                strokeWidth="var(--ui-spectrum-stroke-width, 2)"
-                vectorEffect="non-scaling-stroke"
-                strokeLinecap="round"
-              />
-            </g>
-          );
-        })
-      )}
-      {holdVisible
-        ? holdGroups.map(({ key, runs: holdRuns }) =>
-            holdRuns.map((run, index) => (
-              <polyline
-                key={`hold-${key}-${index}`}
-                data-stereo-map-hold={key}
-                points={polylinePoints(run)}
-                fill="none"
-                stroke={primaryVar}
-                strokeWidth="var(--ui-spectrum-stroke-width, 2)"
-                vectorEffect="non-scaling-stroke"
-                strokeOpacity={0.45}
-              />
-            ))
-          )
-        : null}
-    </svg>
+    <div data-stereo-map-plot={mode} className="block h-full w-full">
+      <canvas ref={canvasRef} className="block h-full w-full" aria-hidden />
+    </div>
   );
 }
