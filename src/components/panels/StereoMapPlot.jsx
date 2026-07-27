@@ -79,6 +79,13 @@ function rgbToCss({ r, g, b }) {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+/** `"rgb(r, g, b)"` -> `"rgba(r, g, b, alpha)"`. Falls back to the input unchanged if unparseable. */
+function withAlpha(rgbCss, alpha) {
+  const match = /^rgb\((\d+), (\d+), (\d+)\)$/.exec(rgbCss);
+  if (!match) return rgbCss;
+  return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${clamp01(alpha)})`;
+}
+
 // Canvas equivalent of `color-mix(in srgb, colorA pct%, colorB)`: a plain per-channel lerp in
 // sRGB, colorA weighted by pct/100.
 function mixColors(pctOfA, colorA, colorB) {
@@ -176,6 +183,101 @@ function buildHoldRuns(bandCentersHz, values, xMinHz, xMaxHz, range) {
     current.push(entry);
   }
   return runs;
+}
+
+/**
+ * Draws one continuous run (Position/Correlation/Mono Loss) as a single fill path + single stroke
+ * path, colored with a canvas `CanvasGradient` carrying one stop per band. A per-segment
+ * `fillStyle`/`strokeStyle` reassignment forces the canvas backend to re-resolve the style on every
+ * single draw call — cheap when consecutive segments happen to resolve to the same color (a calm,
+ * slowly-varying region), but a real per-call cost when they don't (a region where the value swings
+ * a lot band-to-band keeps producing a genuinely different color string every time). A gradient
+ * bakes the whole run's color variation into one style object that costs the same to paint
+ * regardless of how much the underlying values actually swing.
+ */
+function drawGradientRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY) {
+  if (run.length < 2) return;
+  const x0 = run[0].x * scaleX;
+  const x1 = run[run.length - 1].x * scaleX;
+  const span = x1 - x0;
+
+  const soleColor = (alpha) => withAlpha(segmentColor(mode, run[0].value, range, colors), alpha);
+  const buildGradient = (alphaFor) => {
+    if (!(span > 0)) return null;
+    const gradient = ctx.createLinearGradient(x0, 0, x1, 0);
+    for (const point of run) {
+      const t = clamp01((point.x * scaleX - x0) / span);
+      const rgb = segmentColor(mode, point.value, range, colors);
+      gradient.addColorStop(t, withAlpha(rgb, alphaFor(point)));
+    }
+    return gradient;
+  };
+
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = buildGradient((point) => point.opacity * fillOpacity) ?? soleColor(fillOpacity);
+  ctx.beginPath();
+  ctx.moveTo(x0, baselineY);
+  for (const point of run) ctx.lineTo(point.x * scaleX, point.y * scaleY);
+  ctx.lineTo(x1, baselineY);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = buildGradient((point) => point.opacity) ?? soleColor(run[0].opacity);
+  ctx.beginPath();
+  ctx.moveTo(run[0].x * scaleX, run[0].y * scaleY);
+  for (let index = 1; index < run.length; index += 1) {
+    ctx.lineTo(run[index].x * scaleX, run[index].y * scaleY);
+  }
+  ctx.stroke();
+}
+
+/**
+ * Draws one run for a binary-colored mode (M/S Ratio's primary/secondary split by sign, or the
+ * single flat fallback color): merges consecutive segments that resolve to the exact same color and
+ * opacity into one path instead of one draw call per segment. Real audio content rarely flips sign
+ * every single band, so this collapses most of a run into a handful of draws; a gradient is not used
+ * here because the sign switch is a hard edge, not a continuous blend.
+ */
+function drawBinaryRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY) {
+  const segmentCount = run.length - 1;
+  let i = 0;
+  while (i < segmentCount) {
+    const baseColor = segmentColor(mode, (run[i].value + run[i + 1].value) / 2, range, colors);
+    const opacity = Math.min(run[i].opacity, run[i + 1].opacity);
+    let j = i;
+    while (j + 1 < segmentCount) {
+      const nextColor = segmentColor(
+        mode,
+        (run[j + 1].value + run[j + 2].value) / 2,
+        range,
+        colors
+      );
+      const nextOpacity = Math.min(run[j + 1].opacity, run[j + 2].opacity);
+      if (nextColor !== baseColor || nextOpacity !== opacity) break;
+      j += 1;
+    }
+
+    const first = run[i];
+    const last = run[j + 1];
+    ctx.globalAlpha = opacity * fillOpacity;
+    ctx.fillStyle = baseColor;
+    ctx.beginPath();
+    ctx.moveTo(first.x * scaleX, baselineY);
+    for (let k = i; k <= j + 1; k += 1) ctx.lineTo(run[k].x * scaleX, run[k].y * scaleY);
+    ctx.lineTo(last.x * scaleX, baselineY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.globalAlpha = opacity;
+    ctx.strokeStyle = baseColor;
+    ctx.beginPath();
+    ctx.moveTo(first.x * scaleX, first.y * scaleY);
+    for (let k = i + 1; k <= j + 1; k += 1) ctx.lineTo(run[k].x * scaleX, run[k].y * scaleY);
+    ctx.stroke();
+
+    i = j + 1;
+  }
+  ctx.globalAlpha = 1;
 }
 
 function buildHoldGroups(mode, bandCentersHz, holdValues, xMinHz, xMaxHz, range) {
@@ -403,33 +505,18 @@ export function StereoMapPlot({
     const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range);
     ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
+    // Position/Correlation/Mono Loss vary continuously and are drawn with one gradient-colored path
+    // per run; M/S Ratio is a hard binary split and is drawn with merged same-color paths instead —
+    // see drawGradientRun/drawBinaryRun.
+    const isGradientMode =
+      mode === STEREO_MAP_MODES.POSITION ||
+      mode === STEREO_MAP_MODES.CORRELATION ||
+      mode === STEREO_MAP_MODES.MONO_LOSS_DB;
     for (const run of runs) {
-      for (let segmentIndex = 0; segmentIndex < run.length - 1; segmentIndex += 1) {
-        const point = run[segmentIndex];
-        const next = run[segmentIndex + 1];
-        const color = segmentColor(mode, (point.value + next.value) / 2, range, colors);
-        const opacity = Math.min(point.opacity, next.opacity);
-        const px = point.x * scaleX;
-        const py = point.y * scaleY;
-        const nx = next.x * scaleX;
-        const ny = next.y * scaleY;
-
-        ctx.globalAlpha = opacity * fillOpacity;
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(px, baselineY);
-        ctx.lineTo(px, py);
-        ctx.lineTo(nx, ny);
-        ctx.lineTo(nx, baselineY);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.globalAlpha = opacity;
-        ctx.strokeStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(nx, ny);
-        ctx.stroke();
+      if (isGradientMode) {
+        drawGradientRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY);
+      } else {
+        drawBinaryRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY);
       }
     }
     ctx.globalAlpha = 1;

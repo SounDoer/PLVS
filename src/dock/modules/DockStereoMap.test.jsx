@@ -14,15 +14,29 @@ const key = dockStereoMapKey(controls);
 
 // StereoMapPlot renders on <canvas> (see StereoMapPlot.jsx); jsdom has no real canvas
 // implementation, so getContext() returns null and it silently skips drawing unless mocked.
+// StereoMapPlot's continuous modes (Position/Correlation/Mono Loss) color a run with a canvas
+// gradient rather than per-segment solid colors; this stub records each gradient's stops.
+function gradientStub() {
+  const stops = [];
+  return {
+    stops,
+    addColorStop: vi.fn((offset, color) => {
+      stops.push({ offset, color });
+    }),
+  };
+}
+
 function contextStub() {
   let currentPath = [];
   const filledPaths = [];
   const strokedPaths = [];
   const strokedColors = [];
+  const gradients = [];
   const ctx = {
     filledPaths,
     strokedPaths,
     strokedColors,
+    gradients,
     fillStyle: "",
     strokeStyle: "",
     globalAlpha: 1,
@@ -31,6 +45,11 @@ function contextStub() {
     save: vi.fn(),
     restore: vi.fn(),
     clearRect: vi.fn(),
+    createLinearGradient: vi.fn(() => {
+      const gradient = gradientStub();
+      gradients.push(gradient);
+      return gradient;
+    }),
     beginPath: vi.fn(() => {
       currentPath = [];
     }),

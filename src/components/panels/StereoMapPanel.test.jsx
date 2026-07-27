@@ -63,15 +63,30 @@ function baseAudioData(overrides = {}) {
 // mocks it — fine for tests that only check panel-level DOM (axis labels, empty states, hover
 // text), but tests that need to know what the curve/Hold outlines actually drew must opt in via
 // `mockCanvas()`.
+// StereoMapPlot's continuous modes (Position/Correlation/Mono Loss) color a run with a canvas
+// gradient rather than per-segment solid colors; this stub records each gradient's stops so tests
+// can assert on the colors/alphas it carried without caring how the browser interpolates them.
+function gradientStub() {
+  const stops = [];
+  return {
+    stops,
+    addColorStop: vi.fn((offset, color) => {
+      stops.push({ offset, color });
+    }),
+  };
+}
+
 function contextStub() {
   let currentPath = [];
   const filledPaths = [];
   const strokedPaths = [];
   const strokedColors = [];
+  const gradients = [];
   const ctx = {
     filledPaths,
     strokedPaths,
     strokedColors,
+    gradients,
     fillStyle: "",
     strokeStyle: "",
     globalAlpha: 1,
@@ -80,6 +95,11 @@ function contextStub() {
     save: vi.fn(),
     restore: vi.fn(),
     clearRect: vi.fn(),
+    createLinearGradient: vi.fn(() => {
+      const gradient = gradientStub();
+      gradients.push(gradient);
+      return gradient;
+    }),
     beginPath: vi.fn(() => {
       currentPath = [];
     }),
