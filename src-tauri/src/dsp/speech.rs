@@ -4,8 +4,9 @@
 //! 512-sample chunks, and reports a per-100ms-block speech decision by majority vote.
 
 use firered_vad::Vad as FireRedVad;
+use rubato::audioadapter_buffers::direct::InterleavedSlice;
 use rubato::{
-  Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+  Async, FixedAsync, Resampler, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
 use ten_vad_rs::TenVad;
 use voice_activity_detector::VoiceActivityDetector;
@@ -20,7 +21,7 @@ const VAD_CHUNK: usize = 512;
 /// TEN VAD is designed around a 256-sample hop at 16 kHz.
 const TEN_VAD_CHUNK: usize = 256;
 const TEN_VAD_MODEL: &[u8] = include_bytes!("../../vendor/ten-vad-rs/ten-vad.onnx");
-/// Mono input frames fed to the resampler per call (must be fixed for `SincFixedIn`).
+/// Mono input frames fed to the resampler per call (must be fixed for `FixedAsync::Input`).
 const RESAMPLER_IN_CHUNK: usize = 1024;
 /// Speech probability at/above which a chunk counts as speech.
 const SPEECH_THRESHOLD: f32 = 0.5;
@@ -195,7 +196,7 @@ pub fn downmix_to_mono(interleaved: &[f32], channels: u16) -> Vec<f32> {
 /// Streaming speech detector: mono samples in, per-100ms-block speech verdict out.
 pub struct SpeechDetector {
   engine: Box<dyn DialogueVadEngine>,
-  resampler: SincFixedIn<f32>,
+  resampler: Async<f32>,
   /// Mono samples at the source rate, accumulating toward `RESAMPLER_IN_CHUNK`.
   in_buf: Vec<f32>,
   /// Resampled 16 kHz samples, accumulating toward the current engine's frame size.
@@ -228,7 +229,7 @@ impl SpeechDetector {
     })
   }
 
-  fn build_resampler(source_rate: f64) -> Option<SincFixedIn<f32>> {
+  fn build_resampler(source_rate: f64) -> Option<Async<f32>> {
     let params = SincInterpolationParameters {
       sinc_len: 128,
       f_cutoff: 0.95,
@@ -236,12 +237,13 @@ impl SpeechDetector {
       interpolation: SincInterpolationType::Linear,
       window: WindowFunction::BlackmanHarris2,
     };
-    SincFixedIn::<f32>::new(
+    Async::<f32>::new_sinc(
       VAD_RATE as f64 / source_rate,
       1.0,
-      params,
+      &params,
       RESAMPLER_IN_CHUNK,
       1,
+      FixedAsync::Input,
     )
     .ok()
   }
@@ -252,9 +254,21 @@ impl SpeechDetector {
     self.in_buf.extend_from_slice(mono);
     while self.in_buf.len() >= RESAMPLER_IN_CHUNK {
       let block: Vec<f32> = self.in_buf.drain(..RESAMPLER_IN_CHUNK).collect();
-      if let Ok(out) = self.resampler.process(&[block], None) {
-        self.chunk_buf.extend_from_slice(&out[0]);
-      }
+      // rubato 1.0+ takes/returns `audioadapter` buffers instead of `Vec<Vec<f32>>`. Mono, so a
+      // single-channel interleaved view over the flat slice on both ends; the output frame count
+      // varies per call, so size the scratch to the resampler's max and keep only what it wrote.
+      let input = InterleavedSlice::new(&block[..], 1, RESAMPLER_IN_CHUNK).unwrap();
+      let max_out = self.resampler.output_frames_max();
+      let mut scratch = vec![0.0_f32; max_out];
+      let nbr_out = {
+        let mut output = InterleavedSlice::new_mut(&mut scratch[..], 1, max_out).unwrap();
+        self
+          .resampler
+          .process_into_buffer(&input, &mut output, None)
+          .map(|(_, out_frames)| out_frames)
+          .unwrap_or(0)
+      };
+      self.chunk_buf.extend_from_slice(&scratch[..nbr_out]);
       let frame_size = self.engine.frame_size();
       while self.chunk_buf.len() >= frame_size {
         let chunk: Vec<f32> = self.chunk_buf.drain(..frame_size).collect();
