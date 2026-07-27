@@ -41,6 +41,12 @@ export const DOCK_PANEL_SIZING_BY_MODULE_ID = Object.freeze({
     maxPreferredWidth: 960,
     growthPolicy: "flexible",
   },
+  "stereo-map": {
+    minWidth: 180,
+    defaultWidth: 360,
+    maxPreferredWidth: 960,
+    growthPolicy: "flexible",
+  },
   transport: {
     minWidth: 90,
     defaultWidth: 120,

@@ -5,6 +5,7 @@ import {
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   VECTORSCOPE_MODE_OPTIONS,
 } from "../lib/panelControls.js";
+import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
 
 const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
 const SPECTRUM_OCTAVE_SMOOTHING_IDS = new Set(
@@ -16,6 +17,7 @@ const LOUDNESS_HISTORY_LAYER_IDS = new Set(
 const LEVEL_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
 const LEVEL_READOUTS = new Set(["live", "truePeakMax", "playbackMax"]);
 const VECTORSCOPE_MODES = new Set(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id));
+const STEREO_MAP_MODES_SET = new Set(Object.values(STEREO_MAP_MODES));
 const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",
   loudness: "loudness",
@@ -25,6 +27,7 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   spectrogram: "spectrogram",
   waveform: "waveform",
   transport: "transport",
+  "stereo-map": "stereoMap",
 });
 
 const DEFAULT_DOCK_STATS_VISIBLE_IDS = DEFAULT_PANEL_CONTROLS.statsVisibleIds;
@@ -69,6 +72,18 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
     channel: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.spectrumChannel }),
     minFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
     maxFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
+  }),
+  stereoMap: Object.freeze({
+    pair: Object.freeze({ x: 0, y: 1 }),
+    mode: DEFAULT_PANEL_CONTROLS.stereoMapMode,
+    hold: DEFAULT_PANEL_CONTROLS.stereoMapHold,
+    speedPercent: DEFAULT_PANEL_CONTROLS.stereoMapSpeedPercent,
+    octaveSmoothing: DEFAULT_PANEL_CONTROLS.stereoMapOctaveSmoothing,
+    minFreq: DEFAULT_PANEL_CONTROLS.stereoMapXMinFreq,
+    maxFreq: DEFAULT_PANEL_CONTROLS.stereoMapXMaxFreq,
+    monoLossMinDb: DEFAULT_PANEL_CONTROLS.stereoMapMonoLossYMinDb,
+    msRatioMinDb: DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMinDb,
+    msRatioMaxDb: DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMaxDb,
   }),
 });
 
@@ -129,6 +144,16 @@ function logRange(rawMin, rawMax, fallbackMin, fallbackMax) {
     min = fallbackMin;
     max = fallbackMax;
   }
+  return { min, max };
+}
+
+/// M/S Ratio's Y range has no minimum span, only the design's "must include 0 dB" constraint —
+/// mirrors panelControls.js's normalizeStereoMapMsRatioYRange for the Dock's independent control.
+function msRatioRange(rawMin, rawMax, fallbackMin, fallbackMax) {
+  let min = clamp(rawMin, -96, 48, fallbackMin);
+  let max = clamp(rawMax, -96, 48, fallbackMax);
+  if (min > 0) min = 0;
+  if (max < 0) max = 0;
   return { min, max };
 }
 
@@ -242,6 +267,29 @@ export function normalizeDockModuleControls(moduleId, raw) {
         channel: channel(raw?.channel, defaults.channel),
         minFreq: freqRange.min,
         maxFreq: freqRange.max,
+      };
+    }
+    case "stereoMap": {
+      const freqRange = logRange(raw?.minFreq, raw?.maxFreq, defaults.minFreq, defaults.maxFreq);
+      const msRatio = msRatioRange(
+        raw?.msRatioMinDb,
+        raw?.msRatioMaxDb,
+        defaults.msRatioMinDb,
+        defaults.msRatioMaxDb
+      );
+      return {
+        pair: pair(raw?.pair, defaults.pair),
+        mode: STEREO_MAP_MODES_SET.has(raw?.mode) ? raw.mode : defaults.mode,
+        hold: bool(raw?.hold, defaults.hold),
+        speedPercent: Math.round(clamp(raw?.speedPercent, 0, 100, defaults.speedPercent)),
+        octaveSmoothing: SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw?.octaveSmoothing)
+          ? raw.octaveSmoothing
+          : defaults.octaveSmoothing,
+        minFreq: freqRange.min,
+        maxFreq: freqRange.max,
+        monoLossMinDb: clamp(raw?.monoLossMinDb, -60, -6, defaults.monoLossMinDb),
+        msRatioMinDb: msRatio.min,
+        msRatioMaxDb: msRatio.max,
       };
     }
     default:

@@ -935,6 +935,26 @@ function AppContent() {
 
   useEffect(() => {
     for (const panel of dockLayout.panels) {
+      if (panel.moduleId !== "stereo-map") continue;
+      const controls = dockLayout.controlsByPanelId[panel.id];
+      const nextPair = clampVectorscopePairToAvailable(
+        controls?.pair,
+        channelCount >= 2 ? channelCount : 2,
+        peakLabelContext
+      );
+      if (nextPair.x === controls?.pair?.x && nextPair.y === controls?.pair?.y) continue;
+      dockLayout.setPanelControls(panel.id, { ...controls, pair: nextPair });
+    }
+  }, [
+    channelCount,
+    dockLayout.controlsByPanelId,
+    dockLayout.panels,
+    dockLayout.setPanelControls,
+    peakLabelContext,
+  ]);
+
+  useEffect(() => {
+    for (const panel of dockLayout.panels) {
       if (panel.moduleId !== "spectrum" && panel.moduleId !== "spectrogram") continue;
       const controls = dockLayout.controlsByPanelId[panel.id];
       const nextChannel = clampSpectrumChannelToAvailable(

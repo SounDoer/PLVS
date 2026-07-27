@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import {
   DEFAULT_DOCK_CONTROLS_BY_MODULE_ID,
+  DOCK_CONTROL_MODULE_IDS,
   isDefaultDockModuleControls,
   normalizeDockControlsByModuleId,
   normalizeDockModuleControls,
@@ -152,6 +153,26 @@ describe("normalizeDockControlsByModuleId", () => {
   });
 });
 
+describe("Stereo Map Dock control family", () => {
+  it("registers stereoMap as an independent control family", () => {
+    expect(DOCK_CONTROL_MODULE_IDS).toContain("stereoMap");
+    expect(normalizeDockControlsByModuleId().stereoMap).toEqual(
+      DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap
+    );
+  });
+
+  it("updates only the stereoMap family and leaves the others untouched", () => {
+    const controls = normalizeDockControlsByModuleId();
+    const next = updateDockModuleControls(controls, "stereoMap", {
+      ...controls.stereoMap,
+      pair: { x: 2, y: 3 },
+    });
+    expect(next.stereoMap.pair).toEqual({ x: 2, y: 3 });
+    expect(next.correlation).toBe(controls.correlation);
+    expect(next.spectrum).toBe(controls.spectrum);
+  });
+});
+
 describe("normalizeDockModuleControls", () => {
   it("defaults Loudness readouts on and preserves an explicit hidden state", () => {
     expect(normalizeDockModuleControls("loudness", {}).showReadouts).toBe(true);
@@ -222,6 +243,63 @@ describe("normalizeDockModuleControls", () => {
   it("returns null for modules without controls", () => {
     expect(normalizeDockModuleControls("transport", {})).toBeNull();
     expect(normalizeDockModuleControls("waveform", {})).toBeNull();
+  });
+
+  it("normalizes Stereo Map controls independently from Workspace panel control names", () => {
+    // Dock's Stereo Map controls are a separate family (keyed "stereoMap" here vs. the Workspace
+    // panel's "stereoMap*"-prefixed fields in lib/panelControls.js) — one instance's toggles must
+    // never bleed into the other's normalized shape.
+    expect(normalizeDockModuleControls("stereoMap", {})).toEqual({
+      pair: { x: 0, y: 1 },
+      mode: "position",
+      hold: false,
+      speedPercent: 25,
+      octaveSmoothing: "1/12",
+      minFreq: 20,
+      maxFreq: 20000,
+      monoLossMinDb: -24,
+      msRatioMinDb: -48,
+      msRatioMaxDb: 24,
+    });
+    expect(
+      normalizeDockModuleControls("stereoMap", {
+        pair: { x: 2, y: 3 },
+        mode: "correlation",
+        hold: true,
+        speedPercent: 80,
+        octaveSmoothing: "1/3",
+        minFreq: 40,
+        maxFreq: 16000,
+        monoLossMinDb: -30,
+        msRatioMinDb: -20,
+        msRatioMaxDb: 10,
+      })
+    ).toEqual({
+      pair: { x: 2, y: 3 },
+      mode: "correlation",
+      hold: true,
+      speedPercent: 80,
+      octaveSmoothing: "1/3",
+      minFreq: 40,
+      maxFreq: 16000,
+      monoLossMinDb: -30,
+      msRatioMinDb: -20,
+      msRatioMaxDb: 10,
+    });
+  });
+
+  it("rejects an invalid Stereo Map channel pair and unknown mode", () => {
+    expect(normalizeDockModuleControls("stereoMap", { pair: { x: 2, y: 2 } }).pair).toEqual({
+      x: 0,
+      y: 1,
+    });
+    expect(normalizeDockModuleControls("stereoMap", { mode: "unknown" }).mode).toBe("position");
+  });
+
+  it("keeps Stereo Map's M/S Ratio Y range straddling zero", () => {
+    expect(
+      normalizeDockModuleControls("stereoMap", { msRatioMinDb: 10, msRatioMaxDb: -10 })
+    ).toMatchObject({ msRatioMinDb: 0, msRatioMaxDb: 0 });
   });
 });
 

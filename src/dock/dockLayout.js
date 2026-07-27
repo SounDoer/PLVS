@@ -10,6 +10,7 @@ export const DOCK_PANEL_MODULE_IDS = [
   "spectrum",
   "spectrogram",
   "waveform",
+  "stereo-map",
 ];
 
 /** Legacy dock module ids, in catalog order (kept in sync with registry.jsx). */
@@ -21,6 +22,7 @@ export const DOCK_MODULE_IDS = [
   "stats",
   "waveform",
   "spectrogram",
+  "stereoMap",
   "transport",
 ];
 
@@ -45,6 +47,7 @@ export const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   spectrogram: "spectrogram",
   waveform: "waveform",
   transport: "transport",
+  "stereo-map": "stereoMap",
 });
 
 export const PANEL_MODULE_ID_BY_DOCK_MODULE_ID = Object.freeze({
@@ -56,6 +59,7 @@ export const PANEL_MODULE_ID_BY_DOCK_MODULE_ID = Object.freeze({
   spectrogram: "spectrogram",
   waveform: "waveform",
   transport: "transport",
+  stereoMap: "stereo-map",
 });
 
 function trimCustomTitle(value) {
