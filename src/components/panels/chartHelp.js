@@ -143,6 +143,25 @@ export const VECTORSCOPE_POLAR_LEVEL_HELP = [
   },
 ];
 
+export const STEREO_MAP_HELP = [
+  {
+    title: "Inspect",
+    items: ["Hover - Inspect value", "Click - Capture snapshot", "Double-click - Return to live"],
+  },
+  {
+    title: "Viewport",
+    items: ["Mouse wheel - Zoom frequency", "Ctrl + drag - Pan viewport"],
+  },
+  {
+    title: "Axes",
+    items: [
+      "X axis wheel - Zoom frequency",
+      "X axis drag - Pan frequency",
+      "Double-click axis - Reset axis",
+    ],
+  },
+];
+
 function resolveVectorscopeHelp(controls) {
   const mode = controls?.vectorscopeMode ?? "lissajous";
   if (mode === "lissajous") return VECTORSCOPE_LISSAJOUS_HELP;
@@ -159,6 +178,7 @@ export const PANEL_HELP_BY_MODULE_ID = {
   spectrogram: SPECTROGRAM_HELP,
   waveform: WAVEFORM_HELP,
   vectorscope: resolveVectorscopeHelp,
+  "stereo-map": STEREO_MAP_HELP,
 };
 
 export function resolvePanelHelpItems(moduleId, controls) {

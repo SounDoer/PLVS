@@ -2,6 +2,7 @@ import { loudnessFromTopFrac, rangedFreqToXFrac } from "../config/scales";
 import { LOUDNESS_HISTORY_LAYER_OPTIONS } from "../lib/panelControls.js";
 import { hzFromFrac } from "./spectrogramMath.js";
 import { inWindowRange } from "./spectrogramTimeline.js";
+import { STEREO_MAP_MODES } from "./stereoMapMath.js";
 
 function rowAt(entries, index) {
   if (!entries) return undefined;
@@ -266,4 +267,102 @@ export function computeSpectrumHoverIndex(xFrac, bands, minHz = 20, maxHz = 2000
     }
   }
   return nearestIdx;
+}
+
+/**
+ * Finds the nearest Stereo Map band index to a normalized X position. Same nearest-in-log-space
+ * rule as {@link computeSpectrumHoverIndex}, but Stereo Map's band grid is a plain Hz array
+ * (bandCentersHz), not Spectrum's `{ fCenter }` band objects.
+ * @param {number} xFrac - normalized X position (0 = left, 1 = right)
+ * @param {number[]} bandCentersHz
+ */
+export function computeStereoMapHoverIndex(xFrac, bandCentersHz, minHz = 20, maxHz = 20000) {
+  let nearestIdx = 0;
+  let nearestDist = Infinity;
+  for (let i = 0; i < bandCentersHz.length; i += 1) {
+    const dist = Math.abs(rangedFreqToXFrac(bandCentersHz[i], minHz, maxHz) - xFrac);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestIdx = i;
+    }
+  }
+  return nearestIdx;
+}
+
+/**
+ * Formats a Position value as the selected channel's share, e.g. "42% L" or "68% R". Equal energy
+ * is always "0%" and never says "Center".
+ * @param {number} value - Position in [-1, 1]; +1 is fully `firstLabel`, -1 is fully `secondLabel`.
+ */
+export function formatStereoMapPositionValue(value, firstLabel, secondLabel) {
+  if (!Number.isFinite(value)) return "-";
+  const pct = Math.round(Math.abs(value) * 100);
+  if (pct === 0) return "0%";
+  return `${pct}% ${value > 0 ? firstLabel : secondLabel}`;
+}
+
+/** Formats a Correlation value in [-1, 1] to two decimal places. */
+export function formatStereoMapCorrelationValue(value) {
+  return Number.isFinite(value) ? value.toFixed(2) : "-";
+}
+
+/**
+ * Formats a clipped dB-range point (Mono Loss / M/S Ratio). A point clipped to the plot's visible
+ * range reports `<= lower bound` / `>= upper bound` rather than presenting the clip as an exact
+ * measurement — this is how a valid formula infinity (or any out-of-range value) is surfaced.
+ * @param {{ state: "finite"|"belowRange"|"aboveRange"|"invalid", value?: number }} point
+ */
+export function formatStereoMapDbValue(point, unit = "dB") {
+  if (!point) return "-";
+  if (point.state === "belowRange") return `<= ${point.value.toFixed(1)} ${unit}`;
+  if (point.state === "aboveRange") return `>= ${point.value.toFixed(1)} ${unit}`;
+  if (point.state === "finite" && Number.isFinite(point.value))
+    return `${point.value.toFixed(1)} ${unit}`;
+  return "-";
+}
+
+/** Formats the Stereo Map energy gate readout (internal analysis-PSD dB scale). */
+export function formatStereoMapEnergy(db) {
+  return Number.isFinite(db) ? `${db.toFixed(1)} dB` : "-";
+}
+
+/**
+ * Formats the current-value hover readout for a Stereo Map point, dispatching to the mode-specific
+ * formatter. `point` is invalid/gated → "-".
+ */
+export function formatStereoMapValue(mode, point, { firstLabel, secondLabel } = {}) {
+  if (!point || point.state === "invalid") return "-";
+  if (mode === STEREO_MAP_MODES.POSITION) {
+    return formatStereoMapPositionValue(point.value, firstLabel, secondLabel);
+  }
+  if (mode === STEREO_MAP_MODES.CORRELATION) {
+    return formatStereoMapCorrelationValue(point.value);
+  }
+  return formatStereoMapDbValue(point);
+}
+
+/**
+ * Clips a raw Hold extremum (a plain number, or null when nothing has been held yet) into the same
+ * finite/belowRange/aboveRange shape `formatStereoMapValue` reads, so Hold and current value share
+ * one formatting path. Hold values are already fully valid measurements (only valid points update
+ * Hold), so there is no "invalid" state here — only "no Hold recorded yet" (null in, "-" out).
+ */
+export function clipStereoMapHoldValue(rawValue, range) {
+  if (rawValue === null || rawValue === undefined || Number.isNaN(rawValue)) return null;
+  if (rawValue < range.lowerBound) return { state: "belowRange", value: range.lowerBound };
+  if (rawValue > range.upperBound) return { state: "aboveRange", value: range.upperBound };
+  return { state: "finite", value: rawValue };
+}
+
+/** Formats a Stereo Map Hold readout, or "-" when Hold has not recorded a value at this band yet. */
+export function formatStereoMapHoldValue(mode, rawValue, range, labels = {}) {
+  const clipped = clipStereoMapHoldValue(rawValue, range);
+  if (!clipped) return "-";
+  if (mode === STEREO_MAP_MODES.POSITION) {
+    return formatStereoMapPositionValue(clipped.value, labels.firstLabel, labels.secondLabel);
+  }
+  if (mode === STEREO_MAP_MODES.CORRELATION) {
+    return formatStereoMapCorrelationValue(clipped.value);
+  }
+  return formatStereoMapDbValue(clipped);
 }
