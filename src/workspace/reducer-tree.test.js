@@ -307,6 +307,67 @@ describe("panel instances", () => {
     });
   });
 
+  it("adds a stereo-map instance independent of any other panel", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "ADD_PANEL",
+      payload: { moduleId: "stereo-map" },
+    });
+
+    expect(next.panelsById["stereo-map"]).toEqual({ id: "stereo-map", moduleId: "stereo-map" });
+    expect(next.panelOrder).toContain("stereo-map");
+    expect(findLeafWithTab(next.tree, "stereo-map")).not.toBeNull();
+  });
+
+  it("gives duplicate stereo-map instances independent controls", () => {
+    const withFirst = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "ADD_PANEL",
+      payload: { moduleId: "stereo-map" },
+    });
+    const withDuplicate = workspaceReducer(withFirst, {
+      type: "ADD_PANEL",
+      payload: { moduleId: "stereo-map" },
+    });
+
+    expect(withDuplicate.panelsById["stereo-map-2"]).toEqual({
+      id: "stereo-map-2",
+      moduleId: "stereo-map",
+    });
+
+    const next = workspaceReducer(withDuplicate, {
+      type: "SET_PANEL_CONTROLS_FOR_PANEL",
+      payload: {
+        id: "stereo-map-2",
+        panelControls: { ...withDuplicate.panelControlsById["stereo-map-2"], stereoMapHold: true },
+      },
+    });
+
+    expect(next.panelControlsById["stereo-map-2"].stereoMapHold).toBe(true);
+    expect(next.panelControlsById["stereo-map"].stereoMapHold).toBe(
+      DEFAULT_WORKSPACE_STATE.panelControlsById["stereo-map"]?.stereoMapHold ?? false
+    );
+  });
+
+  it("survives normalization for a persisted stereo-map instance restored via SET_VIEW", () => {
+    const tree = leaf(["stereo-map"]);
+    const panelsById = { "stereo-map": { id: "stereo-map", moduleId: "stereo-map" } };
+    const panelControlsById = {
+      "stereo-map": {
+        ...DEFAULT_PANEL_CONTROLS,
+        stereoMapMode: "correlation",
+        stereoMapPair: { first: 0, second: 1 },
+      },
+    };
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "SET_VIEW",
+      payload: { tree, panelsById, panelOrder: ["stereo-map"], panelControlsById },
+    });
+
+    expect(next.tree).toBe(tree);
+    expect(next.panelsById["stereo-map"]).toEqual({ id: "stereo-map", moduleId: "stereo-map" });
+    expect(next.panelControlsById["stereo-map"].stereoMapMode).toBe("correlation");
+    expect(next.panelControlsById["stereo-map"].stereoMapPair).toEqual({ first: 0, second: 1 });
+  });
+
   it("renames and clears custom panel titles", () => {
     const renamed = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "RENAME_PANEL",

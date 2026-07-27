@@ -6,6 +6,7 @@ import {
   Crosshair,
   Layers,
   List,
+  Radar,
 } from "lucide-react";
 import { LevelMeterPanel } from "../components/panels/LevelMeterPanel";
 import { LoudnessPanel } from "../components/panels/LoudnessPanel";
@@ -14,6 +15,7 @@ import { VectorscopePanel } from "../components/panels/VectorscopePanel";
 import { SpectrumPanel } from "../components/panels/SpectrumPanel";
 import { SpectrogramPanel } from "../components/panels/SpectrogramPanel";
 import { WaveformPanel } from "../components/panels/WaveformPanel";
+import { StereoMapPanel } from "../components/panels/StereoMapPanel";
 
 /** 拖动 clamp 用的最小尺寸——保证 tab icon 可见，其余内容允许被裁。 */
 const MIN_PANEL_WIDTH = 32;
@@ -76,5 +78,13 @@ export const MODULE_REGISTRY = {
     minHeight: MIN_PANEL_HEIGHT,
     Component: WaveformPanel,
     Icon: AudioWaveform,
+  },
+  "stereo-map": {
+    id: "stereo-map",
+    title: "Stereo Map",
+    minWidth: MIN_PANEL_WIDTH,
+    minHeight: MIN_PANEL_HEIGHT,
+    Component: StereoMapPanel,
+    Icon: Radar,
   },
 };

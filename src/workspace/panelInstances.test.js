@@ -65,6 +65,13 @@ describe("hasKnownModulesOnly", () => {
       true
     );
   });
+  it("recognizes a persisted stereo-map instance as a known module", () => {
+    expect(
+      hasKnownModulesOnly({
+        panelsById: { "stereo-map": { id: "stereo-map", moduleId: "stereo-map" } },
+      })
+    ).toBe(true);
+  });
   it("returns false when a panel references an unknown/legacy moduleId", () => {
     expect(
       hasKnownModulesOnly({

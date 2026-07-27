@@ -657,4 +657,25 @@ describe("App smoke", () => {
 
     expect(screen.queryByTestId("dock-strip")).toBeNull();
   });
+
+  it("lists Stereo Map immediately after Waveform in Add Panel, and adds it independently", async () => {
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Modules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Panel" }));
+
+    const menuLabels = screen
+      .getAllByRole("button")
+      .map((el) => el.textContent)
+      .filter((text) => text === "Waveform" || text === "Stereo Map");
+    expect(menuLabels).toEqual(["Waveform", "Stereo Map"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Stereo Map" }));
+
+    // The Add Panel popover closes on selection; the Modules popover stays open behind it,
+    // and the new instance is now a distinct, removable panel row — proof the Add Panel action
+    // created an independent panel instance rather than reusing one.
+    expect(await screen.findByLabelText("Delete Stereo Map")).toBeTruthy();
+  });
 });
