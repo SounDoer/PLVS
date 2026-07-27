@@ -33,7 +33,12 @@ export function deriveBackendAnalysisRequests(requests) {
       x: request.pair.x,
       y: request.pair.y,
     })),
-    stereoMap: [],
+    stereoMap: requests.stereoMapRequests.map((request) => ({
+      key: request.key,
+      pair: request.pair,
+      speedPercent: request.speedPercent,
+      octaveSmoothing: request.octaveSmoothing,
+    })),
   };
 }
 

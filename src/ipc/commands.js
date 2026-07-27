@@ -161,9 +161,7 @@ export function setCliPathEnabledCommand(enabled) {
   return invoke("set_cli_path_enabled", { enabled });
 }
 
-/**
- * @param {{ spectrum: Array<{ key: string; channel: object; view: string; speedPercent: number; tiltDbPerOctave: number; octaveSmoothing: string }>; vectorscope: Array<{ key: string; x: number; y: number }> }} requests
- */
+/** @param {import("./types.js").AnalysisRequests} requests */
 export function setAnalysisRequests(requests) {
   return invoke("set_analysis_requests", { requests });
 }

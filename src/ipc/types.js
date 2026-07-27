@@ -110,4 +110,36 @@
  * @property {string|undefined} error
  */
 
+/**
+ * @typedef {object} SpectrumAnalysisRequest
+ * @property {string} key
+ * @property {{ type: "pair"; x: number; y: number } | { type: "single"; ch: number }} channel
+ * @property {string} view
+ * @property {number} speedPercent
+ * @property {number} tiltDbPerOctave
+ * @property {string} octaveSmoothing
+ */
+
+/**
+ * @typedef {object} VectorscopeAnalysisRequest
+ * @property {string} key
+ * @property {number} x
+ * @property {number} y
+ */
+
+/**
+ * @typedef {object} StereoMapAnalysisRequest
+ * @property {string} key
+ * @property {{ first: number; second: number }} pair
+ * @property {number} speedPercent
+ * @property {string} octaveSmoothing
+ */
+
+/**
+ * @typedef {object} AnalysisRequests
+ * @property {SpectrumAnalysisRequest[]} spectrum
+ * @property {VectorscopeAnalysisRequest[]} vectorscope
+ * @property {StereoMapAnalysisRequest[]} stereoMap
+ */
+
 export {};
