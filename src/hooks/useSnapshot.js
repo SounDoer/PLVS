@@ -100,6 +100,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       spectrum: new Map(),
       vectorscope: new Map(),
       stereoMap: new Map(),
+      stereoMapHold: new Map(),
     }),
     [snapSource, resolved.targetTimestampMs]
   );
@@ -211,49 +212,70 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   // semantics as Spectrum/Vectorscope above, then derive the caller's selected Mode from that one
   // retained row. Mode is a pure frontend projection (see stereoMapMath.js), so switching Mode
   // never changes which row is selected or re-queries history.
+  // Hold is reconstructed by walking the retained rows up to the selected one, which is far more
+  // expensive than deriving the selected row itself, so it is opt-in (`withHold`) exactly like
+  // Polar Level's Peak hold above: a panel with Hold switched off must not pay for it on every
+  // scrub tick. One summary covers all four Modes and carries no Y range, so it is cached per
+  // (key, timestamp) — never per Mode — and two panels differing only in Mode or zoom share it.
+  const resolveStereoMapHold = useCallback(
+    (key, entries) => {
+      if (typeof entries?.holdAtOrBeforeTimestamp !== "function") return null;
+      const cache = snapSource
+        ? resultCacheForKey(keyedResultCache.stereoMapHold, key, entries)
+        : null;
+      if (cache?.has(resolved.targetTimestampMs)) return cache.get(resolved.targetTimestampMs);
+      const holdResult = entries.holdAtOrBeforeTimestamp(resolved.targetTimestampMs);
+      const values = holdResult ? holdResult.values : null;
+      cache?.set(resolved.targetTimestampMs, values);
+      return values;
+    },
+    [keyedResultCache.stereoMapHold, resolved.targetTimestampMs, snapSource]
+  );
   const resolveStereoMapSnapshotForKey = useCallback(
-    (key, mode, range) => {
+    (key, mode, range, { withHold = false } = {}) => {
       const entries = snapSource?.stereoMapByKey?.[key];
       const targetCache = snapSource
         ? resultCacheForKey(keyedResultCache.stereoMap, key, entries)
         : null;
       const modeCacheKey = `${mode}|${range?.lowerBound}|${range?.upperBound}`;
       let optionCache = targetCache?.get(resolved.targetTimestampMs);
-      if (optionCache?.has(modeCacheKey)) return optionCache.get(modeCacheKey);
-
-      const { index, missing } = resolveKeyedVisualIndex(
-        entries,
-        resolved.targetTimestampMs,
-        keyToleranceMs
-      );
-      let result;
-      if (missing) {
-        result = { missing: true, mode, bandCentersHz: null, derived: null, hold: null };
-      } else {
-        const row = entries.rowAt(index);
-        const derived = deriveStereoMapRow(mode, row, range);
-        const holdResult =
-          typeof entries.holdAtOrBeforeTimestamp === "function"
-            ? entries.holdAtOrBeforeTimestamp(resolved.targetTimestampMs)
-            : null;
-        result = {
-          missing: false,
-          mode,
-          bandCentersHz: row.bandCentersHz,
-          derived,
-          hold: holdResult ? holdResult.values[mode] : null,
-        };
-      }
-      if (targetCache) {
-        if (!optionCache) {
-          optionCache = new Map();
-          targetCache.set(resolved.targetTimestampMs, optionCache);
+      let base = optionCache?.get(modeCacheKey);
+      if (!base) {
+        const { index, missing } = resolveKeyedVisualIndex(
+          entries,
+          resolved.targetTimestampMs,
+          keyToleranceMs
+        );
+        if (missing) {
+          base = { missing: true, mode, bandCentersHz: null, derived: null };
+        } else {
+          const row = entries.rowAt(index);
+          base = {
+            missing: false,
+            mode,
+            bandCentersHz: row.bandCentersHz,
+            derived: deriveStereoMapRow(mode, row, range),
+          };
         }
-        optionCache.set(modeCacheKey, result);
+        if (targetCache) {
+          if (!optionCache) {
+            optionCache = new Map();
+            targetCache.set(resolved.targetTimestampMs, optionCache);
+          }
+          optionCache.set(modeCacheKey, base);
+        }
       }
-      return result;
+
+      const holdValues = withHold && !base.missing ? resolveStereoMapHold(key, entries) : null;
+      return { ...base, hold: holdValues ? (holdValues[mode] ?? null) : null };
     },
-    [keyToleranceMs, keyedResultCache.stereoMap, resolved.targetTimestampMs, snapSource]
+    [
+      keyToleranceMs,
+      keyedResultCache.stereoMap,
+      resolveStereoMapHold,
+      resolved.targetTimestampMs,
+      snapSource,
+    ]
   );
 
   return {

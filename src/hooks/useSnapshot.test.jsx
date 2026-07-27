@@ -335,13 +335,101 @@ describe("useSnapshot", () => {
     );
 
     const range = { lowerBound: -1, upperBound: 1 };
-    const snap = result.current.resolveStereoMapSnapshotForKey(key, "position", range);
+    const snap = result.current.resolveStereoMapSnapshotForKey(key, "position", range, {
+      withHold: true,
+    });
     expect(snap.missing).toBe(false);
     expect(snap.mode).toBe("position");
     expect(snap.bandCentersHz).toEqual([100]);
     // Position = (pl - pr) / (pl + pr) = (1 - 0.25) / 1.25 = 0.6
     expect(snap.derived.values[0]).toBeCloseTo(0.6);
     expect(snap.hold).toEqual({ minimum: [0.1], maximum: [0.9] });
+  });
+
+  it("does not reconstruct Stereo Map Hold when the panel is not showing it", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    let holdCalls = 0;
+    intake.snapshotVisualStereoMapByKey = () => ({
+      [key]: {
+        length: 1,
+        timestampAt: () => 1000,
+        rowAt: () => ({ timestampMs: 1000, bandCentersHz: [100], pl: [1], pr: [0.25], c: [0] }),
+        holdAtOrBeforeTimestamp: () => {
+          holdCalls += 1;
+          return { values: { position: { minimum: [0.1], maximum: [0.9] } } };
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const range = { lowerBound: -1, upperBound: 1 };
+    const snap = result.current.resolveStereoMapSnapshotForKey(key, "position", range);
+
+    // Rebuilding Hold walks retained rows; the curve itself does not. With Hold hidden that walk
+    // is pure waste, and it happens on every scrub tick.
+    expect(holdCalls).toBe(0);
+    expect(snap.hold).toBeNull();
+    expect(snap.derived.values[0]).toBeCloseTo(0.6);
+  });
+
+  it("reconstructs Stereo Map Hold once per timestamp, not once per Mode", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    let holdCalls = 0;
+    intake.snapshotVisualStereoMapByKey = () => ({
+      [key]: {
+        length: 1,
+        timestampAt: () => 1000,
+        rowAt: () => ({ timestampMs: 1000, bandCentersHz: [100], pl: [1], pr: [0.25], c: [0] }),
+        holdAtOrBeforeTimestamp: () => {
+          holdCalls += 1;
+          return {
+            values: { position: { minimum: [0.1], maximum: [0.9] }, correlation: [0.2] },
+          };
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const range = { lowerBound: -1, upperBound: 1 };
+    const options = { withHold: true };
+    const position = result.current.resolveStereoMapSnapshotForKey(key, "position", range, options);
+    const correlation = result.current.resolveStereoMapSnapshotForKey(
+      key,
+      "correlation",
+      range,
+      options
+    );
+    // Same key, same timestamp, different Y zoom: still the same Hold summary underneath.
+    const zoomed = result.current.resolveStereoMapSnapshotForKey(
+      key,
+      "position",
+      { lowerBound: -0.5, upperBound: 0.5 },
+      options
+    );
+
+    // A Hold summary covers every Mode at once, so Mode and range must not key its cache.
+    expect(holdCalls).toBe(1);
+    expect(position.hold).toEqual({ minimum: [0.1], maximum: [0.9] });
+    expect(correlation.hold).toEqual([0.2]);
+    expect(zoomed.hold).toEqual({ minimum: [0.1], maximum: [0.9] });
   });
 
   it("reconstructs a different Mode from the same retained Stereo Map row without re-selecting it", () => {

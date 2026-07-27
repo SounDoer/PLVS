@@ -167,7 +167,7 @@ export function StereoMapPanel() {
   const yTicks = yTicksForMode(mode, range, firstLabel, secondLabel);
 
   const snapResolved = isSnapshot
-    ? resolveStereoMapSnapshotForKey?.(stereoMapKey, mode, range)
+    ? resolveStereoMapSnapshotForKey?.(stereoMapKey, mode, range, { withHold: holdVisible })
     : null;
   const snapshotMissing = snapResolved?.missing === true;
   const liveRow = isSnapshot ? null : displayAudio?.stereoMapResultsByKey?.[stereoMapKey];
