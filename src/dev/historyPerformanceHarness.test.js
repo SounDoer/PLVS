@@ -646,7 +646,10 @@ describe("Stereo Map history slab structural benchmarks", () => {
     const targetIndex = VISUAL_HISTORY_CHUNK_ROWS * 3 + tailScanRows;
     const result = frozen.holdAtOrBeforeTimestamp(targetIndex * 40, frozen.epoch);
     expect(result).not.toBeNull();
-    expect(result.stats.mergedChunks).toBe(3);
+    // Two O(bandCount) merges cover the three sealed chunks before the unsealed tail: the front
+    // chunk's own summary, plus one cached-prefix lookup for everything between it and the
+    // target chunk (chunks 1 and 2 here) — not one merge per sealed chunk.
+    expect(result.stats.mergedChunks).toBe(2);
     expect(result.stats.scannedRows).toBe(tailScanRows + 1);
     expect(result.stats.scannedRows).toBeLessThan(VISUAL_HISTORY_CHUNK_ROWS);
   });
