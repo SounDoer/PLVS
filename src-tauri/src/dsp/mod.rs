@@ -18,6 +18,7 @@ mod spectrum_differential;
 #[cfg(test)]
 mod spectrum_fixtures;
 pub mod speech;
+pub mod stereo_map;
 pub mod summary_meter;
 pub mod vectorscope;
 

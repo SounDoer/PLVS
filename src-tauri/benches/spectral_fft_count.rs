@@ -23,6 +23,27 @@ mod ipc {
       pub(crate) tilt_db_per_octave: f64,
       pub(crate) octave_smoothing: String,
     }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) struct StereoMapAnalysisPair {
+      pub(crate) first: u16,
+      pub(crate) second: u16,
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub(crate) struct StereoMapAnalysisRequest {
+      pub(crate) key: String,
+      pub(crate) pair: StereoMapAnalysisPair,
+      pub(crate) speed_percent: f64,
+      pub(crate) octave_smoothing: String,
+    }
+
+    #[derive(Debug, Clone, Default, PartialEq)]
+    pub(crate) struct AnalysisRequests {
+      pub(crate) spectrum: Vec<SpectrumAnalysisRequest>,
+      pub(crate) vectorscope: Vec<()>,
+      pub(crate) stereo_map: Vec<StereoMapAnalysisRequest>,
+    }
   }
 }
 
@@ -40,6 +61,8 @@ pub(crate) mod spectrum;
 pub(crate) mod spectrum_bank;
 #[path = "../src/dsp/spectrum_consumer.rs"]
 pub(crate) mod spectrum_consumer;
+#[path = "../src/dsp/stereo_map.rs"]
+pub(crate) mod stereo_map;
 
 mod meter {
   use crate::channel_sel::{SpectrumChannelSel, SpectrumView};
@@ -62,6 +85,7 @@ mod dsp {
   pub(crate) use crate::channel_sel::{SpectrumChannelSel, SpectrumView};
   pub(crate) use crate::{
     meter, shared_spectral_engine, spectral_transform, spectrum, spectrum_bank, spectrum_consumer,
+    stereo_map,
   };
 }
 

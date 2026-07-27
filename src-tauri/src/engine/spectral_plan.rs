@@ -3,7 +3,7 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashSet};
 
-use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+use crate::ipc::types::{AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum ProjectionKind {
@@ -63,6 +63,15 @@ pub(crate) struct SpectralConsumerBinding {
 pub(crate) struct SpectralPlan {
   pub streams: Vec<TransformStreamId>,
   pub consumers: Vec<SpectralConsumerBinding>,
+  pub stereo_map_consumers: Vec<StereoMapConsumerBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct StereoMapConsumerBinding {
+  pub request_key: String,
+  pub input: ConsumerInput,
+  pub speed_percent: f64,
+  pub octave_smoothing: String,
 }
 
 pub(crate) fn same_logical_consumer(
@@ -245,16 +254,51 @@ pub(crate) fn plan_spectral_requests(
   SpectralPlan {
     streams: streams.into_iter().collect(),
     consumers,
+    stereo_map_consumers: Vec::new(),
   }
+}
+
+pub(crate) fn plan_analysis_requests(channels: u16, requests: &AnalysisRequests) -> SpectralPlan {
+  let channel_count = channels.max(1) as usize;
+  let stereo_pairs: Vec<_> = requests
+    .stereo_map
+    .iter()
+    .map(|request| FuturePairNeed::new(request.pair.first, request.pair.second))
+    .collect();
+  let mut plan = plan_spectral_requests(channels, &requests.spectrum, &stereo_pairs);
+  plan.stereo_map_consumers = requests
+    .stereo_map
+    .iter()
+    .map(|request| {
+      let first = selected_channel(request.pair.first, channel_count);
+      let second = selected_channel(request.pair.second, channel_count);
+      StereoMapConsumerBinding {
+        request_key: request.key.clone(),
+        input: ConsumerInput::Pair {
+          first: TransformStreamId::Physical(first),
+          second: TransformStreamId::Physical(second),
+        },
+        speed_percent: request.speed_percent,
+        octave_smoothing: request.octave_smoothing.clone(),
+      }
+    })
+    .collect();
+  plan
+    .stereo_map_consumers
+    .sort_by(|first, second| first.request_key.cmp(&second.request_key));
+  plan
 }
 
 #[cfg(test)]
 mod tests {
   use super::{
-    plan_spectral_requests, ConsumerInput, ConsumerProjection, ConsumerSelection, FuturePairNeed,
-    ProjectionKind, TransformStreamId,
+    plan_analysis_requests, plan_spectral_requests, ConsumerInput, ConsumerProjection,
+    ConsumerSelection, FuturePairNeed, ProjectionKind, TransformStreamId,
   };
-  use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+  use crate::ipc::types::{
+    AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, StereoMapAnalysisPair,
+    StereoMapAnalysisRequest,
+  };
 
   fn request(
     key: &str,
@@ -524,5 +568,79 @@ mod tests {
       } => first == 1 && second == 1,
       _ => false,
     }));
+  }
+
+  fn stereo_map_request(
+    key: &str,
+    first: u16,
+    second: u16,
+    speed_percent: f64,
+    octave_smoothing: &str,
+  ) -> StereoMapAnalysisRequest {
+    StereoMapAnalysisRequest {
+      key: key.to_string(),
+      pair: StereoMapAnalysisPair { first, second },
+      speed_percent,
+      octave_smoothing: octave_smoothing.to_string(),
+    }
+  }
+
+  #[test]
+  fn stereo_map_requests_plan_ordered_aligned_physical_pairs() {
+    let requests = AnalysisRequests {
+      stereo_map: vec![stereo_map_request("map", 4, 2, 25.0, "1/12")],
+      ..AnalysisRequests::default()
+    };
+
+    let plan = plan_analysis_requests(6, &requests);
+
+    assert_eq!(
+      plan.streams,
+      vec![
+        TransformStreamId::Physical(2),
+        TransformStreamId::Physical(4)
+      ]
+    );
+    assert_eq!(plan.stereo_map_consumers.len(), 1);
+    assert_eq!(plan.stereo_map_consumers[0].request_key, "map");
+    assert_eq!(
+      plan.stereo_map_consumers[0].input,
+      ConsumerInput::Pair {
+        first: TransformStreamId::Physical(4),
+        second: TransformStreamId::Physical(2),
+      }
+    );
+    assert_eq!(plan.stereo_map_consumers[0].speed_percent, 25.0);
+    assert_eq!(plan.stereo_map_consumers[0].octave_smoothing, "1/12");
+  }
+
+  #[test]
+  fn stereo_map_pair_reuses_spectrum_physical_streams_without_changing_spectrum_binding() {
+    let requests = AnalysisRequests {
+      spectrum: vec![pair_request("combined", 0, 1, "combined")],
+      stereo_map: vec![
+        stereo_map_request("map-fast", 0, 1, 0.0, "off"),
+        stereo_map_request("map-slow", 0, 1, 100.0, "1/3"),
+      ],
+      vectorscope: vec![],
+    };
+
+    let plan = plan_analysis_requests(2, &requests);
+
+    assert_eq!(
+      plan.streams,
+      vec![
+        TransformStreamId::Physical(0),
+        TransformStreamId::Physical(1)
+      ]
+    );
+    assert_eq!(plan.consumers.len(), 1);
+    assert_eq!(plan.consumers[0].request_key, "combined");
+    assert_eq!(plan.consumers[0].projection, ConsumerProjection::Combined);
+    assert_eq!(plan.stereo_map_consumers.len(), 2);
+    assert_ne!(
+      plan.stereo_map_consumers[0].speed_percent,
+      plan.stereo_map_consumers[1].speed_percent
+    );
   }
 }

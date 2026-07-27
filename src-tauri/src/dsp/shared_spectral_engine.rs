@@ -10,9 +10,10 @@ use super::spectrum_bank::{
   spectrum_frequency_bounds, FFT_BIG, FFT_MID, FFT_SMALL, OVERLAP_BIG, OVERLAP_MID, OVERLAP_SMALL,
 };
 use super::spectrum_consumer::{SpectralConsumer, SpectralProjection};
+use super::stereo_map::{StereoMapConsumer, StereoMapPrimitiveRow};
 use crate::engine::spectral_plan::{
   same_logical_consumer, ConsumerInput, ConsumerProjection, ProjectionKind,
-  SpectralConsumerBinding, SpectralPlan, TransformStreamId,
+  SpectralConsumerBinding, SpectralPlan, StereoMapConsumerBinding, TransformStreamId,
 };
 
 /// Monotonic time used only for spectrum display ballistics.
@@ -413,17 +414,45 @@ fn spectral_projection(projection: ConsumerProjection) -> SpectralProjection {
 }
 
 fn apply_settings(consumer: &mut SpectralConsumer, binding: &SpectralConsumerBinding) {
-  let smoothing = match binding.settings.octave_smoothing.as_str() {
+  consumer.set_display_controls(
+    binding.settings.speed_percent,
+    binding.settings.tilt_db_per_octave,
+    octave_smoothing(&binding.settings.octave_smoothing),
+  );
+}
+
+fn octave_smoothing(value: &str) -> OctaveSmoothing {
+  match value {
     "1/12" => OctaveSmoothing::OneTwelfth,
     "1/6" => OctaveSmoothing::OneSixth,
     "1/3" => OctaveSmoothing::OneThird,
     _ => OctaveSmoothing::Off,
-  };
-  consumer.set_display_controls(
-    binding.settings.speed_percent,
-    binding.settings.tilt_db_per_octave,
-    smoothing,
-  );
+  }
+}
+
+struct RuntimeStereoMapConsumer {
+  binding: StereoMapConsumerBinding,
+  target: Option<StereoMapConsumerBinding>,
+  consumer: StereoMapConsumer,
+  ready: bool,
+  consume_counts: [u64; 3],
+}
+
+impl RuntimeStereoMapConsumer {
+  fn new(binding: StereoMapConsumerBinding, sample_rate: f64) -> Self {
+    let mut consumer = StereoMapConsumer::for_sample_rate(sample_rate);
+    consumer.set_display_controls(
+      binding.speed_percent,
+      octave_smoothing(&binding.octave_smoothing),
+    );
+    Self {
+      binding,
+      target: None,
+      consumer,
+      ready: false,
+      consume_counts: [0; 3],
+    }
+  }
 }
 
 fn input_streams(input: ConsumerInput) -> impl Iterator<Item = TransformStreamId> {
@@ -490,6 +519,27 @@ fn consume_input(
   }
 }
 
+fn consume_stereo_map_input(
+  state: &mut RuntimeStereoMapConsumer,
+  frames: &SharedSpectralFrameSet<'_>,
+  input: ConsumerInput,
+  fft_size: usize,
+) {
+  let ConsumerInput::Pair { first, second } = input else {
+    return;
+  };
+  let (Some(first), Some(second)) = (
+    frames.frame(first, fft_size),
+    frames.frame(second, fft_size),
+  ) else {
+    return;
+  };
+  let _ = state
+    .consumer
+    .consume_aligned(&first.as_complex(), &second.as_complex());
+  state.consume_counts[resolution_index(fft_size).expect("known resolution")] += 1;
+}
+
 /// Owns request-keyed consumers and overlaps transform topologies until an atomic handoff.
 pub(crate) struct SharedSpectralRuntime {
   sample_rate: f64,
@@ -497,6 +547,7 @@ pub(crate) struct SharedSpectralRuntime {
   current_plan: SpectralPlan,
   desired_streams: Vec<TransformStreamId>,
   consumers: BTreeMap<String, RuntimeConsumer>,
+  stereo_map_consumers: BTreeMap<String, RuntimeStereoMapConsumer>,
   next_identity: u64,
   #[cfg(test)]
   removed_consumer_counts: BTreeMap<String, [u64; 3]>,
@@ -510,9 +561,11 @@ impl SharedSpectralRuntime {
       current_plan: SpectralPlan {
         streams: Vec::new(),
         consumers: Vec::new(),
+        stereo_map_consumers: Vec::new(),
       },
       desired_streams: Vec::new(),
       consumers: BTreeMap::new(),
+      stereo_map_consumers: BTreeMap::new(),
       next_identity: 1,
       #[cfg(test)]
       removed_consumer_counts: BTreeMap::new(),
@@ -580,6 +633,35 @@ impl SharedSpectralRuntime {
         }
       }
     }
+
+    let desired_stereo_map_keys: BTreeSet<_> = plan
+      .stereo_map_consumers
+      .iter()
+      .map(|binding| binding.request_key.as_str())
+      .collect();
+    self
+      .stereo_map_consumers
+      .retain(|key, _| desired_stereo_map_keys.contains(key.as_str()));
+    for desired in plan.stereo_map_consumers {
+      let key = desired.request_key.clone();
+      match self.stereo_map_consumers.get_mut(&key) {
+        Some(state) if state.binding.input == desired.input => {
+          state.consumer.set_display_controls(
+            desired.speed_percent,
+            octave_smoothing(&desired.octave_smoothing),
+          );
+          state.target = None;
+          state.binding = desired;
+        }
+        Some(state) => state.target = Some(desired),
+        None => {
+          self.stereo_map_consumers.insert(
+            key,
+            RuntimeStereoMapConsumer::new(desired, self.sample_rate),
+          );
+        }
+      }
+    }
     self.desired_streams = plan.streams;
     self.refresh_engine_streams();
   }
@@ -602,6 +684,7 @@ impl SharedSpectralRuntime {
 
   pub(crate) fn push_interleaved(&mut self, interleaved: &[f32], channels: u16) {
     let consumers = &mut self.consumers;
+    let stereo_map_consumers = &mut self.stereo_map_consumers;
     let mut switched = false;
     self
       .engine
@@ -626,6 +709,36 @@ impl SharedSpectralRuntime {
             consume_input(state, &frames, state.binding.input, fft_size);
           }
         }
+        for state in stereo_map_consumers.values_mut() {
+          if let Some(target) = state.target.as_ref() {
+            if input_is_ready(&frames, target.input) {
+              let target = state.target.take().expect("checked Stereo Map target");
+              state.consumer.set_display_controls(
+                target.speed_percent,
+                octave_smoothing(&target.octave_smoothing),
+              );
+              for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
+                consume_stereo_map_input(state, &frames, target.input, fft_size);
+              }
+              state.binding = target;
+              state.ready = true;
+              switched = true;
+              continue;
+            }
+          }
+          if !state.ready {
+            if input_is_ready(&frames, state.binding.input) {
+              for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
+                consume_stereo_map_input(state, &frames, state.binding.input, fft_size);
+              }
+              state.ready = true;
+            }
+            continue;
+          }
+          for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
+            consume_stereo_map_input(state, &frames, state.binding.input, fft_size);
+          }
+        }
       });
     if switched {
       self.refresh_engine_streams();
@@ -635,6 +748,12 @@ impl SharedSpectralRuntime {
   fn refresh_engine_streams(&mut self) {
     let mut streams: BTreeSet<_> = self.desired_streams.iter().copied().collect();
     for state in self.consumers.values() {
+      streams.extend(input_streams(state.binding.input));
+      if let Some(target) = &state.target {
+        streams.extend(input_streams(target.input));
+      }
+    }
+    for state in self.stereo_map_consumers.values() {
       streams.extend(input_streams(state.binding.input));
       if let Some(target) = &state.target {
         streams.extend(input_streams(target.input));
@@ -653,6 +772,26 @@ impl SharedSpectralRuntime {
       .get_mut(key)?
       .consumer
       .output(dsp_time.as_seconds())
+  }
+
+  pub(crate) fn stereo_map_output(&mut self, key: &str) -> Option<&StereoMapPrimitiveRow> {
+    self.stereo_map_consumers.get_mut(key)?.consumer.output()
+  }
+
+  #[cfg(test)]
+  pub(crate) fn stereo_map_active_input_for_test(&self, key: &str) -> Option<ConsumerInput> {
+    self
+      .stereo_map_consumers
+      .get(key)
+      .map(|state| state.binding.input)
+  }
+
+  #[cfg(test)]
+  pub(crate) fn stereo_map_consume_counts_for_test(&self, key: &str) -> Option<[u64; 3]> {
+    self
+      .stereo_map_consumers
+      .get(key)
+      .map(|state| state.consume_counts)
   }
 
   #[cfg(test)]
@@ -875,9 +1014,13 @@ mod tests {
   };
   use crate::dsp::spectrum_consumer::{SpectralConsumer, SpectralProjection};
   use crate::engine::spectral_plan::{
-    plan_spectral_requests, FuturePairNeed, ProjectionKind, TransformStreamId,
+    plan_analysis_requests, plan_spectral_requests, FuturePairNeed, ProjectionKind,
+    TransformStreamId,
   };
-  use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+  use crate::ipc::types::{
+    AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, StereoMapAnalysisPair,
+    StereoMapAnalysisRequest,
+  };
   use rustfft::num_complex::Complex32;
 
   fn physical(channel: usize) -> TransformStreamId {
@@ -1414,5 +1557,151 @@ mod tests {
         expected_invocations(first_samples + FFT_BIG, size, overlap)
       );
     }
+  }
+
+  fn stereo_map_request(
+    key: &str,
+    speed_percent: f64,
+    octave_smoothing: &str,
+  ) -> StereoMapAnalysisRequest {
+    stereo_map_pair_request(key, 0, 1, speed_percent, octave_smoothing)
+  }
+
+  fn stereo_map_pair_request(
+    key: &str,
+    first: u16,
+    second: u16,
+    speed_percent: f64,
+    octave_smoothing: &str,
+  ) -> StereoMapAnalysisRequest {
+    StereoMapAnalysisRequest {
+      key: key.to_string(),
+      pair: StereoMapAnalysisPair { first, second },
+      speed_percent,
+      octave_smoothing: octave_smoothing.to_string(),
+    }
+  }
+
+  #[test]
+  fn stereo_map_consumers_share_spectrum_transforms_and_publish_after_all_three_ready() {
+    let requests = AnalysisRequests {
+      spectrum: vec![pair_request("combined", 0, 1, "combined", 50.0, "off")],
+      vectorscope: vec![],
+      stereo_map: vec![
+        stereo_map_request("map-a", 25.0, "off"),
+        stereo_map_request("map-b", 75.0, "1/6"),
+      ],
+    };
+    let plan = plan_analysis_requests(2, &requests);
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(plan);
+
+    assert_eq!(runtime.streams_for_test(), vec![physical(0), physical(1)]);
+    runtime.push_interleaved(&vec![0.25; (FFT_BIG - 1) * 2], 2);
+    assert!(runtime.stereo_map_output("map-a").is_none());
+    runtime.push_interleaved(&[0.25, 0.25], 2);
+    let output = runtime.stereo_map_output("map-a").expect("map output");
+    assert!(!output.band_centers_hz.is_empty());
+    assert!(output.pl.iter().all(|value| value.is_finite()));
+    assert!(output.pr.iter().all(|value| value.is_finite()));
+    assert!(output.c.iter().all(|value| value.is_finite()));
+    assert_fft_invocations(&runtime, &[physical(0), physical(1)], FFT_BIG);
+  }
+
+  #[test]
+  fn stereo_map_request_keys_keep_independent_speed_ema_state() {
+    let requests = AnalysisRequests {
+      spectrum: vec![],
+      vectorscope: vec![],
+      stereo_map: vec![
+        stereo_map_request("fast", 0.0, "off"),
+        stereo_map_request("slow", 100.0, "off"),
+      ],
+    };
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(plan_analysis_requests(2, &requests));
+    runtime.push_interleaved(&vec![1.0; FFT_BIG * 2], 2);
+
+    let changed = vec![0.0; (FFT_BIG / OVERLAP_BIG) * 2];
+    runtime.push_interleaved(&changed, 2);
+    let fast = runtime.stereo_map_output("fast").expect("fast output");
+    let fast_pl = fast.pl[0];
+    let slow = runtime.stereo_map_output("slow").expect("slow output");
+    let slow_pl = slow.pl[0];
+    assert!(
+      (slow_pl - fast_pl).abs() > 1e-8,
+      "request-keyed EMA states collapsed: slow={slow_pl}, fast={fast_pl}"
+    );
+  }
+
+  #[test]
+  fn stereo_map_pair_change_uses_distinct_keys_and_explicit_overlap_until_new_pair_is_ready() {
+    let old_request = stereo_map_pair_request("map-01", 0, 1, 25.0, "off");
+    let new_request = stereo_map_pair_request("map-23", 2, 3, 25.0, "off");
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(plan_analysis_requests(
+      4,
+      &AnalysisRequests {
+        stereo_map: vec![old_request.clone()],
+        ..AnalysisRequests::default()
+      },
+    ));
+    let old_pcm: Vec<f32> = (0..FFT_BIG).flat_map(|_| [0.5, 0.5, 0.0, 0.0]).collect();
+    runtime.push_interleaved(&old_pcm, 4);
+    assert!(runtime.stereo_map_output("map-01").is_some());
+    assert_eq!(
+      runtime.stereo_map_active_input_for_test("map-01"),
+      Some(ConsumerInput::Pair {
+        first: physical(0),
+        second: physical(1),
+      })
+    );
+
+    runtime.update_plan(plan_analysis_requests(
+      4,
+      &AnalysisRequests {
+        stereo_map: vec![old_request, new_request],
+        ..AnalysisRequests::default()
+      },
+    ));
+    assert_eq!(
+      runtime.streams_for_test(),
+      vec![physical(0), physical(1), physical(2), physical(3)]
+    );
+    let transition_pcm: Vec<f32> = (0..FFT_BIG - 1)
+      .flat_map(|_| [0.5, 0.5, 0.75, -0.75])
+      .collect();
+    runtime.push_interleaved(&transition_pcm, 4);
+    assert!(runtime.stereo_map_output("map-01").is_some());
+    assert!(runtime.stereo_map_output("map-23").is_none());
+    assert_eq!(
+      runtime.stereo_map_consume_counts_for_test("map-23"),
+      Some([0, 0, 0]),
+      "new pair must not consume partial-resolution warmup"
+    );
+
+    runtime.push_interleaved(&[0.5, 0.5, 0.75, -0.75], 4);
+    assert_eq!(
+      runtime.stereo_map_consume_counts_for_test("map-23"),
+      Some([1, 1, 1]),
+      "first consume must borrow all three aligned pair frames"
+    );
+    let old_c = runtime.stereo_map_output("map-01").expect("old output").c[0];
+    let new_c = runtime.stereo_map_output("map-23").expect("new output").c[0];
+    assert!(old_c > 0.0, "old L/R pair lost continuity: {old_c}");
+    assert!(
+      new_c < 0.0,
+      "new pair mixed channels or reversed C: {new_c}"
+    );
+
+    runtime.update_plan(plan_analysis_requests(
+      4,
+      &AnalysisRequests {
+        stereo_map: vec![stereo_map_pair_request("map-23", 2, 3, 25.0, "off")],
+        ..AnalysisRequests::default()
+      },
+    ));
+    assert!(runtime.stereo_map_output("map-01").is_none());
+    assert_eq!(runtime.streams_for_test(), vec![physical(2), physical(3)]);
   }
 }
