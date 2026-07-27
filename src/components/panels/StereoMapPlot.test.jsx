@@ -322,6 +322,42 @@ describe("StereoMapPlot", () => {
     expect(ctx.stroke.mock.calls.length).toBe(strokeCallsAfterFirst);
   });
 
+  it("does not re-read layout or resolve colors from the DOM on an unchanged rerender", () => {
+    // getComputedStyle/clientWidth force a synchronous layout flush; paying that cost on every
+    // render (even ones the redraw-skip signature ends up discarding) reintroduces the same class
+    // of jank the canvas rewrite was meant to remove. Colors/size must come from cached refs unless
+    // paletteKey/themeId or the element's actual size changed.
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
+      getPropertyValue: () => "",
+    });
+    const props = {
+      mode: STEREO_MAP_MODES.CORRELATION,
+      bandCentersHz: [100, 1000, 10000],
+      points: threeBandPoints(),
+      range: RANGE,
+      paletteKey: "live",
+    };
+    const { rerender } = render(<StereoMapPlot {...props} />);
+    const callsAfterFirst = styleSpy.mock.calls.length;
+    expect(callsAfterFirst).toBeGreaterThan(0);
+
+    rerender(
+      <StereoMapPlot
+        {...props}
+        bandCentersHz={[...props.bandCentersHz]}
+        points={props.points.map((p) => ({ ...p }))}
+        range={{ ...RANGE }}
+      />
+    );
+    expect(styleSpy.mock.calls.length).toBe(callsAfterFirst);
+
+    // A palette change is exactly the kind of change that must re-resolve colors.
+    rerender(<StereoMapPlot {...props} paletteKey="snap" />);
+    expect(styleSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+  });
+
   it("redraws when a point's value actually changes", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);

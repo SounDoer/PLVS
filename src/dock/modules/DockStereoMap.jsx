@@ -24,7 +24,7 @@ function rangeForMode(mode, controls) {
  * interactive chrome separately), so it is reused here as-is for the compact render.
  */
 export function DockStereoMap({ controls = {} }) {
-  const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();
+  const { displayAudio, channelCount = 0, peakLabelContext, resolvedThemeId } = useFrameData();
   const historyData = useHistoryData();
   const normalizedControls = normalizeDockModuleControls("stereoMap", controls);
   const mode = normalizedControls.mode;
@@ -70,6 +70,7 @@ export function DockStereoMap({ controls = {} }) {
           xMinHz={normalizedControls.minFreq}
           xMaxHz={normalizedControls.maxFreq}
           paletteKey="live"
+          themeId={resolvedThemeId}
         />
         {showPairLabels ? (
           <div
