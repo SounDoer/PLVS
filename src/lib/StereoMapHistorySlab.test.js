@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
+import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
 import {
   FrozenStereoMapHistory,
   MAX_STEREO_MAP_HISTORY_ROWS,
@@ -22,6 +23,16 @@ function appendRow(slab, index, overrides = {}) {
 
 function f32(values) {
   return Array.from(Float32Array.from(values));
+}
+
+function appendHoldRow(slab, index, { pl = 1, pr = 1, c = 0, ...overrides } = {}) {
+  appendRow(slab, index, {
+    bandCentersHz: [100],
+    pl: [pl],
+    pr: [pr],
+    c: [c],
+    ...overrides,
+  });
 }
 
 describe("StereoMapHistorySlab", () => {
@@ -190,16 +201,22 @@ describe("StereoMapHistorySlab", () => {
         c: "Float32Array",
       },
     });
+    // Two chunks are live: one sealed (VISUAL_HISTORY_CHUNK_ROWS rows) and one active (1 row).
+    // The Hold index is a fixed-size per-band summary, not a per-row buffer, so it is the same
+    // size whether counted as allocated or used.
+    const holdIndexBytes = centers.length * (5 * Float64Array.BYTES_PER_ELEMENT + 4) * 2;
     expect(liveStats.allocatedBytes).toEqual({
       timestamps: VISUAL_HISTORY_CHUNK_ROWS * 2 * Float64Array.BYTES_PER_ELEMENT,
       bandCenters: centers.length * Float32Array.BYTES_PER_ELEMENT,
       pl: VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT,
       pr: VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT,
       c: VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT,
+      holdIndex: holdIndexBytes,
       total:
         VISUAL_HISTORY_CHUNK_ROWS * 2 * Float64Array.BYTES_PER_ELEMENT +
         centers.length * Float32Array.BYTES_PER_ELEMENT +
-        VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT * 3,
+        VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT * 3 +
+        holdIndexBytes,
     });
     expect(liveStats.usedBytes).toEqual({
       timestamps: rowCount * Float64Array.BYTES_PER_ELEMENT,
@@ -207,10 +224,12 @@ describe("StereoMapHistorySlab", () => {
       pl: rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT,
       pr: rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT,
       c: rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT,
+      holdIndex: holdIndexBytes,
       total:
         rowCount * Float64Array.BYTES_PER_ELEMENT +
         centers.length * Float32Array.BYTES_PER_ELEMENT +
-        rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT * 3,
+        rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT * 3 +
+        holdIndexBytes,
     });
 
     const frozenStats = slab.freeze().storageStats();
@@ -241,7 +260,10 @@ describe("StereoMapHistorySlab", () => {
       pl: centers.length * Float32Array.BYTES_PER_ELEMENT,
       pr: centers.length * Float32Array.BYTES_PER_ELEMENT,
       c: centers.length * Float32Array.BYTES_PER_ELEMENT,
-      total: centers.length * Float32Array.BYTES_PER_ELEMENT * 4,
+      holdDerivation: centers.length * 6 * Float64Array.BYTES_PER_ELEMENT,
+      total:
+        centers.length * Float32Array.BYTES_PER_ELEMENT * 4 +
+        centers.length * 6 * Float64Array.BYTES_PER_ELEMENT,
     });
 
     for (let i = 1; i < 5; i += 1) appendRow(slab, i);
@@ -277,7 +299,8 @@ describe("StereoMapHistorySlab", () => {
       retainedRows: VISUAL_HISTORY_CHUNK_ROWS + 1,
       sharedSealedChunks: 1,
       copiedTailRows: 1,
-      copiedTailBytes: 8 + centers.length * 3 * 4,
+      copiedTailBytes:
+        8 + centers.length * 3 * 4 + centers.length * (5 * Float64Array.BYTES_PER_ELEMENT + 4),
     });
     expect(repeated.storageStats()).toEqual(frozen.storageStats());
     expect(repeated.rowAt(0)).toEqual(frozen.rowAt(0));
@@ -413,5 +436,137 @@ describe("StereoMapHistorySlab", () => {
     expect(slab.length).toBe(1);
     expect(slab.storageStats()).toMatchObject({ chunkCount: 1, retainedRows: 1 });
     expect(slab.timestampAt(0)).toBe(1_000_000_000_000.125 + VISUAL_HISTORY_CHUNK_ROWS * 40.25);
+  });
+
+  it("merges exact sealed summaries for every mode and scans only the target partial chunk", () => {
+    const slab = new StereoMapHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 4);
+    appendHoldRow(slab, 0, { pl: 0, pr: 1 });
+    appendHoldRow(slab, 1, { pl: 1, pr: 0 });
+    appendHoldRow(slab, 2, { c: -1 });
+    for (let index = 3; index < VISUAL_HISTORY_CHUNK_ROWS; index += 1) {
+      appendHoldRow(slab, index);
+    }
+    appendHoldRow(slab, VISUAL_HISTORY_CHUNK_ROWS, { pl: 9, pr: 1 });
+    appendHoldRow(slab, VISUAL_HISTORY_CHUNK_ROWS + 1, { pl: 1, pr: 9 });
+    appendHoldRow(slab, VISUAL_HISTORY_CHUNK_ROWS + 2, { c: 1 });
+
+    const result = slab.holdAt(VISUAL_HISTORY_CHUNK_ROWS + 1, slab.epoch);
+
+    expect(result.values[STEREO_MAP_MODES.POSITION]).toEqual({
+      minimum: [-1],
+      maximum: [1],
+    });
+    expect(result.values[STEREO_MAP_MODES.CORRELATION]).toEqual([-1]);
+    expect(result.values[STEREO_MAP_MODES.MONO_LOSS_DB]).toEqual([-Infinity]);
+    expect(result.values[STEREO_MAP_MODES.MS_RATIO_DB]).toEqual([Infinity]);
+    expect(result.stats).toEqual({ mergedChunks: 1, scannedRows: 2 });
+  });
+
+  it("does not let future rows contribute to a historical Hold query", () => {
+    const slab = new StereoMapHistorySlab(4);
+    appendHoldRow(slab, 0);
+    appendHoldRow(slab, 1, { c: -1 });
+
+    const result = slab.holdAt(0, slab.epoch);
+
+    expect(result.values[STEREO_MAP_MODES.CORRELATION]).toEqual([0]);
+    expect(result.values[STEREO_MAP_MODES.MONO_LOSS_DB][0]).toBeCloseTo(10 * Math.log10(0.5));
+    expect(result.stats).toEqual({ mergedChunks: 0, scannedRows: 1 });
+  });
+
+  it("scans an oldest partial sealed chunk so an evicted prefix cannot contribute", () => {
+    const capacity = VISUAL_HISTORY_CHUNK_ROWS + 2;
+    const slab = new StereoMapHistorySlab(capacity);
+    appendHoldRow(slab, 0, { c: -1 });
+    for (let index = 1; index < VISUAL_HISTORY_CHUNK_ROWS + 5; index += 1) {
+      appendHoldRow(slab, index);
+    }
+
+    const result = slab.holdAt(slab.length - 1, slab.epoch);
+
+    expect(result.values[STEREO_MAP_MODES.CORRELATION]).toEqual([0]);
+    expect(result.values[STEREO_MAP_MODES.MONO_LOSS_DB][0]).toBeCloseTo(10 * Math.log10(0.5));
+    expect(result.stats).toEqual({ mergedChunks: 0, scannedRows: capacity });
+  });
+
+  it("starts a new Hold epoch on clear and frozen histories retain their epoch", () => {
+    const slab = new StereoMapHistorySlab(4);
+    appendHoldRow(slab, 0, { c: -1 });
+    const oldEpoch = slab.epoch;
+    const frozen = slab.freeze();
+
+    slab.clear();
+    appendHoldRow(slab, 1);
+
+    expect(slab.epoch).toBe(oldEpoch + 1);
+    expect(slab.holdAt(0, oldEpoch)).toBeNull();
+    expect(slab.holdAt(0, slab.epoch).values[STEREO_MAP_MODES.CORRELATION]).toEqual([0]);
+    expect(frozen.epoch).toBe(oldEpoch);
+    expect(frozen.holdAt(0, oldEpoch).values[STEREO_MAP_MODES.CORRELATION]).toEqual([-1]);
+  });
+
+  it("floors timestamp Hold queries without including the nearest future row", () => {
+    const slab = new StereoMapHistorySlab(4);
+    appendHoldRow(slab, 0, { timestampMs: 20 });
+    appendHoldRow(slab, 1, { timestampMs: 40, c: -1 });
+
+    expect(slab.holdAtOrBeforeTimestamp(10, slab.epoch)).toBeNull();
+    expect(
+      slab.holdAtOrBeforeTimestamp(30, slab.epoch).values[STEREO_MAP_MODES.CORRELATION]
+    ).toEqual([0]);
+    expect(
+      slab.holdAtOrBeforeTimestamp(40, slab.epoch).values[STEREO_MAP_MODES.CORRELATION]
+    ).toEqual([-1]);
+  });
+
+  it("keeps rows and Hold summaries unchanged when append validation fails", () => {
+    const slab = new StereoMapHistorySlab(3);
+    appendHoldRow(slab, 0, { c: -1 });
+    const before = slab.holdAt(0, slab.epoch);
+
+    expect(() => appendHoldRow(slab, 1, { c: Number.NaN })).toThrow(/finite/);
+
+    expect(slab.length).toBe(1);
+    expect(slab.holdAt(0, slab.epoch)).toEqual(before);
+  });
+
+  it("accounts exact Hold index bytes for 958-band sealed, active, and frozen chunks", () => {
+    const bandCount = 958;
+    const holdBytesPerChunk = bandCount * (5 * Float64Array.BYTES_PER_ELEMENT + 4);
+    const slab = new StereoMapHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 1);
+    const bandCentersHz = Float32Array.from(
+      { length: bandCount },
+      (_, index) => 20 * 2 ** (index / 96)
+    );
+    const pl = new Float32Array(bandCount).fill(1);
+    const pr = new Float32Array(bandCount).fill(1);
+    const c = new Float32Array(bandCount);
+    for (let index = 0; index < VISUAL_HISTORY_CHUNK_ROWS + 1; index += 1) {
+      slab.append({
+        timestampMs: index * 40,
+        sampleRateHz: 48_000,
+        bandCentersHz,
+        pl,
+        pr,
+        c,
+      });
+    }
+
+    const live = slab.storageStats();
+    expect(live.holdIndexBytes).toEqual({
+      allocated: holdBytesPerChunk * 2,
+      used: holdBytesPerChunk * 2,
+    });
+    expect(live.allocatedBytes.holdIndex).toBe(holdBytesPerChunk * 2);
+    expect(live.usedBytes.holdIndex).toBe(holdBytesPerChunk * 2);
+    expect(live.workingBytes.holdDerivation).toBe(bandCount * 6 * Float64Array.BYTES_PER_ELEMENT);
+
+    const frozen = slab.freeze().storageStats();
+    expect(frozen.holdIndexBytes).toEqual(live.holdIndexBytes);
+    expect(frozen.copiedTailBytes).toBe(
+      Float64Array.BYTES_PER_ELEMENT +
+        bandCount * 3 * Float32Array.BYTES_PER_ELEMENT +
+        holdBytesPerChunk
+    );
   });
 });

@@ -1,4 +1,13 @@
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
+import { createStereoMapDerivationScratch } from "../math/stereoMapMath.js";
+import {
+  accumulateStereoMapHold,
+  copyStereoMapHoldSummary,
+  createStereoMapHoldSummary,
+  mergeStereoMapHoldSummary,
+  stereoMapHoldSummaryByteLength,
+  stereoMapHoldValues,
+} from "../math/stereoMapHold.js";
 
 const VISUAL_ROWS_PER_SECOND = 25;
 export const MAX_STEREO_MAP_HISTORY_ROWS = 4 * 60 * 60 * VISUAL_ROWS_PER_SECOND;
@@ -85,9 +94,10 @@ function canonicalizeRow(state, { timestampMs, sampleRateHz, bandCentersHz, pl, 
   return scratch;
 }
 
-function createChunk(sequenceStart, bandCount) {
+function createChunk(sequenceStart, bandCount, epoch) {
   return {
     sequenceStart,
+    epoch,
     rowCapacity: VISUAL_HISTORY_CHUNK_ROWS,
     rowCount: 0,
     sealed: false,
@@ -95,16 +105,38 @@ function createChunk(sequenceStart, bandCount) {
     pl: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
     pr: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
     c: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
+    holdSummary: createStereoMapHoldSummary(bandCount),
   };
 }
 
-function copyActiveTail(chunk, retainedStartSequence, bandCount) {
+function primitiveRowFromChunk(chunk, row, bandCentersHz) {
+  const firstValue = row * bandCentersHz.length;
+  const lastValue = firstValue + bandCentersHz.length;
+  return {
+    bandCentersHz,
+    pl: chunk.pl.subarray(firstValue, lastValue),
+    pr: chunk.pr.subarray(firstValue, lastValue),
+    c: chunk.c.subarray(firstValue, lastValue),
+  };
+}
+
+function summarizeChunkRows(chunk, firstRow, rowCount, bandCentersHz) {
+  const summary = createStereoMapHoldSummary(bandCentersHz.length);
+  for (let row = firstRow; row < firstRow + rowCount; row += 1) {
+    accumulateStereoMapHold(summary, primitiveRowFromChunk(chunk, row, bandCentersHz));
+  }
+  return summary;
+}
+
+function copyActiveTail(chunk, retainedStartSequence, bandCentersHz) {
+  const bandCount = bandCentersHz.length;
   const firstRow = Math.max(0, retainedStartSequence - chunk.sequenceStart);
   const rowCount = chunk.rowCount - firstRow;
   const firstValue = firstRow * bandCount;
   const valueCount = rowCount * bandCount;
   return {
     sequenceStart: chunk.sequenceStart + firstRow,
+    epoch: chunk.epoch,
     rowCapacity: rowCount,
     rowCount,
     sealed: true,
@@ -112,12 +144,39 @@ function copyActiveTail(chunk, retainedStartSequence, bandCount) {
     pl: chunk.pl.slice(firstValue, firstValue + valueCount),
     pr: chunk.pr.slice(firstValue, firstValue + valueCount),
     c: chunk.c.slice(firstValue, firstValue + valueCount),
+    holdSummary:
+      firstRow === 0
+        ? copyStereoMapHoldSummary(chunk.holdSummary)
+        : summarizeChunkRows(chunk, firstRow, rowCount, bandCentersHz),
   };
 }
 
 function payloadBytes(chunk) {
   return (
-    chunk.timestamps.byteLength + chunk.pl.byteLength + chunk.pr.byteLength + chunk.c.byteLength
+    chunk.timestamps.byteLength +
+    chunk.pl.byteLength +
+    chunk.pr.byteLength +
+    chunk.c.byteLength +
+    stereoMapHoldSummaryByteLength(chunk.holdSummary)
+  );
+}
+
+function holdDerivationScratchFor(state, bandCount) {
+  if (!state.holdScratch || state.holdScratch.bandCount !== bandCount) {
+    state.holdScratch = createStereoMapDerivationScratch(bandCount);
+  }
+  return state.holdScratch;
+}
+
+function derivationScratchBytes(scratch) {
+  if (!scratch) return 0;
+  return (
+    scratch.normalizedPl.byteLength +
+    scratch.normalizedPr.byteLength +
+    scratch.normalizedC.byteLength +
+    scratch.scale.byteLength +
+    scratch.geometricMean.byteLength +
+    scratch.energyDb.byteLength
   );
 }
 
@@ -167,20 +226,22 @@ function arrayTypeAcrossChunks(chunks, field) {
 function withTotal(bytes) {
   return {
     ...bytes,
-    total: bytes.timestamps + bytes.bandCenters + bytes.pl + bytes.pr + bytes.c,
+    total: bytes.timestamps + bytes.bandCenters + bytes.pl + bytes.pr + bytes.c + bytes.holdIndex,
   };
 }
 
-function workingBytes(scratch) {
+function workingBytes(state) {
+  const scratch = state?.scratch;
   const bytes = {
     centers: scratch?.centers.byteLength ?? 0,
     pl: scratch?.pl.byteLength ?? 0,
     pr: scratch?.pr.byteLength ?? 0,
     c: scratch?.c.byteLength ?? 0,
+    holdDerivation: derivationScratchBytes(state?.holdScratch),
   };
   return {
     ...bytes,
-    total: bytes.centers + bytes.pl + bytes.pr + bytes.c,
+    total: bytes.centers + bytes.pl + bytes.pr + bytes.c + bytes.holdDerivation,
   };
 }
 
@@ -191,6 +252,7 @@ function storageDiagnostics(state) {
     pl: 0,
     pr: 0,
     c: 0,
+    holdIndex: 0,
   };
   const used = {
     timestamps: 0,
@@ -198,6 +260,7 @@ function storageDiagnostics(state) {
     pl: 0,
     pr: 0,
     c: 0,
+    holdIndex: 0,
   };
 
   for (const chunk of state.chunks) {
@@ -205,6 +268,7 @@ function storageDiagnostics(state) {
     allocated.pl += chunk.pl?.byteLength ?? 0;
     allocated.pr += chunk.pr?.byteLength ?? 0;
     allocated.c += chunk.c?.byteLength ?? 0;
+    allocated.holdIndex += stereoMapHoldSummaryByteLength(chunk.holdSummary);
 
     const retainedStart = Math.max(state.startSequence, chunk.sequenceStart);
     const retainedEnd = Math.min(state.endSequence, chunk.sequenceStart + chunk.rowCount);
@@ -213,6 +277,9 @@ function storageDiagnostics(state) {
     used.pl += retainedRows * state.bandCentersHz.length * (chunk.pl?.BYTES_PER_ELEMENT ?? 0);
     used.pr += retainedRows * state.bandCentersHz.length * (chunk.pr?.BYTES_PER_ELEMENT ?? 0);
     used.c += retainedRows * state.bandCentersHz.length * (chunk.c?.BYTES_PER_ELEMENT ?? 0);
+    // The Hold index is a fixed-size per-band summary, not a per-row buffer, so partial
+    // retention within a chunk does not shrink it: allocated and used always match.
+    used.holdIndex += stereoMapHoldSummaryByteLength(chunk.holdSummary);
   }
 
   return {
@@ -227,8 +294,9 @@ function storageDiagnostics(state) {
     },
     allocatedBytes: withTotal(allocated),
     usedBytes: withTotal(used),
+    holdIndexBytes: { allocated: allocated.holdIndex, used: used.holdIndex },
     gridCopies: state.gridCopies ?? 0,
-    workingBytes: workingBytes(state.scratch),
+    workingBytes: workingBytes(state),
   };
 }
 
@@ -258,6 +326,63 @@ class StereoMapHistoryView {
     );
   }
 
+  get epoch() {
+    return stateOf(this).epoch;
+  }
+
+  holdAt(index, epoch = this.epoch) {
+    const state = stateOf(this);
+    const targetSequence = sequenceAt(state, index);
+    if (targetSequence == null || epoch !== state.epoch) return null;
+
+    const summary = createStereoMapHoldSummary(state.bandCentersHz.length);
+    const stats = { mergedChunks: 0, scannedRows: 0 };
+    for (const chunk of state.chunks) {
+      if (chunk.epoch !== epoch || chunk.sequenceStart > targetSequence) continue;
+      const retainedStart = Math.max(state.startSequence, chunk.sequenceStart);
+      const chunkEnd = chunk.sequenceStart + chunk.rowCount;
+      const includedEnd = Math.min(targetSequence + 1, chunkEnd);
+      if (retainedStart >= includedEnd) continue;
+
+      if (chunk.sealed && retainedStart === chunk.sequenceStart && includedEnd === chunkEnd) {
+        mergeStereoMapHoldSummary(summary, chunk.holdSummary);
+        stats.mergedChunks += 1;
+        continue;
+      }
+
+      for (let sequence = retainedStart; sequence < includedEnd; sequence += 1) {
+        accumulateStereoMapHold(
+          summary,
+          primitiveRowFromChunk(chunk, sequence - chunk.sequenceStart, state.bandCentersHz)
+        );
+        stats.scannedRows += 1;
+      }
+    }
+    return { values: stereoMapHoldValues(summary), stats };
+  }
+
+  /**
+   * Resolve the Hold query for the last row at or before `timestampMs` (timestamps are
+   * monotonic across appends). Returns null when no retained row is at or before it.
+   */
+  holdAtOrBeforeTimestamp(timestampMs, epoch = this.epoch) {
+    const length = this.length;
+    let low = 0;
+    let high = length - 1;
+    let found = -1;
+    while (low <= high) {
+      const middle = (low + high) >>> 1;
+      if (this.timestampAt(middle) <= timestampMs) {
+        found = middle;
+        low = middle + 1;
+      } else {
+        high = middle - 1;
+      }
+    }
+    if (found === -1) return null;
+    return this.holdAt(found, epoch);
+  }
+
   storageStats() {
     const state = stateOf(this);
     return {
@@ -281,6 +406,7 @@ function startFresh(state) {
   state.chunks = [];
   state.startSequence = 0;
   state.endSequence = 0;
+  state.epoch += 1;
 }
 
 function dropExpiredChunks(state) {
@@ -303,8 +429,10 @@ export class StereoMapHistorySlab extends StereoMapHistoryView {
       sampleRateHz: NaN,
       startSequence: 0,
       endSequence: 0,
+      epoch: 0,
       version: 0,
       scratch: null,
+      holdScratch: null,
       gridCopies: 0,
     });
   }
@@ -340,7 +468,11 @@ export class StereoMapHistorySlab extends StereoMapHistoryView {
     const currentActive = incompatible ? null : state.chunks[state.chunks.length - 1];
     const addsChunk = !currentActive || currentActive.sealed;
     const active = addsChunk
-      ? createChunk(incompatible ? 0 : state.endSequence, scratch.bandCount)
+      ? createChunk(
+          incompatible ? 0 : state.endSequence,
+          scratch.bandCount,
+          incompatible ? state.epoch + 1 : state.epoch
+        )
       : currentActive;
 
     if (incompatible) startFresh(state);
@@ -358,6 +490,16 @@ export class StereoMapHistorySlab extends StereoMapHistoryView {
     active.pl.set(scratch.pl, firstValue);
     active.pr.set(scratch.pr, firstValue);
     active.c.set(scratch.c, firstValue);
+    accumulateStereoMapHold(
+      active.holdSummary,
+      {
+        bandCentersHz: state.bandCentersHz,
+        pl: scratch.pl,
+        pr: scratch.pr,
+        c: scratch.c,
+      },
+      holdDerivationScratchFor(state, state.bandCentersHz.length)
+    );
     active.rowCount += 1;
     active.sealed = active.rowCount === active.rowCapacity;
     state.endSequence += 1;
@@ -379,7 +521,7 @@ export class StereoMapHistorySlab extends StereoMapHistoryView {
         chunks.push(chunk);
         sharedSealedChunks += 1;
       } else {
-        const copied = copyActiveTail(chunk, state.startSequence, state.bandCentersHz.length);
+        const copied = copyActiveTail(chunk, state.startSequence, state.bandCentersHz);
         chunks.push(copied);
         copiedTailRows = copied.rowCount;
         copiedTailBytes = payloadBytes(copied);
@@ -393,6 +535,7 @@ export class StereoMapHistorySlab extends StereoMapHistoryView {
         sampleRateHz: state.sampleRateHz,
         startSequence: state.startSequence,
         endSequence: state.endSequence,
+        epoch: state.epoch,
         sharedSealedChunks,
         copiedTailRows,
         copiedTailBytes,
@@ -418,6 +561,7 @@ export class FrozenStereoMapHistory extends StereoMapHistoryView {
       sampleRateHz,
       startSequence,
       endSequence,
+      epoch,
       sharedSealedChunks,
       copiedTailRows,
       copiedTailBytes,
@@ -435,6 +579,7 @@ export class FrozenStereoMapHistory extends StereoMapHistoryView {
       sampleRateHz,
       startSequence,
       endSequence,
+      epoch,
       sharedSealedChunks,
       copiedTailRows,
       copiedTailBytes,
