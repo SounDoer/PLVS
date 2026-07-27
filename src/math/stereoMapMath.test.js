@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   CAL_OFFSET_DB,
   STEREO_MAP_MODES,
+  createStereoMapDerivationScratch,
   deriveStereoMapPoint,
   deriveStereoMapRow,
+  visitStereoMapDerivedPoints,
 } from "./stereoMapMath.js";
 
 const NORMALIZED_RANGE = { lowerBound: -1, upperBound: 1 };
@@ -32,6 +34,47 @@ function expectPointValue(point, expected) {
     expect(point.opacity).toBe(1);
   }
 }
+
+it("visits all modes with one normalization pass and no derived row arrays", () => {
+  const source = primitiveRow([1, 1, 1], [1, 1, 1], [0, -1, 1]);
+  const reads = { pl: 0, pr: 0, c: 0 };
+  for (const field of Object.keys(reads)) {
+    source[field] = new Proxy(source[field], {
+      get(target, property, receiver) {
+        if (/^\d+$/.test(String(property))) reads[field] += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+  }
+  const scratch = createStereoMapDerivationScratch(3);
+  const instrumentation = {
+    rows: 0,
+    normalizedBands: 0,
+    visitedPoints: 0,
+    derivedRowArrayAllocations: 0,
+  };
+  const values = new Map();
+
+  const metadata = visitStereoMapDerivedPoints(
+    source,
+    (mode, index, value, state, opacity) => {
+      values.set(`${mode}:${index}`, { value, state, opacity });
+    },
+    scratch,
+    instrumentation
+  );
+
+  expect(reads).toEqual({ pl: 3, pr: 3, c: 3 });
+  expect(instrumentation).toEqual({
+    rows: 1,
+    normalizedBands: 3,
+    visitedPoints: 12,
+    derivedRowArrayAllocations: 0,
+  });
+  expect(metadata.fullGridPeakDb).toBeCloseTo(CAL_OFFSET_DB + 10 * Math.log10(2));
+  expect(values.get(`${STEREO_MAP_MODES.MONO_LOSS_DB}:1`).value).toBe(-Infinity);
+  expect(values.get(`${STEREO_MAP_MODES.MS_RATIO_DB}:1`).value).toBe(Infinity);
+});
 
 describe("deriveStereoMapPoint", () => {
   const fixtures = [
