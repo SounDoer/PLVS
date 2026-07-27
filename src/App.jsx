@@ -540,72 +540,12 @@ function AppContent() {
     loudnessProfile.document,
     setPanelControlsForPanel,
   ]);
-  const derivedAnalysisRequests = useMemo(
-    () =>
-      mergeDockAnalysisRequests(
-        deriveAnalysisRequests(workspaceState),
-        docked
-          ? dockLayout.panels.map((panel) => ({
-              panelId: panel.id,
-              moduleId: panel.moduleId,
-              controls: dockLayout.controlsByPanelId[panel.id],
-            }))
-          : false
-      ),
-    [workspaceState, docked, dockLayout.controlsByPanelId, dockLayout.panels]
-  );
-  const analysisRequests = useMemo(
-    () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
-    [derivedAnalysisRequests]
-  );
-  const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
   const spectrumMaxHoldUi = normalizedPanelControls.spectrumMaxHold;
 
   const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
-  const historyPerformanceControllerRef = useRef(null);
-  const historyPerformanceRequestKeysRef = useRef(null);
-  historyPerformanceRequestKeysRef.current = {
-    spectrumKeys: analysisRequests.spectrum.map((request) => request.key),
-    vectorscopeKeys: analysisRequests.vectorscope.map((request) => request.key),
-  };
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return undefined;
-    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
-    if (!options.enabled) return undefined;
-    // `npm run dev` is browser-only and has no Tauri capture. Keep this harness out of the
-    // desktop runtime so a query parameter can never compete with the real audio engine.
-    if (isTauri()) return undefined;
-    let disposed = false;
-    void import("./dev/historyPerformanceHarness.js").then(({ startHistoryPerformanceHarness }) => {
-      if (disposed) return;
-      historyPerformanceControllerRef.current = startHistoryPerformanceHarnessController({
-        start: startHistoryPerformanceHarness,
-        intake: intakeRef.current,
-        fullVisual: options.fullVisual,
-        requestKeys: historyPerformanceRequestKeysRef.current,
-        publishAudio: (nextAudio) => setAudio((current) => ({ ...current, ...nextAudio })),
-      });
-    });
-    return () => {
-      disposed = true;
-      historyPerformanceControllerRef.current?.cancel();
-      historyPerformanceControllerRef.current = null;
-    };
-  }, [intakeRef, setAudio]);
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
-    if (!options.enabled || isTauri()) return;
-    updateHistoryPerformanceHarnessController(
-      historyPerformanceControllerRef.current,
-      historyPerformanceRequestKeysRef.current
-    );
-  }, [analysisRequests]);
 
   // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
   // list updatePanelControls in their deps. If its identity changed per dispatch it would
@@ -749,6 +689,66 @@ function AppContent() {
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
   const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
+  const derivedAnalysisRequests = useMemo(
+    () =>
+      mergeDockAnalysisRequests(
+        deriveAnalysisRequests(workspaceState, { channelCount }),
+        docked
+          ? dockLayout.panels.map((panel) => ({
+              panelId: panel.id,
+              moduleId: panel.moduleId,
+              controls: dockLayout.controlsByPanelId[panel.id],
+            }))
+          : false
+      ),
+    [workspaceState, channelCount, docked, dockLayout.controlsByPanelId, dockLayout.panels]
+  );
+  const analysisRequests = useMemo(
+    () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
+    [derivedAnalysisRequests]
+  );
+  const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
+  const historyPerformanceControllerRef = useRef(null);
+  const historyPerformanceRequestKeysRef = useRef(null);
+  historyPerformanceRequestKeysRef.current = {
+    spectrumKeys: analysisRequests.spectrum.map((request) => request.key),
+    vectorscopeKeys: analysisRequests.vectorscope.map((request) => request.key),
+  };
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
+    if (!options.enabled) return undefined;
+    // `npm run dev` is browser-only and has no Tauri capture. Keep this harness out of the
+    // desktop runtime so a query parameter can never compete with the real audio engine.
+    if (isTauri()) return undefined;
+    let disposed = false;
+    void import("./dev/historyPerformanceHarness.js").then(({ startHistoryPerformanceHarness }) => {
+      if (disposed) return;
+      historyPerformanceControllerRef.current = startHistoryPerformanceHarnessController({
+        start: startHistoryPerformanceHarness,
+        intake: intakeRef.current,
+        fullVisual: options.fullVisual,
+        requestKeys: historyPerformanceRequestKeysRef.current,
+        publishAudio: (nextAudio) => setAudio((current) => ({ ...current, ...nextAudio })),
+      });
+    });
+    return () => {
+      disposed = true;
+      historyPerformanceControllerRef.current?.cancel();
+      historyPerformanceControllerRef.current = null;
+    };
+  }, [intakeRef, setAudio]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
+    if (!options.enabled || isTauri()) return;
+    updateHistoryPerformanceHarnessController(
+      historyPerformanceControllerRef.current,
+      historyPerformanceRequestKeysRef.current
+    );
+  }, [analysisRequests]);
   const layoutResolution = useMemo(
     () => resolveChannelLayout("auto", { channelCount }),
     [channelCount]
