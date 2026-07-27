@@ -449,6 +449,27 @@ export class StereoMapHistorySlab extends StereoMapHistoryView {
     return stateOf(this).sampleRateHz;
   }
 
+  /**
+   * Merges every retained chunk's already-incrementally-maintained Hold summary into one
+   * "as of now" result — the shared, per-Analysis-Key surface every Workspace/Dock consumer of
+   * this key reads live Hold from, so accumulation lives once here rather than once per panel
+   * instance. Each chunk's `holdSummary` (sealed or still active) is updated in {@link append} as
+   * rows arrive, so this only merges precomputed per-chunk summaries — it never rescans primitive
+   * planes, keeping it cheap enough for a live render path. Like historical Hold at a retention
+   * boundary, this can include a little more than the strictly retained window (the oldest
+   * retained chunk's already-evicted prefix keeps contributing to its whole-chunk summary); the
+   * design doc allows live/historical Hold to diverge there.
+   */
+  liveHoldValues() {
+    const state = stateOf(this);
+    if (state.bandCentersHz.length === 0) return null;
+    const summary = createStereoMapHoldSummary(state.bandCentersHz.length);
+    for (const chunk of state.chunks) {
+      mergeStereoMapHoldSummary(summary, chunk.holdSummary);
+    }
+    return stereoMapHoldValues(summary);
+  }
+
   append({ timestampMs, sampleRateHz, bandCentersHz, pl, pr, c }) {
     const state = stateOf(this);
     const scratch = canonicalizeRow(state, {

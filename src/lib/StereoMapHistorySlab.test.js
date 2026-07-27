@@ -489,6 +489,25 @@ describe("StereoMapHistorySlab", () => {
     expect(result.stats).toEqual({ mergedChunks: 0, scannedRows: capacity });
   });
 
+  it("merges every chunk's already-maintained Hold summary for liveHoldValues, across a chunk boundary", () => {
+    const slab = new StereoMapHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 4);
+    appendHoldRow(slab, 0, { pl: 0, pr: 1 }); // seals into chunk 0: Position minimum -1
+    for (let index = 1; index < VISUAL_HISTORY_CHUNK_ROWS; index += 1) {
+      appendHoldRow(slab, index);
+    }
+    appendHoldRow(slab, VISUAL_HISTORY_CHUNK_ROWS, { pl: 1, pr: 0 }); // active chunk: Position max +1
+
+    const live = slab.liveHoldValues();
+
+    expect(live[STEREO_MAP_MODES.POSITION]).toEqual({ minimum: [-1], maximum: [1] });
+  });
+
+  it("returns null for liveHoldValues before any row has been appended", () => {
+    const slab = new StereoMapHistorySlab(4);
+
+    expect(slab.liveHoldValues()).toBeNull();
+  });
+
   it("starts a new Hold epoch on clear and frozen histories retain their epoch", () => {
     const slab = new StereoMapHistorySlab(4);
     appendHoldRow(slab, 0, { c: -1 });

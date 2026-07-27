@@ -9,6 +9,7 @@ import {
 } from "../../workspace/AudioDataContext.jsx";
 import { StereoMapPanel, STEREO_MAP_MONO_MESSAGE } from "./StereoMapPanel.jsx";
 import { STEREO_MAP_MODES, deriveStereoMapRow } from "../../math/stereoMapMath.js";
+import { StereoMapHistorySlab } from "../../lib/StereoMapHistorySlab.js";
 
 const KEY = "stereoMap:pair:0:1:sp25:sm12";
 
@@ -191,7 +192,22 @@ describe("StereoMapPanel", () => {
   });
 
   it("shows Hold outlines only when toggled, while accumulation continues underneath", () => {
+    // Live Hold is read from the shared per-Analysis-Key slab (see StereoMapHistorySlab), not a
+    // per-panel accumulator, so a real slab that already has a row appended stands in for
+    // "accumulation happened while Hold was off".
+    const slab = new StereoMapHistorySlab(10);
+    slab.append({
+      timestampMs: 0,
+      sampleRateHz: 48000,
+      bandCentersHz: [100, 1000, 10000],
+      pl: [1, 1, 1],
+      pr: [1, 1, 1],
+      c: [1, 1, 1],
+    });
+    const getStereoMapHistoryForKey = (key) => (key === KEY ? slab : null);
+
     const audioData = baseAudioData({
+      getStereoMapHistoryForKey,
       panelControls: {
         stereoMapPair: { first: 0, second: 1 },
         stereoMapMode: STEREO_MAP_MODES.CORRELATION,
@@ -205,7 +221,7 @@ describe("StereoMapPanel", () => {
       <FrameDataProvider
         value={{ displayAudio: audioData.displayAudio, channelCount: 2, peakLabelContext: {} }}
       >
-        <HistoryDataProvider value={{ selectedOffset: -1 }}>
+        <HistoryDataProvider value={{ selectedOffset: -1, getStereoMapHistoryForKey }}>
           <PanelInstanceProvider
             value={{
               panelControls: {
@@ -224,6 +240,46 @@ describe("StereoMapPanel", () => {
     // Hold was accumulating the whole time (per the design's "visibility only" contract), so
     // toggling it on immediately shows a recorded outline rather than an empty one.
     expect(container.querySelector('[data-stereo-map-hold="hold"]')).toBeTruthy();
+  });
+
+  it("shares live Hold accumulation across every consumer of the same Analysis Key", () => {
+    const slab = new StereoMapHistorySlab(10);
+    slab.append({
+      timestampMs: 0,
+      sampleRateHz: 48000,
+      bandCentersHz: [100, 1000, 10000],
+      pl: [1, 0, 1],
+      pr: [0, 1, 1],
+      c: [0, 0, 1],
+    });
+    const getStereoMapHistoryForKey = (key) => (key === KEY ? slab : null);
+    const sharedControls = {
+      stereoMapPair: { first: 0, second: 1 },
+      stereoMapMode: STEREO_MAP_MODES.POSITION,
+      stereoMapHold: true,
+    };
+
+    const { container: containerA } = renderPanel(
+      baseAudioData({ getStereoMapHistoryForKey, panelControls: sharedControls })
+    );
+    const { container: containerB } = renderPanel(
+      baseAudioData({ getStereoMapHistoryForKey, panelControls: sharedControls })
+    );
+
+    const holdA = containerA.querySelector('[data-stereo-map-hold="max"]')?.getAttribute("points");
+    const holdB = containerB.querySelector('[data-stereo-map-hold="max"]')?.getAttribute("points");
+    expect(holdA).toBeTruthy();
+    expect(holdA).toBe(holdB);
+
+    // A consumer of a different Analysis Key (different pair) has no slab in this lookup and
+    // therefore no Hold at all — sharing is scoped to the key, not global.
+    const { container: containerC } = renderPanel(
+      baseAudioData({
+        getStereoMapHistoryForKey,
+        panelControls: { ...sharedControls, stereoMapPair: { first: 2, second: 3 } },
+      })
+    );
+    expect(containerC.querySelector("[data-stereo-map-hold]")).toBeNull();
   });
 
   it("shows the current value, energy, and Hold on hover", () => {

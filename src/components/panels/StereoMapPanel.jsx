@@ -7,7 +7,6 @@ import {
 import { stereoMapRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
-import { StereoMapHoldAccumulator } from "../../math/stereoMapHold.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
 import {
@@ -107,7 +106,7 @@ export function StereoMapPanel() {
     selectedOffset,
     resolveStereoMapSnapshotForKey,
     historyChartInteractive,
-    stereoMapResetEpoch = 0,
+    getStereoMapHistoryForKey,
     totalSamples,
     setSelectedOffset,
     captureCurrentSnapshot,
@@ -173,21 +172,6 @@ export function StereoMapPanel() {
   const snapshotMissing = snapResolved?.missing === true;
   const liveRow = isSnapshot ? null : displayAudio?.stereoMapResultsByKey?.[stereoMapKey];
 
-  // Live Hold accumulates once per Analysis Key, independent of the Hold toggle and of Mode — it
-  // resets only when the key or Clear epoch changes. Consuming the same row again on an extra
-  // render (e.g. a hover-triggered rerender between frames) is harmless: Hold extrema updates are
-  // idempotent under repeats.
-  const holdIdentityRef = useRef("");
-  const holdAccumulatorRef = useRef(null);
-  const holdIdentity = `${stereoMapKey}:${stereoMapResetEpoch}`;
-  if (holdIdentityRef.current !== holdIdentity) {
-    holdIdentityRef.current = holdIdentity;
-    holdAccumulatorRef.current = new StereoMapHoldAccumulator();
-  }
-  if (liveRow) {
-    holdAccumulatorRef.current.consumePrimitiveRow(liveRow);
-  }
-
   let bandCentersHz = [];
   let points = [];
   let energyDb = [];
@@ -199,16 +183,23 @@ export function StereoMapPanel() {
       energyDb = snapResolved.derived.energyDb ?? [];
     }
     holdValues = snapResolved?.hold ?? null;
-  } else if (liveRow) {
-    const derived = deriveStereoMapRow(mode, liveRow, range);
-    bandCentersHz = derived.bandCentersHz;
-    points = derived.points;
-    energyDb = derived.energyDb;
-    holdValues = holdAccumulatorRef.current.valuesFor(mode);
   } else {
+    // Live Hold accumulates once per Analysis Key, in the shared StereoMapHistorySlab this key's
+    // FrameIntake instance already owns (see StereoMapHistorySlab#liveHoldValues) — the same
+    // object every Workspace/Dock instance on this key reads via getStereoMapHistoryForKey. Reading
+    // from it here, rather than accumulating a private copy, is what makes two panels (or a panel
+    // and a future Dock module) on the same key agree on Hold. Global Clear replaces the whole
+    // per-key Map in FrameIntake, so the next live tick hands back a brand-new, empty slab with no
+    // extra bookkeeping needed on this end.
+    holdValues = getStereoMapHistoryForKey?.(stereoMapKey)?.liveHoldValues()?.[mode] ?? null;
+    if (liveRow) {
+      const derived = deriveStereoMapRow(mode, liveRow, range);
+      bandCentersHz = derived.bandCentersHz;
+      points = derived.points;
+      energyDb = derived.energyDb;
+    }
     // Live but no per-key result yet: pending treatment (empty chart) until this request's first
     // frame arrives, matching Spectrum/Vectorscope — never fall back to another request's data.
-    holdValues = holdAccumulatorRef.current.valuesFor(mode);
   }
 
   const {
