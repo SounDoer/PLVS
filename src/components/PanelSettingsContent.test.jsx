@@ -521,7 +521,7 @@ describe("PanelSettingsContent", () => {
   it("updates stereo map mode, channel pair, hold, speed, and smoothing", () => {
     const onPanelControlsChange = vi.fn();
     const props = {
-      activeTab: "stereoMap",
+      activeTab: "stereo-map",
       stereoMapPairOptions: [
         { key: "0-1", label: "L/R", x: 0, y: 1 },
         { key: "0-2", label: "L/C", x: 0, y: 2 },
@@ -562,7 +562,7 @@ describe("PanelSettingsContent", () => {
   it("orders stereo map Mode before Channel pair before Hold", () => {
     const { container } = render(
       <PanelSettingsContent
-        activeTab="stereoMap"
+        activeTab="stereo-map"
         stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
         stereoMapPairValueKey="0-1"
         stereoMapPairDisplayLabel="L/R"
@@ -583,7 +583,7 @@ describe("PanelSettingsContent", () => {
   it("shows a Y range only for Mono Loss and M/S Ratio, with Mono Loss pinned at 0 dB", () => {
     const { rerender, container } = render(
       <PanelSettingsContent
-        activeTab="stereoMap"
+        activeTab="stereo-map"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           stereoMapMode: "position",
@@ -595,7 +595,7 @@ describe("PanelSettingsContent", () => {
 
     rerender(
       <PanelSettingsContent
-        activeTab="stereoMap"
+        activeTab="stereo-map"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           stereoMapMode: "monoLossDb",
@@ -609,7 +609,7 @@ describe("PanelSettingsContent", () => {
 
     rerender(
       <PanelSettingsContent
-        activeTab="stereoMap"
+        activeTab="stereo-map"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           stereoMapMode: "msRatioDb",

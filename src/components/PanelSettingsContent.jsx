@@ -1338,7 +1338,7 @@ export function PanelSettingsContent({
     );
   }
 
-  if (activeTab === "stereoMap") {
+  if (activeTab === "stereo-map") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);
