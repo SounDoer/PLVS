@@ -701,6 +701,79 @@ mod tests {
   }
 
   #[test]
+  fn file_stereo_map_visual_rows_follow_existing_hundred_ms_chunk_cadence() {
+    use crate::ipc::types::{StereoMapAnalysisPair, StereoMapAnalysisRequest};
+
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let chunk_count = 8_usize;
+    let key = "file-stereo-map".to_string();
+    let config = WorkerConfig {
+      requests: AnalysisRequests {
+        spectrum: Vec::new(),
+        vectorscope: Vec::new(),
+        stereo_map: vec![StereoMapAnalysisRequest {
+          key: key.clone(),
+          pair: StereoMapAnalysisPair {
+            first: 0,
+            second: 1,
+          },
+          speed_percent: 50.0,
+          octave_smoothing: "off".to_string(),
+        }],
+      },
+      ..default_config()
+    };
+    let chunk_frames = file_pipeline_chunk_frames(sr);
+    let pcm = sine_stereo_f32(sr, chunk_frames * chunk_count, 0.25, 440.0);
+    let mut pipeline = MeterPipeline::new_for_file(sr, channels);
+    let mut chunker = FilePcmHistoryChunker::new(sr, channels);
+    let mut visual_rows = Vec::new();
+    let mut on_frame = |frame: AudioFramePayload| {
+      visual_rows.extend(frame.visual_hist_batch.into_iter().map(|entry| {
+        (
+          entry.timestamp_ms,
+          entry.stereo_map_by_key.get(&key).cloned(),
+        )
+      }));
+      Ok(())
+    };
+
+    for source_chunk in pcm.chunks(777) {
+      chunker
+        .push_pcm(&mut pipeline, source_chunk, &config, &mut on_frame)
+        .expect("push file PCM");
+    }
+    chunker
+      .flush(&mut pipeline, &config, &mut on_frame)
+      .expect("flush file PCM");
+    if let Some(frame) = pipeline.flush_file_batch(&config.requests) {
+      on_frame(frame).expect("flush frame");
+    }
+
+    assert_eq!(
+      visual_rows
+        .iter()
+        .map(|(timestamp, _)| *timestamp)
+        .collect::<Vec<_>>(),
+      (1..=chunk_count as u64)
+        .map(|chunk| chunk * 100)
+        .collect::<Vec<_>>(),
+      "file history must stay on media-time chunk checkpoints, not the live 40 ms wall gate"
+    );
+    assert!(
+      visual_rows.iter().take(3).all(|(_, row)| row.is_none()),
+      "file warmup rows must omit an unavailable Stereo Map key"
+    );
+    assert!(
+      visual_rows.iter().skip(3).all(|(_, row)| row
+        .as_ref()
+        .is_some_and(|row| !row.band_centers_hz.is_empty())),
+      "rows become publishable after the shared FFT warmup"
+    );
+  }
+
+  #[test]
   fn file_shared_ballistics_use_dsp_time_while_checkpoints_use_media_time() {
     use crate::dsp::shared_spectral_engine::SpectralDspTime;
     use crate::dsp::{OctaveSmoothing, SpectrumChannelSel, SpectrumMeter, SpectrumView};

@@ -84,6 +84,15 @@ pub struct VectorscopeFrameResult {
   pub pair_y: u16,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StereoMapFrameResult {
+  pub band_centers_hz: Vec<f32>,
+  pub pl: Vec<f32>,
+  pub pr: Vec<f32>,
+  pub c: Vec<f32>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineStateChanged {
@@ -205,6 +214,15 @@ pub struct VectorscopeVisualEntry {
   pub side_energy: f64,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StereoMapVisualEntry {
+  pub band_centers_hz: Vec<f32>,
+  pub pl: Vec<f32>,
+  pub pr: Vec<f32>,
+  pub c: Vec<f32>,
+}
+
 /// Visual history snapshot at ~25 Hz, independent of loudness tick.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -222,6 +240,8 @@ pub struct VisualHistEntry {
   pub spectrum_by_key: HashMap<String, SpectrumVisualEntry>,
   /// Request-keyed vectorscope samples for snapshot history (same lifecycle as `spectrum_by_key`).
   pub vectorscope_by_key: HashMap<String, VectorscopeVisualEntry>,
+  /// Request-keyed Stereo Map primitives. Only active keys are published.
+  pub stereo_map_by_key: HashMap<String, StereoMapVisualEntry>,
 }
 
 /// High-rate meter frame (~60 Hz) on Tauri Channel `audio-frame`.
@@ -251,6 +271,8 @@ pub struct AudioFramePayload {
   pub spectrum_results_by_key: HashMap<String, SpectrumFrameResult>,
   /// Request-keyed Vectorscope live results, one entry per active analysis request key.
   pub vectorscope_results_by_key: HashMap<String, VectorscopeFrameResult>,
+  /// Request-keyed Stereo Map live primitives, one entry per active analysis request key.
+  pub stereo_map_results_by_key: HashMap<String, StereoMapFrameResult>,
   /// Loudness layout semantics for this frame (e.g. `stereo`, `5.1`, `unknown`).
   pub loudness_layout: String,
   /// Whether the loudness layout is known/correct for the input stream.

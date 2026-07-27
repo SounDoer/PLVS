@@ -19,7 +19,8 @@ use crate::dsp::{
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, MeterHistoryEntry, SpectrumFrameResult, SpectrumVisualEntry,
-  VectorscopeFrameResult, VectorscopeVisualEntry, VisualHistEntry,
+  StereoMapFrameResult, StereoMapVisualEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
+  VisualHistEntry,
 };
 
 const FRAME_EMIT_MS: u128 = 16;
@@ -115,6 +116,42 @@ fn spectrum_payload_from_shared_output(
   (result, visual)
 }
 
+fn stereo_map_result_from_shared_output(
+  output: &crate::dsp::stereo_map::StereoMapPrimitiveRow,
+) -> StereoMapFrameResult {
+  StereoMapFrameResult {
+    band_centers_hz: output.band_centers_hz.clone(),
+    pl: output.pl.clone(),
+    pr: output.pr.clone(),
+    c: output.c.clone(),
+  }
+}
+
+fn stereo_map_visual_from_result(result: &StereoMapFrameResult) -> StereoMapVisualEntry {
+  StereoMapVisualEntry {
+    band_centers_hz: result.band_centers_hz.clone(),
+    pl: result.pl.clone(),
+    pr: result.pr.clone(),
+    c: result.c.clone(),
+  }
+}
+
+fn stereo_map_visual_from_shared_output(
+  output: &crate::dsp::stereo_map::StereoMapPrimitiveRow,
+) -> StereoMapVisualEntry {
+  StereoMapVisualEntry {
+    band_centers_hz: output.band_centers_hz.clone(),
+    pl: output.pl.clone(),
+    pr: output.pr.clone(),
+    c: output.c.clone(),
+  }
+}
+
+struct PendingFileVisualCheckpoint {
+  timestamp_ms: u64,
+  stereo_map_by_key: HashMap<String, StereoMapVisualEntry>,
+}
+
 pub struct MeterPipeline {
   channels: u16,
   loudness: LoudnessMeter,
@@ -161,8 +198,8 @@ pub struct MeterPipeline {
   last_file_media_time_ms: Option<u64>,
   /// File mode: queued (momentary_lufs, short_term_lufs, media_time_ms) between frame emits.
   pending_file_loudness_queue: Vec<(f64, f64, u64, Vec<f64>)>,
-  /// File mode: queued visual tick media timestamps between frame emits.
-  pending_file_visual_queue: Vec<u64>,
+  /// File mode: queued visual checkpoints and their request-keyed Stereo Map snapshots.
+  pending_file_visual_queue: Vec<PendingFileVisualCheckpoint>,
   /// File mode: media time (ms) of the last queued loudness tick; gates tick cadence by media time
   /// instead of wall clock (offline decode runs far faster than real time). `None` = none queued yet.
   last_hist_media_ms: Option<u64>,
@@ -284,6 +321,8 @@ impl MeterPipeline {
     self.visual_waveform_min_acc.fill(f32::INFINITY);
     self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
     self.last_visual_emit = instant_ago(Duration::from_millis(200));
+    self.pending_file_loudness_queue.clear();
+    self.pending_file_visual_queue.clear();
     self.last_hist_media_ms = None;
     self.last_visual_media_ms = None;
     self.last_file_media_time_ms = None;
@@ -369,11 +408,8 @@ impl MeterPipeline {
       },
       other => other,
     };
-    let spectral_plan = crate::engine::spectral_plan::plan_spectral_requests(
-      self.channels,
-      &analysis_requests.spectrum,
-      &[],
-    );
+    let spectral_plan =
+      crate::engine::spectral_plan::plan_analysis_requests(self.channels, analysis_requests);
     self.shared_spectral_runtime.update_plan(spectral_plan);
     self
       .shared_spectral_runtime
@@ -487,6 +523,7 @@ impl MeterPipeline {
     let mut frame = self.push_pcm_f32_optional(
       interleaved,
       channel_layout,
+      analysis_requests,
       primary_vectorscope_summary
         .or_else(|| vectorscope_pair.map(|(x, y)| (x, y, 0.0, f64::NEG_INFINITY))),
       loudness_weights,
@@ -495,6 +532,22 @@ impl MeterPipeline {
     )?;
     frame.spectrum_results_by_key = spectrum_results_by_key;
     frame.vectorscope_results_by_key = vectorscope_results_by_key;
+    // The runtime lends its persistent row; clone it only after a frame has passed the emit gate.
+    frame.stereo_map_results_by_key = analysis_requests
+      .stereo_map
+      .iter()
+      .filter_map(|request| {
+        self
+          .shared_spectral_runtime
+          .stereo_map_output(&request.key)
+          .map(|output| {
+            (
+              request.key.clone(),
+              stereo_map_result_from_shared_output(output),
+            )
+          })
+      })
+      .collect();
 
     // When this frame carries a visual history tick, attach per-request-key samples so the
     // frontend can keep request-keyed snapshot history. Only active request keys are emitted;
@@ -524,13 +577,32 @@ impl MeterPipeline {
         })
       })
       .collect();
+    // Visual rows have their own cadence, so do not duplicate the large primitive arrays for
+    // ordinary live frames that carry no visual checkpoint.
+    let stereo_map_by_key = if frame.visual_hist_tick.is_some() {
+      analysis_requests
+        .stereo_map
+        .iter()
+        .filter_map(|request| {
+          frame
+            .stereo_map_results_by_key
+            .get(&request.key)
+            .map(|result| (request.key.clone(), stereo_map_visual_from_result(result)))
+        })
+        .collect::<Vec<_>>()
+    } else {
+      Vec::new()
+    };
 
     if let Some(entry) = frame.visual_hist_tick.as_mut() {
       entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
       entry.vectorscope_by_key = vectorscope_by_key.iter().cloned().collect();
+      entry.stereo_map_by_key = stereo_map_by_key.iter().cloned().collect();
     }
     if !frame.visual_hist_batch.is_empty()
-      && (!spectrum_by_key.is_empty() || !vectorscope_by_key.is_empty())
+      && (!spectrum_by_key.is_empty()
+        || !vectorscope_by_key.is_empty()
+        || !stereo_map_by_key.is_empty())
     {
       for entry in frame.visual_hist_batch.iter_mut() {
         entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
@@ -604,6 +676,7 @@ impl MeterPipeline {
     &mut self,
     interleaved: &[f32],
     channel_layout: ChannelLayoutSetting,
+    analysis_requests: &AnalysisRequests,
     vectorscope_summary: Option<(u16, u16, f64, f64)>,
     loudness_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
@@ -748,7 +821,27 @@ impl MeterPipeline {
       };
       if advanced {
         self.last_visual_media_ms = Some(ts);
-        self.pending_file_visual_queue.push(ts);
+        let stereo_map_by_key = analysis_requests
+          .stereo_map
+          .iter()
+          .filter_map(|request| {
+            self
+              .shared_spectral_runtime
+              .stereo_map_output(&request.key)
+              .map(|output| {
+                (
+                  request.key.clone(),
+                  stereo_map_visual_from_shared_output(output),
+                )
+              })
+          })
+          .collect();
+        self
+          .pending_file_visual_queue
+          .push(PendingFileVisualCheckpoint {
+            timestamp_ms: ts,
+            stereo_map_by_key,
+          });
       }
     }
 
@@ -907,6 +1000,7 @@ impl MeterPipeline {
           side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
           vectorscope_by_key: HashMap::new(),
+          stereo_map_by_key: HashMap::new(),
         })
       } else {
         None
@@ -999,15 +1093,16 @@ impl MeterPipeline {
         .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
         .unwrap_or(f64::NEG_INFINITY);
       let mut visual_batch = Vec::new();
-      for ts in std::mem::take(&mut self.pending_file_visual_queue) {
+      for checkpoint in std::mem::take(&mut self.pending_file_visual_queue) {
         visual_batch.push(VisualHistEntry {
-          timestamp_ms: ts,
+          timestamp_ms: checkpoint.timestamp_ms,
           waveform_min: visual_waveform_min.clone(),
           waveform_max: visual_waveform_max.clone(),
           correlation: visual_corr,
           side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
           vectorscope_by_key: HashMap::new(),
+          stereo_map_by_key: checkpoint.stereo_map_by_key,
         });
       }
       if !visual_batch.is_empty() {
@@ -1041,6 +1136,7 @@ impl MeterPipeline {
       vectorscope_pair_y: pair_y,
       spectrum_results_by_key: HashMap::new(),
       vectorscope_results_by_key: HashMap::new(),
+      stereo_map_results_by_key: HashMap::new(),
       loudness_layout,
       loudness_layout_known,
       timestamp_ms: self.timestamp_ms(),
@@ -1108,11 +1204,7 @@ impl MeterPipeline {
     &self,
     analysis_requests: &AnalysisRequests,
   ) -> crate::engine::spectral_plan::SpectralPlan {
-    crate::engine::spectral_plan::plan_spectral_requests(
-      self.channels,
-      &analysis_requests.spectrum,
-      &[],
-    )
+    crate::engine::spectral_plan::plan_analysis_requests(self.channels, analysis_requests)
   }
 
   pub(crate) fn push_shared_runtime_for_test(
@@ -1183,6 +1275,12 @@ impl MeterPipeline {
 
   pub(crate) fn shared_runtime_sample_clock_for_test(&self) -> u64 {
     self.shared_spectral_runtime.sample_clock_for_test()
+  }
+
+  fn stereo_map_consume_counts_for_test(&self, key: &str) -> Option<[u64; 3]> {
+    self
+      .shared_spectral_runtime
+      .stereo_map_consume_counts_for_test(key)
   }
 
   pub(crate) fn shared_runtime_last_output_dsp_time_for_test(&self, key: &str) -> Option<f64> {
@@ -1277,6 +1375,18 @@ mod tests {
       view: "combined".to_string(),
       speed_percent: 50.0,
       tilt_db_per_octave: 4.5,
+      octave_smoothing: "off".to_string(),
+    }
+  }
+
+  fn stereo_map_request(key: &str) -> crate::ipc::types::StereoMapAnalysisRequest {
+    crate::ipc::types::StereoMapAnalysisRequest {
+      key: key.to_string(),
+      pair: crate::ipc::types::StereoMapAnalysisPair {
+        first: 0,
+        second: 1,
+      },
+      speed_percent: 50.0,
       octave_smoothing: "off".to_string(),
     }
   }
@@ -3301,6 +3411,158 @@ mod tests {
   }
 
   #[test]
+  fn file_stereo_map_batch_preserves_each_checkpoint_snapshot_without_future_backfill() {
+    let mut request = stereo_map_request("batched");
+    request.speed_percent = 0.0;
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: vec![request],
+    };
+    let chunk_frames = 4_800_usize;
+    let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
+
+    for checkpoint in 1..=5_u64 {
+      let pcm = if checkpoint < 5 {
+        deterministic_stereo(chunk_frames, (checkpoint - 1) * chunk_frames as u64)
+      } else {
+        vec![0.0_f32; chunk_frames * 2]
+      };
+      // Deterministically hold every checkpoint in one pending batch, independent of machine speed.
+      pipeline.last_frame_emit = Instant::now()
+        .checked_add(Duration::from_secs(60))
+        .expect("future throttle instant");
+      assert!(pipeline
+        .push_pcm_f32_with_requests_at_media_time(
+          &pcm,
+          ChannelLayoutSetting::Auto,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+          checkpoint * 100,
+        )
+        .is_none());
+    }
+
+    let batch = pipeline
+      .flush_file_batch(&requests)
+      .expect("forced drain of five visual checkpoints")
+      .visual_hist_batch;
+    assert_eq!(
+      batch
+        .iter()
+        .map(|entry| entry.timestamp_ms)
+        .collect::<Vec<_>>(),
+      vec![100, 200, 300, 400, 500]
+    );
+    assert!(
+      batch[..3]
+        .iter()
+        .all(|entry| !entry.stereo_map_by_key.contains_key("batched")),
+      "warmup checkpoints must not receive a future ready row"
+    );
+    let early = &batch[3].stereo_map_by_key["batched"];
+    let later = &batch[4].stereo_map_by_key["batched"];
+    assert!(!early.band_centers_hz.is_empty());
+    assert_eq!(early.band_centers_hz.len(), early.pl.len());
+    assert_eq!(early.pl.len(), early.pr.len());
+    assert_eq!(early.pr.len(), early.c.len());
+    assert_ne!(
+      early.pl, later.pl,
+      "each timestamp must retain the row captured at that checkpoint"
+    );
+
+    pipeline.last_frame_emit = Instant::now()
+      .checked_add(Duration::from_secs(60))
+      .expect("future throttle instant");
+    assert!(pipeline
+      .push_pcm_f32_with_requests_at_media_time(
+        &deterministic_stereo(chunk_frames, chunk_frames as u64 * 5),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+        600,
+      )
+      .is_none());
+    pipeline.clear_peak_and_history();
+
+    for checkpoint in 7..=10_u64 {
+      pipeline.last_frame_emit = Instant::now()
+        .checked_add(Duration::from_secs(60))
+        .expect("future throttle instant");
+      assert!(pipeline
+        .push_pcm_f32_with_requests_at_media_time(
+          &deterministic_stereo(chunk_frames, (checkpoint - 1) * chunk_frames as u64,),
+          ChannelLayoutSetting::Auto,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+          checkpoint * 100,
+        )
+        .is_none());
+    }
+    let after_clear = pipeline
+      .flush_file_batch(&requests)
+      .expect("post-Clear visual checkpoints")
+      .visual_hist_batch;
+    assert_eq!(
+      after_clear
+        .iter()
+        .map(|entry| entry.timestamp_ms)
+        .collect::<Vec<_>>(),
+      vec![700, 800, 900, 1_000],
+      "Clear must discard every pre-Clear pending checkpoint"
+    );
+    assert!(after_clear[..3]
+      .iter()
+      .all(|entry| entry.stereo_map_by_key.is_empty()));
+    assert!(after_clear[3].stereo_map_by_key.contains_key("batched"));
+
+    pipeline.last_frame_emit = Instant::now()
+      .checked_add(Duration::from_secs(60))
+      .expect("future throttle instant");
+    assert!(pipeline
+      .push_pcm_f32_with_requests_at_media_time(
+        &deterministic_stereo(chunk_frames, chunk_frames as u64 * 10),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+        1_100,
+      )
+      .is_none());
+    let inactive = AnalysisRequests::default();
+    pipeline.last_frame_emit = Instant::now()
+      .checked_add(Duration::from_secs(60))
+      .expect("future throttle instant");
+    assert!(pipeline
+      .push_pcm_f32_with_requests_at_media_time(
+        &deterministic_stereo(chunk_frames, chunk_frames as u64 * 11),
+        ChannelLayoutSetting::Auto,
+        &inactive,
+        None,
+        false,
+        VadEngineKind::default(),
+        1_200,
+      )
+      .is_none());
+    let after_remove = pipeline
+      .flush_file_batch(&inactive)
+      .expect("active then removed checkpoints")
+      .visual_hist_batch;
+    assert!(after_remove[0].stereo_map_by_key.contains_key("batched"));
+    assert!(
+      after_remove[1].stereo_map_by_key.is_empty(),
+      "removed key must be absent from its own checkpoint without erasing earlier rows"
+    );
+  }
+
+  #[test]
   fn production_spectrum_grid_matches_legacy_at_every_supported_rate() {
     use crate::dsp::spectrum_bank::FFT_BIG;
     use crate::ipc::types::SpectrumAnalysisChannel;
@@ -3914,5 +4176,253 @@ mod tests {
       Some("5.1"),
       "auto mode with 6ch should report 5.1 loudness layout"
     );
+  }
+
+  #[test]
+  fn active_stereo_map_keys_emit_one_finite_equal_length_live_result_each() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::{StereoMapAnalysisPair, StereoMapAnalysisRequest};
+
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: ["first", "second"]
+        .into_iter()
+        .map(|key| StereoMapAnalysisRequest {
+          key: key.to_string(),
+          pair: StereoMapAnalysisPair {
+            first: 0,
+            second: 1,
+          },
+          speed_percent: 50.0,
+          octave_smoothing: "off".to_string(),
+        })
+        .collect(),
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let frame = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, 0),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("warmed Stereo Map frame");
+
+    assert_eq!(frame.stereo_map_results_by_key.len(), 2);
+    for key in ["first", "second"] {
+      let row = &frame.stereo_map_results_by_key[key];
+      assert!(!row.band_centers_hz.is_empty());
+      assert_eq!(row.band_centers_hz.len(), row.pl.len());
+      assert_eq!(row.pl.len(), row.pr.len());
+      assert_eq!(row.pr.len(), row.c.len());
+      assert!(row.band_centers_hz.iter().all(|value| value.is_finite()));
+      assert!(row.pl.iter().all(|value| value.is_finite()));
+      assert!(row.pr.iter().all(|value| value.is_finite()));
+      assert!(row.c.iter().all(|value| value.is_finite()));
+    }
+  }
+
+  #[test]
+  fn stereo_map_one_deduplicated_key_owns_one_consumer_and_removed_key_stops_immediately() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+
+    let active = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      // Duplicate frontend instances have already collapsed to this one keyed request.
+      stereo_map: vec![stereo_map_request("shared-key")],
+    };
+    let inactive = AnalysisRequests::default();
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let initial_warmup = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG - 1, 0),
+        ChannelLayoutSetting::Auto,
+        &active,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("initial warmup frame");
+    assert!(!initial_warmup
+      .stereo_map_results_by_key
+      .contains_key("shared-key"));
+    assert!(!initial_warmup
+      .visual_hist_tick
+      .expect("initial warmup visual")
+      .stereo_map_by_key
+      .contains_key("shared-key"));
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let warmed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(1, (FFT_BIG - 1) as u64),
+        ChannelLayoutSetting::Auto,
+        &active,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("warmed frame");
+    assert_eq!(warmed.stereo_map_results_by_key.len(), 1);
+    let consumed = pipeline
+      .stereo_map_consume_counts_for_test("shared-key")
+      .expect("one keyed consumer");
+    assert!(consumed.iter().all(|count| *count > 0));
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let removed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, FFT_BIG as u64),
+        ChannelLayoutSetting::Auto,
+        &inactive,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("frame after removal");
+    assert!(removed.stereo_map_results_by_key.is_empty());
+    assert_eq!(
+      pipeline.stereo_map_consume_counts_for_test("shared-key"),
+      None,
+      "removed key must be pruned before the next PCM push"
+    );
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let reactivated = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG - 1, (FFT_BIG * 2) as u64),
+        ChannelLayoutSetting::Auto,
+        &active,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("reactivated frame");
+    assert!(!reactivated
+      .stereo_map_results_by_key
+      .contains_key("shared-key"));
+    assert!(!reactivated
+      .visual_hist_tick
+      .expect("reactivation warmup visual")
+      .stereo_map_by_key
+      .contains_key("shared-key"));
+  }
+
+  #[test]
+  fn stereo_map_visual_rows_follow_live_forty_ms_gate() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: vec![stereo_map_request("visual")],
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let first = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, 0),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("first live frame");
+    let visual = first.visual_hist_tick.expect("40 ms visual checkpoint");
+    assert_eq!(visual.stereo_map_by_key.len(), 1);
+    assert!(!visual.stereo_map_by_key["visual"].pl.is_empty());
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let before_gate = pipeline
+      .push_pcm_f32_with_requests(
+        &[],
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("forced live frame");
+    assert!(
+      before_gate.visual_hist_tick.is_none(),
+      "frame cadence must not bypass the existing 40 ms visual gate"
+    );
+  }
+
+  #[test]
+  fn clear_resets_stereo_map_pair_accumulators_and_restarts_warmup() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: vec![stereo_map_request("clearable")],
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let warmed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, 0),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("warmed frame");
+    assert!(!warmed.stereo_map_results_by_key["clearable"].pl.is_empty());
+
+    pipeline.clear_peak_and_history();
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let warming = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG - 1, FFT_BIG as u64),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("post-clear frame");
+    assert!(!warming.stereo_map_results_by_key.contains_key("clearable"));
+    assert!(!warming
+      .visual_hist_tick
+      .expect("post-Clear warmup visual")
+      .stereo_map_by_key
+      .contains_key("clearable"));
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let rewarmed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(1, (FFT_BIG * 2 - 1) as u64),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("rewarmed frame");
+    let ready = &rewarmed.stereo_map_results_by_key["clearable"];
+    assert!(!ready.band_centers_hz.is_empty());
+    assert_eq!(ready.band_centers_hz.len(), ready.pl.len());
+    assert_eq!(ready.pl.len(), ready.pr.len());
+    assert_eq!(ready.pr.len(), ready.c.len());
+    let visual = &rewarmed
+      .visual_hist_tick
+      .expect("ready post-Clear visual")
+      .stereo_map_by_key["clearable"];
+    assert_eq!(visual.band_centers_hz.len(), visual.pl.len());
+    assert!(!visual.band_centers_hz.is_empty());
   }
 }
