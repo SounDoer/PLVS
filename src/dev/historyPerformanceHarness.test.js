@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { deriveAnalysisRequests } from "../analysis/analysisRequests.js";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { FrameIntake } from "../lib/FrameIntake.js";
+import { VISUAL_HISTORY_CHUNK_ROWS } from "../lib/historyChunkConfig.js";
 import { resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
+import { StereoMapHistorySlab } from "../lib/StereoMapHistorySlab.js";
+import {
+  projectedStereoMapBytes,
+  projectedStereoMapRetentionBytes,
+} from "../../scripts/history-perf-benchmark.mjs";
 import {
   seedHistoryPerformance,
   startHistoryPerformanceHarness,
@@ -405,5 +411,264 @@ describe("history performance harness", () => {
     scheduler.tickIntervals(2);
     expect(intake.pushVisualHistRow).toHaveBeenCalledTimes(5);
     expect(intake.pushHistRow).toHaveBeenCalledTimes(2);
+  });
+
+  it("seeds a single Stereo Map key with production band width and typed primitive planes", async () => {
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    const controller = seedHistoryPerformance({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 3,
+      fullVisual: true,
+      stereoMapKeys: [key],
+    });
+    scheduler.runAllIdle();
+    await controller.done;
+
+    const slab = intake.getVisualStereoMapHistByKey(key);
+    expect(slab).not.toBeNull();
+    expect(slab.length).toBe(3);
+    const row = slab.rowAt(2);
+    expect(row.bandCentersHz).toHaveLength(958);
+    expect(row.pl).toBeInstanceOf(Float32Array);
+    expect(row.pl).toHaveLength(958);
+    expect(row.pr).toHaveLength(958);
+    expect(row.c).toHaveLength(958);
+  });
+
+  it("seeds four Stereo Map keys independently in the same run", async () => {
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const keys = [0, 1, 2, 3].map((index) => `stereoMap:pair:${index}:${index + 1}:sp50:sm12`);
+    const controller = seedHistoryPerformance({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 4,
+      stereoMapKeys: keys,
+    });
+    scheduler.runAllIdle();
+    await controller.done;
+
+    for (const key of keys) {
+      const slab = intake.getVisualStereoMapHistByKey(key);
+      expect(slab).not.toBeNull();
+      expect(slab.length).toBe(4);
+    }
+  });
+
+  it("mixes four Spectrum and four Stereo Map keys per tick with one intake call per row", async () => {
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const pushVisualHistRow = vi.spyOn(intake, "pushVisualHistRow");
+    const spectrumKeys = [0, 1, 2, 3].map(
+      (index) => `spectrum:pair:${index}:${index + 1}:combined:sp50:tilt0:smoff`
+    );
+    const stereoMapKeys = [0, 1, 2, 3].map(
+      (index) => `stereoMap:pair:${index}:${index + 1}:sp50:sm12`
+    );
+    const controller = seedHistoryPerformance({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 5,
+      spectrumKeys,
+      stereoMapKeys,
+    });
+    scheduler.runAllIdle();
+    await controller.done;
+
+    expect(pushVisualHistRow).toHaveBeenCalledTimes(5);
+    for (const key of spectrumKeys) {
+      expect(intake.getVisualSpectrumHistByKey(key)?.length).toBe(5);
+    }
+    for (const key of stereoMapKeys) {
+      expect(intake.getVisualStereoMapHistByKey(key)?.length).toBe(5);
+    }
+  });
+
+  it("updates Stereo Map keys mid-stream without backfilling earlier rows", async () => {
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const pushVisualHistRow = vi.spyOn(intake, "pushVisualHistRow");
+    const controller = startHistoryPerformanceHarness({
+      intake,
+      scheduler,
+      scalarRows: 0,
+      visualRows: 2,
+      visualBatchSize: 1,
+      stereoMapKeys: ["stereoMap:old"],
+    });
+
+    scheduler.runIdle();
+    controller.updateRequestKeys({ stereoMapKeys: ["stereoMap:new"] });
+    scheduler.runAllIdle();
+    await controller.seeded;
+    scheduler.tickIntervals(1);
+
+    const rows = pushVisualHistRow.mock.calls.map(([row]) => row);
+    expect(Object.keys(rows[0].stereoMapByKey)).toEqual(["stereoMap:old"]);
+    expect(Object.keys(rows[1].stereoMapByKey)).toEqual(["stereoMap:new"]);
+    expect(Object.keys(rows[2].stereoMapByKey)).toEqual(["stereoMap:new"]);
+    expect(intake.getVisualStereoMapHistByKey("stereoMap:old").length).toBe(1);
+    expect(intake.getVisualStereoMapHistByKey("stereoMap:new").length).toBe(2);
+
+    controller.cancel();
+  });
+
+  it("uses a one-band Stereo Map key by default and 958 bands only when explicit", async () => {
+    const safeScheduler = createScheduler();
+    const safeIntake = createIntakeSpy();
+    const safe = seedHistoryPerformance({
+      intake: safeIntake,
+      scheduler: safeScheduler,
+      scalarRows: 0,
+      visualRows: 1,
+    });
+    safeScheduler.runAllIdle();
+    await safe.done;
+    const safeRow = safeIntake.pushVisualHistRow.mock.calls[0][0];
+    const safeStereoMap = Object.values(safeRow.stereoMapByKey)[0];
+    expect(safeStereoMap.bandCentersHz).toHaveLength(1);
+    expect(safeStereoMap.pl).toHaveLength(1);
+    expect(safeStereoMap.pr).toHaveLength(1);
+    expect(safeStereoMap.c).toHaveLength(1);
+
+    const fullScheduler = createScheduler();
+    const fullIntake = createIntakeSpy();
+    const full = seedHistoryPerformance({
+      intake: fullIntake,
+      scheduler: fullScheduler,
+      scalarRows: 0,
+      visualRows: 1,
+      fullVisual: true,
+    });
+    fullScheduler.runAllIdle();
+    await full.done;
+    const fullRow = fullIntake.pushVisualHistRow.mock.calls[0][0];
+    const fullStereoMap = Object.values(fullRow.stereoMapByKey)[0];
+    expect(fullStereoMap.bandCentersHz).toHaveLength(958);
+    expect(fullStereoMap.pl).toHaveLength(958);
+    expect(fullStereoMap.pr).toHaveLength(958);
+    expect(fullStereoMap.c).toHaveLength(958);
+  });
+});
+
+describe("Stereo Map history benchmark projections", () => {
+  it("projects exact retained bytes for three Float32 planes plus Float64 timestamps at 30/60/120/240-minute retention", () => {
+    const bands = 958;
+    const rowsPerMinute = 60 * 25;
+    for (const minutes of [30, 60, 120, 240]) {
+      const rows = minutes * rowsPerMinute;
+      const projected = projectedStereoMapBytes(rows, { bands, keyCount: 1 });
+      const expectedTimestamps = rows * Float64Array.BYTES_PER_ELEMENT;
+      const expectedPrimitives = rows * bands * Float32Array.BYTES_PER_ELEMENT * 3;
+      const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
+      const expectedHoldIndex =
+        chunkCount *
+        bands *
+        (5 * Float64Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT);
+      expect(projected.timestamps).toBe(expectedTimestamps);
+      expect(projected.primitives).toBe(expectedPrimitives);
+      expect(projected.holdIndex).toBe(expectedHoldIndex);
+      expect(projected.total).toBe(expectedTimestamps + expectedPrimitives + expectedHoldIndex);
+    }
+  });
+
+  it("scales retained-byte projections linearly with key count across the retention sweep", () => {
+    const oneKey = projectedStereoMapRetentionBytes(1);
+    const fourKeys = projectedStereoMapRetentionBytes(4);
+    expect(oneKey.map((entry) => entry.minutes)).toEqual([30, 60, 120, 240]);
+    for (let index = 0; index < oneKey.length; index += 1) {
+      expect(fourKeys[index].total).toBe(oneKey[index].total * 4);
+    }
+
+    // The plan calls out roughly 3.9 GiB retained by one full Stereo Map key at 240 minutes;
+    // this pins that figure so a future change cannot silently shrink it.
+    const fullRetention = oneKey.at(-1);
+    expect(fullRetention.minutes).toBe(240);
+    expect(fullRetention.total).toBeGreaterThan(3.8 * 1024 ** 3);
+    expect(fullRetention.total).toBeLessThan(4.0 * 1024 ** 3);
+  });
+});
+
+describe("Stereo Map history slab structural benchmarks", () => {
+  const bandCentersFor = (bandCount) =>
+    Float32Array.from({ length: bandCount }, (_, index) => 20 * 2 ** (index / 96));
+
+  it("freezes across a chunk boundary by sharing the sealed chunk and copying only the active tail", () => {
+    const bands = 958;
+    const tailRows = 50;
+    const rows = VISUAL_HISTORY_CHUNK_ROWS + tailRows;
+    const slab = new StereoMapHistorySlab(rows);
+    const bandCentersHz = bandCentersFor(bands);
+    const pl = new Float32Array(bands).fill(0.2);
+    const pr = new Float32Array(bands).fill(0.25);
+    const c = new Float32Array(bands).fill(0.05);
+    for (let index = 0; index < rows; index += 1) {
+      slab.append({ timestampMs: index * 40, sampleRateHz: 48_000, bandCentersHz, pl, pr, c });
+    }
+
+    const frozen = slab.freeze();
+    const stats = frozen.storageStats();
+    expect(stats.retainedRows).toBe(rows);
+    expect(stats.sharedSealedChunks).toBe(1);
+    expect(stats.copiedTailRows).toBe(tailRows);
+    expect(stats.copiedTailBytes).toBe(
+      tailRows * Float64Array.BYTES_PER_ELEMENT +
+        tailRows * bands * Float32Array.BYTES_PER_ELEMENT * 3 +
+        bands * (5 * Float64Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT)
+    );
+  });
+
+  it("resolves a historical Hold query from sealed chunk summaries, scanning only the unsealed tail", () => {
+    const bands = 4;
+    const tailScanRows = 10;
+    const rows = VISUAL_HISTORY_CHUNK_ROWS * 3 + 50;
+    const slab = new StereoMapHistorySlab(rows);
+    const bandCentersHz = bandCentersFor(bands);
+    for (let index = 0; index < rows; index += 1) {
+      const value = 0.1 + index / rows;
+      slab.append({
+        timestampMs: index * 40,
+        sampleRateHz: 48_000,
+        bandCentersHz,
+        pl: new Float32Array(bands).fill(value),
+        pr: new Float32Array(bands).fill(value),
+        c: new Float32Array(bands).fill(0),
+      });
+    }
+
+    const frozen = slab.freeze();
+    const targetIndex = VISUAL_HISTORY_CHUNK_ROWS * 3 + tailScanRows;
+    const result = frozen.holdAtOrBeforeTimestamp(targetIndex * 40, frozen.epoch);
+    expect(result).not.toBeNull();
+    expect(result.stats.mergedChunks).toBe(3);
+    expect(result.stats.scannedRows).toBe(tailScanRows + 1);
+    expect(result.stats.scannedRows).toBeLessThan(VISUAL_HISTORY_CHUNK_ROWS);
+  });
+
+  it("keeps live Hold reads (Mode switching) at constant working-set bytes regardless of retained rows", () => {
+    const bands = 6;
+    const rows = VISUAL_HISTORY_CHUNK_ROWS * 2 + 10;
+    const slab = new StereoMapHistorySlab(rows);
+    const bandCentersHz = bandCentersFor(bands);
+    const pl = new Float32Array(bands).fill(0.1);
+    const pr = new Float32Array(bands).fill(0.2);
+    const c = new Float32Array(bands).fill(0.05);
+    for (let index = 0; index < rows; index += 1) {
+      slab.append({ timestampMs: index * 40, sampleRateHz: 48_000, bandCentersHz, pl, pr, c });
+    }
+
+    const before = slab.storageStats().workingBytes;
+    slab.liveHoldValues();
+    slab.liveHoldValues();
+    slab.liveHoldValues();
+    const after = slab.storageStats().workingBytes;
+    expect(after.total).toBe(before.total);
+    expect(after.holdDerivation).toBe(bands * 6 * Float64Array.BYTES_PER_ELEMENT);
   });
 });

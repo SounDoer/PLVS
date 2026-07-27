@@ -5,6 +5,7 @@ import { FrameIntake } from "../src/lib/FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../src/lib/historyChunkConfig.js";
 import { nearestTimestampIndex } from "../src/lib/snapshotResolve.js";
 import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
+import { StereoMapHistorySlab } from "../src/lib/StereoMapHistorySlab.js";
 import { VectorscopeHistorySlab } from "../src/lib/VectorscopeHistorySlab.js";
 import { buildHistoryPath, buildLoudnessHistoryPathsFromIndex } from "../src/math/historyMath.js";
 import { LoudnessHistoryIndex } from "../src/math/loudnessHistoryIndex.js";
@@ -19,6 +20,14 @@ const VISUAL_ROWS = 360_000;
 const SPECTRUM_BANDS = 958;
 const VECTOR_VALUES = 200;
 const VIEW_WIDTHS = [600, 1200];
+// Stereo Map shares Spectrum's production band-grid width; it stores three Float32 primitive
+// planes (pl, pr, c) plus Float64 timestamps per row, so its per-row footprint is roughly 3x a
+// single Spectrum plane. See StereoMapHistorySlab's Hold summary for the fixed per-chunk index cost.
+const STEREO_MAP_BANDS = SPECTRUM_BANDS;
+const STEREO_MAP_RETENTION_MINUTES = [30, 60, 120, 240];
+const STEREO_MAP_ROWS_PER_MINUTE = 60 * 25; // 40 ms visual cadence -> 25 rows/second.
+const STEREO_MAP_HOLD_BYTES_PER_BAND =
+  5 * Float64Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT;
 let benchmarkSink;
 
 export function parseBenchmarkArgs(args) {
@@ -29,6 +38,36 @@ export function projectedVisualBytes() {
   const spectrumPrimary = VISUAL_ROWS * SPECTRUM_BANDS * Float32Array.BYTES_PER_ELEMENT;
   const vectorscopePairs = VISUAL_ROWS * VECTOR_VALUES * Float32Array.BYTES_PER_ELEMENT;
   return { spectrumPrimary, vectorscopePairs, total: spectrumPrimary + vectorscopePairs };
+}
+
+/**
+ * Exact retained-byte projection for one Stereo Map key: Float64 timestamps, three Float32
+ * primitive planes (pl, pr, c) sized `rows * bands`, and a fixed per-chunk Hold index. Pure
+ * arithmetic — does not allocate — so it can project the 240-minute/4-key worst case cheaply.
+ */
+export function projectedStereoMapBytes(rows, { bands = STEREO_MAP_BANDS, keyCount = 1 } = {}) {
+  const timestamps = rows * Float64Array.BYTES_PER_ELEMENT;
+  const primitivePlane = rows * bands * Float32Array.BYTES_PER_ELEMENT;
+  const primitives = primitivePlane * 3;
+  const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
+  const holdIndex = chunkCount * bands * STEREO_MAP_HOLD_BYTES_PER_BAND;
+  const perKeyTotal = timestamps + primitives + holdIndex;
+  return {
+    timestamps,
+    primitives,
+    holdIndex,
+    perKeyTotal,
+    keyCount,
+    total: perKeyTotal * keyCount,
+  };
+}
+
+/** Projects retained bytes across the 30/60/120/240-minute retention windows for `keyCount` keys. */
+export function projectedStereoMapRetentionBytes(keyCount = 1) {
+  return STEREO_MAP_RETENTION_MINUTES.map((minutes) => {
+    const rows = minutes * STEREO_MAP_ROWS_PER_MINUTE;
+    return { minutes, rows, ...projectedStereoMapBytes(rows, { keyCount }) };
+  });
 }
 
 function assertStructure(condition, message) {
@@ -164,6 +203,167 @@ function benchmarkVisualFreeze({ rows, bands, pairValues }) {
   };
 }
 
+/**
+ * Builds `keyCount` Stereo Map slabs at `rows` rows / `bands` bands each, then measures freeze
+ * cost, a historical Hold lookup (`holdAtOrBeforeTimestamp`), and a live Hold read
+ * (`liveHoldValues`, the Mode-switch read path). Every structural check is count-based: Hold
+ * lookups must resolve from sealed per-chunk summaries rather than rescanning retained rows, and
+ * the live-Hold derivation scratch must stay sized to the band grid regardless of retained rows.
+ */
+function benchmarkStereoMapFreeze({ rows, bands, keyCount = 1 }) {
+  const bandCentersHz = Float32Array.from({ length: bands }, (_, index) => 20 * 2 ** (index / 96));
+  const pl = new Float32Array(bands).fill(0.2);
+  const pr = new Float32Array(bands).fill(0.25);
+  const c = new Float32Array(bands).fill(0.05);
+
+  const freezeOne = (key) => {
+    const slab = new StereoMapHistorySlab(rows);
+    for (let index = 0; index < rows; index += 1) {
+      slab.append({ timestampMs: index * 40, sampleRateHz: 48_000, bandCentersHz, pl, pr, c });
+    }
+
+    // Mode switching re-reads live Hold repeatedly without appending; the derivation scratch it
+    // shares is sized to the band grid, not to retained row count, so its bytes must stay fixed
+    // across repeated reads regardless of how many rows are retained.
+    const beforeWorkingBytes = slab.storageStats().workingBytes.total;
+    slab.liveHoldValues();
+    slab.liveHoldValues();
+    slab.liveHoldValues();
+    const afterWorkingBytes = slab.storageStats().workingBytes.total;
+    assertStructure(
+      afterWorkingBytes === beforeWorkingBytes,
+      `${key} Mode-switch reads grew working bytes ${beforeWorkingBytes} -> ${afterWorkingBytes}`
+    );
+
+    const freezeStarted = performance.now();
+    const frozen = slab.freeze();
+    const freezeElapsedMs = performance.now() - freezeStarted;
+    const stats = frozen.storageStats();
+    assertStructure(stats.retainedRows === rows, `${key} retained ${stats.retainedRows}/${rows}`);
+    assertStructure(
+      stats.copiedTailRows <= VISUAL_HISTORY_CHUNK_ROWS,
+      `${key} copied ${stats.copiedTailRows} tail rows`
+    );
+    assertStructure(
+      rows <= VISUAL_HISTORY_CHUNK_ROWS || stats.sharedSealedChunks > 0,
+      `${key} shared no sealed chunks`
+    );
+
+    // Historical Hold at the last retained row is an exact end match for every chunk (including
+    // the frozen, now-sealed tail), so it must resolve entirely from merged chunk summaries with
+    // zero per-row scanning — never proportional to the full retained history.
+    const holdLookupStarted = performance.now();
+    const hold = frozen.holdAtOrBeforeTimestamp((rows - 1) * 40, frozen.epoch);
+    const holdLookupElapsedMs = performance.now() - holdLookupStarted;
+    const expectedMergedChunks = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
+    assertStructure(hold != null, `${key} historical Hold query found no row`);
+    assertStructure(
+      hold.stats.mergedChunks === expectedMergedChunks,
+      `${key} historical Hold merged ${hold.stats.mergedChunks}/${expectedMergedChunks} chunk summaries`
+    );
+    assertStructure(
+      hold.stats.scannedRows === 0,
+      `${key} historical Hold scanned ${hold.stats.scannedRows} rows instead of using merged summaries`
+    );
+
+    benchmarkSink = frozen;
+    return { key, ...stats, freezeElapsedMs, holdLookupElapsedMs, holdStats: hold.stats };
+  };
+
+  const perKey = Array.from({ length: keyCount }, (_, index) =>
+    freezeOne(`stereoMap:bench:${index}`)
+  );
+  return {
+    keyCount,
+    perKey,
+    retainedRows: perKey.reduce((sum, item) => sum + item.retainedRows, 0),
+    sharedSealedChunks: perKey.reduce((sum, item) => sum + item.sharedSealedChunks, 0),
+    copiedTailRows: perKey.reduce((sum, item) => sum + item.copiedTailRows, 0),
+    copiedTailBytes: perKey.reduce((sum, item) => sum + item.copiedTailBytes, 0),
+    freezeElapsedMs: perKey.reduce((sum, item) => sum + item.freezeElapsedMs, 0),
+    holdLookupElapsedMs: perKey.reduce((sum, item) => sum + item.holdLookupElapsedMs, 0),
+  };
+}
+
+/**
+ * Drives FrameIntake with a mixed workload of `spectrumKeyCount` Spectrum keys and
+ * `stereoMapKeyCount` Stereo Map keys on every visual tick, at full production band width. Counts
+ * `pushVisualHistRow` calls to confirm one intake call per tick regardless of key count (no
+ * per-key call fan-out), and checks every per-key slab retains typed-array primaries rather than
+ * per-tick JS arrays/objects.
+ */
+function benchmarkMixedKeyIntake({ rows, bands, spectrumKeyCount = 4, stereoMapKeyCount = 4 }) {
+  const bandCentersHz = Array.from({ length: bands }, (_, index) => 20 * 2 ** (index / 96));
+  const smoothDb = new Float32Array(bands).fill(-30);
+  const pl = new Float32Array(bands).fill(0.2);
+  const pr = new Float32Array(bands).fill(0.25);
+  const c = new Float32Array(bands).fill(0.05);
+  const spectrumKeys = Array.from(
+    { length: spectrumKeyCount },
+    (_, index) => `spectrum:bench:${index}`
+  );
+  const stereoMapKeys = Array.from(
+    { length: stereoMapKeyCount },
+    (_, index) => `stereoMap:bench:${index}`
+  );
+
+  const intake = new FrameIntake();
+  let pushCalls = 0;
+  const originalPush = intake.pushVisualHistRow.bind(intake);
+  intake.pushVisualHistRow = (...args) => {
+    pushCalls += 1;
+    return originalPush(...args);
+  };
+
+  const started = performance.now();
+  for (let index = 0; index < rows; index += 1) {
+    intake.pushVisualHistRow(
+      {
+        timestampMs: index * 40,
+        waveformMin: [],
+        waveformMax: [],
+        spectrumByKey: Object.fromEntries(
+          spectrumKeys.map((key) => [key, { bandCentersHz, smoothDb }])
+        ),
+        stereoMapByKey: Object.fromEntries(
+          stereoMapKeys.map((key) => [key, { bandCentersHz, pl, pr, c }])
+        ),
+      },
+      rows,
+      48_000
+    );
+  }
+  const elapsedMs = performance.now() - started;
+
+  assertStructure(
+    pushCalls === rows,
+    `mixed intake called pushVisualHistRow ${pushCalls}/${rows} times`
+  );
+  for (const key of spectrumKeys) {
+    const slab = intake.getVisualSpectrumHistByKey(key);
+    assertStructure(
+      slab?.length === rows,
+      `spectrum key ${key} retained ${slab?.length}/${rows} rows`
+    );
+  }
+  for (const key of stereoMapKeys) {
+    const slab = intake.getVisualStereoMapHistByKey(key);
+    assertStructure(
+      slab?.length === rows,
+      `stereoMap key ${key} retained ${slab?.length}/${rows} rows`
+    );
+    const lastRow = slab.rowAt(slab.length - 1);
+    assertStructure(
+      lastRow.pl instanceof Float32Array &&
+        lastRow.pr instanceof Float32Array &&
+        lastRow.c instanceof Float32Array,
+      `stereoMap key ${key} did not store typed-array primary planes`
+    );
+  }
+
+  return { rows, spectrumKeyCount, stereoMapKeyCount, pushCalls, elapsedMs };
+}
+
 function benchmarkNearestTimestamp() {
   const timestamps = timestampView();
   const target = (VISUAL_ROWS - 2.5) * 40;
@@ -279,7 +479,20 @@ export function runBenchmark({ fullVisual = false } = {}) {
     bands: SPECTRUM_BANDS,
     pairValues: VECTOR_VALUES,
   });
+  const safeStereoMapFreeze = benchmarkStereoMapFreeze({
+    rows: safeRows,
+    bands: STEREO_MAP_BANDS,
+    keyCount: 1,
+  });
+  const mixedKeyIntake = benchmarkMixedKeyIntake({
+    rows: safeRows,
+    bands: STEREO_MAP_BANDS,
+    spectrumKeyCount: 4,
+    stereoMapKeyCount: 4,
+  });
   const projected = projectedVisualBytes();
+  const stereoMapRetentionOneKey = projectedStereoMapRetentionBytes(1);
+  const stereoMapRetentionFourKeys = projectedStereoMapRetentionBytes(4);
   const result = {
     mode: fullVisual ? "full-visual" : "safe",
     scalarRows: HIST_ROWS,
@@ -290,6 +503,12 @@ export function runBenchmark({ fullVisual = false } = {}) {
     scalar,
     visualFreeze: safeVisualFreeze,
     projectedVisualBytes: projected,
+    stereoMapFreeze: safeStereoMapFreeze,
+    stereoMapProjectedRetentionBytes: {
+      oneKey: stereoMapRetentionOneKey,
+      fourKeys: stereoMapRetentionFourKeys,
+    },
+    mixedKeyIntake,
     fullVisual: null,
   };
 
@@ -317,6 +536,31 @@ export function runBenchmark({ fullVisual = false } = {}) {
         rss: memoryAfter.rss - memoryBefore.rss,
       },
       freeze,
+    };
+
+    // The 240-minute cost of roughly 3.9 GiB per full Stereo Map key (three Float32 primitive
+    // planes at 958 bands, 25 rows/second, four hours) is intentional and must remain explicit
+    // here rather than shrunk away. This is opt-in via --full-visual precisely because of that cost.
+    const stereoMapMemoryBefore = measuredMemoryBytes();
+    const stereoMapStarted = performance.now();
+    const stereoMapFullFreeze = benchmarkStereoMapFreeze({
+      rows: VISUAL_ROWS,
+      bands: STEREO_MAP_BANDS,
+      keyCount: 1,
+    });
+    const stereoMapMemoryAfter = measuredMemoryBytes();
+    result.fullVisual.stereoMap = {
+      rows: VISUAL_ROWS,
+      bands: STEREO_MAP_BANDS,
+      elapsedMs: performance.now() - stereoMapStarted,
+      memoryBefore: stereoMapMemoryBefore,
+      memoryAfter: stereoMapMemoryAfter,
+      measuredDelta: {
+        arrayBuffers: stereoMapMemoryAfter.arrayBuffers - stereoMapMemoryBefore.arrayBuffers,
+        external: stereoMapMemoryAfter.external - stereoMapMemoryBefore.external,
+        rss: stereoMapMemoryAfter.rss - stereoMapMemoryBefore.rss,
+      },
+      freeze: stereoMapFullFreeze,
     };
   }
 
