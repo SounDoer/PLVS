@@ -253,7 +253,7 @@ describe("normalizeDockModuleControls", () => {
       pair: { x: 0, y: 1 },
       mode: "position",
       hold: false,
-      speedPercent: 25,
+      speedPercent: 50,
       octaveSmoothing: "1/12",
       minFreq: 20,
       maxFreq: 20000,

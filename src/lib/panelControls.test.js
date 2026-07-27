@@ -131,7 +131,7 @@ describe("panelControls", () => {
       stereoMapMode: "position",
       stereoMapPair: { first: 0, second: 1 },
       stereoMapHold: false,
-      stereoMapSpeedPercent: 25,
+      stereoMapSpeedPercent: 50,
       stereoMapOctaveSmoothing: "1/12",
       stereoMapXMinFreq: 20,
       stereoMapXMaxFreq: 20000,
@@ -248,7 +248,7 @@ describe("panelControls", () => {
       stereoMapMode: "position",
       stereoMapPair: { first: 0, second: 1 },
       stereoMapHold: false,
-      stereoMapSpeedPercent: 25,
+      stereoMapSpeedPercent: 50,
       stereoMapOctaveSmoothing: "1/12",
       stereoMapXMinFreq: 20,
       stereoMapXMaxFreq: 20000,
@@ -468,7 +468,7 @@ describe("stereo map panel controls normalization", () => {
     expect(result.stereoMapMode).toBe("position");
     expect(result.stereoMapPair).toEqual({ first: 0, second: 1 });
     expect(result.stereoMapHold).toBe(false);
-    expect(result.stereoMapSpeedPercent).toBe(25);
+    expect(result.stereoMapSpeedPercent).toBe(50);
     expect(result.stereoMapOctaveSmoothing).toBe("1/12");
     expect(result.stereoMapXMinFreq).toBe(20);
     expect(result.stereoMapXMaxFreq).toBe(20000);
@@ -522,7 +522,7 @@ describe("stereo map panel controls normalization", () => {
     expect(normalizePanelControls({ stereoMapSpeedPercent: -1 }).stereoMapSpeedPercent).toBe(0);
     expect(normalizePanelControls({ stereoMapSpeedPercent: 101 }).stereoMapSpeedPercent).toBe(100);
     expect(normalizePanelControls({ stereoMapSpeedPercent: 60 }).stereoMapSpeedPercent).toBe(60);
-    expect(normalizePanelControls({ stereoMapSpeedPercent: "75" }).stereoMapSpeedPercent).toBe(25);
+    expect(normalizePanelControls({ stereoMapSpeedPercent: "75" }).stereoMapSpeedPercent).toBe(50);
   });
 
   it("accepts every Spectrum octave-smoothing option and falls back to 1/12 oct otherwise", () => {

@@ -138,7 +138,7 @@ describe("mergeDockAnalysisRequests", () => {
         key: dockStereoMapKey(controls),
         panelIds: ["dock:stereo-map"],
         pair: { first: 2, second: 3 },
-        speedPercent: 25,
+        speedPercent: 50,
         octaveSmoothing: "1/12",
       },
     ]);
@@ -197,7 +197,7 @@ describe("mergeDockAnalysisRequests", () => {
     const derived = {
       ...EMPTY_DERIVED,
       stereoMapRequests: Array.from({ length: MAX_STEREO_MAP_REQUESTS }, (_, index) => ({
-        key: `stereoMap:pair:${index}:${index + 1}:sp25:sm12`,
+        key: `stereoMap:pair:${index}:${index + 1}:sp50:sm12`,
         panelIds: [`panel-${index}`],
       })),
     };
@@ -209,6 +209,6 @@ describe("mergeDockAnalysisRequests", () => {
       },
     ]);
     expect(merged.stereoMapRequests).toHaveLength(MAX_STEREO_MAP_REQUESTS);
-    expect(merged.stereoMapRequests.at(-1)?.key).toBe("stereoMap:pair:8:9:sp25:sm12");
+    expect(merged.stereoMapRequests.at(-1)?.key).toBe("stereoMap:pair:8:9:sp50:sm12");
   });
 });

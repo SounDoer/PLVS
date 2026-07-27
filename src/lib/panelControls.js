@@ -71,7 +71,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   stereoMapMode: STEREO_MAP_MODES.POSITION,
   stereoMapPair: { first: 0, second: 1 },
   stereoMapHold: false,
-  stereoMapSpeedPercent: 25,
+  stereoMapSpeedPercent: 50,
   stereoMapOctaveSmoothing: "1/12",
   stereoMapXMinFreq: 20,
   stereoMapXMaxFreq: 20000,
