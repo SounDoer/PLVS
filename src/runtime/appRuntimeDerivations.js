@@ -14,10 +14,10 @@ export const DIALOGUE_STAT_IDS = [
   "dialogueOffset",
 ];
 
-/// Every field here is required by `SpectrumAnalysisRequest` in src-tauri/src/ipc/types.rs,
-/// which declares no serde defaults. A field missing from this object fails deserialization of
-/// the whole `set_analysis_requests` payload — so dropping one silently blanks the vectorscope
-/// too, not just the spectrum. Adding a field to the request means adding it here.
+/// Every request-family array and every request field here is required by `AnalysisRequests` in
+/// src-tauri/src/ipc/types.rs, which declares no serde defaults. A missing field fails
+/// deserialization of the whole `set_analysis_requests` payload. Adding a request family or
+/// request field means adding it here.
 export function deriveBackendAnalysisRequests(requests) {
   return {
     spectrum: requests.spectrumRequests.map((request) => ({
@@ -33,6 +33,7 @@ export function deriveBackendAnalysisRequests(requests) {
       x: request.pair.x,
       y: request.pair.y,
     })),
+    stereoMap: [],
   };
 }
 

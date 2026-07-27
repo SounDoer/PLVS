@@ -35,7 +35,7 @@ describe("app runtime derivations", () => {
       panelControlsById: {},
     });
     const payload = deriveBackendAnalysisRequests(deriveAnalysisRequests(state));
-    expect(payload).toEqual(fixtures.wirePayload);
+    expect(payload).toEqual({ ...fixtures.wirePayload, stereoMap: [] });
   });
 
   it("maps aggregate analysis requests to the backend request shape", () => {
@@ -65,6 +65,7 @@ describe("app runtime derivations", () => {
         },
       ],
       vectorscope: [{ key: "vectorscope:pair:0:1", x: 0, y: 1 }],
+      stereoMap: [],
     });
   });
 

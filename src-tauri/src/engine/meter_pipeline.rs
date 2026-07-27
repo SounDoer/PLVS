@@ -1249,6 +1249,7 @@ mod tests {
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
 
     let active_plan = pipeline.spectral_plan_for_test(&requests);
@@ -1483,10 +1484,12 @@ mod tests {
     let initial_requests = AnalysisRequests {
       spectrum: vec![combined.clone(), secondary.clone()],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let transition_requests = AnalysisRequests {
       spectrum: vec![combined, secondary, pair_need],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let pcm = vec![0.25_f32; FFT_BIG * 4];
     let mut pipeline = MeterPipeline::new(48_000, 4);
@@ -2263,6 +2266,7 @@ mod tests {
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let requests_c = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
@@ -2274,6 +2278,7 @@ mod tests {
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
 
     let _ = pipeline.push_pcm_f32_with_requests(
@@ -2333,6 +2338,7 @@ mod tests {
         x: 2,
         y: 0,
       }],
+      stereo_map: Vec::new(),
     };
     let _ = p.push_pcm_f32_with_requests(
       &pcm,
@@ -2406,6 +2412,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: Vec::new(),
     };
     let requests_b = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
@@ -2421,6 +2428,7 @@ mod tests {
         x: 1,
         y: 0,
       }],
+      stereo_map: Vec::new(),
     };
 
     let _ = pipeline.push_pcm_f32_with_requests(
@@ -2509,6 +2517,7 @@ mod tests {
           y: 2,
         },
       ],
+      stereo_map: Vec::new(),
     };
 
     let mut frame = None;
@@ -2582,6 +2591,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: Vec::new(),
     };
 
     let mut frame = None;
@@ -2654,6 +2664,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: Vec::new(),
     };
 
     let chunk_ms = ((frames as f64 / sr as f64) * 1000.0) as u64;
@@ -2996,6 +3007,7 @@ mod tests {
             "combined",
           )],
           vectorscope: vec![],
+          stereo_map: Vec::new(),
         },
         AnalysisRequests {
           spectrum: vec![
@@ -3013,6 +3025,7 @@ mod tests {
             spectrum_request("ms", SpectrumAnalysisChannel::Pair { x: 0, y: 1 }, "ms"),
           ],
           vectorscope: vec![],
+          stereo_map: Vec::new(),
         },
       ];
 
@@ -3167,6 +3180,7 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![request],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let pcm = deterministic_stereo(FFT_BIG, 0);
     let split = (FFT_BIG - 1) * 2;
@@ -3238,6 +3252,7 @@ mod tests {
     let requests = AnalysisRequests {
       spectrum: vec![request.clone()],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let chunk_frames = FFT_BIG / 4;
     let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
@@ -3299,6 +3314,7 @@ mod tests {
       let requests = AnalysisRequests {
         spectrum: vec![request.clone()],
         vectorscope: vec![],
+        stereo_map: Vec::new(),
       };
       let pcm = deterministic_stereo(FFT_BIG, 0);
       let (_, legacy_visual) = legacy_spectrum_result(&request, sample_rate as f64, 2, &pcm, 1.0);
@@ -3347,6 +3363,7 @@ mod tests {
         "combined",
       )],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let new = AnalysisRequests {
       spectrum: vec![spectrum_request(
@@ -3355,6 +3372,7 @@ mod tests {
         "combined",
       )],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let mut pipeline = MeterPipeline::new(48_000, 2);
     pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
@@ -3441,10 +3459,12 @@ mod tests {
     let single = AnalysisRequests {
       spectrum: vec![first.clone()],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let duplicate = AnalysisRequests {
       spectrum: vec![first, second],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let pcm = deterministic_stereo(FFT_BIG * 2, 0);
     let mut one_request = MeterPipeline::new(48_000, 2);
@@ -3490,6 +3510,7 @@ mod tests {
     let initial = AnalysisRequests {
       spectrum: vec![request.clone()],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let _ = pipeline.push_pcm_f32_with_requests(
       &deterministic_stereo(FFT_BIG, 0),
@@ -3509,6 +3530,7 @@ mod tests {
     let updated = AnalysisRequests {
       spectrum: vec![request],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let _ = pipeline.push_pcm_f32_with_requests(
       &deterministic_stereo(2048, FFT_BIG as u64),

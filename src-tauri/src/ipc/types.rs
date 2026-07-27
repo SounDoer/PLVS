@@ -34,11 +34,28 @@ pub struct VectorscopeAnalysisRequest {
   pub y: u16,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StereoMapAnalysisPair {
+  pub first: u16,
+  pub second: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StereoMapAnalysisRequest {
+  pub key: String,
+  pub pair: StereoMapAnalysisPair,
+  pub speed_percent: f64,
+  pub octave_smoothing: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisRequests {
   pub spectrum: Vec<SpectrumAnalysisRequest>,
   pub vectorscope: Vec<VectorscopeAnalysisRequest>,
+  pub stereo_map: Vec<StereoMapAnalysisRequest>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

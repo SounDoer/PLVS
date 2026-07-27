@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
-import { deriveAnalysisRequests, spectrumRequestKeyFromControls } from "./analysisRequests.js";
+import {
+  MAX_STEREO_MAP_REQUESTS,
+  deriveAnalysisRequests,
+  spectrumRequestKeyFromControls,
+  stereoMapRequestKeyFromControls,
+} from "./analysisRequests.js";
 
 function leaf(ids) {
   return { type: "leaf", tabs: ids, activeTab: ids[0] };
@@ -73,6 +78,52 @@ describe("analysisRequests", () => {
         spectrumYRangeDb: 60,
       })
     ).toBe(spectrumRequestKeyFromControls(DEFAULT_PANEL_CONTROLS));
+  });
+
+  it("defines an independent four-request Stereo Map cap", () => {
+    expect(MAX_STEREO_MAP_REQUESTS).toBe(4);
+  });
+
+  it("excludes every Stereo Map display-only control from the request key", () => {
+    const measurementControls = {
+      stereoMapPair: { first: 2, second: 3 },
+      stereoMapSpeedPercent: 50,
+      stereoMapOctaveSmoothing: "1/6",
+    };
+    const expected = stereoMapRequestKeyFromControls(measurementControls);
+
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapMode: "correlation",
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapHold: true,
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapXMinFreq: 100,
+        stereoMapXMaxFreq: 10000,
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapMonoLossYMinDb: -60,
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapMsRatioYMinDb: -96,
+        stereoMapMsRatioYMaxDb: 48,
+      })
+    ).toBe(expected);
   });
 
   it("includes speed and tilt in the spectrum request key", () => {

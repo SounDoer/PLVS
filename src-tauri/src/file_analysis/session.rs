@@ -627,6 +627,7 @@ mod tests {
           octave_smoothing: "off".to_string(),
         }],
         vectorscope: vec![],
+        stereo_map: Vec::new(),
       },
       ..default_config()
     };
@@ -719,6 +720,7 @@ mod tests {
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let loud = sine_stereo_f32(sr, chunk_frames, 0.8, 440.0);
     let silence = vec![0.0_f32; chunk_frames * channels as usize];

@@ -4,6 +4,11 @@ import { resolvePanelModuleId } from "../workspace/panelInstances.js";
 
 export const MAX_SPECTRUM_REQUESTS = 4;
 export const MAX_VECTORSCOPE_REQUESTS = 4;
+export const MAX_STEREO_MAP_REQUESTS = 4;
+
+const DEFAULT_STEREO_MAP_PAIR = { first: 0, second: 1 };
+const DEFAULT_STEREO_MAP_SMOOTHING = "1/12";
+const MAX_ANALYSIS_CHANNEL_INDEX = 63;
 
 function spectrumDisplayControlsFromControls(panelControls) {
   const controls = normalizePanelControls(panelControls);
@@ -45,6 +50,33 @@ export function vectorscopeRequestKeyFromControls(panelControls) {
   const controls = normalizePanelControls(panelControls);
   const pair = controls.vectorscopePair ?? { x: 0, y: 1 };
   return `vectorscope:pair:${pair.x}:${pair.y}`;
+}
+
+export function stereoMapRequestKeyFromControls(panelControls) {
+  const rawPair = panelControls?.stereoMapPair;
+  const pairIsValid =
+    Number.isInteger(rawPair?.first) &&
+    Number.isInteger(rawPair?.second) &&
+    rawPair.first >= 0 &&
+    rawPair.first <= MAX_ANALYSIS_CHANNEL_INDEX &&
+    rawPair.second >= 0 &&
+    rawPair.second <= MAX_ANALYSIS_CHANNEL_INDEX &&
+    rawPair.first !== rawPair.second;
+  const pair = pairIsValid ? rawPair : DEFAULT_STEREO_MAP_PAIR;
+  const speedPercent = Math.round(
+    normalizePanelControls({
+      spectrumSpeedPercent: panelControls?.stereoMapSpeedPercent,
+    }).spectrumSpeedPercent
+  );
+  const octaveSmoothing = SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.some(
+    (option) => option.id === panelControls?.stereoMapOctaveSmoothing
+  )
+    ? panelControls.stereoMapOctaveSmoothing
+    : DEFAULT_STEREO_MAP_SMOOTHING;
+  const smoothingToken =
+    SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.find((option) => option.id === octaveSmoothing)?.keyToken ??
+    "12";
+  return `stereoMap:pair:${pair.first}:${pair.second}:sp${speedPercent}:sm${smoothingToken}`;
 }
 
 function pushRequest(map, key, panelId, payload) {

@@ -1,6 +1,6 @@
 //! `#[tauri::command]` handlers (Phase 2: capture + DSP → Channel / Events).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Emitter, State};
@@ -13,12 +13,14 @@ use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged,
-  FileAnalysisProbeResult, FrameSubscribers, SpectrumAnalysisChannel,
+  FileAnalysisProbeResult, FrameSubscribers, SpectrumAnalysisChannel, StereoMapAnalysisPair,
 };
 use crate::state::{AppState, EngineSource};
 
 const MAX_SPECTRUM_ANALYSIS_REQUESTS: usize = 4;
 const MAX_VECTORSCOPE_ANALYSIS_REQUESTS: usize = 4;
+const MAX_STEREO_MAP_ANALYSIS_REQUESTS: usize = 4;
+const MAX_ANALYSIS_CHANNEL_INDEX: u16 = 63;
 
 #[tauri::command]
 pub fn list_audio_devices() -> Result<Vec<DeviceInfo>, String> {
@@ -193,6 +195,32 @@ fn expected_spectrum_request_key(
   })
 }
 
+fn expected_stereo_map_request_key(
+  pair: &StereoMapAnalysisPair,
+  speed_percent: f64,
+  octave_smoothing: &str,
+) -> Result<String, String> {
+  if pair.first > MAX_ANALYSIS_CHANNEL_INDEX || pair.second > MAX_ANALYSIS_CHANNEL_INDEX {
+    return Err(format!(
+      "stereo map channel indices must be between 0 and {MAX_ANALYSIS_CHANNEL_INDEX}"
+    ));
+  }
+  if pair.first == pair.second {
+    return Err("stereo map pair must contain two different channels".to_string());
+  }
+  if !speed_percent.is_finite() || !(0.0..=100.0).contains(&speed_percent) {
+    return Err("stereo map speedPercent must be finite and between 0 and 100".to_string());
+  }
+  let smoothing = parse_octave_smoothing(octave_smoothing)?;
+  let speed = speed_percent.round() as i64;
+  Ok(format!(
+    "stereoMap:pair:{}:{}:sp{speed}:sm{}",
+    pair.first,
+    pair.second,
+    smoothing.key_token()
+  ))
+}
+
 fn validate_analysis_request_key(key: &str, label: &str) -> Result<(), String> {
   if key.is_empty() {
     return Err(format!("{label} request key cannot be empty"));
@@ -212,6 +240,11 @@ fn validate_analysis_requests(requests: &AnalysisRequests) -> Result<(), String>
   if requests.vectorscope.len() > MAX_VECTORSCOPE_ANALYSIS_REQUESTS {
     return Err(format!(
       "vectorscope request count cannot exceed {MAX_VECTORSCOPE_ANALYSIS_REQUESTS}"
+    ));
+  }
+  if requests.stereo_map.len() > MAX_STEREO_MAP_ANALYSIS_REQUESTS {
+    return Err(format!(
+      "stereo map request count cannot exceed {MAX_STEREO_MAP_ANALYSIS_REQUESTS}"
     ));
   }
 
@@ -238,6 +271,25 @@ fn validate_analysis_requests(requests: &AnalysisRequests) -> Result<(), String>
     if request.key != expected {
       return Err(format!(
         "vectorscope request key mismatch: expected {expected}, got {}",
+        request.key
+      ));
+    }
+  }
+
+  let mut stereo_map_keys = HashSet::with_capacity(requests.stereo_map.len());
+  for request in &requests.stereo_map {
+    validate_analysis_request_key(&request.key, "stereo map")?;
+    if !stereo_map_keys.insert(request.key.as_str()) {
+      return Err(format!("duplicate stereo map request key: {}", request.key));
+    }
+    let expected = expected_stereo_map_request_key(
+      &request.pair,
+      request.speed_percent,
+      &request.octave_smoothing,
+    )?;
+    if request.key != expected {
+      return Err(format!(
+        "stereo map request key mismatch: expected {expected}, got {}",
         request.key
       ));
     }
@@ -485,7 +537,8 @@ pub fn get_engine_state(state: State<'_, AppState>) -> Result<String, String> {
 mod tests {
   use super::validate_loudness_weights;
   use crate::ipc::types::{
-    AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, VectorscopeAnalysisRequest,
+    AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, StereoMapAnalysisPair,
+    StereoMapAnalysisRequest, VectorscopeAnalysisRequest,
   };
 
   #[test]
@@ -567,6 +620,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: vec![],
     };
     assert!(super::validate_analysis_requests(&requests).is_ok());
   }
@@ -587,6 +641,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: vec![],
     };
     assert!(super::validate_analysis_requests(&requests).is_err());
   }
@@ -605,24 +660,27 @@ mod tests {
         })
         .collect(),
       vectorscope: vec![],
+      stereo_map: vec![],
     };
     assert!(super::validate_analysis_requests(&requests).is_err());
   }
 
   #[test]
   fn shared_wire_payload_deserializes_and_validates() {
-    // The other half of the JS parity guard: that test asserts the runtime emits this exact
-    // payload, this one asserts the payload is one we accept. AnalysisRequests declares no serde
-    // defaults, so a field the JS side stops sending fails the whole `set_analysis_requests`
-    // call — which blanks every analysis panel, vectorscope included, not just the one that lost
-    // the field. That shipped once; the key fixtures could not catch it because they only pin
-    // the key string, never the request shape.
+    // Keep the established Spectrum/Vectorscope fixture as one half of the JS parity guard. The
+    // Stereo Map fixture below owns the new family's required wire shape; compose its empty array
+    // here so this older fixture remains focused on the two families it records.
     let raw = include_str!(concat!(
       env!("CARGO_MANIFEST_DIR"),
       "/../shared/analysis-request-key-fixtures.json"
     ));
     let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
-    let requests: AnalysisRequests = serde_json::from_value(fixture["wirePayload"].clone())
+    let mut wire_payload = fixture["wirePayload"].clone();
+    wire_payload
+      .as_object_mut()
+      .expect("wire payload object")
+      .insert("stereoMap".to_string(), serde_json::Value::Array(vec![]));
+    let requests: AnalysisRequests = serde_json::from_value(wire_payload)
       .expect("wire payload must deserialize into AnalysisRequests");
     assert!(
       super::validate_analysis_requests(&requests).is_ok(),
@@ -667,6 +725,7 @@ mod tests {
           octave_smoothing,
         }],
         vectorscope: vec![],
+        stereo_map: vec![],
       };
       assert!(
         super::validate_analysis_requests(&requests).is_ok(),
@@ -685,12 +744,201 @@ mod tests {
           x: entry["x"].as_u64().unwrap() as u16,
           y: entry["y"].as_u64().unwrap() as u16,
         }],
+        stereo_map: vec![],
       };
       assert!(
         super::validate_analysis_requests(&requests).is_ok(),
         "vectorscope fixture entry {entry:?} rejected by validator"
       );
     }
+  }
+
+  #[test]
+  fn stereo_map_request_keys_match_shared_fixture() {
+    let raw = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../shared/stereo-map-request-key-fixtures.json"
+    ));
+    let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
+
+    for pair in fixture["pairs"].as_array().expect("pairs array") {
+      for speed_percent in fixture["speedPercentValues"]
+        .as_array()
+        .expect("speed values array")
+      {
+        for smoothing in fixture["smoothingValues"]
+          .as_array()
+          .expect("smoothing values array")
+        {
+          let first = pair["first"].as_u64().unwrap() as u16;
+          let second = pair["second"].as_u64().unwrap() as u16;
+          let speed_percent = speed_percent.as_f64().unwrap();
+          let octave_smoothing = smoothing["value"].as_str().unwrap().to_string();
+          let expected = fixture["keyFormat"]
+            .as_str()
+            .unwrap()
+            .replace("<first>", &first.to_string())
+            .replace("<second>", &second.to_string())
+            .replace("<speedPercent>", &speed_percent.to_string())
+            .replace("<smoothingToken>", smoothing["token"].as_str().unwrap());
+          let requests = AnalysisRequests {
+            spectrum: vec![],
+            vectorscope: vec![],
+            stereo_map: vec![StereoMapAnalysisRequest {
+              key: expected,
+              pair: StereoMapAnalysisPair { first, second },
+              speed_percent,
+              octave_smoothing,
+            }],
+          };
+
+          assert!(
+            super::validate_analysis_requests(&requests).is_ok(),
+            "Stereo Map fixture entry pair={pair:?}, speed={speed_percent}, smoothing={smoothing:?} rejected"
+          );
+        }
+      }
+    }
+  }
+
+  #[test]
+  fn stereo_map_wire_payload_deserializes_and_validates() {
+    let raw = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../shared/stereo-map-request-key-fixtures.json"
+    ));
+    let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
+    let requests: AnalysisRequests = serde_json::from_value(fixture["wirePayload"].clone())
+      .expect("wire payload must deserialize into AnalysisRequests");
+
+    assert!(super::validate_analysis_requests(&requests).is_ok());
+  }
+
+  #[test]
+  fn stereo_map_wire_payload_requires_the_request_array() {
+    let raw = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../shared/stereo-map-request-key-fixtures.json"
+    ));
+    let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
+    let mut wire_payload = fixture["wirePayload"].clone();
+    wire_payload
+      .as_object_mut()
+      .expect("wire payload object")
+      .remove("stereoMap");
+
+    assert!(serde_json::from_value::<AnalysisRequests>(wire_payload).is_err());
+  }
+
+  #[test]
+  fn stereo_map_validation_rejects_duplicate_keys() {
+    let request = StereoMapAnalysisRequest {
+      key: "stereoMap:pair:0:1:sp25:sm12".to_string(),
+      pair: StereoMapAnalysisPair {
+        first: 0,
+        second: 1,
+      },
+      speed_percent: 25.0,
+      octave_smoothing: "1/12".to_string(),
+    };
+    let requests = AnalysisRequests {
+      spectrum: vec![],
+      vectorscope: vec![],
+      stereo_map: vec![request.clone(), request],
+    };
+
+    assert!(super::validate_analysis_requests(&requests).is_err());
+  }
+
+  #[test]
+  fn stereo_map_validation_rejects_noncanonical_keys() {
+    let requests = AnalysisRequests {
+      spectrum: vec![],
+      vectorscope: vec![],
+      stereo_map: vec![StereoMapAnalysisRequest {
+        key: "stereoMap:pair:0:1:sp25:smoff".to_string(),
+        pair: StereoMapAnalysisPair {
+          first: 0,
+          second: 1,
+        },
+        speed_percent: 25.0,
+        octave_smoothing: "1/12".to_string(),
+      }],
+    };
+
+    assert!(super::validate_analysis_requests(&requests).is_err());
+  }
+
+  #[test]
+  fn stereo_map_validation_rejects_invalid_channel_indices() {
+    let requests = AnalysisRequests {
+      spectrum: vec![],
+      vectorscope: vec![],
+      stereo_map: vec![StereoMapAnalysisRequest {
+        key: "stereoMap:pair:0:64:sp25:sm12".to_string(),
+        pair: StereoMapAnalysisPair {
+          first: 0,
+          second: 64,
+        },
+        speed_percent: 25.0,
+        octave_smoothing: "1/12".to_string(),
+      }],
+    };
+
+    assert!(super::validate_analysis_requests(&requests).is_err());
+  }
+
+  #[test]
+  fn stereo_map_validation_uses_an_independent_cap() {
+    let stereo_map = (0..super::MAX_STEREO_MAP_ANALYSIS_REQUESTS)
+      .map(|idx| StereoMapAnalysisRequest {
+        key: format!("stereoMap:pair:{idx}:{}:sp25:sm12", idx + 1),
+        pair: StereoMapAnalysisPair {
+          first: idx as u16,
+          second: idx as u16 + 1,
+        },
+        speed_percent: 25.0,
+        octave_smoothing: "1/12".to_string(),
+      })
+      .collect();
+    let requests = AnalysisRequests {
+      spectrum: (0..super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
+        .map(|idx| SpectrumAnalysisRequest {
+          key: format!("spectrum:single:{idx}:combined:sp25:tilt300:smoff"),
+          channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
+          view: "combined".to_string(),
+          speed_percent: 25.0,
+          tilt_db_per_octave: 3.0,
+          octave_smoothing: "off".to_string(),
+        })
+        .collect(),
+      vectorscope: vec![],
+      stereo_map,
+    };
+
+    assert!(super::validate_analysis_requests(&requests).is_ok());
+  }
+
+  #[test]
+  fn stereo_map_validation_rejects_requests_over_its_cap() {
+    let stereo_map = (0..=super::MAX_STEREO_MAP_ANALYSIS_REQUESTS)
+      .map(|idx| StereoMapAnalysisRequest {
+        key: format!("stereoMap:pair:{idx}:{}:sp25:sm12", idx + 1),
+        pair: StereoMapAnalysisPair {
+          first: idx as u16,
+          second: idx as u16 + 1,
+        },
+        speed_percent: 25.0,
+        octave_smoothing: "1/12".to_string(),
+      })
+      .collect();
+    let requests = AnalysisRequests {
+      spectrum: vec![],
+      vectorscope: vec![],
+      stereo_map,
+    };
+
+    assert!(super::validate_analysis_requests(&requests).is_err());
   }
 
   #[test]
