@@ -5,7 +5,7 @@ import { FrameIntake } from "../src/lib/FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../src/lib/historyChunkConfig.js";
 import { nearestTimestampIndex } from "../src/lib/snapshotResolve.js";
 import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
-import { StereoMapHistorySlab } from "../src/lib/StereoMapHistorySlab.js";
+import { HOLD_CHECKPOINT_STRIDE, StereoMapHistorySlab } from "../src/lib/StereoMapHistorySlab.js";
 import { VectorscopeHistorySlab } from "../src/lib/VectorscopeHistorySlab.js";
 import { buildHistoryPath, buildLoudnessHistoryPathsFromIndex } from "../src/math/historyMath.js";
 import { LoudnessHistoryIndex } from "../src/math/loudnessHistoryIndex.js";
@@ -42,8 +42,9 @@ export function projectedVisualBytes() {
 
 /**
  * Exact retained-byte projection for one Stereo Map key: Float64 timestamps, three Float32
- * primitive planes (pl, pr, c) sized `rows * bands`, and a fixed per-chunk Hold index. Pure
- * arithmetic — does not allocate — so it can project the 240-minute/4-key worst case cheaply.
+ * primitive planes (pl, pr, c) sized `rows * bands`, a fixed per-chunk Hold index, and that
+ * chunk's within-chunk Hold checkpoints. Pure arithmetic — does not allocate — so it can project
+ * the 240-minute/4-key worst case cheaply.
  */
 export function projectedStereoMapBytes(rows, { bands = STEREO_MAP_BANDS, keyCount = 1 } = {}) {
   const timestamps = rows * Float64Array.BYTES_PER_ELEMENT;
@@ -51,11 +52,17 @@ export function projectedStereoMapBytes(rows, { bands = STEREO_MAP_BANDS, keyCou
   const primitives = primitivePlane * 3;
   const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
   const holdIndex = chunkCount * bands * STEREO_MAP_HOLD_BYTES_PER_BAND;
-  const perKeyTotal = timestamps + primitives + holdIndex;
+  // A full chunk carries one checkpoint per stride except the final one, which its whole-chunk
+  // summary already covers. Projected at the full-chunk rate: a trailing partial chunk carries
+  // fewer, so this is the ceiling.
+  const checkpointsPerChunk = Math.floor(VISUAL_HISTORY_CHUNK_ROWS / HOLD_CHECKPOINT_STRIDE) - 1;
+  const holdCheckpoints = chunkCount * checkpointsPerChunk * bands * STEREO_MAP_HOLD_BYTES_PER_BAND;
+  const perKeyTotal = timestamps + primitives + holdIndex + holdCheckpoints;
   return {
     timestamps,
     primitives,
     holdIndex,
+    holdCheckpoints,
     perKeyTotal,
     keyCount,
     total: perKeyTotal * keyCount,

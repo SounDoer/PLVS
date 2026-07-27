@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
 import {
+  accumulateStereoMapHold,
+  createStereoMapHoldSummary,
+  stereoMapHoldValues,
+} from "../math/stereoMapHold.js";
+import {
   FrozenStereoMapHistory,
+  HOLD_CHECKPOINT_STRIDE,
   MAX_STEREO_MAP_HISTORY_ROWS,
   StereoMapHistorySlab,
 } from "./StereoMapHistorySlab.js";
@@ -206,8 +212,13 @@ describe("StereoMapHistorySlab", () => {
     // size whether counted as allocated or used. Only the active chunk (index 1) carries a
     // cached Hold prefix — index 0 (the front chunk) never caches one (see
     // `attachHoldPrefixBefore`), so with exactly two chunks there is exactly one prefix's worth.
-    const holdIndexBytes = centers.length * (5 * Float64Array.BYTES_PER_ELEMENT + 4) * 2;
-    const holdPrefixBytes = centers.length * (5 * Float64Array.BYTES_PER_ELEMENT + 4);
+    const summaryBytes = centers.length * (5 * Float64Array.BYTES_PER_ELEMENT + 4);
+    const holdIndexBytes = summaryBytes * 2;
+    const holdPrefixBytes = summaryBytes;
+    // Only the sealed chunk carries checkpoints: one per full stride except the last, which the
+    // whole-chunk summary already covers. The active chunk holds a single row, short of a stride.
+    const holdCheckpointBytes =
+      summaryBytes * (VISUAL_HISTORY_CHUNK_ROWS / HOLD_CHECKPOINT_STRIDE - 1);
     expect(liveStats.allocatedBytes).toEqual({
       timestamps: VISUAL_HISTORY_CHUNK_ROWS * 2 * Float64Array.BYTES_PER_ELEMENT,
       bandCenters: centers.length * Float32Array.BYTES_PER_ELEMENT,
@@ -215,12 +226,14 @@ describe("StereoMapHistorySlab", () => {
       pr: VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT,
       c: VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT,
       holdIndex: holdIndexBytes,
+      holdCheckpoints: holdCheckpointBytes,
       holdPrefix: holdPrefixBytes,
       total:
         VISUAL_HISTORY_CHUNK_ROWS * 2 * Float64Array.BYTES_PER_ELEMENT +
         centers.length * Float32Array.BYTES_PER_ELEMENT +
         VISUAL_HISTORY_CHUNK_ROWS * 2 * centers.length * Float32Array.BYTES_PER_ELEMENT * 3 +
         holdIndexBytes +
+        holdCheckpointBytes +
         holdPrefixBytes,
     });
     expect(liveStats.usedBytes).toEqual({
@@ -230,12 +243,14 @@ describe("StereoMapHistorySlab", () => {
       pr: rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT,
       c: rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT,
       holdIndex: holdIndexBytes,
+      holdCheckpoints: holdCheckpointBytes,
       holdPrefix: holdPrefixBytes,
       total:
         rowCount * Float64Array.BYTES_PER_ELEMENT +
         centers.length * Float32Array.BYTES_PER_ELEMENT +
         rowCount * centers.length * Float32Array.BYTES_PER_ELEMENT * 3 +
         holdIndexBytes +
+        holdCheckpointBytes +
         holdPrefixBytes,
     });
 
@@ -466,7 +481,7 @@ describe("StereoMapHistorySlab", () => {
     expect(result.values[STEREO_MAP_MODES.CORRELATION]).toEqual([-1]);
     expect(result.values[STEREO_MAP_MODES.MONO_LOSS_DB]).toEqual([-Infinity]);
     expect(result.values[STEREO_MAP_MODES.MS_RATIO_DB]).toEqual([Infinity]);
-    expect(result.stats).toEqual({ mergedChunks: 1, scannedRows: 2 });
+    expect(result.stats).toEqual({ mergedChunks: 1, mergedCheckpoints: 0, scannedRows: 2 });
   });
 
   it("does not let future rows contribute to a historical Hold query", () => {
@@ -478,10 +493,17 @@ describe("StereoMapHistorySlab", () => {
 
     expect(result.values[STEREO_MAP_MODES.CORRELATION]).toEqual([0]);
     expect(result.values[STEREO_MAP_MODES.MONO_LOSS_DB][0]).toBeCloseTo(10 * Math.log10(0.5));
-    expect(result.stats).toEqual({ mergedChunks: 0, scannedRows: 1 });
+    expect(result.stats).toEqual({ mergedChunks: 0, mergedCheckpoints: 0, scannedRows: 1 });
   });
 
-  it("scans an oldest partial sealed chunk so an evicted prefix cannot contribute", () => {
+  it("lets the oldest chunk's evicted prefix keep contributing, exactly as liveHoldValues does", () => {
+    // Deliberate: the front chunk is merged whole rather than re-scanned from the retention
+    // boundary. Re-scanning it was the one remaining unbounded term in a Hold query (up to a full
+    // chunk of rows on every scrub tick once retention fills), and it bought a precision that
+    // `liveHoldValues` never had — it has always merged chunks[0].holdSummary whole, evicted
+    // prefix included. Historical Hold now carries the same, bounded slop as live Hold instead of
+    // disagreeing with it. Fully evicted chunks are still dropped outright, so the slop can never
+    // exceed the oldest retained chunk.
     const capacity = VISUAL_HISTORY_CHUNK_ROWS + 2;
     const slab = new StereoMapHistorySlab(capacity);
     appendHoldRow(slab, 0, { c: -1 });
@@ -491,9 +513,9 @@ describe("StereoMapHistorySlab", () => {
 
     const result = slab.holdAt(slab.length - 1, slab.epoch);
 
-    expect(result.values[STEREO_MAP_MODES.CORRELATION]).toEqual([0]);
-    expect(result.values[STEREO_MAP_MODES.MONO_LOSS_DB][0]).toBeCloseTo(10 * Math.log10(0.5));
-    expect(result.stats).toEqual({ mergedChunks: 0, scannedRows: capacity });
+    expect(result.values[STEREO_MAP_MODES.CORRELATION]).toEqual([-1]);
+    expect(slab.liveHoldValues()[STEREO_MAP_MODES.CORRELATION]).toEqual([-1]);
+    expect(result.stats.scannedRows).toBeLessThan(HOLD_CHECKPOINT_STRIDE);
   });
 
   it("does not resurrect an evicted chunk's extremum through the cached prefix", () => {
@@ -553,6 +575,43 @@ describe("StereoMapHistorySlab", () => {
 
     expect(result.stats.mergedChunks).toBeLessThanOrEqual(3);
     expect(result.stats.scannedRows).toBeLessThanOrEqual(VISUAL_HISTORY_CHUNK_ROWS);
+  });
+
+  it("bounds a Hold query landing mid-chunk to one checkpoint merge plus under a stride of rows", () => {
+    // The cached per-chunk prefix only collapses the chunks *before* the target's own chunk; the
+    // target's position inside that chunk was still re-scanned row by row, so scrubbing to a row
+    // near the end of a sealed chunk cost a full chunk's worth of derivation (~1000 rows).
+    const capacity = VISUAL_HISTORY_CHUNK_ROWS * 3;
+    const slab = new StereoMapHistorySlab(capacity);
+    for (let index = 0; index < capacity; index += 1) appendHoldRow(slab, index);
+
+    // One row short of the chunk boundary: the worst case, and no rarer than any other landing.
+    const result = slab.holdAt(VISUAL_HISTORY_CHUNK_ROWS * 2 - 2, slab.epoch);
+
+    expect(result.stats.mergedCheckpoints).toBe(1);
+    expect(result.stats.scannedRows).toBeLessThan(HOLD_CHECKPOINT_STRIDE);
+  });
+
+  it("resolves a mid-chunk Hold query to the same values a linear rescan produces", () => {
+    const capacity = VISUAL_HISTORY_CHUNK_ROWS * 2;
+    const slab = new StereoMapHistorySlab(capacity);
+    for (let index = 0; index < capacity; index += 1) {
+      // Scatter each mode's extremes across rows rather than parking them on one edge row, so a
+      // checkpoint that silently dropped rows would change the answer.
+      appendHoldRow(slab, index, {
+        pl: 1 + (index % 7) / 10,
+        pr: 1 + (index % 5) / 10,
+        c: ((index % 11) - 5) / 20,
+      });
+    }
+    const target = VISUAL_HISTORY_CHUNK_ROWS + 300;
+
+    const reference = createStereoMapHoldSummary(1);
+    for (let index = 0; index <= target; index += 1) {
+      accumulateStereoMapHold(reference, slab.rowAt(index));
+    }
+
+    expect(slab.holdAt(target, slab.epoch).values).toEqual(stereoMapHoldValues(reference));
   });
 
   it("merges every chunk's already-maintained Hold summary for liveHoldValues, across a chunk boundary", () => {

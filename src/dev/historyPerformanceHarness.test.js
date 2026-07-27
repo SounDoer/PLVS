@@ -4,7 +4,7 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { FrameIntake } from "../lib/FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../lib/historyChunkConfig.js";
 import { resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
-import { StereoMapHistorySlab } from "../lib/StereoMapHistorySlab.js";
+import { HOLD_CHECKPOINT_STRIDE, StereoMapHistorySlab } from "../lib/StereoMapHistorySlab.js";
 import {
   projectedStereoMapBytes,
   projectedStereoMapRetentionBytes,
@@ -567,14 +567,18 @@ describe("Stereo Map history benchmark projections", () => {
       const expectedTimestamps = rows * Float64Array.BYTES_PER_ELEMENT;
       const expectedPrimitives = rows * bands * Float32Array.BYTES_PER_ELEMENT * 3;
       const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
-      const expectedHoldIndex =
-        chunkCount *
-        bands *
-        (5 * Float64Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT);
+      const summaryBytes =
+        bands * (5 * Float64Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT);
+      const expectedHoldIndex = chunkCount * summaryBytes;
+      const expectedHoldCheckpoints =
+        chunkCount * (VISUAL_HISTORY_CHUNK_ROWS / HOLD_CHECKPOINT_STRIDE - 1) * summaryBytes;
       expect(projected.timestamps).toBe(expectedTimestamps);
       expect(projected.primitives).toBe(expectedPrimitives);
       expect(projected.holdIndex).toBe(expectedHoldIndex);
-      expect(projected.total).toBe(expectedTimestamps + expectedPrimitives + expectedHoldIndex);
+      expect(projected.holdCheckpoints).toBe(expectedHoldCheckpoints);
+      expect(projected.total).toBe(
+        expectedTimestamps + expectedPrimitives + expectedHoldIndex + expectedHoldCheckpoints
+      );
     }
   });
 
@@ -586,12 +590,16 @@ describe("Stereo Map history benchmark projections", () => {
       expect(fourKeys[index].total).toBe(oneKey[index].total * 4);
     }
 
-    // The plan calls out roughly 3.9 GiB retained by one full Stereo Map key at 240 minutes;
-    // this pins that figure so a future change cannot silently shrink it.
+    // The plan calls out roughly 3.9 GiB retained by one full Stereo Map key at 240 minutes; this
+    // pins that figure so a future change cannot silently shrink it. Within-chunk Hold checkpoints
+    // add a deliberate ~5% on top (~0.2 GiB here) to bound a scrub-time Hold query to well under
+    // one stride of rows — see HOLD_CHECKPOINT_STRIDE. The band is kept tight so any further growth
+    // still has to be argued for.
     const fullRetention = oneKey.at(-1);
     expect(fullRetention.minutes).toBe(240);
-    expect(fullRetention.total).toBeGreaterThan(3.8 * 1024 ** 3);
-    expect(fullRetention.total).toBeLessThan(4.0 * 1024 ** 3);
+    expect(fullRetention.total).toBeGreaterThan(4.0 * 1024 ** 3);
+    expect(fullRetention.total).toBeLessThan(4.2 * 1024 ** 3);
+    expect(fullRetention.holdCheckpoints / fullRetention.perKeyTotal).toBeLessThan(0.06);
   });
 });
 
