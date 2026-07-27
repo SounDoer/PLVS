@@ -48,6 +48,10 @@ export function reduceMeterAudioFrame(previous, frame) {
       frame.vectorscopeResultsByKey && typeof frame.vectorscopeResultsByKey === "object"
         ? frame.vectorscopeResultsByKey
         : (previous.vectorscopeResultsByKey ?? {}),
+    stereoMapResultsByKey:
+      frame.stereoMapResultsByKey && typeof frame.stereoMapResultsByKey === "object"
+        ? frame.stereoMapResultsByKey
+        : (previous.stereoMapResultsByKey ?? {}),
     dialogueIntegrated: Number.isFinite(frame.dialogueIntegrated)
       ? frame.dialogueIntegrated
       : -Infinity,

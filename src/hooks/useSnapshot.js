@@ -6,6 +6,7 @@ import {
   polarLevelPeakHoldAt,
 } from "../math/vectorscopePolarMath.js";
 import { buildSpectrumSvgFromBandsAndDb } from "../math/spectrumMath.js";
+import { deriveStereoMapRow } from "../math/stereoMapMath.js";
 import { resolveSnapshot, resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
 
 const VECTORSCOPE_SIGNAL_FLOOR = 10 ** (-90 / 20);
@@ -35,6 +36,7 @@ function freezeSnapshot(intake, liveAudioFallback) {
     frequencyMarkerIndex: intake.snapshotSparseFrequencyChannelMarkers?.() ?? null,
     spectrumByKey: intake.snapshotVisualSpectrumByKey?.() ?? {},
     vectorscopeByKey: intake.snapshotVisualVectorscopeByKey?.() ?? {},
+    stereoMapByKey: intake.snapshotVisualStereoMapByKey?.() ?? {},
     liveAudioFallback,
   };
 }
@@ -97,6 +99,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       targetTimestampMs: resolved.targetTimestampMs,
       spectrum: new Map(),
       vectorscope: new Map(),
+      stereoMap: new Map(),
     }),
     [snapSource, resolved.targetTimestampMs]
   );
@@ -204,6 +207,54 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       snapSource,
     ]
   );
+  // Stereo Map: select the primitive row for the request key with the same keyed/no-backfill
+  // semantics as Spectrum/Vectorscope above, then derive the caller's selected Mode from that one
+  // retained row. Mode is a pure frontend projection (see stereoMapMath.js), so switching Mode
+  // never changes which row is selected or re-queries history.
+  const resolveStereoMapSnapshotForKey = useCallback(
+    (key, mode, range) => {
+      const entries = snapSource?.stereoMapByKey?.[key];
+      const targetCache = snapSource
+        ? resultCacheForKey(keyedResultCache.stereoMap, key, entries)
+        : null;
+      const modeCacheKey = `${mode}|${range?.lowerBound}|${range?.upperBound}`;
+      let optionCache = targetCache?.get(resolved.targetTimestampMs);
+      if (optionCache?.has(modeCacheKey)) return optionCache.get(modeCacheKey);
+
+      const { index, missing } = resolveKeyedVisualIndex(
+        entries,
+        resolved.targetTimestampMs,
+        keyToleranceMs
+      );
+      let result;
+      if (missing) {
+        result = { missing: true, mode, bandCentersHz: null, derived: null, hold: null };
+      } else {
+        const row = entries.rowAt(index);
+        const derived = deriveStereoMapRow(mode, row, range);
+        const holdResult =
+          typeof entries.holdAtOrBeforeTimestamp === "function"
+            ? entries.holdAtOrBeforeTimestamp(resolved.targetTimestampMs)
+            : null;
+        result = {
+          missing: false,
+          mode,
+          bandCentersHz: row.bandCentersHz,
+          derived,
+          hold: holdResult ? holdResult.values[mode] : null,
+        };
+      }
+      if (targetCache) {
+        if (!optionCache) {
+          optionCache = new Map();
+          targetCache.set(resolved.targetTimestampMs, optionCache);
+        }
+        optionCache.set(modeCacheKey, result);
+      }
+      return result;
+    },
+    [keyToleranceMs, keyedResultCache.stereoMap, resolved.targetTimestampMs, snapSource]
+  );
 
   return {
     histSourceList,
@@ -220,5 +271,6 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
+    resolveStereoMapSnapshotForKey,
   };
 }

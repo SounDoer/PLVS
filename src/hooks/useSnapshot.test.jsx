@@ -305,6 +305,144 @@ describe("useSnapshot", () => {
     expect(Math.max(...withHold.peakHold)).toBeCloseTo(Math.SQRT2, 5);
   });
 
+  it("resolves a per-key Stereo Map row and derives the selected Mode", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    intake.snapshotVisualStereoMapByKey = () => ({
+      [key]: {
+        length: 1,
+        timestampAt: () => 1000,
+        rowAt: () => ({
+          timestampMs: 1000,
+          bandCentersHz: [100],
+          pl: [1],
+          pr: [0.25],
+          c: [0],
+        }),
+        holdAtOrBeforeTimestamp: () => ({
+          values: { position: { minimum: [0.1], maximum: [0.9] } },
+        }),
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const range = { lowerBound: -1, upperBound: 1 };
+    const snap = result.current.resolveStereoMapSnapshotForKey(key, "position", range);
+    expect(snap.missing).toBe(false);
+    expect(snap.mode).toBe("position");
+    expect(snap.bandCentersHz).toEqual([100]);
+    // Position = (pl - pr) / (pl + pr) = (1 - 0.25) / 1.25 = 0.6
+    expect(snap.derived.values[0]).toBeCloseTo(0.6);
+    expect(snap.hold).toEqual({ minimum: [0.1], maximum: [0.9] });
+  });
+
+  it("reconstructs a different Mode from the same retained Stereo Map row without re-selecting it", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    let rowAtCalls = 0;
+    intake.snapshotVisualStereoMapByKey = () => ({
+      [key]: {
+        length: 1,
+        timestampAt: () => 1000,
+        rowAt: () => {
+          rowAtCalls += 1;
+          return { timestampMs: 1000, bandCentersHz: [100], pl: [1], pr: [0.25], c: [0] };
+        },
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const positionRange = { lowerBound: -1, upperBound: 1 };
+    const correlationRange = { lowerBound: -1, upperBound: 1 };
+    const positionSnap = result.current.resolveStereoMapSnapshotForKey(
+      key,
+      "position",
+      positionRange
+    );
+    const correlationSnap = result.current.resolveStereoMapSnapshotForKey(
+      key,
+      "correlation",
+      correlationRange
+    );
+
+    expect(positionSnap.bandCentersHz).toEqual(correlationSnap.bandCentersHz);
+    expect(positionSnap.derived.values[0]).not.toBeCloseTo(correlationSnap.derived.values[0]);
+    // Mode switching selects another derivation of the same retained row (same key, same
+    // timestamp), never a different index/row.
+    expect(rowAtCalls).toBe(2);
+  });
+
+  it("marks a per-key Stereo Map snapshot missing after that request stopped collecting", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }, { timestampMs: 1200 }],
+      corr: [0.1, 0.2],
+      audio: [{ correlation: 0.1 }, { correlation: 0.2 }],
+    };
+    const intake = createIntake(samples);
+    intake.snapshotVisualStereoMapByKey = () => ({
+      "stereoMap:pair:2:3:sp50:sm12": [
+        { timestampMs: 1040, bandCentersHz: [100], pl: [1], pr: [1], c: [0] },
+        { timestampMs: 1080, bandCentersHz: [100], pl: [1], pr: [1], c: [0] },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    expect(
+      result.current.resolveStereoMapSnapshotForKey("stereoMap:pair:2:3:sp50:sm12", "position", {
+        lowerBound: -1,
+        upperBound: 1,
+      })
+    ).toEqual({ missing: true, mode: "position", bandCentersHz: null, derived: null, hold: null });
+  });
+
+  it("resolves an interior Analysis Key gap to Missing rather than the nearest unrelated row", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1500 }],
+      corr: [0.5],
+      audio: [{ correlation: 0.5 }],
+    };
+    const intake = createIntake(samples);
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    // Retained rows at 1000 and 2000 with an inactive gap between them (the key stopped and later
+    // reactivated); the selected snapshot time (1500, via loudness history above) sits in that gap.
+    intake.snapshotVisualStereoMapByKey = () => ({
+      [key]: [
+        { timestampMs: 1000, bandCentersHz: [100], pl: [1], pr: [1], c: [0] },
+        { timestampMs: 2000, bandCentersHz: [100], pl: [1], pr: [1], c: [0] },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    expect(
+      result.current.resolveStereoMapSnapshotForKey(key, "position", {
+        lowerBound: -1,
+        upperBound: 1,
+      })
+    ).toEqual({ missing: true, mode: "position", bandCentersHz: null, derived: null, hold: null });
+  });
+
   it("memoizes main snapshot resolution across live audio rerenders", () => {
     const loudness = countingTimestampRows([1000, 1100]);
     const intake = createIntake({

@@ -50,6 +50,7 @@
  * @property {number} vectorscopePairY
  * @property {Record<string, SpectrumFrameResult>} spectrumResultsByKey
  * @property {Record<string, VectorscopeFrameResult>} vectorscopeResultsByKey
+ * @property {Record<string, StereoMapFrameResult>} stereoMapResultsByKey
  * @property {number} timestampMs
  * @property {MeterHistoryEntry|null|undefined} loudnessHistTick
  * @property {VisualHistEntry|null|undefined} visualHistTick
@@ -72,6 +73,14 @@
  */
 
 /**
+ * @typedef {object} StereoMapVisualEntry
+ * @property {number[]} bandCentersHz
+ * @property {number[]} pl
+ * @property {number[]} pr
+ * @property {number[]} c
+ */
+
+/**
  * @typedef {object} VisualHistEntry
  * @property {number} timestampMs
  * @property {number[]} waveformMin
@@ -80,6 +89,7 @@
  * @property {number} sideToMidDb
  * @property {Record<string, SpectrumVisualEntry>} spectrumByKey
  * @property {Record<string, VectorscopeVisualEntry>} vectorscopeByKey
+ * @property {Record<string, StereoMapVisualEntry>} stereoMapByKey
  */
 
 /**
@@ -102,6 +112,14 @@
  * @property {number} sideEnergy
  * @property {number} pairX
  * @property {number} pairY
+ */
+
+/**
+ * @typedef {object} StereoMapFrameResult
+ * @property {number[]} bandCentersHz
+ * @property {number[]} pl
+ * @property {number[]} pr
+ * @property {number[]} c
  */
 
 /**

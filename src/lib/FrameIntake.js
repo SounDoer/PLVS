@@ -2,6 +2,7 @@ import { RingBuffer } from "./RingBuffer.js";
 import { SparseHistoryMarkers } from "./SparseHistoryMarkers.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
+import { StereoMapHistorySlab } from "./StereoMapHistorySlab.js";
 import { LoudnessHistoryIndex } from "../math/loudnessHistoryIndex.js";
 import { WaveformHistoryIndex } from "../math/waveformHistoryIndex.js";
 
@@ -167,6 +168,7 @@ export class FrameIntake {
     // old request still shows its history until reset() / capacity change clears them.
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
+    this._visualStereoMapHistByKey = new Map();
     this._histTimestamp = createTimestampDomain();
     this._visualTimestamp = createTimestampDomain();
     this._currentChannelMetadata = {
@@ -221,14 +223,14 @@ export class FrameIntake {
    * Process a live audio frame.
    * @param {object} frame AudioFramePayload from Tauri
    * @param {number} histMaxSamples ring capacity
-   * @param {number} defaultSampleRate retained for call-site compatibility
+   * @param {number} defaultSampleRate capture/file sample rate; stamped onto Stereo Map history rows
    * @param {boolean} [freezeSpectrum] retained for call-site compatibility
    * @param {number} [visualMaxSamples] when >0, also ingest visual history ticks/batches
    */
   pushFrame(
     frame,
     histMaxSamples,
-    _defaultSampleRate,
+    defaultSampleRate,
     _freezeSpectrum = false,
     visualMaxSamples = 0
   ) {
@@ -236,14 +238,14 @@ export class FrameIntake {
       ? [frame.loudnessHistTick]
       : (frame.loudnessHistBatch ?? []);
     for (const tick of loudnessTicks) {
-      this.pushHistRow(tick, histMaxSamples, _defaultSampleRate);
+      this.pushHistRow(tick, histMaxSamples, defaultSampleRate);
     }
     if (visualMaxSamples > 0) {
       const visualTicks = frame.visualHistTick
         ? [frame.visualHistTick]
         : (frame.visualHistBatch ?? []);
       for (const tick of visualTicks) {
-        this.pushVisualHistRow(tick, visualMaxSamples);
+        this.pushVisualHistRow(tick, visualMaxSamples, defaultSampleRate);
       }
     }
   }
@@ -282,7 +284,7 @@ export class FrameIntake {
     this._pendingFrequencyMarker = null;
   }
 
-  pushVisualHistRow(row, visualMaxSamples) {
+  pushVisualHistRow(row, visualMaxSamples, defaultSampleRate) {
     const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._visualTimestamp);
     if (this._visualWaveformHist.capacity !== visualMaxSamples) {
       this._visualWaveformHist = new RingBuffer(visualMaxSamples);
@@ -290,6 +292,7 @@ export class FrameIntake {
       // capacity rather than mixing sizes.
       this._visualSpectrumHistByKey = new Map();
       this._visualVectorscopeHistByKey = new Map();
+      this._visualStereoMapHistByKey = new Map();
     }
 
     this._visualWaveformHist.push({
@@ -339,6 +342,27 @@ export class FrameIntake {
           midEnergy: Number.isFinite(entry.midEnergy) ? entry.midEnergy : 0,
           sideEnergy: Number.isFinite(entry.sideEnergy) ? entry.sideEnergy : 0,
           timestampMs,
+        });
+      }
+    }
+    const stereoMapByKey = row.stereoMapByKey;
+    if (stereoMapByKey) {
+      const sampleRateHz = Number.isFinite(defaultSampleRate) ? defaultSampleRate : 48000;
+      for (const key in stereoMapByKey) {
+        const entry = stereoMapByKey[key];
+        if (!entry.bandCentersHz?.length || !entry.pl?.length) continue;
+        let slab = this._visualStereoMapHistByKey.get(key);
+        if (!slab || slab.capacity !== visualMaxSamples) {
+          slab = new StereoMapHistorySlab(visualMaxSamples);
+          this._visualStereoMapHistByKey.set(key, slab);
+        }
+        slab.append({
+          timestampMs,
+          sampleRateHz,
+          bandCentersHz: entry.bandCentersHz,
+          pl: entry.pl,
+          pr: entry.pr,
+          c: entry.c,
         });
       }
     }
@@ -400,6 +424,9 @@ export class FrameIntake {
   getVisualVectorscopeHistByKey(key) {
     return this._visualVectorscopeHistByKey.get(key) ?? null;
   }
+  getVisualStereoMapHistByKey(key) {
+    return this._visualStereoMapHistByKey.get(key) ?? null;
+  }
   getSpectrogramSnapsForKey(key) {
     return this._visualSpectrumHistByKey.get(key) ?? EMPTY_SPECTRUM_VIEW;
   }
@@ -413,6 +440,12 @@ export class FrameIntake {
   snapshotVisualVectorscopeByKey() {
     const out = {};
     for (const [key, slab] of this._visualVectorscopeHistByKey) out[key] = slab.freeze();
+    return out;
+  }
+  /** Freeze per-key Stereo Map history into read-only typed views for snapshot scrubbing. */
+  snapshotVisualStereoMapByKey() {
+    const out = {};
+    for (const [key, slab] of this._visualStereoMapHistByKey) out[key] = slab.freeze();
     return out;
   }
 
@@ -429,6 +462,7 @@ export class FrameIntake {
     this._visualWaveformHist.clear();
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
+    this._visualStereoMapHistByKey = new Map();
     this._histTimestamp = createTimestampDomain();
     this._visualTimestamp = createTimestampDomain();
   }

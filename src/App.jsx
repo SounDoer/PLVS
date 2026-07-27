@@ -151,6 +151,7 @@ function AppContent() {
   } = useMeterRuntime();
   const onClearRef = useRef(null);
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
+  const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
   const settings = useSettings({ onClearRef });
   const {
     settingsOpen,
@@ -638,6 +639,7 @@ function AppContent() {
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
+    resolveStereoMapSnapshotForKey,
   } = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
@@ -1073,7 +1075,10 @@ function AppContent() {
     stopFileAnalysis,
     activeFileSession,
     getFileAnalysisSettings: currentFileAnalysisSettings,
-    onClearSucceeded: () => setVectorscopeResetEpoch((epoch) => epoch + 1),
+    onClearSucceeded: () => {
+      setVectorscopeResetEpoch((epoch) => epoch + 1);
+      setStereoMapResetEpoch((epoch) => epoch + 1);
+    },
   });
   onClearRef.current = clearAll;
 
@@ -1364,8 +1369,11 @@ function AppContent() {
     snapshotSpectrumByKey,
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
+    resolveStereoMapSnapshotForKey,
     getVectorscopeHistoryForKey: (key) => intakeRef.current.getVisualVectorscopeHistByKey(key),
+    getStereoMapHistoryForKey: (key) => intakeRef.current.getVisualStereoMapHistByKey(key),
     vectorscopeResetEpoch,
+    stereoMapResetEpoch,
     getSpectrogramSnapsForKey,
   };
   // frameData/historyData change at frame/history-sample rate by nature, so memoizing
