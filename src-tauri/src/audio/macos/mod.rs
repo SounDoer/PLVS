@@ -15,7 +15,7 @@ use super::capture::{AudioCapture, AudioCaptureSession};
 use super::cpal_backend::{
   append_input_devices, collect_outputs, device_id_key, device_list_label, pick_output_by_index,
   pooled_pcm_buffer_capacity, resolve_default_output, run_meter_pipeline_bridge_thread,
-  CpalBackend, PcmBufferPool,
+  CpalBackend, PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
 use super::device::DeviceInfo;
 use super::device_id;
@@ -174,15 +174,19 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   } = args;
 
   let (uid, sample_rate, channels) = resolve_tap_uid_channels_rate(&device_id)?;
-  let pcm_pool = PcmBufferPool::new(64, pooled_pcm_buffer_capacity(sample_rate, channels));
+  let pcm_pool = PcmBufferPool::new(
+    PCM_QUEUE_CAP + 1,
+    pooled_pcm_buffer_capacity(sample_rate, channels),
+  );
   let bridge_pool = pcm_pool.clone();
-  let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(64);
+  let delivery = PcmDeliveryQueue::new(PCM_QUEUE_CAP);
+  let consumer_delivery = delivery.clone();
   let clear_for_thread = clear_peak_history.clone();
   let reset_tp_max_for_thread = reset_tp_max.clone();
   let dropped_for_thread = dropped_chunks.clone();
   let bridge = std::thread::spawn(move || {
     run_meter_pipeline_bridge_thread(
-      audio_rx,
+      consumer_delivery,
       sample_rate,
       channels,
       frame_subscribers,
@@ -199,9 +203,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   });
 
   let ctx = Box::new(PcmBridgeCtx {
-    tx: audio_tx.clone(),
-    dropped: dropped_chunks,
-    pool: pcm_pool,
+    forwarder: PcmCallbackForwarder::new(delivery.producer(), pcm_pool, dropped_chunks),
   });
   let ctx_ptr = Box::into_raw(ctx);
   let uid_c = CString::new(uid).map_err(|_| "device UID contains NUL".to_string())?;
@@ -219,7 +221,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
     unsafe {
       drop(Box::from_raw(ctx_ptr));
     }
-    drop(audio_tx);
+    delivery.stop_producer();
     let _ = bridge.join();
     let msg = err
       .iter()
@@ -239,7 +241,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
       drop(Box::from_raw(userdata_out.cast::<PcmBridgeCtx>()));
     }
   }
-  drop(audio_tx);
+  delivery.stop_producer();
   let _ = bridge.join();
   Ok(())
 }

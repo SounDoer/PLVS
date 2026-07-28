@@ -20,7 +20,7 @@ use crate::engine::MeterPipeline;
 use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload};
 use tauri::{AppHandle, Emitter, Manager};
 
-const PCM_QUEUE_CAP: usize = 64;
+pub(crate) const PCM_QUEUE_CAP: usize = 64;
 const PCM_POOL_CHUNK_MS: usize = 100;
 const PCM_MIN_BUFFER_SAMPLES: usize = 4096;
 /// Worker-only idle wait. The callback never wakes or unparks the worker; at most 1 ms is added
@@ -224,7 +224,7 @@ impl PcmDeliveryQueue {
     }
   }
 
-  fn producer(&self) -> PcmDeliveryProducer {
+  pub(crate) fn producer(&self) -> PcmDeliveryProducer {
     PcmDeliveryProducer {
       buffers: self.buffers.clone(),
       consumer_stopped: self.consumer_stopped.clone(),
@@ -264,7 +264,7 @@ impl PcmDeliveryQueue {
 }
 
 #[derive(Clone)]
-struct PcmDeliveryProducer {
+pub(crate) struct PcmDeliveryProducer {
   buffers: Arc<ArrayQueue<Vec<f32>>>,
   consumer_stopped: Arc<AtomicBool>,
   active_pushes: Arc<AtomicUsize>,
@@ -382,7 +382,11 @@ pub(crate) struct PcmCallbackForwarder {
 }
 
 impl PcmCallbackForwarder {
-  fn new(producer: PcmDeliveryProducer, pool: PcmBufferPool, dropped: Arc<AtomicU64>) -> Self {
+  pub(crate) fn new(
+    producer: PcmDeliveryProducer,
+    pool: PcmBufferPool,
+    dropped: Arc<AtomicU64>,
+  ) -> Self {
     Self {
       producer,
       pool,
