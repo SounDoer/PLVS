@@ -46,9 +46,8 @@ export function clampViewParams({ azimuthDeg, elevationDeg, heightGain } = {}) {
 /**
  * Precompute the projection for one repaint.
  *
- * Returns the six affine coefficients plus three derived values the renderer needs:
- * `heightScale` (dB -> vertical pixels), `baselineSlope` (the shear that flattens every ridge
- * baseline) and `ridgeOrderAscending` (painter's-algorithm draw order).
+ * Returns the six affine coefficients plus two derived values the renderer needs:
+ * `heightScale` (dB -> vertical pixels) and `ridgeOrderAscending` (painter's-algorithm draw order).
  */
 export function buildProjection({ azimuthDeg, elevationDeg, width, height }) {
   const view = clampViewParams({ azimuthDeg, elevationDeg });
@@ -99,12 +98,6 @@ export function buildProjection({ azimuthDeg, elevationDeg, width, height }) {
     fy: fy * scale,
     hy: hy * scale,
     heightScale: rise * scale,
-    // Every baseline is parallel because the projection is affine, so one shear flattens them all.
-    // At azimuth 0/180 the frequency axis projects to a vertical line (fx*scale === 0), so this
-    // is +/-Infinity or NaN (0/0 at fy*scale === 0 too, i.e. elevation 0, which clampViewParams
-    // already forbids). A renderer using this as a shear factor must treat a non-finite slope as
-    // "draw ridges as straight horizontal segments" rather than feed it into a multiply.
-    baselineSlope: (fy * scale) / (fx * scale),
     // Larger screen y is nearer the viewer. Draw the far end first so the newest frame, which is
     // what live monitoring watches, ends up unoccluded on top.
     ridgeOrderAscending: ty <= 0,

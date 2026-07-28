@@ -42,8 +42,33 @@ function resolveSurface(canvas) {
   return cssVar(canvas, "--background", "#000");
 }
 
-function buildColorGradient(ctx, colormapLut, heightPx) {
-  const gradient = ctx.createLinearGradient(0, 0, 0, -heightPx);
+/**
+ * A ridge's colour ramp, running from its own baseline up to full height.
+ *
+ * Iso-colour lines must be parallel to the baseline, and the baseline is sloped, so the gradient
+ * axis is the baseline's perpendicular rather than plain vertical. With baseline direction
+ * `(fx, fy)` and perpendicular `n = (-fy, fx)`, the endpoint that makes the gradient parameter
+ * equal the normalised height is `startBase + k * n` for `k = -heightPx * fx / (fx^2 + fy^2)`.
+ *
+ * Sanity check: a horizontal baseline (`fy = 0`) reduces to a plain vertical ramp of `heightPx`.
+ * A vertical one (`fx = 0`, azimuth 0 or 180) degenerates to `k = 0` — the same degenerate view the
+ * caller already guards against.
+ *
+ * This is built per ridge rather than once per repaint. An earlier design shared one gradient
+ * across all ridges by shearing the canvas, which is exact but incompatible with Path2D: Path2D
+ * resolves its coordinates against the CTM at paint time, so a shear applied before stroking moves
+ * the curve instead of just the gradient. Path2D is needed to fill the occluding skirt without
+ * stroking it, and that matters more.
+ */
+function buildRidgeGradient(ctx, colormapLut, startBase, proj, heightPx) {
+  const denom = proj.fx * proj.fx + proj.fy * proj.fy;
+  const k = (-heightPx * proj.fx) / denom;
+  const gradient = ctx.createLinearGradient(
+    startBase.x,
+    startBase.y,
+    startBase.x - k * proj.fy,
+    startBase.y + k * proj.fx
+  );
   for (let s = 0; s <= GRADIENT_STOPS; s++) {
     const frac = s / GRADIENT_STOPS;
     const idx = Math.round(frac * 255) * 3;
@@ -335,21 +360,10 @@ export function useSpectrogram3dCanvas({
       drawFloor(ctx, proj, ink, dpr);
       drawAxisLabels(ctx, proj, ink, dpr);
 
-      // Colorize builds ONE gradient per repaint. It is expressed in a sheared space where every
-      // ridge baseline is horizontal — the projection is affine, so all baselines share a slope and
-      // a single shear flattens them together. Per ridge only a translate is then needed.
-      //
-      // At azimuth 0 and 180 the frequency axis has no horizontal extent, so baselineSlope is
-      // +/-Infinity. That is a legitimate degenerate view, not an error — but feeding it to
-      // setTransform would corrupt the canvas matrix, so fall back to a monochrome stroke for
-      // those angles rather than shearing by infinity.
-      const canShear = Number.isFinite(proj.baselineSlope);
-      let gradient = null;
-      if (p.colorize && canShear) {
-        ctx.setTransform(1, proj.baselineSlope, 0, 1, 0, 0);
-        gradient = buildColorGradient(ctx, p.colormapLut, heightPx);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-      }
+      // At azimuth 0 and 180 the frequency axis has no projected horizontal extent, so a ridge's
+      // colour ramp degenerates. That is a legitimate view, not an error — fall back to a
+      // monochrome stroke at those angles instead of dividing into it.
+      const canColorize = p.colorize && Math.abs(proj.fx) > 1e-6;
 
       // Scrub feedback: a vertical line through a 3D scene means nothing, so the selected ridge is
       // highlighted instead. selectionXFrac is the same 0..1 window fraction the 2D selection line
@@ -375,41 +389,39 @@ export function useSpectrogram3dCanvas({
         const tFrac = (r + 0.5) / ridgeCount;
         const base = r * grid.pointCount;
 
-        ctx.beginPath();
+        // Two paths, not one. The skirt down to the baseline is what occludes the ridges behind,
+        // so it must be filled — but it must NOT be stroked: stroking the closed path draws every
+        // ridge's own baseline onto the floor, and a hundred of those carpet the scene in parallel
+        // lines that read as noise. Path2D's copy constructor clones the curve natively, so the
+        // per-point projection work is still only done once.
+        const curve = new Path2D();
         for (let q = 0; q < grid.pointCount; q++) {
           const fFrac = q / (grid.pointCount - 1);
           const pt = projectPoint(tFrac, fFrac, grid.heights[base + q] * view.heightGain, proj);
-          if (q === 0) ctx.moveTo(pt.x, pt.y);
-          else ctx.lineTo(pt.x, pt.y);
+          if (q === 0) curve.moveTo(pt.x, pt.y);
+          else curve.lineTo(pt.x, pt.y);
         }
         const endBase = projectPoint(tFrac, 1, 0, proj);
         const startBase = projectPoint(tFrac, 0, 0, proj);
-        ctx.lineTo(endBase.x, endBase.y);
-        ctx.lineTo(startBase.x, startBase.y);
-        ctx.closePath();
+        const skirt = new Path2D(curve);
+        skirt.lineTo(endBase.x, endBase.y);
+        skirt.lineTo(startBase.x, startBase.y);
+        skirt.closePath();
 
         ctx.fillStyle = surface;
-        ctx.fill();
+        ctx.fill(skirt);
 
         if (r === selectedRidge) {
           ctx.strokeStyle = selection;
           ctx.lineWidth = dpr * 2;
-          ctx.stroke();
+          ctx.stroke(curve);
           ctx.lineWidth = dpr;
-        } else if (gradient) {
-          // Order matters and is easy to get wrong: the transform must be in effect WHEN the
-          // gradient is used as strokeStyle and when stroke() runs, because gradient coordinates
-          // resolve against the CTM at paint time. Setting strokeStyle inside save/restore and
-          // stroking after the restore silently reverts it.
-          ctx.save();
-          ctx.transform(1, proj.baselineSlope, 0, 1, 0, 0);
-          ctx.translate(0, startBase.y - proj.baselineSlope * startBase.x);
-          ctx.strokeStyle = gradient;
-          ctx.stroke();
-          ctx.restore();
+        } else if (canColorize) {
+          ctx.strokeStyle = buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx);
+          ctx.stroke(curve);
         } else {
           ctx.strokeStyle = ink;
-          ctx.stroke();
+          ctx.stroke(curve);
         }
       }
     }

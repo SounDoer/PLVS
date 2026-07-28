@@ -52,7 +52,9 @@ describe("projectPoint", () => {
     expect(near).toBeCloseTo(proj.heightScale, 6);
   });
 
-  // Every ridge baseline is parallel, which is what lets one shear flatten all of them.
+  // Every ridge baseline is parallel because the projection is affine. The Colorize ramp relies on
+  // this: its axis is the baseline's perpendicular, derived once from (fx, fy) and reused for every
+  // ridge, which is only valid while all baselines share a direction.
   it("gives every ridge baseline the same slope", () => {
     const proj = buildProjection({ azimuthDeg: 40, elevationDeg: 25, ...VIEW });
     const slopeAt = (tFrac) => {
@@ -61,7 +63,7 @@ describe("projectPoint", () => {
       return (b.y - a.y) / (b.x - a.x);
     };
     expect(slopeAt(0.9)).toBeCloseTo(slopeAt(0.1), 6);
-    expect(proj.baselineSlope).toBeCloseTo(slopeAt(0.5), 6);
+    expect(slopeAt(0.5)).toBeCloseTo(proj.fy / proj.fx, 6);
   });
 
   it("fits the whole unit cube inside the canvas", () => {
