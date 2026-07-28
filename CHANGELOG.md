@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-07-28
+
+### Added
+- Stereo Map: a new frequency-domain stereo-analysis panel (Workspace panel and Dock module) showing where each frequency region sits in the stereo field, channel-pair correlation, mono fold-down phase cancellation, and Mid/Side energy dominance, with live capture, file analysis, history, and snapshot support.
+
 ### Changed
 - Renamed Vectorscope Polar Level's `Peak hold` to `Max hold` and Stereo Map's `Hold` to `Max hold`, matching Vectorscope's always-on running-maximum behavior; renamed Spectrum's `Max hold` to `Max decay` to distinguish its decaying peak from the other two panels' non-decaying hold.
+- All panel settings labels now use Title Case.
+- Stereo Map rendering and history performance improved (canvas-based curve drawing, chunked hold reconstruction, cached hold summaries).
+
+### Fixed
+- Stereo Map no longer shows its mono-only message before capture has started.
 
 ## [0.11.3] - 2026-07-25
 
