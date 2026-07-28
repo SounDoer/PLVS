@@ -62,7 +62,7 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
   correlation: Object.freeze({
     pair: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.vectorscopePair }),
     mode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
-    polarLevelPeakHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelPeakHold,
+    polarLevelMaxHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold,
   }),
   stats: Object.freeze({
     statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
@@ -254,7 +254,12 @@ export function normalizeDockModuleControls(moduleId, raw) {
       return {
         pair: pair(raw?.pair, defaults.pair),
         mode: VECTORSCOPE_MODES.has(raw?.mode) ? raw.mode : defaults.mode,
-        polarLevelPeakHold: bool(raw?.polarLevelPeakHold, defaults.polarLevelPeakHold),
+        // polarLevelMaxHold was polarLevelPeakHold; read the old key as a fallback so presets
+        // saved before the rename keep their value (see panelControls.js's parallel comment).
+        polarLevelMaxHold: bool(
+          raw?.polarLevelMaxHold ?? raw?.polarLevelPeakHold,
+          defaults.polarLevelMaxHold
+        ),
       };
     case "stats":
       return {

@@ -36,7 +36,7 @@ describe("normalizeDockControlsByModuleId", () => {
     expect(controls.correlation).toMatchObject({
       pair: DEFAULT_PANEL_CONTROLS.vectorscopePair,
       mode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
-      polarLevelPeakHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelPeakHold,
+      polarLevelMaxHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold,
     });
     expect(controls.spectrogram).toMatchObject({
       channel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
@@ -225,19 +225,28 @@ describe("normalizeDockModuleControls", () => {
       normalizeDockModuleControls("correlation", {
         pair: { x: 2, y: 3 },
         mode: "polarLevel",
-        polarLevelPeakHold: true,
+        polarLevelMaxHold: true,
       })
     ).toEqual({
       pair: { x: 2, y: 3 },
       mode: "polarLevel",
-      polarLevelPeakHold: true,
+      polarLevelMaxHold: true,
     });
     expect(
       normalizeDockModuleControls("correlation", {
         mode: "unknown",
-        polarLevelPeakHold: "yes",
+        polarLevelMaxHold: "yes",
       })
-    ).toMatchObject({ mode: "lissajous", polarLevelPeakHold: false });
+    ).toMatchObject({ mode: "lissajous", polarLevelMaxHold: false });
+  });
+
+  it("reads the legacy polarLevelPeakHold key as a fallback", () => {
+    expect(
+      normalizeDockModuleControls("correlation", {
+        mode: "polarLevel",
+        polarLevelPeakHold: true,
+      })
+    ).toMatchObject({ polarLevelMaxHold: true });
   });
 
   it("returns null for modules without controls", () => {

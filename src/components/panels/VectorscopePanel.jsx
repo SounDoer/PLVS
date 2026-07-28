@@ -144,15 +144,15 @@ export function VectorscopePanel() {
   const onTracePointerUp = useCallback(() => {
     releaseHoldSlow();
   }, [releaseHoldSlow]);
-  const [peakHoldResetKey, setPeakHoldResetKey] = useState(0);
-  const canResetPeakHold =
+  const [maxHoldResetKey, setMaxHoldResetKey] = useState(0);
+  const canResetMaxHold =
     !isSnapshot &&
     vectorscopeMode === "polarLevel" &&
-    normalizedPanelControls.vectorscopePolarLevelPeakHold;
+    normalizedPanelControls.vectorscopePolarLevelMaxHold;
   const snapResolved = isSnapshot
     ? resolveVectorscopeSnapshotForKey?.(vectorscopeKey, {
-        withPeakHold:
-          vectorscopeMode === "polarLevel" && normalizedPanelControls.vectorscopePolarLevelPeakHold,
+        withMaxHold:
+          vectorscopeMode === "polarLevel" && normalizedPanelControls.vectorscopePolarLevelMaxHold,
       })
     : null;
   const snapshotMissing = snapResolved?.missing === true;
@@ -300,15 +300,15 @@ export function VectorscopePanel() {
       >
         <div
           data-vectorscope-plot
-          data-peak-hold-reset={canResetPeakHold ? "true" : undefined}
-          className={cn("relative w-full", canResetPeakHold && "cursor-pointer")}
+          data-max-hold-reset={canResetMaxHold ? "true" : undefined}
+          className={cn("relative w-full", canResetMaxHold && "cursor-pointer")}
           style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}
           onPointerDown={onTracePointerDown}
           onPointerMove={onTracePointerMove}
           onPointerUp={onTracePointerUp}
           onPointerCancel={onTracePointerUp}
           onPointerLeave={onTracePointerUp}
-          onClick={canResetPeakHold ? () => setPeakHoldResetKey((k) => k + 1) : undefined}
+          onClick={canResetMaxHold ? () => setMaxHoldResetKey((k) => k + 1) : undefined}
         >
           <div className="absolute inset-[var(--ui-vector-outer-inset)] z-0 min-h-0 min-w-0 overflow-hidden">
             {isLissajous ? (
@@ -381,12 +381,12 @@ export function VectorscopePanel() {
                   mode={vectorscopeMode}
                   rows={polarRows}
                   snapshotPairs={isSnapshot ? snapResolved?.pairs : null}
-                  snapshotPeakHold={isSnapshot ? snapResolved?.peakHold : null}
+                  snapshotMaxHold={isSnapshot ? snapResolved?.maxHold : null}
                   firstLabel={axisXLabel}
                   secondLabel={axisYLabel}
                   showLabels={false}
-                  peakHoldEnabled={normalizedPanelControls.vectorscopePolarLevelPeakHold}
-                  peakHoldResetKey={peakHoldResetKey}
+                  maxHoldEnabled={normalizedPanelControls.vectorscopePolarLevelMaxHold}
+                  maxHoldResetKey={maxHoldResetKey}
                   resetEpoch={vectorscopeResetEpoch}
                   identityKey={`${vectorscopeKey}:${px}:${py}`}
                 />

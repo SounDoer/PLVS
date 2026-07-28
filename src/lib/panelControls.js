@@ -37,7 +37,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   levelMeterTpMaxMarker: false,
   vectorscopePair: { x: 0, y: 1 },
   vectorscopeMode: "lissajous",
-  vectorscopePolarLevelPeakHold: false,
+  vectorscopePolarLevelMaxHold: false,
   spectrumChannel: { type: "pair", x: 0, y: 1 },
   spectrumView: "combined",
   spectrumMaxHold: false,
@@ -219,8 +219,17 @@ function normalizeVectorscopeMode(raw) {
   return VECTORSCOPE_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.vectorscopeMode;
 }
 
-function normalizeVectorscopePolarLevelPeakHold(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelPeakHold;
+function normalizeVectorscopePolarLevelMaxHold(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold;
+}
+
+/// vectorscopePolarLevelMaxHold was vectorscopePolarLevelPeakHold: this hold never decays (it's a
+/// running maximum cleared only by reset/Global Clear), unlike Spectrum's decaying "Max Decay",
+/// so "peak" was misleading here. Presets from before the rename still carry the old key, so read
+/// it as a fallback rather than snapping them back to the default. `??` and not `||`: a stored
+/// `false` is a real value, not an absent one.
+function readVectorscopePolarLevelMaxHoldRaw(raw) {
+  return raw?.vectorscopePolarLevelMaxHold ?? raw?.vectorscopePolarLevelPeakHold;
 }
 
 function normalizeStereoMapMode(raw) {
@@ -362,8 +371,8 @@ export function normalizePanelControls(raw) {
     levelMeterTpMaxMarker: normalizeLevelMeterTpMaxMarker(raw?.levelMeterTpMaxMarker),
     vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
     vectorscopeMode: normalizeVectorscopeMode(raw?.vectorscopeMode),
-    vectorscopePolarLevelPeakHold: normalizeVectorscopePolarLevelPeakHold(
-      raw?.vectorscopePolarLevelPeakHold
+    vectorscopePolarLevelMaxHold: normalizeVectorscopePolarLevelMaxHold(
+      readVectorscopePolarLevelMaxHoldRaw(raw)
     ),
     spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
     spectrumView: normalizeSpectrumView(raw?.spectrumView),

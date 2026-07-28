@@ -186,8 +186,8 @@ describe("VectorscopePolarPlot", () => {
     expect(quiet).toBeLessThan(55);
   });
 
-  it("does not shrink the live Polar Level fill when Peak hold is enabled", () => {
-    const fillTopFor = (peakHoldEnabled) => {
+  it("does not shrink the live Polar Level fill when Max hold is enabled", () => {
+    const fillTopFor = (maxHoldEnabled) => {
       const ctx = contextStub();
       vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
       const { rerender, unmount } = render(
@@ -196,7 +196,7 @@ describe("VectorscopePolarPlot", () => {
           rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
           firstLabel="L"
           secondLabel="R"
-          peakHoldEnabled={peakHoldEnabled}
+          maxHoldEnabled={maxHoldEnabled}
         />
       );
       rerender(
@@ -205,7 +205,7 @@ describe("VectorscopePolarPlot", () => {
           rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 2100 }]}
           firstLabel="L"
           secondLabel="R"
-          peakHoldEnabled={peakHoldEnabled}
+          maxHoldEnabled={maxHoldEnabled}
         />
       );
       const fill = ctx.filledPaths.at(-1);
@@ -216,12 +216,12 @@ describe("VectorscopePolarPlot", () => {
       return top;
     };
 
-    // Regression: on the absolute scale, Peak hold only adds an outer outline. It must never feed
+    // Regression: on the absolute scale, Max hold only adds an outer outline. It must never feed
     // into the live fan's scaling, so the current fill sits at the same quiet radius either way.
     expect(fillTopFor(true)).toBeCloseTo(fillTopFor(false), 0);
   });
 
-  it("keeps Peak hold inside the fixed Polar Level arc after the signal falls", () => {
+  it("keeps Max hold inside the fixed Polar Level arc after the signal falls", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     const { rerender } = render(
@@ -231,7 +231,7 @@ describe("VectorscopePolarPlot", () => {
         hasSignal
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
     ctx.lineTo.mockClear();
@@ -243,7 +243,7 @@ describe("VectorscopePolarPlot", () => {
         hasSignal
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
 
@@ -251,7 +251,7 @@ describe("VectorscopePolarPlot", () => {
     expect(topmostY).toBeGreaterThanOrEqual(60);
   });
 
-  it("connects only the Polar Level Peak hold values", () => {
+  it("connects only the Polar Level Max hold values", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     render(
@@ -261,7 +261,7 @@ describe("VectorscopePolarPlot", () => {
         hasSignal
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
 
@@ -301,7 +301,7 @@ describe("VectorscopePolarPlot", () => {
         hasSignal
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
     styleSpy.mockRestore();
@@ -332,18 +332,18 @@ describe("VectorscopePolarPlot", () => {
     expect(screen.queryByText("R")).toBeNull();
   });
 
-  it("draws the reconstructed Peak hold outline supplied for a snapshot", () => {
+  it("draws the reconstructed Max hold outline supplied for a snapshot", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     render(
       <VectorscopePolarPlot
         mode="polarLevel"
         snapshotPairs={new Float32Array([0.25, 0.25])}
-        snapshotPeakHold={new Float64Array(64).fill(0.7)}
+        snapshotMaxHold={new Float64Array(64).fill(0.7)}
         hasSignal
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
 
@@ -355,26 +355,26 @@ describe("VectorscopePolarPlot", () => {
     expect(heldPath.some(({ command }) => command === "closePath")).toBe(false);
   });
 
-  it("omits the snapshot Peak hold outline when none is supplied", () => {
+  it("omits the snapshot Max hold outline when none is supplied", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     render(
       <VectorscopePolarPlot
         mode="polarLevel"
         snapshotPairs={new Float32Array([1, 1])}
-        snapshotPeakHold={null}
+        snapshotMaxHold={null}
         hasSignal
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
 
-    // No reconstructed hold (Peak hold off, or the request had no history): grid stroke only.
+    // No reconstructed hold (Max hold off, or the request had no history): grid stroke only.
     expect(ctx.stroke).toHaveBeenCalledOnce();
   });
 
-  it("resets the live Peak hold when peakHoldResetKey changes", () => {
+  it("resets the live Max hold when maxHoldResetKey changes", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     const heldTop = () =>
@@ -391,17 +391,17 @@ describe("VectorscopePolarPlot", () => {
         rows={[{ pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 100 }]}
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
-    // A loud transient sets a high hold; a later quiet frame does not lower it (peak hold holds).
+    // A loud transient sets a high hold; a later quiet frame does not lower it (max hold holds).
     rerender(
       <VectorscopePolarPlot
         mode="polarLevel"
         rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 2100 }]}
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
     const beforeReset = heldTop();
@@ -413,15 +413,15 @@ describe("VectorscopePolarPlot", () => {
         rows={[{ pairs: new Float32Array([0.1, 0.1]), ageMs: 0, timestampMs: 4100 }]}
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
-        peakHoldResetKey={1}
+        maxHoldEnabled
+        maxHoldResetKey={1}
       />
     );
     // Higher y = closer to the baseline = smaller radius: reset pulled the hold in to the quiet level.
     expect(heldTop()).toBeGreaterThan(beforeReset);
   });
 
-  it("ignores peakHoldResetKey in snapshot mode", () => {
+  it("ignores maxHoldResetKey in snapshot mode", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     const held = new Float64Array(64).fill(0.7);
@@ -429,10 +429,10 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         snapshotPairs={new Float32Array([0.25, 0.25])}
-        snapshotPeakHold={held}
+        snapshotMaxHold={held}
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
+        maxHoldEnabled
       />
     );
     const before = ctx.strokedPaths.at(-1);
@@ -440,11 +440,11 @@ describe("VectorscopePolarPlot", () => {
       <VectorscopePolarPlot
         mode="polarLevel"
         snapshotPairs={new Float32Array([0.25, 0.25])}
-        snapshotPeakHold={held}
+        snapshotMaxHold={held}
         firstLabel="L"
         secondLabel="R"
-        peakHoldEnabled
-        peakHoldResetKey={1}
+        maxHoldEnabled
+        maxHoldResetKey={1}
       />
     );
     // Snapshot draws the supplied reconstructed hold regardless of the reset key.

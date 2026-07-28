@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   POLAR_LEVEL_BIN_COUNT,
-  POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS,
+  POLAR_LEVEL_MAX_HOLD_BUCKET_ROWS,
   aggregatePolarLevel,
-  buildPolarLevelPeakHoldTable,
-  polarLevelPeakHoldAt,
+  buildPolarLevelMaxHoldTable,
+  polarLevelMaxHoldAt,
   polarSampleAlpha,
   projectPairToPolar,
   selectPolarWindow,
   smoothPolarBins,
   updatePolarLevelEnvelope,
-  updatePolarPeakHold,
+  updatePolarMaxHold,
 } from "./vectorscopePolarMath.js";
 
 function slab(rows) {
@@ -120,14 +120,12 @@ describe("Polar Level", () => {
   });
 
   it("holds per-bin peaks until reset or disabled", () => {
-    const first = updatePolarPeakHold(null, new Float64Array([0.2, 0.8]), { enabled: true });
-    const second = updatePolarPeakHold(first, new Float64Array([0.7, 0.3]), { enabled: true });
+    const first = updatePolarMaxHold(null, new Float64Array([0.2, 0.8]), { enabled: true });
+    const second = updatePolarMaxHold(first, new Float64Array([0.7, 0.3]), { enabled: true });
     expect([...second]).toEqual([0.7, 0.8]);
-    expect(
-      updatePolarPeakHold(second, new Float64Array([0.1, 0.1]), { enabled: false })
-    ).toBeNull();
+    expect(updatePolarMaxHold(second, new Float64Array([0.1, 0.1]), { enabled: false })).toBeNull();
     expect([
-      ...updatePolarPeakHold(second, new Float64Array([0.1, 0.1]), {
+      ...updatePolarMaxHold(second, new Float64Array([0.1, 0.1]), {
         enabled: true,
         reset: true,
       }),
@@ -135,25 +133,25 @@ describe("Polar Level", () => {
   });
 });
 
-describe("polar level snapshot peak-hold reconstruction", () => {
+describe("polar level snapshot max-hold reconstruction", () => {
   it("does not include a later peak from the selected row's bucket", () => {
     const rows = [{ pairs: new Float32Array([0.1, 0.1]) }, { pairs: new Float32Array([1, 1]) }];
-    const built = buildPolarLevelPeakHoldTable(slab(rows));
+    const built = buildPolarLevelMaxHoldTable(slab(rows));
 
-    expect(Math.max(...polarLevelPeakHoldAt(built, 0))).toBeCloseTo(Math.SQRT2 * 0.1, 5);
-    expect(Math.max(...polarLevelPeakHoldAt(built, 1))).toBeCloseTo(Math.SQRT2, 5);
+    expect(Math.max(...polarLevelMaxHoldAt(built, 0))).toBeCloseTo(Math.SQRT2 * 0.1, 5);
+    expect(Math.max(...polarLevelMaxHoldAt(built, 1))).toBeCloseTo(Math.SQRT2, 5);
   });
 
   it("accumulates a bucketed prefix maximum that grows across ~1s buckets", () => {
-    const bucket = POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS;
+    const bucket = POLAR_LEVEL_MAX_HOLD_BUCKET_ROWS;
     // Fill the first bucket with quiet rows and put a loud row at the start of the next bucket.
     const rows = Array.from({ length: bucket + 1 }, (_, i) => ({
       pairs: new Float32Array(i === bucket ? [1, 1] : [0.1, 0.1]),
     }));
-    const built = buildPolarLevelPeakHoldTable(slab(rows));
-    const first = polarLevelPeakHoldAt(built, 0);
-    const lastOfBucket0 = polarLevelPeakHoldAt(built, bucket - 1);
-    const loud = polarLevelPeakHoldAt(built, bucket);
+    const built = buildPolarLevelMaxHoldTable(slab(rows));
+    const first = polarLevelMaxHoldAt(built, 0);
+    const lastOfBucket0 = polarLevelMaxHoldAt(built, bucket - 1);
+    const loud = polarLevelMaxHoldAt(built, bucket);
 
     // Within one bucket the hold is constant (the loud row in the next bucket is not reached yet);
     // crossing into the next bucket lifts it, and as a running maximum it never recedes below a peak.
@@ -164,24 +162,24 @@ describe("polar level snapshot peak-hold reconstruction", () => {
   });
 
   it("does not show a direction before its bucket is reached", () => {
-    const bucket = POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS;
+    const bucket = POLAR_LEVEL_MAX_HOLD_BUCKET_ROWS;
     const rows = Array.from({ length: bucket + 1 }, (_, i) => {
       if (i === 0) return { pairs: new Float32Array([1, 0]) }; // hard-left in bucket 0
       if (i === bucket) return { pairs: new Float32Array([0, 1]) }; // hard-right in bucket 1
       return { pairs: new Float32Array([0, 0]) }; // silence (skipped below the floor)
     });
-    const built = buildPolarLevelPeakHoldTable(slab(rows));
-    const atLeft = polarLevelPeakHoldAt(built, 0);
-    const atBoth = polarLevelPeakHoldAt(built, bucket);
+    const built = buildPolarLevelMaxHoldTable(slab(rows));
+    const atLeft = polarLevelMaxHoldAt(built, 0);
+    const atBoth = polarLevelMaxHoldAt(built, bucket);
     expect(Math.max(...atLeft.subarray(POLAR_LEVEL_BIN_COUNT / 2 + 1))).toBeCloseTo(0, 5);
     expect(Math.max(...atBoth.subarray(POLAR_LEVEL_BIN_COUNT / 2 + 1))).toBeCloseTo(1, 5);
   });
 
   it("returns null outside the built range", () => {
-    expect(polarLevelPeakHoldAt(buildPolarLevelPeakHoldTable(slab([])), 0)).toBeNull();
-    const built = buildPolarLevelPeakHoldTable(slab([{ pairs: new Float32Array([1, 1]) }]));
-    expect(polarLevelPeakHoldAt(built, -1)).toBeNull();
-    expect(polarLevelPeakHoldAt(built, 1)).toBeNull();
-    expect(polarLevelPeakHoldAt(null, 0)).toBeNull();
+    expect(polarLevelMaxHoldAt(buildPolarLevelMaxHoldTable(slab([])), 0)).toBeNull();
+    const built = buildPolarLevelMaxHoldTable(slab([{ pairs: new Float32Array([1, 1]) }]));
+    expect(polarLevelMaxHoldAt(built, -1)).toBeNull();
+    expect(polarLevelMaxHoldAt(built, 1)).toBeNull();
+    expect(polarLevelMaxHoldAt(null, 0)).toBeNull();
   });
 });

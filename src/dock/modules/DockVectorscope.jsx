@@ -67,8 +67,8 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const pair = normalizedControls.pair;
   const mode = normalizedControls.mode;
   const isLissajous = mode === "lissajous";
-  const [peakHoldResetKey, setPeakHoldResetKey] = useState(0);
-  const canResetPeakHold = mode === "polarLevel" && normalizedControls.polarLevelPeakHold;
+  const [maxHoldResetKey, setMaxHoldResetKey] = useState(0);
+  const canResetMaxHold = mode === "polarLevel" && normalizedControls.polarLevelMaxHold;
   const key = dockVectorscopeKey(normalizedControls);
   const result = displayAudio?.vectorscopeResultsByKey?.[key];
   const pairX = Number.isFinite(result?.pairX) ? result.pairX : pair.x;
@@ -132,10 +132,10 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
       >
         <div
           data-testid="dock-vectorscope-plot"
-          data-peak-hold-reset={canResetPeakHold ? "true" : undefined}
-          className={`relative shrink-0 overflow-hidden ${canResetPeakHold ? "cursor-pointer" : ""}`}
+          data-max-hold-reset={canResetMaxHold ? "true" : undefined}
+          className={`relative shrink-0 overflow-hidden ${canResetMaxHold ? "cursor-pointer" : ""}`}
           style={{ width: plotBox.w, height: plotBox.h }}
-          onClick={canResetPeakHold ? () => setPeakHoldResetKey((k) => k + 1) : undefined}
+          onClick={canResetMaxHold ? () => setMaxHoldResetKey((k) => k + 1) : undefined}
         >
           {isLissajous ? (
             <svg
@@ -193,8 +193,8 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 firstLabel={firstLabel}
                 secondLabel={secondLabel}
                 showLabels={false}
-                peakHoldEnabled={normalizedControls.polarLevelPeakHold}
-                peakHoldResetKey={peakHoldResetKey}
+                maxHoldEnabled={normalizedControls.polarLevelMaxHold}
+                maxHoldResetKey={maxHoldResetKey}
                 resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
                 identityKey={key}
               />

@@ -138,8 +138,8 @@ export const VECTORSCOPE_LISSAJOUS_HELP = [
 
 export const VECTORSCOPE_POLAR_LEVEL_HELP = [
   {
-    title: "Peak hold",
-    items: ["Click plot - Reset Peak hold"],
+    title: "Max hold",
+    items: ["Click plot - Reset Max hold"],
   },
 ];
 
@@ -165,7 +165,7 @@ export const STEREO_MAP_HELP = [
 function resolveVectorscopeHelp(controls) {
   const mode = controls?.vectorscopeMode ?? "lissajous";
   if (mode === "lissajous") return VECTORSCOPE_LISSAJOUS_HELP;
-  if (mode === "polarLevel" && controls?.vectorscopePolarLevelPeakHold === true) {
+  if (mode === "polarLevel" && controls?.vectorscopePolarLevelMaxHold === true) {
     return VECTORSCOPE_POLAR_LEVEL_HELP;
   }
   return null;

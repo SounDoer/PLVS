@@ -268,11 +268,11 @@ describe("useSnapshot", () => {
       path: "",
       pairs: null,
       correlation: -Infinity,
-      peakHold: null,
+      maxHold: null,
     });
   });
 
-  it("reconstructs Polar Level peak hold after entering history in another mode", () => {
+  it("reconstructs Polar Level max hold after entering history in another mode", () => {
     const samples = {
       loudness: [{ timestampMs: 1000 }],
       corr: [0.5],
@@ -293,16 +293,16 @@ describe("useSnapshot", () => {
 
     // Entering history in Lissajous/Polar Sample resolves the frozen pairs without building a hold.
     const withoutHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1");
-    expect(withoutHold.peakHold).toBeNull();
+    expect(withoutHold.maxHold).toBeNull();
 
-    // Switching the already-frozen history view to Polar Level + Peak hold reconstructs it lazily.
+    // Switching the already-frozen history view to Polar Level + Max hold reconstructs it lazily.
     const withHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope:pair:0:1", {
-      withPeakHold: true,
+      withMaxHold: true,
     });
-    expect(withHold.peakHold).toBeInstanceOf(Float64Array);
-    expect(withHold.peakHold).toHaveLength(64);
+    expect(withHold.maxHold).toBeInstanceOf(Float64Array);
+    expect(withHold.maxHold).toHaveLength(64);
     // Full-scale mono reaches the arc-scale extent (sqrt(2)); reconstruction reflects the row.
-    expect(Math.max(...withHold.peakHold)).toBeCloseTo(Math.SQRT2, 5);
+    expect(Math.max(...withHold.maxHold)).toBeCloseTo(Math.SQRT2, 5);
   });
 
   it("resolves a per-key Stereo Map row and derives the selected Mode", () => {
@@ -702,13 +702,13 @@ describe("useSnapshot", () => {
     expect(vectorscope.timestampReads()).toBe(readsWithoutHold);
 
     const withHold = result.current.resolveVectorscopeSnapshotForKey("vectorscope", {
-      withPeakHold: true,
+      withMaxHold: true,
     });
     const readsWithHold = vectorscope.timestampReads();
     expect(withHold).not.toBe(withoutHold);
-    expect(withHold.peakHold).toBeInstanceOf(Float64Array);
+    expect(withHold.maxHold).toBeInstanceOf(Float64Array);
     expect(
-      result.current.resolveVectorscopeSnapshotForKey("vectorscope", { withPeakHold: true })
+      result.current.resolveVectorscopeSnapshotForKey("vectorscope", { withMaxHold: true })
     ).toBe(withHold);
     expect(vectorscope.timestampReads()).toBe(readsWithHold);
   });

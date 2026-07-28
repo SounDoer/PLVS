@@ -422,7 +422,7 @@ describe("PanelSettingsContent", () => {
     expect(onVectorscopeChange).toHaveBeenCalledWith({ x: 0, y: 2 });
   });
 
-  it("updates vectorscope mode and only shows Peak hold for Polar Level", () => {
+  it("updates vectorscope mode and only shows Max hold for Polar Level", () => {
     const onPanelControlsChange = vi.fn();
     const props = {
       activeTab: "vectorscope",
@@ -437,7 +437,7 @@ describe("PanelSettingsContent", () => {
     const { rerender } = render(<PanelSettingsContent {...props} />);
 
     expect(screen.getByText("Mode")).toBeTruthy();
-    expect(screen.queryByRole("switch", { name: "vectorscope polar level peak hold" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "vectorscope polar level max hold" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "vectorscope mode" }));
     fireEvent.click(screen.getByRole("option", { name: "Polar Level" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
@@ -450,13 +450,13 @@ describe("PanelSettingsContent", () => {
         panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopeMode: "polarLevel" }}
       />
     );
-    fireEvent.click(screen.getByRole("switch", { name: "vectorscope polar level peak hold" }));
+    fireEvent.click(screen.getByRole("switch", { name: "vectorscope polar level max hold" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ vectorscopePolarLevelPeakHold: true })
+      expect.objectContaining({ vectorscopePolarLevelMaxHold: true })
     );
   });
 
-  it("orders vectorscope Mode before Channel pair before Peak hold", () => {
+  it("orders vectorscope Mode before Channel pair before Max hold", () => {
     const { container } = render(
       <PanelSettingsContent
         activeTab="vectorscope"
@@ -472,7 +472,7 @@ describe("PanelSettingsContent", () => {
 
     const text = container.textContent;
     expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel pair"));
-    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Peak hold"));
+    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Max hold"));
   });
 
   it("keeps vectorscope all-pairs options collapsed until opened", () => {
@@ -547,7 +547,7 @@ describe("PanelSettingsContent", () => {
       expect.objectContaining({ stereoMapPair: { first: 0, second: 2 } })
     );
 
-    fireEvent.click(screen.getByRole("switch", { name: "stereo map hold" }));
+    fireEvent.click(screen.getByRole("switch", { name: "stereo map max hold" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ stereoMapHold: true })
     );
@@ -559,7 +559,7 @@ describe("PanelSettingsContent", () => {
     );
   });
 
-  it("orders stereo map Mode before Channel pair before Hold", () => {
+  it("orders stereo map Mode before Channel pair before Max hold", () => {
     const { container } = render(
       <PanelSettingsContent
         activeTab="stereo-map"
@@ -574,8 +574,8 @@ describe("PanelSettingsContent", () => {
 
     const text = container.textContent;
     expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel pair"));
-    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Hold"));
-    expect(text.indexOf("Hold")).toBeLessThan(text.indexOf("Speed"));
+    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Max hold"));
+    expect(text.indexOf("Max hold")).toBeLessThan(text.indexOf("Speed"));
     expect(text.indexOf("Speed")).toBeLessThan(text.indexOf("Smoothing"));
     expect(text.indexOf("Smoothing")).toBeLessThan(text.indexOf("X range"));
   });
@@ -972,7 +972,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
   });
 
-  it("shows Max hold as a switch on spectrum and reflects + flips state", () => {
+  it("shows Max decay as a switch on spectrum and reflects + flips state", () => {
     const onSpectrumMaxHoldToggle = vi.fn();
     render(
       <PanelSettingsContent
@@ -986,13 +986,13 @@ describe("PanelSettingsContent", () => {
         onSpectrumMaxHoldToggle={onSpectrumMaxHoldToggle}
       />
     );
-    const btn = screen.getByRole("switch", { name: "spectrum max hold" });
+    const btn = screen.getByRole("switch", { name: "spectrum max decay" });
     expect(btn.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(btn);
     expect(onSpectrumMaxHoldToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("shows compact spectrum display controls after Max hold", () => {
+  it("shows compact spectrum display controls after Max decay", () => {
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -1008,7 +1008,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    const peak = screen.getByText("Max hold");
+    const peak = screen.getByText("Max decay");
     const speed = screen.getByText("Speed");
     const tilt = screen.getByText("Tilt");
     const smoothing = screen.getByText("Smoothing");
@@ -1186,7 +1186,7 @@ describe("PanelSettingsContent", () => {
         onSpectrumMaxHoldToggle={vi.fn()}
       />
     );
-    expect(screen.queryByLabelText("spectrum max hold")).toBeNull();
+    expect(screen.queryByLabelText("spectrum max decay")).toBeNull();
   });
 
   it("shows only the Y range display control on the spectrogram tab", () => {

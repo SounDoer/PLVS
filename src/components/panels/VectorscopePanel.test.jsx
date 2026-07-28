@@ -583,24 +583,24 @@ describe("VectorscopePanel hold slow mode", () => {
       selectedOffset: -1,
       panelControls: {
         vectorscopeMode: "polarLevel",
-        vectorscopePolarLevelPeakHold: true,
+        vectorscopePolarLevelMaxHold: true,
         vectorscopePair: { x: 0, y: 1 },
       },
       displayAudio: { vectorscopeResultsByKey: {}, peakDb: [-3, -3] },
     });
     const plot = container.querySelector("[data-vectorscope-plot]");
-    expect(plot.getAttribute("data-peak-hold-reset")).toBe("true");
+    expect(plot.getAttribute("data-max-hold-reset")).toBe("true");
     expect(plot.className).toContain("cursor-pointer");
     fireEvent.mouseEnter(plot);
-    expect(screen.queryByText("Click to reset Peak hold")).toBeNull();
+    expect(screen.queryByText("Click to reset Max hold")).toBeNull();
     // Clicking is wired and does not throw.
     fireEvent.click(plot);
   });
 
-  it("hides the reset affordance for Lissajous, Peak hold off, and snapshot", () => {
+  it("hides the reset affordance for Lissajous, Max hold off, and snapshot", () => {
     for (const controls of [
-      { vectorscopeMode: "lissajous", vectorscopePolarLevelPeakHold: true },
-      { vectorscopeMode: "polarLevel", vectorscopePolarLevelPeakHold: false },
+      { vectorscopeMode: "lissajous", vectorscopePolarLevelMaxHold: true },
+      { vectorscopeMode: "polarLevel", vectorscopePolarLevelMaxHold: false },
     ]) {
       const { container, unmount } = renderPanel({
         selectedOffset: -1,
@@ -608,16 +608,16 @@ describe("VectorscopePanel hold slow mode", () => {
         displayAudio: { vectorscopeResultsByKey: {}, peakDb: [-3, -3] },
       });
       expect(
-        container.querySelector("[data-vectorscope-plot]").hasAttribute("data-peak-hold-reset")
+        container.querySelector("[data-vectorscope-plot]").hasAttribute("data-max-hold-reset")
       ).toBe(false);
       unmount();
     }
-    // Snapshot: even Polar Level + Peak hold on exposes no reset (the hold is read-only history).
+    // Snapshot: even Polar Level + Max hold on exposes no reset (the hold is read-only history).
     const { container } = renderPanel({
       selectedOffset: 0,
       panelControls: {
         vectorscopeMode: "polarLevel",
-        vectorscopePolarLevelPeakHold: true,
+        vectorscopePolarLevelMaxHold: true,
         vectorscopePair: { x: 0, y: 1 },
       },
       resolveVectorscopeSnapshotForKey: () => ({
@@ -625,12 +625,12 @@ describe("VectorscopePanel hold slow mode", () => {
         path: "",
         pairs: new Float32Array([0.25, 0.25]),
         correlation: 0.5,
-        peakHold: new Float64Array(64).fill(0.5),
+        maxHold: new Float64Array(64).fill(0.5),
       }),
       displayAudio: { peakDb: [-3, -3] },
     });
     expect(
-      container.querySelector("[data-vectorscope-plot]").hasAttribute("data-peak-hold-reset")
+      container.querySelector("[data-vectorscope-plot]").hasAttribute("data-max-hold-reset")
     ).toBe(false);
   });
 });

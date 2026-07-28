@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Renamed Vectorscope Polar Level's `Peak hold` to `Max hold` and Stereo Map's `Hold` to `Max hold`, matching Vectorscope's always-on running-maximum behavior; renamed Spectrum's `Max hold` to `Max decay` to distinguish its decaying peak from the other two panels' non-decaying hold.
+
 ## [0.11.3] - 2026-07-25
 
 ### Added

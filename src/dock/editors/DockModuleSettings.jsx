@@ -233,13 +233,11 @@ function SettingsBody({
           />
         </SettingsRow>
         {controls.mode === "polarLevel" ? (
-          <SettingsRow label="Peak hold">
+          <SettingsRow label="Max hold">
             <SettingsSwitch
-              aria-label="Vectorscope peak hold"
-              checked={controls.polarLevelPeakHold}
-              onCheckedChange={(polarLevelPeakHold) =>
-                onChange({ ...controls, polarLevelPeakHold })
-              }
+              aria-label="Vectorscope max hold"
+              checked={controls.polarLevelMaxHold}
+              onCheckedChange={(polarLevelMaxHold) => onChange({ ...controls, polarLevelMaxHold })}
             />
           </SettingsRow>
         ) : null}
@@ -297,9 +295,9 @@ function SettingsBody({
             }}
           />
         </SettingsRow>
-        <SettingsRow label="Hold">
+        <SettingsRow label="Max hold">
           <SettingsSwitch
-            aria-label="Stereo Map hold"
+            aria-label="Stereo Map max hold"
             checked={controls.hold}
             onCheckedChange={(hold) => onChange({ ...controls, hold })}
           />

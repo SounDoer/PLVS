@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { VISUAL_HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { buildVectorscopeSvgFromPairs } from "../math/vectorscopeMath.js";
-import {
-  buildPolarLevelPeakHoldTable,
-  polarLevelPeakHoldAt,
-} from "../math/vectorscopePolarMath.js";
+import { buildPolarLevelMaxHoldTable, polarLevelMaxHoldAt } from "../math/vectorscopePolarMath.js";
 import { buildSpectrumSvgFromBandsAndDb } from "../math/spectrumMath.js";
 import { deriveStereoMapRow } from "../math/stereoMapMath.js";
 import { resolveSnapshot, resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
@@ -104,10 +101,10 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     }),
     [snapSource, resolved.targetTimestampMs]
   );
-  // Cache the Peak hold prefix table per frozen vectorscope view. The frozen view is stable for the
+  // Cache the Max hold prefix table per frozen vectorscope view. The frozen view is stable for the
   // whole snapshot session, so the O(samples) table build runs once per key; scrubbing then costs a
   // single lookup. Keyed by the view object so a new snapshot session drops the old table via GC.
-  const peakHoldTableCacheRef = useRef(new WeakMap());
+  const maxHoldTableCacheRef = useRef(new WeakMap());
   const resolveSpectrumSnapshotForKey = useCallback(
     (key) => {
       const entries = snapSource?.spectrumByKey?.[key];
@@ -140,27 +137,27 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     },
     [keyToleranceMs, keyedResultCache.spectrum, resolved.targetTimestampMs, snapSource]
   );
-  // Polar Level Peak hold in snapshot mode is reconstructed from the frozen history up to the
-  // selected row (see vectorscopePolarMath). Only built when a Polar Level panel with Peak hold on
-  // asks for it (withPeakHold), so Lissajous/Sample scrubbing never pays for it.
-  const peakHoldEnvelopeFor = useCallback((entries, index) => {
+  // Polar Level Max hold in snapshot mode is reconstructed from the frozen history up to the
+  // selected row (see vectorscopePolarMath). Only built when a Polar Level panel with Max hold on
+  // asks for it (withMaxHold), so Lissajous/Sample scrubbing never pays for it.
+  const maxHoldEnvelopeFor = useCallback((entries, index) => {
     if (!entries || index < 0) return null;
-    const cache = peakHoldTableCacheRef.current;
+    const cache = maxHoldTableCacheRef.current;
     let table = cache.get(entries);
     if (!table) {
-      table = buildPolarLevelPeakHoldTable(entries);
+      table = buildPolarLevelMaxHoldTable(entries);
       cache.set(entries, table);
     }
-    return polarLevelPeakHoldAt(table, index);
+    return polarLevelMaxHoldAt(table, index);
   }, []);
   const resolveVectorscopeSnapshotForKey = useCallback(
-    (key, { withPeakHold = false } = {}) => {
+    (key, { withMaxHold = false } = {}) => {
       const entries = snapSource?.vectorscopeByKey?.[key];
       const targetCache = snapSource
         ? resultCacheForKey(keyedResultCache.vectorscope, key, entries)
         : null;
       let optionCache = targetCache?.get(resolved.targetTimestampMs);
-      if (optionCache?.has(withPeakHold)) return optionCache.get(withPeakHold);
+      if (optionCache?.has(withMaxHold)) return optionCache.get(withMaxHold);
 
       const { index, missing } = resolveKeyedVisualIndex(
         entries,
@@ -174,7 +171,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
           path: "",
           pairs: null,
           correlation: -Infinity,
-          peakHold: null,
+          maxHold: null,
         };
       } else {
         const snap = typeof entries?.rowAt === "function" ? entries.rowAt(index) : entries[index];
@@ -183,7 +180,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
           missing: false,
           path: buildVectorscopeSvgFromPairs(pairs),
           pairs,
-          peakHold: withPeakHold ? peakHoldEnvelopeFor(entries, index) : null,
+          maxHold: withMaxHold ? maxHoldEnvelopeFor(entries, index) : null,
           correlation: Number.isFinite(snap?.correlation) ? snap.correlation : -Infinity,
           sideToMidDb: Number.isFinite(snap?.sideToMidDb) ? snap.sideToMidDb : -Infinity,
           midEnergy: Number.isFinite(snap?.midEnergy) ? snap.midEnergy : 0,
@@ -196,14 +193,14 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
           optionCache = new Map();
           targetCache.set(resolved.targetTimestampMs, optionCache);
         }
-        optionCache.set(withPeakHold, result);
+        optionCache.set(withMaxHold, result);
       }
       return result;
     },
     [
       keyToleranceMs,
       keyedResultCache.vectorscope,
-      peakHoldEnvelopeFor,
+      maxHoldEnvelopeFor,
       resolved.targetTimestampMs,
       snapSource,
     ]
@@ -214,7 +211,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   // never changes which row is selected or re-queries history.
   // Hold is reconstructed by walking the retained rows up to the selected one, which is far more
   // expensive than deriving the selected row itself, so it is opt-in (`withHold`) exactly like
-  // Polar Level's Peak hold above: a panel with Hold switched off must not pay for it on every
+  // Polar Level's Max hold above: a panel with Hold switched off must not pay for it on every
   // scrub tick. One summary covers all four Modes and carries no Y range, so it is cached per
   // (key, timestamp) — never per Mode — and two panels differing only in Mode or zoom share it.
   const resolveStereoMapHold = useCallback(

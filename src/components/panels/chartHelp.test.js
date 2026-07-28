@@ -14,13 +14,13 @@ describe("vectorscope panel help", () => {
     expect(
       resolveHelp({
         vectorscopeMode: "polarLevel",
-        vectorscopePolarLevelPeakHold: true,
+        vectorscopePolarLevelMaxHold: true,
       })[0].items
-    ).toEqual(["Click plot - Reset Peak hold"]);
+    ).toEqual(["Click plot - Reset Max hold"]);
     expect(
       resolveHelp({
         vectorscopeMode: "polarLevel",
-        vectorscopePolarLevelPeakHold: false,
+        vectorscopePolarLevelMaxHold: false,
       })
     ).toBeNull();
   });

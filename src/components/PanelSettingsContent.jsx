@@ -734,9 +734,9 @@ export function SpectrumDisplaySettingsRows({
   return (
     <>
       {showPeak ? (
-        <SettingsRow label="Max hold">
+        <SettingsRow label="Max decay">
           <SettingsSwitch
-            aria-label="spectrum max hold"
+            aria-label="spectrum max decay"
             checked={maxHold}
             onCheckedChange={onMaxHoldChange}
           />
@@ -745,7 +745,7 @@ export function SpectrumDisplaySettingsRows({
       {showPeakLabels ? (
         <SettingsRow
           label="Peak labels"
-          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max hold is the time axis; this is the frequency axis."
+          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max decay is the time axis; this is the frequency axis."
         >
           <SettingsSwitch
             aria-label="spectrum peak labels"
@@ -1319,15 +1319,15 @@ export function PanelSettingsContent({
         {hasPanelControls &&
         typeof onPanelControlsChange === "function" &&
         selectedMode.id === "polarLevel" ? (
-          <SettingsRow label="Peak hold">
+          <SettingsRow label="Max hold">
             <SettingsSwitch
-              aria-label="vectorscope polar level peak hold"
-              checked={normalizedPanelControls.vectorscopePolarLevelPeakHold}
-              onCheckedChange={(vectorscopePolarLevelPeakHold) => {
+              aria-label="vectorscope polar level max hold"
+              checked={normalizedPanelControls.vectorscopePolarLevelMaxHold}
+              onCheckedChange={(vectorscopePolarLevelMaxHold) => {
                 onPanelControlsChange(
                   normalizePanelControls({
                     ...normalizedPanelControls,
-                    vectorscopePolarLevelPeakHold,
+                    vectorscopePolarLevelMaxHold,
                   })
                 );
               }}
@@ -1398,9 +1398,9 @@ export function PanelSettingsContent({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Hold">
+        <SettingsRow label="Max hold">
           <SettingsSwitch
-            aria-label="stereo map hold"
+            aria-label="stereo map max hold"
             checked={normalizedPanelControls.stereoMapHold}
             onCheckedChange={(stereoMapHold) => {
               onPanelControlsChange(

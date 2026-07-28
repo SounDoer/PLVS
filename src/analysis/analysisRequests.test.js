@@ -388,7 +388,7 @@ describe("analysisRequests", () => {
         "vectorscope-2": {
           ...DEFAULT_PANEL_CONTROLS,
           vectorscopeMode: "polarLevel",
-          vectorscopePolarLevelPeakHold: true,
+          vectorscopePolarLevelMaxHold: true,
         },
       },
     });

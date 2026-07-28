@@ -96,7 +96,7 @@ export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
   return smoothPolarBins(peak);
 }
 
-// Snapshot Peak hold reconstruction. The live per-bin hold is a running maximum since Clear that is
+// Snapshot Max hold reconstruction. The live per-bin hold is a running maximum since Clear that is
 // never stored (design: runtime-only). To show what the hold looked like at a scrubbed historical
 // moment T, replay it from the frozen history: build the cumulative per-bin raw peak (a prefix
 // maximum), so a row index yields the hold accumulated up to that row. Built once per frozen slab
@@ -107,11 +107,11 @@ export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
 // shrinking the table ~25x versus one entry per row. Lookup starts from the previous bucket's
 // prefix and replays at most one bucket, preserving exact selected-time semantics without storing
 // every row's envelope.
-export const POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS = 25;
+export const POLAR_LEVEL_MAX_HOLD_BUCKET_ROWS = 25;
 
-export function buildPolarLevelPeakHoldTable(slab, binCount = POLAR_LEVEL_BIN_COUNT) {
+export function buildPolarLevelMaxHoldTable(slab, binCount = POLAR_LEVEL_BIN_COUNT) {
   const length = slab?.length ?? 0;
-  const bucketRows = POLAR_LEVEL_PEAK_HOLD_BUCKET_ROWS;
+  const bucketRows = POLAR_LEVEL_MAX_HOLD_BUCKET_ROWS;
   const bucketCount = Math.ceil(length / bucketRows);
   const table = new Float64Array(bucketCount * binCount);
   const running = new Float64Array(binCount);
@@ -125,7 +125,7 @@ export function buildPolarLevelPeakHoldTable(slab, binCount = POLAR_LEVEL_BIN_CO
   return { table, binCount, length, bucketRows, slab };
 }
 
-export function polarLevelPeakHoldAt(built, index) {
+export function polarLevelMaxHoldAt(built, index) {
   if (!built || index < 0 || index >= built.length) return null;
   const { table, binCount, bucketRows, slab } = built;
   const bucket = Math.floor(index / bucketRows);
@@ -157,7 +157,7 @@ export function updatePolarLevelEnvelope(previous, target, elapsedMs, { settled 
   return next;
 }
 
-export function updatePolarPeakHold(previous, envelope, { enabled, reset = false } = {}) {
+export function updatePolarMaxHold(previous, envelope, { enabled, reset = false } = {}) {
   if (!enabled) return null;
   if (reset || !previous || previous.length !== envelope.length) return Float64Array.from(envelope);
   const held = Float64Array.from(previous);

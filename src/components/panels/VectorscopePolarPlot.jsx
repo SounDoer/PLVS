@@ -6,7 +6,7 @@ import {
   POLAR_LEVEL_WINDOW_MS,
   projectPairToPolar,
   updatePolarLevelEnvelope,
-  updatePolarPeakHold,
+  updatePolarMaxHold,
 } from "../../math/vectorscopePolarMath.js";
 
 const PLOT_PADDING_CSS_PX = 10;
@@ -143,26 +143,26 @@ export function VectorscopePolarPlot({
   mode,
   rows = [],
   snapshotPairs = null,
-  snapshotPeakHold = null,
+  snapshotMaxHold = null,
   firstLabel,
   secondLabel,
   showLabels = true,
-  peakHoldEnabled = false,
-  peakHoldResetKey = 0,
+  maxHoldEnabled = false,
+  maxHoldResetKey = 0,
   resetEpoch = 0,
   identityKey = "",
 }) {
   const canvasRef = useRef(null);
   const envelopeRef = useRef(null);
-  const peakHoldRef = useRef(null);
+  const maxHoldRef = useRef(null);
   const lastTimestampRef = useRef(null);
   const stateIdentityRef = useRef("");
-  const redrawRef = useRef({ signature: null, snapshotPairs: null, snapshotPeakHold: null });
-  const peakHoldResetKeyRef = useRef(peakHoldResetKey);
+  const redrawRef = useRef({ signature: null, snapshotPairs: null, snapshotMaxHold: null });
+  const maxHoldResetKeyRef = useRef(maxHoldResetKey);
   const snapshot = snapshotPairs != null;
   const effectiveRows = snapshot ? [{ pairs: snapshotPairs, ageMs: 0, timestampMs: 0 }] : rows;
-  // Peak hold is a pure overlay: enabling/disabling it must not disturb the live envelope, and
-  // updatePolarPeakHold already discards held values when disabled and reseeds from the current
+  // Max hold is a pure overlay: enabling/disabling it must not disturb the live envelope, and
+  // updatePolarMaxHold already discards held values when disabled and reseeds from the current
   // envelope when re-enabled. So it stays out of the state-reset identity (including it here would
   // wipe envelopeRef on every toggle and pop the live fill). It still affects the drawn output, so
   // it is part of the redraw signature below.
@@ -177,17 +177,17 @@ export function VectorscopePolarPlot({
     if (stateIdentityRef.current !== stateIdentity) {
       stateIdentityRef.current = stateIdentity;
       envelopeRef.current = null;
-      peakHoldRef.current = null;
+      maxHoldRef.current = null;
       lastTimestampRef.current = null;
     }
 
-    // A per-instance reset nonce clears only the Peak hold — the live envelope and timestamp are
-    // left alone so the fan does not jump. The live path's updatePolarPeakHold then reseeds the
-    // hold from the current envelope. In snapshot the hold is drawn from snapshotPeakHold, so this
+    // A per-instance reset nonce clears only the Max hold — the live envelope and timestamp are
+    // left alone so the fan does not jump. The live path's updatePolarMaxHold then reseeds the
+    // hold from the current envelope. In snapshot the hold is drawn from snapshotMaxHold, so this
     // has no visible effect there.
-    if (peakHoldResetKeyRef.current !== peakHoldResetKey) {
-      peakHoldResetKeyRef.current = peakHoldResetKey;
-      peakHoldRef.current = null;
+    if (maxHoldResetKeyRef.current !== maxHoldResetKey) {
+      maxHoldResetKeyRef.current = maxHoldResetKey;
+      maxHoldRef.current = null;
     }
 
     const { dpr, width, height } = resizeCanvas(canvas);
@@ -203,15 +203,15 @@ export function VectorscopePolarPlot({
     // covers every input the draw reads; snapshot rows are compared by reference since their
     // timestamp is a constant. resizeCanvas only clears the backing store when the size actually
     // changes, and any size change is in the signature, so a skipped render never leaves it blank.
-    const signature = `${stateIdentity}|${peakHoldEnabled}|${snapshot}|${width}x${height}|${dpr}|${newestTimestamp}|${traceColor}|${gridColor}|${lineWidth}|${effectiveRows.length}|${peakHoldResetKey}`;
+    const signature = `${stateIdentity}|${maxHoldEnabled}|${snapshot}|${width}x${height}|${dpr}|${newestTimestamp}|${traceColor}|${gridColor}|${lineWidth}|${effectiveRows.length}|${maxHoldResetKey}`;
     if (
       redrawRef.current.signature === signature &&
       redrawRef.current.snapshotPairs === snapshotPairs &&
-      redrawRef.current.snapshotPeakHold === snapshotPeakHold
+      redrawRef.current.snapshotMaxHold === snapshotMaxHold
     ) {
       return;
     }
-    redrawRef.current = { signature, snapshotPairs, snapshotPeakHold };
+    redrawRef.current = { signature, snapshotPairs, snapshotMaxHold };
 
     const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
     ctx.clearRect(0, 0, width, height);
@@ -225,12 +225,12 @@ export function VectorscopePolarPlot({
 
     if (snapshot) {
       // A snapshot is a look-back at stored history, so it must not touch the live envelope or
-      // peak-hold accumulators (which represent the live period since Clear) — leaving them frozen
+      // max-hold accumulators (which represent the live period since Clear) — leaving them frozen
       // lets both resume seamlessly on return to live. Draw the selected row's settled fan directly
-      // and overlay the Peak hold reconstructed for the scrubbed moment (grows/recedes with the
+      // and overlay the Max hold reconstructed for the scrubbed moment (grows/recedes with the
       // history up to that row), supplied by the panel; the live runtime hold is not shown here.
       const snapshotEnvelope = aggregatePolarLevel(effectiveRows);
-      const held = peakHoldEnabled ? (snapshotPeakHold ?? null) : null;
+      const held = maxHoldEnabled ? (snapshotMaxHold ?? null) : null;
       drawPolarLevel(ctx, snapshotEnvelope, held, geometry, traceColor, lineWidth);
       return;
     }
@@ -246,10 +246,10 @@ export function VectorscopePolarPlot({
     );
     const targetEnvelope = aggregatePolarLevel(levelRows);
     envelopeRef.current = updatePolarLevelEnvelope(envelopeRef.current, targetEnvelope, elapsedMs);
-    peakHoldRef.current = updatePolarPeakHold(peakHoldRef.current, envelopeRef.current, {
-      enabled: peakHoldEnabled,
+    maxHoldRef.current = updatePolarMaxHold(maxHoldRef.current, envelopeRef.current, {
+      enabled: maxHoldEnabled,
     });
-    drawPolarLevel(ctx, envelopeRef.current, peakHoldRef.current, geometry, traceColor, lineWidth);
+    drawPolarLevel(ctx, envelopeRef.current, maxHoldRef.current, geometry, traceColor, lineWidth);
   });
 
   return (

@@ -81,7 +81,7 @@ describe("panelControls", () => {
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
       vectorscopeMode: "lissajous",
-      vectorscopePolarLevelPeakHold: false,
+      vectorscopePolarLevelMaxHold: false,
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
       spectrumMaxHold: false,
@@ -223,7 +223,7 @@ describe("panelControls", () => {
       levelMeterTpMaxMarker: false,
       vectorscopePair: { x: 0, y: 1 },
       vectorscopeMode: "lissajous",
-      vectorscopePolarLevelPeakHold: false,
+      vectorscopePolarLevelMaxHold: false,
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
       spectrumMaxHold: false,
@@ -337,13 +337,20 @@ describe("panelControls", () => {
     expect(normalizePanelControls({ vectorscopeMode: "unknown" }).vectorscopeMode).toBe(
       "lissajous"
     );
-    expect(normalizePanelControls({ vectorscopePolarLevelPeakHold: true })).toHaveProperty(
-      "vectorscopePolarLevelPeakHold",
+    expect(normalizePanelControls({ vectorscopePolarLevelMaxHold: true })).toHaveProperty(
+      "vectorscopePolarLevelMaxHold",
       true
     );
-    expect(normalizePanelControls({ vectorscopePolarLevelPeakHold: "yes" })).toHaveProperty(
-      "vectorscopePolarLevelPeakHold",
+    expect(normalizePanelControls({ vectorscopePolarLevelMaxHold: "yes" })).toHaveProperty(
+      "vectorscopePolarLevelMaxHold",
       false
+    );
+  });
+
+  it("reads the legacy vectorscopePolarLevelPeakHold key as a fallback", () => {
+    expect(normalizePanelControls({ vectorscopePolarLevelPeakHold: true })).toHaveProperty(
+      "vectorscopePolarLevelMaxHold",
+      true
     );
   });
 });

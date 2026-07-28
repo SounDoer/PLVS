@@ -99,29 +99,29 @@ describe("DockModuleSettings", () => {
     });
   });
 
-  it("shows Vectorscope mode first and Peak hold only for Polar Level", () => {
+  it("shows Vectorscope mode first and Max hold only for Polar Level", () => {
     const controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation;
     const onChange = renderSettings("correlation");
 
     const modeRow = screen.getByText("Mode").closest("div.grid");
     const pairRow = screen.getByText("Channel pair").closest("div.grid");
     expect(modeRow.compareDocumentPosition(pairRow) & 4).toBeTruthy();
-    expect(screen.queryByLabelText("Vectorscope peak hold")).toBeNull();
+    expect(screen.queryByLabelText("Vectorscope max hold")).toBeNull();
 
     fireEvent.click(screen.getByLabelText("Vectorscope mode"));
     fireEvent.click(screen.getByRole("option", { name: "Polar Level" }));
     expect(onChange).toHaveBeenCalledWith({ ...controls, mode: "polarLevel" });
   });
 
-  it("toggles Peak hold in Polar Level mode", () => {
+  it("toggles Max hold in Polar Level mode", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,
       mode: "polarLevel",
     };
     const onChange = renderSettings("correlation", { controls });
 
-    fireEvent.click(screen.getByLabelText("Vectorscope peak hold"));
-    expect(onChange).toHaveBeenCalledWith({ ...controls, polarLevelPeakHold: true });
+    fireEvent.click(screen.getByLabelText("Vectorscope max hold"));
+    expect(onChange).toHaveBeenCalledWith({ ...controls, polarLevelMaxHold: true });
   });
 
   it("uses runtime Spectrum channels and only shows View for a pair", () => {
@@ -185,7 +185,7 @@ describe("DockModuleSettings", () => {
   it("matches the normal Spectrum settings order", () => {
     renderSettings("spectrum");
 
-    const peakRow = screen.getByText("Max hold").closest("div.grid");
+    const peakRow = screen.getByText("Max decay").closest("div.grid");
     const speedRow = screen.getByText("Speed").closest("div.grid");
     const smoothingRow = screen.getByText("Smoothing").closest("div.grid");
     expect(peakRow.compareDocumentPosition(speedRow) & 4).toBeTruthy();

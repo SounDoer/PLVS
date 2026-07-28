@@ -5,7 +5,7 @@ import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDat
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
 import { DockVectorscope } from "./DockVectorscope.jsx";
 
-const controls = { pair: { x: 0, y: 1 }, mode: "lissajous", polarLevelPeakHold: false };
+const controls = { pair: { x: 0, y: 1 }, mode: "lissajous", polarLevelMaxHold: false };
 const key = dockVectorscopeKey(controls);
 
 function slab(rows) {
@@ -138,7 +138,7 @@ describe("DockVectorscope", () => {
   it.each([
     ["polarSample", false],
     ["polarLevel", true],
-  ])("renders %s from the keyed history slab", (mode, polarLevelPeakHold) => {
+  ])("renders %s from the keyed history slab", (mode, polarLevelMaxHold) => {
     const getVectorscopeHistoryForKey = vi.fn(() =>
       slab([{ timestampMs: 1000, pairs: [0.5, -0.5] }])
     );
@@ -146,7 +146,7 @@ describe("DockVectorscope", () => {
       { path: "M 0 0", correlation: 0.25, pairX: 0, pairY: 1 },
       undefined,
       "standard",
-      { ...controls, mode, polarLevelPeakHold },
+      { ...controls, mode, polarLevelMaxHold },
       { getVectorscopeHistoryForKey, vectorscopeResetEpoch: 2 }
     );
 
@@ -173,7 +173,7 @@ describe("DockVectorscope", () => {
       renderWith(null, [-12, -10], "standard", {
         pair: { x: 0, y: 1 },
         mode,
-        polarLevelPeakHold: false,
+        polarLevelMaxHold: false,
       });
 
       const pairLabels = screen.getByTestId("dock-vectorscope-pair-labels");
@@ -203,7 +203,7 @@ describe("DockVectorscope", () => {
       const hidden = renderWith(null, [-12, -10], "standard", {
         pair: { x: 0, y: 1 },
         mode,
-        polarLevelPeakHold: false,
+        polarLevelMaxHold: false,
       });
       expect(screen.queryByTestId("dock-vectorscope-pair-labels")).toBeNull();
       hidden.unmount();
@@ -222,7 +222,7 @@ describe("DockVectorscope", () => {
       renderWith(null, [-12, -10], "standard", {
         pair: { x: 0, y: 1 },
         mode,
-        polarLevelPeakHold: false,
+        polarLevelMaxHold: false,
       });
       expect(screen.getByTestId("dock-vectorscope-pair-labels")).toBeTruthy();
       rect.mockRestore();
@@ -244,7 +244,7 @@ describe("DockVectorscope", () => {
     renderWith(null, [-12, -10], "standard", {
       pair: { x: 0, y: 1 },
       mode: "polarSample",
-      polarLevelPeakHold: false,
+      polarLevelMaxHold: false,
     });
 
     expect(screen.getByTestId("dock-vectorscope-polar-stage").className).toContain(
@@ -264,13 +264,13 @@ describe("DockVectorscope", () => {
   });
 
   it("offers click-to-reset without a plot hover tooltip", () => {
-    const polarControls = { pair: { x: 0, y: 1 }, mode: "polarLevel", polarLevelPeakHold: true };
+    const polarControls = { pair: { x: 0, y: 1 }, mode: "polarLevel", polarLevelMaxHold: true };
     renderWith(null, [-12, -10], "standard", polarControls);
     const plot = screen.getByTestId("dock-vectorscope-plot");
-    expect(plot.getAttribute("data-peak-hold-reset")).toBe("true");
+    expect(plot.getAttribute("data-max-hold-reset")).toBe("true");
     expect(plot.className).toContain("cursor-pointer");
     fireEvent.mouseEnter(plot);
-    expect(screen.queryByText("Click to reset Peak hold")).toBeNull();
+    expect(screen.queryByText("Click to reset Max hold")).toBeNull();
     fireEvent.click(plot);
   });
 
@@ -289,7 +289,7 @@ describe("DockVectorscope", () => {
     renderWith(null, [-12, -10], "standard", {
       pair: { x: 0, y: 1 },
       mode: "polarLevel",
-      polarLevelPeakHold: false,
+      polarLevelMaxHold: false,
     });
     // availHeight 80, availWidth 300 - 8 - 72 = 220 → height fills to 80, width = 2 * 80 = 160.
     const plot = screen.getByTestId("dock-vectorscope-plot");
@@ -313,7 +313,7 @@ describe("DockVectorscope", () => {
     renderWith(null, [-12, -10], "standard", {
       pair: { x: 0, y: 1 },
       mode: "lissajous",
-      polarLevelPeakHold: false,
+      polarLevelMaxHold: false,
     });
     // side = min(80, 220) = 80: unchanged square.
     const plot = screen.getByTestId("dock-vectorscope-plot");
@@ -322,13 +322,13 @@ describe("DockVectorscope", () => {
     rect.mockRestore();
   });
 
-  it("hides the Dock reset affordance for Lissajous and Peak hold off", () => {
+  it("hides the Dock reset affordance for Lissajous and Max hold off", () => {
     for (const polarControls of [
-      { pair: { x: 0, y: 1 }, mode: "lissajous", polarLevelPeakHold: true },
-      { pair: { x: 0, y: 1 }, mode: "polarLevel", polarLevelPeakHold: false },
+      { pair: { x: 0, y: 1 }, mode: "lissajous", polarLevelMaxHold: true },
+      { pair: { x: 0, y: 1 }, mode: "polarLevel", polarLevelMaxHold: false },
     ]) {
       const { unmount } = renderWith(null, [-12, -10], "standard", polarControls);
-      expect(screen.getByTestId("dock-vectorscope-plot").hasAttribute("data-peak-hold-reset")).toBe(
+      expect(screen.getByTestId("dock-vectorscope-plot").hasAttribute("data-max-hold-reset")).toBe(
         false
       );
       unmount();

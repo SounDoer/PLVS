@@ -466,7 +466,7 @@ export function StereoMapPanel() {
                     </div>
                     {stereoMapHover.holdLabel ? (
                       <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
-                        Hold: {stereoMapHover.holdLabel}
+                        Max hold: {stereoMapHover.holdLabel}
                       </div>
                     ) : null}
                   </div>
