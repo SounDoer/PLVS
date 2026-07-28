@@ -1352,14 +1352,16 @@ describe("PanelSettingsContent", () => {
 
     const { container } = render(
       <WorkspaceProvider>
-        <TestPanelDataProviders
-          value={{
-            panelControls: DEFAULT_PANEL_CONTROLS,
-            statsMetrics: [],
-          }}
-        >
-          <SplitLayout />
-        </TestPanelDataProviders>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              statsMetrics: [],
+            }}
+          >
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
       </WorkspaceProvider>
     );
 
@@ -1404,14 +1406,16 @@ describe("PanelSettingsContent", () => {
 
     const { container } = render(
       <WorkspaceProvider>
-        <TestPanelDataProviders
-          value={{
-            panelControls: DEFAULT_PANEL_CONTROLS,
-            statsMetrics: [],
-          }}
-        >
-          <SplitLayout />
-        </TestPanelDataProviders>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              statsMetrics: [],
+            }}
+          >
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
       </WorkspaceProvider>
     );
 
@@ -1435,15 +1439,17 @@ describe("PanelSettingsContent", () => {
 
     render(
       <WorkspaceProvider>
-        <TestPanelDataProviders
-          value={{
-            panelControls: DEFAULT_PANEL_CONTROLS,
-            statsMetrics: [],
-          }}
-        >
-          <WorkspaceStateProbe onState={onState} />
-          <SplitLayout />
-        </TestPanelDataProviders>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              statsMetrics: [],
+            }}
+          >
+            <WorkspaceStateProbe onState={onState} />
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
       </WorkspaceProvider>
     );
 
@@ -1472,17 +1478,19 @@ describe("PanelSettingsContent", () => {
 
     render(
       <WorkspaceProvider>
-        <TestPanelDataProviders
-          value={{
-            panelControls: DEFAULT_PANEL_CONTROLS,
-            analysisStatusByPanelId: { spectrum: "overCap" },
-            selectedOffset: -1,
-          }}
-        >
-          <PanelChromeProvider value={{ analysisStatusByPanelId: { spectrum: "overCap" } }}>
-            <SplitLayout />
-          </PanelChromeProvider>
-        </TestPanelDataProviders>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              analysisStatusByPanelId: { spectrum: "overCap" },
+              selectedOffset: -1,
+            }}
+          >
+            <PanelChromeProvider value={{ analysisStatusByPanelId: { spectrum: "overCap" } }}>
+              <SplitLayout />
+            </PanelChromeProvider>
+          </TestPanelDataProviders>
+        </DragProvider>
       </WorkspaceProvider>
     );
 
@@ -1533,14 +1541,16 @@ describe("PanelSettingsContent", () => {
 
     render(
       <WorkspaceProvider>
-        <TestPanelDataProviders
-          value={{
-            panelControls: DEFAULT_PANEL_CONTROLS,
-            statsMetrics: [],
-          }}
-        >
-          <SplitLayout />
-        </TestPanelDataProviders>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              statsMetrics: [],
+            }}
+          >
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
       </WorkspaceProvider>
     );
 

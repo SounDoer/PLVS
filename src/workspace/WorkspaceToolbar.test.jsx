@@ -99,7 +99,9 @@ describe("ModulesPopoverContent", () => {
   it("swaps to a full Add Module view instead of nesting a popover", () => {
     render(
       <WorkspaceProvider>
-        <ModulesPopoverContent />
+        <DragProvider onDrop={vi.fn()}>
+          <ModulesPopoverContent />
+        </DragProvider>
       </WorkspaceProvider>
     );
 
@@ -114,7 +116,9 @@ describe("ModulesPopoverContent", () => {
   it("stays on the Add Module view after a selection, then returns to the list via Back", () => {
     render(
       <WorkspaceProvider>
-        <ModulesPopoverContent />
+        <DragProvider onDrop={vi.fn()}>
+          <ModulesPopoverContent />
+        </DragProvider>
       </WorkspaceProvider>
     );
 
@@ -129,6 +133,31 @@ describe("ModulesPopoverContent", () => {
 
     expect(screen.getByLabelText("Delete Level Meter")).toBeTruthy();
     expect(screen.getByLabelText("Delete Stereo Map")).toBeTruthy();
+  });
+
+  it("starts a create-drag from a module row's grip icon without triggering Add", () => {
+    const onDrop = vi.fn();
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={onDrop}>
+          <ModulesPopoverContent />
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    const grip = screen.getByRole("button", { name: "Drag Waveform to place" });
+
+    fireEvent.mouseDown(grip, { clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(window, { clientX: 108, clientY: 100 });
+
+    // The floating drag-ghost resolves the module's title from MODULE_REGISTRY, proving the
+    // grip started a `{ kind: 'create', moduleId }` drag rather than reusing the tab-move path.
+    // Two matches: the row's own label, plus the ghost tooltip that now renders alongside it.
+    expect(screen.getAllByText("Waveform")).toHaveLength(2);
+    expect(onDrop).not.toHaveBeenCalled();
+
+    fireEvent.mouseUp(window, { clientX: 108, clientY: 100 });
   });
 
   it("highlights the corresponding panel frame while hovering a module row", () => {

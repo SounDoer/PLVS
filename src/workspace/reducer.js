@@ -246,6 +246,24 @@ export function workspaceReducer(state, action) {
       };
     }
 
+    case "ADD_PANEL_AT": {
+      const { moduleId, drop } = action.payload;
+      const panel = createPanel(moduleId, state.panelsById);
+      const newLeaf = { type: "leaf", tabs: [panel.id], activeTab: panel.id };
+      return {
+        ...state,
+        tree: state.tree
+          ? insertLeaf(state.tree, drop.targetPath, drop.zone, newLeaf, drop.tabIndex)
+          : newLeaf,
+        panelsById: { ...state.panelsById, [panel.id]: panel },
+        panelOrder: [...state.panelOrder, panel.id],
+        panelControlsById: {
+          ...state.panelControlsById,
+          [panel.id]: createDefaultPanelControls(),
+        },
+      };
+    }
+
     case "REMOVE_PANEL": {
       const { id } = action.payload;
       if (!state.panelsById[id]) return state;
@@ -399,6 +417,7 @@ export function bindWorkspaceActions(dispatch) {
     moveTab: (sourceId, drop) => dispatch({ type: "MOVE_TAB", payload: { sourceId, drop } }),
     setActiveTab: (path, tabId) => dispatch({ type: "SET_ACTIVE_TAB", payload: { path, tabId } }),
     addPanel: (moduleId) => dispatch({ type: "ADD_PANEL", payload: { moduleId } }),
+    addPanelAt: (moduleId, drop) => dispatch({ type: "ADD_PANEL_AT", payload: { moduleId, drop } }),
     removePanel: (id) => dispatch({ type: "REMOVE_PANEL", payload: { id } }),
     renamePanel: (id, customTitle) =>
       dispatch({ type: "RENAME_PANEL", payload: { id, customTitle } }),

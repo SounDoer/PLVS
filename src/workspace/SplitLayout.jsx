@@ -8,7 +8,6 @@ import {
   PANEL_HEADER_PIN_ICON,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
-import { DragProvider, useDrag } from "./DragContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.jsx";
 import { HelpPopover } from "../components/HelpPopover.jsx";
@@ -393,10 +392,8 @@ function FullscreenOverlay() {
 // ---------------------------------------------------------------------------
 
 function SplitContent() {
-  const { state, moveTab, setFullscreen } = useWorkspaceStore();
+  const { state, setFullscreen } = useWorkspaceStore();
   const { tree } = state;
-
-  const onDrop = useCallback((sourceId, drop) => moveTab(sourceId, drop), [moveTab]);
 
   // Stable ref for keyboard shortcuts (registered once)
   const shortcutRef = useRef(null);
@@ -416,27 +413,25 @@ function SplitContent() {
   }, []);
 
   return (
-    <DragProvider onDrop={onDrop}>
-      <main className="relative flex min-h-0 flex-1 overflow-hidden">
-        {tree ? (
-          <SplitView
-            node={tree}
-            path={[]}
-            style={{
-              flex: "1 1 0",
-              minWidth: 0,
-              minHeight: 0,
-              visibility: state.fullscreenId ? "hidden" : undefined,
-            }}
-          />
-        ) : (
-          <div className="flex flex-1 items-center justify-center text-[length:var(--ui-fs-body)] text-muted-foreground">
-            No panels
-          </div>
-        )}
-        <FullscreenOverlay />
-      </main>
-    </DragProvider>
+    <main className="relative flex min-h-0 flex-1 overflow-hidden">
+      {tree ? (
+        <SplitView
+          node={tree}
+          path={[]}
+          style={{
+            flex: "1 1 0",
+            minWidth: 0,
+            minHeight: 0,
+            visibility: state.fullscreenId ? "hidden" : undefined,
+          }}
+        />
+      ) : (
+        <div className="flex flex-1 items-center justify-center text-[length:var(--ui-fs-body)] text-muted-foreground">
+          No panels
+        </div>
+      )}
+      <FullscreenOverlay />
+    </main>
   );
 }
 

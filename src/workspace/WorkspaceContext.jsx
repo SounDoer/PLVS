@@ -73,6 +73,10 @@ export function WorkspaceProvider({ children }) {
         markPresetDirty();
         bound.addPanel(...args);
       },
+      addPanelAt: (...args) => {
+        markPresetDirty();
+        bound.addPanelAt(...args);
+      },
       removePanel: (...args) => {
         markPresetDirty();
         bound.removePanel(...args);

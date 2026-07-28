@@ -35,7 +35,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex }) {
   if (!def) return null;
   const title = resolvePanelDisplayName(state, tabId);
 
-  const isSourceTab = dragState?.sourceId === tabId;
+  const isSourceTab = dragState?.payload?.kind === "move" && dragState.payload.id === tabId;
 
   return (
     <PanelTitleGroup

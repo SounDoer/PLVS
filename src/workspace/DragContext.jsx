@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { resolvePanelDisplayName } from "./panelInstances.js";
+import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 
 export const DragContext = createContext(null);
@@ -68,20 +69,36 @@ function computeDropTarget(x, y) {
   return null;
 }
 
+function dragGhostLabel(state, payload) {
+  if (!payload) return "";
+  if (payload.kind === "create")
+    return MODULE_REGISTRY[payload.moduleId]?.title ?? payload.moduleId;
+  return resolvePanelDisplayName(state, payload.id);
+}
+
 export function DragProvider({ children, onDrop }) {
   const { state } = useWorkspaceStore();
-  const [dragState, setDragState] = useState(null); // { sourceId, x, y }
+  const [dragState, setDragState] = useState(null); // { payload: { kind: 'move', id } | { kind: 'create', moduleId }, x, y }
   const [hoverDrop, setHoverDrop] = useState(null);
 
   const startRef = useRef(null);
   const activeRef = useRef(false);
   const hoverDropRef = useRef(null);
 
-  const onTabMouseDown = useCallback((e, tabId) => {
+  const beginDrag = useCallback((e, payload) => {
     e.preventDefault();
-    startRef.current = { x: e.clientX, y: e.clientY, tabId };
+    startRef.current = { x: e.clientX, y: e.clientY, payload };
     activeRef.current = false;
   }, []);
+
+  const onTabMouseDown = useCallback(
+    (e, tabId) => beginDrag(e, { kind: "move", id: tabId }),
+    [beginDrag]
+  );
+  const onCreateMouseDown = useCallback(
+    (e, moduleId) => beginDrag(e, { kind: "create", moduleId }),
+    [beginDrag]
+  );
 
   useEffect(() => {
     function onMove(e) {
@@ -91,7 +108,7 @@ export function DragProvider({ children, onDrop }) {
         const dy = e.clientY - startRef.current.y;
         if (Math.hypot(dx, dy) < 4) return;
         activeRef.current = true;
-        setDragState({ sourceId: startRef.current.tabId, x: e.clientX, y: e.clientY });
+        setDragState({ payload: startRef.current.payload, x: e.clientX, y: e.clientY });
       } else {
         setDragState((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null));
         const drop = computeDropTarget(e.clientX, e.clientY);
@@ -102,7 +119,7 @@ export function DragProvider({ children, onDrop }) {
 
     function onUp() {
       if (activeRef.current && hoverDropRef.current && startRef.current) {
-        onDrop(startRef.current.tabId, hoverDropRef.current);
+        onDrop(startRef.current.payload, hoverDropRef.current);
       }
       startRef.current = null;
       activeRef.current = false;
@@ -132,14 +149,14 @@ export function DragProvider({ children, onDrop }) {
   }, [onDrop]);
 
   return (
-    <DragContext.Provider value={{ dragState, hoverDrop, onTabMouseDown }}>
+    <DragContext.Provider value={{ dragState, hoverDrop, onTabMouseDown, onCreateMouseDown }}>
       {children}
       {dragState && (
         <div
           className="pointer-events-none fixed z-50 rounded border border-primary/60 bg-card px-2 py-0.5 text-[length:var(--ui-fs-control)] font-medium shadow-lg"
           style={{ left: dragState.x + 14, top: dragState.y - 8 }}
         >
-          {resolvePanelDisplayName(state, dragState.sourceId)}
+          {dragGhostLabel(state, dragState.payload)}
         </div>
       )}
     </DragContext.Provider>

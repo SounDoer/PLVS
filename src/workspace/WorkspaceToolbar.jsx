@@ -1,4 +1,4 @@
-import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, GripVertical, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import {
@@ -10,6 +10,7 @@ import { AddButton } from "@/components/AddButton";
 import { PanelSettingsHeader } from "@/components/PanelSettingsHeader.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { cn } from "@/lib/utils";
+import { useDrag } from "./DragContext.jsx";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { resolvePanelDefinition, resolvePanelDisplayName } from "./panelInstances.js";
@@ -102,6 +103,36 @@ function PanelRow({ panelId }) {
   );
 }
 
+function AddModuleRow({ id, title, Icon, onAdd }) {
+  const { onCreateMouseDown } = useDrag();
+
+  return (
+    <div className={cn(MANAGEMENT_ROW_CLASS, "text-foreground")}>
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        onClick={() => onAdd(id)}
+      >
+        <span className="flex shrink-0 text-muted-foreground">
+          <Icon className="size-[1.25em]" />
+        </span>
+        <span className="min-w-0 flex-1 truncate">{title}</span>
+      </button>
+      <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
+        <button
+          type="button"
+          aria-label={`Drag ${title} to place`}
+          title="Drag to place"
+          onMouseDown={(e) => onCreateMouseDown(e, id)}
+          className="flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <GripVertical className="size-3.5" />
+        </button>
+      </span>
+    </div>
+  );
+}
+
 function AddModuleView({ onAdd, onBack }) {
   return (
     <>
@@ -111,17 +142,7 @@ function AddModuleView({ onAdd, onBack }) {
           so `truncate` on the rows never kicks in. */}
       <div className="mt-1 grid w-full min-w-0 grid-cols-1 gap-0.5">
         {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            className={cn(MANAGEMENT_ROW_CLASS, "text-foreground")}
-            onClick={() => onAdd(id)}
-          >
-            <span className="flex shrink-0 text-muted-foreground">
-              <Icon className="size-[1.25em]" />
-            </span>
-            <span className="min-w-0 flex-1 truncate text-left">{title}</span>
-          </button>
+          <AddModuleRow key={id} id={id} title={title} Icon={Icon} onAdd={onAdd} />
         ))}
       </div>
     </>

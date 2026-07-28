@@ -453,6 +453,60 @@ describe("SET_FULLSCREEN", () => {
 });
 
 // ---------------------------------------------------------------------------
+// ADD_PANEL_AT
+// ---------------------------------------------------------------------------
+
+describe("ADD_PANEL_AT", () => {
+  // "stereo-map" (unlike levelMeter/loudness/spectrum/waveform/...) isn't part of
+  // DEFAULT_WORKSPACE_STATE's default panel set, so createPanel won't need to dedupe its id.
+  it("creates the panel and inserts it as a new tab in the target leaf", () => {
+    const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
+    const s = state(root);
+    const next = workspaceReducer(s, {
+      type: "ADD_PANEL_AT",
+      payload: { moduleId: "stereo-map", drop: { targetPath: [0], zone: "tabs", tabIndex: 1 } },
+    });
+
+    expect(next.panelsById["stereo-map"]).toEqual({ id: "stereo-map", moduleId: "stereo-map" });
+    expect(next.panelOrder).toContain("stereo-map");
+    expect(next.tree.children[0].tabs).toEqual(["levelMeter", "stereo-map"]);
+    expect(next.tree.children[0].activeTab).toBe("stereo-map");
+    expect(next.tree.children[1].tabs).toEqual(["loudness"]);
+  });
+
+  it("splits the target leaf evenly, unlike root-level ADD_PANEL's smaller default slice", () => {
+    const root = leaf(["levelMeter"]);
+    const s = state(root);
+    const next = workspaceReducer(s, {
+      type: "ADD_PANEL_AT",
+      payload: { moduleId: "stereo-map", drop: { targetPath: [], zone: "right" } },
+    });
+
+    expect(next.tree.type).toBe("split");
+    expect(next.tree.direction).toBe("h");
+    expect(next.tree.sizes).toEqual([null, null]);
+    expect(next.tree.children[0].tabs).toEqual(["levelMeter"]);
+    expect(next.tree.children[1].tabs).toEqual(["stereo-map"]);
+  });
+
+  it("places the new panel above a nested target leaf without disturbing its siblings", () => {
+    const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
+    const s = state(root);
+    const next = workspaceReducer(s, {
+      type: "ADD_PANEL_AT",
+      payload: { moduleId: "stereo-map", drop: { targetPath: [1], zone: "above" } },
+    });
+
+    expect(next.tree.direction).toBe("h");
+    expect(next.tree.children[0].tabs).toEqual(["levelMeter"]);
+    expect(next.tree.children[1].direction).toBe("v");
+    expect(next.tree.children[1].sizes).toEqual([null, null]);
+    expect(next.tree.children[1].children[0].tabs).toEqual(["stereo-map"]);
+    expect(next.tree.children[1].children[1].tabs).toEqual(["loudness"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // MOVE_TAB
 // ---------------------------------------------------------------------------
 
