@@ -167,8 +167,8 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.queryByText("Floating value")).toBeNull();
-    expect(screen.queryByText("Playback max")).toBeNull();
+    expect(screen.queryByText("Floating Value")).toBeNull();
+    expect(screen.queryByText("Playback Max")).toBeNull();
     expect(screen.queryByRole("switch", { name: "level meter floating value" })).toBeNull();
     expect(screen.queryByRole("switch", { name: "level meter playback max" })).toBeNull();
     expect(screen.getByText("TP Max")).toBeTruthy();
@@ -193,15 +193,15 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    const playbackMaxLabel = screen.getByText("Playback max");
-    const floatingValueLabel = screen.getByText("Floating value");
+    const playbackMaxLabel = screen.getByText("Playback Max");
+    const floatingValueLabel = screen.getByText("Floating Value");
     expect(
       screen.getByText("Show the latest playback max as the readout while the bar stays live.")
     ).toBeTruthy();
     expect(playbackMaxLabel.compareDocumentPosition(floatingValueLabel)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
-    expect(screen.getByText("Floating value")).toBeTruthy();
+    expect(screen.getByText("Floating Value")).toBeTruthy();
     expect(screen.queryByText("TP Max")).toBeNull();
     const playbackMaxSwitch = screen.getByRole("switch", { name: "level meter playback max" });
     expect(playbackMaxSwitch.getAttribute("aria-checked")).toBe("false");
@@ -238,8 +238,8 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.getByText("Playback max")).toBeTruthy();
-    expect(screen.queryByText("Floating value")).toBeNull();
+    expect(screen.getByText("Playback Max")).toBeTruthy();
+    expect(screen.queryByText("Floating Value")).toBeNull();
     expect(screen.queryByText("TP Max")).toBeNull();
     expect(screen.getByLabelText("level meter y range min").value).toBe("-60");
     expect(screen.getByLabelText("level meter y range max").value).toBe("3");
@@ -471,8 +471,8 @@ describe("PanelSettingsContent", () => {
     );
 
     const text = container.textContent;
-    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel pair"));
-    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Max hold"));
+    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel Pair"));
+    expect(text.indexOf("Channel Pair")).toBeLessThan(text.indexOf("Max Hold"));
   });
 
   it("keeps vectorscope all-pairs options collapsed until opened", () => {
@@ -573,14 +573,14 @@ describe("PanelSettingsContent", () => {
     );
 
     const text = container.textContent;
-    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel pair"));
-    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Max hold"));
-    expect(text.indexOf("Max hold")).toBeLessThan(text.indexOf("Speed"));
+    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel Pair"));
+    expect(text.indexOf("Channel Pair")).toBeLessThan(text.indexOf("Max Hold"));
+    expect(text.indexOf("Max Hold")).toBeLessThan(text.indexOf("Speed"));
     expect(text.indexOf("Speed")).toBeLessThan(text.indexOf("Smoothing"));
-    expect(text.indexOf("Smoothing")).toBeLessThan(text.indexOf("X range"));
+    expect(text.indexOf("Smoothing")).toBeLessThan(text.indexOf("X Range"));
   });
 
-  it("shows a Y range only for Mono Loss and M/S Ratio, with Mono Loss pinned at 0 dB", () => {
+  it("shows a Y Range only for Mono Loss and M/S Ratio, with Mono Loss pinned at 0 dB", () => {
     const { rerender, container } = render(
       <PanelSettingsContent
         activeTab="stereo-map"
@@ -591,7 +591,7 @@ describe("PanelSettingsContent", () => {
         onPanelControlsChange={vi.fn()}
       />
     );
-    expect(container.textContent).not.toContain("Y range");
+    expect(container.textContent).not.toContain("Y Range");
 
     rerender(
       <PanelSettingsContent
@@ -827,7 +827,7 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(
-      screen.getByText("Layers").compareDocumentPosition(screen.getByText("Y range")) &
+      screen.getByText("Layers").compareDocumentPosition(screen.getByText("Y Range")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(screen.getByLabelText("loudness y range min").value).toBe("-64");
@@ -972,7 +972,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
   });
 
-  it("shows Max decay as a switch on spectrum and reflects + flips state", () => {
+  it("shows Max Decay as a switch on spectrum and reflects + flips state", () => {
     const onSpectrumMaxHoldToggle = vi.fn();
     render(
       <PanelSettingsContent
@@ -992,7 +992,7 @@ describe("PanelSettingsContent", () => {
     expect(onSpectrumMaxHoldToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("shows compact spectrum display controls after Max decay", () => {
+  it("shows compact spectrum display controls after Max Decay", () => {
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -1008,12 +1008,12 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    const peak = screen.getByText("Max decay");
+    const peak = screen.getByText("Max Decay");
     const speed = screen.getByText("Speed");
     const tilt = screen.getByText("Tilt");
     const smoothing = screen.getByText("Smoothing");
-    const xRange = screen.getByText("X range");
-    const yRange = screen.getByText("Y range");
+    const xRange = screen.getByText("X Range");
+    const yRange = screen.getByText("Y Range");
     expect(peak.compareDocumentPosition(speed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(speed.compareDocumentPosition(tilt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(tilt.compareDocumentPosition(smoothing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -1232,7 +1232,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.getByText("Y range")).toBeTruthy();
+    expect(screen.getByText("Y Range")).toBeTruthy();
     expect(screen.getByLabelText("spectrogram y range min").value).toBe("20");
     expect(screen.getByLabelText("spectrogram y range max").value).toBe("20000");
   });

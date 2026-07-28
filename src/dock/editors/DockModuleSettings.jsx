@@ -87,7 +87,7 @@ function SettingsBody({
         ]
       : [
           { value: "live", label: "Live" },
-          { value: "playbackMax", label: "Playback max" },
+          { value: "playbackMax", label: "Playback Max" },
         ];
     return (
       <>
@@ -221,7 +221,7 @@ function SettingsBody({
             onChange={(mode) => onChange({ ...controls, mode })}
           />
         </SettingsRow>
-        <SettingsRow label="Channel pair">
+        <SettingsRow label="Channel Pair">
           <SelectField
             label="Vectorscope channel pair"
             value={pairValue}
@@ -233,7 +233,7 @@ function SettingsBody({
           />
         </SettingsRow>
         {controls.mode === "polarLevel" ? (
-          <SettingsRow label="Max hold">
+          <SettingsRow label="Max Hold">
             <SettingsSwitch
               aria-label="Vectorscope max hold"
               checked={controls.polarLevelMaxHold}
@@ -284,7 +284,7 @@ function SettingsBody({
             onChange={(mode) => onChange({ ...controls, mode })}
           />
         </SettingsRow>
-        <SettingsRow label="Channel pair">
+        <SettingsRow label="Channel Pair">
           <SelectField
             label="Stereo Map channel pair"
             value={pairValue}
@@ -295,7 +295,7 @@ function SettingsBody({
             }}
           />
         </SettingsRow>
-        <SettingsRow label="Max hold">
+        <SettingsRow label="Max Hold">
           <SettingsSwitch
             aria-label="Stereo Map max hold"
             checked={controls.hold}
@@ -327,7 +327,7 @@ function SettingsBody({
             onChange={(octaveSmoothing) => onChange({ ...controls, octaveSmoothing })}
           />
         </SettingsRow>
-        <SettingsRow label="X range">
+        <SettingsRow label="X Range">
           <SettingsRangeInput
             minAriaLabel="stereo map x range min"
             maxAriaLabel="stereo map x range max"
@@ -337,7 +337,7 @@ function SettingsBody({
           />
         </SettingsRow>
         {isMonoLoss ? (
-          <SettingsRow label="Y range">
+          <SettingsRow label="Y Range">
             <SettingsRangeInput
               minAriaLabel="stereo map mono loss y range min"
               maxAriaLabel="stereo map mono loss y range max"
@@ -348,7 +348,7 @@ function SettingsBody({
           </SettingsRow>
         ) : null}
         {isMsRatio ? (
-          <SettingsRow label="Y range">
+          <SettingsRow label="Y Range">
             <SettingsRangeInput
               minAriaLabel="stereo map m/s ratio y range min"
               maxAriaLabel="stereo map m/s ratio y range max"
@@ -382,7 +382,7 @@ function SettingsBody({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Y range">
+        <SettingsRow label="Y Range">
           <SettingsRangeInput
             minAriaLabel="spectrogram y range min"
             maxAriaLabel="spectrogram y range max"

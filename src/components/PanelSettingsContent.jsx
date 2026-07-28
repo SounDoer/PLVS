@@ -696,7 +696,7 @@ export function LoudnessSettingsRows({
           ) : null}
         </div>
       </SettingsRow>
-      <SettingsRow label="Y range">
+      <SettingsRow label="Y Range">
         <SettingsRangeInput
           minAriaLabel="loudness y range min"
           maxAriaLabel="loudness y range max"
@@ -734,7 +734,7 @@ export function SpectrumDisplaySettingsRows({
   return (
     <>
       {showPeak ? (
-        <SettingsRow label="Max decay">
+        <SettingsRow label="Max Decay">
           <SettingsSwitch
             aria-label="spectrum max decay"
             checked={maxHold}
@@ -744,8 +744,8 @@ export function SpectrumDisplaySettingsRows({
       ) : null}
       {showPeakLabels ? (
         <SettingsRow
-          label="Peak labels"
-          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max decay is the time axis; this is the frequency axis."
+          label="Peak Labels"
+          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max Decay is the time axis; this is the frequency axis."
         >
           <SettingsSwitch
             aria-label="spectrum peak labels"
@@ -791,7 +791,7 @@ export function SpectrumDisplaySettingsRows({
               onChange={onOctaveSmoothingChange}
             />
           </SettingsRow>
-          <SettingsRow label="X range">
+          <SettingsRow label="X Range">
             <SettingsRangeInput
               minAriaLabel="spectrum x range min"
               maxAriaLabel="spectrum x range max"
@@ -800,7 +800,7 @@ export function SpectrumDisplaySettingsRows({
               onCommit={onXRangeChange}
             />
           </SettingsRow>
-          <SettingsRow label="Y range">
+          <SettingsRow label="Y Range">
             <SettingsRangeInput
               minAriaLabel="spectrum y range min"
               maxAriaLabel="spectrum y range max"
@@ -894,7 +894,7 @@ export function PanelSettingsContent({
         {showPlaybackMaxToggle ? (
           <>
             <SettingsRow
-              label="Playback max"
+              label="Playback Max"
               tooltip="Show the latest playback max as the readout while the bar stays live."
             >
               <SettingsSwitch
@@ -911,7 +911,7 @@ export function PanelSettingsContent({
               />
             </SettingsRow>
             {showValueMarkerToggle ? (
-              <SettingsRow label="Floating value">
+              <SettingsRow label="Floating Value">
                 <SettingsSwitch
                   aria-label="level meter floating value"
                   checked={normalizedPanelControls.levelMeterValueMarker}
@@ -944,7 +944,7 @@ export function PanelSettingsContent({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Y range">
+        <SettingsRow label="Y Range">
           <SettingsRangeInput
             minAriaLabel="level meter y range min"
             maxAriaLabel="level meter y range max"
@@ -1229,7 +1229,7 @@ export function PanelSettingsContent({
           }}
         />
         {showSpectrogramRange ? (
-          <SettingsRow label="Y range">
+          <SettingsRow label="Y Range">
             <SettingsRangeInput
               minAriaLabel="spectrogram y range min"
               maxAriaLabel="spectrogram y range max"
@@ -1293,7 +1293,7 @@ export function PanelSettingsContent({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Channel pair">
+        <SettingsRow label="Channel Pair">
           <SettingsSelect
             label={selectedLabel}
             ariaLabel="vectorscope channel"
@@ -1319,7 +1319,7 @@ export function PanelSettingsContent({
         {hasPanelControls &&
         typeof onPanelControlsChange === "function" &&
         selectedMode.id === "polarLevel" ? (
-          <SettingsRow label="Max hold">
+          <SettingsRow label="Max Hold">
             <SettingsSwitch
               aria-label="vectorscope polar level max hold"
               checked={normalizedPanelControls.vectorscopePolarLevelMaxHold}
@@ -1376,7 +1376,7 @@ export function PanelSettingsContent({
           />
         </SettingsRow>
         {showPair ? (
-          <SettingsRow label="Channel pair">
+          <SettingsRow label="Channel Pair">
             <SettingsSelect
               label={pairLabel}
               ariaLabel="stereo map channel"
@@ -1398,7 +1398,7 @@ export function PanelSettingsContent({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Max hold">
+        <SettingsRow label="Max Hold">
           <SettingsSwitch
             aria-label="stereo map max hold"
             checked={normalizedPanelControls.stereoMapHold}
@@ -1447,7 +1447,7 @@ export function PanelSettingsContent({
             }}
           />
         </SettingsRow>
-        <SettingsRow label="X range">
+        <SettingsRow label="X Range">
           <SettingsRangeInput
             minAriaLabel="stereo map x range min"
             maxAriaLabel="stereo map x range max"
@@ -1465,7 +1465,7 @@ export function PanelSettingsContent({
           />
         </SettingsRow>
         {isMonoLoss ? (
-          <SettingsRow label="Y range">
+          <SettingsRow label="Y Range">
             <SettingsRangeInput
               minAriaLabel="stereo map mono loss y range min"
               maxAriaLabel="stereo map mono loss y range max"
@@ -1483,7 +1483,7 @@ export function PanelSettingsContent({
           </SettingsRow>
         ) : null}
         {isMsRatio ? (
-          <SettingsRow label="Y range">
+          <SettingsRow label="Y Range">
             <SettingsRangeInput
               minAriaLabel="stereo map m/s ratio y range min"
               maxAriaLabel="stereo map m/s ratio y range max"

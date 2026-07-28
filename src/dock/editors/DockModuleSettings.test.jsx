@@ -52,14 +52,14 @@ describe("DockModuleSettings", () => {
 
     fireEvent.click(screen.getByLabelText("Level readout"));
     expect(screen.getByRole("option", { name: "Live" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Playback max" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Playback Max" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: "Live Peak" })).toBeNull();
 
     fireEvent.click(screen.getByLabelText("Show Level labels"));
     expect(onChange).toHaveBeenCalledWith({ ...controls, showLabels: false });
   });
 
-  it("reuses the normal Loudness Layers and Y range settings", () => {
+  it("reuses the normal Loudness Layers and Y Range settings", () => {
     const controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness;
     const onChange = renderSettings("loudness");
 
@@ -104,7 +104,7 @@ describe("DockModuleSettings", () => {
     const onChange = renderSettings("correlation");
 
     const modeRow = screen.getByText("Mode").closest("div.grid");
-    const pairRow = screen.getByText("Channel pair").closest("div.grid");
+    const pairRow = screen.getByText("Channel Pair").closest("div.grid");
     expect(modeRow.compareDocumentPosition(pairRow) & 4).toBeTruthy();
     expect(screen.queryByLabelText("Vectorscope max hold")).toBeNull();
 
@@ -185,12 +185,12 @@ describe("DockModuleSettings", () => {
   it("matches the normal Spectrum settings order", () => {
     renderSettings("spectrum");
 
-    const peakRow = screen.getByText("Max decay").closest("div.grid");
+    const peakRow = screen.getByText("Max Decay").closest("div.grid");
     const speedRow = screen.getByText("Speed").closest("div.grid");
     const smoothingRow = screen.getByText("Smoothing").closest("div.grid");
     expect(peakRow.compareDocumentPosition(speedRow) & 4).toBeTruthy();
     expect(speedRow.compareDocumentPosition(smoothingRow) & 4).toBeTruthy();
-    expect(screen.queryByText("Peak labels")).toBeNull();
+    expect(screen.queryByText("Peak Labels")).toBeNull();
   });
 
   it("uses the themed inline selector instead of a native select", () => {
