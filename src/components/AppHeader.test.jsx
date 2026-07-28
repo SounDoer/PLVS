@@ -5,7 +5,12 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { AppHeader } from "./AppHeader.jsx";
 
 vi.mock("../workspace/WorkspaceToolbar.jsx", () => ({
-  ModulesPopoverContent: () => <div>Mock modules menu</div>,
+  ModulesPopoverContent: () => (
+    <div>
+      <p>Modules</p>
+      <p>Mock modules menu</p>
+    </div>
+  ),
 }));
 
 const NOOP_PRESETS = {

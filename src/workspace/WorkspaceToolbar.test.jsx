@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { ModulesPopoverContent } from "./WorkspaceToolbar.jsx";
@@ -8,6 +8,7 @@ import { DragProvider } from "./DragContext.jsx";
 import { MetricsDataProvider } from "./AudioDataContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
+import { workspaceStore } from "../persistence/index.js";
 
 vi.mock("framer-motion", () => ({
   motion: {
@@ -25,6 +26,10 @@ vi.mock("framer-motion", () => ({
 }));
 
 describe("ModulesPopoverContent", () => {
+  beforeEach(() => {
+    workspaceStore.reset();
+  });
+
   it("keeps row actions hidden until the row is hovered", () => {
     render(
       <WorkspaceProvider>
@@ -89,6 +94,41 @@ describe("ModulesPopoverContent", () => {
     expect(screen.getByText("Level Meter")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Confirm delete Level Meter"));
     expect(screen.queryByText("Level Meter")).toBeNull();
+  });
+
+  it("swaps to a full Add Module view instead of nesting a popover", () => {
+    render(
+      <WorkspaceProvider>
+        <ModulesPopoverContent />
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+
+    expect(screen.getByText("Add Module")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
+    expect(screen.queryByLabelText("Delete Level Meter")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Module" })).toBeNull();
+  });
+
+  it("stays on the Add Module view after a selection, then returns to the list via Back", () => {
+    render(
+      <WorkspaceProvider>
+        <ModulesPopoverContent />
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stereo Map" }));
+
+    // A second add can follow immediately, without reopening the picker.
+    expect(screen.getByText("Add Module")).toBeTruthy();
+    expect(screen.queryByLabelText("Delete Level Meter")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(screen.getByLabelText("Delete Level Meter")).toBeTruthy();
+    expect(screen.getByLabelText("Delete Stereo Map")).toBeTruthy();
   });
 
   it("highlights the corresponding panel frame while hovering a module row", () => {

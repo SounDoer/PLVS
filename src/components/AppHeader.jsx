@@ -239,9 +239,6 @@ export function AppHeader({
             </span>
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
-            <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
-              Modules
-            </p>
             <ModulesPopoverContent />
           </PopoverContent>
         </Popover>

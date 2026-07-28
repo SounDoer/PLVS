@@ -678,9 +678,10 @@ describe("App smoke", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Stereo Map" }));
 
-    // The Add Module popover closes on selection; the Modules popover stays open behind it,
-    // and the new instance is now a distinct, removable panel row — proof the Add Module action
-    // created an independent panel instance rather than reusing one.
+    // Add Module stays on its picker view after a selection, so a second add can follow without
+    // reopening it; go Back to confirm the new instance landed as a distinct, removable panel row
+    // — proof the Add Module action created an independent panel instance rather than reusing one.
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByLabelText("Delete Stereo Map")).toBeTruthy();
   });
 });
