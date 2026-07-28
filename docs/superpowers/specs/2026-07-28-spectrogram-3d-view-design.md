@@ -136,15 +136,26 @@ Each ridge is one closed path: along the spectrum, then back along its floor bas
 resolved panel background colour (this *is* the hidden-line removal), then stroke.
 
 - `Colorize` **off**: one stroke per ridge in the theme foreground colour.
-- `Colorize` **on**: one stroke per ridge using a **shared vertical `CanvasGradient`**, built once per
-  repaint from `colormapLut` and reused for every ridge by translating the canvas to that ridge's
-  baseline before stroking. Gradient coordinates resolve against the transform in effect at paint
-  time, so the translate carries the gradient with it.
+- `Colorize` **on**: one stroke per ridge using a **shared `CanvasGradient`**, built once per repaint
+  from `colormapLut` and reused by every ridge.
 
-  This works because colour and height are both functions of dB, and orthographic projection makes
-  dB→screen-height one linear map for the whole scene. The obvious alternative — splitting each ridge
-  into same-colour runs and stroking each run — was measured on paper at roughly 4400 stroke calls per
-  repaint and rejected; see Performance Model.
+  The reasoning takes two steps, and the second one is easy to miss:
+
+  1. A ridge point sits at `screenY = baseY(t, f) − hNorm × heightScale`. The height offset is purely
+     vertical and uniformly scaled, because the projection is orthographic — so dB maps to *vertical
+     displacement from the baseline* by one scene-wide constant.
+  2. But `baseY` varies along a ridge: the frequency axis is tilted, so the baseline is a sloped line,
+     not a horizontal one. A plain vertical gradient in screen space would therefore colour equal-dB
+     points differently depending on frequency.
+
+  The projection being affine means **every ridge's baseline has the same slope**. Applying one shear
+  that flattens that slope makes the baseline horizontal for all ridges simultaneously; in the sheared
+  space, vertical position is exactly `hNorm`, and a vertical gradient is correct. Per ridge only a
+  translate is then needed.
+
+  So: shear set once per repaint, gradient built once per repaint, one `translate` + one `stroke` per
+  ridge. The alternative — splitting each ridge into same-colour runs and stroking each — was
+  estimated at roughly 4400 stroke calls per repaint and rejected; see Performance Model.
 
 ### Frequency sampling
 
