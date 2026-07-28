@@ -54,11 +54,11 @@ function buildColorGradient(ctx, colormapLut, heightPx) {
 const FLOOR_DIVISIONS = 4;
 const AXIS_FONT_CSS_PX = 10;
 
-function drawFloor(ctx, proj, ink) {
+function drawFloor(ctx, proj, ink, dpr) {
   ctx.save();
   ctx.strokeStyle = ink;
   ctx.globalAlpha = 0.3;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = dpr;
 
   const corner = (t, f) => projectPoint(t, f, 0, proj);
   ctx.beginPath();
@@ -327,7 +327,7 @@ export function useSpectrogram3dCanvas({
       const heightPx = proj.heightScale * view.heightGain;
 
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
-      drawFloor(ctx, proj, ink);
+      drawFloor(ctx, proj, ink, dpr);
       drawAxisLabels(ctx, proj, ink, dpr);
 
       // Colorize builds ONE gradient per repaint. It is expressed in a sheared space where every
@@ -355,7 +355,10 @@ export function useSpectrogram3dCanvas({
           : -1;
 
       ctx.lineJoin = "round";
-      ctx.lineWidth = 1;
+      // Line widths are in the canvas coordinate system, which useCanvasSize sizes in DEVICE
+      // pixels. A literal 1 is therefore a sub-CSS-pixel hairline on any scaled display, and the
+      // whole mesh washes out. Same trap as ctx.font below — both must scale by dpr.
+      ctx.lineWidth = dpr;
 
       // Painter's algorithm: far ridges first so nearer ones occlude them. Direction depends on
       // azimuth, which is why buildProjection reports it rather than assuming it.
@@ -385,9 +388,9 @@ export function useSpectrogram3dCanvas({
 
         if (r === selectedRidge) {
           ctx.strokeStyle = selection;
-          ctx.lineWidth = 2;
+          ctx.lineWidth = dpr * 2;
           ctx.stroke();
-          ctx.lineWidth = 1;
+          ctx.lineWidth = dpr;
         } else if (gradient) {
           // Order matters and is easy to get wrong: the transform must be in effect WHEN the
           // gradient is used as strokeStyle and when stroke() runs, because gradient coordinates
