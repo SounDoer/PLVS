@@ -717,8 +717,13 @@ export function useSpectrogram3dCanvas({
       // Colorize builds ONE gradient per repaint. It is expressed in a sheared space where every
       // ridge baseline is horizontal — the projection is affine, so all baselines share a slope and
       // a single shear flattens them together. Per ridge only a translate is then needed.
+      // At azimuth 0 and 180 the frequency axis has no horizontal extent, so baselineSlope is
+      // +/-Infinity. That is a legitimate degenerate view, not an error — but feeding it to
+      // setTransform would corrupt the canvas matrix, so fall back to a monochrome stroke for
+      // those angles rather than shearing by infinity.
+      const canShear = Number.isFinite(proj.baselineSlope);
       let gradient = null;
-      if (p.colorize) {
+      if (p.colorize && canShear) {
         ctx.setTransform(1, proj.baselineSlope, 0, 1, 0, 0);
         gradient = buildColorGradient(ctx, p.colormapLut, heightPx);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
