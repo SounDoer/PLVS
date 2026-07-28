@@ -463,6 +463,12 @@ describe("StereoMapPanel", () => {
     expect(screen.getByText(STEREO_MAP_MONO_MESSAGE)).toBeTruthy();
   });
 
+  it("does not show the mono empty state before capture reports a real channel count", () => {
+    renderPanel(baseAudioData({ channelCount: 0 }));
+
+    expect(screen.queryByText(STEREO_MAP_MONO_MESSAGE)).toBeNull();
+  });
+
   it("shows pending (no data) for a request whose key has not produced a frame yet", () => {
     const ctx = mockCanvas();
     renderPanel(

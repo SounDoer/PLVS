@@ -29,7 +29,9 @@ export function DockStereoMap({ controls = {} }) {
   const normalizedControls = normalizeDockModuleControls("stereoMap", controls);
   const mode = normalizedControls.mode;
   const pair = normalizedControls.pair;
-  const isMono = !Number.isFinite(channelCount) || channelCount < 2;
+  // channelCount is 0 before capture has reported real device info (see appRuntimeDerivations.js) —
+  // that's "not started yet", not a mono device, and must not suppress results the same way.
+  const isMono = Number.isFinite(channelCount) && channelCount > 0 && channelCount < 2;
   const key = dockStereoMapKey(normalizedControls);
   const range = rangeForMode(mode, normalizedControls);
 

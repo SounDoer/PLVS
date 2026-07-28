@@ -260,6 +260,14 @@ describe("DockStereoMap", () => {
     expect(plot.querySelectorAll("[data-stereo-map-segment]").length).toBe(0);
   });
 
+  it("does not treat channelCount 0 (not started yet) as mono", () => {
+    const ctx = mockCanvas();
+    renderWith({ result: primitiveRow(), channelCount: 0 });
+    // Unlike genuine mono input, a not-yet-started channel count must still draw the curve once a
+    // result is available for the key.
+    expect(ctx.stroke).toHaveBeenCalled();
+  });
+
   it("renders compact placeholders (no curve) while the keyed request is pending", () => {
     const { container } = renderWith({ result: null });
     const plot = container.querySelector('[data-stereo-map-plot="position"]');

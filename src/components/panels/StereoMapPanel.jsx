@@ -121,7 +121,10 @@ export function StereoMapPanel() {
   const stereoMapKey = stereoMapRequestKeyFromControls(panelControls);
   const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
-  const isMono = !Number.isFinite(channelCount) || channelCount < 2;
+  // channelCount is 0 before capture has reported real device info (see appRuntimeDerivations.js) —
+  // that's "not started yet", not a mono device, so it must fall through to the normal empty chart
+  // rather than the mono message.
+  const isMono = Number.isFinite(channelCount) && channelCount > 0 && channelCount < 2;
 
   const range = useMemo(
     () => rangeForMode(mode, normalizedPanelControls),

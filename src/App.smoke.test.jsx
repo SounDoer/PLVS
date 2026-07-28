@@ -184,6 +184,8 @@ beforeEach(() => {
       disconnect() {}
     };
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+    save: vi.fn(),
+    restore: vi.fn(),
     clearRect: vi.fn(),
     beginPath: vi.fn(),
     moveTo: vi.fn(),
@@ -192,6 +194,7 @@ beforeEach(() => {
     fill: vi.fn(),
     stroke: vi.fn(),
     putImageData: vi.fn(),
+    createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
   });
 });
 
