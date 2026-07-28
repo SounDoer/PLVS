@@ -51,6 +51,93 @@ function buildColorGradient(ctx, colormapLut, heightPx) {
   return gradient;
 }
 
+const FLOOR_DIVISIONS = 4;
+const AXIS_FONT_CSS_PX = 10;
+
+function drawFloor(ctx, proj, ink) {
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = 1;
+
+  const corner = (t, f) => projectPoint(t, f, 0, proj);
+  ctx.beginPath();
+  const c0 = corner(0, 0);
+  ctx.moveTo(c0.x, c0.y);
+  for (const [t, f] of [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ]) {
+    const c = corner(t, f);
+    ctx.lineTo(c.x, c.y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.16;
+  ctx.beginPath();
+  for (let i = 1; i < FLOOR_DIVISIONS; i++) {
+    const k = i / FLOOR_DIVISIONS;
+    const a = corner(k, 0);
+    const b = corner(k, 1);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    const c = corner(0, k);
+    const d = corner(1, k);
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(d.x, d.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Axis names drawn along their own projected edge.
+ *
+ * Font size is multiplied by the device pixel ratio because the canvas coordinate system is
+ * device pixels (see useCanvasSize / the DPI note in AGENTS.md), not CSS pixels. The ratio is
+ * derived from the canvas's own dimensions rather than read from window.devicePixelRatio, because
+ * useCanvasSize accepts options that can cap the ratio per axis, and reading the global would then
+ * disagree with reality.
+ *
+ * This also means labels follow the Windows Accessibility text-size factor, which
+ * devicePixelRatio already includes inside the webview. That is correct behaviour and must not be
+ * "fixed" later.
+ *
+ * ctx.font does not resolve CSS custom properties -- an unresolvable value is silently ignored,
+ * leaving the previous font -- so the font family is resolved via getComputedStyle (the cssVar
+ * helper above) before being interpolated into the font string.
+ */
+function drawAxisLabels(ctx, proj, ink, dpr) {
+  const fontFamily = cssVar(ctx.canvas, "--ui-font-mono", "monospace");
+  const edges = [
+    { label: "Time", from: [0, 0], to: [1, 0] },
+    { label: "Frequency", from: [1, 0], to: [1, 1] },
+  ];
+  ctx.save();
+  ctx.fillStyle = ink;
+  ctx.globalAlpha = 0.75;
+  ctx.font = `${AXIS_FONT_CSS_PX * dpr}px ${fontFamily}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (const edge of edges) {
+    const a = projectPoint(edge.from[0], edge.from[1], 0, proj);
+    const b = projectPoint(edge.to[0], edge.to[1], 0, proj);
+    // atan2 alone can land past +/-90 degrees, which renders the label upside down; flip to the
+    // opposite direction along the same line to keep it upright.
+    let angle = Math.atan2(b.y - a.y, b.x - a.x);
+    if (angle > Math.PI / 2) angle -= Math.PI;
+    else if (angle < -Math.PI / 2) angle += Math.PI;
+    ctx.save();
+    ctx.translate((a.x + b.x) / 2, (a.y + b.y) / 2);
+    ctx.rotate(angle);
+    ctx.fillText(edge.label, 0, 4 * dpr);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 export function useSpectrogram3dCanvas({
   canvasRef,
   snapRef,
@@ -238,6 +325,10 @@ export function useSpectrogram3dCanvas({
       const ink = cssVar(canvas, "--muted-foreground", "#888");
       const selection = cssVar(canvas, "--ui-loudness-selection", ink);
       const heightPx = proj.heightScale * view.heightGain;
+
+      const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
+      drawFloor(ctx, proj, ink);
+      drawAxisLabels(ctx, proj, ink, dpr);
 
       // Colorize builds ONE gradient per repaint. It is expressed in a sheared space where every
       // ridge baseline is horizontal — the projection is affine, so all baselines share a slope and
