@@ -1522,10 +1522,59 @@ describe("PanelSettingsContent", () => {
 
     expect(titleBar?.className).toContain("h-7");
     expect(titleBar?.className).not.toContain("h-9");
-    expect(tabPill?.className).toContain("px-1");
-    expect(tabPill?.className).not.toContain("px-2");
     expect(titleGroup?.className).toContain("px-1");
+    expect(titleGroup?.className).not.toContain("px-2");
     expect(tabPill?.querySelector("[data-panel-title-icon]")).toBeTruthy();
+  });
+
+  it("hides the per-tab close control when a slot has only one tab", () => {
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              statsMetrics: [],
+            }}
+          >
+            <LeafView node={{ type: "leaf", tabs: ["stats"], activeTab: "stats" }} path={[]} />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    // A single-tab slot is already covered by the leaf header's "Hide all in panel" X.
+    expect(screen.queryByRole("button", { name: "Close Stats" })).toBeNull();
+  });
+
+  it("closes just the clicked tab from a shared slot, leaving its sibling in place", () => {
+    const onState = vi.fn();
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: DEFAULT_PANEL_CONTROLS,
+              statsMetrics: [],
+            }}
+          >
+            <WorkspaceStateProbe onState={onState} />
+            <LeafView
+              node={{ type: "leaf", tabs: ["stats", "spectrum"], activeTab: "spectrum" }}
+              path={[]}
+            />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close Stats" }));
+
+    const latestState = onState.mock.calls.at(-1)?.[0];
+    expect(latestState.panelsById.stats).toBeUndefined();
+    expect(latestState.panelsById.spectrum).toBeDefined();
+    // Down to one tab: its own close control disappears too, per the same rule.
+    expect(screen.queryByRole("button", { name: "Close Spectrum" })).toBeNull();
   });
 
   it("uses the same compact title bar density in fullscreen", () => {

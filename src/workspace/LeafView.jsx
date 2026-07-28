@@ -28,8 +28,8 @@ const noop = () => {};
 // TabPill
 // ---------------------------------------------------------------------------
 
-function TabPill({ tabId, isActive, path, slotTabIndex }) {
-  const { state, setActiveTab } = useWorkspaceStore();
+function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
+  const { state, setActiveTab, removePanel } = useWorkspaceStore();
   const { dragState, onTabMouseDown } = useDrag();
   const def = resolvePanelDefinition(state, tabId);
   if (!def) return null;
@@ -38,21 +38,46 @@ function TabPill({ tabId, isActive, path, slotTabIndex }) {
   const isSourceTab = dragState?.payload?.kind === "move" && dragState.payload.id === tabId;
 
   return (
-    <PanelTitleGroup
+    <div
       data-tab-pill
       data-tab-pill-index={slotTabIndex}
-      icon={def.Icon}
-      title={title}
       className={cn(
-        "rounded-t-[5px] select-none cursor-pointer transition-colors",
+        "group flex items-center rounded-t-[5px] transition-colors",
         isActive
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
         isSourceTab && "opacity-35"
       )}
-      onMouseDown={(e) => onTabMouseDown(e, tabId)}
-      onClick={() => !dragState && setActiveTab(path, tabId)}
-    />
+    >
+      <PanelTitleGroup
+        icon={def.Icon}
+        title={title}
+        className="select-none cursor-pointer"
+        onMouseDown={(e) => onTabMouseDown(e, tabId)}
+        onClick={() => !dragState && setActiveTab(path, tabId)}
+      />
+      {/* Only when this slot has more than one tab: with a single tab, the leaf header's own
+          `X` ("Hide all in panel") already closes it, so a second close control here would be
+          redundant. */}
+      {showClose ? (
+        <button
+          type="button"
+          aria-label={`Close ${title}`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            removePanel(tabId);
+          }}
+          className={cn(
+            PANEL_HEADER_ACTION_BUTTON,
+            "mr-0.5 shrink-0 opacity-0 group-hover:opacity-50 group-focus-within:opacity-50",
+            isActive && "opacity-50"
+          )}
+        >
+          <X className="size-[length:var(--ui-icon-panel-action)]" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -299,6 +324,7 @@ export function LeafView({ node, path, style }) {
               isActive={tabId === activeTab}
               path={path}
               slotTabIndex={i}
+              showClose={visibleTabs.length > 1}
             />
           ))}
 
