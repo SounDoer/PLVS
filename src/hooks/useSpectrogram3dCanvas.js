@@ -71,6 +71,23 @@ export function useSpectrogram3dCanvas({
   const rafRef = useRef(null);
   const paramsRef = useRef({});
   const cacheRef = useRef({ pointCount: 0, minHz: 0, maxHz: 0, bands: null, yToBand: null });
+  const lastPaintRef = useRef({
+    len: -1,
+    version: -1,
+    oldestMs: NaN,
+    newestMs: NaN,
+    sel: -1,
+    W: 0,
+    H: 0,
+    minHz: 20,
+    maxHz: 20000,
+    colormapLut: null,
+    azimuthDeg: NaN,
+    elevationDeg: NaN,
+    heightGain: NaN,
+    colorize: undefined,
+    selectionXFrac: NaN,
+  });
 
   useEffect(() => {
     paramsRef.current = {
@@ -116,10 +133,55 @@ export function useSpectrogram3dCanvas({
       const p = paramsRef.current;
       if (!p.colormapLut || p.colormapLut.length < 256 * 3) return;
 
+      const snaps = p.frozenSnaps ?? snapRef.current;
+      const len = snaps ? snaps.length : 0;
+      const version = snaps?.version ?? 0;
+
+      // Spectrum frames land at 25 Hz while requestAnimationFrame ticks at up to 60 Hz, so most
+      // frames have nothing new to show. Repainting a 3D mesh is far more expensive than the 2D
+      // heatmap blit, which makes this skip more important here, not less: redraw only when
+      // something that can change the picture actually moved, including the view (azimuth,
+      // elevation, height gain, colorize) and the scrub position, not just the data.
+      const last = lastPaintRef.current;
+      if (
+        last.len === len &&
+        last.version === version &&
+        last.oldestMs === p.oldestMs &&
+        last.newestMs === p.newestMs &&
+        last.sel === p.selectedOffset &&
+        last.W === W &&
+        last.H === H &&
+        last.minHz === p.minHz &&
+        last.maxHz === p.maxHz &&
+        last.colormapLut === p.colormapLut &&
+        last.azimuthDeg === p.azimuthDeg &&
+        last.elevationDeg === p.elevationDeg &&
+        last.heightGain === p.heightGain &&
+        last.colorize === p.colorize &&
+        last.selectionXFrac === p.selectionXFrac
+      )
+        return;
+      lastPaintRef.current = {
+        len,
+        version,
+        oldestMs: p.oldestMs,
+        newestMs: p.newestMs,
+        sel: p.selectedOffset,
+        W,
+        H,
+        minHz: p.minHz,
+        maxHz: p.maxHz,
+        colormapLut: p.colormapLut,
+        azimuthDeg: p.azimuthDeg,
+        elevationDeg: p.elevationDeg,
+        heightGain: p.heightGain,
+        colorize: p.colorize,
+        selectionXFrac: p.selectionXFrac,
+      };
+
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const snaps = p.frozenSnaps ?? snapRef.current;
       const span =
         Number.isFinite(p.oldestMs) && Number.isFinite(p.newestMs) ? p.newestMs - p.oldestMs : 0;
 
