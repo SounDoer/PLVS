@@ -27,14 +27,18 @@ function cssVar(el, name, fallback) {
   return value || fallback;
 }
 
-/** Opaque fill colour is what performs the hidden-line removal, so it must not be transparent. */
+/**
+ * The fill colour that performs hidden-line removal. It MUST be fully opaque: a translucent fill
+ * lets every ridge show through every ridge in front of it, which collapses the whole mesh into an
+ * unreadable tangle of overlapping curves.
+ *
+ * Deliberately the theme's page background rather than a walk up the ancestors looking for a
+ * background colour. PLVS panel surfaces are translucent by design -- they composite onto the app
+ * background -- so such a walk finds something like `color(srgb 0.08 0.08 0.08 / 0.55)` and the
+ * occlusion silently stops working. `--background` is the opaque colour everything ultimately
+ * composites onto, which is exactly what a ridge should be filled with.
+ */
 function resolveSurface(canvas) {
-  let node = canvas.parentElement;
-  while (node) {
-    const bg = getComputedStyle(node).backgroundColor;
-    if (bg && bg !== "transparent" && !bg.startsWith("rgba(0, 0, 0, 0)")) return bg;
-    node = node.parentElement;
-  }
   return cssVar(canvas, "--background", "#000");
 }
 
@@ -327,6 +331,7 @@ export function useSpectrogram3dCanvas({
       const heightPx = proj.heightScale * view.heightGain;
 
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
+
       drawFloor(ctx, proj, ink, dpr);
       drawAxisLabels(ctx, proj, ink, dpr);
 
