@@ -241,6 +241,18 @@ export function LoudnessProfileProvider({ children }) {
     [cancelDraft, commit, draftBlocks]
   );
 
+  /// Pure reordering of the library: never touches `active`, so it cannot dirty a preset and
+  /// never needs to consult the draft-blocking rule the other library actions enforce.
+  const reorderProfiles = useCallback(
+    (nextIds) => {
+      const byId = new Map(stateRef.current.profiles.map((profile) => [profile.id, profile]));
+      const reordered = nextIds.map((id) => byId.get(id)).filter(Boolean);
+      if (reordered.length !== stateRef.current.profiles.length) return;
+      commit((prev) => ({ ...prev, profiles: reordered }));
+    },
+    [commit]
+  );
+
   /// Layout presets snapshot which profile was active, never the library itself -- the same way
   /// a view snapshot records the active theme rather than every theme.
   const snapshotForPreset = useCallback(
@@ -280,6 +292,7 @@ export function LoudnessProfileProvider({ children }) {
       select,
       selectOff,
       removeProfile,
+      reorderProfiles,
       snapshotForPreset,
       applyPresetSnapshot,
     }),
@@ -295,6 +308,7 @@ export function LoudnessProfileProvider({ children }) {
       select,
       selectOff,
       removeProfile,
+      reorderProfiles,
       snapshotForPreset,
       applyPresetSnapshot,
     ]

@@ -320,6 +320,17 @@ export function usePresets({
     [write]
   );
 
+  const reorder = useCallback(
+    (nextIds) => {
+      const current = normalizePresets(presetsStore.read());
+      const byId = new Map(current.list.map((p) => [p.id, p]));
+      const reordered = nextIds.map((id) => byId.get(id)).filter(Boolean);
+      if (reordered.length !== current.list.length) return;
+      write({ list: reordered });
+    },
+    [write]
+  );
+
   return useMemo(
     () => ({
       list: presets.list,
@@ -330,6 +341,7 @@ export function usePresets({
       update,
       rename,
       remove,
+      reorder,
       clearActive,
       markDirty,
     }),
@@ -341,6 +353,7 @@ export function usePresets({
       presets.dirty,
       presets.list,
       remove,
+      reorder,
       rename,
       save,
       update,

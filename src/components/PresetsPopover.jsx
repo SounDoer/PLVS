@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { Check, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, GripVertical, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 
 const NOOP_PRESETS = {
   list: [],
@@ -13,7 +14,11 @@ const NOOP_PRESETS = {
   update: () => {},
   rename: () => {},
   remove: () => {},
+  reorder: () => {},
 };
+
+const DRAG_HANDLE_CLASS =
+  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 /**
  * Popover body for preset management. Receives the `presets` controller
@@ -24,6 +29,17 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [drafts, setDrafts] = useState({});
+
+  const presetIds = useMemo(() => presets.list.map((preset) => preset.id), [presets.list]);
+  const { containerRef, orderedIds, draggingId, startDrag, moveDrag, endDrag } = usePointerReorder(
+    presetIds,
+    (nextIds) => presets.reorder?.(nextIds)
+  );
+  const presetsById = useMemo(
+    () => new Map(presets.list.map((preset) => [preset.id, preset])),
+    [presets.list]
+  );
+  const orderedList = orderedIds.map((id) => presetsById.get(id)).filter(Boolean);
 
   const handleSave = () => {
     const trimmed = name.trim();
@@ -94,8 +110,8 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
         // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
         // makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
         // so `truncate` on the rows never kicks in.
-        <div className="grid grid-cols-1 gap-0.5 p-1">
-          {presets.list.map((preset) => {
+        <div ref={containerRef} className="grid grid-cols-1 gap-0.5 p-1">
+          {orderedList.map((preset) => {
             const isActive = preset.id === presets.activeId;
             const isDirty = isActive && presets.dirty === true;
             const isEditing = preset.id === editingId;
@@ -138,12 +154,31 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50">
+                  <div
+                    className={cn(
+                      "flex items-center gap-1 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50",
+                      draggingId === preset.id && "z-10 ring-1 ring-primary/60"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      aria-label={`Reorder ${preset.name}`}
+                      onPointerDown={(event) => startDrag(preset.id, event)}
+                      onPointerMove={moveDrag}
+                      onPointerUp={endDrag}
+                      onPointerCancel={endDrag}
+                      className={DRAG_HANDLE_CLASS}
+                    >
+                      <GripVertical className="size-3.5" />
+                    </button>
                     <button
                       type="button"
                       aria-label={`Apply preset ${preset.name}`}
                       onClick={() => presets.apply(preset.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after
+                      // the drag handle, so the left side doesn't need a second helping of the
+                      // handle's own gap.
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded pl-1 pr-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       <span
                         aria-label={

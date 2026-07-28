@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, GripVertical, Pencil, Plus, Settings2, Timer, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "../../components/InlineConfirm.jsx";
 import {
@@ -11,6 +11,7 @@ import { TruncatingLabel } from "../../components/TruncatingLabel.jsx";
 import { cn } from "../../lib/utils.js";
 import { MODULE_REGISTRY } from "../../workspace/registry.jsx";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
+import { usePointerReorder, reorderIdsAtPointer } from "../../hooks/usePointerReorder.js";
 import {
   DOCK_PANEL_MODULE_IDS,
   dockModuleIdForPanelModuleId,
@@ -26,21 +27,7 @@ const DOCK_ONLY_PANEL_META = {
   },
 };
 
-export function reorderDockModulesAtPointer(panelOrder, activeId, clientY, rect) {
-  if (!rect || rect.height <= 0 || !panelOrder.length || !Number.isFinite(clientY)) {
-    return panelOrder;
-  }
-  const from = panelOrder.indexOf(activeId);
-  const rowHeight = rect.height / panelOrder.length;
-  const to = Math.max(
-    0,
-    Math.min(panelOrder.length - 1, Math.floor((clientY - rect.top) / rowHeight))
-  );
-  if (from < 0 || from === to) return panelOrder;
-  const next = [...panelOrder];
-  next.splice(to, 0, next.splice(from, 1)[0]);
-  return next;
-}
+export const reorderDockModulesAtPointer = reorderIdsAtPointer;
 
 function DockModuleRow({
   panel,
@@ -202,56 +189,20 @@ export function DockModulesEditor({
       })),
     [modules, panels]
   );
-  const [orderedPanels, setOrderedPanels] = useState(panelList);
+  const panelIds = useMemo(() => panelList.map((panel) => panel.id), [panelList]);
+  const { containerRef, orderedIds, draggingId, startDrag, moveDrag, endDrag } = usePointerReorder(
+    panelIds,
+    onReorder
+  );
   const [adding, setAdding] = useState(false);
-  const [draggingId, setDraggingId] = useState(null);
-  const listRef = useRef(null);
-  const orderedPanelIdsRef = useRef(panelList.map((panel) => panel.id));
-  const dragStartOrderRef = useRef(panelList.map((panel) => panel.id));
-  const draggingIdRef = useRef(null);
-  const dragPointerRef = useRef(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      orderedPanelIdsRef.current = panelList.map((panel) => panel.id);
-      setOrderedPanels(panelList);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [panelList]);
 
   useEffect(() => () => onHover?.(null), [onHover]);
 
-  const startDrag = (id, event) => {
-    dragStartOrderRef.current = orderedPanelIdsRef.current;
-    draggingIdRef.current = id;
-    dragPointerRef.current = event.pointerId;
-    setDraggingId(id);
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-
-  const moveDrag = (event) => {
-    const activeId = draggingIdRef.current;
-    if (!activeId || event.pointerId !== dragPointerRef.current) return;
-    const rect = listRef.current?.getBoundingClientRect();
-    const current = orderedPanelIdsRef.current;
-    const next = reorderDockModulesAtPointer(current, activeId, event.clientY, rect);
-    if (next === current) return;
-    orderedPanelIdsRef.current = next;
-    const byId = new Map(panelList.map((panel) => [panel.id, panel]));
-    setOrderedPanels(next.map((panelId) => byId.get(panelId)).filter(Boolean));
-  };
-
-  const endDrag = (event) => {
-    if (!draggingIdRef.current || event.pointerId !== dragPointerRef.current) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    dragPointerRef.current = null;
-    draggingIdRef.current = null;
-    setDraggingId(null);
-    if (orderedPanelIdsRef.current.some((id, index) => dragStartOrderRef.current[index] !== id)) {
-      onReorder(orderedPanelIdsRef.current);
-    }
-  };
-
+  const panelsById = useMemo(
+    () => new Map(panelList.map((panel) => [panel.id, panel])),
+    [panelList]
+  );
+  const orderedPanels = orderedIds.map((id) => panelsById.get(id)).filter(Boolean);
   const displayState = buildDisplayState(orderedPanels);
 
   return (
@@ -259,7 +210,7 @@ export function DockModulesEditor({
       <div className="flex min-h-full flex-col p-1">
         {orderedPanels.length ? (
           <div
-            ref={listRef}
+            ref={containerRef}
             data-testid="dock-module-order-list"
             // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the panel width; a bare grid
             // sizes its implicit auto column to the longest name and overflows the max-w cap, so the

@@ -1,18 +1,26 @@
-import { SlidersHorizontal, Trash2 } from "lucide-react";
+import { useMemo } from "react";
+import { GripVertical, SlidersHorizontal, Trash2 } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { AddButton } from "@/components/AddButton";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
 
 const ROW_CLASS =
-  "flex items-center gap-2 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50";
+  "flex items-center gap-1 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50";
 
+const DRAG_HANDLE_CLASS =
+  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+// `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after the drag handle (or,
+// on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
+// padding for its own hover/focus rounding, not a second helping of the handle's own gap.
 const ROW_BUTTON_CLASS =
-  "flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "flex min-w-0 flex-1 items-center gap-2 rounded pl-1 pr-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 const ICON_BUTTON_CLASS =
   "rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100";
@@ -39,7 +47,7 @@ function ActiveDot({ active }) {
  * affordance simply does not appear, which is the correct behaviour when no Stats panel exists.
  */
 export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle = true }) {
-  const { active, document, profiles, draftBlocksLibraryActions } = profile;
+  const { active, document, profiles, draftBlocksLibraryActions, reorderProfiles } = profile;
 
   // The editor panel is non-modal, so this list stays reachable while a draft is open. Everything
   // that would discard that draft is refused by the provider; showing it disabled is what makes
@@ -49,11 +57,25 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
 
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
+  const profileIds = useMemo(() => profiles.map((entry) => entry.id), [profiles]);
+  const { containerRef, orderedIds, draggingId, startDrag, moveDrag, endDrag } = usePointerReorder(
+    profileIds,
+    (nextIds) => reorderProfiles?.(nextIds)
+  );
+  const profilesById = useMemo(
+    () => new Map(profiles.map((entry) => [entry.id, entry])),
+    [profiles]
+  );
+  const orderedProfiles = orderedIds.map((id) => profilesById.get(id)).filter(Boolean);
+
   return (
     <>
       {showTitle ? <p className={GROUP_LABEL_CLASS}>Loudness Profile</p> : null}
 
       <div className={ROW_CLASS}>
+        {/* Same box as the drag handle below, just invisible: Off isn't reorderable, but its
+            label still needs to line up under the profiles' labels, not their handles. */}
+        <span className="size-5 shrink-0" aria-hidden="true" />
         <button
           type="button"
           aria-label="Use no Loudness Profile"
@@ -67,56 +89,76 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
         </button>
       </div>
 
-      {profiles.map((entry) => {
-        const selection = profileSelectionId(entry.id);
-        return (
-          <div key={entry.id} className={cn(ROW_CLASS, "group")}>
-            <button
-              type="button"
-              aria-label={`Use ${entry.name}`}
-              aria-pressed={active === selection}
-              onClick={() => profile.select(selection)}
-              disabled={blocked}
-              className={cn(ROW_BUTTON_CLASS, blockedClass)}
-            >
-              <ActiveDot active={active === selection} />
-              <TruncatingLabel text={entry.name} className="min-w-0 flex-1" />
-            </button>
-            <button
-              type="button"
-              // "Edit" and "Rename" sit next to each other and read as synonyms in sequence; the
-              // title that tells them apart is not reliably announced.
-              aria-label={`Edit ${entry.name} rules`}
-              title="Edit rules"
-              onClick={() => profile.beginEdit(entry.id)}
-              disabled={blocked}
-              className={cn(ICON_BUTTON_CLASS, blockedClass)}
-            >
-              <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
-            </button>
-            <InlineConfirm
-              onConfirm={() => profile.removeProfile(entry.id)}
-              confirmLabel={`Confirm delete ${entry.name}`}
-              cancelLabel={`Cancel delete ${entry.name}`}
-              className="mr-1.5"
-              trigger={(arm) => (
-                <button
-                  type="button"
-                  aria-label={`Delete ${entry.name}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    arm();
-                  }}
-                  disabled={blocked}
-                  className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
-                >
-                  <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                </button>
+      <div ref={containerRef} className="grid grid-cols-1 gap-px">
+        {orderedProfiles.map((entry) => {
+          const selection = profileSelectionId(entry.id);
+          return (
+            <div
+              key={entry.id}
+              className={cn(
+                ROW_CLASS,
+                "group",
+                draggingId === entry.id && "z-10 ring-1 ring-primary/60"
               )}
-            />
-          </div>
-        );
-      })}
+            >
+              <button
+                type="button"
+                aria-label={`Reorder ${entry.name}`}
+                onPointerDown={(event) => startDrag(entry.id, event)}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                className={DRAG_HANDLE_CLASS}
+              >
+                <GripVertical className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={`Use ${entry.name}`}
+                aria-pressed={active === selection}
+                onClick={() => profile.select(selection)}
+                disabled={blocked}
+                className={cn(ROW_BUTTON_CLASS, blockedClass)}
+              >
+                <ActiveDot active={active === selection} />
+                <TruncatingLabel text={entry.name} className="min-w-0 flex-1" />
+              </button>
+              <button
+                type="button"
+                // "Edit" and "Rename" sit next to each other and read as synonyms in sequence; the
+                // title that tells them apart is not reliably announced.
+                aria-label={`Edit ${entry.name} rules`}
+                title="Edit rules"
+                onClick={() => profile.beginEdit(entry.id)}
+                disabled={blocked}
+                className={cn(ICON_BUTTON_CLASS, blockedClass)}
+              >
+                <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+              <InlineConfirm
+                onConfirm={() => profile.removeProfile(entry.id)}
+                confirmLabel={`Confirm delete ${entry.name}`}
+                cancelLabel={`Cancel delete ${entry.name}`}
+                className="mr-1.5"
+                trigger={(arm) => (
+                  <button
+                    type="button"
+                    aria-label={`Delete ${entry.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      arm();
+                    }}
+                    disabled={blocked}
+                    className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
+                  >
+                    <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
+                  </button>
+                )}
+              />
+            </div>
+          );
+        })}
+      </div>
 
       <div className="px-1.5 py-1">
         <AddButton

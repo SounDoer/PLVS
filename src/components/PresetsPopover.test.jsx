@@ -11,6 +11,7 @@ const NOOP_PRESETS = {
   update: () => {},
   rename: () => {},
   remove: () => {},
+  reorder: () => {},
 };
 
 describe("PresetsPopoverContent", () => {
@@ -305,6 +306,22 @@ describe("PresetsPopoverContent", () => {
     fireEvent.click(screen.getByLabelText("Confirm delete preset Focus"));
     expect(remove).toHaveBeenCalledWith("a");
     expect(apply).not.toHaveBeenCalled();
+  });
+
+  it("provides a dedicated drag handle for every preset", () => {
+    render(
+      <PresetsPopoverContent
+        presets={{
+          ...NOOP_PRESETS,
+          list: [
+            { id: "a", name: "Focus" },
+            { id: "b", name: "Mix" },
+          ],
+        }}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Reorder Focus" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reorder Mix" })).toBeTruthy();
   });
 
   it("hides row-tail action icons until hover (opacity-0 group-hover class)", () => {

@@ -104,6 +104,16 @@ describe("LoudnessProfilePopoverContent listing", () => {
   });
 });
 
+describe("LoudnessProfilePopoverContent reordering", () => {
+  it("provides a dedicated drag handle for every profile but not for Off", () => {
+    renderPopover();
+
+    expect(screen.getByRole("button", { name: `Reorder ${STARTER.name}` })).toBeTruthy();
+    expect(screen.getByRole("button", { name: `Reorder ${SAVED.name}` })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reorder no Loudness Profile" })).toBeNull();
+  });
+});
+
 describe("LoudnessProfilePopoverContent editing", () => {
   it("offers the same edit and delete actions for starter and saved profiles", () => {
     renderPopover();
