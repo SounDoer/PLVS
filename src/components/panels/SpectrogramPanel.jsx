@@ -35,9 +35,10 @@ import { normalizePanelControls } from "../../lib/panelControls.js";
 const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
 const ACTIVE_PULSE_MS = 160;
-// TEMPORARY: flipped by hand to look at the 3D renderer before the settings control exists.
-// Task 5 of the implementation plan replaces this with panelControls.spectrogram3d.
-const FORCE_3D = false;
+// Handed to whichever renderer is inactive. Must be a stable identity: both hooks depend on the
+// canvas ref, so a fresh `{ current: null }` literal per render would tear down and restart their
+// requestAnimationFrame loops on every panel render, which happens at spectrum-frame rate.
+const NO_CANVAS = { current: null };
 
 export function SpectrogramPanel({ compact = false }) {
   const { channelCount, spectrumChannelOptions, resolvedThemeId } = useFrameData();
@@ -65,10 +66,13 @@ export function SpectrogramPanel({ compact = false }) {
   } = useHistoryData();
   const { panelControls, analysisStatus, onPanelControlsChange } = usePanelInstanceData();
   const chartYDragRef = useRef(null);
+  const heightGainDragRef = useRef(null);
+  const rotateDragRef = useRef(null);
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]
   );
+  const is3d = normalizedPanelControls.spectrogram3d === true;
   const spectrogramYAxis = useAxisInteraction({
     axis: "y",
     min: normalizedPanelControls.spectrogramYMinFreq,
@@ -143,6 +147,38 @@ export function SpectrogramPanel({ compact = false }) {
     },
     [normalizedPanelControls, onHistoryWheel, onPanelControlsChange, pulseChartYAxis]
   );
+  // In 3D the vertical screen direction is always the dB axis (frequency and time swap visual
+  // direction as azimuth turns), so the Y rail drags height gain instead of the frequency range.
+  const onHeightGainDrag = useCallback(
+    (deltaPx, axisPx) => {
+      const next = normalizedPanelControls.spectrogram3dHeightGain * (1 - deltaPx / axisPx);
+      onPanelControlsChange?.(
+        normalizePanelControls({
+          ...normalizedPanelControls,
+          spectrogram3dHeightGain: next,
+        })
+      );
+    },
+    [normalizedPanelControls, onPanelControlsChange]
+  );
+  const onHeightGainPointerDown = useCallback((e) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const rect = e.currentTarget.getBoundingClientRect();
+    heightGainDragRef.current = { lastY: e.clientY, axisPx: Math.max(1, rect.height) };
+  }, []);
+  const onHeightGainPointerMove = useCallback(
+    (e) => {
+      const drag = heightGainDragRef.current;
+      if (!drag) return;
+      const deltaPx = e.clientY - drag.lastY;
+      drag.lastY = e.clientY;
+      onHeightGainDrag(deltaPx, drag.axisPx);
+    },
+    [onHeightGainDrag]
+  );
+  const onHeightGainPointerUp = useCallback(() => {
+    heightGainDragRef.current = null;
+  }, []);
   const spectrogramFreqTicks = buildAdaptiveFreqTicks(
     normalizedPanelControls.spectrogramYMinFreq,
     normalizedPanelControls.spectrogramYMaxFreq,
@@ -221,7 +257,7 @@ export function SpectrogramPanel({ compact = false }) {
     [showFrequencyMarkers, spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
   );
   useSpectrogramCanvas({
-    canvasRef,
+    canvasRef: is3d ? NO_CANVAS : canvasRef,
     snapRef,
     oldestMs,
     newestMs,
@@ -233,7 +269,7 @@ export function SpectrogramPanel({ compact = false }) {
     maxHz: normalizedPanelControls.spectrogramYMaxFreq,
   });
   useSpectrogram3dCanvas({
-    canvasRef: FORCE_3D ? canvasRef : { current: null },
+    canvasRef: is3d ? canvasRef : NO_CANVAS,
     snapRef,
     oldestMs,
     newestMs,
@@ -244,10 +280,10 @@ export function SpectrogramPanel({ compact = false }) {
     colormapLut,
     minHz: normalizedPanelControls.spectrogramYMinFreq,
     maxHz: normalizedPanelControls.spectrogramYMaxFreq,
-    azimuthDeg: 45,
-    elevationDeg: 22,
-    heightGain: 1,
-    colorize: false,
+    azimuthDeg: normalizedPanelControls.spectrogram3dAzimuthDeg,
+    elevationDeg: normalizedPanelControls.spectrogram3dElevationDeg,
+    heightGain: normalizedPanelControls.spectrogram3dHeightGain,
+    colorize: normalizedPanelControls.spectrogram3dColorize,
   });
   const boundarySpan = newestMs - oldestMs;
   const {
@@ -256,6 +292,7 @@ export function SpectrogramPanel({ compact = false }) {
     onLeave: onSpectrogramHoverLeave,
   } = useChartHover(
     (xFrac, yFrac) => {
+      if (is3d) return null;
       if (!historyChartInteractive) return null;
       const markerNotes = [
         ...visibleFrequencyMarkers.map(({ marker, x }) => ({
@@ -287,6 +324,16 @@ export function SpectrogramPanel({ compact = false }) {
   );
   const onSpectrogramChartPointerDown = useCallback(
     (e) => {
+      if (is3d && e.button === 2) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        rotateDragRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          azimuthDeg: normalizedPanelControls.spectrogram3dAzimuthDeg,
+          elevationDeg: normalizedPanelControls.spectrogram3dElevationDeg,
+        };
+        return;
+      }
       if (e.ctrlKey && e.button === 0) {
         chartYDragRef.current = {
           startY: e.clientY,
@@ -300,6 +347,9 @@ export function SpectrogramPanel({ compact = false }) {
       onHistoryPointerDown?.(e);
     },
     [
+      is3d,
+      normalizedPanelControls.spectrogram3dAzimuthDeg,
+      normalizedPanelControls.spectrogram3dElevationDeg,
       normalizedPanelControls.spectrogramYMaxFreq,
       normalizedPanelControls.spectrogramYMinFreq,
       onHistoryPointerDown,
@@ -307,6 +357,17 @@ export function SpectrogramPanel({ compact = false }) {
   );
   const onSpectrogramChartPointerMove = useCallback(
     (e) => {
+      const rotate = rotateDragRef.current;
+      if (rotate) {
+        onPanelControlsChange?.(
+          normalizePanelControls({
+            ...normalizedPanelControls,
+            spectrogram3dAzimuthDeg: rotate.azimuthDeg + (e.clientX - rotate.x) * 0.4,
+            spectrogram3dElevationDeg: rotate.elevationDeg - (e.clientY - rotate.y) * 0.3,
+          })
+        );
+        return;
+      }
       notePointerMove(e);
       onHistoryPointerMove?.(e);
       const drag = chartYDragRef.current;
@@ -336,6 +397,7 @@ export function SpectrogramPanel({ compact = false }) {
   );
   const onSpectrogramChartPointerUp = useCallback(
     (e) => {
+      rotateDragRef.current = null;
       chartYDragRef.current = null;
       setChartDragging(false);
       setChartYAxisActive(false);
@@ -370,52 +432,65 @@ export function SpectrogramPanel({ compact = false }) {
             "grid min-h-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
           )}
         >
-          {/* Y-axis frequency labels */}
+          {/* Y-axis: frequency labels in 2D, height-gain drag rail in 3D */}
           <div
             ref={spectrogramYAxis.axisRef}
-            {...spectrogramYAxis.axisHandlers}
-            style={{ cursor: spectrogramYAxis.cursorStyle }}
+            {...(is3d
+              ? {
+                  onPointerDown: onHeightGainPointerDown,
+                  onPointerMove: onHeightGainPointerMove,
+                  onPointerUp: onHeightGainPointerUp,
+                  onPointerCancel: onHeightGainPointerUp,
+                }
+              : spectrogramYAxis.axisHandlers)}
+            style={{ cursor: is3d ? "ns-resize" : spectrogramYAxis.cursorStyle }}
             className={cn(
               W_SPECTRUM_Y_AXIS,
               "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
               (spectrogramYAxis.isActive || chartYAxisActive) && "text-foreground"
             )}
           >
-            <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-              {spectrogramFreqTicks.map(({ v: hz, lb: label }, i) => {
-                if (i === 0) {
+            {is3d ? (
+              <span className={axisLabelClass("y", "middle")} style={{ top: "50%" }}>
+                dB
+              </span>
+            ) : (
+              <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
+                {spectrogramFreqTicks.map(({ v: hz, lb: label }, i) => {
+                  if (i === 0) {
+                    return (
+                      <span key={hz} className={axisLabelClass("y", "end")}>
+                        {label}
+                      </span>
+                    );
+                  }
+                  if (i === spectrogramFreqTicks.length - 1) {
+                    return (
+                      <span key={hz} className={axisLabelClass("y", "start")}>
+                        {label}
+                      </span>
+                    );
+                  }
                   return (
-                    <span key={hz} className={axisLabelClass("y", "end")}>
+                    <span
+                      key={hz}
+                      className={axisLabelClass("y", "middle")}
+                      style={{
+                        top: `${
+                          rangedFreqToYFrac(
+                            hz,
+                            normalizedPanelControls.spectrogramYMinFreq,
+                            normalizedPanelControls.spectrogramYMaxFreq
+                          ) * 100
+                        }%`,
+                      }}
+                    >
                       {label}
                     </span>
                   );
-                }
-                if (i === spectrogramFreqTicks.length - 1) {
-                  return (
-                    <span key={hz} className={axisLabelClass("y", "start")}>
-                      {label}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={hz}
-                    className={axisLabelClass("y", "middle")}
-                    style={{
-                      top: `${
-                        rangedFreqToYFrac(
-                          hz,
-                          normalizedPanelControls.spectrogramYMinFreq,
-                          normalizedPanelControls.spectrogramYMaxFreq
-                        ) * 100
-                      }%`,
-                    }}
-                  >
-                    {label}
-                  </span>
-                );
-              })}
-            </div>
+                })}
+              </div>
+            )}
           </div>
 
           {/* Canvas chart */}
@@ -452,9 +527,10 @@ export function SpectrogramPanel({ compact = false }) {
                   setSelectedOffset(-1);
                 }}
               />
-              {(selectedOffset >= 0 && showSelLine) ||
-              visibleFrequencyMarkers.length > 0 ||
-              (dataBoundaryMarkers.length > 0 && boundarySpan > 0) ? (
+              {!is3d &&
+              ((selectedOffset >= 0 && showSelLine) ||
+                visibleFrequencyMarkers.length > 0 ||
+                (dataBoundaryMarkers.length > 0 && boundarySpan > 0)) ? (
                 <svg
                   viewBox="0 0 1000 1000"
                   preserveAspectRatio="none"
