@@ -981,16 +981,25 @@ Delete the `FORCE_3D` constant. Immediately after `normalizedPanelControls` is c
   const is3d = normalizedPanelControls.spectrogram3d === true;
 ```
 
+First add a stable dummy ref at module scope, next to the other constants:
+
+```js
+// Handed to whichever renderer is inactive. Must be a stable identity: both hooks depend on the
+// canvas ref, so a fresh `{ current: null }` literal per render would tear down and restart their
+// requestAnimationFrame loops on every panel render, which happens at spectrum-frame rate.
+const NO_CANVAS = { current: null };
+```
+
 Change the two hook calls so exactly one of them owns the canvas:
 
 ```js
   useSpectrogramCanvas({
-    canvasRef: is3d ? { current: null } : canvasRef,
+    canvasRef: is3d ? NO_CANVAS : canvasRef,
     // ...all existing arguments unchanged...
   });
 
   useSpectrogram3dCanvas({
-    canvasRef: is3d ? canvasRef : { current: null },
+    canvasRef: is3d ? canvasRef : NO_CANVAS,
     snapRef,
     oldestMs,
     newestMs,
