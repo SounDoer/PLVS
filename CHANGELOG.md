@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-07-28
+
+### Added
+- Each panel tab now has its own close control, so a single tab can be closed without hiding every tab in a shared slot.
+- Add Module rows in Workspace mode support drag-to-place, dropping a new panel exactly where you release it instead of only at a fixed default split.
+- Presets and Loudness Profile lists support drag-to-reorder.
+
+### Changed
+- Add Module (Workspace and Dock) now swaps into a picker view instead of opening a nested or floating popover, and wording is unified as "Add Module" in both modes; Dock's Modules editor gained a Reset to defaults control.
+
+### Fixed
+- Adding a panel via Add Module now gives it a modest ~30% slice instead of collapsing the existing layout to half the window.
+- Dock's flexible-growth modules (Spectrum, Waveform, Spectrogram, Stereo Map) no longer auto-grow past their defined preferred max width.
+- Dock preset drag-reorder now syncs to the main window instead of being silently dropped.
+- Dock module list icons are now consistently sized with normal mode.
+
 ## [0.12.0] - 2026-07-28
 
 ### Added
