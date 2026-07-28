@@ -9,6 +9,7 @@ import { CAPTION_TEXT, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/sh
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
+import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
@@ -34,6 +35,9 @@ import { normalizePanelControls } from "../../lib/panelControls.js";
 const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
 const ACTIVE_PULSE_MS = 160;
+// TEMPORARY: flipped by hand to look at the 3D renderer before the settings control exists.
+// Task 5 of the implementation plan replaces this with panelControls.spectrogram3d.
+const FORCE_3D = false;
 
 export function SpectrogramPanel({ compact = false }) {
   const { channelCount, spectrumChannelOptions, resolvedThemeId } = useFrameData();
@@ -227,6 +231,23 @@ export function SpectrogramPanel({ compact = false }) {
     colormapLut,
     minHz: normalizedPanelControls.spectrogramYMinFreq,
     maxHz: normalizedPanelControls.spectrogramYMaxFreq,
+  });
+  useSpectrogram3dCanvas({
+    canvasRef: FORCE_3D ? canvasRef : { current: null },
+    snapRef,
+    oldestMs,
+    newestMs,
+    sampleMs,
+    selectedOffset,
+    selectionXFrac: selLineX / 600,
+    frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
+    colormapLut,
+    minHz: normalizedPanelControls.spectrogramYMinFreq,
+    maxHz: normalizedPanelControls.spectrogramYMaxFreq,
+    azimuthDeg: 45,
+    elevationDeg: 22,
+    heightGain: 1,
+    colorize: false,
   });
   const boundarySpan = newestMs - oldestMs;
   const {
