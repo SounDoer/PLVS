@@ -95,6 +95,11 @@ describe("panelControls", () => {
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
+      spectrogram3d: false,
+      spectrogram3dColorize: false,
+      spectrogram3dHeightGain: 1,
+      spectrogram3dAzimuthDeg: 45,
+      spectrogram3dElevationDeg: 22,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,
@@ -237,6 +242,11 @@ describe("panelControls", () => {
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
+      spectrogram3d: false,
+      spectrogram3dColorize: false,
+      spectrogram3dHeightGain: 1,
+      spectrogram3dAzimuthDeg: 45,
+      spectrogram3dElevationDeg: 22,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,
@@ -596,5 +606,37 @@ describe("stereo map panel controls normalization", () => {
     });
     const twice = normalizePanelControls(once);
     expect(twice).toEqual(once);
+  });
+});
+
+describe("spectrogram 3D controls", () => {
+  it("defaults to the 2D view with a monochrome mesh", () => {
+    const c = normalizePanelControls({});
+    expect(c.spectrogram3d).toBe(false);
+    expect(c.spectrogram3dColorize).toBe(false);
+    expect(c.spectrogram3dHeightGain).toBe(1);
+    expect(c.spectrogram3dAzimuthDeg).toBe(45);
+    expect(c.spectrogram3dElevationDeg).toBe(22);
+  });
+
+  it("clamps height gain and elevation, and wraps azimuth", () => {
+    expect(normalizePanelControls({ spectrogram3dHeightGain: 99 }).spectrogram3dHeightGain).toBe(3);
+    expect(normalizePanelControls({ spectrogram3dHeightGain: 0 }).spectrogram3dHeightGain).toBe(
+      0.3
+    );
+    expect(normalizePanelControls({ spectrogram3dElevationDeg: 0 }).spectrogram3dElevationDeg).toBe(
+      5
+    );
+    expect(
+      normalizePanelControls({ spectrogram3dElevationDeg: 90 }).spectrogram3dElevationDeg
+    ).toBe(70);
+    expect(normalizePanelControls({ spectrogram3dAzimuthDeg: 370 }).spectrogram3dAzimuthDeg).toBe(
+      10
+    );
+  });
+
+  it("rejects non-boolean toggles", () => {
+    expect(normalizePanelControls({ spectrogram3d: "yes" }).spectrogram3d).toBe(false);
+    expect(normalizePanelControls({ spectrogram3dColorize: 1 }).spectrogram3dColorize).toBe(false);
   });
 });

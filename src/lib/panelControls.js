@@ -51,6 +51,14 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumYMinDb: -96,
   spectrogramYMinFreq: 20,
   spectrogramYMaxFreq: 20000,
+  spectrogram3d: false,
+  // Colorize defaults off for aesthetic reasons, not performance ones: the first impression of 3D
+  // mode is the classic monochrome mesh. The shared gradient makes colorize effectively free, so
+  // do not "optimise" this default on the assumption it was set for cost.
+  spectrogram3dColorize: false,
+  spectrogram3dHeightGain: 1,
+  spectrogram3dAzimuthDeg: 45,
+  spectrogram3dElevationDeg: 22,
   loudnessYMinDb: -64,
   loudnessYMaxDb: 0,
   levelMeterYMinDb: -60,
@@ -129,6 +137,32 @@ function normalizeSpectrumPeakLabels(raw) {
 
 function normalizeSpectrumMaxHold(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumMaxHold;
+}
+
+function normalizeSpectrogram3d(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrogram3d;
+}
+
+function normalizeSpectrogram3dColorize(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrogram3dColorize;
+}
+
+function normalizeSpectrogram3dHeightGain(raw) {
+  return clampNumber(raw, 0.3, 3, DEFAULT_PANEL_CONTROLS.spectrogram3dHeightGain);
+}
+
+/** Azimuth wraps rather than clamping — spinning past 360 during a drag is legitimate. */
+function normalizeSpectrogram3dAzimuthDeg(raw) {
+  if (!isNumber(raw)) return DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg;
+  return ((raw % 360) + 360) % 360;
+}
+
+/**
+ * Elevation is clamped at both ends: at 0 the surface collapses to a line, and past about 70 it
+ * degenerates into a skewed top-down view that is strictly worse than the 2D mode.
+ */
+function normalizeSpectrogram3dElevationDeg(raw) {
+  return clampNumber(raw, 5, 70, DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg);
 }
 
 /// spectrumMaxHold was spectrumPeakHold until "peak" was needed for the frequency axis — a peak
@@ -394,6 +428,11 @@ export function normalizePanelControls(raw) {
     spectrumYMinDb: spectrumYRange.min,
     spectrogramYMinFreq: spectrogramYRange.min,
     spectrogramYMaxFreq: spectrogramYRange.max,
+    spectrogram3d: normalizeSpectrogram3d(raw?.spectrogram3d),
+    spectrogram3dColorize: normalizeSpectrogram3dColorize(raw?.spectrogram3dColorize),
+    spectrogram3dHeightGain: normalizeSpectrogram3dHeightGain(raw?.spectrogram3dHeightGain),
+    spectrogram3dAzimuthDeg: normalizeSpectrogram3dAzimuthDeg(raw?.spectrogram3dAzimuthDeg),
+    spectrogram3dElevationDeg: normalizeSpectrogram3dElevationDeg(raw?.spectrogram3dElevationDeg),
     loudnessYMinDb: loudnessYRange.min,
     loudnessYMaxDb: loudnessYRange.max,
     levelMeterYMinDb: levelMeterYRange.min,

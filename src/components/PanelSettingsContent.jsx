@@ -1229,23 +1229,97 @@ export function PanelSettingsContent({
           }}
         />
         {showSpectrogramRange ? (
-          <SettingsRow label="Y Range">
-            <SettingsRangeInput
-              minAriaLabel="spectrogram y range min"
-              maxAriaLabel="spectrogram y range max"
-              minValue={normalizedPanelControls.spectrogramYMinFreq}
-              maxValue={normalizedPanelControls.spectrogramYMaxFreq}
-              onCommit={(newMin, newMax) => {
-                onPanelControlsChange?.(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    spectrogramYMinFreq: newMin,
-                    spectrogramYMaxFreq: newMax,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
+          <>
+            <SettingsRow label="Y Range">
+              <SettingsRangeInput
+                minAriaLabel="spectrogram y range min"
+                maxAriaLabel="spectrogram y range max"
+                minValue={normalizedPanelControls.spectrogramYMinFreq}
+                maxValue={normalizedPanelControls.spectrogramYMaxFreq}
+                onCommit={(newMin, newMax) => {
+                  onPanelControlsChange?.(
+                    normalizePanelControls({
+                      ...normalizedPanelControls,
+                      spectrogramYMinFreq: newMin,
+                      spectrogramYMaxFreq: newMax,
+                    })
+                  );
+                }}
+              />
+            </SettingsRow>
+            <SettingsRow
+              label="3D View"
+              tooltip="A presentation view of the waterfall surface. There is no hover readout in 3D — switch back to 2D to read exact values."
+            >
+              <SettingsSwitch
+                aria-label="spectrogram 3d view"
+                checked={normalizedPanelControls.spectrogram3d}
+                onCheckedChange={(checked) => {
+                  onPanelControlsChange?.(
+                    normalizePanelControls({
+                      ...normalizedPanelControls,
+                      spectrogram3d: checked,
+                    })
+                  );
+                }}
+              />
+            </SettingsRow>
+            {normalizedPanelControls.spectrogram3d ? (
+              <>
+                <SettingsRow label="Colorize">
+                  <SettingsSwitch
+                    aria-label="spectrogram 3d colorize"
+                    checked={normalizedPanelControls.spectrogram3dColorize}
+                    onCheckedChange={(checked) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dColorize: checked,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Height Gain">
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d height gain"
+                    min={0.3}
+                    max={3}
+                    step={0.05}
+                    value={normalizedPanelControls.spectrogram3dHeightGain}
+                    formatValue={(value) => `${value.toFixed(2)}x`}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dHeightGain: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Reset View">
+                  <button
+                    type="button"
+                    aria-label="spectrogram 3d reset view"
+                    onClick={() => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dAzimuthDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg,
+                          spectrogram3dElevationDeg:
+                            DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg,
+                        })
+                      );
+                    }}
+                    className="w-auto rounded-sm px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
+                  >
+                    Reset
+                  </button>
+                </SettingsRow>
+              </>
+            ) : null}
+          </>
         ) : null}
       </SettingsGroup>
     );

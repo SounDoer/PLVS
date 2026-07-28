@@ -99,6 +99,17 @@ export const SPECTROGRAM_HELP = [
       "Double-click axis - Reset axis",
     ],
   },
+  {
+    title: "3D View",
+    items: [
+      "Right drag - Rotate the waterfall surface",
+      "Height Gain (settings rail) - Scale the surface height",
+    ],
+  },
+  {
+    title: "3D limitations",
+    items: ["No hover readout in 3D - Switch to 2D for exact values"],
+  },
 ];
 
 export const WAVEFORM_HELP = [
