@@ -136,6 +136,9 @@ export function useDockLayout() {
     },
     [write]
   );
+  const resetLayout = useCallback(() => {
+    setPanels({});
+  }, [setPanels]);
   const setPanelControls = useCallback(
     (panelId, controls) => {
       const current = readDockState();
@@ -266,6 +269,7 @@ export function useDockLayout() {
     removePanel,
     renamePanel,
     setPanelOrder,
+    resetLayout,
     setPanelControls,
     resetPanelControls,
     setModuleControls,

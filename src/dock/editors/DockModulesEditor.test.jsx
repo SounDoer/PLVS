@@ -8,6 +8,7 @@ const BASE_PROPS = {
   onAdd: vi.fn(),
   onRemove: vi.fn(),
   onReorder: vi.fn(),
+  onReset: vi.fn(),
   onOpenSettings: vi.fn(),
 };
 
@@ -132,5 +133,15 @@ describe("DockModulesEditor", () => {
   it("does not render a title close button", () => {
     render(<DockModulesEditor {...BASE_PROPS} />);
     expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+  });
+
+  it("arms then resets the layout via the Reset control", () => {
+    const onReset = vi.fn();
+    render(<DockModulesEditor {...BASE_PROPS} onReset={onReset} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
+    expect(screen.getByLabelText("Confirm reset layout")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Confirm reset layout"));
+    expect(onReset).toHaveBeenCalledTimes(1);
   });
 });

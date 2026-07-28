@@ -162,6 +162,7 @@ export function DockEditorApp() {
           onRename={(panelId, name) => action("rename-module", { panelId, name })}
           onRemove={(panelId) => action("remove-module", { panelId })}
           onReorder={(panelOrder) => action("reorder-module", { panelOrder })}
+          onReset={() => action("reset-modules")}
           onHover={onHoverModule}
           onOpenSettings={(panelId) => action("open-module-settings", { panelId })}
         />

@@ -21,6 +21,7 @@ const ACTION_TYPES = new Set([
   "rename-module",
   "remove-module",
   "reorder-module",
+  "reset-modules",
   "hover-module",
   "open-module-settings",
   "update-module-controls",

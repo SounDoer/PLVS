@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, GripVertical, Pencil, Plus, Settings2, Timer, Trash2, X } from "lucide-react";
+import {
+  Check,
+  GripVertical,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Settings2,
+  Timer,
+  Trash2,
+  X,
+} from "lucide-react";
 import { InlineConfirm } from "../../components/InlineConfirm.jsx";
 import {
   MANAGEMENT_ROW_ACTIONS_CLASS,
@@ -177,6 +187,7 @@ export function DockModulesEditor({
   onRename,
   onRemove,
   onReorder,
+  onReset,
   onHover,
   onOpenSettings,
 }) {
@@ -266,11 +277,30 @@ export function DockModulesEditor({
               })}
             </div>
           ) : null}
-          <AddButton
-            label="Add Module"
-            aria-expanded={adding}
-            onClick={() => setAdding((current) => !current)}
-          />
+          <div className="flex items-center gap-1">
+            <AddButton
+              label="Add Module"
+              className="min-w-0 flex-1"
+              aria-expanded={adding}
+              onClick={() => setAdding((current) => !current)}
+            />
+            <InlineConfirm
+              onConfirm={onReset}
+              confirmLabel="Confirm reset layout"
+              cancelLabel="Cancel reset layout"
+              trigger={(arm) => (
+                <button
+                  type="button"
+                  aria-label="Reset layout"
+                  title="Reset layout"
+                  onClick={arm}
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <RotateCcw className="size-3.5" />
+                </button>
+              )}
+            />
+          </div>
         </div>
       </div>
     </DockEditorShell>

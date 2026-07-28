@@ -1234,6 +1234,8 @@ function AppContent() {
       } else if (type === "reorder-module") {
         if (Array.isArray(payload.panelOrder)) dockLayout.setPanelOrder(payload.panelOrder);
         else dockLayout.reorder(payload.from, payload.to);
+      } else if (type === "reset-modules") {
+        dockLayout.resetLayout();
       } else if (type === "hover-module") {
         setHoveredDockPanelId(typeof payload.panelId === "string" ? payload.panelId : null);
       } else if (type === "open-module-settings") {

@@ -107,6 +107,35 @@ describe("useDockLayout", () => {
     expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
+  it("resetLayout restores the default modules, order and controls", () => {
+    const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.toggle("spectrum"));
+    act(() =>
+      result.current.setModuleControls("loudness", {
+        ...result.current.controlsByModuleId.loudness,
+        loudnessHistoryVisibleLayerIds: ["momentary"],
+      })
+    );
+
+    act(() => result.current.resetLayout());
+
+    expect(result.current.modules).toEqual([
+      "transport",
+      "level",
+      "loudness",
+      "stats",
+      "correlation",
+      "spectrum",
+      "spectrogram",
+      "waveform",
+    ]);
+    expect(result.current.controlsByModuleId.loudness.loudnessHistoryVisibleLayerIds).toEqual([
+      "momentary",
+      "shortTerm",
+      "ref",
+    ]);
+  });
+
   it("marks the active preset dirty when the layout changes", () => {
     // Dock layout is part of the preset snapshot, so strip edits must dirty
     // the active preset like every other captured field. Assert on the raw

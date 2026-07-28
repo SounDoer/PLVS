@@ -109,7 +109,7 @@ function AddPanelControl() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <AddButton label="Add Panel" className="min-w-0" />
+        <AddButton label="Add Module" className="min-w-0" />
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-max min-w-44 max-w-[92vw] p-1">
         {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => (
