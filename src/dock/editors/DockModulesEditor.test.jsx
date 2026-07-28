@@ -40,6 +40,20 @@ describe("DockModulesEditor", () => {
     expect(screen.getByRole("button", { name: "Level Meter" })).toBeTruthy();
   });
 
+  it("swaps to a full Add Module view instead of expanding the current list, and Back returns to it", () => {
+    render(<DockModulesEditor {...BASE_PROPS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+
+    expect(screen.getByText("Add Module")).toBeTruthy();
+    expect(screen.queryByTestId("dock-panel-row-level")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Module" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(screen.getByTestId("dock-panel-row-level")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Module" })).toBeTruthy();
+  });
+
   it("offers the dock-only Timecode module in the add list", () => {
     const onAdd = vi.fn();
     render(<DockModulesEditor {...BASE_PROPS} onAdd={onAdd} />);

@@ -216,6 +216,38 @@ export function DockModulesEditor({
   const orderedPanels = orderedIds.map((id) => panelsById.get(id)).filter(Boolean);
   const displayState = buildDisplayState(orderedPanels);
 
+  if (adding) {
+    return (
+      <DockEditorShell title="Add Module" onBack={() => setAdding(false)}>
+        <div className="grid grid-cols-1 gap-px p-1">
+          {DOCK_PANEL_MODULE_IDS.map((id) => {
+            const entry = MODULE_REGISTRY[id] ?? DOCK_ONLY_PANEL_META[id];
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onAdd(id)}
+                className={cn(
+                  MANAGEMENT_ROW_CLASS,
+                  "text-left text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                )}
+              >
+                <span className="flex shrink-0 text-muted-foreground">
+                  {entry?.Icon ? (
+                    <entry.Icon className="size-[1.25em]" />
+                  ) : (
+                    <Plus className="size-[1.25em]" />
+                  )}
+                </span>
+                <span className="truncate">{entry?.title ?? id}</span>
+              </button>
+            );
+          })}
+        </div>
+      </DockEditorShell>
+    );
+  }
+
   return (
     <DockEditorShell title="Modules">
       <div className="flex min-h-full flex-col p-1">
@@ -249,58 +281,28 @@ export function DockModulesEditor({
           <p className="px-2 py-3 text-xs text-muted-foreground">No modules</p>
         )}
 
-        <div className="mt-1 border-t border-border/30 pt-1">
-          {adding ? (
-            <div className="grid grid-cols-1 gap-px pb-1">
-              {DOCK_PANEL_MODULE_IDS.map((id) => {
-                const entry = MODULE_REGISTRY[id] ?? DOCK_ONLY_PANEL_META[id];
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => onAdd(id)}
-                    className={cn(
-                      MANAGEMENT_ROW_CLASS,
-                      "text-left text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    )}
-                  >
-                    <span className="flex shrink-0 text-muted-foreground">
-                      {entry?.Icon ? (
-                        <entry.Icon className="size-[1.25em]" />
-                      ) : (
-                        <Plus className="size-[1.25em]" />
-                      )}
-                    </span>
-                    <span className="truncate">{entry?.title ?? id}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-          <div className="flex items-center gap-1">
-            <AddButton
-              label="Add Module"
-              className="min-w-0 flex-1"
-              aria-expanded={adding}
-              onClick={() => setAdding((current) => !current)}
-            />
-            <InlineConfirm
-              onConfirm={onReset}
-              confirmLabel="Confirm reset layout"
-              cancelLabel="Cancel reset layout"
-              trigger={(arm) => (
-                <button
-                  type="button"
-                  aria-label="Reset layout"
-                  title="Reset layout"
-                  onClick={arm}
-                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <RotateCcw className="size-3.5" />
-                </button>
-              )}
-            />
-          </div>
+        <div className="mt-1 flex items-center gap-1 border-t border-border/30 pt-1">
+          <AddButton
+            label="Add Module"
+            className="min-w-0 flex-1"
+            onClick={() => setAdding(true)}
+          />
+          <InlineConfirm
+            onConfirm={onReset}
+            confirmLabel="Confirm reset layout"
+            cancelLabel="Cancel reset layout"
+            trigger={(arm) => (
+              <button
+                type="button"
+                aria-label="Reset layout"
+                title="Reset layout"
+                onClick={arm}
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <RotateCcw className="size-3.5" />
+              </button>
+            )}
+          />
         </div>
       </div>
     </DockEditorShell>
