@@ -526,6 +526,15 @@ git commit -m "feat(spectrogram): add ridge grid sampling for the 3D view"
 
 No test file. `src/hooks/useSpectrogramCanvas.js` has none either — canvas drawing is not meaningfully testable under jsdom, which is why all the testable logic was pushed into Tasks 1 and 2. Verification here is visual.
 
+> **Correction, found during execution:** the hook code below omits the repaint-skip guard, which
+> the spec requires. Spectrum frames arrive at 25 Hz and the window advances at 10 Hz, so a live 3D
+> view needs ~25 repaints/second; without the guard it redraws at display rate and does 2.4x the
+> work, which would also make Task 4 measure the wrong thing. Mirror `useSpectrogramCanvas.js`'s
+> `lastPaintRef` block, and include the 3D-only inputs — `azimuthDeg`, `elevationDeg`, `heightGain`,
+> `colorize`, `selectionXFrac` — in the comparison, or rotation and height-gain drags produce no
+> visible response. Read `length` and `version` from the resolved `frozenSnaps ?? snapRef.current`
+> value, not from `snapRef.current` directly, or frozen-snapshot mode compares the wrong source.
+
 This task wires the hook behind a **temporary module constant** so it can be seen before the settings UI exists. Task 5 replaces that constant with the real control.
 
 Frequency sampling reuses `buildYToBand(bands, pointCount, minHz, maxHz)` unchanged — its second argument is just "how many sample points", so 2D and 3D cannot drift apart on frequency mapping.
