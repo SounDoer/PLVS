@@ -23,7 +23,7 @@ import { DockEditorShell } from "./DockEditorShell.jsx";
 const DOCK_ONLY_PANEL_META = {
   transport: {
     title: "Timecode",
-    Icon: () => <Timer size={16} />,
+    Icon: Timer,
   },
 };
 
@@ -109,7 +109,7 @@ function DockModuleRow({
       </button>
       {def?.Icon ? (
         <span className="flex shrink-0 text-muted-foreground">
-          <def.Icon />
+          <def.Icon className="size-[1.25em]" />
         </span>
       ) : null}
       <TruncatingLabel text={title} className="min-w-0 flex-1 text-left text-foreground" />
@@ -254,7 +254,11 @@ export function DockModulesEditor({
                     )}
                   >
                     <span className="flex shrink-0 text-muted-foreground">
-                      {entry?.Icon ? <entry.Icon /> : <Plus className="size-3.5" />}
+                      {entry?.Icon ? (
+                        <entry.Icon className="size-[1.25em]" />
+                      ) : (
+                        <Plus className="size-[1.25em]" />
+                      )}
                     </span>
                     <span className="truncate">{entry?.title ?? id}</span>
                   </button>
