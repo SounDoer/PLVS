@@ -270,6 +270,23 @@ describe("panel instances", () => {
     expect(next.panelsById.spectrum).toEqual({ id: "spectrum", moduleId: "spectrum" });
   });
 
+  it("gives a newly added panel a modest slice instead of an even 50/50 split", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "ADD_PANEL",
+      payload: { moduleId: "spectrum" },
+    });
+
+    // The whole pre-existing tree stays one flex-filling ("null") sibling — only the new
+    // leaf gets a fixed, modest share — so existing panels don't collapse to half the window.
+    expect(next.tree.type).toBe("split");
+    expect(next.tree.sizes).toEqual([null, 0.3]);
+    expect(next.tree.children[1]).toEqual({
+      type: "leaf",
+      tabs: ["spectrum-2"],
+      activeTab: "spectrum-2",
+    });
+  });
+
   it("removes one duplicate without removing its sibling", () => {
     const withDuplicate = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
       type: "ADD_PANEL",

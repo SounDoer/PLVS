@@ -8,6 +8,10 @@ import { createPanel, trimCustomTitle } from "./panelInstances.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 
+// A freshly added panel takes a modest slice of the existing layout instead of an even 50/50
+// split, so the whole pre-existing tree doesn't collapse to half its size on every add.
+const NEW_PANEL_SPLIT_SIZE = 0.3;
+
 // ---------------------------------------------------------------------------
 // MOVE_TAB helpers
 // ---------------------------------------------------------------------------
@@ -230,7 +234,9 @@ export function workspaceReducer(state, action) {
       const newLeaf = { type: "leaf", tabs: [panel.id], activeTab: panel.id };
       return {
         ...state,
-        tree: state.tree ? insertLeaf(state.tree, [], "right", newLeaf) : newLeaf,
+        tree: state.tree
+          ? insertLeaf(state.tree, [], "right", newLeaf, 0, NEW_PANEL_SPLIT_SIZE)
+          : newLeaf,
         panelsById: { ...state.panelsById, [panel.id]: panel },
         panelOrder: [...state.panelOrder, panel.id],
         panelControlsById: {
