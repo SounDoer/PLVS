@@ -1249,6 +1249,7 @@ function AppContent() {
       else if (type === "update-preset") void presets.update(payload.presetId);
       else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
       else if (type === "delete-preset") presets.remove(payload.presetId);
+      else if (type === "reorder-preset") presets.reorder(payload.presetIds);
     },
     [
       clearAll,

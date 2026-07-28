@@ -30,6 +30,7 @@ const ACTION_TYPES = new Set([
   "update-preset",
   "rename-preset",
   "delete-preset",
+  "reorder-preset",
 ]);
 
 export function isDockAccessorySurface(value) {

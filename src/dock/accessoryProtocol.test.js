@@ -43,6 +43,13 @@ describe("Dock accessory protocol", () => {
         payload: { panelId: "spectrum" },
       })
     ).toMatchObject({ type: "hover-module", payload: { panelId: "spectrum" } });
+    expect(
+      normalizeAccessoryAction({
+        surface: "dock-editor",
+        type: "reorder-preset",
+        payload: { presetIds: ["b", "a"] },
+      })
+    ).toMatchObject({ type: "reorder-preset", payload: { presetIds: ["b", "a"] } });
     expect(normalizeAccessoryAction({ surface: "dock-header", type: "unknown" })).toBeNull();
     expect(normalizeAccessoryPointer({ surface: "dock-editor", inside: true })).toEqual({
       surface: "dock-editor",

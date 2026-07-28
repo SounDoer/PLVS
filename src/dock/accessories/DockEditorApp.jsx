@@ -127,6 +127,7 @@ export function DockEditorApp() {
     update: (presetId) => action("update-preset", { presetId }),
     rename: (presetId, name) => action("rename-preset", { presetId, name }),
     remove: (presetId) => action("delete-preset", { presetId }),
+    reorder: (presetIds) => action("reorder-preset", { presetIds }),
   };
   const panelId = payload.view?.startsWith("module:") ? payload.view.slice(7) : null;
   const panel = panelId
