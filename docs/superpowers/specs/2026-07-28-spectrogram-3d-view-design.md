@@ -37,9 +37,9 @@ The data needed for it is already in the panel; only the rendering differs.
 | 1 | 3D is a **view mode of the Spectrogram panel**, not a new panel | Reuses data source, settings, colormap, time window; smallest increment |
 | 2 | Presentation-first; analysis capability deferred | Set by the user at design time; keeps v1 scope closed |
 | 3 | **Follows the existing time window**, downsampled | Shares scrub, zoom, and frozen snapshots with 2D; no second timeline to explain |
-| 4 | **Orthographic** projection, not perspective | Perspective compresses the far end of the time axis; with a shared time window that misleads. Parallel axes keep time spacing honest |
+| 4 | **Orthographic** projection, not perspective | Perspective compresses the far end of the time axis; with a shared time window that misleads. Parallel axes keep time spacing honest. It also makes dB→screen-height a single scene-wide linear map, which is what lets Colorize reuse one gradient (see Performance Model) |
 | 5 | **Hidden-line mesh** (style B): opaque background fill + stroke | Occlusion is what makes the surface read as solid. Painter's algorithm gives it for free |
-| 6 | Stroke colouring is a **toggle** (`Colorize`) | Off = classic monochrome mesh (fast). On = per-segment theme colormap (keeps parity with 2D theming). Same code path, different segment count |
+| 6 | Stroke colouring is a **toggle** (`Colorize`) | Off = classic monochrome mesh. On = theme colormap, keeping parity with 2D theming. Both cost effectively the same, so the toggle is an aesthetic choice, not a performance escape hatch |
 | 7 | Rotation on **right-drag** only | Left-drag, wheel, Ctrl-combos and double-click keep their 2D meanings. Right-click menu is already suppressed on this canvas |
 | 8 | Left axis rail controls **Height Gain** in 3D | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation. Frequency and time swap visual direction as azimuth turns |
 | 9 | Scrub feedback is a **highlighted ridge**, not a selection line | A vertical line through a 3D scene has no meaning; ridges are drawn one by one anyway |
@@ -88,8 +88,10 @@ touching data access.
 Sibling to `useSpectrogramCanvas`, same shape: `requestAnimationFrame` loop, `paramsRef` mirror of
 props, cached derived tables. Draws the floor, the ridges back-to-front, then the axes and labels.
 
-The existing repaint-skip cache does **not** carry over: in a live rolling window every frame
-changes, so 3D repaints every frame by design.
+The existing repaint-skip cache **does** carry over and must be kept. Spectrum frames arrive at 25 Hz
+and the time window advances at 10 Hz, so a live 3D view needs ~25 repaints per second, not 60. Only
+active dragging or rotation pushes it to display rate. Skipping this cache would triple the cost for
+no visible gain.
 
 ### New: `src/math/spectrogram3dMath.test.js`
 
@@ -134,10 +136,15 @@ Each ridge is one closed path: along the spectrum, then back along its floor bas
 resolved panel background colour (this *is* the hidden-line removal), then stroke.
 
 - `Colorize` **off**: one stroke per ridge in the theme foreground colour.
-- `Colorize` **on**: the ridge is split into runs of adjacent points that quantise to the same
-  colormap index, and each run is stroked once with that colour, reusing `colormapLut` from
-  `buildSpectrogramLut`. Run length is data-dependent, not a fixed segment count — smooth regions
-  collapse to few strokes, and cost rises only where the spectrum actually changes fast.
+- `Colorize` **on**: one stroke per ridge using a **shared vertical `CanvasGradient`**, built once per
+  repaint from `colormapLut` and reused for every ridge by translating the canvas to that ridge's
+  baseline before stroking. Gradient coordinates resolve against the transform in effect at paint
+  time, so the translate carries the gradient with it.
+
+  This works because colour and height are both functions of dB, and orthographic projection makes
+  dB→screen-height one linear map for the whole scene. The obvious alternative — splitting each ridge
+  into same-colour runs and stroking each run — was measured on paper at roughly 4400 stroke calls per
+  repaint and rejected; see Performance Model.
 
 ### Frequency sampling
 
@@ -151,6 +158,28 @@ Not user-configurable. It is a performance parameter that looks like an aestheti
 hands the user a control that can destroy the frame rate. Derived from canvas width instead, so
 density grows naturally with panel size.
 
+Starting targets: **R ≈ 120 ridges, P ≈ 300 points**, both scaled from canvas width and capped there.
+Cost tracks the product R×P, so the two can be traded against each other freely while tuning the look
+— more ridges reads as denser time resolution, more points as finer spectral detail.
+
+P is a decimation of the 958 available bands, roughly 3:1. Note the asymmetry with 2D, which maps
+bands to *canvas rows* via `buildYToBand` and therefore over-samples them on a tall panel. 3D
+deliberately carries less spectral detail than 2D — another reason it is not a readout view.
+
+### Fallback algorithm: floating horizon
+
+If polygon fill turns out to be the bottleneck (see Performance Model), the escape route is to change
+algorithm rather than to lower the knobs.
+
+**Floating horizon** maintains the silhouette envelope of everything drawn so far and draws only the
+portion of each ridge that rises above it. There is no overdraw and **no fill at all** — pure strokes
+produce correct hidden-line output, at O(R×P).
+
+It is not the default because it is materially more code, and because it interacts with the shared
+gradient above: clipped ridge segments still stroke against the same vertical gradient, but the
+"fill with background colour" step that currently creates the solid look disappears, so the surface
+reads as a wireframe rather than a solid. That is a visual change, not just an optimisation.
+
 ### Canvas text and DPI
 
 `useCanvasSize` sets `canvas.width = clientWidth * devicePixelRatio`, so the canvas coordinate system
@@ -161,6 +190,66 @@ Consequence worth a code comment: per the Windows text-scaling pitfall in `AGENT
 `devicePixelRatio` inside the webview already includes the Accessibility text-size factor. Axis
 labels sized off DPR therefore track the user's text-scaling setting automatically. That is correct
 behaviour and must not be "fixed".
+
+## Performance Model
+
+Paper estimate, done before implementation. Recorded here because two of its conclusions changed the
+design rather than merely reassuring us about it.
+
+### Measured parameters
+
+| Parameter | Value | Source |
+|---|---|---|
+| Bands per frame | **958** | `GRID_POINTS_PER_OCT = 96` over 9.97 octaves (20 Hz – 20 kHz) |
+| Spectrum frame rate | **25 Hz** | `VISUAL_HIST_SAMPLE_SEC = 0.04` |
+| Master timeline rate | 10 Hz | `HIST_SAMPLE_SEC = 0.1` |
+
+### Two budgets, not one
+
+Because data arrives at 25 Hz and the window advances at 10 Hz, the repaint-skip cache holds a live
+3D view at ~25 repaints/second. Display rate is only reached while the user is actively dragging or
+rotating.
+
+- **Steady state (live monitoring): 40 ms per repaint**
+- **Interactive transient (drag, rotate): 16.7 ms per repaint**
+
+### Cost breakdown
+
+With R = ridge count, P = points per ridge. Assuming a maximised panel at roughly 3000×1200 device
+pixels, with the projected frequency axis spanning ~1500 px.
+
+| Item | Scale | Estimate |
+|---|---|---|
+| Grid sampling | R×P array reads + R binary searches | < 1 ms |
+| Projection | R×P × ~4 flops | < 1 ms |
+| **`lineTo` calls** | **R×P JS→C++ boundary crossings** | **dominant CPU cost** |
+| **Polygon fill** | **R × 1500 px × mean height, with overdraw** | **dominant GPU cost** |
+| Stroke | R polylines, 1 px wide | small |
+| Gradient (Colorize on) | 1 per repaint | negligible |
+
+At **R = 120, P = 300** (36,000 points):
+
+- `lineTo` at 100–200 ns each → **4–7 ms**
+- Fill ≈ 54 Mpx with hardware acceleration → **~5 ms**
+- **Total ≈ 10–12 ms**
+
+Comfortable against the 40 ms steady-state budget; adequate but not generous against 16.7 ms.
+
+### Calibration against the existing 2D path
+
+The most reliable anchor available. `paintSpectrogramImageData` writes `ImageData` **per pixel**:
+at 3000×1200 that is ~3.6 M loop iterations and ~14.4 M byte writes per repaint — and it already runs
+at 25 Hz in production without complaint.
+
+The 3D path's 36,000 points are **two orders of magnitude less** JS arithmetic. The risk therefore is
+not arithmetic; it is that 3D trades pure typed-array writes for canvas API calls and GPU fill. The
+former is known affordable, the latter is not yet measured.
+
+### Principal uncertainty
+
+The fill estimate assumes WebView2's Canvas 2D is hardware-accelerated. Under software rendering,
+54 Mpx per repaint will not hold — and that depends on the machine and its drivers, not on anything
+this code controls. Floating horizon (see Rendering) exists precisely for that case.
 
 ## Interaction
 
@@ -218,6 +307,11 @@ feedback about which frame is selected. The selected ridge is stroked in
 Elevation is clamped at both ends: at 0° the surface collapses to a line; above ~70° it degenerates
 into a skewed top-down view that is strictly worse than 2D.
 
+`spectrogram3dColorize` defaults to **off for aesthetic reasons, not performance ones** — the first
+impression of 3D mode is the classic monochrome mesh. Worth stating explicitly because the shared
+gradient makes colorize effectively free, so a future reader must not "optimise" the default by
+assuming it was set for cost.
+
 These ride along with the existing `panelControls` persistence path. **No new persisted key is
 introduced**, deliberately — per `AGENTS.md`, choosing the wrong persistence domain fails silently by
 letting a reset take the wrong data with it.
@@ -244,10 +338,14 @@ design rather than being patched afterwards.
 
 - **Method:** `npm run desktop` with real capture, panel maximised, time window at its longest
   (worst case). Synthetic-data benchmarks do not count.
-- **Pass:** sustained 60fps.
-- **Fallbacks, in order:** lower the ridge-count ceiling → force `Colorize` off → accept 30fps with a
-  throttled repaint.
-- **Not an acceptable fallback:** shortening the time window. That would silently reverse Decision 3.
+- **Pass:** repaint completes within **40 ms** in steady state and within **16.7 ms** while dragging
+  or rotating. Measure the repaint itself, not the observed frame rate — at 25 Hz data an idle 3D
+  view is *supposed* to skip most display frames, so a "25fps" reading is the design working.
+- **Fallbacks, in order:** lower R and P (total points is what costs, so trade them freely) →
+  switch to floating horizon if fill dominates → accept a throttled repaint during rotation only.
+- **Not a fallback:** forcing `Colorize` off. The shared gradient makes it free; if it ever appears
+  to help, the gradient has been implemented wrong.
+- **Not a fallback:** shortening the time window. That would silently reverse Decision 3.
 
 ### CI coverage
 
