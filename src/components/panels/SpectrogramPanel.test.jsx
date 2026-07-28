@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
 import {
   FrameDataProvider,
@@ -9,6 +9,7 @@ import {
 } from "../../workspace/AudioDataContext.jsx";
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
+import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { SparseHistoryMarkers } from "../../lib/SparseHistoryMarkers.js";
@@ -16,6 +17,23 @@ import { SparseHistoryMarkers } from "../../lib/SparseHistoryMarkers.js";
 vi.mock("../../hooks/useSpectrogramCanvas", () => ({
   useSpectrogramCanvas: vi.fn(),
 }));
+
+vi.mock("../../hooks/useSpectrogram3dCanvas", () => ({
+  useSpectrogram3dCanvas: vi.fn(),
+}));
+
+// jsdom has no native PointerEvent constructor, so fireEvent.pointerMove's clientX/clientY never
+// reach the handler without this — every field lands as undefined and hover math silently NaNs
+// out. MouseEvent already carries clientX/clientY, so subclassing it is enough for the fields this
+// suite reads.
+if (typeof window.PointerEvent === "undefined") {
+  window.PointerEvent = class PointerEvent extends MouseEvent {
+    constructor(type, params = {}) {
+      super(type, params);
+      this.pointerId = params.pointerId ?? 0;
+    }
+  };
+}
 
 function viewOf(rows) {
   return {
@@ -82,6 +100,7 @@ function spectrogramPanelTree(value = {}, props = {}) {
 
 beforeEach(() => {
   vi.mocked(useSpectrogramCanvas).mockClear();
+  vi.mocked(useSpectrogram3dCanvas).mockClear();
 
   class ResizeObserverStub {
     observe() {}
@@ -394,5 +413,98 @@ describe("SpectrogramPanel", () => {
     renderPanel({}, { compact: true });
 
     expect(screen.queryByRole("button", { name: "Shortcuts and gestures" })).toBeNull();
+  });
+
+  it("suppresses the hover readout in 3D but shows it in 2D", () => {
+    // useChartHover coalesces pointer moves into a requestAnimationFrame callback; stub rAF with a
+    // manually-flushed queue (same pattern as useChartHover.test.js) so the hover state update can
+    // be observed synchronously inside act().
+    const rafCallbacks = [];
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((cb) => {
+        rafCallbacks.push(cb);
+        return rafCallbacks.length;
+      })
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const flushRaf = () => rafCallbacks.splice(0, rafCallbacks.length).forEach((cb) => cb());
+
+    try {
+      const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
+      const key = spectrumRequestKeyFromControls(panelControls);
+      const frame = viewOf([{ dbList: [-10], timestampMs: 1000, bands: [{ fCenter: 1000 }] }]);
+      const commonProps = {
+        selectedOffset: 2,
+        historyChartInteractive: true,
+        histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
+        effectiveOffsetSamples: 0,
+        visibleSamples: 3,
+        snapshotSpectrumByKey: { [key]: frame },
+      };
+
+      const twoD = renderPanel({ ...commonProps, panelControls });
+      act(() => {
+        fireEvent.pointerMove(twoD.container.querySelector("canvas"), { clientX: 0, clientY: 0 });
+        flushRaf();
+      });
+      expect(screen.getByText("-10.0 dB")).toBeTruthy();
+      twoD.unmount();
+
+      const threeD = renderPanel({
+        ...commonProps,
+        panelControls: { ...panelControls, spectrogram3d: true },
+      });
+      act(() => {
+        fireEvent.pointerMove(threeD.container.querySelector("canvas"), { clientX: 0, clientY: 0 });
+        flushRaf();
+      });
+      expect(screen.queryByText("-10.0 dB")).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("hides the SVG overlay lines in 3D even though 2D draws them", () => {
+    const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
+    const key = spectrumRequestKeyFromControls(panelControls);
+    const frames = [];
+    for (let ts = 1500; ts <= 2000; ts += 40) frames.push({ timestampMs: ts, dbList: [-10] });
+    const commonProps = {
+      selectedOffset: 2,
+      showSelLine: true,
+      channelCount: 6,
+      spectrumChannelOptions: [
+        { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
+        { key: "s-1", label: "C", sel: { type: "single", ch: 1 } },
+      ],
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+      snapshotSpectrumByKey: { [key]: viewOf(frames) },
+    };
+
+    const twoD = renderPanel({ ...commonProps, panelControls });
+    // Data-availability boundary line: this key's frames only start at 1500 within window [1000,2000].
+    expect(twoD.container.querySelector('line[stroke-dasharray="1 5"]')).toBeTruthy();
+    twoD.unmount();
+
+    const threeD = renderPanel({
+      ...commonProps,
+      panelControls: { ...panelControls, spectrogram3d: true },
+    });
+    expect(threeD.container.querySelector("svg")).toBeNull();
+  });
+
+  it("shows a dB label on the Y rail in 3D instead of frequency ticks", () => {
+    const { rerender } = renderPanel();
+
+    expect(screen.getByText("20k")).toBeTruthy();
+    expect(screen.queryByText("dB")).toBeNull();
+
+    rerender(spectrogramPanelTree({ panelControls: { spectrogram3d: true } }));
+
+    expect(screen.getByText("dB")).toBeTruthy();
+    expect(screen.queryByText("20k")).toBeNull();
   });
 });

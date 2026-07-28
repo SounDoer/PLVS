@@ -185,6 +185,17 @@ export function SpectrogramPanel({ compact = false }) {
     spectrogramYAxis.axisPx
   );
   const isOverCap = analysisStatus === "overCap";
+  // A right-drag rotation is only valid while 3D mode owns the canvas. If 3D View is switched off
+  // (or the panel drops into the over-cap empty state, which unmounts the canvas) mid-drag, the
+  // held button never delivers a pointerup to this component, so the ref would otherwise strand
+  // itself set and keep gating pointer-move away from ordinary 2D handling. Clearing it here -- on
+  // unmount too -- guarantees the very next pointer move behaves like a normal 2D move.
+  useEffect(() => {
+    if (!is3d || isOverCap) rotateDragRef.current = null;
+    return () => {
+      rotateDragRef.current = null;
+    };
+  }, [is3d, isOverCap]);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [chartDragging, setChartDragging] = useState(false);
@@ -319,7 +330,7 @@ export function SpectrogramPanel({ compact = false }) {
       );
     },
     selectedOffset < 0
-      ? `${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${normalizedPanelControls.spectrogramYMinFreq}:${normalizedPanelControls.spectrogramYMaxFreq}:${dataBoundaryMarkers.length}:${visibleFrequencyMarkers.length}`
+      ? `${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${normalizedPanelControls.spectrogramYMinFreq}:${normalizedPanelControls.spectrogramYMaxFreq}:${dataBoundaryMarkers.length}:${visibleFrequencyMarkers.length}`
       : null
   );
   const onSpectrogramChartPointerDown = useCallback(
@@ -358,7 +369,7 @@ export function SpectrogramPanel({ compact = false }) {
   const onSpectrogramChartPointerMove = useCallback(
     (e) => {
       const rotate = rotateDragRef.current;
-      if (rotate) {
+      if (rotate && is3d) {
         onPanelControlsChange?.(
           normalizePanelControls({
             ...normalizedPanelControls,
@@ -393,7 +404,13 @@ export function SpectrogramPanel({ compact = false }) {
       }
       onSpectrogramHoverMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
     },
-    [normalizedPanelControls, onHistoryPointerMove, onPanelControlsChange, onSpectrogramHoverMove]
+    [
+      is3d,
+      normalizedPanelControls,
+      onHistoryPointerMove,
+      onPanelControlsChange,
+      onSpectrogramHoverMove,
+    ]
   );
   const onSpectrogramChartPointerUp = useCallback(
     (e) => {
