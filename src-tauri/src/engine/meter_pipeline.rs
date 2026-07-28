@@ -9,15 +9,17 @@ use crate::dsp::peak::{
   sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
   RmsWindow,
 };
+#[cfg(test)]
+use crate::dsp::shared_spectral_engine::{RuntimeConsumerSnapshot, SpectralCheckpointTime};
+use crate::dsp::shared_spectral_engine::{SharedSpectralRuntime, SpectralDspTime};
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::{
-  LoudnessMeter, Meter, PcmContext, SpectrumChannelSel, SpectrumMeter, SpectrumView,
-  VectorscopeMeter,
+  LoudnessMeter, Meter, PcmContext, SpectrumChannelSel, SpectrumView, VectorscopeMeter,
 };
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AnalysisRequests, AudioFramePayload, MeterHistoryEntry, SpectrumAnalysisChannel,
-  SpectrumFrameResult, SpectrumVisualEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
+  AnalysisRequests, AudioFramePayload, MeterHistoryEntry, SpectrumFrameResult, SpectrumVisualEntry,
+  StereoMapFrameResult, StereoMapVisualEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
   VisualHistEntry,
 };
 
@@ -65,65 +67,95 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
   }
 }
 
-fn spectrum_result_from_meter(meter: &SpectrumMeter) -> SpectrumFrameResult {
-  let (centers, smooth, peak) = meter.last_output();
-  let (path, peak_path) = if !centers.is_empty() && smooth.len() == centers.len() {
-    let pk = if peak.len() == centers.len() {
-      peak
-    } else {
-      smooth
-    };
-    spectrum_paths_from_bands(centers, smooth, pk, true)
-  } else {
-    (String::new(), String::new())
+fn spectrum_payload_from_shared_output(
+  output: Option<crate::dsp::SpectralOutput<'_>>,
+) -> (SpectrumFrameResult, SpectrumVisualEntry) {
+  let Some(output) = output else {
+    return (
+      SpectrumFrameResult::default(),
+      SpectrumVisualEntry::default(),
+    );
   };
-  let (path_b, peak_path_b, smooth_db_b, peak_db_b): (String, String, Vec<f64>, Vec<f64>) =
-    match meter.last_output_secondary() {
-      Some((smooth_b, peak_b)) if smooth_b.len() == centers.len() && !centers.is_empty() => {
-        let pkb = if peak_b.len() == centers.len() {
-          peak_b
-        } else {
-          smooth_b
-        };
-        let (path_b, peak_path_b) = spectrum_paths_from_bands(centers, smooth_b, pkb, true);
-        (path_b, peak_path_b, smooth_b.to_vec(), pkb.to_vec())
-      }
-      _ => (String::new(), String::new(), Vec::new(), Vec::new()),
-    };
-
-  SpectrumFrameResult {
+  let (path, peak_path) =
+    spectrum_paths_from_bands(output.centers_hz, output.smooth_db, output.peak_db, true);
+  let (path_b, peak_path_b, smooth_db_b, peak_db_b) = output
+    .secondary
+    .map(|secondary| {
+      let (path, peak_path) = spectrum_paths_from_bands(
+        output.centers_hz,
+        secondary.smooth_db,
+        secondary.peak_db,
+        true,
+      );
+      (
+        path,
+        peak_path,
+        secondary.smooth_db.to_vec(),
+        secondary.peak_db.to_vec(),
+      )
+    })
+    .unwrap_or_default();
+  let band_centers_hz = output.centers_hz.to_vec();
+  let smooth_db = output.smooth_db.to_vec();
+  let result = SpectrumFrameResult {
     path,
     peak_path,
     path_b,
     peak_path_b,
-    band_centers_hz: centers.to_vec(),
-    smooth_db: smooth.to_vec(),
-    peak_db: peak.to_vec(),
+    band_centers_hz,
+    smooth_db,
+    peak_db: output.peak_db.to_vec(),
     smooth_db_b,
     peak_db_b,
+  };
+  let visual = SpectrumVisualEntry {
+    band_centers_hz: result.band_centers_hz.clone(),
+    smooth_db: result.smooth_db.clone(),
+    smooth_db_b: result.smooth_db_b.clone(),
+  };
+  (result, visual)
+}
+
+fn stereo_map_result_from_shared_output(
+  output: &crate::dsp::stereo_map::StereoMapPrimitiveRow,
+) -> StereoMapFrameResult {
+  StereoMapFrameResult {
+    band_centers_hz: output.band_centers_hz.clone(),
+    pl: output.pl.clone(),
+    pr: output.pr.clone(),
+    c: output.c.clone(),
   }
 }
 
-fn spectrum_request_selection(
-  request: &crate::ipc::types::SpectrumAnalysisRequest,
-) -> (SpectrumChannelSel, SpectrumView) {
-  let channel = match &request.channel {
-    SpectrumAnalysisChannel::Pair { x, y } => SpectrumChannelSel::Pair(*x, *y),
-    SpectrumAnalysisChannel::Single { ch } => SpectrumChannelSel::Single(*ch),
-  };
-  let view = match request.view.as_str() {
-    "lr" => SpectrumView::Lr,
-    "ms" => SpectrumView::Ms,
-    _ => SpectrumView::Combined,
-  };
-  (channel, view)
+fn stereo_map_visual_from_result(result: &StereoMapFrameResult) -> StereoMapVisualEntry {
+  StereoMapVisualEntry {
+    band_centers_hz: result.band_centers_hz.clone(),
+    pl: result.pl.clone(),
+    pr: result.pr.clone(),
+    c: result.c.clone(),
+  }
+}
+
+fn stereo_map_visual_from_shared_output(
+  output: &crate::dsp::stereo_map::StereoMapPrimitiveRow,
+) -> StereoMapVisualEntry {
+  StereoMapVisualEntry {
+    band_centers_hz: output.band_centers_hz.clone(),
+    pl: output.pl.clone(),
+    pr: output.pr.clone(),
+    c: output.c.clone(),
+  }
+}
+
+struct PendingFileVisualCheckpoint {
+  timestamp_ms: u64,
+  stereo_map_by_key: HashMap<String, StereoMapVisualEntry>,
 }
 
 pub struct MeterPipeline {
-  sample_rate: f64,
   channels: u16,
   loudness: LoudnessMeter,
-  spectrum_by_key: HashMap<String, SpectrumMeter>,
+  shared_spectral_runtime: SharedSpectralRuntime,
   vectorscope_by_key: HashMap<String, VectorscopeMeter>,
   last_loudness_weights: Option<Vec<f64>>,
   last_loudness: Option<LoudnessBlock>,
@@ -162,15 +194,27 @@ pub struct MeterPipeline {
   /// When set (during `push_pcm_f32_with_requests_at_media_time`), overrides all emitted
   /// timestamps with the supplied media time.
   current_media_time_ms: Option<u64>,
+  /// Last supplied file position, retained so end-of-stream flushes stay on the media timeline.
+  last_file_media_time_ms: Option<u64>,
   /// File mode: queued (momentary_lufs, short_term_lufs, media_time_ms) between frame emits.
   pending_file_loudness_queue: Vec<(f64, f64, u64, Vec<f64>)>,
-  /// File mode: queued visual tick media timestamps between frame emits.
-  pending_file_visual_queue: Vec<u64>,
+  /// File mode: queued visual checkpoints and their request-keyed Stereo Map snapshots.
+  pending_file_visual_queue: Vec<PendingFileVisualCheckpoint>,
   /// File mode: media time (ms) of the last queued loudness tick; gates tick cadence by media time
   /// instead of wall clock (offline decode runs far faster than real time). `None` = none queued yet.
   last_hist_media_ms: Option<u64>,
   /// File mode: media time (ms) of the last queued visual tick. See `last_hist_media_ms`.
   last_visual_media_ms: Option<u64>,
+  #[cfg(test)]
+  shared_spectral_last_dsp_time_sec: HashMap<String, f64>,
+  #[cfg(test)]
+  shared_spectral_file_attempts: HashMap<String, Vec<(u64, bool)>>,
+  #[cfg(test)]
+  shared_spectral_output_checkpoints: HashMap<String, Vec<u64>>,
+  #[cfg(test)]
+  shared_spectral_cached_snapshots: HashMap<String, RuntimeConsumerSnapshot>,
+  #[cfg(test)]
+  dsp_time_override: Option<SpectralDspTime>,
 }
 
 pub struct PipelineSummary {
@@ -189,10 +233,9 @@ impl MeterPipeline {
   pub fn new(sample_rate: u32, channels: u16) -> Self {
     let sr = sample_rate as f64;
     let pipeline = Self {
-      sample_rate: sr,
       channels,
       loudness: LoudnessMeter::new(sr),
-      spectrum_by_key: HashMap::new(),
+      shared_spectral_runtime: SharedSpectralRuntime::new(sr),
       vectorscope_by_key: HashMap::new(),
       last_loudness_weights: None,
       last_loudness: None,
@@ -226,10 +269,21 @@ impl MeterPipeline {
       last_dialogue_vad_engine: VadEngineKind::default(),
       file_timing: false,
       current_media_time_ms: None,
+      last_file_media_time_ms: None,
       pending_file_loudness_queue: Vec::new(),
       pending_file_visual_queue: Vec::new(),
       last_hist_media_ms: None,
       last_visual_media_ms: None,
+      #[cfg(test)]
+      shared_spectral_last_dsp_time_sec: HashMap::new(),
+      #[cfg(test)]
+      shared_spectral_file_attempts: HashMap::new(),
+      #[cfg(test)]
+      shared_spectral_output_checkpoints: HashMap::new(),
+      #[cfg(test)]
+      shared_spectral_cached_snapshots: HashMap::new(),
+      #[cfg(test)]
+      dsp_time_override: None,
     };
     debug_assert_eq!(
       pipeline.waveform_min_acc.len(),
@@ -251,9 +305,7 @@ impl MeterPipeline {
     self.sample_peak_max_r = f64::NEG_INFINITY;
     self.rms_window.reset();
     self.loudness.reset();
-    for meter in self.spectrum_by_key.values_mut() {
-      meter.reset();
-    }
+    self.shared_spectral_runtime.reset();
     for meter in self.vectorscope_by_key.values_mut() {
       meter.reset();
     }
@@ -269,8 +321,18 @@ impl MeterPipeline {
     self.visual_waveform_min_acc.fill(f32::INFINITY);
     self.visual_waveform_max_acc.fill(f32::NEG_INFINITY);
     self.last_visual_emit = instant_ago(Duration::from_millis(200));
+    self.pending_file_loudness_queue.clear();
+    self.pending_file_visual_queue.clear();
     self.last_hist_media_ms = None;
     self.last_visual_media_ms = None;
+    self.last_file_media_time_ms = None;
+    #[cfg(test)]
+    {
+      self.shared_spectral_last_dsp_time_sec.clear();
+      self.shared_spectral_file_attempts.clear();
+      self.shared_spectral_output_checkpoints.clear();
+      self.shared_spectral_cached_snapshots.clear();
+    }
   }
 
   /// Resets only the session True Peak Max hold, leaving momentary/short-term/sample-peak
@@ -300,6 +362,7 @@ impl MeterPipeline {
   fn timestamp_ms(&self) -> u64 {
     self
       .current_media_time_ms
+      .or(self.last_file_media_time_ms.filter(|_| self.file_timing))
       .unwrap_or_else(|| self.t0.elapsed().as_millis() as u64)
   }
 
@@ -331,6 +394,11 @@ impl MeterPipeline {
     dialogue_vad_engine: VadEngineKind,
   ) -> Option<AudioFramePayload> {
     let now_sec = self.t0.elapsed().as_secs_f64();
+    #[cfg(test)]
+    let now_sec = self
+      .dsp_time_override
+      .map(SpectralDspTime::as_seconds)
+      .unwrap_or(now_sec);
     let ch = self.channels.max(1);
     let effective_layout = match channel_layout {
       ChannelLayoutSetting::Auto => match ch {
@@ -340,15 +408,13 @@ impl MeterPipeline {
       },
       other => other,
     };
-
-    let active_spectrum_keys: HashSet<&str> = analysis_requests
-      .spectrum
-      .iter()
-      .map(|request| request.key.as_str())
-      .collect();
+    let spectral_plan =
+      crate::engine::spectral_plan::plan_analysis_requests(self.channels, analysis_requests);
+    self.shared_spectral_runtime.update_plan(spectral_plan);
     self
-      .spectrum_by_key
-      .retain(|key, _| active_spectrum_keys.contains(key.as_str()));
+      .shared_spectral_runtime
+      .push_interleaved(interleaved, self.channels);
+
     let active_vectorscope_keys: HashSet<&str> = analysis_requests
       .vectorscope
       .iter()
@@ -359,31 +425,51 @@ impl MeterPipeline {
       .retain(|key, _| active_vectorscope_keys.contains(key.as_str()));
 
     let mut spectrum_results_by_key = HashMap::new();
+    let mut spectrum_by_key = Vec::with_capacity(analysis_requests.spectrum.len());
+    let dsp_time = SpectralDspTime::from_monotonic_seconds(now_sec);
     for request in &analysis_requests.spectrum {
-      let (spectrum_channel, spectrum_view) = spectrum_request_selection(request);
-      let meter = self
-        .spectrum_by_key
-        .entry(request.key.clone())
-        .or_insert_with(|| SpectrumMeter::new(self.sample_rate));
-      meter.set_display_controls(
-        request.speed_percent,
-        request.tilt_db_per_octave,
-        crate::ipc::commands::parse_octave_smoothing(&request.octave_smoothing).unwrap_or_default(),
-      );
-      let ctx = PcmContext {
-        interleaved,
-        channels: ch,
-        now_sec,
-        channel_layout: effective_layout,
-        loudness_weights: loudness_weights.clone(),
-        vectorscope_pair: (0, 1),
-        spectrum_channel,
-        spectrum_view,
-        dialogue_gating,
-        dialogue_vad_engine,
-      };
-      meter.push_pcm(&ctx);
-      spectrum_results_by_key.insert(request.key.clone(), spectrum_result_from_meter(meter));
+      let output = self
+        .shared_spectral_runtime
+        .consumer_output_at_dsp_time(&request.key, dsp_time);
+      let (result, visual) = spectrum_payload_from_shared_output(output);
+      spectrum_results_by_key.insert(request.key.clone(), result);
+      spectrum_by_key.push((request.key.clone(), visual));
+
+      #[cfg(test)]
+      {
+        let snapshot = self
+          .shared_spectral_runtime
+          .consumer_snapshot_after_output_for_test(&request.key);
+        let output_present = snapshot
+          .as_ref()
+          .is_some_and(|snapshot| snapshot.output_present);
+        if output_present {
+          self
+            .shared_spectral_last_dsp_time_sec
+            .insert(request.key.clone(), dsp_time.as_seconds());
+        }
+        if let Some(snapshot) = snapshot {
+          self
+            .shared_spectral_cached_snapshots
+            .insert(request.key.clone(), snapshot);
+        }
+        if self.file_timing && !interleaved.is_empty() {
+          let timestamp_ms =
+            SpectralCheckpointTime::from_media_millis(self.timestamp_ms()).as_millis();
+          self
+            .shared_spectral_file_attempts
+            .entry(request.key.clone())
+            .or_default()
+            .push((timestamp_ms, output_present));
+          if output_present {
+            self
+              .shared_spectral_output_checkpoints
+              .entry(request.key.clone())
+              .or_default()
+              .push(timestamp_ms);
+          }
+        }
+      }
     }
 
     let mut vectorscope_results_by_key = HashMap::new();
@@ -437,6 +523,7 @@ impl MeterPipeline {
     let mut frame = self.push_pcm_f32_optional(
       interleaved,
       channel_layout,
+      analysis_requests,
       primary_vectorscope_summary
         .or_else(|| vectorscope_pair.map(|(x, y)| (x, y, 0.0, f64::NEG_INFINITY))),
       loudness_weights,
@@ -445,6 +532,22 @@ impl MeterPipeline {
     )?;
     frame.spectrum_results_by_key = spectrum_results_by_key;
     frame.vectorscope_results_by_key = vectorscope_results_by_key;
+    // The runtime lends its persistent row; clone it only after a frame has passed the emit gate.
+    frame.stereo_map_results_by_key = analysis_requests
+      .stereo_map
+      .iter()
+      .filter_map(|request| {
+        self
+          .shared_spectral_runtime
+          .stereo_map_output(&request.key)
+          .map(|output| {
+            (
+              request.key.clone(),
+              stereo_map_result_from_shared_output(output),
+            )
+          })
+      })
+      .collect();
 
     // When this frame carries a visual history tick, attach per-request-key samples so the
     // frontend can keep request-keyed snapshot history. Only active request keys are emitted;
@@ -455,27 +558,6 @@ impl MeterPipeline {
     // `visual_hist_batch` whose entries share this frame's snapshot (coarse but present 鈥?same as the
     // non-keyed `spectrum_smooth_db`). Without this, request-keyed panels (Spectrogram, and scrubbed
     // Spectrum/Vectorscope) have no history in file mode.
-    let spectrum_by_key: Vec<(String, SpectrumVisualEntry)> = analysis_requests
-      .spectrum
-      .iter()
-      .filter_map(|request| {
-        self.spectrum_by_key.get(&request.key).map(|meter| {
-          let (centers, smooth, _peak) = meter.last_output();
-          let smooth_db_b = meter
-            .last_output_secondary()
-            .map(|(smooth_b, _)| smooth_b.to_vec())
-            .unwrap_or_default();
-          (
-            request.key.clone(),
-            SpectrumVisualEntry {
-              band_centers_hz: centers.to_vec(),
-              smooth_db: smooth.to_vec(),
-              smooth_db_b,
-            },
-          )
-        })
-      })
-      .collect();
     let vectorscope_by_key: Vec<(String, VectorscopeVisualEntry)> = analysis_requests
       .vectorscope
       .iter()
@@ -495,13 +577,32 @@ impl MeterPipeline {
         })
       })
       .collect();
+    // Visual rows have their own cadence, so do not duplicate the large primitive arrays for
+    // ordinary live frames that carry no visual checkpoint.
+    let stereo_map_by_key = if frame.visual_hist_tick.is_some() {
+      analysis_requests
+        .stereo_map
+        .iter()
+        .filter_map(|request| {
+          frame
+            .stereo_map_results_by_key
+            .get(&request.key)
+            .map(|result| (request.key.clone(), stereo_map_visual_from_result(result)))
+        })
+        .collect::<Vec<_>>()
+    } else {
+      Vec::new()
+    };
 
     if let Some(entry) = frame.visual_hist_tick.as_mut() {
       entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
       entry.vectorscope_by_key = vectorscope_by_key.iter().cloned().collect();
+      entry.stereo_map_by_key = stereo_map_by_key.iter().cloned().collect();
     }
     if !frame.visual_hist_batch.is_empty()
-      && (!spectrum_by_key.is_empty() || !vectorscope_by_key.is_empty())
+      && (!spectrum_by_key.is_empty()
+        || !vectorscope_by_key.is_empty()
+        || !stereo_map_by_key.is_empty())
     {
       for entry in frame.visual_hist_batch.iter_mut() {
         entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
@@ -525,6 +626,7 @@ impl MeterPipeline {
     dialogue_vad_engine: VadEngineKind,
     media_time_ms: u64,
   ) -> Option<AudioFramePayload> {
+    self.last_file_media_time_ms = Some(media_time_ms);
     self.current_media_time_ms = Some(media_time_ms);
     let frame = self.push_pcm_f32_with_requests(
       interleaved,
@@ -574,6 +676,7 @@ impl MeterPipeline {
     &mut self,
     interleaved: &[f32],
     channel_layout: ChannelLayoutSetting,
+    analysis_requests: &AnalysisRequests,
     vectorscope_summary: Option<(u16, u16, f64, f64)>,
     loudness_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
@@ -718,7 +821,27 @@ impl MeterPipeline {
       };
       if advanced {
         self.last_visual_media_ms = Some(ts);
-        self.pending_file_visual_queue.push(ts);
+        let stereo_map_by_key = analysis_requests
+          .stereo_map
+          .iter()
+          .filter_map(|request| {
+            self
+              .shared_spectral_runtime
+              .stereo_map_output(&request.key)
+              .map(|output| {
+                (
+                  request.key.clone(),
+                  stereo_map_visual_from_shared_output(output),
+                )
+              })
+          })
+          .collect();
+        self
+          .pending_file_visual_queue
+          .push(PendingFileVisualCheckpoint {
+            timestamp_ms: ts,
+            stereo_map_by_key,
+          });
       }
     }
 
@@ -877,6 +1000,7 @@ impl MeterPipeline {
           side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
           vectorscope_by_key: HashMap::new(),
+          stereo_map_by_key: HashMap::new(),
         })
       } else {
         None
@@ -969,15 +1093,16 @@ impl MeterPipeline {
         .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
         .unwrap_or(f64::NEG_INFINITY);
       let mut visual_batch = Vec::new();
-      for ts in std::mem::take(&mut self.pending_file_visual_queue) {
+      for checkpoint in std::mem::take(&mut self.pending_file_visual_queue) {
         visual_batch.push(VisualHistEntry {
-          timestamp_ms: ts,
+          timestamp_ms: checkpoint.timestamp_ms,
           waveform_min: visual_waveform_min.clone(),
           waveform_max: visual_waveform_max.clone(),
           correlation: visual_corr,
           side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
           vectorscope_by_key: HashMap::new(),
+          stereo_map_by_key: checkpoint.stereo_map_by_key,
         });
       }
       if !visual_batch.is_empty() {
@@ -1011,6 +1136,7 @@ impl MeterPipeline {
       vectorscope_pair_y: pair_y,
       spectrum_results_by_key: HashMap::new(),
       vectorscope_results_by_key: HashMap::new(),
+      stereo_map_results_by_key: HashMap::new(),
       loudness_layout,
       loudness_layout_known,
       timestamp_ms: self.timestamp_ms(),
@@ -1073,8 +1199,1027 @@ impl MeterPipeline {
 }
 
 #[cfg(test)]
+impl MeterPipeline {
+  fn spectral_plan_for_test(
+    &self,
+    analysis_requests: &AnalysisRequests,
+  ) -> crate::engine::spectral_plan::SpectralPlan {
+    crate::engine::spectral_plan::plan_analysis_requests(self.channels, analysis_requests)
+  }
+
+  pub(crate) fn push_shared_runtime_for_test(
+    &mut self,
+    interleaved: &[f32],
+    analysis_requests: &AnalysisRequests,
+    dsp_time: SpectralDspTime,
+  ) {
+    self.push_shared_runtime_at_times_for_test(interleaved, analysis_requests, dsp_time, None);
+  }
+
+  fn push_shared_runtime_at_times_for_test(
+    &mut self,
+    interleaved: &[f32],
+    analysis_requests: &AnalysisRequests,
+    dsp_time: SpectralDspTime,
+    checkpoint_time: Option<SpectralCheckpointTime>,
+  ) {
+    let plan = self.spectral_plan_for_test(analysis_requests);
+    self.shared_spectral_runtime.update_plan(plan);
+    self
+      .shared_spectral_runtime
+      .push_interleaved(interleaved, self.channels);
+    for request in &analysis_requests.spectrum {
+      let snapshot = self
+        .shared_spectral_runtime
+        .consumer_snapshot_at_dsp_time_for_test(&request.key, dsp_time);
+      let output_present = snapshot
+        .as_ref()
+        .is_some_and(|snapshot| snapshot.output_present);
+      if output_present {
+        self
+          .shared_spectral_last_dsp_time_sec
+          .insert(request.key.clone(), dsp_time.as_seconds());
+      }
+      if let Some(snapshot) = snapshot {
+        self
+          .shared_spectral_cached_snapshots
+          .insert(request.key.clone(), snapshot);
+      }
+      if let Some(checkpoint_time) = checkpoint_time.filter(|_| !interleaved.is_empty()) {
+        let timestamp_ms = checkpoint_time.as_millis();
+        self
+          .shared_spectral_file_attempts
+          .entry(request.key.clone())
+          .or_default()
+          .push((timestamp_ms, output_present));
+        if output_present {
+          self
+            .shared_spectral_output_checkpoints
+            .entry(request.key.clone())
+            .or_default()
+            .push(timestamp_ms);
+        }
+      }
+    }
+  }
+
+  pub(crate) fn shared_runtime_snapshot_for_test(
+    &mut self,
+    key: &str,
+    now_sec: f64,
+  ) -> Option<crate::dsp::shared_spectral_engine::RuntimeConsumerSnapshot> {
+    self
+      .shared_spectral_runtime
+      .consumer_snapshot_for_test(key, now_sec)
+  }
+
+  pub(crate) fn shared_runtime_sample_clock_for_test(&self) -> u64 {
+    self.shared_spectral_runtime.sample_clock_for_test()
+  }
+
+  fn stereo_map_consume_counts_for_test(&self, key: &str) -> Option<[u64; 3]> {
+    self
+      .shared_spectral_runtime
+      .stereo_map_consume_counts_for_test(key)
+  }
+
+  pub(crate) fn shared_runtime_last_output_dsp_time_for_test(&self, key: &str) -> Option<f64> {
+    self.shared_spectral_last_dsp_time_sec.get(key).copied()
+  }
+
+  pub(crate) fn shared_runtime_cached_snapshot_for_test(
+    &self,
+    key: &str,
+  ) -> Option<RuntimeConsumerSnapshot> {
+    self.shared_spectral_cached_snapshots.get(key).cloned()
+  }
+
+  pub(crate) fn set_dsp_time_for_test(&mut self, dsp_time: SpectralDspTime) {
+    self.dsp_time_override = Some(dsp_time);
+  }
+
+  pub(crate) fn set_file_media_time_for_test(&mut self, media_time_ms: u64) {
+    debug_assert!(self.file_timing);
+    self.current_media_time_ms = Some(media_time_ms);
+    self.last_file_media_time_ms = Some(media_time_ms);
+  }
+
+  pub(crate) fn shared_runtime_file_attempts_for_test(&self, key: &str) -> Vec<(u64, bool)> {
+    self
+      .shared_spectral_file_attempts
+      .get(key)
+      .cloned()
+      .unwrap_or_default()
+  }
+
+  pub(crate) fn shared_runtime_output_checkpoints_for_test(&self, key: &str) -> Vec<u64> {
+    self
+      .shared_spectral_output_checkpoints
+      .get(key)
+      .cloned()
+      .unwrap_or_default()
+  }
+
+  fn shared_runtime_lifecycle_for_test(
+    &self,
+  ) -> crate::dsp::shared_spectral_engine::RuntimeLifecycleSnapshot {
+    self.shared_spectral_runtime.lifecycle_snapshot_for_test()
+  }
+}
+
+#[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn planner_inspection_uses_current_spectrum_requests_and_pipeline_channel_count() {
+    use crate::engine::spectral_plan::TransformStreamId;
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
+    let pipeline = MeterPipeline::new(48_000, 2);
+    let requests = AnalysisRequests {
+      spectrum: vec![SpectrumAnalysisRequest {
+        key: "active-single".to_string(),
+        channel: SpectrumAnalysisChannel::Single { ch: 99 },
+        view: "combined".to_string(),
+        speed_percent: 50.0,
+        tilt_db_per_octave: 4.5,
+        octave_smoothing: "off".to_string(),
+      }],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+
+    let active_plan = pipeline.spectral_plan_for_test(&requests);
+    assert_eq!(
+      active_plan.streams,
+      vec![TransformStreamId::Physical(1)],
+      "selection must clamp to this pipeline's channel count"
+    );
+    assert_eq!(active_plan.consumers.len(), 1);
+    assert_eq!(active_plan.consumers[0].request_key, "active-single");
+
+    let empty_plan = pipeline.spectral_plan_for_test(&AnalysisRequests::default());
+    assert!(empty_plan.streams.is_empty());
+    assert!(empty_plan.consumers.is_empty());
+    assert!(!empty_plan
+      .consumers
+      .iter()
+      .any(|binding| binding.request_key == "active-single"));
+  }
+
+  fn combined_request(key: &str) -> crate::ipc::types::SpectrumAnalysisRequest {
+    crate::ipc::types::SpectrumAnalysisRequest {
+      key: key.to_string(),
+      channel: crate::ipc::types::SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+      view: "combined".to_string(),
+      speed_percent: 50.0,
+      tilt_db_per_octave: 4.5,
+      octave_smoothing: "off".to_string(),
+    }
+  }
+
+  fn stereo_map_request(key: &str) -> crate::ipc::types::StereoMapAnalysisRequest {
+    crate::ipc::types::StereoMapAnalysisRequest {
+      key: key.to_string(),
+      pair: crate::ipc::types::StereoMapAnalysisPair {
+        first: 0,
+        second: 1,
+      },
+      speed_percent: 50.0,
+      octave_smoothing: "off".to_string(),
+    }
+  }
+
+  fn deterministic_stereo(frames: usize, start_clock: u64) -> Vec<f32> {
+    let sample = |clock: u64, seed: u32| {
+      let mut value = (clock as u32).wrapping_add(seed);
+      value ^= value >> 16;
+      value = value.wrapping_mul(0x7FEB_352D);
+      value ^= value >> 15;
+      value = value.wrapping_mul(0x846C_A68B);
+      value ^= value >> 16;
+      (value as f32 / u32::MAX as f32) * 2.0 - 1.0
+    };
+    (0..frames)
+      .flat_map(|offset| {
+        let clock = start_clock + offset as u64;
+        [sample(clock, 0x1234_5678), sample(clock, 0x8765_4321)]
+      })
+      .collect()
+  }
+
+  fn assert_visible_rows_close(actual: &[f64], expected: &[f64], checkpoint: &str, row: &str) {
+    // Same route-specific bound as `spectrum_differential`: physical-pair Combined combines
+    // already-rounded complex f32 bins, while the direct stream combines f32 PCM before FFT.
+    const DIRECT_TO_PHYSICAL_TOLERANCE_DB: f64 = 0.0225;
+    assert_eq!(actual.len(), expected.len(), "{checkpoint} {row} shape");
+    for (index, (&actual, &expected)) in actual.iter().zip(expected).enumerate() {
+      assert!(
+        (actual - expected).abs() <= DIRECT_TO_PHYSICAL_TOLERANCE_DB,
+        "{checkpoint} {row}[{index}]: actual={actual}, expected={expected}"
+      );
+    }
+  }
+
+  fn assert_visible_checkpoint(
+    runtime: &mut SharedSpectralRuntime,
+    reference: &mut SharedSpectralRuntime,
+    clock: u64,
+    expected_identity: Option<u64>,
+    expected_state_epoch: Option<u64>,
+    previous_last_time: f64,
+    checkpoint: &str,
+  ) -> (u64, u64, f64) {
+    let now_sec = clock as f64 / 48_000.0;
+    let actual = runtime
+      .consumer_snapshot_for_test("combined", now_sec)
+      .unwrap_or_else(|| panic!("{checkpoint}: transitioning output is blank"));
+    let expected = reference
+      .consumer_snapshot_for_test("combined", now_sec)
+      .unwrap_or_else(|| panic!("{checkpoint}: uninterrupted reference is blank"));
+
+    assert_eq!(actual.request_key, "combined", "{checkpoint} request key");
+    if let Some(identity) = expected_identity {
+      assert_eq!(actual.identity, identity, "{checkpoint} consumer identity");
+    }
+    if let Some(epoch) = expected_state_epoch {
+      assert_eq!(
+        actual.state.state_epoch, epoch,
+        "{checkpoint} consumer DSP state was recreated"
+      );
+    }
+    assert!(actual.output_present, "{checkpoint} output presence");
+    assert_eq!(
+      actual.centers_hz.len(),
+      actual.smooth_db.len(),
+      "{checkpoint} smooth/grid shape"
+    );
+    assert_eq!(
+      actual.centers_hz.len(),
+      actual.peak_db.len(),
+      "{checkpoint} peak/grid shape"
+    );
+    assert!(!actual.centers_hz.is_empty(), "{checkpoint} empty grid");
+    assert_eq!(
+      actual.centers_hz, expected.centers_hz,
+      "{checkpoint} frequency grid"
+    );
+    assert_visible_rows_close(&actual.smooth_db, &expected.smooth_db, checkpoint, "smooth");
+    assert_visible_rows_close(&actual.peak_db, &expected.peak_db, checkpoint, "peak");
+
+    assert_eq!(
+      actual.state.ema_initialized, [true; 3],
+      "{checkpoint} all resolution EMAs"
+    );
+    assert!(
+      actual.state.envelope_last_time > previous_last_time,
+      "{checkpoint} envelope time did not advance: previous={}, current={}",
+      previous_last_time,
+      actual.state.envelope_last_time
+    );
+    assert_eq!(
+      actual.state.envelope_last_time, now_sec,
+      "{checkpoint} envelope time"
+    );
+    assert_eq!(
+      actual.state.peak_hold_len,
+      actual.peak_db.len(),
+      "{checkpoint} peak hold shape"
+    );
+    assert!(
+      actual.state.peak_hold_max_until >= now_sec,
+      "{checkpoint} peak hold was not armed"
+    );
+    assert_eq!(
+      actual.state.peak_hold_max_until, expected.state.peak_hold_max_until,
+      "{checkpoint} peak hold diverged from uninterrupted state"
+    );
+
+    (
+      actual.identity,
+      actual.state.state_epoch,
+      actual.state.envelope_last_time,
+    )
+  }
+
+  fn push_both_to_clock(
+    runtime: &mut SharedSpectralRuntime,
+    reference: &mut SharedSpectralRuntime,
+    from_clock: &mut u64,
+    to_clock: u64,
+  ) {
+    assert!(to_clock >= *from_clock);
+    let pcm = deterministic_stereo((to_clock - *from_clock) as usize, *from_clock);
+    runtime.push_interleaved(&pcm, 2);
+    reference.push_interleaved(&pcm, 2);
+    *from_clock = to_clock;
+  }
+
+  #[test]
+  fn shared_runtime_request_changes_start_new_keys_at_activation_and_preserve_unchanged_state() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::engine::spectral_plan::plan_spectral_requests;
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
+    let unchanged = combined_request("unchanged");
+    let added = SpectrumAnalysisRequest {
+      key: "added".to_string(),
+      channel: SpectrumAnalysisChannel::Single { ch: 0 },
+      ..unchanged.clone()
+    };
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(plan_spectral_requests(
+      2,
+      std::slice::from_ref(&unchanged),
+      &[],
+    ));
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG, 0), 2);
+    let before = runtime
+      .consumer_snapshot_for_test("unchanged", 1.0)
+      .expect("warmed unchanged consumer");
+
+    runtime.update_plan(plan_spectral_requests(
+      2,
+      &[unchanged.clone(), added.clone()],
+      &[],
+    ));
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG - 1, FFT_BIG as u64), 2);
+    let during = runtime
+      .consumer_snapshot_for_test("unchanged", 1.5)
+      .expect("unchanged output survives");
+    assert_eq!(during.identity, before.identity);
+    assert_eq!(during.state.state_epoch, before.state.state_epoch);
+    assert!(
+      runtime
+        .consumer_snapshot_for_test("added", 1.5)
+        .is_some_and(|snapshot| !snapshot.output_present),
+      "a late key must not backfill from pre-activation PCM"
+    );
+
+    runtime.push_interleaved(&deterministic_stereo(1, (FFT_BIG * 2 - 1) as u64), 2);
+    assert!(runtime
+      .consumer_snapshot_for_test("added", 2.0)
+      .is_some_and(|snapshot| snapshot.output_present));
+    let removed_counts = runtime.consumer_counts_for_test("unchanged").unwrap();
+    runtime.update_plan(plan_spectral_requests(2, std::slice::from_ref(&added), &[]));
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG, (FFT_BIG * 2) as u64), 2);
+    assert_eq!(runtime.consumer_identity_for_test("unchanged"), None);
+    assert_eq!(
+      runtime.removed_consumer_counts_for_test("unchanged"),
+      Some(removed_counts),
+      "removed consumers must stop immediately"
+    );
+  }
+
+  #[test]
+  fn pipeline_clear_restarts_shared_runtime_warmup_and_is_repeatable_when_empty() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::engine::spectral_plan::{ProjectionKind, TransformStreamId};
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
+    let combined = combined_request("combined");
+    let secondary = SpectrumAnalysisRequest {
+      key: "secondary".to_string(),
+      channel: SpectrumAnalysisChannel::Pair { x: 2, y: 3 },
+      view: "lr".to_string(),
+      ..combined.clone()
+    };
+    let pair_need = SpectrumAnalysisRequest {
+      key: "pair-need".to_string(),
+      channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+      view: "lr".to_string(),
+      ..combined.clone()
+    };
+    let initial_requests = AnalysisRequests {
+      spectrum: vec![combined.clone(), secondary.clone()],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let transition_requests = AnalysisRequests {
+      spectrum: vec![combined, secondary, pair_need],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let pcm = vec![0.25_f32; FFT_BIG * 4];
+    let mut pipeline = MeterPipeline::new(48_000, 4);
+    pipeline.push_shared_runtime_for_test(
+      &pcm,
+      &initial_requests,
+      SpectralDspTime::from_monotonic_seconds(1.0),
+    );
+    pipeline.push_shared_runtime_for_test(
+      &[],
+      &transition_requests,
+      SpectralDspTime::from_monotonic_seconds(1.1),
+    );
+
+    let before_primary = pipeline
+      .shared_runtime_snapshot_for_test("combined", 1.0)
+      .expect("warmed shared consumer");
+    let before_secondary = pipeline
+      .shared_runtime_snapshot_for_test("secondary", 1.0)
+      .expect("warmed secondary consumer");
+    for state in [
+      &before_primary.state.primary,
+      before_secondary
+        .state
+        .secondary
+        .as_ref()
+        .expect("L/R secondary state"),
+    ] {
+      assert_eq!(state.ema_initialized, [true; 3]);
+      assert!(state.psd.iter().all(|data| !data.is_empty()));
+      assert!(!state.smooth_db.is_empty());
+      assert!(!state.peak_db.is_empty());
+      assert!(!state.peak_hold_until.is_empty());
+      assert!(state.envelope_last_time > 0.0);
+    }
+    assert!(before_primary.output_present);
+    assert!(!before_primary.smooth_db.is_empty());
+    assert!(!before_primary.peak_db.is_empty());
+    let lifecycle_before = pipeline.shared_runtime_lifecycle_for_test();
+    assert_eq!(lifecycle_before.transition_count, 1);
+    assert!(lifecycle_before.total_fft_count > 0);
+    assert_eq!(lifecycle_before.sample_clock, FFT_BIG as u64);
+    assert!(lifecycle_before.streams.iter().any(|stream| {
+      stream.stream_id
+        == TransformStreamId::Projection {
+          first: 0,
+          second: 1,
+          kind: ProjectionKind::Combined,
+        }
+        && stream.all_three_ready
+    }));
+    assert!(lifecycle_before
+      .streams
+      .iter()
+      .any(|stream| stream.stream_id == TransformStreamId::Physical(0) && !stream.all_three_ready));
+
+    pipeline.clear_peak_and_history();
+    pipeline.clear_peak_and_history();
+    let cleared_primary = pipeline
+      .shared_runtime_snapshot_for_test("combined", 0.0)
+      .expect("clear retains active request configuration");
+    let cleared_secondary = pipeline
+      .shared_runtime_snapshot_for_test("secondary", 0.0)
+      .expect("clear retains secondary request");
+    assert_ne!(
+      cleared_primary.state.state_epoch,
+      before_primary.state.state_epoch
+    );
+    for state in [
+      &cleared_primary.state.primary,
+      cleared_secondary
+        .state
+        .secondary
+        .as_ref()
+        .expect("rebuilt L/R secondary state"),
+    ] {
+      assert_eq!(state.ema_initialized, [false; 3]);
+      assert!(state.psd.iter().all(Vec::is_empty));
+      assert!(state.smooth_db.is_empty());
+      assert!(state.peak_db.is_empty());
+      assert!(state.peak_hold_until.is_empty());
+      assert_eq!(state.envelope_last_time, 0.0);
+    }
+    assert!(!cleared_primary.output_present);
+    assert!(cleared_primary.smooth_db.is_empty());
+    assert!(cleared_primary.peak_db.is_empty());
+    let lifecycle_cleared = pipeline.shared_runtime_lifecycle_for_test();
+    assert_eq!(lifecycle_cleared.transition_count, 0);
+    assert_eq!(lifecycle_cleared.total_fft_count, 0);
+    assert_eq!(lifecycle_cleared.sample_clock, 0);
+    assert_eq!(
+      lifecycle_cleared
+        .streams
+        .iter()
+        .map(|stream| stream.stream_id)
+        .collect::<Vec<_>>(),
+      vec![
+        TransformStreamId::Physical(0),
+        TransformStreamId::Physical(1),
+        TransformStreamId::Physical(2),
+        TransformStreamId::Physical(3),
+      ]
+    );
+    assert!(lifecycle_cleared
+      .streams
+      .iter()
+      .all(|stream| !stream.all_three_ready && stream.fft_count == 0));
+
+    pipeline.push_shared_runtime_for_test(
+      &vec![0.25; (FFT_BIG - 1) * 4],
+      &transition_requests,
+      SpectralDspTime::from_monotonic_seconds(0.5),
+    );
+    for key in ["combined", "secondary", "pair-need"] {
+      assert!(
+        !pipeline
+          .shared_runtime_snapshot_for_test(key, 0.5)
+          .unwrap()
+          .output_present,
+        "{key} leaked stale output during rewarm"
+      );
+    }
+    pipeline.push_shared_runtime_for_test(
+      &[0.25; 4],
+      &transition_requests,
+      SpectralDspTime::from_monotonic_seconds(0.6),
+    );
+    for key in ["combined", "secondary", "pair-need"] {
+      assert!(
+        pipeline
+          .shared_runtime_snapshot_for_test(key, 0.6)
+          .unwrap()
+          .output_present
+      );
+    }
+
+    pipeline.push_shared_runtime_for_test(
+      &[],
+      &AnalysisRequests::default(),
+      SpectralDspTime::from_monotonic_seconds(0.7),
+    );
+    pipeline.clear_peak_and_history();
+    pipeline.clear_peak_and_history();
+    let empty = pipeline.shared_runtime_lifecycle_for_test();
+    assert!(empty.streams.is_empty());
+    assert_eq!(empty.transition_count, 0);
+    assert_eq!(empty.sample_clock, 0);
+    assert_eq!(empty.total_fft_count, 0);
+    pipeline.push_shared_runtime_for_test(
+      &vec![0.25; FFT_BIG * 4],
+      &AnalysisRequests::default(),
+      SpectralDspTime::from_monotonic_seconds(1.0),
+    );
+    let empty_after_push = pipeline.shared_runtime_lifecycle_for_test();
+    assert_eq!(empty_after_push.total_fft_count, 0);
+    assert_eq!(empty_after_push.sample_clock, FFT_BIG as u64);
+  }
+
+  #[test]
+  fn shared_runtime_rebuild_discards_old_sample_rate_grid_and_channel_state() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::engine::spectral_plan::{plan_spectral_requests, TransformStreamId};
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
+    let request = SpectrumAnalysisRequest {
+      key: "selected".to_string(),
+      channel: SpectrumAnalysisChannel::Single { ch: 99 },
+      ..combined_request("selected")
+    };
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(plan_spectral_requests(
+      2,
+      std::slice::from_ref(&request),
+      &[],
+    ));
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG, 0), 2);
+    let old = runtime
+      .consumer_snapshot_for_test("selected", 1.0)
+      .expect("old output");
+    assert!(old.output_present);
+    assert!(old.centers_hz.last().copied().unwrap_or_default() > 10_000.0);
+
+    runtime.rebuild(16_000.0);
+    runtime.update_plan(plan_spectral_requests(
+      1,
+      std::slice::from_ref(&request),
+      &[],
+    ));
+    assert_eq!(
+      runtime.streams_for_test(),
+      vec![TransformStreamId::Physical(0)]
+    );
+    let rebuilt = runtime
+      .consumer_snapshot_for_test("selected", 0.0)
+      .expect("rebuilt consumer");
+    assert_ne!(rebuilt.identity, old.identity);
+    assert_ne!(rebuilt.state.state_epoch, old.state.state_epoch);
+    assert!(!rebuilt.output_present);
+    assert_eq!(runtime.sample_clock_for_test(), 0);
+
+    runtime.push_interleaved(&vec![0.0; FFT_BIG], 1);
+    let new = runtime
+      .consumer_snapshot_for_test("selected", 2.1)
+      .expect("new output");
+    assert!(new.output_present);
+    assert_eq!(new.sample_rate, 16_000.0);
+    assert_eq!(new.centers_hz.len(), new.smooth_db.len());
+    assert_eq!(new.centers_hz.len(), new.peak_db.len());
+  }
+
+  #[test]
+  fn topology_transition_visible_output_matches_uninterrupted_direct_reference_both_directions() {
+    use crate::dsp::spectrum_bank::{FFT_BIG, FFT_MID, FFT_SMALL};
+    use crate::engine::spectral_plan::{
+      plan_spectral_requests, ConsumerInput, FuturePairNeed, ProjectionKind, TransformStreamId,
+    };
+
+    let request = combined_request("combined");
+    let direct_plan = plan_spectral_requests(2, std::slice::from_ref(&request), &[]);
+    let physical_plan = plan_spectral_requests(
+      2,
+      std::slice::from_ref(&request),
+      &[FuturePairNeed::new(0, 1)],
+    );
+    let projection = TransformStreamId::Projection {
+      first: 0,
+      second: 1,
+      kind: ProjectionKind::Combined,
+    };
+    let direct_input = ConsumerInput::Single(projection);
+    let physical_input = ConsumerInput::Pair {
+      first: TransformStreamId::Physical(0),
+      second: TransformStreamId::Physical(1),
+    };
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    let mut reference = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(direct_plan.clone());
+    reference.update_plan(direct_plan.clone());
+    let mut clock = 0;
+
+    push_both_to_clock(&mut runtime, &mut reference, &mut clock, FFT_BIG as u64);
+    let (identity, state_epoch, mut last_time) = assert_visible_checkpoint(
+      &mut runtime,
+      &mut reference,
+      clock,
+      None,
+      None,
+      0.0,
+      "initial readiness",
+    );
+
+    runtime.update_plan(physical_plan.clone());
+    runtime.update_plan(physical_plan);
+    assert_eq!(runtime.transition_generation_for_test("combined"), Some(1));
+    for checkpoint in (FFT_BIG as u64 + 2048..FFT_BIG as u64 * 2).step_by(2048) {
+      push_both_to_clock(&mut runtime, &mut reference, &mut clock, checkpoint);
+      (_, _, last_time) = assert_visible_checkpoint(
+        &mut runtime,
+        &mut reference,
+        clock,
+        Some(identity),
+        Some(state_epoch),
+        last_time,
+        &format!("forward warmup {clock}"),
+      );
+      assert_eq!(
+        runtime.consumer_active_input_for_test("combined"),
+        Some(direct_input),
+        "forward warmup source"
+      );
+    }
+    let forward_boundary = FFT_BIG as u64 * 2;
+    push_both_to_clock(
+      &mut runtime,
+      &mut reference,
+      &mut clock,
+      forward_boundary - 1,
+    );
+    (_, _, last_time) = assert_visible_checkpoint(
+      &mut runtime,
+      &mut reference,
+      clock,
+      Some(identity),
+      Some(state_epoch),
+      last_time,
+      "forward final warmup",
+    );
+    let before_forward = runtime.consumer_counts_for_test("combined").unwrap();
+    push_both_to_clock(&mut runtime, &mut reference, &mut clock, forward_boundary);
+    (_, _, last_time) = assert_visible_checkpoint(
+      &mut runtime,
+      &mut reference,
+      clock,
+      Some(identity),
+      Some(state_epoch),
+      last_time,
+      "forward exact handoff",
+    );
+    assert_eq!(
+      runtime.consumer_active_input_for_test("combined"),
+      Some(physical_input)
+    );
+    let after_forward = runtime.consumer_counts_for_test("combined").unwrap();
+    assert_eq!(
+      after_forward,
+      [
+        before_forward[0] + 1,
+        before_forward[1] + 1,
+        before_forward[2] + 1,
+      ]
+    );
+    for checkpoint in [forward_boundary + 2048, forward_boundary + 4096] {
+      push_both_to_clock(&mut runtime, &mut reference, &mut clock, checkpoint);
+      (_, _, last_time) = assert_visible_checkpoint(
+        &mut runtime,
+        &mut reference,
+        clock,
+        Some(identity),
+        Some(state_epoch),
+        last_time,
+        &format!("forward post-handoff {clock}"),
+      );
+    }
+
+    runtime.update_plan(direct_plan.clone());
+    runtime.update_plan(direct_plan);
+    assert_eq!(
+      runtime.transition_generation_for_test("combined"),
+      Some(2),
+      "inverse no-op update must not restart transition"
+    );
+    let inverse_boundary = (clock + FFT_BIG as u64).div_ceil(2048) * 2048;
+    for checkpoint in (clock + 2048..inverse_boundary).step_by(2048) {
+      push_both_to_clock(&mut runtime, &mut reference, &mut clock, checkpoint);
+      (_, _, last_time) = assert_visible_checkpoint(
+        &mut runtime,
+        &mut reference,
+        clock,
+        Some(identity),
+        Some(state_epoch),
+        last_time,
+        &format!("inverse warmup {clock}"),
+      );
+      assert_eq!(
+        runtime.consumer_active_input_for_test("combined"),
+        Some(physical_input),
+        "inverse warmup source"
+      );
+    }
+    push_both_to_clock(
+      &mut runtime,
+      &mut reference,
+      &mut clock,
+      inverse_boundary - 1,
+    );
+    (_, _, last_time) = assert_visible_checkpoint(
+      &mut runtime,
+      &mut reference,
+      clock,
+      Some(identity),
+      Some(state_epoch),
+      last_time,
+      "inverse final warmup",
+    );
+    let before_inverse = runtime.consumer_counts_for_test("combined").unwrap();
+    push_both_to_clock(&mut runtime, &mut reference, &mut clock, inverse_boundary);
+    let after_inverse = runtime.consumer_counts_for_test("combined").unwrap();
+    assert_eq!(
+      after_inverse,
+      [
+        before_inverse[0] + 1,
+        before_inverse[1] + 1,
+        before_inverse[2] + 1,
+      ],
+      "inverse boundary must consume each target resolution exactly once"
+    );
+    (_, _, last_time) = assert_visible_checkpoint(
+      &mut runtime,
+      &mut reference,
+      clock,
+      Some(identity),
+      Some(state_epoch),
+      last_time,
+      "inverse exact handoff",
+    );
+    assert_eq!(
+      runtime.consumer_active_input_for_test("combined"),
+      Some(direct_input)
+    );
+    let physical_fft_counts = [FFT_BIG, FFT_MID, FFT_SMALL].map(|fft_size| {
+      [
+        runtime.fft_count_for_test(TransformStreamId::Physical(0), fft_size),
+        runtime.fft_count_for_test(TransformStreamId::Physical(1), fft_size),
+      ]
+    });
+    assert!(!runtime.contains_stream_for_test(TransformStreamId::Physical(0)));
+    assert!(!runtime.contains_stream_for_test(TransformStreamId::Physical(1)));
+    for checkpoint in [inverse_boundary + 2048, inverse_boundary + 4096] {
+      push_both_to_clock(&mut runtime, &mut reference, &mut clock, checkpoint);
+      (_, _, last_time) = assert_visible_checkpoint(
+        &mut runtime,
+        &mut reference,
+        clock,
+        Some(identity),
+        Some(state_epoch),
+        last_time,
+        &format!("inverse post-handoff {clock}"),
+      );
+    }
+    assert_eq!(
+      [FFT_BIG, FFT_MID, FFT_SMALL].map(|fft_size| {
+        [
+          runtime.fft_count_for_test(TransformStreamId::Physical(0), fft_size),
+          runtime.fft_count_for_test(TransformStreamId::Physical(1), fft_size),
+        ]
+      }),
+      physical_fft_counts,
+      "retired physical FFT work must freeze after inverse handoff"
+    );
+  }
+
+  #[test]
+  fn topology_transition_overlaps_and_hands_combined_consumer_both_directions() {
+    use crate::dsp::spectrum_bank::{FFT_BIG, FFT_MID, FFT_SMALL};
+    use crate::engine::spectral_plan::{
+      plan_spectral_requests, ConsumerInput, FuturePairNeed, ProjectionKind, TransformStreamId,
+    };
+
+    let projection = TransformStreamId::Projection {
+      first: 0,
+      second: 1,
+      kind: ProjectionKind::Combined,
+    };
+    let physical_input = ConsumerInput::Pair {
+      first: TransformStreamId::Physical(0),
+      second: TransformStreamId::Physical(1),
+    };
+    let direct_input = ConsumerInput::Single(projection);
+    let request = combined_request("combined");
+    let direct_plan = plan_spectral_requests(2, std::slice::from_ref(&request), &[]);
+    let physical_plan = plan_spectral_requests(
+      2,
+      std::slice::from_ref(&request),
+      &[FuturePairNeed::new(0, 1)],
+    );
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+
+    runtime.update_plan(direct_plan.clone());
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG, 0), 2);
+    let initial = runtime
+      .consumer_snapshot_for_test("combined", 1.0)
+      .expect("warmed direct consumer");
+    assert_eq!(initial.active_input, direct_input);
+    assert!(initial.output_present);
+    assert!(initial.peak_max.is_finite());
+
+    runtime.update_plan(physical_plan);
+    runtime.update_plan(plan_spectral_requests(
+      2,
+      std::slice::from_ref(&request),
+      &[FuturePairNeed::new(0, 1)],
+    ));
+    assert_eq!(
+      runtime.consumer_identity_for_test("combined"),
+      Some(initial.identity),
+      "no-op plan updates must not recreate the keyed consumer"
+    );
+    assert_eq!(runtime.transition_generation_for_test("combined"), Some(1));
+    assert_eq!(
+      runtime.streams_for_test(),
+      vec![
+        TransformStreamId::Physical(0),
+        TransformStreamId::Physical(1),
+        projection,
+      ],
+      "active projection and warming physical streams must overlap"
+    );
+
+    let add_boundary = (FFT_BIG * 2) as u64;
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG - 1, FFT_BIG as u64), 2);
+    let before_add_switch = runtime
+      .consumer_snapshot_for_test("combined", 1.05)
+      .expect("old source remains publishable while target warms");
+    assert_eq!(before_add_switch.active_input, direct_input);
+    assert!(before_add_switch.output_present);
+    assert!(
+      runtime.consumer_counts_for_test("combined").unwrap()[1..]
+        .iter()
+        .any(|&count| count > initial.consume_counts[1]),
+      "the unchanged consumer must keep receiving its active projection"
+    );
+    assert!(
+      runtime.stream_all_three_ready_for_test(TransformStreamId::Physical(0)) == Some(false),
+      "internal small/mid warmup is not handoff eligibility"
+    );
+
+    runtime.push_interleaved(&deterministic_stereo(1, add_boundary - 1), 2);
+    let after_add_switch = runtime
+      .consumer_snapshot_for_test("combined", 1.1)
+      .expect("switch boundary must emit a valid output");
+    assert_eq!(after_add_switch.identity, initial.identity);
+    assert_eq!(after_add_switch.active_input, physical_input);
+    assert_eq!(after_add_switch.last_switch_clock, Some(add_boundary));
+    assert_eq!(
+      after_add_switch.consume_counts,
+      [
+        before_add_switch.consume_counts[0] + 1,
+        before_add_switch.consume_counts[1] + 1,
+        before_add_switch.consume_counts[2] + 1,
+      ],
+      "the common boundary must consume exactly one target frame per resolution"
+    );
+    assert!(!runtime.contains_stream_for_test(projection));
+    let projection_counts =
+      [FFT_BIG, FFT_MID, FFT_SMALL].map(|size| runtime.fft_count_for_test(projection, size));
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG / 8, add_boundary), 2);
+    assert_eq!(
+      [FFT_BIG, FFT_MID, FFT_SMALL].map(|size| runtime.fft_count_for_test(projection, size)),
+      projection_counts,
+      "retired projection FFT work must stop after handoff"
+    );
+
+    runtime.update_plan(direct_plan.clone());
+    assert!(runtime.contains_stream_for_test(projection));
+    assert!(runtime.contains_stream_for_test(TransformStreamId::Physical(0)));
+    assert!(runtime.contains_stream_for_test(TransformStreamId::Physical(1)));
+    let remove_started = runtime.sample_clock_for_test();
+    let remove_boundary = (remove_started + FFT_BIG as u64).div_ceil(2048) * 2048;
+    runtime.push_interleaved(
+      &deterministic_stereo(
+        (remove_boundary - remove_started - 1) as usize,
+        remove_started,
+      ),
+      2,
+    );
+    assert_eq!(
+      runtime
+        .consumer_snapshot_for_test("combined", 1.15)
+        .unwrap()
+        .active_input,
+      physical_input,
+      "physical source must remain active while projection warms"
+    );
+    runtime.push_interleaved(&deterministic_stereo(1, remove_boundary - 1), 2);
+    let after_remove_switch = runtime
+      .consumer_snapshot_for_test("combined", 1.2)
+      .expect("inverse switch boundary output");
+    assert_eq!(after_remove_switch.identity, initial.identity);
+    assert_eq!(after_remove_switch.active_input, direct_input);
+    assert_eq!(
+      after_remove_switch.last_switch_clock,
+      Some(remove_boundary),
+      "inverse handoff must also use the all-resolution common boundary"
+    );
+    assert!(!runtime.contains_stream_for_test(TransformStreamId::Physical(0)));
+    assert!(!runtime.contains_stream_for_test(TransformStreamId::Physical(1)));
+  }
+
+  #[test]
+  fn topology_transition_prunes_removed_keys_but_keeps_still_needed_physical_streams() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::engine::spectral_plan::{plan_spectral_requests, TransformStreamId};
+    use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+
+    let combined = combined_request("combined");
+    let lr = SpectrumAnalysisRequest {
+      key: "lr".to_string(),
+      channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+      view: "lr".to_string(),
+      ..combined.clone()
+    };
+    let left = SpectrumAnalysisRequest {
+      key: "left".to_string(),
+      channel: SpectrumAnalysisChannel::Single { ch: 0 },
+      ..combined.clone()
+    };
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(plan_spectral_requests(
+      2,
+      &[combined.clone(), lr.clone()],
+      &[],
+    ));
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG, 0), 2);
+    let combined_identity = runtime.consumer_identity_for_test("combined");
+    let lr_counts = runtime.consumer_counts_for_test("lr").unwrap();
+
+    runtime.update_plan(plan_spectral_requests(
+      2,
+      &[combined.clone(), left.clone()],
+      &[],
+    ));
+    assert_eq!(
+      runtime.consumer_identity_for_test("combined"),
+      combined_identity
+    );
+    assert_eq!(runtime.consumer_identity_for_test("lr"), None);
+    runtime.push_interleaved(&deterministic_stereo(FFT_BIG, FFT_BIG as u64), 2);
+    assert_eq!(
+      runtime.removed_consumer_counts_for_test("lr"),
+      Some(lr_counts),
+      "removed keys must stop accumulation immediately"
+    );
+    assert!(
+      runtime.contains_stream_for_test(TransformStreamId::Physical(0)),
+      "a stream still needed by another consumer must survive handoff pruning"
+    );
+    assert!(
+      !runtime.contains_stream_for_test(TransformStreamId::Physical(1)),
+      "only the unneeded half of the retired pair should be pruned"
+    );
+
+    runtime.update_plan(plan_spectral_requests(2, &[combined, left, lr], &[]));
+    assert!(runtime.contains_stream_for_test(TransformStreamId::Physical(0)));
+    assert!(runtime.contains_stream_for_test(TransformStreamId::Physical(1)));
+    assert_eq!(
+      runtime.transition_generation_for_test("combined"),
+      Some(2),
+      "returning to a still-required physical topology starts one new transition"
+    );
+  }
 
   #[test]
   fn file_mode_frame_uses_supplied_media_time() {
@@ -1231,6 +2376,7 @@ mod tests {
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
     let requests_c = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
@@ -1242,6 +2388,7 @@ mod tests {
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
+      stereo_map: Vec::new(),
     };
 
     let _ = pipeline.push_pcm_f32_with_requests(
@@ -1252,13 +2399,11 @@ mod tests {
       false,
       VadEngineKind::default(),
     );
-    let (_, before_change, _) = pipeline
-      .spectrum_by_key
-      .get(&lr_key)
-      .expect("L/R spectrum meter")
-      .last_output();
+    let before_change = pipeline
+      .shared_runtime_cached_snapshot_for_test(&lr_key)
+      .expect("L/R spectrum consumer");
     assert!(
-      !before_change.is_empty(),
+      before_change.output_present,
       "spectrum should produce output before the channel change"
     );
 
@@ -1271,16 +2416,17 @@ mod tests {
       VadEngineKind::default(),
     );
     assert!(
-      !pipeline.spectrum_by_key.contains_key(&lr_key),
-      "inactive L/R spectrum meter should be pruned after the request key changes"
+      pipeline
+        .shared_spectral_runtime
+        .consumer_identity_for_test(&lr_key)
+        .is_none(),
+      "inactive L/R spectrum consumer should be pruned after the request key changes"
     );
-    let (_, immediately_after_change, _) = pipeline
-      .spectrum_by_key
-      .get(&c_key)
-      .expect("C spectrum meter")
-      .last_output();
+    let immediately_after_change = pipeline
+      .shared_runtime_cached_snapshot_for_test(&c_key)
+      .expect("C spectrum consumer");
     assert!(
-      immediately_after_change.is_empty(),
+      !immediately_after_change.output_present,
       "spectrum output should be reset immediately after selecting a new channel"
     );
   }
@@ -1302,6 +2448,7 @@ mod tests {
         x: 2,
         y: 0,
       }],
+      stereo_map: Vec::new(),
     };
     let _ = p.push_pcm_f32_with_requests(
       &pcm,
@@ -1344,6 +2491,10 @@ mod tests {
     assert!(frame.spectrum_results_by_key.is_empty());
     assert!(frame.vectorscope_results_by_key.is_empty());
     assert_eq!(frame.correlation, 0.0);
+    assert_eq!(
+      pipeline.shared_runtime_lifecycle_for_test().total_fft_count,
+      0
+    );
   }
 
   #[test]
@@ -1371,6 +2522,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: Vec::new(),
     };
     let requests_b = AnalysisRequests {
       spectrum: vec![SpectrumAnalysisRequest {
@@ -1386,6 +2538,7 @@ mod tests {
         x: 1,
         y: 0,
       }],
+      stereo_map: Vec::new(),
     };
 
     let _ = pipeline.push_pcm_f32_with_requests(
@@ -1397,8 +2550,9 @@ mod tests {
       VadEngineKind::default(),
     );
     assert!(pipeline
-      .spectrum_by_key
-      .contains_key("spectrum:single:0:combined:sp50:tilt450:smoff"));
+      .shared_spectral_runtime
+      .consumer_identity_for_test("spectrum:single:0:combined:sp50:tilt450:smoff")
+      .is_some());
     assert!(pipeline
       .vectorscope_by_key
       .contains_key("vectorscope:pair:0:1"));
@@ -1412,13 +2566,14 @@ mod tests {
       VadEngineKind::default(),
     );
 
-    assert_eq!(pipeline.spectrum_by_key.len(), 1);
     assert!(pipeline
-      .spectrum_by_key
-      .contains_key("spectrum:single:0:combined:sp25:tilt450:smoff"));
-    assert!(!pipeline
-      .spectrum_by_key
-      .contains_key("spectrum:single:0:combined:sp50:tilt450:smoff"));
+      .shared_spectral_runtime
+      .consumer_identity_for_test("spectrum:single:0:combined:sp25:tilt450:smoff")
+      .is_some());
+    assert!(pipeline
+      .shared_spectral_runtime
+      .consumer_identity_for_test("spectrum:single:0:combined:sp50:tilt450:smoff")
+      .is_none());
     assert_eq!(pipeline.vectorscope_by_key.len(), 1);
     assert!(pipeline
       .vectorscope_by_key
@@ -1472,6 +2627,7 @@ mod tests {
           y: 2,
         },
       ],
+      stereo_map: Vec::new(),
     };
 
     let mut frame = None;
@@ -1545,6 +2701,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: Vec::new(),
     };
 
     let mut frame = None;
@@ -1617,6 +2774,7 @@ mod tests {
         x: 0,
         y: 1,
       }],
+      stereo_map: Vec::new(),
     };
 
     let chunk_ms = ((frames as f64 / sr as f64) * 1000.0) as u64;
@@ -1666,6 +2824,995 @@ mod tests {
       vectorscope_entries > 0,
       "visual batch entries should carry per-key vectorscope"
     );
+  }
+
+  fn spectrum_request(
+    key: &str,
+    channel: crate::ipc::types::SpectrumAnalysisChannel,
+    view: &str,
+  ) -> crate::ipc::types::SpectrumAnalysisRequest {
+    crate::ipc::types::SpectrumAnalysisRequest {
+      key: key.to_string(),
+      channel,
+      view: view.to_string(),
+      speed_percent: 50.0,
+      tilt_db_per_octave: 4.5,
+      octave_smoothing: "1/6".to_string(),
+    }
+  }
+
+  fn legacy_spectrum_result(
+    request: &crate::ipc::types::SpectrumAnalysisRequest,
+    sample_rate: f64,
+    channels: u16,
+    pcm: &[f32],
+    now_sec: f64,
+  ) -> (SpectrumFrameResult, SpectrumVisualEntry) {
+    let mut meter = legacy_meter_for_request(request, sample_rate);
+    push_legacy_meter(&mut meter, request, channels, pcm, now_sec);
+    legacy_payload_from_meter(&meter)
+  }
+
+  fn legacy_meter_for_request(
+    request: &crate::ipc::types::SpectrumAnalysisRequest,
+    sample_rate: f64,
+  ) -> crate::dsp::SpectrumMeter {
+    use crate::dsp::{OctaveSmoothing, SpectrumMeter};
+
+    let mut meter = SpectrumMeter::new(sample_rate);
+    let smoothing = match request.octave_smoothing.as_str() {
+      "1/12" => OctaveSmoothing::OneTwelfth,
+      "1/6" => OctaveSmoothing::OneSixth,
+      "1/3" => OctaveSmoothing::OneThird,
+      _ => OctaveSmoothing::Off,
+    };
+    meter.set_display_controls(request.speed_percent, request.tilt_db_per_octave, smoothing);
+    meter
+  }
+
+  fn push_legacy_meter(
+    meter: &mut crate::dsp::SpectrumMeter,
+    request: &crate::ipc::types::SpectrumAnalysisRequest,
+    channels: u16,
+    pcm: &[f32],
+    now_sec: f64,
+  ) {
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let selection = match request.channel {
+      SpectrumAnalysisChannel::Pair { x, y } => SpectrumChannelSel::Pair(x, y),
+      SpectrumAnalysisChannel::Single { ch } => SpectrumChannelSel::Single(ch),
+    };
+    let view = match request.view.as_str() {
+      "lr" => SpectrumView::Lr,
+      "ms" => SpectrumView::Ms,
+      _ => SpectrumView::Combined,
+    };
+    meter.push_pair(pcm, channels, now_sec, selection, view);
+  }
+
+  fn legacy_payload_from_meter(
+    meter: &crate::dsp::SpectrumMeter,
+  ) -> (SpectrumFrameResult, SpectrumVisualEntry) {
+    let (centers, smooth, peak) = meter.last_output();
+    let (path, peak_path) = if centers.is_empty() {
+      (String::new(), String::new())
+    } else {
+      spectrum_paths_from_bands(centers, smooth, peak, true)
+    };
+    let (path_b, peak_path_b, smooth_db_b, peak_db_b) = meter
+      .last_output_secondary()
+      .map(|(smooth_b, peak_b)| {
+        let (path_b, peak_path_b) = spectrum_paths_from_bands(centers, smooth_b, peak_b, true);
+        (path_b, peak_path_b, smooth_b.to_vec(), peak_b.to_vec())
+      })
+      .unwrap_or_default();
+    let result = SpectrumFrameResult {
+      path,
+      peak_path,
+      path_b,
+      peak_path_b,
+      band_centers_hz: centers.to_vec(),
+      smooth_db: smooth.to_vec(),
+      peak_db: peak.to_vec(),
+      smooth_db_b,
+      peak_db_b,
+    };
+    let visual = SpectrumVisualEntry {
+      band_centers_hz: result.band_centers_hz.clone(),
+      smooth_db: result.smooth_db.clone(),
+      smooth_db_b: result.smooth_db_b.clone(),
+    };
+    (result, visual)
+  }
+
+  fn assert_rows_with_route_tolerance(
+    actual: &[f64],
+    expected: &[f64],
+    tolerance_db: f64,
+    label: &str,
+  ) {
+    assert_eq!(actual.len(), expected.len(), "{label} length");
+    if tolerance_db == 0.0 {
+      assert_eq!(actual, expected, "{label} exact rows");
+      return;
+    }
+    for (index, (&actual, &expected)) in actual.iter().zip(expected).enumerate() {
+      assert!(
+        (actual - expected).abs() <= tolerance_db,
+        "{label}[{index}]: actual={actual}, expected={expected}, tolerance={tolerance_db}"
+      );
+    }
+  }
+
+  fn svg_points(path: &str) -> Vec<(f64, f64)> {
+    let tokens: Vec<_> = path.split_whitespace().collect();
+    assert_eq!(tokens.len() % 3, 0, "invalid SVG token count: {path}");
+    tokens
+      .chunks_exact(3)
+      .map(|chunk| {
+        assert!(matches!(chunk[0], "M" | "L"), "invalid SVG command");
+        (
+          chunk[1].parse().expect("SVG x coordinate"),
+          chunk[2].parse().expect("SVG y coordinate"),
+        )
+      })
+      .collect()
+  }
+
+  fn assert_svg_with_route_tolerance(actual: &str, expected: &str, tolerance_db: f64, label: &str) {
+    if tolerance_db == 0.0 {
+      assert_eq!(actual, expected, "{label} exact SVG");
+      return;
+    }
+    let actual = svg_points(actual);
+    let expected = svg_points(expected);
+    assert_eq!(actual.len(), expected.len(), "{label} SVG point count");
+    // The 100 dB plot spans 246 viewBox pixels; include 0.01 formatting quantization.
+    let y_tolerance = tolerance_db * 2.46 + 0.011;
+    for (index, ((actual_x, actual_y), (expected_x, expected_y))) in
+      actual.iter().zip(&expected).enumerate()
+    {
+      assert!(
+        (actual_x - expected_x).abs() <= 0.001,
+        "{label}[{index}] x: {actual_x} vs {expected_x}"
+      );
+      assert!(
+        (actual_y - expected_y).abs() <= y_tolerance,
+        "{label}[{index}] y: {actual_y} vs {expected_y}, tolerance={y_tolerance}"
+      );
+    }
+  }
+
+  fn assert_result_matches_legacy(
+    actual: &SpectrumFrameResult,
+    legacy: &SpectrumFrameResult,
+    tolerance_db: f64,
+    label: &str,
+  ) {
+    assert_eq!(
+      actual.band_centers_hz, legacy.band_centers_hz,
+      "{label} centers"
+    );
+    assert_eq!(actual.smooth_db.len(), actual.band_centers_hz.len());
+    assert_eq!(actual.peak_db.len(), actual.band_centers_hz.len());
+    assert_eq!(actual.smooth_db_b.len(), legacy.smooth_db_b.len());
+    assert_eq!(actual.peak_db_b.len(), legacy.peak_db_b.len());
+    assert_rows_with_route_tolerance(
+      &actual.smooth_db,
+      &legacy.smooth_db,
+      tolerance_db,
+      &format!("{label} smooth"),
+    );
+    assert_rows_with_route_tolerance(
+      &actual.peak_db,
+      &legacy.peak_db,
+      tolerance_db,
+      &format!("{label} peak"),
+    );
+    assert_rows_with_route_tolerance(
+      &actual.smooth_db_b,
+      &legacy.smooth_db_b,
+      tolerance_db,
+      &format!("{label} smooth-b"),
+    );
+    assert_rows_with_route_tolerance(
+      &actual.peak_db_b,
+      &legacy.peak_db_b,
+      tolerance_db,
+      &format!("{label} peak-b"),
+    );
+    for (name, actual_path, legacy_path) in [
+      ("path", &actual.path, &legacy.path),
+      ("peak-path", &actual.peak_path, &legacy.peak_path),
+      ("path-b", &actual.path_b, &legacy.path_b),
+      ("peak-path-b", &actual.peak_path_b, &legacy.peak_path_b),
+    ] {
+      assert_eq!(
+        actual_path.is_empty(),
+        legacy_path.is_empty(),
+        "{label} {name} presence"
+      );
+      assert_svg_with_route_tolerance(
+        actual_path,
+        legacy_path,
+        tolerance_db,
+        &format!("{label} {name}"),
+      );
+    }
+  }
+
+  fn assert_visual_matches_legacy(
+    actual: &SpectrumVisualEntry,
+    legacy: &SpectrumVisualEntry,
+    tolerance_db: f64,
+    label: &str,
+  ) {
+    assert_eq!(
+      actual.band_centers_hz, legacy.band_centers_hz,
+      "{label} visual centers"
+    );
+    assert_rows_with_route_tolerance(
+      &actual.smooth_db,
+      &legacy.smooth_db,
+      tolerance_db,
+      &format!("{label} visual smooth"),
+    );
+    assert_rows_with_route_tolerance(
+      &actual.smooth_db_b,
+      &legacy.smooth_db_b,
+      tolerance_db,
+      &format!("{label} visual smooth-b"),
+    );
+  }
+
+  fn assert_legacy_payload_map(
+    frame: &AudioFramePayload,
+    legacy: &HashMap<String, (SpectrumFrameResult, SpectrumVisualEntry, f64)>,
+  ) {
+    let mut actual_keys: Vec<_> = frame
+      .spectrum_results_by_key
+      .keys()
+      .map(String::as_str)
+      .collect();
+    actual_keys.sort_unstable();
+    let mut expected_keys: Vec<_> = legacy.keys().map(String::as_str).collect();
+    expected_keys.sort_unstable();
+    assert_eq!(actual_keys, expected_keys, "exact result-key membership");
+
+    for key in expected_keys {
+      let result = &frame.spectrum_results_by_key[key];
+      let (legacy_result, _, tolerance_db) = &legacy[key];
+      assert_result_matches_legacy(result, legacy_result, *tolerance_db, key);
+    }
+  }
+
+  fn payload_parity_sample_rates() -> &'static [u32] {
+    &[16_000, 22_050, 44_100, 48_000, 96_000]
+  }
+
+  #[test]
+  fn production_payload_parity_matrix_covers_representative_sample_rates() {
+    assert_eq!(
+      payload_parity_sample_rates(),
+      &[16_000, 22_050, 44_100, 48_000, 96_000]
+    );
+  }
+
+  #[test]
+  fn production_spectrum_payload_matches_legacy_single_direct_physical_lr_and_ms() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::dsp::SpectrumMeter;
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    for &sample_rate in payload_parity_sample_rates() {
+      let fixture_frames = ((sample_rate as f64 * 1.1).ceil() as usize).max(FFT_BIG);
+      let pcm = deterministic_stereo(fixture_frames, 0);
+      let readiness_split = (FFT_BIG - 1) * 2;
+      let cases = [
+        AnalysisRequests {
+          spectrum: vec![spectrum_request(
+            "direct",
+            SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+            "combined",
+          )],
+          vectorscope: vec![],
+          stereo_map: Vec::new(),
+        },
+        AnalysisRequests {
+          spectrum: vec![
+            spectrum_request(
+              "single",
+              SpectrumAnalysisChannel::Single { ch: 0 },
+              "combined",
+            ),
+            spectrum_request(
+              "physical-combined",
+              SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+              "combined",
+            ),
+            spectrum_request("lr", SpectrumAnalysisChannel::Pair { x: 0, y: 1 }, "lr"),
+            spectrum_request("ms", SpectrumAnalysisChannel::Pair { x: 0, y: 1 }, "ms"),
+          ],
+          vectorscope: vec![],
+          stereo_map: Vec::new(),
+        },
+      ];
+
+      for requests in cases {
+        let mut pipeline = MeterPipeline::new(sample_rate, 2);
+        let mut legacy_meters: HashMap<String, (SpectrumMeter, f64)> = requests
+          .spectrum
+          .iter()
+          .map(|request| {
+            let tolerance = if matches!(request.key.as_str(), "physical-combined" | "ms") {
+              0.0225
+            } else {
+              0.0
+            };
+            (
+              request.key.clone(),
+              (
+                legacy_meter_for_request(request, sample_rate as f64),
+                tolerance,
+              ),
+            )
+          })
+          .collect();
+
+        pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(0.9));
+        for request in &requests.spectrum {
+          push_legacy_meter(
+            &mut legacy_meters.get_mut(&request.key).unwrap().0,
+            request,
+            2,
+            &pcm[..readiness_split],
+            0.9,
+          );
+        }
+        pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+        let pending = pipeline
+          .push_pcm_f32_with_requests(
+            &pcm[..readiness_split],
+            ChannelLayoutSetting::Auto,
+            &requests,
+            None,
+            false,
+            VadEngineKind::default(),
+          )
+          .expect("pending spectrum frame");
+        let pending_legacy: HashMap<_, _> = legacy_meters
+          .iter()
+          .map(|(key, (meter, tolerance))| {
+            let (result, visual) = legacy_payload_from_meter(meter);
+            (key.clone(), (result, visual, *tolerance))
+          })
+          .collect();
+        assert_legacy_payload_map(&pending, &pending_legacy);
+
+        pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(1.0));
+        for request in &requests.spectrum {
+          push_legacy_meter(
+            &mut legacy_meters.get_mut(&request.key).unwrap().0,
+            request,
+            2,
+            &pcm[readiness_split..],
+            1.0,
+          );
+        }
+        pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+        pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+        let frame = pipeline
+          .push_pcm_f32_with_requests(
+            &pcm[readiness_split..],
+            ChannelLayoutSetting::Auto,
+            &requests,
+            None,
+            false,
+            VadEngineKind::default(),
+          )
+          .expect("warmed spectrum frame");
+        let legacy: HashMap<_, _> = legacy_meters
+          .iter()
+          .map(|(key, (meter, tolerance))| {
+            let (result, visual) = legacy_payload_from_meter(meter);
+            (key.clone(), (result, visual, *tolerance))
+          })
+          .collect();
+
+        assert_legacy_payload_map(&frame, &legacy);
+        let visual = frame.visual_hist_tick.as_ref().expect("live visual tick");
+        let mut visual_keys: Vec<_> = visual.spectrum_by_key.keys().map(String::as_str).collect();
+        visual_keys.sort_unstable();
+        let mut sorted_expected: Vec<_> = legacy.keys().map(String::as_str).collect();
+        sorted_expected.sort_unstable();
+        assert_eq!(visual_keys, sorted_expected, "exact visual-key membership");
+        assert_eq!(visual.timestamp_ms, frame.timestamp_ms);
+        for key in sorted_expected {
+          let (_, legacy_visual, tolerance_db) = &legacy[key];
+          assert_visual_matches_legacy(
+            &visual.spectrum_by_key[key],
+            legacy_visual,
+            *tolerance_db,
+            &format!("{sample_rate} Hz {key}"),
+          );
+        }
+      }
+    }
+  }
+
+  #[test]
+  fn legacy_payload_comparison_rejects_path_and_visual_mutations() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let request = spectrum_request(
+      "single",
+      SpectrumAnalysisChannel::Single { ch: 0 },
+      "combined",
+    );
+    let pcm = deterministic_stereo(FFT_BIG, 0);
+    let (legacy_result, legacy_visual) = legacy_spectrum_result(&request, 48_000.0, 2, &pcm, 1.0);
+
+    let mut altered_path = legacy_result.clone();
+    altered_path.path.push_str(" L 0.00 0.00");
+    assert!(
+      std::panic::catch_unwind(|| {
+        assert_result_matches_legacy(&altered_path, &legacy_result, 0.0, "path mutation");
+      })
+      .is_err(),
+      "an altered legacy path must be rejected"
+    );
+
+    let mut altered_visual = legacy_visual.clone();
+    altered_visual.smooth_db[0] += 1.0;
+    assert!(
+      std::panic::catch_unwind(|| {
+        assert_visual_matches_legacy(&altered_visual, &legacy_visual, 0.0, "visual mutation");
+      })
+      .is_err(),
+      "an altered legacy visual row must be rejected"
+    );
+  }
+
+  #[test]
+  fn production_and_legacy_readiness_match_at_low_rate_window_boundary() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::dsp::{OctaveSmoothing, SpectrumMeter};
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let sample_rate = 16_000_u32;
+    let request = spectrum_request(
+      "single",
+      SpectrumAnalysisChannel::Single { ch: 0 },
+      "combined",
+    );
+    let requests = AnalysisRequests {
+      spectrum: vec![request],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let pcm = deterministic_stereo(FFT_BIG, 0);
+    let split = (FFT_BIG - 1) * 2;
+    let mut legacy = SpectrumMeter::new(sample_rate as f64);
+    legacy.set_display_controls(50.0, 4.5, OctaveSmoothing::OneSixth);
+    let mut pipeline = MeterPipeline::new(sample_rate, 2);
+    pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(1.0));
+
+    legacy.push_pair(
+      &pcm[..split],
+      2,
+      1.0,
+      SpectrumChannelSel::Single(0),
+      SpectrumView::Combined,
+    );
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let pending = pipeline
+      .push_pcm_f32_with_requests(
+        &pcm[..split],
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("pending frame");
+    assert!(legacy.last_output().0.is_empty());
+    assert!(pending.spectrum_results_by_key["single"]
+      .band_centers_hz
+      .is_empty());
+
+    legacy.push_pair(
+      &pcm[split..],
+      2,
+      1.1,
+      SpectrumChannelSel::Single(0),
+      SpectrumView::Combined,
+    );
+    pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(1.1));
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let ready = pipeline
+      .push_pcm_f32_with_requests(
+        &pcm[split..],
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("ready frame");
+    let (legacy_centers, legacy_smooth, legacy_peak) = legacy.last_output();
+    let actual = &ready.spectrum_results_by_key["single"];
+    assert_eq!(actual.band_centers_hz, legacy_centers);
+    assert_eq!(actual.smooth_db, legacy_smooth);
+    assert_eq!(actual.peak_db, legacy_peak);
+  }
+
+  #[test]
+  fn file_visual_batch_matches_legacy_rows_timestamps_and_cadence() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::dsp::{OctaveSmoothing, SpectrumMeter};
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let request = spectrum_request(
+      "direct",
+      SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+      "combined",
+    );
+    let requests = AnalysisRequests {
+      spectrum: vec![request.clone()],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let chunk_frames = FFT_BIG / 4;
+    let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
+    let mut legacy = SpectrumMeter::new(48_000.0);
+    legacy.set_display_controls(50.0, 4.5, OctaveSmoothing::OneSixth);
+    let mut timestamps = Vec::new();
+    let mut clock = 0_u64;
+
+    for chunk_index in 1..=6_u64 {
+      let pcm = deterministic_stereo(chunk_frames, clock);
+      clock += chunk_frames as u64;
+      let now_sec = chunk_index as f64 * 0.1;
+      legacy.push_pair(
+        &pcm,
+        2,
+        now_sec,
+        SpectrumChannelSel::Pair(0, 1),
+        SpectrumView::Combined,
+      );
+      let (_, legacy_visual) = legacy_payload_from_meter(&legacy);
+      pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(now_sec));
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+      let frame = pipeline
+        .push_pcm_f32_with_requests_at_media_time(
+          &pcm,
+          ChannelLayoutSetting::Auto,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+          chunk_index * 100,
+        )
+        .expect("forced file frame");
+      for entry in &frame.visual_hist_batch {
+        timestamps.push(entry.timestamp_ms);
+        assert_visual_matches_legacy(
+          &entry.spectrum_by_key["direct"],
+          &legacy_visual,
+          0.0,
+          "file direct visual",
+        );
+      }
+    }
+
+    assert_eq!(timestamps, vec![100, 200, 300, 400, 500, 600]);
+  }
+
+  #[test]
+  fn file_stereo_map_batch_preserves_each_checkpoint_snapshot_without_future_backfill() {
+    let mut request = stereo_map_request("batched");
+    request.speed_percent = 0.0;
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: vec![request],
+    };
+    let chunk_frames = 4_800_usize;
+    let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
+
+    for checkpoint in 1..=5_u64 {
+      let pcm = if checkpoint < 5 {
+        deterministic_stereo(chunk_frames, (checkpoint - 1) * chunk_frames as u64)
+      } else {
+        vec![0.0_f32; chunk_frames * 2]
+      };
+      // Deterministically hold every checkpoint in one pending batch, independent of machine speed.
+      pipeline.last_frame_emit = Instant::now()
+        .checked_add(Duration::from_secs(60))
+        .expect("future throttle instant");
+      assert!(pipeline
+        .push_pcm_f32_with_requests_at_media_time(
+          &pcm,
+          ChannelLayoutSetting::Auto,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+          checkpoint * 100,
+        )
+        .is_none());
+    }
+
+    let batch = pipeline
+      .flush_file_batch(&requests)
+      .expect("forced drain of five visual checkpoints")
+      .visual_hist_batch;
+    assert_eq!(
+      batch
+        .iter()
+        .map(|entry| entry.timestamp_ms)
+        .collect::<Vec<_>>(),
+      vec![100, 200, 300, 400, 500]
+    );
+    assert!(
+      batch[..3]
+        .iter()
+        .all(|entry| !entry.stereo_map_by_key.contains_key("batched")),
+      "warmup checkpoints must not receive a future ready row"
+    );
+    let early = &batch[3].stereo_map_by_key["batched"];
+    let later = &batch[4].stereo_map_by_key["batched"];
+    assert!(!early.band_centers_hz.is_empty());
+    assert_eq!(early.band_centers_hz.len(), early.pl.len());
+    assert_eq!(early.pl.len(), early.pr.len());
+    assert_eq!(early.pr.len(), early.c.len());
+    assert_ne!(
+      early.pl, later.pl,
+      "each timestamp must retain the row captured at that checkpoint"
+    );
+
+    pipeline.last_frame_emit = Instant::now()
+      .checked_add(Duration::from_secs(60))
+      .expect("future throttle instant");
+    assert!(pipeline
+      .push_pcm_f32_with_requests_at_media_time(
+        &deterministic_stereo(chunk_frames, chunk_frames as u64 * 5),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+        600,
+      )
+      .is_none());
+    pipeline.clear_peak_and_history();
+
+    for checkpoint in 7..=10_u64 {
+      pipeline.last_frame_emit = Instant::now()
+        .checked_add(Duration::from_secs(60))
+        .expect("future throttle instant");
+      assert!(pipeline
+        .push_pcm_f32_with_requests_at_media_time(
+          &deterministic_stereo(chunk_frames, (checkpoint - 1) * chunk_frames as u64,),
+          ChannelLayoutSetting::Auto,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+          checkpoint * 100,
+        )
+        .is_none());
+    }
+    let after_clear = pipeline
+      .flush_file_batch(&requests)
+      .expect("post-Clear visual checkpoints")
+      .visual_hist_batch;
+    assert_eq!(
+      after_clear
+        .iter()
+        .map(|entry| entry.timestamp_ms)
+        .collect::<Vec<_>>(),
+      vec![700, 800, 900, 1_000],
+      "Clear must discard every pre-Clear pending checkpoint"
+    );
+    assert!(after_clear[..3]
+      .iter()
+      .all(|entry| entry.stereo_map_by_key.is_empty()));
+    assert!(after_clear[3].stereo_map_by_key.contains_key("batched"));
+
+    pipeline.last_frame_emit = Instant::now()
+      .checked_add(Duration::from_secs(60))
+      .expect("future throttle instant");
+    assert!(pipeline
+      .push_pcm_f32_with_requests_at_media_time(
+        &deterministic_stereo(chunk_frames, chunk_frames as u64 * 10),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+        1_100,
+      )
+      .is_none());
+    let inactive = AnalysisRequests::default();
+    pipeline.last_frame_emit = Instant::now()
+      .checked_add(Duration::from_secs(60))
+      .expect("future throttle instant");
+    assert!(pipeline
+      .push_pcm_f32_with_requests_at_media_time(
+        &deterministic_stereo(chunk_frames, chunk_frames as u64 * 11),
+        ChannelLayoutSetting::Auto,
+        &inactive,
+        None,
+        false,
+        VadEngineKind::default(),
+        1_200,
+      )
+      .is_none());
+    let after_remove = pipeline
+      .flush_file_batch(&inactive)
+      .expect("active then removed checkpoints")
+      .visual_hist_batch;
+    assert!(after_remove[0].stereo_map_by_key.contains_key("batched"));
+    assert!(
+      after_remove[1].stereo_map_by_key.is_empty(),
+      "removed key must be absent from its own checkpoint without erasing earlier rows"
+    );
+  }
+
+  #[test]
+  fn production_spectrum_grid_matches_legacy_at_every_supported_rate() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    for &sample_rate in payload_parity_sample_rates() {
+      let request = spectrum_request(
+        "single",
+        SpectrumAnalysisChannel::Single { ch: 0 },
+        "combined",
+      );
+      let requests = AnalysisRequests {
+        spectrum: vec![request.clone()],
+        vectorscope: vec![],
+        stereo_map: Vec::new(),
+      };
+      let pcm = deterministic_stereo(FFT_BIG, 0);
+      let (_, legacy_visual) = legacy_spectrum_result(&request, sample_rate as f64, 2, &pcm, 1.0);
+      let mut pipeline = MeterPipeline::new(sample_rate, 2);
+      pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(1.0));
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+      let frame = pipeline
+        .push_pcm_f32_with_requests(
+          &pcm,
+          ChannelLayoutSetting::Auto,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+        )
+        .expect("low-rate production frame");
+      let actual = &frame.spectrum_results_by_key["single"];
+
+      assert_eq!(
+        actual.band_centers_hz, legacy_visual.band_centers_hz,
+        "{sample_rate} Hz exact centers"
+      );
+      assert_eq!(
+        actual.smooth_db.len(),
+        legacy_visual.smooth_db.len(),
+        "{sample_rate} Hz row length"
+      );
+      let expected_max = 20_000.0_f64.min(sample_rate as f64 * 0.499);
+      assert!(
+        (actual.band_centers_hz.last().copied().unwrap() - expected_max).abs()
+          <= expected_max * f64::EPSILON,
+        "{sample_rate} Hz upper grid bound"
+      );
+    }
+  }
+
+  #[test]
+  fn production_spectrum_prunes_old_key_without_stale_payload() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let old = AnalysisRequests {
+      spectrum: vec![spectrum_request(
+        "old",
+        SpectrumAnalysisChannel::Single { ch: 0 },
+        "combined",
+      )],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let new = AnalysisRequests {
+      spectrum: vec![spectrum_request(
+        "new",
+        SpectrumAnalysisChannel::Single { ch: 1 },
+        "combined",
+      )],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let warmed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, 0),
+        ChannelLayoutSetting::Auto,
+        &old,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("old frame");
+    assert!(!warmed.spectrum_results_by_key["old"].smooth_db.is_empty());
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let pending = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG - 1, FFT_BIG as u64),
+        ChannelLayoutSetting::Auto,
+        &new,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("new pending frame");
+    assert_eq!(
+      pending.spectrum_results_by_key.keys().collect::<Vec<_>>(),
+      vec![&"new".to_string()]
+    );
+    let pending_result = &pending.spectrum_results_by_key["new"];
+    assert!(pending_result.smooth_db.is_empty());
+    assert!(pending_result.band_centers_hz.is_empty());
+    assert!(pending_result.path.is_empty());
+    assert!(pending_result.peak_path.is_empty());
+    assert!(pending_result.path_b.is_empty());
+    assert!(pending_result.peak_path_b.is_empty());
+  }
+
+  #[test]
+  fn production_pipeline_has_no_per_key_spectrum_fft_owner() {
+    let source = include_str!("meter_pipeline.rs");
+    let legacy_field = ["spectrum_by_key:", " HashMap<String, SpectrumMeter>"].concat();
+    assert!(
+      !source.contains(&legacy_field),
+      "production MeterPipeline still owns one legacy FFT bank per request key"
+    );
+    assert!(
+      source.contains("shared_spectral_runtime: SharedSpectralRuntime,")
+        && !source.contains("#[cfg(test)]\n  shared_spectral_runtime: SharedSpectralRuntime,"),
+      "the real MeterPipeline path must unconditionally own SharedSpectralRuntime"
+    );
+  }
+
+  #[test]
+  fn production_spectral_consumer_does_not_depend_on_legacy_meter() {
+    let source = include_str!("../dsp/spectrum_consumer.rs");
+    let production_source = source
+      .split("#[cfg(test)]\nmod tests")
+      .next()
+      .expect("production source");
+    let legacy_type = ["Spectrum", "Meter"].concat();
+    assert!(
+      !production_source.contains(&legacy_type),
+      "production SpectralConsumer still imports or calls the legacy meter"
+    );
+  }
+
+  #[test]
+  fn production_pipeline_transforms_each_planned_stream_once_not_per_request() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let first = spectrum_request(
+      "first",
+      SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+      "combined",
+    );
+    let second = spectrum_request(
+      "second",
+      SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
+      "combined",
+    );
+    let single = AnalysisRequests {
+      spectrum: vec![first.clone()],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let duplicate = AnalysisRequests {
+      spectrum: vec![first, second],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let pcm = deterministic_stereo(FFT_BIG * 2, 0);
+    let mut one_request = MeterPipeline::new(48_000, 2);
+    let mut two_requests = MeterPipeline::new(48_000, 2);
+
+    let _ = one_request.push_pcm_f32_with_requests(
+      &pcm,
+      ChannelLayoutSetting::Auto,
+      &single,
+      None,
+      false,
+      VadEngineKind::default(),
+    );
+    let _ = two_requests.push_pcm_f32_with_requests(
+      &pcm,
+      ChannelLayoutSetting::Auto,
+      &duplicate,
+      None,
+      false,
+      VadEngineKind::default(),
+    );
+
+    let one = one_request.shared_runtime_lifecycle_for_test();
+    let two = two_requests.shared_runtime_lifecycle_for_test();
+    assert_eq!(one.streams.len(), 1);
+    assert_eq!(two.streams.len(), 1);
+    assert!(one.total_fft_count > 0);
+    assert_eq!(two.total_fft_count, one.total_fft_count);
+    assert_eq!(two.streams[0].fft_count, one.streams[0].fft_count);
+  }
+
+  #[test]
+  fn production_request_control_update_preserves_shared_consumer_state() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let mut request = spectrum_request(
+      "stable-key",
+      SpectrumAnalysisChannel::Single { ch: 0 },
+      "combined",
+    );
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    let initial = AnalysisRequests {
+      spectrum: vec![request.clone()],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let _ = pipeline.push_pcm_f32_with_requests(
+      &deterministic_stereo(FFT_BIG, 0),
+      ChannelLayoutSetting::Auto,
+      &initial,
+      None,
+      false,
+      VadEngineKind::default(),
+    );
+    let before = pipeline
+      .shared_runtime_snapshot_for_test("stable-key", 1.0)
+      .expect("warmed shared consumer");
+
+    request.speed_percent = 75.0;
+    request.tilt_db_per_octave = 2.0;
+    request.octave_smoothing = "1/3".to_string();
+    let updated = AnalysisRequests {
+      spectrum: vec![request],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let _ = pipeline.push_pcm_f32_with_requests(
+      &deterministic_stereo(2048, FFT_BIG as u64),
+      ChannelLayoutSetting::Auto,
+      &updated,
+      None,
+      false,
+      VadEngineKind::default(),
+    );
+    let after = pipeline
+      .shared_runtime_snapshot_for_test("stable-key", 1.1)
+      .expect("updated shared consumer");
+
+    assert_eq!(after.identity, before.identity);
+    assert_eq!(after.state.state_epoch, before.state.state_epoch);
+    assert!(after
+      .consume_counts
+      .iter()
+      .zip(before.consume_counts)
+      .all(|(after, before)| after >= &before));
   }
 
   #[test]
@@ -2029,5 +4176,253 @@ mod tests {
       Some("5.1"),
       "auto mode with 6ch should report 5.1 loudness layout"
     );
+  }
+
+  #[test]
+  fn active_stereo_map_keys_emit_one_finite_equal_length_live_result_each() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::{StereoMapAnalysisPair, StereoMapAnalysisRequest};
+
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: ["first", "second"]
+        .into_iter()
+        .map(|key| StereoMapAnalysisRequest {
+          key: key.to_string(),
+          pair: StereoMapAnalysisPair {
+            first: 0,
+            second: 1,
+          },
+          speed_percent: 50.0,
+          octave_smoothing: "off".to_string(),
+        })
+        .collect(),
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let frame = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, 0),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("warmed Stereo Map frame");
+
+    assert_eq!(frame.stereo_map_results_by_key.len(), 2);
+    for key in ["first", "second"] {
+      let row = &frame.stereo_map_results_by_key[key];
+      assert!(!row.band_centers_hz.is_empty());
+      assert_eq!(row.band_centers_hz.len(), row.pl.len());
+      assert_eq!(row.pl.len(), row.pr.len());
+      assert_eq!(row.pr.len(), row.c.len());
+      assert!(row.band_centers_hz.iter().all(|value| value.is_finite()));
+      assert!(row.pl.iter().all(|value| value.is_finite()));
+      assert!(row.pr.iter().all(|value| value.is_finite()));
+      assert!(row.c.iter().all(|value| value.is_finite()));
+    }
+  }
+
+  #[test]
+  fn stereo_map_one_deduplicated_key_owns_one_consumer_and_removed_key_stops_immediately() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+
+    let active = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      // Duplicate frontend instances have already collapsed to this one keyed request.
+      stereo_map: vec![stereo_map_request("shared-key")],
+    };
+    let inactive = AnalysisRequests::default();
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let initial_warmup = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG - 1, 0),
+        ChannelLayoutSetting::Auto,
+        &active,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("initial warmup frame");
+    assert!(!initial_warmup
+      .stereo_map_results_by_key
+      .contains_key("shared-key"));
+    assert!(!initial_warmup
+      .visual_hist_tick
+      .expect("initial warmup visual")
+      .stereo_map_by_key
+      .contains_key("shared-key"));
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let warmed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(1, (FFT_BIG - 1) as u64),
+        ChannelLayoutSetting::Auto,
+        &active,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("warmed frame");
+    assert_eq!(warmed.stereo_map_results_by_key.len(), 1);
+    let consumed = pipeline
+      .stereo_map_consume_counts_for_test("shared-key")
+      .expect("one keyed consumer");
+    assert!(consumed.iter().all(|count| *count > 0));
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let removed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, FFT_BIG as u64),
+        ChannelLayoutSetting::Auto,
+        &inactive,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("frame after removal");
+    assert!(removed.stereo_map_results_by_key.is_empty());
+    assert_eq!(
+      pipeline.stereo_map_consume_counts_for_test("shared-key"),
+      None,
+      "removed key must be pruned before the next PCM push"
+    );
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let reactivated = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG - 1, (FFT_BIG * 2) as u64),
+        ChannelLayoutSetting::Auto,
+        &active,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("reactivated frame");
+    assert!(!reactivated
+      .stereo_map_results_by_key
+      .contains_key("shared-key"));
+    assert!(!reactivated
+      .visual_hist_tick
+      .expect("reactivation warmup visual")
+      .stereo_map_by_key
+      .contains_key("shared-key"));
+  }
+
+  #[test]
+  fn stereo_map_visual_rows_follow_live_forty_ms_gate() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: vec![stereo_map_request("visual")],
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let first = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, 0),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("first live frame");
+    let visual = first.visual_hist_tick.expect("40 ms visual checkpoint");
+    assert_eq!(visual.stereo_map_by_key.len(), 1);
+    assert!(!visual.stereo_map_by_key["visual"].pl.is_empty());
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let before_gate = pipeline
+      .push_pcm_f32_with_requests(
+        &[],
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("forced live frame");
+    assert!(
+      before_gate.visual_hist_tick.is_none(),
+      "frame cadence must not bypass the existing 40 ms visual gate"
+    );
+  }
+
+  #[test]
+  fn clear_resets_stereo_map_pair_accumulators_and_restarts_warmup() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+
+    let requests = AnalysisRequests {
+      spectrum: Vec::new(),
+      vectorscope: Vec::new(),
+      stereo_map: vec![stereo_map_request("clearable")],
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let warmed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG, 0),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("warmed frame");
+    assert!(!warmed.stereo_map_results_by_key["clearable"].pl.is_empty());
+
+    pipeline.clear_peak_and_history();
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let warming = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(FFT_BIG - 1, FFT_BIG as u64),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("post-clear frame");
+    assert!(!warming.stereo_map_results_by_key.contains_key("clearable"));
+    assert!(!warming
+      .visual_hist_tick
+      .expect("post-Clear warmup visual")
+      .stereo_map_by_key
+      .contains_key("clearable"));
+
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
+    let rewarmed = pipeline
+      .push_pcm_f32_with_requests(
+        &deterministic_stereo(1, (FFT_BIG * 2 - 1) as u64),
+        ChannelLayoutSetting::Auto,
+        &requests,
+        None,
+        false,
+        VadEngineKind::default(),
+      )
+      .expect("rewarmed frame");
+    let ready = &rewarmed.stereo_map_results_by_key["clearable"];
+    assert!(!ready.band_centers_hz.is_empty());
+    assert_eq!(ready.band_centers_hz.len(), ready.pl.len());
+    assert_eq!(ready.pl.len(), ready.pr.len());
+    assert_eq!(ready.pr.len(), ready.c.len());
+    let visual = &rewarmed
+      .visual_hist_tick
+      .expect("ready post-Clear visual")
+      .stereo_map_by_key["clearable"];
+    assert_eq!(visual.band_centers_hz.len(), visual.pl.len());
+    assert!(!visual.band_centers_hz.is_empty());
   }
 }

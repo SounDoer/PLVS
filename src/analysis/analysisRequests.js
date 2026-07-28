@@ -4,6 +4,11 @@ import { resolvePanelModuleId } from "../workspace/panelInstances.js";
 
 export const MAX_SPECTRUM_REQUESTS = 4;
 export const MAX_VECTORSCOPE_REQUESTS = 4;
+export const MAX_STEREO_MAP_REQUESTS = 4;
+
+const DEFAULT_STEREO_MAP_PAIR = { first: 0, second: 1 };
+const DEFAULT_STEREO_MAP_SMOOTHING = "1/12";
+const MAX_ANALYSIS_CHANNEL_INDEX = 63;
 
 function spectrumDisplayControlsFromControls(panelControls) {
   const controls = normalizePanelControls(panelControls);
@@ -47,6 +52,39 @@ export function vectorscopeRequestKeyFromControls(panelControls) {
   return `vectorscope:pair:${pair.x}:${pair.y}`;
 }
 
+function stereoMapMeasurementControlsFromControls(panelControls) {
+  const rawPair = panelControls?.stereoMapPair;
+  const pairIsValid =
+    Number.isInteger(rawPair?.first) &&
+    Number.isInteger(rawPair?.second) &&
+    rawPair.first >= 0 &&
+    rawPair.first <= MAX_ANALYSIS_CHANNEL_INDEX &&
+    rawPair.second >= 0 &&
+    rawPair.second <= MAX_ANALYSIS_CHANNEL_INDEX &&
+    rawPair.first !== rawPair.second;
+  const pair = pairIsValid ? rawPair : DEFAULT_STEREO_MAP_PAIR;
+  const speedPercent = Math.round(
+    normalizePanelControls({
+      spectrumSpeedPercent: panelControls?.stereoMapSpeedPercent,
+    }).spectrumSpeedPercent
+  );
+  const octaveSmoothing = SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.some(
+    (option) => option.id === panelControls?.stereoMapOctaveSmoothing
+  )
+    ? panelControls.stereoMapOctaveSmoothing
+    : DEFAULT_STEREO_MAP_SMOOTHING;
+  const smoothingToken =
+    SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.find((option) => option.id === octaveSmoothing)?.keyToken ??
+    "12";
+  return { pair, speedPercent, octaveSmoothing, smoothingToken };
+}
+
+export function stereoMapRequestKeyFromControls(panelControls) {
+  const { pair, speedPercent, smoothingToken } =
+    stereoMapMeasurementControlsFromControls(panelControls);
+  return `stereoMap:pair:${pair.first}:${pair.second}:sp${speedPercent}:sm${smoothingToken}`;
+}
+
 function pushRequest(map, key, panelId, payload) {
   const existing = map.get(key);
   if (existing) {
@@ -67,12 +105,55 @@ function capRequests(requests, max, statusByPanelId) {
   return { active, overCap };
 }
 
-export function deriveAnalysisRequests(state) {
+function dockPanelIdentity(panelId) {
+  return `dock:${panelId}`;
+}
+
+/**
+ * @typedef {object} AdditionalAnalysisPanelInstance
+ * @property {string} panelId Dock-local panel id; request/status identity is namespaced as `dock:${panelId}`.
+ * @property {string} moduleId Panel module id; only `"stereo-map"` contributes in this task.
+ * @property {object} controls Raw module controls; read as Stereo Map controls when applicable.
+ */
+
+/**
+ * @param {import("../workspace/types.js").WorkspaceState} state
+ * @param {{
+ *   channelCount?: number,
+ *   additionalPanelInstances?: AdditionalAnalysisPanelInstance[],
+ * }} [options]
+ * `channelCount` is the runtime's effective channel count. Stereo Map requests are omitted unless
+ * it is an integer and both selected channels are available. Additional instances are the future
+ * Dock merge seam; their local panel ids are automatically namespaced and follow input order after
+ * Workspace panel order.
+ */
+export function deriveAnalysisRequests(
+  state,
+  { channelCount, additionalPanelInstances = [] } = {}
+) {
   const panelIdsInTree = collectPanelIdsFromTree(state.tree, state.panelsById);
   const orderedPanelIds = (state.panelOrder ?? []).filter((id) => panelIdsInTree.includes(id));
   const statusByPanelId = {};
   const spectrumByKey = new Map();
   const vectorscopeByKey = new Map();
+  const stereoMapByKey = new Map();
+
+  const addStereoMapRequest = (panelId, controls) => {
+    const measurement = stereoMapMeasurementControlsFromControls(controls);
+    const pairAvailable =
+      Number.isInteger(channelCount) &&
+      channelCount >= 2 &&
+      measurement.pair.first < channelCount &&
+      measurement.pair.second < channelCount;
+    if (!pairAvailable) return;
+    const key = stereoMapRequestKeyFromControls(controls);
+    pushRequest(stereoMapByKey, key, panelId, {
+      pair: measurement.pair,
+      speedPercent: measurement.speedPercent,
+      octaveSmoothing: measurement.octaveSmoothing,
+    });
+    statusByPanelId[panelId] = "active";
+  };
 
   for (const panelId of orderedPanelIds) {
     const moduleId = resolvePanelModuleId(state, panelId);
@@ -94,7 +175,17 @@ export function deriveAnalysisRequests(state) {
         pair: controls.vectorscopePair,
       });
       statusByPanelId[panelId] = "active";
+    } else if (moduleId === "stereo-map") {
+      addStereoMapRequest(
+        panelId,
+        state.panelControlsById?.[panelId] ?? state.panelControls ?? undefined
+      );
     }
+  }
+
+  for (const instance of additionalPanelInstances) {
+    if (instance?.moduleId !== "stereo-map" || typeof instance.panelId !== "string") continue;
+    addStereoMapRequest(dockPanelIdentity(instance.panelId), instance.controls);
   }
 
   const spectrum = capRequests([...spectrumByKey.values()], MAX_SPECTRUM_REQUESTS, statusByPanelId);
@@ -103,12 +194,19 @@ export function deriveAnalysisRequests(state) {
     MAX_VECTORSCOPE_REQUESTS,
     statusByPanelId
   );
+  const stereoMap = capRequests(
+    [...stereoMapByKey.values()],
+    MAX_STEREO_MAP_REQUESTS,
+    statusByPanelId
+  );
 
   return {
     spectrumRequests: spectrum.active,
     vectorscopeRequests: vectorscope.active,
+    stereoMapRequests: stereoMap.active,
     overCapSpectrumRequests: spectrum.overCap,
     overCapVectorscopeRequests: vectorscope.overCap,
+    overCapStereoMapRequests: stereoMap.overCap,
     statusByPanelId,
   };
 }

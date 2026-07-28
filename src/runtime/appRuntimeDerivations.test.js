@@ -35,7 +35,7 @@ describe("app runtime derivations", () => {
       panelControlsById: {},
     });
     const payload = deriveBackendAnalysisRequests(deriveAnalysisRequests(state));
-    expect(payload).toEqual(fixtures.wirePayload);
+    expect(payload).toEqual({ ...fixtures.wirePayload, stereoMap: [] });
   });
 
   it("maps aggregate analysis requests to the backend request shape", () => {
@@ -52,6 +52,14 @@ describe("app runtime derivations", () => {
           },
         ],
         vectorscopeRequests: [{ key: "vectorscope:pair:0:1", pair: { x: 0, y: 1 } }],
+        stereoMapRequests: [
+          {
+            key: "stereoMap:pair:0:1:sp25:sm12",
+            pair: { first: 0, second: 1 },
+            speedPercent: 25,
+            octaveSmoothing: "1/12",
+          },
+        ],
       })
     ).toEqual({
       spectrum: [
@@ -65,7 +73,49 @@ describe("app runtime derivations", () => {
         },
       ],
       vectorscope: [{ key: "vectorscope:pair:0:1", x: 0, y: 1 }],
+      stereoMap: [
+        {
+          key: "stereoMap:pair:0:1:sp25:sm12",
+          pair: { first: 0, second: 1 },
+          speedPercent: 25,
+          octaveSmoothing: "1/12",
+        },
+      ],
     });
+  });
+
+  it("keeps Stereo Map backend requests byte-equivalent across display-only changes", () => {
+    const measurementControls = {
+      stereoMapPair: { first: 0, second: 1 },
+      stereoMapSpeedPercent: 50,
+      stereoMapOctaveSmoothing: "1/6",
+    };
+    const makePayload = (displayControls) =>
+      deriveBackendAnalysisRequests(
+        deriveAnalysisRequests(
+          workspace({
+            panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+            panelControlsById: {
+              map: { ...measurementControls, ...displayControls },
+            },
+          }),
+          { channelCount: 2 }
+        )
+      );
+
+    const baseline = makePayload({});
+    const changed = makePayload({
+      stereoMapMode: "correlation",
+      stereoMapHold: true,
+      stereoMapXMinFreq: 100,
+      stereoMapXMaxFreq: 10000,
+      stereoMapMonoLossYMinDb: -60,
+      stereoMapMsRatioYMinDb: -96,
+      stereoMapMsRatioYMaxDb: 48,
+    });
+
+    expect(baseline.stereoMap).toHaveLength(1);
+    expect(JSON.stringify(changed.stereoMap)).toBe(JSON.stringify(baseline.stereoMap));
   });
 
   it("derives live label context and editable role tokens from per-count overrides", () => {

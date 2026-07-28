@@ -17,6 +17,7 @@ const PANEL_SETTINGS_TITLES = {
   spectrogram: "Spectrogram",
   stats: "Stats",
   vectorscope: "Vectorscope",
+  "stereo-map": "Stereo Map",
 };
 
 function getSelectedOption(options, valueKey) {
@@ -70,7 +71,7 @@ function hasPanelSettings({
   }
 
   return (
-    activeTab === "vectorscope" &&
+    (activeTab === "vectorscope" || activeTab === "stereo-map") &&
     panelControls != null &&
     typeof onPanelControlsChange === "function"
   );

@@ -46,3 +46,18 @@ describe("module registry labels", () => {
     expect(MODULE_REGISTRY.levelMeter.title).toBe("Level Meter");
   });
 });
+
+describe("stereo map registration", () => {
+  it("is addable, immediately after waveform in the registry", () => {
+    const ids = Object.keys(MODULE_REGISTRY);
+    expect(ids.indexOf("stereo-map")).toBe(ids.indexOf("waveform") + 1);
+    expect(MODULE_REGISTRY["stereo-map"].title).toBe("Stereo Map");
+  });
+
+  it("does not join the default module set or the default workspace", () => {
+    expect(ALL_MODULE_IDS).not.toContain("stereo-map");
+    expect(ALL_MODULE_IDS).toHaveLength(7);
+    expect(DEFAULT_PANELS_BY_ID).not.toHaveProperty("stereo-map");
+    expect(DEFAULT_WORKSPACE_STATE.panelOrder).not.toContain("stereo-map");
+  });
+});

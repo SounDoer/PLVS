@@ -518,6 +518,111 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByRole("switch", { name: "vectorscope m/s energy" })).toBeNull();
   });
 
+  it("updates stereo map mode, channel pair, hold, speed, and smoothing", () => {
+    const onPanelControlsChange = vi.fn();
+    const props = {
+      activeTab: "stereo-map",
+      stereoMapPairOptions: [
+        { key: "0-1", label: "L/R", x: 0, y: 1 },
+        { key: "0-2", label: "L/C", x: 0, y: 2 },
+      ],
+      stereoMapPairValueKey: "0-1",
+      stereoMapPairDisplayLabel: "L/R",
+      onStereoMapPairChange: vi.fn(),
+      panelControls: DEFAULT_PANEL_CONTROLS,
+      onPanelControlsChange,
+    };
+    render(<PanelSettingsContent {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "stereo map mode" }));
+    fireEvent.click(screen.getByRole("option", { name: "Correlation" }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapMode: "correlation" })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "stereo map channel" }));
+    fireEvent.click(screen.getByRole("option", { name: "L/C" }));
+    expect(props.onStereoMapPairChange).toHaveBeenCalledWith({ first: 0, second: 2 });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapPair: { first: 0, second: 2 } })
+    );
+
+    fireEvent.click(screen.getByRole("switch", { name: "stereo map hold" }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapHold: true })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "stereo map octave smoothing" }));
+    fireEvent.click(screen.getByRole("option", { name: "1/3 oct" }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapOctaveSmoothing: "1/3" })
+    );
+  });
+
+  it("orders stereo map Mode before Channel pair before Hold", () => {
+    const { container } = render(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        stereoMapPairValueKey="0-1"
+        stereoMapPairDisplayLabel="L/R"
+        onStereoMapPairChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    const text = container.textContent;
+    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel pair"));
+    expect(text.indexOf("Channel pair")).toBeLessThan(text.indexOf("Hold"));
+    expect(text.indexOf("Hold")).toBeLessThan(text.indexOf("Speed"));
+    expect(text.indexOf("Speed")).toBeLessThan(text.indexOf("Smoothing"));
+    expect(text.indexOf("Smoothing")).toBeLessThan(text.indexOf("X range"));
+  });
+
+  it("shows a Y range only for Mono Loss and M/S Ratio, with Mono Loss pinned at 0 dB", () => {
+    const { rerender, container } = render(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          stereoMapMode: "position",
+        }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    expect(container.textContent).not.toContain("Y range");
+
+    rerender(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          stereoMapMode: "monoLossDb",
+          stereoMapMonoLossYMinDb: -24,
+        }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("stereo map mono loss y range min").value).toBe("-24");
+    expect(screen.getByLabelText("stereo map mono loss y range max").value).toBe("0");
+
+    rerender(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          stereoMapMode: "msRatioDb",
+          stereoMapMsRatioYMinDb: -48,
+          stereoMapMsRatioYMaxDb: 24,
+        }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("stereo map m/s ratio y range min").value).toBe("-48");
+    expect(screen.getByLabelText("stereo map m/s ratio y range max").value).toBe("24");
+  });
+
   it("falls back to the first spectrum option when the value key is stale", () => {
     render(
       <PanelSettingsContent

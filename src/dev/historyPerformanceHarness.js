@@ -4,6 +4,7 @@ const SCALAR_CADENCE_MS = 100;
 const VISUAL_CADENCE_MS = 40;
 const DEFAULT_SPECTRUM_KEY = "spectrum:pair:0:1:combined:sp25:tilt300:smoff";
 const DEFAULT_VECTORSCOPE_KEY = "vectorscope:pair:0:1";
+const DEFAULT_STEREO_MAP_KEY = "stereoMap:pair:0:1:sp25:sm12";
 
 function defaultScheduler() {
   const requestIdle =
@@ -95,6 +96,8 @@ function meterAudioFromScalarRow(row) {
 function visualPayload(fullVisual) {
   // Full mode intentionally represents the production payload: at 360k rows, 958 Spectrum
   // bands plus 200 Vectorscope floats retain roughly 1.3 GiB+ before object/chunk overhead.
+  // Stereo Map shares the 958-band grid but stores three Float32 primitive planes (pl, pr, c)
+  // per row instead of one, so its own full-mode retention is deliberately larger still.
   const bandCount = fullVisual ? 958 : 1;
   const pairValueCount = fullVisual ? 200 : 2;
   const bandCentersHz = Array.from({ length: bandCount }, (_, index) => 20 * 2 ** (index / 96));
@@ -104,14 +107,26 @@ function visualPayload(fullVisual) {
     pairs[index] = 0.25;
     pairs[index + 1] = 0.5;
   }
-  return { bandCentersHz, smoothDb, pairs };
+  const stereoMapBandCentersHz = new Float32Array(bandCentersHz);
+  const stereoMapPl = new Float32Array(bandCount).fill(0.2);
+  const stereoMapPr = new Float32Array(bandCount).fill(0.25);
+  const stereoMapC = new Float32Array(bandCount).fill(0.05);
+  return {
+    bandCentersHz,
+    smoothDb,
+    pairs,
+    stereoMapBandCentersHz,
+    stereoMapPl,
+    stereoMapPr,
+    stereoMapC,
+  };
 }
 
 function keyedEntries(keys, fallbackKey, value) {
   return Object.fromEntries((keys?.length ? keys : [fallbackKey]).map((key) => [key, value]));
 }
 
-function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys) {
+function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys, stereoMapKeys) {
   return {
     timestampMs,
     waveformMin: [],
@@ -126,6 +141,12 @@ function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys) {
       sideToMidDb: -8,
       midEnergy: 0.5,
       sideEnergy: 0.2,
+    }),
+    stereoMapByKey: keyedEntries(stereoMapKeys, DEFAULT_STEREO_MAP_KEY, {
+      bandCentersHz: payload.stereoMapBandCentersHz,
+      pl: payload.stereoMapPl,
+      pr: payload.stereoMapPr,
+      c: payload.stereoMapC,
     }),
   };
 }
@@ -152,6 +173,7 @@ export function seedHistoryPerformance({
   fullVisual = false,
   spectrumKeys,
   vectorscopeKeys,
+  stereoMapKeys,
   scheduler = defaultScheduler(),
   scalarBatchSize = 1_000,
   visualBatchSize = 2_000,
@@ -205,7 +227,13 @@ export function seedHistoryPerformance({
     const end = Math.min(visualRows, visualCompleted + visualBatchSize);
     while (visualCompleted < end) {
       intake.pushVisualHistRow(
-        visualRow(visualCompleted * VISUAL_CADENCE_MS, payload, spectrumKeys, vectorscopeKeys),
+        visualRow(
+          visualCompleted * VISUAL_CADENCE_MS,
+          payload,
+          spectrumKeys,
+          vectorscopeKeys,
+          stereoMapKeys
+        ),
         Math.max(1, visualRows)
       );
       visualCompleted += 1;
@@ -243,6 +271,7 @@ export function seedHistoryPerformance({
     updateRequestKeys(next = {}) {
       spectrumKeys = next.spectrumKeys;
       vectorscopeKeys = next.vectorscopeKeys;
+      stereoMapKeys = next.stereoMapKeys;
     },
   };
 }
@@ -258,6 +287,7 @@ export function startHistoryPerformanceHarness(options = {}) {
   let liveScalarIndex = scalarRows;
   let spectrumKeys = options.spectrumKeys;
   let vectorscopeKeys = options.vectorscopeKeys;
+  let stereoMapKeys = options.stereoMapKeys;
   const payload = visualPayload(options.fullVisual ?? false);
   const scalarCapacity = Math.max(1, scalarRows);
   const visualCapacity = Math.max(1, visualRows);
@@ -268,7 +298,7 @@ export function startHistoryPerformanceHarness(options = {}) {
     liveIntervalId = scheduler.setInterval(() => {
       if (cancelled) return;
       options.intake.pushVisualHistRow(
-        visualRow(visualTimestampMs, payload, spectrumKeys, vectorscopeKeys),
+        visualRow(visualTimestampMs, payload, spectrumKeys, vectorscopeKeys, stereoMapKeys),
         visualCapacity
       );
       while (visualTimestampMs >= nextScalarTimestampMs) {
@@ -288,6 +318,7 @@ export function startHistoryPerformanceHarness(options = {}) {
     updateRequestKeys(next = {}) {
       spectrumKeys = next.spectrumKeys;
       vectorscopeKeys = next.vectorscopeKeys;
+      stereoMapKeys = next.stereoMapKeys;
       seed.updateRequestKeys(next);
     },
     cancel() {

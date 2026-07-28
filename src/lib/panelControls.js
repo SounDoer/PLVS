@@ -1,5 +1,6 @@
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE, normalizeDialogueVadEngine } from "./dialogueVadEngines.js";
+import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -67,6 +68,16 @@ export const DEFAULT_PANEL_CONTROLS = {
   statsOrder: [...STATS_CANONICAL_ORDER],
   dialogueVadEngine: DEFAULT_DIALOGUE_VAD_ENGINE,
   loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+  stereoMapMode: STEREO_MAP_MODES.POSITION,
+  stereoMapPair: { first: 0, second: 1 },
+  stereoMapHold: false,
+  stereoMapSpeedPercent: 50,
+  stereoMapOctaveSmoothing: "1/12",
+  stereoMapXMinFreq: 20,
+  stereoMapXMaxFreq: 20000,
+  stereoMapMonoLossYMinDb: -24,
+  stereoMapMsRatioYMinDb: -48,
+  stereoMapMsRatioYMaxDb: 24,
 };
 
 const STATS_IDS = new Set(STATS_OPTIONS.map((option) => option.id));
@@ -75,6 +86,7 @@ const LOUDNESS_HISTORY_LAYER_IDS = new Set(
 );
 const LEVEL_METER_MODE_IDS = new Set(LEVEL_METER_MODE_OPTIONS.map((option) => option.id));
 const VECTORSCOPE_MODE_IDS = new Set(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id));
+const STEREO_MAP_MODE_IDS = new Set(Object.values(STEREO_MAP_MODES));
 
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -211,6 +223,60 @@ function normalizeVectorscopePolarLevelPeakHold(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelPeakHold;
 }
 
+function normalizeStereoMapMode(raw) {
+  return STEREO_MAP_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.stereoMapMode;
+}
+
+/// Shape matches `stereoMapRequestKeyFromControls`'s `{ first, second }` channel-index pair, not
+/// Vectorscope's `{ x, y }` pair. Only shape/type is validated here; clamping to the pair actually
+/// available for the current channel count happens in clampPanelControls.js, same split as
+/// vectorscopePair.
+function normalizeStereoMapPair(raw, fallback) {
+  if (raw && isNumber(raw.first) && isNumber(raw.second)) {
+    return { first: raw.first, second: raw.second };
+  }
+  return { ...fallback };
+}
+
+function normalizeStereoMapHold(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.stereoMapHold;
+}
+
+function normalizeStereoMapSpeedPercent(raw) {
+  return clampNumber(raw, 0, 100, DEFAULT_PANEL_CONTROLS.stereoMapSpeedPercent);
+}
+
+function normalizeStereoMapOctaveSmoothing(raw) {
+  return SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw)
+    ? raw
+    : DEFAULT_PANEL_CONTROLS.stereoMapOctaveSmoothing;
+}
+
+function normalizeStereoMapMonoLossYMinDb(raw) {
+  return clampNumber(raw, -60, -6, DEFAULT_PANEL_CONTROLS.stereoMapMonoLossYMinDb);
+}
+
+/// M/S Ratio's Y range has no minimum span, only the design's "must include 0 dB" constraint: each
+/// bound clamps to the panel's absolute limits independently, then a bound that ends up on the
+/// wrong side of zero snaps to zero rather than being repaired against the other bound.
+function normalizeStereoMapMsRatioYRange(raw) {
+  let min = clampNumber(
+    raw?.stereoMapMsRatioYMinDb,
+    -96,
+    48,
+    DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMinDb
+  );
+  let max = clampNumber(
+    raw?.stereoMapMsRatioYMaxDb,
+    -96,
+    48,
+    DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMaxDb
+  );
+  if (min > 0) min = 0;
+  if (max < 0) max = 0;
+  return { min, max };
+}
+
 function normalizeKnownIds(raw, knownIds, fallback) {
   if (!Array.isArray(raw)) return [...fallback];
 
@@ -279,6 +345,16 @@ export function normalizePanelControls(raw) {
     absMax: 3,
     minSpan: 12,
   });
+  const stereoMapXRange = normalizeLogRange({
+    rawMin: raw?.stereoMapXMinFreq,
+    rawMax: raw?.stereoMapXMaxFreq,
+    defaultMin: DEFAULT_PANEL_CONTROLS.stereoMapXMinFreq,
+    defaultMax: DEFAULT_PANEL_CONTROLS.stereoMapXMaxFreq,
+    absMin: 20,
+    absMax: 20000,
+    minOctaves: 1,
+  });
+  const stereoMapMsRatioYRange = normalizeStereoMapMsRatioYRange(raw);
   return {
     levelMeterMode: normalizeLevelMeterMode(raw?.levelMeterMode),
     levelMeterPlaybackMax: normalizeLevelMeterPlaybackMax(raw?.levelMeterPlaybackMax),
@@ -325,5 +401,15 @@ export function normalizePanelControls(raw) {
       LOUDNESS_HISTORY_LAYER_IDS,
       DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
     ),
+    stereoMapMode: normalizeStereoMapMode(raw?.stereoMapMode),
+    stereoMapPair: normalizeStereoMapPair(raw?.stereoMapPair, DEFAULT_PANEL_CONTROLS.stereoMapPair),
+    stereoMapHold: normalizeStereoMapHold(raw?.stereoMapHold),
+    stereoMapSpeedPercent: normalizeStereoMapSpeedPercent(raw?.stereoMapSpeedPercent),
+    stereoMapOctaveSmoothing: normalizeStereoMapOctaveSmoothing(raw?.stereoMapOctaveSmoothing),
+    stereoMapXMinFreq: stereoMapXRange.min,
+    stereoMapXMaxFreq: stereoMapXRange.max,
+    stereoMapMonoLossYMinDb: normalizeStereoMapMonoLossYMinDb(raw?.stereoMapMonoLossYMinDb),
+    stereoMapMsRatioYMinDb: stereoMapMsRatioYRange.min,
+    stereoMapMsRatioYMaxDb: stereoMapMsRatioYRange.max,
   };
 }

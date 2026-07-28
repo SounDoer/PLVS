@@ -30,6 +30,16 @@
  *   statsVisibleIds: string[],
  *   statsOrder: string[],
  *   loudnessHistoryVisibleLayerIds: string[],
+ *   stereoMapMode: 'position' | 'correlation' | 'monoLossDb' | 'msRatioDb',
+ *   stereoMapPair: { first: number, second: number },
+ *   stereoMapHold: boolean,
+ *   stereoMapSpeedPercent: number,
+ *   stereoMapOctaveSmoothing: string,
+ *   stereoMapXMinFreq: number,
+ *   stereoMapXMaxFreq: number,
+ *   stereoMapMonoLossYMinDb: number,
+ *   stereoMapMsRatioYMinDb: number,
+ *   stereoMapMsRatioYMaxDb: number,
  * }} PanelControls
  *
  * @typedef {{

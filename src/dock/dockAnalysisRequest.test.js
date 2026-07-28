@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_SPECTRUM_REQUESTS,
+  MAX_STEREO_MAP_REQUESTS,
   MAX_VECTORSCOPE_REQUESTS,
   deriveAnalysisRequests,
 } from "../analysis/analysisRequests.js";
 import {
   DOCK_SPECTRUM_KEY,
+  DOCK_STEREO_MAP_KEY,
   DOCK_VECTORSCOPE_KEY,
   dockSpectrumKey,
+  dockStereoMapKey,
   dockVectorscopeKey,
   mergeDockAnalysisRequests,
   mergeDockSpectrumRequest,
@@ -123,5 +126,89 @@ describe("mergeDockAnalysisRequests", () => {
     ]);
     expect(merged.vectorscopeRequests).toHaveLength(MAX_VECTORSCOPE_REQUESTS);
     expect(merged.vectorscopeRequests.at(-1)?.key).toBe("vectorscope:pair:8:9");
+  });
+
+  it("adds a configured Dock Stereo Map request", () => {
+    const controls = { pair: { x: 2, y: 3 } };
+    const merged = mergeDockAnalysisRequests(EMPTY_DERIVED, [
+      { panelId: "stereo-map", moduleId: "stereo-map", controls },
+    ]);
+    expect(merged.stereoMapRequests).toEqual([
+      {
+        key: dockStereoMapKey(controls),
+        panelIds: ["dock:stereo-map"],
+        pair: { first: 2, second: 3 },
+        speedPercent: 50,
+        octaveSmoothing: "1/12",
+      },
+    ]);
+  });
+
+  it("deduplicates matching Dock Stereo Map Pair + Speed + Smoothing onto one request", () => {
+    const merged = mergeDockAnalysisRequests(EMPTY_DERIVED, [
+      {
+        panelId: "stereo-map",
+        moduleId: "stereo-map",
+        controls: { pair: { x: 0, y: 1 }, speedPercent: 40, octaveSmoothing: "1/6" },
+      },
+      {
+        panelId: "stereo-map-2",
+        moduleId: "stereo-map",
+        controls: { pair: { x: 0, y: 1 }, speedPercent: 40, octaveSmoothing: "1/6" },
+      },
+    ]);
+    expect(merged.stereoMapRequests).toHaveLength(1);
+    expect(merged.stereoMapRequests[0].panelIds).toEqual(["dock:stereo-map", "dock:stereo-map-2"]);
+  });
+
+  it("does not fold Dock Stereo Map requests that differ only by Mode, Hold, or range into one key", () => {
+    // The Analysis Key is Pair + Speed + Smoothing only (Mode/Hold/ranges are frontend-only), so
+    // two panels differing solely by Mode/Hold/X-Y range must still land on the same request.
+    const merged = mergeDockAnalysisRequests(EMPTY_DERIVED, [
+      {
+        panelId: "stereo-map",
+        moduleId: "stereo-map",
+        controls: {
+          pair: { x: 0, y: 1 },
+          mode: "correlation",
+          hold: false,
+          minFreq: 20,
+          maxFreq: 20000,
+        },
+      },
+      {
+        panelId: "stereo-map-2",
+        moduleId: "stereo-map",
+        controls: {
+          pair: { x: 0, y: 1 },
+          mode: "msRatioDb",
+          hold: true,
+          minFreq: 200,
+          maxFreq: 2000,
+        },
+      },
+    ]);
+    expect(merged.stereoMapRequests).toHaveLength(1);
+    expect(merged.stereoMapRequests[0].key).toBe(DOCK_STEREO_MAP_KEY);
+    expect(merged.stereoMapRequests[0].panelIds).toEqual(["dock:stereo-map", "dock:stereo-map-2"]);
+  });
+
+  it("keeps the Dock Stereo Map request within its own independent backend cap", () => {
+    const derived = {
+      ...EMPTY_DERIVED,
+      stereoMapRequests: Array.from({ length: MAX_STEREO_MAP_REQUESTS }, (_, index) => ({
+        key: `stereoMap:pair:${index}:${index + 1}:sp50:sm12`,
+        panelIds: [`panel-${index}`],
+      })),
+    };
+    const merged = mergeDockAnalysisRequests(derived, [
+      {
+        panelId: "stereo-map",
+        moduleId: "stereo-map",
+        controls: { pair: { x: 8, y: 9 } },
+      },
+    ]);
+    expect(merged.stereoMapRequests).toHaveLength(MAX_STEREO_MAP_REQUESTS);
+    expect(merged.stereoMapRequests.at(-1)?.key).toBe("stereoMap:pair:8:9:sp50:sm12");
   });
 });

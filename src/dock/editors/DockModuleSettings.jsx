@@ -5,6 +5,7 @@ import {
   SettingsGroup,
   SettingsRow,
   SettingsSelect,
+  SettingsSlider,
   SettingsSwitch,
   SpectrumDisplaySettingsRows,
   StatsMetricsSettingsRow,
@@ -13,7 +14,19 @@ import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { isDefaultDockModuleControls } from "../dockModuleControls.js";
-import { LEVEL_METER_MODE_OPTIONS, VECTORSCOPE_MODE_OPTIONS } from "../../lib/panelControls.js";
+import {
+  LEVEL_METER_MODE_OPTIONS,
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+  VECTORSCOPE_MODE_OPTIONS,
+} from "../../lib/panelControls.js";
+import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
+
+const STEREO_MAP_MODE_OPTIONS = [
+  { id: STEREO_MAP_MODES.POSITION, label: "Position" },
+  { id: STEREO_MAP_MODES.CORRELATION, label: "Correlation" },
+  { id: STEREO_MAP_MODES.MONO_LOSS_DB, label: "Mono Loss" },
+  { id: STEREO_MAP_MODES.MS_RATIO_DB, label: "M/S Ratio" },
+];
 
 function SelectField({ label, value, options, onChange }) {
   const [open, setOpen] = useState(false);
@@ -249,6 +262,107 @@ function SettingsBody({
         onReorder={(statsOrder) => onChange({ ...controls, statsOrder })}
         showReset={false}
       />
+    );
+  }
+  if (moduleId === "stereoMap") {
+    const pairOptions =
+      vectorscopeOptions?.length > 0
+        ? vectorscopeOptions.map((option) => ({
+            value: option.key,
+            label: option.label,
+            group: option.group,
+          }))
+        : [{ value: "0-1", label: "L/R" }];
+    const pairValue = `${controls.pair?.x ?? 0}-${controls.pair?.y ?? 1}`;
+    const isMonoLoss = controls.mode === STEREO_MAP_MODES.MONO_LOSS_DB;
+    const isMsRatio = controls.mode === STEREO_MAP_MODES.MS_RATIO_DB;
+    return (
+      <>
+        <SettingsRow label="Mode">
+          <SelectField
+            label="Stereo Map mode"
+            value={controls.mode}
+            options={STEREO_MAP_MODE_OPTIONS.map(({ id, label }) => ({ value: id, label }))}
+            onChange={(mode) => onChange({ ...controls, mode })}
+          />
+        </SettingsRow>
+        <SettingsRow label="Channel pair">
+          <SelectField
+            label="Stereo Map channel pair"
+            value={pairValue}
+            options={pairOptions}
+            onChange={(value) => {
+              const selected = vectorscopeOptions?.find((option) => option.key === value);
+              if (selected) onChange({ ...controls, pair: { x: selected.x, y: selected.y } });
+            }}
+          />
+        </SettingsRow>
+        <SettingsRow label="Hold">
+          <SettingsSwitch
+            aria-label="Stereo Map hold"
+            checked={controls.hold}
+            onCheckedChange={(hold) => onChange({ ...controls, hold })}
+          />
+        </SettingsRow>
+        <SettingsRow label="Speed">
+          <SettingsSlider
+            ariaLabel="Stereo Map speed"
+            min={0}
+            max={100}
+            step={1}
+            value={controls.speedPercent}
+            formatValue={(value) => `${value.toFixed(0)}%`}
+            onCommit={(speedPercent) => onChange({ ...controls, speedPercent })}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="Smoothing"
+          tooltip="Averages the primitives across frequency before deriving Mode values. Speed smooths over time; this smooths over frequency."
+        >
+          <SelectField
+            label="Stereo Map smoothing"
+            value={controls.octaveSmoothing}
+            options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.map(({ id, label }) => ({
+              value: id,
+              label,
+            }))}
+            onChange={(octaveSmoothing) => onChange({ ...controls, octaveSmoothing })}
+          />
+        </SettingsRow>
+        <SettingsRow label="X range">
+          <SettingsRangeInput
+            minAriaLabel="stereo map x range min"
+            maxAriaLabel="stereo map x range max"
+            minValue={controls.minFreq}
+            maxValue={controls.maxFreq}
+            onCommit={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
+          />
+        </SettingsRow>
+        {isMonoLoss ? (
+          <SettingsRow label="Y range">
+            <SettingsRangeInput
+              minAriaLabel="stereo map mono loss y range min"
+              maxAriaLabel="stereo map mono loss y range max"
+              minValue={controls.monoLossMinDb}
+              maxValue={0}
+              onCommit={(monoLossMinDb) => onChange({ ...controls, monoLossMinDb })}
+            />
+          </SettingsRow>
+        ) : null}
+        {isMsRatio ? (
+          <SettingsRow label="Y range">
+            <SettingsRangeInput
+              minAriaLabel="stereo map m/s ratio y range min"
+              maxAriaLabel="stereo map m/s ratio y range max"
+              minValue={controls.msRatioMinDb}
+              maxValue={controls.msRatioMaxDb}
+              onCommit={(msRatioMinDb, msRatioMaxDb) =>
+                onChange({ ...controls, msRatioMinDb, msRatioMaxDb })
+              }
+            />
+          </SettingsRow>
+        ) : null}
+      </>
     );
   }
   if (moduleId === "spectrogram") {

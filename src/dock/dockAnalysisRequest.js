@@ -1,7 +1,9 @@
 import {
   MAX_SPECTRUM_REQUESTS,
+  MAX_STEREO_MAP_REQUESTS,
   MAX_VECTORSCOPE_REQUESTS,
   spectrumRequestKeyFromControls,
+  stereoMapRequestKeyFromControls,
   vectorscopeRequestKeyFromControls,
 } from "../analysis/analysisRequests.js";
 import {
@@ -134,6 +136,70 @@ export function mergeDockVectorscopeRequest(derived, active) {
   };
 }
 
+function stereoMapPanelControls(raw) {
+  const controls = normalizeDockModuleControls("stereoMap", raw);
+  return {
+    stereoMapPair: { first: controls.pair.x, second: controls.pair.y },
+    stereoMapSpeedPercent: controls.speedPercent,
+    stereoMapOctaveSmoothing: controls.octaveSmoothing,
+  };
+}
+
+export function dockStereoMapKey(controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap) {
+  return stereoMapRequestKeyFromControls(stereoMapPanelControls(controls));
+}
+
+export const DOCK_STEREO_MAP_KEY = dockStereoMapKey();
+
+function dockStereoMapRequest(raw, panelId = "dock:stereoMap") {
+  const controls = normalizeDockModuleControls("stereoMap", raw);
+  return {
+    key: dockStereoMapKey(controls),
+    panelIds: [panelId],
+    pair: { first: controls.pair.x, second: controls.pair.y },
+    speedPercent: Math.round(controls.speedPercent),
+    octaveSmoothing: controls.octaveSmoothing,
+  };
+}
+
+export function mergeDockStereoMapRequest(derived, active) {
+  if (!active) return derived;
+  const configured = Array.isArray(active)
+    ? active
+        .map((panel) => {
+          const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
+          return dockModuleId === "stereoMap"
+            ? dockStereoMapRequest(panel.controls, `dock:${panel.panelId}`)
+            : null;
+        })
+        .filter(Boolean)
+    : [dockStereoMapRequest()];
+  const requestedByKey = new Map();
+  for (const request of configured) {
+    const existing = requestedByKey.get(request.key);
+    requestedByKey.set(
+      request.key,
+      existing ? { ...existing, panelIds: [...existing.panelIds, ...request.panelIds] } : request
+    );
+  }
+  const requests = [...requestedByKey.values()].filter(
+    (request) => !derived.stereoMapRequests.some((candidate) => candidate.key === request.key)
+  );
+  if (requests.length === 0) return derived;
+  const available = Math.max(0, MAX_STEREO_MAP_REQUESTS - requests.length);
+  const kept =
+    derived.stereoMapRequests.length > available
+      ? derived.stereoMapRequests.slice(0, available)
+      : derived.stereoMapRequests;
+  return {
+    ...derived,
+    stereoMapRequests: [...kept, ...requests].slice(0, MAX_STEREO_MAP_REQUESTS),
+  };
+}
+
 export function mergeDockAnalysisRequests(derived, active) {
-  return mergeDockVectorscopeRequest(mergeDockSpectrumRequest(derived, active), active);
+  return mergeDockVectorscopeRequest(
+    mergeDockStereoMapRequest(mergeDockSpectrumRequest(derived, active), active),
+    active
+  );
 }

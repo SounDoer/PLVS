@@ -50,6 +50,7 @@
  * @property {number} vectorscopePairY
  * @property {Record<string, SpectrumFrameResult>} spectrumResultsByKey
  * @property {Record<string, VectorscopeFrameResult>} vectorscopeResultsByKey
+ * @property {Record<string, StereoMapFrameResult>} stereoMapResultsByKey
  * @property {number} timestampMs
  * @property {MeterHistoryEntry|null|undefined} loudnessHistTick
  * @property {VisualHistEntry|null|undefined} visualHistTick
@@ -72,6 +73,14 @@
  */
 
 /**
+ * @typedef {object} StereoMapVisualEntry
+ * @property {number[]} bandCentersHz
+ * @property {number[]} pl
+ * @property {number[]} pr
+ * @property {number[]} c
+ */
+
+/**
  * @typedef {object} VisualHistEntry
  * @property {number} timestampMs
  * @property {number[]} waveformMin
@@ -80,6 +89,7 @@
  * @property {number} sideToMidDb
  * @property {Record<string, SpectrumVisualEntry>} spectrumByKey
  * @property {Record<string, VectorscopeVisualEntry>} vectorscopeByKey
+ * @property {Record<string, StereoMapVisualEntry>} stereoMapByKey
  */
 
 /**
@@ -105,9 +115,49 @@
  */
 
 /**
+ * @typedef {object} StereoMapFrameResult
+ * @property {number[]} bandCentersHz
+ * @property {number[]} pl
+ * @property {number[]} pr
+ * @property {number[]} c
+ */
+
+/**
  * @typedef {object} EngineStateChangedPayload
  * @property {"running"|"stopped"|"error"} state
  * @property {string|undefined} error
+ */
+
+/**
+ * @typedef {object} SpectrumAnalysisRequest
+ * @property {string} key
+ * @property {{ type: "pair"; x: number; y: number } | { type: "single"; ch: number }} channel
+ * @property {string} view
+ * @property {number} speedPercent
+ * @property {number} tiltDbPerOctave
+ * @property {string} octaveSmoothing
+ */
+
+/**
+ * @typedef {object} VectorscopeAnalysisRequest
+ * @property {string} key
+ * @property {number} x
+ * @property {number} y
+ */
+
+/**
+ * @typedef {object} StereoMapAnalysisRequest
+ * @property {string} key
+ * @property {{ first: number; second: number }} pair
+ * @property {number} speedPercent
+ * @property {string} octaveSmoothing
+ */
+
+/**
+ * @typedef {object} AnalysisRequests
+ * @property {SpectrumAnalysisRequest[]} spectrum
+ * @property {VectorscopeAnalysisRequest[]} vectorscope
+ * @property {StereoMapAnalysisRequest[]} stereoMap
  */
 
 export {};

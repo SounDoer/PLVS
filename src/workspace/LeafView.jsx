@@ -311,6 +311,10 @@ export function LeafView({ node, path, style }) {
               vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
               vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
               onVectorscopeChange={noop}
+              stereoMapPairOptions={chromeData?.stereoMapPairOptions ?? []}
+              stereoMapPairValueKey={chromeData?.stereoMapPairValueKey ?? ""}
+              stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}
+              onStereoMapPairChange={noop}
               spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
               spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
               spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}

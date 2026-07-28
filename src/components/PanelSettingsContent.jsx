@@ -12,6 +12,7 @@ import {
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
 } from "@/lib/panelControls.js";
+import { STEREO_MAP_MODES } from "@/math/stereoMapMath.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
@@ -593,6 +594,17 @@ function vectorscopeKeyFromPair(pair) {
   return pair ? `${pair.x}-${pair.y}` : "";
 }
 
+function stereoMapKeyFromPair(pair) {
+  return pair ? `${pair.first}-${pair.second}` : "";
+}
+
+const STEREO_MAP_MODE_OPTIONS = [
+  { id: STEREO_MAP_MODES.POSITION, label: "Position" },
+  { id: STEREO_MAP_MODES.CORRELATION, label: "Correlation" },
+  { id: STEREO_MAP_MODES.MONO_LOSS_DB, label: "Mono Loss" },
+  { id: STEREO_MAP_MODES.MS_RATIO_DB, label: "M/S Ratio" },
+];
+
 function toggleId(ids, id) {
   if (ids.includes(id)) {
     return ids.filter((currentId) => currentId !== id);
@@ -819,6 +831,10 @@ export function PanelSettingsContent({
   onSpectrumViewChange,
   spectrumMaxHold = false,
   onSpectrumMaxHoldToggle,
+  stereoMapPairOptions = [],
+  stereoMapPairValueKey = "",
+  stereoMapPairDisplayLabel = "",
+  onStereoMapPairChange,
   panelControls,
   onPanelControlsChange,
 }) {
@@ -827,6 +843,9 @@ export function PanelSettingsContent({
   const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
   const [vectorscopeChannelOpen, setVectorscopeChannelOpen] = useState(false);
   const [vectorscopeModeOpen, setVectorscopeModeOpen] = useState(false);
+  const [stereoMapPairOpen, setStereoMapPairOpen] = useState(false);
+  const [stereoMapModeOpen, setStereoMapModeOpen] = useState(false);
+  const [stereoMapSmoothingOpen, setStereoMapSmoothingOpen] = useState(false);
   const [vadOpen, setVadOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
@@ -1309,6 +1328,173 @@ export function PanelSettingsContent({
                   normalizePanelControls({
                     ...normalizedPanelControls,
                     vectorscopePolarLevelPeakHold,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+      </SettingsGroup>
+    );
+  }
+
+  if (activeTab === "stereo-map") {
+    if (!panelControls || typeof onPanelControlsChange !== "function") return null;
+
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const selectedMode =
+      STEREO_MAP_MODE_OPTIONS.find(
+        (option) => option.id === normalizedPanelControls.stereoMapMode
+      ) ?? STEREO_MAP_MODE_OPTIONS[0];
+    const showPair = stereoMapPairOptions.length > 0;
+    const effectiveStereoMapPairValueKey =
+      stereoMapKeyFromPair(normalizedPanelControls.stereoMapPair) || stereoMapPairValueKey;
+    const { matchedOption, selectedOption } = showPair
+      ? getSelectedOption(stereoMapPairOptions, effectiveStereoMapPairValueKey)
+      : { matchedOption: null, selectedOption: null };
+    const pairLabel = matchedOption
+      ? selectedOption.label
+      : stereoMapPairDisplayLabel || selectedOption?.label;
+    const isMonoLoss = selectedMode.id === STEREO_MAP_MODES.MONO_LOSS_DB;
+    const isMsRatio = selectedMode.id === STEREO_MAP_MODES.MS_RATIO_DB;
+
+    return (
+      <SettingsGroup title="Stereo Map">
+        <SettingsRow label="Mode">
+          <SettingsSelect
+            label={selectedMode.label}
+            ariaLabel="stereo map mode"
+            options={STEREO_MAP_MODE_OPTIONS}
+            value={selectedMode.id}
+            open={stereoMapModeOpen}
+            onOpenChange={setStereoMapModeOpen}
+            onChange={(stereoMapMode) => {
+              onPanelControlsChange(
+                normalizePanelControls({ ...normalizedPanelControls, stereoMapMode })
+              );
+            }}
+          />
+        </SettingsRow>
+        {showPair ? (
+          <SettingsRow label="Channel pair">
+            <SettingsSelect
+              label={pairLabel}
+              ariaLabel="stereo map channel"
+              options={stereoMapPairOptions}
+              value={selectedOption.key}
+              open={stereoMapPairOpen}
+              onOpenChange={setStereoMapPairOpen}
+              collapsedGroups={["All pairs"]}
+              onChange={(key) => {
+                const opt = stereoMapPairOptions.find((o) => o.key === key);
+                if (opt) {
+                  const nextPair = { first: opt.x, second: opt.y };
+                  onPanelControlsChange(
+                    normalizePanelControls({ ...normalizedPanelControls, stereoMapPair: nextPair })
+                  );
+                  onStereoMapPairChange?.(nextPair);
+                }
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        <SettingsRow label="Hold">
+          <SettingsSwitch
+            aria-label="stereo map hold"
+            checked={normalizedPanelControls.stereoMapHold}
+            onCheckedChange={(stereoMapHold) => {
+              onPanelControlsChange(
+                normalizePanelControls({ ...normalizedPanelControls, stereoMapHold })
+              );
+            }}
+          />
+        </SettingsRow>
+        <SettingsRow label="Speed">
+          <SettingsSlider
+            ariaLabel="stereo map speed"
+            min={0}
+            max={100}
+            step={1}
+            value={normalizedPanelControls.stereoMapSpeedPercent}
+            formatValue={(value) => `${value.toFixed(0)}%`}
+            onCommit={(value) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  stereoMapSpeedPercent: value,
+                })
+              );
+            }}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="Smoothing"
+          tooltip="Averages the primitives across frequency before deriving Mode values. Speed smooths over time; this smooths over frequency."
+        >
+          <SettingsChoiceSelect
+            ariaLabel="stereo map octave smoothing"
+            options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
+            value={normalizedPanelControls.stereoMapOctaveSmoothing}
+            open={stereoMapSmoothingOpen}
+            onOpenChange={setStereoMapSmoothingOpen}
+            onChange={(stereoMapOctaveSmoothing) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  stereoMapOctaveSmoothing,
+                })
+              );
+            }}
+          />
+        </SettingsRow>
+        <SettingsRow label="X range">
+          <SettingsRangeInput
+            minAriaLabel="stereo map x range min"
+            maxAriaLabel="stereo map x range max"
+            minValue={normalizedPanelControls.stereoMapXMinFreq}
+            maxValue={normalizedPanelControls.stereoMapXMaxFreq}
+            onCommit={(newMin, newMax) => {
+              onPanelControlsChange(
+                normalizePanelControls({
+                  ...normalizedPanelControls,
+                  stereoMapXMinFreq: newMin,
+                  stereoMapXMaxFreq: newMax,
+                })
+              );
+            }}
+          />
+        </SettingsRow>
+        {isMonoLoss ? (
+          <SettingsRow label="Y range">
+            <SettingsRangeInput
+              minAriaLabel="stereo map mono loss y range min"
+              maxAriaLabel="stereo map mono loss y range max"
+              minValue={normalizedPanelControls.stereoMapMonoLossYMinDb}
+              maxValue={0}
+              onCommit={(newMin) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    stereoMapMonoLossYMinDb: newMin,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {isMsRatio ? (
+          <SettingsRow label="Y range">
+            <SettingsRangeInput
+              minAriaLabel="stereo map m/s ratio y range min"
+              maxAriaLabel="stereo map m/s ratio y range max"
+              minValue={normalizedPanelControls.stereoMapMsRatioYMinDb}
+              maxValue={normalizedPanelControls.stereoMapMsRatioYMaxDb}
+              onCommit={(newMin, newMax) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    stereoMapMsRatioYMinDb: newMin,
+                    stereoMapMsRatioYMaxDb: newMax,
                   })
                 );
               }}

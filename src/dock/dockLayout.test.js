@@ -80,6 +80,7 @@ describe("dock module catalog v1.5/v2", () => {
       "stats",
       "waveform",
       "spectrogram",
+      "stereoMap",
       "transport",
     ]);
   });

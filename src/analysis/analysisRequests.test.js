@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
-import { deriveAnalysisRequests, spectrumRequestKeyFromControls } from "./analysisRequests.js";
+import {
+  MAX_STEREO_MAP_REQUESTS,
+  deriveAnalysisRequests,
+  spectrumRequestKeyFromControls,
+  stereoMapRequestKeyFromControls,
+} from "./analysisRequests.js";
 
 function leaf(ids) {
   return { type: "leaf", tabs: ids, activeTab: ids[0] };
@@ -12,6 +17,15 @@ function state({ panelsById, panelOrder = Object.keys(panelsById), panelControls
     panelsById,
     panelOrder,
     panelControlsById,
+  };
+}
+
+function stereoMapControls(first, second, overrides = {}) {
+  return {
+    stereoMapPair: { first, second },
+    stereoMapSpeedPercent: 25,
+    stereoMapOctaveSmoothing: "1/12",
+    ...overrides,
   };
 }
 
@@ -73,6 +87,251 @@ describe("analysisRequests", () => {
         spectrumYRangeDb: 60,
       })
     ).toBe(spectrumRequestKeyFromControls(DEFAULT_PANEL_CONTROLS));
+  });
+
+  it("defines an independent four-request Stereo Map cap", () => {
+    expect(MAX_STEREO_MAP_REQUESTS).toBe(4);
+  });
+
+  it("excludes every Stereo Map display-only control from the request key", () => {
+    const measurementControls = {
+      stereoMapPair: { first: 2, second: 3 },
+      stereoMapSpeedPercent: 50,
+      stereoMapOctaveSmoothing: "1/6",
+    };
+    const expected = stereoMapRequestKeyFromControls(measurementControls);
+
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapMode: "correlation",
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapHold: true,
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapXMinFreq: 100,
+        stereoMapXMaxFreq: 10000,
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapMonoLossYMinDb: -60,
+      })
+    ).toBe(expected);
+    expect(
+      stereoMapRequestKeyFromControls({
+        ...measurementControls,
+        stereoMapMsRatioYMinDb: -96,
+        stereoMapMsRatioYMaxDb: 48,
+      })
+    ).toBe(expected);
+  });
+
+  it("deduplicates matching Stereo Map Workspace instances", () => {
+    const result = deriveAnalysisRequests(
+      state({
+        panelsById: {
+          map: { id: "map", moduleId: "stereo-map" },
+          "map-2": { id: "map-2", moduleId: "stereo-map" },
+        },
+        panelControlsById: {
+          map: stereoMapControls(0, 1),
+          "map-2": stereoMapControls(0, 1),
+        },
+      }),
+      { channelCount: 2 }
+    );
+
+    expect(result.stereoMapRequests).toEqual([
+      {
+        key: "stereoMap:pair:0:1:sp25:sm12",
+        panelIds: ["map", "map-2"],
+        pair: { first: 0, second: 1 },
+        speedPercent: 25,
+        octaveSmoothing: "1/12",
+      },
+    ]);
+  });
+
+  it("deduplicates matching Workspace and future Dock Stereo Map instances", () => {
+    const controls = stereoMapControls(0, 1);
+    const result = deriveAnalysisRequests(
+      state({
+        panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+        panelControlsById: { map: controls },
+      }),
+      {
+        channelCount: 2,
+        additionalPanelInstances: [{ panelId: "dock-map", moduleId: "stereo-map", controls }],
+      }
+    );
+
+    expect(result.stereoMapRequests).toHaveLength(1);
+    expect(result.stereoMapRequests[0].panelIds).toEqual(["map", "dock:dock-map"]);
+  });
+
+  it("keeps matching Workspace and future Dock local panel ids status-independent", () => {
+    const workspaceIds = ["map", "map-2", "map-3", "map-4"];
+    const result = deriveAnalysisRequests(
+      state({
+        panelsById: Object.fromEntries(
+          workspaceIds.map((id) => [id, { id, moduleId: "stereo-map" }])
+        ),
+        panelOrder: workspaceIds,
+        panelControlsById: Object.fromEntries(
+          workspaceIds.map((id, index) => [id, stereoMapControls(index, index + 1)])
+        ),
+      }),
+      {
+        channelCount: 6,
+        additionalPanelInstances: [
+          {
+            panelId: "map",
+            moduleId: "stereo-map",
+            controls: stereoMapControls(4, 5),
+          },
+        ],
+      }
+    );
+
+    expect(result.stereoMapRequests).toHaveLength(4);
+    expect(result.overCapStereoMapRequests).toEqual([
+      expect.objectContaining({ panelIds: ["dock:map"] }),
+    ]);
+    expect(result.statusByPanelId.map).toBe("active");
+    expect(result.statusByPanelId["dock:map"]).toBe("overCap");
+  });
+
+  it("keeps same-key Workspace and future Dock panel identities distinct", () => {
+    const controls = stereoMapControls(0, 1);
+    const result = deriveAnalysisRequests(
+      state({
+        panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+        panelControlsById: { map: controls },
+      }),
+      {
+        channelCount: 2,
+        additionalPanelInstances: [{ panelId: "map", moduleId: "stereo-map", controls }],
+      }
+    );
+
+    expect(result.stereoMapRequests[0].panelIds).toEqual(["map", "dock:map"]);
+    expect(new Set(result.stereoMapRequests[0].panelIds).size).toBe(2);
+  });
+
+  it("admits four unique Stereo Map keys and marks the fifth over cap", () => {
+    const panelOrder = Array.from({ length: 5 }, (_, index) => `map-${index + 1}`);
+    const panelsById = Object.fromEntries(
+      panelOrder.map((id) => [id, { id, moduleId: "stereo-map" }])
+    );
+    const panelControlsById = Object.fromEntries(
+      panelOrder.map((id, index) => [id, stereoMapControls(index, index + 1)])
+    );
+
+    const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }), {
+      channelCount: 6,
+    });
+
+    expect(result.stereoMapRequests).toHaveLength(4);
+    expect(result.overCapStereoMapRequests).toHaveLength(1);
+    expect(result.statusByPanelId["map-5"]).toBe("overCap");
+  });
+
+  it("applies Spectrum and Stereo Map caps independently", () => {
+    const spectrumIds = Array.from({ length: 4 }, (_, index) => `spectrum-${index + 1}`);
+    const stereoMapIds = Array.from({ length: 4 }, (_, index) => `map-${index + 1}`);
+    const panelOrder = [...spectrumIds, ...stereoMapIds];
+    const panelsById = Object.fromEntries([
+      ...spectrumIds.map((id) => [id, { id, moduleId: "spectrum" }]),
+      ...stereoMapIds.map((id) => [id, { id, moduleId: "stereo-map" }]),
+    ]);
+    const panelControlsById = Object.fromEntries([
+      ...spectrumIds.map((id, index) => [
+        id,
+        { ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: index } },
+      ]),
+      ...stereoMapIds.map((id, index) => [id, stereoMapControls(index, index + 1)]),
+    ]);
+
+    const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }), {
+      channelCount: 5,
+    });
+
+    expect(result.spectrumRequests).toHaveLength(4);
+    expect(result.stereoMapRequests).toHaveLength(4);
+    expect(result.overCapSpectrumRequests).toEqual([]);
+    expect(result.overCapStereoMapRequests).toEqual([]);
+  });
+
+  it("does not request Stereo Map for mono input or an unavailable pair", () => {
+    const workspaceState = state({
+      panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+      panelControlsById: { map: stereoMapControls(0, 1) },
+    });
+
+    expect(deriveAnalysisRequests(workspaceState, { channelCount: 1 }).stereoMapRequests).toEqual(
+      []
+    );
+
+    const unavailablePairState = state({
+      panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+      panelControlsById: { map: stereoMapControls(0, 2) },
+    });
+    expect(
+      deriveAnalysisRequests(unavailablePairState, { channelCount: 2 }).stereoMapRequests
+    ).toEqual([]);
+  });
+
+  it.each([undefined, 0, Number.NaN, 2.5])(
+    "does not request Stereo Map for invalid effective channel count %s",
+    (channelCount) => {
+      const workspaceState = state({
+        panelsById: { map: { id: "map", moduleId: "stereo-map" } },
+        panelControlsById: { map: stereoMapControls(0, 1) },
+      });
+
+      expect(deriveAnalysisRequests(workspaceState, { channelCount }).stereoMapRequests).toEqual(
+        []
+      );
+    }
+  );
+
+  it("does not count a fifth Stereo Map instance when its key is already admitted", () => {
+    const workspaceIds = ["map-1", "map-2", "map-3", "map-4"];
+    const result = deriveAnalysisRequests(
+      state({
+        panelsById: Object.fromEntries(
+          workspaceIds.map((id) => [id, { id, moduleId: "stereo-map" }])
+        ),
+        panelOrder: workspaceIds,
+        panelControlsById: Object.fromEntries(
+          workspaceIds.map((id, index) => [id, stereoMapControls(index, index + 1)])
+        ),
+      }),
+      {
+        channelCount: 5,
+        additionalPanelInstances: [
+          {
+            panelId: "duplicate",
+            moduleId: "stereo-map",
+            controls: stereoMapControls(0, 1),
+          },
+        ],
+      }
+    );
+
+    expect(result.stereoMapRequests).toHaveLength(4);
+    expect(result.overCapStereoMapRequests).toEqual([]);
+    expect(result.stereoMapRequests[0].panelIds).toEqual(["map-1", "dock:duplicate"]);
+    expect(result.statusByPanelId["dock:duplicate"]).toBe("active");
   });
 
   it("includes speed and tilt in the spectrum request key", () => {

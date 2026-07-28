@@ -120,4 +120,20 @@ describe("PanelSettingsMenu", () => {
     expect(screen.getByLabelText("vectorscope mode")).toBeTruthy();
     expect(screen.queryByLabelText("vectorscope channel pair")).toBeNull();
   });
+
+  it("renders Stereo Map settings, including the channel pair selector", () => {
+    render(
+      <PanelSettingsMenu
+        activeTab="stereo-map"
+        channelCount={2}
+        stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+    expect(screen.getByRole("button", { name: "stereo map mode" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "stereo map channel" })).toBeTruthy();
+  });
 });

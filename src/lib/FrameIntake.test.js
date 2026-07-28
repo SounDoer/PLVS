@@ -1051,6 +1051,199 @@ describe("FrameIntake", () => {
   });
 });
 
+describe("FrameIntake Stereo Map history", () => {
+  function stereoMapRow(overrides = {}) {
+    return {
+      waveformMin: [0],
+      waveformMax: [0],
+      correlation: 0,
+      ...overrides,
+    };
+  }
+
+  it("pushVisualHistRow stores request-keyed Stereo Map history per key (live result map merges by key)", () => {
+    const intake = new FrameIntake();
+    const keyA = "stereoMap:pair:0:1:sp50:sm12";
+    const keyB = "stereoMap:pair:2:3:sp50:sm12";
+
+    intake.pushVisualHistRow(
+      stereoMapRow({
+        timestampMs: 1000,
+        stereoMapByKey: {
+          [keyA]: { bandCentersHz: [100, 200], pl: [0.1, 0.2], pr: [0.3, 0.4], c: [0.05, 0.1] },
+          [keyB]: { bandCentersHz: [100, 200], pl: [0.5, 0.6], pr: [0.7, 0.8], c: [0.2, 0.3] },
+        },
+      }),
+      10,
+      48000
+    );
+
+    const slabA = intake.getVisualStereoMapHistByKey(keyA);
+    const slabB = intake.getVisualStereoMapHistByKey(keyB);
+    expect(slabA.length).toBe(1);
+    expect(slabB.length).toBe(1);
+    const rowA = slabA.rowAt(0);
+    expect(rowA.bandCentersHz).toBeInstanceOf(Float32Array);
+    expect(Array.from(rowA.pl)).toEqual([expect.closeTo(0.1), expect.closeTo(0.2)]);
+    expect(Array.from(rowA.pr)).toEqual([expect.closeTo(0.3), expect.closeTo(0.4)]);
+    expect(Array.from(rowA.c)).toEqual([expect.closeTo(0.05), expect.closeTo(0.1)]);
+    expect(rowA.sampleRateHz).toBe(48000);
+    const rowB = slabB.rowAt(0);
+    expect(Array.from(rowB.pl)).toEqual([expect.closeTo(0.5), expect.closeTo(0.6)]);
+    // A key never seen has no slab.
+    expect(intake.getVisualStereoMapHistByKey("stereoMap:pair:9:9:sp50:sm12")).toBeNull();
+  });
+
+  it("appends successive rows for the same key to one slab (visual rows append to one slab per key)", () => {
+    const intake = new FrameIntake();
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    const entry = (pl) => ({ bandCentersHz: [100], pl: [pl], pr: [pl], c: [0] });
+
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1000, stereoMapByKey: { [key]: entry(0.1) } }),
+      10,
+      48000
+    );
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1040, stereoMapByKey: { [key]: entry(0.2) } }),
+      10,
+      48000
+    );
+
+    const slab = intake.getVisualStereoMapHistByKey(key);
+    expect(slab.length).toBe(2);
+    expect(slab.timestampAt(0)).toBe(1000);
+    expect(slab.timestampAt(1)).toBe(1040);
+    expect(Array.from(slab.rowAt(1).pl)).toEqual([expect.closeTo(0.2)]);
+  });
+
+  it("retains an inactive Stereo Map request key's history when later ticks omit it (no backfill)", () => {
+    const intake = new FrameIntake();
+    const keyA = "stereoMap:pair:0:1:sp50:sm12";
+    const keyB = "stereoMap:pair:2:3:sp50:sm12";
+    const entry = (pl) => ({ bandCentersHz: [100], pl: [pl], pr: [pl], c: [0] });
+
+    // t=1000 only A is active.
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1000, stereoMapByKey: { [keyA]: entry(0.1) } }),
+      10,
+      48000
+    );
+    // t=1040 the panel switched to B; A is now inactive, B starts here (no backfill).
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1040, stereoMapByKey: { [keyB]: entry(0.2) } }),
+      10,
+      48000
+    );
+
+    // A (inactive key) still retains its history; B only has the row from its start time.
+    expect(intake.getVisualStereoMapHistByKey(keyA).length).toBe(1);
+    expect(intake.getVisualStereoMapHistByKey(keyA).timestampAt(0)).toBe(1000);
+    expect(intake.getVisualStereoMapHistByKey(keyB).length).toBe(1);
+    expect(intake.getVisualStereoMapHistByKey(keyB).timestampAt(0)).toBe(1040);
+  });
+
+  it("preserves file media-time timestamps unmodified across the shared visual timeline", () => {
+    const intake = new FrameIntake();
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    const entry = { bandCentersHz: [100], pl: [0.1], pr: [0.1], c: [0] };
+
+    // File-mode media timestamps start at (or near) zero and are monotonic, unlike live wall-clock
+    // ms since epoch; they must be stored verbatim, matching the shared waveform visual ring.
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 100.25, stereoMapByKey: { [key]: entry } }),
+      10,
+      44100
+    );
+
+    const slab = intake.getVisualStereoMapHistByKey(key);
+    expect(slab.timestampAt(0)).toBe(100.25);
+    expect(intake.getVisualWaveformHist().at(0).timestampMs).toBe(100.25);
+    expect(slab.rowAt(0).sampleRateHz).toBe(44100);
+  });
+
+  it("freezes request-keyed Stereo Map snapshots against later slab overwrites (snapshot freeze stays immutable)", () => {
+    const intake = new FrameIntake();
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    const entry = (pl) => ({ bandCentersHz: [100], pl: [pl], pr: [pl], c: [0] });
+
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1000, stereoMapByKey: { [key]: entry(0.1) } }),
+      10,
+      48000
+    );
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1040, stereoMapByKey: { [key]: entry(0.2) } }),
+      10,
+      48000
+    );
+    const frozen = intake.snapshotVisualStereoMapByKey()[key];
+
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1080, stereoMapByKey: { [key]: entry(0.3) } }),
+      10,
+      48000
+    );
+
+    expect(frozen.length).toBe(2);
+    expect(frozen.timestampAt(0)).toBe(1000);
+    expect(Array.from(frozen.rowAt(1).pl)).toEqual([expect.closeTo(0.2)]);
+    // Live intake kept going: a third row landed after the freeze, invisible to the frozen view.
+    expect(intake.getVisualStereoMapHistByKey(key).length).toBe(3);
+  });
+
+  it("clears request-keyed Stereo Map slabs on reset (Global Clear resets slab epochs)", () => {
+    const intake = new FrameIntake();
+    const key = "stereoMap:pair:0:1:sp50:sm12";
+    const entry = { bandCentersHz: [100], pl: [0.1], pr: [0.1], c: [0] };
+
+    intake.pushVisualHistRow(
+      stereoMapRow({ timestampMs: 1000, stereoMapByKey: { [key]: entry } }),
+      10,
+      48000
+    );
+    expect(intake.getVisualStereoMapHistByKey(key)).not.toBeNull();
+
+    intake.reset();
+
+    expect(intake.getVisualStereoMapHistByKey(key)).toBeNull();
+  });
+
+  it("rebuilds Stereo Map history together with Spectrum/Vectorscope when visual capacity changes (retention change)", () => {
+    const intake = new FrameIntake();
+    const stereoKey = "stereoMap:pair:0:1:sp50:sm12";
+    const spectrumKey = "spectrum:single:0:combined";
+    const entry = { bandCentersHz: [100], pl: [0.1], pr: [0.1], c: [0] };
+
+    intake.pushVisualHistRow(
+      stereoMapRow({
+        timestampMs: 1000,
+        stereoMapByKey: { [stereoKey]: entry },
+        spectrumByKey: { [spectrumKey]: { bandCentersHz: [100], smoothDb: [-10] } },
+      }),
+      10,
+      48000
+    );
+    expect(intake.getVisualStereoMapHistByKey(stereoKey).length).toBe(1);
+    expect(intake.getVisualSpectrumHistByKey(spectrumKey).length).toBe(1);
+
+    // Retention (history window) changed: visualMaxSamples changes, so both per-key maps rebuild.
+    intake.pushVisualHistRow(
+      stereoMapRow({
+        timestampMs: 1040,
+        stereoMapByKey: { [stereoKey]: entry },
+        spectrumByKey: { [spectrumKey]: { bandCentersHz: [100], smoothDb: [-20] } },
+      }),
+      20,
+      48000
+    );
+
+    expect(intake.getVisualStereoMapHistByKey(stereoKey).length).toBe(1);
+    expect(intake.getVisualStereoMapHistByKey(stereoKey).timestampAt(0)).toBe(1040);
+    expect(intake.getVisualSpectrumHistByKey(spectrumKey).length).toBe(1);
+  });
+});
+
 describe("secondary curve in spectrum data", () => {
   it("includes dbListB when present", () => {
     const data = buildSpectrumDataSnapshot({

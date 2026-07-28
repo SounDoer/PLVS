@@ -7,7 +7,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::audio::cpal_backend::{run_capture_stream, CaptureStreamArgs, PcmBufferPool};
+use crate::audio::cpal_backend::{
+  run_capture_stream, CaptureStreamArgs, PcmBufferPool, PcmDeliveryQueue,
+};
 use crate::audio::device_enum::{device_list_label, resolve_device};
 use crate::dsp::summary_meter::SummaryMeter;
 
@@ -61,38 +63,36 @@ pub fn capture_device_to_summary(
   let (sample_tx, sample_rx) = std::sync::mpsc::channel::<CaptureSample>();
 
   let consumer_dropped = dropped_chunks.clone();
-  let consumer = move |audio_rx: std::sync::mpsc::Receiver<Vec<f32>>,
-                       pool: PcmBufferPool,
-                       sample_rate: u32,
-                       channels: u16| {
-    let mut meter = SummaryMeter::new(sample_rate, channels);
-    let mut next_sample_at = every;
-    let started = std::time::Instant::now();
+  let consumer =
+    move |delivery: PcmDeliveryQueue, pool: PcmBufferPool, sample_rate: u32, channels: u16| {
+      let mut meter = SummaryMeter::new(sample_rate, channels);
+      let mut next_sample_at = every;
+      let started = std::time::Instant::now();
 
-    while let Ok(pcm) = audio_rx.recv() {
-      meter.push_interleaved(&pcm);
-      // Mirrors the GUI consumer: the buffer belongs to the pool, not to us.
-      pool.recycle(pcm);
+      while let Some(pcm) = delivery.pop_until_stopped() {
+        meter.push_interleaved(&pcm);
+        // Mirrors the GUI consumer: the buffer belongs to the pool, not to us.
+        pool.recycle(pcm);
 
-      if let (Some(interval), Some(due)) = (every, next_sample_at) {
-        if started.elapsed().as_secs() >= due {
-          // finish() borrows, so interim readings cost no DSP change.
-          let metrics = meter.finish();
-          let _ = sample_tx.send(CaptureSample {
-            t_seconds: due,
-            integrated_lufs: metrics.integrated_lufs,
-            dropped_chunks: consumer_dropped.load(Ordering::Relaxed),
-          });
-          // Stays on the requested grid; a late chunk only delays a reading to
-          // the next chunk (~100 ms) rather than skipping its t value.
-          next_sample_at = Some(due + interval);
+        if let (Some(interval), Some(due)) = (every, next_sample_at) {
+          if started.elapsed().as_secs() >= due {
+            // finish() borrows, so interim readings cost no DSP change.
+            let metrics = meter.finish();
+            let _ = sample_tx.send(CaptureSample {
+              t_seconds: due,
+              integrated_lufs: metrics.integrated_lufs,
+              dropped_chunks: consumer_dropped.load(Ordering::Relaxed),
+            });
+            // Stays on the requested grid; a late chunk only delays a reading to
+            // the next chunk (~100 ms) rather than skipping its t value.
+            next_sample_at = Some(due + interval);
+          }
         }
       }
-    }
 
-    let metrics = meter.finish();
-    let _ = result_tx.send(metrics);
-  };
+      let metrics = meter.finish();
+      let _ = result_tx.send(metrics);
+    };
 
   let stream_args = CaptureStreamArgs {
     device_id: device_id.to_string(),

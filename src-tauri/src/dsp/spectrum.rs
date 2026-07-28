@@ -18,8 +18,14 @@
 //!
 //! Product wording: **`docs/architecture.md` §6 Spectrum / RTA**.
 
+#[cfg(test)]
 use super::meter::{Meter, PcmContext};
-use crate::dsp::spectrum_bank::{MultiResBank, OctaveSmoothing, CAL_OFFSET_DB};
+#[cfg(test)]
+use crate::dsp::spectrum_bank::{
+  analysis_average_sec_for_speed_percent, attack_release_ms_for_speed_percent,
+  spectrum_frequency_bounds, MultiResBank, OctaveSmoothing, CAL_OFFSET_DB,
+};
+#[cfg(test)]
 use crate::dsp::{SpectrumChannelSel, SpectrumView};
 
 fn weighting_a(f_hz: f64) -> f64 {
@@ -40,7 +46,7 @@ fn weighting_c(f_hz: f64) -> f64 {
   0.06 + 20.0 * (num / den.max(1e-20)).log10()
 }
 
-fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
+pub(crate) fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
   let f = freq_hz.max(10.0);
   match mode {
     "a" => weighting_a(f),
@@ -49,11 +55,11 @@ fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
   }
 }
 
-const SLOPE_PIVOT_HZ: f64 = 1000.0;
+pub(crate) const SLOPE_PIVOT_HZ: f64 = 1000.0;
 
 /// Apply attack/release smoothing + peak-hold for one bank's incoming dB row.
 #[allow(clippy::too_many_arguments)]
-fn apply_envelope(
+pub(crate) fn apply_envelope(
   incoming: &[f64],
   smooth: &mut Vec<f64>,
   peak: &mut Vec<f64>,
@@ -66,10 +72,13 @@ fn apply_envelope(
   peak_decay_db_per_sec: f64,
 ) {
   if attack_ms <= 0.0 && release_ms <= 0.0 {
-    *smooth = incoming.to_vec();
+    smooth.clear();
+    smooth.extend_from_slice(incoming);
     if peak.len() != incoming.len() {
-      *peak = incoming.to_vec();
-      *hold_until = vec![now_sec; incoming.len()];
+      peak.clear();
+      peak.extend_from_slice(incoming);
+      hold_until.clear();
+      hold_until.resize(incoming.len(), now_sec);
     }
     for (i, &sm) in smooth.iter().enumerate() {
       if sm >= peak[i] {
@@ -82,9 +91,12 @@ fn apply_envelope(
     return;
   }
   if smooth.len() != incoming.len() {
-    *smooth = incoming.to_vec();
-    *peak = incoming.to_vec();
-    *hold_until = vec![now_sec; incoming.len()];
+    smooth.clear();
+    smooth.extend_from_slice(incoming);
+    peak.clear();
+    peak.extend_from_slice(incoming);
+    hold_until.clear();
+    hold_until.resize(incoming.len(), now_sec);
     return;
   }
   let atk = 1.0 - (-delta_sec / (attack_ms / 1000.0).max(0.001)).exp();
@@ -103,6 +115,7 @@ fn apply_envelope(
   }
 }
 
+#[cfg(test)]
 pub struct SpectrumMeter {
   bank: MultiResBank,
   last_input_channels: usize,
@@ -135,10 +148,13 @@ pub struct SpectrumMeter {
   has_secondary: bool,
 }
 
+// Retained as the Task-11 differential reference after production ownership moved to the shared
+// runtime.
+#[cfg(test)]
+#[allow(dead_code)]
 impl SpectrumMeter {
   pub fn new(sample_rate: f64) -> Self {
-    let min_hz = 20.0;
-    let max_hz = 20000.0_f64.min(sample_rate * 0.499);
+    let (min_hz, max_hz) = spectrum_frequency_bounds(sample_rate);
     Self {
       bank: MultiResBank::new(sample_rate, min_hz, max_hz),
       last_input_channels: 0,
@@ -159,7 +175,7 @@ impl SpectrumMeter {
       // this line does not mislead. Nothing enforces that — check the JS side before trusting it.
       tilt_db_per_octave: 3.0,
       octave_smoothing: OctaveSmoothing::Off,
-      analysis_average_sec: MultiResBank::analysis_average_sec_for_speed_percent(50.0),
+      analysis_average_sec: analysis_average_sec_for_speed_percent(50.0),
       min_hz,
       max_hz,
       cached_centers: Vec::new(),
@@ -175,26 +191,14 @@ impl SpectrumMeter {
     }
   }
 
-  pub fn attack_release_ms_for_speed_percent(percent: f64) -> (f64, f64) {
-    let p = percent.clamp(0.0, 100.0);
-    if p <= 0.0 {
-      return (0.0, 0.0);
-    }
-    let normalized = p / 100.0;
-    let exponent = (15.0_f64.log10() / 200.0_f64.log10()).ln() / 0.5_f64.ln();
-    let release_ms = 10.0 * 200.0_f64.powf(normalized.powf(exponent));
-    let attack_ms = release_ms * 0.2;
-    (attack_ms, release_ms)
-  }
-
   pub fn set_display_controls(
     &mut self,
     speed_percent: f64,
     tilt_db_per_octave: f64,
     octave_smoothing: OctaveSmoothing,
   ) {
-    let (attack_ms, release_ms) = Self::attack_release_ms_for_speed_percent(speed_percent);
-    let analysis_average_sec = MultiResBank::analysis_average_sec_for_speed_percent(speed_percent);
+    let (attack_ms, release_ms) = attack_release_ms_for_speed_percent(speed_percent);
+    let analysis_average_sec = analysis_average_sec_for_speed_percent(speed_percent);
     self.attack_ms = attack_ms;
     self.release_ms = release_ms;
     self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
@@ -477,6 +481,7 @@ impl SpectrumMeter {
   }
 }
 
+#[cfg(test)]
 impl Meter for SpectrumMeter {
   fn push_pcm(&mut self, ctx: &PcmContext<'_>) {
     self.push_pair(
@@ -771,7 +776,7 @@ mod tests {
 
   #[test]
   fn speed_percent_50_matches_current_attack_release() {
-    let (attack_ms, release_ms) = SpectrumMeter::attack_release_ms_for_speed_percent(50.0);
+    let (attack_ms, release_ms) = attack_release_ms_for_speed_percent(50.0);
     assert!(
       (attack_ms - 30.0).abs() < 0.1,
       "50% speed should preserve current 30ms attack, got {attack_ms}"
@@ -784,7 +789,7 @@ mod tests {
 
   #[test]
   fn speed_percent_100_is_extra_slow() {
-    let (attack_ms, release_ms) = SpectrumMeter::attack_release_ms_for_speed_percent(100.0);
+    let (attack_ms, release_ms) = attack_release_ms_for_speed_percent(100.0);
     assert!(
       (attack_ms - 400.0).abs() < 1.0,
       "100% speed should use about 400ms attack, got {attack_ms}"
