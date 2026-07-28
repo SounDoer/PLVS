@@ -54,6 +54,8 @@ After capture-layer work, remind the user to run `npm run soak:capture` (4 hours
 
 The version must match in three places: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`. `npm run version:check` verifies this.
 
+**Worktrees and branches.** Big features get an isolated worktree, one per feature, under an agent-specific prefix: `.claude/worktrees/<feature-name>` for Claude Code, `.codex/worktrees/<feature-name>` for Codex, `.cursor/worktrees/<feature-name>` for Cursor. Don't reuse one fixed worktree across features — that just relocates the same cleanup problem instead of avoiding it. When a feature merges or is dropped, clean up right away: `git worktree remove` plus deleting the branch (`-d` once merged, `-D` for unmerged only after confirming with the user), and `git push origin --delete` for any merged remote branch. Skip `archive/`-prefixed branches by default. Branches parked for a dependency reason (e.g. Dependabot's `deps/*`) — confirm the reason still holds before deleting.
+
 ## Boundaries
 
 The one place rules are stated as rules. Each entry says what, not why; the why is in the section that owns the subject.
