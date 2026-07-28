@@ -88,10 +88,29 @@ describe("sampleWaterfallGrid", () => {
       ridgeCount: 12,
       yToBand: Y_TO_BAND,
     });
-    expect(Array.from(grid.present)).toContain(0);
-    expect(Array.from(grid.present)).toContain(1);
-    // The gap sits in the middle of the window, so a mid ridge must be absent.
-    expect(grid.present[6]).toBe(0);
+    // Only ridge 0 (target 45ms, resolves to the 40ms frame) and ridge 11 (target 1035ms,
+    // resolves to the 1000ms frame) land inside a real frame span; every ridge in between
+    // targets the 40ms-to-1000ms gap and must be absent.
+    expect(Array.from(grid.present)).toEqual([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+  });
+
+  // The upper bound is exclusive: a target landing exactly on a frame's end time belongs to
+  // the *next* frame's span, not this one. An accidental `<=` would wrongly mark this present.
+  it("treats a target exactly at frameEndMs as outside the frame (exclusive upper bound)", () => {
+    const view = framesAt([0, 1000], -20);
+    const grid = sampleWaterfallGrid({
+      view,
+      startIdx: 0,
+      endIdx: 1,
+      oldestMs: 0,
+      span: 80,
+      sampleMs: SAMPLE_MS,
+      ridgeCount: 1,
+      yToBand: Y_TO_BAND,
+    });
+    // Single ridge targets t=40ms exactly: frame 0 (ts=0) has no near neighbour (next frame is at
+    // 1000ms, well past the gap threshold), so its frameEndMs is ts + sampleMs = 40ms exactly.
+    expect(grid.present[0]).toBe(0);
   });
 
   it("marks every ridge present when frames are continuous", () => {
