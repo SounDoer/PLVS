@@ -105,6 +105,19 @@ describe("DockStrip", () => {
     expect(screen.getByRole("status").textContent).toBe("1m");
   });
 
+  it("caps a flexible module's auto-grow at its preferred max width", () => {
+    // A lone flexible module (no persisted panelSizesById entry) among otherwise-fixed modules
+    // used to flex-grow unbounded to fill the whole strip; it must stop at maxPreferredWidth.
+    renderStrip({
+      panels: [
+        { id: "levelMeter", moduleId: "levelMeter" },
+        { id: "spectrum", moduleId: "spectrum" },
+      ],
+    });
+    const [, spectrum] = screen.getAllByTestId("dock-module");
+    expect(spectrum.style.maxWidth).toBe("960px");
+  });
+
   it("draws an accent frame around the module hovered in the editor", () => {
     renderStrip({ hoveredPanelId: "vectorscope" });
     const modules = screen.getAllByTestId("dock-module");
