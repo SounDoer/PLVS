@@ -85,19 +85,25 @@ export function buildProjection({ azimuthDeg, elevationDeg, width, height }) {
   }
   const spanX = Math.max(1e-6, maxX - minX);
   const spanY = Math.max(1e-6, maxY - minY);
-  const scale = Math.min(width / spanX, height / spanY) * FIT_MARGIN;
-  const originX = width / 2 - ((minX + maxX) / 2) * scale;
-  const originY = height / 2 - ((minY + maxY) / 2) * scale;
+  // Anisotropic on purpose. PLVS panels are wide and short -- a spectrogram can be 920x110 device
+  // pixels -- and an isotropic `min(width/spanX, height/spanY)` lets the height constraint shrink
+  // the entire scene until it occupies a fraction of the available width, leaving most of the panel
+  // empty. This is a data plot, not a photograph: the 2D heatmap already stretches time and
+  // frequency independently to fill its panel, and nothing here requires the floor to look square.
+  const scaleX = (width / spanX) * FIT_MARGIN;
+  const scaleY = (height / spanY) * FIT_MARGIN;
+  const originX = width / 2 - ((minX + maxX) / 2) * scaleX;
+  const originY = height / 2 - ((minY + maxY) / 2) * scaleY;
 
   return {
     originX,
     originY,
-    tx: tx * scale,
-    ty: ty * scale,
-    fx: fx * scale,
-    fy: fy * scale,
-    hy: hy * scale,
-    heightScale: rise * scale,
+    tx: tx * scaleX,
+    ty: ty * scaleY,
+    fx: fx * scaleX,
+    fy: fy * scaleY,
+    hy: hy * scaleY,
+    heightScale: rise * scaleY,
     // Larger screen y is nearer the viewer. Draw the far end first so the newest frame, which is
     // what live monitoring watches, ends up unoccluded on top.
     ridgeOrderAscending: ty <= 0,

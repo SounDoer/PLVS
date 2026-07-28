@@ -12,7 +12,8 @@ const RIDGE_MAX = 140;
 const POINT_TARGET_DIVISOR = 6;
 const POINT_MIN = 60;
 const POINT_MAX = 320;
-const GRADIENT_STOPS = 32;
+const GRADIENT_STOPS = 16;
+const RIDGE_ALPHA = 0.5;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -28,21 +29,6 @@ function cssVar(el, name, fallback) {
 }
 
 /**
- * The fill colour that performs hidden-line removal. It MUST be fully opaque: a translucent fill
- * lets every ridge show through every ridge in front of it, which collapses the whole mesh into an
- * unreadable tangle of overlapping curves.
- *
- * Deliberately the theme's page background rather than a walk up the ancestors looking for a
- * background colour. PLVS panel surfaces are translucent by design -- they composite onto the app
- * background -- so such a walk finds something like `color(srgb 0.08 0.08 0.08 / 0.55)` and the
- * occlusion silently stops working. `--background` is the opaque colour everything ultimately
- * composites onto, which is exactly what a ridge should be filled with.
- */
-function resolveSurface(canvas) {
-  return cssVar(canvas, "--background", "#000");
-}
-
-/**
  * A ridge's colour ramp, running from its own baseline up to full height.
  *
  * Iso-colour lines must be parallel to the baseline, and the baseline is sloped, so the gradient
@@ -54,11 +40,11 @@ function resolveSurface(canvas) {
  * A vertical one (`fx = 0`, azimuth 0 or 180) degenerates to `k = 0` — the same degenerate view the
  * caller already guards against.
  *
- * This is built per ridge rather than once per repaint. An earlier design shared one gradient
- * across all ridges by shearing the canvas, which is exact but incompatible with Path2D: Path2D
- * resolves its coordinates against the CTM at paint time, so a shear applied before stroking moves
- * the curve instead of just the gradient. Path2D is needed to fill the occluding skirt without
- * stroking it, and that matters more.
+ * Built per ridge rather than once per repaint. An earlier design shared a single gradient across
+ * all ridges by shearing the canvas so every baseline became horizontal. That is exact, but it is
+ * incompatible with Path2D, which resolves its coordinates against the CTM at paint time -- a shear
+ * applied before stroking moves the curve, not just the gradient. Deriving the axis from the
+ * baseline's perpendicular gets the same result without touching the transform at all.
  */
 function buildRidgeGradient(ctx, colormapLut, startBase, proj, heightPx) {
   const denom = proj.fx * proj.fx + proj.fy * proj.fy;
@@ -350,7 +336,6 @@ export function useSpectrogram3dCanvas({
         yToBand: cache.yToBand,
       });
 
-      const surface = resolveSurface(canvas);
       const ink = cssVar(canvas, "--muted-foreground", "#888");
       const selection = cssVar(canvas, "--ui-loudness-selection", ink);
       const heightPx = proj.heightScale * view.heightGain;
@@ -379,8 +364,17 @@ export function useSpectrogram3dCanvas({
       // whole mesh washes out. Same trap as ctx.font below — both must scale by dpr.
       ctx.lineWidth = dpr;
 
-      // Painter's algorithm: far ridges first so nearer ones occlude them. Direction depends on
-      // azimuth, which is why buildProjection reports it rather than assuming it.
+      // Line waterfall: ridges are stroked, never filled.
+      //
+      // An earlier design filled each ridge opaquely so it would occlude the ones behind it
+      // (hidden-line removal). That reads well only when successive ridges separate enough
+      // vertically on screen, which needs a high elevation angle. PLVS panels are wide and short,
+      // which forces a low elevation, and there the front ridge's fill swallows the entire
+      // interior of the surface: you see an outline and nothing else. Unfilled strokes let the
+      // density of the ridges themselves carry the surface.
+      //
+      // Dropping the fill also removes all overdraw, which was the largest unknown in the design's
+      // performance model, and removes the need to resolve an opaque surface colour at all.
       const first = proj.ridgeOrderAscending ? 0 : ridgeCount - 1;
       const step = proj.ridgeOrderAscending ? 1 : -1;
       for (let n = 0; n < ridgeCount; n++) {
@@ -389,11 +383,6 @@ export function useSpectrogram3dCanvas({
         const tFrac = (r + 0.5) / ridgeCount;
         const base = r * grid.pointCount;
 
-        // Two paths, not one. The skirt down to the baseline is what occludes the ridges behind,
-        // so it must be filled — but it must NOT be stroked: stroking the closed path draws every
-        // ridge's own baseline onto the floor, and a hundred of those carpet the scene in parallel
-        // lines that read as noise. Path2D's copy constructor clones the curve natively, so the
-        // per-point projection work is still only done once.
         const curve = new Path2D();
         for (let q = 0; q < grid.pointCount; q++) {
           const fFrac = q / (grid.pointCount - 1);
@@ -401,28 +390,25 @@ export function useSpectrogram3dCanvas({
           if (q === 0) curve.moveTo(pt.x, pt.y);
           else curve.lineTo(pt.x, pt.y);
         }
-        const endBase = projectPoint(tFrac, 1, 0, proj);
         const startBase = projectPoint(tFrac, 0, 0, proj);
-        const skirt = new Path2D(curve);
-        skirt.lineTo(endBase.x, endBase.y);
-        skirt.lineTo(startBase.x, startBase.y);
-        skirt.closePath();
-
-        ctx.fillStyle = surface;
-        ctx.fill(skirt);
 
         if (r === selectedRidge) {
+          ctx.globalAlpha = 1;
           ctx.strokeStyle = selection;
           ctx.lineWidth = dpr * 2;
           ctx.stroke(curve);
           ctx.lineWidth = dpr;
-        } else if (canColorize) {
-          ctx.strokeStyle = buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx);
-          ctx.stroke(curve);
         } else {
-          ctx.strokeStyle = ink;
+          // Partial alpha is what makes an unfilled waterfall read as a surface: where ridges
+          // overlap they accumulate, so dense regions darken and the eye recovers the depth the
+          // missing occlusion would have given. At full opacity it flattens into a tangle.
+          ctx.globalAlpha = RIDGE_ALPHA;
+          ctx.strokeStyle = canColorize
+            ? buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx)
+            : ink;
           ctx.stroke(curve);
         }
+        ctx.globalAlpha = 1;
       }
     }
 
