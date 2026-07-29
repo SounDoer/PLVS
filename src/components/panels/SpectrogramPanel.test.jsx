@@ -794,6 +794,12 @@ describe("SpectrogramPanel", () => {
 
     fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+
+    // The feature is the *second* click. Without this, an implementation that reset on every
+    // stationary right release would pass: it would reset twice and the last call would still
+    // read 135/60.
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+
     fireEvent.pointerDown(canvas, { button: 2, clientX: 101, clientY: 100 });
     fireEvent.pointerUp(canvas, { button: 2, clientX: 101, clientY: 100 });
 
@@ -838,9 +844,13 @@ describe("SpectrogramPanel", () => {
 
   it("ignores a right double-click in 2D", () => {
     const onPanelControlsChange = vi.fn();
+    // Injected locally rather than reused from the shared baseAudioData mock -- that one
+    // accumulates calls across the whole file and beforeEach never clears it.
+    const onHistoryPointerUp = vi.fn();
     const { container } = renderPanel({
       historyChartInteractive: true,
       onPanelControlsChange,
+      onHistoryPointerUp,
       panelControls: {},
     });
     const canvas = container.querySelector("canvas");
@@ -860,11 +870,17 @@ describe("SpectrogramPanel", () => {
     fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
 
     expect(onPanelControlsChange).not.toHaveBeenCalled();
+    // What the is3d guard really protects: 2D's pointer-up path must reach the shared handler
+    // unchanged. Without the guard both right releases take the early return and skip it.
+    expect(onHistoryPointerUp).toHaveBeenCalledTimes(2);
   });
 
   it("does not reset when the two right clicks are far apart in time", () => {
     // Pins RIGHT_DOUBLE_CLICK_MS. Both clicks are stationary, so without the time bound the second
     // release satisfies every other condition and resets a viewpoint the user set minutes ago.
+    // vi.useFakeTimers() also fakes requestAnimationFrame here; it is inert for this test, but
+    // useCanvasSize and useChartHover both schedule rAF, so a test copied from this one that expects
+    // hover state to update would need to flush it explicitly.
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 0));
@@ -901,5 +917,36 @@ describe("SpectrogramPanel", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("ignores right releases that have no matching press", () => {
+    // A release with no recorded press cannot be certified stationary -- it may have begun outside
+    // the canvas, or before a mode switch cleared the drag. The null check is both that default
+    // and the guard keeping the next term from throwing.
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: {
+        spectrogram3d: true,
+        spectrogram3dAzimuthDeg: 20,
+        spectrogram3dElevationDeg: 10,
+      },
+    });
+    const canvas = container.querySelector("canvas");
+    stubPointerCapture(canvas);
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 150,
+      width: 300,
+      height: 150,
+    });
+
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
   });
 });

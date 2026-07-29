@@ -38,7 +38,9 @@ const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
 // A right press already starts a rotation drag, so a right double-click has to be distinguished
 // from "rotated out and came back". Both conditions are required: barely moved, and soon after the
-// previous right release.
+// previous right release. The budget is spent within a single press, not between the two presses --
+// unlike Win32, two stationary clicks anywhere on the canvas count. A reset is idempotent and
+// visible, so the looser rule costs nothing.
 const RIGHT_DOUBLE_CLICK_MS = 400;
 const RIGHT_DOUBLE_CLICK_SLOP_PX = 4;
 const ACTIVE_PULSE_MS = 160;
@@ -522,6 +524,10 @@ export function SpectrogramPanel({ compact = false }) {
             })
           );
         }
+        // Skipping onHistoryPointerUp is safe, not an oversight: the shared handler is left-button
+        // driven, and in 3D the right-button pointer-down returns before onHistoryPointerDown ever
+        // runs, so there is no drag mode for it to clear. Implicit pointer capture releases itself
+        // when the button state empties.
         return;
       }
 
