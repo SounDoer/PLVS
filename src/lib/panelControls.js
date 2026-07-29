@@ -60,6 +60,9 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrogram3dElevationDeg: 60,
   spectrogram3dLineAlpha: 1,
   spectrogram3dLineWidth: 1,
+  // Surfaced as "Grid": it draws the floor grid, and "Floor" sat one row below "dB Floor" with no
+  // relation to it. The key keeps the old name -- it is persisted, and renaming it would need a
+  // migration to buy nothing a reader of this line does not already get.
   spectrogram3dFloor: true,
   loudnessYMinDb: -64,
   loudnessYMaxDb: 0,

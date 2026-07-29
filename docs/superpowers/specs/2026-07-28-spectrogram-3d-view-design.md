@@ -272,8 +272,12 @@ Hover readout, frequency-channel marker lines, and data-boundary lines are hidde
 | `spectrogram3dElevationDeg` | `60` | 5 – 85, clamped |
 | `spectrogram3dLineAlpha` | `1` | 0.15 – 1 |
 | `spectrogram3dLineWidth` | `1` | 0.5 – 3, a multiplier on the device-pixel base |
-| `spectrogram3dFloor` | `true` | boolean |
+| `spectrogram3dFloor` | `true` | boolean, surfaced as **Grid** |
 | `spectrogramDbFloor` | `SPECTROGRAM_DB_MIN` | −96 – −12, **applies to both modes** |
+
+`spectrogram3dFloor` is labelled **Grid**, not Floor: it toggles the floor grid, and a row reading
+"Floor" one below "dB Floor" implied a relationship that does not exist. The key keeps its original
+name — it is persisted, and a migration would buy nothing.
 
 The elevation clamp exists in two places — the normalizer and the projection — and they must agree,
 or the settings layer silently pulls back a value the renderer would accept.

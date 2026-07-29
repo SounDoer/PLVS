@@ -1444,9 +1444,9 @@ export function PanelSettingsContent({
                 </SettingsRow>
                 {/* Provisional tuning controls: exposed for tuning against real audio, expected
                     to be pruned once the good defaults are known. */}
-                <SettingsRow label="Floor">
+                <SettingsRow label="Grid">
                   <SettingsSwitch
-                    aria-label="spectrogram 3d floor"
+                    aria-label="spectrogram 3d grid"
                     checked={normalizedPanelControls.spectrogram3dFloor}
                     onCheckedChange={(checked) => {
                       onPanelControlsChange?.(
