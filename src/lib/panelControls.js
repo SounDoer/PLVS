@@ -55,7 +55,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrogram3dColorize: true,
   spectrogram3dHeightGain: 1,
   spectrogram3dAzimuthDeg: 135,
-  spectrogram3dElevationDeg: 70,
+  spectrogram3dElevationDeg: 60,
   spectrogram3dLineAlpha: 1,
   spectrogram3dLineWidth: 1,
   spectrogram3dFloor: true,

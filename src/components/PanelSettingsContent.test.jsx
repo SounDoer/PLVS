@@ -1298,7 +1298,7 @@ describe("PanelSettingsContent", () => {
     });
     const result = onPanelControlsChange.mock.calls.at(-1)[0];
     expect(result.spectrogram3dAzimuthDeg).toBe(135);
-    expect(result.spectrogram3dElevationDeg).toBe(70);
+    expect(result.spectrogram3dElevationDeg).toBe(60);
     expect(result.spectrogram3dHeightGain).toBe(2.5);
     expect(result.spectrogram3dColorize).toBe(true);
     expect(result.spectrogramYMinFreq).toBe(100);

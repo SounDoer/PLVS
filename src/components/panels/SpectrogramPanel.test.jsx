@@ -523,7 +523,7 @@ describe("SpectrogramPanel", () => {
     });
 
     const projectionRef = vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].projectionRef;
-    const proj = buildProjection({ azimuthDeg: 135, elevationDeg: 70, width: 300, height: 150 });
+    const proj = buildProjection({ azimuthDeg: 135, elevationDeg: 60, width: 300, height: 150 });
     projectionRef.current = proj;
 
     const targetTFrac = 0.2;

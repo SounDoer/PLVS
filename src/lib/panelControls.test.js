@@ -99,7 +99,7 @@ describe("panelControls", () => {
       spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
-      spectrogram3dElevationDeg: 70,
+      spectrogram3dElevationDeg: 60,
       spectrogram3dLineAlpha: 1,
       spectrogram3dLineWidth: 1,
       spectrogram3dFloor: true,
@@ -249,7 +249,7 @@ describe("panelControls", () => {
       spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
-      spectrogram3dElevationDeg: 70,
+      spectrogram3dElevationDeg: 60,
       spectrogram3dLineAlpha: 1,
       spectrogram3dLineWidth: 1,
       spectrogram3dFloor: true,
@@ -622,7 +622,7 @@ describe("spectrogram 3D controls", () => {
     expect(c.spectrogram3dColorize).toBe(true);
     expect(c.spectrogram3dHeightGain).toBe(1);
     expect(c.spectrogram3dAzimuthDeg).toBe(135);
-    expect(c.spectrogram3dElevationDeg).toBe(70);
+    expect(c.spectrogram3dElevationDeg).toBe(60);
   });
 
   it("clamps height gain and elevation, and wraps azimuth", () => {

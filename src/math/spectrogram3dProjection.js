@@ -19,7 +19,7 @@
 // modes flips the time axis. That is a real inconsistency, chosen deliberately: the alternative
 // (azimuth 315) keeps 2D's direction but pushes the newest frame to the far end.
 const DEFAULT_AZIMUTH_DEG = 135;
-const DEFAULT_ELEVATION_DEG = 70;
+const DEFAULT_ELEVATION_DEG = 60;
 const ELEVATION_MIN_DEG = 5;
 const ELEVATION_MAX_DEG = 85;
 const HEIGHT_GAIN_MIN = 0.3;
@@ -34,8 +34,9 @@ function finiteOr(raw, fallback) {
 }
 
 /**
- * Elevation is clamped at both ends: at 0 degrees the surface collapses to a line, and past about
- * 70 degrees it degenerates into a skewed top-down view that is strictly worse than the 2D mode.
+ * Elevation is clamped at both ends: at 0 degrees the surface collapses to a line, and approaching
+ * 90 it degenerates into a skewed top-down view that is strictly worse than the 2D mode. The upper
+ * bound is deliberately well above the default so the useful range is reachable in both directions.
  * Azimuth wraps rather than clamping, because spinning past 360 is a legitimate drag.
  */
 export function clampViewParams({ azimuthDeg, elevationDeg, heightGain } = {}) {
