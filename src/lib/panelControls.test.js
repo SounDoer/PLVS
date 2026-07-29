@@ -96,13 +96,11 @@ describe("panelControls", () => {
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
       spectrogram3d: false,
-      spectrogram3dColorize: false,
+      spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
-      spectrogram3dElevationDeg: 22,
-      spectrogram3dRidges: 0,
-      spectrogram3dPoints: 0,
-      spectrogram3dLineAlpha: 0.5,
+      spectrogram3dElevationDeg: 70,
+      spectrogram3dLineAlpha: 1,
       spectrogram3dLineWidth: 1,
       spectrogram3dFloor: true,
       loudnessYMinDb: -64,
@@ -248,13 +246,11 @@ describe("panelControls", () => {
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
       spectrogram3d: false,
-      spectrogram3dColorize: false,
+      spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
-      spectrogram3dElevationDeg: 22,
-      spectrogram3dRidges: 0,
-      spectrogram3dPoints: 0,
-      spectrogram3dLineAlpha: 0.5,
+      spectrogram3dElevationDeg: 70,
+      spectrogram3dLineAlpha: 1,
       spectrogram3dLineWidth: 1,
       spectrogram3dFloor: true,
       loudnessYMinDb: -64,
@@ -620,13 +616,13 @@ describe("stereo map panel controls normalization", () => {
 });
 
 describe("spectrogram 3D controls", () => {
-  it("defaults to the 2D view with a monochrome mesh", () => {
+  it("defaults to the 2D view with a colorized mesh", () => {
     const c = normalizePanelControls({});
     expect(c.spectrogram3d).toBe(false);
-    expect(c.spectrogram3dColorize).toBe(false);
+    expect(c.spectrogram3dColorize).toBe(true);
     expect(c.spectrogram3dHeightGain).toBe(1);
     expect(c.spectrogram3dAzimuthDeg).toBe(135);
-    expect(c.spectrogram3dElevationDeg).toBe(22);
+    expect(c.spectrogram3dElevationDeg).toBe(70);
   });
 
   it("clamps height gain and elevation, and wraps azimuth", () => {
@@ -647,35 +643,16 @@ describe("spectrogram 3D controls", () => {
 
   it("rejects non-boolean toggles", () => {
     expect(normalizePanelControls({ spectrogram3d: "yes" }).spectrogram3d).toBe(false);
-    expect(normalizePanelControls({ spectrogram3dColorize: 1 }).spectrogram3dColorize).toBe(false);
+    expect(normalizePanelControls({ spectrogram3dColorize: 1 }).spectrogram3dColorize).toBe(true);
   });
 });
 
 describe("spectrogram 3D tuning controls", () => {
-  it("defaults ridges/points to Auto, alpha/width/floor to their agreed values", () => {
+  it("defaults alpha/width/floor to their agreed values", () => {
     const c = normalizePanelControls({});
-    expect(c.spectrogram3dRidges).toBe(0);
-    expect(c.spectrogram3dPoints).toBe(0);
-    expect(c.spectrogram3dLineAlpha).toBe(0.5);
+    expect(c.spectrogram3dLineAlpha).toBe(1);
     expect(c.spectrogram3dLineWidth).toBe(1);
     expect(c.spectrogram3dFloor).toBe(true);
-  });
-
-  it("keeps 0 as the Auto sentinel for ridges and points instead of clamping it up", () => {
-    expect(normalizePanelControls({ spectrogram3dRidges: 0 }).spectrogram3dRidges).toBe(0);
-    expect(normalizePanelControls({ spectrogram3dPoints: 0 }).spectrogram3dPoints).toBe(0);
-  });
-
-  it("clamps ridges to 20-200 when explicitly set", () => {
-    expect(normalizePanelControls({ spectrogram3dRidges: 1 }).spectrogram3dRidges).toBe(20);
-    expect(normalizePanelControls({ spectrogram3dRidges: 500 }).spectrogram3dRidges).toBe(200);
-    expect(normalizePanelControls({ spectrogram3dRidges: 100.6 }).spectrogram3dRidges).toBe(101);
-  });
-
-  it("clamps points to 40-400 when explicitly set", () => {
-    expect(normalizePanelControls({ spectrogram3dPoints: 1 }).spectrogram3dPoints).toBe(40);
-    expect(normalizePanelControls({ spectrogram3dPoints: 1000 }).spectrogram3dPoints).toBe(400);
-    expect(normalizePanelControls({ spectrogram3dPoints: 200.4 }).spectrogram3dPoints).toBe(200);
   });
 
   it("clamps line alpha to 0.15-1", () => {

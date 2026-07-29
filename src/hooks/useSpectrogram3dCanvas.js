@@ -178,8 +178,6 @@ export function useSpectrogram3dCanvas({
   elevationDeg,
   heightGain,
   colorize,
-  ridges,
-  points,
   lineAlpha,
   lineWidth,
   floor,
@@ -203,8 +201,6 @@ export function useSpectrogram3dCanvas({
     heightGain: NaN,
     colorize: undefined,
     selectionXFrac: NaN,
-    ridges: undefined,
-    points: undefined,
     lineAlpha: NaN,
     lineWidth: NaN,
     floor: undefined,
@@ -225,8 +221,6 @@ export function useSpectrogram3dCanvas({
       elevationDeg,
       heightGain,
       colorize,
-      ridges,
-      points,
       lineAlpha,
       lineWidth,
       floor,
@@ -245,8 +239,6 @@ export function useSpectrogram3dCanvas({
     elevationDeg,
     heightGain,
     colorize,
-    ridges,
-    points,
     lineAlpha,
     lineWidth,
     floor,
@@ -290,8 +282,6 @@ export function useSpectrogram3dCanvas({
         last.heightGain === p.heightGain &&
         last.colorize === p.colorize &&
         last.selectionXFrac === p.selectionXFrac &&
-        last.ridges === p.ridges &&
-        last.points === p.points &&
         last.lineAlpha === p.lineAlpha &&
         last.lineWidth === p.lineWidth &&
         last.floor === p.floor
@@ -313,8 +303,6 @@ export function useSpectrogram3dCanvas({
         heightGain: p.heightGain,
         colorize: p.colorize,
         selectionXFrac: p.selectionXFrac,
-        ridges: p.ridges,
-        points: p.points,
         lineAlpha: p.lineAlpha,
         lineWidth: p.lineWidth,
         floor: p.floor,
@@ -345,7 +333,7 @@ export function useSpectrogram3dCanvas({
         height: H,
       });
 
-      const pointCount = p.points ? p.points : pointCountFor(W);
+      const pointCount = pointCountFor(W);
       const cache = cacheRef.current;
       if (
         cache.pointCount !== pointCount ||
@@ -363,7 +351,7 @@ export function useSpectrogram3dCanvas({
       const { startIdx, endIdx } = inWindowRange(snaps, p.oldestMs, p.newestMs);
       if (endIdx < startIdx) return;
 
-      const maxRidges = p.ridges ? p.ridges : ridgeCountFor(W);
+      const maxRidges = ridgeCountFor(W);
       const grid = sampleWaterfallGrid({
         view: snaps,
         startIdx,
@@ -438,7 +426,7 @@ export function useSpectrogram3dCanvas({
       // symmetric in meaning -- arrival is the signal, departure is just history scrolling away.
       //
       // Width is measured in ridge spacings rather than as a fixed fraction of the window, so the
-      // fade still reads as "the last few ridges are dissolving" at any Ridges setting.
+      // fade still reads as "the last few ridges are dissolving" at any ridge count.
       const fadeSpan = EDGE_FADE_RIDGES / Math.max(1, grid.count);
 
       // Ridges arrive in ascending timestamp order, so painting far-to-near is just a matter of
@@ -468,9 +456,10 @@ export function useSpectrogram3dCanvas({
           ctx.stroke(curve);
           ctx.lineWidth = baseLineWidth;
         } else {
-          // Partial alpha is what makes an unfilled waterfall read as a surface: where ridges
-          // overlap they accumulate, so dense regions darken and the eye recovers the depth the
-          // missing occlusion would have given. At full opacity it flattens into a tangle.
+          // Lowering lineAlpha lets overlapping ridges accumulate, so dense regions darken and the
+          // eye recovers some of the depth the missing occlusion would have given. It defaults to
+          // opaque because the colour ramp already separates near from far; the control is there
+          // for material where the ridges crowd each other.
           ctx.globalAlpha = p.lineAlpha * edgeFade;
           ctx.strokeStyle = canColorize
             ? buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx)

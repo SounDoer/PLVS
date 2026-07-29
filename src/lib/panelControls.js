@@ -52,18 +52,11 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrogramYMinFreq: 20,
   spectrogramYMaxFreq: 20000,
   spectrogram3d: false,
-  // Colorize defaults off for aesthetic reasons, not performance ones: the first impression of 3D
-  // mode is the classic monochrome mesh. The shared gradient makes colorize effectively free, so
-  // do not "optimise" this default on the assumption it was set for cost.
-  spectrogram3dColorize: false,
+  spectrogram3dColorize: true,
   spectrogram3dHeightGain: 1,
   spectrogram3dAzimuthDeg: 135,
-  spectrogram3dElevationDeg: 22,
-  // 0 means Auto (derive from canvas width) for both ridges and points; that is today's
-  // width-adaptive behaviour, kept as the default while allowing an explicit override.
-  spectrogram3dRidges: 0,
-  spectrogram3dPoints: 0,
-  spectrogram3dLineAlpha: 0.5,
+  spectrogram3dElevationDeg: 70,
+  spectrogram3dLineAlpha: 1,
   spectrogram3dLineWidth: 1,
   spectrogram3dFloor: true,
   loudnessYMinDb: -64,
@@ -170,21 +163,6 @@ function normalizeSpectrogram3dAzimuthDeg(raw) {
  */
 function normalizeSpectrogram3dElevationDeg(raw) {
   return clampNumber(raw, 5, 70, DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg);
-}
-
-/** 0 is the Auto sentinel and must survive untouched; only a non-zero value gets clamped. */
-function normalizeSpectrogram3dCount(raw, min, max, fallback) {
-  if (!isNumber(raw)) return fallback;
-  if (raw === 0) return 0;
-  return Math.round(clampNumber(raw, min, max, fallback));
-}
-
-function normalizeSpectrogram3dRidges(raw) {
-  return normalizeSpectrogram3dCount(raw, 20, 200, DEFAULT_PANEL_CONTROLS.spectrogram3dRidges);
-}
-
-function normalizeSpectrogram3dPoints(raw) {
-  return normalizeSpectrogram3dCount(raw, 40, 400, DEFAULT_PANEL_CONTROLS.spectrogram3dPoints);
 }
 
 function normalizeSpectrogram3dLineAlpha(raw) {
@@ -467,8 +445,6 @@ export function normalizePanelControls(raw) {
     spectrogram3dHeightGain: normalizeSpectrogram3dHeightGain(raw?.spectrogram3dHeightGain),
     spectrogram3dAzimuthDeg: normalizeSpectrogram3dAzimuthDeg(raw?.spectrogram3dAzimuthDeg),
     spectrogram3dElevationDeg: normalizeSpectrogram3dElevationDeg(raw?.spectrogram3dElevationDeg),
-    spectrogram3dRidges: normalizeSpectrogram3dRidges(raw?.spectrogram3dRidges),
-    spectrogram3dPoints: normalizeSpectrogram3dPoints(raw?.spectrogram3dPoints),
     spectrogram3dLineAlpha: normalizeSpectrogram3dLineAlpha(raw?.spectrogram3dLineAlpha),
     spectrogram3dLineWidth: normalizeSpectrogram3dLineWidth(raw?.spectrogram3dLineWidth),
     spectrogram3dFloor: normalizeSpectrogram3dFloor(raw?.spectrogram3dFloor),

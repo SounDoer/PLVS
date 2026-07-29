@@ -1376,42 +1376,6 @@ export function PanelSettingsContent({
                     }}
                   />
                 </SettingsRow>
-                <SettingsRow label="Ridges">
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d ridges"
-                    min={0}
-                    max={200}
-                    step={1}
-                    value={normalizedPanelControls.spectrogram3dRidges}
-                    formatValue={(value) => (value === 0 ? "Auto" : value.toFixed(0))}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dRidges: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-                <SettingsRow label="Points">
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d points"
-                    min={0}
-                    max={400}
-                    step={1}
-                    value={normalizedPanelControls.spectrogram3dPoints}
-                    formatValue={(value) => (value === 0 ? "Auto" : value.toFixed(0))}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dPoints: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
                 <SettingsRow label="Line Alpha">
                   <SettingsSlider
                     ariaLabel="spectrogram 3d line alpha"

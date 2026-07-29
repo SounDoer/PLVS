@@ -19,8 +19,9 @@
 // modes flips the time axis. That is a real inconsistency, chosen deliberately: the alternative
 // (azimuth 315) keeps 2D's direction but pushes the newest frame to the far end.
 const DEFAULT_AZIMUTH_DEG = 135;
+const DEFAULT_ELEVATION_DEG = 70;
 const ELEVATION_MIN_DEG = 5;
-const ELEVATION_MAX_DEG = 70;
+const ELEVATION_MAX_DEG = 85;
 const HEIGHT_GAIN_MIN = 0.3;
 const HEIGHT_GAIN_MAX = 3;
 const DEFAULT_HEIGHT_GAIN = 1;
@@ -43,7 +44,7 @@ export function clampViewParams({ azimuthDeg, elevationDeg, heightGain } = {}) {
     azimuthDeg: ((rawAzimuth % 360) + 360) % 360,
     elevationDeg: Math.min(
       ELEVATION_MAX_DEG,
-      Math.max(ELEVATION_MIN_DEG, finiteOr(elevationDeg, 22))
+      Math.max(ELEVATION_MIN_DEG, finiteOr(elevationDeg, DEFAULT_ELEVATION_DEG))
     ),
     heightGain: Math.min(
       HEIGHT_GAIN_MAX,

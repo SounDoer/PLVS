@@ -11,7 +11,7 @@ const VIEW = { width: 400, height: 300 };
 describe("clampViewParams", () => {
   it("clamps elevation to a usable band", () => {
     expect(clampViewParams({ elevationDeg: 0 }).elevationDeg).toBe(5);
-    expect(clampViewParams({ elevationDeg: 89 }).elevationDeg).toBe(70);
+    expect(clampViewParams({ elevationDeg: 89 }).elevationDeg).toBe(85);
     expect(clampViewParams({ elevationDeg: 30 }).elevationDeg).toBe(30);
   });
 
