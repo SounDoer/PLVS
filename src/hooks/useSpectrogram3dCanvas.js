@@ -353,17 +353,17 @@ export function useSpectrogram3dCanvas({
       const { startIdx, endIdx } = inWindowRange(snaps, p.oldestMs, p.newestMs);
       if (endIdx < startIdx) return;
 
-      const ridgeCount = p.ridges ? p.ridges : ridgeCountFor(W);
+      const maxRidges = p.ridges ? p.ridges : ridgeCountFor(W);
       const grid = sampleWaterfallGrid({
         view: snaps,
         startIdx,
         endIdx,
         oldestMs: p.oldestMs,
         span,
-        sampleMs: p.sampleMs,
-        ridgeCount,
+        maxRidges,
         yToBand: cache.yToBand,
       });
+      if (grid.count === 0) return;
 
       const ink = cssVar(canvas, "--muted-foreground", "#888");
       const selection = cssVar(canvas, "--ui-loudness-selection", ink);
@@ -383,11 +383,19 @@ export function useSpectrogram3dCanvas({
 
       // Scrub feedback: a vertical line through a 3D scene means nothing, so the selected ridge is
       // highlighted instead. selectionXFrac is the same 0..1 window fraction the 2D selection line
-      // uses, so both modes mark the same moment.
-      const selectedRidge =
-        p.selectedOffset >= 0 && Number.isFinite(p.selectionXFrac)
-          ? Math.min(ridgeCount - 1, Math.max(0, Math.round(p.selectionXFrac * (ridgeCount - 1))))
-          : -1;
+      // uses, so both modes mark the same moment. Ridges sit at their own timestamps rather than on
+      // a regular grid, so the nearest one has to be searched for.
+      let selectedRidge = -1;
+      if (p.selectedOffset >= 0 && Number.isFinite(p.selectionXFrac)) {
+        let bestDelta = Infinity;
+        for (let r = 0; r < grid.count; r++) {
+          const delta = Math.abs(grid.tFracs[r] - p.selectionXFrac);
+          if (delta < bestDelta) {
+            bestDelta = delta;
+            selectedRidge = r;
+          }
+        }
+      }
 
       ctx.lineJoin = "round";
       // Line widths are in the canvas coordinate system, which useCanvasSize sizes in DEVICE
@@ -408,12 +416,13 @@ export function useSpectrogram3dCanvas({
       //
       // Dropping the fill also removes all overdraw, which was the largest unknown in the design's
       // performance model, and removes the need to resolve an opaque surface colour at all.
-      const first = proj.ridgeOrderAscending ? 0 : ridgeCount - 1;
+      // Ridges arrive in ascending timestamp order, so painting far-to-near is just a matter of
+      // which end to start from.
+      const first = proj.ridgeOrderAscending ? 0 : grid.count - 1;
       const step = proj.ridgeOrderAscending ? 1 : -1;
-      for (let n = 0; n < ridgeCount; n++) {
+      for (let n = 0; n < grid.count; n++) {
         const r = first + n * step;
-        if (!grid.present[r]) continue;
-        const tFrac = (r + 0.5) / ridgeCount;
+        const tFrac = grid.tFracs[r];
         const base = r * grid.pointCount;
 
         const curve = new Path2D();
