@@ -82,13 +82,15 @@ Replace it wholesale with:
     // The regression this pins is the rebinding itself: the rail used to write
     // spectrogram3dHeightGain here, which silently made the frequency axis unreachable in 3D.
     const onPanelControlsChange = vi.fn();
-    const { container } = renderPanel({
+    renderPanel({
       onPanelControlsChange,
       panelControls: { spectrogram3d: true },
     });
 
-    expect(container.querySelector('[style*="ns-resize"]')).toBeNull();
-
+    // Do not assert on the rail's cursor. useAxisInteraction returns "ns-resize" for every y axis,
+    // so the old code's `is3d ? "ns-resize" : cursorStyle` had two branches with the same value --
+    // a cursor check cannot tell the rebinding from its absence. The three assertions below can:
+    // a rail still bound to height gain fails all of them.
     const rail = screen.getByText("20k").closest("div[class*='shrink-0']");
     // useAxisInteraction's onWheel reads the rail's own rect to place the zoom anchor. jsdom
     // reports zeros, which would push the anchor outside 20-20000 and let computeLogZoom clamp
