@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
-import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
+import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
+import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
 
 function paintSpan(data, width, height, xStart, xEnd, snap, yToBand, colormapLut, dbFloor) {
-  const rng = SPECTROGRAM_DB_MAX - dbFloor;
   for (let y = 0; y < height; y++) {
     const db = snap.dbList[yToBand[y]] ?? dbFloor;
-    const t = Math.max(0, Math.min(1, (db - dbFloor) / rng));
+    const t = spectrogramColorFrac(db, dbFloor);
     const lutIdx = Math.round(t * 255) * 3;
     const rowBase = y * width;
     for (let x = xStart; x < xEnd; x++) {

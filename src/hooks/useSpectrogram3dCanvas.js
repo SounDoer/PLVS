@@ -8,6 +8,8 @@ import {
   labelEdges,
 } from "../math/spectrogram3dProjection.js";
 import { sampleWaterfallGrid } from "../math/spectrogram3dGrid.js";
+import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
+import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
 
 // Cost tracks the product of these two, so they can be traded against each other while tuning:
 // more ridges reads as denser time resolution, more points as finer spectral detail.
@@ -52,8 +54,13 @@ function cssVar(el, name, fallback) {
  * incompatible with Path2D, which resolves its coordinates against the CTM at paint time -- a shear
  * applied before stroking moves the curve, not just the gradient. Deriving the axis from the
  * baseline's perpendicular gets the same result without touching the transform at all.
+ *
+ * Colour itself is absolute, not floor-relative: height fraction `s` along the ramp corresponds to
+ * a specific dB (the floor-relative height mapping, inverted), and that dB is then run through
+ * spectrogramColorFrac against the fixed dB range. This keeps a given dB the same colour regardless
+ * of where dbFloor is set, even though the ridge's on-screen height still depends on it.
  */
-function buildRidgeGradient(ctx, colormapLut, startBase, proj, heightPx) {
+function buildRidgeGradient(ctx, colormapLut, startBase, proj, heightPx, dbFloor) {
   const denom = proj.fx * proj.fx + proj.fy * proj.fy;
   const k = (-heightPx * proj.fx) / denom;
   const gradient = ctx.createLinearGradient(
@@ -64,7 +71,9 @@ function buildRidgeGradient(ctx, colormapLut, startBase, proj, heightPx) {
   );
   for (let s = 0; s <= GRADIENT_STOPS; s++) {
     const frac = s / GRADIENT_STOPS;
-    const idx = Math.round(frac * 255) * 3;
+    const db = dbFloor + frac * (SPECTROGRAM_DB_MAX - dbFloor);
+    const colorFrac = spectrogramColorFrac(db, dbFloor);
+    const idx = Math.round(colorFrac * 255) * 3;
     gradient.addColorStop(
       frac,
       `rgb(${colormapLut[idx]},${colormapLut[idx + 1]},${colormapLut[idx + 2]})`
@@ -473,7 +482,7 @@ export function useSpectrogram3dCanvas({
           // for material where the ridges crowd each other.
           ctx.globalAlpha = p.lineAlpha * edgeFade;
           ctx.strokeStyle = canColorize
-            ? buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx)
+            ? buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx, p.dbFloor)
             : ink;
           ctx.stroke(curve);
         }

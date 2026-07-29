@@ -48,6 +48,27 @@ export function buildSpectrogramLut(stops) {
 }
 
 /**
+ * Absolute colour position for a dB value, against the fixed SPECTROGRAM_DB_MIN..MAX range.
+ *
+ * Unlike height, which stays floor-relative (spectrogram3dGrid.js), colour must read as an
+ * absolute level: a -20 dB peak is the same colour regardless of where the noise floor control is
+ * set. Anything at or below the floor is pinned to the bottom of the ramp -- `<=` rather than `<`
+ * so a value sitting exactly on the floor reads as the bottom, matching what the old floor-relative
+ * formula produced there and keeping 2D/3D consistent.
+ *
+ * @param {number} db
+ * @param {number} dbFloor
+ * @returns {number} 0..1
+ */
+export function spectrogramColorFrac(db, dbFloor) {
+  if (!Number.isFinite(db) || db <= dbFloor) return 0;
+  return Math.max(
+    0,
+    Math.min(1, (db - SPECTROGRAM_DB_MIN) / (SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN))
+  );
+}
+
+/**
  * @param {number} db
  * @param {Uint8Array} lut
  * @returns {[number, number, number]}
