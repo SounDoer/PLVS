@@ -109,7 +109,7 @@ export const SPECTROGRAM_HELP = [
     title: "3D View",
     items: [
       "Right drag - Rotate the waterfall surface",
-      "Height Gain (settings rail) - Scale the surface height",
+      "Height Scale (settings rail) - Exaggerate the surface height, without touching level or colour",
     ],
   },
   {

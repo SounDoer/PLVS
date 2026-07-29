@@ -1250,7 +1250,7 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.getByRole("switch", { name: "spectrogram 3d view" })).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "spectrogram 3d colorize" })).toBeNull();
-    expect(screen.queryByLabelText("spectrogram 3d height gain")).toBeNull();
+    expect(screen.queryByLabelText("spectrogram 3d height scale")).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
 
     rerender(
@@ -1261,7 +1261,7 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.getByRole("switch", { name: "spectrogram 3d colorize" })).toBeTruthy();
-    expect(screen.getByLabelText("spectrogram 3d height gain")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
     expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
   });
 

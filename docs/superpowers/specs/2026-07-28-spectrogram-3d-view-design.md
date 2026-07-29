@@ -49,7 +49,7 @@ data is already in the panel; only the rendering differs.
 | 7 | **Each ridge is a captured frame at its own timestamp** | See Reversed #2 |
 | 8 | Colour is **absolute against the fixed dB range**; only height follows the dB floor | dB is encoded twice in 3D (height and colour). A control that moves both leaves nothing stable to read the change against. Colour pinned to absolute level makes it the reference frame |
 | 9 | Rotation on **right-drag** only | Left-drag, wheel, Ctrl-combos and double-click keep their 2D meanings. The right-click menu is already suppressed on this canvas |
-| 10 | Left axis rail controls **Height Gain** in 3D | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation — frequency and time swap visual direction as azimuth turns |
+| 10 | Left axis rail controls **Height Scale** in 3D | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation — frequency and time swap visual direction as azimuth turns |
 | 11 | Scrub feedback is a **highlighted ridge**, not a selection line | A vertical line through a rotated scene has no meaning |
 | 12 | Pointer input is **unprojected onto the floor plane** | See Interaction |
 | 13 | Default viewpoint: azimuth 135°, elevation 60° | Frequency on the front-left floor edge, time on the front-right, newest frame at the near corner. See Interaction for the trade this forces |
@@ -226,7 +226,7 @@ leaving the previous font — so the font family is resolved via `getComputedSty
 | Ctrl+wheel / Ctrl+drag | Frequency range | Frequency range — anchored via unprojection |
 | Double-click | Return to latest | Return to latest — unchanged |
 | **Right-drag** | none | **Rotate** |
-| Left axis rail | Frequency range | **Height Gain** |
+| Left axis rail | Frequency range | **Height Scale** |
 | Bottom axis rail | Time window | Time window — unchanged |
 
 ### Pointer unprojection
@@ -267,7 +267,7 @@ Hover readout, frequency-channel marker lines, and data-boundary lines are hidde
 |---|---|---|
 | `spectrogram3d` | `false` | boolean |
 | `spectrogram3dColorize` | `true` | boolean |
-| `spectrogram3dHeightGain` | `1` | 0.3 – 3 |
+| `spectrogram3dHeightGain` | `1` | 0.3 – 3, surfaced as **Height Scale** |
 | `spectrogram3dAzimuthDeg` | `135` | 0 – 360, wraps |
 | `spectrogram3dElevationDeg` | `60` | 5 – 85, clamped |
 | `spectrogram3dLineAlpha` | `1` | 0.15 – 1 |
@@ -275,9 +275,19 @@ Hover readout, frequency-channel marker lines, and data-boundary lines are hidde
 | `spectrogram3dFloor` | `true` | boolean, surfaced as **Grid** |
 | `spectrogramDbFloor` | `SPECTROGRAM_DB_MIN` | −96 – −12, **applies to both modes** |
 
-`spectrogram3dFloor` is labelled **Grid**, not Floor: it toggles the floor grid, and a row reading
-"Floor" one below "dB Floor" implied a relationship that does not exist. The key keeps its original
-name — it is persisted, and a migration would buy nothing.
+Two controls are labelled differently from their key, because the key borrowed a word that is
+already taken elsewhere in the panel. Both keys keep their original names — they are persisted, and
+a migration would buy nothing.
+
+- `spectrogram3dFloor` → **Grid**. It toggles the floor grid; a row reading "Floor" one below
+  "dB Floor" implied a relationship that does not exist.
+- `spectrogram3dHeightGain` → **Height Scale**. In an audio app "gain" means level amplification in
+  dB, and this control does none of that: heights are normalised against the dB floor first, and the
+  value is a plain multiplier on that 0–1 relief. Level and colour are untouched. It is vertical
+  exaggeration, in the cartographic sense.
+  Note the collision it creates *inside* the code: `buildProjection` already returns a `heightScale`
+  — the dB→pixel scale derived from the fit. The control is a multiplier applied on top of it, not
+  the same quantity.
 
 The elevation clamp exists in two places — the normalizer and the projection — and they must agree,
 or the settings layer silently pulls back a value the renderer would accept.
@@ -347,6 +357,6 @@ behaviour they replaced:
    Floor work touched the 2D renderer, which every earlier version of this design promised not to.
 2. Scrubbing in 3D highlights the selected ridge, at the moment the cursor is actually over.
 3. Switching modes preserves frequency range and time window.
-4. Viewpoint, height gain, colorize and dB floor survive preset save/load.
+4. Viewpoint, height scale, colorize and dB floor survive preset save/load.
 5. Real capture gaps render as missing ridges.
 6. `npm run check` passes.

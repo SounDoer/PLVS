@@ -1410,9 +1410,9 @@ export function PanelSettingsContent({
                     }}
                   />
                 </SettingsRow>
-                <SettingsRow label="Height Gain">
+                <SettingsRow label="Height Scale">
                   <SettingsSlider
-                    ariaLabel="spectrogram 3d height gain"
+                    ariaLabel="spectrogram 3d height scale"
                     min={0.3}
                     max={3}
                     step={0.05}
