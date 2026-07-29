@@ -476,5 +476,5 @@ export function useSpectrogram3dCanvas({
 
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [canvasRef, snapRef]);
+  }, [canvasRef, snapRef, projectionRef]);
 }
