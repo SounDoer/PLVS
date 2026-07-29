@@ -726,7 +726,7 @@ describe("SpectrogramPanel", () => {
 
     const next = onPanelControlsChange.mock.calls.at(-1)[0];
     expect(next.spectrogram3dHeightGain).toBe(1);
-    expect(next.spectrogramYMinFreq !== 20 || next.spectrogramYMaxFreq !== 20000).toBe(true);
+    expect(next.spectrogramYMaxFreq).toBeLessThan(20000);
   });
 
   it("swallows a notch-less Shift+wheel in 3D rather than forwarding it", () => {
@@ -762,5 +762,103 @@ describe("SpectrogramPanel", () => {
     expect(onPanelControlsChange).not.toHaveBeenCalled();
     // Falls through to the ordinary time-zoom path, exactly as an unmodified wheel would.
     expect(onHistoryWheel).toHaveBeenCalledTimes(1);
+  });
+
+  // The right-drag path calls setPointerCapture, which jsdom does not implement on these elements.
+  function stubPointerCapture(canvas) {
+    canvas.setPointerCapture = () => {};
+    canvas.releasePointerCapture = () => {};
+  }
+
+  it("resets the viewpoint on a right double-click in 3D", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: {
+        spectrogram3d: true,
+        spectrogram3dAzimuthDeg: 20,
+        spectrogram3dElevationDeg: 10,
+      },
+    });
+    const canvas = container.querySelector("canvas");
+    stubPointerCapture(canvas);
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 150,
+      width: 300,
+      height: 150,
+    });
+
+    fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(canvas, { button: 2, clientX: 101, clientY: 100 });
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 101, clientY: 100 });
+
+    const next = onPanelControlsChange.mock.calls.at(-1)[0];
+    expect(next.spectrogram3dAzimuthDeg).toBe(135);
+    expect(next.spectrogram3dElevationDeg).toBe(60);
+  });
+
+  it("does not reset when the second right press was a rotation drag", () => {
+    // Without a movement threshold, rotating out and happening to release near the start reads as
+    // a double-click and throws away the viewpoint the user was aiming at.
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: {
+        spectrogram3d: true,
+        spectrogram3dAzimuthDeg: 20,
+        spectrogram3dElevationDeg: 10,
+      },
+    });
+    const canvas = container.querySelector("canvas");
+    stubPointerCapture(canvas);
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 150,
+      width: 300,
+      height: 150,
+    });
+
+    fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(canvas, { clientX: 160, clientY: 130 });
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 160, clientY: 130 });
+
+    const next = onPanelControlsChange.mock.calls.at(-1)[0];
+    expect(next.spectrogram3dAzimuthDeg).not.toBe(135);
+  });
+
+  it("ignores a right double-click in 2D", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: {},
+    });
+    const canvas = container.querySelector("canvas");
+    stubPointerCapture(canvas);
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 150,
+      width: 300,
+      height: 150,
+    });
+
+    fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
   });
 });

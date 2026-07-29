@@ -32,10 +32,15 @@ import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
-import { normalizePanelControls } from "../../lib/panelControls.js";
+import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelControls.js";
 
 const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
+// A right press already starts a rotation drag, so a right double-click has to be distinguished
+// from "rotated out and came back". Both conditions are required: barely moved, and soon after the
+// previous right release.
+const RIGHT_DOUBLE_CLICK_MS = 400;
+const RIGHT_DOUBLE_CLICK_SLOP_PX = 4;
 const ACTIVE_PULSE_MS = 160;
 // Handed to whichever renderer is inactive. Must be a stable identity: both hooks depend on the
 // canvas ref, so a fresh `{ current: null }` literal per render would tear down and restart their
@@ -69,6 +74,7 @@ export function SpectrogramPanel({ compact = false }) {
   const { panelControls, analysisStatus, onPanelControlsChange } = usePanelInstanceData();
   const chartYDragRef = useRef(null);
   const rotateDragRef = useRef(null);
+  const lastRightUpRef = useRef(null);
   // Published by useSpectrogram3dCanvas on every repaint; pointer handlers read it to unproject a
   // cursor position back onto the floor plane (see cursorToFloor below).
   const projectionRef = useRef(null);
@@ -391,6 +397,8 @@ export function SpectrogramPanel({ compact = false }) {
         rotateDragRef.current = {
           x: e.clientX,
           y: e.clientY,
+          downX: e.clientX,
+          downY: e.clientY,
           azimuthDeg: normalizedPanelControls.spectrogram3dAzimuthDeg,
           elevationDeg: normalizedPanelControls.spectrogram3dElevationDeg,
         };
@@ -490,13 +498,36 @@ export function SpectrogramPanel({ compact = false }) {
   );
   const onSpectrogramChartPointerUp = useCallback(
     (e) => {
+      const rotate = rotateDragRef.current;
       rotateDragRef.current = null;
       chartYDragRef.current = null;
       setChartDragging(false);
       setChartYAxisActive(false);
+
+      if (is3d && e.button === 2) {
+        const moved =
+          rotate == null ||
+          Math.abs(e.clientX - rotate.downX) > RIGHT_DOUBLE_CLICK_SLOP_PX ||
+          Math.abs(e.clientY - rotate.downY) > RIGHT_DOUBLE_CLICK_SLOP_PX;
+        const now = Date.now();
+        const previous = lastRightUpRef.current;
+        lastRightUpRef.current = moved ? null : now;
+        if (!moved && previous != null && now - previous <= RIGHT_DOUBLE_CLICK_MS) {
+          lastRightUpRef.current = null;
+          onPanelControlsChange?.(
+            normalizePanelControls({
+              ...normalizedPanelControls,
+              spectrogram3dAzimuthDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg,
+              spectrogram3dElevationDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg,
+            })
+          );
+        }
+        return;
+      }
+
       onHistoryPointerUp?.(e);
     },
-    [onHistoryPointerUp]
+    [is3d, normalizedPanelControls, onHistoryPointerUp, onPanelControlsChange]
   );
 
   if (isOverCap) {
