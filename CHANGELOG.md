@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-07-29
+
+### Fixed
+- Presets and Loudness Profile drag-to-reorder now reliably commits the new order instead of sometimes reverting or leaving other views showing a stale list.
+- Spectrogram in file mode no longer paints spurious blank gap stripes between frames.
+- High-frequency setting changes (e.g. dragging in Presets/Loudness Profile lists) no longer trigger a full-file rewrite on every pointer move.
+- Loudness HUD hover tooltip's Momentary/Short-term readouts now match the Stats panel when paused on a snapshot.
+
 ## [0.12.1] - 2026-07-28
 
 ### Added
