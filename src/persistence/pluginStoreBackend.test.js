@@ -43,11 +43,22 @@ describe("pluginStoreBackend", () => {
       list: [{ id: "p1", name: "Preset" }],
       activeId: "p1",
     }); // sync
-    await new Promise((r) => setTimeout(r, 0)); // let the fire-and-forget persist run
+    await new Promise((r) => setTimeout(r, 250)); // let the trailing flush run
     expect(saved).toContainEqual([
       "plvs:presets",
       { list: [{ id: "p1", name: "Preset" }], activeId: "p1" },
     ]);
+  });
+
+  it("coalesces a burst of set() calls into a single save", async () => {
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    for (let i = 0; i < 20; i++) {
+      backend.set("plvs:settings", { referenceLufs: -20 + i });
+    }
+    await new Promise((r) => setTimeout(r, 250));
+    const settingsWrites = saved.filter(([k]) => k === "plvs:settings");
+    expect(settingsWrites).toEqual([["plvs:settings", { referenceLufs: -1 }]]);
   });
 
   it("remove clears the cache and schedules a delete", async () => {
@@ -55,7 +66,7 @@ describe("pluginStoreBackend", () => {
     const backend = createPluginStoreBackend();
     backend.remove("plvs:settings");
     expect(backend.get("plvs:settings")).toBeNull();
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 250));
     expect(saved).toContainEqual(["__delete__", "plvs:settings"]);
   });
 
@@ -66,11 +77,11 @@ describe("pluginStoreBackend", () => {
     backend.set("plvs:settings", { referenceLufs: -18 });
     suspendPluginStorePersistence();
 
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 250));
     expect(saved).not.toContainEqual(["plvs:settings", { referenceLufs: -18 }]);
 
     backend.set("plvs:settings", { referenceLufs: -12 });
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 250));
     expect(saved).not.toContainEqual(["plvs:settings", { referenceLufs: -12 }]);
   });
 
@@ -86,5 +97,13 @@ describe("pluginStoreBackend", () => {
       "plvs:presets",
       { list: [{ id: "p1", name: "Preset" }], activeId: "p1" },
     ]);
+  });
+
+  it("backend.flush() forces the pending batch to run immediately", async () => {
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    backend.set("plvs:settings", { referenceLufs: -18 });
+    await backend.flush();
+    expect(saved).toContainEqual(["plvs:settings", { referenceLufs: -18 }]);
   });
 });
