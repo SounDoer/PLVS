@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildProjection, projectPoint, clampViewParams } from "./spectrogram3dProjection.js";
+import {
+  buildProjection,
+  projectPoint,
+  clampViewParams,
+  labelEdges,
+} from "./spectrogram3dProjection.js";
 
 const VIEW = { width: 400, height: 300 };
 
@@ -104,16 +109,38 @@ describe("projectPoint", () => {
   });
 
   // Asserting only that two azimuths disagree would pass with the comparison inverted, which is
-  // exactly the bug this replaces. Check the order actually starts at the far end.
-  it("reports a draw order that starts from the far end", () => {
-    for (const azimuthDeg of [20, 135, 200, 315]) {
+  // exactly the bug this replaces. Check the order actually starts at the far end, everywhere.
+  it("reports a draw order that starts from the far end at every azimuth", () => {
+    for (let azimuthDeg = 5; azimuthDeg < 360; azimuthDeg += 5) {
       const proj = buildProjection({ azimuthDeg, elevationDeg: 25, ...VIEW });
       const oldest = projectPoint(0, 0.5, 0, proj);
       const newest = projectPoint(1, 0.5, 0, proj);
       // Larger screen y is nearer, so whichever end is drawn first must be the higher one.
       const firstDrawn = proj.ridgeOrderAscending ? oldest : newest;
       const lastDrawn = proj.ridgeOrderAscending ? newest : oldest;
-      expect(firstDrawn.y).toBeLessThan(lastDrawn.y);
+      expect({ azimuthDeg, ok: firstDrawn.y <= lastDrawn.y }).toEqual({ azimuthDeg, ok: true });
+    }
+  });
+
+  // The user is free to rotate to any orientation, including the mirror of the default where time
+  // and frequency swap sides. Labels must stay legible there too, so the chosen edge has to be the
+  // nearer one at every angle -- not just at the handful we happened to look at.
+  it("puts both axis labels on a front edge at every azimuth", () => {
+    for (let azimuthDeg = 5; azimuthDeg < 360; azimuthDeg += 5) {
+      const proj = buildProjection({ azimuthDeg, elevationDeg: 25, ...VIEW });
+      const { timeAtF, freqAtT } = labelEdges(proj);
+
+      // Compare each labelled edge against the opposite one; nearer means larger screen y.
+      const timeEdgeY = projectPoint(0.5, timeAtF, 0, proj).y;
+      const timeAwayY = projectPoint(0.5, 1 - timeAtF, 0, proj).y;
+      const freqEdgeY = projectPoint(freqAtT, 0.5, 0, proj).y;
+      const freqAwayY = projectPoint(1 - freqAtT, 0.5, 0, proj).y;
+
+      expect({ azimuthDeg, time: timeEdgeY >= timeAwayY, freq: freqEdgeY >= freqAwayY }).toEqual({
+        azimuthDeg,
+        time: true,
+        freq: true,
+      });
     }
   });
 });

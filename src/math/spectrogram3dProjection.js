@@ -120,6 +120,26 @@ export function buildProjection({ azimuthDeg, elevationDeg, width, height }) {
   };
 }
 
+/**
+ * Which floor edge each axis label belongs on, for a given projection.
+ *
+ * Every axis runs along two opposite edges; the label has to go on whichever faces the viewer or
+ * the ridges hide it. Larger screen y is nearer, and an edge's depth depends entirely on the sign
+ * of the OTHER axis's y component -- so `fy > 0` puts the time edge at `f = 1`, and `ty > 0` puts
+ * the frequency edge at `t = 1`.
+ *
+ * Derived rather than fixed so the labels survive rotation: pinning either edge only works at one
+ * azimuth, and rotating away from it drops a label behind the surface.
+ *
+ * @returns {{ timeAtF: 0 | 1, freqAtT: 0 | 1 }}
+ */
+export function labelEdges(proj) {
+  return {
+    timeAtF: proj.fy > 0 ? 1 : 0,
+    freqAtT: proj.ty > 0 ? 1 : 0,
+  };
+}
+
 export function projectPoint(tFrac, fFrac, hNorm, proj) {
   const t = tFrac - 0.5;
   const f = fFrac - 0.5;
