@@ -5,6 +5,7 @@ import {
   inWindowRange,
   spectrogramDataBoundaryMarkers,
   spectrogramDataBoundaries,
+  resolveSpectrogramSampleMs,
 } from "./spectrogramTimeline.js";
 import { SpectrumHistorySlab } from "../lib/SpectrumHistorySlab.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../lib/historyChunkConfig.js";
@@ -103,6 +104,27 @@ describe("spectrogramFrameEndMs", () => {
   it("keeps real gaps blank", () => {
     const f = viewOf([{ timestampMs: 1000 }, { timestampMs: 1120 }]);
     expect(spectrogramFrameEndMs(f, 0, SAMPLE_MS)).toBe(1040);
+  });
+});
+
+describe("resolveSpectrogramSampleMs", () => {
+  it("falls back when the view has fewer than two rows", () => {
+    expect(resolveSpectrogramSampleMs(viewOf([]), 40)).toBe(40);
+    expect(resolveSpectrogramSampleMs(viewOf([{ timestampMs: 1000 }]), 40)).toBe(40);
+  });
+
+  it("infers the live ~40ms visual cadence from real timestamps", () => {
+    const f = frames(1000, 1200, 40);
+    expect(resolveSpectrogramSampleMs(f, 40)).toBe(40);
+  });
+
+  it("infers the coarser file-mode ~100ms cadence instead of the live constant", () => {
+    // File-mode visual history batches at the main-history 100ms grid (see
+    // docs/superpowers/specs/2026-06-29-sample-clocked-history-cadence-design.md), not the live
+    // 40ms visual rate. A caller stuck on the 40ms constant would treat every consecutive frame as
+    // a gap here, painting a blank stripe after each 40ms-wide column.
+    const f = frames(1000, 1400, 100);
+    expect(resolveSpectrogramSampleMs(f, 40)).toBe(100);
   });
 });
 

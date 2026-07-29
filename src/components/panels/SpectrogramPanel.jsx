@@ -16,6 +16,7 @@ import { computeLogPan, computeLogZoom, pixelToLogValue } from "../../math/axisI
 import {
   spectrogramTimeWindow,
   spectrogramDataBoundaryMarkers,
+  resolveSpectrogramSampleMs,
 } from "../../math/spectrogramTimeline";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
@@ -192,7 +193,7 @@ export function SpectrogramPanel({ compact = false }) {
     () => buildSpectrogramLut(getTheme(resolvedThemeId, listCustomThemes()).colormap),
     [resolvedThemeId]
   );
-  const sampleMs = VISUAL_HIST_SAMPLE_SEC * 1000;
+  const sampleMs = resolveSpectrogramSampleMs(spectrogramSnaps, VISUAL_HIST_SAMPLE_SEC * 1000);
   // Visible time window from the master (loudness history) timeline; frames are placed by timestamp.
   // Computed inline (not memoized): histSourceList is a stable, mutated-in-place ring reference in
   // live mode, so a useMemo keyed on it never recomputes as data arrives and would freeze the

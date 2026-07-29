@@ -2,6 +2,7 @@ import { useMemo, useRef } from "react";
 import { useCanvasSize } from "../../hooks/useCanvasSize.js";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas.js";
 import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
+import { resolveSpectrogramSampleMs } from "../../math/spectrogramTimeline.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { listCustomThemes } from "../../theme/customThemesRepo.js";
@@ -27,7 +28,7 @@ export function DockSpectrogram({ controls }) {
   );
   const snaps = snapRef.current;
   const latest = snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
-  const sampleMs = VISUAL_HIST_SAMPLE_SEC * 1000;
+  const sampleMs = resolveSpectrogramSampleMs(snaps, VISUAL_HIST_SAMPLE_SEC * 1000);
   const newestMs = Number.isFinite(latest?.timestampMs) ? latest.timestampMs + sampleMs : NaN;
   const windowMs = (controls?.dockHistoryWindowSec ?? 60) * 1000;
   const oldestMs = Number.isFinite(newestMs) ? newestMs - windowMs : NaN;
