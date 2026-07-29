@@ -1,266 +1,219 @@
 # Spectrogram 3D Waterfall View — Design
 
-**Date:** 2026-07-28
-**Status:** Approved, not yet implemented
+**Date:** 2026-07-28 (rewritten 2026-07-29 to match what shipped)
+**Status:** Implemented
 **Scope:** Frontend only. `src-tauri` is not touched.
+
+> This document was rewritten after implementation. Several core decisions were reversed while
+> building, and a spec that still described the original plan would actively mislead anyone reading
+> the code against it. The reversals are recorded in **Reversed during implementation** rather than
+> quietly deleted — knowing that hidden-line removal was tried and why it failed is worth more than
+> the conclusion alone.
 
 ## Summary
 
-Add a 3D waterfall (hidden-line mesh) view mode to the existing Spectrogram panel, selected by a
-per-panel toggle. The 3D view consumes the same snapshot history as the 2D heatmap and shares its
-time window, so switching modes never changes what data is on screen — only how it is drawn.
+A 3D line-waterfall view mode on the existing Spectrogram panel, selected by a per-panel toggle. It
+consumes the same snapshot history as the 2D heatmap and shares its time window, so switching modes
+never changes *what* data is on screen — only how it is drawn.
 
-The mode is positioned as **presentation-first**: it shows how energy evolves, it does not replace
-the 2D heatmap for reading values. Hover readout is deliberately absent (see Non-Goals).
+The mode is **presentation-first**: it shows how energy evolves over time. It does not replace the
+2D heatmap for reading values, and has no hover readout.
 
 ## Motivation
 
 The 2D spectrogram encodes magnitude as colour only. Envelope shape over time — attack, decay,
-resonant tails, low-end build-up — is legible in a 3D waterfall in a way a heatmap does not convey.
-The data needed for it is already in the panel; only the rendering differs.
+resonant tails, low-end build-up — reads in a waterfall in a way a heatmap does not convey. All the
+data is already in the panel; only the rendering differs.
 
 ## Non-Goals
 
-- **No hover readout in 3D.** Inverting a 3D projection back to (time, frequency, dB) under
-  occlusion is unreliable. A wrong number is worse than no number. Users switch to 2D to read values.
+- **No hover readout in 3D.** Inverting a rotated projection back to a value under a folded surface
+  is unreliable. A wrong number is worse than no number; users switch to 2D to read values.
 - **No dock module support.** `DockSpectrogram` renders in a narrow strip where a waterfall would be
   illegible. `src/dock/dockModuleControls.js` is unchanged.
 - **No DSP, IPC, or Rust changes.** No new engine request, no new frame field.
-- **No WebGL.** Canvas 2D only. Painter's algorithm resolves occlusion without a depth buffer, and
-  the project currently contains no WebGL at all — introducing it would be an architecture-level
-  decision warranting its own ADR.
+- **No WebGL.** Canvas 2D only. The project contains no WebGL at all; introducing it would be an
+  architecture-level decision warranting its own ADR. Nothing in the final design needs it — the
+  measured worst case is ~3.4 ms per repaint.
 
 ## Decisions
 
 | # | Decision | Rationale |
 |---|---|---|
 | 1 | 3D is a **view mode of the Spectrogram panel**, not a new panel | Reuses data source, settings, colormap, time window; smallest increment |
-| 2 | Presentation-first; analysis capability deferred | Set by the user at design time; keeps v1 scope closed |
-| 3 | **Follows the existing time window**, downsampled | Shares scrub, zoom, and frozen snapshots with 2D; no second timeline to explain |
-| 4 | **Orthographic** projection, not perspective | Perspective compresses the far end of the time axis; with a shared time window that misleads. Parallel axes keep time spacing honest. It also makes dB→screen-height a single scene-wide linear map, which is what lets Colorize reuse one gradient (see Performance Model) |
-| 5 | **Hidden-line mesh** (style B): opaque background fill + stroke | Occlusion is what makes the surface read as solid. Painter's algorithm gives it for free |
-| 6 | Stroke colouring is a **toggle** (`Colorize`) | Off = classic monochrome mesh. On = theme colormap, keeping parity with 2D theming. Both cost effectively the same, so the toggle is an aesthetic choice, not a performance escape hatch |
-| 7 | Rotation on **right-drag** only | Left-drag, wheel, Ctrl-combos and double-click keep their 2D meanings. Right-click menu is already suppressed on this canvas |
-| 8 | Left axis rail controls **Height Gain** in 3D | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation. Frequency and time swap visual direction as azimuth turns |
-| 9 | Scrub feedback is a **highlighted ridge**, not a selection line | A vertical line through a 3D scene has no meaning; ridges are drawn one by one anyway |
-| 10 | Floor grid and slanted axis labels ship in v1 | They carry most of the perceived finish of this chart type |
+| 2 | Presentation-first; analysis capability deferred | Keeps scope closed |
+| 3 | **Follows the existing time window** | Shares scrub, zoom and frozen snapshots with 2D; no second timeline to explain |
+| 4 | **Orthographic** projection, not perspective | Perspective compresses the far end of the time axis, and this view shares its window with the 2D heatmap, so unequal time spacing would misread |
+| 5 | **Anisotropic** fit — X and Y scaled independently | PLVS panels are wide and short; a spectrogram can be 920×110 device pixels. An isotropic `min()` fit lets the height constraint shrink the whole scene until it occupies a fraction of the width. This is a data plot, not a photograph, and the 2D heatmap already stretches its axes independently |
+| 6 | **Unfilled line waterfall** — ridges are stroked, never filled | See Reversed #1 |
+| 7 | **Each ridge is a captured frame at its own timestamp** | See Reversed #2 |
+| 8 | Colour is **absolute against the fixed dB range**; only height follows the dB floor | dB is encoded twice in 3D (height and colour). A control that moves both leaves nothing stable to read the change against. Colour pinned to absolute level makes it the reference frame |
+| 9 | Rotation on **right-drag** only | Left-drag, wheel, Ctrl-combos and double-click keep their 2D meanings. The right-click menu is already suppressed on this canvas |
+| 10 | Left axis rail controls **Height Gain** in 3D | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation — frequency and time swap visual direction as azimuth turns |
+| 11 | Scrub feedback is a **highlighted ridge**, not a selection line | A vertical line through a rotated scene has no meaning |
+| 12 | Pointer input is **unprojected onto the floor plane** | See Interaction |
+| 13 | Default viewpoint: azimuth 135°, elevation 60° | Frequency on the front-left floor edge, time on the front-right, newest frame at the near corner. See Interaction for the trade this forces |
+| 14 | Floor grid and slanted axis labels ship in v1 | They carry most of the perceived finish of this chart type |
 
-### Rejected alternatives
+## Reversed during implementation
 
-- **Fixed viewpoint, no rotation.** Cheapest, but occlusion becomes unresolvable — peaks hide peaks
-  on dense material, which is the common case.
-- **Remapping chart-area gestures to 3D** (left-drag rotates, wheel dollies, time/frequency fall
-  back to the rails). Technically clean — both rails already carry full pointer and wheel handlers —
-  but it makes wheel and left-drag mean different things per mode. Gesture semantics drifting with
-  mode is a durable product debt; WebGL is merely engineering effort. Rejected for that asymmetry.
-- **Filled colour ribbons** (style C, the SignalScope look). Colour parity with 2D, but rebuilds a
-  multi-stop `CanvasGradient` per ridge per frame and loses the fine mesh texture.
+These were decided one way in the original design and changed after seeing real output. Each cost a
+round of rework; the reasoning is kept so the same ground is not re-covered.
+
+### 1. Hidden-line mesh → unfilled line waterfall
+
+**Original:** fill each ridge opaquely so it occludes the ones behind (painter's algorithm),
+because occlusion is what makes a surface read as solid.
+
+**Why it failed:** occlusion only reads when successive ridges separate enough vertically on
+screen, which needs a high elevation angle. A wide, short panel forces a low one, and there the
+front ridge's fill swallows the entire interior — you see an outline and nothing else.
+
+**Consequences, all favourable:** dropping the fill removed all overdraw, which had been the
+largest unknown in the performance model. It also removed the need to resolve an opaque surface
+colour, which had been silently picking up a 55 %-alpha panel background and defeating the
+occlusion it existed to provide.
+
+### 2. Fixed-slot sampling → timestamp-anchored ridges
+
+**Original:** cut the window into N fixed slots and ask each which frame covers it — the strategy
+the 2D heatmap's long-zoom branch uses.
+
+**Why it failed:** a slot is a fixed screen position that keeps being re-fed with whichever frame
+currently covers it. Window movement smaller than one slot produces no visible change at all, and
+crossing a slot boundary re-binds every ridge at once. The surface stutters and shimmers instead of
+flowing, and no amount of tuning ridge count or spacing removes it, because the stepping is in the
+sampling rather than the density.
+
+The 2D heatmap has a second branch that places each frame at the x of its own timestamp. That is
+the one this should have copied.
+
+### 3. One shared Colorize gradient → one per ridge
+
+**Original:** since colour and height are both functions of dB, and orthographic projection makes
+dB→screen-height one scene-wide linear map, a single gradient could serve every ridge — with a
+shear to flatten the sloped baselines.
+
+**Why it failed:** the derivation is sound but incompatible with `Path2D`, which resolves its
+coordinates against the CTM at paint time. A shear applied before stroking moves the curve, not
+just the gradient. `Path2D` is needed to fill/stroke different shapes from one construction, which
+matters more.
+
+**What replaced it:** each ridge builds its own gradient along the baseline's perpendicular — exact,
+no transform involved. Measured at roughly +1 ms per repaint, so the optimisation the shear existed
+to provide was never needed.
+
+### 4. `useSpectrogramCanvas.js` untouched → touched
+
+The original design guaranteed the 2D renderer would not be modified, so the existing path carried
+zero regression risk. The shared **dB Floor** control gave that up deliberately: the spectrogram had
+no dB range control at all in either mode, and adding one only to 3D would have left the gap.
+
+The default equals the previous constant, so out-of-box 2D output is bit-identical, pinned by a test
+asserting exact pixel bytes.
 
 ## Architecture
 
-### New: `src/math/spectrogram3dMath.js`
+### `src/math/spectrogram3dProjection.js`
 
-Pure functions. No React, no canvas. Two layers so the renderer can be swapped later without
-touching data access.
+Pure. Orthographic axonometric projection plus the small derivations the renderer and the panel need:
 
-- `sampleWaterfallGrid(view, startIdx, endIdx, oldestMs, span, sampleMs, ridgeCount, yToBand)`
-  → `{ heights: Float32Array(ridgeCount * pointCount), present: Uint8Array(ridgeCount),
-  timestamps: Float64Array(ridgeCount) }`
+- `clampViewParams` — elevation clamped to 5–85°, azimuth wrapped, height gain clamped.
+- `buildProjection` — six affine coefficients, `heightScale`, `ridgeOrderAscending`.
+- `labelEdges` — which floor edge each axis label belongs on. Derived, not fixed: pinning an edge
+  works at one azimuth and drops a label behind the surface everywhere else.
+- `unprojectFloor` — the inverse restricted to the floor plane. Exact 2×2 solve; the determinant is
+  `depth · scaleX · scaleY`, non-zero for every allowed elevation.
 
-  `pointCount` is `yToBand.length` — the caller sizes the frequency axis by choosing the lookup
-  table's length, so the grid has exactly one column per entry.
+### `src/math/spectrogram3dGrid.js`
 
-  Resolves the newest active frame per ridge slot by binary search on timestamps. This is the same
-  strategy the 2D long-zoom branch already uses in `useSpectrogramCanvas.js` (the `endIdx - startIdx
-  + 1 > W * 4` path), with the column count generalised from canvas width to `ridgeCount`.
+Pure. `sampleWaterfallGrid` selects which captured frames become ridges and reads their levels into
+one grid. Decimation buckets by **absolute** time, at a stride quantised to whole frame periods, and
+seeds its bucket state from the frame just *outside* the window. Each of those three details exists
+to stop a different class of flicker — see Rendering.
 
-  **Real gaps in time must stay empty**, exactly as 2D leaves them unpainted. A ridge slot whose
-  target timestamp falls outside any frame's `[timestampMs, frameEndMs)` is marked absent and is not
-  drawn. Interpolating across a gap would invent data the capture never produced.
+### `src/hooks/useSpectrogram3dCanvas.js`
 
-- `buildProjection({ azimuthDeg, elevationDeg, width, height })` → precomputed projection
-  coefficients plus the ridge draw order.
-- `projectPoint(tFrac, fFrac, hFrac, projection)` → `{ x, y }` in device pixels.
-- `clampViewParams({ azimuthDeg, elevationDeg, heightGain })` → clamped values.
+The renderer. rAF loop, `paramsRef` mirror, cached `yToBand`, and a repaint-skip guard. No test, in
+keeping with `useSpectrogramCanvas.js` — canvas work is not meaningfully testable under jsdom, which
+is why everything testable was pushed into the two math modules.
 
-### New: `src/hooks/useSpectrogram3dCanvas.js`
-
-Sibling to `useSpectrogramCanvas`, same shape: `requestAnimationFrame` loop, `paramsRef` mirror of
-props, cached derived tables. Draws the floor, the ridges back-to-front, then the axes and labels.
-
-The existing repaint-skip cache **does** carry over and must be kept. Spectrum frames arrive at 25 Hz
-and the time window advances at 10 Hz, so a live 3D view needs ~25 repaints per second, not 60. Only
-active dragging or rotation pushes it to display rate. Skipping this cache would triple the cost for
-no visible gain.
-
-### New: `src/math/spectrogram3dMath.test.js`
-
-Follows the repo's existing split — everything under `src/math/` has a test, `useSpectrogramCanvas.js`
-has none, because canvas work is not meaningfully testable under jsdom. All testable logic therefore
-lives in the math module and the hook keeps only the rAF loop and canvas calls.
+Publishes the live projection to `projectionRef` so the panel can unproject pointer positions.
 
 ### Modified
 
 | File | Change |
 |---|---|
-| `src/components/panels/SpectrogramPanel.jsx` | Branch on `spectrogram3d`: mount the 3D hook instead of the 2D one; suppress hover and SVG overlays; relabel/reroute the axis rails |
-| `src/lib/panelControls.js` | Five new keys + normalization |
-| `src/components/PanelSettingsContent.jsx` | `3D View`, `Colorize`, `Height Gain`, `Reset View` |
-| `src/components/panels/chartHelp.js` | Help entries for 3D mode |
+| `src/components/panels/SpectrogramPanel.jsx` | View-mode branch, overlay suppression, rail rebinding, right-drag rotation, pointer unprojection |
+| `src/hooks/useSpectrogramCanvas.js` | `dbFloor` threaded through; colour via the shared helper |
+| `src/theme/spectrogramColormap.js` | New `spectrogramColorFrac(db, dbFloor)`, shared by both renderers |
+| `src/lib/panelControls.js` | New keys plus normalizers |
+| `src/components/PanelSettingsContent.jsx` | The 3D controls, the shared `dB Floor`, and `Smoothing` unlocked for the spectrogram tab |
+| `src/components/panels/chartHelp.js` | Help entries |
 
-`src/workspace/clampPanelControls.js` is **not** modified — it clamps channel selection only; numeric
-range normalization lives in `normalizePanelControls`.
-
-`src/hooks/useSpectrogramCanvas.js` is **not** modified. The 2D path is untouched.
+`src/workspace/clampPanelControls.js` is **not** modified — it clamps channel selection only.
 
 ## Rendering
 
-### Projection
+### Ridges
 
-Orthographic axonometric. Three axes:
+Each ridge is one captured frame, stroked as an open path at partial-to-full alpha. Painter's order
+runs far-to-near, derived from `proj.ridgeOrderAscending` rather than assumed, so the newest frame
+lands on top at the default viewpoint.
 
-- **Time** — a floor edge running down-right, increasing toward the viewer.
-- **Frequency** — the other floor edge, running up-right.
-- **dB** — straight up.
+Ridge and point counts are derived from canvas width and are **not** user-configurable. They were
+exposed during tuning and withdrawn: they are performance parameters wearing an aesthetic costume,
+and "ridges" versus "points per ridge" is not a distinction users have a model for.
 
-The floor is the rhombus these two horizontal axes span; grid lines are their subdivisions.
+### Three flicker sources, and what each fix addresses
 
-### Draw order
+Worth keeping together, because each was found only after fixing the previous one:
 
-Oldest ridge first, newest last. Because time increases toward the viewer, painter's algorithm makes
-the newest frame unoccluded — which is the frame live monitoring cares about most.
+1. **Stepping instead of flowing** — fixed-slot sampling. Fixed by anchoring ridges to timestamps.
+2. **Ridges blinking on and off** — the decimation stride was derived from `span`, and the window's
+   edges are real captured timestamps, so `span` jitters by a few ms per update. Every bucket edge
+   shifted and frames near an edge flipped in and out. Fixed by quantising the stride to whole frame
+   periods.
+3. **The oldest ridge changing shape before it leaves** — the bucket state was seeded with `NaN`, so
+   the first frame *inside* the window was always kept regardless of its bucket. As the edge
+   advanced, that frame's identity changed every update at an arbitrary phase. Fixed by seeding from
+   the frame just outside the window, which makes the selection a pure function of absolute time.
 
-### Ridge construction
+A ridge additionally **fades out** over the last ~2.5 ridge spacings before leaving. Without it a
+whole curve at full height blinks out at the edge. The entering end is deliberately *not* faded: the
+newest ridge is the frame live monitoring is watching, and easing it in would make the current moment
+permanently the dimmest thing on screen. Arrival is the signal; departure is history scrolling away.
 
-Each ridge is one closed path: along the spectrum, then back along its floor baseline. Fill with the
-resolved panel background colour (this *is* the hidden-line removal), then stroke.
+### Colour
 
-- `Colorize` **off**: one stroke per ridge in the theme foreground colour.
-- `Colorize` **on**: one stroke per ridge using a **shared `CanvasGradient`**, built once per repaint
-  from `colormapLut` and reused by every ridge.
+`spectrogramColorFrac(db, dbFloor)` is shared by both renderers:
 
-  The reasoning takes two steps, and the second one is easy to miss:
+```
+db <= dbFloor            -> 0
+otherwise                -> clamp((db - SPECTROGRAM_DB_MIN) / (SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN))
+```
 
-  1. A ridge point sits at `screenY = baseY(t, f) − hNorm × heightScale`. The height offset is purely
-     vertical and uniformly scaled, because the projection is orthographic — so dB maps to *vertical
-     displacement from the baseline* by one scene-wide constant.
-  2. But `baseY` varies along a ridge: the frequency axis is tilted, so the baseline is a sloped line,
-     not a horizontal one. A plain vertical gradient in screen space would therefore colour equal-dB
-     points differently depending on frequency.
+Absolute, so raising the floor never recolours a peak. `<=` rather than `<` is deliberate: it makes a
+value sitting exactly on the floor read as the bottom of the ramp, which keeps 2D and 3D consistent
+and reproduces the old behaviour exactly at the default floor.
 
-  The projection being affine means **every ridge's baseline has the same slope**. Applying one shear
-  that flattens that slope makes the baseline horizontal for all ridges simultaneously; in the sheared
-  space, vertical position is exactly `hNorm`, and a vertical gradient is correct. Per ridge only a
-  translate is then needed.
+In 3D the gradient runs along the baseline's perpendicular, and each stop recovers the dB its height
+fraction represents before taking the absolute colour — so colour is a function of level, not of
+screen height.
 
-  So: shear set once per repaint, gradient built once per repaint, one `translate` + one `stroke` per
-  ridge. The alternative — splitting each ridge into same-colour runs and stroking each — was
-  estimated at roughly 4400 stroke calls per repaint and rejected; see Performance Model.
+### Canvas units
 
-### Frequency sampling
+`useCanvasSize` sizes the canvas in **device pixels**. Both `ctx.font` and `ctx.lineWidth` must scale
+by the ratio or text renders tiny and the mesh washes out to hairlines. The ratio is derived from the
+canvas's own dimensions rather than `window.devicePixelRatio`, because `useCanvasSize` can cap it
+per axis.
 
-`buildYToBand(bands, pointCount, minHz, maxHz)` is reused unchanged — its second parameter is just
-"how many sample points", so passing 250 yields 250 frequency points. 2D and 3D therefore share one
-frequency mapping and cannot drift apart.
+Per the Windows text-scaling pitfall in `AGENTS.md`, `devicePixelRatio` inside the webview already
+includes the Accessibility text-size factor, so labels follow that setting automatically. **That is
+correct behaviour and must not be "fixed".**
 
-### Ridge count
-
-Not user-configurable. It is a performance parameter that looks like an aesthetic one; exposing it
-hands the user a control that can destroy the frame rate. Derived from canvas width instead, so
-density grows naturally with panel size.
-
-Starting targets: **R ≈ 120 ridges, P ≈ 300 points**, both scaled from canvas width and capped there.
-Cost tracks the product R×P, so the two can be traded against each other freely while tuning the look
-— more ridges reads as denser time resolution, more points as finer spectral detail.
-
-P is a decimation of the 958 available bands, roughly 3:1. Note the asymmetry with 2D, which maps
-bands to *canvas rows* via `buildYToBand` and therefore over-samples them on a tall panel. 3D
-deliberately carries less spectral detail than 2D — another reason it is not a readout view.
-
-### Fallback algorithm: floating horizon
-
-If polygon fill turns out to be the bottleneck (see Performance Model), the escape route is to change
-algorithm rather than to lower the knobs.
-
-**Floating horizon** maintains the silhouette envelope of everything drawn so far and draws only the
-portion of each ridge that rises above it. There is no overdraw and **no fill at all** — pure strokes
-produce correct hidden-line output, at O(R×P).
-
-It is not the default because it is materially more code, and because it interacts with the shared
-gradient above: clipped ridge segments still stroke against the same vertical gradient, but the
-"fill with background colour" step that currently creates the solid look disappears, so the surface
-reads as a wireframe rather than a solid. That is a visual change, not just an optimisation.
-
-### Canvas text and DPI
-
-`useCanvasSize` sets `canvas.width = clientWidth * devicePixelRatio`, so the canvas coordinate system
-is **device pixels**. The 2D path never noticed because it writes `ImageData` directly. The 3D path
-draws text, so `ctx.font` sizes must be multiplied by DPR.
-
-Consequence worth a code comment: per the Windows text-scaling pitfall in `AGENTS.md`,
-`devicePixelRatio` inside the webview already includes the Accessibility text-size factor. Axis
-labels sized off DPR therefore track the user's text-scaling setting automatically. That is correct
-behaviour and must not be "fixed".
-
-## Performance Model
-
-Paper estimate, done before implementation. Recorded here because two of its conclusions changed the
-design rather than merely reassuring us about it.
-
-### Measured parameters
-
-| Parameter | Value | Source |
-|---|---|---|
-| Bands per frame | **958** | `GRID_POINTS_PER_OCT = 96` over 9.97 octaves (20 Hz – 20 kHz) |
-| Spectrum frame rate | **25 Hz** | `VISUAL_HIST_SAMPLE_SEC = 0.04` |
-| Master timeline rate | 10 Hz | `HIST_SAMPLE_SEC = 0.1` |
-
-### Two budgets, not one
-
-Because data arrives at 25 Hz and the window advances at 10 Hz, the repaint-skip cache holds a live
-3D view at ~25 repaints/second. Display rate is only reached while the user is actively dragging or
-rotating.
-
-- **Steady state (live monitoring): 40 ms per repaint**
-- **Interactive transient (drag, rotate): 16.7 ms per repaint**
-
-### Cost breakdown
-
-With R = ridge count, P = points per ridge. Assuming a maximised panel at roughly 3000×1200 device
-pixels, with the projected frequency axis spanning ~1500 px.
-
-| Item | Scale | Estimate |
-|---|---|---|
-| Grid sampling | R×P array reads + R binary searches | < 1 ms |
-| Projection | R×P × ~4 flops | < 1 ms |
-| **`lineTo` calls** | **R×P JS→C++ boundary crossings** | **dominant CPU cost** |
-| **Polygon fill** | **R × 1500 px × mean height, with overdraw** | **dominant GPU cost** |
-| Stroke | R polylines, 1 px wide | small |
-| Gradient (Colorize on) | 1 per repaint | negligible |
-
-At **R = 120, P = 300** (36,000 points):
-
-- `lineTo` at 100–200 ns each → **4–7 ms**
-- Fill ≈ 54 Mpx with hardware acceleration → **~5 ms**
-- **Total ≈ 10–12 ms**
-
-Comfortable against the 40 ms steady-state budget; adequate but not generous against 16.7 ms.
-
-### Calibration against the existing 2D path
-
-The most reliable anchor available. `paintSpectrogramImageData` writes `ImageData` **per pixel**:
-at 3000×1200 that is ~3.6 M loop iterations and ~14.4 M byte writes per repaint — and it already runs
-at 25 Hz in production without complaint.
-
-The 3D path's 36,000 points are **two orders of magnitude less** JS arithmetic. The risk therefore is
-not arithmetic; it is that 3D trades pure typed-array writes for canvas API calls and GPU fill. The
-former is known affordable, the latter is not yet measured.
-
-### Principal uncertainty
-
-The fill estimate assumes WebView2's Canvas 2D is hardware-accelerated. Under software rendering,
-54 Mpx per repaint will not hold — and that depends on the machine and its drivers, not on anything
-this code controls. Floating horizon (see Rendering) exists precisely for that case.
+`ctx.font` does not resolve CSS custom properties — an unresolvable value is silently ignored,
+leaving the previous font — so the font family is resolved via `getComputedStyle` first.
 
 ## Interaction
 
@@ -270,105 +223,126 @@ this code controls. Floating horizon (see Rendering) exists precisely for that c
 |---|---|---|
 | Left-drag (chart) | Pan timeline | Pan timeline — unchanged |
 | Wheel (chart) | Zoom time window | Zoom time window — unchanged |
-| Ctrl+wheel / Ctrl+drag | Frequency range | Frequency range — unchanged |
+| Ctrl+wheel / Ctrl+drag | Frequency range | Frequency range — anchored via unprojection |
 | Double-click | Return to latest | Return to latest — unchanged |
-| **Right-drag** | none | **Rotate (azimuth + elevation)** |
+| **Right-drag** | none | **Rotate** |
 | Left axis rail | Frequency range | **Height Gain** |
 | Bottom axis rail | Time window | Time window — unchanged |
 
-Right-drag is the only added gesture. The left rail is the only changed one; this is a deliberate,
-narrow exception to the "no gesture drift" principle in Decision 7, taken because the rail is rarely
-used and because the reassignment makes its position semantically correct.
+### Pointer unprojection
 
-`Reset View` lives in Panel Settings rather than on double-click, which keeps "return to latest". It
-restores **azimuth and elevation only** — height gain, colorize, frequency range and time window are
-left alone, so recovering from a disorienting viewpoint does not also undo unrelated tuning.
+Every pointer handler on the chart was written against the 2D projection, where time is the
+horizontal screen axis and frequency the vertical one. Under a rotated floor neither holds, and at
+the default azimuth both *invert*, so scrubbing selected the mirrored moment and zooming anchored on
+the wrong end of the spectrum.
 
-### Axis rails
+Both now route through `unprojectFloor`. Time selection is remapped at the call site — the shared
+history handlers are used by other panels and are not modified; the cursor is translated into the
+equivalent 2D-linear horizontal position and delegated via an `Object.create` proxy event.
 
-Both rails keep their handlers and their screen position in 3D; only their labels change. Hiding
-them would remove adjustment entry points and make the chart area reflow on every mode switch.
+**The projection works in device pixels and pointer events are in CSS pixels**; the conversion is
+required or everything is offset on a scaled display.
 
-Tick values move into the canvas, drawn along the projected axes.
+### The default viewpoint's trade
+
+Azimuth 135° puts frequency on the front-left floor edge, time on the front-right, and the newest
+frame at the near corner — new data emerges at the front and flows away, which is what makes a
+waterfall read as one, and it puts the newest ridge last in painter's order.
+
+**The cost is that time then reads right-to-left, the opposite of the 2D heatmap**, so switching
+modes flips the time axis. This is a real inconsistency, chosen deliberately over azimuth 315°, which
+keeps 2D's direction but pushes the newest frame to the far end. It is noted in the panel help.
+
+Both orientations remain fully usable if the user rotates — labels move to whichever edge faces the
+viewer and painter's order follows, verified by an azimuth sweep in the tests.
 
 ### Suppressed in 3D
 
-| Element | 3D behaviour |
-|---|---|
-| Hover crosshair and readout popover | Off |
-| Frequency-channel marker lines | Hidden |
-| Data-boundary dashed lines | Hidden |
-| `TimelineLatestEdgeHint` | Kept — it is edge-anchored, not projection-dependent |
-| Selection line (`selLineX`) | Replaced by highlighting the selected ridge |
-
-Selection needs the replacement, not plain removal: without it, scrubbing to a past moment gives no
-feedback about which frame is selected. The selected ridge is stroked in
-`--ui-loudness-selection` and thickened.
+Hover readout, frequency-channel marker lines, and data-boundary lines are hidden.
+`TimelineLatestEdgeHint` is kept — it is edge-anchored, not projection-dependent.
 
 ## Panel Controls
 
 | Key | Default | Range |
 |---|---|---|
 | `spectrogram3d` | `false` | boolean |
-| `spectrogram3dColorize` | `false` | boolean |
-| `spectrogram3dHeightGain` | `1.0` | 0.3 – 3.0 |
-| `spectrogram3dAzimuthDeg` | `45` | 0 – 360, wraps |
-| `spectrogram3dElevationDeg` | `22` | 5 – 70, clamped |
+| `spectrogram3dColorize` | `true` | boolean |
+| `spectrogram3dHeightGain` | `1` | 0.3 – 3 |
+| `spectrogram3dAzimuthDeg` | `135` | 0 – 360, wraps |
+| `spectrogram3dElevationDeg` | `60` | 5 – 85, clamped |
+| `spectrogram3dLineAlpha` | `1` | 0.15 – 1 |
+| `spectrogram3dLineWidth` | `1` | 0.5 – 3, a multiplier on the device-pixel base |
+| `spectrogram3dFloor` | `true` | boolean |
+| `spectrogramDbFloor` | `SPECTROGRAM_DB_MIN` | −96 – −12, **applies to both modes** |
 
-Elevation is clamped at both ends: at 0° the surface collapses to a line; above ~70° it degenerates
-into a skewed top-down view that is strictly worse than 2D.
+The elevation clamp exists in two places — the normalizer and the projection — and they must agree,
+or the settings layer silently pulls back a value the renderer would accept.
 
-`spectrogram3dColorize` defaults to **off for aesthetic reasons, not performance ones** — the first
-impression of 3D mode is the classic monochrome mesh. Worth stating explicitly because the shared
-gradient makes colorize effectively free, so a future reader must not "optimise" the default by
-assuming it was set for cost.
+`spectrumOctaveSmoothing` is now exposed on the spectrogram tab. It already travelled in the request
+key, so the engine could always deliver smoothed data to the spectrogram; only the control was
+missing. It affects both modes.
 
-These ride along with the existing `panelControls` persistence path. **No new persisted key is
-introduced**, deliberately — per `AGENTS.md`, choosing the wrong persistence domain fails silently by
-letting a reset take the wrong data with it.
+All of these ride the existing `panelControls` persistence path. **No new persisted domain key is
+introduced** — per `AGENTS.md`, choosing the wrong persistence domain fails silently by letting a
+reset take the wrong data with it.
 
-Settings labels use Title Case (`3D View`, `Colorize`, `Height Gain`, `Reset View`); `aria-label`s
-stay lowercase.
+## Performance
+
+Measured in a browser harness replicating the draw loop, at the real panel aspect ratios:
+
+| Canvas | Ridges × points | Colorize | Median |
+|---|---|---|---|
+| 922×110 | 66 × 154 | on | 1.2 ms |
+| 2560×900 | 140 × 320 | on | 3.4 ms |
+| 3840×1200 | 140 × 320 | on | 3.1 ms |
+
+Against a 16.7 ms interactive budget that is roughly a fifth. Cost saturates past ~1960 px wide
+because the ridge and point counts cap.
+
+Colorize costs about +1 ms — the shared-gradient optimisation in Reversed #3 was never needed.
+
+**Caveats:** this is a replica of the draw loop, not the shipped code; Chromium is not WebView2;
+there is no competing load from capture, DSP or the other panels; and `sampleWaterfallGrid` itself is
+not included. The conclusion survives that error bar, but it does not replace a measurement on the
+real app.
+
+### Repaint frequency
+
+Spectrum frames land at 25 Hz and the window advances at 10 Hz, so a live view needs ~25 repaints per
+second, not 60. The repaint-skip guard is what enforces that, and **every input that can change the
+picture must be in its comparison set** — a missing one produces a control that silently does
+nothing, which looks exactly like a frozen render.
 
 ## Testing
 
-Unit tests in `src/math/spectrogram3dMath.test.js`:
+All testable logic lives in `src/math/`, each module with a matching test, following the repo's
+existing split.
 
-- **Projection** — known viewpoint and point map to known screen coordinates; azimuth 0/90/180/270
-  symmetry holds.
-- **Parameter clamping** — elevation bounds, azimuth wrap past 360, height gain bounds.
-- **Grid sampling** — timestamp boundary alignment; **data gaps stay empty rather than being
-  interpolated**; ridge count is exact after downsampling.
+Several tests pin invariants rather than values, and were each verified to fail against the
+behaviour they replaced:
 
-No test for `useSpectrogram3dCanvas.js`, matching the existing treatment of `useSpectrogramCanvas.js`.
+- Ridges translate uniformly when the window slides, rather than re-binding.
+- The same frames stay selected across window jitter.
+- Frames leaving the old end do not re-phase the selection.
+- Floor coordinates round-trip through projection and back, at every azimuth and elevation.
+- Both axis labels land on a front edge at every azimuth.
+- Painter's order starts from the far end at every azimuth.
+- The default viewpoint's *layout* — frequency front-left, time front-right, newest nearest — rather
+  than the angle, so the number can be retuned without a false failure.
 
-### Performance gate
+### Not covered
 
-To be verified **after the renderer works and before settings wiring** — a failure here changes the
-design rather than being patched afterwards.
+- The 3D renderer hook itself, by design.
+- Ctrl+drag frequency pan in 3D: the equivalence between a pixel delta and an `fFrac` delta was
+  derived numerically, never verified by eye.
+- Appearance, in all cases.
 
-- **Method:** `npm run desktop` with real capture, panel maximised, time window at its longest
-  (worst case). Synthetic-data benchmarks do not count.
-- **Pass:** repaint completes within **40 ms** in steady state and within **16.7 ms** while dragging
-  or rotating. Measure the repaint itself, not the observed frame rate — at 25 Hz data an idle 3D
-  view is *supposed* to skip most display frames, so a "25fps" reading is the design working.
-- **Fallbacks, in order:** lower R and P (total points is what costs, so trade them freely) →
-  switch to floating horizon if fill dominates → accept a throttled repaint during rotation only.
-- **Not a fallback:** forcing `Colorize` off. The shared gradient makes it free; if it ever appears
-  to help, the gradient has been implemented wrong.
-- **Not a fallback:** shortening the time window. That would silently reverse Decision 3.
+## Acceptance
 
-### CI coverage
-
-This change is entirely frontend, so the `AGENTS.md` warning that the capture layer ships untested
-does not apply here — a green `npm run check` is genuinely green. `soak:capture` is not needed, as
-nothing in the capture layer changes.
-
-## Acceptance Criteria
-
-1. 2D mode behaves identically to before, item for item.
-2. Scrubbing in 3D visibly highlights the selected ridge.
+1. 2D mode behaves identically to before, item for item. **This now needs real checking** — the dB
+   Floor work touched the 2D renderer, which every earlier version of this design promised not to.
+2. Scrubbing in 3D highlights the selected ridge, at the moment the cursor is actually over.
 3. Switching modes preserves frequency range and time window.
-4. Viewpoint, height gain, and colorize survive preset save/load.
-5. Real time gaps render as empty space in 3D, as they do in 2D.
+4. Viewpoint, height gain, colorize and dB floor survive preset save/load.
+5. Real capture gaps render as missing ridges.
 6. `npm run check` passes.
