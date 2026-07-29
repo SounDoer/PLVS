@@ -95,6 +95,7 @@ describe("panelControls", () => {
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
+      spectrogramDbFloor: -84,
       spectrogram3d: false,
       spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
@@ -245,6 +246,7 @@ describe("panelControls", () => {
       spectrumYMinDb: -96,
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
+      spectrogramDbFloor: -84,
       spectrogram3d: false,
       spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
@@ -612,6 +614,23 @@ describe("stereo map panel controls normalization", () => {
     });
     const twice = normalizePanelControls(once);
     expect(twice).toEqual(once);
+  });
+});
+
+describe("spectrogramDbFloor normalization", () => {
+  it("defaults to SPECTROGRAM_DB_MIN", () => {
+    expect(normalizePanelControls({}).spectrogramDbFloor).toBe(-84);
+    expect(DEFAULT_PANEL_CONTROLS.spectrogramDbFloor).toBe(-84);
+  });
+
+  it("clamps to -96..-12", () => {
+    expect(normalizePanelControls({ spectrogramDbFloor: -200 }).spectrogramDbFloor).toBe(-96);
+    expect(normalizePanelControls({ spectrogramDbFloor: 0 }).spectrogramDbFloor).toBe(-12);
+    expect(normalizePanelControls({ spectrogramDbFloor: -50 }).spectrogramDbFloor).toBe(-50);
+  });
+
+  it("falls back to the default on non-numbers", () => {
+    expect(normalizePanelControls({ spectrogramDbFloor: "loud" }).spectrogramDbFloor).toBe(-84);
   });
 });
 

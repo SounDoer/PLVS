@@ -3,11 +3,11 @@ import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
 
-function paintSpan(data, width, height, xStart, xEnd, snap, yToBand, colormapLut) {
-  const rng = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
+function paintSpan(data, width, height, xStart, xEnd, snap, yToBand, colormapLut, dbFloor) {
+  const rng = SPECTROGRAM_DB_MAX - dbFloor;
   for (let y = 0; y < height; y++) {
-    const db = snap.dbList[yToBand[y]] ?? SPECTROGRAM_DB_MIN;
-    const t = Math.max(0, Math.min(1, (db - SPECTROGRAM_DB_MIN) / rng));
+    const db = snap.dbList[yToBand[y]] ?? dbFloor;
+    const t = Math.max(0, Math.min(1, (db - dbFloor) / rng));
     const lutIdx = Math.round(t * 255) * 3;
     const rowBase = y * width;
     for (let x = xStart; x < xEnd; x++) {
@@ -40,7 +40,8 @@ export function paintSpectrogramImageData(
   span,
   sampleMs,
   yToBand,
-  colormapLut
+  colormapLut,
+  dbFloor
 ) {
   const { data, width: W, height: H } = imageData;
   data.fill(0);
@@ -57,7 +58,7 @@ export function paintSpectrogramImageData(
       if (!snap?.dbList || !Number.isFinite(snap.timestampMs)) continue;
       const frameEndMs = spectrogramFrameEndMs(snaps, index, sampleMs);
       if (!(targetMs >= snap.timestampMs && targetMs < frameEndMs)) continue;
-      paintSpan(data, W, H, x, x + 1, snap, yToBand, colormapLut);
+      paintSpan(data, W, H, x, x + 1, snap, yToBand, colormapLut, dbFloor);
     }
     return;
   }
@@ -74,7 +75,7 @@ export function paintSpectrogramImageData(
     const xEnd = Math.min(W, Math.round(((endMs - oldestMs) / span) * W));
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
-    paintSpan(data, W, H, xStart, xEnd, snap, yToBand, colormapLut);
+    paintSpan(data, W, H, xStart, xEnd, snap, yToBand, colormapLut, dbFloor);
   }
 }
 
@@ -89,6 +90,7 @@ export function useSpectrogramCanvas({
   colormapLut,
   minHz = 20,
   maxHz = 20000,
+  dbFloor = SPECTROGRAM_DB_MIN,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
@@ -104,6 +106,7 @@ export function useSpectrogramCanvas({
     minHz: 20,
     maxHz: 20000,
     colormapLut: null,
+    dbFloor: NaN,
   });
 
   useEffect(() => {
@@ -116,8 +119,19 @@ export function useSpectrogramCanvas({
       colormapLut,
       minHz,
       maxHz,
+      dbFloor,
     };
-  }, [oldestMs, newestMs, sampleMs, selectedOffset, frozenSnaps, colormapLut, minHz, maxHz]);
+  }, [
+    oldestMs,
+    newestMs,
+    sampleMs,
+    selectedOffset,
+    frozenSnaps,
+    colormapLut,
+    minHz,
+    maxHz,
+    dbFloor,
+  ]);
 
   useEffect(() => {
     function draw() {
@@ -137,6 +151,7 @@ export function useSpectrogramCanvas({
         colormapLut,
         minHz,
         maxHz,
+        dbFloor,
       } = paramsRef.current;
       if (!colormapLut || colormapLut.length < 256 * 3) return;
       const snaps = frozenSnaps ?? snapRef.current;
@@ -155,7 +170,8 @@ export function useSpectrogramCanvas({
         last.H === H &&
         last.minHz === minHz &&
         last.maxHz === maxHz &&
-        last.colormapLut === colormapLut
+        last.colormapLut === colormapLut &&
+        last.dbFloor === dbFloor
       )
         return;
       lastPaintRef.current = {
@@ -169,6 +185,7 @@ export function useSpectrogramCanvas({
         minHz,
         maxHz,
         colormapLut,
+        dbFloor,
       };
 
       const ctx = canvas.getContext("2d");
@@ -212,7 +229,8 @@ export function useSpectrogramCanvas({
         span,
         sampleMs,
         cache.yToBand,
-        colormapLut
+        colormapLut,
+        dbFloor
       );
       ctx.putImageData(cache.imageData, 0, 0);
     }

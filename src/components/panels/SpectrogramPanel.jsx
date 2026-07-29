@@ -331,6 +331,7 @@ export function SpectrogramPanel({ compact = false }) {
     colormapLut,
     minHz: normalizedPanelControls.spectrogramYMinFreq,
     maxHz: normalizedPanelControls.spectrogramYMaxFreq,
+    dbFloor: normalizedPanelControls.spectrogramDbFloor,
   });
   useSpectrogram3dCanvas({
     canvasRef: is3d ? canvasRef : NO_CANVAS,
@@ -345,6 +346,7 @@ export function SpectrogramPanel({ compact = false }) {
     colormapLut,
     minHz: normalizedPanelControls.spectrogramYMinFreq,
     maxHz: normalizedPanelControls.spectrogramYMaxFreq,
+    dbFloor: normalizedPanelControls.spectrogramDbFloor,
     azimuthDeg: normalizedPanelControls.spectrogram3dAzimuthDeg,
     elevationDeg: normalizedPanelControls.spectrogram3dElevationDeg,
     heightGain: normalizedPanelControls.spectrogram3dHeightGain,

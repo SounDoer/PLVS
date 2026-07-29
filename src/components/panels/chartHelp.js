@@ -100,6 +100,12 @@ export const SPECTROGRAM_HELP = [
     ],
   },
   {
+    title: "Display Range",
+    items: [
+      "dB Floor (settings) - Raise it to give the display range to the loud part instead of the noise floor",
+    ],
+  },
+  {
     title: "3D View",
     items: [
       "Right drag - Rotate the waterfall surface",

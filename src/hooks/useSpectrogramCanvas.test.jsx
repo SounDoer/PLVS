@@ -4,6 +4,7 @@ import { render } from "@testing-library/react";
 import { useMemo, useRef } from "react";
 
 import { paintSpectrogramImageData, useSpectrogramCanvas } from "./useSpectrogramCanvas.js";
+import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 
 const BANDS = [{ fCenter: 1000 }];
 
@@ -106,7 +107,8 @@ describe("useSpectrogramCanvas", () => {
       length * 40,
       40,
       new Int16Array([0]),
-      colormapLut
+      colormapLut,
+      SPECTROGRAM_DB_MIN
     );
 
     expect(rowAt.mock.calls.length).toBeLessThanOrEqual(20);
@@ -135,11 +137,68 @@ describe("useSpectrogramCanvas", () => {
       6000,
       40,
       new Int16Array([0]),
-      colormapLut
+      colormapLut,
+      SPECTROGRAM_DB_MIN
     );
 
     const alphas = Array.from({ length: 20 }, (_, index) => imageData.data[index * 4 + 3]);
     expect(alphas.some((alpha) => alpha === 0)).toBe(true);
     expect(alphas.some((alpha) => alpha > 0)).toBe(true);
+  });
+
+  // Proves the default dbFloor value (SPECTROGRAM_DB_MIN) reproduces exactly today's 2D output,
+  // and that a raised floor actually changes the mapping. The top of the range stays pinned at
+  // SPECTROGRAM_DB_MAX, so raising the floor compresses the range from below: a fixed dB below the
+  // top ends up relatively closer to the (now nearer) floor and maps to a *lower* colormap index,
+  // even though it also means loud values spread further apart from each other and gain contrast
+  // -- the standard "raise the black point" effect.
+  it("maps a fixed dB to the same pixel bytes at the default floor, and a lower index at a raised floor", () => {
+    const snaps = {
+      length: 1,
+      timestampAt: () => 0,
+      rowAt: () => ({ timestampMs: 0, dbList: [-40] }),
+    };
+    // Distinct RGB per LUT stop so the resolved index is recoverable from the painted colour.
+    const colormapLut = new Uint8Array(256 * 3);
+    for (let i = 0; i < 256; i++) {
+      colormapLut[i * 3] = i;
+      colormapLut[i * 3 + 1] = 255 - i;
+      colormapLut[i * 3 + 2] = 0;
+    }
+
+    const atDefaultFloor = new ImageData(1, 1);
+    paintSpectrogramImageData(
+      atDefaultFloor,
+      snaps,
+      0,
+      0,
+      0,
+      40,
+      40,
+      new Int16Array([0]),
+      colormapLut,
+      SPECTROGRAM_DB_MIN
+    );
+    // -40 dB against the default -84..0 range: t = (−40 − (−84)) / 84 ≈ 0.52381, ×255 → lut index 134.
+    expect(Array.from(atDefaultFloor.data)).toEqual([134, 121, 0, 134]);
+
+    const atRaisedFloor = new ImageData(1, 1);
+    paintSpectrogramImageData(
+      atRaisedFloor,
+      snaps,
+      0,
+      0,
+      0,
+      40,
+      40,
+      new Int16Array([0]),
+      colormapLut,
+      -60
+    );
+    // Same -40 dB against a -60..0 raised floor: t = (−40 − (−60)) / 60 = 0.33333 → lut index 85.
+    expect(Array.from(atRaisedFloor.data)).toEqual([85, 170, 0, 85]);
+    const defaultLutIndex = atDefaultFloor.data[0];
+    const raisedLutIndex = atRaisedFloor.data[0];
+    expect(raisedLutIndex).toBeLessThan(defaultLutIndex);
   });
 });

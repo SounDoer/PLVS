@@ -175,6 +175,7 @@ export function useSpectrogram3dCanvas({
   colormapLut,
   minHz = 20,
   maxHz = 20000,
+  dbFloor,
   azimuthDeg,
   elevationDeg,
   heightGain,
@@ -197,6 +198,7 @@ export function useSpectrogram3dCanvas({
     minHz: 20,
     maxHz: 20000,
     colormapLut: null,
+    dbFloor: NaN,
     azimuthDeg: NaN,
     elevationDeg: NaN,
     heightGain: NaN,
@@ -218,6 +220,7 @@ export function useSpectrogram3dCanvas({
       colormapLut,
       minHz,
       maxHz,
+      dbFloor,
       azimuthDeg,
       elevationDeg,
       heightGain,
@@ -236,6 +239,7 @@ export function useSpectrogram3dCanvas({
     colormapLut,
     minHz,
     maxHz,
+    dbFloor,
     azimuthDeg,
     elevationDeg,
     heightGain,
@@ -278,6 +282,7 @@ export function useSpectrogram3dCanvas({
         last.minHz === p.minHz &&
         last.maxHz === p.maxHz &&
         last.colormapLut === p.colormapLut &&
+        last.dbFloor === p.dbFloor &&
         last.azimuthDeg === p.azimuthDeg &&
         last.elevationDeg === p.elevationDeg &&
         last.heightGain === p.heightGain &&
@@ -299,6 +304,7 @@ export function useSpectrogram3dCanvas({
         minHz: p.minHz,
         maxHz: p.maxHz,
         colormapLut: p.colormapLut,
+        dbFloor: p.dbFloor,
         azimuthDeg: p.azimuthDeg,
         elevationDeg: p.elevationDeg,
         heightGain: p.heightGain,
@@ -365,6 +371,7 @@ export function useSpectrogram3dCanvas({
         sampleMs: p.sampleMs,
         maxRidges,
         yToBand: cache.yToBand,
+        dbFloor: p.dbFloor,
       });
       if (grid.count === 0) return;
 

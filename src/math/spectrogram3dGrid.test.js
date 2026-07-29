@@ -40,6 +40,7 @@ const BASE = {
   sampleMs: SAMPLE_MS,
   maxRidges: 10,
   yToBand: Y_TO_BAND,
+  dbFloor: SPECTROGRAM_DB_MIN,
 };
 
 describe("sampleWaterfallGrid", () => {
@@ -169,6 +170,28 @@ describe("sampleWaterfallGrid", () => {
       endIdx: 1,
     });
     expect(floor.heights[0]).toBe(0);
+  });
+
+  // The top of the range stays pinned at SPECTROGRAM_DB_MAX, so raising the floor compresses the
+  // range from below: a fixed dB value that isn't right at the top ends up relatively closer to
+  // the (now nearer) floor, so its own normalised height drops even though loud values spread
+  // further apart from each other -- the standard "raise the black point" effect.
+  it("changes the normalised height of a given dB value when the floor is raised", () => {
+    const db = -40;
+    const atDefaultFloor = sampleWaterfallGrid({
+      ...BASE,
+      view: framesAt([0, 100], db),
+      startIdx: 0,
+      endIdx: 1,
+    });
+    const atRaisedFloor = sampleWaterfallGrid({
+      ...BASE,
+      dbFloor: -60,
+      view: framesAt([0, 100], db),
+      startIdx: 0,
+      endIdx: 1,
+    });
+    expect(atRaisedFloor.heights[0]).toBeLessThan(atDefaultFloor.heights[0]);
   });
 
   // A gap contributes no frames, so it contributes no ridges -- the 3D equivalent of the blank

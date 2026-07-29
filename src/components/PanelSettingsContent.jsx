@@ -1249,6 +1249,27 @@ export function PanelSettingsContent({
               />
             </SettingsRow>
             <SettingsRow
+              label="dB Floor"
+              tooltip="Raises the bottom of the display range so the loud part of the signal gets the resolution instead of the noise floor. Applies in both 2D and 3D."
+            >
+              <SettingsSlider
+                ariaLabel="spectrogram db floor"
+                min={-96}
+                max={-12}
+                step={1}
+                value={normalizedPanelControls.spectrogramDbFloor}
+                formatValue={(value) => `${value.toFixed(0)} dB`}
+                onCommit={(value) => {
+                  onPanelControlsChange?.(
+                    normalizePanelControls({
+                      ...normalizedPanelControls,
+                      spectrogramDbFloor: value,
+                    })
+                  );
+                }}
+              />
+            </SettingsRow>
+            <SettingsRow
               label="Smoothing"
               tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D."
             >

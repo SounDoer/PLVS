@@ -1,6 +1,7 @@
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE, normalizeDialogueVadEngine } from "./dialogueVadEngines.js";
 import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
+import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -51,6 +52,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrumYMinDb: -96,
   spectrogramYMinFreq: 20,
   spectrogramYMaxFreq: 20000,
+  spectrogramDbFloor: SPECTROGRAM_DB_MIN,
   spectrogram3d: false,
   spectrogram3dColorize: true,
   spectrogram3dHeightGain: 1,
@@ -137,6 +139,10 @@ function normalizeSpectrumPeakLabels(raw) {
 
 function normalizeSpectrumMaxHold(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumMaxHold;
+}
+
+function normalizeSpectrogramDbFloor(raw) {
+  return clampNumber(raw, -96, -12, DEFAULT_PANEL_CONTROLS.spectrogramDbFloor);
 }
 
 function normalizeSpectrogram3d(raw) {
@@ -440,6 +446,7 @@ export function normalizePanelControls(raw) {
     spectrumYMinDb: spectrumYRange.min,
     spectrogramYMinFreq: spectrogramYRange.min,
     spectrogramYMaxFreq: spectrogramYRange.max,
+    spectrogramDbFloor: normalizeSpectrogramDbFloor(raw?.spectrogramDbFloor),
     spectrogram3d: normalizeSpectrogram3d(raw?.spectrogram3d),
     spectrogram3dColorize: normalizeSpectrogram3dColorize(raw?.spectrogram3dColorize),
     spectrogram3dHeightGain: normalizeSpectrogram3dHeightGain(raw?.spectrogram3dHeightGain),

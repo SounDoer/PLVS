@@ -1,4 +1,4 @@
-import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
+import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
 
 /**
  * Select the frames that become ridges in the 3D waterfall, and read their levels into one grid.
@@ -30,8 +30,6 @@ import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
  * contributes no ridges, which is the 3D equivalent of the blank columns the 2D path leaves.
  */
 
-const DB_RANGE = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
-
 /**
  * @param {object} args
  * @param {{ length: number, rowAt: (i: number) => any, timestampAt: (i: number) => number }} args.view
@@ -42,6 +40,7 @@ const DB_RANGE = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
  * @param {number} args.sampleMs nominal frame period; quantises the stride so it cannot jitter
  * @param {number} args.maxRidges upper bound on the number of ridges drawn
  * @param {Int16Array} args.yToBand frequency sample points; its length sets pointCount
+ * @param {number} args.dbFloor dB value that normalises to height 0; the top stays SPECTROGRAM_DB_MAX
  * @returns {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number }}
  */
 export function sampleWaterfallGrid({
@@ -53,7 +52,9 @@ export function sampleWaterfallGrid({
   sampleMs,
   maxRidges,
   yToBand,
+  dbFloor,
 }) {
+  const dbRange = SPECTROGRAM_DB_MAX - dbFloor;
   const pointCount = yToBand.length;
   const cap = Math.max(1, Math.floor(maxRidges));
   const heights = new Float32Array(cap * pointCount);
@@ -97,7 +98,7 @@ export function sampleWaterfallGrid({
     const base = count * pointCount;
     for (let q = 0; q < pointCount; q++) {
       const db = dbList[yToBand[q]];
-      const norm = Number.isFinite(db) ? (db - SPECTROGRAM_DB_MIN) / DB_RANGE : 0;
+      const norm = Number.isFinite(db) ? (db - dbFloor) / dbRange : 0;
       heights[base + q] = norm < 0 ? 0 : norm > 1 ? 1 : norm;
     }
     tFracs[count] = (ts - oldestMs) / span;
