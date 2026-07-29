@@ -10,11 +10,15 @@
  * lets the Colorize gradient be built once per repaint instead of once per ridge.
  */
 
-// Frequency runs down the front-left floor edge and time down the front-right one, matching the
-// 2D view where time increases rightward. That costs having the newest frame at the far end, which
-// was only ever an argument for the abandoned filled hidden-line design: unfilled ridges do not
-// occlude, so nothing is lost.
-const DEFAULT_AZIMUTH_DEG = 315;
+// Frequency runs up the front-left floor edge, time up the front-right one, and the newest frame
+// sits at the near corner -- new data emerges at the front and flows away, which is what makes a
+// waterfall read as one. It also puts the newest ridge last in painter's order, so it lands on top
+// rather than under the history.
+//
+// The cost is that time then reads right-to-left, the opposite of the 2D heatmap, so switching
+// modes flips the time axis. That is a real inconsistency, chosen deliberately: the alternative
+// (azimuth 315) keeps 2D's direction but pushes the newest frame to the far end.
+const DEFAULT_AZIMUTH_DEG = 135;
 const ELEVATION_MIN_DEG = 5;
 const ELEVATION_MAX_DEG = 70;
 const HEIGHT_GAIN_MIN = 0.3;

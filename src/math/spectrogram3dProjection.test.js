@@ -66,11 +66,10 @@ describe("projectPoint", () => {
     expect(slopeAt(0.5)).toBeCloseTo(proj.fy / proj.fx, 6);
   });
 
-  // The default viewpoint has to put frequency down the front-left floor edge and time down the
-  // front-right one, with time still increasing rightward so switching to 2D does not flip the
-  // axis. Those two together force the newest frame to the far end; that is a deliberate trade, so
-  // pin the whole arrangement rather than just the angle.
-  it("defaults to frequency on the front-left edge and time on the front-right", () => {
+  // The default viewpoint puts frequency up the front-left floor edge, time up the front-right one,
+  // and the newest frame at the near corner. Pin the whole arrangement rather than the angle, so a
+  // future tweak is free to change the number as long as the layout survives.
+  it("defaults to frequency front-left, time front-right, newest nearest", () => {
     const proj = buildProjection({ elevationDeg: 22, ...VIEW });
     const at = (t, f) => projectPoint(t, f, 0, proj);
 
@@ -79,12 +78,14 @@ describe("projectPoint", () => {
     const nearF = proj.fy > 0 ? 1 : 0;
     const near = at(nearT, nearF);
 
-    // Walking away from the near corner along frequency must go left; along time, right.
+    // Walking away from the near corner along frequency goes left; along time, right.
     expect(at(nearT, 1 - nearF).x).toBeLessThan(near.x);
     expect(at(1 - nearT, nearF).x).toBeGreaterThan(near.x);
 
-    // Time still reads left-to-right, matching the 2D heatmap.
-    expect(at(1, nearF).x).toBeGreaterThan(at(0, nearF).x);
+    // The newest frame is the one at the near corner, so it also paints last and lands on top.
+    expect(nearT).toBe(1);
+    expect(at(1, nearF).y).toBeGreaterThan(at(0, nearF).y);
+    expect(proj.ridgeOrderAscending).toBe(true);
   });
 
   it("fits the whole unit cube inside the canvas", () => {

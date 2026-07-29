@@ -57,7 +57,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   // do not "optimise" this default on the assumption it was set for cost.
   spectrogram3dColorize: false,
   spectrogram3dHeightGain: 1,
-  spectrogram3dAzimuthDeg: 315,
+  spectrogram3dAzimuthDeg: 135,
   spectrogram3dElevationDeg: 22,
   // 0 means Auto (derive from canvas width) for both ridges and points; that is today's
   // width-adaptive behaviour, kept as the default while allowing an explicit override.

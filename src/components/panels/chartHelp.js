@@ -108,7 +108,10 @@ export const SPECTROGRAM_HELP = [
   },
   {
     title: "3D limitations",
-    items: ["No hover readout in 3D - Switch to 2D for exact values"],
+    items: [
+      "No hover readout in 3D - Switch to 2D for exact values",
+      "Time runs right to left - The newest frame is nearest, unlike 2D",
+    ],
   },
 ];
 
