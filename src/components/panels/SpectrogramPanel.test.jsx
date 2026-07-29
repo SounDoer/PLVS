@@ -540,15 +540,45 @@ describe("SpectrogramPanel", () => {
     expect(forwarded.clientX).not.toBeCloseTo(pt.x, 0);
   });
 
-  it("shows a dB label on the Y rail in 3D instead of frequency ticks", () => {
+  it("keeps the Y rail on frequency in 3D, ticks and all", () => {
     const { rerender } = renderPanel();
 
     expect(screen.getByText("20k")).toBeTruthy();
-    expect(screen.queryByText("dB")).toBeNull();
 
     rerender(spectrogramPanelTree({ panelControls: { spectrogram3d: true } }));
 
-    expect(screen.getByText("dB")).toBeTruthy();
-    expect(screen.queryByText("20k")).toBeNull();
+    // The rail does not change meaning between modes: same ticks, no "dB" placeholder.
+    expect(screen.getByText("20k")).toBeTruthy();
+    expect(screen.queryByText("dB")).toBeNull();
+  });
+
+  it("drags the Y rail to the frequency range in 3D, not to height scale", () => {
+    // The regression this pins is the rebinding itself: the rail used to write
+    // spectrogram3dHeightGain here, which silently made the frequency axis unreachable in 3D.
+    const onPanelControlsChange = vi.fn();
+    renderPanel({
+      onPanelControlsChange,
+      panelControls: { spectrogram3d: true },
+    });
+
+    const rail = screen.getByText("20k").closest("div[class*='shrink-0']");
+    // useAxisInteraction's onWheel reads the rail's own rect to place the zoom anchor. jsdom
+    // reports zeros, which would push the anchor outside 20-20000 and let computeLogZoom clamp
+    // straight back to the full range -- a passing-looking no-op. Give it a real rect.
+    rail.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 32,
+      bottom: 300,
+      width: 32,
+      height: 300,
+    });
+    fireEvent.wheel(rail, { deltaY: -100, clientY: 150 });
+
+    expect(onPanelControlsChange).toHaveBeenCalled();
+    const next = onPanelControlsChange.mock.calls.at(-1)[0];
+    expect(next.spectrogram3dHeightGain).toBe(1);
+    expect(next.spectrogramYMinFreq).toBeGreaterThan(20);
+    expect(next.spectrogramYMaxFreq).toBeLessThan(20000);
   });
 });
