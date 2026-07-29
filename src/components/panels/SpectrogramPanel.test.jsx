@@ -861,4 +861,45 @@ describe("SpectrogramPanel", () => {
 
     expect(onPanelControlsChange).not.toHaveBeenCalled();
   });
+
+  it("does not reset when the two right clicks are far apart in time", () => {
+    // Pins RIGHT_DOUBLE_CLICK_MS. Both clicks are stationary, so without the time bound the second
+    // release satisfies every other condition and resets a viewpoint the user set minutes ago.
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 0));
+      const onPanelControlsChange = vi.fn();
+      const { container } = renderPanel({
+        historyChartInteractive: true,
+        onPanelControlsChange,
+        panelControls: {
+          spectrogram3d: true,
+          spectrogram3dAzimuthDeg: 20,
+          spectrogram3dElevationDeg: 10,
+        },
+      });
+      const canvas = container.querySelector("canvas");
+      stubPointerCapture(canvas);
+      canvas.getBoundingClientRect = () => ({
+        left: 0,
+        top: 0,
+        right: 300,
+        bottom: 150,
+        width: 300,
+        height: 150,
+      });
+
+      fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
+      fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+
+      vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 5));
+
+      fireEvent.pointerDown(canvas, { button: 2, clientX: 100, clientY: 100 });
+      fireEvent.pointerUp(canvas, { button: 2, clientX: 100, clientY: 100 });
+
+      expect(onPanelControlsChange).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
