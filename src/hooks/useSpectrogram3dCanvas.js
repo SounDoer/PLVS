@@ -165,6 +165,7 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
 export function useSpectrogram3dCanvas({
   canvasRef,
   snapRef,
+  projectionRef,
   oldestMs,
   newestMs,
   sampleMs,
@@ -332,6 +333,9 @@ export function useSpectrogram3dCanvas({
         width: W,
         height: H,
       });
+      // Published so the panel can turn a cursor position back into (time, frequency). Pointer
+      // handling cannot be derived from the 2D layout once the floor is rotated.
+      if (projectionRef) projectionRef.current = proj;
 
       const pointCount = pointCountFor(W);
       const cache = cacheRef.current;

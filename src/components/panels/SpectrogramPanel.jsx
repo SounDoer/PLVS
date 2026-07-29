@@ -14,6 +14,8 @@ import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { computeLogPan, computeLogZoom, pixelToLogValue } from "../../math/axisInteractionMath.js";
+import { unprojectFloor } from "../../math/spectrogram3dProjection.js";
+import { hzFromFrac } from "../../math/spectrogramMath.js";
 import {
   spectrogramTimeWindow,
   spectrogramDataBoundaryMarkers,
@@ -68,6 +70,9 @@ export function SpectrogramPanel({ compact = false }) {
   const chartYDragRef = useRef(null);
   const heightGainDragRef = useRef(null);
   const rotateDragRef = useRef(null);
+  // Published by useSpectrogram3dCanvas on every repaint; pointer handlers read it to unproject a
+  // cursor position back onto the floor plane (see cursorToFloor below).
+  const projectionRef = useRef(null);
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]
@@ -112,6 +117,41 @@ export function SpectrogramPanel({ compact = false }) {
     },
     []
   );
+  // Turns a pointer event into the floor-plane coordinate it lands on. Every handler below was
+  // written against the 2D projection, where the horizontal screen axis is time and the vertical
+  // one is frequency; under the rotated 3D floor neither holds, so interaction has to go through
+  // the exact unprojection instead. Returns null outside 3D, or before the first 3D repaint has
+  // published a projection.
+  //
+  // The projection works in the canvas's coordinate system, which useCanvasSize sizes in DEVICE
+  // pixels (canvas.width = clientWidth * devicePixelRatio), while pointer events arrive in CSS
+  // pixels. Skipping this conversion leaves everything offset on any scaled display.
+  const cursorToFloor = useCallback(
+    (e) => {
+      if (!is3d) return null;
+      const proj = projectionRef.current;
+      if (!proj) return null;
+      const canvas = e.currentTarget;
+      const rect = canvas.getBoundingClientRect();
+      if (!(rect.width > 0) || !(rect.height > 0)) return null;
+      const deviceX = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const deviceY = (e.clientY - rect.top) * (canvas.height / rect.height);
+      return unprojectFloor(deviceX, deviceY, proj);
+    },
+    [is3d]
+  );
+  // useHistoryInteraction's handlers are shared with other panels and read time position straight
+  // off clientX, i.e. the 2D-linear layout. In 3D, remap at this call site: translate the cursor
+  // into the equivalent 2D horizontal position via the floor-plane tFrac before delegating, rather
+  // than touching the shared hook. Object.create keeps currentTarget / button / ctrlKey /
+  // preventDefault reachable through the prototype chain, which a shallow spread would drop.
+  const toTimeProxyEvent = useCallback((e, floor) => {
+    if (!floor) return e;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const proxy = Object.create(e);
+    proxy.clientX = rect.left + floor.tFrac * rect.width;
+    return proxy;
+  }, []);
   const onSpectrogramChartWheel = useCallback(
     (e) => {
       if (!e.ctrlKey) {
@@ -119,21 +159,34 @@ export function SpectrogramPanel({ compact = false }) {
         return;
       }
       e.preventDefault();
-      const rect = e.currentTarget.getBoundingClientRect();
-      const height = Math.max(1, rect.height);
-      const px = Math.max(0, Math.min(height, e.clientY - rect.top));
+      const floor = cursorToFloor(e);
+      // buildYToBand puts maxHz at fFrac 0 and minHz at fFrac 1 (see useSpectrogram3dCanvas), so
+      // the anchor's frac is the mirror of fFrac.
+      let anchor;
+      if (floor) {
+        anchor = hzFromFrac(
+          1 - floor.fFrac,
+          normalizedPanelControls.spectrogramYMinFreq,
+          normalizedPanelControls.spectrogramYMaxFreq
+        );
+      } else {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const height = Math.max(1, rect.height);
+        const px = Math.max(0, Math.min(height, e.clientY - rect.top));
+        anchor = pixelToLogValue(
+          px,
+          height,
+          normalizedPanelControls.spectrogramYMinFreq,
+          normalizedPanelControls.spectrogramYMaxFreq
+        );
+      }
       const next = computeLogZoom({
         min: normalizedPanelControls.spectrogramYMinFreq,
         max: normalizedPanelControls.spectrogramYMaxFreq,
         absMin: 20,
         absMax: 20000,
         minOctaves: 1,
-        anchor: pixelToLogValue(
-          px,
-          height,
-          normalizedPanelControls.spectrogramYMinFreq,
-          normalizedPanelControls.spectrogramYMaxFreq
-        ),
+        anchor,
         factor: e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR,
       });
       onPanelControlsChange?.(
@@ -145,7 +198,7 @@ export function SpectrogramPanel({ compact = false }) {
       );
       pulseChartYAxis();
     },
-    [normalizedPanelControls, onHistoryWheel, onPanelControlsChange, pulseChartYAxis]
+    [cursorToFloor, normalizedPanelControls, onHistoryWheel, onPanelControlsChange, pulseChartYAxis]
   );
   // In 3D the vertical screen direction is always the dB axis (frequency and time swap visual
   // direction as azimuth turns), so the Y rail drags height gain instead of the frequency range.
@@ -282,6 +335,7 @@ export function SpectrogramPanel({ compact = false }) {
   useSpectrogram3dCanvas({
     canvasRef: is3d ? canvasRef : NO_CANVAS,
     snapRef,
+    projectionRef,
     oldestMs,
     newestMs,
     sampleMs,
@@ -348,9 +402,13 @@ export function SpectrogramPanel({ compact = false }) {
         };
         return;
       }
+      const floor = cursorToFloor(e);
       if (e.ctrlKey && e.button === 0) {
         chartYDragRef.current = {
           startY: e.clientY,
+          // In 3D, floor.fFrac at drag start anchors the pan (see the pointer-move branch below);
+          // in 2D this stays null and the branch there falls back to the plain pixel delta.
+          startFFrac: floor ? floor.fFrac : null,
           min: normalizedPanelControls.spectrogramYMinFreq,
           max: normalizedPanelControls.spectrogramYMaxFreq,
         };
@@ -358,15 +416,17 @@ export function SpectrogramPanel({ compact = false }) {
         if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
         setChartYAxisActive(true);
       }
-      onHistoryPointerDown?.(e);
+      onHistoryPointerDown?.(toTimeProxyEvent(e, floor));
     },
     [
+      cursorToFloor,
       is3d,
       normalizedPanelControls.spectrogram3dAzimuthDeg,
       normalizedPanelControls.spectrogram3dElevationDeg,
       normalizedPanelControls.spectrogramYMaxFreq,
       normalizedPanelControls.spectrogramYMinFreq,
       onHistoryPointerDown,
+      toTimeProxyEvent,
     ]
   );
   const onSpectrogramChartPointerMove = useCallback(
@@ -383,18 +443,35 @@ export function SpectrogramPanel({ compact = false }) {
         return;
       }
       notePointerMove(e);
-      onHistoryPointerMove?.(e);
+      const floor = cursorToFloor(e);
+      onHistoryPointerMove?.(toTimeProxyEvent(e, floor));
       const drag = chartYDragRef.current;
       if (drag) {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const next = computeLogPan({
-          min: drag.min,
-          max: drag.max,
-          absMin: 20,
-          absMax: 20000,
-          deltaPx: e.clientY - drag.startY,
-          axisPx: Math.max(1, rect.height),
-        });
+        let next;
+        if (drag.startFFrac != null && floor) {
+          // Same pan math as the 2D branch below (a rigid shift of the log-frequency range), but
+          // driven by the floor-plane fFrac delta instead of a screen-pixel delta: fFrac runs 0 at
+          // maxHz to 1 at minHz, the same orientation pixelToLogValue's frac uses inverted, so the
+          // two are equivalent once deltaPx/axisPx is replaced by (fFracNow - fFracStart)/1.
+          next = computeLogPan({
+            min: drag.min,
+            max: drag.max,
+            absMin: 20,
+            absMax: 20000,
+            deltaPx: floor.fFrac - drag.startFFrac,
+            axisPx: 1,
+          });
+        } else {
+          const rect = e.currentTarget.getBoundingClientRect();
+          next = computeLogPan({
+            min: drag.min,
+            max: drag.max,
+            absMin: 20,
+            absMax: 20000,
+            deltaPx: e.clientY - drag.startY,
+            axisPx: Math.max(1, rect.height),
+          });
+        }
         onPanelControlsChange?.(
           normalizePanelControls({
             ...normalizedPanelControls,
@@ -408,11 +485,13 @@ export function SpectrogramPanel({ compact = false }) {
       onSpectrogramHoverMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
     },
     [
+      cursorToFloor,
       is3d,
       normalizedPanelControls,
       onHistoryPointerMove,
       onPanelControlsChange,
       onSpectrogramHoverMove,
+      toTimeProxyEvent,
     ]
   );
   const onSpectrogramChartPointerUp = useCallback(

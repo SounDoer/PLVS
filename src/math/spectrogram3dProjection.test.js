@@ -4,6 +4,7 @@ import {
   projectPoint,
   clampViewParams,
   labelEdges,
+  unprojectFloor,
 } from "./spectrogram3dProjection.js";
 
 const VIEW = { width: 400, height: 300 };
@@ -120,6 +121,37 @@ describe("projectPoint", () => {
       const lastDrawn = proj.ridgeOrderAscending ? newest : oldest;
       expect({ azimuthDeg, ok: firstDrawn.y <= lastDrawn.y }).toEqual({ azimuthDeg, ok: true });
     }
+  });
+
+  // Pointer handling depends on this being exact: a cursor is turned into a (time, frequency)
+  // position by inverting the floor map, so any error lands straight in scrub and zoom.
+  it("round-trips floor coordinates through projection and back at every azimuth", () => {
+    for (let azimuthDeg = 5; azimuthDeg < 360; azimuthDeg += 15) {
+      for (const elevationDeg of [5, 22, 70, 85]) {
+        const proj = buildProjection({ azimuthDeg, elevationDeg, ...VIEW });
+        for (const [t, f] of [
+          [0, 0],
+          [1, 0],
+          [0, 1],
+          [1, 1],
+          [0.3, 0.8],
+        ]) {
+          const p = projectPoint(t, f, 0, proj);
+          const back = unprojectFloor(p.x, p.y, proj);
+          expect(back.tFrac).toBeCloseTo(t, 9);
+          expect(back.fFrac).toBeCloseTo(f, 9);
+        }
+      }
+    }
+  });
+
+  it("clamps an unprojected cursor to the floor rather than extrapolating", () => {
+    const proj = buildProjection({ elevationDeg: 70, ...VIEW });
+    const far = unprojectFloor(-10000, -10000, proj);
+    expect(far.tFrac).toBeGreaterThanOrEqual(0);
+    expect(far.tFrac).toBeLessThanOrEqual(1);
+    expect(far.fFrac).toBeGreaterThanOrEqual(0);
+    expect(far.fFrac).toBeLessThanOrEqual(1);
   });
 
   // The user is free to rotate to any orientation, including the mirror of the default where time

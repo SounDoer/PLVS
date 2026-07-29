@@ -10,6 +10,7 @@ import {
 import { SpectrogramPanel } from "./SpectrogramPanel.jsx";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
+import { buildProjection, projectPoint } from "../../math/spectrogram3dProjection.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { SparseHistoryMarkers } from "../../lib/SparseHistoryMarkers.js";
@@ -494,6 +495,49 @@ describe("SpectrogramPanel", () => {
       panelControls: { ...panelControls, spectrogram3d: true },
     });
     expect(threeD.container.querySelector("svg")).toBeNull();
+  });
+
+  it("unprojects the pointer through the floor plane before delegating 3D time selection", () => {
+    // Pins the inverted-scrubbing fix: onSpectrogramChartPointerDown must convert a click through
+    // unprojectFloor before handing it to the shared useHistoryInteraction handlers, not forward
+    // the raw (rotated) screen position. useSpectrogram3dCanvas is mocked in this suite, so the
+    // live projection never gets published for real -- publish one by hand via the projectionRef
+    // the component passed to the mocked hook, then click at the exact device pixel that
+    // projectPoint says corresponds to 20% across the time window.
+    const onHistoryPointerDown = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onHistoryPointerDown,
+      panelControls: { spectrogram3d: true },
+    });
+    const canvas = container.querySelector("canvas");
+    // jsdom's canvas defaults to 300x150 device pixels; give it a matching 1:1 CSS rect so the
+    // device-pixel conversion inside the panel's cursorToFloor helper is a no-op here.
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 150,
+      width: 300,
+      height: 150,
+    });
+
+    const projectionRef = vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].projectionRef;
+    const proj = buildProjection({ azimuthDeg: 135, elevationDeg: 70, width: 300, height: 150 });
+    projectionRef.current = proj;
+
+    const targetTFrac = 0.2;
+    const pt = projectPoint(targetTFrac, 0.5, 0, proj);
+
+    fireEvent.pointerDown(canvas, { button: 0, clientX: pt.x, clientY: pt.y });
+
+    expect(onHistoryPointerDown).toHaveBeenCalledTimes(1);
+    const forwarded = onHistoryPointerDown.mock.calls[0][0];
+    // Correctly unprojected: the shared handler receives the linear-layout clientX it expects
+    // (tFrac * width) -- not the raw rotated screen pixel the click actually landed on, which sits
+    // far to the right of that at this azimuth (proving the naive pass-through would invert it).
+    expect(forwarded.clientX).toBeCloseTo(targetTFrac * 300, 5);
+    expect(forwarded.clientX).not.toBeCloseTo(pt.x, 0);
   });
 
   it("shows a dB label on the Y rail in 3D instead of frequency ticks", () => {

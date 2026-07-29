@@ -141,6 +141,35 @@ export function labelEdges(proj) {
   };
 }
 
+/**
+ * Inverse of `projectPoint` restricted to the floor plane (`hNorm = 0`).
+ *
+ * Interaction has to run through this. Every pointer handler on the chart was written against the
+ * 2D projection, where time is the horizontal screen axis and frequency the vertical one; under a
+ * rotated floor both assumptions break, and at the default azimuth they break by inverting, so
+ * scrubbing selects the mirrored moment and zooming anchors on the wrong end of the spectrum.
+ *
+ * The floor is a plane and the projection is affine, so this is an exact 2x2 solve rather than a
+ * pick against the surface. The determinant is `depth * scaleX * scaleY`, which is non-zero for
+ * every elevation `clampViewParams` allows, so no degenerate guard is needed.
+ *
+ * Results are clamped to the unit square: a cursor outside the floor rhombus is still a legitimate
+ * drag, and callers want the nearest valid position rather than an extrapolation.
+ *
+ * @returns {{ tFrac: number, fFrac: number }}
+ */
+export function unprojectFloor(x, y, proj) {
+  const dx = x - proj.originX;
+  const dy = y - proj.originY;
+  const det = proj.tx * proj.fy - proj.ty * proj.fx;
+  const t = 0.5 + (dx * proj.fy - dy * proj.fx) / det;
+  const f = 0.5 + (dy * proj.tx - dx * proj.ty) / det;
+  return {
+    tFrac: Math.min(1, Math.max(0, t)),
+    fFrac: Math.min(1, Math.max(0, f)),
+  };
+}
+
 export function projectPoint(tFrac, fFrac, hNorm, proj) {
   const t = tFrac - 0.5;
   const f = fFrac - 0.5;
