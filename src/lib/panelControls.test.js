@@ -100,6 +100,11 @@ describe("panelControls", () => {
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 45,
       spectrogram3dElevationDeg: 22,
+      spectrogram3dRidges: 0,
+      spectrogram3dPoints: 0,
+      spectrogram3dLineAlpha: 0.5,
+      spectrogram3dLineWidth: 1,
+      spectrogram3dFloor: true,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,
@@ -247,6 +252,11 @@ describe("panelControls", () => {
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 45,
       spectrogram3dElevationDeg: 22,
+      spectrogram3dRidges: 0,
+      spectrogram3dPoints: 0,
+      spectrogram3dLineAlpha: 0.5,
+      spectrogram3dLineWidth: 1,
+      spectrogram3dFloor: true,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,
@@ -638,5 +648,48 @@ describe("spectrogram 3D controls", () => {
   it("rejects non-boolean toggles", () => {
     expect(normalizePanelControls({ spectrogram3d: "yes" }).spectrogram3d).toBe(false);
     expect(normalizePanelControls({ spectrogram3dColorize: 1 }).spectrogram3dColorize).toBe(false);
+  });
+});
+
+describe("spectrogram 3D tuning controls", () => {
+  it("defaults ridges/points to Auto, alpha/width/floor to their agreed values", () => {
+    const c = normalizePanelControls({});
+    expect(c.spectrogram3dRidges).toBe(0);
+    expect(c.spectrogram3dPoints).toBe(0);
+    expect(c.spectrogram3dLineAlpha).toBe(0.5);
+    expect(c.spectrogram3dLineWidth).toBe(1);
+    expect(c.spectrogram3dFloor).toBe(true);
+  });
+
+  it("keeps 0 as the Auto sentinel for ridges and points instead of clamping it up", () => {
+    expect(normalizePanelControls({ spectrogram3dRidges: 0 }).spectrogram3dRidges).toBe(0);
+    expect(normalizePanelControls({ spectrogram3dPoints: 0 }).spectrogram3dPoints).toBe(0);
+  });
+
+  it("clamps ridges to 20-200 when explicitly set", () => {
+    expect(normalizePanelControls({ spectrogram3dRidges: 1 }).spectrogram3dRidges).toBe(20);
+    expect(normalizePanelControls({ spectrogram3dRidges: 500 }).spectrogram3dRidges).toBe(200);
+    expect(normalizePanelControls({ spectrogram3dRidges: 100.6 }).spectrogram3dRidges).toBe(101);
+  });
+
+  it("clamps points to 40-400 when explicitly set", () => {
+    expect(normalizePanelControls({ spectrogram3dPoints: 1 }).spectrogram3dPoints).toBe(40);
+    expect(normalizePanelControls({ spectrogram3dPoints: 1000 }).spectrogram3dPoints).toBe(400);
+    expect(normalizePanelControls({ spectrogram3dPoints: 200.4 }).spectrogram3dPoints).toBe(200);
+  });
+
+  it("clamps line alpha to 0.15-1", () => {
+    expect(normalizePanelControls({ spectrogram3dLineAlpha: 0 }).spectrogram3dLineAlpha).toBe(0.15);
+    expect(normalizePanelControls({ spectrogram3dLineAlpha: 5 }).spectrogram3dLineAlpha).toBe(1);
+  });
+
+  it("clamps line width to 0.5-3", () => {
+    expect(normalizePanelControls({ spectrogram3dLineWidth: 0 }).spectrogram3dLineWidth).toBe(0.5);
+    expect(normalizePanelControls({ spectrogram3dLineWidth: 10 }).spectrogram3dLineWidth).toBe(3);
+  });
+
+  it("rejects non-boolean floor", () => {
+    expect(normalizePanelControls({ spectrogram3dFloor: "yes" }).spectrogram3dFloor).toBe(true);
+    expect(normalizePanelControls({ spectrogram3dFloor: false }).spectrogram3dFloor).toBe(false);
   });
 });

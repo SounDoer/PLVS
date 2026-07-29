@@ -59,6 +59,13 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrogram3dHeightGain: 1,
   spectrogram3dAzimuthDeg: 45,
   spectrogram3dElevationDeg: 22,
+  // 0 means Auto (derive from canvas width) for both ridges and points; that is today's
+  // width-adaptive behaviour, kept as the default while allowing an explicit override.
+  spectrogram3dRidges: 0,
+  spectrogram3dPoints: 0,
+  spectrogram3dLineAlpha: 0.5,
+  spectrogram3dLineWidth: 1,
+  spectrogram3dFloor: true,
   loudnessYMinDb: -64,
   loudnessYMaxDb: 0,
   levelMeterYMinDb: -60,
@@ -163,6 +170,33 @@ function normalizeSpectrogram3dAzimuthDeg(raw) {
  */
 function normalizeSpectrogram3dElevationDeg(raw) {
   return clampNumber(raw, 5, 70, DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg);
+}
+
+/** 0 is the Auto sentinel and must survive untouched; only a non-zero value gets clamped. */
+function normalizeSpectrogram3dCount(raw, min, max, fallback) {
+  if (!isNumber(raw)) return fallback;
+  if (raw === 0) return 0;
+  return Math.round(clampNumber(raw, min, max, fallback));
+}
+
+function normalizeSpectrogram3dRidges(raw) {
+  return normalizeSpectrogram3dCount(raw, 20, 200, DEFAULT_PANEL_CONTROLS.spectrogram3dRidges);
+}
+
+function normalizeSpectrogram3dPoints(raw) {
+  return normalizeSpectrogram3dCount(raw, 40, 400, DEFAULT_PANEL_CONTROLS.spectrogram3dPoints);
+}
+
+function normalizeSpectrogram3dLineAlpha(raw) {
+  return clampNumber(raw, 0.15, 1, DEFAULT_PANEL_CONTROLS.spectrogram3dLineAlpha);
+}
+
+function normalizeSpectrogram3dLineWidth(raw) {
+  return clampNumber(raw, 0.5, 3, DEFAULT_PANEL_CONTROLS.spectrogram3dLineWidth);
+}
+
+function normalizeSpectrogram3dFloor(raw) {
+  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrogram3dFloor;
 }
 
 /// spectrumMaxHold was spectrumPeakHold until "peak" was needed for the frequency axis — a peak
@@ -433,6 +467,11 @@ export function normalizePanelControls(raw) {
     spectrogram3dHeightGain: normalizeSpectrogram3dHeightGain(raw?.spectrogram3dHeightGain),
     spectrogram3dAzimuthDeg: normalizeSpectrogram3dAzimuthDeg(raw?.spectrogram3dAzimuthDeg),
     spectrogram3dElevationDeg: normalizeSpectrogram3dElevationDeg(raw?.spectrogram3dElevationDeg),
+    spectrogram3dRidges: normalizeSpectrogram3dRidges(raw?.spectrogram3dRidges),
+    spectrogram3dPoints: normalizeSpectrogram3dPoints(raw?.spectrogram3dPoints),
+    spectrogram3dLineAlpha: normalizeSpectrogram3dLineAlpha(raw?.spectrogram3dLineAlpha),
+    spectrogram3dLineWidth: normalizeSpectrogram3dLineWidth(raw?.spectrogram3dLineWidth),
+    spectrogram3dFloor: normalizeSpectrogram3dFloor(raw?.spectrogram3dFloor),
     loudnessYMinDb: loudnessYRange.min,
     loudnessYMaxDb: loudnessYRange.max,
     levelMeterYMinDb: levelMeterYRange.min,

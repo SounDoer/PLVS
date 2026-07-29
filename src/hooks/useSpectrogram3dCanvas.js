@@ -13,7 +13,6 @@ const POINT_TARGET_DIVISOR = 6;
 const POINT_MIN = 60;
 const POINT_MAX = 320;
 const GRADIENT_STOPS = 16;
-const RIDGE_ALPHA = 0.5;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -169,6 +168,11 @@ export function useSpectrogram3dCanvas({
   elevationDeg,
   heightGain,
   colorize,
+  ridges,
+  points,
+  lineAlpha,
+  lineWidth,
+  floor,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
@@ -189,6 +193,11 @@ export function useSpectrogram3dCanvas({
     heightGain: NaN,
     colorize: undefined,
     selectionXFrac: NaN,
+    ridges: undefined,
+    points: undefined,
+    lineAlpha: NaN,
+    lineWidth: NaN,
+    floor: undefined,
   });
 
   useEffect(() => {
@@ -206,6 +215,11 @@ export function useSpectrogram3dCanvas({
       elevationDeg,
       heightGain,
       colorize,
+      ridges,
+      points,
+      lineAlpha,
+      lineWidth,
+      floor,
     };
   }, [
     oldestMs,
@@ -221,6 +235,11 @@ export function useSpectrogram3dCanvas({
     elevationDeg,
     heightGain,
     colorize,
+    ridges,
+    points,
+    lineAlpha,
+    lineWidth,
+    floor,
   ]);
 
   useEffect(() => {
@@ -260,7 +279,12 @@ export function useSpectrogram3dCanvas({
         last.elevationDeg === p.elevationDeg &&
         last.heightGain === p.heightGain &&
         last.colorize === p.colorize &&
-        last.selectionXFrac === p.selectionXFrac
+        last.selectionXFrac === p.selectionXFrac &&
+        last.ridges === p.ridges &&
+        last.points === p.points &&
+        last.lineAlpha === p.lineAlpha &&
+        last.lineWidth === p.lineWidth &&
+        last.floor === p.floor
       )
         return;
       lastPaintRef.current = {
@@ -279,6 +303,11 @@ export function useSpectrogram3dCanvas({
         heightGain: p.heightGain,
         colorize: p.colorize,
         selectionXFrac: p.selectionXFrac,
+        ridges: p.ridges,
+        points: p.points,
+        lineAlpha: p.lineAlpha,
+        lineWidth: p.lineWidth,
+        floor: p.floor,
       };
 
       const ctx = canvas.getContext("2d");
@@ -306,7 +335,7 @@ export function useSpectrogram3dCanvas({
         height: H,
       });
 
-      const pointCount = pointCountFor(W);
+      const pointCount = p.points ? p.points : pointCountFor(W);
       const cache = cacheRef.current;
       if (
         cache.pointCount !== pointCount ||
@@ -324,7 +353,7 @@ export function useSpectrogram3dCanvas({
       const { startIdx, endIdx } = inWindowRange(snaps, p.oldestMs, p.newestMs);
       if (endIdx < startIdx) return;
 
-      const ridgeCount = ridgeCountFor(W);
+      const ridgeCount = p.ridges ? p.ridges : ridgeCountFor(W);
       const grid = sampleWaterfallGrid({
         view: snaps,
         startIdx,
@@ -342,8 +371,10 @@ export function useSpectrogram3dCanvas({
 
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
 
-      drawFloor(ctx, proj, ink, dpr);
-      drawAxisLabels(ctx, proj, ink, dpr);
+      if (p.floor) {
+        drawFloor(ctx, proj, ink, dpr);
+        drawAxisLabels(ctx, proj, ink, dpr);
+      }
 
       // At azimuth 0 and 180 the frequency axis has no projected horizontal extent, so a ridge's
       // colour ramp degenerates. That is a legitimate view, not an error — fall back to a
@@ -361,8 +392,10 @@ export function useSpectrogram3dCanvas({
       ctx.lineJoin = "round";
       // Line widths are in the canvas coordinate system, which useCanvasSize sizes in DEVICE
       // pixels. A literal 1 is therefore a sub-CSS-pixel hairline on any scaled display, and the
-      // whole mesh washes out. Same trap as ctx.font below — both must scale by dpr.
-      ctx.lineWidth = dpr;
+      // whole mesh washes out. Same trap as ctx.font below — both must scale by dpr. p.lineWidth is
+      // a user multiplier on top of that device-pixel base, not an absolute width.
+      const baseLineWidth = dpr * p.lineWidth;
+      ctx.lineWidth = baseLineWidth;
 
       // Line waterfall: ridges are stroked, never filled.
       //
@@ -395,14 +428,14 @@ export function useSpectrogram3dCanvas({
         if (r === selectedRidge) {
           ctx.globalAlpha = 1;
           ctx.strokeStyle = selection;
-          ctx.lineWidth = dpr * 2;
+          ctx.lineWidth = baseLineWidth * 2;
           ctx.stroke(curve);
-          ctx.lineWidth = dpr;
+          ctx.lineWidth = baseLineWidth;
         } else {
           // Partial alpha is what makes an unfilled waterfall read as a surface: where ridges
           // overlap they accumulate, so dense regions darken and the eye recovers the depth the
           // missing occlusion would have given. At full opacity it flattens into a tangle.
-          ctx.globalAlpha = RIDGE_ALPHA;
+          ctx.globalAlpha = p.lineAlpha;
           ctx.strokeStyle = canColorize
             ? buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx)
             : ink;

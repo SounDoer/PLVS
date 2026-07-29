@@ -295,6 +295,11 @@ export function SpectrogramPanel({ compact = false }) {
     elevationDeg: normalizedPanelControls.spectrogram3dElevationDeg,
     heightGain: normalizedPanelControls.spectrogram3dHeightGain,
     colorize: normalizedPanelControls.spectrogram3dColorize,
+    ridges: normalizedPanelControls.spectrogram3dRidges,
+    points: normalizedPanelControls.spectrogram3dPoints,
+    lineAlpha: normalizedPanelControls.spectrogram3dLineAlpha,
+    lineWidth: normalizedPanelControls.spectrogram3dLineWidth,
+    floor: normalizedPanelControls.spectrogram3dFloor,
   });
   const boundarySpan = newestMs - oldestMs;
   const {

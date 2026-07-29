@@ -846,6 +846,7 @@ export function PanelSettingsContent({
   const [stereoMapPairOpen, setStereoMapPairOpen] = useState(false);
   const [stereoMapModeOpen, setStereoMapModeOpen] = useState(false);
   const [stereoMapSmoothingOpen, setStereoMapSmoothingOpen] = useState(false);
+  const [spectrogramSmoothingOpen, setSpectrogramSmoothingOpen] = useState(false);
   const [vadOpen, setVadOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
@@ -1248,6 +1249,26 @@ export function PanelSettingsContent({
               />
             </SettingsRow>
             <SettingsRow
+              label="Smoothing"
+              tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D."
+            >
+              <SettingsChoiceSelect
+                ariaLabel="spectrogram octave smoothing"
+                options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
+                value={normalizedPanelControls.spectrumOctaveSmoothing}
+                open={spectrogramSmoothingOpen}
+                onOpenChange={setSpectrogramSmoothingOpen}
+                onChange={(spectrumOctaveSmoothing) => {
+                  onPanelControlsChange?.(
+                    normalizePanelControls({
+                      ...normalizedPanelControls,
+                      spectrumOctaveSmoothing,
+                    })
+                  );
+                }}
+              />
+            </SettingsRow>
+            <SettingsRow
               label="3D View"
               tooltip="A presentation view of the waterfall surface. There is no hover readout in 3D — switch back to 2D to read exact values."
             >
@@ -1316,6 +1337,130 @@ export function PanelSettingsContent({
                   >
                     Reset
                   </button>
+                </SettingsRow>
+                {/* Provisional tuning controls: exposed for tuning against real audio, expected
+                    to be pruned once the good defaults are known. */}
+                <SettingsRow label="Elevation">
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d elevation"
+                    min={5}
+                    max={70}
+                    step={1}
+                    value={normalizedPanelControls.spectrogram3dElevationDeg}
+                    formatValue={(value) => `${value.toFixed(0)}°`}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dElevationDeg: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Azimuth">
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d azimuth"
+                    min={0}
+                    max={359}
+                    step={1}
+                    value={normalizedPanelControls.spectrogram3dAzimuthDeg}
+                    formatValue={(value) => `${value.toFixed(0)}°`}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dAzimuthDeg: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Ridges">
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d ridges"
+                    min={0}
+                    max={200}
+                    step={1}
+                    value={normalizedPanelControls.spectrogram3dRidges}
+                    formatValue={(value) => (value === 0 ? "Auto" : value.toFixed(0))}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dRidges: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Points">
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d points"
+                    min={0}
+                    max={400}
+                    step={1}
+                    value={normalizedPanelControls.spectrogram3dPoints}
+                    formatValue={(value) => (value === 0 ? "Auto" : value.toFixed(0))}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dPoints: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Line Alpha">
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d line alpha"
+                    min={0.15}
+                    max={1}
+                    step={0.05}
+                    value={normalizedPanelControls.spectrogram3dLineAlpha}
+                    formatValue={(value) => value.toFixed(2)}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dLineAlpha: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Line Width">
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d line width"
+                    min={0.5}
+                    max={3}
+                    step={0.1}
+                    value={normalizedPanelControls.spectrogram3dLineWidth}
+                    formatValue={(value) => `${value.toFixed(1)}x`}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dLineWidth: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow label="Floor">
+                  <SettingsSwitch
+                    aria-label="spectrogram 3d floor"
+                    checked={normalizedPanelControls.spectrogram3dFloor}
+                    onCheckedChange={(checked) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dFloor: checked,
+                        })
+                      );
+                    }}
+                  />
                 </SettingsRow>
               </>
             ) : null}
