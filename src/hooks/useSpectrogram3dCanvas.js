@@ -128,9 +128,17 @@ function drawFloor(ctx, proj, ink, dpr) {
  */
 function drawAxisLabels(ctx, proj, ink, dpr) {
   const fontFamily = cssVar(ctx.canvas, "--ui-font-mono", "monospace");
+
+  // Each axis runs along two opposite floor edges; label the one nearer the viewer, or the surface
+  // hides it. Larger screen y is nearer, and an edge's depth is decided entirely by the sign of the
+  // OTHER axis's y component -- so `fy > 0` puts the time edge at f = 1, and `ty > 0` puts the
+  // frequency edge at t = 1. Hardcoding either edge only works at one azimuth: rotate away from it
+  // and the label disappears behind the ridges.
+  const timeAtF = proj.fy > 0 ? 1 : 0;
+  const freqAtT = proj.ty > 0 ? 1 : 0;
   const edges = [
-    { label: "Time", from: [0, 0], to: [1, 0] },
-    { label: "Frequency", from: [1, 0], to: [1, 1] },
+    { label: "Time", from: [0, timeAtF], to: [1, timeAtF] },
+    { label: "Frequency", from: [freqAtT, 0], to: [freqAtT, 1] },
   ];
   ctx.save();
   ctx.fillStyle = ink;
