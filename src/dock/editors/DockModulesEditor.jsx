@@ -44,8 +44,6 @@ function DockModuleRow({
   title,
   dragging,
   onDragStart,
-  onDragMove,
-  onDragEnd,
   onRename,
   onRemove,
   onHover,
@@ -110,9 +108,6 @@ function DockModuleRow({
         type="button"
         aria-label={`Reorder ${title}`}
         onPointerDown={(event) => onDragStart(panel.id, event)}
-        onPointerMove={onDragMove}
-        onPointerUp={onDragEnd}
-        onPointerCancel={onDragEnd}
         className="-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <GripVertical className="size-3.5" />
@@ -201,7 +196,7 @@ export function DockModulesEditor({
     [modules, panels]
   );
   const panelIds = useMemo(() => panelList.map((panel) => panel.id), [panelList]);
-  const { containerRef, orderedIds, draggingId, startDrag, moveDrag, endDrag } = usePointerReorder(
+  const { containerRef, orderedIds, draggingId, startDrag } = usePointerReorder(
     panelIds,
     onReorder
   );
@@ -267,8 +262,6 @@ export function DockModulesEditor({
                 title={resolveDockPanelDisplayName(displayState, panel.id)}
                 dragging={draggingId === panel.id}
                 onDragStart={startDrag}
-                onDragMove={moveDrag}
-                onDragEnd={endDrag}
                 onRename={onRename}
                 onRemove={onRemove}
                 onHover={onHover}

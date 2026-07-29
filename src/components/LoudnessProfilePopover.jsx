@@ -58,7 +58,7 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
   const profileIds = useMemo(() => profiles.map((entry) => entry.id), [profiles]);
-  const { containerRef, orderedIds, draggingId, startDrag, moveDrag, endDrag } = usePointerReorder(
+  const { containerRef, orderedIds, draggingId, startDrag } = usePointerReorder(
     profileIds,
     (nextIds) => reorderProfiles?.(nextIds)
   );
@@ -105,9 +105,6 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
                 type="button"
                 aria-label={`Reorder ${entry.name}`}
                 onPointerDown={(event) => startDrag(entry.id, event)}
-                onPointerMove={moveDrag}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
                 className={DRAG_HANDLE_CLASS}
               >
                 <GripVertical className="size-3.5" />

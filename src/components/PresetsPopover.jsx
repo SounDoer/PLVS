@@ -31,7 +31,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
   const [drafts, setDrafts] = useState({});
 
   const presetIds = useMemo(() => presets.list.map((preset) => preset.id), [presets.list]);
-  const { containerRef, orderedIds, draggingId, startDrag, moveDrag, endDrag } = usePointerReorder(
+  const { containerRef, orderedIds, draggingId, startDrag } = usePointerReorder(
     presetIds,
     (nextIds) => presets.reorder?.(nextIds)
   );
@@ -164,9 +164,6 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       type="button"
                       aria-label={`Reorder ${preset.name}`}
                       onPointerDown={(event) => startDrag(preset.id, event)}
-                      onPointerMove={moveDrag}
-                      onPointerUp={endDrag}
-                      onPointerCancel={endDrag}
                       className={DRAG_HANDLE_CLASS}
                     >
                       <GripVertical className="size-3.5" />
