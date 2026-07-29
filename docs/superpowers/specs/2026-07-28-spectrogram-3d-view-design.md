@@ -225,8 +225,10 @@ leaving the previous font — so the font family is resolved via `getComputedSty
 | Wheel (chart) | Zoom time window | Zoom time window — unchanged |
 | Ctrl+wheel / Ctrl+drag | Frequency range | Frequency range — anchored via unprojection |
 | Double-click | Return to latest | Return to latest — unchanged |
+| **Shift+wheel** | none | **Height Scale** |
 | **Right-drag** | none | **Rotate** |
-| Left axis rail | Frequency range | **Height Scale** |
+| **Right double-click** | none | **Reset viewpoint** |
+| Left axis rail | Frequency range | Frequency range — unchanged |
 | Bottom axis rail | Time window | Time window — unchanged |
 
 ### Pointer unprojection

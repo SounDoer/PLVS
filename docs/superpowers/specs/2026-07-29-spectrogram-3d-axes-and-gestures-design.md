@@ -1,7 +1,7 @@
 # Spectrogram 3D — Axis Rails and Gestures — Design
 
 **Date:** 2026-07-29
-**Status:** Designed
+**Status:** Implemented
 **Scope:** Frontend only. `src-tauri` is not touched.
 **Supersedes:** decision #10 of `2026-07-28-spectrogram-3d-view-design.md`.
 
