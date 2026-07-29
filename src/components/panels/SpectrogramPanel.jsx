@@ -157,8 +157,9 @@ export function SpectrogramPanel({ compact = false }) {
         e.preventDefault();
         // Chrome on Windows delivers a shifted wheel as deltaX, not deltaY -- the horizontal-scroll
         // convention. Reading only deltaY leaves this gesture dead in the shipped app while every
-        // synthesised test still passes, so take whichever axis actually carries the notch.
-        const delta = e.deltaY || e.deltaX;
+        // synthesised test still passes. Pick by magnitude rather than truthiness: a trackpad can
+        // put a noise-scale value on the other axis, and `||` would let that decide the direction.
+        const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
         if (!delta) return;
         const factor = delta > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR;
         onPanelControlsChange?.(

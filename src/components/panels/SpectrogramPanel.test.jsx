@@ -652,9 +652,11 @@ describe("SpectrogramPanel", () => {
 
   it("scales height on Shift+wheel in 3D, from deltaY", () => {
     const onPanelControlsChange = vi.fn();
+    const onHistoryWheel = vi.fn();
     const { container } = renderPanel({
       historyChartInteractive: true,
       onPanelControlsChange,
+      onHistoryWheel,
       panelControls: { spectrogram3d: true },
     });
 
@@ -665,6 +667,9 @@ describe("SpectrogramPanel", () => {
     expect(next.spectrogram3dHeightGain).toBeCloseTo(0.85, 5);
     expect(next.spectrogramYMinFreq).toBe(20);
     expect(next.spectrogramYMaxFreq).toBe(20000);
+    // Pins the branch's own `return`: without it a shifted wheel would scale height and then fall
+    // through to the timeline zoom, firing both gestures on one notch.
+    expect(onHistoryWheel).not.toHaveBeenCalled();
   });
 
   it("scales height on Shift+wheel in 3D, from deltaX", () => {
@@ -692,9 +697,54 @@ describe("SpectrogramPanel", () => {
       panelControls: { spectrogram3d: true, spectrogram3dHeightGain: 3 },
     });
 
+    // Zoom in from the same fixture first, so the ceiling assertion below cannot be satisfied by a
+    // handler that simply echoed its input.
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: -100 });
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBeCloseTo(2.55, 5);
+
     fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: 100 });
 
     expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBe(3);
+  });
+
+  it("keeps Ctrl+Shift+wheel on frequency in 3D", () => {
+    // Ctrl outranks Shift: Ctrl+wheel means frequency in both modes, and adding Shift must not
+    // reassign it to height. Without the `!e.ctrlKey` in the guard this goes to the height branch.
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: { spectrogram3d: true },
+    });
+
+    fireEvent.wheel(container.querySelector("canvas"), {
+      ctrlKey: true,
+      shiftKey: true,
+      deltaY: -100,
+      clientY: 100,
+    });
+
+    const next = onPanelControlsChange.mock.calls.at(-1)[0];
+    expect(next.spectrogram3dHeightGain).toBe(1);
+    expect(next.spectrogramYMinFreq !== 20 || next.spectrogramYMaxFreq !== 20000).toBe(true);
+  });
+
+  it("swallows a notch-less Shift+wheel in 3D rather than forwarding it", () => {
+    // A zero delta must not reach onHistoryWheel: its own sign test treats deltaY 0 as "not less
+    // than zero" and would zoom time out on an event that carried no motion.
+    const onPanelControlsChange = vi.fn();
+    const onHistoryWheel = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      onHistoryWheel,
+      panelControls: { spectrogram3d: true },
+    });
+
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaX: 0, deltaY: 0 });
+
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+    expect(onHistoryWheel).not.toHaveBeenCalled();
   });
 
   it("ignores Shift+wheel in 2D", () => {
