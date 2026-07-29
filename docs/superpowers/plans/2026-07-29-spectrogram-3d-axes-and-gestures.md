@@ -730,6 +730,14 @@ Open a Spectrogram panel, switch 3D View on, hold Shift and scroll over the char
 
 **This step cannot be skipped or replaced by the test suite.** The `deltaX` swap is WebView2/Chromium behaviour, not something jsdom models — the unit tests pass either way. If the gesture does nothing here, the handler is reading the wrong axis and the tests will not tell you.
 
+Check three things, not one:
+
+- **It responds at all.** If not, the handler is reading the wrong axis.
+- **It responds in the right direction** — scroll up makes the surface taller. The `deltaX` test encodes the assumption that Chrome copies the signed value across rather than negating it. If the platform inverts the sign on X, the gesture works backwards and the suite stays green.
+- **Nothing scrolls sideways.** React 19 registers its root `wheel` listener as passive, so the `e.preventDefault()` in `onWheel` is a no-op in Chrome/WebView2 and logs a console warning. Shift+wheel is the native horizontal-scroll gesture on Windows, so a scrollable ancestor may scroll while height scales. Ctrl+wheel never showed this because Tauri already suppresses browser zoom.
+
+If sideways scrolling does occur, the fix is a native `canvas.addEventListener("wheel", handler, { passive: false })`, not a React prop — do not attempt it by changing the JSX.
+
 While the app is open, also confirm by eye:
 - The left rail shows frequency ticks in 3D, same as 2D, and dragging it changes the frequency range.
 - Right-drag rotates; right double-click snaps back to the default view.
