@@ -1251,7 +1251,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByRole("switch", { name: "spectrogram 3d view" })).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "spectrogram 3d colorize" })).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d height gain")).toBeNull();
-    expect(screen.queryByRole("button", { name: "spectrogram 3d reset view" })).toBeNull();
+    expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
 
     rerender(
       <PanelSettingsContent
@@ -1262,10 +1262,43 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.getByRole("switch", { name: "spectrogram 3d colorize" })).toBeTruthy();
     expect(screen.getByLabelText("spectrogram 3d height gain")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "spectrogram 3d reset view" })).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
   });
 
-  it("resets only azimuth and elevation on Reset View, leaving other 3D and range controls untouched", () => {
+  it("offers a reset only for whichever view angle has left its default", () => {
+    const props = {
+      activeTab: "spectrogram",
+      channelCount: 6,
+      spectrumOptions: [{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }],
+      spectrumValueKey: "p-0-1",
+      onPanelControlsChange: vi.fn(),
+    };
+    const { rerender } = render(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogram3d: true }}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "reset spectrogram 3d elevation" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "reset spectrogram 3d azimuth" })).toBeNull();
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          spectrogram3d: true,
+          spectrogram3dAzimuthDeg: 120,
+        }}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "reset spectrogram 3d elevation" })).toBeNull();
+    expect(screen.getByRole("button", { name: "reset spectrogram 3d azimuth" })).toBeTruthy();
+  });
+
+  it("resets one view angle at a time, leaving the other and every other control untouched", () => {
     const onPanelControlsChange = vi.fn();
     const customControls = {
       ...DEFAULT_PANEL_CONTROLS,
@@ -1288,20 +1321,25 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "spectrogram 3d reset view" }));
+    fireEvent.click(screen.getByRole("button", { name: "reset spectrogram 3d elevation" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...customControls,
-      spectrogram3dAzimuthDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg,
       spectrogram3dElevationDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg,
     });
-    const result = onPanelControlsChange.mock.calls.at(-1)[0];
-    expect(result.spectrogram3dAzimuthDeg).toBe(135);
+    let result = onPanelControlsChange.mock.calls.at(-1)[0];
     expect(result.spectrogram3dElevationDeg).toBe(60);
+    expect(result.spectrogram3dAzimuthDeg).toBe(120);
     expect(result.spectrogram3dHeightGain).toBe(2.5);
-    expect(result.spectrogram3dColorize).toBe(true);
     expect(result.spectrogramYMinFreq).toBe(100);
     expect(result.spectrogramYMaxFreq).toBe(8000);
+
+    fireEvent.click(screen.getByRole("button", { name: "reset spectrogram 3d azimuth" }));
+
+    result = onPanelControlsChange.mock.calls.at(-1)[0];
+    expect(result.spectrogram3dAzimuthDeg).toBe(135);
+    expect(result.spectrogram3dElevationDeg).toBe(5);
+    expect(result.spectrogram3dColorize).toBe(true);
   });
 
   it("does not render loudness controls before panel controls are wired", () => {

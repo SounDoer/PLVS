@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, ChevronUp, ExternalLink, GripVertical } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ExternalLink, GripVertical, RotateCcw } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -46,11 +46,12 @@ export function SettingsGroup({ children }) {
   return <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5">{children}</div>;
 }
 
-export function SettingsRow({ label, tooltip, children }) {
+export function SettingsRow({ label, tooltip, action, children }) {
   return (
     <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
-      <span className="group relative flex h-6 items-center whitespace-nowrap font-medium text-muted-foreground">
+      <span className="group relative flex h-6 items-center gap-1 whitespace-nowrap font-medium text-muted-foreground">
         {label}
+        {action}
         {tooltip ? (
           <span
             role="tooltip"
@@ -62,6 +63,28 @@ export function SettingsRow({ label, tooltip, children }) {
       </span>
       <div className="flex min-h-6 min-w-0 items-center justify-end">{children}</div>
     </div>
+  );
+}
+
+// Rendered invisible rather than omitted while the value sits at its default. The label column is
+// `max-content`, so a button that comes and goes resizes it and shifts the control beside it — the
+// jump would land exactly as the slider leaves its default. `invisible` keeps the width and still
+// takes the control out of the accessibility tree.
+export function SettingsResetButton({ ariaLabel, atDefault, onReset }) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-hidden={atDefault || undefined}
+      tabIndex={atDefault ? -1 : 0}
+      onClick={onReset}
+      className={cn(
+        "rounded-sm text-muted-foreground/70 outline-none transition-colors hover:text-foreground",
+        atDefault && "invisible"
+      )}
+    >
+      <RotateCcw className="size-[length:var(--ui-icon-panel-action)]" />
+    </button>
   );
 }
 
@@ -1235,18 +1258,21 @@ export function PanelSettingsContent({
         />
         {showSpectrogramRange ? (
           <>
-            <SettingsRow label="Y Range">
-              <SettingsRangeInput
-                minAriaLabel="spectrogram y range min"
-                maxAriaLabel="spectrogram y range max"
-                minValue={normalizedPanelControls.spectrogramYMinFreq}
-                maxValue={normalizedPanelControls.spectrogramYMaxFreq}
-                onCommit={(newMin, newMax) => {
+            <SettingsRow
+              label="Smoothing"
+              tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D."
+            >
+              <SettingsChoiceSelect
+                ariaLabel="spectrogram octave smoothing"
+                options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
+                value={normalizedPanelControls.spectrumOctaveSmoothing}
+                open={spectrogramSmoothingOpen}
+                onOpenChange={setSpectrogramSmoothingOpen}
+                onChange={(spectrumOctaveSmoothing) => {
                   onPanelControlsChange?.(
                     normalizePanelControls({
                       ...normalizedPanelControls,
-                      spectrogramYMinFreq: newMin,
-                      spectrogramYMaxFreq: newMax,
+                      spectrumOctaveSmoothing,
                     })
                   );
                 }}
@@ -1273,21 +1299,18 @@ export function PanelSettingsContent({
                 }}
               />
             </SettingsRow>
-            <SettingsRow
-              label="Smoothing"
-              tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D."
-            >
-              <SettingsChoiceSelect
-                ariaLabel="spectrogram octave smoothing"
-                options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
-                value={normalizedPanelControls.spectrumOctaveSmoothing}
-                open={spectrogramSmoothingOpen}
-                onOpenChange={setSpectrogramSmoothingOpen}
-                onChange={(spectrumOctaveSmoothing) => {
+            <SettingsRow label="Y Range">
+              <SettingsRangeInput
+                minAriaLabel="spectrogram y range min"
+                maxAriaLabel="spectrogram y range max"
+                minValue={normalizedPanelControls.spectrogramYMinFreq}
+                maxValue={normalizedPanelControls.spectrogramYMaxFreq}
+                onCommit={(newMin, newMax) => {
                   onPanelControlsChange?.(
                     normalizePanelControls({
                       ...normalizedPanelControls,
-                      spectrumOctaveSmoothing,
+                      spectrogramYMinFreq: newMin,
+                      spectrogramYMaxFreq: newMax,
                     })
                   );
                 }}
@@ -1312,15 +1335,76 @@ export function PanelSettingsContent({
             </SettingsRow>
             {normalizedPanelControls.spectrogram3d ? (
               <>
-                <SettingsRow label="Colorize">
-                  <SettingsSwitch
-                    aria-label="spectrogram 3d colorize"
-                    checked={normalizedPanelControls.spectrogram3dColorize}
-                    onCheckedChange={(checked) => {
+                <SettingsRow
+                  label="Elevation"
+                  action={
+                    <SettingsResetButton
+                      ariaLabel="reset spectrogram 3d elevation"
+                      atDefault={
+                        normalizedPanelControls.spectrogram3dElevationDeg ===
+                        DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg
+                      }
+                      onReset={() => {
+                        onPanelControlsChange?.(
+                          normalizePanelControls({
+                            ...normalizedPanelControls,
+                            spectrogram3dElevationDeg:
+                              DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg,
+                          })
+                        );
+                      }}
+                    />
+                  }
+                >
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d elevation"
+                    min={5}
+                    max={85}
+                    step={1}
+                    value={normalizedPanelControls.spectrogram3dElevationDeg}
+                    formatValue={(value) => `${value.toFixed(0)}°`}
+                    onCommit={(value) => {
                       onPanelControlsChange?.(
                         normalizePanelControls({
                           ...normalizedPanelControls,
-                          spectrogram3dColorize: checked,
+                          spectrogram3dElevationDeg: value,
+                        })
+                      );
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  label="Azimuth"
+                  action={
+                    <SettingsResetButton
+                      ariaLabel="reset spectrogram 3d azimuth"
+                      atDefault={
+                        normalizedPanelControls.spectrogram3dAzimuthDeg ===
+                        DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg
+                      }
+                      onReset={() => {
+                        onPanelControlsChange?.(
+                          normalizePanelControls({
+                            ...normalizedPanelControls,
+                            spectrogram3dAzimuthDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg,
+                          })
+                        );
+                      }}
+                    />
+                  }
+                >
+                  <SettingsSlider
+                    ariaLabel="spectrogram 3d azimuth"
+                    min={0}
+                    max={359}
+                    step={1}
+                    value={normalizedPanelControls.spectrogram3dAzimuthDeg}
+                    formatValue={(value) => `${value.toFixed(0)}°`}
+                    onCommit={(value) => {
+                      onPanelControlsChange?.(
+                        normalizePanelControls({
+                          ...normalizedPanelControls,
+                          spectrogram3dAzimuthDeg: value,
                         })
                       );
                     }}
@@ -1344,58 +1428,31 @@ export function PanelSettingsContent({
                     }}
                   />
                 </SettingsRow>
-                <SettingsRow label="Reset View">
-                  <button
-                    type="button"
-                    aria-label="spectrogram 3d reset view"
-                    onClick={() => {
+                <SettingsRow label="Colorize">
+                  <SettingsSwitch
+                    aria-label="spectrogram 3d colorize"
+                    checked={normalizedPanelControls.spectrogram3dColorize}
+                    onCheckedChange={(checked) => {
                       onPanelControlsChange?.(
                         normalizePanelControls({
                           ...normalizedPanelControls,
-                          spectrogram3dAzimuthDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg,
-                          spectrogram3dElevationDeg:
-                            DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg,
-                        })
-                      );
-                    }}
-                    className="w-auto rounded-sm px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
-                  >
-                    Reset
-                  </button>
-                </SettingsRow>
-                {/* Provisional tuning controls: exposed for tuning against real audio, expected
-                    to be pruned once the good defaults are known. */}
-                <SettingsRow label="Elevation">
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d elevation"
-                    min={5}
-                    max={85}
-                    step={1}
-                    value={normalizedPanelControls.spectrogram3dElevationDeg}
-                    formatValue={(value) => `${value.toFixed(0)}°`}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dElevationDeg: value,
+                          spectrogram3dColorize: checked,
                         })
                       );
                     }}
                   />
                 </SettingsRow>
-                <SettingsRow label="Azimuth">
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d azimuth"
-                    min={0}
-                    max={359}
-                    step={1}
-                    value={normalizedPanelControls.spectrogram3dAzimuthDeg}
-                    formatValue={(value) => `${value.toFixed(0)}°`}
-                    onCommit={(value) => {
+                {/* Provisional tuning controls: exposed for tuning against real audio, expected
+                    to be pruned once the good defaults are known. */}
+                <SettingsRow label="Floor">
+                  <SettingsSwitch
+                    aria-label="spectrogram 3d floor"
+                    checked={normalizedPanelControls.spectrogram3dFloor}
+                    onCheckedChange={(checked) => {
                       onPanelControlsChange?.(
                         normalizePanelControls({
                           ...normalizedPanelControls,
-                          spectrogram3dAzimuthDeg: value,
+                          spectrogram3dFloor: checked,
                         })
                       );
                     }}
@@ -1432,20 +1489,6 @@ export function PanelSettingsContent({
                         normalizePanelControls({
                           ...normalizedPanelControls,
                           spectrogram3dLineWidth: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-                <SettingsRow label="Floor">
-                  <SettingsSwitch
-                    aria-label="spectrogram 3d floor"
-                    checked={normalizedPanelControls.spectrogram3dFloor}
-                    onCheckedChange={(checked) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dFloor: checked,
                         })
                       );
                     }}
