@@ -1297,7 +1297,7 @@ describe("PanelSettingsContent", () => {
       spectrogram3dElevationDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg,
     });
     const result = onPanelControlsChange.mock.calls.at(-1)[0];
-    expect(result.spectrogram3dAzimuthDeg).toBe(45);
+    expect(result.spectrogram3dAzimuthDeg).toBe(315);
     expect(result.spectrogram3dElevationDeg).toBe(22);
     expect(result.spectrogram3dHeightGain).toBe(2.5);
     expect(result.spectrogram3dColorize).toBe(true);

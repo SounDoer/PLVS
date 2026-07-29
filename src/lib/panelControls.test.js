@@ -98,7 +98,7 @@ describe("panelControls", () => {
       spectrogram3d: false,
       spectrogram3dColorize: false,
       spectrogram3dHeightGain: 1,
-      spectrogram3dAzimuthDeg: 45,
+      spectrogram3dAzimuthDeg: 315,
       spectrogram3dElevationDeg: 22,
       spectrogram3dRidges: 0,
       spectrogram3dPoints: 0,
@@ -250,7 +250,7 @@ describe("panelControls", () => {
       spectrogram3d: false,
       spectrogram3dColorize: false,
       spectrogram3dHeightGain: 1,
-      spectrogram3dAzimuthDeg: 45,
+      spectrogram3dAzimuthDeg: 315,
       spectrogram3dElevationDeg: 22,
       spectrogram3dRidges: 0,
       spectrogram3dPoints: 0,
@@ -625,7 +625,7 @@ describe("spectrogram 3D controls", () => {
     expect(c.spectrogram3d).toBe(false);
     expect(c.spectrogram3dColorize).toBe(false);
     expect(c.spectrogram3dHeightGain).toBe(1);
-    expect(c.spectrogram3dAzimuthDeg).toBe(45);
+    expect(c.spectrogram3dAzimuthDeg).toBe(315);
     expect(c.spectrogram3dElevationDeg).toBe(22);
   });
 

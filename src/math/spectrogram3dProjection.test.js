@@ -66,6 +66,27 @@ describe("projectPoint", () => {
     expect(slopeAt(0.5)).toBeCloseTo(proj.fy / proj.fx, 6);
   });
 
+  // The default viewpoint has to put frequency down the front-left floor edge and time down the
+  // front-right one, with time still increasing rightward so switching to 2D does not flip the
+  // axis. Those two together force the newest frame to the far end; that is a deliberate trade, so
+  // pin the whole arrangement rather than just the angle.
+  it("defaults to frequency on the front-left edge and time on the front-right", () => {
+    const proj = buildProjection({ elevationDeg: 22, ...VIEW });
+    const at = (t, f) => projectPoint(t, f, 0, proj);
+
+    // Larger screen y is nearer, so the near corner is where both axes contribute their maximum.
+    const nearT = proj.ty > 0 ? 1 : 0;
+    const nearF = proj.fy > 0 ? 1 : 0;
+    const near = at(nearT, nearF);
+
+    // Walking away from the near corner along frequency must go left; along time, right.
+    expect(at(nearT, 1 - nearF).x).toBeLessThan(near.x);
+    expect(at(1 - nearT, nearF).x).toBeGreaterThan(near.x);
+
+    // Time still reads left-to-right, matching the 2D heatmap.
+    expect(at(1, nearF).x).toBeGreaterThan(at(0, nearF).x);
+  });
+
   it("fits the whole unit cube inside the canvas", () => {
     const proj = buildProjection({ azimuthDeg: 33, elevationDeg: 40, ...VIEW });
     for (const t of [0, 1]) {
@@ -81,9 +102,17 @@ describe("projectPoint", () => {
     }
   });
 
-  it("draws oldest-first while time recedes from the viewer", () => {
-    const away = buildProjection({ azimuthDeg: 200, elevationDeg: 25, ...VIEW });
-    const toward = buildProjection({ azimuthDeg: 20, elevationDeg: 25, ...VIEW });
-    expect(away.ridgeOrderAscending).not.toBe(toward.ridgeOrderAscending);
+  // Asserting only that two azimuths disagree would pass with the comparison inverted, which is
+  // exactly the bug this replaces. Check the order actually starts at the far end.
+  it("reports a draw order that starts from the far end", () => {
+    for (const azimuthDeg of [20, 135, 200, 315]) {
+      const proj = buildProjection({ azimuthDeg, elevationDeg: 25, ...VIEW });
+      const oldest = projectPoint(0, 0.5, 0, proj);
+      const newest = projectPoint(1, 0.5, 0, proj);
+      // Larger screen y is nearer, so whichever end is drawn first must be the higher one.
+      const firstDrawn = proj.ridgeOrderAscending ? oldest : newest;
+      const lastDrawn = proj.ridgeOrderAscending ? newest : oldest;
+      expect(firstDrawn.y).toBeLessThan(lastDrawn.y);
+    }
   });
 });

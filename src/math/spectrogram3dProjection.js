@@ -10,6 +10,11 @@
  * lets the Colorize gradient be built once per repaint instead of once per ridge.
  */
 
+// Frequency runs down the front-left floor edge and time down the front-right one, matching the
+// 2D view where time increases rightward. That costs having the newest frame at the far end, which
+// was only ever an argument for the abandoned filled hidden-line design: unfilled ridges do not
+// occlude, so nothing is lost.
+const DEFAULT_AZIMUTH_DEG = 315;
 const ELEVATION_MIN_DEG = 5;
 const ELEVATION_MAX_DEG = 70;
 const HEIGHT_GAIN_MIN = 0.3;
@@ -29,7 +34,7 @@ function finiteOr(raw, fallback) {
  * Azimuth wraps rather than clamping, because spinning past 360 is a legitimate drag.
  */
 export function clampViewParams({ azimuthDeg, elevationDeg, heightGain } = {}) {
-  const rawAzimuth = finiteOr(azimuthDeg, 45);
+  const rawAzimuth = finiteOr(azimuthDeg, DEFAULT_AZIMUTH_DEG);
   return {
     azimuthDeg: ((rawAzimuth % 360) + 360) % 360,
     elevationDeg: Math.min(
@@ -104,9 +109,10 @@ export function buildProjection({ azimuthDeg, elevationDeg, width, height }) {
     fy: fy * scaleY,
     hy: hy * scaleY,
     heightScale: rise * scaleY,
-    // Larger screen y is nearer the viewer. Draw the far end first so the newest frame, which is
-    // what live monitoring watches, ends up unoccluded on top.
-    ridgeOrderAscending: ty <= 0,
+    // Painter's order. Larger screen y is nearer the viewer, and t contributes (t - 0.5) * ty to
+    // it, so a positive ty puts the newest end nearest and the far end is t = 0 -- draw ascending.
+    // A negative ty reverses both.
+    ridgeOrderAscending: ty > 0,
   };
 }
 
