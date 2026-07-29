@@ -60,7 +60,37 @@ function cssVar(el, name, fallback) {
  * spectrogramColorFrac against the fixed dB range. This keeps a given dB the same colour regardless
  * of where dbFloor is set, even though the ridge's on-screen height still depends on it.
  */
-function buildRidgeGradient(ctx, colormapLut, startBase, proj, heightPx, dbFloor) {
+/**
+ * The ramp's colour stops. Identical for every ridge -- only the gradient's endpoints move -- so
+ * they are built once per repaint rather than once per ridge.
+ *
+ * Alpha tracks level, matching what the 2D heatmap has always done (`paintSpan` writes
+ * `t * 255` straight into the alpha byte). Without it, silence draws a dense stack of fully opaque
+ * lines lying on the floor, as visually heavy as real content. Colorize only appeared to avoid this
+ * because the colormap's bottom is dark and dark-on-dark recedes -- an accident of the theme, not a
+ * property of the mapping, so both branches need the real thing.
+ *
+ * The monochrome branch goes through `color-mix` rather than composing an `rgba()` string: `ink`
+ * comes from a CSS variable and may be any colour syntax. Reading it back through `ctx.fillStyle`
+ * normalises hex but returns `oklch()` untouched, and this project's dark theme uses oklch.
+ */
+function buildStopColors(colormapLut, ink, dbFloor, colorize) {
+  const stops = new Array(GRADIENT_STOPS + 1);
+  for (let s = 0; s <= GRADIENT_STOPS; s++) {
+    const frac = s / GRADIENT_STOPS;
+    const db = dbFloor + frac * (SPECTROGRAM_DB_MAX - dbFloor);
+    const t = spectrogramColorFrac(db, dbFloor);
+    if (colorize) {
+      const idx = Math.round(t * 255) * 3;
+      stops[s] = `rgba(${colormapLut[idx]},${colormapLut[idx + 1]},${colormapLut[idx + 2]},${t})`;
+    } else {
+      stops[s] = `color-mix(in srgb, ${ink} ${(t * 100).toFixed(2)}%, transparent)`;
+    }
+  }
+  return stops;
+}
+
+function buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx) {
   const denom = proj.fx * proj.fx + proj.fy * proj.fy;
   const k = (-heightPx * proj.fx) / denom;
   const gradient = ctx.createLinearGradient(
@@ -70,14 +100,7 @@ function buildRidgeGradient(ctx, colormapLut, startBase, proj, heightPx, dbFloor
     startBase.y + k * proj.fx
   );
   for (let s = 0; s <= GRADIENT_STOPS; s++) {
-    const frac = s / GRADIENT_STOPS;
-    const db = dbFloor + frac * (SPECTROGRAM_DB_MAX - dbFloor);
-    const colorFrac = spectrogramColorFrac(db, dbFloor);
-    const idx = Math.round(colorFrac * 255) * 3;
-    gradient.addColorStop(
-      frac,
-      `rgb(${colormapLut[idx]},${colormapLut[idx + 1]},${colormapLut[idx + 2]})`
-    );
+    gradient.addColorStop(s / GRADIENT_STOPS, stopColors[s]);
   }
   return gradient;
 }
@@ -395,10 +418,16 @@ export function useSpectrogram3dCanvas({
         drawAxisLabels(ctx, proj, ink, dpr);
       }
 
-      // At azimuth 0 and 180 the frequency axis has no projected horizontal extent, so a ridge's
-      // colour ramp degenerates. That is a legitimate view, not an error — fall back to a
-      // monochrome stroke at those angles instead of dividing into it.
-      const canColorize = p.colorize && Math.abs(proj.fx) > 1e-6;
+      // Both branches ramp now -- colorize picks the colour from the colormap, monochrome varies
+      // only alpha -- so the stops are built once per repaint and reused by every ridge.
+      //
+      // At azimuth 0 and 180 the frequency axis has no projected horizontal extent and the ramp's
+      // geometry degenerates. That is a legitimate view, not an error: fall back to a flat opaque
+      // stroke at exactly those two angles instead of dividing into it.
+      const canRamp = Math.abs(proj.fx) > 1e-6;
+      const stopColors = canRamp
+        ? buildStopColors(p.colormapLut, ink, p.dbFloor, p.colorize)
+        : null;
 
       // Scrub feedback: a vertical line through a 3D scene means nothing, so the selected ridge is
       // highlighted instead. selectionXFrac is the same 0..1 window fraction the 2D selection line
@@ -481,8 +510,8 @@ export function useSpectrogram3dCanvas({
           // opaque because the colour ramp already separates near from far; the control is there
           // for material where the ridges crowd each other.
           ctx.globalAlpha = p.lineAlpha * edgeFade;
-          ctx.strokeStyle = canColorize
-            ? buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx, p.dbFloor)
+          ctx.strokeStyle = stopColors
+            ? buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx)
             : ink;
           ctx.stroke(curve);
         }
