@@ -360,6 +360,7 @@ export function useSpectrogram3dCanvas({
         endIdx,
         oldestMs: p.oldestMs,
         span,
+        sampleMs: p.sampleMs,
         maxRidges,
         yToBand: cache.yToBand,
       });

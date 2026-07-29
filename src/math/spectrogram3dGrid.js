@@ -19,6 +19,13 @@ import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
  * that moved with the window would re-select different frames on every slide, reintroducing the
  * shimmer this exists to avoid.
  *
+ * Bucket WIDTH has to be stable for the same reason, and that is easy to get wrong. The window's
+ * edges are real captured timestamps, so `span` jitters by a few ms on every history update; a
+ * stride derived straight from `span / maxRidges` inherits that jitter, every bucket edge shifts,
+ * and frames sitting near an edge flip in and out of the selection. With dozens of buckets, several
+ * ridges then blink on and off per update. Quantising the stride to a whole number of frame periods
+ * pins the edges: the stride only changes when the window is actually resized, never from jitter.
+ *
  * Real capture gaps need no special handling: a stretch of time holding no frames simply
  * contributes no ridges, which is the 3D equivalent of the blank columns the 2D path leaves.
  */
@@ -32,6 +39,7 @@ const DB_RANGE = SPECTROGRAM_DB_MAX - SPECTROGRAM_DB_MIN;
  * @param {number} args.endIdx last in-window frame index, inclusive
  * @param {number} args.oldestMs window start, in ms
  * @param {number} args.span window width, in ms
+ * @param {number} args.sampleMs nominal frame period; quantises the stride so it cannot jitter
  * @param {number} args.maxRidges upper bound on the number of ridges drawn
  * @param {Int16Array} args.yToBand frequency sample points; its length sets pointCount
  * @returns {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number }}
@@ -42,6 +50,7 @@ export function sampleWaterfallGrid({
   endIdx,
   oldestMs,
   span,
+  sampleMs,
   maxRidges,
   yToBand,
 }) {
@@ -55,8 +64,13 @@ export function sampleWaterfallGrid({
   }
 
   // One frame per absolute-time bucket. Buckets are anchored to the epoch rather than to the
-  // window, so a frame stays selected while the window slides past it.
-  const strideMs = span / cap;
+  // window, so a frame stays selected while the window slides past it, and their width is a whole
+  // number of frame periods so window jitter cannot move the edges.
+  const rawStrideMs = span / cap;
+  const strideMs =
+    Number.isFinite(sampleMs) && sampleMs > 0
+      ? sampleMs * Math.max(1, Math.round(rawStrideMs / sampleMs))
+      : rawStrideMs;
   let lastBucket = NaN;
   let count = 0;
 

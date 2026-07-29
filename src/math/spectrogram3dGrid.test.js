@@ -37,6 +37,7 @@ const Y_TO_BAND = Int16Array.from([0, 1]);
 const BASE = {
   oldestMs: 0,
   span: 400,
+  sampleMs: SAMPLE_MS,
   maxRidges: 10,
   yToBand: Y_TO_BAND,
 };
@@ -91,6 +92,26 @@ describe("sampleWaterfallGrid", () => {
     const setB = abs(at37, 37, 1000);
     const shared = setA.filter((ts) => setB.includes(ts));
     expect(shared.length).toBeGreaterThanOrEqual(setA.length - 1);
+  });
+
+  // The window's edges are real captured timestamps, so span jitters by a few ms on every history
+  // update. A stride derived straight from span would move every bucket edge, frames near an edge
+  // would flip in and out of the selection, and ridges would blink. Quantising the stride to whole
+  // frame periods must make the selection immune to that jitter.
+  it("selects the same frames despite window jitter", () => {
+    const timestamps = evenly(0, 4000);
+    const view = framesAt(timestamps, -20);
+    const args = { ...BASE, view, startIdx: 0, endIdx: timestamps.length - 1, maxRidges: 30 };
+
+    const selected = (span) => {
+      const g = sampleWaterfallGrid({ ...args, oldestMs: 0, span });
+      return Array.from(g.tFracs.subarray(0, g.count)).map((f) => Math.round(f * span));
+    };
+
+    const reference = selected(2000);
+    for (const jitter of [-7, -3, 2, 5, 9]) {
+      expect(selected(2000 + jitter)).toEqual(reference);
+    }
   });
 
   it("never exceeds maxRidges", () => {
