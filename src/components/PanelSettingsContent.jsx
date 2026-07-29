@@ -1344,7 +1344,7 @@ export function PanelSettingsContent({
                   <SettingsSlider
                     ariaLabel="spectrogram 3d elevation"
                     min={5}
-                    max={70}
+                    max={85}
                     step={1}
                     value={normalizedPanelControls.spectrogram3dElevationDeg}
                     formatValue={(value) => `${value.toFixed(0)}°`}

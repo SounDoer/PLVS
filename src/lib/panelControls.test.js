@@ -633,9 +633,11 @@ describe("spectrogram 3D controls", () => {
     expect(normalizePanelControls({ spectrogram3dElevationDeg: 0 }).spectrogram3dElevationDeg).toBe(
       5
     );
+    // Must match the projection's own ELEVATION_MAX_DEG: two clamps on the same quantity that
+    // disagree means the settings layer silently pulls back a value the renderer would accept.
     expect(
       normalizePanelControls({ spectrogram3dElevationDeg: 90 }).spectrogram3dElevationDeg
-    ).toBe(70);
+    ).toBe(85);
     expect(normalizePanelControls({ spectrogram3dAzimuthDeg: 370 }).spectrogram3dAzimuthDeg).toBe(
       10
     );

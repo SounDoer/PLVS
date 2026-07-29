@@ -158,11 +158,11 @@ function normalizeSpectrogram3dAzimuthDeg(raw) {
 }
 
 /**
- * Elevation is clamped at both ends: at 0 the surface collapses to a line, and past about 70 it
+ * Elevation is clamped at both ends: at 0 the surface collapses to a line, and past about 85 it
  * degenerates into a skewed top-down view that is strictly worse than the 2D mode.
  */
 function normalizeSpectrogram3dElevationDeg(raw) {
-  return clampNumber(raw, 5, 70, DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg);
+  return clampNumber(raw, 5, 85, DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg);
 }
 
 function normalizeSpectrogram3dLineAlpha(raw) {
