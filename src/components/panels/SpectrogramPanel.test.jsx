@@ -649,4 +649,68 @@ describe("SpectrogramPanel", () => {
     expect(next.spectrogramYMinFreq).toBeLessThan(100);
     expect(next.spectrogramYMaxFreq).toBeLessThan(10000);
   });
+
+  it("scales height on Shift+wheel in 3D, from deltaY", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: { spectrogram3d: true },
+    });
+
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: -100 });
+
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    const next = onPanelControlsChange.mock.calls.at(-1)[0];
+    expect(next.spectrogram3dHeightGain).toBeCloseTo(0.85, 5);
+    expect(next.spectrogramYMinFreq).toBe(20);
+    expect(next.spectrogramYMaxFreq).toBe(20000);
+  });
+
+  it("scales height on Shift+wheel in 3D, from deltaX", () => {
+    // Chrome on Windows swaps deltaY into deltaX while Shift is held -- the horizontal-scroll
+    // convention. A handler that only reads deltaY is silently dead for the real gesture, and
+    // every jsdom test that synthesises deltaY still passes. This is that test.
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: { spectrogram3d: true },
+    });
+
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaX: 100, deltaY: 0 });
+
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBeCloseTo(1.18, 5);
+  });
+
+  it("clamps Shift+wheel height scaling at the top of its range", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      panelControls: { spectrogram3d: true, spectrogram3dHeightGain: 3 },
+    });
+
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: 100 });
+
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBe(3);
+  });
+
+  it("ignores Shift+wheel in 2D", () => {
+    const onPanelControlsChange = vi.fn();
+    const onHistoryWheel = vi.fn();
+    const { container } = renderPanel({
+      historyChartInteractive: true,
+      onPanelControlsChange,
+      onHistoryWheel,
+      panelControls: {},
+    });
+
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: -100 });
+
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+    // Falls through to the ordinary time-zoom path, exactly as an unmodified wheel would.
+    expect(onHistoryWheel).toHaveBeenCalledTimes(1);
+  });
 });

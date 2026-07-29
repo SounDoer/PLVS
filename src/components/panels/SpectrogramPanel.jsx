@@ -153,6 +153,23 @@ export function SpectrogramPanel({ compact = false }) {
   }, []);
   const onSpectrogramChartWheel = useCallback(
     (e) => {
+      if (is3d && e.shiftKey && !e.ctrlKey) {
+        e.preventDefault();
+        // Chrome on Windows delivers a shifted wheel as deltaX, not deltaY -- the horizontal-scroll
+        // convention. Reading only deltaY leaves this gesture dead in the shipped app while every
+        // synthesised test still passes, so take whichever axis actually carries the notch.
+        const delta = e.deltaY || e.deltaX;
+        if (!delta) return;
+        const factor = delta > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR;
+        onPanelControlsChange?.(
+          normalizePanelControls({
+            ...normalizedPanelControls,
+            // The 0.3-3 clamp lives in normalizeSpectrogram3dHeightGain; do not repeat it here.
+            spectrogram3dHeightGain: normalizedPanelControls.spectrogram3dHeightGain * factor,
+          })
+        );
+        return;
+      }
       if (!e.ctrlKey) {
         onHistoryWheel?.(e);
         return;
@@ -197,7 +214,14 @@ export function SpectrogramPanel({ compact = false }) {
       );
       pulseChartYAxis();
     },
-    [cursorToFloor, normalizedPanelControls, onHistoryWheel, onPanelControlsChange, pulseChartYAxis]
+    [
+      cursorToFloor,
+      is3d,
+      normalizedPanelControls,
+      onHistoryWheel,
+      onPanelControlsChange,
+      pulseChartYAxis,
+    ]
   );
   const spectrogramFreqTicks = buildAdaptiveFreqTicks(
     normalizedPanelControls.spectrogramYMinFreq,
