@@ -3,6 +3,7 @@ import { LOUDNESS_HISTORY_LAYER_OPTIONS } from "../lib/panelControls.js";
 import { hzFromFrac } from "./spectrogramMath.js";
 import { inWindowRange } from "./spectrogramTimeline.js";
 import { STEREO_MAP_MODES } from "./stereoMapMath.js";
+import { nearestTimestampIndex } from "../lib/snapshotResolve.js";
 
 function rowAt(entries, index) {
   if (!entries) return undefined;
@@ -98,11 +99,32 @@ export function computeHistoryHoverPoint(
   if (!histSourceList.length) return null;
   const normalized = 1 - xFrac;
   const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
-  const hoverIndex = histSourceList.length - 1 - Math.round(fromEndSamples);
-  if (hoverIndex < 0 || hoverIndex >= histSourceList.length) return null;
+
+  // The nominal sample rate only approximates real elapsed time (capture cadence jitters), so a
+  // pixel position resolved by counting samples can land on a different row than the one
+  // resolveSnapshot() (Stats' source of truth) picks for the same "N seconds ago" instant. When
+  // rows carry real timestamps, resolve against those instead, matching resolveSnapshot's approach.
+  const newest = rowAt(histSourceList, histSourceList.length - 1);
+  let hoverIndex;
+  let offsetSec;
+  if (newest && Number.isFinite(newest.timestampMs)) {
+    // Hovering past the earliest sample (window wider than the data collected so far) has no row
+    // to show, same as the plain index path below -- nearestTimestampIndex would otherwise clamp.
+    if (fromEndSamples > histSourceList.length - 1) return null;
+    const targetMs = newest.timestampMs - fromEndSamples * sampleSec * 1000;
+    hoverIndex = nearestTimestampIndex(histSourceList, targetMs);
+    if (hoverIndex < 0) return null;
+    offsetSec = Math.max(
+      0,
+      (newest.timestampMs - rowAt(histSourceList, hoverIndex).timestampMs) / 1000
+    );
+  } else {
+    hoverIndex = histSourceList.length - 1 - Math.round(fromEndSamples);
+    if (hoverIndex < 0 || hoverIndex >= histSourceList.length) return null;
+    offsetSec = Math.max(0, (histSourceList.length - 1 - hoverIndex) * sampleSec);
+  }
   const point = rowAt(histSourceList, hoverIndex);
   if (!point) return null;
-  const offsetSec = Math.max(0, (histSourceList.length - 1 - hoverIndex) * sampleSec);
   const yValue = resolveHistoryHoverYValue(point, visibleLayerIds);
   return {
     leftPct: xFrac * 100,

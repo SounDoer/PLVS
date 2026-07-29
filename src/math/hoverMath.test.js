@@ -106,6 +106,19 @@ describe("computeHistoryHoverPoint", () => {
     const r = computeHistoryHoverPoint(0, samples, 0, 3, 0.1, {}, ["shortTerm", "momentary"]);
     expect(r.topPct).toBeCloseTo((23 / 64) * 100);
   });
+
+  it("resolves against real timestamps instead of a nominal-cadence sample count", () => {
+    // Rows are nominally 100ms apart, but a 200ms gap between idx7 and idx8 means idx8 and idx9 are
+    // 100ms later, in real time, than a fixed sampleSec=0.1 count from the newest row would predict.
+    const timestamps = [0, 100, 200, 300, 400, 500, 600, 700, 900, 1000];
+    const jittery = timestamps.map((timestampMs, i) => ({ m: -20 - i, st: -30 - i, timestampMs }));
+    // fromEndSamples = effectiveOffsetSamples(0) + (1-xFrac)*(visibleSamples-1) = 6 at xFrac=0.6,
+    // visibleSamples=16 -> a naive `length-1-round(fromEndSamples)` index would land on idx3 (real
+    // ms-ago 700), but the real nearest-in-time row to "600ms before the newest timestamp" is idx4.
+    const r = computeHistoryHoverPoint(0.6, jittery, 0, 16, 0.1);
+    expect(r.momentary).toBe(-24);
+    expect(r.shortTerm).toBe(-34);
+  });
 });
 
 describe("computeSpectrumHoverIndex", () => {
