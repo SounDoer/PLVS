@@ -584,17 +584,14 @@ describe("SpectrogramPanel", () => {
     expect(next.spectrogram3dHeightGain).toBe(1);
     expect(next.spectrogramYMinFreq).toBeGreaterThan(20);
     expect(next.spectrogramYMaxFreq).toBeLessThan(20000);
-
-    // The removed rebinding lived on pointer events, and useAxisInteraction listens on mouse
-    // events -- so a rail that kept both would still answer a pointer drag by writing height gain.
-    // Nothing should respond to the pointer path at all now.
-    onPanelControlsChange.mockClear();
-    fireEvent.pointerDown(rail, { button: 0, clientY: 150 });
-    fireEvent.pointerMove(rail, { clientY: 40 });
-    expect(onPanelControlsChange).not.toHaveBeenCalled();
   });
 
-  it("drags the Y rail to pan the frequency range in 3D", () => {
+  it("ignores pointer events on the Y rail in 3D", () => {
+    // The removed rebinding lived on pointer events and useAxisInteraction listens for mouse
+    // events, so the rail should have no pointer handlers at all now. setPointerCapture has to be
+    // stubbed or this proves nothing: jsdom does not implement it, the old handler called it on
+    // its first line, and the resulting throw would leave the drag state unset and this assertion
+    // passing against the very code it excludes.
     const onPanelControlsChange = vi.fn();
     renderPanel({
       onPanelControlsChange,
@@ -602,6 +599,37 @@ describe("SpectrogramPanel", () => {
     });
 
     const rail = screen.getByText("20k").closest("div[class*='shrink-0']");
+    rail.setPointerCapture = () => {};
+    rail.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 32,
+      bottom: 300,
+      width: 32,
+      height: 300,
+    });
+
+    fireEvent.pointerDown(rail, { button: 0, clientY: 150 });
+    fireEvent.pointerMove(rail, { clientY: 40 });
+
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+  });
+
+  it("drags the Y rail to pan the frequency range in 3D", () => {
+    const onPanelControlsChange = vi.fn();
+    renderPanel({
+      onPanelControlsChange,
+      panelControls: {
+        spectrogram3d: true,
+        // A full-span range cannot pan -- clampRange returns absMin/absMax unchanged for any
+        // drag -- so starting at the 20-20000 default would assert against a guaranteed no-op.
+        spectrogramYMinFreq: 100,
+        spectrogramYMaxFreq: 10000,
+      },
+    });
+
+    // The rail starts at 100-10000 here (see above), so its endpoint tick reads "10k", not "20k".
+    const rail = screen.getByText("10k").closest("div[class*='shrink-0']");
     rail.getBoundingClientRect = () => ({
       left: 0,
       top: 0,
@@ -617,6 +645,8 @@ describe("SpectrogramPanel", () => {
     expect(onPanelControlsChange).toHaveBeenCalled();
     const next = onPanelControlsChange.mock.calls.at(-1)[0];
     expect(next.spectrogram3dHeightGain).toBe(1);
-    expect(next.spectrogramYMinFreq).not.toBe(20);
+    // Both ends move the same way: that is a pan. A zoom would move them apart, a no-op neither.
+    expect(next.spectrogramYMinFreq).toBeLessThan(100);
+    expect(next.spectrogramYMaxFreq).toBeLessThan(10000);
   });
 });
