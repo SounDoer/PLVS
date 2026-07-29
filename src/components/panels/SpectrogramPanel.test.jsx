@@ -552,7 +552,7 @@ describe("SpectrogramPanel", () => {
     expect(screen.queryByText("dB")).toBeNull();
   });
 
-  it("drags the Y rail to the frequency range in 3D, not to height scale", () => {
+  it("zooms the Y rail to the frequency range in 3D, not to height scale", () => {
     // The regression this pins is the rebinding itself: the rail used to write
     // spectrogram3dHeightGain here, which silently made the frequency axis unreachable in 3D.
     const onPanelControlsChange = vi.fn();
@@ -561,10 +561,14 @@ describe("SpectrogramPanel", () => {
       panelControls: { spectrogram3d: true },
     });
 
+    // Do not assert on the rail's cursor. useAxisInteraction returns "ns-resize" for every y axis,
+    // so the old code's `is3d ? "ns-resize" : cursorStyle` had two branches with the same value --
+    // a cursor check cannot tell the rebinding from its absence.
     const rail = screen.getByText("20k").closest("div[class*='shrink-0']");
-    // useAxisInteraction's onWheel reads the rail's own rect to place the zoom anchor. jsdom
-    // reports zeros, which would push the anchor outside 20-20000 and let computeLogZoom clamp
-    // straight back to the full range -- a passing-looking no-op. Give it a real rect.
+    // jsdom reports a zero rect, which collapses useAxisInteraction's anchor math to the bottom of
+    // the range: the zoom still happens, so the assertions below survive without this stub, but the
+    // gesture under test would not be the one that ships. A real rect makes it the mid-rail zoom a
+    // user performs.
     rail.getBoundingClientRect = () => ({
       left: 0,
       top: 0,
@@ -580,5 +584,39 @@ describe("SpectrogramPanel", () => {
     expect(next.spectrogram3dHeightGain).toBe(1);
     expect(next.spectrogramYMinFreq).toBeGreaterThan(20);
     expect(next.spectrogramYMaxFreq).toBeLessThan(20000);
+
+    // The removed rebinding lived on pointer events, and useAxisInteraction listens on mouse
+    // events -- so a rail that kept both would still answer a pointer drag by writing height gain.
+    // Nothing should respond to the pointer path at all now.
+    onPanelControlsChange.mockClear();
+    fireEvent.pointerDown(rail, { button: 0, clientY: 150 });
+    fireEvent.pointerMove(rail, { clientY: 40 });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+  });
+
+  it("drags the Y rail to pan the frequency range in 3D", () => {
+    const onPanelControlsChange = vi.fn();
+    renderPanel({
+      onPanelControlsChange,
+      panelControls: { spectrogram3d: true },
+    });
+
+    const rail = screen.getByText("20k").closest("div[class*='shrink-0']");
+    rail.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: 32,
+      bottom: 300,
+      width: 32,
+      height: 300,
+    });
+
+    fireEvent.mouseDown(rail, { button: 0, clientY: 150 });
+    fireEvent.mouseMove(window, { clientY: 100 });
+
+    expect(onPanelControlsChange).toHaveBeenCalled();
+    const next = onPanelControlsChange.mock.calls.at(-1)[0];
+    expect(next.spectrogram3dHeightGain).toBe(1);
+    expect(next.spectrogramYMinFreq).not.toBe(20);
   });
 });

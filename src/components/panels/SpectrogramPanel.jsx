@@ -501,8 +501,9 @@ export function SpectrogramPanel({ compact = false }) {
           )}
         >
           {/* Y-axis: frequency, in both view modes. In 3D the ticks state the range on screen and
-              not a position -- no screen-vertical line corresponds to a frequency once the floor is
-              rotated. That is accepted, not an oversight; see the axes-and-gestures design. */}
+              not a position -- the floor covers only part of the canvas height and sits at whatever
+              azimuth the user has rotated to, so a tick's vertical position means nothing there.
+              That is accepted, not an oversight; see the axes-and-gestures design. */}
           <div
             ref={spectrogramYAxis.axisRef}
             {...spectrogramYAxis.axisHandlers}
