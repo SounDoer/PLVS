@@ -114,6 +114,31 @@ describe("sampleWaterfallGrid", () => {
     }
   });
 
+  // Frames leaving the old end must not disturb the ones still on screen. Seeding the bucket state
+  // with NaN force-keeps whichever frame currently sits first in the window, so as the edge advances
+  // the oldest ridge keeps re-binding to a different frame at an arbitrary phase within its bucket
+  // -- it visibly changes shape and position for several updates before finally dropping out.
+  it("does not re-phase the selection as frames leave the old end", () => {
+    const timestamps = evenly(0, 4000);
+    const view = framesAt(timestamps, -20);
+    // maxRidges is deliberately generous so the cap never binds; otherwise advancing the left edge
+    // also pulls an extra frame in at the right, and "only drops from the front" stops holding.
+    const args = { ...BASE, view, span: 4000, maxRidges: 60, endIdx: timestamps.length - 1 };
+
+    const pick = (startIdx) => {
+      const g = sampleWaterfallGrid({ ...args, startIdx, oldestMs: 0 });
+      return Array.from(g.tFracs.subarray(0, g.count)).map((f) => Math.round(f * 4000));
+    };
+
+    const full = pick(0);
+    // Advancing the window's leading edge one frame at a time must only ever drop frames from the
+    // front of the selection, never change which of the remaining frames were chosen.
+    for (let startIdx = 1; startIdx <= 12; startIdx++) {
+      const later = pick(startIdx);
+      expect(full.slice(full.length - later.length)).toEqual(later);
+    }
+  });
+
   it("never exceeds maxRidges", () => {
     const timestamps = evenly(0, 400, 4);
     const view = framesAt(timestamps, -20);

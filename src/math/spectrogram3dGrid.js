@@ -71,7 +71,15 @@ export function sampleWaterfallGrid({
     Number.isFinite(sampleMs) && sampleMs > 0
       ? sampleMs * Math.max(1, Math.round(rawStrideMs / sampleMs))
       : rawStrideMs;
-  let lastBucket = NaN;
+
+  // Seed from the frame just *outside* the window, so which frame wins a bucket never depends on
+  // where the window edge happens to fall. Seeding with NaN instead force-keeps whatever frame
+  // currently sits first in the window: as the edge advances that identity changes on every update,
+  // at an arbitrary phase within its bucket, so the oldest ridge keeps changing shape and position
+  // right up until it drops out. The entering end never showed this, because a frame there is
+  // judged against the previous kept frame and then stays put.
+  const beforeTs = view.timestampAt(startIdx - 1);
+  let lastBucket = Number.isFinite(beforeTs) ? Math.floor(beforeTs / strideMs) : NaN;
   let count = 0;
 
   for (let i = startIdx; i <= endIdx && count < cap; i++) {
