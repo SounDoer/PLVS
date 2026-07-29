@@ -99,8 +99,14 @@ export function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, 
     setDraftValue(value);
   }, [value]);
 
+  // Commit on every change rather than on release, so the chart tracks the thumb. A range input
+  // fires change for each value including the final one, so there is nothing left to commit on
+  // pointer-up. Every other drag gesture in the app (chart pan, axis rails, 3D rotation) already
+  // commits per pointer move; the sliders were the odd ones out.
   const commit = (nextValue) => {
-    onCommit(Number(nextValue));
+    const next = Number(nextValue);
+    setDraftValue(next);
+    onCommit(next);
   };
 
   return (
@@ -117,9 +123,7 @@ export function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, 
         onMouseLeave={() => setTooltipOpen(false)}
         onFocus={() => setTooltipOpen(true)}
         onBlur={() => setTooltipOpen(false)}
-        onChange={(event) => setDraftValue(Number(event.target.value))}
-        onPointerUp={(event) => commit(event.currentTarget.value)}
-        onKeyUp={(event) => commit(event.currentTarget.value)}
+        onChange={(event) => commit(event.target.value)}
         className="plvs-range w-16 opacity-75 transition-opacity hover:opacity-100 focus-visible:opacity-100"
         style={{ "--range-pct": `${draftPercent}%` }}
       />
