@@ -49,7 +49,7 @@ data is already in the panel; only the rendering differs.
 | 7 | **Each ridge is a captured frame at its own timestamp** | See Reversed #2 |
 | 8 | Colour is **absolute against the fixed dB range**; only height follows the dB floor | dB is encoded twice in 3D (height and colour). A control that moves both leaves nothing stable to read the change against. Colour pinned to absolute level makes it the reference frame |
 | 9 | Rotation on **right-drag** only | Left-drag, wheel, Ctrl-combos and double-click keep their 2D meanings. The right-click menu is already suppressed on this canvas |
-| 10 | Left axis rail controls **Height Scale** in 3D | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation — frequency and time swap visual direction as azimuth turns |
+| 10 | ~~Left axis rail controls **Height Scale** in 3D~~ — **superseded**, see `2026-07-29-spectrogram-3d-axes-and-gestures-design.md` | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation. Sound in isolation; it bought a rail that changes meaning under the user, for a control that had cheaper places to live |
 | 11 | Scrub feedback is a **highlighted ridge**, not a selection line | A vertical line through a rotated scene has no meaning |
 | 12 | Pointer input is **unprojected onto the floor plane** | See Interaction |
 | 13 | Default viewpoint: azimuth 135°, elevation 60° | Frequency on the front-left floor edge, time on the front-right, newest frame at the near corner. See Interaction for the trade this forces |
