@@ -13,6 +13,9 @@ const POINT_TARGET_DIVISOR = 6;
 const POINT_MIN = 60;
 const POINT_MAX = 320;
 const GRADIENT_STOPS = 16;
+// How many ridge spacings the old-end fade is spread over. Enough to read as a dissolve rather
+// than a blink, short enough that it costs almost none of the visible history.
+const EDGE_FADE_RIDGES = 2.5;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -417,6 +420,20 @@ export function useSpectrogram3dCanvas({
       //
       // Dropping the fill also removes all overdraw, which was the largest unknown in the design's
       // performance model, and removes the need to resolve an opaque surface colour at all.
+      // Fade ridges out as they reach the old end of the window. Without it a curve slides smoothly
+      // toward tFrac 0 at full strength and then vanishes the instant its timestamp leaves range --
+      // a whole ridge, at full height, blinking out. The 2D heatmap never shows this because what
+      // leaves there is a one-pixel column.
+      //
+      // The entering end is deliberately NOT faded. The newest ridge is the frame live monitoring
+      // is actually watching, and it is the unoccluded focal element of the scene; easing it in
+      // would make the current moment permanently the dimmest thing on screen. The two ends are not
+      // symmetric in meaning -- arrival is the signal, departure is just history scrolling away.
+      //
+      // Width is measured in ridge spacings rather than as a fixed fraction of the window, so the
+      // fade still reads as "the last few ridges are dissolving" at any Ridges setting.
+      const fadeSpan = EDGE_FADE_RIDGES / Math.max(1, grid.count);
+
       // Ridges arrive in ascending timestamp order, so painting far-to-near is just a matter of
       // which end to start from.
       const first = proj.ridgeOrderAscending ? 0 : grid.count - 1;
@@ -435,8 +452,10 @@ export function useSpectrogram3dCanvas({
         }
         const startBase = projectPoint(tFrac, 0, 0, proj);
 
+        const edgeFade = tFrac < fadeSpan ? Math.max(0, tFrac) / fadeSpan : 1;
+
         if (r === selectedRidge) {
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = edgeFade;
           ctx.strokeStyle = selection;
           ctx.lineWidth = baseLineWidth * 2;
           ctx.stroke(curve);
@@ -445,7 +464,7 @@ export function useSpectrogram3dCanvas({
           // Partial alpha is what makes an unfilled waterfall read as a surface: where ridges
           // overlap they accumulate, so dense regions darken and the eye recovers the depth the
           // missing occlusion would have given. At full opacity it flattens into a tangle.
-          ctx.globalAlpha = p.lineAlpha;
+          ctx.globalAlpha = p.lineAlpha * edgeFade;
           ctx.strokeStyle = canColorize
             ? buildRidgeGradient(ctx, p.colormapLut, startBase, proj, heightPx)
             : ink;
