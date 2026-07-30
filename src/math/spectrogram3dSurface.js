@@ -1,10 +1,11 @@
 /**
- * Geometry for the 3D spectrogram Surface mode: clipping a screen column against the floor plane,
- * and mapping a column sample to the grid row it should read.
+ * Geometry and colour for the 3D spectrogram Surface mode: clipping a screen column against the
+ * floor plane, mapping a column sample to the grid row it should read, and building the
+ * (level x shade) colour table the rasteriser reads per sample.
  *
  * Pure: no canvas, no React, no data access. This module will grow into a per-pixel renderer that
- * writes ARGB words into buffers the caller supplies; today it contains the column-clipping step
- * and the row lookup that the rasteriser will walk.
+ * writes ARGB words into buffers the caller supplies; today it contains the column-clipping step,
+ * the row lookup, and the colour table that the rasteriser will walk.
  *
  * The column walk rests on one property of the orthographic projection: for a fixed screen column
  * the set of floor points landing in it is a straight line, so a column can be walked with constant
@@ -12,6 +13,9 @@
  * more robust than filling geometry, which is what the Lines mode's abandoned hidden-line attempt
  * tried -- see the Reversed section of the 2026-07-28 design.
  */
+
+import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
+import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
 
 const EPS = 1e-9;
 
@@ -121,6 +125,81 @@ export function buildRowLut(tFracs, count, size, maxDistTFrac) {
       row += 1;
     }
     lut[i] = Math.abs(tFracs[row] - t) > maxDistTFrac ? NO_ROW : row;
+  }
+  return lut;
+}
+
+/** Shade quantisation. 16 keeps the LUT at 4096 words -- cheap to rebuild, fine enough to read. */
+export const SHADE_LEVELS = 16;
+
+/** How far Colorize lets shading move luminance. Small on purpose: colour must stay readable. */
+const COLORIZE_SHADE_FLOOR = 0.75;
+
+/**
+ * Pack one ARGB word for a Uint32Array view over ImageData.
+ *
+ * The byte order assumes a little-endian host, which every platform PLVS targets is. On a
+ * big-endian host the channels would come out reversed.
+ */
+export function packArgb(r, g, b, a) {
+  return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
+}
+
+/**
+ * The (level x shade) colour table the rasteriser indexes with `level * SHADE_LEVELS + shade`.
+ *
+ * `level` is the sample's FLOOR-RELATIVE height fraction, quantised to 0..255 -- the same quantity
+ * `sampleWaterfallGrid` stores. Colour, however, must be ABSOLUTE against the fixed dB range, so
+ * that raising the dB Floor never recolours a peak (Decision #8 of the 2026-07-28 design). The
+ * conversion happens here, once per repaint, exactly as `buildStopColors` does it for Lines:
+ * recover the dB that a height fraction represents, then run that dB through spectrogramColorFrac.
+ *
+ * Monochrome ignores `level` entirely and ramps on `shade`, between the colormap's two ends. The
+ * relief IS the information in that state; height carries level, and colour carries shape.
+ *
+ * @param {object} args
+ * @param {Uint8Array|number[]} args.colormapLut 256 RGB triplets
+ * @param {number} args.dbFloor current dB floor
+ * @param {boolean} args.colorize
+ * @returns {Uint32Array} length 256 * SHADE_LEVELS
+ */
+export function buildSurfaceLut({ colormapLut, dbFloor, colorize }) {
+  const lut = new Uint32Array(256 * SHADE_LEVELS);
+  const lowR = colormapLut[0];
+  const lowG = colormapLut[1];
+  const lowB = colormapLut[2];
+  const highR = colormapLut[255 * 3];
+  const highG = colormapLut[255 * 3 + 1];
+  const highB = colormapLut[255 * 3 + 2];
+
+  for (let level = 0; level < 256; level++) {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    if (colorize) {
+      const db = dbFloor + (level / 255) * (SPECTROGRAM_DB_MAX - dbFloor);
+      const idx = Math.round(spectrogramColorFrac(db, dbFloor) * 255) * 3;
+      r = colormapLut[idx];
+      g = colormapLut[idx + 1];
+      b = colormapLut[idx + 2];
+    }
+    for (let shade = 0; shade < SHADE_LEVELS; shade++) {
+      const s = SHADE_LEVELS > 1 ? shade / (SHADE_LEVELS - 1) : 1;
+      let outR;
+      let outG;
+      let outB;
+      if (colorize) {
+        const mul = COLORIZE_SHADE_FLOOR + (1 - COLORIZE_SHADE_FLOOR) * s;
+        outR = Math.round(r * mul);
+        outG = Math.round(g * mul);
+        outB = Math.round(b * mul);
+      } else {
+        outR = Math.round(lowR + (highR - lowR) * s);
+        outG = Math.round(lowG + (highG - lowG) * s);
+        outB = Math.round(lowB + (highB - lowB) * s);
+      }
+      lut[level * SHADE_LEVELS + shade] = packArgb(outR, outG, outB, 255);
+    }
   }
   return lut;
 }

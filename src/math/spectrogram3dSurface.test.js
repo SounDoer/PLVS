@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { SPECTROGRAM_DB_MAX, SPECTROGRAM_DB_MIN } from "../config/scales.js";
+import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
 import { buildProjection, projectPoint } from "./spectrogram3dProjection.js";
-import { buildRowLut, columnFloorSpan, NO_ROW } from "./spectrogram3dSurface.js";
+import {
+  buildRowLut,
+  buildSurfaceLut,
+  columnFloorSpan,
+  NO_ROW,
+  packArgb,
+  SHADE_LEVELS,
+} from "./spectrogram3dSurface.js";
 
 const W = 920;
 const H = 300;
@@ -181,5 +190,107 @@ describe("buildRowLut", () => {
     }
     expect([...lut]).toEqual(expected);
     expect(lut[20]).toBe(count - 1);
+  });
+});
+
+// A LUT whose low end is pure red and whose high end is pure blue, so the two are distinguishable.
+function testColormapLut() {
+  const lut = new Uint8Array(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    lut[i * 3] = 255 - i;
+    lut[i * 3 + 1] = 0;
+    lut[i * 3 + 2] = i;
+  }
+  return lut;
+}
+
+describe("buildSurfaceLut", () => {
+  it("ramps monochrome by shade alone, ignoring level", () => {
+    const lut = buildSurfaceLut({
+      colormapLut: testColormapLut(),
+      dbFloor: SPECTROGRAM_DB_MIN,
+      colorize: false,
+    });
+    const darkest = lut[0 * SHADE_LEVELS + 0];
+    const brightest = lut[0 * SHADE_LEVELS + (SHADE_LEVELS - 1)];
+    // Low end of the colormap is red, high end is blue.
+    expect(darkest).toBe(packArgb(255, 0, 0, 255));
+    expect(brightest).toBe(packArgb(0, 0, 255, 255));
+    // Level does not move the colour.
+    expect(lut[255 * SHADE_LEVELS + 0]).toBe(darkest);
+    expect(lut[128 * SHADE_LEVELS + (SHADE_LEVELS - 1)]).toBe(brightest);
+  });
+
+  it("ramps colorize by level, with shade only changing luminance", () => {
+    const lut = buildSurfaceLut({
+      colormapLut: testColormapLut(),
+      dbFloor: SPECTROGRAM_DB_MIN,
+      colorize: true,
+    });
+    const litLow = lut[0 * SHADE_LEVELS + (SHADE_LEVELS - 1)];
+    const litHigh = lut[255 * SHADE_LEVELS + (SHADE_LEVELS - 1)];
+    expect(litLow).not.toBe(litHigh);
+
+    // At full shade, the top of the ramp is the colormap's high end untouched.
+    expect(litHigh).toBe(packArgb(0, 0, 255, 255));
+
+    // Shading darkens without changing which channel dominates.
+    const dimHigh = lut[255 * SHADE_LEVELS + 0];
+    expect(dimHigh).not.toBe(litHigh);
+    const blueOf = (argb) => (argb >>> 16) & 0xff;
+    expect(blueOf(dimHigh)).toBeLessThan(blueOf(litHigh));
+    expect(blueOf(dimHigh)).toBeGreaterThan(0);
+  });
+
+  it("is fully opaque everywhere", () => {
+    const lut = buildSurfaceLut({
+      colormapLut: testColormapLut(),
+      dbFloor: SPECTROGRAM_DB_MIN,
+      colorize: true,
+    });
+    for (let i = 0; i < lut.length; i++) {
+      expect(lut[i] >>> 24).toBe(255);
+    }
+  });
+
+  it("keeps colour absolute when the dB floor is raised", () => {
+    const low = buildSurfaceLut({
+      colormapLut: testColormapLut(),
+      dbFloor: SPECTROGRAM_DB_MIN,
+      colorize: true,
+    });
+    const high = buildSurfaceLut({
+      colormapLut: testColormapLut(),
+      dbFloor: -40,
+      colorize: true,
+    });
+    // The top of the height ramp is SPECTROGRAM_DB_MAX in both cases, so its colour is unchanged.
+    const top = 255 * SHADE_LEVELS + (SHADE_LEVELS - 1);
+    expect(low[top]).toBe(high[top]);
+    expect(SPECTROGRAM_DB_MAX).toBeGreaterThan(-40);
+  });
+
+  // A mid-height level, away from both ends of the ramp, where a raised dbFloor sends the recovered
+  // dB through spectrogramColorFrac to a colormap index that is NOT the same as the level itself.
+  // The "keeps colour absolute" test above cannot catch a mutant that indexes the colormap by level
+  // directly, skipping the dB round-trip: at dbFloor = SPECTROGRAM_DB_MIN the two happen to agree,
+  // and the "raised floor" case only checks the top of the ramp, where they also agree (level 255
+  // always maps to dB SPECTROGRAM_DB_MAX regardless of floor). This test picks a floor and a level
+  // where they diverge, and pins the result to the same conversion buildStopColors uses, so the
+  // production code and the assertion cannot silently drift together.
+  it("converts level to dB before indexing the colormap, not level directly", () => {
+    const dbFloor = -40;
+    const colormapLut = testColormapLut();
+    const lut = buildSurfaceLut({ colormapLut, dbFloor, colorize: true });
+    const level = 128;
+
+    const db = dbFloor + (level / 255) * (SPECTROGRAM_DB_MAX - dbFloor);
+    const frac = spectrogramColorFrac(db, dbFloor);
+    const idx = Math.round(frac * 255) * 3;
+    // Sanity check that this level/floor pair actually exercises the divergence the test relies on.
+    expect(idx).not.toBe(level * 3);
+
+    const expected = packArgb(colormapLut[idx], colormapLut[idx + 1], colormapLut[idx + 2], 255);
+    expect(lut[level * SHADE_LEVELS + (SHADE_LEVELS - 1)]).toBe(expected);
   });
 });
