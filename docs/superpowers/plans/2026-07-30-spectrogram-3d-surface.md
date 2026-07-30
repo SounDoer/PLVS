@@ -596,9 +596,9 @@ function fakeGrid(rowHeights, pointCount = 8) {
 
 function render(
   grid,
-  { highlightRow = -1, columnStride = 1, heightGain = 1, elevationDeg = 60 } = {}
+  { highlightRow = -1, columnStride = 1, heightGain = 1, elevationDeg = 60, azimuthDeg = 135 } = {}
 ) {
-  const p = proj(135, elevationDeg);
+  const p = proj(azimuthDeg, elevationDeg);
   const out = new Uint32Array(W * H);
   const lut = buildSurfaceLut({
     colormapLut: testColormapLut(),
@@ -666,18 +666,33 @@ describe("rasterizeSurface", () => {
   // low-elevation view is where a solid surface genuinely occludes its own interior. That is the
   // whole reason Lines is kept as a separate mode; see Decision #1 of the design. Elevation 20 puts
   // the threshold at Δh > 0.26, which is reachable.
+  //
+  // These two also render at azimuth 90 rather than the default 135, and that is load-bearing. A
+  // screen column is the floor line `u·tx + v·fx = const`. At azimuth 135, `tx` and `fx` are equal,
+  // so the line is `u + v = k` and reaches at most `u = k + 0.5` — meaning a column with low `k`
+  // contains no sample from the newest row's time slab at all, and the far row is legitimately
+  // unoccluded there. A global "zero highlight pixels" assertion is therefore unsatisfiable by ANY
+  // implementation at azimuth 135. At azimuth 90 `tx` is zero, every column spans the whole time
+  // axis, and the assertion means what it says. Do not "simplify" these back to the default view.
   it("hides a low far row behind a tall near row", () => {
-    // Row 0 is oldest, row N-1 newest. At azimuth 135 `proj.ty > 0`, so the newest row is nearest:
-    // make the NEAREST row tall and tag the FARTHEST one. None of it should survive.
+    // Row 0 is oldest, row N-1 newest. `proj.ty > 0` at both 90 and 135, so the newest row is
+    // nearest: make the NEAREST row tall and tag the FARTHEST one. None of it should survive.
     const grid = fakeGrid([0.05, 0.05, 0.05, 1]);
-    const out = render(grid, { highlightRow: 0, elevationDeg: 20 });
+    const out = render(grid, { highlightRow: 0, elevationDeg: 20, azimuthDeg: 90 });
     expect(countPixels(out, HIGHLIGHT)).toBe(0);
   });
 
   it("lets a tall far row show above a low near row", () => {
     const grid = fakeGrid([1, 0.05, 0.05, 0.05]);
-    const out = render(grid, { highlightRow: 0, elevationDeg: 20 });
+    const out = render(grid, { highlightRow: 0, elevationDeg: 20, azimuthDeg: 90 });
     expect(countPixels(out, HIGHLIGHT)).toBeGreaterThan(0);
+  });
+
+  // Occlusion at the DEFAULT viewpoint, which is what ships. Scoped to the columns whose floor line
+  // actually reaches the tall row's time slab, for the reason given above.
+  it("hides the far row in every column the tall near row reaches", () => {
+    // Assert zero highlight pixels within those columns only. Derive the column set from
+    // `columnFloorSpan`, not from a hard-coded range.
   });
 
   it("leaves a gap transparent instead of filling it", () => {
