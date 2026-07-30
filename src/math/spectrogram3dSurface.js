@@ -362,3 +362,32 @@ export function rasterizeSurface({
     }
   }
 }
+
+/**
+ * Default column stride: rasterise every Nth column and replicate.
+ *
+ * Measured with scripts/spectrogram-surface-benchmark.mjs on 2026-07-30, medians (and best-of-60)
+ * of 60 repaints, `buildRowLut` + `out.fill(0)` + `rasterizeSurface` timed together per the timing
+ * boundary documented in that script -- `buildSurfaceLut` is amortised (rebuilt only on a theme or
+ * control change, not per repaint) and is measured separately:
+ *
+ *   922x110    stride 1: 1.09 ms (0.82)   stride 2: 0.46 ms (0.42)
+ *              stride 3: 0.29 ms (0.28)   stride 4: 0.21 ms (0.20)
+ *   2560x900   stride 1: 18.71 ms (16.58) OVER on median
+ *              stride 2: 10.89 ms (9.49)  stride 3: 7.98 ms (6.61)   stride 4: 6.64 ms (5.31)
+ *   3840x1200  stride 1: 38.40 ms (35.88) OVER   stride 2: 22.31 ms (20.48) OVER
+ *              stride 3: 16.12 ms (14.53) -- only ~0.6 ms under the 16.7 ms budget on median
+ *              stride 4: 14.33 ms (11.93)
+ *   buildSurfaceLut (amortised, not counted above): 0.03 ms median.
+ *
+ * Node is not WebView2 and nothing else is competing for the main thread there, so these are a
+ * lower bound. Stride 1 already clears budget at 922x110 but not at the larger sizes: 2560x900's
+ * median sits over budget at stride 1 and only becomes comfortable (roughly 65% of budget) at
+ * stride 2, while 3840x1200 needs stride 3 just to land under budget at all and stays within ~4%
+ * of the line there across repeated runs -- too close to call comfortable given this harness is a
+ * lower bound. Stride 4 is the smallest stride that puts every measured canvas, including
+ * 3840x1200, at a comfortable margin (roughly 70-85% of budget or better), so it is the shipped
+ * default. A size-dependent stride (stride 2 for the common 2560x900 case, coarser only for larger
+ * canvases) is possible but out of scope here -- the design calls for one constant.
+ */
+export const DEFAULT_COLUMN_STRIDE = 4;
