@@ -12,6 +12,7 @@ import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js"
 import {
   buildRowLut,
   buildSurfaceLut,
+  columnFloorSpan,
   columnStrideFor,
   packArgb,
   rasterizeSurface,
@@ -36,6 +37,20 @@ function ridgeCountFor(widthPx) {
 
 function pointCountFor(widthPx) {
   return Math.round(Math.min(POINT_MAX, Math.max(POINT_MIN, widthPx / POINT_TARGET_DIVISOR)));
+}
+
+/**
+ * The most samples any single column takes along the time axis, which is the ceiling on how many
+ * grid rows Surface can resolve. Above it, nearest-row sampling aliases and rows re-bind as the
+ * window slides -- see the precondition on `rasterizeSurface`.
+ *
+ * The maximum is the column through the floor's centre, because that is the longest chord, so this
+ * is one `columnFloorSpan` call rather than a scan. Lines does not need it: it strokes each ridge
+ * as a path rather than point-sampling per column, so it cannot alias this way.
+ */
+function surfaceRowCap(proj, height) {
+  const span = columnFloorSpan(Math.round(proj.originX), proj, height);
+  return span ? span.steps : 1;
 }
 
 function cssVar(el, name, fallback) {
@@ -455,7 +470,14 @@ export function useSpectrogram3dCanvas({
       const { startIdx, endIdx } = inWindowRange(snaps, p.oldestMs, p.newestMs);
       if (endIdx < startIdx) return;
 
-      const maxRidges = ridgeCountFor(W);
+      // Surface point-samples the time axis per column, so its row count is additionally capped by
+      // how many samples the longest column actually takes -- see surfaceRowCap. Lines strokes a
+      // complete path per ridge instead of point-sampling, so ridgeCountFor(W) alone is still right
+      // for it, and this cap must not apply there.
+      const maxRidges =
+        p.mode === "surface"
+          ? Math.min(ridgeCountFor(W), surfaceRowCap(proj, H))
+          : ridgeCountFor(W);
       const grid = sampleWaterfallGrid({
         view: snaps,
         startIdx,
@@ -527,9 +549,10 @@ export function useSpectrogram3dCanvas({
           ROW_LUT_SIZE,
           ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1)
         );
-        // resolveArgbRef fills a single pixel on the offscreen canvas and reads it back, so it must
-        // run BEFORE the pixel buffer is cleared -- calling it after off.pixels.fill(0) would leave
-        // one stray pixel in the output.
+        // resolveArgbRef probes a colour by writing a pixel to the offscreen canvas and reading it
+        // back. Doing that before off.pixels.fill(0) keeps the probe write and the buffer prep from
+        // being confused with each other; it is not load-bearing -- putImageData below writes the
+        // whole canvas regardless of what the probe left behind.
         const highlightArgb = resolveArgbRef.current(off.ctx, selection);
         off.pixels.fill(0);
         rasterizeSurface({
