@@ -650,7 +650,10 @@ describe("SpectrogramPanel", () => {
     expect(next.spectrogramYMaxFreq).toBeLessThan(10000);
   });
 
-  it("scales height on Shift+wheel in 3D, from deltaY", () => {
+  // Scroll up grows the surface. Inverted against the time and frequency wheels on purpose: those
+  // zoom a range, this scales a multiplier, so sharing their sign made the gesture read backwards
+  // in the real app. These expectations are the direction confirmed by hand, not a derivation.
+  it("grows the surface on Shift+wheel up in 3D, from deltaY", () => {
     const onPanelControlsChange = vi.fn();
     const onHistoryWheel = vi.fn();
     const { container } = renderPanel({
@@ -664,7 +667,7 @@ describe("SpectrogramPanel", () => {
 
     expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
     const next = onPanelControlsChange.mock.calls.at(-1)[0];
-    expect(next.spectrogram3dHeightGain).toBeCloseTo(0.85, 5);
+    expect(next.spectrogram3dHeightGain).toBeCloseTo(1.18, 5);
     expect(next.spectrogramYMinFreq).toBe(20);
     expect(next.spectrogramYMaxFreq).toBe(20000);
     // Pins the branch's own `return`: without it a shifted wheel would scale height and then fall
@@ -672,10 +675,14 @@ describe("SpectrogramPanel", () => {
     expect(onHistoryWheel).not.toHaveBeenCalled();
   });
 
-  it("scales height on Shift+wheel in 3D, from deltaX", () => {
+  it("shrinks the surface on Shift+wheel down in 3D, from deltaX", () => {
     // Chrome on Windows swaps deltaY into deltaX while Shift is held -- the horizontal-scroll
     // convention. A handler that only reads deltaY is silently dead for the real gesture, and
     // every jsdom test that synthesises deltaY still passes. This is that test.
+    //
+    // It also pins the sign convention across that swap: Chrome copies the signed value rather than
+    // negating it, so a positive deltaX means the same as a positive deltaY. That was the half of
+    // the gesture jsdom could not settle, and the real app has now settled it.
     const onPanelControlsChange = vi.fn();
     const { container } = renderPanel({
       historyChartInteractive: true,
@@ -686,7 +693,7 @@ describe("SpectrogramPanel", () => {
     fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaX: 100, deltaY: 0 });
 
     expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
-    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBeCloseTo(1.18, 5);
+    expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBeCloseTo(0.85, 5);
   });
 
   it("clamps Shift+wheel height scaling at the top of its range", () => {
@@ -697,12 +704,12 @@ describe("SpectrogramPanel", () => {
       panelControls: { spectrogram3d: true, spectrogram3dHeightGain: 3 },
     });
 
-    // Zoom in from the same fixture first, so the ceiling assertion below cannot be satisfied by a
+    // Shrink from the same fixture first, so the ceiling assertion below cannot be satisfied by a
     // handler that simply echoed its input.
-    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: -100 });
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: 100 });
     expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBeCloseTo(2.55, 5);
 
-    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: 100 });
+    fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: -100 });
 
     expect(onPanelControlsChange.mock.calls.at(-1)[0].spectrogram3dHeightGain).toBe(3);
   });

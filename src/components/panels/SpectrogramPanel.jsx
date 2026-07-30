@@ -169,7 +169,12 @@ export function SpectrogramPanel({ compact = false }) {
         // put a noise-scale value on the other axis, and `||` would let that decide the direction.
         const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
         if (!delta) return;
-        const factor = delta > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR;
+        // Inverted relative to the other two wheel gestures, and deliberately so. Those zoom a
+        // *range*, where scrolling up shrinks the window and the content appears to grow. This
+        // scales a *multiplier*, so the same sign would make scrolling up flatten the surface --
+        // verified backwards in the real app before this was flipped. Scroll up grows, as it does
+        // everywhere else; the constants' names read wrong here for exactly that reason.
+        const factor = delta > 0 ? CHART_ZOOM_IN_FACTOR : CHART_ZOOM_OUT_FACTOR;
         onPanelControlsChange?.(
           normalizePanelControls({
             ...normalizedPanelControls,
