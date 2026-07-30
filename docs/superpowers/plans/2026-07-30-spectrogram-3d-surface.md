@@ -24,20 +24,20 @@ Five facts that will otherwise cost you a debugging session each:
 
 ## File structure
 
-| File | Responsibility |
-|---|---|
-| `src/math/spectrogram3dSurface.js` | **Create.** Pure. Column/floor-line clipping, the row lookup table, the colour LUT, and the floating-horizon rasteriser. All of the testable logic. |
-| `src/math/spectrogram3dSurface.test.js` | **Create.** Tests for the above. |
-| `scripts/spectrogram-surface-benchmark.mjs` | **Create.** Node benchmark of the rasteriser at real panel sizes. Decides the default column stride. |
-| `src/hooks/useSpectrogram3dCanvas.js` | **Modify.** Mode branch; offscreen canvas lifecycle; compositing. |
-| `src/lib/panelControls.js` | **Modify.** `SPECTROGRAM_MODE_OPTIONS`, `spectrogramMode` + normalizer; delete `spectrogram3d`. |
-| `src/lib/panelControls.test.js` | **Modify.** Normalizer coverage. |
-| `src/components/panels/chartHelp.js` | **Modify.** Three-way predicate. |
-| `src/components/panels/chartHelp.test.js` | **Modify.** Coverage for all three modes. |
-| `src/components/panels/SpectrogramPanel.jsx` | **Modify.** Derive `is3d` from the mode; pass the mode to the renderer. |
-| `src/components/panels/SpectrogramPanel.test.jsx` | **Modify.** Replace `spectrogram3d: true` with `spectrogramMode: "lines"`. |
-| `src/components/PanelSettingsContent.jsx` | **Modify.** Mode dropdown; Line Alpha / Line Width shown only for Lines. |
-| `src/components/PanelSettingsContent.test.jsx` | **Modify.** Dropdown and conditional-control coverage. |
+| File                                              | Responsibility                                                                                                                                      |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/math/spectrogram3dSurface.js`                | **Create.** Pure. Column/floor-line clipping, the row lookup table, the colour LUT, and the floating-horizon rasteriser. All of the testable logic. |
+| `src/math/spectrogram3dSurface.test.js`           | **Create.** Tests for the above.                                                                                                                    |
+| `scripts/spectrogram-surface-benchmark.mjs`       | **Create.** Node benchmark of the rasteriser at real panel sizes. Decides the default column stride.                                                |
+| `src/hooks/useSpectrogram3dCanvas.js`             | **Modify.** Mode branch; offscreen canvas lifecycle; compositing.                                                                                   |
+| `src/lib/panelControls.js`                        | **Modify.** `SPECTROGRAM_MODE_OPTIONS`, `spectrogramMode` + normalizer; delete `spectrogram3d`.                                                     |
+| `src/lib/panelControls.test.js`                   | **Modify.** Normalizer coverage.                                                                                                                    |
+| `src/components/panels/chartHelp.js`              | **Modify.** Three-way predicate.                                                                                                                    |
+| `src/components/panels/chartHelp.test.js`         | **Modify.** Coverage for all three modes.                                                                                                           |
+| `src/components/panels/SpectrogramPanel.jsx`      | **Modify.** Derive `is3d` from the mode; pass the mode to the renderer.                                                                             |
+| `src/components/panels/SpectrogramPanel.test.jsx` | **Modify.** Replace `spectrogram3d: true` with `spectrogramMode: "lines"`.                                                                          |
+| `src/components/PanelSettingsContent.jsx`         | **Modify.** Mode dropdown; Line Alpha / Line Width shown only for Lines.                                                                            |
+| `src/components/PanelSettingsContent.test.jsx`    | **Modify.** Dropdown and conditional-control coverage.                                                                                              |
 
 The rasteriser is a single module because its four exports share one coordinate convention and one set of typed-array layouts; splitting them would mean re-stating that convention in two places. It stays pure so that the untestable part (canvas calls) remains as thin as possible, which is the same split the Lines renderer already uses.
 
@@ -58,6 +58,7 @@ Learn these before Task 1; every later task depends on them.
 For a fixed screen column `x`, the set of floor points projecting into it is a straight line, because the projection is affine and `x` does not depend on `h`. This function clips that line to the floor square and returns the near endpoint plus a constant step toward the far end.
 
 **Files:**
+
 - Create: `src/math/spectrogram3dSurface.js`
 - Create: `src/math/spectrogram3dSurface.test.js`
 
@@ -251,6 +252,7 @@ git commit -m "feat(spectrogram): clip a screen column against the 3D floor plan
 Grid rows sit at irregular `tFracs`. The rasteriser needs `row(tFrac)` per sample, so a binary search per sample would dominate the inner loop. A quantised lookup table gives it in one array read, and the same table is where capture gaps become holes: a bucket with no row within `maxDistTFrac` gets the `NO_ROW` sentinel, and the rasteriser skips those samples without advancing the horizon.
 
 **Files:**
+
 - Modify: `src/math/spectrogram3dSurface.js`
 - Modify: `src/math/spectrogram3dSurface.test.js`
 
@@ -360,6 +362,7 @@ The rasteriser must not do colour maths per sample. It computes two small intege
 Monochrome ramps between the colormap's two ends, per Decision #7 of the design. That is why no theme colour string has to be parsed here: those ends are already numeric RGB.
 
 **Files:**
+
 - Modify: `src/math/spectrogram3dSurface.js`
 - Modify: `src/math/spectrogram3dSurface.test.js`
 
@@ -569,6 +572,7 @@ The core. Front to back per column, one running minimum for exact occlusion.
 **The walk direction is the one thing to get right.** Nearer terrain projects lower on screen (larger `y`) and must occlude what is behind it, so the silhouette built front to back rises monotonically — which is the `y < horizon` test. Marching back to front makes the farthest sample fill the whole lower column, after which every nearer sample fails that same test and nothing else is ever drawn. `columnFloorSpan` already returns the near end first; do not reverse it.
 
 **Files:**
+
 - Modify: `src/math/spectrogram3dSurface.js`
 - Modify: `src/math/spectrogram3dSurface.test.js`
 
@@ -910,6 +914,7 @@ git commit -m "feat(spectrogram): rasterise the 3D surface with a floating horiz
 The design requires this before the renderer is wired up, because whether a stride is needed changes what the hook passes. The rasteriser is pure JS over typed arrays, so Node measures it directly — no browser and no canvas needed, which makes this a better measurement than the browser harness the Lines mode used.
 
 **Files:**
+
 - Create: `scripts/spectrogram-surface-benchmark.mjs`
 
 - [ ] **Step 1: Write the benchmark**
@@ -947,7 +952,8 @@ function syntheticGrid(rows, points) {
       // Something with real spectral shape: a decaying tilt plus a couple of resonances.
       const f = q / Math.max(1, points - 1);
       const tilt = 1 - f * 0.8;
-      const res = 0.25 * Math.exp(-(((f - 0.2) / 0.03) ** 2)) + 0.2 * Math.exp(-(((f - 0.55) / 0.05) ** 2));
+      const res =
+        0.25 * Math.exp(-(((f - 0.2) / 0.03) ** 2)) + 0.2 * Math.exp(-(((f - 0.55) / 0.05) ** 2));
       const env = 0.6 + 0.4 * Math.sin((r / rows) * Math.PI * 6);
       heights[r * points + q] = Math.min(1, Math.max(0, (tilt * 0.6 + res) * env));
     }
@@ -1059,6 +1065,7 @@ git commit -m "test(perf): benchmark the 3D surface rasteriser and pin the colum
 `spectrogram3d` has never shipped — the entire 3D feature is unmerged — so it is deleted outright rather than migrated. `cleanupLegacyKeys.js` is not touched.
 
 **Files:**
+
 - Modify: `src/lib/panelControls.js`
 - Modify: `src/lib/panelControls.test.js`
 
@@ -1074,7 +1081,9 @@ describe("spectrogramMode", () => {
 
   it("accepts every option id", () => {
     for (const option of SPECTROGRAM_MODE_OPTIONS) {
-      expect(normalizePanelControls({ spectrogramMode: option.id }).spectrogramMode).toBe(option.id);
+      expect(normalizePanelControls({ spectrogramMode: option.id }).spectrogramMode).toBe(
+        option.id
+      );
     }
   });
 
@@ -1177,6 +1186,7 @@ git commit -m "feat(spectrogram): replace the 3D boolean with a three-way view m
 Lines and Surface share every gesture, so there are still only two help sets. Only the predicate changes.
 
 **Files:**
+
 - Modify: `src/components/panels/chartHelp.js:153`
 - Modify: `src/components/panels/chartHelp.test.js:16-18`
 
@@ -1185,16 +1195,16 @@ Lines and Surface share every gesture, so there are still only two help sets. On
 Replace the two existing spectrogram assertions in `src/components/panels/chartHelp.test.js` (lines 16-18) with:
 
 ```js
-    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "lines" })).toBe(
-      SPECTROGRAM_3D_HELP
-    );
-    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "surface" })).toBe(
-      SPECTROGRAM_3D_HELP
-    );
-    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "heatmap" })).toBe(
-      SPECTROGRAM_2D_HELP
-    );
-    expect(resolvePanelHelpItems("spectrogram", {})).toBe(SPECTROGRAM_2D_HELP);
+expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "lines" })).toBe(
+  SPECTROGRAM_3D_HELP
+);
+expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "surface" })).toBe(
+  SPECTROGRAM_3D_HELP
+);
+expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "heatmap" })).toBe(
+  SPECTROGRAM_2D_HELP
+);
+expect(resolvePanelHelpItems("spectrogram", {})).toBe(SPECTROGRAM_2D_HELP);
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -1210,8 +1220,8 @@ Expected: FAIL — the `"lines"` and `"surface"` cases return `SPECTROGRAM_2D_HE
 In `src/components/panels/chartHelp.js`, replace line 153:
 
 ```js
-  const mode = controls?.spectrogramMode;
-  return mode === "lines" || mode === "surface" ? SPECTROGRAM_3D_HELP : SPECTROGRAM_2D_HELP;
+const mode = controls?.spectrogramMode;
+return mode === "lines" || mode === "surface" ? SPECTROGRAM_3D_HELP : SPECTROGRAM_2D_HELP;
 ```
 
 Enumerating the 3D modes rather than testing `!== "heatmap"` keeps an absent or malformed `controls` on the 2D help, which is what a panel with no controls yet should get.
@@ -1236,6 +1246,7 @@ git commit -m "fix(spectrogram): resolve panel help from the view mode"
 ### Task 8: The Mode dropdown, and Lines-only controls
 
 **Files:**
+
 - Modify: `src/components/PanelSettingsContent.jsx:1319-1500`
 - Modify: `src/components/PanelSettingsContent.test.jsx`
 - Modify: `src/components/panels/SpectrogramPanel.jsx:86`
@@ -1246,50 +1257,50 @@ git commit -m "fix(spectrogram): resolve panel help from the view mode"
 Add to `src/components/PanelSettingsContent.test.jsx`. This file has no per-tab render helper — every test renders `<PanelSettingsContent activeTab="..." />` inline with the local `render` from line 49 — so these follow the vectorscope-mode test at line 425 exactly, including `fireEvent` rather than `userEvent` and `getByRole("button", ...)` to open a `SettingsSelect`.
 
 ```js
-  it("selects the spectrogram view mode and scopes the line controls to Lines", () => {
-    const onPanelControlsChange = vi.fn();
-    const props = {
-      activeTab: "spectrogram",
-      channelCount: 2,
-      spectrumOptions: [{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }],
-      spectrumValueKey: "p-0-1",
-      panelControls: DEFAULT_PANEL_CONTROLS,
-      onPanelControlsChange,
-    };
-    const { rerender } = render(<PanelSettingsContent {...props} />);
+it("selects the spectrogram view mode and scopes the line controls to Lines", () => {
+  const onPanelControlsChange = vi.fn();
+  const props = {
+    activeTab: "spectrogram",
+    channelCount: 2,
+    spectrumOptions: [{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }],
+    spectrumValueKey: "p-0-1",
+    panelControls: DEFAULT_PANEL_CONTROLS,
+    onPanelControlsChange,
+  };
+  const { rerender } = render(<PanelSettingsContent {...props} />);
 
-    // Heatmap is the default: no 3D control is present at all.
-    expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
-    expect(screen.queryByLabelText("spectrogram 3d line alpha")).toBeNull();
+  // Heatmap is the default: no 3D control is present at all.
+  expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
+  expect(screen.queryByLabelText("spectrogram 3d line alpha")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
-    fireEvent.click(screen.getByRole("option", { name: "3D Surface" }));
-    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ spectrogramMode: "surface" })
-    );
+  fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
+  fireEvent.click(screen.getByRole("option", { name: "3D Surface" }));
+  expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ spectrogramMode: "surface" })
+  );
 
-    rerender(
-      <PanelSettingsContent
-        {...props}
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "surface" }}
-      />
-    );
-    // Shared view controls appear; the line-only ones do not.
-    expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
-    expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
-    expect(screen.queryByLabelText("spectrogram 3d line alpha")).toBeNull();
-    expect(screen.queryByLabelText("spectrogram 3d line width")).toBeNull();
+  rerender(
+    <PanelSettingsContent
+      {...props}
+      panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "surface" }}
+    />
+  );
+  // Shared view controls appear; the line-only ones do not.
+  expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
+  expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
+  expect(screen.queryByLabelText("spectrogram 3d line alpha")).toBeNull();
+  expect(screen.queryByLabelText("spectrogram 3d line width")).toBeNull();
 
-    rerender(
-      <PanelSettingsContent
-        {...props}
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "lines" }}
-      />
-    );
-    expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
-    expect(screen.getByLabelText("spectrogram 3d line alpha")).toBeTruthy();
-    expect(screen.getByLabelText("spectrogram 3d line width")).toBeTruthy();
-  });
+  rerender(
+    <PanelSettingsContent
+      {...props}
+      panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "lines" }}
+    />
+  );
+  expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
+  expect(screen.getByLabelText("spectrogram 3d line alpha")).toBeTruthy();
+  expect(screen.getByLabelText("spectrogram 3d line width")).toBeTruthy();
+});
 ```
 
 The `aria-label` strings above are the ones already on those controls (`PanelSettingsContent.jsx:1360`, `:1415`, `:1463`, `:1481`) — do not invent new ones.
@@ -1311,39 +1322,39 @@ Add `SPECTROGRAM_MODE_OPTIONS` to the existing import from `../lib/panelControls
 Add near the other dropdown open-state hooks (around line 876):
 
 ```js
-  const [spectrogramModeOpen, setSpectrogramModeOpen] = useState(false);
+const [spectrogramModeOpen, setSpectrogramModeOpen] = useState(false);
 ```
 
 Replace the `3D View` `SettingsRow` (lines 1319-1335) with:
 
 ```js
-            <SettingsRow
-              label="Mode"
-              tooltip="3D is a presentation view of the waterfall surface. There is no hover readout in 3D — switch back to 2D Heatmap to read exact values."
-            >
-              <SettingsSelect
-                label={
-                  (
-                    SPECTROGRAM_MODE_OPTIONS.find(
-                      (option) => option.id === normalizedPanelControls.spectrogramMode
-                    ) ?? SPECTROGRAM_MODE_OPTIONS[0]
-                  ).label
-                }
-                ariaLabel="spectrogram mode"
-                options={SPECTROGRAM_MODE_OPTIONS}
-                value={normalizedPanelControls.spectrogramMode}
-                open={spectrogramModeOpen}
-                onOpenChange={setSpectrogramModeOpen}
-                onChange={(spectrogramMode) => {
-                  onPanelControlsChange?.(
-                    normalizePanelControls({
-                      ...normalizedPanelControls,
-                      spectrogramMode,
-                    })
-                  );
-                }}
-              />
-            </SettingsRow>
+<SettingsRow
+  label="Mode"
+  tooltip="3D is a presentation view of the waterfall surface. There is no hover readout in 3D — switch back to 2D Heatmap to read exact values."
+>
+  <SettingsSelect
+    label={
+      (
+        SPECTROGRAM_MODE_OPTIONS.find(
+          (option) => option.id === normalizedPanelControls.spectrogramMode
+        ) ?? SPECTROGRAM_MODE_OPTIONS[0]
+      ).label
+    }
+    ariaLabel="spectrogram mode"
+    options={SPECTROGRAM_MODE_OPTIONS}
+    value={normalizedPanelControls.spectrogramMode}
+    open={spectrogramModeOpen}
+    onOpenChange={setSpectrogramModeOpen}
+    onChange={(spectrogramMode) => {
+      onPanelControlsChange?.(
+        normalizePanelControls({
+          ...normalizedPanelControls,
+          spectrogramMode,
+        })
+      );
+    }}
+  />
+</SettingsRow>
 ```
 
 Change the guard on line 1336 from `normalizedPanelControls.spectrogram3d ?` to:
@@ -1355,19 +1366,21 @@ Change the guard on line 1336 from `normalizedPanelControls.spectrogram3d ?` to:
 Wrap **only** the Line Alpha and Line Width rows (the two blocks around lines 1460-1500) in a Lines-only guard, leaving Elevation, Azimuth, Height Scale, Colorize and Grid inside the shared 3D block:
 
 ```js
-                {normalizedPanelControls.spectrogramMode === "lines" ? (
-                  <>
-                    {/* the existing Line Alpha SettingsRow */}
-                    {/* the existing Line Width SettingsRow */}
-                  </>
-                ) : null}
+{
+  normalizedPanelControls.spectrogramMode === "lines" ? (
+    <>
+      {/* the existing Line Alpha SettingsRow */}
+      {/* the existing Line Width SettingsRow */}
+    </>
+  ) : null;
+}
 ```
 
 In `src/components/panels/SpectrogramPanel.jsx`, replace line 86:
 
 ```js
-  const spectrogramMode = normalizedPanelControls.spectrogramMode;
-  const is3d = spectrogramMode !== "heatmap";
+const spectrogramMode = normalizedPanelControls.spectrogramMode;
+const is3d = spectrogramMode !== "heatmap";
 ```
 
 - [ ] **Step 4: Update the existing suites and run them**
@@ -1408,6 +1421,7 @@ git commit -m "feat(spectrogram): select the view mode from a dropdown"
 No unit test: canvas work is not meaningfully testable under jsdom, which is why every testable piece was pushed into `spectrogram3dSurface.js`. This follows `useSpectrogramCanvas.js` and the Lines path, both of which are also untested.
 
 **Files:**
+
 - Modify: `src/hooks/useSpectrogram3dCanvas.js`
 - Modify: `src/components/panels/SpectrogramPanel.jsx:350-361`
 
@@ -1493,9 +1507,9 @@ function makeArgbResolver() {
 Inside the hook body, next to the other refs:
 
 ```js
-  const offscreenRef = useRef(null);
-  const surfaceLutRef = useRef({ key: null, lut: null });
-  const resolveArgbRef = useRef(makeArgbResolver());
+const offscreenRef = useRef(null);
+const surfaceLutRef = useRef({ key: null, lut: null });
+const resolveArgbRef = useRef(makeArgbResolver());
 ```
 
 And a module-level helper for the offscreen surface:
@@ -1529,44 +1543,44 @@ In the draw function, the scrub search currently sits inside the Lines path (lin
 Then, immediately after that block, insert the surface branch and leave the whole existing Lines body in the `else`:
 
 ```js
-      if (p.mode === "surface") {
-        const off = ensureOffscreen(offscreenRef, W, H);
-        const lutKey = `${p.colorize}|${p.dbFloor}|${p.colormapLut}`;
-        if (surfaceLutRef.current.key !== lutKey) {
-          surfaceLutRef.current = {
-            key: lutKey,
-            lut: buildSurfaceLut({
-              colormapLut: p.colormapLut,
-              dbFloor: p.dbFloor,
-              colorize: p.colorize,
-            }),
-          };
-        }
-        const rowLut = buildRowLut(
-          grid.tFracs,
-          grid.count,
-          ROW_LUT_SIZE,
-          ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1)
-        );
-        off.pixels.fill(0);
-        rasterizeSurface({
-          out: off.pixels,
-          width: W,
-          height: H,
-          proj,
-          grid,
-          rowLut,
-          lut: surfaceLutRef.current.lut,
-          heightGain: view.heightGain,
-          highlightArgb: resolveArgbRef.current(off.ctx, selection),
-          highlightRow: selectedRidge,
-          columnStride: DEFAULT_COLUMN_STRIDE,
-          maxSteps: H,
-        });
-        off.ctx.putImageData(off.image, 0, 0);
-        ctx.drawImage(off.canvas, 0, 0);
-        return;
-      }
+if (p.mode === "surface") {
+  const off = ensureOffscreen(offscreenRef, W, H);
+  const lutKey = `${p.colorize}|${p.dbFloor}|${p.colormapLut}`;
+  if (surfaceLutRef.current.key !== lutKey) {
+    surfaceLutRef.current = {
+      key: lutKey,
+      lut: buildSurfaceLut({
+        colormapLut: p.colormapLut,
+        dbFloor: p.dbFloor,
+        colorize: p.colorize,
+      }),
+    };
+  }
+  const rowLut = buildRowLut(
+    grid.tFracs,
+    grid.count,
+    ROW_LUT_SIZE,
+    ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1)
+  );
+  off.pixels.fill(0);
+  rasterizeSurface({
+    out: off.pixels,
+    width: W,
+    height: H,
+    proj,
+    grid,
+    rowLut,
+    lut: surfaceLutRef.current.lut,
+    heightGain: view.heightGain,
+    highlightArgb: resolveArgbRef.current(off.ctx, selection),
+    highlightRow: selectedRidge,
+    columnStride: DEFAULT_COLUMN_STRIDE,
+    maxSteps: H,
+  });
+  off.ctx.putImageData(off.image, 0, 0);
+  ctx.drawImage(off.canvas, 0, 0);
+  return;
+}
 ```
 
 Note the ordering this relies on: `drawFloor` / `drawAxisLabels` already ran above (lines 416-419), so the grid is underneath the composite. Do not move the surface branch above them.
@@ -1574,8 +1588,8 @@ Note the ordering this relies on: `drawFloor` / `drawAxisLabels` already ran abo
 `resolveArgbRef` writes a pixel into the offscreen canvas, so it must be called **before** `off.pixels.fill(0)`. Hoist it into a local above the `fill` if you prefer that to relying on argument evaluation order — the version above evaluates it after the fill, which would leave one stray pixel, so change it to:
 
 ```js
-        const highlightArgb = resolveArgbRef.current(off.ctx, selection);
-        off.pixels.fill(0);
+const highlightArgb = resolveArgbRef.current(off.ctx, selection);
+off.pixels.fill(0);
 ```
 
 and pass `highlightArgb` in the call.
@@ -1600,6 +1614,7 @@ git commit -m "feat(spectrogram): render the 3D surface mode"
 ### Task 10: Close out
 
 **Files:**
+
 - Modify: `docs/superpowers/specs/2026-07-30-spectrogram-3d-surface-design.md`
 
 - [ ] **Step 1: Run the merge gate**

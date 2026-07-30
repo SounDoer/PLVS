@@ -45,21 +45,21 @@ and slope shading carries structure that neither height nor colour alone conveys
 
 ## Decisions
 
-| # | Decision | Rationale |
-|---|---|---|
-| 1 | Surface is a **third view mode**, not a replacement for Lines | At low elevation on a wide, short panel a solid surface genuinely occludes its own interior — that is correct rendering, not a bug, and it makes Lines the better mode there. Both are kept for that reason |
-| 2 | Entry becomes a **three-way `Mode` dropdown** | A boolean cannot express three states, and `vectorscopeMode` / `stereoMapMode` / `levelMeterMode` already establish the string-enum pattern |
-| 3 | `spectrogram3d` boolean is **deleted, not migrated** | It has never shipped — the whole 3D feature is unmerged. A migration would carry a legacy key for no live data |
-| 4 | **Per-pixel column rasterisation** (heightfield / floating-horizon), not filled geometry | See Rendering. Exact occlusion for free, deterministic cost, no path or gradient overdraw |
-| 5 | Data sampling is **reused unchanged** | `sampleWaterfallGrid` already solved three classes of flicker via absolute-time bucketing. A second time-resampling scheme would reintroduce all three |
-| 6 | Shading is a **viewer-side headlight** derived from the along-ray height delta | Free (it is already being computed), and stable under rotation — a world-fixed light would darken whole faces as the scene turns |
-| 7 | Monochrome ramps between the **colormap's two ends**; Colorize ramps by **absolute dB** | Makes the toggle read as one continuous knob rather than two unrelated looks, and keeps the ramp theme-bound |
-| 8 | Colorize modulates **luminance only, at reduced depth** | Preserves the shipped design's Decision #8: colour stays a function of absolute level, so the dB Floor never recolours a peak |
-| 9 | Surface is composited via an **offscreen canvas + `drawImage`** | `putImageData` overwrites rather than blends; writing straight to the main canvas would erase the floor grid beneath it |
-| 10 | Scrub is marked **inside the rasteriser**, not stroked on top | Occlusion-correct and nearly free. A selected moment hidden behind a peak is legitimately invisible |
-| 11 | Lines and Surface **share every view control key** | Switching between them preserves viewpoint, height scale, colour and grid — the same scene, drawn two ways |
-| 12 | Performance is **measured before the module interface is fixed** | Whether column decimation is needed changes the rasteriser's signature. See Performance |
-| 13 | Column stride is **derived from canvas area**, not a constant | Measured: no single value works across panel sizes. See Performance |
+| #   | Decision                                                                                 | Rationale                                                                                                                                                                                                   |
+| --- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Surface is a **third view mode**, not a replacement for Lines                            | At low elevation on a wide, short panel a solid surface genuinely occludes its own interior — that is correct rendering, not a bug, and it makes Lines the better mode there. Both are kept for that reason |
+| 2   | Entry becomes a **three-way `Mode` dropdown**                                            | A boolean cannot express three states, and `vectorscopeMode` / `stereoMapMode` / `levelMeterMode` already establish the string-enum pattern                                                                 |
+| 3   | `spectrogram3d` boolean is **deleted, not migrated**                                     | It has never shipped — the whole 3D feature is unmerged. A migration would carry a legacy key for no live data                                                                                              |
+| 4   | **Per-pixel column rasterisation** (heightfield / floating-horizon), not filled geometry | See Rendering. Exact occlusion for free, deterministic cost, no path or gradient overdraw                                                                                                                   |
+| 5   | Data sampling is **reused unchanged**                                                    | `sampleWaterfallGrid` already solved three classes of flicker via absolute-time bucketing. A second time-resampling scheme would reintroduce all three                                                      |
+| 6   | Shading is a **viewer-side headlight** derived from the along-ray height delta           | Free (it is already being computed), and stable under rotation — a world-fixed light would darken whole faces as the scene turns                                                                            |
+| 7   | Monochrome ramps between the **colormap's two ends**; Colorize ramps by **absolute dB**  | Makes the toggle read as one continuous knob rather than two unrelated looks, and keeps the ramp theme-bound                                                                                                |
+| 8   | Colorize modulates **luminance only, at reduced depth**                                  | Preserves the shipped design's Decision #8: colour stays a function of absolute level, so the dB Floor never recolours a peak                                                                               |
+| 9   | Surface is composited via an **offscreen canvas + `drawImage`**                          | `putImageData` overwrites rather than blends; writing straight to the main canvas would erase the floor grid beneath it                                                                                     |
+| 10  | Scrub is marked **inside the rasteriser**, not stroked on top                            | Occlusion-correct and nearly free. A selected moment hidden behind a peak is legitimately invisible                                                                                                         |
+| 11  | Lines and Surface **share every view control key**                                       | Switching between them preserves viewpoint, height scale, colour and grid — the same scene, drawn two ways                                                                                                  |
+| 12  | Performance is **measured before the module interface is fixed**                         | Whether column decimation is needed changes the rasteriser's signature. See Performance                                                                                                                     |
+| 13  | Column stride is **derived from canvas area**, not a constant                            | Measured: no single value works across panel sizes. See Performance                                                                                                                                         |
 
 ## The geometric fact the algorithm rests on
 
@@ -92,7 +92,7 @@ The walk runs **front to back** — nearest sample first. This is counterintuiti
 thing in this design that is easy to get backwards, so it is worth stating why.
 
 Nearer terrain projects lower on screen (larger y) and must occlude what is behind it. A silhouette
-built front to back is therefore monotonically *rising*: each farther sample can only be seen in the
+built front to back is therefore monotonically _rising_: each farther sample can only be seen in the
 strip above everything already drawn, which is exactly the `y < horizon` test. Marching back to
 front instead makes the first (farthest) sample fill the whole lower half of the column, after which
 every nearer sample fails the same test and nothing else is ever drawn.
@@ -217,15 +217,15 @@ first task shipped a suite that passed while missing two mutations a reviewer th
 
 ### Modified
 
-| File | Change |
-|---|---|
-| `src/hooks/useSpectrogram3dCanvas.js` | Mode branch: lines path unchanged, surface path added, offscreen canvas lifecycle, ARGB colour resolver |
-| `src/theme/spectrogramColormap.js` | New `spectrogramColorFracFromHeight`, shared by both 3D renderers. See Reversed #3 |
-| `src/lib/panelControls.js` | `spectrogramMode` enum plus normalizer; `spectrogram3d` removed |
-| `src/components/PanelSettingsContent.jsx` | Mode dropdown; Line Alpha / Line Width shown only in Lines |
-| `src/components/panels/SpectrogramPanel.jsx` | `is3d` derived from the mode; mode threaded to the renderer |
-| `src/components/panels/chartHelp.js` | Predicate enumerates the 3D modes |
-| `scripts/spectrogram-surface-benchmark.mjs` | New. Node, not a browser harness — the rasteriser is pure typed-array code |
+| File                                         | Change                                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `src/hooks/useSpectrogram3dCanvas.js`        | Mode branch: lines path unchanged, surface path added, offscreen canvas lifecycle, ARGB colour resolver |
+| `src/theme/spectrogramColormap.js`           | New `spectrogramColorFracFromHeight`, shared by both 3D renderers. See Reversed #3                      |
+| `src/lib/panelControls.js`                   | `spectrogramMode` enum plus normalizer; `spectrogram3d` removed                                         |
+| `src/components/PanelSettingsContent.jsx`    | Mode dropdown; Line Alpha / Line Width shown only in Lines                                              |
+| `src/components/panels/SpectrogramPanel.jsx` | `is3d` derived from the mode; mode threaded to the renderer                                             |
+| `src/components/panels/chartHelp.js`         | Predicate enumerates the 3D modes                                                                       |
+| `scripts/spectrogram-surface-benchmark.mjs`  | New. Node, not a browser harness — the rasteriser is pure typed-array code                              |
 
 The hook was not split. It grew by about 90 lines and the surface path is one self-contained branch;
 splitting would have separated two renderers that share the projection, the grid, the scrub search
@@ -242,7 +242,7 @@ Kept rather than folded into the text above, so the same ground is not re-covere
 **Original:** march each column from the far end toward the viewer, filling from each sample down to
 a running-minimum horizon.
 
-**Why it failed:** nearer terrain projects *lower* on screen, so the farthest sample fills the whole
+**Why it failed:** nearer terrain projects _lower_ on screen, so the farthest sample fills the whole
 lower part of the column, and then every nearer sample fails the same `y < horizon` test. Nothing
 after the first sample is ever drawn. The correct order is front to back, where the silhouette rises
 monotonically and each farther sample can only appear above what is already drawn.
@@ -275,7 +275,7 @@ across the change.
 **Original:** the Data section invited raising the row count freely, because cost does not scale
 with it.
 
-**Why it failed:** cost does not, but *stability* does. A column samples the time axis once per
+**Why it failed:** cost does not, but _stability_ does. A column samples the time axis once per
 screen pixel row, so more rows than steps makes nearest-row selection alias and re-bind as the
 window slides — the shimmer `spectrogram3dGrid.js` exists to prevent, returning with no individual
 ridges left to debug it against. At 922×110 the step count is only about 72. See Data.
@@ -292,18 +292,18 @@ reviewed change.
 
 ## Panel Controls
 
-| Key | Default | Range | Applies to |
-|---|---|---|---|
-| `spectrogramMode` | `"heatmap"` | `"heatmap"` \| `"lines"` \| `"surface"` | — |
-| `spectrogram3dColorize` | `true` | boolean | Lines, Surface |
-| `spectrogram3dHeightGain` | `1` | 0.3 – 3 (**Height Scale**) | Lines, Surface |
-| `spectrogram3dAzimuthDeg` | `135` | 0 – 360, wraps | Lines, Surface |
-| `spectrogram3dElevationDeg` | `60` | 5 – 85 | Lines, Surface |
-| `spectrogram3dFloor` | `true` | boolean (**Grid**) | Lines, Surface |
-| `spectrogram3dLineAlpha` | `1` | 0.15 – 1 | **Lines only** |
-| `spectrogram3dLineWidth` | `1` | 0.5 – 3 | **Lines only** |
-| `spectrogramDbFloor` | `SPECTROGRAM_DB_MIN` | −96 – −12 | all three modes |
-| `spectrumOctaveSmoothing` | existing | existing | all three modes |
+| Key                         | Default              | Range                                   | Applies to      |
+| --------------------------- | -------------------- | --------------------------------------- | --------------- |
+| `spectrogramMode`           | `"heatmap"`          | `"heatmap"` \| `"lines"` \| `"surface"` | —               |
+| `spectrogram3dColorize`     | `true`               | boolean                                 | Lines, Surface  |
+| `spectrogram3dHeightGain`   | `1`                  | 0.3 – 3 (**Height Scale**)              | Lines, Surface  |
+| `spectrogram3dAzimuthDeg`   | `135`                | 0 – 360, wraps                          | Lines, Surface  |
+| `spectrogram3dElevationDeg` | `60`                 | 5 – 85                                  | Lines, Surface  |
+| `spectrogram3dFloor`        | `true`               | boolean (**Grid**)                      | Lines, Surface  |
+| `spectrogram3dLineAlpha`    | `1`                  | 0.15 – 1                                | **Lines only**  |
+| `spectrogram3dLineWidth`    | `1`                  | 0.5 – 3                                 | **Lines only**  |
+| `spectrogramDbFloor`        | `SPECTROGRAM_DB_MIN` | −96 – −12                               | all three modes |
+| `spectrumOctaveSmoothing`   | existing             | existing                                | all three modes |
 
 `spectrogramMode` is the only new key, and `spectrogram3d` is deleted outright. It has never
 shipped, so nothing persisted anywhere contains it; `cleanupLegacyKeys.js` is not touched. The one
@@ -344,10 +344,10 @@ comparing per sample would either highlight nothing or highlight a band of arbit
 Lines measured 1.2 ms at 922×110 and 3.4 ms at 2560×900. Surface has an entirely different cost
 model — columns × steps, plus written pixels:
 
-| Canvas | Columns × steps | Inner iterations | Pixel writes (bound) |
-|---|---|---|---|
-| 922×110 | 922 × ~250 | ~230 k | ≤ 100 k |
-| 2560×900 | 2560 × ~400 | ~1 M | ≤ 2.3 M |
+| Canvas   | Columns × steps | Inner iterations | Pixel writes (bound) |
+| -------- | --------------- | ---------------- | -------------------- |
+| 922×110  | 922 × ~250      | ~230 k           | ≤ 100 k              |
+| 2560×900 | 2560 × ~400     | ~1 M             | ≤ 2.3 M              |
 
 The small panel is comfortable. The large panel was not predictable in advance, so it was measured —
 in Node rather than a browser harness, because the rasteriser is pure JS over typed arrays and needs
@@ -412,7 +412,7 @@ Two tests are worth calling out because the property they pin is not obvious:
   line `u·tx + v·fx = const`. At azimuth 135 `tx` and `fx` are equal, so the line is `u + v = k` and
   reaches at most `u = k + 0.5` — a column with low `k` contains no sample from the newest row's
   time slab at all, and the far row is legitimately unoccluded there. A whole-image "zero highlight
-  pixels" assertion is unsatisfiable by *any* implementation at that azimuth. At azimuth 90 `tx` is
+  pixels" assertion is unsatisfiable by _any_ implementation at that azimuth. At azimuth 90 `tx` is
   zero, every column spans the whole time axis, and the assertion means what it says. A companion
   test keeps occlusion coverage at the shipping default, scoped to the columns that actually reach
   the tall row.
