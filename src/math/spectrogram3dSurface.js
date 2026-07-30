@@ -1,11 +1,12 @@
 /**
- * Geometry for the 3D spectrogram Surface mode: clipping a screen column against the floor plane.
+ * Geometry for the 3D spectrogram Surface mode: clipping a screen column against the floor plane,
+ * and mapping a column sample to the grid row it should read.
  *
  * Pure: no canvas, no React, no data access. This module will grow into a per-pixel renderer that
- * writes ARGB words into buffers the caller supplies; today it only contains the column-clipping
- * step that the rasteriser will walk.
+ * writes ARGB words into buffers the caller supplies; today it contains the column-clipping step
+ * and the row lookup that the rasteriser will walk.
  *
- * The whole module rests on one property of the orthographic projection: for a fixed screen column
+ * The column walk rests on one property of the orthographic projection: for a fixed screen column
  * the set of floor points landing in it is a straight line, so a column can be walked with constant
  * additions and given exact hidden-surface removal by a single running minimum. That is cheaper and
  * more robust than filling geometry, which is what the Lines mode's abandoned hidden-line attempt
@@ -96,7 +97,8 @@ export const NO_ROW = 0xffff;
  * a gap as a flat plain, which is data that does not exist.
  *
  * @param {Float64Array} tFracs row positions in 0..1, ascending
- * @param {number} count how many entries of `tFracs` are valid
+ * @param {number} count how many entries of `tFracs` are valid. Must stay below `NO_ROW`, or a
+ *        real row index would be indistinguishable from the sentinel.
  * @param {number} size table resolution
  * @param {number} maxDistTFrac beyond this distance a bucket counts as uncovered
  * @returns {Uint16Array}

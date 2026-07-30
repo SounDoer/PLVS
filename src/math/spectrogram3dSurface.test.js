@@ -155,13 +155,31 @@ describe("buildRowLut", () => {
     expect(lut[4]).toBe(1);
   });
 
-  // A monotonic run of many rows across a wide table exercises the forward-only sweep: if `row`
-  // reset to 0 on every bucket instead of carrying forward, only rows 0 and 1 would ever be found.
+  // A long monotone run over a wide table, checked against every bucket by an independent
+  // brute-force nearest-row search (not the sweep under test), to confirm the sweep reaches the
+  // last row rather than stalling early.
+  //
+  // This cannot catch a `row` reset to 0 on every bucket: that reset is observationally
+  // equivalent, because the distance to `t` is a single valley and a from-scratch scan from 0
+  // lands on the same nearest row every time. It only costs a multiple of the work -- see the
+  // note on the `while` loop above.
   it("reaches rows past index 1 as the sweep advances", () => {
     const count = 20;
+    const size = 21;
     const tFracs = new Float64Array(count);
     for (let i = 0; i < count; i++) tFracs[i] = i / (count - 1);
-    const lut = buildRowLut(tFracs, count, 21, 0.1);
+    const lut = buildRowLut(tFracs, count, size, 0.1);
+
+    const expected = [];
+    for (let i = 0; i < size; i++) {
+      const t = i / (size - 1);
+      let best = 0;
+      for (let row = 1; row < count; row++) {
+        if (Math.abs(tFracs[row] - t) < Math.abs(tFracs[best] - t)) best = row;
+      }
+      expected.push(best);
+    }
+    expect([...lut]).toEqual(expected);
     expect(lut[20]).toBe(count - 1);
   });
 });
