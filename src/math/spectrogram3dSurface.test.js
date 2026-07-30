@@ -38,6 +38,43 @@ describe("columnFloorSpan", () => {
     expect(near.y).toBeGreaterThan(far.y);
   });
 
+  // At azimuth 135 the projected bounding box is symmetric, so x = W/2 makes `offset` exactly zero
+  // and the reprojection test above never exercises baseU/baseV at all -- swapping their numerators
+  // (mapping u <-> v) would still pass it. Off-centre columns, swept across views, close that gap:
+  // they also check that the span actually reaches the floor boundary rather than being clipped to
+  // some smaller square, and that the sweep is non-vacuous (at least one span is non-null).
+  it("reprojects off-centre columns to the requested x and reaches the floor boundary", () => {
+    let nonNullCount = 0;
+    for (let az = 0; az < 360; az += 10) {
+      for (const el of [5, 20, 45, 60, 85]) {
+        const p = proj(az, el);
+        for (const x of [W * 0.2, W * 0.35, W * 0.5, W * 0.65, W * 0.8]) {
+          const span = columnFloorSpan(x, p, H);
+          if (!span) continue;
+          nonNullCount += 1;
+
+          const near = projectPoint(span.u0 + 0.5, span.v0 + 0.5, 0, p);
+          const far = projectPoint(
+            span.u0 + span.du * span.steps + 0.5,
+            span.v0 + span.dv * span.steps + 0.5,
+            0,
+            p
+          );
+          expect({ az, el, x, nearX: near.x }).toEqual({ az, el, x, nearX: expect.closeTo(x, 6) });
+          expect({ az, el, x, farX: far.x }).toEqual({ az, el, x, farX: expect.closeTo(x, 6) });
+
+          const us = [span.u0, span.u0 + span.du * span.steps];
+          const vs = [span.v0, span.v0 + span.dv * span.steps];
+          const touchesBoundary = [...us, ...vs].some(
+            (value) => Math.abs(Math.abs(value) - 0.5) < 1e-6
+          );
+          expect({ az, el, x, touchesBoundary }).toEqual({ az, el, x, touchesBoundary: true });
+        }
+      }
+    }
+    expect(nonNullCount).toBeGreaterThan(0);
+  });
+
   it("keeps both endpoints inside the floor square at every view", () => {
     for (let az = 0; az < 360; az += 10) {
       for (const el of [5, 20, 45, 60, 85]) {

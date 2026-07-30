@@ -1,7 +1,9 @@
 /**
- * Per-pixel renderer for the 3D spectrogram Surface mode.
+ * Geometry for the 3D spectrogram Surface mode: clipping a screen column against the floor plane.
  *
- * Pure: no canvas, no React, no data access. Writes ARGB words into buffers the caller supplies.
+ * Pure: no canvas, no React, no data access. This module will grow into a per-pixel renderer that
+ * writes ARGB words into buffers the caller supplies; today it only contains the column-clipping
+ * step that the rasteriser will walk.
  *
  * The whole module rests on one property of the orthographic projection: for a fixed screen column
  * the set of floor points landing in it is a straight line, so a column can be walked with constant
@@ -19,11 +21,14 @@ const EPS = 1e-9;
  * rasteriser walks front to back. `(-fx, tx)` is the direction of increasing screen y, i.e. toward
  * the viewer, so the near end is the one at the larger line parameter.
  *
- * @param {number} x screen column, device pixels
+ * @param {number} x screen column, device pixels. Must be finite (a loop index always is).
  * @param {object} proj from `buildProjection`
- * @param {number} maxSteps upper bound on samples for this column
+ * @param {number} maxSteps upper bound on the returned `steps`. Must be finite (a canvas dimension
+ *        always is).
  * @returns {{ u0: number, v0: number, du: number, dv: number, steps: number } | null}
- *          null when the column misses the floor entirely
+ *          null when the column misses the floor entirely. Otherwise the walk from `(u0, v0)`
+ *          toward the far end visits `steps + 1` points: `(u0 + du*s, v0 + dv*s)` for
+ *          `s = 0 .. steps` inclusive.
  */
 export function columnFloorSpan(x, proj, maxSteps) {
   const offset = x - proj.originX;
@@ -57,10 +62,13 @@ export function columnFloorSpan(x, proj, maxSteps) {
   }
   if (!(sMax > sMin)) return null;
 
-  // Screen-y extent of the clipped segment. One sample per screen pixel row is as fine as the
-  // output can show, and it self-limits: a compressed low-elevation view needs fewer samples.
+  // `det` is the screen-y rate per unit of the line parameter `s`: `det = depth·scaleX·scaleY > 0`
+  // at every elevation `clampViewParams` allows, which is also why `(-fx, tx)` always points at the
+  // viewer -- see `unprojectFloor`, which relies on the same determinant without an `abs`. Screen-y
+  // extent of the clipped segment follows directly; one sample per screen pixel row is as fine as
+  // the output can show, and it self-limits: a compressed low-elevation view needs fewer samples.
   const det = proj.tx * proj.fy - proj.ty * proj.fx;
-  const yExtent = Math.abs(det) * (sMax - sMin);
+  const yExtent = det * (sMax - sMin);
   const cap = Math.max(1, Math.floor(maxSteps));
   const steps = Math.max(1, Math.min(cap, Math.ceil(yExtent)));
 
