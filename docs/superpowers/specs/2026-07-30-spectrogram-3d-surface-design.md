@@ -109,6 +109,11 @@ Three properties follow directly:
 Unpainted pixels keep `alpha = 0`, so the panel background — including the glass effect — shows
 through. Surface must not draw its own opaque backdrop.
 
+**Missing data is skipped, not zeroed.** A sample with no covering frame neither writes pixels nor
+advances the horizon, so a capture gap becomes a hole with the terrain behind it visible through it.
+Substituting the dB floor instead would render a gap as a flat plain, which is data that does not
+exist.
+
 ### Data
 
 The walk needs random access to `dB(t, f)`. That is precisely the grid `sampleWaterfallGrid`
@@ -221,8 +226,12 @@ Because gestures are shared, `chartHelp.js` keeps two help sets rather than thre
 ### Scrub
 
 There is no ridge to highlight. Instead the rasteriser substitutes a highlight colour when a sample
-lands on the selected frame's row. This is occlusion-correct: if the selected moment is behind a
-peak, it is not drawn, which is the truthful answer for an opaque surface.
+lands on the highlighted row. This is occlusion-correct: if the selected moment is behind a peak, it
+is not drawn, which is the truthful answer for an opaque surface.
+
+The highlighted row is the **row nearest the selected time**, resolved once per repaint rather than
+per sample. Rows are decimated frames, so the selected moment usually falls between two of them, and
+comparing per sample would either highlight nothing or highlight a band of arbitrary width.
 
 ## Performance
 
