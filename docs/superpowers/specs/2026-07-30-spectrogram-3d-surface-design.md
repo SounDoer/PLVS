@@ -54,6 +54,7 @@ and slope shading carries structure that neither height nor colour alone conveys
 | 10 | Scrub is marked **inside the rasteriser**, not stroked on top | Occlusion-correct and nearly free. A selected moment hidden behind a peak is legitimately invisible |
 | 11 | Lines and Surface **share every view control key** | Switching between them preserves viewpoint, height scale, colour and grid — the same scene, drawn two ways |
 | 12 | Performance is **measured before the module interface is fixed** | Whether column decimation is needed changes the rasteriser's signature. See Performance |
+| 13 | Column stride is **derived from canvas area**, not a constant | Measured: no single value works across panel sizes. See Performance |
 
 ## The geometric fact the algorithm rests on
 
@@ -274,18 +275,36 @@ model — columns × steps, plus written pixels:
 | 922×110 | 922 × ~250 | ~230 k | ≤ 100 k |
 | 2560×900 | 2560 × ~400 | ~1 M | ≤ 2.3 M |
 
-The small panel is comfortable. **The large panel is not predictable from here** — plausibly
-10–25 ms, i.e. possibly over the 16.7 ms interactive budget. Available levers, in the order they
-should be reached for:
+The small panel is comfortable. The large panel was not predictable in advance, so it was measured —
+in Node rather than a browser harness, because the rasteriser is pure JS over typed arrays and needs
+no canvas. `scripts/spectrogram-surface-benchmark.mjs` is that measurement.
 
-1. **Column stride** — rasterise every second column and replicate horizontally. Halves cost
-   directly, and it changes the module's signature, which is why it must be settled early.
-2. **Step length derived from screen pixels** rather than grid cells, so steps do not multiply with
+**Measured outcome: no single stride is right everywhere.** Stride 1 costs 1.09 ms at 922×110 and
+38.40 ms at 3840×1200 — the requirement moves by more than an order of magnitude across panel sizes,
+so a constant is wrong at one end whichever value it takes. Quartering horizontal resolution on a
+920-pixel-wide panel to protect a 4K one is the wrong trade, and 3840×1200 is not hypothetical: a
+1920×600 CSS panel in Focus View on a 2× display is exactly that in device pixels.
+
+So the stride is **derived from canvas area**, which is what the cost model is: cost is roughly
+`(width / stride) × steps`, and `steps` tracks the canvas height. `columnStrideFor(width, height)`
+divides area by a budget, clamped to a measured maximum. This follows the house pattern already set
+by `ridgeCountFor` and `pointCountFor`, which derive the Lines renderer's own performance parameters
+from canvas width with caps.
+
+Medians rather than best-of decide budget compliance: a best-of flatters a renderer that has to hit
+a frame budget repeatedly. At 2560×900 stride 1, best-of reads 16.58 ms and median 18.71 ms — that
+configuration fails.
+
+Remaining levers, not needed and not taken:
+
+1. **Step length derived from screen pixels** rather than grid cells, so steps do not multiply with
    row count.
-3. The existing repaint-skip guard, which already holds repaints near 25 Hz rather than 60.
+2. The existing repaint-skip guard, which already holds repaints near 25 Hz rather than 60.
 
-**Therefore: measure the inner loop in the same browser harness used for Lines before writing the
-production module.** Whether stride 1 or 2 is the default is a measured decision, not a guess.
+**Caveats:** Node is not WebView2, the JIT warms differently than in a long-running webview, and
+there is no competing load from capture, DSP or the other panels. The harness narrows the question;
+it does not close it. Beyond the largest measured canvas the stride cap stops growing, which trades
+frame time for horizontal resolution deliberately.
 
 As with the Lines measurements, the harness is a replica: Chromium is not WebView2, and there is no
 competing load from capture, DSP or other panels. It narrows the question; it does not close it.
