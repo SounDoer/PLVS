@@ -69,6 +69,19 @@ export function spectrogramColorFrac(db, dbFloor) {
 }
 
 /**
+ * Colour position for a FLOOR-RELATIVE height fraction. Height is floor-relative
+ * (spectrogram3dGrid.js) but colour is absolute, so the dB the fraction represents is recovered
+ * first. Shared by both 3D renderers so raising the dB Floor recolours neither.
+ *
+ * @param {number} heightFrac 0..1
+ * @param {number} dbFloor
+ * @returns {number} 0..1
+ */
+export function spectrogramColorFracFromHeight(heightFrac, dbFloor) {
+  return spectrogramColorFrac(dbFloor + heightFrac * (SPECTROGRAM_DB_MAX - dbFloor), dbFloor);
+}
+
+/**
  * @param {number} db
  * @param {Uint8Array} lut
  * @returns {[number, number, number]}

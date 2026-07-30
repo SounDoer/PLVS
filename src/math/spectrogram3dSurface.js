@@ -14,8 +14,7 @@
  * tried -- see the Reversed section of the 2026-07-28 design.
  */
 
-import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
-import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
+import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js";
 
 const EPS = 1e-9;
 
@@ -151,11 +150,23 @@ export function packArgb(r, g, b, a) {
  * `level` is the sample's FLOOR-RELATIVE height fraction, quantised to 0..255 -- the same quantity
  * `sampleWaterfallGrid` stores. Colour, however, must be ABSOLUTE against the fixed dB range, so
  * that raising the dB Floor never recolours a peak (Decision #8 of the 2026-07-28 design). The
- * conversion happens here, once per repaint, exactly as `buildStopColors` does it for Lines:
- * recover the dB that a height fraction represents, then run that dB through spectrogramColorFrac.
+ * conversion happens here, once per repaint, through `spectrogramColorFracFromHeight` -- the same
+ * helper `buildStopColors` uses for Lines, so the two renderers cannot drift apart on colour.
  *
  * Monochrome ignores `level` entirely and ramps on `shade`, between the colormap's two ends. The
  * relief IS the information in that state; height carries level, and colour carries shape.
+ *
+ * Alpha is always 255, unlike `buildStopColors`, which tracks level in alpha so silence doesn't
+ * draw as a dense opaque stack of lines. That reasoning doesn't transfer here: the horizon walk
+ * writes each screen pixel exactly once, so a quiet sample is still terrain occupying that pixel,
+ * not an extra layer piling on top of others. Level-tracking alpha would let the floor grid bleed
+ * through a quiet surface and read as a hole, which is not what a quiet passage is. Pixels the
+ * horizon walk never reaches -- outside the floor's screen silhouette -- are left at alpha 0 by
+ * the caller-supplied buffer, not by this table.
+ *
+ * The table is built at full size (256 x SHADE_LEVELS) even in Monochrome, where every level row
+ * is identical, rather than a 1 x SHADE_LEVELS ramp reused per level: that keeps the rasteriser's
+ * inner loop a single unconditional read, with no branch on `colorize` to skip the level dimension.
  *
  * @param {object} args
  * @param {Uint8Array|number[]} args.colormapLut 256 RGB triplets
@@ -177,8 +188,8 @@ export function buildSurfaceLut({ colormapLut, dbFloor, colorize }) {
     let g = 0;
     let b = 0;
     if (colorize) {
-      const db = dbFloor + (level / 255) * (SPECTROGRAM_DB_MAX - dbFloor);
-      const idx = Math.round(spectrogramColorFrac(db, dbFloor) * 255) * 3;
+      const t = spectrogramColorFracFromHeight(level / 255, dbFloor);
+      const idx = Math.round(t * 255) * 3;
       r = colormapLut[idx];
       g = colormapLut[idx + 1];
       b = colormapLut[idx + 2];

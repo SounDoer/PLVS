@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SPECTROGRAM_DB_MAX, SPECTROGRAM_DB_MIN } from "../config/scales.js";
-import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
+import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js";
 import { buildProjection, projectPoint } from "./spectrogram3dProjection.js";
 import {
   buildRowLut,
@@ -268,24 +268,29 @@ describe("buildSurfaceLut", () => {
     const top = 255 * SHADE_LEVELS + (SHADE_LEVELS - 1);
     expect(low[top]).toBe(high[top]);
     expect(SPECTROGRAM_DB_MAX).toBeGreaterThan(-40);
+
+    // Level 0 sits exactly on the floor, which spectrogramColorFrac pins to the bottom of the ramp.
+    expect(high[0 * SHADE_LEVELS + (SHADE_LEVELS - 1)]).toBe(packArgb(255, 0, 0, 255));
   });
 
   // A mid-height level, away from both ends of the ramp, where a raised dbFloor sends the recovered
-  // dB through spectrogramColorFrac to a colormap index that is NOT the same as the level itself.
-  // The "keeps colour absolute" test above cannot catch a mutant that indexes the colormap by level
-  // directly, skipping the dB round-trip: at dbFloor = SPECTROGRAM_DB_MIN the two happen to agree,
-  // and the "raised floor" case only checks the top of the ramp, where they also agree (level 255
-  // always maps to dB SPECTROGRAM_DB_MAX regardless of floor). This test picks a floor and a level
-  // where they diverge, and pins the result to the same conversion buildStopColors uses, so the
-  // production code and the assertion cannot silently drift together.
+  // dB to a colormap index that is NOT the same as the level itself. The "keeps colour absolute"
+  // test above cannot catch a mutant that indexes the colormap by level directly, skipping the dB
+  // round-trip: at dbFloor = SPECTROGRAM_DB_MIN the two happen to agree, and the "raised floor" case
+  // only checks the top of the ramp, where they also agree (level 255 always maps to dB
+  // SPECTROGRAM_DB_MAX regardless of floor). This test picks a floor and a level where they diverge,
+  // and pins the result via the same shared helper (`spectrogramColorFracFromHeight`) that
+  // `buildSurfaceLut` itself calls. That shared use is what stops the two from drifting apart: an
+  // edit to the helper's formula moves both this expectation and the production code together, so
+  // only a change to `buildSurfaceLut`'s own call site -- not the underlying maths -- can slip past
+  // this test.
   it("converts level to dB before indexing the colormap, not level directly", () => {
     const dbFloor = -40;
     const colormapLut = testColormapLut();
     const lut = buildSurfaceLut({ colormapLut, dbFloor, colorize: true });
     const level = 128;
 
-    const db = dbFloor + (level / 255) * (SPECTROGRAM_DB_MAX - dbFloor);
-    const frac = spectrogramColorFrac(db, dbFloor);
+    const frac = spectrogramColorFracFromHeight(level / 255, dbFloor);
     const idx = Math.round(frac * 255) * 3;
     // Sanity check that this level/floor pair actually exercises the divergence the test relies on.
     expect(idx).not.toBe(level * 3);

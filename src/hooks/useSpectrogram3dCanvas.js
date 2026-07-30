@@ -8,8 +8,7 @@ import {
   labelEdges,
 } from "../math/spectrogram3dProjection.js";
 import { sampleWaterfallGrid } from "../math/spectrogram3dGrid.js";
-import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
-import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
+import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js";
 
 // Cost tracks the product of these two, so they can be traded against each other while tuning:
 // more ridges reads as denser time resolution, more points as finer spectral detail.
@@ -77,9 +76,7 @@ function cssVar(el, name, fallback) {
 function buildStopColors(colormapLut, ink, dbFloor, colorize) {
   const stops = new Array(GRADIENT_STOPS + 1);
   for (let s = 0; s <= GRADIENT_STOPS; s++) {
-    const frac = s / GRADIENT_STOPS;
-    const db = dbFloor + frac * (SPECTROGRAM_DB_MAX - dbFloor);
-    const t = spectrogramColorFrac(db, dbFloor);
+    const t = spectrogramColorFracFromHeight(s / GRADIENT_STOPS, dbFloor);
     if (colorize) {
       const idx = Math.round(t * 255) * 3;
       stops[s] = `rgba(${colormapLut[idx]},${colormapLut[idx + 1]},${colormapLut[idx + 2]},${t})`;

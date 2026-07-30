@@ -4,6 +4,7 @@ import { getBuiltinTheme } from "./builtinThemes.js";
 import {
   buildSpectrogramLut,
   INFERNO_COLORMAP_STOPS,
+  spectrogramColorFracFromHeight,
   spectrogramColorFromLut,
   spectrogramColorFrac,
 } from "./spectrogramColormap.js";
@@ -59,5 +60,23 @@ describe("spectrogramColorFrac", () => {
     expect(spectrogramColorFrac(Number.NaN, -60)).toBe(0);
     expect(spectrogramColorFrac(Number.POSITIVE_INFINITY, -60)).toBe(0);
     expect(spectrogramColorFrac(Number.NEGATIVE_INFINITY, -60)).toBe(0);
+  });
+});
+
+describe("spectrogramColorFracFromHeight", () => {
+  it("converts a floor-relative height fraction to an absolute colour position", () => {
+    // At the default floor, height fraction and colour fraction coincide -- the identity case.
+    expect(spectrogramColorFracFromHeight(0, SPECTROGRAM_DB_MIN)).toBe(0);
+    expect(spectrogramColorFracFromHeight(0.5, SPECTROGRAM_DB_MIN)).toBeCloseTo(0.5, 10);
+    expect(spectrogramColorFracFromHeight(1, SPECTROGRAM_DB_MIN)).toBe(1);
+
+    // A raised floor: height 0 always sits exactly on the floor, which pins to 0 regardless of
+    // where the floor is; height 1 always reaches SPECTROGRAM_DB_MAX, which pins to 1 regardless
+    // of the floor. The two ends stay fixed while the middle moves -- that asymmetry is the whole
+    // point of recovering dB before colouring.
+    expect(spectrogramColorFracFromHeight(0, -40)).toBe(0);
+    expect(spectrogramColorFracFromHeight(1, -40)).toBe(1);
+    // height 0.5 at dbFloor -40 recovers db = -20, i.e. (-20 - (-84)) / 84 of the way up the ramp.
+    expect(spectrogramColorFracFromHeight(0.5, -40)).toBeCloseTo(64 / 84, 10);
   });
 });
