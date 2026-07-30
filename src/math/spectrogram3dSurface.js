@@ -363,31 +363,70 @@ export function rasterizeSurface({
   }
 }
 
+/** Never coarsen past this. Beyond the measured range we accept frame time over resolution: past
+ * some point losing horizontal detail costs more than an occasional missed repaint, and the
+ * repaint-skip guard already holds repaints near 25 Hz rather than 60, so a slow frame is not a
+ * dropped one. */
+const STRIDE_MAX = 4;
+
 /**
- * Default column stride: rasterise every Nth column and replicate.
+ * Device pixels of canvas area one column-stride step buys. Cost tracks `width * height`, not
+ * `width` alone -- see `columnStrideFor`'s doc for the model and the measurements that pinned this
+ * number.
+ */
+const STRIDE_AREA_BUDGET = 1_200_000;
+
+/**
+ * Column stride for a canvas of this size: rasterise every Nth column and replicate. Same shape as
+ * `ridgeCountFor` / `pointCountFor` in `useSpectrogram3dCanvas.js` -- a performance parameter
+ * derived from canvas size with min/max caps -- rather than a fixed constant, because a single
+ * constant cannot fit: the interactive budget is 16.7 ms and the rasteriser's actual cost spans
+ * two orders of magnitude across the panel sizes PLVS ships (a 3840x1200 canvas is not a stress
+ * test -- Focus View puts a 1920x600 CSS panel at exactly that many device pixels on a 2x display).
+ * One stride tuned for the small end is 35+ ms at the large end; one tuned for the large end
+ * quarters horizontal resolution on the small end for no reason.
+ *
+ * The rasteriser's cost is columns/stride times steps-per-column, and `steps` is bounded by canvas
+ * height (`columnFloorSpan` caps it there), so cost scales with `width * height / stride` -- plain
+ * device-pixel area divided by stride. That is the whole model: divide area by a per-stride-step
+ * budget and round up, floor 1, ceiling `STRIDE_MAX`.
  *
  * Measured with scripts/spectrogram-surface-benchmark.mjs on 2026-07-30, medians (and best-of-60)
  * of 60 repaints, `buildRowLut` + `out.fill(0)` + `rasterizeSurface` timed together per the timing
  * boundary documented in that script -- `buildSurfaceLut` is amortised (rebuilt only on a theme or
- * control change, not per repaint) and is measured separately:
+ * control change, not per repaint: measured separately at 0.032 ms median) and excluded here.
+ * Node is not WebView2 and nothing else is competing for the main thread there, so treat these as
+ * a lower bound; a canvas passing at 90% of budget in Node is not a canvas with margin in WebView2.
  *
- *   922x110    stride 1: 1.09 ms (0.82)   stride 2: 0.46 ms (0.42)
- *              stride 3: 0.29 ms (0.28)   stride 4: 0.21 ms (0.20)
- *   2560x900   stride 1: 18.71 ms (16.58) OVER on median
- *              stride 2: 10.89 ms (9.49)  stride 3: 7.98 ms (6.61)   stride 4: 6.64 ms (5.31)
- *   3840x1200  stride 1: 38.40 ms (35.88) OVER   stride 2: 22.31 ms (20.48) OVER
- *              stride 3: 16.12 ms (14.53) -- only ~0.6 ms under the 16.7 ms budget on median
- *              stride 4: 14.33 ms (11.93)
- *   buildSurfaceLut (amortised, not counted above): 0.03 ms median.
+ *   922x110    (0.10 M px) stride 1: 0.87 ms (best 0.81)  -- picked: stride 1
+ *   1920x600   (1.15 M px) stride 1: 9.26 ms (best 8.79)  -- picked: stride 1
+ *   2560x900   (2.30 M px) stride 1: 16.62 ms (best 15.68) -- close to budget on median
+ *                          stride 2: 9.44 ms (best 8.73)  -- picked: stride 2
+ *   3440x1440  (4.95 M px) stride 3: 14.61 ms (best 13.66)
+ *                          stride 4: 11.82 ms (best 10.92) -- picked: stride 4 (capped at STRIDE_MAX)
+ *   3840x1200  (4.61 M px) stride 3: 14.38 ms (best 13.67)
+ *                          stride 4: 11.73 ms (best 10.87) -- picked: stride 4
  *
- * Node is not WebView2 and nothing else is competing for the main thread there, so these are a
- * lower bound. Stride 1 already clears budget at 922x110 but not at the larger sizes: 2560x900's
- * median sits over budget at stride 1 and only becomes comfortable (roughly 65% of budget) at
- * stride 2, while 3840x1200 needs stride 3 just to land under budget at all and stays within ~4%
- * of the line there across repeated runs -- too close to call comfortable given this harness is a
- * lower bound. Stride 4 is the smallest stride that puts every measured canvas, including
- * 3840x1200, at a comfortable margin (roughly 70-85% of budget or better), so it is the shipped
- * default. A size-dependent stride (stride 2 for the common 2560x900 case, coarser only for larger
- * canvases) is possible but out of scope here -- the design calls for one constant.
+ * 2560x900 at stride 1 flips between just-under and just-over budget on median across runs on this
+ * machine (as high as 18.71 ms in an earlier run of this same script) -- exactly the "right at the
+ * budget line" case that makes a single-run median untrustworthy, which is why the picked stride
+ * comes from the area model, not from re-reading this table after every run.
+ *
+ * 922x110 and 2560x900 are the two panel sizes Lines was measured at; 1920x600 and 3440x1440 are
+ * added in between so the budget below is not fitted to only two data points; 3840x1200 is Focus
+ * View at 2x. 1,200,000 device pixels per stride step is the budget that lands on the stride each
+ * row above needed: small enough that 2560x900 needs stride 2 rather than trusting an
+ * occasionally-under-budget median at stride 1, large enough that 1920x600 stays at stride 1 rather
+ * than being pushed to stride 2 for no reason. `STRIDE_MAX` caps the two largest canvases at stride 4 even
+ * though the raw formula would ask for 5 at 3440x1440 -- past the sizes actually measured here we
+ * are extrapolating, and the doc comment on `STRIDE_MAX` explains why frame time loses that
+ * trade-off beyond this range.
+ *
+ * @param {number} width canvas width, device pixels
+ * @param {number} height canvas height, device pixels
+ * @returns {number} stride, at least 1 and at most STRIDE_MAX
  */
-export const DEFAULT_COLUMN_STRIDE = 4;
+export function columnStrideFor(width, height) {
+  const area = Math.max(0, width) * Math.max(0, height);
+  return Math.max(1, Math.min(STRIDE_MAX, Math.ceil(area / STRIDE_AREA_BUDGET)));
+}

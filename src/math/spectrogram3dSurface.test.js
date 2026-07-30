@@ -6,6 +6,7 @@ import {
   buildRowLut,
   buildSurfaceLut,
   columnFloorSpan,
+  columnStrideFor,
   NO_ROW,
   packArgb,
   rasterizeSurface,
@@ -821,5 +822,48 @@ describe("rasterizeSurface", () => {
       }
     }
     expect(Math.abs(top - predicted)).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("columnStrideFor", () => {
+  it("returns 1 for a small panel", () => {
+    expect(columnStrideFor(922, 110)).toBe(1);
+  });
+
+  it("returns the stride measured for each benchmarked canvas", () => {
+    // Pins scripts/spectrogram-surface-benchmark.mjs's measurements (2026-07-30) against the code,
+    // so a future change to the area budget has to justify itself against real numbers again.
+    expect(columnStrideFor(922, 110)).toBe(1);
+    expect(columnStrideFor(1920, 600)).toBe(1);
+    expect(columnStrideFor(2560, 900)).toBe(2);
+    expect(columnStrideFor(3440, 1440)).toBe(4);
+    expect(columnStrideFor(3840, 1200)).toBe(4);
+  });
+
+  it("never returns less than 1, including for a degenerate canvas", () => {
+    expect(columnStrideFor(0, 0)).toBe(1);
+    expect(columnStrideFor(0, 900)).toBe(1);
+    expect(columnStrideFor(-10, -10)).toBe(1);
+  });
+
+  it("never exceeds STRIDE_MAX, including for an absurdly large canvas", () => {
+    expect(columnStrideFor(20_000, 20_000)).toBeLessThanOrEqual(4);
+  });
+
+  it("is monotonic in area", () => {
+    const sizes = [
+      [922, 110],
+      [1920, 600],
+      [2560, 900],
+      [3440, 1440],
+      [3840, 1200],
+      [7680, 2400],
+    ];
+    let prev = -Infinity;
+    for (const [width, height] of sizes) {
+      const stride = columnStrideFor(width, height);
+      expect(stride).toBeGreaterThanOrEqual(prev);
+      prev = stride;
+    }
   });
 });

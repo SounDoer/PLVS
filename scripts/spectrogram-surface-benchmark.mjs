@@ -5,18 +5,23 @@ import { buildProjection } from "../src/math/spectrogram3dProjection.js";
 import {
   buildRowLut,
   buildSurfaceLut,
+  columnStrideFor,
   packArgb,
   rasterizeSurface,
 } from "../src/math/spectrogram3dSurface.js";
 
-// The two real panel sizes the Lines mode was measured at, in device pixels, plus a larger canvas
-// to see where the cost trend goes. Row counts respect the precondition documented on
-// `rasterizeSurface`'s grid parameter: `grid.count` must stay at or below the `steps` a column
-// yields (roughly the canvas height), or nearest-row sampling aliases as the window slides. 300
-// rows at 3840x1200 keeps that margin the same way it does at 2560x900.
+// 922x110 and 2560x900 are the two real panel sizes the Lines mode was measured at, in device
+// pixels. 1920x600 and 3440x1440 sit in between so `columnStrideFor`'s area budget is fitted
+// against more than the two endpoints. 3840x1200 is Focus View at 2x -- a 1920x600 CSS panel given
+// the whole window on a 2x display -- not a stress-test artefact. Row counts respect the
+// precondition documented on `rasterizeSurface`'s grid parameter: `grid.count` must stay at or
+// below the `steps` a column yields (roughly the canvas height), or nearest-row sampling aliases
+// as the window slides. 300 rows keeps that margin at every size here at or above 600 tall.
 const CANVASES = [
   { width: 922, height: 110, rows: 66, points: 154 },
+  { width: 1920, height: 600, rows: 300, points: 320 },
   { width: 2560, height: 900, rows: 300, points: 320 },
+  { width: 3440, height: 1440, rows: 300, points: 320 },
   { width: 3840, height: 1200, rows: 300, points: 320 },
 ];
 const STRIDES = [1, 2, 3, 4];
@@ -117,15 +122,22 @@ const sharedLut = buildSurfaceLut({
   colorize: true,
 });
 
+// Re-validates the shipped choice: running this script re-checks `columnStrideFor`'s pick against
+// the full sweep rather than producing a table someone has to interpret by hand.
 for (const canvas of CANVASES) {
-  const label = `${canvas.width}x${canvas.height} (${canvas.rows} rows x ${canvas.points} pts)`;
+  const area = canvas.width * canvas.height;
+  const picked = columnStrideFor(canvas.width, canvas.height);
+  const label =
+    `${canvas.width}x${canvas.height} (${(area / 1e6).toFixed(2)} M px, ` +
+    `${canvas.rows} rows x ${canvas.points} pts) -- columnStrideFor picks stride ${picked}`;
   const parts = STRIDES.map((stride) => {
     const { median: med, best } = measure(canvas, stride, sharedLut);
     const medFlag = med > BUDGET_MS ? "  OVER" : "";
     const bestFlag = best > BUDGET_MS ? "  OVER" : "";
+    const chosen = stride === picked ? "  <- picked" : "";
     return (
       `stride ${stride}: median ${med.toFixed(2)} ms${medFlag}, ` +
-      `best-of-${ITERATIONS} ${best.toFixed(2)} ms${bestFlag}`
+      `best-of-${ITERATIONS} ${best.toFixed(2)} ms${bestFlag}${chosen}`
     );
   });
   console.log(`${label}\n  ${parts.join("\n  ")}\n`);
