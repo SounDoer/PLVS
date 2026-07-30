@@ -147,8 +147,18 @@ periods, bucket state seeded from the frame just outside the window — are inhe
 re-derived. Any per-column time resampling invented here would bring all three back, and this time
 there would be no individual ridges to debug them against.
 
-Row count may be far higher than in Lines (hundreds), because cost no longer scales with it: cost
-is columns × steps.
+Row count may be higher than in Lines, because cost no longer scales with it: cost is
+columns × steps.
+
+**But it is bounded, and the bound is not obvious.** A column samples the time axis at `steps + 1`
+positions, one per screen pixel row. Push the row count past that and nearest-row selection starts
+aliasing: rows re-bind as the window slides by less than one row, which is the shimmer class
+`spectrogram3dGrid.js` was written to eliminate — and it would return with no individual ridges left
+to debug it against. Measured at 922×110, where `steps` is only about 72: with 60 rows, one sampled
+row changes identity on a half-row slide; with 250 rows, a third of them do.
+
+So `grid.count` stays at or below the per-column `steps` the projection yields — roughly the canvas
+height. On a short panel that is a lower ceiling than Lines' own ridge cap, not a higher one.
 
 ### Colour
 
