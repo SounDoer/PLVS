@@ -8,6 +8,7 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
+  SPECTROGRAM_MODE_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
@@ -874,6 +875,7 @@ export function PanelSettingsContent({
   const [stereoMapModeOpen, setStereoMapModeOpen] = useState(false);
   const [stereoMapSmoothingOpen, setStereoMapSmoothingOpen] = useState(false);
   const [spectrogramSmoothingOpen, setSpectrogramSmoothingOpen] = useState(false);
+  const [spectrogramModeOpen, setSpectrogramModeOpen] = useState(false);
   const [vadOpen, setVadOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
@@ -1317,23 +1319,33 @@ export function PanelSettingsContent({
               />
             </SettingsRow>
             <SettingsRow
-              label="3D View"
-              tooltip="A presentation view of the waterfall surface. There is no hover readout in 3D — switch back to 2D to read exact values."
+              label="Mode"
+              tooltip="3D is a presentation view of the waterfall surface. There is no hover readout in 3D — switch back to 2D Heatmap to read exact values."
             >
-              <SettingsSwitch
-                aria-label="spectrogram 3d view"
-                checked={normalizedPanelControls.spectrogram3d}
-                onCheckedChange={(checked) => {
+              <SettingsSelect
+                label={
+                  (
+                    SPECTROGRAM_MODE_OPTIONS.find(
+                      (option) => option.id === normalizedPanelControls.spectrogramMode
+                    ) ?? SPECTROGRAM_MODE_OPTIONS[0]
+                  ).label
+                }
+                ariaLabel="spectrogram mode"
+                options={SPECTROGRAM_MODE_OPTIONS}
+                value={normalizedPanelControls.spectrogramMode}
+                open={spectrogramModeOpen}
+                onOpenChange={setSpectrogramModeOpen}
+                onChange={(spectrogramMode) => {
                   onPanelControlsChange?.(
                     normalizePanelControls({
                       ...normalizedPanelControls,
-                      spectrogram3d: checked,
+                      spectrogramMode,
                     })
                   );
                 }}
               />
             </SettingsRow>
-            {normalizedPanelControls.spectrogram3d ? (
+            {normalizedPanelControls.spectrogramMode !== "heatmap" ? (
               <>
                 <SettingsRow
                   label="Elevation"
@@ -1458,42 +1470,46 @@ export function PanelSettingsContent({
                     }}
                   />
                 </SettingsRow>
-                <SettingsRow label="Line Alpha">
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d line alpha"
-                    min={0.15}
-                    max={1}
-                    step={0.05}
-                    value={normalizedPanelControls.spectrogram3dLineAlpha}
-                    formatValue={(value) => value.toFixed(2)}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dLineAlpha: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-                <SettingsRow label="Line Width">
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d line width"
-                    min={0.5}
-                    max={3}
-                    step={0.1}
-                    value={normalizedPanelControls.spectrogram3dLineWidth}
-                    formatValue={(value) => `${value.toFixed(1)}x`}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dLineWidth: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
+                {normalizedPanelControls.spectrogramMode === "lines" ? (
+                  <>
+                    <SettingsRow label="Line Alpha">
+                      <SettingsSlider
+                        ariaLabel="spectrogram 3d line alpha"
+                        min={0.15}
+                        max={1}
+                        step={0.05}
+                        value={normalizedPanelControls.spectrogram3dLineAlpha}
+                        formatValue={(value) => value.toFixed(2)}
+                        onCommit={(value) => {
+                          onPanelControlsChange?.(
+                            normalizePanelControls({
+                              ...normalizedPanelControls,
+                              spectrogram3dLineAlpha: value,
+                            })
+                          );
+                        }}
+                      />
+                    </SettingsRow>
+                    <SettingsRow label="Line Width">
+                      <SettingsSlider
+                        ariaLabel="spectrogram 3d line width"
+                        min={0.5}
+                        max={3}
+                        step={0.1}
+                        value={normalizedPanelControls.spectrogram3dLineWidth}
+                        formatValue={(value) => `${value.toFixed(1)}x`}
+                        onCommit={(value) => {
+                          onPanelControlsChange?.(
+                            normalizePanelControls({
+                              ...normalizedPanelControls,
+                              spectrogram3dLineWidth: value,
+                            })
+                          );
+                        }}
+                      />
+                    </SettingsRow>
+                  </>
+                ) : null}
               </>
             ) : null}
           </>

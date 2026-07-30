@@ -84,7 +84,8 @@ export function SpectrogramPanel({ compact = false }) {
     () => normalizePanelControls(panelControls),
     [panelControls]
   );
-  const is3d = normalizedPanelControls.spectrogram3d === true;
+  const spectrogramMode = normalizedPanelControls.spectrogramMode;
+  const is3d = spectrogramMode !== "heatmap";
   const spectrogramYAxis = useAxisInteraction({
     axis: "y",
     min: normalizedPanelControls.spectrogramYMinFreq,

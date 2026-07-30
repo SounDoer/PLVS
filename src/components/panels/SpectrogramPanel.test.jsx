@@ -454,7 +454,7 @@ describe("SpectrogramPanel", () => {
 
       const threeD = renderPanel({
         ...commonProps,
-        panelControls: { ...panelControls, spectrogram3d: true },
+        panelControls: { ...panelControls, spectrogramMode: "lines" },
       });
       act(() => {
         fireEvent.pointerMove(threeD.container.querySelector("canvas"), { clientX: 0, clientY: 0 });
@@ -492,7 +492,7 @@ describe("SpectrogramPanel", () => {
 
     const threeD = renderPanel({
       ...commonProps,
-      panelControls: { ...panelControls, spectrogram3d: true },
+      panelControls: { ...panelControls, spectrogramMode: "lines" },
     });
     expect(threeD.container.querySelector("svg")).toBeNull();
   });
@@ -508,7 +508,7 @@ describe("SpectrogramPanel", () => {
     const { container } = renderPanel({
       historyChartInteractive: true,
       onHistoryPointerDown,
-      panelControls: { spectrogram3d: true },
+      panelControls: { spectrogramMode: "lines" },
     });
     const canvas = container.querySelector("canvas");
     // jsdom's canvas defaults to 300x150 device pixels; give it a matching 1:1 CSS rect so the
@@ -545,7 +545,7 @@ describe("SpectrogramPanel", () => {
 
     expect(screen.getByText("20k")).toBeTruthy();
 
-    rerender(spectrogramPanelTree({ panelControls: { spectrogram3d: true } }));
+    rerender(spectrogramPanelTree({ panelControls: { spectrogramMode: "lines" } }));
 
     // The rail does not change meaning between modes: same ticks, no "dB" placeholder.
     expect(screen.getByText("20k")).toBeTruthy();
@@ -558,7 +558,7 @@ describe("SpectrogramPanel", () => {
     const onPanelControlsChange = vi.fn();
     renderPanel({
       onPanelControlsChange,
-      panelControls: { spectrogram3d: true },
+      panelControls: { spectrogramMode: "lines" },
     });
 
     // Do not assert on the rail's cursor. useAxisInteraction returns "ns-resize" for every y axis,
@@ -595,7 +595,7 @@ describe("SpectrogramPanel", () => {
     const onPanelControlsChange = vi.fn();
     renderPanel({
       onPanelControlsChange,
-      panelControls: { spectrogram3d: true },
+      panelControls: { spectrogramMode: "lines" },
     });
 
     const rail = screen.getByText("20k").closest("div[class*='shrink-0']");
@@ -620,7 +620,7 @@ describe("SpectrogramPanel", () => {
     renderPanel({
       onPanelControlsChange,
       panelControls: {
-        spectrogram3d: true,
+        spectrogramMode: "lines",
         // A full-span range cannot pan -- clampRange returns absMin/absMax unchanged for any
         // drag -- so starting at the 20-20000 default would assert against a guaranteed no-op.
         spectrogramYMinFreq: 100,
@@ -660,7 +660,7 @@ describe("SpectrogramPanel", () => {
       historyChartInteractive: true,
       onPanelControlsChange,
       onHistoryWheel,
-      panelControls: { spectrogram3d: true },
+      panelControls: { spectrogramMode: "lines" },
     });
 
     fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaY: -100 });
@@ -687,7 +687,7 @@ describe("SpectrogramPanel", () => {
     const { container } = renderPanel({
       historyChartInteractive: true,
       onPanelControlsChange,
-      panelControls: { spectrogram3d: true },
+      panelControls: { spectrogramMode: "lines" },
     });
 
     fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaX: 100, deltaY: 0 });
@@ -701,7 +701,7 @@ describe("SpectrogramPanel", () => {
     const { container } = renderPanel({
       historyChartInteractive: true,
       onPanelControlsChange,
-      panelControls: { spectrogram3d: true, spectrogram3dHeightGain: 3 },
+      panelControls: { spectrogramMode: "lines", spectrogram3dHeightGain: 3 },
     });
 
     // Shrink from the same fixture first, so the ceiling assertion below cannot be satisfied by a
@@ -721,7 +721,7 @@ describe("SpectrogramPanel", () => {
     const { container } = renderPanel({
       historyChartInteractive: true,
       onPanelControlsChange,
-      panelControls: { spectrogram3d: true },
+      panelControls: { spectrogramMode: "lines" },
     });
 
     fireEvent.wheel(container.querySelector("canvas"), {
@@ -745,7 +745,7 @@ describe("SpectrogramPanel", () => {
       historyChartInteractive: true,
       onPanelControlsChange,
       onHistoryWheel,
-      panelControls: { spectrogram3d: true },
+      panelControls: { spectrogramMode: "lines" },
     });
 
     fireEvent.wheel(container.querySelector("canvas"), { shiftKey: true, deltaX: 0, deltaY: 0 });
@@ -783,7 +783,7 @@ describe("SpectrogramPanel", () => {
       historyChartInteractive: true,
       onPanelControlsChange,
       panelControls: {
-        spectrogram3d: true,
+        spectrogramMode: "lines",
         spectrogram3dAzimuthDeg: 20,
         spectrogram3dElevationDeg: 10,
       },
@@ -823,7 +823,7 @@ describe("SpectrogramPanel", () => {
       historyChartInteractive: true,
       onPanelControlsChange,
       panelControls: {
-        spectrogram3d: true,
+        spectrogramMode: "lines",
         spectrogram3dAzimuthDeg: 20,
         spectrogram3dElevationDeg: 10,
       },
@@ -896,7 +896,7 @@ describe("SpectrogramPanel", () => {
         historyChartInteractive: true,
         onPanelControlsChange,
         panelControls: {
-          spectrogram3d: true,
+          spectrogramMode: "lines",
           spectrogram3dAzimuthDeg: 20,
           spectrogram3dElevationDeg: 10,
         },
@@ -935,7 +935,7 @@ describe("SpectrogramPanel", () => {
       historyChartInteractive: true,
       onPanelControlsChange,
       panelControls: {
-        spectrogram3d: true,
+        spectrogramMode: "lines",
         spectrogram3dAzimuthDeg: 20,
         spectrogram3dElevationDeg: 10,
       },

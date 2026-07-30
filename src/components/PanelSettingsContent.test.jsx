@@ -1248,7 +1248,7 @@ describe("PanelSettingsContent", () => {
     };
     const { rerender } = render(<PanelSettingsContent {...props} />);
 
-    expect(screen.getByRole("switch", { name: "spectrogram 3d view" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "spectrogram mode" })).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "spectrogram 3d colorize" })).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d height scale")).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
@@ -1256,7 +1256,7 @@ describe("PanelSettingsContent", () => {
     rerender(
       <PanelSettingsContent
         {...props}
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogram3d: true }}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "lines" }}
       />
     );
 
@@ -1276,7 +1276,7 @@ describe("PanelSettingsContent", () => {
     const { rerender } = render(
       <PanelSettingsContent
         {...props}
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogram3d: true }}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "lines" }}
       />
     );
 
@@ -1288,7 +1288,7 @@ describe("PanelSettingsContent", () => {
         {...props}
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
-          spectrogram3d: true,
+          spectrogramMode: "lines",
           spectrogram3dAzimuthDeg: 120,
         }}
       />
@@ -1302,7 +1302,7 @@ describe("PanelSettingsContent", () => {
     const onPanelControlsChange = vi.fn();
     const customControls = {
       ...DEFAULT_PANEL_CONTROLS,
-      spectrogram3d: true,
+      spectrogramMode: "lines",
       spectrogram3dAzimuthDeg: 120,
       spectrogram3dElevationDeg: 5,
       spectrogram3dHeightGain: 2.5,
@@ -1340,6 +1340,51 @@ describe("PanelSettingsContent", () => {
     expect(result.spectrogram3dAzimuthDeg).toBe(135);
     expect(result.spectrogram3dElevationDeg).toBe(5);
     expect(result.spectrogram3dColorize).toBe(true);
+  });
+
+  it("selects the spectrogram view mode and scopes the line controls to Lines", () => {
+    const onPanelControlsChange = vi.fn();
+    const props = {
+      activeTab: "spectrogram",
+      channelCount: 2,
+      spectrumOptions: [{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }],
+      spectrumValueKey: "p-0-1",
+      panelControls: DEFAULT_PANEL_CONTROLS,
+      onPanelControlsChange,
+    };
+    const { rerender } = render(<PanelSettingsContent {...props} />);
+
+    // Heatmap is the default: no 3D control is present at all.
+    expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
+    expect(screen.queryByLabelText("spectrogram 3d line alpha")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
+    fireEvent.click(screen.getByRole("option", { name: "3D Surface" }));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ spectrogramMode: "surface" })
+    );
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "surface" }}
+      />
+    );
+    // Shared view controls appear; the line-only ones do not.
+    expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrogram 3d line alpha")).toBeNull();
+    expect(screen.queryByLabelText("spectrogram 3d line width")).toBeNull();
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, spectrogramMode: "lines" }}
+      />
+    );
+    expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram 3d line alpha")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram 3d line width")).toBeTruthy();
   });
 
   it("does not render loudness controls before panel controls are wired", () => {
