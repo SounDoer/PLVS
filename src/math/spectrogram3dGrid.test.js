@@ -227,6 +227,45 @@ describe("sampleWaterfallGrid", () => {
     expect(grid.pointCount).toBe(2);
   });
 
+  // The stride is returned so per-bucket tolerances can scale by the actual decimation stride
+  // rather than by the row count -- at capture start the rows all sit at one end of the window,
+  // and a tolerance derived from span / count smears them across the empty rest of it.
+  it("returns the bucket stride, quantised to whole frame periods", () => {
+    const view = framesAt(evenly(0, 4000), -20);
+    // span 1000 / maxRidges 12 -> raw 83.3 ms -> 2 whole 40 ms periods.
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: 25,
+      span: 1000,
+      maxRidges: 12,
+    });
+    expect(grid.strideMs).toBe(80);
+  });
+
+  it("returns the raw stride when the frame period is unusable", () => {
+    const view = framesAt(evenly(0, 400), -20);
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: 10,
+      sampleMs: NaN,
+    });
+    expect(grid.strideMs).toBe(BASE.span / BASE.maxRidges);
+  });
+
+  it("returns the stride even when the window holds no frames", () => {
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view: viewOf([]),
+      startIdx: 0,
+      endIdx: -1,
+    });
+    expect(grid.strideMs).toBe(40); // span 400 / maxRidges 10 = 1 x 40 ms
+  });
+
   it("skips frames that carry no levels", () => {
     const view = viewOf([
       { timestampMs: 0, bands: [], dbList: null },

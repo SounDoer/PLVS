@@ -290,6 +290,64 @@ and 8.0 billion pixels with zero differences. Two further strength reductions we
 deliberately **not** taken, because they change the floating-point result and belong in a separately
 reviewed change.
 
+## Amended after first visual review (2026-07-30)
+
+The first run of `npm run desktop` against real audio settled Acceptance item 4 in the worst way:
+the surface painted, but as a **3D bar chart** — flat-topped cells with vertical walls, plus
+salt-and-pepper shading. Two sampling decisions in this document caused it, and both are amended:
+
+1. **Nearest-row lookup → bracket + weight.** `buildRowLut` originally resolved each bucket to the
+   single nearest row. A grid cell covers several screen pixels, so every sample inside it read one
+   identical height: flat top, vertical wall, and `h - h_prev` zero inside the cell with a cliff at
+   its edge — which is also why the headlight shading had nothing to work with and saturated on bin
+   noise instead. The table now returns `{ rows, weights }`: the lower bracketing row and the
+   interpolation weight towards the next one, and the walk reads all four bracketing grid samples
+   (bilinear over time and frequency). Two things are deliberately NOT interpolated — across a
+   capture gap (the weight snaps to the covered end) and past the first/last row (held, not
+   extrapolated; the weight is clamped to [0, 1] to make that true at the window's old end). The
+   `NO_ROW` sentinel and gap semantics are unchanged.
+2. **Unsmoothed bins → one frequency-axis smoothing pass.** Bilinear interpolation makes the
+   surface continuous but does not remove per-bin jitter — a spike survives at full height, just
+   with sloped sides. `smoothGridFrequency` (3-tap `[0.25, 0.5, 0.25]`, endpoints kept, per row)
+   runs once per repaint in the Surface branch only. Time is not smoothed: interpolation already
+   makes it continuous, and low-passing time would lag transients. Lines strokes the same grid
+   unsmoothed.
+
+Two consequences fell out of the same change:
+
+- **Slope is now per unit of floor distance**, not per sample (`(h - h_prev) / stepDist`). Samples
+  per unit distance depend on the canvas size, so the per-sample delta shaded the same audio
+  differently on a resized panel.
+- **The row cap's rationale changed.** The `count <= steps` bound documented in Data was about
+  nearest-row re-binding shimmer; interpolation does not re-bind. The cap stays — rows past the
+  per-column sample count add grid-build cost without adding a resolvable sample — but it is now a
+  cost bound, not a stability bound.
+
+Performance was re-measured after the change (`scripts/spectrogram-surface-benchmark.mjs`, same 60
+repaints per cell, `smoothGridFrequency` added inside the timed region). The bilinear inner loop
+costs no more than the nearest-row one in practice — the table in `columnStrideFor`'s doc comment
+is replaced with the new numbers, and every stride pick is unchanged, so `STRIDE_AREA_BUDGET`
+stands.
+
+3. **Row coverage tolerance: row-count-derived → stride-derived.** The `maxDistTFrac` passed to
+   `buildRowLut` was `1.5 / (count - 1)` — 1.5× the mean row spacing, on the assumption that rows
+   span the window. At capture start they do not: a handful of frames cluster at the newest end of
+   a full-width window, so the tolerance grew with the emptiness (count = 2 makes it 1.5× the whole
+   window) and every captured frame was held across time it contained no data for — giant extruded
+   ridges with stair-stepped seams where the hold flipped rows. `sampleWaterfallGrid` now returns
+   its quantised `strideMs`, and the tolerance is `1.5 × strideMs / span`: identical to the old
+   value in steady state (mean spacing IS the stride when the window is full), independent of
+   captured history at startup, where the empty region now renders as the hole it is in 2D.
+4. **Smoothing strengthened, and extended to time.** First visual review after items 1–3: peak
+   silhouettes still carried needles (one 3-tap pass only halves an isolated bin spike) and the
+   terrain visibly breathed as the window flowed (frame-to-frame level noise is texture in 2D but
+   MOTION in a heightfield). `smoothGridFrequency` now runs two 3-tap passes — one binomial 5-tap,
+   taking an isolated spike to 3/8 — and a new `smoothGridTime` applies one 3-tap along the time
+   axis, blending interior rows with their ORIGINAL neighbours at half a stride of lag. Time
+   smoothing excludes rows touching a capture gap (they are not adjacent moments) and both end
+   rows (the newest is the live edge). Both smoothers remain Surface-only; Lines is untouched. The
+   benchmark's timed region now includes both, and every stride pick is unchanged.
+
 ## Panel Controls
 
 | Key                         | Default              | Range                                   | Applies to      |

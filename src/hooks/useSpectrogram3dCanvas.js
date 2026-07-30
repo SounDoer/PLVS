@@ -16,6 +16,8 @@ import {
   columnStrideFor,
   packArgb,
   rasterizeSurface,
+  smoothGridFrequency,
+  smoothGridTime,
 } from "../math/spectrogram3dSurface.js";
 
 // Cost tracks the product of these two, so they can be traded against each other while tuning:
@@ -41,12 +43,14 @@ function pointCountFor(widthPx) {
 
 /**
  * The most samples any single column takes along the time axis, which is the ceiling on how many
- * grid rows Surface can resolve. Above it, nearest-row sampling aliases and rows re-bind as the
- * window slides -- see the precondition on `rasterizeSurface`.
+ * grid rows Surface can resolve. Rows past it add grid-build cost without adding a resolvable
+ * sample -- see the precondition on `rasterizeSurface`. (Interpolation between rows keeps a
+ * sub-row window slide smooth; the cap is about not paying for rows no column can show, not about
+ * the re-binding shimmer nearest-row sampling had.)
  *
  * The maximum is the column through the floor's centre, because that is the longest chord, so this
  * is one `columnFloorSpan` call rather than a scan. Lines does not need it: it strokes each ridge
- * as a path rather than point-sampling per column, so it cannot alias this way.
+ * as a path rather than point-sampling per column, so its ridge count is bounded only by cost.
  */
 function surfaceRowCap(proj, height) {
   const span = columnFloorSpan(Math.round(proj.originX), proj, height);
@@ -58,7 +62,14 @@ function cssVar(el, name, fallback) {
   return value || fallback;
 }
 
-/** Rows within this multiple of the mean row spacing count as covering a sample; see buildRowLut. */
+/**
+ * Rows within this multiple of the decimation stride count as covering a sample; see buildRowLut.
+ * Scaled by the STRIDE, not by the mean row spacing: at capture start the few captured rows all
+ * sit at the newest end of a full-width window, and a tolerance derived from `span / count` grows
+ * with the emptiness -- count = 2 makes it 1.5x the whole window, so the two frames get held
+ * across time they contain no data for, which renders as giant extruded ridges. The stride is
+ * independent of how much history exists, so the empty region stays the hole it is in 2D.
+ */
 const ROW_LUT_SIZE = 1024;
 const ROW_GAP_TOLERANCE = 1.5;
 
@@ -520,6 +531,19 @@ export function useSpectrogram3dCanvas({
       }
 
       if (p.mode === "surface") {
+        // Surface-only: flatten per-bin jitter into terrain (see the two smoothers' docs). The
+        // grid is rebuilt on every repaint, so mutating it here cannot leak into the Lines branch
+        // of a later frame; within THIS frame the branches are exclusive.
+        smoothGridFrequency(grid.heights, grid.count, grid.pointCount);
+        // Tolerance in tFrac: 1.5x the decimation stride. Fall back to the old mean-spacing
+        // formula only when the stride is unusable (non-finite span / sampleMs), where the mean
+        // is the best available estimate of it. The row LUT's coverage and the time smoother's
+        // gap detection share the value, so "gap" means the same thing in both.
+        const strideTFrac = grid.strideMs / span;
+        const rowGapTFrac = Number.isFinite(strideTFrac)
+          ? ROW_GAP_TOLERANCE * strideTFrac
+          : ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1);
+        smoothGridTime(grid.heights, grid.tFracs, grid.count, grid.pointCount, rowGapTFrac);
         const off = ensureOffscreen(offscreenRef, W, H);
         // Cached by identity, matching the repaint-skip guard's `last.colormapLut === p.colormapLut`
         // above: the theme layer hands the hook a new array whenever the colormap actually changes,
@@ -543,12 +567,7 @@ export function useSpectrogram3dCanvas({
             }),
           };
         }
-        const rowLut = buildRowLut(
-          grid.tFracs,
-          grid.count,
-          ROW_LUT_SIZE,
-          ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1)
-        );
+        const rowLut = buildRowLut(grid.tFracs, grid.count, ROW_LUT_SIZE, rowGapTFrac);
         // resolveArgbRef probes a colour by writing a pixel to the offscreen canvas and reading it
         // back. Doing that before off.pixels.fill(0) keeps the probe write and the buffer prep from
         // being confused with each other; it is not load-bearing -- putImageData below writes the

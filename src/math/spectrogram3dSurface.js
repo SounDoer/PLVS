@@ -91,41 +91,179 @@ export function columnFloorSpan(x, proj, maxSteps) {
 export const NO_ROW = 0xffff;
 
 /**
- * Quantised nearest-row lookup over tFrac, so the inner loop costs one array read instead of a
+ * Quantised row-bracket lookup over tFrac, so the inner loop costs two array reads instead of a
  * binary search. Rows sit at irregular timestamps, which is why a divide cannot replace this.
+ *
+ * Each bucket resolves to the LOWER of the two rows bracketing it plus a weight towards the next
+ * one, because the rasteriser interpolates between them. Snapping to the nearest row instead is what
+ * made the surface render as a 3D bar chart: a grid cell covers several screen pixels, every sample
+ * inside it read one identical height, and the cell came out as a flat top plus a vertical wall,
+ * with `h - prevH` zero inside the cell and a cliff at its edge, so shading had nothing to work
+ * with either.
  *
  * Buckets with no row within `maxDistTFrac` get NO_ROW. That is how a real capture gap becomes a
  * hole in the surface: the rasteriser skips those samples and leaves the horizon where it was, so
  * the terrain behind the gap stays visible through it. Substituting the dB floor instead would draw
  * a gap as a flat plain, which is data that does not exist.
  *
+ * Two things are deliberately NOT interpolated:
+ *
+ * - **Across a gap.** When the bracketing rows are further apart than `maxDistTFrac` they are the
+ *   two sides of a capture gap, not a continuous stretch, so the weight snaps to whichever end
+ *   covered the bucket. Lerping there would drag the newest terrain down into the hole and the old
+ *   terrain up out of it.
+ * - **Past the ends.** Before the first row and after the last one there is nothing to interpolate
+ *   towards, so the weight holds the end row. Treating that as uncovered would delete the newest
+ *   frame -- the live edge the user is watching -- which is a worse artefact than the one this
+ *   interpolation exists to remove.
+ *
  * @param {Float64Array} tFracs row positions in 0..1, ascending
  * @param {number} count how many entries of `tFracs` are valid. Must stay below `NO_ROW`, or a
  *        real row index would be indistinguishable from the sentinel.
  * @param {number} size table resolution
- * @param {number} maxDistTFrac beyond this distance a bucket counts as uncovered
- * @returns {Uint16Array}
+ * @param {number} maxDistTFrac beyond this distance a bucket counts as uncovered, and further apart
+ *        than this two rows count as the two sides of a gap rather than one interval
+ * @returns {{ rows: Uint16Array, weights: Float32Array }} `rows[i]` is the lower bracketing row or
+ *          NO_ROW; `weights[i]` is 0 at that row and 1 at `rows[i] + 1`
  */
 export function buildRowLut(tFracs, count, size, maxDistTFrac) {
-  const lut = new Uint16Array(size);
+  const rows = new Uint16Array(size);
+  const weights = new Float32Array(size);
   if (count <= 0) {
-    lut.fill(NO_ROW);
-    return lut;
+    rows.fill(NO_ROW);
+    return { rows, weights };
   }
   let row = 0;
   for (let i = 0; i < size; i++) {
     const t = size > 1 ? i / (size - 1) : 0;
-    // tFracs ascends, so the nearest row only ever moves forward as i advances. `row` carries
-    // forward across iterations of `i` rather than restarting at 0 -- that forward-only cursor is
-    // what makes the sweep O(size + count) instead of O(size * count). Resetting it each iteration
-    // would still land on the correct row (the distance to `t` is a single valley), so it would
-    // not show up as a bug; it would only cost a multiple that grows with the table size.
-    while (row + 1 < count && Math.abs(tFracs[row + 1] - t) <= Math.abs(tFracs[row] - t)) {
-      row += 1;
+    // tFracs ascends, so the bracket only ever moves forward as i advances. `row` carries forward
+    // across iterations of `i` rather than restarting at 0 -- that forward-only cursor is what makes
+    // the sweep O(size + count) instead of O(size * count). Resetting it each iteration would still
+    // land on the correct bracket, so it would not show up as a bug; it would only cost a multiple
+    // that grows with the table size.
+    while (row + 1 < count && tFracs[row + 1] <= t) row += 1;
+
+    // Coverage is decided by the NEAREST row, not by the lower one: a bucket sitting just before a
+    // row is covered by it, and the bracket's lower end may be a whole gap away.
+    const distLo = Math.abs(tFracs[row] - t);
+    const hasNext = row + 1 < count;
+    const distHi = hasNext ? Math.abs(tFracs[row + 1] - t) : Infinity;
+    if (Math.min(distLo, distHi) > maxDistTFrac) {
+      rows[i] = NO_ROW;
+      continue;
     }
-    lut[i] = Math.abs(tFracs[row] - t) > maxDistTFrac ? NO_ROW : row;
+
+    rows[i] = row;
+    if (!hasNext) continue;
+    const dt = tFracs[row + 1] - tFracs[row];
+    if (dt > maxDistTFrac) {
+      // The two sides of a gap: hold whichever end covered this bucket.
+      weights[i] = distLo <= distHi ? 0 : 1;
+    } else if (dt > 0) {
+      // Clamped: a bucket sitting just BEFORE the first row (within tolerance, so covered by it)
+      // would otherwise get a negative weight and extrapolate the two newest-oldest frames'
+      // difference past the window's old end. The cursor guarantees tFracs[row] <= t for row > 0,
+      // so row 0 is the only place this can go negative; the 1 end is clamped for symmetry.
+      weights[i] = Math.min(1, Math.max(0, (t - tFracs[row]) / dt));
+    }
   }
-  return lut;
+  return { rows, weights };
+}
+
+/**
+ * Two 3-tap `[0.25, 0.5, 0.25]` passes along the frequency axis of every row, in place --
+ * equivalent to one binomial 5-tap `[1, 4, 6, 4, 1] / 16`, but endpoints need handling once.
+ *
+ * The grid samples single FFT bins per point (`sampleWaterfallGrid` via `yToBand`), and raw bin
+ * levels jitter by 10+ dB between neighbours. The 2D heatmap reads that as texture; as a
+ * heightfield every jittered bin becomes a tower of its own, and the headlight shading -- which
+ * keys on the height delta -- turns the same jitter into salt-and-pepper. Bilinear interpolation
+ * makes the surface continuous but does not remove the towers: a spike survives interpolation at
+ * full height, just with sloped sides. Smoothing along frequency is what actually flattens them,
+ * and it matches what the eye already does with the 2D heatmap's per-pixel columns.
+ *
+ * Two passes rather than one: a single pass only halves an isolated bin spike, and at half height
+ * it still reads as a needle on the silhouette. The second pass takes it to 3/8 while leaving
+ * structure that spans several points -- tonal content -- essentially intact.
+ *
+ * Endpoints are kept as sampled: there is no out-of-range neighbour to fold in, and renormalising
+ * a two-sample window would shift the edge bins' energy rather than smooth it.
+ *
+ * Only the Surface branch calls this. Lines strokes the same grid unsmoothed -- its curves carry
+ * the same bin jitter, but a stroked polyline reads it as texture the same way the heatmap does.
+ *
+ * @param {Float32Array} heights `count * pointCount` floor-relative fractions, modified in place
+ * @param {number} count
+ * @param {number} pointCount
+ */
+export function smoothGridFrequency(heights, count, pointCount) {
+  if (pointCount < 3) return;
+  for (let pass = 0; pass < 2; pass++) {
+    for (let r = 0; r < count; r++) {
+      const base = r * pointCount;
+      let prev = heights[base];
+      for (let q = 1; q < pointCount - 1; q++) {
+        const cur = heights[base + q];
+        heights[base + q] = (prev + 2 * cur + heights[base + q + 1]) * 0.25;
+        prev = cur;
+      }
+    }
+  }
+}
+
+/**
+ * One 3-tap `[0.25, 0.5, 0.25]` pass along the TIME axis, in place.
+ *
+ * Frame-to-frame level noise is the same jitter `smoothGridFrequency` flattens per row, but along
+ * time it reads differently: in 2D it is texture, in a heightfield it is MOTION -- the terrain
+ * visibly breathes as the window flows. Interpolation between rows makes the motion smooth but
+ * does not damp it; a light symmetric kernel does, at the cost of half a decimation stride of lag
+ * -- tens of ms at short windows, still under one visible row at long ones, so transients keep
+ * their shape.
+ *
+ * Two exclusions, both deliberate:
+ *
+ * - **Across a capture gap.** Rows bracketing a gap are not adjacent moments, so blending them
+ *   fabricates a transition that never happened. A row touches a gap on either side and it is
+ *   left as sampled. The caller derives `maxIntervalTFrac` from the same stride the row LUT's
+ *   tolerance uses, so "gap" means the same thing in both places.
+ * - **The first and last rows.** The newest row is the live edge monitoring watches; smoothing it
+ *   against the previous frame would delay exactly the moment that matters. The oldest gets the
+ *   symmetric treatment for free.
+ *
+ * Blending uses the ORIGINAL neighbour rows, not the already-smoothed ones: a rolling in-place
+ * pass would make the kernel effectively wider on one side, so an impulse would bleed further
+ * forward than back. One row buffer is kept for that.
+ *
+ * Only the Surface branch calls this, for the same reason as the frequency pass.
+ *
+ * @param {Float32Array} heights `count * pointCount` floor-relative fractions, modified in place
+ * @param {Float64Array} tFracs row positions in 0..1, ascending
+ * @param {number} count
+ * @param {number} pointCount
+ * @param {number} maxIntervalTFrac rows further apart than this count as the two sides of a gap
+ */
+export function smoothGridTime(heights, tFracs, count, pointCount, maxIntervalTFrac) {
+  if (count < 3 || pointCount < 1) return;
+  // Original values of the row above the one being blended, so the kernel reads unsmoothed
+  // neighbours. Row r + 1 needs no copy: it has not been written yet at iteration r. Starts as
+  // row 0, which is an endpoint and never written.
+  let prevOriginal = new Float32Array(pointCount);
+  prevOriginal.set(heights.subarray(0, pointCount));
+  let curOriginal = new Float32Array(pointCount);
+  for (let r = 1; r < count - 1; r++) {
+    const base = r * pointCount;
+    curOriginal.set(heights.subarray(base, base + pointCount));
+    const nearGap =
+      tFracs[r] - tFracs[r - 1] > maxIntervalTFrac || tFracs[r + 1] - tFracs[r] > maxIntervalTFrac;
+    if (!nearGap) {
+      for (let q = 0; q < pointCount; q++) {
+        heights[base + q] =
+          (prevOriginal[q] + 2 * curOriginal[q] + heights[base + pointCount + q]) * 0.25;
+      }
+    }
+    [prevOriginal, curOriginal] = [curOriginal, prevOriginal];
+  }
 }
 
 /** Shade quantisation. 16 keeps the LUT at 4096 words -- cheap to rebuild, fine enough to read. */
@@ -241,12 +379,12 @@ const DEPTH_FADE_FLOOR = 0.65;
  * @param {number} args.height
  * @param {object} args.proj from `buildProjection`
  * @param {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number }} args.grid
- *        from `sampleWaterfallGrid`. `heights` are floor-relative fractions in 0..1. `count` should
- *        stay at or below the `steps` a column yields -- roughly the canvas height -- because a
- *        column point-samples the time axis at `steps + 1` positions: with more rows than that,
- *        nearest-row sampling aliases and a large share of the sampled rows re-bind on a sub-row
- *        window slide, which is the shimmer `spectrogram3dGrid.js` exists to prevent. Cost does not
- *        scale with row count, but stability does.
+ *        from `sampleWaterfallGrid`, smoothed by `smoothGridFrequency`. `heights` are
+ *        floor-relative fractions in 0..1. `count` should stay at or below the `steps` a column
+ *        yields -- roughly the canvas height. Cost does not scale with row count, but a column
+ *        samples the time axis at only `steps + 1` positions, so rows past that add grid-build
+ *        cost without adding a single resolvable sample. (Nearest-row sampling would additionally
+ *        ALIAS there; interpolation between rows is what keeps a sub-row window slide smooth.)
  * @param {Uint16Array} args.rowLut from `buildRowLut`
  * @param {Uint32Array} args.lut from `buildSurfaceLut`
  * @param {number} args.heightGain the Height Scale multiplier
@@ -273,7 +411,8 @@ export function rasterizeSurface({
   if (count <= 0 || pointCount <= 0) return;
 
   const lastPoint = pointCount - 1;
-  const lutLast = rowLut.length - 1;
+  const { rows: rowIdx, weights: rowWeight } = rowLut;
+  const lutLast = rowIdx.length - 1;
   const stride = Math.max(1, Math.floor(columnStride));
   const stepCap = Math.max(1, Math.floor(maxSteps ?? height));
   // The projection terms the walk uses, read once. Individually this is noise; together with the
@@ -295,6 +434,9 @@ export function rasterizeSurface({
     // How many columns this one is replicated across: invariant per column, not per sample.
     const kEnd = Math.min(stride, width - x);
     const steps = span.steps;
+    // Floor distance one step covers, in unit-square coordinates. Constant along a column, so the
+    // per-unit-distance gradient below costs a multiply rather than a divide per sample.
+    const invStepDist = 1 / Math.hypot(span.du, span.dv);
     let u = span.u0;
     let v = span.v0;
     let prevH = NaN;
@@ -302,7 +444,8 @@ export function rasterizeSurface({
     for (let s = 0; s <= steps; s++, u += span.du, v += span.dv) {
       // `columnFloorSpan` clips to the floor square, so `u` is in -0.5..0.5 and the bucket lands
       // inside the table. Same convention as `unprojectFloor`: no degenerate guard is needed.
-      const row = rowLut[Math.round((u + 0.5) * lutLast)];
+      const bucket = Math.round((u + 0.5) * lutLast);
+      const row = rowIdx[bucket];
       if (row === NO_ROW) {
         // A capture gap: contribute nothing and leave the horizon alone, so what is behind the gap
         // stays visible through it.
@@ -310,12 +453,25 @@ export function rasterizeSurface({
         continue;
       }
 
-      // `v` is inside the square for the same reason, so `q` lands in 0..lastPoint unaided.
-      const h = heights[row * pointCount + Math.round((v + 0.5) * lastPoint)];
+      // Bilinear over the four grid samples bracketing this point. `v` is inside the square for the
+      // same reason `u` is, so the frequency index needs no clamp beyond the end of the axis, where
+      // there is no next point to interpolate towards.
+      const qf = (v + 0.5) * lastPoint;
+      const q0 = qf | 0;
+      const q1 = q0 < lastPoint ? q0 + 1 : q0;
+      const wq = qf - q0;
+      const wRow = rowWeight[bucket];
+      const base0 = row * pointCount;
+      const base1 = (row + 1 < count ? row + 1 : row) * pointCount;
+      const hLo = heights[base0 + q0] + (heights[base0 + q1] - heights[base0 + q0]) * wq;
+      const hHi = heights[base1 + q0] + (heights[base1 + q1] - heights[base1 + q0]) * wq;
+      const h = hLo + (hHi - hLo) * wRow;
 
-      // Slope along the view ray, measured before the visibility test: an occluded stretch still
-      // shapes the terrain, so skipping it here would corrupt the shading of whatever follows.
-      const slope = Number.isFinite(prevH) ? h - prevH : 0;
+      // Terrain gradient along the view ray, measured before the visibility test: an occluded stretch
+      // still shapes the terrain, so skipping it here would corrupt the shading of whatever follows.
+      // Per unit of FLOOR DISTANCE, not per sample: samples per unit distance depend on the canvas
+      // size, so a raw per-sample delta would shade the same audio differently on a resized panel.
+      const slope = Number.isFinite(prevH) ? (h - prevH) * invStepDist : 0;
       prevH = h;
 
       const y = Math.round(originY + u * ty + v * fy + h * hyGain);
@@ -327,7 +483,10 @@ export function rasterizeSurface({
       if (top >= horizon) continue;
 
       let argb;
-      if (row === highlightRow) {
+      // The scrubbed row is one captured frame, so the highlight stays a discrete band: it follows
+      // whichever bracketing row this sample sits nearer to, even though the height between them is
+      // interpolated.
+      if ((wRow < 0.5 ? row : row + 1) === highlightRow) {
         argb = highlightArgb;
       } else {
         // Headlight shading: the ray always lies along the view direction, so this stays stable
@@ -392,20 +551,21 @@ const STRIDE_AREA_BUDGET = 1_200_000;
  * budget and round up, floor 1, ceiling `STRIDE_MAX`.
  *
  * Measured with scripts/spectrogram-surface-benchmark.mjs on 2026-07-30, medians (and best-of-60)
- * of 60 repaints, `buildRowLut` + `out.fill(0)` + `rasterizeSurface` timed together per the timing
- * boundary documented in that script -- `buildSurfaceLut` is amortised (rebuilt only on a theme or
- * control change, not per repaint: measured separately at 0.032 ms median) and excluded here.
- * Node is not WebView2 and nothing else is competing for the main thread there, so treat these as
- * a lower bound; a canvas passing at 90% of budget in Node is not a canvas with margin in WebView2.
+ * of 60 repaints, `buildRowLut` + `smoothGridFrequency` + `smoothGridTime` + `out.fill(0)` +
+ * `rasterizeSurface` timed together per the timing boundary documented in that script --
+ * `buildSurfaceLut` is amortised (rebuilt only on a theme or control change, not per repaint:
+ * measured separately at 0.029 ms median) and excluded here. Node is not WebView2 and nothing
+ * else is competing for the main thread there, so treat these as a lower bound; a canvas passing
+ * at 90% of budget in Node is not a canvas with margin in WebView2.
  *
- *   922x110    (0.10 M px) stride 1: 0.87 ms (best 0.81)  -- picked: stride 1
- *   1920x600   (1.15 M px) stride 1: 9.26 ms (best 8.79)  -- picked: stride 1
- *   2560x900   (2.30 M px) stride 1: 16.62 ms (best 15.68) -- close to budget on median
- *                          stride 2: 9.44 ms (best 8.73)  -- picked: stride 2
- *   3440x1440  (4.95 M px) stride 3: 14.61 ms (best 13.66)
- *                          stride 4: 11.82 ms (best 10.92) -- picked: stride 4 (capped at STRIDE_MAX)
- *   3840x1200  (4.61 M px) stride 3: 14.38 ms (best 13.67)
- *                          stride 4: 11.73 ms (best 10.87) -- picked: stride 4
+ *   922x110    (0.10 M px) stride 1: 1.02 ms (best 0.94)  -- picked: stride 1
+ *   1920x600   (1.15 M px) stride 1: 8.96 ms (best 8.35)  -- picked: stride 1
+ *   2560x900   (2.30 M px) stride 1: 16.31 ms (best 15.43) -- close to budget on median
+ *                          stride 2: 9.51 ms (best 8.86)  -- picked: stride 2
+ *   3440x1440  (4.95 M px) stride 3: 14.92 ms (best 13.95)
+ *                          stride 4: 12.14 ms (best 11.05) -- picked: stride 4 (capped at STRIDE_MAX)
+ *   3840x1200  (4.61 M px) stride 3: 14.37 ms (best 13.42)
+ *                          stride 4: 11.79 ms (best 10.98) -- picked: stride 4
  *
  * 2560x900 at stride 1 flips between just-under and just-over budget on median across runs on this
  * machine (as high as 18.71 ms in an earlier run of this same script) -- exactly the "right at the

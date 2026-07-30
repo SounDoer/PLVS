@@ -11,6 +11,8 @@ import {
   packArgb,
   rasterizeSurface,
   SHADE_LEVELS,
+  smoothGridFrequency,
+  smoothGridTime,
 } from "./spectrogram3dSurface.js";
 
 const W = 920;
@@ -153,80 +155,120 @@ describe("columnFloorSpan", () => {
 });
 
 describe("buildRowLut", () => {
-  it("maps each bucket to the nearest row", () => {
+  it("interpolates the weight between the bracketing rows", () => {
     const tFracs = new Float64Array([0, 0.5, 1]);
-    const lut = buildRowLut(tFracs, 3, 101, 0.4);
-    expect(lut[0]).toBe(0);
-    expect(lut[50]).toBe(1);
-    expect(lut[100]).toBe(2);
-    expect(lut[10]).toBe(0);
-    expect(lut[40]).toBe(1);
+    const { rows, weights } = buildRowLut(tFracs, 3, 101, 0.6);
+    // Bucket 25 sits at t = 0.25, midway between rows 0 and 1; bucket 75 midway between 1 and 2.
+    expect(rows[25]).toBe(0);
+    expect(weights[25]).toBeCloseTo(0.5, 5);
+    expect(rows[75]).toBe(1);
+    expect(weights[75]).toBeCloseTo(0.5, 5);
+    // Exactly on a row the weight is 0 -- the bucket reads that row alone.
+    expect(rows[50]).toBe(1);
+    expect(weights[50]).toBe(0);
   });
 
   it("marks buckets with no row within maxDistTFrac as NO_ROW", () => {
     // Rows clustered at both ends: the middle is a capture gap.
     const tFracs = new Float64Array([0, 0.05, 0.95, 1]);
-    const lut = buildRowLut(tFracs, 4, 101, 0.1);
-    expect(lut[0]).toBe(0);
-    expect(lut[100]).toBe(3);
-    expect(lut[50]).toBe(NO_ROW);
+    const { rows } = buildRowLut(tFracs, 4, 101, 0.1);
+    expect(rows[0]).toBe(0);
+    expect(rows[100]).toBe(3);
+    expect(rows[50]).toBe(NO_ROW);
   });
 
   it("fills entirely with NO_ROW when there are no rows", () => {
-    const lut = buildRowLut(new Float64Array(0), 0, 8, 0.1);
-    expect([...lut]).toEqual(new Array(8).fill(NO_ROW));
+    const { rows } = buildRowLut(new Float64Array(0), 0, 8, 0.1);
+    expect([...rows]).toEqual(new Array(8).fill(NO_ROW));
   });
 
-  // Ties: bucket exactly midway between two rows must resolve to the LATER row (`<=`, not `<`).
-  // A `<` mutation would leave the earlier row selected instead, which this pins down directly.
-  it("breaks exact ties in favour of the later row", () => {
-    const tFracs = new Float64Array([0, 1]);
-    const lut = buildRowLut(tFracs, 2, 3, 1); // buckets at t = 0, 0.5, 1
-    expect(lut[1]).toBe(1);
+  // Across a gap there is nothing to interpolate: the bucket reads whichever end is nearer, at
+  // weight 0 or 1, rather than a blend that would drag the near terrain down into the hole.
+  it("snaps the weight to the gap end that covered the bucket", () => {
+    const tFracs = new Float64Array([0, 0.02, 0.96, 1]);
+    const { rows, weights } = buildRowLut(tFracs, 4, 101, 0.1);
+    // t = 0.10 is nearer row 1 (0.02); t = 0.90 is nearer row 2 (0.96), expressed as row 1 at
+    // full weight.
+    expect(rows[10]).toBe(1);
+    expect(weights[10]).toBe(0);
+    expect(rows[90]).toBe(1);
+    expect(weights[90]).toBe(1);
+  });
+
+  // A bucket before the first row but within tolerance is covered by it, and the raw weight
+  // (t - tFracs[0]) / dt is NEGATIVE there -- unclamped it extrapolates the first two frames'
+  // difference past the window's old end. The clamp is what makes "holds the end row" true.
+  it("holds the end rows instead of extrapolating past them", () => {
+    const tFracs = new Float64Array([0.02, 0.04, 0.98]);
+    const { rows, weights } = buildRowLut(tFracs, 3, 101, 0.1);
+    expect(rows[0]).toBe(0);
+    expect(weights[0]).toBe(0);
+    expect(rows[100]).toBe(2);
+    expect(weights[100]).toBe(0);
   });
 
   // Distance exactly at the tolerance boundary must still count as covered (`>`, not `>=`).
   it("keeps a bucket exactly at maxDistTFrac as covered", () => {
     const tFracs = new Float64Array([0]);
-    const lut = buildRowLut(tFracs, 1, 11, 0.2); // bucket 2 sits at t = 0.2, distance exactly 0.2
-    expect(lut[2]).toBe(0);
-    expect(lut[3]).toBe(NO_ROW);
+    const { rows } = buildRowLut(tFracs, 1, 11, 0.2); // bucket 2 sits at t = 0.2, distance exactly 0.2
+    expect(rows[2]).toBe(0);
+    expect(rows[3]).toBe(NO_ROW);
   });
 
   // The last bucket must land at tFrac 1, not size/(size-1) short of it -- a `t = i / size` mutation
   // would leave every bucket slightly under-scaled and never reach 1 at all.
-  it("maps the last bucket to tFrac exactly 1", () => {
+  it("maps the last bucket to the last row at zero weight", () => {
     const tFracs = new Float64Array([0, 1]);
-    const lut = buildRowLut(tFracs, 2, 5, 0.01);
-    expect(lut[4]).toBe(1);
+    const { rows, weights } = buildRowLut(tFracs, 2, 5, 0.01);
+    expect(rows[4]).toBe(1);
+    expect(weights[4]).toBe(0);
+  });
+
+  // Capture start: the few captured rows all sit at the newest end of a full-width window. With a
+  // tolerance scaled by the decimation stride (as the hook now passes it) rather than by the row
+  // count, the empty region must stay uncovered -- a count-derived tolerance would grow with the
+  // emptiness and hold each frame across time it contains no data for, which rendered as giant
+  // extruded ridges at startup.
+  it("leaves the empty region of a startup window uncovered", () => {
+    const tFracs = new Float64Array([0.9, 0.925, 0.95, 0.975, 1]);
+    const { rows, weights } = buildRowLut(tFracs, 5, 101, 1.5 * 0.025);
+    expect(rows[50]).toBe(NO_ROW); // t = 0.5: no data yet
+    expect(rows[85]).toBe(NO_ROW); // t = 0.85: 0.05 from the nearest row, past 1.5 strides
+    expect(rows[87]).toBe(0); // t = 0.87: within tolerance of the oldest captured row
+    expect(weights[87]).toBe(0); // held, not extrapolated
+    expect(rows[100]).toBe(4);
+    // Between the clustered rows the tolerance still admits interpolation.
+    expect(rows[94]).toBe(1);
+    expect(weights[94]).toBeCloseTo(0.6, 5);
   });
 
   // A long monotone run over a wide table, checked against every bucket by an independent
-  // brute-force nearest-row search (not the sweep under test), to confirm the sweep reaches the
-  // last row rather than stalling early.
+  // brute-force bracket search (not the sweep under test), to confirm the sweep reaches the last
+  // row rather than stalling early. Uniform spacing with maxDist above it, so every bucket takes
+  // the interpolation branch; gap snapping and NO_ROW are pinned by the dedicated tests above.
   //
   // This cannot catch a `row` reset to 0 on every bucket: that reset is observationally
-  // equivalent, because the distance to `t` is a single valley and a from-scratch scan from 0
-  // lands on the same nearest row every time. It only costs a multiple of the work -- see the
-  // note on the `while` loop above.
-  it("reaches rows past index 1 as the sweep advances", () => {
+  // equivalent -- a from-scratch scan lands on the same bracket every time. It only costs a
+  // multiple of the work -- see the note on the `while` loop in the implementation.
+  it("matches a brute-force bracket search on every bucket", () => {
     const count = 20;
-    const size = 21;
+    const size = 211; // not a multiple of count - 1, so buckets sit mid-interval
     const tFracs = new Float64Array(count);
     for (let i = 0; i < count; i++) tFracs[i] = i / (count - 1);
-    const lut = buildRowLut(tFracs, count, size, 0.1);
+    const maxDist = 2 / (count - 1); // twice the spacing: every bucket interpolates
+    const { rows, weights } = buildRowLut(tFracs, count, size, maxDist);
 
-    const expected = [];
     for (let i = 0; i < size; i++) {
       const t = i / (size - 1);
-      let best = 0;
-      for (let row = 1; row < count; row++) {
-        if (Math.abs(tFracs[row] - t) < Math.abs(tFracs[best] - t)) best = row;
-      }
-      expected.push(best);
+      let lo = 0;
+      for (let r = 0; r < count; r++) if (tFracs[r] <= t) lo = r;
+      const hi = lo + 1 < count ? lo + 1 : lo;
+      expect(rows[i]).toBe(lo);
+      const dt = tFracs[hi] - tFracs[lo];
+      const w = dt > 0 ? Math.min(1, Math.max(0, (t - tFracs[lo]) / dt)) : 0;
+      expect(weights[i]).toBeCloseTo(w, 5);
     }
-    expect([...lut]).toEqual(expected);
-    expect(lut[20]).toBe(count - 1);
+    expect(rows[size - 1]).toBe(count - 1);
   });
 });
 
@@ -437,9 +479,15 @@ function gapRowLut(grid) {
 /**
  * Which screen columns have a sample landing on `wantRow` (or on NO_ROW). Occlusion and gap
  * behaviour can only be asserted over the columns that actually contain the row in question.
+ *
+ * "Landing on" a row now means the row contributes to a sample's interpolated height: the bucket's
+ * lower bracket IS the row (any weight), or the bracket is the previous row with a non-zero weight
+ * towards it. With the old nearest-row table plain equality said all of this; interpolation splits
+ * it into the two cases.
  */
 function columnsReaching(p, grid, wantRow, rowLut = defaultRowLut(grid)) {
-  const lutLast = rowLut.length - 1;
+  const { rows, weights } = rowLut;
+  const lutLast = rows.length - 1;
   const cols = [];
   for (let x = 0; x < W; x++) {
     const span = columnFloorSpan(x, p, H);
@@ -447,7 +495,12 @@ function columnsReaching(p, grid, wantRow, rowLut = defaultRowLut(grid)) {
     for (let s = 0; s <= span.steps; s++) {
       const u = span.u0 + span.du * s;
       const bucket = Math.round((u + 0.5) * lutLast);
-      if (rowLut[bucket < 0 ? 0 : bucket > lutLast ? lutLast : bucket] === wantRow) {
+      const row = rows[bucket < 0 ? 0 : bucket > lutLast ? lutLast : bucket];
+      const reaches =
+        wantRow === NO_ROW
+          ? row === NO_ROW
+          : row === wantRow || (row === wantRow - 1 && weights[bucket] > 0);
+      if (reaches) {
         cols.push(x);
         break;
       }
@@ -586,8 +639,14 @@ describe("rasterizeSurface", () => {
   // row's slab at all, and the older rows are legitimately unoccluded there. Occlusion can therefore
   // only be asserted over the columns whose span actually reaches the tall row -- which is where the
   // running horizon is the only thing standing between the far row and the framebuffer.
+  //
+  // The last TWO rows are tall, not just the last one. Interpolation ramps between rows 2 and 3,
+  // and "reaching" row 3 includes the ramp -- with a single tall row the ramp's low early part
+  // owes no occlusion, and the far row legitimately shows through it. Two tall rows make every
+  // sample that reaches row 3's bracket sit at full height, so the column set and the assertion
+  // mean the same thing again.
   it("hides the far row in every column the tall near row reaches", () => {
-    const grid = fakeGrid([0.05, 0.05, 0.05, 1]);
+    const grid = fakeGrid([0.05, 0.05, 1, 1]);
     const out = render(grid, { highlightRow: 0, elevationDeg: 20 });
     const cols = columnsReaching(proj(135, 20), grid, grid.count - 1);
     expect(cols.length).toBeGreaterThan(0);
@@ -763,7 +822,7 @@ describe("rasterizeSurface", () => {
     const p = proj();
     const out = render(grid, { heightGain });
     const rowLut = defaultRowLut(grid);
-    const lutLast = rowLut.length - 1;
+    const lutLast = rowLut.rows.length - 1;
     const wrong = [];
     for (let x = 0; x < W; x++) {
       const span = columnFloorSpan(x, p, H);
@@ -773,10 +832,21 @@ describe("rasterizeSurface", () => {
         const u = span.u0 + span.du * s;
         const v = span.v0 + span.dv * s;
         const bucket = Math.round((u + 0.5) * lutLast);
-        const row = rowLut[bucket];
+        const row = rowLut.rows[bucket];
         if (row === NO_ROW) continue;
-        const h =
-          grid.heights[row * grid.pointCount + Math.round((v + 0.5) * (grid.pointCount - 1))];
+        // The same bilinear read the walk performs -- the prediction has to share the sampling,
+        // or a column whose clip margin is under a pixel flips for the wrong reason.
+        const qf = (v + 0.5) * (grid.pointCount - 1);
+        const q0 = Math.min(Math.floor(qf), grid.pointCount - 1);
+        const q1 = Math.min(q0 + 1, grid.pointCount - 1);
+        const wq = qf - q0;
+        const wr = rowLut.weights[bucket];
+        const r1 = row + 1 < grid.count ? row + 1 : row;
+        const b0 = row * grid.pointCount;
+        const b1 = r1 * grid.pointCount;
+        const hLo = grid.heights[b0 + q0] + (grid.heights[b0 + q1] - grid.heights[b0 + q0]) * wq;
+        const hHi = grid.heights[b1 + q0] + (grid.heights[b1 + q1] - grid.heights[b1 + q0]) * wq;
+        const h = hLo + (hHi - hLo) * wr;
         const y = Math.round(p.originY + u * p.ty + v * p.fy + h * heightGain * p.hy);
         if (y < minY) minY = y;
       }
@@ -791,10 +861,12 @@ describe("rasterizeSurface", () => {
     expect(clipped).toBeGreaterThan(0);
   });
 
-  // The frequency index must be `(v + 0.5) * (pointCount - 1)`. With two points the boundary sits
-  // exactly at v = 0, so scaling by `pointCount` instead moves it to v = -0.25 -- a quarter of the
-  // floor -- and the top of the silhouette moves with it. The prediction comes from a brute-force
-  // scan of the floor square through `projectPoint`'s own formula, not from the walk.
+  // The frequency coordinate must be `qf = (v + 0.5) * (pointCount - 1)`, lerped between the two
+  // bracketing points. With two points the ramp runs from q = 0 at v = -0.5 to q = 1 at v = 0.5;
+  // scaling by `pointCount` instead compresses it into the left half of the floor and the top of
+  // the silhouette drops with it. The prediction comes from a brute-force scan of the floor square
+  // through `projectPoint`'s own formula, not from the walk. All rows are identical here, so the
+  // time-axis interpolation is the identity and only the frequency mapping is under test.
   it("maps the frequency axis onto the grid's point index", () => {
     const pointCount = 2;
     const grid = fakeGrid([0, 0, 0, 0, 0, 0], pointCount);
@@ -816,12 +888,135 @@ describe("rasterizeSurface", () => {
       for (let iv = 0; iv <= 400; iv++) {
         const u = -0.5 + iu / 400;
         const v = -0.5 + iv / 400;
-        const q = Math.round((v + 0.5) * (pointCount - 1));
-        const y = projectPoint(u + 0.5, v + 0.5, grid.heights[q], p).y;
+        const qf = (v + 0.5) * (pointCount - 1);
+        const q0 = Math.min(Math.floor(qf), pointCount - 1);
+        const q1 = Math.min(q0 + 1, pointCount - 1);
+        const h = grid.heights[q0] + (grid.heights[q1] - grid.heights[q0]) * (qf - q0);
+        const y = projectPoint(u + 0.5, v + 0.5, h, p).y;
         if (y < predicted) predicted = y;
       }
     }
     expect(Math.abs(top - predicted)).toBeLessThanOrEqual(3);
+  });
+
+  // With nearest-row sampling a grid cell covers several screen pixels at one identical height, so
+  // the silhouette advances in steps of a full inter-row height difference -- the "3D bar chart"
+  // look interpolation exists to remove. On a linear ramp of rows the top of each painted column
+  // must therefore move by floor slope and rounding alone, not by an inter-row jump: at this
+  // canvas size one inter-row step (0.8 / 11 of the height axis) is ~7 px, while a continuous
+  // silhouette stays within a couple of px between neighbouring columns.
+  it("interpolates heights between rows instead of stepping the silhouette", () => {
+    const rows = 12;
+    const ramp = [];
+    for (let r = 0; r < rows; r++) ramp.push(0.1 + (0.8 * r) / (rows - 1));
+    const out = render(fakeGrid(ramp));
+    const tops = [];
+    for (let x = 0; x < W; x++) {
+      tops.push(-1);
+      for (let y = 0; y < H; y++) {
+        if (out[y * W + x] !== 0) {
+          tops[x] = y;
+          break;
+        }
+      }
+    }
+    let maxStep = 0;
+    let transitions = 0;
+    for (let x = 1; x < W; x++) {
+      if (tops[x] < 0 || tops[x - 1] < 0) continue;
+      transitions += 1;
+      maxStep = Math.max(maxStep, Math.abs(tops[x] - tops[x - 1]));
+    }
+    expect(transitions).toBeGreaterThan(0);
+    expect(maxStep).toBeLessThanOrEqual(4);
+  });
+});
+
+describe("smoothGridFrequency", () => {
+  it("damps an isolated spike to 3/8 and spreads it to its neighbours", () => {
+    // Two 3-tap passes = one binomial 5-tap: a one-bin spike keeps 6/16 of its height.
+    const heights = new Float32Array([0, 0, 1, 0, 0]);
+    smoothGridFrequency(heights, 1, 5);
+    expect([...heights]).toEqual([0, 0.25, 0.375, 0.25, 0]);
+  });
+
+  it("leaves a plateau unchanged", () => {
+    const heights = new Float32Array(6).fill(0.5);
+    smoothGridFrequency(heights, 1, 6);
+    expect([...heights]).toEqual(new Array(6).fill(0.5));
+  });
+
+  it("keeps both endpoints as sampled", () => {
+    const heights = new Float32Array([0.8, 0, 0, 0.2]);
+    smoothGridFrequency(heights, 1, 4);
+    expect(heights[0]).toBeCloseTo(0.8, 6);
+    expect(heights[3]).toBeCloseTo(0.2, 6);
+    // Pass 1: [0.8, 0.2, 0.05, 0.2]; pass 2 folds those in again.
+    expect(heights[1]).toBeCloseTo(0.3125, 6);
+    expect(heights[2]).toBeCloseTo(0.125, 6);
+  });
+
+  it("smooths each row independently, with no bleed across rows", () => {
+    const heights = new Float32Array([1, 0, 0, 0, 0, 0, 0, 1]);
+    smoothGridFrequency(heights, 2, 4);
+    expect(heights[1]).toBeCloseTo(0.375, 6);
+    expect(heights[2]).toBeCloseTo(0.0625, 6);
+    expect(heights[3]).toBeCloseTo(0, 6); // row 0's far endpoint, untouched
+    expect(heights[4]).toBeCloseTo(0, 6); // row 1's near endpoint, untouched
+    expect(heights[5]).toBeCloseTo(0.0625, 6);
+    expect(heights[6]).toBeCloseTo(0.375, 6);
+  });
+
+  it("is a no-op for degenerate shapes", () => {
+    const heights = new Float32Array([0.5, 0.75]);
+    smoothGridFrequency(heights, 1, 2);
+    expect(heights[0]).toBeCloseTo(0.5, 6);
+    expect(heights[1]).toBeCloseTo(0.75, 6);
+    smoothGridFrequency(new Float32Array(0), 0, 0); // must not throw
+  });
+});
+
+describe("smoothGridTime", () => {
+  const T = (fracs) => Float64Array.from(fracs);
+
+  // Row 3 getting a full 0.25 (not 0.125) is what pins the kernel to ORIGINAL neighbour rows: a
+  // rolling in-place read would fold the already-smoothed row 2 into row 3 and halve it again.
+  it("blends interior rows with their original neighbours", () => {
+    const heights = new Float32Array([0, 0, 1, 0, 0]);
+    smoothGridTime(heights, T([0, 0.01, 0.02, 0.03, 0.04]), 5, 1, 0.015);
+    expect([...heights]).toEqual([0, 0.25, 0.5, 0.25, 0]);
+  });
+
+  it("keeps the first and last rows as sampled", () => {
+    const heights = new Float32Array([0.8, 0, 0, 0.2]);
+    smoothGridTime(heights, T([0, 0.01, 0.02, 0.03]), 4, 1, 0.015);
+    expect(heights[0]).toBeCloseTo(0.8, 6);
+    expect(heights[3]).toBeCloseTo(0.2, 6);
+    expect(heights[1]).toBeCloseTo(0.2, 6);
+    expect(heights[2]).toBeCloseTo(0.05, 6);
+  });
+
+  // Rows bracketing a capture gap are not adjacent moments; blending them would fabricate a
+  // transition that never happened. Both rows touching the gap stay as sampled.
+  it("does not blend rows across a capture gap", () => {
+    const heights = new Float32Array([0, 1, 1, 0]);
+    smoothGridTime(heights, T([0, 0.01, 0.5, 0.51]), 4, 1, 0.015);
+    expect([...heights]).toEqual([0, 1, 1, 0]);
+  });
+
+  it("smooths every frequency point independently", () => {
+    // q0 carries an impulse at row 1, q1 is flat -- q1 must not move.
+    const heights = new Float32Array([0, 0.4, 1, 0.4, 0, 0.4]);
+    smoothGridTime(heights, T([0, 0.01, 0.02]), 3, 2, 0.015);
+    expect(heights[2]).toBeCloseTo(0.5, 6);
+    expect(heights[3]).toBeCloseTo(0.4, 6);
+  });
+
+  it("is a no-op for fewer than three rows", () => {
+    const heights = new Float32Array([1, 0]);
+    smoothGridTime(heights, T([0, 0.01]), 2, 1, 0.015);
+    expect([...heights]).toEqual([1, 0]);
+    smoothGridTime(new Float32Array(0), Float64Array.from([]), 0, 0, 0.015); // must not throw
   });
 });
 

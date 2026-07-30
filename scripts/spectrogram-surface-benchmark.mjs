@@ -8,6 +8,8 @@ import {
   columnStrideFor,
   packArgb,
   rasterizeSurface,
+  smoothGridFrequency,
+  smoothGridTime,
 } from "../src/math/spectrogram3dSurface.js";
 
 // 922x110 and 2560x900 are the two real panel sizes the Lines mode was measured at, in device
@@ -60,18 +62,25 @@ function bestOf(values) {
 // on a theme or control change, not on every repaint -- including it here would overstate
 // per-frame cost. Its own cost is measured separately, once, below.
 //
-// `buildRowLut` IS inside the timed region: it depends on `grid.tFracs`, which changes whenever
-// history advances, so the hook rebuilds it every repaint. Excluding it would understate
-// per-frame cost.
+// `buildRowLut` and the two smoothers ARE inside the timed region: all three depend on the grid,
+// which the hook rebuilds whenever history advances, so all three run on every repaint. Excluding
+// them would understate per-frame cost. The smoothers mutate the grid in place, so each iteration
+// first restores the pristine heights -- the restore stands in for `sampleWaterfallGrid`'s
+// rebuild, which the timing boundary has always excluded.
 function measure({ width, height, rows, points }, columnStride, lut) {
   const proj = buildProjection({ azimuthDeg: 135, elevationDeg: 60, width, height });
   const grid = syntheticGrid(rows, points);
+  const pristine = new Float32Array(grid.heights);
   const out = new Uint32Array(width * height);
   const samples = [];
 
   for (let i = 0; i < ITERATIONS; i++) {
+    grid.heights.set(pristine);
     const started = performance.now();
-    const rowLut = buildRowLut(grid.tFracs, grid.count, 1024, 1.5 / Math.max(1, grid.count - 1));
+    const rowGapTFrac = 1.5 / Math.max(1, grid.count - 1);
+    const rowLut = buildRowLut(grid.tFracs, grid.count, 1024, rowGapTFrac);
+    smoothGridFrequency(grid.heights, grid.count, grid.pointCount);
+    smoothGridTime(grid.heights, grid.tFracs, grid.count, grid.pointCount, rowGapTFrac);
     out.fill(0);
     rasterizeSurface({
       out,

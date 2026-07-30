@@ -41,7 +41,11 @@ import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
  * @param {number} args.maxRidges upper bound on the number of ridges drawn
  * @param {Int16Array} args.yToBand frequency sample points; its length sets pointCount
  * @param {number} args.dbFloor dB value that normalises to height 0; the top stays SPECTROGRAM_DB_MAX
- * @returns {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number }}
+ * @returns {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number, strideMs: number }}
+ *          `strideMs` is the quantised bucket width, returned so callers can scale per-bucket
+ *          tolerances by the actual decimation stride rather than by the row count -- at capture
+ *          start the rows all sit at one end of the window, and a tolerance derived from
+ *          `span / count` smears them across the empty rest of it.
  */
 export function sampleWaterfallGrid({
   view,
@@ -60,10 +64,6 @@ export function sampleWaterfallGrid({
   const heights = new Float32Array(cap * pointCount);
   const tFracs = new Float64Array(cap);
 
-  if (!view || endIdx < startIdx || !(span > 0)) {
-    return { heights, tFracs, count: 0, pointCount };
-  }
-
   // One frame per absolute-time bucket. Buckets are anchored to the epoch rather than to the
   // window, so a frame stays selected while the window slides past it, and their width is a whole
   // number of frame periods so window jitter cannot move the edges.
@@ -72,6 +72,10 @@ export function sampleWaterfallGrid({
     Number.isFinite(sampleMs) && sampleMs > 0
       ? sampleMs * Math.max(1, Math.round(rawStrideMs / sampleMs))
       : rawStrideMs;
+
+  if (!view || endIdx < startIdx || !(span > 0)) {
+    return { heights, tFracs, count: 0, pointCount, strideMs };
+  }
 
   // Seed from the frame just *outside* the window, so which frame wins a bucket never depends on
   // where the window edge happens to fall. Seeding with NaN instead force-keeps whatever frame
@@ -105,5 +109,5 @@ export function sampleWaterfallGrid({
     count += 1;
   }
 
-  return { heights, tFracs, count, pointCount };
+  return { heights, tFracs, count, pointCount, strideMs };
 }
