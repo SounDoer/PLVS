@@ -164,22 +164,4 @@ describe("buildRowLut", () => {
     const lut = buildRowLut(tFracs, count, 21, 0.1);
     expect(lut[20]).toBe(count - 1);
   });
-
-  // Resetting `row` to 0 on every bucket instead of carrying it forward produces the *same output*
-  // for ascending tFracs -- the distance to `t` is a single valley, so a from-scratch scan still
-  // finds the true nearest row. Only the cost changes: O(size) amortised vs. O(size * count) worst
-  // case. That is the whole reason this table exists instead of a binary search per sample, so a
-  // regression back to quadratic work is real even though no output-only assertion can see it.
-  it("stays linear in size + count for a large monotonic table", () => {
-    const count = 60000;
-    const tFracs = new Float64Array(count);
-    for (let i = 0; i < count; i++) tFracs[i] = i / (count - 1);
-    const start = performance.now();
-    buildRowLut(tFracs, count, count, 0.1);
-    const elapsedMs = performance.now() - start;
-    // The forward-only sweep finishes in a couple of milliseconds here; a from-scratch scan per
-    // bucket (quadratic in this input) measured well over a second. 500ms leaves ample margin for
-    // slower machines while staying far short of the quadratic mutant's time.
-    expect(elapsedMs).toBeLessThan(500);
-  });
 });

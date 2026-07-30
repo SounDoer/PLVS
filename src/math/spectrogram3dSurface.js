@@ -110,7 +110,11 @@ export function buildRowLut(tFracs, count, size, maxDistTFrac) {
   let row = 0;
   for (let i = 0; i < size; i++) {
     const t = size > 1 ? i / (size - 1) : 0;
-    // tFracs ascends, so the nearest row only ever moves forward as i advances.
+    // tFracs ascends, so the nearest row only ever moves forward as i advances. `row` carries
+    // forward across iterations of `i` rather than restarting at 0 -- that forward-only cursor is
+    // what makes the sweep O(size + count) instead of O(size * count). Resetting it each iteration
+    // would still land on the correct row (the distance to `t` is a single valley), so it would
+    // not show up as a bug; it would only cost a multiple that grows with the table size.
     while (row + 1 < count && Math.abs(tFracs[row + 1] - t) <= Math.abs(tFracs[row] - t)) {
       row += 1;
     }
