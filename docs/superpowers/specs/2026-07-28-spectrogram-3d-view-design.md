@@ -48,7 +48,7 @@ data is already in the panel; only the rendering differs.
 | 6 | **Unfilled line waterfall** — ridges are stroked, never filled | See Reversed #1 |
 | 7 | **Each ridge is a captured frame at its own timestamp** | See Reversed #2 |
 | 8 | Colour is **absolute against the fixed dB range**; only height follows the dB floor | dB is encoded twice in 3D (height and colour). A control that moves both leaves nothing stable to read the change against. Colour pinned to absolute level makes it the reference frame |
-| 9 | Rotation on **right-drag** only | Left-drag, wheel, Ctrl-combos and double-click keep their 2D meanings. The right-click menu is already suppressed on this canvas |
+| 9 | Rotation on **right-drag** only | Left-drag, wheel, Ctrl-combos and double-click keep their 2D meanings. The right-click menu is already suppressed on this canvas. **This rationale is incomplete** — it never checked whether the right button already had an owner in 2D, and it did: `useHistoryInteraction` binds right-drag to timeline pan and its own right double-click to a timeline reset. Rotation therefore rebinds the button rather than filling a gap. Accepted; see `2026-07-29-spectrogram-3d-axes-and-gestures-design.md` |
 | 10 | ~~Left axis rail controls **Height Scale** in 3D~~ — **superseded**, see `2026-07-29-spectrogram-3d-axes-and-gestures-design.md` | The vertical screen direction is the dB axis, and it is the only axis that stays vertical under rotation. Sound in isolation; it bought a rail that changes meaning under the user, for a control that had cheaper places to live |
 | 11 | Scrub feedback is a **highlighted ridge**, not a selection line | A vertical line through a rotated scene has no meaning |
 | 12 | Pointer input is **unprojected onto the floor plane** | See Interaction |
@@ -226,8 +226,8 @@ leaving the previous font — so the font family is resolved via `getComputedSty
 | Ctrl+wheel / Ctrl+drag | Frequency range | Frequency range — anchored via unprojection |
 | Double-click | Return to latest | Return to latest — unchanged |
 | **Shift+wheel** | none | **Height Scale** |
-| **Right-drag** | none | **Rotate** |
-| **Right double-click** | none | **Reset viewpoint** |
+| **Right-drag** | Pan timeline | **Rotate** |
+| **Right double-click** | Reset timeline | **Reset viewpoint** |
 | Left axis rail | Frequency range | Frequency range — unchanged |
 | Bottom axis rail | Time window | Time window — unchanged |
 

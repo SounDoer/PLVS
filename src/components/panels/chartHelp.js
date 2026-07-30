@@ -70,15 +70,35 @@ export const SPECTRUM_HELP = [
   },
 ];
 
-export const SPECTROGRAM_HELP = [
-  {
-    title: "Snapshot",
-    items: [
-      "Left click - Select snapshot",
-      "Left drag - Scrub timeline",
-      "Left double-click - Return to live",
-    ],
-  },
+// Spectrogram help is resolved per view mode. The right button is the reason it has to be: in 2D it
+// pans and resets the timeline, in 3D it rotates and resets the viewpoint. Listing both at once
+// leaves the reader to guess which half applies, and one of the two is always wrong.
+const SPECTROGRAM_SNAPSHOT_HELP = {
+  title: "Snapshot",
+  items: [
+    "Left click - Select snapshot",
+    "Left drag - Scrub timeline",
+    "Left double-click - Return to live",
+  ],
+};
+
+const SPECTROGRAM_DISPLAY_RANGE_HELP = {
+  title: "Display Range",
+  items: [
+    "dB Floor (settings) - Raise it to give the display range to the loud part instead of the noise floor",
+  ],
+};
+
+const SPECTROGRAM_AXIS_ITEMS = [
+  "Time axis wheel - Zoom time",
+  "Time axis drag - Pan time",
+  "Y axis wheel - Zoom frequency",
+  "Y axis drag - Pan frequency",
+  "Double-click axis - Reset axis",
+];
+
+export const SPECTROGRAM_2D_HELP = [
+  SPECTROGRAM_SNAPSHOT_HELP,
   {
     title: "Viewport",
     items: [
@@ -89,30 +109,37 @@ export const SPECTROGRAM_HELP = [
       "Right double-click - Reset timeline",
     ],
   },
+  { title: "Axes", items: SPECTROGRAM_AXIS_ITEMS },
+  SPECTROGRAM_DISPLAY_RANGE_HELP,
+];
+
+export const SPECTROGRAM_3D_HELP = [
+  SPECTROGRAM_SNAPSHOT_HELP,
+  {
+    title: "Viewport",
+    items: [
+      "Mouse wheel - Zoom time",
+      "Ctrl + wheel - Zoom frequency",
+      "Ctrl + drag - Pan viewport",
+      "Shift + wheel - Height Scale: scroll up to exaggerate the surface, level and colour unchanged",
+    ],
+  },
+  {
+    title: "Viewpoint",
+    items: [
+      "Right drag - Rotate the surface",
+      "Right double-click - Return to the default viewpoint",
+      "In 2D these pan and reset the timeline instead - left drag still scrubs here",
+    ],
+  },
   {
     title: "Axes",
     items: [
-      "Time axis wheel - Zoom time",
-      "Time axis drag - Pan time",
-      "Y axis wheel - Zoom frequency",
-      "Y axis drag - Pan frequency",
-      "Double-click axis - Reset axis",
+      ...SPECTROGRAM_AXIS_ITEMS,
+      "Ticks state the range, not a position - the rotated floor lines up with neither axis",
     ],
   },
-  {
-    title: "Display Range",
-    items: [
-      "dB Floor (settings) - Raise it to give the display range to the loud part instead of the noise floor",
-    ],
-  },
-  {
-    title: "3D View",
-    items: [
-      "Right drag - Rotate the waterfall surface",
-      "Right double click - Return to the default viewpoint",
-      "Shift + wheel - Height Scale: exaggerate the surface height, without touching level or colour",
-    ],
-  },
+  SPECTROGRAM_DISPLAY_RANGE_HELP,
   {
     title: "3D limitations",
     items: [
@@ -121,6 +148,10 @@ export const SPECTROGRAM_HELP = [
     ],
   },
 ];
+
+function resolveSpectrogramHelp(controls) {
+  return controls?.spectrogram3d === true ? SPECTROGRAM_3D_HELP : SPECTROGRAM_2D_HELP;
+}
 
 export const WAVEFORM_HELP = [
   {
@@ -196,7 +227,7 @@ export const PANEL_HELP_BY_MODULE_ID = {
   levelMeter: LEVEL_METER_HELP,
   loudness: LOUDNESS_HELP,
   spectrum: SPECTRUM_HELP,
-  spectrogram: SPECTROGRAM_HELP,
+  spectrogram: resolveSpectrogramHelp,
   waveform: WAVEFORM_HELP,
   vectorscope: resolveVectorscopeHelp,
   "stereo-map": STEREO_MAP_HELP,

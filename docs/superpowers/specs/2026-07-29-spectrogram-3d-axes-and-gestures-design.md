@@ -14,11 +14,41 @@ the only mode-dependent additions are gestures that occupy positions 2D leaves e
 
 ## Principle
 
-**Nothing that exists in 2D changes meaning in 3D.** A capability that only 3D has must take a
-position 2D does not use.
+**Nothing that exists in 2D changes meaning in 3D**, with one recorded exception. A capability that
+only 3D has should take a position 2D does not use.
 
-Measured against it, the current implementation breaks the rule exactly once — the left rail. The
-right-drag rotation does not: 2D has no right-drag.
+The left rail was the violation this work removed.
+
+### The exception: the right button
+
+The claim above originally read "the right-drag rotation does not violate this: 2D has no
+right-drag." **That was wrong, and it was wrong before this work started.** `useHistoryInteraction`
+binds the right button in 2D: `onHistoryPointerDown` sets pan mode on `button === 2`, and the same
+handler implements its own right double-click on a 320 ms threshold that resets the time window and
+returns to latest.
+
+So in 3D the right button is rebound twice over:
+
+| Gesture | 2D | 3D |
+|---|---|---|
+| Right-drag | Pan timeline | Rotate |
+| Right double-click | Reset timeline | Reset viewpoint |
+
+Both 2D meanings are unreachable in 3D, because the panel's `is3d && button === 2` branch returns
+before `onHistoryPointerDown` ever runs.
+
+**This is accepted rather than corrected.** The timeline keeps every other way in while 3D is on —
+left-drag scrubs, Ctrl+left-drag pans, left double-click returns to latest, and the bottom rail
+drags the window — so what 3D gives up is a shortcut, not a capability. Right-drag is also the
+conventional place for rotation, and it shipped and was accepted in use before the conflict was
+noticed.
+
+What it costs is the clean version of the principle, and the help catalogue. Two overlapping
+right-button vocabularies cannot both be shown, so `chartHelp.js` resolves per mode (see Help).
+
+The original spec's decision #9 justified right-drag rotation on the grounds that "the right-click
+menu is already suppressed on this canvas" — true, and not the question. Nobody checked whether the
+button already had an owner. It did.
 
 ## Motivation
 
@@ -144,12 +174,41 @@ aiming at.
 | Left-drag | Pan timeline | Pan timeline |
 | Ctrl+left-drag | Pan frequency | Pan frequency |
 | Double-click | Return to latest | Return to latest |
-| **Right-drag** | — | Rotate |
-| **Right double-click** | — | **Reset viewpoint** |
+| **Right-drag** | Pan timeline | **Rotate** |
+| **Right double-click** | Reset timeline | **Reset viewpoint** |
 | Left rail | Frequency range | Frequency range |
 | Bottom rail | Time window | Time window |
 
-Every row that exists in both columns is identical in both. Every 3D-only row was empty in 2D.
+Every row is identical across modes except the two right-button rows, which are the recorded
+exception above. Shift+wheel is the only genuinely new binding.
+
+### Shift+wheel direction
+
+Scroll up grows the surface. This is **inverted relative to the other two wheel gestures** and the
+inversion is deliberate: those zoom a *range*, where scrolling up shrinks the window so the content
+appears to grow, while this scales a *multiplier*. Sharing their sign made scrolling up flatten the
+surface, which is how it first shipped and was caught by hand.
+
+The shared `CHART_ZOOM_IN_FACTOR` / `CHART_ZOOM_OUT_FACTOR` constants therefore read backwards at
+this one call site. Renaming them would be worse — they are correct at the two sites that zoom
+ranges.
+
+Fixing the direction also settled the half of the `deltaX` question no jsdom test could reach:
+Chrome copies the signed value onto the horizontal axis rather than negating it, so a positive
+`deltaX` means what a positive `deltaY` means.
+
+## Help
+
+`chartHelp.js` resolves the spectrogram entry through a function of `panelControls` rather than a
+fixed array — the mechanism `vectorscope` already used. Two lists, selected on `spectrogram3d`.
+
+This is forced by the right-button exception: one list cannot describe both vocabularies, and a
+combined list is wrong in whichever mode the reader is actually in. The 3D list additionally states
+that the right button means something else in 2D, and that the axis ticks state the range rather
+than a position — a caveat that would be a lie in 2D, where the ticks do line up.
+
+Absent controls resolve to the 2D list. `panelControls` arrives here unnormalised, so a panel that
+has never touched the toggle must not be shown a mode it is not in.
 
 ## Testing
 
