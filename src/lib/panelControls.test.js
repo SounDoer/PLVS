@@ -4,6 +4,7 @@ import {
   DEFAULT_PANEL_CONTROLS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
+  SPECTROGRAM_MODE_OPTIONS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
 } from "./panelControls.js";
@@ -96,7 +97,7 @@ describe("panelControls", () => {
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
       spectrogramDbFloor: -84,
-      spectrogram3d: false,
+      spectrogramMode: "heatmap",
       spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
@@ -247,7 +248,7 @@ describe("panelControls", () => {
       spectrogramYMinFreq: 20,
       spectrogramYMaxFreq: 20000,
       spectrogramDbFloor: -84,
-      spectrogram3d: false,
+      spectrogramMode: "heatmap",
       spectrogram3dColorize: true,
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
@@ -637,7 +638,7 @@ describe("spectrogramDbFloor normalization", () => {
 describe("spectrogram 3D controls", () => {
   it("defaults to the 2D view with a colorized mesh", () => {
     const c = normalizePanelControls({});
-    expect(c.spectrogram3d).toBe(false);
+    expect(c.spectrogramMode).toBe("heatmap");
     expect(c.spectrogram3dColorize).toBe(true);
     expect(c.spectrogram3dHeightGain).toBe(1);
     expect(c.spectrogram3dAzimuthDeg).toBe(135);
@@ -663,8 +664,44 @@ describe("spectrogram 3D controls", () => {
   });
 
   it("rejects non-boolean toggles", () => {
-    expect(normalizePanelControls({ spectrogram3d: "yes" }).spectrogram3d).toBe(false);
     expect(normalizePanelControls({ spectrogram3dColorize: 1 }).spectrogram3dColorize).toBe(true);
+  });
+});
+
+describe("spectrogramMode", () => {
+  it("defaults to the 2D heatmap", () => {
+    expect(normalizePanelControls({}).spectrogramMode).toBe("heatmap");
+  });
+
+  it("accepts every option id", () => {
+    for (const option of SPECTROGRAM_MODE_OPTIONS) {
+      expect(normalizePanelControls({ spectrogramMode: option.id }).spectrogramMode).toBe(
+        option.id
+      );
+    }
+  });
+
+  it("falls back to the default for unknown or malformed values", () => {
+    for (const raw of ["waterfall", "", null, undefined, 3, true, {}]) {
+      expect(normalizePanelControls({ spectrogramMode: raw }).spectrogramMode).toBe("heatmap");
+    }
+  });
+
+  it("no longer carries the retired spectrogram3d boolean", () => {
+    expect(normalizePanelControls({ spectrogram3d: true }).spectrogram3d).toBeUndefined();
+  });
+
+  it("offers exactly the three documented modes, in order", () => {
+    expect(SPECTROGRAM_MODE_OPTIONS.map((option) => option.id)).toEqual([
+      "heatmap",
+      "lines",
+      "surface",
+    ]);
+    expect(SPECTROGRAM_MODE_OPTIONS.map((option) => option.label)).toEqual([
+      "2D Heatmap",
+      "3D Lines",
+      "3D Surface",
+    ]);
   });
 });
 

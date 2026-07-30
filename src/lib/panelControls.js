@@ -22,6 +22,14 @@ export const VECTORSCOPE_MODE_OPTIONS = [
   { id: "polarLevel", label: "Polar Level" },
 ];
 
+/// Spectrogram view modes. The 2D/3D prefix is carried in the label because that is the
+/// distinction users are choosing between; the ids stay short because they are persisted.
+export const SPECTROGRAM_MODE_OPTIONS = [
+  { id: "heatmap", label: "2D Heatmap" },
+  { id: "lines", label: "3D Lines" },
+  { id: "surface", label: "3D Surface" },
+];
+
 /// Frequency-axis smoothing. Distinct from Speed, which is the time axis. Ids are the wire
 /// values parsed by `parse_octave_smoothing` in src-tauri/src/ipc/commands.rs.
 export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
@@ -53,7 +61,7 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrogramYMinFreq: 20,
   spectrogramYMaxFreq: 20000,
   spectrogramDbFloor: SPECTROGRAM_DB_MIN,
-  spectrogram3d: false,
+  spectrogramMode: "heatmap",
   spectrogram3dColorize: true,
   spectrogram3dHeightGain: 1,
   spectrogram3dAzimuthDeg: 135,
@@ -99,6 +107,7 @@ const LOUDNESS_HISTORY_LAYER_IDS = new Set(
 );
 const LEVEL_METER_MODE_IDS = new Set(LEVEL_METER_MODE_OPTIONS.map((option) => option.id));
 const VECTORSCOPE_MODE_IDS = new Set(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id));
+const SPECTROGRAM_MODE_IDS = new Set(SPECTROGRAM_MODE_OPTIONS.map((option) => option.id));
 const STEREO_MAP_MODE_IDS = new Set(Object.values(STEREO_MAP_MODES));
 
 function isNumber(value) {
@@ -148,8 +157,8 @@ function normalizeSpectrogramDbFloor(raw) {
   return clampNumber(raw, -96, -12, DEFAULT_PANEL_CONTROLS.spectrogramDbFloor);
 }
 
-function normalizeSpectrogram3d(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrogram3d;
+function normalizeSpectrogramMode(raw) {
+  return SPECTROGRAM_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.spectrogramMode;
 }
 
 function normalizeSpectrogram3dColorize(raw) {
@@ -450,7 +459,7 @@ export function normalizePanelControls(raw) {
     spectrogramYMinFreq: spectrogramYRange.min,
     spectrogramYMaxFreq: spectrogramYRange.max,
     spectrogramDbFloor: normalizeSpectrogramDbFloor(raw?.spectrogramDbFloor),
-    spectrogram3d: normalizeSpectrogram3d(raw?.spectrogram3d),
+    spectrogramMode: normalizeSpectrogramMode(raw?.spectrogramMode),
     spectrogram3dColorize: normalizeSpectrogram3dColorize(raw?.spectrogram3dColorize),
     spectrogram3dHeightGain: normalizeSpectrogram3dHeightGain(raw?.spectrogram3dHeightGain),
     spectrogram3dAzimuthDeg: normalizeSpectrogram3dAzimuthDeg(raw?.spectrogram3dAzimuthDeg),
