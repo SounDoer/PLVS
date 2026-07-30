@@ -1236,7 +1236,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram y range max").value).toBe("20000");
   });
 
-  it("shows the 3D sub-controls only while 3D View is on", () => {
+  it("shows the 3D sub-controls only while a 3D mode is selected", () => {
     const onPanelControlsChange = vi.fn();
     const props = {
       activeTab: "spectrogram",
@@ -1375,6 +1375,16 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
     expect(screen.queryByLabelText("spectrogram 3d line alpha")).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d line width")).toBeNull();
+
+    // The listbox marks "3D Surface" as the selected option, not just some other option.
+    fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
+    expect(screen.getByRole("option", { name: "3D Surface" }).getAttribute("aria-selected")).toBe(
+      "true"
+    );
+    expect(screen.getByRole("option", { name: "2D Heatmap" }).getAttribute("aria-selected")).toBe(
+      "false"
+    );
+    fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
 
     rerender(
       <PanelSettingsContent
