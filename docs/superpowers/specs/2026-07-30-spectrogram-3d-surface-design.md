@@ -73,25 +73,40 @@ dy = (−fx)·ty + tx·fy = tx·fy − ty·fx = det
 `det` is exactly the determinant `unprojectFloor` already relies on — `depth · scaleX · scaleY` —
 which is **strictly positive for every elevation `clampViewParams` allows**.
 
-So walking along `(−fx, tx)` always advances from far to near, at every azimuth and elevation, with
-no sign casework. The `ridgeOrderAscending` style of painter's-order reasoning has no analogue in
-this renderer: draw order is a property of the walk direction, and the walk direction is a constant.
+So walking along `(−fx, tx)` always advances **toward** the viewer, at every azimuth and elevation,
+with no sign casework. The `ridgeOrderAscending` style of painter's-order reasoning has no analogue
+in this renderer: draw order is a property of the walk direction, and the walk direction is a
+constant.
 
 ## Rendering
 
 ### The column walk
 
+The walk runs **front to back** — nearest sample first. This is counterintuitive and it is the one
+thing in this design that is easy to get backwards, so it is worth stating why.
+
+Nearer terrain projects lower on screen (larger y) and must occlude what is behind it. A silhouette
+built front to back is therefore monotonically *rising*: each farther sample can only be seen in the
+strip above everything already drawn, which is exactly the `y < horizon` test. Marching back to
+front instead makes the first (farthest) sample fill the whole lower half of the column, after which
+every nearer sample fails the same test and nothing else is ever drawn.
+
 ```
 for each screen column x:
-  clip the floor line against the unit square [0,1]², take the entry point as the far end
-  horizon = +Infinity                    // topmost (smallest y) pixel already written in this column
-  step along the line — t and f advance by constant addition:
+  clip the floor line against the unit square, take BOTH endpoints
+  horizon = screen y of the floor at the NEAR endpoint, + 1
+            // the bottom of this column's terrain; below it is outside the floor and stays transparent
+  step from the near endpoint toward the far one — t and f advance by constant addition:
     h = normalised dB × heightGain       // the same height map Lines uses
     y = originY + t·ty + f·fy + h·hy
     if y < horizon:
       fill the span y .. horizon with this sample's colour
       horizon = y
 ```
+
+Seeding `horizon` from the near floor edge rather than from the canvas bottom is load-bearing: with
+`horizon = height` the nearest sample's wall would extend past the front edge of the floor and paint
+the empty area below the scene.
 
 Three properties follow directly:
 
@@ -102,9 +117,15 @@ Three properties follow directly:
 - **The `y .. horizon` span is the vertical wall** between this sample and the previous silhouette.
   Filling it is what makes the result read as solid rather than as a stack of contours.
 - **Slope is free.** `h − h_prev` is the height gradient along the view ray, which is the shading
-  term. Because the ray always points at the viewer, this is a headlight: shading stays stable while
-  the user rotates. It is flat on its own, so a mild depth attenuation (from the already-computed
-  `t·ty + f·fy`) supplies the remaining sense of recession.
+  term. Because the ray always lies along the view direction, this is a headlight: shading stays
+  stable while the user rotates. It is flat on its own, so a mild depth attenuation (the walk's own
+  progress from near to far) supplies the remaining sense of recession.
+
+Monochrome needs no theme colour resolved at all — Decision #7 ramps between the colormap's two
+ends, which are already numeric RGB. This matters more than it looks: the Lines renderer has to go
+through `color-mix` for its monochrome branch because `--muted-foreground` may be `oklch()`, and a
+per-pixel renderer cannot ask the canvas to parse a colour string per sample. Choosing the colormap
+ends as the ramp removed that problem rather than solving it.
 
 Unpainted pixels keep `alpha = 0`, so the panel background — including the glass effect — shows
 through. Surface must not draw its own opaque backdrop.
