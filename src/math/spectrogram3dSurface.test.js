@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildProjection, projectPoint } from "./spectrogram3dProjection.js";
-import { columnFloorSpan } from "./spectrogram3dSurface.js";
+import { buildRowLut, columnFloorSpan, NO_ROW } from "./spectrogram3dSurface.js";
 
 const W = 920;
 const H = 300;
@@ -103,5 +103,83 @@ describe("columnFloorSpan", () => {
     const p = proj();
     const span = columnFloorSpan(W / 2, p, 4);
     expect(span.steps).toBeLessThanOrEqual(4);
+  });
+});
+
+describe("buildRowLut", () => {
+  it("maps each bucket to the nearest row", () => {
+    const tFracs = new Float64Array([0, 0.5, 1]);
+    const lut = buildRowLut(tFracs, 3, 101, 0.4);
+    expect(lut[0]).toBe(0);
+    expect(lut[50]).toBe(1);
+    expect(lut[100]).toBe(2);
+    expect(lut[10]).toBe(0);
+    expect(lut[40]).toBe(1);
+  });
+
+  it("marks buckets with no row within maxDistTFrac as NO_ROW", () => {
+    // Rows clustered at both ends: the middle is a capture gap.
+    const tFracs = new Float64Array([0, 0.05, 0.95, 1]);
+    const lut = buildRowLut(tFracs, 4, 101, 0.1);
+    expect(lut[0]).toBe(0);
+    expect(lut[100]).toBe(3);
+    expect(lut[50]).toBe(NO_ROW);
+  });
+
+  it("fills entirely with NO_ROW when there are no rows", () => {
+    const lut = buildRowLut(new Float64Array(0), 0, 8, 0.1);
+    expect([...lut]).toEqual(new Array(8).fill(NO_ROW));
+  });
+
+  // Ties: bucket exactly midway between two rows must resolve to the LATER row (`<=`, not `<`).
+  // A `<` mutation would leave the earlier row selected instead, which this pins down directly.
+  it("breaks exact ties in favour of the later row", () => {
+    const tFracs = new Float64Array([0, 1]);
+    const lut = buildRowLut(tFracs, 2, 3, 1); // buckets at t = 0, 0.5, 1
+    expect(lut[1]).toBe(1);
+  });
+
+  // Distance exactly at the tolerance boundary must still count as covered (`>`, not `>=`).
+  it("keeps a bucket exactly at maxDistTFrac as covered", () => {
+    const tFracs = new Float64Array([0]);
+    const lut = buildRowLut(tFracs, 1, 11, 0.2); // bucket 2 sits at t = 0.2, distance exactly 0.2
+    expect(lut[2]).toBe(0);
+    expect(lut[3]).toBe(NO_ROW);
+  });
+
+  // The last bucket must land at tFrac 1, not size/(size-1) short of it -- a `t = i / size` mutation
+  // would leave every bucket slightly under-scaled and never reach 1 at all.
+  it("maps the last bucket to tFrac exactly 1", () => {
+    const tFracs = new Float64Array([0, 1]);
+    const lut = buildRowLut(tFracs, 2, 5, 0.01);
+    expect(lut[4]).toBe(1);
+  });
+
+  // A monotonic run of many rows across a wide table exercises the forward-only sweep: if `row`
+  // reset to 0 on every bucket instead of carrying forward, only rows 0 and 1 would ever be found.
+  it("reaches rows past index 1 as the sweep advances", () => {
+    const count = 20;
+    const tFracs = new Float64Array(count);
+    for (let i = 0; i < count; i++) tFracs[i] = i / (count - 1);
+    const lut = buildRowLut(tFracs, count, 21, 0.1);
+    expect(lut[20]).toBe(count - 1);
+  });
+
+  // Resetting `row` to 0 on every bucket instead of carrying it forward produces the *same output*
+  // for ascending tFracs -- the distance to `t` is a single valley, so a from-scratch scan still
+  // finds the true nearest row. Only the cost changes: O(size) amortised vs. O(size * count) worst
+  // case. That is the whole reason this table exists instead of a binary search per sample, so a
+  // regression back to quadratic work is real even though no output-only assertion can see it.
+  it("stays linear in size + count for a large monotonic table", () => {
+    const count = 60000;
+    const tFracs = new Float64Array(count);
+    for (let i = 0; i < count; i++) tFracs[i] = i / (count - 1);
+    const start = performance.now();
+    buildRowLut(tFracs, count, count, 0.1);
+    const elapsedMs = performance.now() - start;
+    // The forward-only sweep finishes in a couple of milliseconds here; a from-scratch scan per
+    // bucket (quadratic in this input) measured well over a second. 500ms leaves ample margin for
+    // slower machines while staying far short of the quadratic mutant's time.
+    expect(elapsedMs).toBeLessThan(500);
   });
 });

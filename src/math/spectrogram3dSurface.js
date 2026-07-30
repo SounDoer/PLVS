@@ -82,3 +82,39 @@ export function columnFloorSpan(x, proj, maxSteps) {
     steps,
   };
 }
+
+/** Sentinel for "no grid row covers this time". Uint16Array-safe. */
+export const NO_ROW = 0xffff;
+
+/**
+ * Quantised nearest-row lookup over tFrac, so the inner loop costs one array read instead of a
+ * binary search. Rows sit at irregular timestamps, which is why a divide cannot replace this.
+ *
+ * Buckets with no row within `maxDistTFrac` get NO_ROW. That is how a real capture gap becomes a
+ * hole in the surface: the rasteriser skips those samples and leaves the horizon where it was, so
+ * the terrain behind the gap stays visible through it. Substituting the dB floor instead would draw
+ * a gap as a flat plain, which is data that does not exist.
+ *
+ * @param {Float64Array} tFracs row positions in 0..1, ascending
+ * @param {number} count how many entries of `tFracs` are valid
+ * @param {number} size table resolution
+ * @param {number} maxDistTFrac beyond this distance a bucket counts as uncovered
+ * @returns {Uint16Array}
+ */
+export function buildRowLut(tFracs, count, size, maxDistTFrac) {
+  const lut = new Uint16Array(size);
+  if (count <= 0) {
+    lut.fill(NO_ROW);
+    return lut;
+  }
+  let row = 0;
+  for (let i = 0; i < size; i++) {
+    const t = size > 1 ? i / (size - 1) : 0;
+    // tFracs ascends, so the nearest row only ever moves forward as i advances.
+    while (row + 1 < count && Math.abs(tFracs[row + 1] - t) <= Math.abs(tFracs[row] - t)) {
+      row += 1;
+    }
+    lut[i] = Math.abs(tFracs[row] - t) > maxDistTFrac ? NO_ROW : row;
+  }
+  return lut;
+}
