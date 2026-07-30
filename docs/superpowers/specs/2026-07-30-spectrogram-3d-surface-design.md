@@ -1,8 +1,13 @@
 # Spectrogram 3D Surface Mode — Design
 
 **Date:** 2026-07-30
-**Status:** Designed, not implemented
+**Status:** Implemented
 **Scope:** Frontend only. `src-tauri` is not touched.
+
+> Amended after implementation. Several decisions were reversed while building, and the reversals
+> are recorded in **Reversed during implementation** rather than quietly folded into the text — the
+> same convention the 2026-07-28 design uses, and for the same reason: knowing that the walk was
+> specified backwards, and how that failed, is worth more than the corrected pseudocode alone.
 
 Builds on [2026-07-28-spectrogram-3d-view-design.md](2026-07-28-spectrogram-3d-view-design.md),
 which shipped the 3D line waterfall. Read that first: this design reuses its projection, its data
@@ -194,27 +199,96 @@ correct behaviour and must not be "fixed".
 
 ### New: `src/math/spectrogram3dSurface.js`
 
-Pure. No canvas, no React, no data access.
+Pure. No canvas, no React, no data access. Five exports:
 
-- Floor-line clipping against the unit square for a given column and projection, returning the
-  entry point and the constant `(dt, df)` step.
-- The horizon rasteriser, writing into a caller-supplied buffer.
+- `columnFloorSpan(x, proj, maxSteps)` — clips the floor line for one screen column, returning the
+  **near** endpoint and a constant step toward the far end.
+- `buildRowLut(tFracs, count, size, maxDistTFrac)` and `NO_ROW` — constant-time nearest-row lookup;
+  the sentinel is where capture gaps become holes.
+- `buildSurfaceLut({ colormapLut, dbFloor, colorize })`, `packArgb`, `SHADE_LEVELS` — the
+  (level × shade) ARGB table.
+- `rasterizeSurface({ … })` — the front-to-back floating-horizon walk.
+- `columnStrideFor(width, height)` — the area-derived stride. See Performance.
 
-Everything testable lives here, following the split the shipped design established: the two math
-modules carry the tests, the hook carries none.
+Everything testable lives here, following the split the shipped design established: the math module
+carries the tests, the hook carries none. Final count: 40 tests, and every one of them was checked
+by mutation rather than by assuming a passing suite means a guarded one — a habit adopted after the
+first task shipped a suite that passed while missing two mutations a reviewer then found.
 
 ### Modified
 
 | File | Change |
 |---|---|
-| `src/hooks/useSpectrogram3dCanvas.js` | Mode branch: lines path unchanged, surface path added, offscreen canvas lifecycle |
+| `src/hooks/useSpectrogram3dCanvas.js` | Mode branch: lines path unchanged, surface path added, offscreen canvas lifecycle, ARGB colour resolver |
+| `src/theme/spectrogramColormap.js` | New `spectrogramColorFracFromHeight`, shared by both 3D renderers. See Reversed #3 |
 | `src/lib/panelControls.js` | `spectrogramMode` enum plus normalizer; `spectrogram3d` removed |
 | `src/components/PanelSettingsContent.jsx` | Mode dropdown; Line Alpha / Line Width shown only in Lines |
 | `src/components/panels/SpectrogramPanel.jsx` | `is3d` derived from the mode; mode threaded to the renderer |
-| `src/components/panels/chartHelp.js` | Predicate becomes `mode !== "heatmap"` |
+| `src/components/panels/chartHelp.js` | Predicate enumerates the 3D modes |
+| `scripts/spectrogram-surface-benchmark.mjs` | New. Node, not a browser harness — the rasteriser is pure typed-array code |
 
-If the hook grows past a comfortable size (it is 525 lines today), the surface path splits into
-`useSpectrogram3dSurface.js`. That is a judgement made while implementing, not a commitment here.
+The hook was not split. It grew by about 90 lines and the surface path is one self-contained branch;
+splitting would have separated two renderers that share the projection, the grid, the scrub search
+and the floor grid. If it is ever split, the seam is colour rather than geometry — `packArgb`,
+`SHADE_LEVELS` and `buildSurfaceLut` lift out of the math module cleanly, while `rasterizeSurface`
+cannot be separated from `columnFloorSpan`.
+
+## Reversed during implementation
+
+Kept rather than folded into the text above, so the same ground is not re-covered.
+
+### 1. Back-to-front walk → front-to-back
+
+**Original:** march each column from the far end toward the viewer, filling from each sample down to
+a running-minimum horizon.
+
+**Why it failed:** nearer terrain projects *lower* on screen, so the farthest sample fills the whole
+lower part of the column, and then every nearer sample fails the same `y < horizon` test. Nothing
+after the first sample is ever drawn. The correct order is front to back, where the silhouette rises
+monotonically and each farther sample can only appear above what is already drawn.
+
+Caught by working the code through by hand before implementation started, not by a failing test.
+
+### 2. `DEFAULT_COLUMN_STRIDE` constant → `columnStrideFor(width, height)`
+
+**Original:** one measured constant, on the assumption that stride 1 or 2 would serve everywhere.
+
+**Why it failed:** measurement showed the requirement moves by more than an order of magnitude
+across panel sizes — stride 1 costs 1.09 ms at 922×110 and 38.40 ms at 3840×1200. Any constant is
+wrong at one end, and quartering horizontal resolution on a 920-pixel panel to protect a 4K one is
+the wrong trade. See Performance.
+
+### 3. `spectrogramColorFrac` shared → a shared height-fraction helper
+
+**Original:** the Architecture section named `spectrogramColorFrac` as the shared piece, leaving each
+renderer to do its own floor-relative-to-absolute conversion.
+
+**Why it changed:** that left the conversion in three copies — both renderers and a test — tied
+together only by a JSDoc sentence promising they matched. Two renderers that must agree on colour,
+with the agreement asserted only in prose, is the shape of a future divergence, and it is exactly the
+divergence Decision #8 exists to prevent. `spectrogramColorFracFromHeight` now lives in
+`spectrogramColormap.js` and both call it. `buildStopColors`'s output was verified bit-identical
+across the change.
+
+### 4. "Row count may be far higher (hundreds)" → bounded by the step count
+
+**Original:** the Data section invited raising the row count freely, because cost does not scale
+with it.
+
+**Why it failed:** cost does not, but *stability* does. A column samples the time axis once per
+screen pixel row, so more rows than steps makes nearest-row selection alias and re-bind as the
+window slides — the shimmer `spectrogram3dGrid.js` exists to prevent, returning with no individual
+ridges left to debug it against. At 922×110 the step count is only about 72. See Data.
+
+### 5. The first working rasteriser was over budget
+
+Not a design reversal, but worth recording: the first correct version measured 21.7–22.1 ms at
+2560×900, against a 16.7 ms budget. A bit-identical inner-loop rewrite — hoisting the per-column
+replication width, accumulating the row base instead of multiplying per row, and hoisting the
+projection terms — brought it to 15.7 ms best / 16.3 ms median, verified over 14,400 configurations
+and 8.0 billion pixels with zero differences. Two further strength reductions were identified and
+deliberately **not** taken, because they change the floating-point result and belong in a separately
+reviewed change.
 
 ## Panel Controls
 
@@ -332,24 +406,56 @@ Updated tests: `panelControls` normalizer for the new enum (including rejection 
 `chartHelp` for the three-way predicate, and the `SpectrogramPanel` suites that currently set
 `spectrogram3d: true`.
 
+Two tests are worth calling out because the property they pin is not obvious:
+
+- **The occlusion tests render at azimuth 90, not the default 135.** A screen column is the floor
+  line `u·tx + v·fx = const`. At azimuth 135 `tx` and `fx` are equal, so the line is `u + v = k` and
+  reaches at most `u = k + 0.5` — a column with low `k` contains no sample from the newest row's
+  time slab at all, and the far row is legitimately unoccluded there. A whole-image "zero highlight
+  pixels" assertion is unsatisfiable by *any* implementation at that azimuth. At azimuth 90 `tx` is
+  zero, every column spans the whole time axis, and the assertion means what it says. A companion
+  test keeps occlusion coverage at the shipping default, scoped to the columns that actually reach
+  the tall row.
+- **No-overdraw is asserted as write-once**, via a `Proxy` counting assignments per pixel. The
+  design's cost claim is that occluded pixels are never written, and no coverage or colour assertion
+  can see a horizon that fails to advance. A wall-clock assertion was proposed for a different
+  invariant and rejected: `npm run check` is the merge gate, and a flaky timing test is worse than an
+  uncaught cost regression.
+
 ### Not covered
 
 - The renderer hook, by design — consistent with `useSpectrogramCanvas.js` and the Lines path.
 - Appearance, in all cases. Shading depth, depth attenuation and the monochrome ramp endpoints are
   tuned by eye and pinned by nothing.
-- Real-app performance. The harness is the only planned measurement.
+- Real-app performance. The Node benchmark is the only measurement taken.
+- **Everything visual.** See Acceptance.
 
 ## Acceptance
 
-1. All three modes selectable from the dropdown; 2D and Lines behave exactly as before.
-2. Surface renders as a solid shaded relief with peaks occluding what is behind them.
-3. Colorize off/on reads as one continuous palette, and Colorize on leaves colour a function of
-   absolute dB — raising the dB Floor does not recolour a peak.
-4. The floor grid remains visible around and beneath the surface silhouette; the panel background
-   shows through where the surface does not cover.
-5. Switching Lines ↔ Surface preserves viewpoint, height scale, time window and frequency range.
-6. Scrubbing highlights the selected moment where it is visible.
-7. Mode and all view parameters survive preset save/load.
-8. Real capture gaps render as holes in the surface.
-9. The harness measurement is recorded, and the chosen column stride is justified by it.
-10. `npm run check` passes.
+Verified:
+
+1. Mode and all view parameters ride the existing `panelControls` path; no new persisted domain key.
+2. The harness measurement is recorded and the area-derived stride is justified by it.
+3. `npm run check` passes — 2458 frontend tests, 386 Rust tests, clippy under `-D warnings`.
+
+**Not verified — outstanding, and requires running `npm run desktop`:**
+
+4. Surface paints a solid shaded relief rather than nothing. This is the single highest-risk item:
+   the offscreen `ImageData` → `Uint32Array` → `drawImage` path cannot be exercised under jsdom, so
+   nothing in the suite has ever run it against a real canvas.
+5. The floor grid stays visible around and beneath the silhouette, and the panel background shows
+   through where the surface does not cover — the whole reason compositing goes through `drawImage`
+   rather than `putImageData`.
+6. Switching Lines ↔ Surface repaints immediately. This is what the `mode` entry in the repaint-skip
+   guard exists for, and its failure mode looks exactly like a frozen render.
+7. Scrubbing highlights the correct row, and the highlight disappears when that row is occluded.
+8. Resizing the panel, or entering Focus View, rebuilds the offscreen canvas rather than leaving a
+   stale-sized one.
+9. Colorize off/on reads as one continuous palette rather than two different charts.
+10. Real capture gaps render as holes with terrain visible through them.
+11. 2D and Lines are unchanged, item for item.
+
+Also unresolved by design, noted so it is a decision rather than a surprise: Lines fades ridges out
+over the last few spacings before they leave the window, and Surface has no equivalent — when the
+oldest row drops out, the far sliver changes abruptly. The impact is a 1–2 pixel band at the horizon
+rather than a whole ridge at full height blinking out, which is why it was not treated as blocking.
