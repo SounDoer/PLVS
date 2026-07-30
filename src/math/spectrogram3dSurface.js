@@ -1,11 +1,11 @@
 /**
  * Geometry and colour for the 3D spectrogram Surface mode: clipping a screen column against the
- * floor plane, mapping a column sample to the grid row it should read, and building the
- * (level x shade) colour table the rasteriser reads per sample.
+ * floor plane, mapping a column sample to the grid row it should read, building the (level x shade)
+ * colour table, and walking the columns to rasterise the surface.
  *
- * Pure: no canvas, no React, no data access. This module will grow into a per-pixel renderer that
- * writes ARGB words into buffers the caller supplies; today it contains the column-clipping step,
- * the row lookup, and the colour table that the rasteriser will walk.
+ * Pure: no canvas, no React, no data access. `rasterizeSurface` writes ARGB words into a buffer the
+ * caller supplies -- in the app, a `Uint32Array` view over an offscreen canvas's `ImageData` -- and
+ * the other three exports are the tables and geometry it consumes.
  *
  * The column walk rests on one property of the orthographic projection: for a fixed screen column
  * the set of floor points landing in it is a straight line, so a column can be walked with constant
@@ -213,4 +213,129 @@ export function buildSurfaceLut({ colormapLut, dbFloor, colorize }) {
     }
   }
   return lut;
+}
+
+/** Slope-to-shade sensitivity, and the mid-grey a flat sample sits at. Tuned by eye. */
+const SHADE_MID = 0.5;
+const SHADE_SLOPE_GAIN = 6;
+/** How far the far end is darkened. Mild: it carries recession, it should not hide data. */
+const DEPTH_FADE_FLOOR = 0.65;
+
+/**
+ * Rasterise the whole surface into `out`, one screen column at a time.
+ *
+ * Each column is walked FRONT TO BACK with a running minimum (`horizon`) of the topmost pixel
+ * already written. A sample is visible only where it rises above that, and the span between the two
+ * is the vertical wall that makes the result read as solid rather than as a stack of contours.
+ * Occluded pixels are never written, so there is no overdraw at all.
+ *
+ * Walking back to front instead would let the farthest sample fill the entire lower column, after
+ * which every nearer sample fails the same `y < horizon` test and nothing else is ever drawn.
+ *
+ * `out` must be zero-filled by the caller. Pixels this leaves at 0 are transparent, which is what
+ * lets the panel background and the floor grid show through.
+ *
+ * @param {object} args
+ * @param {Uint32Array} args.out ARGB words, `width * height`, zero-filled
+ * @param {number} args.width
+ * @param {number} args.height
+ * @param {object} args.proj from `buildProjection`
+ * @param {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number }} args.grid
+ * @param {Uint16Array} args.rowLut from `buildRowLut`
+ * @param {Uint32Array} args.lut from `buildSurfaceLut`
+ * @param {number} args.heightGain the Height Scale multiplier
+ * @param {number} args.highlightArgb colour for the scrubbed row
+ * @param {number} args.highlightRow grid row to highlight, or -1
+ * @param {number} args.columnStride rasterise every Nth column and replicate
+ * @param {number} args.maxSteps per-column sample cap
+ */
+export function rasterizeSurface({
+  out,
+  width,
+  height,
+  proj,
+  grid,
+  rowLut,
+  lut,
+  heightGain,
+  highlightArgb,
+  highlightRow = -1,
+  columnStride = 1,
+  maxSteps,
+}) {
+  const { heights, count, pointCount } = grid;
+  if (count <= 0 || pointCount <= 0) return;
+
+  const lastPoint = pointCount - 1;
+  const lutLast = rowLut.length - 1;
+  const stride = Math.max(1, Math.floor(columnStride));
+  const stepCap = Math.max(1, Math.floor(maxSteps ?? height));
+
+  for (let x = 0; x < width; x += stride) {
+    const span = columnFloorSpan(x, proj, stepCap);
+    if (!span) continue;
+
+    // Seed the horizon at the floor's NEAR edge for this column, not at the canvas bottom. With
+    // `height` the nearest sample's wall would extend past the front edge of the floor and paint
+    // the empty area below the scene.
+    const nearFloorY = proj.originY + span.u0 * proj.ty + span.v0 * proj.fy;
+    let horizon = Math.min(height, Math.round(nearFloorY) + 1);
+    if (horizon <= 0) continue;
+
+    let u = span.u0;
+    let v = span.v0;
+    let prevH = NaN;
+
+    for (let s = 0; s <= span.steps; s++, u += span.du, v += span.dv) {
+      const bucket = Math.round((u + 0.5) * lutLast);
+      const row = rowLut[bucket < 0 ? 0 : bucket > lutLast ? lutLast : bucket];
+      if (row === NO_ROW) {
+        // A capture gap: contribute nothing and leave the horizon alone, so what is behind the gap
+        // stays visible through it.
+        prevH = NaN;
+        continue;
+      }
+
+      // `columnFloorSpan` keeps `v` inside the square, so `q` is already in range and the clamp is
+      // a guard rather than a behaviour: no input reaches it, and no test can therefore pin it.
+      const q = Math.round((v + 0.5) * lastPoint);
+      const h = heights[row * pointCount + (q < 0 ? 0 : q > lastPoint ? lastPoint : q)];
+
+      // Slope along the view ray, measured before the visibility test: an occluded stretch still
+      // shapes the terrain, so skipping it here would corrupt the shading of whatever follows.
+      const slope = Number.isFinite(prevH) ? h - prevH : 0;
+      prevH = h;
+
+      const y = Math.round(proj.originY + u * proj.ty + v * proj.fy + h * heightGain * proj.hy);
+      if (y >= horizon) continue;
+      // Clamping to the top of the canvas can push a visible sample back onto the horizon, so the
+      // test is repeated after the clamp. It also subsumes the `y === horizon` boundary above, which
+      // is why that comparison's exact strictness has no observable effect either way.
+      const top = y < 0 ? 0 : y;
+      if (top >= horizon) continue;
+
+      let argb;
+      if (row === highlightRow) {
+        argb = highlightArgb;
+      } else {
+        // Headlight shading: the ray always lies along the view direction, so this stays stable
+        // while the user rotates, where a world-fixed light would darken whole faces.
+        let shade = SHADE_MID + slope * SHADE_SLOPE_GAIN;
+        shade = shade < 0 ? 0 : shade > 1 ? 1 : shade;
+        // Depth attenuation. s runs 0 at the near end to steps at the far end.
+        const near = span.steps > 0 ? 1 - s / span.steps : 1;
+        shade *= DEPTH_FADE_FLOOR + (1 - DEPTH_FADE_FLOOR) * near;
+        const shadeIdx = Math.min(SHADE_LEVELS - 1, (shade * (SHADE_LEVELS - 1) + 0.5) | 0);
+        const level = Math.min(255, (h * 255 + 0.5) | 0);
+        argb = lut[level * SHADE_LEVELS + shadeIdx];
+      }
+
+      const kEnd = Math.min(stride, width - x);
+      for (let yy = top; yy < horizon; yy++) {
+        const base = yy * width + x;
+        for (let k = 0; k < kEnd; k++) out[base + k] = argb;
+      }
+      horizon = top;
+    }
+  }
 }
