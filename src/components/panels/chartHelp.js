@@ -124,7 +124,8 @@ export const SPECTROGRAM_3D_HELP = [
 ];
 
 function resolveSpectrogramHelp(controls) {
-  return controls?.spectrogram3d === true ? SPECTROGRAM_3D_HELP : SPECTROGRAM_2D_HELP;
+  const mode = controls?.spectrogramMode;
+  return mode === "lines" || mode === "surface" ? SPECTROGRAM_3D_HELP : SPECTROGRAM_2D_HELP;
 }
 
 export const WAVEFORM_HELP = [

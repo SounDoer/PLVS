@@ -13,8 +13,13 @@ function itemsOf(sections) {
 
 describe("spectrogram panel help", () => {
   it("resolves gestures from the active view mode", () => {
-    expect(resolvePanelHelpItems("spectrogram", { spectrogram3d: true })).toBe(SPECTROGRAM_3D_HELP);
-    expect(resolvePanelHelpItems("spectrogram", { spectrogram3d: false })).toBe(
+    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "lines" })).toBe(
+      SPECTROGRAM_3D_HELP
+    );
+    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "surface" })).toBe(
+      SPECTROGRAM_3D_HELP
+    );
+    expect(resolvePanelHelpItems("spectrogram", { spectrogramMode: "heatmap" })).toBe(
       SPECTROGRAM_2D_HELP
     );
     // Absent is 2D: panelControls reaches here unnormalised, so a panel that never touched the
