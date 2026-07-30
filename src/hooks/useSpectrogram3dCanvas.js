@@ -274,7 +274,7 @@ export function useSpectrogram3dCanvas({
   const paramsRef = useRef({});
   const cacheRef = useRef({ pointCount: 0, minHz: 0, maxHz: 0, bands: null, yToBand: null });
   const offscreenRef = useRef(null);
-  const surfaceLutRef = useRef({ key: null, lut: null });
+  const surfaceLutRef = useRef({ colorize: undefined, dbFloor: NaN, colormapLut: null, lut: null });
   const resolveArgbRef = useRef(makeArgbResolver());
   const lastPaintRef = useRef({
     len: -1,
@@ -499,10 +499,21 @@ export function useSpectrogram3dCanvas({
 
       if (p.mode === "surface") {
         const off = ensureOffscreen(offscreenRef, W, H);
-        const lutKey = `${p.colorize}|${p.dbFloor}|${p.colormapLut}`;
-        if (surfaceLutRef.current.key !== lutKey) {
+        // Cached by identity, matching the repaint-skip guard's `last.colormapLut === p.colormapLut`
+        // above: the theme layer hands the hook a new array whenever the colormap actually changes,
+        // so identity is sufficient. Do not switch this to a stringified key -- colormapLut is a
+        // 768-element Uint8Array, and interpolating it into a string calls toString() on every
+        // repaint that reaches this branch, which is the renderer's hot path.
+        const cachedLut = surfaceLutRef.current;
+        if (
+          cachedLut.colorize !== p.colorize ||
+          cachedLut.dbFloor !== p.dbFloor ||
+          cachedLut.colormapLut !== p.colormapLut
+        ) {
           surfaceLutRef.current = {
-            key: lutKey,
+            colorize: p.colorize,
+            dbFloor: p.dbFloor,
+            colormapLut: p.colormapLut,
             lut: buildSurfaceLut({
               colormapLut: p.colormapLut,
               dbFloor: p.dbFloor,
