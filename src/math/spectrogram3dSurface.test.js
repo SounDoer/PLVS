@@ -284,20 +284,38 @@ function testColormapLut() {
 }
 
 describe("buildSurfaceLut", () => {
-  it("ramps monochrome by shade alone, ignoring level", () => {
+  const INK = { r: 100, g: 200, b: 40 };
+
+  it("ramps monochrome by level and shade together, up to full ink", () => {
     const lut = buildSurfaceLut({
       colormapLut: testColormapLut(),
       dbFloor: SPECTROGRAM_DB_MIN,
       colorize: false,
+      ink: INK,
     });
-    const darkest = lut[0 * SHADE_LEVELS + 0];
-    const brightest = lut[0 * SHADE_LEVELS + (SHADE_LEVELS - 1)];
-    // Low end of the colormap is red, high end is blue.
-    expect(darkest).toBe(packArgb(255, 0, 0, 255));
-    expect(brightest).toBe(packArgb(0, 0, 255, 255));
-    // Level does not move the colour.
-    expect(lut[255 * SHADE_LEVELS + 0]).toBe(darkest);
-    expect(lut[128 * SHADE_LEVELS + (SHADE_LEVELS - 1)]).toBe(brightest);
+    const top = 255 * SHADE_LEVELS;
+    // Level 255 at full shade is the ink untouched; at shade 0 it is the ink at the 0.55 shade
+    // floor.
+    expect(lut[top + (SHADE_LEVELS - 1)]).toBe(packArgb(100, 200, 40, 255));
+    expect(lut[top + 0]).toBe(packArgb(55, 110, 22, 255));
+
+    // Level carries the main contrast: a quieter sample is dimmer at the same shade -- and level
+    // outweighs shade, so a mid-level sample at full shade still beats a top-level one at the
+    // shade floor (213 vs 187 of luminance here).
+    const lum = (argb) => (argb & 0xff) + ((argb >>> 8) & 0xff) + ((argb >>> 16) & 0xff);
+    const quiet = lut[128 * SHADE_LEVELS + (SHADE_LEVELS - 1)];
+    expect(quiet).not.toBe(lut[top + (SHADE_LEVELS - 1)]);
+    expect(lum(quiet)).toBeLessThan(lum(lut[top + (SHADE_LEVELS - 1)]));
+    expect(lum(quiet)).toBeGreaterThan(lum(lut[top + 0]));
+
+    // Level is absolute: raising the dB floor must not re-brighten the same peak.
+    const raised = buildSurfaceLut({
+      colormapLut: testColormapLut(),
+      dbFloor: -40,
+      colorize: false,
+      ink: INK,
+    });
+    expect(raised[top + (SHADE_LEVELS - 1)]).toBe(lut[top + (SHADE_LEVELS - 1)]);
   });
 
   it("ramps colorize by level, with shade only changing luminance", () => {
@@ -321,14 +339,26 @@ describe("buildSurfaceLut", () => {
     expect(blueOf(dimHigh)).toBeGreaterThan(0);
   });
 
-  it("is fully opaque everywhere", () => {
-    const lut = buildSurfaceLut({
-      colormapLut: testColormapLut(),
-      dbFloor: SPECTROGRAM_DB_MIN,
-      colorize: true,
-    });
-    for (let i = 0; i < lut.length; i++) {
-      expect(lut[i] >>> 24).toBe(255);
+  // The alpha fade is what lets silence recede: the bottom 25% of the range ramps from
+  // transparent to opaque, everything above it is fully opaque, in both colour modes.
+  it("fades to transparent at the dB floor and is fully opaque above the fade", () => {
+    for (const colorize of [false, true]) {
+      const lut = buildSurfaceLut({
+        colormapLut: testColormapLut(),
+        dbFloor: SPECTROGRAM_DB_MIN,
+        colorize,
+        ink: INK,
+      });
+      expect(lut[0] >>> 24).toBe(0);
+      let prev = 0;
+      for (let level = 0; level < 64; level++) {
+        const a = lut[level * SHADE_LEVELS] >>> 24;
+        expect(a).toBeGreaterThanOrEqual(prev);
+        prev = a;
+      }
+      for (let level = 64; level < 256; level++) {
+        expect(lut[level * SHADE_LEVELS] >>> 24).toBe(255);
+      }
     }
   });
 
@@ -348,8 +378,9 @@ describe("buildSurfaceLut", () => {
     expect(low[top]).toBe(high[top]);
     expect(SPECTROGRAM_DB_MAX).toBeGreaterThan(-40);
 
-    // Level 0 sits exactly on the floor, which spectrogramColorFrac pins to the bottom of the ramp.
-    expect(high[0 * SHADE_LEVELS + (SHADE_LEVELS - 1)]).toBe(packArgb(255, 0, 0, 255));
+    // Level 0 sits exactly on the floor, which spectrogramColorFrac pins to the bottom of the
+    // ramp -- and the alpha fade takes it to transparent.
+    expect(high[0 * SHADE_LEVELS + (SHADE_LEVELS - 1)]).toBe(packArgb(255, 0, 0, 0));
   });
 
   // A mid-height level, away from both ends of the ramp, where a raised dbFloor sends the recovered

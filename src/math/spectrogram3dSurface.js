@@ -273,9 +273,30 @@ export const SHADE_LEVELS = 16;
 const COLORIZE_SHADE_FLOOR = 0.75;
 
 /**
+ * The two bands Monochrome multiplies together, both as fractions of the ink colour.
+ *
+ * LEVEL carries the main contrast: absolute level drives luminance from MONO_LEVEL_FLOOR to full
+ * ink, so loud and quiet terrain are distinguishable at a glance -- without it everything above
+ * the alpha fade rendered as one uniform grey, and the relief had nothing to play against.
+ *
+ * SHADE then modulates within a narrower band. It only shapes the relief now, so it can afford to
+ * be gentle: slope noise at the bottom of a wide band printed as dark speckles against the lit
+ * terrain, the most visible artefact of the first monochrome renders.
+ */
+const MONO_LEVEL_FLOOR = 0.25;
+const MONO_SHADE_FLOOR = 0.55;
+
+/**
+ * Levels below this fraction of the range fade to transparent. Matches what the 2D heatmap has
+ * always done (`paintSpan` writes `t * 255` into alpha) and what Lines does with its gradient:
+ * silence recedes instead of occupying the screen.
+ */
+const LEVEL_ALPHA_FULL = 0.25;
+
+/**
  * Pack one ARGB word for a Uint32Array view over ImageData.
  *
- * The byte order assumes a little-endian host, which every platform PLVS targets is. On a
+ * The byte order assumes a little-endian host, which every platform PLVS targets. On a
  * big-endian host the channels would come out reversed.
  */
 export function packArgb(r, g, b, a) {
@@ -291,47 +312,59 @@ export function packArgb(r, g, b, a) {
  * conversion happens here, once per repaint, through `spectrogramColorFracFromHeight` -- the same
  * helper `buildStopColors` uses for Lines, so the two renderers cannot drift apart on colour.
  *
- * Monochrome ignores `level` entirely and ramps on `shade`, between the colormap's two ends. The
- * relief IS the information in that state; height carries level, and colour carries shape.
+ * Monochrome multiplies two fractions of the theme ink: LEVEL (absolute, through the same
+ * `spectrogramColorFracFromHeight` conversion Colorize uses, so the dB Floor cannot re-brighten a
+ * peak) ramps luminance from `MONO_LEVEL_FLOOR` to full ink, and SHADE modulates that within
+ * `MONO_SHADE_FLOOR`..1. Level carries the main contrast -- without it everything above the alpha
+ * fade is one uniform grey and loud and quiet terrain are indistinguishable -- while shade only
+ * shapes the relief. The ink is `--foreground`, resolved by the caller. (Earlier versions ramped
+ * between the colormap's two ends -- a duotone of whatever the colormap's extremes happened to be
+ * -- and then on shade alone against `--muted-foreground`; the first read as a colour choice
+ * nobody made, the second washed every contrast out at once.)
  *
- * Alpha is always 255, unlike `buildStopColors`, which tracks level in alpha so silence doesn't
- * draw as a dense opaque stack of lines. That reasoning doesn't transfer here: the horizon walk
- * writes each screen pixel exactly once, so a quiet sample is still terrain occupying that pixel,
- * not an extra layer piling on top of others. Level-tracking alpha would let the floor grid bleed
- * through a quiet surface and read as a hole, which is not what a quiet passage is. Pixels the
- * horizon walk never reaches -- outside the floor's screen silhouette -- are left at alpha 0 by
- * the caller-supplied buffer, not by this table.
+ * Alpha tracks level below `LEVEL_ALPHA_FULL` -- silence fades out and the floor grid shows
+ * through, which is the recession the 2D heatmap and Lines have always given quiet passages. This
+ * reverses an earlier alpha-always-255 decision: the argument then was that a quiet sample is
+ * still terrain occupying its pixel, so floor bleed would read as a hole. In practice the opaque
+ * version filled the entire floor silhouette with a solid painted slab wherever the signal sat at
+ * the dB floor, and that slab read as the floor itself, but in the wrong colour. The bleed is the
+ * better lie. Each pixel is still written at most once, so the fade never compounds.
  *
- * The table is built at full size (256 x SHADE_LEVELS) even in Monochrome, where every level row
- * is identical, rather than a 1 x SHADE_LEVELS ramp reused per level: that keeps the rasteriser's
- * inner loop a single unconditional read, with no branch on `colorize` to skip the level dimension.
+ * The table is built at full size (256 x SHADE_LEVELS) in both modes: that keeps the rasteriser's
+ * inner loop a single unconditional read, with no branch on `colorize` to skip dimensions.
  *
  * @param {object} args
  * @param {Uint8Array|number[]} args.colormapLut 256 RGB triplets
  * @param {number} args.dbFloor current dB floor
  * @param {boolean} args.colorize
+ * @param {{ r: number, g: number, b: number }} [args.ink] theme ink for Monochrome; unused when
+ *        `colorize` is set. Defaults to white.
  * @returns {Uint32Array} length 256 * SHADE_LEVELS
  */
-export function buildSurfaceLut({ colormapLut, dbFloor, colorize }) {
+export function buildSurfaceLut({ colormapLut, dbFloor, colorize, ink }) {
   const lut = new Uint32Array(256 * SHADE_LEVELS);
-  const lowR = colormapLut[0];
-  const lowG = colormapLut[1];
-  const lowB = colormapLut[2];
-  const highR = colormapLut[255 * 3];
-  const highG = colormapLut[255 * 3 + 1];
-  const highB = colormapLut[255 * 3 + 2];
+  const inkR = ink?.r ?? 255;
+  const inkG = ink?.g ?? 255;
+  const inkB = ink?.b ?? 255;
 
   for (let level = 0; level < 256; level++) {
     let r = 0;
     let g = 0;
     let b = 0;
+    let levelMul = 1;
     if (colorize) {
       const t = spectrogramColorFracFromHeight(level / 255, dbFloor);
       const idx = Math.round(t * 255) * 3;
       r = colormapLut[idx];
       g = colormapLut[idx + 1];
       b = colormapLut[idx + 2];
+    } else {
+      levelMul =
+        MONO_LEVEL_FLOOR +
+        (1 - MONO_LEVEL_FLOOR) * spectrogramColorFracFromHeight(level / 255, dbFloor);
     }
+    const alpha =
+      level >= LEVEL_ALPHA_FULL * 255 ? 255 : Math.round((level / (LEVEL_ALPHA_FULL * 255)) * 255);
     for (let shade = 0; shade < SHADE_LEVELS; shade++) {
       const s = SHADE_LEVELS > 1 ? shade / (SHADE_LEVELS - 1) : 1;
       let outR;
@@ -343,11 +376,12 @@ export function buildSurfaceLut({ colormapLut, dbFloor, colorize }) {
         outG = Math.round(g * mul);
         outB = Math.round(b * mul);
       } else {
-        outR = Math.round(lowR + (highR - lowR) * s);
-        outG = Math.round(lowG + (highG - lowG) * s);
-        outB = Math.round(lowB + (highB - lowB) * s);
+        const mul = levelMul * (MONO_SHADE_FLOOR + (1 - MONO_SHADE_FLOOR) * s);
+        outR = Math.round(inkR * mul);
+        outG = Math.round(inkG * mul);
+        outB = Math.round(inkB * mul);
       }
-      lut[level * SHADE_LEVELS + shade] = packArgb(outR, outG, outB, 255);
+      lut[level * SHADE_LEVELS + shade] = packArgb(outR, outG, outB, alpha);
     }
   }
   return lut;

@@ -503,6 +503,10 @@ export function useSpectrogram3dCanvas({
       if (grid.count === 0) return;
 
       const ink = cssVar(canvas, "--muted-foreground", "#888");
+      // Surface's monochrome ramp runs against the BRIGHTER foreground token: a solid terrain
+      // needs the contrast, where floor lines and Lines' strokes read fine at muted. Everything
+      // else in this hook keeps using `ink`.
+      const foreground = cssVar(canvas, "--foreground", "#fff");
       const selection = cssVar(canvas, "--ui-loudness-selection", ink);
       const heightPx = proj.heightScale * view.heightGain;
 
@@ -545,25 +549,35 @@ export function useSpectrogram3dCanvas({
           : ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1);
         smoothGridTime(grid.heights, grid.tFracs, grid.count, grid.pointCount, rowGapTFrac);
         const off = ensureOffscreen(offscreenRef, W, H);
+        // The monochrome ramp needs the theme ink as RGB. resolveArgbRef probes a colour by
+        // writing a pixel to the offscreen canvas and reading it back; probing before the LUT
+        // cache check (and before off.pixels.fill(0)) keeps the probe write from being confused
+        // with buffer prep -- it is not load-bearing, putImageData below overwrites the whole
+        // canvas regardless.
+        const inkArgb = p.colorize ? 0 : resolveArgbRef.current(off.ctx, foreground);
         // Cached by identity, matching the repaint-skip guard's `last.colormapLut === p.colormapLut`
         // above: the theme layer hands the hook a new array whenever the colormap actually changes,
         // so identity is sufficient. Do not switch this to a stringified key -- colormapLut is a
         // 768-element Uint8Array, and interpolating it into a string calls toString() on every
-        // repaint that reaches this branch, which is the renderer's hot path.
+        // repaint that reaches this branch, which is the renderer's hot path. inkArgb is part of
+        // the key: a theme switch can move --foreground without touching the colormap.
         const cachedLut = surfaceLutRef.current;
         if (
           cachedLut.colorize !== p.colorize ||
           cachedLut.dbFloor !== p.dbFloor ||
-          cachedLut.colormapLut !== p.colormapLut
+          cachedLut.colormapLut !== p.colormapLut ||
+          cachedLut.inkArgb !== inkArgb
         ) {
           surfaceLutRef.current = {
             colorize: p.colorize,
             dbFloor: p.dbFloor,
             colormapLut: p.colormapLut,
+            inkArgb,
             lut: buildSurfaceLut({
               colormapLut: p.colormapLut,
               dbFloor: p.dbFloor,
               colorize: p.colorize,
+              ink: { r: inkArgb & 0xff, g: (inkArgb >>> 8) & 0xff, b: (inkArgb >>> 16) & 0xff },
             }),
           };
         }

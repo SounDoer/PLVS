@@ -347,6 +347,26 @@ stands.
    smoothing excludes rows touching a capture gap (they are not adjacent moments) and both end
    rows (the newest is the live edge). Both smoothers remain Surface-only; Lines is untouched. The
    benchmark's timed region now includes both, and every stride pick is unchanged.
+5. **Monochrome colour and alpha rebuilt.** First review of Monochrome: Decision #7's
+   colormap-ends ramp made it a duotone of the colormap's extremes (pale yellow on the shipping
+   theme — a colour choice nobody made), full-range shading printed slope noise as pure-black
+   speckles, and the alpha-always-255 rule filled the floor silhouette with a solid painted slab
+   wherever the signal sat at the dB floor. Monochrome now ramps on shade from `0.35` to `1.0` of
+   the theme ink (`--muted-foreground`, resolved once per repaint and added to the LUT cache key —
+   the same colour Lines' monochrome uses), and alpha tracks level below 25% of the range in BOTH
+   modes, restoring the recession the 2D heatmap (`paintSpan` writes level into alpha) and Lines
+   have always given quiet passages. The alpha reversal also removes the slab: quiet regions fade
+   to the floor grid instead of occupying it. The monochrome shade floor is the speckle fix:
+   colour stays readable because slope noise can no longer reach pure black.
+6. **Monochrome luminance = level × shade, against `--foreground`.** Item 5 overshot twice:
+   `--muted-foreground` was too grey for a solid terrain (it reads fine as Lines' stroke colour,
+   not as a surface), and carrying monochrome contrast on shade alone left loud and quiet terrain
+   indistinguishable above the alpha fade — the render went flat. Monochrome luminance is now a
+   product: absolute level (the same `spectrogramColorFracFromHeight` conversion Colorize uses,
+   so the dB Floor cannot re-brighten a peak) ramps from `0.25` to full ink, and shade modulates
+   that within `0.55`..1 — a narrower band than item 5 needed, because shade now only shapes the
+   relief instead of carrying the contrast. The ink moved to `--foreground`; only Surface's LUT
+   uses it, floor lines and Lines keep `--muted-foreground`.
 
 ## Panel Controls
 
