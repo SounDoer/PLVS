@@ -241,6 +241,12 @@ const DEPTH_FADE_FLOOR = 0.65;
  * @param {number} args.height
  * @param {object} args.proj from `buildProjection`
  * @param {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number }} args.grid
+ *        from `sampleWaterfallGrid`. `heights` are floor-relative fractions in 0..1. `count` should
+ *        stay at or below the `steps` a column yields -- roughly the canvas height -- because a
+ *        column point-samples the time axis at `steps + 1` positions: with more rows than that,
+ *        nearest-row sampling aliases and a large share of the sampled rows re-bind on a sub-row
+ *        window slide, which is the shimmer `spectrogram3dGrid.js` exists to prevent. Cost does not
+ *        scale with row count, but stability does.
  * @param {Uint16Array} args.rowLut from `buildRowLut`
  * @param {Uint32Array} args.lut from `buildSurfaceLut`
  * @param {number} args.heightGain the Height Scale multiplier
@@ -270,6 +276,10 @@ export function rasterizeSurface({
   const lutLast = rowLut.length - 1;
   const stride = Math.max(1, Math.floor(columnStride));
   const stepCap = Math.max(1, Math.floor(maxSteps ?? height));
+  // The projection terms the walk uses, read once. Individually this is noise; together with the
+  // fill loop below it keeps enough of the body in registers to matter at full-panel sizes.
+  const { originY, ty, fy } = proj;
+  const hyGain = heightGain * proj.hy;
 
   for (let x = 0; x < width; x += stride) {
     const span = columnFloorSpan(x, proj, stepCap);
@@ -278,17 +288,21 @@ export function rasterizeSurface({
     // Seed the horizon at the floor's NEAR edge for this column, not at the canvas bottom. With
     // `height` the nearest sample's wall would extend past the front edge of the floor and paint
     // the empty area below the scene.
-    const nearFloorY = proj.originY + span.u0 * proj.ty + span.v0 * proj.fy;
+    const nearFloorY = originY + span.u0 * ty + span.v0 * fy;
     let horizon = Math.min(height, Math.round(nearFloorY) + 1);
     if (horizon <= 0) continue;
 
+    // How many columns this one is replicated across: invariant per column, not per sample.
+    const kEnd = Math.min(stride, width - x);
+    const steps = span.steps;
     let u = span.u0;
     let v = span.v0;
     let prevH = NaN;
 
-    for (let s = 0; s <= span.steps; s++, u += span.du, v += span.dv) {
-      const bucket = Math.round((u + 0.5) * lutLast);
-      const row = rowLut[bucket < 0 ? 0 : bucket > lutLast ? lutLast : bucket];
+    for (let s = 0; s <= steps; s++, u += span.du, v += span.dv) {
+      // `columnFloorSpan` clips to the floor square, so `u` is in -0.5..0.5 and the bucket lands
+      // inside the table. Same convention as `unprojectFloor`: no degenerate guard is needed.
+      const row = rowLut[Math.round((u + 0.5) * lutLast)];
       if (row === NO_ROW) {
         // A capture gap: contribute nothing and leave the horizon alone, so what is behind the gap
         // stays visible through it.
@@ -296,17 +310,15 @@ export function rasterizeSurface({
         continue;
       }
 
-      // `columnFloorSpan` keeps `v` inside the square, so `q` is already in range and the clamp is
-      // a guard rather than a behaviour: no input reaches it, and no test can therefore pin it.
-      const q = Math.round((v + 0.5) * lastPoint);
-      const h = heights[row * pointCount + (q < 0 ? 0 : q > lastPoint ? lastPoint : q)];
+      // `v` is inside the square for the same reason, so `q` lands in 0..lastPoint unaided.
+      const h = heights[row * pointCount + Math.round((v + 0.5) * lastPoint)];
 
       // Slope along the view ray, measured before the visibility test: an occluded stretch still
       // shapes the terrain, so skipping it here would corrupt the shading of whatever follows.
       const slope = Number.isFinite(prevH) ? h - prevH : 0;
       prevH = h;
 
-      const y = Math.round(proj.originY + u * proj.ty + v * proj.fy + h * heightGain * proj.hy);
+      const y = Math.round(originY + u * ty + v * fy + h * hyGain);
       if (y >= horizon) continue;
       // Clamping to the top of the canvas can push a visible sample back onto the horizon, so the
       // test is repeated after the clamp. It also subsumes the `y === horizon` boundary above, which
@@ -322,20 +334,31 @@ export function rasterizeSurface({
         // while the user rotates, where a world-fixed light would darken whole faces.
         let shade = SHADE_MID + slope * SHADE_SLOPE_GAIN;
         shade = shade < 0 ? 0 : shade > 1 ? 1 : shade;
-        // Depth attenuation. s runs 0 at the near end to steps at the far end.
-        const near = span.steps > 0 ? 1 - s / span.steps : 1;
+        // Depth attenuation. s runs 0 at the near end to steps at the far end, and `steps` is at
+        // least 1 by construction.
+        const near = 1 - s / steps;
         shade *= DEPTH_FADE_FLOOR + (1 - DEPTH_FADE_FLOOR) * near;
-        const shadeIdx = Math.min(SHADE_LEVELS - 1, (shade * (SHADE_LEVELS - 1) + 0.5) | 0);
-        const level = Math.min(255, (h * 255 + 0.5) | 0);
+        // `shade` is clamped to 0..1 above and the depth factor only ever lowers it, and heights are
+        // 0..1 per this function's contract, so both indices are already inside their tables.
+        const shadeIdx = (shade * (SHADE_LEVELS - 1) + 0.5) | 0;
+        const level = (h * 255 + 0.5) | 0;
         argb = lut[level * SHADE_LEVELS + shadeIdx];
       }
 
-      const kEnd = Math.min(stride, width - x);
-      for (let yy = top; yy < horizon; yy++) {
-        const base = yy * width + x;
-        for (let k = 0; k < kEnd; k++) out[base + k] = argb;
+      // Walk the row base by `width` instead of multiplying per row. The stride-1 case is the
+      // default and gets its own loop, so the common path carries no inner loop at all.
+      let base = top * width + x;
+      if (kEnd === 1) {
+        for (let yy = top; yy < horizon; yy++, base += width) out[base] = argb;
+      } else {
+        for (let yy = top; yy < horizon; yy++, base += width) {
+          for (let k = 0; k < kEnd; k++) out[base + k] = argb;
+        }
       }
       horizon = top;
+      // The horizon has reached the top of the canvas: every remaining sample in this column is
+      // above it and therefore invisible. Reachable at a high Height Scale, where peaks clip.
+      if (horizon === 0) break;
     }
   }
 }

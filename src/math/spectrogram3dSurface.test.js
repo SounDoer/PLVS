@@ -359,20 +359,14 @@ function render(
 ) {
   const p = proj(azimuthDeg, elevationDeg);
   const out = new Uint32Array(W * H);
-  const lut = buildSurfaceLut({
-    colormapLut: testColormapLut(),
-    dbFloor: SPECTROGRAM_DB_MIN,
-    colorize: true,
-  });
-  const rowLut = buildRowLut(grid.tFracs, grid.count, 1024, 1.5 / Math.max(1, grid.count - 1));
   rasterizeSurface({
     out,
     width: W,
     height: H,
     proj: p,
     grid,
-    rowLut,
-    lut,
+    rowLut: defaultRowLut(grid),
+    lut: testLut(),
     heightGain,
     highlightArgb: HIGHLIGHT,
     highlightRow,
@@ -399,6 +393,15 @@ function defaultRowLut(grid) {
   return buildRowLut(grid.tFracs, grid.count, 1024, 1.5 / Math.max(1, grid.count - 1));
 }
 
+/** The colour table every rasteriser test renders through. */
+function testLut() {
+  return buildSurfaceLut({
+    colormapLut: testColormapLut(),
+    dbFloor: SPECTROGRAM_DB_MIN,
+    colorize: true,
+  });
+}
+
 /** `render`, with the row LUT, projection and destination buffer supplied by the caller. */
 function renderWith(grid, rowLut, p, { highlightRow = -1, out = new Uint32Array(W * H) } = {}) {
   rasterizeSurface({
@@ -408,11 +411,7 @@ function renderWith(grid, rowLut, p, { highlightRow = -1, out = new Uint32Array(
     proj: p,
     grid,
     rowLut,
-    lut: buildSurfaceLut({
-      colormapLut: testColormapLut(),
-      dbFloor: SPECTROGRAM_DB_MIN,
-      colorize: true,
-    }),
+    lut: testLut(),
     heightGain: 1,
     highlightArgb: HIGHLIGHT,
     highlightRow,
@@ -427,6 +426,11 @@ function gapGrid() {
   const grid = fakeGrid([0.5, 0.5, 0.5, 0.5, 0.5]);
   grid.tFracs.set([0, 0.02, 0.04, 0.96, 1]);
   return grid;
+}
+
+/** The row LUT that turns `gapGrid`'s clustering into an uncovered middle. */
+function gapRowLut(grid) {
+  return buildRowLut(grid.tFracs, grid.count, 1024, 0.05);
 }
 
 /**
@@ -637,7 +641,7 @@ describe("rasterizeSurface", () => {
   // sample, so those columns say nothing about how the gap was handled.
   it("keeps the terrain behind a gap visible through it", () => {
     const grid = gapGrid();
-    const rowLut = buildRowLut(grid.tFracs, grid.count, 1024, 0.05);
+    const rowLut = gapRowLut(grid);
     const p = proj();
     const out = renderWith(grid, rowLut, p, { highlightRow: 0 });
     const gapCols = new Set(columnsReaching(p, grid, NO_ROW, rowLut));
@@ -656,9 +660,10 @@ describe("rasterizeSurface", () => {
   // a horizon that fails to advance, or one that moves backwards during a gap, repaints pixels it
   // has already written.
   it("assigns every pixel at most once", () => {
+    const gapped = gapGrid();
     for (const [grid, rowLut, p] of [
       [fakeGrid([0.2, 0.9, 0.3, 0.8, 0.1, 0.6]), null, proj(135, 20)],
-      [gapGrid(), buildRowLut(gapGrid().tFracs, 5, 1024, 0.05), proj()],
+      [gapped, gapRowLut(gapped), proj()],
     ]) {
       const writes = new Uint16Array(W * H);
       const out = new Proxy(new Uint32Array(W * H), {
@@ -686,9 +691,10 @@ describe("rasterizeSurface", () => {
   // gap touch the horizon clips the following wall and tears a transparent stripe out of the middle
   // of the column.
   it("paints each column as one contiguous run", () => {
+    const gapped = gapGrid();
     const scenes = [
       render(fakeGrid([0.2, 0.9, 0.3, 0.8, 0.1, 0.6]), { elevationDeg: 20 }),
-      renderWith(gapGrid(), buildRowLut(gapGrid().tFracs, 5, 1024, 0.05), proj()),
+      renderWith(gapped, gapRowLut(gapped), proj()),
     ];
     const holes = [];
     for (const [scene, out] of scenes.entries()) {
@@ -742,6 +748,46 @@ describe("rasterizeSurface", () => {
     const withoutDip = brightest(render(flat, { elevationDeg: 20 }));
     expect(withoutDip).toBeGreaterThanOrEqual(0);
     expect(withDip).toBeGreaterThan(withoutDip);
+  });
+
+  // The walk stops early once the horizon reaches the top of the canvas, which only happens when a
+  // high Height Scale pushes peaks off the top. Stopping one row too soon costs the topmost row of
+  // those columns and nothing else, so it is invisible to every silhouette and contiguity assertion
+  // above: pin it by predicting, from the grid and `projectPoint` alone, exactly which columns reach
+  // row 0. The sample achieving a column's minimum y is always visible -- the horizon is a running
+  // minimum of the samples before it -- so reaching row 0 and painting it are the same thing.
+  it("paints the top row of every column whose terrain clips the canvas", () => {
+    const heightGain = 3;
+    const grid = fakeGrid([0.2, 0.9, 0.5, 1, 0.6, 0.95]);
+    const p = proj();
+    const out = render(grid, { heightGain });
+    const rowLut = defaultRowLut(grid);
+    const lutLast = rowLut.length - 1;
+    const wrong = [];
+    for (let x = 0; x < W; x++) {
+      const span = columnFloorSpan(x, p, H);
+      if (!span) continue;
+      let minY = Infinity;
+      for (let s = 0; s <= span.steps; s++) {
+        const u = span.u0 + span.du * s;
+        const v = span.v0 + span.dv * s;
+        const bucket = Math.round((u + 0.5) * lutLast);
+        const row = rowLut[bucket];
+        if (row === NO_ROW) continue;
+        const h =
+          grid.heights[row * grid.pointCount + Math.round((v + 0.5) * (grid.pointCount - 1))];
+        const y = Math.round(p.originY + u * p.ty + v * p.fy + h * heightGain * p.hy);
+        if (y < minY) minY = y;
+      }
+      const clips = minY <= 0;
+      const paintedTopRow = out[x] !== 0;
+      if (clips !== paintedTopRow) wrong.push({ x, minY, clips, paintedTopRow });
+    }
+    // Non-vacuous: the scene has to actually clip somewhere.
+    expect(wrong.slice(0, 5)).toEqual([]);
+    let clipped = 0;
+    for (let x = 0; x < W; x++) if (out[x] !== 0) clipped += 1;
+    expect(clipped).toBeGreaterThan(0);
   });
 
   // The frequency index must be `(v + 0.5) * (pointCount - 1)`. With two points the boundary sits
