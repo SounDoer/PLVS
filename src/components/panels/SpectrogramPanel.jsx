@@ -360,6 +360,7 @@ export function SpectrogramPanel({ compact = false }) {
     lineAlpha: normalizedPanelControls.spectrogram3dLineAlpha,
     lineWidth: normalizedPanelControls.spectrogram3dLineWidth,
     floor: normalizedPanelControls.spectrogram3dFloor,
+    mode: spectrogramMode,
   });
   const boundarySpan = newestMs - oldestMs;
   const {

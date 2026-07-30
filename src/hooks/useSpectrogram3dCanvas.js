@@ -9,6 +9,13 @@ import {
 } from "../math/spectrogram3dProjection.js";
 import { sampleWaterfallGrid } from "../math/spectrogram3dGrid.js";
 import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js";
+import {
+  buildRowLut,
+  buildSurfaceLut,
+  columnStrideFor,
+  packArgb,
+  rasterizeSurface,
+} from "../math/spectrogram3dSurface.js";
 
 // Cost tracks the product of these two, so they can be traded against each other while tuning:
 // more ridges reads as denser time resolution, more points as finer spectral detail.
@@ -34,6 +41,55 @@ function pointCountFor(widthPx) {
 function cssVar(el, name, fallback) {
   const value = getComputedStyle(el).getPropertyValue(name).trim();
   return value || fallback;
+}
+
+/** Rows within this multiple of the mean row spacing count as covering a sample; see buildRowLut. */
+const ROW_LUT_SIZE = 1024;
+const ROW_GAP_TOLERANCE = 1.5;
+
+/**
+ * Resolve a CSS colour string to a packed ARGB word.
+ *
+ * The per-pixel renderer cannot ask the canvas to parse a colour per sample, and the theme's values
+ * may be `oklch()`, which no amount of string handling will convert. So the canvas parses it once:
+ * fill a single pixel and read it back. Cached on the string, because the only thing that changes it
+ * is a theme switch.
+ */
+function makeArgbResolver() {
+  let lastCss = null;
+  let lastArgb = packArgb(255, 255, 255, 255);
+  return (ctx, css) => {
+    if (css === lastCss) return lastArgb;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = css;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    ctx.restore();
+    lastCss = css;
+    lastArgb = packArgb(r, g, b, a);
+    return lastArgb;
+  };
+}
+
+/**
+ * A reused offscreen canvas plus a Uint32 view over its ImageData.
+ *
+ * The surface is composited with `drawImage` rather than `putImageData` because putImageData
+ * OVERWRITES, alpha included -- writing the surface straight to the main canvas would erase the
+ * floor grid drawn beneath it. Rebuilt only on resize.
+ */
+function ensureOffscreen(ref, width, height) {
+  const current = ref.current;
+  if (current && current.canvas.width === width && current.canvas.height === height) return current;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const image = ctx.createImageData(width, height);
+  const next = { canvas, ctx, image, pixels: new Uint32Array(image.data.buffer) };
+  ref.current = next;
+  return next;
 }
 
 /**
@@ -212,10 +268,14 @@ export function useSpectrogram3dCanvas({
   lineAlpha,
   lineWidth,
   floor,
+  mode,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
   const cacheRef = useRef({ pointCount: 0, minHz: 0, maxHz: 0, bands: null, yToBand: null });
+  const offscreenRef = useRef(null);
+  const surfaceLutRef = useRef({ key: null, lut: null });
+  const resolveArgbRef = useRef(makeArgbResolver());
   const lastPaintRef = useRef({
     len: -1,
     version: -1,
@@ -236,6 +296,7 @@ export function useSpectrogram3dCanvas({
     lineAlpha: NaN,
     lineWidth: NaN,
     floor: undefined,
+    mode: undefined,
   });
 
   useEffect(() => {
@@ -257,6 +318,7 @@ export function useSpectrogram3dCanvas({
       lineAlpha,
       lineWidth,
       floor,
+      mode,
     };
   }, [
     oldestMs,
@@ -276,6 +338,7 @@ export function useSpectrogram3dCanvas({
     lineAlpha,
     lineWidth,
     floor,
+    mode,
   ]);
 
   useEffect(() => {
@@ -319,7 +382,8 @@ export function useSpectrogram3dCanvas({
         last.selectionXFrac === p.selectionXFrac &&
         last.lineAlpha === p.lineAlpha &&
         last.lineWidth === p.lineWidth &&
-        last.floor === p.floor
+        last.floor === p.floor &&
+        last.mode === p.mode
       )
         return;
       lastPaintRef.current = {
@@ -342,6 +406,7 @@ export function useSpectrogram3dCanvas({
         lineAlpha: p.lineAlpha,
         lineWidth: p.lineWidth,
         floor: p.floor,
+        mode: p.mode,
       };
 
       const ctx = canvas.getContext("2d");
@@ -415,21 +480,11 @@ export function useSpectrogram3dCanvas({
         drawAxisLabels(ctx, proj, ink, dpr);
       }
 
-      // Both branches ramp now -- colorize picks the colour from the colormap, monochrome varies
-      // only alpha -- so the stops are built once per repaint and reused by every ridge.
-      //
-      // At azimuth 0 and 180 the frequency axis has no projected horizontal extent and the ramp's
-      // geometry degenerates. That is a legitimate view, not an error: fall back to a flat opaque
-      // stroke at exactly those two angles instead of dividing into it.
-      const canRamp = Math.abs(proj.fx) > 1e-6;
-      const stopColors = canRamp
-        ? buildStopColors(p.colormapLut, ink, p.dbFloor, p.colorize)
-        : null;
-
-      // Scrub feedback: a vertical line through a 3D scene means nothing, so the selected ridge is
-      // highlighted instead. selectionXFrac is the same 0..1 window fraction the 2D selection line
-      // uses, so both modes mark the same moment. Ridges sit at their own timestamps rather than on
-      // a regular grid, so the nearest one has to be searched for.
+      // Scrub feedback: a vertical line through a 3D scene means nothing, so the selected ridge (or,
+      // in Surface, the row nearest the selected time) is highlighted instead. selectionXFrac is the
+      // same 0..1 window fraction the 2D selection line uses, so both modes mark the same moment.
+      // Rows sit at their own timestamps rather than on a regular grid, so the nearest one has to be
+      // searched for. Shared by both modes, so it runs before the branch.
       let selectedRidge = -1;
       if (p.selectedOffset >= 0 && Number.isFinite(p.selectionXFrac)) {
         let bestDelta = Infinity;
@@ -441,6 +496,60 @@ export function useSpectrogram3dCanvas({
           }
         }
       }
+
+      if (p.mode === "surface") {
+        const off = ensureOffscreen(offscreenRef, W, H);
+        const lutKey = `${p.colorize}|${p.dbFloor}|${p.colormapLut}`;
+        if (surfaceLutRef.current.key !== lutKey) {
+          surfaceLutRef.current = {
+            key: lutKey,
+            lut: buildSurfaceLut({
+              colormapLut: p.colormapLut,
+              dbFloor: p.dbFloor,
+              colorize: p.colorize,
+            }),
+          };
+        }
+        const rowLut = buildRowLut(
+          grid.tFracs,
+          grid.count,
+          ROW_LUT_SIZE,
+          ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1)
+        );
+        // resolveArgbRef fills a single pixel on the offscreen canvas and reads it back, so it must
+        // run BEFORE the pixel buffer is cleared -- calling it after off.pixels.fill(0) would leave
+        // one stray pixel in the output.
+        const highlightArgb = resolveArgbRef.current(off.ctx, selection);
+        off.pixels.fill(0);
+        rasterizeSurface({
+          out: off.pixels,
+          width: W,
+          height: H,
+          proj,
+          grid,
+          rowLut,
+          lut: surfaceLutRef.current.lut,
+          heightGain: view.heightGain,
+          highlightArgb,
+          highlightRow: selectedRidge,
+          columnStride: columnStrideFor(W, H),
+          maxSteps: H,
+        });
+        off.ctx.putImageData(off.image, 0, 0);
+        ctx.drawImage(off.canvas, 0, 0);
+        return;
+      }
+
+      // Both branches ramp now -- colorize picks the colour from the colormap, monochrome varies
+      // only alpha -- so the stops are built once per repaint and reused by every ridge.
+      //
+      // At azimuth 0 and 180 the frequency axis has no projected horizontal extent and the ramp's
+      // geometry degenerates. That is a legitimate view, not an error: fall back to a flat opaque
+      // stroke at exactly those two angles instead of dividing into it.
+      const canRamp = Math.abs(proj.fx) > 1e-6;
+      const stopColors = canRamp
+        ? buildStopColors(p.colormapLut, ink, p.dbFloor, p.colorize)
+        : null;
 
       ctx.lineJoin = "round";
       // Line widths are in the canvas coordinate system, which useCanvasSize sizes in DEVICE
