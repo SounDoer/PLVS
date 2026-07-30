@@ -32,20 +32,32 @@ describe("spectrogram panel help", () => {
     expect(twoD).toContain("Right drag - Pan timeline");
     expect(twoD.some((item) => item.includes("Rotate"))).toBe(false);
 
-    expect(threeD).toContain("Right drag - Rotate the surface");
+    expect(threeD).toContain("Right drag - Rotate");
     expect(threeD.some((item) => item.includes("Pan timeline"))).toBe(false);
   });
 
-  it("mentions Shift+wheel and the tick caveat only in 3D", () => {
-    const twoD = itemsOf(SPECTROGRAM_2D_HELP);
-    const threeD = itemsOf(SPECTROGRAM_3D_HELP);
+  it("mentions Shift+wheel only in 3D", () => {
+    expect(itemsOf(SPECTROGRAM_3D_HELP).some((item) => item.startsWith("Shift + wheel"))).toBe(
+      true
+    );
+    expect(itemsOf(SPECTROGRAM_2D_HELP).some((item) => item.startsWith("Shift + wheel"))).toBe(
+      false
+    );
+  });
 
-    expect(threeD.some((item) => item.startsWith("Shift + wheel"))).toBe(true);
-    expect(twoD.some((item) => item.startsWith("Shift + wheel"))).toBe(false);
-
-    // In 2D the ticks do line up with the data, so the caveat would be a lie there.
-    expect(threeD.some((item) => item.includes("state the range, not a position"))).toBe(true);
-    expect(twoD.some((item) => item.includes("state the range"))).toBe(false);
+  it("lists gestures only, in the shape every other panel uses", () => {
+    // This is a gesture reference, not documentation. Settings entries and prose caveats belong in
+    // the design docs; earlier revisions carried a "Display Range" section and a "3D limitations"
+    // section, and they overflowed the popover while telling the reader nothing to press.
+    for (const sections of [SPECTROGRAM_2D_HELP, SPECTROGRAM_3D_HELP]) {
+      for (const item of itemsOf(sections)) {
+        // "gesture - effect". Not anchored on the gesture half: "Left double-click" carries its own
+        // hyphen, so the separator is the spaced one, not the first one.
+        expect(item).toContain(" - ");
+        expect(item).not.toMatch(/\(settings\)/);
+        expect(item.length).toBeLessThanOrEqual(40);
+      }
+    }
   });
 });
 

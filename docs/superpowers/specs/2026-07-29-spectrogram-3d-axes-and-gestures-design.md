@@ -203,12 +203,21 @@ Chrome copies the signed value onto the horizontal axis rather than negating it,
 fixed array — the mechanism `vectorscope` already used. Two lists, selected on `spectrogram3d`.
 
 This is forced by the right-button exception: one list cannot describe both vocabularies, and a
-combined list is wrong in whichever mode the reader is actually in. The 3D list additionally states
-that the right button means something else in 2D, and that the axis ticks state the range rather
-than a position — a caveat that would be a lie in 2D, where the ticks do line up.
+combined list is wrong in whichever mode the reader is actually in. Resolving per mode is what makes
+the tick caveat and the cross-mode note unnecessary — each list is simply true where it is shown.
 
 Absent controls resolve to the 2D list. `panelControls` arrives here unnormalised, so a panel that
 has never touched the toggle must not be shown a mode it is not in.
+
+**Gestures only.** Every other panel's help is a flat list of `gesture - effect`, a few words each.
+An interim revision of this one carried a `Display Range` section naming a settings slider and a
+`3D limitations` section of prose; both overflowed the popover and neither told the reader anything
+to press. The dB-floor rationale and the 3D caveats live in these specs, which is where a reader who
+wants them is already looking. A test pins the shape: every item contains the ` - ` separator, names
+no settings control, and stays inside 40 characters.
+
+`Viewpoint` rather than `3D View` as the section title — in 3D the whole list is 3D, so the original
+name said nothing, and the section's actual subject is the camera.
 
 ## Testing
 

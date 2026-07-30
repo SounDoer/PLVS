@@ -82,13 +82,6 @@ const SPECTROGRAM_SNAPSHOT_HELP = {
   ],
 };
 
-const SPECTROGRAM_DISPLAY_RANGE_HELP = {
-  title: "Display Range",
-  items: [
-    "dB Floor (settings) - Raise it to give the display range to the loud part instead of the noise floor",
-  ],
-};
-
 const SPECTROGRAM_AXIS_ITEMS = [
   "Time axis wheel - Zoom time",
   "Time axis drag - Pan time",
@@ -110,7 +103,6 @@ export const SPECTROGRAM_2D_HELP = [
     ],
   },
   { title: "Axes", items: SPECTROGRAM_AXIS_ITEMS },
-  SPECTROGRAM_DISPLAY_RANGE_HELP,
 ];
 
 export const SPECTROGRAM_3D_HELP = [
@@ -121,32 +113,14 @@ export const SPECTROGRAM_3D_HELP = [
       "Mouse wheel - Zoom time",
       "Ctrl + wheel - Zoom frequency",
       "Ctrl + drag - Pan viewport",
-      "Shift + wheel - Height Scale: scroll up to exaggerate the surface, level and colour unchanged",
+      "Shift + wheel - Height Scale",
     ],
   },
   {
     title: "Viewpoint",
-    items: [
-      "Right drag - Rotate the surface",
-      "Right double-click - Return to the default viewpoint",
-      "In 2D these pan and reset the timeline instead - left drag still scrubs here",
-    ],
+    items: ["Right drag - Rotate", "Right double-click - Reset viewpoint"],
   },
-  {
-    title: "Axes",
-    items: [
-      ...SPECTROGRAM_AXIS_ITEMS,
-      "Ticks state the range, not a position - the rotated floor lines up with neither axis",
-    ],
-  },
-  SPECTROGRAM_DISPLAY_RANGE_HELP,
-  {
-    title: "3D limitations",
-    items: [
-      "No hover readout in 3D - Switch to 2D for exact values",
-      "Time runs right to left - The newest frame is nearest, unlike 2D",
-    ],
-  },
+  { title: "Axes", items: SPECTROGRAM_AXIS_ITEMS },
 ];
 
 function resolveSpectrogramHelp(controls) {
