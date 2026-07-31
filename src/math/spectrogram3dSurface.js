@@ -394,6 +394,39 @@ const SHADE_SLOPE_GAIN = 6;
 const DEPTH_FADE_FLOOR = 0.65;
 
 /**
+ * Height multiplier for the two window edges, where the terrain sinks into the floor.
+ *
+ * Both ends of the time window have the same pop mechanism without it: the region past the last
+ * row renders the end row's data held constant (the row LUT clamps the weight there), so when a
+ * frame enters its bucket at the newest end, or leaves the window at the oldest, the held region
+ * is replaced with different data in a single update -- a full-height cross-section blinking in or
+ * out. Scaling heights down to 0 towards the edge turns the end face from a wall into a ramp: new
+ * cross-sections grow out of the floor instead of popping, and old terrain submerges instead of
+ * vanishing. The level-driven alpha fade picks up below 25% height, so the sink doubles as a
+ * dissolve for free.
+ *
+ * Heights are faded, not alpha: a solid gone translucent reads as glass, while a sunk solid keeps
+ * its occlusion semantics. Applied before the slope term, so the ramp itself is shaded like any
+ * other terrain.
+ *
+ * The widths differ by end on purpose, mirroring the line waterfall's asymmetry (its newest ridge
+ * is deliberately NOT faded): the entering edge gets about one decimation stride -- enough to
+ * de-pop the end face without dimming the live moment the user is watching -- and the exiting
+ * edge gets the same 2.5 strides Lines fades its ridges over.
+ *
+ * @param {number} tFrac sample position in the window, 0 = oldest (exiting) end, 1 = newest
+ * @param {number} enterWidth fade width at the tFrac = 1 end, in tFrac; 0 disables
+ * @param {number} exitWidth fade width at the tFrac = 0 end, in tFrac; 0 disables
+ * @returns {number} 0..1, exactly 1 everywhere when both widths are 0
+ */
+export function edgeFade(tFrac, enterWidth, exitWidth) {
+  let fade = 1;
+  if (exitWidth > 0) fade = Math.min(fade, tFrac / exitWidth);
+  if (enterWidth > 0) fade = Math.min(fade, (1 - tFrac) / enterWidth);
+  return fade < 0 ? 0 : fade;
+}
+
+/**
  * Rasterise the whole surface into `out`, one screen column at a time.
  *
  * Each column is walked FRONT TO BACK with a running minimum (`horizon`) of the topmost pixel
@@ -426,6 +459,8 @@ const DEPTH_FADE_FLOOR = 0.65;
  * @param {number} args.highlightRow grid row to highlight, or -1
  * @param {number} args.columnStride rasterise every Nth column and replicate
  * @param {number} args.maxSteps per-column sample cap
+ * @param {number} [args.enterFadeTFrac] height fade width at the newest window edge; see edgeFade
+ * @param {number} [args.exitFadeTFrac] height fade width at the oldest window edge; see edgeFade
  */
 export function rasterizeSurface({
   out,
@@ -440,6 +475,8 @@ export function rasterizeSurface({
   highlightRow = -1,
   columnStride = 1,
   maxSteps,
+  enterFadeTFrac = 0,
+  exitFadeTFrac = 0,
 }) {
   const { heights, count, pointCount } = grid;
   if (count <= 0 || pointCount <= 0) return;
@@ -499,7 +536,9 @@ export function rasterizeSurface({
       const base1 = (row + 1 < count ? row + 1 : row) * pointCount;
       const hLo = heights[base0 + q0] + (heights[base0 + q1] - heights[base0 + q0]) * wq;
       const hHi = heights[base1 + q0] + (heights[base1 + q1] - heights[base1 + q0]) * wq;
-      const h = hLo + (hHi - hLo) * wRow;
+      // The edge fade shapes the terrain itself (see edgeFade), so it applies BEFORE the slope:
+      // the ramp at the window edge is shaded like any other slope, not painted grey.
+      const h = (hLo + (hHi - hLo) * wRow) * edgeFade(u + 0.5, enterFadeTFrac, exitFadeTFrac);
 
       // Terrain gradient along the view ray, measured before the visibility test: an occluded stretch
       // still shapes the terrain, so skipping it here would corrupt the shading of whatever follows.

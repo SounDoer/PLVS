@@ -7,6 +7,7 @@ import {
   buildSurfaceLut,
   columnFloorSpan,
   columnStrideFor,
+  edgeFade,
   NO_ROW,
   packArgb,
   rasterizeSurface,
@@ -429,7 +430,15 @@ function fakeGrid(rowHeights, pointCount = 8) {
 
 function render(
   grid,
-  { highlightRow = -1, columnStride = 1, heightGain = 1, elevationDeg = 60, azimuthDeg = 135 } = {}
+  {
+    highlightRow = -1,
+    columnStride = 1,
+    heightGain = 1,
+    elevationDeg = 60,
+    azimuthDeg = 135,
+    enterFadeTFrac = 0,
+    exitFadeTFrac = 0,
+  } = {}
 ) {
   const p = proj(azimuthDeg, elevationDeg);
   const out = new Uint32Array(W * H);
@@ -446,6 +455,8 @@ function render(
     highlightRow,
     columnStride,
     maxSteps: H,
+    enterFadeTFrac,
+    exitFadeTFrac,
   });
   return out;
 }
@@ -961,6 +972,55 @@ describe("rasterizeSurface", () => {
     expect(transitions).toBeGreaterThan(0);
     expect(maxStep).toBeLessThanOrEqual(4);
   });
+
+  // The exit fade sinks the far edge of the terrain into the floor: on a flat field at azimuth 90
+  // the silhouette top no longer sits at the far corner's full height but at the fade boundary,
+  // one fade-width in from the edge. Predicted through projectPoint, not the walk.
+  it("sinks the far edge into the floor over the exit fade width", () => {
+    const grid = fakeGrid(new Array(20).fill(0.8));
+    const p = proj(90, 60);
+    const exitFadeTFrac = 0.2;
+    const out = render(grid, { azimuthDeg: 90, exitFadeTFrac });
+    const x = Math.round(W / 2);
+    const topOf = (buf) => {
+      for (let y = 0; y < H; y++) {
+        if (buf[y * W + x] !== 0) return y;
+      }
+      return -1;
+    };
+    const top = topOf(out);
+    expect(top).toBeGreaterThanOrEqual(0);
+    const predicted = projectPoint(exitFadeTFrac, 0.5, 0.8, p).y;
+    expect(Math.abs(top - predicted)).toBeLessThanOrEqual(3);
+    // Sanity: without the fade the same column tops out at the far corner, visibly higher.
+    const solidTop = topOf(render(grid, { azimuthDeg: 90 }));
+    expect(top - solidTop).toBeGreaterThan(10);
+  });
+
+  // At the entering edge the fade ramps the held heights down to the floor, so the bottom of each
+  // column's run is painted by samples whose level sits inside the alpha fade -- translucent --
+  // instead of by the newest row at full level. The alpha byte is the discriminator: pixel
+  // coverage is identical either way (the wall hugs the ramped terrain down to the floor).
+  it("ramps the entering edge down to the floor instead of painting a full-height wall", () => {
+    const grid = fakeGrid(new Array(20).fill(0.8));
+    const x = Math.round(W / 2);
+    const bottomOf = (buf) => {
+      for (let y = H - 1; y >= 0; y--) {
+        if (buf[y * W + x] !== 0) return y;
+      }
+      return -1;
+    };
+    const solid = render(grid, { azimuthDeg: 90 });
+    const faded = render(grid, { azimuthDeg: 90, enterFadeTFrac: 0.1 });
+    const solidBottom = bottomOf(solid);
+    const fadedBottom = bottomOf(faded);
+    expect(solidBottom).toBeGreaterThan(0);
+    expect(fadedBottom).toBeGreaterThan(0);
+    // Full wall: the newest row's level paints the run's bottom at full opacity.
+    expect(solid[solidBottom * W + x] >>> 24).toBe(255);
+    // Ramp: the lip is painted by sunk samples, inside the level-alpha fade.
+    expect(faded[fadedBottom * W + x] >>> 24).toBeLessThan(255);
+  });
 });
 
 describe("smoothGridFrequency", () => {
@@ -1004,6 +1064,28 @@ describe("smoothGridFrequency", () => {
     expect(heights[0]).toBeCloseTo(0.5, 6);
     expect(heights[1]).toBeCloseTo(0.75, 6);
     smoothGridFrequency(new Float32Array(0), 0, 0); // must not throw
+  });
+});
+
+describe("edgeFade", () => {
+  it("is 1 in the interior and ramps linearly to 0 at both edges", () => {
+    expect(edgeFade(0.5, 0.1, 0.2)).toBe(1);
+    expect(edgeFade(0, 0.1, 0.2)).toBe(0);
+    expect(edgeFade(1, 0.1, 0.2)).toBe(0);
+    expect(edgeFade(0.1, 0.1, 0.2)).toBe(0.5); // halfway into the 0.2-wide exit ramp
+    expect(edgeFade(0.95, 0.1, 0.2)).toBeCloseTo(0.5, 12); // halfway into the 0.1-wide enter ramp
+    expect(edgeFade(0.2, 0.1, 0.2)).toBe(1); // exactly at the exit boundary
+  });
+
+  // The rasteriser multiplies heights by this unconditionally, so the disabled case must be an
+  // exact identity, not an approximation.
+  it("is exactly 1 everywhere when both widths are 0", () => {
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) expect(edgeFade(t, 0, 0)).toBe(1);
+  });
+
+  it("never goes negative past the edges", () => {
+    expect(edgeFade(-0.1, 0.1, 0.2)).toBe(0);
+    expect(edgeFade(1.1, 0.1, 0.2)).toBe(0);
   });
 });
 

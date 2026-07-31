@@ -367,6 +367,18 @@ stands.
    that within `0.55`..1 — a narrower band than item 5 needed, because shade now only shapes the
    relief instead of carrying the contrast. The ink moved to `--foreground`; only Surface's LUT
    uses it, floor lines and Lines keep `--muted-foreground`.
+7. **Both end faces sink into the floor.** The two window edges share one pop mechanism: the
+   region past the last row renders the end row's data held constant, so a frame entering its
+   bucket (newest end) or leaving the window (oldest end) replaces the held region in a single
+   update — a full-height cross-section blinking in or out. `edgeFade` now scales heights down to
+   0 towards both edges, one decimation stride at the entering edge and 2.5 at the exiting one
+   (the same asymmetry Lines keeps: arrival is the signal, departure is history scrolling away).
+   Heights are faded, not alpha — a sunk solid keeps its occlusion semantics, and the level-alpha
+   fade from item 5 picks up below 25% height, so the sink doubles as a dissolve for free. The
+   fade applies before the slope term, so the ramps shade like any other terrain. This also
+   retires the known issue noted at the bottom of Acceptance (the far sliver changing abruptly
+   when the oldest row drops out). Benchmark re-run with the fade in the timed region: cost is
+   within run-to-run noise, every stride pick unchanged.
 
 ## Panel Controls
 

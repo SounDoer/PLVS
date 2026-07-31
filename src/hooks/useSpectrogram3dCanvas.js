@@ -32,6 +32,9 @@ const GRADIENT_STOPS = 16;
 // How many ridge spacings the old-end fade is spread over. Enough to read as a dissolve rather
 // than a blink, short enough that it costs almost none of the visible history.
 const EDGE_FADE_RIDGES = 2.5;
+// Surface's entering-edge fade, in decimation strides. Narrower than the exiting edge on purpose:
+// it only needs to turn the end face from a wall into a ramp, not to fade the live moment out.
+const ENTER_FADE_STRIDES = 1;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -539,14 +542,16 @@ export function useSpectrogram3dCanvas({
         // grid is rebuilt on every repaint, so mutating it here cannot leak into the Lines branch
         // of a later frame; within THIS frame the branches are exclusive.
         smoothGridFrequency(grid.heights, grid.count, grid.pointCount);
-        // Tolerance in tFrac: 1.5x the decimation stride. Fall back to the old mean-spacing
-        // formula only when the stride is unusable (non-finite span / sampleMs), where the mean
-        // is the best available estimate of it. The row LUT's coverage and the time smoother's
-        // gap detection share the value, so "gap" means the same thing in both.
-        const strideTFrac = grid.strideMs / span;
-        const rowGapTFrac = Number.isFinite(strideTFrac)
-          ? ROW_GAP_TOLERANCE * strideTFrac
-          : ROW_GAP_TOLERANCE / Math.max(1, grid.count - 1);
+        // The decimation stride in tFrac drives three things in this branch: the row LUT's
+        // coverage tolerance, the time smoother's gap detection, and the two edge-fade widths --
+        // all four mean "a couple of rows" and must scale together. Falls back to the mean row
+        // spacing only when the stride is unusable (non-finite span / sampleMs).
+        const rawStrideTFrac = grid.strideMs / span;
+        const strideTFrac =
+          Number.isFinite(rawStrideTFrac) && rawStrideTFrac > 0
+            ? rawStrideTFrac
+            : 1 / Math.max(1, grid.count - 1);
+        const rowGapTFrac = ROW_GAP_TOLERANCE * strideTFrac;
         smoothGridTime(grid.heights, grid.tFracs, grid.count, grid.pointCount, rowGapTFrac);
         const off = ensureOffscreen(offscreenRef, W, H);
         // The monochrome ramp needs the theme ink as RGB. resolveArgbRef probes a colour by
@@ -601,6 +606,13 @@ export function useSpectrogram3dCanvas({
           highlightRow: selectedRidge,
           columnStride: columnStrideFor(W, H),
           maxSteps: H,
+          // The two end faces of the solid: sink the terrain into the floor rather than letting
+          // cross-sections pop in and out. Asymmetric on purpose, mirroring Lines (whose newest
+          // ridge is deliberately not faded): one stride at the entering edge de-pops the wall
+          // without dimming the live moment; the exiting edge gets the same 2.5 ridges Lines
+          // fades over.
+          enterFadeTFrac: ENTER_FADE_STRIDES * strideTFrac,
+          exitFadeTFrac: EDGE_FADE_RIDGES * strideTFrac,
         });
         off.ctx.putImageData(off.image, 0, 0);
         ctx.drawImage(off.canvas, 0, 0);

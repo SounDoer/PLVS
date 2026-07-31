@@ -95,6 +95,9 @@ function measure({ width, height, rows, points }, columnStride, lut) {
       highlightRow: -1,
       columnStride,
       maxSteps: height,
+      // Same widths the hook passes: 1 stride at the entering edge, 2.5 at the exiting one.
+      enterFadeTFrac: 1 / Math.max(1, grid.count - 1),
+      exitFadeTFrac: 2.5 / Math.max(1, grid.count - 1),
     });
     samples.push(performance.now() - started);
   }
