@@ -38,14 +38,18 @@ import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
  * @param {number} args.oldestMs window start, in ms
  * @param {number} args.span window width, in ms
  * @param {number} args.sampleMs nominal frame period; quantises the stride so it cannot jitter
- * @param {number} args.maxRidges upper bound on the number of ridges drawn
+ * @param {number} args.maxRidges upper bound on the number of DECIMATED ridges; `pinLiveRow` adds
+ *        one row on top of it
  * @param {Int16Array} args.yToBand frequency sample points; its length sets pointCount
  * @param {number} args.dbFloor dB value that normalises to height 0; the top stays SPECTROGRAM_DB_MAX
- * @returns {{ heights: Float32Array, tFracs: Float64Array, count: number, pointCount: number, strideMs: number }}
+ * @param {boolean} [args.pinLiveRow] append the newest in-window frame as an extra row; see below
+ * @returns {{ heights: Float32Array, tFracs: Float64Array, count: number, bucketCount: number,
+ *          pointCount: number, strideMs: number }}
  *          `strideMs` is the quantised bucket width, returned so callers can scale per-bucket
  *          tolerances by the actual decimation stride rather than by the row count -- at capture
  *          start the rows all sit at one end of the window, and a tolerance derived from
- *          `span / count` smears them across the empty rest of it.
+ *          `span / count` smears them across the empty rest of it. `bucketCount` counts the
+ *          decimated rows alone, so a caller can address them without the pinned live row.
  */
 export function sampleWaterfallGrid({
   view,
@@ -57,12 +61,18 @@ export function sampleWaterfallGrid({
   maxRidges,
   yToBand,
   dbFloor,
+  pinLiveRow = false,
 }) {
   const dbRange = SPECTROGRAM_DB_MAX - dbFloor;
   const pointCount = yToBand.length;
   const cap = Math.max(1, Math.floor(maxRidges));
-  const heights = new Float32Array(cap * pointCount);
-  const tFracs = new Float64Array(cap);
+  // The live row gets a slot of its OWN rather than the last decimated one. Taking a bucket's slot
+  // instead would drop the newest bucket row exactly when the cap binds, leaving a two-stride hole
+  // between the last kept row and the live row -- wide enough for the row LUT to read it as a
+  // capture gap and hold across it, which is the artefact pinning exists to remove.
+  const capacity = pinLiveRow ? cap + 1 : cap;
+  const heights = new Float32Array(capacity * pointCount);
+  const tFracs = new Float64Array(capacity);
 
   // One frame per absolute-time bucket. Buckets are anchored to the epoch rather than to the
   // window, so a frame stays selected while the window slides past it, and their width is a whole
@@ -74,8 +84,22 @@ export function sampleWaterfallGrid({
       : rawStrideMs;
 
   if (!view || endIdx < startIdx || !(span > 0)) {
-    return { heights, tFracs, count: 0, pointCount, strideMs };
+    return { heights, tFracs, count: 0, bucketCount: 0, pointCount, strideMs };
   }
+
+  /** Read frame `i` into row `count`, or report that it carries no levels. */
+  const writeRow = (i, ts, count) => {
+    const dbList = view.rowAt(i)?.dbList;
+    if (!dbList) return false;
+    const base = count * pointCount;
+    for (let q = 0; q < pointCount; q++) {
+      const db = dbList[yToBand[q]];
+      const norm = Number.isFinite(db) ? (db - dbFloor) / dbRange : 0;
+      heights[base + q] = norm < 0 ? 0 : norm > 1 ? 1 : norm;
+    }
+    tFracs[count] = (ts - oldestMs) / span;
+    return true;
+  };
 
   // Seed from the frame just *outside* the window, so which frame wins a bucket never depends on
   // where the window edge happens to fall. Seeding with NaN instead force-keeps whatever frame
@@ -86,6 +110,7 @@ export function sampleWaterfallGrid({
   const beforeTs = view.timestampAt(startIdx - 1);
   let lastBucket = Number.isFinite(beforeTs) ? Math.floor(beforeTs / strideMs) : NaN;
   let count = 0;
+  let lastIdx = -1;
 
   for (let i = startIdx; i <= endIdx && count < cap; i++) {
     const ts = view.timestampAt(i);
@@ -93,21 +118,34 @@ export function sampleWaterfallGrid({
 
     const bucket = Math.floor(ts / strideMs);
     if (bucket === lastBucket) continue;
-
-    const snap = view.rowAt(i);
-    const dbList = snap?.dbList;
-    if (!dbList) continue;
+    if (!writeRow(i, ts, count)) continue;
 
     lastBucket = bucket;
-    const base = count * pointCount;
-    for (let q = 0; q < pointCount; q++) {
-      const db = dbList[yToBand[q]];
-      const norm = Number.isFinite(db) ? (db - dbFloor) / dbRange : 0;
-      heights[base + q] = norm < 0 ? 0 : norm > 1 ? 1 : norm;
-    }
-    tFracs[count] = (ts - oldestMs) / span;
+    lastIdx = i;
     count += 1;
   }
 
-  return { heights, tFracs, count, pointCount, strideMs };
+  const bucketCount = count;
+
+  // The newest frame, always, on top of whatever decimation kept -- the entering end's continuity
+  // depends on it. Without it the stretch between the last kept frame and the window edge renders
+  // that frame HELD, growing longer for as many frames as share its bucket, and then swapping to
+  // different data the moment the next bucket opens. That swap is the entering end's pop, and no
+  // amount of edge fading removes it, because the pop is in the data rather than in the height.
+  //
+  // Pinning the live frame turns the swap into a morph: the stretch is now an interpolation towards
+  // the newest frame that is re-aimed on every update, and a frame that later wins a bucket was
+  // already this row, so it becomes permanent instead of appearing. The row's own frame-to-frame
+  // jitter -- the reason decimation buckets by absolute time in the first place -- costs nothing
+  // here, because Surface's entering-edge fade multiplies it by ~0 at the window edge where it sits.
+  //
+  // Callers that draw rows as discrete objects must NOT ask for this: Lines strokes one visible
+  // curve per row and deliberately leaves its newest ridge unfaded, so a re-aimed row there is a
+  // ridge visibly twitching at full brightness. Hence the opt-in flag rather than doing it always.
+  if (pinLiveRow && count < capacity && lastIdx !== endIdx) {
+    const ts = view.timestampAt(endIdx);
+    if (Number.isFinite(ts) && writeRow(endIdx, ts, count)) count += 1;
+  }
+
+  return { heights, tFracs, count, bucketCount, pointCount, strideMs };
 }

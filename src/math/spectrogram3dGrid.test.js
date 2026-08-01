@@ -266,6 +266,102 @@ describe("sampleWaterfallGrid", () => {
     expect(grid.strideMs).toBe(40); // span 400 / maxRidges 10 = 1 x 40 ms
   });
 
+  // Without the live row the stretch between the last decimated frame and the window edge renders
+  // that frame held, and swaps to different data the moment the next bucket opens -- the entering
+  // end's pop. Pinning it makes that stretch an interpolation that is re-aimed every update, and a
+  // frame that later wins a bucket was already this row, so it becomes permanent instead of
+  // appearing.
+  it("pins the newest frame as an extra row when decimation skipped it", () => {
+    // 10 ms frames against an 80 ms stride: the newest frame is three frames past the last bucket.
+    const timestamps = evenly(0, 390, 10);
+    const view = framesAt(timestamps, -20);
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: timestamps.length - 1,
+      maxRidges: 20,
+      pinLiveRow: true,
+    });
+    expect(grid.count).toBe(grid.bucketCount + 1);
+    expect(grid.tFracs[grid.count - 1]).toBeCloseTo(390 / 400, 12);
+    // Ascending order is the row LUT's precondition, and the pinned row must not break it.
+    for (let r = 1; r < grid.count; r++) {
+      expect(grid.tFracs[r]).toBeGreaterThan(grid.tFracs[r - 1]);
+    }
+  });
+
+  it("reads the pinned row from the newest frame", () => {
+    const view = viewOf([
+      { timestampMs: 0, bands: [], dbList: [SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MIN] },
+      { timestampMs: 10, bands: [], dbList: [SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MIN] },
+      { timestampMs: 20, bands: [], dbList: [SPECTROGRAM_DB_MAX, SPECTROGRAM_DB_MAX] },
+    ]);
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: 2,
+      pinLiveRow: true,
+    });
+    expect(grid.count).toBe(grid.bucketCount + 1);
+    expect(grid.heights[(grid.count - 1) * grid.pointCount]).toBeCloseTo(1, 6);
+  });
+
+  it("adds no row when the newest frame already won a bucket", () => {
+    const timestamps = evenly(0, 400, 10);
+    const view = framesAt(timestamps, -20);
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: timestamps.length - 1,
+      maxRidges: 20,
+      pinLiveRow: true,
+    });
+    expect(grid.count).toBe(grid.bucketCount);
+  });
+
+  // Lines strokes one visible curve per row and leaves its newest ridge unfaded, so a row that is
+  // re-aimed every update would twitch at full brightness there. Off unless asked for.
+  it("pins nothing by default", () => {
+    const timestamps = evenly(0, 390, 10);
+    const view = framesAt(timestamps, -20);
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: timestamps.length - 1,
+      maxRidges: 20,
+    });
+    expect(grid.count).toBe(grid.bucketCount);
+    expect(grid.tFracs[grid.count - 1]).toBeLessThan(390 / 400);
+  });
+
+  // The live row must not cost a decimated one. Taking the last slot instead would drop the newest
+  // bucket row exactly when the cap binds, leaving a two-stride hole that the row LUT reads as a
+  // capture gap and holds across -- the artefact pinning exists to remove.
+  it("keeps the pinned row on top of maxRidges rather than instead of a decimated one", () => {
+    const timestamps = evenly(0, 4000, 10);
+    const view = framesAt(timestamps, -20);
+    const args = {
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: timestamps.length - 1,
+      span: 4000,
+      maxRidges: 5,
+    };
+    const plain = sampleWaterfallGrid(args);
+    const pinned = sampleWaterfallGrid({ ...args, pinLiveRow: true });
+
+    expect(plain.count).toBe(5);
+    expect(pinned.bucketCount).toBe(5);
+    expect(pinned.count).toBe(6);
+    // The decimated rows are the same ones either way.
+    for (let r = 0; r < 5; r++) expect(pinned.tFracs[r]).toBeCloseTo(plain.tFracs[r], 12);
+  });
+
   it("skips frames that carry no levels", () => {
     const view = viewOf([
       { timestampMs: 0, bands: [], dbList: null },

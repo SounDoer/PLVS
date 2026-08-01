@@ -787,35 +787,79 @@ describe("rasterizeSurface", () => {
     }
   });
 
-  // Every visible sample fills the wall down to the previous silhouette, so a column's painted
-  // pixels are one unbroken run from the topmost sample to the floor's near edge -- including across
-  // a capture gap, which is skipped rather than allowed to move the horizon. Anything that lets a
-  // gap touch the horizon clips the following wall and tears a transparent stripe out of the middle
-  // of the column.
-  it("paints each column as one contiguous run", () => {
-    const gapped = gapGrid();
-    const scenes = [
-      render(fakeGrid([0.2, 0.9, 0.3, 0.8, 0.1, 0.6]), { elevationDeg: 20 }),
-      renderWith(gapped, gapRowLut(gapped), proj()),
-    ];
+  /** Transparent pixels lying between the topmost and bottommost painted pixel of a column. */
+  function holesIn(out) {
     const holes = [];
-    for (const [scene, out] of scenes.entries()) {
-      for (let x = 0; x < W; x++) {
-        let first = -1;
-        let last = -1;
-        for (let y = 0; y < H; y++) {
-          if (out[y * W + x] !== 0) {
-            if (first < 0) first = y;
-            last = y;
-          }
-        }
-        if (first < 0) continue;
-        for (let y = first; y <= last; y++) {
-          if (out[y * W + x] === 0) holes.push({ scene, x, y });
+    for (let x = 0; x < W; x++) {
+      let first = -1;
+      let last = -1;
+      for (let y = 0; y < H; y++) {
+        if (out[y * W + x] !== 0) {
+          if (first < 0) first = y;
+          last = y;
         }
       }
+      if (first < 0) continue;
+      for (let y = first; y <= last; y++) {
+        if (out[y * W + x] === 0) holes.push({ x, y });
+      }
     }
-    expect(holes.slice(0, 5)).toEqual([]);
+    return holes;
+  }
+
+  // Continuous terrain must come out as one unbroken run per column: consecutive samples are at most
+  // one screen row apart, so bounding each sample's wall by the floor beneath it still leaves every
+  // sample's fill reaching the previous silhouette. Anything that tears a stripe out of CONTINUOUS
+  // terrain is a bug in the wall arithmetic.
+  it("paints continuous terrain as one contiguous run per column", () => {
+    const out = render(fakeGrid([0.2, 0.9, 0.3, 0.8, 0.1, 0.6]), { elevationDeg: 20 });
+    expect(countOpaque(out)).toBeGreaterThan(0);
+    expect(holesIn(out).slice(0, 5)).toEqual([]);
+  });
+
+  // Uncovered stretches are the exception, and deliberately so -- this reverses the earlier decision
+  // that a column stays contiguous across a gap too. Filling the first sample after a hole down to
+  // the stale horizon extrudes its cross-section forward over floor the data does not reach, and
+  // since the extrusion's bottom follows the floor's near boundary rather than the terrain's own
+  // end, it reads as the surface spilling out from under the floor. What a hole in a solid actually
+  // shows is the far terrain's front face down to ITS floor point, and empty floor below that.
+  it("shows a band of empty floor through a capture gap", () => {
+    const gapped = gapGrid();
+    const out = renderWith(gapped, gapRowLut(gapped), proj());
+    expect(countOpaque(out)).toBeGreaterThan(0);
+    expect(holesIn(out).length).toBeGreaterThan(0);
+  });
+
+  // The case from a real capture start: the window is only partly filled and the empty stretch is
+  // the one towards the viewer, so EVERY column walks through uncovered samples before reaching any
+  // terrain, and the whole surface gets extruded forward onto empty floor. The invariant that kills
+  // it is local -- no pixel may be painted below the floor point beneath the terrain that produced
+  // it -- so it is asserted against the nearest covered sample of each column.
+  it("paints nothing below the floor beneath the terrain when the near end is uncovered", () => {
+    const grid = fakeGrid([0.5, 0.5, 0.5, 0.5]);
+    grid.tFracs.set([0, 0.01, 0.02, 0.03]); // all of it at the far end; the near end holds no data
+    const rowLut = buildRowLut(grid.tFracs, grid.count, 1024, 0.02);
+    const p = proj();
+    const out = renderWith(grid, rowLut, p);
+    expect(countOpaque(out)).toBeGreaterThan(0);
+
+    const lutLast = rowLut.rows.length - 1;
+    const spills = [];
+    for (let x = 0; x < W; x++) {
+      const span = columnFloorSpan(x, p, H);
+      if (!span) continue;
+      let limit = -1;
+      for (let s = 0; s <= span.steps; s++) {
+        const u = span.u0 + span.du * s;
+        const v = span.v0 + span.dv * s;
+        if (rowLut.rows[Math.round((u + 0.5) * lutLast)] === NO_ROW) continue;
+        limit = Math.round(p.originY + u * p.ty + v * p.fy);
+        break;
+      }
+      if (limit < 0) continue;
+      for (let y = limit + 1; y < H; y++) if (out[y * W + x] !== 0) spills.push({ x, y });
+    }
+    expect(spills.slice(0, 5)).toEqual([]);
   });
 
   // Slope is read before the visibility test, so a stretch that is hidden still shapes the shading
@@ -1068,7 +1112,7 @@ describe("smoothGridFrequency", () => {
 });
 
 describe("edgeFade", () => {
-  it("is 1 in the interior and ramps linearly to 0 at both edges", () => {
+  it("is 1 in the interior and ramps to 0 at both edges", () => {
     expect(edgeFade(0.5, 0.1, 0.2)).toBe(1);
     expect(edgeFade(0, 0.1, 0.2)).toBe(0);
     expect(edgeFade(1, 0.1, 0.2)).toBe(0);
@@ -1087,6 +1131,27 @@ describe("edgeFade", () => {
     expect(edgeFade(-0.1, 0.1, 0.2)).toBe(0);
     expect(edgeFade(1.1, 0.1, 0.2)).toBe(0);
   });
+
+  // A linear ramp kinks where it meets the floor and again where it reaches full height, and a
+  // heightfield shows both as creases running across the frequency axis. The eased ramp has to be
+  // flat at both of those ends -- that, not the midpoint, is the whole point of easing it.
+  it("leaves the ramp flat where it meets the floor and where it reaches full height", () => {
+    const near = (t) => edgeFade(t, 0, 1); // one full-width exit ramp, so tFrac is the ramp position
+    // Quarter of the way up the ramp the eased curve is well under the linear 0.25, and three
+    // quarters of the way up it is well over 0.75: the two shoulders, flattened.
+    expect(near(0.25)).toBeCloseTo(0.15625, 12);
+    expect(near(0.75)).toBeCloseTo(0.84375, 12);
+    expect(near(0.5)).toBeCloseTo(0.5, 12);
+  });
+
+  it("stays monotonic across each ramp", () => {
+    let prev = -1;
+    for (let i = 0; i <= 50; i++) {
+      const value = edgeFade(i / 50, 0, 1);
+      expect(value).toBeGreaterThanOrEqual(prev);
+      prev = value;
+    }
+  });
 });
 
 describe("smoothGridTime", () => {
@@ -1100,21 +1165,48 @@ describe("smoothGridTime", () => {
     expect([...heights]).toEqual([0, 0.25, 0.5, 0.25, 0]);
   });
 
-  it("keeps the first and last rows as sampled", () => {
+  it("keeps the first row as sampled and gives the last one the causal half", () => {
     const heights = new Float32Array([0.8, 0, 0, 0.2]);
     smoothGridTime(heights, T([0, 0.01, 0.02, 0.03]), 4, 1, 0.015);
     expect(heights[0]).toBeCloseTo(0.8, 6);
-    expect(heights[3]).toBeCloseTo(0.2, 6);
     expect(heights[1]).toBeCloseTo(0.2, 6);
     expect(heights[2]).toBeCloseTo(0.05, 6);
+    // 0.25 * (row 2 as sampled) + 0.75 * itself.
+    expect(heights[3]).toBeCloseTo(0.15, 6);
+  });
+
+  // The reason the last row is not left raw: it is rewritten with the full kernel as soon as the
+  // next row arrives, and that rewrite is a visible shape change one stride in from the entering
+  // edge. The causal half cannot remove the change -- the next frame is genuinely unknown -- but it
+  // must cut it down to the next row's contribution alone.
+  it("halves how far the last row moves when the next row arrives", () => {
+    const asLast = new Float32Array([0.2, 0.6, 1.0]);
+    smoothGridTime(asLast, T([0, 0.01, 0.02]), 3, 1, 0.015);
+
+    const withNext = new Float32Array([0.2, 0.6, 1.0, 0.4]);
+    smoothGridTime(withNext, T([0, 0.01, 0.02, 0.03]), 4, 1, 0.015);
+
+    const settled = 0.25 * 0.6 + 0.5 * 1.0 + 0.25 * 0.4;
+    expect(withNext[2]).toBeCloseTo(settled, 6);
+    // The jump is exactly the next row's quarter -- the previous row's quarter is already paid.
+    expect(Math.abs(asLast[2] - withNext[2])).toBeCloseTo(0.25 * Math.abs(0.4 - 1.0), 6);
+    // What leaving it raw would have cost, for comparison: both neighbours' quarters.
+    expect(Math.abs(1.0 - withNext[2])).toBeGreaterThan(Math.abs(asLast[2] - withNext[2]));
+  });
+
+  it("leaves the last row as sampled when a gap precedes it", () => {
+    const heights = new Float32Array([0, 0.5, 1]);
+    smoothGridTime(heights, T([0, 0.01, 0.5]), 3, 1, 0.015);
+    expect(heights[2]).toBe(1);
   });
 
   // Rows bracketing a capture gap are not adjacent moments; blending them would fabricate a
-  // transition that never happened. Both rows touching the gap stay as sampled.
+  // transition that never happened. Both rows touching the gap stay as sampled -- rows 1 and 2
+  // here. Row 3 does not touch the gap, so it gets the causal kernel like any other last row.
   it("does not blend rows across a capture gap", () => {
     const heights = new Float32Array([0, 1, 1, 0]);
     smoothGridTime(heights, T([0, 0.01, 0.5, 0.51]), 4, 1, 0.015);
-    expect([...heights]).toEqual([0, 1, 1, 0]);
+    expect([...heights]).toEqual([0, 1, 1, 0.25]);
   });
 
   it("smooths every frequency point independently", () => {

@@ -221,19 +221,31 @@ export function smoothGridFrequency(heights, count, pointCount) {
  * -- tens of ms at short windows, still under one visible row at long ones, so transients keep
  * their shape.
  *
+ * The last row cannot have the symmetric kernel -- it has no next row yet -- but leaving it as
+ * sampled is worse than it looks. A row is raw only while it is last; the moment the next one
+ * arrives it is rewritten with the full kernel, so its shape CHANGES DISCONTINUOUSLY once, one
+ * decimation stride in from the entering edge, where the edge fade has just let it up to full
+ * height and nothing occludes it. That is a settle-pop at the row rate -- a few Hz, the most
+ * visible band there is. So the last row gets the causal half of the kernel instead,
+ * `0.75*cur + 0.25*prev`: the later rewrite then moves it by `0.25*(next - cur)` rather than by
+ * both neighbours' deltas, halving the jump for the only cost a causal filter can have here,
+ * which is that the newest row is no longer bit-exact with its frame. Removing the jump entirely
+ * would take knowing the next frame, i.e. a row of latency at the live edge, which monitoring
+ * cannot pay.
+ *
  * Two exclusions, both deliberate:
  *
  * - **Across a capture gap.** Rows bracketing a gap are not adjacent moments, so blending them
  *   fabricates a transition that never happened. A row touches a gap on either side and it is
  *   left as sampled. The caller derives `maxIntervalTFrac` from the same stride the row LUT's
  *   tolerance uses, so "gap" means the same thing in both places.
- * - **The first and last rows.** The newest row is the live edge monitoring watches; smoothing it
- *   against the previous frame would delay exactly the moment that matters. The oldest gets the
- *   symmetric treatment for free.
+ * - **The first row.** There is no previous row to blend it against, and it sits at the exiting
+ *   edge where the fade has already taken it under.
  *
  * Blending uses the ORIGINAL neighbour rows, not the already-smoothed ones: a rolling in-place
  * pass would make the kernel effectively wider on one side, so an impulse would bleed further
- * forward than back. One row buffer is kept for that.
+ * forward than back. One row buffer is kept for that. The last row is written after the loop for
+ * the same reason -- interior row `count - 2` must still read it unsmoothed.
  *
  * Only the Surface branch calls this, for the same reason as the frequency pass.
  *
@@ -263,6 +275,15 @@ export function smoothGridTime(heights, tFracs, count, pointCount, maxIntervalTF
       }
     }
     [prevOriginal, curOriginal] = [curOriginal, prevOriginal];
+  }
+
+  // `prevOriginal` now holds row `count - 2` as sampled, which is exactly the neighbour the causal
+  // kernel needs.
+  const last = count - 1;
+  if (tFracs[last] - tFracs[last - 1] > maxIntervalTFrac) return;
+  const base = last * pointCount;
+  for (let q = 0; q < pointCount; q++) {
+    heights[base + q] = prevOriginal[q] * 0.25 + heights[base + q] * 0.75;
   }
 }
 
@@ -409,10 +430,19 @@ const DEPTH_FADE_FLOOR = 0.65;
  * its occlusion semantics. Applied before the slope term, so the ramp itself is shaded like any
  * other terrain.
  *
- * The widths differ by end on purpose, mirroring the line waterfall's asymmetry (its newest ridge
- * is deliberately NOT faded): the entering edge gets about one decimation stride -- enough to
- * de-pop the end face without dimming the live moment the user is watching -- and the exiting
- * edge gets the same 2.5 strides Lines fades its ridges over.
+ * The ramp is eased rather than linear. A linear ramp is C1-discontinuous at BOTH of its ends, and
+ * both kinks are visible in a heightfield: at the interior end the terrain stops rising in a crease
+ * that runs across the whole frequency axis, and at the floor end it meets the plane at a fixed
+ * angle, so a loud passage arrives as a wedge driven up out of the floor rather than as something
+ * surfacing. `smoothstep` flattens both, and since the rasteriser's shading keys on the height
+ * delta, removing the kinks removes two bands of false relief with them.
+ *
+ * The widths still differ by end, mirroring the line waterfall's asymmetry (its newest ridge is
+ * deliberately NOT faded), but the entering edge is no longer as narrow as it can be. One stride
+ * made the ramp steeper than the exiting edge's by a factor of 2.5, which is what made arrival read
+ * as a pop and departure read as a dissolve even though both are the same mechanism. Two strides
+ * costs a few percent of the window and buys the entering end an approach the eye can follow; the
+ * exiting edge keeps the 2.5 strides Lines fades its ridges over.
  *
  * @param {number} tFrac sample position in the window, 0 = oldest (exiting) end, 1 = newest
  * @param {number} enterWidth fade width at the tFrac = 1 end, in tFrac; 0 disables
@@ -423,16 +453,20 @@ export function edgeFade(tFrac, enterWidth, exitWidth) {
   let fade = 1;
   if (exitWidth > 0) fade = Math.min(fade, tFrac / exitWidth);
   if (enterWidth > 0) fade = Math.min(fade, (1 - tFrac) / enterWidth);
-  return fade < 0 ? 0 : fade;
+  // Easing after the min is the same as easing each ramp before it -- smoothstep is monotonic --
+  // and it keeps the disabled case an exact identity, since smoothstep(1) is exactly 1.
+  const t = fade < 0 ? 0 : fade > 1 ? 1 : fade;
+  return t * t * (3 - 2 * t);
 }
 
 /**
  * Rasterise the whole surface into `out`, one screen column at a time.
  *
  * Each column is walked FRONT TO BACK with a running minimum (`horizon`) of the topmost pixel
- * already written. A sample is visible only where it rises above that, and the span between the two
- * is the vertical wall that makes the result read as solid rather than as a stack of contours.
- * Occluded pixels are never written, so there is no overdraw at all.
+ * already written. A sample is visible only where it rises above that, and it fills from there down
+ * to whichever comes first, `horizon` or the floor directly beneath it -- the vertical wall that
+ * makes the result read as solid rather than as a stack of contours. Occluded pixels are never
+ * written, so there is no overdraw at all.
  *
  * Walking back to front instead would let the farthest sample fill the entire lower column, after
  * which every nearer sample fails the same `y < horizon` test and nothing else is ever drawn.
@@ -511,6 +545,9 @@ export function rasterizeSurface({
     let u = span.u0;
     let v = span.v0;
     let prevH = NaN;
+    // Set whenever the walk has no painted terrain immediately in front of it: at the column's
+    // near end, and again after every uncovered stretch. See the wall bound below.
+    let resumed = true;
 
     for (let s = 0; s <= steps; s++, u += span.du, v += span.dv) {
       // `columnFloorSpan` clips to the floor square, so `u` is in -0.5..0.5 and the bucket lands
@@ -521,6 +558,7 @@ export function rasterizeSurface({
         // A capture gap: contribute nothing and leave the horizon alone, so what is behind the gap
         // stays visible through it.
         prevH = NaN;
+        resumed = true;
         continue;
       }
 
@@ -547,7 +585,8 @@ export function rasterizeSurface({
       const slope = Number.isFinite(prevH) ? (h - prevH) * invStepDist : 0;
       prevH = h;
 
-      const y = Math.round(originY + u * ty + v * fy + h * hyGain);
+      const yFloor = originY + u * ty + v * fy;
+      const y = Math.round(yFloor + h * hyGain);
       if (y >= horizon) continue;
       // Clamping to the top of the canvas can push a visible sample back onto the horizon, so the
       // test is repeated after the clamp. It also subsumes the `y === horizon` boundary above, which
@@ -577,13 +616,37 @@ export function rasterizeSurface({
         argb = lut[level * SHADE_LEVELS + shadeIdx];
       }
 
+      // Normally the wall runs down to `horizon`, and everything below `horizon` is already
+      // painted. The first sample after an UNCOVERED stretch is the exception: `horizon` is
+      // deliberately left alone across a capture gap (and across the empty part of a not-yet-full
+      // window), so filling down to it extrudes that cross-section forward over floor the data
+      // does not reach -- at capture start, all the way to the floor's near edge. Because the
+      // extrusion's bottom then follows the floor's near boundary rather than the terrain's own
+      // end, it reads as the surface spilling out from under the floor.
+      //
+      // What actually bounds a sample is the floor DIRECTLY BENEATH IT: the solid is the terrain
+      // extruded onto the floor plane, and in this projection the point below `(u, v, h)` is
+      // `(u, v, 0)`, i.e. `yFloor`. Only the resuming sample needs it -- for continuous terrain
+      // consecutive samples are at most one screen row apart, so `horizon` is already at or above
+      // the next sample's own floor and the clamp could never bind. Testing `resumed` rather than
+      // clamping unconditionally keeps a rounding out of the per-sample path, and keeps the
+      // "below the horizon is painted" invariant everywhere the walk has not crossed a hole.
+      let bottom = horizon;
+      if (resumed) {
+        // Truncation rather than Math.round: this is a hot path, and the two differ only for a
+        // negative `yFloor`, where the floor point is off the top of the canvas and both give a
+        // bound that paints nothing.
+        const ownFloor = ((yFloor + 0.5) | 0) + 1;
+        if (ownFloor < bottom) bottom = ownFloor;
+        resumed = false;
+      }
       // Walk the row base by `width` instead of multiplying per row. The stride-1 case is the
       // default and gets its own loop, so the common path carries no inner loop at all.
       let base = top * width + x;
       if (kEnd === 1) {
-        for (let yy = top; yy < horizon; yy++, base += width) out[base] = argb;
+        for (let yy = top; yy < bottom; yy++, base += width) out[base] = argb;
       } else {
-        for (let yy = top; yy < horizon; yy++, base += width) {
+        for (let yy = top; yy < bottom; yy++, base += width) {
           for (let k = 0; k < kEnd; k++) out[base + k] = argb;
         }
       }

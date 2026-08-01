@@ -32,9 +32,11 @@ const GRADIENT_STOPS = 16;
 // How many ridge spacings the old-end fade is spread over. Enough to read as a dissolve rather
 // than a blink, short enough that it costs almost none of the visible history.
 const EDGE_FADE_RIDGES = 2.5;
-// Surface's entering-edge fade, in decimation strides. Narrower than the exiting edge on purpose:
-// it only needs to turn the end face from a wall into a ramp, not to fade the live moment out.
-const ENTER_FADE_STRIDES = 1;
+// Surface's entering-edge fade, in decimation strides. Still narrower than the exiting edge on
+// purpose -- it must not dim the live moment out of the frame -- but not as narrow as it can be:
+// at one stride the entering ramp was 2.5x steeper than the exiting one, so the same mechanism
+// read as a pop on arrival and as a dissolve on departure. See edgeFade.
+const ENTER_FADE_STRIDES = 2;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -502,6 +504,9 @@ export function useSpectrogram3dCanvas({
         maxRidges,
         yToBand: cache.yToBand,
         dbFloor: p.dbFloor,
+        // Surface-only, like the two smoothers: it needs the newest frame present as a row so the
+        // entering end morphs instead of swapping, where Lines would draw it as a twitching ridge.
+        pinLiveRow: p.mode === "surface",
       });
       if (grid.count === 0) return;
 
@@ -525,10 +530,15 @@ export function useSpectrogram3dCanvas({
       // same 0..1 window fraction the 2D selection line uses, so both modes mark the same moment.
       // Rows sit at their own timestamps rather than on a regular grid, so the nearest one has to be
       // searched for. Shared by both modes, so it runs before the branch.
+      //
+      // Over the decimated rows only (`bucketCount` equals `count` unless a live row was pinned):
+      // the pinned row sits at the window edge where the entering fade has taken it to ~0 height, so
+      // letting it win the search would put the highlight band flat on the floor and take it away
+      // from the last row that actually has terrain.
       let selectedRidge = -1;
       if (p.selectedOffset >= 0 && Number.isFinite(p.selectionXFrac)) {
         let bestDelta = Infinity;
-        for (let r = 0; r < grid.count; r++) {
+        for (let r = 0; r < grid.bucketCount; r++) {
           const delta = Math.abs(grid.tFracs[r] - p.selectionXFrac);
           if (delta < bestDelta) {
             bestDelta = delta;
@@ -552,7 +562,12 @@ export function useSpectrogram3dCanvas({
             ? rawStrideTFrac
             : 1 / Math.max(1, grid.count - 1);
         const rowGapTFrac = ROW_GAP_TOLERANCE * strideTFrac;
-        smoothGridTime(grid.heights, grid.tFracs, grid.count, grid.pointCount, rowGapTFrac);
+        // Over the DECIMATED rows only. The pinned live row is a fraction of a stride from its
+        // neighbour rather than a stride, so letting it into the kernel would both under-smooth the
+        // last bucket row and feed that row the live frame's raw jitter at a quarter weight --
+        // reintroducing, one row further in, the flicker the whole entering-edge treatment removes.
+        // The live row itself needs no time smoothing: the edge fade takes it to ~0 height.
+        smoothGridTime(grid.heights, grid.tFracs, grid.bucketCount, grid.pointCount, rowGapTFrac);
         const off = ensureOffscreen(offscreenRef, W, H);
         // The monochrome ramp needs the theme ink as RGB. resolveArgbRef probes a colour by
         // writing a pixel to the offscreen canvas and reading it back; probing before the LUT
@@ -607,10 +622,8 @@ export function useSpectrogram3dCanvas({
           columnStride: columnStrideFor(W, H),
           maxSteps: H,
           // The two end faces of the solid: sink the terrain into the floor rather than letting
-          // cross-sections pop in and out. Asymmetric on purpose, mirroring Lines (whose newest
-          // ridge is deliberately not faded): one stride at the entering edge de-pops the wall
-          // without dimming the live moment; the exiting edge gets the same 2.5 ridges Lines
-          // fades over.
+          // cross-sections pop in and out. Still asymmetric, mirroring Lines (whose newest ridge is
+          // deliberately not faded), but only mildly so -- see ENTER_FADE_STRIDES.
           enterFadeTFrac: ENTER_FADE_STRIDES * strideTFrac,
           exitFadeTFrac: EDGE_FADE_RIDGES * strideTFrac,
         });
