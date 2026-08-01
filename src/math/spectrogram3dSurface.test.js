@@ -8,6 +8,7 @@ import {
   columnFloorSpan,
   columnStrideFor,
   edgeFade,
+  LEVEL_ALPHA_FULL,
   NO_ROW,
   packArgb,
   rasterizeSurface,
@@ -340,9 +341,12 @@ describe("buildSurfaceLut", () => {
     expect(blueOf(dimHigh)).toBeGreaterThan(0);
   });
 
-  // The alpha fade is what lets silence recede: the bottom 25% of the range ramps from
-  // transparent to opaque, everything above it is fully opaque, in both colour modes.
+  // The alpha fade is what lets silence recede AND lets terrain near the floor dissolve rather
+  // than end: the bottom of the range ramps from transparent to opaque, everything above it is
+  // fully opaque, in both colour modes. The boundary is derived from the constant rather than
+  // written out, so retuning the band's width stays a one-line change.
   it("fades to transparent at the dB floor and is fully opaque above the fade", () => {
+    const fadeTop = Math.ceil(LEVEL_ALPHA_FULL * 255);
     for (const colorize of [false, true]) {
       const lut = buildSurfaceLut({
         colormapLut: testColormapLut(),
@@ -352,12 +356,12 @@ describe("buildSurfaceLut", () => {
       });
       expect(lut[0] >>> 24).toBe(0);
       let prev = 0;
-      for (let level = 0; level < 64; level++) {
+      for (let level = 0; level < fadeTop; level++) {
         const a = lut[level * SHADE_LEVELS] >>> 24;
         expect(a).toBeGreaterThanOrEqual(prev);
         prev = a;
       }
-      for (let level = 64; level < 256; level++) {
+      for (let level = fadeTop; level < 256; level++) {
         expect(lut[level * SHADE_LEVELS] >>> 24).toBe(255);
       }
     }

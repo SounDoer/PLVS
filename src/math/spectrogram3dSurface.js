@@ -311,8 +311,18 @@ const MONO_SHADE_FLOOR = 0.55;
  * Levels below this fraction of the range fade to transparent. Matches what the 2D heatmap has
  * always done (`paintSpan` writes `t * 255` into alpha) and what Lines does with its gradient:
  * silence recedes instead of occupying the screen.
+ *
+ * Wide on purpose. The band is what makes terrain near the floor DISSOLVE rather than end, and a
+ * narrow one only reads as a fade where the surface approaches the floor slowly. A decaying
+ * passage does not: it drops through the range fast, so with a quarter of the range the terrain
+ * looks like it falls to the floor and only then blinks out, and the same narrowness makes the
+ * sunk end of the entering ramp a hard-edged sliver of full-strength colour ruled along the
+ * window boundary. Widening it costs contrast in quiet passages -- everything below the band is
+ * translucent, so faint detail sits against the background rather than on it -- which is the trade
+ * this number IS. Move it down towards 0.25 for more contrast in quiet material, up for more
+ * dissolve.
  */
-const LEVEL_ALPHA_FULL = 0.25;
+export const LEVEL_ALPHA_FULL = 0.4;
 
 /**
  * Pack one ARGB word for a Uint32Array view over ImageData.
