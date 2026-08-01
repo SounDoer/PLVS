@@ -380,6 +380,86 @@ stands.
    when the oldest row drops out). Benchmark re-run with the fade in the timed region: cost is
    within run-to-run noise, every stride pick unchanged.
 
+## Amended after second visual review (2026-08-01)
+
+Item 7 fixed the exiting edge and left the entering one still visibly wrong: arrival read as a pop
+where departure read as a dissolve, and a partly-filled window painted a slab over floor it had no
+data for. Five amendments, all at the two ends of the time window.
+
+8. **The newest frame is pinned as an extra grid row (Surface only).** Item 7 treated the entering
+   pop as a height problem, but its cause is in the DATA. The stretch between the last decimated
+   frame and the window edge renders that frame held, growing longer for as many frames as share
+   its bucket, and swapping to a different frame's cross-section the moment the next bucket opens.
+   No amount of height fading removes a swap. `sampleWaterfallGrid` now takes `pinLiveRow` and
+   appends the newest in-window frame on top of whatever decimation kept, so that stretch is an
+   interpolation re-aimed on every update — and a frame that later wins a bucket was already this
+   row, so it becomes permanent instead of appearing. The pinned row's own frame-to-frame jitter,
+   the reason decimation buckets by absolute time at all, costs nothing here because the entering
+   fade multiplies it by ~0 at the edge. The row takes a slot of its OWN rather than the last
+   decimated one: taking a bucket's slot drops the newest bucket row exactly when the cap binds,
+   leaving a two-stride hole that `buildRowLut` reads as a capture gap and holds across. Lines must
+   not ask for this — it strokes one visible curve per row and deliberately leaves its newest ridge
+   unfaded, so a re-aimed row there twitches at full brightness. `bucketCount` is returned
+   alongside `count` so callers can address the decimated rows alone; the time smoother and the
+   scrub highlight both do.
+9. **The time smoother's last row: raw → the causal half of the kernel.** Item 4 excluded both end
+   rows, which is worse than it looks at the newest end. A row is raw only while it is last; the
+   moment the next one arrives it is rewritten with the full kernel, so its shape changes
+   discontinuously once, one decimation stride in from the entering edge, where the fade has just
+   let it up to full height and nothing occludes it — a settle-pop at the row rate, a few Hz. The
+   last row now gets `0.75*cur + 0.25*prev`, so the later rewrite moves it by `0.25*(next - cur)`
+   rather than by both neighbours' deltas. Removing the jump entirely would take knowing the next
+   frame, i.e. a row of latency at the live edge, which monitoring cannot pay. The first row stays
+   as sampled (no previous row, and the exit fade has already taken it under), and rows touching a
+   capture gap are still excluded.
+10. **Edge fades eased, and the entering width 1 → 2 strides.** A linear ramp is C1-discontinuous
+    at both of its ends and a heightfield shows both: the terrain stops rising in a crease running
+    across the whole frequency axis, and it meets the floor at a fixed angle, so a loud passage
+    arrives as a wedge driven up out of the plane. Since the shading keys on the height delta, each
+    kink also printed as a band of false relief. `edgeFade` is now `smoothstep`. One stride also
+    made the entering ramp 2.5x steeper than the exiting one, which is most of why the same
+    mechanism read as a pop on arrival and a dissolve on departure; two strides costs a few percent
+    of the window. The asymmetry itself stays.
+11. **A sample's wall stops at the floor beneath it when the walk resumes after an uncovered
+    stretch.** This REVERSES the rule that a column stays contiguous across a capture gap. The
+    horizon is deliberately left alone across a hole, so filling the first sample after one down to
+    it extruded that cross-section forward over floor the data does not reach — at capture start,
+    where the window is only partly filled and the empty stretch is the one towards the viewer,
+    every column did this and the whole surface was extruded onto empty floor. The extrusion's
+    bottom then follows the floor's near boundary rather than the terrain's own end, which reads as
+    the surface spilling out from under the floor. What a hole in a solid actually shows is the far
+    terrain's front face down to ITS floor point and empty floor below that. The bound is the floor
+    directly beneath the sample, which in this projection is `originY + u*ty + v*fy`; it is computed
+    only on the resuming sample, both because clamping unconditionally costs a rounding in the
+    per-sample path (measured: 15–20% on the rasteriser) and because for continuous terrain
+    consecutive samples are at most one screen row apart, so the clamp could never bind. Continuous
+    terrain is still one unbroken run per column, and that is now what the test asserts.
+12. **Near-floor alpha band: 25% → 40% of the range.** Item 5's band is what makes terrain near the
+    floor dissolve rather than end, and a quarter of the range only reads as a fade where the
+    surface approaches the floor slowly. A decaying passage does not — it drops through the range
+    fast — so the terrain looked like it fell to the floor and only then blinked out, which is the
+    opposite of what the sink in item 7 is for. Widening costs contrast in quiet passages:
+    everything below the band is translucent, so faint detail sits against the background rather
+    than on it. That trade is what the number is; `LEVEL_ALPHA_FULL` is exported so the LUT test
+    derives the fade boundary from it rather than writing out the level it works out to.
+
+### Tried and reversed: decoupling colour from the entering fade
+
+Before item 12, the entering ramp was made to shape geometry ONLY, leaving colour and alpha on the
+unfaded level. The reasoning was that the arriving end otherwise fades three times over — sunk,
+dimmed, and made transparent — and that a decaying passage, whose level is already low, therefore
+disappears a ramp-width before the window edge.
+
+It renders worse, and the reason is worth keeping. A sample at the boundary sits ON the floor, so
+with colour at full strength it paints a one-pixel sliver of fully saturated ink, and the entering
+edge becomes a hard contour ruled along the floor's front edge that jumps with the data instead of
+dissolving. The dissolve near the floor is not an accident of the coupling; it is the thing that
+makes the sink read as terrain going under rather than terrain being cut. Item 12 addresses the
+same complaint by widening the band both ends already share.
+
+If this is attempted again, the shape that could work is two different WIDTHS — a wide height fade
+and a narrow colour fade at the boundary — not the all-or-nothing decoupling tried here.
+
 ## Panel Controls
 
 | Key                         | Default              | Range                                   | Applies to      |
