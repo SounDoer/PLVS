@@ -8,6 +8,7 @@ import {
   columnFloorSpan,
   columnStrideFor,
   edgeFade,
+  slopeShade,
   LEVEL_ALPHA_FULL,
   NO_ROW,
   packArgb,
@@ -1226,6 +1227,49 @@ describe("smoothGridTime", () => {
     smoothGridTime(heights, T([0, 0.01]), 2, 1, 0.015);
     expect([...heights]).toEqual([1, 0]);
     smoothGridTime(new Float32Array(0), Float64Array.from([]), 0, 0, 0.015); // must not throw
+  });
+});
+
+describe("slopeShade", () => {
+  it("is mid-grey on level terrain and symmetric about it", () => {
+    expect(slopeShade(0)).toBe(0.5);
+    expect(slopeShade(3) - 0.5).toBeCloseTo(0.5 - slopeShade(-3), 12);
+  });
+
+  it("stays strictly inside 0..1 at any slope, so no clamp is needed", () => {
+    for (const slope of [-1e9, -100, -1, 0, 1, 100, 1e9]) {
+      const shade = slopeShade(slope);
+      expect({ slope, inside: shade > 0 && shade < 1 }).toEqual({ slope, inside: true });
+    }
+  });
+
+  it("is monotonic", () => {
+    let prev = -Infinity;
+    for (let slope = -20; slope <= 20; slope += 0.25) {
+      const shade = slopeShade(slope);
+      expect(shade).toBeGreaterThan(prev);
+      prev = shade;
+    }
+  });
+
+  // The collapse the soft saturation exists to prevent, measured at the quantisation that actually
+  // ships. `slope` is per unit of FLOOR DISTANCE and adjacent samples are about one screen row
+  // apart, so on real material it runs roughly 0.5 to 8 with a median near 3. Under the old clamped
+  // mapping every one of those landed on shade 1 -- ONE table entry for the whole range, which is
+  // what made the surface shade in two tones and left the gain nothing to do.
+  //
+  // The gradations that survive here are modest, and deliberately so: at the shipped gain the same
+  // slopes still sit in the top few entries of the table, because that high-contrast look is the
+  // one picked during review. What must not come back is the collapse to a single entry. Spreading
+  // them evenly would need slope normalised against a reference rather than a larger gain -- a
+  // bigger gain only pushes further into saturation.
+  it("keeps the slopes real material produces off a single shade entry", () => {
+    const measured = [0.5, 1.4, 2.9, 4.4, 5.8, 7.8];
+    const quantised = measured.map((slope) => (slopeShade(slope) * (SHADE_LEVELS - 1) + 0.5) | 0);
+    expect(new Set(quantised).size).toBeGreaterThan(1);
+    // Level terrain must stay well clear of them, or relief reads as a step rather than a gradient.
+    const level = (slopeShade(0) * (SHADE_LEVELS - 1) + 0.5) | 0;
+    expect(Math.min(...quantised)).toBeGreaterThan(level);
   });
 });
 

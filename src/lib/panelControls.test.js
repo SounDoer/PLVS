@@ -102,8 +102,6 @@ describe("panelControls", () => {
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
       spectrogram3dElevationDeg: 60,
-      spectrogram3dLineAlpha: 1,
-      spectrogram3dLineWidth: 1,
       spectrogram3dFloor: true,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
@@ -253,8 +251,6 @@ describe("panelControls", () => {
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
       spectrogram3dElevationDeg: 60,
-      spectrogram3dLineAlpha: 1,
-      spectrogram3dLineWidth: 1,
       spectrogram3dFloor: true,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
@@ -706,21 +702,8 @@ describe("spectrogramMode", () => {
 });
 
 describe("spectrogram 3D tuning controls", () => {
-  it("defaults alpha/width/floor to their agreed values", () => {
-    const c = normalizePanelControls({});
-    expect(c.spectrogram3dLineAlpha).toBe(1);
-    expect(c.spectrogram3dLineWidth).toBe(1);
-    expect(c.spectrogram3dFloor).toBe(true);
-  });
-
-  it("clamps line alpha to 0.15-1", () => {
-    expect(normalizePanelControls({ spectrogram3dLineAlpha: 0 }).spectrogram3dLineAlpha).toBe(0.15);
-    expect(normalizePanelControls({ spectrogram3dLineAlpha: 5 }).spectrogram3dLineAlpha).toBe(1);
-  });
-
-  it("clamps line width to 0.5-3", () => {
-    expect(normalizePanelControls({ spectrogram3dLineWidth: 0 }).spectrogram3dLineWidth).toBe(0.5);
-    expect(normalizePanelControls({ spectrogram3dLineWidth: 10 }).spectrogram3dLineWidth).toBe(3);
+  it("defaults the floor grid on", () => {
+    expect(normalizePanelControls({}).spectrogram3dFloor).toBe(true);
   });
 
   it("rejects non-boolean floor", () => {

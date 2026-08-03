@@ -66,8 +66,6 @@ export const DEFAULT_PANEL_CONTROLS = {
   spectrogram3dHeightGain: 1,
   spectrogram3dAzimuthDeg: 135,
   spectrogram3dElevationDeg: 60,
-  spectrogram3dLineAlpha: 1,
-  spectrogram3dLineWidth: 1,
   // Surfaced as "Grid": it draws the floor grid, and "Floor" sat one row below "dB Floor" with no
   // relation to it. The key keeps the old name -- it is persisted, and renaming it would need a
   // migration to buy nothing a reader of this line does not already get.
@@ -181,14 +179,6 @@ function normalizeSpectrogram3dAzimuthDeg(raw) {
  */
 function normalizeSpectrogram3dElevationDeg(raw) {
   return clampNumber(raw, 5, 85, DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg);
-}
-
-function normalizeSpectrogram3dLineAlpha(raw) {
-  return clampNumber(raw, 0.15, 1, DEFAULT_PANEL_CONTROLS.spectrogram3dLineAlpha);
-}
-
-function normalizeSpectrogram3dLineWidth(raw) {
-  return clampNumber(raw, 0.5, 3, DEFAULT_PANEL_CONTROLS.spectrogram3dLineWidth);
 }
 
 function normalizeSpectrogram3dFloor(raw) {
@@ -464,8 +454,6 @@ export function normalizePanelControls(raw) {
     spectrogram3dHeightGain: normalizeSpectrogram3dHeightGain(raw?.spectrogram3dHeightGain),
     spectrogram3dAzimuthDeg: normalizeSpectrogram3dAzimuthDeg(raw?.spectrogram3dAzimuthDeg),
     spectrogram3dElevationDeg: normalizeSpectrogram3dElevationDeg(raw?.spectrogram3dElevationDeg),
-    spectrogram3dLineAlpha: normalizeSpectrogram3dLineAlpha(raw?.spectrogram3dLineAlpha),
-    spectrogram3dLineWidth: normalizeSpectrogram3dLineWidth(raw?.spectrogram3dLineWidth),
     spectrogram3dFloor: normalizeSpectrogram3dFloor(raw?.spectrogram3dFloor),
     loudnessYMinDb: loudnessYRange.min,
     loudnessYMaxDb: loudnessYRange.max,

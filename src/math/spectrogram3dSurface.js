@@ -318,11 +318,13 @@ const MONO_SHADE_FLOOR = 0.55;
  * looks like it falls to the floor and only then blinks out, and the same narrowness makes the
  * sunk end of the entering ramp a hard-edged sliver of full-strength colour ruled along the
  * window boundary. Widening it costs contrast in quiet passages -- everything below the band is
- * translucent, so faint detail sits against the background rather than on it -- which is the trade
- * this number IS. Move it down towards 0.25 for more contrast in quiet material, up for more
- * dissolve.
+ * translucent, so faint detail sits against the background rather than on it.
+ *
+ * Settled at 0.15 against real material after being briefly exposed as a control: wider bands
+ * washed quiet passages out, and the dissolve reads as a dissolve well before the band gets wide
+ * enough to cost that. The control came back out because nothing was left for it to decide.
  */
-export const LEVEL_ALPHA_FULL = 0.4;
+export const LEVEL_ALPHA_FULL = 0.15;
 
 /**
  * Pack one ARGB word for a Uint32Array view over ImageData.
@@ -374,6 +376,7 @@ export function packArgb(r, g, b, a) {
  */
 export function buildSurfaceLut({ colormapLut, dbFloor, colorize, ink }) {
   const lut = new Uint32Array(256 * SHADE_LEVELS);
+  const alphaTop = LEVEL_ALPHA_FULL * 255;
   const inkR = ink?.r ?? 255;
   const inkG = ink?.g ?? 255;
   const inkB = ink?.b ?? 255;
@@ -394,8 +397,7 @@ export function buildSurfaceLut({ colormapLut, dbFloor, colorize, ink }) {
         MONO_LEVEL_FLOOR +
         (1 - MONO_LEVEL_FLOOR) * spectrogramColorFracFromHeight(level / 255, dbFloor);
     }
-    const alpha =
-      level >= LEVEL_ALPHA_FULL * 255 ? 255 : Math.round((level / (LEVEL_ALPHA_FULL * 255)) * 255);
+    const alpha = level >= alphaTop ? 255 : Math.round((level / alphaTop) * 255);
     for (let shade = 0; shade < SHADE_LEVELS; shade++) {
       const s = SHADE_LEVELS > 1 ? shade / (SHADE_LEVELS - 1) : 1;
       let outR;
@@ -418,9 +420,34 @@ export function buildSurfaceLut({ colormapLut, dbFloor, colorize, ink }) {
   return lut;
 }
 
-/** Slope-to-shade sensitivity, and the mid-grey a flat sample sits at. Tuned by eye. */
+/** The mid-grey a flat sample sits at; slope moves the shade either side of it. */
 const SHADE_MID = 0.5;
-const SHADE_SLOPE_GAIN = 6;
+/** How hard slope drives shade. See `slopeShade`. */
+const SHADE_SLOPE_GAIN = 4;
+
+/**
+ * Slope to shade, `0` fully dark and `1` fully lit, `SHADE_MID` where the terrain is level.
+ *
+ * The mapping matters more than the gain. The obvious `SHADE_MID + slope * gain` clamped to 0..1
+ * cannot work here, and the reason is a units mismatch that no choice of gain fixes: `slope` is per
+ * unit of FLOOR DISTANCE while consecutive samples are about one screen row apart, so on real
+ * material its magnitude runs roughly 0.5 to 8 (median near 3). Measured against a realistic grid,
+ * a gain of 6 clamps 97.9% of samples and even a gain of 2 clamps 94.8% -- the surface shades in
+ * two tones, and changing the gain repaints about 1% of the surface. This was briefly a user
+ * control, which is how that got noticed: the control did nothing at any setting.
+ *
+ * The soft saturation `s / (1 + |s|)` maps the whole real line into (-1, 1) with no hard edge, so
+ * the gain sets how quickly shading approaches the ends rather than how much of the surface is
+ * pinned to them, and the tone quantisation has gradations to work with. Costs one divide per
+ * sample; the benchmark could not tell it from the clamp.
+ *
+ * @param {number} slope terrain gradient along the view ray, per unit of floor distance
+ * @returns {number} strictly inside 0..1, so callers need no clamp
+ */
+export function slopeShade(slope) {
+  const s = slope * SHADE_SLOPE_GAIN;
+  return SHADE_MID + SHADE_MID * (s / (1 + (s < 0 ? -s : s)));
+}
 /** How far the far end is darkened. Mild: it carries recession, it should not hide data. */
 const DEPTH_FADE_FLOOR = 0.65;
 
@@ -613,8 +640,7 @@ export function rasterizeSurface({
       } else {
         // Headlight shading: the ray always lies along the view direction, so this stays stable
         // while the user rotates, where a world-fixed light would darken whole faces.
-        let shade = SHADE_MID + slope * SHADE_SLOPE_GAIN;
-        shade = shade < 0 ? 0 : shade > 1 ? 1 : shade;
+        let shade = slopeShade(slope);
         // Depth attenuation. s runs 0 at the near end to steps at the far end, and `steps` is at
         // least 1 by construction.
         const near = 1 - s / steps;

@@ -296,8 +296,6 @@ export function useSpectrogram3dCanvas({
   elevationDeg,
   heightGain,
   colorize,
-  lineAlpha,
-  lineWidth,
   floor,
   mode,
 }) {
@@ -305,7 +303,12 @@ export function useSpectrogram3dCanvas({
   const paramsRef = useRef({});
   const cacheRef = useRef({ pointCount: 0, minHz: 0, maxHz: 0, bands: null, yToBand: null });
   const offscreenRef = useRef(null);
-  const surfaceLutRef = useRef({ colorize: undefined, dbFloor: NaN, colormapLut: null, lut: null });
+  const surfaceLutRef = useRef({
+    colorize: undefined,
+    dbFloor: NaN,
+    colormapLut: null,
+    lut: null,
+  });
   const resolveArgbRef = useRef(makeArgbResolver());
   const lastPaintRef = useRef({
     len: -1,
@@ -324,8 +327,6 @@ export function useSpectrogram3dCanvas({
     heightGain: NaN,
     colorize: undefined,
     selectionXFrac: NaN,
-    lineAlpha: NaN,
-    lineWidth: NaN,
     floor: undefined,
     mode: undefined,
   });
@@ -346,8 +347,6 @@ export function useSpectrogram3dCanvas({
       elevationDeg,
       heightGain,
       colorize,
-      lineAlpha,
-      lineWidth,
       floor,
       mode,
     };
@@ -366,8 +365,6 @@ export function useSpectrogram3dCanvas({
     elevationDeg,
     heightGain,
     colorize,
-    lineAlpha,
-    lineWidth,
     floor,
     mode,
   ]);
@@ -411,8 +408,6 @@ export function useSpectrogram3dCanvas({
         last.heightGain === p.heightGain &&
         last.colorize === p.colorize &&
         last.selectionXFrac === p.selectionXFrac &&
-        last.lineAlpha === p.lineAlpha &&
-        last.lineWidth === p.lineWidth &&
         last.floor === p.floor &&
         last.mode === p.mode
       )
@@ -434,8 +429,6 @@ export function useSpectrogram3dCanvas({
         heightGain: p.heightGain,
         colorize: p.colorize,
         selectionXFrac: p.selectionXFrac,
-        lineAlpha: p.lineAlpha,
-        lineWidth: p.lineWidth,
         floor: p.floor,
         mode: p.mode,
       };
@@ -626,6 +619,7 @@ export function useSpectrogram3dCanvas({
           // deliberately not faded), but only mildly so -- see ENTER_FADE_STRIDES.
           enterFadeTFrac: ENTER_FADE_STRIDES * strideTFrac,
           exitFadeTFrac: EDGE_FADE_RIDGES * strideTFrac,
+          slopeGain: p.relief,
         });
         off.ctx.putImageData(off.image, 0, 0);
         ctx.drawImage(off.canvas, 0, 0);
@@ -644,11 +638,17 @@ export function useSpectrogram3dCanvas({
         : null;
 
       ctx.lineJoin = "round";
+      // Ridges are the spectrum curve, drawn once per captured frame, so they take the spectrum
+      // trace's own stroke width rather than a width of their own. Reading the token is what makes
+      // that true by construction: a hardcoded base is a second number to keep in agreement with a
+      // themeable one, and it was already out of agreement -- 1 device-pixel-per-CSS-pixel against
+      // the token's 1.5 -- which is what a user reports as "the 3D lines look thinner".
+      //
       // Line widths are in the canvas coordinate system, which useCanvasSize sizes in DEVICE
-      // pixels. A literal 1 is therefore a sub-CSS-pixel hairline on any scaled display, and the
-      // whole mesh washes out. Same trap as ctx.font below — both must scale by dpr. p.lineWidth is
-      // a user multiplier on top of that device-pixel base, not an absolute width.
-      const baseLineWidth = dpr * p.lineWidth;
+      // pixels, so the CSS width has to be scaled by dpr. A literal 1 is a sub-CSS-pixel hairline
+      // on any scaled display and the whole mesh washes out. Same trap as ctx.font below.
+      const strokeCss = parseFloat(cssVar(canvas, "--ui-spectrum-stroke-width", "1.5")) || 1.5;
+      const baseLineWidth = dpr * strokeCss;
       ctx.lineWidth = baseLineWidth;
 
       // Line waterfall: ridges are stroked, never filled.
@@ -703,11 +703,9 @@ export function useSpectrogram3dCanvas({
           ctx.stroke(curve);
           ctx.lineWidth = baseLineWidth;
         } else {
-          // Lowering lineAlpha lets overlapping ridges accumulate, so dense regions darken and the
-          // eye recovers some of the depth the missing occlusion would have given. It defaults to
-          // opaque because the colour ramp already separates near from far; the control is there
-          // for material where the ridges crowd each other.
-          ctx.globalAlpha = p.lineAlpha * edgeFade;
+          // Opaque apart from the old-end fade: the colour ramp already separates near from far,
+          // so nothing here needs to buy depth by letting ridges accumulate.
+          ctx.globalAlpha = edgeFade;
           ctx.strokeStyle = stopColors
             ? buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx)
             : ink;
