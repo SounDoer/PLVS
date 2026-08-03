@@ -6,6 +6,7 @@ import {
   spectrogramDataBoundaryMarkers,
   spectrogramDataBoundaries,
   resolveSpectrogramSampleMs,
+  resolveStableSpectrogramSampleMs,
 } from "./spectrogramTimeline.js";
 import { SpectrumHistorySlab } from "../lib/SpectrumHistorySlab.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../lib/historyChunkConfig.js";
@@ -125,6 +126,49 @@ describe("resolveSpectrogramSampleMs", () => {
     // a gap here, painting a blank stripe after each 40ms-wide column.
     const f = frames(1000, 1400, 100);
     expect(resolveSpectrogramSampleMs(f, 40)).toBe(100);
+  });
+});
+
+describe("resolveStableSpectrogramSampleMs", () => {
+  /** Frames whose intervals jitter within `[base, base + spread)`, as the live wall-clock gate does. */
+  function jittery(startMs, count, base, spread) {
+    const rows = [];
+    let ts = startMs;
+    for (let i = 0; i < count; i++) {
+      rows.push({ timestampMs: ts });
+      ts += base + ((i * 7) % spread);
+    }
+    return rows;
+  }
+
+  it("falls back when the view has fewer than two rows", () => {
+    expect(resolveStableSpectrogramSampleMs(viewOf([]), 40)).toBe(40);
+    expect(resolveStableSpectrogramSampleMs(viewOf([{ timestampMs: 1000 }]), 40)).toBe(40);
+  });
+
+  // The point of the whole function: the value must not move as frames arrive, or every caller that
+  // quantises by it re-phases on every update.
+  it("holds still as jittery frames arrive", () => {
+    const rows = jittery(300_000, 200, 40, 9);
+    const seen = new Set();
+    for (let length = 40; length <= 200; length++) {
+      seen.add(resolveStableSpectrogramSampleMs(viewOf(rows.slice(0, length)), 40));
+    }
+    expect([...seen]).toEqual([40]);
+  });
+
+  it("follows a real cadence change, such as live to file mode", () => {
+    expect(resolveStableSpectrogramSampleMs(frames(1000, 3000, 100), 40)).toBe(100);
+  });
+
+  // Capture gaps and stalls only ever make an interval longer, so the cadence must ignore them
+  // rather than jump to the gap's width the way a single-interval reading does.
+  it("ignores a capture gap at the newest end", () => {
+    const rows = [];
+    for (let ts = 1000; ts <= 1400; ts += 40) rows.push({ timestampMs: ts });
+    rows.push({ timestampMs: 5000 });
+    expect(resolveStableSpectrogramSampleMs(viewOf(rows), 999)).toBe(40);
+    expect(resolveSpectrogramSampleMs(viewOf(rows), 999)).toBe(3600);
   });
 });
 

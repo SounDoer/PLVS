@@ -20,6 +20,7 @@ import {
   spectrogramTimeWindow,
   spectrogramDataBoundaryMarkers,
   resolveSpectrogramSampleMs,
+  resolveStableSpectrogramSampleMs,
 } from "../../math/spectrogramTimeline";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
@@ -304,6 +305,14 @@ export function SpectrogramPanel({ compact = false }) {
     [resolvedThemeId]
   );
   const sampleMs = resolveSpectrogramSampleMs(spectrogramSnaps, VISUAL_HIST_SAMPLE_SEC * 1000);
+  // The 3D waterfall quantises its decimation stride by this period, so it needs the cadence to hold
+  // still between updates rather than the single freshest measurement of it -- see
+  // resolveStableSpectrogramSampleMs. The 2D path keeps the plain one: gap detection wants the local
+  // interval, and it is tolerant of the jitter that breaks quantisation.
+  const stableSampleMs = resolveStableSpectrogramSampleMs(
+    spectrogramSnaps,
+    VISUAL_HIST_SAMPLE_SEC * 1000
+  );
   // Visible time window from the master (loudness history) timeline; frames are placed by timestamp.
   // Computed inline (not memoized): histSourceList is a stable, mutated-in-place ring reference in
   // live mode, so a useMemo keyed on it never recomputes as data arrives and would freeze the
@@ -345,7 +354,7 @@ export function SpectrogramPanel({ compact = false }) {
     projectionRef,
     oldestMs,
     newestMs,
-    sampleMs,
+    sampleMs: stableSampleMs,
     selectedOffset,
     selectionXFrac: selLineX / 600,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,

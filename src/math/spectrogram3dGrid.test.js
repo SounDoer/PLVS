@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sampleWaterfallGrid } from "./spectrogram3dGrid.js";
+import { resolveStableSpectrogramSampleMs } from "./spectrogramTimeline.js";
 import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
 
 const SAMPLE_MS = 40;
@@ -112,6 +113,57 @@ describe("sampleWaterfallGrid", () => {
     const reference = selected(2000);
     for (const jitter of [-7, -3, 2, 5, 9]) {
       expect(selected(2000 + jitter)).toEqual(reference);
+    }
+  });
+
+  // The stride is quantised in whole frame periods, so the period itself must be a NOMINAL constant.
+  // Live capture does not hand one out: the engine timestamps visual frames with a wall clock gated
+  // at ">= 40ms since the last emit", so the interval between the two newest frames measures 40-48ms
+  // and lands on a different value on nearly every update. Buckets are anchored to the epoch, where
+  // the boundary phase is `timestamp / strideMs` buckets from the origin -- hundreds of them -- so a
+  // stride that moves by even one frame period teleports every bucket edge and re-selects nearly the
+  // whole waterfall. That is the jump-and-shimmer both 3D modes showed in live capture, and no test
+  // here caught it because they all pass a constant. `resolveStableSpectrogramSampleMs` is what makes
+  // the precondition true, so the guard has to run through it rather than around it.
+  it("selects the same frames despite jitter in the measured frame interval", () => {
+    // 40..48ms intervals, deterministic, standing in for real capture cadence.
+    const timestamps = [];
+    for (let i = 0, ts = 300_000; i < 900; i++, ts += 40 + ((i * 7) % 9)) timestamps.push(ts);
+    const view = framesAt(timestamps, -20);
+    const span = 30_000;
+
+    const selectedAt = (endIdx) => {
+      const newestMs = timestamps[endIdx];
+      const oldestMs = newestMs - span;
+      const startIdx = timestamps.findIndex((ts) => ts >= oldestMs);
+      const g = sampleWaterfallGrid({
+        ...BASE,
+        view,
+        startIdx,
+        endIdx,
+        oldestMs,
+        span,
+        maxRidges: 100,
+        sampleMs: resolveStableSpectrogramSampleMs(
+          { length: endIdx + 1, timestampAt: (i) => timestamps[i] },
+          SAMPLE_MS
+        ),
+      });
+      return new Set(
+        Array.from(g.tFracs.subarray(0, g.count)).map((f) => Math.round(f * span + oldestMs))
+      );
+    };
+
+    // Advance one captured frame at a time, as live capture does. A frame already on screen must
+    // stay on screen: the only ones allowed to leave are those falling out of the window.
+    let previous = selectedAt(800);
+    for (let endIdx = 801; endIdx <= 830; endIdx++) {
+      const current = selectedAt(endIdx);
+      const oldestKept = Math.min(...current);
+      const survivors = [...previous].filter((ts) => ts >= oldestKept);
+      const churned = survivors.filter((ts) => !current.has(ts));
+      expect(churned).toEqual([]);
+      previous = current;
     }
   });
 

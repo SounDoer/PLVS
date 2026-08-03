@@ -112,6 +112,43 @@ export function resolveSpectrogramSampleMs(view, fallbackMs) {
   return Number.isFinite(interval) && interval > 0 ? interval : fallbackMs;
 }
 
+/**
+ * How many intervals back `resolveStableSpectrogramSampleMs` looks. Long enough that a stall or a
+ * dropped emit cannot become the minimum, short enough to follow a real cadence change (live -> file)
+ * within well under a second.
+ */
+const STABLE_SAMPLE_LOOKBACK = 16;
+
+/**
+ * The same nominal frame interval as `resolveSpectrogramSampleMs`, but stable across updates.
+ *
+ * The single-interval estimator is right for gap detection, which only needs a scale, and wrong for
+ * any caller that QUANTISES by the period: live visual frames are timestamped with a wall clock
+ * gated at ">= VISUAL_EMIT_MS since the last emit", so the newest interval measures 40-48ms and
+ * lands on a different value nearly every update. `sampleWaterfallGrid` builds its decimation stride
+ * as a whole number of periods and anchors buckets to the epoch, where a stride that moves by one
+ * period shifts every bucket edge by hundreds of periods -- the 3D waterfall then re-selects most of
+ * its ridges on every frame, which reads as the whole surface jumping.
+ *
+ * The minimum over the recent intervals is the emit gate itself, so it is the cadence rather than
+ * an estimate of it: capture gaps and stalls only ever make an interval LONGER, so they cannot move
+ * it, and the value only changes when the source's real cadence does.
+ *
+ * @param {{ length: number, timestampAt?: (i:number)=>number }} view ascending by timestamp
+ * @param {number} fallbackMs used when the view carries too few usable intervals
+ */
+export function resolveStableSpectrogramSampleMs(view, fallbackMs) {
+  if (!view || view.length < 2) return fallbackMs;
+  const newest = view.length - 1;
+  const oldest = Math.max(1, newest - STABLE_SAMPLE_LOOKBACK + 1);
+  let smallest = Infinity;
+  for (let i = oldest; i <= newest; i++) {
+    const interval = timestampAt(view, i) - timestampAt(view, i - 1);
+    if (Number.isFinite(interval) && interval > 0 && interval < smallest) smallest = interval;
+  }
+  return smallest === Infinity ? fallbackMs : smallest;
+}
+
 export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 1.8) {
   const ts = view?.timestampAt?.(index);
   if (!Number.isFinite(ts)) return NaN;

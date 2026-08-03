@@ -26,6 +26,12 @@ import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
  * ridges then blink on and off per update. Quantising the stride to a whole number of frame periods
  * pins the edges: the stride only changes when the window is actually resized, never from jitter.
  *
+ * That last part holds only if `sampleMs` is a NOMINAL period. Hand it a freshly measured interval
+ * and the quantiser becomes the jitter source it was meant to remove -- one period of movement in
+ * the stride shifts epoch-anchored bucket edges by hundreds of periods, so nearly every ridge
+ * re-binds and the whole waterfall jumps. Callers get one from
+ * `resolveStableSpectrogramSampleMs`, not from `resolveSpectrogramSampleMs`.
+ *
  * Real capture gaps need no special handling: a stretch of time holding no frames simply
  * contributes no ridges, which is the 3D equivalent of the blank columns the 2D path leaves.
  */
@@ -37,7 +43,8 @@ import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
  * @param {number} args.endIdx last in-window frame index, inclusive
  * @param {number} args.oldestMs window start, in ms
  * @param {number} args.span window width, in ms
- * @param {number} args.sampleMs nominal frame period; quantises the stride so it cannot jitter
+ * @param {number} args.sampleMs nominal frame period; quantises the stride so it cannot jitter. Must
+ *        be stable across updates -- see the note above.
  * @param {number} args.maxRidges upper bound on the number of DECIMATED ridges; `pinLiveRow` adds
  *        one row on top of it
  * @param {Int16Array} args.yToBand frequency sample points; its length sets pointCount
