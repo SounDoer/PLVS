@@ -291,6 +291,21 @@ a migration would buy nothing.
   — the dB→pixel scale derived from the fit. The control is a multiplier applied on top of it, not
   the same quantity.
 
+### Amended 2026-08-03: the two Lines-only controls are gone
+
+`spectrogram3dLineAlpha` and `spectrogram3dLineWidth` were removed after tuning against real audio.
+Alpha settled at fully opaque, which is what it defaulted to, so the multiplier is deleted rather
+than left at an identity — the colour ramp already separates near from far, and nothing needed to
+buy depth by letting ridges accumulate.
+
+Width is not a constant either. The base here was one device pixel per CSS pixel; every other curve
+in the app takes `--ui-spectrum-stroke-width`, which is 1.5. The ridges were therefore thinner than
+the spectrum trace they are made of, by a factor nobody chose, and a hardcoded base could never
+follow a theme. Lines reads the token now, as `StereoMapPlot` already did.
+
+Removing the keys needs no persistence migration: `normalizePanelControls` keeps only known keys, so
+stored values for them are dropped on read.
+
 The elevation clamp exists in two places — the normalizer and the projection — and they must agree,
 or the settings layer silently pulls back a value the renderer would accept.
 

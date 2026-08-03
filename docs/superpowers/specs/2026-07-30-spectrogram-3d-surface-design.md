@@ -460,6 +460,52 @@ same complaint by widening the band both ends already share.
 If this is attempted again, the shape that could work is two different WIDTHS — a wide height fade
 and a narrow colour fade at the boundary — not the all-or-nothing decoupling tried here.
 
+## Amended after tuning against real audio (2026-08-03)
+
+The numbers items 5, 7 and 12 settled by eye were exposed as panel controls so they could be tuned
+against real material instead of argued about. Three of the four turned out to have an obvious
+setting, one of them turned out to be broken, and all four are constants again — the controls were
+scaffolding, and they are gone.
+
+13. **Mode leads the Spectrogram settings.** It decides which of the rows below it exist, so it
+    belongs above them rather than fourth. Order is now Mode, Smoothing, dB Floor, Y Range, then
+    the rows a 3D mode adds, in the order they already had.
+14. **The per-mode tuning controls are settled into constants and removed.** Relief and Floor Fade
+    were added for this pass; Line Alpha and Line Width predate it and go the same way. The settled
+    values: relief 4, near-floor alpha band **0.15** — which supersedes item 12's 0.4, wider bands
+    washed quiet passages out and the dissolve reads as one well before the band costs that much —
+    and line alpha fully opaque, so the multiplier is deleted rather than left sitting at an
+    identity. Removing the keys needs no persistence migration: `normalizePanelControls` keeps only
+    known keys, so stored values for them are dropped on read.
+15. **The shading map: clamped linear → soft saturation.** Exposing relief is what caught this, and
+    it is a units mismatch rather than a bad constant, so no choice of gain fixes it.
+    `shade = SHADE_MID + slope * gain` clamped to 0..1 assumes `slope` is O(1). It is not: `slope`
+    is measured per unit of FLOOR DISTANCE (deliberately — a per-sample delta would shade the same
+    audio differently on a resized panel) while consecutive samples are about one screen row apart,
+    so on real material its magnitude runs roughly 0.5 to 8 with a median near 3. Measured against a
+    realistic grid, **a gain of 6 clamps 97.9% of samples and a gain of 2 still clamps 94.8%** — the
+    surface shades in two tones and moving the control repainted about 1% of the painted pixels,
+    which is what "the control does nothing" looked like from the outside.
+
+    The clamp is replaced by the soft saturation `s / (1 + |s|)`, which maps the whole real line
+    into (-1, 1) with no hard edge, extracted as `slopeShade` so the mapping can be tested without a
+    knob to turn. The gain now sets how quickly shading approaches the ends rather than how much of
+    the surface is pinned to them. One divide per sample; the benchmark cannot tell it from the
+    clamp.
+
+    Worth knowing before reaching for this again: at the shipped gain of 4 the measured slopes still
+    quantise into the top three entries of the 16-entry shade table. That is the high-contrast look
+    review picked, and it is a real improvement on the single entry the clamp gave them, but it is
+    not an even spread. Spreading them would take normalising `slope` against a reference slope —
+    **a larger gain only pushes further into saturation.**
+
+16. **Ridge stroke width is a token read, not a constant.** Lines stroked at `dpr * lineWidth` with
+    a base of one device pixel per CSS pixel, while every other curve in the app takes
+    `--ui-spectrum-stroke-width`, which is 1.5. So the ridges were thinner than the spectrum trace
+    they are made of, by a factor nobody chose, and the hardcoded end could never follow a theme.
+    Lines now reads the token, the same way `StereoMapPlot` already does. There is no number left to
+    keep in agreement.
+
 ## Panel Controls
 
 | Key                         | Default              | Range                                   | Applies to      |
