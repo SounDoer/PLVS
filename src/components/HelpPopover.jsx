@@ -86,14 +86,6 @@ function iconForHint(item) {
   );
 }
 
-function AxisChip({ children }) {
-  return (
-    <span className="inline-flex h-[1.45em] min-w-[1.45em] items-center justify-center rounded-[3px] border border-border bg-muted/40 px-1 font-[family-name:var(--ui-font-mono)] text-[0.82em] font-semibold leading-none text-muted-foreground">
-      {children}
-    </span>
-  );
-}
-
 function Keycap({ children }) {
   return (
     <span className="inline-flex h-[1.45em] items-center justify-center rounded-[3px] border border-border bg-background px-1.5 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground shadow-sm">
@@ -104,17 +96,9 @@ function Keycap({ children }) {
 
 function GestureIcon({ item }) {
   const text = String(item).toLowerCase();
-  const axis = text.startsWith("x axis")
-    ? "X"
-    : text.startsWith("y axis")
-      ? "Y"
-      : text.startsWith("time axis")
-        ? "T"
-        : null;
 
   return (
     <span className="flex shrink-0 items-center gap-1">
-      {axis ? <AxisChip>{axis}</AxisChip> : null}
       {text.includes("ctrl") ? <Keycap>Ctrl</Keycap> : null}
       {iconForHint(item)}
     </span>
