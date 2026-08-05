@@ -82,6 +82,43 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("open-editor", { view: "presets", anchorX: 0 });
   });
 
+  it("highlights Presets for a clean active preset, but yields to the open-editor state", () => {
+    const { rerender } = render(
+      <DockHeader
+        state={{ ...STATE, activeCleanPreset: true }}
+        onAction={vi.fn()}
+        onPointer={vi.fn()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
+    ).toBe(true);
+
+    rerender(
+      <DockHeader
+        state={{ ...STATE, activeCleanPreset: true, editorView: "presets" }}
+        onAction={vi.fn()}
+        onPointer={vi.fn()}
+      />
+    );
+    const button = screen.getByRole("button", { name: "Presets" });
+    expect(button.classList.contains("bg-accent")).toBe(true);
+    expect(button.classList.contains("text-foreground")).toBe(false);
+  });
+
+  it("does not highlight Presets for a dirty or absent active preset", () => {
+    render(
+      <DockHeader
+        state={{ ...STATE, activeCleanPreset: false }}
+        onAction={vi.fn()}
+        onPointer={vi.fn()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
+    ).toBe(false);
+  });
+
   it("emits a reserve toggle instead of a stale target value", () => {
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     const onAction = vi.fn();

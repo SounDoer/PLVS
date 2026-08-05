@@ -104,9 +104,11 @@ export function DockHeader({ state, onAction, onPointer }) {
           tip="Presets"
           {...toolTipProps}
           aria-pressed={state.editorView === "presets"}
-          className={
-            state.editorView === "presets" ? "bg-accent text-accent-foreground" : undefined
-          }
+          className={cn(
+            state.editorView === "presets"
+              ? "bg-accent text-accent-foreground"
+              : state.activeCleanPreset && "text-foreground"
+          )}
           onClick={(event) => toggleEditor("presets", event)}
         />
       </div>

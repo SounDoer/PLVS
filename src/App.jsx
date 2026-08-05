@@ -1156,11 +1156,17 @@ function AppContent() {
       edge: dockEdge,
       reserveSpace,
       editorView: dockAccessoryVisibility.editorView,
+      // Mirrors the normal-mode toolbar's Presets highlight (see AppHeader.jsx): a preset is
+      // "active" once applied and untouched since, matching the Loudness/Views semantic rather
+      // than the editor's own open/closed pressed state below.
+      activeCleanPreset: presets.activeId != null && !presets.dirty,
     }),
     [
       dockAccessoryVisibility.editorView,
       dockEdge,
       notice,
+      presets.activeId,
+      presets.dirty,
       reserveSpace,
       running,
       showClock,
