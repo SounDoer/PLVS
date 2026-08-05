@@ -25,7 +25,7 @@ function renderSettings(moduleId, props = {}) {
 describe("DockModuleSettings", () => {
   it.each([
     ["level", "Level mode"],
-    ["loudness", "loudness y range min"],
+    ["loudness", "loudness range min"],
     ["spectrum", "Spectrum channel"],
     ["correlation", "Vectorscope channel pair"],
     ["stats", "Edit metrics"],
@@ -59,7 +59,7 @@ describe("DockModuleSettings", () => {
     expect(onChange).toHaveBeenCalledWith({ ...controls, showLabels: false });
   });
 
-  it("reuses the normal Loudness Layers and Y Range settings", () => {
+  it("reuses the normal Loudness Layers and Loudness Range settings", () => {
     const controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness;
     const onChange = renderSettings("loudness");
 
@@ -68,8 +68,8 @@ describe("DockModuleSettings", () => {
     expect(screen.queryByLabelText("Show loudness reference")).toBeNull();
     // The reference value belongs to the active Loudness Profile, not to this panel.
     expect(screen.queryByLabelText("Loudness reference")).toBeNull();
-    expect(screen.getByLabelText("loudness y range min").value).toBe("-64");
-    expect(screen.getByLabelText("loudness y range max").value).toBe("0");
+    expect(screen.getByLabelText("loudness range min").value).toBe("-64");
+    expect(screen.getByLabelText("loudness range max").value).toBe("0");
     const settingsRows = screen.getByText("Readouts").closest("div")?.parentElement?.children;
     expect(settingsRows?.[settingsRows.length - 1]?.textContent).toContain("Readouts");
 
@@ -169,11 +169,11 @@ describe("DockModuleSettings", () => {
     expect(screen.queryByLabelText("Spectrum view")).toBeNull();
   });
 
-  it("exposes Spectrum X range and quarter-decibel tilt steps", () => {
+  it("exposes Spectrum Frequency Range and quarter-decibel tilt steps", () => {
     renderSettings("spectrum");
 
-    expect(screen.getByLabelText("spectrum x range min").value).toBe("20");
-    expect(screen.getByLabelText("spectrum x range max").value).toBe("20000");
+    expect(screen.getByLabelText("spectrum frequency range min").value).toBe("20");
+    expect(screen.getByLabelText("spectrum frequency range max").value).toBe("20000");
     expect(screen.getByLabelText("spectrum tilt").step).toBe("0.25");
     expect(screen.queryByText("3.00 dB/oct")).toBeNull();
     fireEvent.mouseEnter(screen.getByLabelText("spectrum tilt"));
@@ -242,8 +242,8 @@ describe("DockModuleSettings", () => {
     });
 
     expect(screen.queryByLabelText("Spectrogram channel")).toBeNull();
-    expect(screen.getByLabelText("spectrogram y range min")).toBeTruthy();
-    expect(screen.queryByLabelText("Spectrogram level range min")).toBeNull();
+    expect(screen.getByLabelText("spectrogram frequency range min")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrogram level range min")).toBeNull();
   });
 
   it("does not expose settings for Waveform", () => {

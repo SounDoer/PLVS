@@ -101,8 +101,8 @@ describe("PanelSettingsMenu", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
 
-    expect(screen.getByLabelText("spectrogram y range min")).toBeTruthy();
-    expect(screen.getByLabelText("spectrogram y range max")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram frequency range min")).toBeTruthy();
+    expect(screen.getByLabelText("spectrogram frequency range max")).toBeTruthy();
   });
 
   it("renders Vectorscope settings for stereo sources", () => {

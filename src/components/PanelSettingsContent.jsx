@@ -724,10 +724,10 @@ export function LoudnessSettingsRows({
           ) : null}
         </div>
       </SettingsRow>
-      <SettingsRow label="Y Range">
+      <SettingsRow label="Loudness Range">
         <SettingsRangeInput
-          minAriaLabel="loudness y range min"
-          maxAriaLabel="loudness y range max"
+          minAriaLabel="loudness range min"
+          maxAriaLabel="loudness range max"
           minValue={yMinDb}
           maxValue={yMaxDb}
           onCommit={onYRangeChange}
@@ -819,19 +819,19 @@ export function SpectrumDisplaySettingsRows({
               onChange={onOctaveSmoothingChange}
             />
           </SettingsRow>
-          <SettingsRow label="X Range">
+          <SettingsRow label="Frequency Range">
             <SettingsRangeInput
-              minAriaLabel="spectrum x range min"
-              maxAriaLabel="spectrum x range max"
+              minAriaLabel="spectrum frequency range min"
+              maxAriaLabel="spectrum frequency range max"
               minValue={xMinFreq}
               maxValue={xMaxFreq}
               onCommit={onXRangeChange}
             />
           </SettingsRow>
-          <SettingsRow label="Y Range">
+          <SettingsRow label="Level Range">
             <SettingsRangeInput
-              minAriaLabel="spectrum y range min"
-              maxAriaLabel="spectrum y range max"
+              minAriaLabel="spectrum level range min"
+              maxAriaLabel="spectrum level range max"
               minValue={yMinDb}
               maxValue={yMaxDb}
               onCommit={onYRangeChange}
@@ -974,10 +974,10 @@ export function PanelSettingsContent({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Y Range">
+        <SettingsRow label="Level Range">
           <SettingsRangeInput
-            minAriaLabel="level meter y range min"
-            maxAriaLabel="level meter y range max"
+            minAriaLabel="level meter range min"
+            maxAriaLabel="level meter range max"
             minValue={levelMeterYMinDb}
             maxValue={levelMeterYMaxDb}
             onCommit={(newMin, newMax) => {
@@ -1328,10 +1328,10 @@ export function PanelSettingsContent({
                 }}
               />
             </SettingsRow>
-            <SettingsRow label="Y Range">
+            <SettingsRow label="Frequency Range">
               <SettingsRangeInput
-                minAriaLabel="spectrogram y range min"
-                maxAriaLabel="spectrogram y range max"
+                minAriaLabel="spectrogram frequency range min"
+                maxAriaLabel="spectrogram frequency range max"
                 minValue={normalizedPanelControls.spectrogramYMinFreq}
                 maxValue={normalizedPanelControls.spectrogramYMaxFreq}
                 onCommit={(newMin, newMax) => {
@@ -1672,10 +1672,10 @@ export function PanelSettingsContent({
             }}
           />
         </SettingsRow>
-        <SettingsRow label="X Range">
+        <SettingsRow label="Frequency Range">
           <SettingsRangeInput
-            minAriaLabel="stereo map x range min"
-            maxAriaLabel="stereo map x range max"
+            minAriaLabel="stereo map frequency range min"
+            maxAriaLabel="stereo map frequency range max"
             minValue={normalizedPanelControls.stereoMapXMinFreq}
             maxValue={normalizedPanelControls.stereoMapXMaxFreq}
             onCommit={(newMin, newMax) => {
@@ -1690,10 +1690,10 @@ export function PanelSettingsContent({
           />
         </SettingsRow>
         {isMonoLoss ? (
-          <SettingsRow label="Y Range">
+          <SettingsRow label="Level Range">
             <SettingsRangeInput
-              minAriaLabel="stereo map mono loss y range min"
-              maxAriaLabel="stereo map mono loss y range max"
+              minAriaLabel="stereo map mono loss level range min"
+              maxAriaLabel="stereo map mono loss level range max"
               minValue={normalizedPanelControls.stereoMapMonoLossYMinDb}
               maxValue={0}
               onCommit={(newMin) => {
@@ -1708,10 +1708,10 @@ export function PanelSettingsContent({
           </SettingsRow>
         ) : null}
         {isMsRatio ? (
-          <SettingsRow label="Y Range">
+          <SettingsRow label="Level Range">
             <SettingsRangeInput
-              minAriaLabel="stereo map m/s ratio y range min"
-              maxAriaLabel="stereo map m/s ratio y range max"
+              minAriaLabel="stereo map m/s ratio level range min"
+              maxAriaLabel="stereo map m/s ratio level range max"
               minValue={normalizedPanelControls.stereoMapMsRatioYMinDb}
               maxValue={normalizedPanelControls.stereoMapMsRatioYMaxDb}
               onCommit={(newMin, newMax) => {

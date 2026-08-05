@@ -327,20 +327,20 @@ function SettingsBody({
             onChange={(octaveSmoothing) => onChange({ ...controls, octaveSmoothing })}
           />
         </SettingsRow>
-        <SettingsRow label="X Range">
+        <SettingsRow label="Frequency Range">
           <SettingsRangeInput
-            minAriaLabel="stereo map x range min"
-            maxAriaLabel="stereo map x range max"
+            minAriaLabel="stereo map frequency range min"
+            maxAriaLabel="stereo map frequency range max"
             minValue={controls.minFreq}
             maxValue={controls.maxFreq}
             onCommit={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
           />
         </SettingsRow>
         {isMonoLoss ? (
-          <SettingsRow label="Y Range">
+          <SettingsRow label="Level Range">
             <SettingsRangeInput
-              minAriaLabel="stereo map mono loss y range min"
-              maxAriaLabel="stereo map mono loss y range max"
+              minAriaLabel="stereo map mono loss level range min"
+              maxAriaLabel="stereo map mono loss level range max"
               minValue={controls.monoLossMinDb}
               maxValue={0}
               onCommit={(monoLossMinDb) => onChange({ ...controls, monoLossMinDb })}
@@ -348,10 +348,10 @@ function SettingsBody({
           </SettingsRow>
         ) : null}
         {isMsRatio ? (
-          <SettingsRow label="Y Range">
+          <SettingsRow label="Level Range">
             <SettingsRangeInput
-              minAriaLabel="stereo map m/s ratio y range min"
-              maxAriaLabel="stereo map m/s ratio y range max"
+              minAriaLabel="stereo map m/s ratio level range min"
+              maxAriaLabel="stereo map m/s ratio level range max"
               minValue={controls.msRatioMinDb}
               maxValue={controls.msRatioMaxDb}
               onCommit={(msRatioMinDb, msRatioMaxDb) =>
@@ -382,10 +382,10 @@ function SettingsBody({
             />
           </SettingsRow>
         ) : null}
-        <SettingsRow label="Y Range">
+        <SettingsRow label="Frequency Range">
           <SettingsRangeInput
-            minAriaLabel="spectrogram y range min"
-            maxAriaLabel="spectrogram y range max"
+            minAriaLabel="spectrogram frequency range min"
+            maxAriaLabel="spectrogram frequency range max"
             minValue={controls.minFreq}
             maxValue={controls.maxFreq}
             onCommit={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
