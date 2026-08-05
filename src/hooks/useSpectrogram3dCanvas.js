@@ -135,19 +135,30 @@ const ROW_GAP_TOLERANCE = 1.5;
  * is a theme switch.
  */
 function makeArgbResolver() {
-  let lastCss = null;
-  let lastArgb = packArgb(255, 255, 255, 255);
+  // Keyed by string rather than remembering only the last one. A single slot looks sufficient --
+  // each colour is resolved once per repaint -- but the Surface branch resolves TWO of them, the
+  // monochrome ink and the selection colour, and they alternate. A one-slot cache then misses on
+  // both, every repaint, and each miss is a `getImageData` readback: 50 a second at the 25 Hz data
+  // rate and 120 while a rotate drag is running the repaint at frame rate. Colorize hid it by
+  // short-circuiting the ink, so only Monochrome paid.
+  //
+  // The key space is the theme's colour tokens, so it is a handful of entries and does not need
+  // eviction. The guard is there only so a caller that started generating colours could not turn
+  // this into an unbounded map without anyone noticing.
+  const cache = new Map();
   return (ctx, css) => {
-    if (css === lastCss) return lastArgb;
+    const hit = cache.get(css);
+    if (hit !== undefined) return hit;
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.fillStyle = css;
     ctx.fillRect(0, 0, 1, 1);
     const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
     ctx.restore();
-    lastCss = css;
-    lastArgb = packArgb(r, g, b, a);
-    return lastArgb;
+    const argb = packArgb(r, g, b, a);
+    if (cache.size >= 16) cache.clear();
+    cache.set(css, argb);
+    return argb;
   };
 }
 
@@ -560,6 +571,12 @@ export function useSpectrogram3dCanvas({
       const heightPx = proj.heightScale * view.heightGain;
 
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
+      // Read once for both branches. Lines strokes ridges at this width and its selected ridge at
+      // twice it; Surface sizes its scrub band to the same doubled width, so the scrub marker
+      // carries the same weight whichever mode is showing. Reading the token rather than hardcoding
+      // is what keeps that true when the theme moves it -- see the note in the Lines branch.
+      const strokeCss = parseFloat(cssVar(canvas, "--ui-spectrum-stroke-width", "1.5")) || 1.5;
+      const selectedStrokePx = 2 * dpr * strokeCss;
 
       if (p.floor) {
         drawFloor(ctx, proj, ink, dpr);
@@ -691,6 +708,21 @@ export function useSpectrogram3dCanvas({
           heightGain: view.heightGain,
           highlightArgb,
           highlightRow: selectedRidge,
+          // The band is one row wide, so its width on screen is the row spacing -- which fell from
+          // 6.6 to 2.3 device pixels at 1920x600 when the row cap went from 137 to 400. The marker
+          // did not change, the rows moved under it. Convert the width Lines gives its selected
+          // ridge back into rows so both modes mark the scrubbed moment with the same weight.
+          //
+          // The band with spread s covers `2s + 1` rows, so `s = (target/spacing - 1) / 2`, rounded
+          // up because an invisible marker is worse than a slightly heavy one. At a foreshortened
+          // view this can be many rows; it is still the same few pixels, which is the point. A
+          // degenerate axis gives a non-finite ratio -- fall back to the single row rather than
+          // letting Infinity highlight the whole surface.
+          highlightSpread: (() => {
+            const rowSpacingPx = strideTFrac * timeAxisPx;
+            const ratio = selectedStrokePx / rowSpacingPx;
+            return Number.isFinite(ratio) ? Math.max(0, Math.ceil((ratio - 1) / 2)) : 0;
+          })(),
           columnStride: columnStrideFor(W, H),
           maxSteps: H,
           // The two end faces of the solid: sink the terrain into the floor rather than letting
@@ -713,7 +745,6 @@ export function useSpectrogram3dCanvas({
           // ramp partway down when the data runs out, which is the end face standing off the floor.
           enterEdgeTFrac: rowLut.lastCoveredTFrac,
           exitEdgeTFrac: rowLut.firstCoveredTFrac,
-          slopeGain: p.relief,
         });
         off.ctx.putImageData(off.image, 0, 0);
         ctx.drawImage(off.canvas, 0, 0);
@@ -741,7 +772,6 @@ export function useSpectrogram3dCanvas({
       // Line widths are in the canvas coordinate system, which useCanvasSize sizes in DEVICE
       // pixels, so the CSS width has to be scaled by dpr. A literal 1 is a sub-CSS-pixel hairline
       // on any scaled display and the whole mesh washes out. Same trap as ctx.font below.
-      const strokeCss = parseFloat(cssVar(canvas, "--ui-spectrum-stroke-width", "1.5")) || 1.5;
       const baseLineWidth = dpr * strokeCss;
       ctx.lineWidth = baseLineWidth;
 

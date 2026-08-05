@@ -20,10 +20,16 @@
 // (azimuth 315) keeps 2D's direction but pushes the newest frame to the far end.
 const DEFAULT_AZIMUTH_DEG = 135;
 const DEFAULT_ELEVATION_DEG = 60;
-const ELEVATION_MIN_DEG = 5;
-const ELEVATION_MAX_DEG = 85;
-const HEIGHT_GAIN_MIN = 0.3;
-const HEIGHT_GAIN_MAX = 3;
+/**
+ * The view parameters' allowed ranges, exported because the persistence layer clamps to them too
+ * and two copies of a range is one copy too many: widening it here while `panelControls` keeps the
+ * old numbers does not fail anywhere, it just makes the control look broken -- the slider moves and
+ * the stored value is silently pulled back.
+ */
+export const ELEVATION_MIN_DEG = 5;
+export const ELEVATION_MAX_DEG = 85;
+export const HEIGHT_GAIN_MIN = 0.3;
+export const HEIGHT_GAIN_MAX = 3;
 const DEFAULT_HEIGHT_GAIN = 1;
 const FIT_MARGIN = 0.92;
 

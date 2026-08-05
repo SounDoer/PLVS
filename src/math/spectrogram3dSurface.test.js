@@ -458,6 +458,7 @@ function render(
   grid,
   {
     highlightRow = -1,
+    highlightSpread = 0,
     columnStride = 1,
     heightGain = 1,
     elevationDeg = 60,
@@ -483,6 +484,7 @@ function render(
     heightGain,
     highlightArgb: HIGHLIGHT,
     highlightRow,
+    highlightSpread,
     columnStride,
     maxSteps: H,
     enterFadeTFrac,
@@ -1195,6 +1197,33 @@ describe("rasterizeSurface", () => {
     // no ramp at all, which is the standing cross-section.
     const sliced = render(grid, opts);
     expect(topAt(sliced, lastCoveredTFrac) - topAt(sliced, 0.4)).toBe(0);
+  });
+
+  // The band is one row wide by construction, so its width on screen is the row spacing -- nothing
+  // about the marker changed when the row cap tripled, but the rows moved under it and it went from
+  // 6.6 to 2.3 device pixels at 1920x600. `highlightSpread` is how the caller buys that width back
+  // in rows, so what has to hold is that the painted band grows with it.
+  it("widens the scrub band by whole rows on each side of the scrubbed one", () => {
+    const grid = fakeGrid(new Array(40).fill(0.6));
+    const opts = { azimuthDeg: 90, highlightRow: 20 };
+    const narrow = countPixels(render(grid, opts), HIGHLIGHT);
+    const wide = countPixels(render(grid, { ...opts, highlightSpread: 2 }), HIGHLIGHT);
+    expect(narrow).toBeGreaterThan(0);
+    // Five rows against one: more than double, and bounded well short of the whole surface.
+    expect(wide).toBeGreaterThan(narrow * 2);
+    expect(wide).toBeLessThan(countOpaque(render(grid, opts)) / 2);
+  });
+
+  // A spread of zero has to stay exactly the old single-row behaviour, or every caller that does
+  // not ask for a wider band silently gets one.
+  it("marks only the scrubbed row when no spread is asked for", () => {
+    const grid = fakeGrid(new Array(40).fill(0.6));
+    const withDefault = countPixels(render(grid, { azimuthDeg: 90, highlightRow: 20 }), HIGHLIGHT);
+    const withZero = countPixels(
+      render(grid, { azimuthDeg: 90, highlightRow: 20, highlightSpread: 0 }),
+      HIGHLIGHT
+    );
+    expect(withZero).toBe(withDefault);
   });
 
   // The scrubbed row is a marker rather than terrain, so its span stays one flat colour: ramping it

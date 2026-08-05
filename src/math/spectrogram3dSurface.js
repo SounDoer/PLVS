@@ -657,6 +657,11 @@ export function fadeGridFrequencyEdges(heights, count, pointCount, fadeFrac) {
  * @param {number} args.heightGain the Height Scale multiplier
  * @param {number} args.highlightArgb colour for the scrubbed row
  * @param {number} args.highlightRow grid row to highlight, or -1
+ * @param {number} [args.highlightSpread] extra rows to highlight either side of `highlightRow`.
+ *        The band is one row wide by construction, so its width on screen is the row spacing -- it
+ *        thins as the row count rises, and at the row counts the Surface now resolves that is a
+ *        marker two device pixels wide. The caller converts a target width in pixels into rows; see
+ *        the derivation there.
  * @param {number} args.columnStride rasterise every Nth column and replicate
  * @param {number} args.maxSteps per-column sample cap
  * @param {number} [args.enterFadeTFrac] height fade width at the newest window edge; see edgeFade
@@ -678,6 +683,7 @@ export function rasterizeSurface({
   heightGain,
   highlightArgb,
   highlightRow = -1,
+  highlightSpread = 0,
   columnStride = 1,
   maxSteps,
   enterFadeTFrac = 0,
@@ -774,8 +780,13 @@ export function rasterizeSurface({
       let shadeIdx = 0;
       // The scrubbed row is one captured frame, so the highlight stays a discrete band: it follows
       // whichever bracketing row this sample sits nearer to, even though the height between them is
-      // interpolated.
-      const highlighted = (wRow < 0.5 ? row : row + 1) === highlightRow;
+      // interpolated. `highlightSpread` widens it by whole rows -- the marker still centres on the
+      // scrubbed frame, it just stops being invisible when rows are dense on screen.
+      const nearestRow = wRow < 0.5 ? row : row + 1;
+      const highlighted =
+        highlightRow >= 0 &&
+        nearestRow >= highlightRow - highlightSpread &&
+        nearestRow <= highlightRow + highlightSpread;
       if (highlighted) {
         argb = highlightArgb;
       } else {

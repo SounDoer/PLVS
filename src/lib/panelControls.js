@@ -1,6 +1,12 @@
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE, normalizeDialogueVadEngine } from "./dialogueVadEngines.js";
 import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
+import {
+  ELEVATION_MAX_DEG,
+  ELEVATION_MIN_DEG,
+  HEIGHT_GAIN_MAX,
+  HEIGHT_GAIN_MIN,
+} from "../math/spectrogram3dProjection.js";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
@@ -163,8 +169,15 @@ function normalizeSpectrogram3dColorize(raw) {
   return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrogram3dColorize;
 }
 
+// Ranges come from the projection, which is the thing that actually has an opinion about them; see
+// the export there for why they are not restated.
 function normalizeSpectrogram3dHeightGain(raw) {
-  return clampNumber(raw, 0.3, 3, DEFAULT_PANEL_CONTROLS.spectrogram3dHeightGain);
+  return clampNumber(
+    raw,
+    HEIGHT_GAIN_MIN,
+    HEIGHT_GAIN_MAX,
+    DEFAULT_PANEL_CONTROLS.spectrogram3dHeightGain
+  );
 }
 
 /** Azimuth wraps rather than clamping — spinning past 360 during a drag is legitimate. */
@@ -173,12 +186,14 @@ function normalizeSpectrogram3dAzimuthDeg(raw) {
   return ((raw % 360) + 360) % 360;
 }
 
-/**
- * Elevation is clamped at both ends: at 0 the surface collapses to a line, and past about 85 it
- * degenerates into a skewed top-down view that is strictly worse than the 2D mode.
- */
+/** Clamped at both ends; the projection's own doc says why those two ends. */
 function normalizeSpectrogram3dElevationDeg(raw) {
-  return clampNumber(raw, 5, 85, DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg);
+  return clampNumber(
+    raw,
+    ELEVATION_MIN_DEG,
+    ELEVATION_MAX_DEG,
+    DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg
+  );
 }
 
 function normalizeSpectrogram3dFloor(raw) {
