@@ -171,6 +171,24 @@ describe("buildRowLut", () => {
     expect(weights[50]).toBe(0);
   });
 
+  // Where the terrain really begins and ends, which the edge fades have to sink at. Rows stop short
+  // of the window edge, and the hold tolerance then carries coverage a little past the end row, so
+  // neither bound is 0 or 1.
+  it("reports where coverage begins and ends", () => {
+    const tFracs = new Float64Array([0.2, 0.4, 0.6]);
+    const lut = buildRowLut(tFracs, 3, 1001, 0.05);
+    // Within one bucket of the tolerance boundary: the bounds are bucket positions, and a bucket
+    // landing exactly on the tolerance can fall either side of it in floating point.
+    expect(lut.firstCoveredTFrac).toBeCloseTo(0.15, 2);
+    expect(lut.lastCoveredTFrac).toBeCloseTo(0.65, 2);
+  });
+
+  it("reports no coverage bounds when there are no rows", () => {
+    const lut = buildRowLut(new Float64Array(0), 0, 16, 0.1);
+    expect(lut.firstCoveredTFrac).toBeNaN();
+    expect(lut.lastCoveredTFrac).toBeNaN();
+  });
+
   it("marks buckets with no row within maxDistTFrac as NO_ROW", () => {
     // Rows clustered at both ends: the middle is a capture gap.
     const tFracs = new Float64Array([0, 0.05, 0.95, 1]);
@@ -443,6 +461,10 @@ function render(
     azimuthDeg = 135,
     enterFadeTFrac = 0,
     exitFadeTFrac = 0,
+    // Default to the window edges, i.e. what the rasteriser itself falls back to, so the tests that
+    // predate the terrain-edge parameters keep exercising that path.
+    enterEdgeTFrac = 1,
+    exitEdgeTFrac = 0,
   } = {}
 ) {
   const p = proj(azimuthDeg, elevationDeg);
@@ -462,6 +484,8 @@ function render(
     maxSteps: H,
     enterFadeTFrac,
     exitFadeTFrac,
+    enterEdgeTFrac,
+    exitEdgeTFrac,
   });
   return out;
 }
@@ -1133,6 +1157,43 @@ describe("rasterizeSurface", () => {
     expect(new Set(out.filter((word) => word !== 0)).size).toBeGreaterThan(40);
   });
 
+  // Rows sit at captured timestamps, so the newest one lands SHORT of the window's newest edge --
+  // the edge comes from the 10 Hz loudness timeline while frames arrive at 25 Hz. Sinking the
+  // terrain at tFrac 1 then leaves the ramp partway down when coverage runs out, and the end face
+  // stands up off the floor as a sliced-off cross-section. Azimuth 0 is what makes this measurable:
+  // `fx` is zero there, so a screen column is one time position and the terrain's end has a column
+  // of its own. At azimuth 90 a column spans the whole time axis and the two ends share every one.
+  it("sinks the entering end into the floor when the last row stops short of the window edge", () => {
+    const lastT = 0.8;
+    const grid = fakeGrid(new Array(20).fill(0.8));
+    for (let r = 0; r < grid.count; r++) grid.tFracs[r] *= lastT;
+    const p = proj(0, 60);
+    const { lastCoveredTFrac, firstCoveredTFrac } = defaultRowLut(grid);
+    expect(lastCoveredTFrac).toBeGreaterThan(lastT);
+    expect(lastCoveredTFrac).toBeLessThan(1);
+
+    const topAt = (out, tFrac) => {
+      const x = Math.round(projectPoint(tFrac, 0.5, 0, p).x);
+      for (let y = 0; y < H; y++) if (out[y * W + x] !== 0) return y;
+      return -1;
+    };
+    const opts = { azimuthDeg: 0, enterFadeTFrac: 0.1 };
+    const sunk = render(grid, {
+      ...opts,
+      enterEdgeTFrac: lastCoveredTFrac,
+      exitEdgeTFrac: firstCoveredTFrac,
+    });
+    // The terrain's own end column must have come down to meet the floor, while a column well
+    // inside the terrain still stands at full height.
+    const inside = topAt(sunk, 0.4);
+    expect(inside).toBeGreaterThanOrEqual(0);
+    expect(topAt(sunk, lastCoveredTFrac) - inside).toBeGreaterThan(50);
+    // Sinking at the window edge instead leaves that column at the same height as the interior --
+    // no ramp at all, which is the standing cross-section.
+    const sliced = render(grid, opts);
+    expect(topAt(sliced, lastCoveredTFrac) - topAt(sliced, 0.4)).toBe(0);
+  });
+
   // The scrubbed row is a marker rather than terrain, so its span stays one flat colour: ramping it
   // would turn a position readout into something that looks like data.
   it("keeps the highlighted row's span flat", () => {
@@ -1194,6 +1255,19 @@ describe("edgeFade", () => {
     expect(edgeFade(0.1, 0.1, 0.2)).toBe(0.5); // halfway into the 0.2-wide exit ramp
     expect(edgeFade(0.95, 0.1, 0.2)).toBeCloseTo(0.5, 12); // halfway into the 0.1-wide enter ramp
     expect(edgeFade(0.2, 0.1, 0.2)).toBe(1); // exactly at the exit boundary
+  });
+
+  // The ramps land where the TERRAIN ends, which is not where the window does; see the doc.
+  it("ramps to 0 at the given edges rather than at 0 and 1", () => {
+    expect(edgeFade(0.86, 0.1, 0.2, 0.05, 0.86)).toBe(0);
+    expect(edgeFade(0.05, 0.1, 0.2, 0.05, 0.86)).toBe(0);
+    expect(edgeFade(0.5, 0.1, 0.2, 0.05, 0.86)).toBe(1);
+    // Halfway into the 0.1-wide enter ramp, measured back from 0.86 rather than from 1.
+    expect(edgeFade(0.81, 0.1, 0.2, 0.05, 0.86)).toBeCloseTo(0.5, 12);
+    // Past an edge the ramp goes negative and clamps, so terrain outside the covered region is
+    // flattened rather than mirrored back up.
+    expect(edgeFade(0.9, 0.1, 0.2, 0.05, 0.86)).toBe(0);
+    expect(edgeFade(0, 0.1, 0.2, 0.05, 0.86)).toBe(0);
   });
 
   // The rasteriser multiplies heights by this unconditionally, so the disabled case must be an

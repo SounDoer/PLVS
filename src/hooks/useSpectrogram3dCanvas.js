@@ -655,6 +655,13 @@ export function useSpectrogram3dCanvas({
           // deliberately not faded), but only mildly so -- see ENTER_FADE_STRIDES.
           enterFadeTFrac: ENTER_FADE_STRIDES * fadeStrideTFrac,
           exitFadeTFrac: EDGE_FADE_RIDGES * fadeStrideTFrac,
+          // Sink the terrain where the terrain actually ends. The row LUT knows: coverage stops at
+          // the end row plus however far the hold tolerance carries it, and that is short of the
+          // window edge by up to a frame period, because the edge comes from the 10 Hz loudness
+          // timeline and the rows from 25 Hz capture. Fading to the window edge instead leaves the
+          // ramp partway down when the data runs out, which is the end face standing off the floor.
+          enterEdgeTFrac: rowLut.lastCoveredTFrac,
+          exitEdgeTFrac: rowLut.firstCoveredTFrac,
           slopeGain: p.relief,
         });
         off.ctx.putImageData(off.image, 0, 0);

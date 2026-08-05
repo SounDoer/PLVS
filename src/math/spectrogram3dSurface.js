@@ -123,16 +123,23 @@ export const NO_ROW = 0xffff;
  * @param {number} size table resolution
  * @param {number} maxDistTFrac beyond this distance a bucket counts as uncovered, and further apart
  *        than this two rows count as the two sides of a gap rather than one interval
- * @returns {{ rows: Uint16Array, weights: Float32Array }} `rows[i]` is the lower bracketing row or
- *          NO_ROW; `weights[i]` is 0 at that row and 1 at `rows[i] + 1`
+ * @returns {{ rows: Uint16Array, weights: Float32Array, firstCoveredTFrac: number,
+ *          lastCoveredTFrac: number }} `rows[i]` is the lower bracketing row or NO_ROW;
+ *          `weights[i]` is 0 at that row and 1 at `rows[i] + 1`. The two tFracs bound the covered
+ *          region -- where the terrain actually begins and ends, which is the end row plus however
+ *          far `maxDistTFrac` holds it, NOT the window edge. `edgeFade` has to sink the terrain at
+ *          those two positions rather than at 0 and 1; see the note on its edge parameters. Both
+ *          are NaN when nothing is covered.
  */
 export function buildRowLut(tFracs, count, size, maxDistTFrac) {
   const rows = new Uint16Array(size);
   const weights = new Float32Array(size);
   if (count <= 0) {
     rows.fill(NO_ROW);
-    return { rows, weights };
+    return { rows, weights, firstCoveredTFrac: NaN, lastCoveredTFrac: NaN };
   }
+  let firstCovered = -1;
+  let lastCovered = -1;
   let row = 0;
   for (let i = 0; i < size; i++) {
     const t = size > 1 ? i / (size - 1) : 0;
@@ -154,6 +161,8 @@ export function buildRowLut(tFracs, count, size, maxDistTFrac) {
     }
 
     rows[i] = row;
+    if (firstCovered < 0) firstCovered = i;
+    lastCovered = i;
     if (!hasNext) continue;
     const dt = tFracs[row + 1] - tFracs[row];
     if (dt > maxDistTFrac) {
@@ -167,7 +176,13 @@ export function buildRowLut(tFracs, count, size, maxDistTFrac) {
       weights[i] = Math.min(1, Math.max(0, (t - tFracs[row]) / dt));
     }
   }
-  return { rows, weights };
+  const toTFrac = (i) => (i < 0 ? NaN : size > 1 ? i / (size - 1) : 0);
+  return {
+    rows,
+    weights,
+    firstCoveredTFrac: toTFrac(firstCovered),
+    lastCoveredTFrac: toTFrac(lastCovered),
+  };
 }
 
 /**
@@ -496,15 +511,28 @@ const DEPTH_FADE_FLOOR = 0.65;
  * costs a few percent of the window and buys the entering end an approach the eye can follow; the
  * exiting edge keeps the 2.5 strides Lines fades its ridges over.
  *
+ * The two ramps land on `exitEdge` and `enterEdge`, which are where the TERRAIN ends, not where the
+ * window does. Those are not the same position and defaulting them to 0 and 1 was a bug. Rows sit at
+ * captured timestamps and the newest one lands short of the window's newest edge -- the edge comes
+ * from the 10 Hz loudness timeline while frames arrive at 25 Hz, so the last row trails it by up to
+ * a frame period, and the terrain stops there plus however far the row LUT holds it. Sink at 1 and
+ * the ramp is still partway down when the data runs out, which renders as the end face standing
+ * up off the floor: measured at a 5 s window with the newest frame 40 ms behind the edge, the face
+ * stood at 22% of full height, and at 120 ms behind it stood at 97%. It reads as the surface having
+ * been sliced off. The same applies at the oldest end, and at capture start, where the first row can
+ * be most of a window away from tFrac 0.
+ *
  * @param {number} tFrac sample position in the window, 0 = oldest (exiting) end, 1 = newest
- * @param {number} enterWidth fade width at the tFrac = 1 end, in tFrac; 0 disables
- * @param {number} exitWidth fade width at the tFrac = 0 end, in tFrac; 0 disables
+ * @param {number} enterWidth fade width at the `enterEdge` end, in tFrac; 0 disables
+ * @param {number} exitWidth fade width at the `exitEdge` end, in tFrac; 0 disables
+ * @param {number} [exitEdge] where the terrain's oldest end sits; the exit ramp reaches 0 here
+ * @param {number} [enterEdge] where the terrain's newest end sits; the enter ramp reaches 0 here
  * @returns {number} 0..1, exactly 1 everywhere when both widths are 0
  */
-export function edgeFade(tFrac, enterWidth, exitWidth) {
+export function edgeFade(tFrac, enterWidth, exitWidth, exitEdge = 0, enterEdge = 1) {
   let fade = 1;
-  if (exitWidth > 0) fade = Math.min(fade, tFrac / exitWidth);
-  if (enterWidth > 0) fade = Math.min(fade, (1 - tFrac) / enterWidth);
+  if (exitWidth > 0) fade = Math.min(fade, (tFrac - exitEdge) / exitWidth);
+  if (enterWidth > 0) fade = Math.min(fade, (enterEdge - tFrac) / enterWidth);
   // Easing after the min is the same as easing each ramp before it -- smoothstep is monotonic --
   // and it keeps the disabled case an exact identity, since smoothstep(1) is exactly 1.
   const t = fade < 0 ? 0 : fade > 1 ? 1 : fade;
@@ -547,6 +575,11 @@ export function edgeFade(tFrac, enterWidth, exitWidth) {
  * @param {number} args.maxSteps per-column sample cap
  * @param {number} [args.enterFadeTFrac] height fade width at the newest window edge; see edgeFade
  * @param {number} [args.exitFadeTFrac] height fade width at the oldest window edge; see edgeFade
+ * @param {number} [args.enterEdgeTFrac] where the terrain's newest end sits; `rowLut`'s
+ *        `lastCoveredTFrac`. Defaults to the window edge, which is only correct when a row happens
+ *        to land on it -- see edgeFade.
+ * @param {number} [args.exitEdgeTFrac] where the terrain's oldest end sits; `rowLut`'s
+ *        `firstCoveredTFrac`
  */
 export function rasterizeSurface({
   out,
@@ -563,6 +596,8 @@ export function rasterizeSurface({
   maxSteps,
   enterFadeTFrac = 0,
   exitFadeTFrac = 0,
+  enterEdgeTFrac = 1,
+  exitEdgeTFrac = 0,
 }) {
   const { heights, count, pointCount } = grid;
   if (count <= 0 || pointCount <= 0) return;
@@ -628,7 +663,9 @@ export function rasterizeSurface({
       const hHi = heights[base1 + q0] + (heights[base1 + q1] - heights[base1 + q0]) * wq;
       // The edge fade shapes the terrain itself (see edgeFade), so it applies BEFORE the slope:
       // the ramp at the window edge is shaded like any other slope, not painted grey.
-      const h = (hLo + (hHi - hLo) * wRow) * edgeFade(u + 0.5, enterFadeTFrac, exitFadeTFrac);
+      const h =
+        (hLo + (hHi - hLo) * wRow) *
+        edgeFade(u + 0.5, enterFadeTFrac, exitFadeTFrac, exitEdgeTFrac, enterEdgeTFrac);
 
       // Terrain gradient along the view ray, measured before the visibility test: an occluded stretch
       // still shapes the terrain, so skipping it here would corrupt the shading of whatever follows.
