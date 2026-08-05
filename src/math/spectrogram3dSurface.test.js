@@ -8,6 +8,7 @@ import {
   columnFloorSpan,
   columnStrideFor,
   edgeFade,
+  fadeGridFrequencyEdges,
   slopeShade,
   LEVEL_ALPHA_FULL,
   NO_ROW,
@@ -1244,6 +1245,48 @@ describe("smoothGridFrequency", () => {
     expect(heights[0]).toBeCloseTo(0.5, 6);
     expect(heights[1]).toBeCloseTo(0.75, 6);
     smoothGridFrequency(new Float32Array(0), 0, 0); // must not throw
+  });
+});
+
+describe("fadeGridFrequencyEdges", () => {
+  const rowOf = (heights, r, pointCount) =>
+    Array.from(heights.subarray(r * pointCount, (r + 1) * pointCount));
+
+  // The whole point: the band limits must reach the floor instead of standing as a wall.
+  it("sinks both frequency limits to zero and leaves the interior alone", () => {
+    const points = 101;
+    const heights = new Float32Array(2 * points).fill(0.8);
+    fadeGridFrequencyEdges(heights, 2, points, 0.1);
+    for (const r of [0, 1]) {
+      const row = rowOf(heights, r, points);
+      expect(row[0]).toBe(0);
+      expect(row[points - 1]).toBe(0);
+      expect(row[50]).toBeCloseTo(0.8, 6); // interior, untouched
+      // Monotonic climb out of each limit, so the ramp reads as terrain rather than a step.
+      for (let q = 1; q <= 10; q++) expect(row[q]).toBeGreaterThan(row[q - 1]);
+      for (let q = 1; q <= 10; q++) {
+        expect(row[points - 1 - q]).toBeGreaterThan(row[points - q]);
+      }
+    }
+  });
+
+  // An odd point count puts a single point at the centre. A ramp wide enough to reach it from both
+  // sides would scale it twice and rule a notch down the middle of the terrain.
+  it("never scales a point twice when the ramps meet", () => {
+    const points = 7;
+    const heights = new Float32Array(points).fill(1);
+    fadeGridFrequencyEdges(heights, 1, points, 1);
+    const centre = heights[(points - 1) / 2];
+    expect(centre).toBeCloseTo(edgeFade(0.5, 1, 1), 6);
+  });
+
+  it("is a no-op when disabled or degenerate", () => {
+    const heights = new Float32Array([0.5, 0.75]);
+    fadeGridFrequencyEdges(heights, 1, 2, 0);
+    expect([...heights]).toEqual([0.5, 0.75]);
+    fadeGridFrequencyEdges(heights, 1, 1, 0.1);
+    expect([...heights]).toEqual([0.5, 0.75]);
+    fadeGridFrequencyEdges(new Float32Array(0), 0, 0, 0.1); // must not throw
   });
 });
 

@@ -540,6 +540,51 @@ export function edgeFade(tFrac, enterWidth, exitWidth, exitEdge = 0, enterEdge =
 }
 
 /**
+ * Sink the terrain at the two FREQUENCY limits, in place, the way `edgeFade` sinks it at the two
+ * time ends.
+ *
+ * The edge fade only ever saw the time coordinate -- `rasterizeSurface` calls it with `u`, and `v`
+ * never reached it. So the solid was closed at both time ends and cut off flat at both frequency
+ * ends, and the min-Hz side, where terrain is tallest, stood as a vertical wall wherever the azimuth
+ * turned it towards the viewer. Measured at azimuth 140 / elevation 82 on a 1920x600 panel: that
+ * wall is 40 device pixels tall and faces the camera, while both time ends sit flat at zero. It
+ * reads as the surface having been sliced, which is what the time-end ramps exist to avoid.
+ *
+ * Applied to the GRID rather than per sample. Scaling grid points once costs `count * fadePoints`
+ * multiplies per repaint instead of a second `edgeFade` in the per-pixel inner loop, and since the
+ * rasteriser interpolates the grid bilinearly the result is the same ramp -- shaped out of the
+ * terrain data rather than painted over it.
+ *
+ * Unlike the time ends this is cosmetic rather than structural: nothing enters or leaves at a
+ * frequency limit, so there is no pop to remove, and the ramp does hide the outermost sliver of the
+ * band the user asked to see. That is why it is narrow, and why the width belongs to the caller.
+ *
+ * @param {Float32Array} heights `count * pointCount` floor-relative fractions, modified in place
+ * @param {number} count
+ * @param {number} pointCount
+ * @param {number} fadeFrac ramp width as a fraction of the frequency axis; 0 disables
+ */
+export function fadeGridFrequencyEdges(heights, count, pointCount, fadeFrac) {
+  if (!(fadeFrac > 0) || pointCount < 2 || count < 1) return;
+  const lastPoint = pointCount - 1;
+  // Only the points the ramp actually reaches. Everything inland multiplies by exactly 1, so
+  // walking a whole row would be arithmetic with no effect.
+  const edgePoints = Math.min(lastPoint, Math.ceil(fadeFrac * lastPoint));
+  for (let q = 0; q <= edgePoints; q++) {
+    const fade = edgeFade(q / lastPoint, fadeFrac, fadeFrac);
+    if (fade >= 1) continue;
+    const mirror = lastPoint - q;
+    for (let r = 0; r < count; r++) {
+      const base = r * pointCount;
+      heights[base + q] *= fade;
+      // Guard the middle: an odd point count with a wide ramp would otherwise scale the centre
+      // point twice, putting a notch down the middle of the terrain.
+      if (mirror !== q) heights[base + mirror] *= fade;
+    }
+  }
+}
+
+/**
  * Rasterise the whole surface into `out`, one screen column at a time.
  *
  * Each column is walked FRONT TO BACK with a running minimum (`horizon`) of the topmost pixel

@@ -14,6 +14,7 @@ import {
   buildSurfaceLut,
   columnFloorSpan,
   columnStrideFor,
+  fadeGridFrequencyEdges,
   packArgb,
   rasterizeSurface,
   smoothGridFrequency,
@@ -57,6 +58,12 @@ const EDGE_FADE_RIDGES = 2.5;
 // as it can be: at one stride the entering ramp was 2.5x steeper than the exiting one, so the same
 // mechanism read as a pop on arrival and as a dissolve on departure. See edgeFade.
 const ENTER_FADE_STRIDES = 2;
+// The frequency limits' ramp, as a fraction of the frequency axis. Narrower than the two time fades
+// (~1.5-1.8% of their axis) is not possible without it reading as the wall it replaces, and wider
+// starts hiding the band: at 2% of a 20 Hz - 20 kHz range this costs the bottom 20-23 Hz and the top
+// 17.5-20 kHz. See fadeGridFrequencyEdges -- unlike the time ends, nothing pops here, so this buys
+// only the closed silhouette and should not be paid for twice over.
+const FREQ_FADE_FRAC = 0.02;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -597,6 +604,10 @@ export function useSpectrogram3dCanvas({
         // reintroducing, one row further in, the flicker the whole entering-edge treatment removes.
         // The live row itself needs no time smoothing: the edge fade takes it to ~0 height.
         smoothGridTime(grid.heights, grid.tFracs, grid.bucketCount, grid.pointCount, rowGapTFrac);
+        // After both smoothers, so the ramp is not itself smeared back up by a later kernel, and
+        // over every row including the pinned live one -- the frequency limits are a property of the
+        // band, not of which frames happen to be in the window.
+        fadeGridFrequencyEdges(grid.heights, grid.count, grid.pointCount, FREQ_FADE_FRAC);
         const off = ensureOffscreen(offscreenRef, W, H);
         // The monochrome ramp needs the theme ink as RGB. resolveArgbRef probes a colour by
         // writing a pixel to the offscreen canvas and reading it back; probing before the LUT
