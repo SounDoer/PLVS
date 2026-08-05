@@ -287,8 +287,23 @@ export function smoothGridTime(heights, tFracs, count, pointCount, maxIntervalTF
   }
 }
 
-/** Shade quantisation. 16 keeps the LUT at 4096 words -- cheap to rebuild, fine enough to read. */
-export const SHADE_LEVELS = 16;
+/**
+ * Shade quantisation.
+ *
+ * 16 was chosen to keep the LUT small, on the assumption that a bigger table would cost something in
+ * the inner loop. It does not. The rasteriser reads `lut[level * SHADE_LEVELS + shadeIdx]` and
+ * `level` tracks the terrain, so consecutive samples land near each other in the table however wide
+ * it is -- the access has spatial locality, and a 64 KB table never behaves like a random probe into
+ * 64 KB. Measured on 2560x900 at stride 2, alternating three times to keep drift out of the
+ * comparison: 16 levels gave 10.96 / 11.17 / 11.16 ms median, 64 gave 11.21 / 11.00 / 11.05 -- the
+ * difference is inside a single run's own spread.
+ *
+ * What 16 did cost is visible: shading is what carries relief on this surface, and 16 tones across
+ * the range prints its own contour bands on terrain gentle enough for the shade to drift slowly.
+ * The table is rebuilt only on a theme or control change (0.029 ms at 16, ~0.12 ms at 64), never per
+ * repaint, so the whole price is 48 KB of memory.
+ */
+export const SHADE_LEVELS = 64;
 
 /** How far Colorize lets shading move luminance. Small on purpose: colour must stay readable. */
 const COLORIZE_SHADE_FLOOR = 0.75;
