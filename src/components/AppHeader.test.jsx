@@ -218,7 +218,7 @@ describe("AppHeader", () => {
     expect(holdFocusControls.mock.calls.filter(([open]) => open === true)).toHaveLength(3);
   });
 
-  it("marks the Presets trigger active only when a preset is applied", () => {
+  it("marks the Presets trigger active only when a preset is applied and unmodified", () => {
     renderHeader({ presets: { ...NOOP_PRESETS, activeId: null } });
     expect(
       screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
@@ -229,6 +229,12 @@ describe("AppHeader", () => {
     expect(
       screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
     ).toBe(true);
+
+    cleanup();
+    renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix", dirty: true } });
+    expect(
+      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
+    ).toBe(false);
   });
 
   it("moves pin control into the Views popover", () => {
