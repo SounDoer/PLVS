@@ -25,17 +25,37 @@ import {
 const RIDGE_TARGET_DIVISOR = 14;
 const RIDGE_MIN = 24;
 const RIDGE_MAX = 140;
+/**
+ * Surface's own row ceiling, well above `RIDGE_MAX`, because the two modes pay for a row in
+ * completely different places. Lines strokes one Path2D per ridge, so its cost is linear in the row
+ * count and 140 is a budget. Surface rasterises per PIXEL: measured at 1920x600, going from 140 to
+ * 400 rows moves the repaint from 9.87 ms to 10.39 ms -- the rasteriser itself does not move at all,
+ * and the half-millisecond is grid build plus the two smoothers.
+ *
+ * So the real bound on Surface is what the projection can resolve (`surfaceRowCap`), which is 392
+ * rows at 1920x600 and 588 at 2560x900. Sharing Lines' 140 discarded most of the captured frames
+ * for nothing: a 10s window holds 250 frames and used 125, a 20s window holds 500 and used the same
+ * 125, and the terrain between two kept frames is interpolated rather than measured.
+ *
+ * 400 rather than the projection's own cap: it covers 1920x600 outright and most of 2560x900, and
+ * it bounds what the grid allocates per repaint. `sampleWaterfallGrid` builds fresh arrays every
+ * time, so the row count sets a garbage rate -- 400 x 320 floats is 512 KB per repaint at 25 Hz.
+ * Lifting this further is a buffer-reuse question before it is a resolution one.
+ */
+const SURFACE_RIDGE_MAX = 400;
 const POINT_TARGET_DIVISOR = 6;
 const POINT_MIN = 60;
 const POINT_MAX = 320;
 const GRADIENT_STOPS = 16;
 // How many ridge spacings the old-end fade is spread over. Enough to read as a dissolve rather
-// than a blink, short enough that it costs almost none of the visible history.
+// than a blink, short enough that it costs almost none of the visible history. Lines multiplies it
+// by its own row spacing; Surface, whose row count is no longer the same number, by
+// `fadeStrideTFrac` -- see where that is derived.
 const EDGE_FADE_RIDGES = 2.5;
-// Surface's entering-edge fade, in decimation strides. Still narrower than the exiting edge on
-// purpose -- it must not dim the live moment out of the frame -- but not as narrow as it can be:
-// at one stride the entering ramp was 2.5x steeper than the exiting one, so the same mechanism
-// read as a pop on arrival and as a dissolve on departure. See edgeFade.
+// Surface's entering-edge fade, in the same units as EDGE_FADE_RIDGES. Still narrower than the
+// exiting edge on purpose -- it must not dim the live moment out of the frame -- but not as narrow
+// as it can be: at one stride the entering ramp was 2.5x steeper than the exiting one, so the same
+// mechanism read as a pop on arrival and as a dissolve on departure. See edgeFade.
 const ENTER_FADE_STRIDES = 2;
 
 function ridgeCountFor(widthPx) {
@@ -75,7 +95,14 @@ function cssVar(el, name, fallback) {
  * across time they contain no data for, which renders as giant extruded ridges. The stride is
  * independent of how much history exists, so the empty region stays the hole it is in 2D.
  */
-const ROW_LUT_SIZE = 1024;
+/**
+ * The row LUT quantises the time axis, so it has to stay comfortably finer than the row spacing or
+ * it becomes the resolution limit instead of the row count. At `SURFACE_RIDGE_MAX` rows, 1024
+ * buckets left 2.6 per row -- adjacent rows collapsing into one bucket, which would have eaten the
+ * resolution the higher cap exists to buy. 4096 gives 10 buckets per row at the ceiling and 7 at
+ * the largest projection cap measured (588 rows), for 0.026 ms against 1024's 0.007.
+ */
+const ROW_LUT_SIZE = 4096;
 const ROW_GAP_TOLERANCE = 1.5;
 
 /**
@@ -485,7 +512,7 @@ export function useSpectrogram3dCanvas({
       // for it, and this cap must not apply there.
       const maxRidges =
         p.mode === "surface"
-          ? Math.min(ridgeCountFor(W), surfaceRowCap(proj, H))
+          ? Math.min(SURFACE_RIDGE_MAX, surfaceRowCap(proj, H))
           : ridgeCountFor(W);
       const grid = sampleWaterfallGrid({
         view: snaps,
@@ -545,16 +572,25 @@ export function useSpectrogram3dCanvas({
         // grid is rebuilt on every repaint, so mutating it here cannot leak into the Lines branch
         // of a later frame; within THIS frame the branches are exclusive.
         smoothGridFrequency(grid.heights, grid.count, grid.pointCount);
-        // The decimation stride in tFrac drives three things in this branch: the row LUT's
-        // coverage tolerance, the time smoother's gap detection, and the two edge-fade widths --
-        // all four mean "a couple of rows" and must scale together. Falls back to the mean row
-        // spacing only when the stride is unusable (non-finite span / sampleMs).
+        // The decimation stride in tFrac drives the row LUT's coverage tolerance and the time
+        // smoother's gap detection. Both mean "a row apart", so both track the real stride. Falls
+        // back to the mean row spacing only when the stride is unusable (non-finite span/sampleMs).
         const rawStrideTFrac = grid.strideMs / span;
         const strideTFrac =
           Number.isFinite(rawStrideTFrac) && rawStrideTFrac > 0
             ? rawStrideTFrac
             : 1 / Math.max(1, grid.count - 1);
         const rowGapTFrac = ROW_GAP_TOLERANCE * strideTFrac;
+        // The edge fades used to ride the same stride, which was harmless only while the row count
+        // was fixed at ridgeCountFor(W). Once Surface resolves up to SURFACE_RIDGE_MAX rows the two
+        // quantities part company: a stride-derived fade would silently narrow to a third of the
+        // width it was tuned at, turning a reviewed dissolve back into the near-pop it replaced.
+        // They are not the same measurement. Gap tolerance asks "how far apart are two rows";
+        // the fades ask "how much of the WINDOW does the terrain sink over", which is a spatial
+        // property of the window edge and has nothing to say about how finely time is sampled.
+        // Pinning them to ridgeCountFor(W) keeps every tuned width exactly where it was reviewed,
+        // at every panel size, while leaving the row count free to move.
+        const fadeStrideTFrac = 1 / ridgeCountFor(W);
         // Over the DECIMATED rows only. The pinned live row is a fraction of a stride from its
         // neighbour rather than a stride, so letting it into the kernel would both under-smooth the
         // last bucket row and feed that row the live frame's raw jitter at a quarter weight --
@@ -617,8 +653,8 @@ export function useSpectrogram3dCanvas({
           // The two end faces of the solid: sink the terrain into the floor rather than letting
           // cross-sections pop in and out. Still asymmetric, mirroring Lines (whose newest ridge is
           // deliberately not faded), but only mildly so -- see ENTER_FADE_STRIDES.
-          enterFadeTFrac: ENTER_FADE_STRIDES * strideTFrac,
-          exitFadeTFrac: EDGE_FADE_RIDGES * strideTFrac,
+          enterFadeTFrac: ENTER_FADE_STRIDES * fadeStrideTFrac,
+          exitFadeTFrac: EDGE_FADE_RIDGES * fadeStrideTFrac,
           slopeGain: p.relief,
         });
         off.ctx.putImageData(off.image, 0, 0);

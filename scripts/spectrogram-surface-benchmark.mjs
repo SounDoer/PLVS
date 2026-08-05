@@ -18,13 +18,16 @@ import {
 // the whole window on a 2x display -- not a stress-test artefact. Row counts respect the
 // precondition documented on `rasterizeSurface`'s grid parameter: `grid.count` must stay at or
 // below the `steps` a column yields (roughly the canvas height), or nearest-row sampling aliases
-// as the window slides. 300 rows keeps that margin at every size here at or above 600 tall.
+// as the window slides. Row counts are what the hook now actually asks for --
+// `min(SURFACE_RIDGE_MAX, surfaceRowCap(proj, height))` -- rather than one round number for every
+// size: the projection resolves 392 rows at 1920x600 and more than the 400 ceiling above that, and
+// measuring at 300 everywhere would under-report the grid-build half of the repaint.
 const CANVASES = [
   { width: 922, height: 110, rows: 66, points: 154 },
-  { width: 1920, height: 600, rows: 300, points: 320 },
-  { width: 2560, height: 900, rows: 300, points: 320 },
-  { width: 3440, height: 1440, rows: 300, points: 320 },
-  { width: 3840, height: 1200, rows: 300, points: 320 },
+  { width: 1920, height: 600, rows: 392, points: 320 },
+  { width: 2560, height: 900, rows: 400, points: 320 },
+  { width: 3440, height: 1440, rows: 400, points: 320 },
+  { width: 3840, height: 1200, rows: 400, points: 320 },
 ];
 const STRIDES = [1, 2, 3, 4];
 const ITERATIONS = 60;
@@ -78,7 +81,9 @@ function measure({ width, height, rows, points }, columnStride, lut) {
     grid.heights.set(pristine);
     const started = performance.now();
     const rowGapTFrac = 1.5 / Math.max(1, grid.count - 1);
-    const rowLut = buildRowLut(grid.tFracs, grid.count, 1024, rowGapTFrac);
+    // Same table size the hook uses (ROW_LUT_SIZE); at these row counts 1024 would quantise the
+    // time axis more coarsely than the rows themselves and time a resolution nobody renders.
+    const rowLut = buildRowLut(grid.tFracs, grid.count, 4096, rowGapTFrac);
     smoothGridFrequency(grid.heights, grid.count, grid.pointCount);
     smoothGridTime(grid.heights, grid.tFracs, grid.count, grid.pointCount, rowGapTFrac);
     out.fill(0);
