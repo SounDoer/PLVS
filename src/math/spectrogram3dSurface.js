@@ -540,6 +540,47 @@ export function edgeFade(tFrac, enterWidth, exitWidth, exitEdge = 0, enterEdge =
 }
 
 /**
+ * Target rise:run for an edge ramp, measured in SCREEN pixels.
+ *
+ * Whether a sunk edge reads as terrain coming down to the floor or as a wall is not a property of
+ * how much data the ramp covers -- it is the slope the ramp ends up with on screen. Those are not
+ * the same thing, and the gap between them is the projection: the terrain's height in pixels barely
+ * moves with the view, while an axis's projected length changes by more than a factor of ten across
+ * the elevations `clampViewParams` allows. A fixed width in axis units therefore cannot be right at
+ * more than one angle. Measured at 1920x600 with the widths this replaced, the time ramp ran 3.0:1
+ * at elevation 82 and 22.5:1 at elevation 20 -- the same fade, one reading as a slope and the other
+ * as a sliced-off face.
+ *
+ * 3 is where the old fixed width happened to land at the top of the elevation range, which is the
+ * one part of the range that was never reported as looking cut.
+ */
+export const EDGE_RAMP_SLOPE = 3;
+
+/**
+ * Fade width, in axis units, that puts an edge ramp at `EDGE_RAMP_SLOPE` on screen.
+ *
+ * `minWidth` is what the width was tuned to for reasons other than slope -- at the time ends the
+ * fade is also what stops entering and leaving rows popping, and that duty is measured in decimation
+ * strides. So this only ever widens: at views where the tuned width already reads as a ramp nothing
+ * changes at all, and the cost is paid exactly where the artefact appears.
+ *
+ * `maxWidth` bounds what the ramp is allowed to swallow. Below it the ramp holds its slope; past it
+ * the view is flat enough that holding the slope would cost more of the data than the wall costs.
+ *
+ * @param {number} risePx terrain height in device pixels, `heightScale * heightGain`
+ * @param {number} axisPx projected length of one unit of the axis, in device pixels
+ * @param {number} minWidth tuned width in axis units; the result is never narrower
+ * @param {number} maxWidth cap in axis units
+ */
+export function edgeRampWidth(risePx, axisPx, minWidth, maxWidth) {
+  const needed = risePx / (EDGE_RAMP_SLOPE * axisPx);
+  // A degenerate axis (projected to nothing) asks for an infinite ramp; it is also seen edge-on,
+  // where the face it would fix is a sliver. Take the cap and move on.
+  if (!Number.isFinite(needed)) return maxWidth;
+  return Math.min(maxWidth, Math.max(minWidth, needed));
+}
+
+/**
  * Sink the terrain at the two FREQUENCY limits, in place, the way `edgeFade` sinks it at the two
  * time ends.
  *

@@ -14,6 +14,7 @@ import {
   buildSurfaceLut,
   columnFloorSpan,
   columnStrideFor,
+  edgeRampWidth,
   fadeGridFrequencyEdges,
   packArgb,
   rasterizeSurface,
@@ -58,12 +59,25 @@ const EDGE_FADE_RIDGES = 2.5;
 // as it can be: at one stride the entering ramp was 2.5x steeper than the exiting one, so the same
 // mechanism read as a pop on arrival and as a dissolve on departure. See edgeFade.
 const ENTER_FADE_STRIDES = 2;
-// The frequency limits' ramp, as a fraction of the frequency axis. Narrower than the two time fades
-// (~1.5-1.8% of their axis) is not possible without it reading as the wall it replaces, and wider
-// starts hiding the band: at 2% of a 20 Hz - 20 kHz range this costs the bottom 20-23 Hz and the top
-// 17.5-20 kHz. See fadeGridFrequencyEdges -- unlike the time ends, nothing pops here, so this buys
-// only the closed silhouette and should not be paid for twice over.
+// The frequency limits' ramp, as a fraction of the frequency axis. See fadeGridFrequencyEdges --
+// unlike the time ends, nothing pops here, so this buys only the closed silhouette.
 const FREQ_FADE_FRAC = 0.02;
+
+/**
+ * Caps on how much of an axis an edge ramp may swallow while chasing `EDGE_RAMP_SLOPE`.
+ *
+ * The two are different because what they spend is different. A time ramp costs history at the
+ * window's own edge -- at the newest end that is the live moment, which is why this is a tenth of
+ * the window and not more: at a 60s window it sinks the newest 4.2s, at the 5s minimum only 0.35s,
+ * and short windows are where flattening the view actually happens.
+ *
+ * A frequency ramp costs the band the user explicitly asked for, on a LOG axis, where a small
+ * fraction is a large number of Hz -- 6% of a 20 Hz - 20 kHz range is the bottom 20-30 Hz but also
+ * the top 13.3-20 kHz. Hence the tighter cap, and the frequency ends staying slightly steeper than
+ * the time ends at flat views rather than eating an octave to match them.
+ */
+const TIME_FADE_MAX_FRAC = 0.1;
+const FREQ_FADE_MAX_FRAC = 0.06;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -598,6 +612,19 @@ export function useSpectrogram3dCanvas({
         // Pinning them to ridgeCountFor(W) keeps every tuned width exactly where it was reviewed,
         // at every panel size, while leaving the row count free to move.
         const fadeStrideTFrac = 1 / ridgeCountFor(W);
+        // ...and then widened, when the view demands it, so the ramps keep a readable slope on
+        // SCREEN rather than a fixed share of the data. See edgeRampWidth: the tuned widths above
+        // are the floor, so at steep views nothing moves, and the cost is paid only at the flat
+        // views where the fade would otherwise land as a vertical face.
+        //
+        // The two time ends share one width once geometry binds, which drops the deliberate 2 vs
+        // 2.5 stride asymmetry between them. That asymmetry exists to keep the live moment from
+        // being dimmed as hard as departing history, and it is worth giving up here: at these views
+        // the alternative is not a brighter live edge but a wall standing at it.
+        const risePx = proj.heightScale * view.heightGain;
+        const timeAxisPx = Math.hypot(proj.tx, proj.ty);
+        const freqAxisPx = Math.hypot(proj.fx, proj.fy);
+        const rampWidth = (min, max, axisPx) => edgeRampWidth(risePx, axisPx, min, max);
         // Over the DECIMATED rows only. The pinned live row is a fraction of a stride from its
         // neighbour rather than a stride, so letting it into the kernel would both under-smooth the
         // last bucket row and feed that row the live frame's raw jitter at a quarter weight --
@@ -607,7 +634,12 @@ export function useSpectrogram3dCanvas({
         // After both smoothers, so the ramp is not itself smeared back up by a later kernel, and
         // over every row including the pinned live one -- the frequency limits are a property of the
         // band, not of which frames happen to be in the window.
-        fadeGridFrequencyEdges(grid.heights, grid.count, grid.pointCount, FREQ_FADE_FRAC);
+        fadeGridFrequencyEdges(
+          grid.heights,
+          grid.count,
+          grid.pointCount,
+          rampWidth(FREQ_FADE_FRAC, FREQ_FADE_MAX_FRAC, freqAxisPx)
+        );
         const off = ensureOffscreen(offscreenRef, W, H);
         // The monochrome ramp needs the theme ink as RGB. resolveArgbRef probes a colour by
         // writing a pixel to the offscreen canvas and reading it back; probing before the LUT
@@ -664,8 +696,16 @@ export function useSpectrogram3dCanvas({
           // The two end faces of the solid: sink the terrain into the floor rather than letting
           // cross-sections pop in and out. Still asymmetric, mirroring Lines (whose newest ridge is
           // deliberately not faded), but only mildly so -- see ENTER_FADE_STRIDES.
-          enterFadeTFrac: ENTER_FADE_STRIDES * fadeStrideTFrac,
-          exitFadeTFrac: EDGE_FADE_RIDGES * fadeStrideTFrac,
+          enterFadeTFrac: rampWidth(
+            ENTER_FADE_STRIDES * fadeStrideTFrac,
+            TIME_FADE_MAX_FRAC,
+            timeAxisPx
+          ),
+          exitFadeTFrac: rampWidth(
+            EDGE_FADE_RIDGES * fadeStrideTFrac,
+            TIME_FADE_MAX_FRAC,
+            timeAxisPx
+          ),
           // Sink the terrain where the terrain actually ends. The row LUT knows: coverage stops at
           // the end row plus however far the hold tolerance carries it, and that is short of the
           // window edge by up to a frame period, because the edge comes from the 10 Hz loudness

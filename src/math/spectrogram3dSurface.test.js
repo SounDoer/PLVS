@@ -8,6 +8,8 @@ import {
   columnFloorSpan,
   columnStrideFor,
   edgeFade,
+  edgeRampWidth,
+  EDGE_RAMP_SLOPE,
   fadeGridFrequencyEdges,
   slopeShade,
   LEVEL_ALPHA_FULL,
@@ -1245,6 +1247,90 @@ describe("smoothGridFrequency", () => {
     expect(heights[0]).toBeCloseTo(0.5, 6);
     expect(heights[1]).toBeCloseTo(0.75, 6);
     smoothGridFrequency(new Float32Array(0), 0, 0); // must not throw
+  });
+});
+
+describe("edgeRampWidth", () => {
+  it("leaves the tuned width alone when it already reads as a ramp", () => {
+    // A generous axis: 1000 px per unit against a 100 px rise needs 3.3% and the caller tuned 5%.
+    expect(edgeRampWidth(100, 1000, 0.05, 0.2)).toBe(0.05);
+  });
+
+  it("widens as the axis foreshortens, and stops at the cap", () => {
+    expect(edgeRampWidth(300, 1000, 0.05, 0.2)).toBeCloseTo(0.1, 12);
+    expect(edgeRampWidth(3000, 1000, 0.05, 0.2)).toBe(0.2);
+  });
+
+  it("takes the cap for a degenerate axis rather than returning a non-finite width", () => {
+    expect(edgeRampWidth(100, 0, 0.05, 0.2)).toBe(0.2);
+  });
+
+  /**
+   * The guard that the two earlier attempts at this bug both missed.
+   *
+   * Sinking the terrain to zero at an edge is necessary but says nothing about whether the drop is
+   * visible as a slope: the first fix asserted the height reached zero, passed, and the edge still
+   * rendered as a wall because the ramp was doing its whole descent inside nine screen pixels. What
+   * has to hold is a bound on rise over run, across the view range, not at one angle.
+   */
+  it("holds the ramp's on-screen slope across the whole view range", () => {
+    const W = 1920;
+    const H = 600;
+    const tunedTime = 2 / 137; // ENTER_FADE_STRIDES / ridgeCountFor(1920)
+    const cap = 0.1;
+    let metTarget = 0;
+    let capped = 0;
+    let steepestUsable = 0;
+    for (let elevationDeg = 5; elevationDeg <= 85; elevationDeg += 5) {
+      for (const azimuthDeg of [0, 45, 90, 118, 135, 180, 270]) {
+        const collapsed = azimuthDeg === 90 || azimuthDeg === 270;
+        const p = buildProjection({ azimuthDeg, elevationDeg, width: W, height: H });
+        const risePx = p.heightScale;
+        const axisPx = Math.hypot(p.tx, p.ty);
+        const width = edgeRampWidth(risePx, axisPx, tunedTime, cap);
+        const slope = risePx / (width * axisPx);
+        if (width < cap) {
+          // Wherever the cap is not binding, the target is the whole point.
+          expect(slope).toBeLessThanOrEqual(EDGE_RAMP_SLOPE + 1e-9);
+          metTarget += 1;
+        } else {
+          capped += 1;
+        }
+        // And in every view, capped or not, this can only improve on the fixed width it replaced.
+        expect(slope).toBeLessThanOrEqual(risePx / (tunedTime * axisPx) + 1e-9);
+        if (!collapsed) steepestUsable = Math.max(steepestUsable, slope);
+      }
+    }
+    // Both branches are exercised: the cap binds across the flat end of the elevation range, and
+    // the target is met over the rest.
+    expect(metTarget).toBeGreaterThan(0);
+    expect(capped).toBeGreaterThan(0);
+    // Where the cap binds it still lands far short of a wall. The fixed width reached 32.5:1 at the
+    // flattest of these; the worst here is a little over 8, at elevation 5.
+    expect(steepestUsable).toBeLessThan(8.5);
+  });
+
+  // The view that was reported as a standing cross-section, pinned. The fixed width put this at
+  // 14.5:1 -- a 140 px drop inside 9 px of run, which is a wall however the height was computed.
+  it("brings the reported view back to the slope target", () => {
+    const p = buildProjection({ azimuthDeg: 118, elevationDeg: 58, width: 1920, height: 600 });
+    const axisPx = Math.hypot(p.tx, p.ty);
+    const fixed = p.heightScale / ((2 / 137) * axisPx);
+    expect(fixed).toBeGreaterThan(10);
+    const width = edgeRampWidth(p.heightScale, axisPx, 2 / 137, 0.1);
+    expect(p.heightScale / (width * axisPx)).toBeCloseTo(EDGE_RAMP_SLOPE, 9);
+  });
+
+  // The one limit no width can lift, recorded rather than papered over. At azimuth 90 the time axis
+  // points at the camera, and at a near-flat elevation the whole time extent projects to about 44
+  // device pixels -- reaching 3:1 against a 500 px rise would need a ramp several times longer than
+  // the axis itself. The face it would smooth is the entire surface seen end-on at that view, so
+  // there is nothing to smooth it against.
+  it("cannot hold the slope when the axis itself collapses, and takes the cap instead", () => {
+    const p = buildProjection({ azimuthDeg: 90, elevationDeg: 5, width: 1920, height: 600 });
+    const axisPx = Math.hypot(p.tx, p.ty);
+    expect(axisPx).toBeLessThan(50);
+    expect(edgeRampWidth(p.heightScale, axisPx, 2 / 137, 0.1)).toBe(0.1);
   });
 });
 
