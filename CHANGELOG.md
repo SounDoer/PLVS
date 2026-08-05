@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-05
+
+### Added
+- Spectrogram gained a 3D Surface view mode alongside 2D and 3D Ridges, with adjustable height scale, elevation, floor grid, and a dB floor shared with the 2D view.
+- Toolbar and Dock highlight the Presets trigger while its popover is open, matching the active-preset highlight.
+- Spectrogram settings sliders apply live while dragging, instead of only on release.
+
+### Changed
+- Shortcuts/help popover dropped the axis letter chip; axis gestures and range controls are now named after the axis they act on.
+
+### Fixed
+- Toolbar Presets icon no longer highlights while dirty, and correctly highlights when a preset is active.
+- Dock's module settings accessory no longer inherits the wrong Loudness Profile provider.
+- Fullscreen overlay no longer shows a default focus ring.
+
 ## [0.12.2] - 2026-07-29
 
 ### Fixed
