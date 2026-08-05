@@ -21,6 +21,11 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { cn } from "@/lib/utils";
 
 const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(18rem,92vw)] p-1";
+// Matches DockHeader's pressed-while-open treatment for its editor triggers: the trigger's `span`
+// wrapper picks up Radix's `data-state` via `asChild`, so `group` + `group-data-` needs no state of
+// its own and stays true to Popover's actual open/closed status.
+const TOOLBAR_TRIGGER_OPEN_CLASS =
+  "group-data-[state=open]:bg-accent group-data-[state=open]:text-accent-foreground";
 
 function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
@@ -162,13 +167,14 @@ export function AppHeader({
               }}
             >
               <PopoverTrigger asChild>
-                <span>
+                <span className="group">
                   <IconButton
                     icon={
                       <Volume2 className="size-[length:var(--ui-icon-shell-action)] shrink-0" />
                     }
                     tip="Devices"
                     disabled={!audioDevices.length}
+                    className={TOOLBAR_TRIGGER_OPEN_CLASS}
                   />
                 </span>
               </PopoverTrigger>
@@ -217,11 +223,14 @@ export function AppHeader({
           ))}
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
           <PopoverTrigger asChild>
-            <span>
+            <span className="group">
               <IconButton
                 icon={<Gauge className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Loudness Profile"
-                className={loudnessProfile?.active !== "off" ? "text-foreground" : undefined}
+                className={cn(
+                  loudnessProfile?.active !== "off" && "text-foreground",
+                  TOOLBAR_TRIGGER_OPEN_CLASS
+                )}
               />
             </span>
           </PopoverTrigger>
@@ -231,10 +240,11 @@ export function AppHeader({
         </Popover>
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
           <PopoverTrigger asChild>
-            <span>
+            <span className="group">
               <IconButton
                 icon={<LayoutGrid className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Modules"
+                className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
           </PopoverTrigger>
@@ -244,11 +254,11 @@ export function AppHeader({
         </Popover>
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
           <PopoverTrigger asChild>
-            <span>
+            <span className="group">
               <IconButton
                 icon={<Focus className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Views"
-                className={focusViewActive ? "text-foreground" : undefined}
+                className={cn(focusViewActive && "text-foreground", TOOLBAR_TRIGGER_OPEN_CLASS)}
               />
             </span>
           </PopoverTrigger>
@@ -273,11 +283,14 @@ export function AppHeader({
         </Popover>
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
           <PopoverTrigger asChild>
-            <span>
+            <span className="group">
               <IconButton
                 icon={<Bookmark className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Presets"
-                className={presets?.activeId && !presets?.dirty ? "text-foreground" : undefined}
+                className={cn(
+                  presets?.activeId && !presets?.dirty && "text-foreground",
+                  TOOLBAR_TRIGGER_OPEN_CLASS
+                )}
               />
             </span>
           </PopoverTrigger>

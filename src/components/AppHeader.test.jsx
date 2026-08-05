@@ -237,6 +237,32 @@ describe("AppHeader", () => {
     ).toBe(false);
   });
 
+  it("marks every toolbar popover trigger persistently open, not just on hover", () => {
+    renderHeader({
+      loudnessProfile: {
+        active: "off",
+        document: null,
+        profiles: [],
+        draftBlocksLibraryActions: false,
+        selectOff: vi.fn(),
+        beginCreate: vi.fn(),
+      },
+    });
+
+    for (const name of ["Devices", "Loudness Profile", "Modules", "Views", "Presets"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.className).toContain("group-data-[state=open]:bg-accent");
+      expect(button.className).toContain("group-data-[state=open]:text-accent-foreground");
+
+      const trigger = button.closest('[data-slot="popover-trigger"]');
+      expect(trigger.className).toContain("group");
+      expect(trigger.getAttribute("data-state")).toBe("closed");
+
+      fireEvent.click(button);
+      expect(trigger.getAttribute("data-state")).toBe("open");
+    }
+  });
+
   it("moves pin control into the Views popover", () => {
     renderHeader();
 
