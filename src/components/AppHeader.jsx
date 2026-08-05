@@ -277,6 +277,7 @@ export function AppHeader({
               <IconButton
                 icon={<Bookmark className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Presets"
+                className={presets?.activeId ? "text-foreground" : undefined}
               />
             </span>
           </PopoverTrigger>

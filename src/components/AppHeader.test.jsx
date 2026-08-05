@@ -218,12 +218,17 @@ describe("AppHeader", () => {
     expect(holdFocusControls.mock.calls.filter(([open]) => open === true)).toHaveLength(3);
   });
 
-  it("keeps the Presets toolbar icon in the default muted state", () => {
-    renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix" } });
-
+  it("marks the Presets trigger active only when a preset is applied", () => {
+    renderHeader({ presets: { ...NOOP_PRESETS, activeId: null } });
     expect(
       screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
     ).toBe(false);
+
+    cleanup();
+    renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix" } });
+    expect(
+      screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
+    ).toBe(true);
   });
 
   it("moves pin control into the Views popover", () => {
