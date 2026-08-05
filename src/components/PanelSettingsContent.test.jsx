@@ -1936,8 +1936,8 @@ describe("PanelSettingsContent", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts and gestures" }));
 
-    expect(screen.getByText("Y axis wheel - Zoom level")).toBeTruthy();
-    expect(screen.getByText("Y axis drag - Pan level")).toBeTruthy();
+    expect(screen.getByText("Level axis wheel - Zoom level")).toBeTruthy();
+    expect(screen.getByText("Level axis drag - Pan level")).toBeTruthy();
     expect(screen.getByText("Double-click axis - Reset axis")).toBeTruthy();
     expect(screen.getByText("TP Max marker click - Reset TP Max")).toBeTruthy();
     expect(

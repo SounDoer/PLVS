@@ -2,8 +2,8 @@ export const LEVEL_METER_HELP = [
   {
     title: "Axes",
     items: [
-      "Y axis wheel - Zoom level",
-      "Y axis drag - Pan level",
+      "Level axis wheel - Zoom level",
+      "Level axis drag - Pan level",
       "Double-click axis - Reset axis",
     ],
   },
@@ -26,7 +26,7 @@ export const LOUDNESS_HELP = [
     title: "Viewport",
     items: [
       "Mouse wheel - Zoom time",
-      "Ctrl + wheel - Zoom level",
+      "Ctrl + wheel - Zoom loudness",
       "Ctrl + drag - Pan viewport",
       "Right drag - Pan timeline",
       "Right double-click - Reset timeline",
@@ -37,8 +37,8 @@ export const LOUDNESS_HELP = [
     items: [
       "Time axis wheel - Zoom time",
       "Time axis drag - Pan time",
-      "Y axis wheel - Zoom level",
-      "Y axis drag - Pan level",
+      "Loudness axis wheel - Zoom loudness",
+      "Loudness axis drag - Pan loudness",
       "Double-click axis - Reset axis",
     ],
   },
@@ -61,10 +61,10 @@ export const SPECTRUM_HELP = [
   {
     title: "Axes",
     items: [
-      "X axis wheel - Zoom frequency",
-      "X axis drag - Pan frequency",
-      "Y axis wheel - Zoom dB",
-      "Y axis drag - Pan dB",
+      "Frequency axis wheel - Zoom frequency",
+      "Frequency axis drag - Pan frequency",
+      "Level axis wheel - Zoom dB",
+      "Level axis drag - Pan dB",
       "Double-click axis - Reset axis",
     ],
   },
@@ -85,8 +85,8 @@ const SPECTROGRAM_SNAPSHOT_HELP = {
 const SPECTROGRAM_AXIS_ITEMS = [
   "Time axis wheel - Zoom time",
   "Time axis drag - Pan time",
-  "Y axis wheel - Zoom frequency",
-  "Y axis drag - Pan frequency",
+  "Frequency axis wheel - Zoom frequency",
+  "Frequency axis drag - Pan frequency",
   "Double-click axis - Reset axis",
 ];
 
@@ -182,8 +182,8 @@ export const STEREO_MAP_HELP = [
   {
     title: "Axes",
     items: [
-      "X axis wheel - Zoom frequency",
-      "X axis drag - Pan frequency",
+      "Frequency axis wheel - Zoom frequency",
+      "Frequency axis drag - Pan frequency",
       "Double-click axis - Reset axis",
     ],
   },
