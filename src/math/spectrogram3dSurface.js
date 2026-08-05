@@ -634,7 +634,8 @@ export function rasterizeSurface({
       // still shapes the terrain, so skipping it here would corrupt the shading of whatever follows.
       // Per unit of FLOOR DISTANCE, not per sample: samples per unit distance depend on the canvas
       // size, so a raw per-sample delta would shade the same audio differently on a resized panel.
-      const slope = Number.isFinite(prevH) ? (h - prevH) * invStepDist : 0;
+      const hPrev = prevH;
+      const slope = Number.isFinite(hPrev) ? (h - hPrev) * invStepDist : 0;
       prevH = h;
 
       const yFloor = originY + u * ty + v * fy;
@@ -647,10 +648,12 @@ export function rasterizeSurface({
       if (top >= horizon) continue;
 
       let argb;
+      let shadeIdx = 0;
       // The scrubbed row is one captured frame, so the highlight stays a discrete band: it follows
       // whichever bracketing row this sample sits nearer to, even though the height between them is
       // interpolated.
-      if ((wRow < 0.5 ? row : row + 1) === highlightRow) {
+      const highlighted = (wRow < 0.5 ? row : row + 1) === highlightRow;
+      if (highlighted) {
         argb = highlightArgb;
       } else {
         // Headlight shading: the ray always lies along the view direction, so this stays stable
@@ -662,7 +665,7 @@ export function rasterizeSurface({
         shade *= DEPTH_FADE_FLOOR + (1 - DEPTH_FADE_FLOOR) * near;
         // `shade` is clamped to 0..1 above and the depth factor only ever lowers it, and heights are
         // 0..1 per this function's contract, so both indices are already inside their tables.
-        const shadeIdx = (shade * (SHADE_LEVELS - 1) + 0.5) | 0;
+        shadeIdx = (shade * (SHADE_LEVELS - 1) + 0.5) | 0;
         const level = (h * 255 + 0.5) | 0;
         argb = lut[level * SHADE_LEVELS + shadeIdx];
       }
@@ -694,11 +697,52 @@ export function rasterizeSurface({
       // Walk the row base by `width` instead of multiplying per row. The stride-1 case is the
       // default and gets its own loop, so the common path carries no inner loop at all.
       let base = top * width + x;
-      if (kEnd === 1) {
-        for (let yy = top; yy < bottom; yy++, base += width) out[base] = argb;
+      // The span is not a slab of one height. It is the surface between the previous sample and
+      // this one, seen edge-on: height `hPrev` where it meets the horizon at the bottom, `h` at
+      // this sample's own row on top. Painting it in `argb` alone -- this sample's colour -- is
+      // flat shading, and on real material that is the dominant artefact the mode has. Measured by
+      // counting vertical runs of one identical word in the output at 1920x600: 40% of painted
+      // pixels sat in runs taller than 4 px. Those runs are the terrain's steep faces -- spectral
+      // cliffs and transient onsets -- each printed as one uniform block, which is what reads as
+      // the surface being built out of steps.
+      //
+      // Ramping `level` down the span is not an effect added on top; it is the height that was
+      // already computed and then thrown away. Alpha rides `level` through the same LUT, so a face
+      // running down towards the floor now dissolves over its own length instead of ending in a
+      // hard edge.
+      //
+      // Interpolate against the sample rows `y` and `horizon`, not against the clamped `top` and
+      // `bottom`: `top` is `y` clipped to the canvas, and anchoring the ramp to the clip would tilt
+      // it whenever a peak leaves the top of the frame.
+      //
+      // Three spans keep the flat path. A highlight is a marker rather than terrain. A resuming
+      // sample has no previous height to ramp from (`hPrev` is NaN across a gap), and its span is
+      // the solid's cut end face, not a surface segment. And a span of a couple of pixels cannot
+      // show a ramp, so it would only pay for one.
+      const gouraud = !highlighted && bottom - top > 2 && hPrev === hPrev;
+      if (!gouraud) {
+        if (kEnd === 1) {
+          for (let yy = top; yy < bottom; yy++, base += width) out[base] = argb;
+        } else {
+          for (let yy = top; yy < bottom; yy++, base += width) {
+            for (let k = 0; k < kEnd; k++) out[base + k] = argb;
+          }
+        }
       } else {
-        for (let yy = top; yy < bottom; yy++, base += width) {
-          for (let k = 0; k < kEnd; k++) out[base + k] = argb;
+        // `horizon > y` holds here (the visibility test above returned otherwise), so the divide is
+        // safe and `level` stays between the two samples' own heights -- both inside 0..1 per this
+        // function's contract, so the LUT index needs no clamp.
+        const levelPerY = ((hPrev - h) * 255) / (horizon - y);
+        let level = h * 255 + (top - y) * levelPerY + 0.5;
+        if (kEnd === 1) {
+          for (let yy = top; yy < bottom; yy++, base += width, level += levelPerY) {
+            out[base] = lut[(level | 0) * SHADE_LEVELS + shadeIdx];
+          }
+        } else {
+          for (let yy = top; yy < bottom; yy++, base += width, level += levelPerY) {
+            const word = lut[(level | 0) * SHADE_LEVELS + shadeIdx];
+            for (let k = 0; k < kEnd; k++) out[base + k] = word;
+          }
         }
       }
       horizon = top;
@@ -753,6 +797,11 @@ const STRIDE_AREA_BUDGET = 1_200_000;
  *                          stride 4: 12.14 ms (best 11.05) -- picked: stride 4 (capped at STRIDE_MAX)
  *   3840x1200  (4.61 M px) stride 3: 14.37 ms (best 13.42)
  *                          stride 4: 11.79 ms (best 10.98) -- picked: stride 4
+ *
+ * Re-measured 2026-08-03 after the row cap moved to `SURFACE_RIDGE_MAX` and the spans started being
+ * shaded rather than flat-filled: 1920x600 stride 1 at 9.65 ms, 2560x900 stride 2 at 10.60,
+ * 3840x1200 stride 4 at 13.91. Every picked stride is the same one the area model already gave, and
+ * the table below is kept as the measurement that fitted the budget rather than being rewritten.
  *
  * 2560x900 at stride 1 flips between just-under and just-over budget on median across runs on this
  * machine (as high as 18.71 ms in an earlier run of this same script) -- exactly the "right at the

@@ -1070,6 +1070,76 @@ describe("rasterizeSurface", () => {
     // Ramp: the lip is painted by sunk samples, inside the level-alpha fade.
     expect(faded[fadedBottom * W + x] >>> 24).toBeLessThan(255);
   });
+
+  /**
+   * The tallest run of one identical non-zero word in any column, ignoring each column's
+   * bottom-most run.
+   *
+   * A column's painted pixels are contiguous and its walk starts at the near end, so the lowest run
+   * is always the first sample's span -- the solid's cut end face, which is deliberately NOT ramped
+   * (it has no previous height to ramp from, and it is a cross-section rather than a surface
+   * segment). Every run above it is a wall between two samples, which is what this measures.
+   */
+  function tallestFlatWall(out) {
+    let tallest = 0;
+    for (let x = 0; x < W; x++) {
+      let run = 0;
+      let prev = 0;
+      let seenFirstRun = false;
+      for (let y = H - 1; y >= 0; y--) {
+        const word = out[y * W + x];
+        if (word !== 0 && word === prev) run += 1;
+        else {
+          if (run > 0) seenFirstRun = true;
+          run = word !== 0 ? 1 : 0;
+        }
+        if (seenFirstRun && run > tallest) tallest = run;
+        prev = word;
+      }
+    }
+    return tallest;
+  }
+
+  /**
+   * A face that RISES away from the viewer, steeply enough to span a large part of the canvas in
+   * one sample step.
+   *
+   * Three things about this scene are load-bearing and were each wrong in an earlier attempt.
+   * Rising away, because the walk runs near to far and a face that DROPS away is occluded -- it
+   * never paints, so there is nothing to measure. Two hundred rows, because a face is only steep
+   * when the grid spacing is comparable to the walk's sample spacing; the eight-row grids the other
+   * tests use are oversampled by a factor of forty, so bilinear interpolation spreads any step into
+   * a gentle ramp and no tall span exists. And the step runs along TIME, because at azimuth 90 `tx`
+   * is zero, so a column walks the time axis at fixed frequency and would never cross a step placed
+   * along frequency.
+   */
+  function risingFaceGrid() {
+    return fakeGrid(
+      Array.from({ length: 200 }, (_, r) => (r < 100 ? 0.95 : 0.05)),
+      8
+    );
+  }
+
+  // A sample's span is the surface between the previous sample and this one seen edge-on, so its
+  // height runs from `hPrev` at the bottom to `h` at the top. Painting it in the top sample's
+  // colour alone is flat shading, and on a steep face that prints one tall block of a single word
+  // -- the artefact that made the mode read as built out of steps. Both numbers below fail on a
+  // flat fill of this scene, which renders the face as a 92 px block drawn from 12 distinct words
+  // in total.
+  it("shades a steep face down its length instead of filling it with one colour", () => {
+    const out = render(risingFaceGrid(), { azimuthDeg: 90 });
+    expect(countOpaque(out)).toBeGreaterThan(0);
+    expect(tallestFlatWall(out)).toBeLessThan(H / 4);
+    expect(new Set(out.filter((word) => word !== 0)).size).toBeGreaterThan(40);
+  });
+
+  // The scrubbed row is a marker rather than terrain, so its span stays one flat colour: ramping it
+  // would turn a position readout into something that looks like data.
+  it("keeps the highlighted row's span flat", () => {
+    const out = render(risingFaceGrid(), { azimuthDeg: 90, highlightRow: 99 });
+    expect(countPixels(out, HIGHLIGHT)).toBeGreaterThan(0);
+    expect(tallestFlatWall(out)).toBeGreaterThan(H / 4);
+  });
 });
 
 describe("smoothGridFrequency", () => {
