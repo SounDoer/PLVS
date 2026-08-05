@@ -11,6 +11,7 @@ import { DockPresetsRow } from "../editors/DockPresetsRow.jsx";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
 import { panelModuleIdForDockModuleId } from "../dockLayout.js";
 import { useSuppressNativeContextMenu } from "../../hooks/useSuppressNativeContextMenu.js";
+import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 
 export const DOCK_EDITOR_BLUR_CLOSE_DELAY_MS = 100;
 
@@ -169,20 +170,28 @@ export function DockEditorApp() {
       ) : payload.view === "presets" ? (
         <DockPresetsRow presets={presetController} />
       ) : panel ? (
-        <DockModuleSettings
-          moduleId={panel.moduleId}
-          title={resolvePanelDisplayName(
-            { panelsById: payload.panelsById, panelOrder: payload.panelOrder },
-            panel.id
-          )}
-          controls={payload.controlsByPanelId?.[panel.id]}
-          vectorscopeOptions={payload.vectorscopeOptions}
-          spectrumOptions={payload.spectrumOptions}
-          channelCount={payload.channelCount}
-          onChange={(controls) => action("update-module-controls", { panelId: panel.id, controls })}
-          onReset={() => action("reset-module-controls", { panelId: panel.id })}
-          onBack={() => action("open-editor", { view: "modules" })}
-        />
+        // LoudnessSettingsRows (inside DockModuleSettings for the loudness module) calls
+        // useLoudnessProfile(), which throws outside a provider. This accessory boots its own React
+        // root (see main.jsx), so it never inherits App's provider and needs its own instance --
+        // backed by the same persisted settingsStore, so it stays in sync with the main window.
+        <LoudnessProfileProvider>
+          <DockModuleSettings
+            moduleId={panel.moduleId}
+            title={resolvePanelDisplayName(
+              { panelsById: payload.panelsById, panelOrder: payload.panelOrder },
+              panel.id
+            )}
+            controls={payload.controlsByPanelId?.[panel.id]}
+            vectorscopeOptions={payload.vectorscopeOptions}
+            spectrumOptions={payload.spectrumOptions}
+            channelCount={payload.channelCount}
+            onChange={(controls) =>
+              action("update-module-controls", { panelId: panel.id, controls })
+            }
+            onReset={() => action("reset-module-controls", { panelId: panel.id })}
+            onBack={() => action("open-editor", { view: "modules" })}
+          />
+        </LoudnessProfileProvider>
       ) : null}
     </div>
   );

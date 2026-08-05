@@ -197,6 +197,27 @@ describe("DockEditorApp window behavior", () => {
     expect(classes).not.toContain("backdrop-blur-sm");
   });
 
+  it("renders loudness module settings without a host LoudnessProfileProvider", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "module:loudness",
+      panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
+      panelOrder: ["loudness"],
+      controlsByPanelId: {
+        loudness: {
+          showReadouts: true,
+          loudnessHistoryVisibleLayerIds: ["short"],
+          loudnessYMinDb: -36,
+          loudnessYMaxDb: -6,
+        },
+      },
+    };
+
+    render(<DockEditorApp />);
+
+    expect(screen.getByText("Loudness Range")).toBeTruthy();
+  });
+
   it("forwards module row hover to the main dock window", () => {
     client.payload = {
       ...PRESETS_PAYLOAD,
