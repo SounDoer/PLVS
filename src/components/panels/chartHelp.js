@@ -1,4 +1,4 @@
-export const LEVEL_METER_HELP = [
+const LEVEL_METER_AXES_HELP = [
   {
     title: "Axes",
     items: [
@@ -7,11 +7,24 @@ export const LEVEL_METER_HELP = [
       "Double-click axis - Reset axis",
     ],
   },
+];
+
+const LEVEL_METER_TP_MAX_HELP = [
+  ...LEVEL_METER_AXES_HELP,
   {
     title: "Markers",
-    items: ["TP Max marker click - Reset TP Max"],
+    items: ["Click marker - Reset TP Max"],
   },
 ];
+
+// The TP Max marker only renders in Peak mode with its switch on (see LevelMeterPanel's
+// showTpMaxMarker) -- everywhere else the "Markers" section would document a control that isn't
+// there.
+function resolveLevelMeterHelp(controls) {
+  return controls?.levelMeterMode === "peak" && controls?.levelMeterTpMaxMarker
+    ? LEVEL_METER_TP_MAX_HELP
+    : LEVEL_METER_AXES_HELP;
+}
 
 export const LOUDNESS_HELP = [
   {
@@ -199,7 +212,7 @@ function resolveVectorscopeHelp(controls) {
 }
 
 export const PANEL_HELP_BY_MODULE_ID = {
-  levelMeter: LEVEL_METER_HELP,
+  levelMeter: resolveLevelMeterHelp,
   loudness: LOUDNESS_HELP,
   spectrum: SPECTRUM_HELP,
   spectrogram: resolveSpectrogramHelp,

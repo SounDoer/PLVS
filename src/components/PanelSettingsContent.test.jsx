@@ -1913,7 +1913,7 @@ describe("PanelSettingsContent", () => {
     ]);
   });
 
-  it("shows Level Meter marker and Y-axis gestures in chart help", () => {
+  it("shows Level Meter axis gestures in chart help, without a Markers section by default", () => {
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
@@ -1939,11 +1939,52 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Level axis wheel - Zoom level")).toBeTruthy();
     expect(screen.getByText("Level axis drag - Pan level")).toBeTruthy();
     expect(screen.getByText("Double-click axis - Reset axis")).toBeTruthy();
-    expect(screen.getByText("TP Max marker click - Reset TP Max")).toBeTruthy();
+    // Off by default (DEFAULT_PANEL_CONTROLS.levelMeterTpMaxMarker is false), so the marker the
+    // popover would document isn't on the panel.
+    expect(screen.queryByText("Click marker - Reset TP Max")).toBeNull();
+  });
+
+  it("adds the TP Max Markers section only in Peak mode with the marker switched on", () => {
+    // resolveLevelMeterHelp reads the panel's *stored* controls (via LeafView's
+    // getPanelControls), not the TestPanelDataProviders value used by the panel body -- so the
+    // switch has to be seeded into the workspace state itself, the same way the other
+    // panelControlsById tests in this file do it.
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: { type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" },
+        panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+        panelOrder: ["levelMeter"],
+        panelControlsById: {
+          levelMeter: { ...DEFAULT_PANEL_CONTROLS, levelMeterTpMaxMarker: true },
+        },
+      })
+    );
+
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              panelControls: { ...DEFAULT_PANEL_CONTROLS, levelMeterTpMaxMarker: true },
+              displayAudio: { peakDb: [-9.9, -10] },
+              peakLabelContext: { resolvedLayout: "stereo" },
+              hasTpMaxValue: false,
+            }}
+          >
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts and gestures" }));
+
+    expect(screen.getByText("Click marker - Reset TP Max")).toBeTruthy();
     expect(
       screen
         .getByText("Double-click axis - Reset axis")
-        .compareDocumentPosition(screen.getByText("TP Max marker click - Reset TP Max"))
+        .compareDocumentPosition(screen.getByText("Click marker - Reset TP Max"))
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 

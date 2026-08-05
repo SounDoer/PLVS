@@ -66,6 +66,24 @@ describe("spectrogram panel help", () => {
   });
 });
 
+describe("level meter panel help", () => {
+  it("only adds the Markers section in Peak mode with the TP Max marker switched on", () => {
+    const resolveHelp = PANEL_HELP_BY_MODULE_ID.levelMeter;
+
+    expect(typeof resolveHelp).toBe("function");
+    const axesOnly = resolveHelp({ levelMeterMode: "peak", levelMeterTpMaxMarker: false });
+    expect(axesOnly.map((section) => section.title)).toEqual(["Axes"]);
+
+    const withMarker = resolveHelp({ levelMeterMode: "peak", levelMeterTpMaxMarker: true });
+    expect(withMarker.map((section) => section.title)).toEqual(["Axes", "Markers"]);
+    expect(itemsOf(withMarker)).toContain("Click marker - Reset TP Max");
+
+    // The marker itself doesn't render outside Peak mode, so the switch being on is not enough.
+    expect(resolveHelp({ levelMeterMode: "rms", levelMeterTpMaxMarker: true })).toBe(axesOnly);
+    expect(resolveHelp(undefined)).toBe(axesOnly);
+  });
+});
+
 describe("vectorscope panel help", () => {
   it("resolves gestures from the active vectorscope mode", () => {
     const resolveHelp = PANEL_HELP_BY_MODULE_ID.vectorscope;
