@@ -41,8 +41,12 @@ const CONTENT_CLASS =
 /// stay outside of since it can never be dragged. Splitting them means every column but the flexible
 /// metric one needs an explicit, shared width instead of per-instance `auto` sizing, or the two grids
 /// would compute different column widths and the value/unit columns would stop lining up between them.
+// `relative`: the dragging-row overlay in RuleRow is an absolutely-positioned grid child that
+// tracks its row via `grid-row`/`grid-column`, and that only resolves against the grid's own
+// track boundaries when the grid itself is the containing block -- without `relative` here it
+// falls back to the nearest positioned ancestor, sizing itself to whatever box that happens to be.
 const GRID_TEMPLATE_CLASS =
-  "grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-0.5 text-[length:var(--ui-fs-control)]";
+  "relative grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-0.5 text-[length:var(--ui-fs-control)]";
 const GRIP_COL_CLASS = "w-5";
 const OP_COL_CLASS = "w-11";
 const UNIT_COL_CLASS = "w-9";
@@ -166,6 +170,24 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
 
   return (
     <div className="contents">
+      {/* The row itself has no box to ring -- `display:contents` drops the seven cells straight
+          into the shared grid. `absolute` is load-bearing, not decoration: a normal grid item
+          spanning every column would reserve that whole row for itself, and the seven real cells
+          -- auto-placed, not explicitly positioned -- would get pushed into the row below rather
+          than share it. Absolutely-positioned grid children keep their `grid-row`/`grid-column` as
+          a positioning reference (a real part of the Grid spec) but are dropped from layout, so
+          this overlay tracks the row without ever competing with it for space.
+          The row-end line is explicit (`position + 1`), not `auto`: `auto` means "span one track"
+          for a normal item, but for an abspos one it resolves to the far edge of the grid instead,
+          which stretched this to the bottom of the whole list the one time it was left implicit. */}
+      {dragging && (
+        <div
+          aria-hidden="true"
+          style={{ gridRow: `${position} / ${position + 1}`, gridColumn: "1 / -1" }}
+          className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-primary/60"
+        />
+      )}
+
       <button
         type="button"
         aria-label={`Reorder rule ${position}`}
