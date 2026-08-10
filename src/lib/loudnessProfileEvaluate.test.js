@@ -1,13 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { loudnessProfileEvaluate } from "./loudnessProfileEvaluate.js";
-import { MIN_DIALOGUE_COVERAGE_PERCENT } from "./loudnessProfileCatalog.js";
 
 function doc(rules) {
   return { id: "t", name: "T", kind: "user", referenceLufs: null, rules };
 }
 
 function sample(values, extra = {}) {
-  return { values, integratedReady: true, dialogueCoverage: 100, ...extra };
+  return { values, integratedReady: true, ...extra };
 }
 
 describe("loudnessProfileEvaluate", () => {
@@ -88,24 +87,18 @@ describe("loudnessProfileEvaluate", () => {
     expect(statuses.integrated).toBe("pending");
   });
 
-  it("holds a dialogue metric inconclusive until coverage clears the floor", () => {
+  it("judges a dialogue metric as soon as the engine has a value, regardless of coverage", () => {
     const rules = [{ metricId: "dialogueIntegrated", op: ">", value: -20, severity: "fail" }];
-    const below = loudnessProfileEvaluate(
+    const lowCoverage = loudnessProfileEvaluate(
       doc(rules),
-      sample({ dialogueIntegrated: -10 }, { dialogueCoverage: MIN_DIALOGUE_COVERAGE_PERCENT - 1 })
+      sample({ dialogueIntegrated: -10 }, { dialogueCoverage: 2 })
     );
-    expect(below.dialogueIntegrated).toBe("inconclusive");
+    expect(lowCoverage.dialogueIntegrated).toBe("fail");
 
-    const nullCoverage = loudnessProfileEvaluate(
+    const noCoverageField = loudnessProfileEvaluate(
       doc(rules),
-      sample({ dialogueIntegrated: -10 }, { dialogueCoverage: null })
+      sample({ dialogueIntegrated: -10 })
     );
-    expect(nullCoverage.dialogueIntegrated).toBe("inconclusive");
-
-    const cleared = loudnessProfileEvaluate(
-      doc(rules),
-      sample({ dialogueIntegrated: -10 }, { dialogueCoverage: MIN_DIALOGUE_COVERAGE_PERCENT })
-    );
-    expect(cleared.dialogueIntegrated).toBe("fail");
+    expect(noCoverageField.dialogueIntegrated).toBe("fail");
   });
 });

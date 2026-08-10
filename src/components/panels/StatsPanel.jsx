@@ -86,9 +86,6 @@ export function StatsPanel() {
   const statuses = loudnessProfileEvaluate(loudnessProfileDocument, {
     values,
     integratedReady: Number.isFinite(values.integrated),
-    dialogueCoverage: Number.isFinite(displayAudio?.dialoguePercent)
-      ? displayAudio.dialoguePercent
-      : null,
   });
   const watchedIds = new Set(watchedMetricIds(loudnessProfileDocument));
 

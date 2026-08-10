@@ -11,23 +11,18 @@
 ///   value      the threshold (a number somebody typed; blank = not judged)
 ///   severity   "warn" | "fail"    -- how bad the breach is
 ///
-/// Two automatic, metric-level gates are not expressed as rules (nobody configures them):
-/// `integrated` reads `pending` until the engine says it is ready, and the dialogue-anchored
-/// metrics read `inconclusive` until enough dialogue is present. "Only warn, never fail" (realtime
-/// Integrated) is just a rule authored with `severity: "warn"`.
+/// One automatic, metric-level gate is not expressed as a rule (nobody configures it): `integrated`
+/// reads `pending` until the engine says it is ready. "Only warn, never fail" (realtime Integrated)
+/// is just a rule authored with `severity: "warn"`. Dialogue-anchored metrics carry no gate of
+/// their own -- `dialogueIntegrated` is judged the moment the engine has a number for it, same as
+/// any other metric; the user reads `Dialogue Coverage` alongside it and judges the coverage
+/// themselves.
 
 import { STATS_CANONICAL_ORDER, STATS_META } from "./statsCatalog.js";
 
 export const LOUDNESS_PROFILE_OFF = "off";
 
 const PROFILE_PREFIX = "profile:";
-
-/// Below this dialogue coverage the dialogue-anchored metrics cannot conclude.
-export const MIN_DIALOGUE_COVERAGE_PERCENT = 15;
-
-/// Metrics whose reading is meaningless until enough of the recent audio is dialogue. Any rule on
-/// one of these is gated automatically -- the user neither sets nor sees the coverage floor.
-export const DIALOGUE_GATED_METRIC_IDS = new Set(["dialogueIntegrated"]);
 
 /// Metrics that only mean anything once the engine reports them settled.
 export const READINESS_GATED_METRIC_IDS = new Set(["integrated"]);

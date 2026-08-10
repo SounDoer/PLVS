@@ -1,22 +1,17 @@
 /// Pure evaluation of a Loudness Profile against one metrics sample.
 ///
 /// The sample is exactly what the engine already emits:
-///   { values: { [metricId]: number }, integratedReady: boolean, dialogueCoverage: number|null }
+///   { values: { [metricId]: number }, integratedReady: boolean }
 ///
 /// Returns a status only for the metrics the profile judges (those carrying a filled-in rule). A
 /// metric absent from the result is unwatched; callers render that as muted.
 ///
 /// Per metric: every filled rule is checked, a rule "fires" when its comparison is true, and the
-/// status is the most severe fired rule (`fail` > `warn`), or `ok` when none fire. Two automatic
-/// gates run first -- readiness (`pending`) and dialogue coverage (`inconclusive`) -- because a
-/// reading that is not ready or not backed by enough dialogue must not be judged at all.
+/// status is the most severe fired rule (`fail` > `warn`), or `ok` when none fire. One automatic
+/// gate runs first -- readiness (`pending`) -- because a reading the engine has not produced yet
+/// must not be judged at all.
 
-import {
-  DIALOGUE_GATED_METRIC_IDS,
-  MIN_DIALOGUE_COVERAGE_PERCENT,
-  READINESS_GATED_METRIC_IDS,
-  isRuleEmpty,
-} from "./loudnessProfileCatalog.js";
+import { READINESS_GATED_METRIC_IDS, isRuleEmpty } from "./loudnessProfileCatalog.js";
 
 const SEVERITY_RANK = { warn: 1, fail: 2 };
 
@@ -29,14 +24,6 @@ function ruleFires(rule, value) {
 function evaluateMetric(metricId, rules, sample) {
   // Integrated-family readouts are meaningless until the engine says they are ready.
   if (READINESS_GATED_METRIC_IDS.has(metricId) && !sample.integratedReady) return "pending";
-
-  if (DIALOGUE_GATED_METRIC_IDS.has(metricId)) {
-    const coverage = sample.dialogueCoverage;
-    // Null coverage means the dialogue path is not running at all.
-    if (!Number.isFinite(coverage) || coverage < MIN_DIALOGUE_COVERAGE_PERCENT) {
-      return "inconclusive";
-    }
-  }
 
   const value = sample.values?.[metricId];
   if (!Number.isFinite(value)) return "pending";

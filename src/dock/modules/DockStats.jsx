@@ -63,9 +63,6 @@ export function DockStats({ controls, heightMode = "standard" }) {
   const statuses = loudnessProfileEvaluate(loudnessProfileDocument, {
     values: rawValues,
     integratedReady: Number.isFinite(rawValues.integrated),
-    dialogueCoverage: Number.isFinite(displayAudio?.dialoguePercent)
-      ? displayAudio.dialoguePercent
-      : null,
   });
   const watchedIds = new Set(watchedMetricIds(loudnessProfileDocument));
   const byId = new Map((statsMetrics ?? []).map((m) => [m.id, m]));

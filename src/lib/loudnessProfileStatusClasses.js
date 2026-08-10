@@ -8,7 +8,6 @@ const VALUE_CLASS = {
   ok: "text-foreground",
   warn: "text-[color:var(--ui-signal-warn)]",
   pending: "text-[color:var(--ui-signal-warn)]",
-  inconclusive: "text-[color:var(--ui-signal-warn)]",
   fail: "text-[color:var(--ui-signal-bad)]",
 };
 
@@ -31,7 +30,6 @@ const MARKER_CLASS = {
   ok: "text-foreground",
   warn: "text-[color:var(--ui-signal-warn)]",
   pending: "text-[color:var(--ui-signal-warn)]",
-  inconclusive: "text-[color:var(--ui-signal-warn)]",
   fail: "text-[color:var(--ui-signal-bad)]",
 };
 
