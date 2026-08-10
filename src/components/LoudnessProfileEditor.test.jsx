@@ -1,7 +1,16 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
+
+// jsdom has no PointerEvent constructor; a MouseEvent carrying a pointerId is what usePointerReorder
+// reads (see usePointerReorder.dom.test.jsx, which this mirrors).
+function pointerEvent(type, init = {}) {
+  const { pointerId = 1, ...rest } = init;
+  const event = new window.MouseEvent(type, { bubbles: true, ...rest });
+  Object.defineProperty(event, "pointerId", { value: pointerId });
+  return event;
+}
 
 const threeRuleDocument = (overrides = {}) => ({
   id: "draft",
@@ -196,6 +205,43 @@ describe("LoudnessProfileEditor", () => {
     const next = appliedDocument(props);
     expect(next.rules).toHaveLength(2);
     expect(next.rules.some((r) => r.metricId === "truePeak")).toBe(false);
+  });
+
+  it("reorders rules by dragging a grip handle, without changing evaluation-relevant fields", () => {
+    const props = renderEditor();
+    const container = screen.getByTestId("loudness-rule-order-list");
+    // Three 40px rows starting at the viewport top, matching usePointerReorder.dom.test.jsx.
+    container.getBoundingClientRect = () => ({ top: 0, height: 120 });
+
+    const grip = screen.getByRole("button", { name: "Reorder rule 3" });
+    act(() => grip.dispatchEvent(pointerEvent("pointerdown")));
+    act(() => window.dispatchEvent(pointerEvent("pointermove", { clientY: 10 })));
+    act(() => window.dispatchEvent(pointerEvent("pointerup", { clientY: 10 })));
+
+    expect(props.onEdit).toHaveBeenCalledTimes(1);
+    const next = appliedDocument(props);
+    expect(next.rules.map((r) => `${r.metricId} ${r.op} ${r.value}`)).toEqual([
+      "truePeak > -1",
+      "integrated > -22.5",
+      "integrated < -23.5",
+    ]);
+  });
+
+  it("re-renders with the dragged order applied, aria-labels following the new positions", () => {
+    const props = renderEditor();
+    const container = screen.getByTestId("loudness-rule-order-list");
+    container.getBoundingClientRect = () => ({ top: 0, height: 120 });
+
+    const grip = screen.getByRole("button", { name: "Reorder rule 3" });
+    act(() => grip.dispatchEvent(pointerEvent("pointerdown")));
+    act(() => window.dispatchEvent(pointerEvent("pointermove", { clientY: 10 })));
+    act(() => window.dispatchEvent(pointerEvent("pointerup", { clientY: 10 })));
+    const moved = appliedDocument(props);
+
+    render(<LoudnessProfileEditor {...props} draft={{ ...props.draft, document: moved }} />);
+    expect(screen.getAllByRole("combobox", { name: "Rule 1 metric" })[1].textContent).toContain(
+      "True Peak Max"
+    );
   });
 
   it("exposes severity per rule", () => {

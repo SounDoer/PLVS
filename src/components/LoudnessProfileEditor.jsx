@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, GripVertical, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/AddButton";
 import { useTruncationTip } from "@/components/HoverTip";
@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { clampPanelPos } from "@/lib/dragClamp.js";
+import { cn } from "@/lib/utils";
+import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import {
   RULEABLE_METRIC_IDS,
   createEmptyRule,
@@ -24,14 +26,28 @@ import { STATS_META, roundToStatPrecision, statDecimals } from "@/lib/statsCatal
 const DEFAULT_RULE_METRIC = "integrated";
 
 // Matches the compact, borderless-until-hover selects the other panels use (see FocusViewPopover).
-// No width here on purpose: the base trigger is `w-full`, so each select fills its grid column and
-// its chevron lands on the column's right edge, lining up down the list (see RuleRow). `gap-1`
-// tightens the base `gap-2` between label and chevron (tailwind-merge keeps this one), buying the
-// metric column a few px of text so the widest labels (`Momentary Max`) clear the clamp.
+// No width here on purpose for the metric select: its trigger is `w-full`, so it fills the grid's
+// flexible column. The operator and severity selects add an explicit width (below) instead, because
+// they sit in a grid instance separate from Reference's own row (see GRID_TEMPLATE_CLASS) and a bare
+// `auto` column would size independently in each, breaking the value/unit alignment between them.
+// `gap-1` tightens the base `gap-2` between label and chevron (tailwind-merge keeps this one).
 const TRIGGER_CLASS =
   "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
 const CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
+
+/// Reference's row and the rule list are two separate grid instances -- the rule list needs its own
+/// bounding box for the drag-reorder row-height math (see `usePointerReorder`), which Reference must
+/// stay outside of since it can never be dragged. Splitting them means every column but the flexible
+/// metric one needs an explicit, shared width instead of per-instance `auto` sizing, or the two grids
+/// would compute different column widths and the value/unit columns would stop lining up between them.
+const GRID_TEMPLATE_CLASS =
+  "grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-0.5 text-[length:var(--ui-fs-control)]";
+const GRIP_COL_CLASS = "w-5";
+const OP_COL_CLASS = "w-11";
+const UNIT_COL_CLASS = "w-9";
+const SEVERITY_COL_CLASS = "w-14";
+const REMOVE_COL_CLASS = "w-5";
 
 // Sized in `ch`, not rem: the field's font-size is `--ui-fs-control`, which grows with the
 // Interface Size preference, so a fixed rem width clips its own value at the larger settings and
@@ -140,18 +156,36 @@ function MetricSelect({ position, rule, onPatch }) {
 }
 
 /// One rule: `metric  op  value  severity`. Reads as the breach sentence it is -- "True Peak above
-/// −1 → Fail" -- so which side breaches is never in doubt. The row is `display:contents`: its six
+/// −1 → Fail" -- so which side breaches is never in doubt. The row is `display:contents`: its seven
 /// cells drop into the shared grid in RuleList so every column lines up across rows.
-function RuleRow({ index, rule, onPatch, onRemove }) {
+///
+/// `position` is the row's on-screen order (1-based), not its index in the rules array -- the two
+/// diverge the moment a drag reorders the list, and every aria-label reads as what the user sees.
+function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
   const meta = STATS_META[rule.metricId];
-  const position = index + 1;
 
   return (
     <div className="contents">
+      <button
+        type="button"
+        aria-label={`Reorder rule ${position}`}
+        onPointerDown={onDragStart}
+        className={cn(
+          GRIP_COL_CLASS,
+          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          dragging && "text-foreground"
+        )}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+
       <MetricSelect position={position} rule={rule} onPatch={onPatch} />
 
       <Select value={rule.op} onValueChange={(value) => onPatch({ op: value })}>
-        <SelectTrigger aria-label={`Rule ${position} operator`} className={TRIGGER_CLASS}>
+        <SelectTrigger
+          aria-label={`Rule ${position} operator`}
+          className={cn(TRIGGER_CLASS, OP_COL_CLASS)}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent className={CONTENT_CLASS}>
@@ -167,13 +201,16 @@ function RuleRow({ index, rule, onPatch, onRemove }) {
         onCommit={(next) => onPatch({ value: next ?? undefined })}
       />
 
-      <span className="text-muted-foreground/60">{meta?.unit}</span>
+      <span className={cn(UNIT_COL_CLASS, "text-muted-foreground/60")}>{meta?.unit}</span>
 
       <Select
         value={rule.severity ?? "warn"}
         onValueChange={(value) => onPatch({ severity: value })}
       >
-        <SelectTrigger aria-label={`Rule ${position} severity`} className={TRIGGER_CLASS}>
+        <SelectTrigger
+          aria-label={`Rule ${position} severity`}
+          className={cn(TRIGGER_CLASS, SEVERITY_COL_CLASS)}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent className={CONTENT_CLASS}>
@@ -186,7 +223,10 @@ function RuleRow({ index, rule, onPatch, onRemove }) {
         type="button"
         aria-label={`Remove rule ${position}`}
         onClick={onRemove}
-        className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className={cn(
+          REMOVE_COL_CLASS,
+          "flex items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        )}
       >
         <X className="size-[length:var(--ui-icon-management-action)]" />
       </button>
@@ -283,6 +323,30 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
   function removeRule(index) {
     onEdit((d) => ({ ...d, rules: (d.rules ?? []).filter((_, i) => i !== index) }));
   }
+
+  /// Reordering is cosmetic -- `loudnessProfileEvaluate` takes the worst fired rule regardless of
+  /// array order -- so the ids `usePointerReorder` tracks are just the rules array's own positions
+  /// ("0", "1", ...), not a stable identity carried across renders the way a real id would be.
+  function reorderRules(nextIds) {
+    onEdit((d) => {
+      const current = d.rules ?? [];
+      const next = nextIds.map((id) => current[Number(id)]).filter(Boolean);
+      return next.length === current.length ? { ...d, rules: next } : d;
+    });
+  }
+
+  const ruleIds = rules.map((_, i) => String(i));
+  const {
+    containerRef: ruleListRef,
+    orderedIds,
+    draggingId,
+    startDrag,
+  } = usePointerReorder(ruleIds, reorderRules);
+  // `orderedIds` lags `ruleIds` by a tick when it changes for a reason other than a drag (the hook
+  // debounces every resync, drag or not -- see its own comment) -- so an add/remove must render
+  // straight from `ruleIds` or the new/removed row would flash in a render late. Mid-drag, though,
+  // `orderedIds` is the only thing carrying the live reorder the pointer is producing.
+  const displayRuleIds = draggingId ? orderedIds : ruleIds;
 
   function handleCancel() {
     if (draft.dirty) setDiscardOpen(true);
@@ -396,41 +460,54 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         </div>
 
         <div className="flex flex-col gap-2 overflow-y-auto px-3 py-1">
-          {/* Reference and the rules share one grid so the value and unit columns line up across
-              both. Reference is the profile's anchor, not a rule, but it reads as the plain first
-              row: metric and value columns filled, op / severity / remove empty. Each RuleRow is
-              display:contents, dropping its cells into this grid. */}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-0.5 text-[length:var(--ui-fs-control)]">
+          {/* Reference is the profile's anchor, not a rule -- it can never be dragged, so it is its
+              own grid instance rather than sharing a container with the reorderable rule list below
+              (see GRID_TEMPLATE_CLASS for why every column but the flexible one still lines up). It
+              reads as the plain first row: metric and value columns filled, the rest empty. */}
+          <div className={GRID_TEMPLATE_CLASS}>
+            <span className={cn(GRIP_COL_CLASS, "-ml-1")} />
             {/* `px-2` matches the metric trigger's text inset so Reference lines up with the metric
                 names below; no color class means it inherits the same foreground they use. */}
             <span className="px-2">Reference</span>
-            <span />
+            <span className={OP_COL_CLASS} />
             <RuleNumber
               ariaLabel="Loudness Profile reference"
               metricId="integrated"
               value={ruleDocument.referenceLufs ?? null}
               onCommit={(next) => onEdit((d) => withReferenceLufs(d, next))}
             />
-            <span className="text-muted-foreground/60">LUFS</span>
-            <span />
-            <span />
-
-            {rules.length > 0 ? (
-              rules.map((rule, index) => (
-                <RuleRow
-                  key={index}
-                  index={index}
-                  rule={rule}
-                  onPatch={(patch) => patchRule(index, patch)}
-                  onRemove={() => removeRule(index)}
-                />
-              ))
-            ) : (
-              <p className="col-span-full px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
-                No rules — this profile does not judge any metrics.
-              </p>
-            )}
+            <span className={cn(UNIT_COL_CLASS, "text-muted-foreground/60")}>LUFS</span>
+            <span className={SEVERITY_COL_CLASS} />
+            <span className={REMOVE_COL_CLASS} />
           </div>
+
+          {rules.length > 0 ? (
+            <div
+              ref={ruleListRef}
+              data-testid="loudness-rule-order-list"
+              className={GRID_TEMPLATE_CLASS}
+            >
+              {displayRuleIds.map((id, position) => {
+                const rule = rules[Number(id)];
+                if (!rule) return null;
+                return (
+                  <RuleRow
+                    key={id}
+                    position={position + 1}
+                    rule={rule}
+                    dragging={draggingId === id}
+                    onDragStart={(event) => startDrag(id, event)}
+                    onPatch={(patch) => patchRule(Number(id), patch)}
+                    onRemove={() => removeRule(Number(id))}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <p className="px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
+              No rules — this profile does not judge any metrics.
+            </p>
+          )}
 
           <div className="border-t border-border/40 pt-1">
             <AddButton label="Add Rule" onClick={addRule} />
