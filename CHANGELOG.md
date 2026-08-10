@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-08-10
+
+### Added
+- Loudness Profile editor's rule list is drag-to-reorder, with a ring highlight on the row being dragged.
+
+### Fixed
+- Dialogue Integrated no longer shows the same warn color as an actual rule breach when dialogue coverage is too low to judge it; it's now evaluated the moment the engine has a value, the same as Integrated.
+
 ## [0.13.0] - 2026-08-05
 
 ### Added
