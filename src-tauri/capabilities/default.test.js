@@ -11,9 +11,10 @@ const accessoryCapability = JSON.parse(
 );
 
 describe("default Tauri capabilities", () => {
-  it("allows Focus View to hide window decorations and drag frameless windows", () => {
+  it("allows Focus View to manage frameless window gestures", () => {
     expect(capability.permissions).toContain("core:window:allow-set-decorations");
     expect(capability.permissions).toContain("core:window:allow-start-dragging");
+    expect(capability.permissions).toContain("core:window:allow-toggle-maximize");
   });
 
   it("allows profile import/export dialogs", () => {

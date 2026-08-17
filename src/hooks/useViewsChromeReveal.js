@@ -2,11 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
 
+const DOUBLE_PRESS_MAX_DELAY_MS = 500;
+const DOUBLE_PRESS_MAX_DISTANCE_PX = 8;
+
 export function useViewsChromeReveal({ autoHideControls, frameless }) {
   const [controlsVisible, setControlsVisible] = useState(false);
   const controlsHeldRef = useRef(false);
   const hideTimerRef = useRef(0);
   const dragTimerRef = useRef(0);
+  const lastDragPressRef = useRef(null);
 
   const showControls = useCallback(() => {
     window.clearTimeout(hideTimerRef.current);
@@ -59,13 +63,33 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
         window.clearTimeout(dragTimerRef.current);
       };
       try {
+        const win = getCurrentWindow();
+        const press = {
+          target: event.currentTarget,
+          timeStamp: event.timeStamp,
+          x: event.clientX,
+          y: event.clientY,
+        };
+        const previousPress = lastDragPressRef.current;
+        const isNearbyRepeat =
+          previousPress !== null &&
+          previousPress.target === press.target &&
+          press.timeStamp >= previousPress.timeStamp &&
+          press.timeStamp - previousPress.timeStamp <= DOUBLE_PRESS_MAX_DELAY_MS &&
+          Math.abs(press.x - previousPress.x) <= DOUBLE_PRESS_MAX_DISTANCE_PX &&
+          Math.abs(press.y - previousPress.y) <= DOUBLE_PRESS_MAX_DISTANCE_PX;
+        const isDoublePress = event.detail === 2 || isNearbyRepeat;
+        lastDragPressRef.current = isDoublePress ? null : press;
+        if (isDoublePress) {
+          if (typeof win.toggleMaximize === "function") await win.toggleMaximize();
+          return;
+        }
         holdControls(true);
         window.addEventListener("pointerup", releaseAfterDrag, { once: true, capture: true });
         window.addEventListener("pointercancel", releaseAfterDrag, { once: true, capture: true });
         window.addEventListener("mouseup", releaseAfterDrag, { once: true, capture: true });
         window.addEventListener("blur", releaseAfterDrag, { once: true });
         dragTimerRef.current = window.setTimeout(releaseAfterDrag, 10000);
-        const win = getCurrentWindow();
         if (typeof win.startDragging === "function") await win.startDragging();
       } catch (_) {
         releaseAfterDrag();
