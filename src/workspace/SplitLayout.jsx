@@ -23,6 +23,8 @@ import {
 import { getPanelControls } from "./panelControlInstances.js";
 
 const SPLIT_DIVIDER_SIZE_REM = 0.375;
+const SPLIT_SNAP_THRESHOLD_PX = 10;
+const SPLIT_SNAP_RELEASE_THRESHOLD_PX = 18;
 const noop = () => {};
 
 // ---------------------------------------------------------------------------
@@ -116,6 +118,28 @@ export function getPinnedSizeForNode(node, state, direction) {
   return sizes.length > 0 ? Math.max(...sizes) : null;
 }
 
+export function resolveSplitDragDelta({
+  rawDelta,
+  startAbovePx,
+  startBelowPx,
+  minAbove,
+  minBelow,
+  wasSnapped = false,
+}) {
+  const minDelta = -(startAbovePx - minAbove);
+  const maxDelta = startBelowPx - minBelow;
+  const clampedDelta = Math.min(Math.max(rawDelta, minDelta), maxDelta);
+  const equalSplitDelta = (startBelowPx - startAbovePx) / 2;
+  const equalSplitIsAllowed = equalSplitDelta >= minDelta && equalSplitDelta <= maxDelta;
+  const snapThreshold = wasSnapped ? SPLIT_SNAP_RELEASE_THRESHOLD_PX : SPLIT_SNAP_THRESHOLD_PX;
+  const snapped = equalSplitIsAllowed && Math.abs(clampedDelta - equalSplitDelta) <= snapThreshold;
+
+  return {
+    delta: snapped ? equalSplitDelta : clampedDelta,
+    snapped,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // SplitDivider — unified resize handle between any two adjacent children
 // ---------------------------------------------------------------------------
@@ -161,29 +185,36 @@ function SplitDivider({
     const dimension = isH ? "minWidth" : "minHeight";
     const minAbove = getSubtreeMinSize(aboveNode, state, dimension);
     const minBelow = getSubtreeMinSize(belowNode, state, dimension);
+    let snapped = false;
 
     function onMove(ev) {
-      const delta = (isH ? ev.clientX : ev.clientY) - startPos;
-      const clampedDelta = Math.min(
-        Math.max(delta, -(startAbovePx - minAbove)),
-        startBelowPx - minBelow
-      );
+      const result = resolveSplitDragDelta({
+        rawDelta: (isH ? ev.clientX : ev.clientY) - startPos,
+        startAbovePx,
+        startBelowPx,
+        minAbove,
+        minBelow,
+        wasSnapped: snapped,
+      });
+      snapped = result.snapped;
+      if (ref.current) ref.current.dataset.snapped = String(snapped);
+      const appliedDelta = result.delta;
       resizeChildren(
         parentPath,
         aboveIdx,
         belowIdx,
-        (startAbovePx + clampedDelta) / contentPx,
-        (startBelowPx - clampedDelta) / contentPx,
+        (startAbovePx + appliedDelta) / contentPx,
+        (startBelowPx - appliedDelta) / contentPx,
         {
           direction,
-          abovePx: startAbovePx + clampedDelta,
-          belowPx: startBelowPx - clampedDelta,
+          abovePx: startAbovePx + appliedDelta,
+          belowPx: startBelowPx - appliedDelta,
           childSizesPx: startChildSizesPx.map((child) => {
             if (child.childIdx === aboveIdx) {
-              return { ...child, sizePx: startAbovePx + clampedDelta };
+              return { ...child, sizePx: startAbovePx + appliedDelta };
             }
             if (child.childIdx === belowIdx) {
-              return { ...child, sizePx: startBelowPx - clampedDelta };
+              return { ...child, sizePx: startBelowPx - appliedDelta };
             }
             return child;
           }),
@@ -191,6 +222,7 @@ function SplitDivider({
       );
     }
     function onUp() {
+      if (ref.current) delete ref.current.dataset.snapped;
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }
@@ -202,7 +234,7 @@ function SplitDivider({
     <div
       ref={ref}
       className={cn(
-        "shrink-0 transition-colors hover:bg-primary/20 active:bg-primary/30",
+        "shrink-0 transition-[background-color,box-shadow] hover:bg-primary/20 active:bg-primary/30 data-[snapped=true]:bg-primary/40 data-[snapped=true]:shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_45%,transparent)]",
         isH ? "w-1.5 cursor-ew-resize" : "h-1.5 cursor-ns-resize"
       )}
       onMouseDown={handleMouseDown}

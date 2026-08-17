@@ -1,5 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { getPinnedSizeForNode, getSplitChildStyle, getSplitSizingContext } from "./SplitLayout.jsx";
+import {
+  getPinnedSizeForNode,
+  getSplitChildStyle,
+  getSplitSizingContext,
+  resolveSplitDragDelta,
+} from "./SplitLayout.jsx";
+
+describe("resolveSplitDragDelta", () => {
+  const drag = (rawDelta, options = {}) =>
+    resolveSplitDragDelta({
+      rawDelta,
+      startAbovePx: 420,
+      startBelowPx: 580,
+      minAbove: 200,
+      minBelow: 200,
+      ...options,
+    });
+
+  it("snaps adjacent panels to equal sizes near their midpoint", () => {
+    expect(drag(71)).toEqual({ delta: 80, snapped: true });
+  });
+
+  it("does not snap before entering the magnetic threshold", () => {
+    expect(drag(69)).toEqual({ delta: 69, snapped: false });
+  });
+
+  it("uses a wider release threshold after snapping to prevent jitter", () => {
+    expect(drag(63, { wasSnapped: true })).toEqual({ delta: 80, snapped: true });
+    expect(drag(61, { wasSnapped: true })).toEqual({ delta: 61, snapped: false });
+  });
+
+  it("skips midpoint snapping when a panel minimum makes equality impossible", () => {
+    expect(drag(80, { minBelow: 550 })).toEqual({ delta: 30, snapped: false });
+  });
+
+  it("still clamps ordinary dragging to panel minimum sizes", () => {
+    expect(drag(-300)).toEqual({ delta: -220, snapped: false });
+    expect(drag(500)).toEqual({ delta: 380, snapped: false });
+  });
+});
 
 describe("getSplitSizingContext", () => {
   it("normalizes fixed children when all visible split children are fixed", () => {
