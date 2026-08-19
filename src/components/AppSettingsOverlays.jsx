@@ -128,6 +128,10 @@ export function AppSettingsOverlays({
           draft={editor.draft}
           onName={editor.setName}
           onCore={editor.updateCore}
+          onPaletteColor={editor.updatePaletteColor}
+          onIntensityStop={editor.updateIntensityStop}
+          onIntensityStops={editor.updateIntensityStops}
+          onApplyPreset={editor.applyPreset}
           onSave={editor.save}
           onCancel={editor.cancel}
           onDelete={undefined}

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
 import { upsertCustomTheme } from "../theme/customThemesRepo.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
+import { applyPalettePreset } from "../theme/palettePresets.js";
 
 const noop = () => {};
 
@@ -113,6 +114,30 @@ export function useThemeEditor(opts) {
     [edit]
   );
 
+  const updateIntensityStops = useCallback(
+    (stops) =>
+      edit((draft) => ({
+        ...draft,
+        palettes: {
+          ...draft.palettes,
+          intensity: { presetId: null, stops: stops.map((stop) => ({ ...stop })) },
+        },
+      })),
+    [edit]
+  );
+
+  const applyPreset = useCallback(
+    (kind, presetId) => {
+      const palette = applyPalettePreset(kind, presetId);
+      if (!palette) return;
+      edit((draft) => ({
+        ...draft,
+        palettes: { ...draft.palettes, [kind]: palette },
+      }));
+    },
+    [edit]
+  );
+
   const updateOverride = useCallback(
     (roleId, override) =>
       edit((draft) => {
@@ -154,6 +179,8 @@ export function useThemeEditor(opts) {
     updateCore,
     updatePaletteColor,
     updateIntensityStop,
+    updateIntensityStops,
+    applyPreset,
     updateOverride,
     save,
     cancel,

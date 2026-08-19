@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
+import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -49,6 +50,10 @@ const CORE_COLORS = [
  *   draft: object,
  *   onName: (s: string) => void,
  *   onCore: (key: string, css: string) => void,
+ *   onPaletteColor: (palette: string, key: string, css: string) => void,
+ *   onIntensityStop: (index: number, css: string) => void,
+ *   onIntensityStops: (stops: object[]) => void,
+ *   onApplyPreset: (palette: string, presetId: string) => void,
  *   onSave: () => void,
  *   onCancel: () => void,
  *   onDelete?: () => void,
@@ -61,6 +66,10 @@ export function ThemeEditor({
   draft,
   onName,
   onCore,
+  onPaletteColor,
+  onIntensityStop,
+  onIntensityStops,
+  onApplyPreset,
   onSave,
   onCancel,
   onDelete,
@@ -69,6 +78,7 @@ export function ThemeEditor({
   onMove,
 }) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [page, setPage] = useState("core");
 
   // The name edits like the Loudness Profile editor: static until the pencil opens an input, which
   // commits on blur / Enter / the confirm button and reverts on Escape / the cancel button.
@@ -157,7 +167,7 @@ export function ThemeEditor({
         ref={ref}
         role="dialog"
         aria-label="Theme editor"
-        className="fixed z-50 flex max-h-[80vh] w-80 flex-col gap-2 overflow-hidden rounded-[var(--ui-radius-modal)] border border-border bg-card text-card-foreground shadow-lg"
+        className="fixed z-50 flex max-h-[80vh] w-96 flex-col overflow-hidden rounded-[var(--ui-radius-modal)] border border-border bg-card text-card-foreground shadow-lg"
         style={{ left: pos.x, top: pos.y }}
       >
         <div
@@ -232,28 +242,64 @@ export function ThemeEditor({
           )}
         </div>
 
+        <div
+          role="tablist"
+          aria-label="Theme editor pages"
+          className="flex border-b border-border px-2"
+        >
+          {[
+            ["core", "Core"],
+            ["palettes", "Palettes"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={page === id}
+              onClick={() => setPage(id)}
+              className={`border-b-2 px-3 py-1.5 text-[length:var(--ui-fs-metric-meta)] ${
+                page === id
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col gap-3 overflow-y-auto px-3 py-2">
-          <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
-            <div>
-              <Label id="theme-core-title">Core Colors</Label>
-              <p className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-                Six choices shape the whole theme. Related colors are generated automatically.
-              </p>
-            </div>
-            {CORE_COLORS.map(({ key, label, description }) => (
-              <div key={key} className="flex flex-col gap-0.5">
-                <ColorControl
-                  label={label}
-                  value={draft.core[key]}
-                  onChange={(color) => onCore(key, color)}
-                  allowAlpha={false}
-                />
-                <p className="pl-7 text-[length:var(--ui-fs-metric-meta)] leading-tight text-muted-foreground">
-                  {description}
+          {page === "core" ? (
+            <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
+              <div>
+                <Label id="theme-core-title">Core Colors</Label>
+                <p className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+                  Six choices shape the whole theme. Related colors are generated automatically.
                 </p>
               </div>
-            ))}
-          </section>
+              {CORE_COLORS.map(({ key, label, description }) => (
+                <div key={key} className="flex flex-col gap-0.5">
+                  <ColorControl
+                    label={label}
+                    value={draft.core[key]}
+                    onChange={(color) => onCore(key, color)}
+                    allowAlpha={false}
+                  />
+                  <p className="pl-7 text-[length:var(--ui-fs-metric-meta)] leading-tight text-muted-foreground">
+                    {description}
+                  </p>
+                </div>
+              ))}
+            </section>
+          ) : (
+            <PalettesPage
+              draft={draft}
+              onColor={onPaletteColor}
+              onStop={onIntensityStop}
+              onStops={onIntensityStops}
+              onApplyPreset={onApplyPreset}
+            />
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">

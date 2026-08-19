@@ -37,4 +37,12 @@ describe("ColorControl", () => {
     expect(alphaRange.classList.contains("plvs-range")).toBe(true);
     expect(alphaRange.style.getPropertyValue("--range-pct")).toBe("50%");
   });
+
+  it("refreshes the editable value when a preset changes the controlled color", () => {
+    const { rerender } = render(<ColorControl label="Accent" value="#fb923c" onChange={vi.fn()} />);
+    rerender(<ColorControl label="Accent" value="#22d3ee" onChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /accent/i }));
+
+    expect(screen.getByLabelText(/hex/i).value).toBe("#22d3ee");
+  });
 });

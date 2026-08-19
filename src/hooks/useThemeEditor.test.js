@@ -48,6 +48,27 @@ describe("useThemeEditor", () => {
     expect(listCustomThemeDocuments()).toEqual({});
   });
 
+  it("edits palette anchors and applies owned preset snapshots", () => {
+    const publish = vi.fn();
+    const { result } = setup(publish);
+    act(() => result.current.beginCreate("S"));
+
+    act(() => result.current.updatePaletteColor("status", "warning", "#abcdef"));
+    expect(result.current.draft.palettes.status).toMatchObject({
+      presetId: null,
+      warning: "#abcdef",
+    });
+
+    act(() => result.current.applyPreset("frequency", "frequency-cool"));
+    expect(result.current.draft.palettes.frequency).toMatchObject({
+      presetId: "frequency-cool",
+      low: "#a855f7",
+      mid: "#06b6d4",
+      high: "#60a5fa",
+    });
+    expect(listCustomThemeDocuments()).toEqual({});
+  });
+
   it("save persists the final draft and ends editing", () => {
     const publish = vi.fn();
     const { result, setAppearance, setThemeId } = setup(publish);

@@ -15,6 +15,10 @@ const BASE_PROPS = {
   draft: DRAFT,
   onName: vi.fn(),
   onCore: vi.fn(),
+  onPaletteColor: vi.fn(),
+  onIntensityStop: vi.fn(),
+  onIntensityStops: vi.fn(),
+  onApplyPreset: vi.fn(),
   onSave: vi.fn(),
   onCancel: vi.fn(),
   dirty: false,
@@ -47,6 +51,16 @@ describe("ThemeEditor", () => {
     }
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
     expect(screen.queryByLabelText("Workspace alpha")).toBeNull();
+  });
+
+  it("groups Status, Intensity, and Frequency on one palettes page", () => {
+    render(<ThemeEditor {...BASE_PROPS} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
+
+    expect(screen.getByText("Status")).toBeTruthy();
+    expect(screen.getByText("Intensity")).toBeTruthy();
+    expect(screen.getByText("Frequency")).toBeTruthy();
+    expect(screen.getByLabelText("Intensity palette preview")).toBeTruthy();
   });
 
   it("shows the name statically and opens editing from the rename icon", () => {

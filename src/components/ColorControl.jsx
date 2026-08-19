@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { toEditable, fromEditable } from "../theme/colorIO.js";
@@ -10,6 +10,12 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
   const edit = toEditable(value);
   const [hex, setHex] = useState(edit.hex);
   const [alpha, setAlpha] = useState(edit.alpha);
+
+  useEffect(() => {
+    const next = toEditable(value);
+    setHex(next.hex);
+    setAlpha(next.alpha);
+  }, [value]);
 
   function emit(nextHex, nextAlpha) {
     setHex(nextHex);
