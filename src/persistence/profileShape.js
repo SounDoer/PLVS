@@ -9,7 +9,7 @@ import {
   normalizeSettingsFocusView,
   normalizeThemeEditorPos,
 } from "../settings/defaults.js";
-import { normalizeCustomTheme } from "../theme/customTheme.js";
+import { normalizeThemeDocument } from "../theme/migrations/migrateV1Theme.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 
 export const PROFILE_APP = "PLVS";
@@ -114,7 +114,7 @@ function normalizeThemes(raw) {
   const rawThemes = isPlainObject(raw.themes) ? raw.themes : {};
   const themes = {};
   for (const [id, theme] of Object.entries(rawThemes)) {
-    const normalized = normalizeCustomTheme(theme);
+    const normalized = normalizeThemeDocument(theme);
     if (normalized) themes[id] = normalized;
   }
   const order = (Array.isArray(raw.order) ? raw.order : []).filter(

@@ -39,4 +39,30 @@ describe("customThemesRepo", () => {
     themesStore.patch({ themes: { "custom-x": { id: "custom-x" } }, order: ["custom-x"] });
     expect(listCustomThemes()).toEqual({});
   });
+
+  it("reads V1 without writeback, then persists V2 on the next explicit mutation", () => {
+    const old = mk("custom-old", "Old");
+    localStorage.setItem(
+      "plvs:themes",
+      JSON.stringify({ themes: { "custom-old": old }, order: ["custom-old"] })
+    );
+
+    expect(listCustomThemes()["custom-old"].name).toBe("Old");
+    expect(
+      JSON.parse(localStorage.getItem("plvs:themes")).themes["custom-old"].version
+    ).toBeUndefined();
+
+    upsertCustomTheme({ ...listCustomThemes()["custom-old"], name: "Updated" });
+    const stored = JSON.parse(localStorage.getItem("plvs:themes"));
+    expect(stored.themes["custom-old"].version).toBe(2);
+    expect(stored.themes["custom-old"].name).toBe("Updated");
+  });
+
+  it("deduplicates persisted order and appends valid unlisted themes", () => {
+    themesStore.patch({
+      themes: { "custom-a": mk("custom-a"), "custom-b": mk("custom-b") },
+      order: ["custom-b", "custom-b", "missing"],
+    });
+    expect(listCustomThemesOrdered().map((theme) => theme.id)).toEqual(["custom-b", "custom-a"]);
+  });
 });

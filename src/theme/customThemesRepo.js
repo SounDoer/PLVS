@@ -1,5 +1,6 @@
 import { themesStore } from "../persistence/index.js";
-import { normalizeCustomTheme } from "./customTheme.js";
+import { projectV2ThemeToV1 } from "./legacy/projectV2ThemeToV1.js";
+import { normalizeThemeDocument } from "./migrations/migrateV1Theme.js";
 
 function readState() {
   const raw = themesStore.read();
@@ -14,8 +15,8 @@ export function listCustomThemes() {
   /** @type {Record<string, object>} */
   const out = {};
   for (const [id, t] of Object.entries(themes)) {
-    const n = normalizeCustomTheme(t);
-    if (n) out[id] = n;
+    const n = normalizeThemeDocument(t);
+    if (n) out[id] = projectV2ThemeToV1(n);
   }
   return out;
 }
@@ -39,7 +40,7 @@ export function listCustomThemesOrdered() {
 }
 
 export function upsertCustomTheme(theme) {
-  const n = normalizeCustomTheme(theme);
+  const n = normalizeThemeDocument(theme);
   if (!n) return;
   const { themes, order } = readState();
   themesStore.patch({
