@@ -1,5 +1,4 @@
 import { themesStore } from "../persistence/index.js";
-import { projectV2ThemeToV1 } from "./legacy/projectV2ThemeToV1.js";
 import { normalizeThemeDocument } from "./migrations/migrateV1Theme.js";
 
 function readState() {
@@ -9,46 +8,26 @@ function readState() {
   return { themes, order };
 }
 
-/** @returns {Record<string, object>} valid custom themes keyed by id */
+/** @returns {Record<string, object>} normalized Theme V2 documents keyed by id */
 export function listCustomThemes() {
   const { themes } = readState();
   /** @type {Record<string, object>} */
   const out = {};
   for (const [id, t] of Object.entries(themes)) {
-    const n = normalizeThemeDocument(t);
-    if (n) out[id] = projectV2ThemeToV1(n);
+    const normalized = normalizeThemeDocument(t);
+    if (normalized) out[id] = normalized;
   }
   return out;
 }
 
 /** @returns {Record<string, object>} normalized Theme V2 documents keyed by id */
 export function listCustomThemeDocuments() {
-  const { themes } = readState();
-  /** @type {Record<string, object>} */
-  const out = {};
-  for (const [id, theme] of Object.entries(themes)) {
-    const normalized = normalizeThemeDocument(theme);
-    if (normalized) out[id] = normalized;
-  }
-  return out;
+  return listCustomThemes();
 }
 
 /** @returns {object[]} normalized Theme V2 documents in display order */
 export function listCustomThemeDocumentsOrdered() {
-  const { order } = readState();
-  const valid = listCustomThemeDocuments();
-  const seen = new Set();
-  const ordered = [];
-  for (const id of order) {
-    if (valid[id] && !seen.has(id)) {
-      ordered.push(valid[id]);
-      seen.add(id);
-    }
-  }
-  for (const [id, theme] of Object.entries(valid)) {
-    if (!seen.has(id)) ordered.push(theme);
-  }
-  return ordered;
+  return listCustomThemesOrdered();
 }
 
 /** @returns {object[]} valid custom themes in display order */

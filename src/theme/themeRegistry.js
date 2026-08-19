@@ -1,4 +1,5 @@
-import { BUILTIN_THEMES, DEFAULT_THEME_ID } from "./builtinThemes.js";
+import { DEFAULT_THEME_ID } from "./builtinThemes.js";
+import { BUILTIN_THEMES_V2 } from "./builtinThemesV2.js";
 
 /**
  * @param {unknown} id
@@ -6,7 +7,7 @@ import { BUILTIN_THEMES, DEFAULT_THEME_ID } from "./builtinThemes.js";
  */
 export function isKnownThemeId(id, customThemes = {}) {
   if (typeof id !== "string") return false;
-  return id in BUILTIN_THEMES || id in customThemes;
+  return id in BUILTIN_THEMES_V2 || id in customThemes;
 }
 
 /**
@@ -16,8 +17,8 @@ export function isKnownThemeId(id, customThemes = {}) {
  */
 export function getTheme(id, customThemes = {}) {
   if (typeof id === "string") {
-    if (id in BUILTIN_THEMES) return BUILTIN_THEMES[id];
+    if (id in BUILTIN_THEMES_V2) return BUILTIN_THEMES_V2[id];
     if (id in customThemes) return customThemes[id];
   }
-  return BUILTIN_THEMES[DEFAULT_THEME_ID];
+  return BUILTIN_THEMES_V2[DEFAULT_THEME_ID];
 }

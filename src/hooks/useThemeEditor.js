@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
 import { upsertCustomTheme } from "../theme/customThemesRepo.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
@@ -34,9 +34,39 @@ export function useThemeEditor(opts) {
   const restoreThemeRef = useRef(activeTheme);
   const baselineRef = useRef(/** @type {object|null} */ (null));
   const historyRef = useRef({ past: [], future: [], lastKey: null, lastAt: 0 });
+  const pendingPublicationRef = useRef(null);
+  const publicationFrameRef = useRef(null);
   const [historyAvailability, setHistoryAvailability] = useState({ undo: false, redo: false });
 
   const applyDraft = useCallback((next) => publish(next), [publish]);
+
+  const cancelScheduledPublication = useCallback(() => {
+    if (publicationFrameRef.current != null && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(publicationFrameRef.current);
+    }
+    publicationFrameRef.current = null;
+    pendingPublicationRef.current = null;
+  }, []);
+
+  const scheduleDraftPublication = useCallback(
+    (next) => {
+      if (typeof requestAnimationFrame !== "function") {
+        applyDraft(next);
+        return;
+      }
+      pendingPublicationRef.current = next;
+      if (publicationFrameRef.current != null) return;
+      publicationFrameRef.current = requestAnimationFrame(() => {
+        publicationFrameRef.current = null;
+        const pending = pendingPublicationRef.current;
+        pendingPublicationRef.current = null;
+        if (pending) applyDraft(pending);
+      });
+    },
+    [applyDraft]
+  );
+
+  useEffect(() => cancelScheduledPublication, [cancelScheduledPublication]);
 
   // Keep state and ref in sync so save/cancel can read the latest draft without a state-updater.
   const setDraftBoth = useCallback((next) => {
@@ -96,10 +126,10 @@ export function useThemeEditor(opts) {
       history.lastAt = now;
       setDraftBoth(next);
       syncDirty(next);
-      applyDraft(next);
+      scheduleDraftPublication(next);
       setHistoryAvailability({ undo: history.past.length > 0, redo: false });
     },
-    [applyDraft, setDraftBoth, syncDirty]
+    [scheduleDraftPublication, setDraftBoth, syncDirty]
   );
 
   const setName = useCallback(
@@ -201,6 +231,7 @@ export function useThemeEditor(opts) {
       if (!next || !current) return;
       history[to].push(structuredClone(current));
       history.lastKey = null;
+      cancelScheduledPublication();
       setDraftBoth(next);
       syncDirty(next);
       applyDraft(next);
@@ -209,13 +240,14 @@ export function useThemeEditor(opts) {
         redo: history.future.length > 0,
       });
     },
-    [applyDraft, setDraftBoth, syncDirty]
+    [applyDraft, cancelScheduledPublication, setDraftBoth, syncDirty]
   );
 
   const undo = useCallback(() => moveHistory("past", "future"), [moveHistory]);
   const redo = useCallback(() => moveHistory("future", "past"), [moveHistory]);
 
   const save = useCallback(() => {
+    cancelScheduledPublication();
     const d = draftRef.current;
     if (d) {
       upsertCustomTheme(d);
@@ -227,13 +259,14 @@ export function useThemeEditor(opts) {
     setDraftBoth(null);
     setDirty(false);
     notify();
-  }, [notify, setAppearance, setDraftBoth, setThemeId]);
+  }, [cancelScheduledPublication, notify, setAppearance, setDraftBoth, setThemeId]);
 
   const cancel = useCallback(() => {
+    cancelScheduledPublication();
     publish(restoreThemeRef.current);
     setDraftBoth(null);
     setDirty(false);
-  }, [publish, setDraftBoth]);
+  }, [cancelScheduledPublication, publish, setDraftBoth]);
 
   return {
     isEditing: draft != null,

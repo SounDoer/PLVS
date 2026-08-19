@@ -45,4 +45,21 @@ describe("ColorControl", () => {
 
     expect(screen.getByLabelText(/hex/i).value).toBe("#22d3ee");
   });
+
+  it("accepts pasted RGB and OKLCH while preserving incomplete text", () => {
+    const onChange = vi.fn();
+    render(<ColorControl label="Accent" value="#fb923c" onChange={onChange} allowAlpha={false} />);
+    fireEvent.click(screen.getByRole("button", { name: /accent/i }));
+    const text = screen.getByLabelText("Accent hex");
+
+    fireEvent.input(text, { target: { value: "#12" } });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(text.value).toBe("#12");
+
+    fireEvent.input(text, { target: { value: "rgb(34 211 238)" } });
+    expect(onChange).toHaveBeenLastCalledWith("#22d3ee");
+
+    fireEvent.input(text, { target: { value: "oklch(0.8 0.1 200)" } });
+    expect(onChange.mock.calls.at(-1)[0]).toMatch(/^#[0-9a-f]{6}$/);
+  });
 });

@@ -52,7 +52,7 @@ function ThemeRow({ theme, selected, onSelect, actions }) {
         className="flex min-w-0 flex-1 items-center gap-2 text-left text-[length:var(--ui-fs-display)]"
       >
         <span className="flex size-4 items-center justify-center">
-          {selected ? <Check className="size-3.5" /> : null}
+          {selected ? <Check className="size-[length:var(--ui-icon-management-action)]" /> : null}
         </span>
         <ThemeSwatch theme={theme} />
         <span className="min-w-0 flex-1 truncate">{theme.name}</span>

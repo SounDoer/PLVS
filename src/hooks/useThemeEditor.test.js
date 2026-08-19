@@ -38,12 +38,13 @@ describe("useThemeEditor", () => {
     expect(publish.mock.calls.at(-1)[0]).toMatchObject({ id: "custom-1", name: "Sunset" });
   });
 
-  it("draft operations mutate and re-publish Theme V2 without persisting", () => {
+  it("draft operations mutate and re-publish Theme V2 without persisting", async () => {
     const publish = vi.fn();
     const { result } = setup(publish);
     act(() => result.current.beginCreate("S"));
     act(() => result.current.updateCore("interfaceAccent", "#22d3ee"));
     expect(result.current.draft.core.interfaceAccent).toBe("#22d3ee");
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     expect(publish.mock.calls.at(-1)[0].core.interfaceAccent).toBe("#22d3ee");
     expect(listCustomThemeDocuments()).toEqual({});
   });

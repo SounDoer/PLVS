@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { toEditable, fromEditable } from "../theme/colorIO.js";
+import { normalizeOpaqueColor } from "../theme/themeColorMath.js";
 
 /**
  * @param {{ label: string, value: string, onChange: (css: string) => void, allowAlpha?: boolean }} props
@@ -10,16 +11,19 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
   const edit = toEditable(value);
   const [hex, setHex] = useState(edit.hex);
   const [alpha, setAlpha] = useState(edit.alpha);
+  const [colorText, setColorText] = useState(edit.hex);
 
   useEffect(() => {
     const next = toEditable(value);
     setHex(next.hex);
     setAlpha(next.alpha);
+    setColorText(next.hex);
   }, [value]);
 
   function emit(nextHex, nextAlpha) {
     setHex(nextHex);
     setAlpha(nextAlpha);
+    setColorText(nextHex);
     onChange(fromEditable(nextHex, nextAlpha));
   }
 
@@ -46,8 +50,21 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
           <input
             id={`${label}-hex`}
             aria-label={`${label} hex`}
-            value={hex}
-            onInput={(e) => /^#[0-9a-f]{6}$/i.test(e.target.value) && emit(e.target.value, alpha)}
+            value={colorText}
+            onInput={(event) => {
+              const raw = event.target.value;
+              setColorText(raw);
+              const normalized = normalizeOpaqueColor(raw);
+              if (normalized) emit(normalized, allowAlpha ? alpha : 1);
+            }}
+            onBlur={() => setColorText(hex)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") {
+                setColorText(hex);
+                event.currentTarget.blur();
+              }
+            }}
             className="flex-1 rounded border border-input bg-transparent px-2 py-1"
           />
         </div>
