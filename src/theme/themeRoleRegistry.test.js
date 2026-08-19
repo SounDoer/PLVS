@@ -22,7 +22,7 @@ function testRole(id, override = {}) {
 describe("Theme Role Registry", () => {
   it("validates the complete registry", () => {
     expect(validateThemeRoleRegistry(THEME_ROLE_REGISTRY)).toEqual([]);
-    expect(THEME_ROLE_REGISTRY.length).toBeGreaterThan(70);
+    expect(THEME_ROLE_REGISTRY.length).toBeGreaterThan(80);
   });
 
   it("keeps curated editor metadata separate from dependency order", () => {

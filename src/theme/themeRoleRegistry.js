@@ -118,7 +118,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     family: "interface",
     recipe: "text-primary",
     dependencies: ["core.text", "core.workspace", "core.surface"],
-    bindings: { css: ["--foreground", "--card-foreground", "--popover-foreground"] },
+    bindings: { css: ["--foreground"] },
     advanced: colorOverride("Interface", "Primary Text", "Headings and normal body text."),
   }),
   role("interface.text.secondary", {
@@ -126,7 +126,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     family: "interface",
     recipe: "text-secondary",
     dependencies: ["core.text", "core.surface"],
-    bindings: { css: ["--muted-foreground", "--secondary-foreground"] },
+    bindings: { css: ["--muted-foreground"] },
     advanced: colorOverride("Interface", "Secondary Text", "Supporting labels and descriptions."),
   }),
   role("interface.text.annotation", {
@@ -162,11 +162,51 @@ const RAW_THEME_ROLE_REGISTRY = [
     family: "interface",
     recipe: "content-contrast",
     dependencies: ["core.text", "core.interfaceAccent"],
-    bindings: { css: ["--primary-foreground", "--accent-foreground"] },
+    bindings: { css: ["--primary-foreground"] },
     advanced: colorOverride(
       "Interface",
       "Text on Accent",
       "Content placed on accent-colored areas."
+    ),
+  }),
+  role("interface.content.onPanel", {
+    kind: "color",
+    family: "interface",
+    recipe: "content-contrast",
+    dependencies: ["core.text", "interface.surface.panel"],
+    bindings: { css: ["--card-foreground"] },
+    advanced: colorOverride("Interface", "Text on Panel", "Content placed on panel surfaces."),
+  }),
+  role("interface.content.onRaised", {
+    kind: "color",
+    family: "interface",
+    recipe: "content-contrast",
+    dependencies: ["core.text", "interface.surface.raised"],
+    bindings: { css: ["--popover-foreground"] },
+    advanced: colorOverride(
+      "Interface",
+      "Text on Raised Surface",
+      "Content placed on popovers and raised layers."
+    ),
+  }),
+  role("interface.content.onControl", {
+    kind: "color",
+    family: "interface",
+    recipe: "content-contrast",
+    dependencies: ["core.text", "interface.surface.control"],
+    bindings: { css: ["--secondary-foreground"] },
+    advanced: colorOverride("Interface", "Text on Control", "Content placed on neutral controls."),
+  }),
+  role("interface.content.onInteractive", {
+    kind: "color",
+    family: "interface",
+    recipe: "content-contrast",
+    dependencies: ["core.text", "interface.surface.interactive"],
+    bindings: { css: ["--accent-foreground"] },
+    advanced: colorOverride(
+      "Interface",
+      "Text on Interactive Surface",
+      "Content placed on selected controls."
     ),
   }),
   role("interface.content.onCritical", {
