@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CircleHelp, ExternalLink, Pencil, RotateCcw, Terminal, Trash2, X } from "lucide-react";
+import { CircleHelp, ExternalLink, RotateCcw, Terminal, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AddButton } from "@/components/AddButton";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
+import { ThemePicker } from "./ThemePicker.jsx";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
@@ -149,7 +150,6 @@ export function SettingsPanel({
   setInterfaceSize = () => {},
   fixedThemeSelectValue,
   setFixedThemeIdFromPicker,
-  themeSelectOptions,
   appVersion,
   latestVersion,
   releaseUrl,
@@ -179,9 +179,10 @@ export function SettingsPanel({
   resetChannelLabels = () => {},
   customThemeOptions = [],
   createCustomTheme = () => {},
-  editActiveCustomTheme = () => {},
+  editCustomTheme = () => {},
+  customizeBuiltinTheme = () => {},
+  duplicateCustomTheme = () => {},
   deleteCustomTheme = () => {},
-  activeIsCustom = false,
   themeControlsDisabled = false,
   onExportConfiguration = () => {},
   onImportConfiguration = () => {},
@@ -410,56 +411,18 @@ export function SettingsPanel({
                     >
                       <span className={ROW_LABEL_CLASS}>Theme</span>
                       <div className="flex-1" />
-                      <Select
+                      <ThemePicker
                         value={fixedThemeSelectValue}
-                        onValueChange={setFixedThemeIdFromPicker}
+                        onSelect={setFixedThemeIdFromPicker}
+                        customThemes={customThemeOptions
+                          .map((option) => option.theme)
+                          .filter(Boolean)}
+                        onCustomize={customizeBuiltinTheme}
+                        onEdit={editCustomTheme}
+                        onDuplicate={duplicateCustomTheme}
+                        onDelete={deleteCustomTheme}
                         disabled={themeControlsDisabled}
-                      >
-                        <SelectTrigger
-                          aria-label="Theme"
-                          className={SELECT_TRIGGER_CLASS}
-                          disabled={themeControlsDisabled}
-                        >
-                          <SelectValue placeholder="Theme" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
-                          {themeSelectOptions.map((opt) => (
-                            <SelectItem key={opt.id} value={opt.id}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                          {customThemeOptions.map((opt) => (
-                            <SelectItem key={opt.id} value={opt.id}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {activeIsCustom ? (
-                        <>
-                          <IconButton
-                            disabled={themeControlsDisabled}
-                            onClick={editActiveCustomTheme}
-                            aria-label="Edit theme"
-                          >
-                            <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-                          </IconButton>
-                          <InlineConfirm
-                            onConfirm={() => deleteCustomTheme(fixedThemeSelectValue)}
-                            confirmLabel="Confirm delete theme"
-                            cancelLabel="Cancel delete theme"
-                            trigger={(arm) => (
-                              <IconButton
-                                disabled={themeControlsDisabled}
-                                onClick={arm}
-                                aria-label="Delete theme"
-                              >
-                                <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                              </IconButton>
-                            )}
-                          />
-                        </>
-                      ) : null}
+                      />
                     </div>
                   ) : null}
                   {appearance === "fixed" ? (

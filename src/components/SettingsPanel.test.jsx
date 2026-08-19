@@ -3,6 +3,14 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+
+const CUSTOM_THEME = {
+  ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+  id: "custom-1",
+  name: "Custom Theme",
+};
+const CUSTOM_THEME_OPTION = { id: CUSTOM_THEME.id, label: CUSTOM_THEME.name, theme: CUSTOM_THEME };
 
 beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
@@ -186,30 +194,26 @@ describe("SettingsPanel", () => {
         {...BASE_PROPS}
         appearance="fixed"
         fixedThemeSelectValue="custom-1"
-        customThemeOptions={[{ id: "custom-1", label: "Custom Theme" }]}
-        activeIsCustom={true}
+        customThemeOptions={[CUSTOM_THEME_OPTION]}
       />
     );
 
     const themePicker = screen.getByRole("group", { name: "Theme picker" });
     expect(themePicker).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Edit theme" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete theme" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    expect(screen.getByRole("button", { name: "Edit Custom Theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Duplicate Custom Theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete Custom Theme" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
   });
 
   it("hides edit/delete for built-in themes", () => {
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        appearance="fixed"
-        fixedThemeSelectValue="plvs-dark"
-        activeIsCustom={false}
-      />
-    );
+    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
-    expect(screen.queryByRole("button", { name: "Edit theme" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Delete theme" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Delete / })).toBeNull();
+    expect(screen.getByRole("button", { name: "Customize Dark" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
   });
 
@@ -219,8 +223,7 @@ describe("SettingsPanel", () => {
         {...BASE_PROPS}
         appearance="fixed"
         fixedThemeSelectValue="custom-1"
-        customThemeOptions={[{ id: "custom-1", label: "Custom Theme" }]}
-        activeIsCustom={true}
+        customThemeOptions={[CUSTOM_THEME_OPTION]}
         themeControlsDisabled={true}
       />
     );
@@ -231,8 +234,6 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Appearance").disabled).toBe(true);
     expect(screen.getByLabelText("Theme").disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Add Theme" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Edit theme" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Delete theme" }).disabled).toBe(true);
   });
 
   it("does not render panel-specific channel selectors", () => {
@@ -544,14 +545,14 @@ describe("SettingsPanel — Delete theme", () => {
         {...BASE_PROPS}
         appearance="fixed"
         fixedThemeSelectValue="custom-1"
-        customThemeOptions={[{ id: "custom-1", label: "Custom Theme" }]}
-        activeIsCustom={true}
+        customThemeOptions={[CUSTOM_THEME_OPTION]}
         deleteCustomTheme={deleteCustomTheme}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "Delete theme" }));
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Custom Theme" }));
     expect(deleteCustomTheme).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByLabelText("Confirm delete theme"));
+    fireEvent.click(screen.getByLabelText("Confirm delete Custom Theme"));
     expect(deleteCustomTheme).toHaveBeenCalledWith("custom-1");
   });
 });

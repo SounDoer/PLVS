@@ -68,10 +68,10 @@ export function useThemeEditor(opts) {
   );
 
   const beginCreate = useCallback(
-    (name) => {
+    (name, baseTheme = activeTheme) => {
       wasNewRef.current = true;
       restoreThemeRef.current = activeTheme;
-      const d = makeCustomThemeV2FromBase(activeTheme, name, makeId);
+      const d = makeCustomThemeV2FromBase(baseTheme, name, makeId);
       setDraftBoth(d);
       resetHistory(d);
       setDirty(false);

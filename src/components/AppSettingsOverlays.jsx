@@ -92,9 +92,10 @@ export function AppSettingsOverlays({
         registrationError={settings.registrationError}
         customThemeOptions={settings.customThemeOptions}
         createCustomTheme={settings.createCustomTheme}
-        editActiveCustomTheme={settings.editActiveCustomTheme}
+        editCustomTheme={settings.editCustomTheme}
+        customizeBuiltinTheme={settings.customizeBuiltinTheme}
+        duplicateCustomTheme={settings.duplicateCustomTheme}
         deleteCustomTheme={settings.deleteCustomTheme}
-        activeIsCustom={settings.activeIsCustom}
         themeControlsDisabled={editor.isEditing}
         onExportConfiguration={exportConfiguration}
         onImportConfiguration={importConfiguration}

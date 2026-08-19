@@ -36,6 +36,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen }) {
   const customThemeOptions = listCustomThemeDocumentsOrdered().map((theme) => ({
     id: theme.id,
     label: theme.name,
+    theme,
   }));
 
   function selectThemeId(id) {
@@ -49,16 +50,37 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen }) {
   }
 
   function editActiveCustomTheme() {
-    if (!isCustomThemeId(themeSettings.resolvedThemeId)) return;
+    editCustomTheme(themeSettings.resolvedThemeId);
+  }
+
+  function editCustomTheme(id) {
+    if (!isCustomThemeId(id)) return;
     setSettingsOpen(false);
-    const theme = listCustomThemeDocuments()[themeSettings.resolvedThemeId];
+    const theme = listCustomThemeDocuments()[id];
     if (theme) editor.beginEdit(theme);
   }
 
+  function customizeBuiltinTheme(id) {
+    const theme = BUILTIN_THEMES_V2[id];
+    if (!theme) return;
+    setSettingsOpen(false);
+    editor.beginCreate(`${theme.name} Custom`, theme);
+  }
+
+  function duplicateCustomTheme(id) {
+    const theme = listCustomThemeDocuments()[id];
+    if (!theme) return;
+    setSettingsOpen(false);
+    editor.beginCreate(`${theme.name} Copy`, theme);
+  }
+
   function deleteCustomTheme(id) {
+    const deleted = listCustomThemeDocuments()[id];
     removeCustomTheme(id);
     themeSettings.setCustomThemes(listCustomThemes());
-    if (themeSettings.themeId === id) selectThemeId("plvs-dark");
+    if (themeSettings.themeId === id) {
+      selectThemeId(deleted?.colorScheme === "light" ? "plvs-light" : "plvs-dark");
+    }
   }
 
   return {
@@ -68,6 +90,9 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen }) {
     customThemeOptions,
     createCustomTheme,
     editActiveCustomTheme,
+    editCustomTheme,
+    customizeBuiltinTheme,
+    duplicateCustomTheme,
     deleteCustomTheme,
     activeIsCustom: isCustomThemeId(themeSettings.resolvedThemeId),
   };

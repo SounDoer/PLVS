@@ -14,12 +14,22 @@ import { cn } from "@/lib/utils";
  * @param {() => void} props.onConfirm
  * @param {string} props.confirmLabel  aria-label for the confirm button
  * @param {string} props.cancelLabel   aria-label for the cancel button
+ * @param {(armed: boolean) => void} [props.onArmedChange]
  */
-export function InlineConfirm({ trigger, onConfirm, confirmLabel, cancelLabel, className }) {
+export function InlineConfirm({
+  trigger,
+  onConfirm,
+  confirmLabel,
+  cancelLabel,
+  className,
+  onArmedChange,
+}) {
   const [armed, setArmed] = useState(false);
   const focusTargetRef = useRef(null);
   const focusPathRef = useRef(null);
   const restoreFocusRef = useRef(false);
+
+  useEffect(() => onArmedChange?.(armed), [armed, onArmedChange]);
 
   useEffect(() => {
     if (!armed) {

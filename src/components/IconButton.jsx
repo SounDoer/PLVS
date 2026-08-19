@@ -9,6 +9,7 @@ import { HoverTip } from "@/components/HoverTip";
  *   tip?: string,
  *   disabled?: boolean,
  *   onClick?: () => void,
+ *   onMouseDown?: (event: import("react").MouseEvent) => void,
  *   className?: string,
  *   tipSide?: "bottom" | "top" | "left" | "right",
  *   tipAlign?: "start" | "center" | "end",
@@ -21,6 +22,7 @@ export function IconButton({
   tip,
   disabled = false,
   onClick,
+  onMouseDown,
   className,
   tipSide = "bottom",
   tipAlign = "center",
@@ -35,6 +37,7 @@ export function IconButton({
         aria-pressed={ariaPressed}
         disabled={disabled}
         onClick={onClick}
+        onMouseDown={onMouseDown}
         className={cn(
           "flex items-center justify-center size-7 rounded-md",
           "text-muted-foreground bg-transparent",
