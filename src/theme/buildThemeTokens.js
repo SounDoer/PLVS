@@ -31,10 +31,10 @@ export function buildThemeTokens(theme) {
           centroid: "#111827",
         }
       : {
-          low: "#ff4b1f",
-          mid: "#df18ff",
-          high: "#5145ff",
-          neutral: "#85857e",
+          low: "#ff2d3d",
+          mid: "#fb923c",
+          high: "#356dff",
+          neutral: "#484850",
           centroid: "#f8fafc",
         };
 

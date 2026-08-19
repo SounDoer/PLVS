@@ -106,10 +106,10 @@ dedicated Y-axis tick.
 | `--ui-spectrum-secondary-snap` | `#7dd3fc`        | Spectrum secondary snapshot path + fill |
 | `--ui-waveform-trace`          | `#fb923c`        | Waveform envelope stroke + fill         |
 | `--ui-waveform-trace-snap`     | derived          | Waveform snapshot trace                 |
-| `--ui-waveform-frequency-low`  | REAPER-inspired  | Low-frequency Waveform hue anchor       |
-| `--ui-waveform-frequency-mid`  | REAPER-inspired  | Mid-frequency Waveform hue anchor       |
-| `--ui-waveform-frequency-high` | REAPER-inspired  | High-frequency Waveform hue anchor      |
-| `--ui-waveform-frequency-neutral` | neutral gray  | Broadband / unavailable spectral color  |
+| `--ui-waveform-frequency-low`  | `#ff2d3d` (dark) | Low-frequency Waveform hue anchor       |
+| `--ui-waveform-frequency-mid`  | `#fb923c` (dark) | Mid-frequency Waveform hue anchor       |
+| `--ui-waveform-frequency-high` | `#356dff` (dark) | High-frequency Waveform hue anchor      |
+| `--ui-waveform-frequency-neutral` | `#484850` (dark) | Broadband / unavailable spectral color  |
 | `--ui-waveform-centroid`       | scheme-aware     | Spectral centroid overlay trace          |
 
 ### Component: Signal (semantic state colors)

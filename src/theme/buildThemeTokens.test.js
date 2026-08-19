@@ -66,6 +66,14 @@ describe("buildThemeTokens", () => {
     }
   });
 
+  it("uses separated dark Waveform frequency anchors", () => {
+    const t = buildThemeTokens(BUILTIN_THEMES["plvs-dark"]);
+    expect(t["--ui-waveform-frequency-low"]).toBe("#ff2d3d");
+    expect(t["--ui-waveform-frequency-mid"]).toBe("#fb923c");
+    expect(t["--ui-waveform-frequency-high"]).toBe("#356dff");
+    expect(t["--ui-waveform-frequency-neutral"]).toBe("#484850");
+  });
+
   it("ties the snap family to one shared snap color", () => {
     const t = buildThemeTokens(BUILTIN_THEMES["plvs-dark"]);
     expect(t["--ui-vectorscope-trace-snap"]).toBe(t["--ui-loudness-momentary-snap"]);
