@@ -123,6 +123,7 @@ function resolveOverride(entry, override, roles) {
     throw new Error(`Override mode ${override.kind} is not allowed for ${entry.id}.`);
   }
   if (override.kind === "color") return override.value;
+  if (override.kind === "effect") return effect(override.color, override.opacity);
   if (!entry.advanced.references.includes(override.source)) {
     throw new Error(`Reference ${override.source} is not compatible with ${entry.id}.`);
   }

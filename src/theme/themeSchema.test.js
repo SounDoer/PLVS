@@ -34,6 +34,7 @@ describe("normalizeThemeV2", () => {
       overrides: {
         "waveform.centroid": { kind: "color", value: "RGB(255, 255, 255)" },
         "spectrum.primary": { kind: "reference", source: "core.secondaryData" },
+        "interface.border.default": { kind: "effect", color: "#fff", opacity: 0.09 },
       },
       ignored: true,
     });
@@ -55,6 +56,7 @@ describe("normalizeThemeV2", () => {
       overrides: {
         "waveform.centroid": { kind: "color", value: "#ffffff" },
         "spectrum.primary": { kind: "reference", source: "core.secondaryData" },
+        "interface.border.default": { kind: "effect", color: "#ffffff", opacity: 0.09 },
       },
     });
   });

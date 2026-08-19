@@ -54,6 +54,9 @@ const colorOverride = (section, label, description) =>
 const dataOverride = (section, label, description, references) =>
   advanced(section, label, description, ["color", "reference"], references);
 
+const effectOverride = (section, label, description) =>
+  advanced(section, label, description, ["color", "effect"]);
+
 const RAW_THEME_ROLE_REGISTRY = [
   direct("core.workspace", "color", { bindings: { css: ["--background"] } }),
   direct("core.surface"),
@@ -227,7 +230,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "border",
     dependencies: ["core.surface", "core.text"],
     bindings: { css: ["--border"] },
-    advanced: colorOverride("Interface", "Default Border", "Panel and control separators."),
+    advanced: effectOverride("Interface", "Default Border", "Panel and control separators."),
   }),
   role("interface.border.input", {
     kind: "color",
@@ -235,7 +238,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "input-border",
     dependencies: ["interface.border.default", "core.surface"],
     bindings: { css: ["--input"] },
-    advanced: colorOverride("Interface", "Input Border", "Editable field boundaries."),
+    advanced: effectOverride("Interface", "Input Border", "Editable field boundaries."),
   }),
   role("interface.focusRing", {
     kind: "color",
@@ -738,7 +741,9 @@ function validateAdvanced(entry, byId, errors) {
     errors.push(`Advanced modes are missing for ${entry.id}.`);
     return;
   }
-  const unknownModes = allowedModes.filter((mode) => mode !== "color" && mode !== "reference");
+  const unknownModes = allowedModes.filter(
+    (mode) => mode !== "color" && mode !== "reference" && mode !== "effect"
+  );
   if (unknownModes.length)
     errors.push(`Unknown Advanced mode for ${entry.id}: ${unknownModes[0]}.`);
   if (!allowedModes.includes("reference") && references.length) {

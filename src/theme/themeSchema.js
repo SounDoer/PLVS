@@ -101,6 +101,21 @@ function normalizeOverrides(raw) {
       result[roleId] = { kind: "reference", source };
       continue;
     }
+    if (rawOverride.kind === "effect") {
+      const color = normalizeOpaqueColor(rawOverride.color);
+      const opacity = rawOverride.opacity;
+      if (
+        !color ||
+        typeof opacity !== "number" ||
+        !Number.isFinite(opacity) ||
+        opacity < 0 ||
+        opacity > 1
+      ) {
+        return null;
+      }
+      result[roleId] = { kind: "effect", color, opacity };
+      continue;
+    }
     return null;
   }
   return result;

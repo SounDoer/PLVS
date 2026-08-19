@@ -118,4 +118,15 @@ describe("compileTheme", () => {
     expect(resolved.effects["effect.scrim"]).toEqual({ color: "#070707", opacity: 0.72 });
     expect(resolved.css["--ui-effect-scrim"]).toBe("rgba(7, 7, 7, 0.72)");
   });
+
+  it("supports explicit leaf effect overrides without making Core colors translucent", () => {
+    const theme = authoringTheme({
+      overrides: {
+        "interface.border.default": { kind: "effect", color: "#112233", opacity: 0.25 },
+      },
+    });
+    const resolved = compileTheme(theme);
+    expect(resolved.roles["core.surface"]).toBe("#151515");
+    expect(resolved.css["--border"]).toBe("rgba(17, 34, 51, 0.25)");
+  });
 });
