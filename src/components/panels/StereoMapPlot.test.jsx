@@ -3,6 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
+
+const TEST_CHANNEL_COLORS = {
+  primary: "#ff0000",
+  secondary: "#0000ff",
+  primarySnapshot: "#aa0000",
+  secondarySnapshot: "#0000aa",
+  grid: "#888888",
+  good: "#0000ff",
+  warning: "#00ff00",
+  critical: "#ff0000",
+};
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { applyThemeToDocument } from "../../uiPreferences.js";
 
@@ -105,6 +116,7 @@ describe("StereoMapPlot", () => {
         bandCentersHz={[100, 1000, 10000]}
         points={threeBandPoints()}
         range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
       />
     );
 
@@ -128,6 +140,7 @@ describe("StereoMapPlot", () => {
         bandCentersHz={[100, 1000, 10000]}
         points={threeBandPoints({ invalidLast: true })}
         range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
       />
     );
 
@@ -152,6 +165,7 @@ describe("StereoMapPlot", () => {
           { value: 0.5, opacity: 0.9, state: "ok" },
         ]}
         range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
       />
     );
 
@@ -181,6 +195,7 @@ describe("StereoMapPlot", () => {
           { value: 1, opacity: 1, state: "ok" },
         ]}
         range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
       />
     );
     styleSpy.mockRestore();
@@ -214,6 +229,7 @@ describe("StereoMapPlot", () => {
           { value: -1, opacity: 1, state: "ok" },
         ]}
         range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
       />
     );
     styleSpy.mockRestore();
@@ -239,6 +255,7 @@ describe("StereoMapPlot", () => {
           { value: 1, opacity: 1, state: "ok" },
         ]}
         range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
       />
     );
     styleSpy2.mockRestore();
@@ -267,6 +284,7 @@ describe("StereoMapPlot", () => {
           { value: 2, opacity: 1, state: "ok" },
         ]}
         range={{ lowerBound: -12, upperBound: 12 }}
+        themeColors={TEST_CHANNEL_COLORS}
       />
     );
     styleSpy.mockRestore();
@@ -409,12 +427,12 @@ describe("StereoMapPlot", () => {
     );
     expect(styleSpy.mock.calls.length).toBe(callsAfterFirst);
 
-    // A palette change is exactly the kind of change that must re-resolve colors.
+    // Palette changes use already-resolved colors and do not force another style read.
     rerender(<StereoMapPlot {...props} paletteKey="snap" />);
-    expect(styleSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    expect(styleSpy.mock.calls.length).toBe(callsAfterFirst);
   });
 
-  it("re-resolves cached colors after the active theme tokens are applied again", () => {
+  it("does not read CSS colors again after the active theme is applied", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
@@ -437,7 +455,7 @@ describe("StereoMapPlot", () => {
     applyThemeToDocument("plvs-dark");
     rerender(<StereoMapPlot {...props} />);
 
-    expect(styleSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    expect(styleSpy.mock.calls.length).toBe(callsAfterFirst);
   });
 
   it("redraws when a point's value actually changes", () => {

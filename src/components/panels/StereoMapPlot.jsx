@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import { rangedFreqToXFrac, rangedHistY } from "../../config/scales";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
+import { selectStereoMapCanvasColors } from "../../theme/themeCanvasSelectors.js";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 
 // Same viewBox convention as Spectrum's inline SVG (and this component's own former SVG
 // implementation), so the curve, grid, and hover overlay all share one coordinate system across
@@ -312,16 +314,16 @@ function measureCanvas(canvas) {
   return { dpr, width, height };
 }
 
-function resolveColors(style, paletteKey) {
-  const primaryVarName =
-    paletteKey === "snap" ? "--ui-stereo-map-primary-snap" : "--ui-stereo-map-primary";
-  const secondaryVarName =
-    paletteKey === "snap" ? "--ui-stereo-map-secondary-snap" : "--ui-stereo-map-secondary";
-  const primary = parseColor(style.getPropertyValue(primaryVarName)) || FALLBACK_COLOR;
-  const secondary = parseColor(style.getPropertyValue(secondaryVarName)) || FALLBACK_COLOR;
-  const warn = parseColor(style.getPropertyValue("--ui-signal-warn")) || FALLBACK_COLOR;
-  const bad = parseColor(style.getPropertyValue("--ui-signal-bad")) || FALLBACK_COLOR;
-  const good = parseColor(style.getPropertyValue("--ui-signal-good")) || FALLBACK_COLOR;
+function resolveColors(themeColors, paletteKey) {
+  const primary =
+    parseColor(paletteKey === "snap" ? themeColors.primarySnapshot : themeColors.primary) ||
+    FALLBACK_COLOR;
+  const secondary =
+    parseColor(paletteKey === "snap" ? themeColors.secondarySnapshot : themeColors.secondary) ||
+    FALLBACK_COLOR;
+  const warn = parseColor(themeColors.warning) || FALLBACK_COLOR;
+  const bad = parseColor(themeColors.critical) || FALLBACK_COLOR;
+  const good = parseColor(themeColors.good) || FALLBACK_COLOR;
   return {
     primary,
     secondary,
@@ -386,8 +388,8 @@ function hashHoldValues(mode, holdValues) {
  * skipping) reintroduces the same class of cost the canvas rewrite was meant to remove, and is
  * disproportionately expensive here given how many draw calls a redraw performs. Size is tracked via
  * a mount-time measurement plus a ResizeObserver (so a layout read only happens when the element
- * actually resizes, not every render); colors are resolved once per
- * `paletteKey`/`themeId`/theme-revision tuple and cached, not re-read from the DOM on every render.
+ * actually resizes, not every render). Colors arrive as a resolved theme bundle and never require a
+ * style read; computed style is retained only for non-color drawing geometry.
  */
 export function StereoMapPlot({
   mode,
@@ -399,12 +401,14 @@ export function StereoMapPlot({
   xMinHz = 20,
   xMaxHz = 20000,
   paletteKey = "live",
-  themeId,
+  themeColors: themeColorsOverride,
 }) {
+  const resolvedThemeColors = useResolvedTheme(selectStereoMapCanvasColors);
+  const themeColors = themeColorsOverride ?? resolvedThemeColors;
   const canvasRef = useRef(null);
   const redrawRef = useRef(null);
   const sizeRef = useRef({ dpr: 1, width: 1, height: 1 });
-  const colorsRef = useRef(null);
+  const geometryStyleRef = useRef(null);
   const [, bumpResizeVersion] = useState(0);
 
   useLayoutEffect(() => {
@@ -438,20 +442,17 @@ export function StereoMapPlot({
     const ctx = canvas.getContext?.("2d");
     if (!ctx) return;
 
-    const themeRevision = document.documentElement.dataset.themeRevision ?? "";
-    const colorKey = `${paletteKey}|${themeId ?? ""}|${themeRevision}`;
-    if (!colorsRef.current || colorsRef.current.key !== colorKey) {
+    if (!geometryStyleRef.current) {
       const style = getComputedStyle(canvas);
-      colorsRef.current = {
-        key: colorKey,
-        colors: resolveColors(style, paletteKey),
-        borderColor: style.getPropertyValue("--border").trim() || "#888888",
+      geometryStyleRef.current = {
         gridOpacity: parseFloat(style.getPropertyValue("--ui-spectrum-grid-opacity")) || 0.08,
         fillOpacity: parseFloat(style.getPropertyValue("--ui-spectrum-fill-top-opacity")) || 0.18,
         strokeWidthCss: parseFloat(style.getPropertyValue("--ui-spectrum-stroke-width")) || 2,
       };
     }
-    const { colors, borderColor, gridOpacity, fillOpacity, strokeWidthCss } = colorsRef.current;
+    const colors = resolveColors(themeColors, paletteKey);
+    const borderColor = themeColors.grid;
+    const { gridOpacity, fillOpacity, strokeWidthCss } = geometryStyleRef.current;
     const { dpr, width, height } = sizeRef.current;
     const lineWidth = strokeWidthCss * dpr;
 

@@ -10,3 +10,16 @@ export function selectWaveformCanvasColors(resolved) {
     centroid: resolved.canvas["waveform.centroid"],
   };
 }
+
+export function selectStereoMapCanvasColors(resolved) {
+  return {
+    primary: resolved.canvas["stereoMap.primary"],
+    secondary: resolved.canvas["stereoMap.secondary"],
+    primarySnapshot: resolved.canvas["stereoMap.primarySnapshot"],
+    secondarySnapshot: resolved.canvas["stereoMap.secondarySnapshot"],
+    grid: resolved.canvas["stereoMap.grid"],
+    good: resolved.roles["palette.status.good"],
+    warning: resolved.roles["palette.status.warning"],
+    critical: resolved.roles["palette.status.critical"],
+  };
+}

@@ -103,7 +103,7 @@ function mockStereoMapColors() {
       })[name] ?? "",
   });
 }
-const STEREO_MAP_PRIMARY_CSS = "rgb(17, 17, 17)";
+const STEREO_MAP_PRIMARY_CSS = "rgb(251, 146, 60)";
 
 function primitiveRow() {
   return {

@@ -101,7 +101,7 @@ function formatPositionHoldLabel(holdValues, index, range, firstLabel, secondLab
 }
 
 export function StereoMapPanel() {
-  const { channelCount = 0, peakLabelContext, displayAudio, resolvedThemeId } = useFrameData();
+  const { channelCount = 0, peakLabelContext, displayAudio } = useFrameData();
   const {
     selectedOffset,
     resolveStereoMapSnapshotForKey,
@@ -444,7 +444,6 @@ export function StereoMapPanel() {
                   xMinHz={xMinHz}
                   xMaxHz={xMaxHz}
                   paletteKey={paletteKey}
-                  themeId={resolvedThemeId}
                 />
               </div>
               {stereoMapHover ? (
