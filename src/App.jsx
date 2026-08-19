@@ -45,7 +45,6 @@ import {
   clampSpectrumChannelToAvailable,
 } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
-import { getBuiltinTheme } from "./theme/builtinThemes.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -157,6 +156,7 @@ function AppContent() {
     settingsOpen,
     setSettingsOpen,
     resolvedThemeId,
+    resolvedTheme,
     clearShortcut,
     focusView,
     setFocusView,
@@ -262,7 +262,6 @@ function AppContent() {
     return allowed.has(captureDeviceId) ? captureDeviceId : "default";
   }, [audioDevices, captureDeviceId]);
 
-  const resolvedTheme = useMemo(() => getBuiltinTheme(resolvedThemeId), [resolvedThemeId]);
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
   const { display, routing } = useMeterRuntimeAssembly();

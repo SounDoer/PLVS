@@ -7,7 +7,7 @@ import {
 } from "../uiPreferences";
 import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { listCustomThemes } from "../theme/customThemesRepo.js";
-import { isKnownThemeId } from "../theme/themeRegistry.js";
+import { getTheme, isKnownThemeId } from "../theme/themeRegistry.js";
 import { settingsStore, themesStore } from "../persistence/index.js";
 
 export function useThemeSettings() {
@@ -21,6 +21,10 @@ export function useThemeSettings() {
   const resolvedThemeId = useMemo(
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark, customThemes),
     [appearance, themeId, systemPrefersDark, customThemes]
+  );
+  const resolvedTheme = useMemo(
+    () => getTheme(resolvedThemeId, customThemes),
+    [resolvedThemeId, customThemes]
   );
 
   function setAppearance(nextAppearance) {
@@ -94,6 +98,7 @@ export function useThemeSettings() {
     themeId,
     setThemeId,
     resolvedThemeId,
+    resolvedTheme,
     themeSelectOptions: THEME_SELECT_OPTIONS,
     setAppearanceMode,
     setFixedThemeIdFromPicker,

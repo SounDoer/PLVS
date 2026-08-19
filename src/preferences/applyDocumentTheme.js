@@ -132,4 +132,10 @@ export function applyThemeToDocument(themeId, customThemes = {}) {
   for (const [name, value] of Object.entries(tokens)) {
     setCssVar(name, value);
   }
+
+  // Canvas renderers may cache resolved CSS colors for performance. The theme editor re-applies a
+  // live draft under the same theme id, so expose a cheap revision key that lets those renderers
+  // invalidate colors without forcing getComputedStyle on every ordinary frame.
+  const currentRevision = Number(document.documentElement.dataset.themeRevision) || 0;
+  document.documentElement.dataset.themeRevision = String(currentRevision + 1);
 }

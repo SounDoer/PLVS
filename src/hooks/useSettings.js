@@ -29,6 +29,7 @@ export function useSettings({ onClearRef } = {}) {
     themeId: themeSettings.themeId,
     setThemeId: themeSettings.setThemeId,
     resolvedThemeId: themeSettings.resolvedThemeId,
+    resolvedTheme: themeSettings.resolvedTheme,
     themeSelectOptions: themeSettings.themeSelectOptions,
     setAppearanceMode: themeSettings.setAppearanceMode,
     setFixedThemeIdFromPicker: themeSettings.setFixedThemeIdFromPicker,

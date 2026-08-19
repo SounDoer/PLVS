@@ -4,6 +4,7 @@ import { render } from "@testing-library/react";
 
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
+import { applyThemeToDocument } from "../../uiPreferences.js";
 
 function gradientStub() {
   const stops = [];
@@ -410,6 +411,32 @@ describe("StereoMapPlot", () => {
 
     // A palette change is exactly the kind of change that must re-resolve colors.
     rerender(<StereoMapPlot {...props} paletteKey="snap" />);
+    expect(styleSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+  });
+
+  it("re-resolves cached colors after the active theme tokens are applied again", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
+      getPropertyValue: () => "",
+    });
+    const props = {
+      mode: STEREO_MAP_MODES.CORRELATION,
+      bandCentersHz: [100, 1000, 10000],
+      points: threeBandPoints(),
+      range: RANGE,
+      paletteKey: "live",
+      themeId: "plvs-dark",
+    };
+
+    applyThemeToDocument("plvs-dark");
+    const { rerender } = render(<StereoMapPlot {...props} />);
+    const callsAfterFirst = styleSpy.mock.calls.length;
+
+    // Theme-editor previews re-apply tokens under the same custom theme id.
+    applyThemeToDocument("plvs-dark");
+    rerender(<StereoMapPlot {...props} />);
+
     expect(styleSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);
   });
 

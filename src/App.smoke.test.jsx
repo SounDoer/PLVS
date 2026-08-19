@@ -6,7 +6,10 @@ import App, {
   startHistoryPerformanceHarnessController,
   updateHistoryPerformanceHarnessController,
 } from "./App.jsx";
-import { presetsStore, settingsStore } from "./persistence/index.js";
+import { presetsStore, settingsStore, themesStore } from "./persistence/index.js";
+import { invoke } from "@tauri-apps/api/core";
+import { makeCustomThemeFromBase } from "./theme/customTheme.js";
+import { BUILTIN_THEMES } from "./theme/builtinThemes.js";
 import { isTauri } from "./ipc/env.js";
 import {
   enterDock,
@@ -167,6 +170,7 @@ beforeEach(() => {
   setDockAccessories.mockClear().mockResolvedValue(undefined);
   setDockReserveSpace.mockClear().mockResolvedValue(undefined);
   setDockSuspended.mockClear().mockResolvedValue(undefined);
+  invoke.mockClear().mockResolvedValue(undefined);
   pickMediaFile.mockResolvedValue(null);
   window.matchMedia = vi.fn().mockImplementation((query) => ({
     matches: false,
@@ -296,6 +300,31 @@ describe("App smoke", () => {
     expect(footer().getByText("Preset")).toBeTruthy();
     // Off by default, so there is no profile to name and the whole item is absent.
     expect(footer().queryByText("Loudness")).toBeNull();
+  });
+
+  it("uses a custom light theme's color scheme for native window surfaces", async () => {
+    isTauri.mockReturnValue(true);
+    const light = makeCustomThemeFromBase(
+      BUILTIN_THEMES["plvs-light"],
+      "Custom Light",
+      () => "custom-light"
+    );
+    themesStore.patch({ themes: { [light.id]: light }, order: [light.id] });
+    settingsStore.patch({
+      appearance: "fixed",
+      themeId: light.id,
+      glassEnabled: true,
+    });
+
+    render(<App />);
+    await screen.findByRole("button", { name: /^start$/i });
+
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("set_glass_effect", {
+        enabled: true,
+        dark: false,
+      })
+    );
   });
 
   it("names the active Loudness Profile in the footer", async () => {

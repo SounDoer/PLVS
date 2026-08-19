@@ -386,8 +386,8 @@ function hashHoldValues(mode, holdValues) {
  * skipping) reintroduces the same class of cost the canvas rewrite was meant to remove, and is
  * disproportionately expensive here given how many draw calls a redraw performs. Size is tracked via
  * a mount-time measurement plus a ResizeObserver (so a layout read only happens when the element
- * actually resizes, not every render); colors are resolved once per `paletteKey`/`themeId` pair and
- * cached, not re-read from the DOM on every render.
+ * actually resizes, not every render); colors are resolved once per
+ * `paletteKey`/`themeId`/theme-revision tuple and cached, not re-read from the DOM on every render.
  */
 export function StereoMapPlot({
   mode,
@@ -438,7 +438,8 @@ export function StereoMapPlot({
     const ctx = canvas.getContext?.("2d");
     if (!ctx) return;
 
-    const colorKey = `${paletteKey}|${themeId ?? ""}`;
+    const themeRevision = document.documentElement.dataset.themeRevision ?? "";
+    const colorKey = `${paletteKey}|${themeId ?? ""}|${themeRevision}`;
     if (!colorsRef.current || colorsRef.current.key !== colorKey) {
       const style = getComputedStyle(canvas);
       colorsRef.current = {
