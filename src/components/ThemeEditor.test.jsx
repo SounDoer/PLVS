@@ -19,6 +19,7 @@ const BASE_PROPS = {
   onIntensityStop: vi.fn(),
   onIntensityStops: vi.fn(),
   onApplyPreset: vi.fn(),
+  onOverride: vi.fn(),
   onSave: vi.fn(),
   onCancel: vi.fn(),
   dirty: false,
@@ -61,6 +62,15 @@ describe("ThemeEditor", () => {
     expect(screen.getByText("Intensity")).toBeTruthy();
     expect(screen.getByText("Frequency")).toBeTruthy();
     expect(screen.getByLabelText("Intensity palette preview")).toBeTruthy();
+  });
+
+  it("shows curated Advanced roles rather than raw token names", () => {
+    render(<ThemeEditor {...BASE_PROPS} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+
+    expect(screen.getByText("Panel Surface")).toBeTruthy();
+    expect(screen.getByText("Waveform")).toBeTruthy();
+    expect(screen.queryByText(/--/)).toBeNull();
   });
 
   it("shows the name statically and opens editing from the rename icon", () => {

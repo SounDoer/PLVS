@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
+import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -54,6 +55,7 @@ const CORE_COLORS = [
  *   onIntensityStop: (index: number, css: string) => void,
  *   onIntensityStops: (stops: object[]) => void,
  *   onApplyPreset: (palette: string, presetId: string) => void,
+ *   onOverride: (roleId: string, override: object|null) => void,
  *   onSave: () => void,
  *   onCancel: () => void,
  *   onDelete?: () => void,
@@ -70,6 +72,7 @@ export function ThemeEditor({
   onIntensityStop,
   onIntensityStops,
   onApplyPreset,
+  onOverride,
   onSave,
   onCancel,
   onDelete,
@@ -250,6 +253,7 @@ export function ThemeEditor({
           {[
             ["core", "Core"],
             ["palettes", "Palettes"],
+            ["advanced", "Advanced"],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -291,7 +295,7 @@ export function ThemeEditor({
                 </div>
               ))}
             </section>
-          ) : (
+          ) : page === "palettes" ? (
             <PalettesPage
               draft={draft}
               onColor={onPaletteColor}
@@ -299,6 +303,8 @@ export function ThemeEditor({
               onStops={onIntensityStops}
               onApplyPreset={onApplyPreset}
             />
+          ) : (
+            <AdvancedPage draft={draft} onOverride={onOverride} />
           )}
         </div>
 

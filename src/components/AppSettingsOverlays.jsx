@@ -132,6 +132,7 @@ export function AppSettingsOverlays({
           onIntensityStop={editor.updateIntensityStop}
           onIntensityStops={editor.updateIntensityStops}
           onApplyPreset={editor.applyPreset}
+          onOverride={editor.updateOverride}
           onSave={editor.save}
           onCancel={editor.cancel}
           onDelete={undefined}
