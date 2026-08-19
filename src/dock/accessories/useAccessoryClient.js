@@ -6,6 +6,7 @@ import {
   listenDockAccessoryState,
 } from "../../ipc/dockAccessoryEvents.js";
 import { acceptAccessorySnapshot } from "../accessoryProtocol.js";
+import { applyResolvedThemeToDocument, isThemePublication } from "../../theme/themeRuntime.js";
 
 export function useAccessoryClient(surface) {
   const revisionRef = useRef(-1);
@@ -18,6 +19,9 @@ export function useAccessoryClient(surface) {
       const accepted = acceptAccessorySnapshot(revisionRef.current, snapshot, surface);
       if (!accepted) return;
       revisionRef.current = accepted.revision;
+      if (isThemePublication(accepted.payload.theme)) {
+        applyResolvedThemeToDocument(accepted.payload.theme);
+      }
       setPayload(accepted.payload);
     }).then((fn) => {
       if (cancelled) fn();

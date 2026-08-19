@@ -17,9 +17,15 @@ vi.mock("../../ipc/dockAccessoryEvents.js", () => ({
 import { useAccessoryClient } from "./useAccessoryClient.js";
 
 describe("useAccessoryClient", () => {
+  let stateHandler;
+
   beforeEach(() => {
     mocks.emitReady.mockClear();
     mocks.listenState.mockReset();
+    stateHandler = null;
+    document.documentElement.removeAttribute("style");
+    delete document.documentElement.dataset.theme;
+    delete document.documentElement.dataset.themeRevision;
   });
 
   it("announces ready only after the state listener is registered", async () => {
@@ -36,6 +42,47 @@ describe("useAccessoryClient", () => {
     await act(async () => finishRegistration());
 
     expect(mocks.emitReady).toHaveBeenCalledWith("dock-header");
+    unmount();
+  });
+
+  it("applies the latest theme publication and rejects a stale accessory revision", async () => {
+    mocks.listenState.mockImplementation((handler) => {
+      stateHandler = handler;
+      return Promise.resolve(() => {});
+    });
+    const { unmount } = renderHook(() => useAccessoryClient("dock-header"));
+    await act(async () => {});
+
+    act(() => {
+      stateHandler({
+        surface: "dock-header",
+        revision: 4,
+        payload: {
+          theme: {
+            id: "custom-light",
+            revision: 9,
+            colorScheme: "light",
+            css: { "--background": "#ffffff" },
+          },
+        },
+      });
+      stateHandler({
+        surface: "dock-header",
+        revision: 3,
+        payload: {
+          theme: {
+            id: "stale-dark",
+            revision: 8,
+            colorScheme: "dark",
+            css: { "--background": "#000000" },
+          },
+        },
+      });
+    });
+
+    expect(document.documentElement.dataset.theme).toBe("custom-light");
+    expect(document.documentElement.dataset.themeRevision).toBe("9");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#ffffff");
     unmount();
   });
 });

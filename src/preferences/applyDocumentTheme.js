@@ -1,6 +1,5 @@
-import { applyShadcnSemanticTokensToDocument, oklchSafe } from "../theme/shadcnSemanticPreset.js";
-import { buildThemeTokens } from "../theme/buildThemeTokens.js";
-import { getTheme } from "../theme/themeRegistry.js";
+import { oklchSafe } from "../theme/shadcnSemanticPreset.js";
+import { themeRuntime } from "../theme/themeRuntime.js";
 import { UI_PREFERENCES } from "./data.js";
 
 function setCssVar(name, value) {
@@ -121,21 +120,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
  * @param {import("../theme/builtinThemes.js").ThemeId} themeId
  */
 export function applyThemeToDocument(themeId, customThemes = {}) {
-  if (typeof document === "undefined") return;
-  const theme = getTheme(themeId, customThemes);
-  document.documentElement.dataset.theme = theme.id;
-  document.documentElement.style.setProperty("color-scheme", theme.colorScheme);
-
-  applyShadcnSemanticTokensToDocument(theme.semantic);
-
-  const tokens = buildThemeTokens(theme);
-  for (const [name, value] of Object.entries(tokens)) {
-    setCssVar(name, value);
-  }
-
-  // Canvas renderers may cache resolved CSS colors for performance. The theme editor re-applies a
-  // live draft under the same theme id, so expose a cheap revision key that lets those renderers
-  // invalidate colors without forcing getComputedStyle on every ordinary frame.
-  const currentRevision = Number(document.documentElement.dataset.themeRevision) || 0;
-  document.documentElement.dataset.themeRevision = String(currentRevision + 1);
+  if (typeof document === "undefined") return null;
+  return themeRuntime.publishSelection(themeId, customThemes);
 }
