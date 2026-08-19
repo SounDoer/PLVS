@@ -1,7 +1,7 @@
 # Theme V2 — Implementation Plan
 
 **Date:** 2026-08-19  
-**Status:** Ready for execution  
+**Status:** Implemented; merge gate green, final native desktop visual acceptance pending
 **Spec:** `docs/superpowers/specs/2026-08-19-theme-v2-design.md`  
 **ADR:** `docs/adr/0005-theme-v2-compiler-and-runtime.md`  
 **Inventory:** `docs/working/design/theme-v2-color-inventory.md`
@@ -20,6 +20,26 @@ The implementation is complete when:
 - the diagnostic-theme pass finds no unclassified visible color;
 - old seed-only runtime paths, dead tokens, and hardcoded bypasses are removed;
 - `npm run check` passes.
+
+## Delivery evidence
+
+Theme V2 is implemented on `codex/theme-v2` through `98407abf`. The focused commit sequence covers
+the authoring foundation, compiler and builtin documents, first-paint generation, V1 migration,
+revisioned runtime, every Canvas family, the three editor pages, Undo/Redo, Picker actions, and the
+final V1 runtime boundary.
+
+The final merge gate passed on 2026-08-19:
+
+- Prettier and ESLint passed;
+- 247 frontend test files / 2654 tests passed;
+- the production Vite build passed;
+- Rust fmt, clippy, 392 passing unit tests (1 ignored), and the VAD integration test passed.
+
+A standalone-browser visual pass verified the Fixed Theme picker, all three editor pages, live CSS
+revision publication, Interface Accent / Primary Data independence, Undo, and Cancel restoration.
+Windows automation could read the real Tauri accessibility tree but could not activate or capture
+the WebView2 surface; therefore Picker popover icon gestures plus Glass, tray, Dock, and accessory
+window recoloring remain explicit native desktop acceptance items rather than claimed evidence.
 
 ## Delivery rules
 

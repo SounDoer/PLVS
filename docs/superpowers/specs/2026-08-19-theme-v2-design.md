@@ -1,7 +1,7 @@
 # Theme V2 — Design
 
 **Date:** 2026-08-19  
-**Status:** Approved product direction; role inventory pending  
+**Status:** Implemented; final native desktop visual acceptance pending
 **Supersedes:** `docs/working/superpowers/specs/2026-06-20-custom-themes-design.md` where the two conflict  
 **Related:** `docs/adr/0002-theme-id-and-appearance.md`, `docs/design-tokens.md`,
 `docs/working/design/theme-v2-color-inventory.md`

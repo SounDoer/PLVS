@@ -1,7 +1,7 @@
 # Theme V2 Color Inventory
 
 **Date:** 2026-08-19  
-**Status:** Static audit complete; runtime diagnostic pass pending  
+**Status:** Static and browser diagnostic passes complete; native desktop pass pending
 **Design source:** `docs/superpowers/specs/2026-08-19-theme-v2-design.md`
 
 ## Purpose
@@ -36,9 +36,11 @@ The static pass covered:
 Generated first-paint CSS was inspected as compiler output, not as an editable source. Test fixture
 colors were excluded unless they revealed a production contract.
 
-The static pass cannot prove that every conditional visual state was actually rendered. A runtime
-pass with a fluorescent diagnostic theme remains required before the registry is frozen. The final
-section lists that pass explicitly.
+The static pass cannot prove that every conditional visual state was actually rendered. A browser
+runtime pass verified the main interface, Picker, three editor pages, live publication, role
+independence, Undo, and Cancel. Native WebView2 capture was unavailable in the Windows automation
+environment, so a desktop pass across Glass, tray, Dock, accessory windows, and Picker popover icon
+gestures remains required before final visual acceptance. The final section lists that pass.
 
 ## Current pipeline
 
