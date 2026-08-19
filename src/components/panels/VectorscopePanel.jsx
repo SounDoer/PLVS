@@ -22,6 +22,7 @@ import {
   SNAPSHOT_NO_DATA_MESSAGE,
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -30,6 +31,14 @@ const VECTOR_TRACE_STROKE_FALLBACK = 1;
 const HOLD_SLOW_DELAY_MS = 300;
 const HOLD_SLOW_CANCEL_PX = 4;
 const HOLD_SLOW_SMOOTHING_ALPHA = 0.06;
+
+function selectVectorscopeColors(resolved) {
+  return {
+    trace: resolved.canvas["vectorscope.trace"],
+    snapshot: resolved.canvas["vectorscope.snapshot"],
+    grid: resolved.canvas["vectorscope.grid"],
+  };
+}
 
 function clampCorrelation(value) {
   if (!Number.isFinite(value)) return null;
@@ -63,6 +72,7 @@ function smoothCorrelation(previous, next) {
 }
 
 export function VectorscopePanel() {
+  const vectorscopeColors = useResolvedTheme(selectVectorscopeColors);
   const {
     vsGridDiagInset,
     vsGridDiagFar,
@@ -241,8 +251,7 @@ export function VectorscopePanel() {
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
     const style = getComputedStyle(canvas);
-    const stroke = style.getPropertyValue("--ui-vectorscope-trace").trim();
-    if (stroke) ctx.strokeStyle = stroke;
+    ctx.strokeStyle = vectorscopeColors.trace;
     // Mirrors the SVG trace's non-scaling-stroke: the token is CSS pixels, not plot units.
     const strokeWidth =
       parseFloat(style.getPropertyValue("--ui-vectorscope-stroke-width")) ||
@@ -389,6 +398,7 @@ export function VectorscopePanel() {
                   maxHoldResetKey={maxHoldResetKey}
                   resetEpoch={vectorscopeResetEpoch}
                   identityKey={`${vectorscopeKey}:${px}:${py}`}
+                  colors={vectorscopeColors}
                 />
               </div>
             ) : null}

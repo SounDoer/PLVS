@@ -286,13 +286,7 @@ describe("VectorscopePolarPlot", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: (name) =>
-        ({
-          "--ui-vectorscope-trace": "#123456",
-          "--ui-vectorscope-trace-snap": "#abcdef",
-          "--ui-vectorscope-grid-stroke": "#654321",
-          "--ui-vectorscope-stroke-width": "1",
-        })[name] ?? "",
+      getPropertyValue: () => "1",
     });
     render(
       <VectorscopePolarPlot
@@ -302,6 +296,7 @@ describe("VectorscopePolarPlot", () => {
         firstLabel="L"
         secondLabel="R"
         maxHoldEnabled
+        colors={{ trace: "#123456", snapshot: "#abcdef", grid: "#654321" }}
       />
     );
     styleSpy.mockRestore();
@@ -318,13 +313,7 @@ describe("VectorscopePolarPlot", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
-      getPropertyValue: (name) =>
-        ({
-          "--ui-vectorscope-trace": "#123456",
-          "--ui-vectorscope-trace-snap": "#abcdef",
-          "--ui-vectorscope-grid-stroke": "#654321",
-          "--ui-vectorscope-stroke-width": "1",
-        })[name] ?? "",
+      getPropertyValue: () => "1",
     });
     render(
       <VectorscopePolarPlot
@@ -332,6 +321,7 @@ describe("VectorscopePolarPlot", () => {
         snapshotPairs={allPolarLevelBinPairs()}
         firstLabel="L"
         secondLabel="R"
+        colors={{ trace: "#123456", snapshot: "#abcdef", grid: "#654321" }}
       />
     );
     styleSpy.mockRestore();
