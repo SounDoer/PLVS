@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
@@ -56,6 +56,11 @@ const CORE_COLORS = [
  *   onIntensityStops: (stops: object[]) => void,
  *   onApplyPreset: (palette: string, presetId: string) => void,
  *   onOverride: (roleId: string, override: object|null) => void,
+ *   onUndo: () => void,
+ *   onRedo: () => void,
+ *   canUndo?: boolean,
+ *   canRedo?: boolean,
+ *   canSave?: boolean,
  *   onSave: () => void,
  *   onCancel: () => void,
  *   onDelete?: () => void,
@@ -73,6 +78,11 @@ export function ThemeEditor({
   onIntensityStops,
   onApplyPreset,
   onOverride,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
+  canSave = true,
   onSave,
   onCancel,
   onDelete,
@@ -233,6 +243,28 @@ export function ThemeEditor({
               </span>
               <button
                 type="button"
+                aria-label="Undo theme change"
+                title="Undo"
+                disabled={!canUndo}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={onUndo}
+                className={`${HEADER_ACTION_CLASS} disabled:opacity-30`}
+              >
+                <Undo2 className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+              <button
+                type="button"
+                aria-label="Redo theme change"
+                title="Redo"
+                disabled={!canRedo}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={onRedo}
+                className={`${HEADER_ACTION_CLASS} disabled:opacity-30`}
+              >
+                <Redo2 className="size-[length:var(--ui-icon-management-action)]" />
+              </button>
+              <button
+                type="button"
                 aria-label="Rename theme"
                 title="Rename"
                 onPointerDown={(event) => event.stopPropagation()}
@@ -320,7 +352,9 @@ export function ThemeEditor({
             <Button variant="ghost" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button onClick={onSave}>Save</Button>
+            <Button onClick={onSave} disabled={!canSave}>
+              Save
+            </Button>
           </div>
         </div>
       </div>

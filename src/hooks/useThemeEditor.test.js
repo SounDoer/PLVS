@@ -69,6 +69,24 @@ describe("useThemeEditor", () => {
     expect(listCustomThemeDocuments()).toEqual({});
   });
 
+  it("undoes and redoes coalesced changes without writing persistence", () => {
+    const publish = vi.fn();
+    const { result } = setup(publish);
+    act(() => result.current.beginCreate("S"));
+    const original = result.current.draft.core.workspace;
+
+    act(() => result.current.updateCore("workspace", "#111111"));
+    act(() => result.current.updateCore("workspace", "#222222"));
+    expect(result.current.canUndo).toBe(true);
+    act(() => result.current.undo());
+    expect(result.current.draft.core.workspace).toBe(original);
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.canRedo).toBe(true);
+    act(() => result.current.redo());
+    expect(result.current.draft.core.workspace).toBe("#222222");
+    expect(listCustomThemeDocuments()).toEqual({});
+  });
+
   it("save persists the final draft and ends editing", () => {
     const publish = vi.fn();
     const { result, setAppearance, setThemeId } = setup(publish);

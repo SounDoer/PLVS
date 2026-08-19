@@ -20,6 +20,11 @@ const BASE_PROPS = {
   onIntensityStops: vi.fn(),
   onApplyPreset: vi.fn(),
   onOverride: vi.fn(),
+  onUndo: vi.fn(),
+  onRedo: vi.fn(),
+  canUndo: false,
+  canRedo: false,
+  canSave: true,
   onSave: vi.fn(),
   onCancel: vi.fn(),
   dirty: false,
@@ -78,6 +83,13 @@ describe("ThemeEditor", () => {
     expect(screen.queryByLabelText("Theme name")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Rename theme" }));
     expect(document.activeElement).toBe(screen.getByLabelText("Theme name"));
+  });
+
+  it("exposes disabled Undo and Redo actions until history exists", () => {
+    render(<ThemeEditor {...BASE_PROPS} />);
+
+    expect(screen.getByRole("button", { name: "Undo theme change" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Redo theme change" }).disabled).toBe(true);
   });
 
   it("commits a name edit from the confirm button", () => {

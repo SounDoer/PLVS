@@ -3,6 +3,7 @@ import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
 import { upsertCustomTheme } from "../theme/customThemesRepo.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
 import { applyPalettePreset } from "../theme/palettePresets.js";
+import { normalizeThemeName, normalizeThemeV2 } from "../theme/themeSchema.js";
 
 const noop = () => {};
 
@@ -31,6 +32,9 @@ export function useThemeEditor(opts) {
   const draftRef = useRef(/** @type {object|null} */ (null));
   const wasNewRef = useRef(false);
   const restoreThemeRef = useRef(activeTheme);
+  const baselineRef = useRef(/** @type {object|null} */ (null));
+  const historyRef = useRef({ past: [], future: [], lastKey: null, lastAt: 0 });
+  const [historyAvailability, setHistoryAvailability] = useState({ undo: false, redo: false });
 
   const applyDraft = useCallback((next) => publish(next), [publish]);
 
@@ -40,16 +44,27 @@ export function useThemeEditor(opts) {
     setDraft(next);
   }, []);
 
+  const resetHistory = useCallback((baseline) => {
+    baselineRef.current = structuredClone(baseline);
+    historyRef.current = { past: [], future: [], lastKey: null, lastAt: 0 };
+    setHistoryAvailability({ undo: false, redo: false });
+  }, []);
+
+  const syncDirty = useCallback((next) => {
+    setDirty(JSON.stringify(next) !== JSON.stringify(baselineRef.current));
+  }, []);
+
   const beginEdit = useCallback(
     (theme) => {
       wasNewRef.current = false;
       restoreThemeRef.current = theme;
       const d = structuredClone(theme);
       setDraftBoth(d);
+      resetHistory(d);
       setDirty(false);
       applyDraft(d);
     },
-    [applyDraft, setDraftBoth]
+    [applyDraft, resetHistory, setDraftBoth]
   );
 
   const beginCreate = useCallback(
@@ -58,71 +73,97 @@ export function useThemeEditor(opts) {
       restoreThemeRef.current = activeTheme;
       const d = makeCustomThemeV2FromBase(activeTheme, name, makeId);
       setDraftBoth(d);
+      resetHistory(d);
       setDirty(false);
       applyDraft(d);
     },
-    [activeTheme, applyDraft, makeId, setDraftBoth]
+    [activeTheme, applyDraft, makeId, resetHistory, setDraftBoth]
   );
 
   // Pure mutate of the current draft, then sync + apply + mark dirty (no side-effects in setState).
   const edit = useCallback(
-    (mutate) => {
+    (mutate, actionKey) => {
       const d = draftRef.current;
       if (!d) return;
       const next = mutate(d);
+      const history = historyRef.current;
+      const now = Date.now();
+      if (history.lastKey !== actionKey || now - history.lastAt > 500) {
+        history.past.push(structuredClone(d));
+      }
+      history.future = [];
+      history.lastKey = actionKey;
+      history.lastAt = now;
       setDraftBoth(next);
-      setDirty(true);
+      syncDirty(next);
       applyDraft(next);
+      setHistoryAvailability({ undo: history.past.length > 0, redo: false });
     },
-    [applyDraft, setDraftBoth]
+    [applyDraft, setDraftBoth, syncDirty]
   );
 
-  const setName = useCallback((name) => edit((d) => ({ ...d, name: String(name) })), [edit]);
+  const setName = useCallback(
+    (name) => {
+      const normalized = normalizeThemeName(name);
+      if (normalized) edit((draft) => ({ ...draft, name: normalized }), "name");
+    },
+    [edit]
+  );
 
   const updateCore = useCallback(
-    (key, value) => edit((draft) => ({ ...draft, core: { ...draft.core, [key]: value } })),
+    (key, value) =>
+      edit((draft) => ({ ...draft, core: { ...draft.core, [key]: value } }), `core:${key}`),
     [edit]
   );
 
   const updatePaletteColor = useCallback(
     (palette, key, value) =>
-      edit((draft) => ({
-        ...draft,
-        palettes: {
-          ...draft.palettes,
-          [palette]: { ...draft.palettes[palette], presetId: null, [key]: value },
-        },
-      })),
+      edit(
+        (draft) => ({
+          ...draft,
+          palettes: {
+            ...draft.palettes,
+            [palette]: { ...draft.palettes[palette], presetId: null, [key]: value },
+          },
+        }),
+        `palette:${palette}:${key}`
+      ),
     [edit]
   );
 
   const updateIntensityStop = useCallback(
     (index, value) =>
-      edit((draft) => ({
-        ...draft,
-        palettes: {
-          ...draft.palettes,
-          intensity: {
-            ...draft.palettes.intensity,
-            presetId: null,
-            stops: draft.palettes.intensity.stops.map((stop, stopIndex) =>
-              stopIndex === index ? { ...stop, color: value } : stop
-            ),
+      edit(
+        (draft) => ({
+          ...draft,
+          palettes: {
+            ...draft.palettes,
+            intensity: {
+              ...draft.palettes.intensity,
+              presetId: null,
+              stops: draft.palettes.intensity.stops.map((stop, stopIndex) =>
+                stopIndex === index ? { ...stop, color: value } : stop
+              ),
+            },
           },
-        },
-      })),
+        }),
+        `intensity-stop:${index}`
+      ),
     [edit]
   );
 
   const updateIntensityStops = useCallback(
     (stops) =>
-      edit((draft) => ({
-        ...draft,
-        palettes: {
-          ...draft.palettes,
-          intensity: { presetId: null, stops: stops.map((stop) => ({ ...stop })) },
-        },
-      })),
+      edit(
+        (draft) => ({
+          ...draft,
+          palettes: {
+            ...draft.palettes,
+            intensity: { presetId: null, stops: stops.map((stop) => ({ ...stop })) },
+          },
+        }),
+        "intensity-stops"
+      ),
     [edit]
   );
 
@@ -130,10 +171,13 @@ export function useThemeEditor(opts) {
     (kind, presetId) => {
       const palette = applyPalettePreset(kind, presetId);
       if (!palette) return;
-      edit((draft) => ({
-        ...draft,
-        palettes: { ...draft.palettes, [kind]: palette },
-      }));
+      edit(
+        (draft) => ({
+          ...draft,
+          palettes: { ...draft.palettes, [kind]: palette },
+        }),
+        `preset:${kind}`
+      );
     },
     [edit]
   );
@@ -145,9 +189,31 @@ export function useThemeEditor(opts) {
         if (override == null) delete overrides[roleId];
         else overrides[roleId] = override;
         return { ...draft, overrides };
-      }),
+      }, `override:${roleId}`),
     [edit]
   );
+
+  const moveHistory = useCallback(
+    (from, to) => {
+      const history = historyRef.current;
+      const next = history[from].pop();
+      const current = draftRef.current;
+      if (!next || !current) return;
+      history[to].push(structuredClone(current));
+      history.lastKey = null;
+      setDraftBoth(next);
+      syncDirty(next);
+      applyDraft(next);
+      setHistoryAvailability({
+        undo: history.past.length > 0,
+        redo: history.future.length > 0,
+      });
+    },
+    [applyDraft, setDraftBoth, syncDirty]
+  );
+
+  const undo = useCallback(() => moveHistory("past", "future"), [moveHistory]);
+  const redo = useCallback(() => moveHistory("future", "past"), [moveHistory]);
 
   const save = useCallback(() => {
     const d = draftRef.current;
@@ -173,6 +239,9 @@ export function useThemeEditor(opts) {
     isEditing: draft != null,
     draft,
     dirty,
+    canSave: normalizeThemeV2(draft) != null,
+    canUndo: historyAvailability.undo,
+    canRedo: historyAvailability.redo,
     beginCreate,
     beginEdit,
     setName,
@@ -182,6 +251,8 @@ export function useThemeEditor(opts) {
     updateIntensityStops,
     applyPreset,
     updateOverride,
+    undo,
+    redo,
     save,
     cancel,
   };
