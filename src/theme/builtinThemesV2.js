@@ -61,6 +61,8 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       "interface.critical": { kind: "color", value: "#f94144" },
       "waveform.frequencyNeutral": { kind: "color", value: "#484850" },
       "waveform.centroid": { kind: "color", value: "#f8fafc" },
+      "spectrogram.ink": { kind: "color", value: "#898989" },
+      "spectrogram.grid": { kind: "color", value: "#898989" },
     },
   }),
   "plvs-light": makeBuiltin({
@@ -88,6 +90,8 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       "interface.critical": { kind: "color", value: "#df202e" },
       "waveform.frequencyNeutral": { kind: "color", value: "#737373" },
       "waveform.centroid": { kind: "color", value: "#111827" },
+      "spectrogram.ink": { kind: "color", value: "#6a615b" },
+      "spectrogram.grid": { kind: "color", value: "#6a615b" },
     },
   }),
 });

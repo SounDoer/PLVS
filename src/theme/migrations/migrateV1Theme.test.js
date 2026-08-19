@@ -25,6 +25,9 @@ describe("migrateV1Theme", () => {
       if (!(binding in before) || REVIEWED_REPLACEMENTS.has(binding)) continue;
       expect(value, binding).toBe(before[binding]);
     }
+    const resolved = compileTheme(migrated);
+    expect(resolved.canvas["spectrogram.ink"]).toBe(before["--muted-foreground"]);
+    expect(resolved.canvas["spectrogram.surfaceInk"]).toBe(before["--foreground"]);
   });
 
   it("preserves custom alpha-bearing border and input effects", () => {

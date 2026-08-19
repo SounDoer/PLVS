@@ -27,9 +27,9 @@ import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
-import { getTheme } from "../../theme/themeRegistry.js";
-import { listCustomThemes } from "../../theme/customThemesRepo.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
+import { selectSpectrogramCanvasTheme } from "../../theme/themeCanvasSelectors.js";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
@@ -51,7 +51,8 @@ const ACTIVE_PULSE_MS = 160;
 const NO_CANVAS = { current: null };
 
 export function SpectrogramPanel({ compact = false }) {
-  const { channelCount, spectrumChannelOptions, resolvedThemeId } = useFrameData();
+  const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
+  const { channelCount, spectrumChannelOptions } = useFrameData();
   const {
     frequencyMarkerRef,
     frequencyMarkerIndex,
@@ -301,8 +302,8 @@ export function SpectrogramPanel({ compact = false }) {
       ? (snapshotSpectrumByKey?.[spectrogramKey] ?? EMPTY_SPECTRUM_VIEW)
       : (snapRef.current ?? EMPTY_SPECTRUM_VIEW);
   const colormapLut = useMemo(
-    () => buildSpectrogramLut(getTheme(resolvedThemeId, listCustomThemes()).colormap),
-    [resolvedThemeId]
+    () => buildSpectrogramLut(spectrogramTheme.intensityStops),
+    [spectrogramTheme.intensityStops]
   );
   const sampleMs = resolveSpectrogramSampleMs(spectrogramSnaps, VISUAL_HIST_SAMPLE_SEC * 1000);
   // The 3D waterfall quantises its decimation stride by this period, so it needs the cadence to hold
@@ -368,6 +369,7 @@ export function SpectrogramPanel({ compact = false }) {
     colorize: normalizedPanelControls.spectrogram3dColorize,
     floor: normalizedPanelControls.spectrogram3dFloor,
     mode: spectrogramMode,
+    themeColors: spectrogramTheme,
   });
   const boundarySpan = newestMs - oldestMs;
   const {

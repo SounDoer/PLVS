@@ -498,6 +498,15 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
+      "spectrogram.surfaceInk",
+      "Spectrogram",
+      "Surface Ink",
+      "interface.text.primary",
+      "identity",
+      { canvas: ["spectrogram.surfaceInk"] },
+      ["core.text", ...primaryRefs]
+    ),
+    moduleColor(
       "spectrogram.grid",
       "Spectrogram",
       "Grid and Axes",

@@ -23,3 +23,13 @@ export function selectStereoMapCanvasColors(resolved) {
     critical: resolved.roles["palette.status.critical"],
   };
 }
+
+export function selectSpectrogramCanvasTheme(resolved) {
+  return {
+    intensityStops: resolved.roles["palette.intensity.stops"],
+    ink: resolved.canvas["spectrogram.ink"],
+    surfaceInk: resolved.canvas["spectrogram.surfaceInk"],
+    grid: resolved.canvas["spectrogram.grid"],
+    selection: resolved.canvas["spectrogram.selection"],
+  };
+}

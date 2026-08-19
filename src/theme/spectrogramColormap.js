@@ -24,7 +24,17 @@ export const INFERNO_COLORMAP_STOPS = Object.freeze([
  * @returns {Uint8Array}
  */
 export function buildSpectrogramLut(stops) {
-  const normalizedStops = Array.isArray(stops) && stops.length > 0 ? stops : INFERNO_COLORMAP_STOPS;
+  const source = Array.isArray(stops) && stops.length > 0 ? stops : INFERNO_COLORMAP_STOPS;
+  const normalizedStops =
+    source[0] && !Array.isArray(source[0])
+      ? source.map((stop) => {
+          const hex = Number.parseInt(stop.color.slice(1), 16);
+          return [
+            Math.round(stop.position * 255),
+            [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255],
+          ];
+        })
+      : source;
   const flat = new Uint8Array(256 * 3);
 
   for (let i = 0; i < 256; i += 1) {

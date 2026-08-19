@@ -5,15 +5,15 @@ import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { resolveSpectrogramSampleMs } from "../../math/spectrogramTimeline.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
-import { listCustomThemes } from "../../theme/customThemesRepo.js";
-import { getTheme } from "../../theme/themeRegistry.js";
-import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
+import { selectSpectrogramCanvasTheme } from "../../theme/themeCanvasSelectors.js";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
+import { useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockSpectrumKey } from "../dockAnalysisRequest.js";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
 
 /** Scrolling live spectrogram using the normal panel's canvas painter and theme mapping. */
 export function DockSpectrogram({ controls }) {
-  const { resolvedThemeId } = useFrameData() ?? {};
+  const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
   const { getSpectrogramSnapsForKey } = useHistoryData() ?? {};
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -33,8 +33,8 @@ export function DockSpectrogram({ controls }) {
   const windowMs = (controls?.dockHistoryWindowSec ?? 60) * 1000;
   const oldestMs = Number.isFinite(newestMs) ? newestMs - windowMs : NaN;
   const colormapLut = useMemo(
-    () => buildSpectrogramLut(getTheme(resolvedThemeId, listCustomThemes()).colormap),
-    [resolvedThemeId]
+    () => buildSpectrogramLut(spectrogramTheme.intensityStops),
+    [spectrogramTheme.intensityStops]
   );
 
   useCanvasSize(canvasRef, containerRef, undefined, { maxDevicePixelRatio: 1 });

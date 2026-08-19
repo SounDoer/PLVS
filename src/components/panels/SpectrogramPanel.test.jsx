@@ -14,6 +14,8 @@ import { buildProjection, projectPoint } from "../../math/spectrogram3dProjectio
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { SparseHistoryMarkers } from "../../lib/SparseHistoryMarkers.js";
+import { BUILTIN_THEMES_V2 } from "../../theme/builtinThemesV2.js";
+import { themeRuntime } from "../../theme/themeRuntime.js";
 
 vi.mock("../../hooks/useSpectrogramCanvas", () => ({
   useSpectrogramCanvas: vi.fn(),
@@ -182,15 +184,30 @@ describe("SpectrogramPanel", () => {
   });
 
   it("passes the resolved theme colormap to the canvas hook", () => {
-    renderPanel({ resolvedThemeId: "plvs-dark" });
+    themeRuntime.publishAuthoring(BUILTIN_THEMES_V2["plvs-dark"]);
+    renderPanel();
     const darkLut = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].colormapLut;
 
-    renderPanel({ resolvedThemeId: "plvs-light" });
-    const lightLut = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].colormapLut;
+    const custom = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+    custom.id = "custom-monochrome";
+    custom.palettes.intensity = {
+      presetId: "intensity-monochrome",
+      stops: [
+        { position: 0, color: "#000000" },
+        { position: 1, color: "#ffffff" },
+      ],
+    };
+    act(() => themeRuntime.publishAuthoring(custom));
+    const customLut = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].colormapLut;
 
     expect(darkLut).toBeInstanceOf(Uint8Array);
-    expect(lightLut).toBeInstanceOf(Uint8Array);
-    expect(Array.from(lightLut)).toEqual(Array.from(darkLut));
+    expect(customLut).toBeInstanceOf(Uint8Array);
+    expect(Array.from(customLut)).not.toEqual(Array.from(darkLut));
+    expect(Array.from(customLut.slice(-3))).toEqual([255, 255, 255]);
+    expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].themeColors).toMatchObject({
+      ink: "#898989",
+      surfaceInk: "#f2f2f2",
+    });
   });
 
   it("feeds the canvas only its own request key's frozen snapshot history", () => {

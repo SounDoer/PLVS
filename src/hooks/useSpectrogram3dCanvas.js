@@ -357,6 +357,7 @@ export function useSpectrogram3dCanvas({
   colorize,
   floor,
   mode,
+  themeColors,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
@@ -388,6 +389,7 @@ export function useSpectrogram3dCanvas({
     selectionXFrac: NaN,
     floor: undefined,
     mode: undefined,
+    themeColors: null,
   });
 
   useEffect(() => {
@@ -408,6 +410,7 @@ export function useSpectrogram3dCanvas({
       colorize,
       floor,
       mode,
+      themeColors,
     };
   }, [
     oldestMs,
@@ -426,6 +429,7 @@ export function useSpectrogram3dCanvas({
     colorize,
     floor,
     mode,
+    themeColors,
   ]);
 
   useEffect(() => {
@@ -468,7 +472,8 @@ export function useSpectrogram3dCanvas({
         last.colorize === p.colorize &&
         last.selectionXFrac === p.selectionXFrac &&
         last.floor === p.floor &&
-        last.mode === p.mode
+        last.mode === p.mode &&
+        last.themeColors === p.themeColors
       )
         return;
       lastPaintRef.current = {
@@ -490,6 +495,7 @@ export function useSpectrogram3dCanvas({
         selectionXFrac: p.selectionXFrac,
         floor: p.floor,
         mode: p.mode,
+        themeColors: p.themeColors,
       };
 
       const ctx = canvas.getContext("2d");
@@ -562,12 +568,13 @@ export function useSpectrogram3dCanvas({
       });
       if (grid.count === 0) return;
 
-      const ink = cssVar(canvas, "--muted-foreground", "#888");
+      const ink = p.themeColors?.ink ?? "#888888";
       // Surface's monochrome ramp runs against the BRIGHTER foreground token: a solid terrain
       // needs the contrast, where floor lines and Lines' strokes read fine at muted. Everything
       // else in this hook keeps using `ink`.
-      const foreground = cssVar(canvas, "--foreground", "#fff");
-      const selection = cssVar(canvas, "--ui-loudness-selection", ink);
+      const foreground = p.themeColors?.surfaceInk ?? "#ffffff";
+      const gridColor = p.themeColors?.grid ?? ink;
+      const selection = p.themeColors?.selection ?? ink;
       const heightPx = proj.heightScale * view.heightGain;
 
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
@@ -579,8 +586,8 @@ export function useSpectrogram3dCanvas({
       const selectedStrokePx = 2 * dpr * strokeCss;
 
       if (p.floor) {
-        drawFloor(ctx, proj, ink, dpr);
-        drawAxisLabels(ctx, proj, ink, dpr);
+        drawFloor(ctx, proj, gridColor, dpr);
+        drawAxisLabels(ctx, proj, gridColor, dpr);
       }
 
       // Scrub feedback: a vertical line through a 3D scene means nothing, so the selected ridge (or,
@@ -669,7 +676,7 @@ export function useSpectrogram3dCanvas({
         // so identity is sufficient. Do not switch this to a stringified key -- colormapLut is a
         // 768-element Uint8Array, and interpolating it into a string calls toString() on every
         // repaint that reaches this branch, which is the renderer's hot path. inkArgb is part of
-        // the key: a theme switch can move --foreground without touching the colormap.
+        // the key: a theme switch can move Surface Ink without touching the colormap.
         const cachedLut = surfaceLutRef.current;
         if (
           cachedLut.colorize !== p.colorize ||

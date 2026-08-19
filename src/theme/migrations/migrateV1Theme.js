@@ -76,6 +76,9 @@ export function migrateV1Theme(raw) {
   }
   overrides["waveform.frequencyNeutral"] = overrideFromCss(css["--ui-waveform-frequency-neutral"]);
   overrides["waveform.centroid"] = overrideFromCss(css["--ui-waveform-centroid"]);
+  overrides["spectrogram.ink"] = overrideFromCss(css["--muted-foreground"]);
+  overrides["spectrogram.surfaceInk"] = overrideFromCss(css["--foreground"]);
+  overrides["spectrogram.grid"] = overrideFromCss(css["--muted-foreground"]);
 
   const intensityStops = raw.colormap.map(([position, channels]) => ({
     position: position / 255,
