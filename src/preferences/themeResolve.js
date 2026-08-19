@@ -3,7 +3,7 @@
  * @see docs/adr/0002-theme-id-and-appearance.md
  */
 
-import { DEFAULT_THEME_ID, isThemeId, THEME_IDS } from "../theme/builtinThemes.js";
+import { DEFAULT_THEME_ID, isThemeId, THEME_IDS } from "../theme/builtinThemesV2.js";
 import { isKnownThemeId } from "../theme/themeRegistry.js";
 import { settingsStore } from "../persistence/index.js";
 
@@ -46,7 +46,7 @@ export function readPersistedShellThemeFields() {
 /**
  * @param {{ appearance?: unknown; themeId?: unknown }} shell
  * @param {boolean} systemPrefersDark
- * @returns {import("../theme/builtinThemes.js").ThemeId}
+ * @returns {string}
  */
 export function resolveThemeId(shell, systemPrefersDark, customThemes = {}) {
   const appearance = shell?.appearance === "fixed" ? "fixed" : "system";

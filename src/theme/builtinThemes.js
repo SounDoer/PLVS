@@ -1,4 +1,7 @@
 /**
+ * Frozen Theme V1 fixtures. Production theme selection uses builtinThemesV2.js.
+ * Keep this module only for migration and V1 regression tests.
+ *
  * Builtin colour themes.
  * @typedef {"plvs-dark" | "plvs-light"} ThemeId
  */

@@ -434,6 +434,15 @@ function moduleRoles() {
       { css: ["--ui-loudness-selection"], canvas: ["loudness.selection"] },
       primaryRefs
     ),
+    moduleColor(
+      "loudness.grid",
+      "Loudness",
+      "Grid",
+      "data.grid",
+      "identity",
+      { css: ["--ui-loudness-grid"] },
+      primaryRefs
+    ),
 
     moduleColor(
       "spectrum.primary",

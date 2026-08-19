@@ -5,7 +5,6 @@ import {
   readSystemPrefersDark,
   resolveThemeId,
 } from "../uiPreferences";
-import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { listCustomThemes } from "../theme/customThemesRepo.js";
 import { getTheme, isKnownThemeId } from "../theme/themeRegistry.js";
 import { settingsStore, themesStore } from "../persistence/index.js";
@@ -99,7 +98,6 @@ export function useThemeSettings() {
     setThemeId,
     resolvedThemeId,
     resolvedTheme,
-    themeSelectOptions: THEME_SELECT_OPTIONS,
     setAppearanceMode,
     setFixedThemeIdFromPicker,
     fixedThemeSelectValue,

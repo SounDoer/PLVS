@@ -98,9 +98,8 @@ export function LoudnessProfileProvider({ children }) {
   /// the library yet; `resumeSelection` is the selection to restore on Save and is only carried by
   /// an edit of an existing profile (see `beginEdit` and `saveDraft`).
   ///
-  /// ThemeEditor previews by mutating the real selection and eagerly upserting new themes, so it
-  /// needs `wasNewRef` / `prevRef` to unwind on cancel. An overlay has no side effects to unwind:
-  /// cancel is throwing an object away.
+  /// Like ThemeEditor, this draft is an in-memory preview with no persistence side effects to
+  /// unwind: cancel is throwing an object away.
   const [draft, setDraft] = useState(null);
 
   /// The ref mirrors the draft synchronously, the way `useThemeEditor` keeps a `draftRef`, and for

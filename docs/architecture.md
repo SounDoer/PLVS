@@ -109,10 +109,12 @@ PLVS/
 │   │   └── layoutPersistence.js  # layout localStorage read/write
 │   │
 │   ├── theme/
-│   │   ├── builtinThemes.js      # BUILTIN_THEMES, THEME_IDS, semantic + seeds + colormap
-│   │   ├── buildThemeTokens.js   # derives instrument color CSS vars from theme seeds
-│   │   ├── spectrogramColormap.js # spectrogram stop lists + LUT builder
-│   │   └── shadcnSemanticPreset.js # shadcn semantic token preset
+│   │   ├── builtinThemesV2.js    # builtin V2 authoring documents
+│   │   ├── themeRoleRegistry.js  # semantic role graph + CSS / Canvas bindings
+│   │   ├── compileTheme.js       # authoring document → complete resolved theme
+│   │   ├── themeRuntime.js       # revisioned publication to DOM and subscribers
+│   │   ├── migrations/           # persisted V1 → V2 ingress
+│   │   └── legacy/               # frozen V1 resolver used only by migration
 │   │
 │   ├── workspace/                # split-tree workspace layout system
 │   │   ├── constants.js          # WORKSPACE_STORAGE_KEY, DEFAULT_TREE, BUILTIN_PRESETS
@@ -174,11 +176,11 @@ PCM 帧 → 并行 DSP → 打包 `MeteringFrame` → Channel（~60Hz）推前�
 
 **核心契约：源 chunk 大小可以影响 CPU 批处理，但绝不决定 history 时长。** 三种节奏各司其职，别混用：
 
-| 节奏           | 周期            | 来源                              | 前端契约                       |
-| -------------- | --------------- | --------------------------------- | ------------------------------ |
-| main history   | 100 ms（~10Hz） | `MeterHistoryEntry`，每 100 ms 一行 | `HIST_SAMPLE_SEC = 0.1`（index-grid 定位） |
-| visual history | 40 ms（~25Hz）  | `VisualHistEntry` / `VISUAL_EMIT_MS` | `VISUAL_HIST_SAMPLE_SEC = 0.04`（spectrogram 按 timestamp 定位） |
-| UI frame       | 交付节奏        | `FRAME_EMIT_MS = 16`，仅 UI 投递 + 背压 | 不是分析节奏，不得用来定义 history 行数 |
+| 节奏           | 周期            | 来源                                    | 前端契约                                                         |
+| -------------- | --------------- | --------------------------------------- | ---------------------------------------------------------------- |
+| main history   | 100 ms（~10Hz） | `MeterHistoryEntry`，每 100 ms 一行     | `HIST_SAMPLE_SEC = 0.1`（index-grid 定位）                       |
+| visual history | 40 ms（~25Hz）  | `VisualHistEntry` / `VISUAL_EMIT_MS`    | `VISUAL_HIST_SAMPLE_SEC = 0.04`（spectrogram 按 timestamp 定位） |
+| UI frame       | 交付节奏        | `FRAME_EMIT_MS = 16`，仅 UI 投递 + 背压 | 不是分析节奏，不得用来定义 history 行数                          |
 
 - **`HIST_EMIT_MS = 95`** 是 live 的 wall-clock **容差门**（允许名义 100 ms 块在略低于 100 ms 时也能发），不是语义周期。
 - **File 模式**：`FilePcmHistoryChunker`（`file_analysis/session.rs`）把任意大小的 ffmpeg PCM 整流成每次一个 100 ms 块喂给 pipeline，使 history 行数只由媒体时长决定。设计见 [`specs/2026-06-29-sample-clocked-history-cadence-design.md`](superpowers/specs/2026-06-29-sample-clocked-history-cadence-design.md)。
@@ -207,37 +209,41 @@ Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `
 
 1. 通过 `settingsStore` 读取 `appearance`（`system`|`fixed`）与 `themeId`（Tauri 下由 Rust 预注入 `window.__PLVS_INITIAL_STATE__`，浏览器开发环境走 `localStorage`）
 2. `resolveThemeId`（结合 `prefers-color-scheme`）→ 当前 `themeId`
-3. `getBuiltinTheme(themeId)` → 主题对象（含 `colorScheme`）
-4. `applyLayoutToDocument(UI_PREFERENCES)`：布局 / 字号 / 几何 / 非调色变量
-5. `applyThemeToDocument(themeId)`：`data-theme`、`color-scheme`、shadcn semantic tokens、seed 派生的 instrument color tokens、Peak 渐变色
+3. `themeRegistry` 获取 builtin 或已迁移的自定义 V2 authoring document
+4. `compileTheme` 将 Core Colors、Palettes 与稀疏 Advanced overrides 编译成完整 Resolved Theme
+5. `themeRuntime` 发布带递增 revision 的同一份结果：CSS 写入 DOM，Canvas 通过 selector 订阅；`applyLayoutToDocument` 只负责布局 / 字号 / 几何 / 非调色变量
 
-**Token 分层**（详见 [`design-tokens.md`](design-tokens.md) 与 ADR 0001/0002）：
+**Token 分层**（详见 [`design-tokens.md`](design-tokens.md) 与 ADR 0001/0002/0005）：
 
-| 层                    | CSS 变量前缀                                                                                                            | 定义位置                                                                        |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| shadcn 语义（表面色） | `--background`, `--foreground`, `--primary`…                                                                            | `builtinThemes.js` → `applyThemeToDocument`                                     |
-| UI 布局               | `--ui-*`                                                                                                                | `data.js` → `applyLayoutToDocument`                                             |
-| Instrument 色         | `--ui-loudness-*`, `--ui-spectrum-*`, `--ui-vectorscope-*`, `--ui-waveform-*`, `--ui-signal-*`, `--ui-meter-gradient-*` | `builtinThemes.js` seeds → `buildThemeTokens.js` → `applyThemeToDocument`       |
-| Spectrogram colormap  | JS LUT, not CSS vars                                                                                                    | `builtinThemes.js` colormap → `spectrogramColormap.js` → `useSpectrogramCanvas` |
+| 层               | 输出                                                                          | 定义 / 发布位置                                                             |
+| ---------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Authoring intent | Core Colors、Status / Intensity / Frequency Palettes、稀疏 Advanced overrides | `builtinThemesV2.js` 或持久化的 V2 document                                 |
+| Resolved roles   | 完整的 interface、instrument、effect 与 native role                           | `themeRoleRegistry.js` → `compileTheme.js`                                  |
+| CSS / SVG        | `--background`, `--foreground`, `--primary` 与 `--ui-*` color tokens          | Resolved Theme `css` → `themeRuntime.js`                                    |
+| Canvas           | Waveform、Vectorscope、Stereo Map、Spectrogram 等颜色 bundle                  | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
+| UI 布局          | 字号、间距、半径、线宽等非颜色 `--ui-*`                                       | `data.js` → `applyLayoutToDocument`                                         |
 
 首屏占位变量由 `npm run theme:generate` 写入 `src/generated/theme-fallbacks.css`（与默认暗色语义同源）。
+
+旧版 `builtinThemes.js`、`buildThemeTokens.js` 与 `legacy/resolveV1Theme.js` 不属于运行时主题
+管线；它们只为冻结的 V1 迁移、fixture 和回归测试保留。新消费者不得导入这些模块。
 
 ---
 
 ## 7. 关键术语
 
-| 术语                  | 定义                                                           |
-| --------------------- | -------------------------------------------------------------- |
-| **WASAPI Loopback**   | Windows 原生 API：把输出设备当输入读，无需虚拟声卡             |
-| **Core Audio Tap**    | macOS 14.2+ 原生系统音频捕获（等效于 Windows WASAPI Loopback） |
-| **realtime-safe**     | 音频回调线程不做内存分配、不加锁、不 syscall                   |
-| **Channel**           | Tauri 高频单向推送通道（~60Hz 指标帧）                         |
-| **plvs:settings**     | 持久化全局偏好：`appearance`、`themeId`、`referenceLufs`、面板标签覆盖等 |
-| **plvs:workspace**    | 持久化工作区布局树与每个 panel 的控制状态                      |
-| **plvs:presets**      | 持久化用户保存的 workspace presets                             |
-| **plvs:themes**       | 持久化自定义主题                                               |
-| **windowBounds**      | `plvs-settings.json` 顶层键，由 Rust 独立维护窗口几何，避免 JS settings 写回覆盖 |
-| **dockState**         | `plvs-settings.json` 顶层键（Rust 维护）：dock 模式开关 / 贴边 / 显示器；dock 期间 windowBounds 停写 |
+| 术语                | 定义                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| **WASAPI Loopback** | Windows 原生 API：把输出设备当输入读，无需虚拟声卡                                                   |
+| **Core Audio Tap**  | macOS 14.2+ 原生系统音频捕获（等效于 Windows WASAPI Loopback）                                       |
+| **realtime-safe**   | 音频回调线程不做内存分配、不加锁、不 syscall                                                         |
+| **Channel**         | Tauri 高频单向推送通道（~60Hz 指标帧）                                                               |
+| **plvs:settings**   | 持久化全局偏好：`appearance`、`themeId`、`referenceLufs`、面板标签覆盖等                             |
+| **plvs:workspace**  | 持久化工作区布局树与每个 panel 的控制状态                                                            |
+| **plvs:presets**    | 持久化用户保存的 workspace presets                                                                   |
+| **plvs:themes**     | 持久化自定义主题                                                                                     |
+| **windowBounds**    | `plvs-settings.json` 顶层键，由 Rust 独立维护窗口几何，避免 JS settings 写回覆盖                     |
+| **dockState**       | `plvs-settings.json` 顶层键（Rust 维护）：dock 模式开关 / 贴边 / 显示器；dock 期间 windowBounds 停写 |
 
 ### Dock 三窗口边界
 

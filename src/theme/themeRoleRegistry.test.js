@@ -27,6 +27,7 @@ describe("Theme Role Registry", () => {
 
   it("keeps curated editor metadata separate from dependency order", () => {
     const centroid = getThemeRole("waveform.centroid");
+    const loudnessGrid = getThemeRole("loudness.grid");
 
     expect(centroid.advanced).toMatchObject({
       section: "Waveform",
@@ -34,6 +35,8 @@ describe("Theme Role Registry", () => {
       allowedModes: ["color", "reference"],
     });
     expect(centroid.dependencies).toContain("core.text");
+    expect(loudnessGrid.bindings.css).toContain("--ui-loudness-grid");
+    expect(loudnessGrid.advanced.section).toBe("Loudness");
     expect(getThemeRole("missing")).toBeNull();
   });
 

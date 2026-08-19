@@ -62,7 +62,6 @@ export function AppSettingsOverlays({
         setInterfaceSize={settings.setInterfaceSize}
         fixedThemeSelectValue={settings.fixedThemeSelectValue}
         setFixedThemeIdFromPicker={settings.setFixedThemeIdFromPicker}
-        themeSelectOptions={settings.themeSelectOptions}
         channelCount={channelSettings.channelCount}
         channelLabelTokens={channelSettings.channelLabelTokens}
         channelLabelHasOverride={channelSettings.channelLabelHasOverride}

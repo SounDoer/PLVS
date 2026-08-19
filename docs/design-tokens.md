@@ -2,7 +2,7 @@
 
 PLVS UI token system — established from design review, May 2026.  
 Implement via `src/preferences/data.js` + `src/preferences/applyDocumentTheme.js`.  
-Color themes live in `src/theme/builtinThemes.js`.
+Color themes are V2 authoring documents compiled through `src/theme/compileTheme.js`.
 
 ---
 
@@ -11,15 +11,14 @@ Color themes live in `src/theme/builtinThemes.js`.
 Three layers. Components consume **Semantic** (shadcn) or **Component** tokens only — never raw palette values.
 
 ```
-Palette      Raw hex / oklch values. Lives in builtinThemes.js and shadcnSemanticPreset.js.
-             Not exposed as tokens. Reference only.
+Authoring    Six Core Colors, three purpose-specific Palettes, and sparse Advanced overrides.
+             Builtins live in builtinThemesV2.js; custom documents use the same schema.
 
-Semantic     shadcn-standard CSS variables (--background, --primary, --muted-foreground, etc.)
-             Written by applyShadcnSemanticTokensToDocument().
-             Used directly by shadcn components and Tailwind semantic utilities.
+Resolved     themeRoleRegistry.js defines every meaningful visible role and its dependencies.
+             compileTheme.js produces one complete immutable CSS / Canvas / effect contract.
 
 Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
-             Global tokens are written by applyThemeToDocument() and applyLayoutToDocument().
+             Theme colors are written by themeRuntime; layout tokens by applyLayoutToDocument().
              Responsive Dock tokens are scoped by src/dock/dockTokens.css because they depend
              on the Dock window viewport height. Sub-namespaces include typography, spacing,
              radius, dataviz, and dock.
@@ -33,28 +32,28 @@ Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
 
 Current PLVS Dark values:
 
-| Token                      | Value                               | Role                                |
-| -------------------------- | ----------------------------------- | ----------------------------------- |
-| `--background`             | `oklch(0.13 0.01 55)` ≈ `#131110`   | Page background — deepest warm gray |
-| `--foreground`             | `oklch(0.96 0.006 70)` ≈ `#f5f0ea`  | Primary text — warm white           |
-| `--card`                   | `oklch(0.195 0.012 50)` ≈ `#1e1b17` | Panel surface                       |
-| `--card-foreground`        | same as `--foreground`              | Text on panels                      |
-| `--popover`                | same as `--card`                    | Popover background                  |
-| `--popover-foreground`     | same as `--foreground`              | Popover text                        |
-| `--primary`                | `#fb923c`                           | Brand color — orange                |
-| `--primary-foreground`     | `oklch(0.13 0.01 55)`               | Text on primary buttons             |
-| `--secondary`              | `oklch(0.258 0.012 50)`             | Secondary surface                   |
-| `--secondary-foreground`   | same as `--foreground`              | Text on secondary surface           |
-| `--muted`                  | same as `--secondary`               | Muted surface                       |
-| `--muted-foreground`       | `oklch(0.63 0.015 55)` ≈ `#9e9488`  | Secondary / muted text              |
-| `--accent`                 | same as `--secondary`               | Accent surface                      |
-| `--accent-foreground`      | same as `--foreground`              | Text on accent surface              |
-| `--border`                 | `oklch(1 0 0 / 9%)`                 | Borders and dividers                |
-| `--input`                  | `oklch(1 0 0 / 14%)`                | Input field border                  |
-| `--ring`                   | `#fb923c`                           | Focus ring — matches brand color    |
-| `--destructive`            | `oklch(0.65 0.22 25)`               | Error / danger state                |
-| `--destructive-foreground` | `oklch(0.985 0 0)`                  | Text on destructive                 |
-| `--radius`                 | `0.625rem`                          | Base border radius (card level)     |
+| Token                      | Value                       | Role                                  |
+| -------------------------- | --------------------------- | ------------------------------------- |
+| `--background`             | `#070707`                   | Workspace background                  |
+| `--foreground`             | `#f2f2f2`                   | Primary text                          |
+| `--card`                   | `#151515`                   | Panel surface                         |
+| `--card-foreground`        | same as `--foreground`      | Text on panels                        |
+| `--popover`                | same as `--card`            | Popover background                    |
+| `--popover-foreground`     | same as `--foreground`      | Popover text                          |
+| `--primary`                | `#fb923c`                   | Interface accent                      |
+| `--primary-foreground`     | `#070707`                   | Text on primary buttons               |
+| `--secondary`              | `#232323`                   | Secondary surface                     |
+| `--secondary-foreground`   | same as `--foreground`      | Text on secondary surface             |
+| `--muted`                  | same as `--secondary`       | Muted surface                         |
+| `--muted-foreground`       | `#898989`                   | Secondary / muted text                |
+| `--accent`                 | same as `--secondary`       | Accent surface                        |
+| `--accent-foreground`      | same as `--foreground`      | Text on accent surface                |
+| `--border`                 | `rgba(255, 255, 255, 0.09)` | Borders and dividers                  |
+| `--input`                  | `rgba(255, 255, 255, 0.14)` | Input field border                    |
+| `--ring`                   | `#fb923c`                   | Focus ring — follows interface accent |
+| `--destructive`            | `#f94144`                   | Error / danger state                  |
+| `--destructive-foreground` | `#fafafa`                   | Text on destructive                   |
+| `--radius`                 | `0.625rem`                  | Base border radius (card level)       |
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
 
@@ -71,9 +70,9 @@ Controls the three-stop gradient fill on Peak panel channel bars.
 
 ### Component: Instrument Traces
 
-Instrument traces are derived from a small theme seed set in `src/theme/buildThemeTokens.js`:
-`accent`, `accentSecondary`, and `signal.{good,warn,bad}`. Components consume only the generated
-`--ui-*` tokens below.
+Instrument traces are compiled from the V2 Primary Data, Secondary Data, Status, and Frequency
+authoring roles. Components consume only the resolved `--ui-*` tokens below (or the equivalent
+Resolved Theme Canvas bundle); they never derive colors locally.
 
 For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune their lightness, saturation, slight hue shift, opacity, or stroke width per theme, but the pair should still feel related to Spectrum / Vectorscope accent colors rather than introducing a Loudness-only palette.
 
@@ -89,44 +88,43 @@ The Loudness `Reference` layer is not drawn as a line or band. Instead, the refe
 **over-reference gradient** on the `M` and `ST` traces. The reference value is not shown as a
 dedicated Y-axis tick.
 
-| Token                          | Value            | Role                                    |
-| ------------------------------ | ---------------- | --------------------------------------- |
-| `--ui-loudness-momentary`      | `#fb923c`        | Loudness M live primary data trace      |
-| `--ui-loudness-momentary-snap` | `#fcd34d`        | Loudness M snapshot trace               |
-| `--ui-loudness-shortterm`      | `#c66a2a`        | Loudness ST live sibling data trace     |
-| `--ui-loudness-shortterm-snap` | `#f2b27a`        | Loudness ST snapshot sibling trace      |
-| `--ui-loudness-selection`      | `#fcd34d`        | Selected-offset baseline                |
-| `--ui-loudness-grid`           | `color-mix(...)` | Loudness and waveform grid lines        |
-| `--ui-vectorscope-trace`       | `#fb923c`        | Vectorscope path (live)                 |
-| `--ui-vectorscope-trace-snap`  | `#fcd34d`        | Vectorscope path (snap)                 |
-| `--ui-vectorscope-grid-stroke` | `color-mix(...)` | Vectorscope axis and grid strokes       |
-| `--ui-spectrum-primary`        | `#fb923c`        | Spectrum primary path + fill            |
-| `--ui-spectrum-primary-snap`   | `#fcd34d`        | Spectrum primary snapshot path + fill   |
-| `--ui-spectrum-secondary`      | `#38bdf8`        | Spectrum secondary path + fill          |
-| `--ui-spectrum-secondary-snap` | `#7dd3fc`        | Spectrum secondary snapshot path + fill |
-| `--ui-waveform-trace`          | `#fb923c`        | Waveform envelope stroke + fill         |
-| `--ui-waveform-trace-snap`     | derived          | Waveform snapshot trace                 |
-| `--ui-waveform-frequency-low`  | `#ff2d3d` (dark) | Low-frequency Waveform hue anchor       |
-| `--ui-waveform-frequency-mid`  | `#fb923c` (dark) | Mid-frequency Waveform hue anchor       |
-| `--ui-waveform-frequency-high` | `#356dff` (dark) | High-frequency Waveform hue anchor      |
+| Token                             | Value            | Role                                    |
+| --------------------------------- | ---------------- | --------------------------------------- |
+| `--ui-loudness-momentary`         | `#fb923c`        | Loudness M live primary data trace      |
+| `--ui-loudness-momentary-snap`    | `#fbd34d`        | Loudness M snapshot trace               |
+| `--ui-loudness-shortterm`         | `#c66a2a`        | Loudness ST live sibling data trace     |
+| `--ui-loudness-shortterm-snap`    | `#cea536`        | Loudness ST snapshot sibling trace      |
+| `--ui-loudness-selection`         | `#fbd34d`        | Selected-offset baseline                |
+| `--ui-loudness-grid`              | `#282828`        | Loudness grid lines                     |
+| `--ui-vectorscope-trace`          | `#fb923c`        | Vectorscope path (live)                 |
+| `--ui-vectorscope-trace-snap`     | `#fbd34d`        | Vectorscope path (snap)                 |
+| `--ui-vectorscope-grid-stroke`    | `#282828`        | Vectorscope axis and grid strokes       |
+| `--ui-spectrum-primary`           | `#fb923c`        | Spectrum primary path + fill            |
+| `--ui-spectrum-primary-snap`      | `#fbd34d`        | Spectrum primary snapshot path + fill   |
+| `--ui-spectrum-secondary`         | `#38bdf8`        | Spectrum secondary path + fill          |
+| `--ui-spectrum-secondary-snap`    | `#b1d2ff`        | Spectrum secondary snapshot path + fill |
+| `--ui-waveform-trace`             | `#fb923c`        | Waveform envelope stroke + fill         |
+| `--ui-waveform-trace-snap`        | derived          | Waveform snapshot trace                 |
+| `--ui-waveform-frequency-low`     | `#ff2d3d` (dark) | Low-frequency Waveform hue anchor       |
+| `--ui-waveform-frequency-mid`     | `#fb923c` (dark) | Mid-frequency Waveform hue anchor       |
+| `--ui-waveform-frequency-high`    | `#356dff` (dark) | High-frequency Waveform hue anchor      |
 | `--ui-waveform-frequency-neutral` | `#484850` (dark) | Broadband / unavailable spectral color  |
-| `--ui-waveform-centroid`       | scheme-aware     | Spectral centroid overlay trace          |
+| `--ui-waveform-centroid`          | scheme-aware     | Spectral centroid overlay trace         |
 
 ### Component: Signal (semantic state colors)
 
 Values that carry a pass/warn/fail meaning — not brand-derived.
 
-| Token                     | Value     | Role                            |
-| ------------------------- | --------- | ------------------------------- |
-| `--ui-signal-peak-sample` | `#fb923c` | Peak hold line — sample peak    |
-| `--ui-signal-bad`         | `#f97373` | General error / clip state      |
-| `--ui-signal-warn`        | `#fbbf24` | General warning state           |
-| `--ui-signal-good`        | `#34d399` | General safe / healthy state    |
+| Token              | Value     | Role                         |
+| ------------------ | --------- | ---------------------------- |
+| `--ui-signal-bad`  | `#f97373` | General error / clip state   |
+| `--ui-signal-warn` | `#fbbf24` | General warning state        |
+| `--ui-signal-good` | `#34d399` | General safe / healthy state |
 
 ### Component: Spectrogram Colormap
 
 The spectrogram uses a per-theme ordered stop list, not a CSS variable.
-`src/theme/builtinThemes.js` owns the `colormap` field, and
+The V2 Intensity Palette owns the ordered stops, and
 `src/theme/spectrogramColormap.js` builds the 256-entry LUT consumed by
 `useSpectrogramCanvas()`. The colormap is reserved for area/density visuals; 1D traces keep using
 the instrument tokens above.
@@ -150,17 +148,17 @@ Normal application surfaces use semantic typography roles instead of fixed Tailw
 utilities or component-local pixel values. Dock is excluded and owns its responsive typography
 under `src/dock/dockTokens.css`.
 
-| Role                  | Token                  | Size | Typical use                                                  |
-| --------------------- | ---------------------- | ---- | ------------------------------------------------------------ |
-| **Caption**           | `--ui-fs-caption`      | 10px | Menu groups, compact metadata, drag/drop overlay labels      |
-| **Axis Annotation**   | `--ui-fs-axis`         | 11px | Chart ticks, secondary hints, validation and tooltip text    |
-| **Status**            | `--ui-fs-status`       | 11px | Header/footer state and compact status chips                 |
-| **Control**           | `--ui-fs-control`      | 12px | Compact buttons, selects, inputs and management rows         |
-| **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | Metric names and units                                       |
-| **Panel Title**       | `--ui-fs-panel-title`  | 12px | Panel, editor and dialog titles                              |
-| **Dynamic Display**   | `--ui-fs-display`      | 13px | Live chart values and settings drawer text                   |
+| Role                  | Token                  | Size | Typical use                                                 |
+| --------------------- | ---------------------- | ---- | ----------------------------------------------------------- |
+| **Caption**           | `--ui-fs-caption`      | 10px | Menu groups, compact metadata, drag/drop overlay labels     |
+| **Axis Annotation**   | `--ui-fs-axis`         | 11px | Chart ticks, secondary hints, validation and tooltip text   |
+| **Status**            | `--ui-fs-status`       | 11px | Header/footer state and compact status chips                |
+| **Control**           | `--ui-fs-control`      | 12px | Compact buttons, selects, inputs and management rows        |
+| **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | Metric names and units                                      |
+| **Panel Title**       | `--ui-fs-panel-title`  | 12px | Panel, editor and dialog titles                             |
+| **Dynamic Display**   | `--ui-fs-display`      | 13px | Live chart values and settings drawer text                  |
 | **Body**              | `--ui-fs-body`         | 14px | General descriptions, empty states and standard UI controls |
-| **Metric Value**      | `--ui-fs-metric-value` | 16px | Primary metric values; mono with tabular numerals            |
+| **Metric Value**      | `--ui-fs-metric-value` | 16px | Primary metric values; mono with tabular numerals           |
 
 Relative `em` sizes are allowed inside a semantic parent when they express a local hierarchy.
 
@@ -189,18 +187,18 @@ responsive contract in `src/dock/dockTokens.css`.
 The global `settingsStore.interfaceSize` setting selects one of four hand-tuned profiles. Profiles
 write final integer pixel values rather than applying browser zoom or one uniform multiplier.
 
-| Role                         | Small | Default | Large | Extra Large |
-| ---------------------------- | ----: | ------: | ----: | ----------: |
-| Caption                      |  10px |    11px |  12px |        14px |
-| Axis / Status                |  11px |    12px |  14px |        16px |
-| Control / Panel Title        |  12px |    13px |  15px |        17px |
-| Dynamic Display              |  13px |    14px |  16px |        18px |
-| Body                         |  14px |    15px |  17px |        19px |
-| Metric Value                 |  16px |    18px |  21px |        24px |
-| Panel Action Icon            |  12px |    13px |  15px |        17px |
-| Management / Shell Icon      |  14px |    15px |  17px |        19px |
-| Panel Module Identity Icon   |  14px |    15px |  17px |        19px |
-| Settings Drawer Width        | 320px |   336px | 368px |       400px |
+| Role                       | Small | Default | Large | Extra Large |
+| -------------------------- | ----: | ------: | ----: | ----------: |
+| Caption                    |  10px |    11px |  12px |        14px |
+| Axis / Status              |  11px |    12px |  14px |        16px |
+| Control / Panel Title      |  12px |    13px |  15px |        17px |
+| Dynamic Display            |  13px |    14px |  16px |        18px |
+| Body                       |  14px |    15px |  17px |        19px |
+| Metric Value               |  16px |    18px |  21px |        24px |
+| Panel Action Icon          |  12px |    13px |  15px |        17px |
+| Management / Shell Icon    |  14px |    15px |  17px |        19px |
+| Panel Module Identity Icon |  14px |    15px |  17px |        19px |
+| Settings Drawer Width      | 320px |   336px | 368px |       400px |
 
 The normal application document applies the selected profile before first render. Dock header and
 editor accessory documents always apply the compact Small baseline, while the Dock strip continues to use only its
@@ -310,17 +308,17 @@ resized, without waiting for React state or persisted geometry.
 ### Responsive density tiers
 
 | Role / token           | Compact `56–63px` | Standard `64–119px` | Expanded `120–160px` |
-| ---------------------- | ----------------: | -----------------: | ------------------: |
-| `--ui-dock-fs-label`   |               8px |                9px |                10px |
-| `--ui-dock-fs-caption` |               8px |                9px |                10px |
-| `--ui-dock-fs-value`   |              11px |               13px |                15px |
-| `--ui-dock-pad-x`      |               5px |                6px |                 8px |
-| `--ui-dock-pad-y`      |               3px |                4px |                 6px |
-| `--ui-dock-gap-region` |               4px |                5px |                 7px |
-| `--ui-dock-gap-column` |               3px |                4px |                 5px |
-| `--ui-dock-gap-row`    |               2px |                3px |                 5px |
-| `--ui-dock-bar-min-h`  |               4px |                5px |                 6px |
-| `--ui-dock-readout-w`  |               5ch |                5ch |                 5ch |
+| ---------------------- | ----------------: | ------------------: | -------------------: |
+| `--ui-dock-fs-label`   |               8px |                 9px |                 10px |
+| `--ui-dock-fs-caption` |               8px |                 9px |                 10px |
+| `--ui-dock-fs-value`   |              11px |                13px |                 15px |
+| `--ui-dock-pad-x`      |               5px |                 6px |                  8px |
+| `--ui-dock-pad-y`      |               3px |                 4px |                  6px |
+| `--ui-dock-gap-region` |               4px |                 5px |                  7px |
+| `--ui-dock-gap-column` |               3px |                 4px |                  5px |
+| `--ui-dock-gap-row`    |               2px |                 3px |                  5px |
+| `--ui-dock-bar-min-h`  |               4px |                 5px |                  6px |
+| `--ui-dock-readout-w`  |               5ch |                 5ch |                  5ch |
 
 The tiers are intentionally discrete. Typography must remain stable while the user adjusts height;
 the additional space at larger heights primarily benefits bars, plots, and row separation rather

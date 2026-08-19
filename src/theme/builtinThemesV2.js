@@ -12,6 +12,13 @@ const INFERNO_STOPS = [
   [255, "#fcffa4"],
 ].map(([position, color]) => ({ position: position / 255, color }));
 
+export const DEFAULT_THEME_ID = "plvs-dark";
+export const THEME_IDS = Object.freeze(["plvs-dark", "plvs-light"]);
+
+export function isThemeId(id) {
+  return typeof id === "string" && THEME_IDS.includes(id);
+}
+
 function makeBuiltin({ id, name, colorScheme, core, status, frequency, overrides }) {
   return {
     version: 2,

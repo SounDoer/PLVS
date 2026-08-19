@@ -8,6 +8,7 @@ import {
   updatePolarLevelEnvelope,
   updatePolarMaxHold,
 } from "../../math/vectorscopePolarMath.js";
+import { DEFAULT_VECTORSCOPE_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 
 const PLOT_PADDING_CSS_PX = 10;
 const POINT_RADIUS_CSS_PX = 1.15;
@@ -15,7 +16,6 @@ const PEAK_ALPHA = 0.35;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 const POLAR_FIXED_EXTENT = Math.SQRT2;
 const POLAR_FLOOR_DB = -48;
-const DEFAULT_COLORS = { trace: "#fb923c", snapshot: "#fbd34d", grid: "#282828" };
 
 function resizeCanvas(canvas) {
   const dpr = window.devicePixelRatio || 1;
@@ -147,7 +147,7 @@ export function VectorscopePolarPlot({
   maxHoldResetKey = 0,
   resetEpoch = 0,
   identityKey = "",
-  colors = DEFAULT_COLORS,
+  colors = DEFAULT_VECTORSCOPE_CANVAS_COLORS,
 }) {
   const canvasRef = useRef(null);
   const envelopeRef = useRef(null);

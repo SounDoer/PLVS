@@ -1,3 +1,6 @@
+import { BUILTIN_THEMES_V2 } from "./builtinThemesV2.js";
+import { compileTheme } from "./compileTheme.js";
+
 export function selectWaveformCanvasColors(resolved) {
   return {
     trace: resolved.canvas["waveform.trace"],
@@ -33,3 +36,23 @@ export function selectSpectrogramCanvasTheme(resolved) {
     selection: resolved.canvas["spectrogram.selection"],
   };
 }
+
+export function selectVectorscopeCanvasColors(resolved) {
+  return {
+    trace: resolved.canvas["vectorscope.trace"],
+    snapshot: resolved.canvas["vectorscope.snapshot"],
+    grid: resolved.canvas["vectorscope.grid"],
+  };
+}
+
+const FALLBACK_RESOLVED_THEME = compileTheme(BUILTIN_THEMES_V2["plvs-dark"]);
+
+export const DEFAULT_WAVEFORM_CANVAS_COLORS = Object.freeze(
+  selectWaveformCanvasColors(FALLBACK_RESOLVED_THEME)
+);
+export const DEFAULT_VECTORSCOPE_CANVAS_COLORS = Object.freeze(
+  selectVectorscopeCanvasColors(FALLBACK_RESOLVED_THEME)
+);
+export const DEFAULT_SPECTROGRAM_CANVAS_THEME = Object.freeze(
+  selectSpectrogramCanvasTheme(FALLBACK_RESOLVED_THEME)
+);

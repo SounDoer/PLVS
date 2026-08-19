@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { DEFAULT_SPECTROGRAM_CANVAS_THEME } from "../theme/themeCanvasSelectors.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 import { inWindowRange } from "../math/spectrogramTimeline.js";
 import {
@@ -568,11 +569,11 @@ export function useSpectrogram3dCanvas({
       });
       if (grid.count === 0) return;
 
-      const ink = p.themeColors?.ink ?? "#888888";
+      const ink = p.themeColors?.ink ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.ink;
       // Surface's monochrome ramp runs against the BRIGHTER foreground token: a solid terrain
       // needs the contrast, where floor lines and Lines' strokes read fine at muted. Everything
       // else in this hook keeps using `ink`.
-      const foreground = p.themeColors?.surfaceInk ?? "#ffffff";
+      const foreground = p.themeColors?.surfaceInk ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.surfaceInk;
       const gridColor = p.themeColors?.grid ?? ink;
       const selection = p.themeColors?.selection ?? ink;
       const heightPx = proj.heightScale * view.heightGain;

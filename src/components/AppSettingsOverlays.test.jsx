@@ -97,7 +97,6 @@ function makeSettings(overrides = {}) {
     setInterfaceSize: vi.fn(),
     fixedThemeSelectValue: "system",
     setFixedThemeIdFromPicker: vi.fn(),
-    themeSelectOptions: [],
     autostartEnabled: false,
     setAutostartEnabled: vi.fn(),
     autostartReady: true,

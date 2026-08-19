@@ -26,23 +26,15 @@ import {
   sliceSpectralWaveformMetrics,
   waveformFrequencyRgb,
 } from "../../math/spectralWaveformMath.js";
-import { selectWaveformCanvasColors } from "../../theme/themeCanvasSelectors.js";
+import {
+  DEFAULT_WAVEFORM_CANVAS_COLORS,
+  selectWaveformCanvasColors,
+} from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-chart-y-axis-rail-w";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
 const WAVEFORM_MAX_DEVICE_PIXEL_RATIO = 1;
-const DEFAULT_THEME_COLORS = {
-  trace: "#fb923c",
-  snapshot: "#fbd34d",
-  grid: "#282828",
-  frequencyLow: "#ff2d3d",
-  frequencyMid: "#fb923c",
-  frequencyHigh: "#356dff",
-  frequencyNeutral: "#484850",
-  centroid: "#f8fafc",
-};
-
 function cssLengthToPx(value) {
   const trimmed = value?.trim();
   if (!trimmed) return 0;
@@ -110,7 +102,7 @@ export function drawWaveformCanvas(
     spectralCentroidHz,
     tonality,
     centroid,
-    themeColors = DEFAULT_THEME_COLORS,
+    themeColors = DEFAULT_WAVEFORM_CANVAS_COLORS,
   }
 ) {
   if (!canvas || canvas.width === 0 || canvas.height === 0) return;

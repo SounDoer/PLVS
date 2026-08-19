@@ -1,5 +1,4 @@
-import { DEFAULT_THEME_ID } from "./builtinThemes.js";
-import { BUILTIN_THEMES_V2 } from "./builtinThemesV2.js";
+import { BUILTIN_THEMES_V2, DEFAULT_THEME_ID } from "./builtinThemesV2.js";
 
 /**
  * @param {unknown} id

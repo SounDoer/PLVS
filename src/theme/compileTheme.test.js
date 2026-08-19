@@ -64,6 +64,13 @@ describe("compileTheme", () => {
     expect(resolved.css["--ui-spectrum-primary"]).toBe("#00ff00");
   });
 
+  it("publishes the Loudness grid instead of leaving an unresolved CSS variable", () => {
+    const resolved = compileTheme(authoringTheme());
+
+    expect(resolved.css["--ui-loudness-grid"]).toBe(resolved.roles["loudness.grid"]);
+    expect(resolved.css["--ui-loudness-grid"]).toBe("#282828");
+  });
+
   it("maps Status directly without deriving it from either accent", () => {
     const theme = authoringTheme();
     theme.core.interfaceAccent = "#000000";

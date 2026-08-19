@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
-import { THEME_SELECT_OPTIONS } from "../theme/builtinThemes.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 
 const CUSTOM_THEME = {
@@ -30,7 +29,6 @@ const BASE_PROPS = {
   setInterfaceSize: vi.fn(),
   fixedThemeSelectValue: "",
   setFixedThemeIdFromPicker: vi.fn(),
-  themeSelectOptions: THEME_SELECT_OPTIONS,
   channelCount: 0,
   channelLabelTokens: [],
   channelLabelHasOverride: false,

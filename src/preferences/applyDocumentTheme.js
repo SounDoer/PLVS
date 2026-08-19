@@ -117,7 +117,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
 /**
  * Theme-owned palette tokens (ADR 0002 `applyTheme`).
- * @param {import("../theme/builtinThemes.js").ThemeId} themeId
+ * @param {string} themeId
  */
 export function applyThemeToDocument(themeId, customThemes = {}) {
   if (typeof document === "undefined") return null;

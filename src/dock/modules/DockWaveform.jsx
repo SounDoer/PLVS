@@ -14,21 +14,14 @@ import {
   sliceSpectralWaveformMetrics,
   waveformFrequencyRgb,
 } from "../../math/spectralWaveformMath.js";
-import { selectWaveformCanvasColors } from "../../theme/themeCanvasSelectors.js";
+import {
+  DEFAULT_WAVEFORM_CANVAS_COLORS,
+  selectWaveformCanvasColors,
+} from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 
 const MAX_DEVICE_PIXEL_RATIO = 1;
 const MAX_AGGREGATION_STRIDE = 10;
-const DEFAULT_THEME_COLORS = {
-  trace: "#fb923c",
-  grid: "#282828",
-  frequencyLow: "#ff2d3d",
-  frequencyMid: "#fb923c",
-  frequencyHigh: "#356dff",
-  frequencyNeutral: "#484850",
-  centroid: "#f8fafc",
-};
-
 function cssNumber(style, name, fallback) {
   const value = Number.parseFloat(style.getPropertyValue(name));
   return Number.isFinite(value) ? value : fallback;
@@ -84,7 +77,7 @@ export function paintDockWaveformCanvas(
     spectralCentroidHz,
     tonality,
     centroid,
-    themeColors = DEFAULT_THEME_COLORS,
+    themeColors = DEFAULT_WAVEFORM_CANVAS_COLORS,
   }
 ) {
   if (!canvas || canvas.width <= 0 || canvas.height <= 0 || channelCount <= 0) return;

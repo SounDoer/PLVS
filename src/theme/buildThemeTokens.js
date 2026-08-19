@@ -1,3 +1,4 @@
+// Frozen Theme V1 derivation used only by legacy migration and regression tests.
 import { hexToOklch, oklchToHex, transform } from "./colorTransform.js";
 
 // Scheme-aware deltas tuned to match hand-tuned anchors within rgb-distance 30.
