@@ -85,6 +85,12 @@ export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
     msRatioMinDb: DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMinDb,
     msRatioMaxDb: DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMaxDb,
   }),
+  waveform: Object.freeze({
+    frequencyColor: DEFAULT_PANEL_CONTROLS.waveformFrequencyColor,
+    lowMidSplitHz: DEFAULT_PANEL_CONTROLS.waveformLowMidSplitHz,
+    midHighSplitHz: DEFAULT_PANEL_CONTROLS.waveformMidHighSplitHz,
+    centroid: DEFAULT_PANEL_CONTROLS.waveformCentroid,
+  }),
 });
 
 export const DOCK_CONTROL_MODULE_IDS = Object.freeze(
@@ -295,6 +301,21 @@ export function normalizeDockModuleControls(moduleId, raw) {
         monoLossMinDb: clamp(raw?.monoLossMinDb, -60, -6, defaults.monoLossMinDb),
         msRatioMinDb: msRatio.min,
         msRatioMaxDb: msRatio.max,
+      };
+    }
+    case "waveform": {
+      const lowMidSplitHz = Math.round(
+        clamp(raw?.lowMidSplitHz, 20, 20000, defaults.lowMidSplitHz)
+      );
+      const midHighSplitHz = Math.round(
+        clamp(raw?.midHighSplitHz, 20, 20000, defaults.midHighSplitHz)
+      );
+      const validOrder = lowMidSplitHz < midHighSplitHz;
+      return {
+        frequencyColor: bool(raw?.frequencyColor, defaults.frequencyColor),
+        lowMidSplitHz: validOrder ? lowMidSplitHz : defaults.lowMidSplitHz,
+        midHighSplitHz: validOrder ? midHighSplitHz : defaults.midHighSplitHz,
+        centroid: bool(raw?.centroid, defaults.centroid),
       };
     }
     default:

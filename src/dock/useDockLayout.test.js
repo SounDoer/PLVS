@@ -29,6 +29,7 @@ describe("useDockLayout", () => {
       "correlation",
       "spectrum",
       "spectrogram",
+      "waveform",
     ]);
     expect(result.current.controlsByPanelId).toMatchObject({
       level: { mode: "peak", readout: "live", showLabels: true },
@@ -67,6 +68,12 @@ describe("useDockLayout", () => {
         channel: { type: "pair", x: 0, y: 1 },
         minFreq: 20,
         maxFreq: 20000,
+      },
+      waveform: {
+        frequencyColor: false,
+        lowMidSplitHz: 200,
+        midHighSplitHz: 2000,
+        centroid: false,
       },
     });
     act(() => result.current.toggle("spectrum"));

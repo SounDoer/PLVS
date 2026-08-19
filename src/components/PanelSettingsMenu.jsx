@@ -17,6 +17,7 @@ const PANEL_SETTINGS_TITLES = {
   spectrogram: "Spectrogram",
   stats: "Stats",
   vectorscope: "Vectorscope",
+  waveform: "Waveform",
   "stereo-map": "Stereo Map",
 };
 
@@ -43,7 +44,12 @@ function hasPanelSettings({
   panelControls,
   onPanelControlsChange,
 }) {
-  if (activeTab === "levelMeter" || activeTab === "stats" || activeTab === "loudness") {
+  if (
+    activeTab === "levelMeter" ||
+    activeTab === "stats" ||
+    activeTab === "loudness" ||
+    activeTab === "waveform"
+  ) {
     return panelControls != null && typeof onPanelControlsChange === "function";
   }
 

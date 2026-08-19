@@ -21,6 +21,22 @@ export function buildThemeTokens(theme) {
   const accentSnap = snap(accent);
   const shortterm = sibling(accent);
   const gridPct = scheme === "light" ? 20 : 10;
+  const waveformSpectral =
+    scheme === "light"
+      ? {
+          low: "#d9481c",
+          mid: "#a21caf",
+          high: "#3730a3",
+          neutral: "#737373",
+          centroid: "#111827",
+        }
+      : {
+          low: "#ff4b1f",
+          mid: "#df18ff",
+          high: "#5145ff",
+          neutral: "#85857e",
+          centroid: "#f8fafc",
+        };
 
   return {
     // accent is the brand bridge into the shadcn shell (spec §3): --primary/--ring follow accent,
@@ -46,6 +62,11 @@ export function buildThemeTokens(theme) {
     "--ui-stereo-map-secondary-snap": snap(accentSecondary),
     "--ui-waveform-trace": accent,
     "--ui-waveform-trace-snap": accentSnap,
+    "--ui-waveform-frequency-low": waveformSpectral.low,
+    "--ui-waveform-frequency-mid": waveformSpectral.mid,
+    "--ui-waveform-frequency-high": waveformSpectral.high,
+    "--ui-waveform-frequency-neutral": waveformSpectral.neutral,
+    "--ui-waveform-centroid": waveformSpectral.centroid,
     "--ui-signal-peak-sample": accent,
     "--ui-signal-bad": signal.bad,
     "--ui-signal-warn": signal.warn,

@@ -10,6 +10,7 @@ pub mod paths;
 pub mod peak;
 pub mod shared_spectral_engine;
 pub mod spectral_transform;
+pub mod spectral_waveform;
 pub mod spectrum;
 pub mod spectrum_bank;
 mod spectrum_consumer;

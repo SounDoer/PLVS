@@ -62,6 +62,8 @@ pub(crate) struct SpectralConsumerBinding {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SpectralPlan {
   pub streams: Vec<TransformStreamId>,
+  /// Physical streams needed only at the middle resolution by spectral Waveform metrics.
+  pub waveform_streams: Vec<TransformStreamId>,
   pub consumers: Vec<SpectralConsumerBinding>,
   pub stereo_map_consumers: Vec<StereoMapConsumerBinding>,
 }
@@ -253,6 +255,7 @@ pub(crate) fn plan_spectral_requests(
 
   SpectralPlan {
     streams: streams.into_iter().collect(),
+    waveform_streams: Vec::new(),
     consumers,
     stereo_map_consumers: Vec::new(),
   }
@@ -266,6 +269,14 @@ pub(crate) fn plan_analysis_requests(channels: u16, requests: &AnalysisRequests)
     .map(|request| FuturePairNeed::new(request.pair.first, request.pair.second))
     .collect();
   let mut plan = plan_spectral_requests(channels, &requests.spectrum, &stereo_pairs);
+  if requests.spectral_waveform {
+    plan.waveform_streams = (0..channel_count)
+      .map(TransformStreamId::Physical)
+      .collect();
+    plan.streams.extend(plan.waveform_streams.iter().copied());
+    plan.streams.sort();
+    plan.streams.dedup();
+  }
   plan.stereo_map_consumers = requests
     .stereo_map
     .iter()
@@ -588,6 +599,7 @@ mod tests {
   #[test]
   fn stereo_map_requests_plan_ordered_aligned_physical_pairs() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       stereo_map: vec![stereo_map_request("map", 4, 2, 25.0, "1/12")],
       ..AnalysisRequests::default()
     };
@@ -617,6 +629,7 @@ mod tests {
   #[test]
   fn stereo_map_pair_reuses_spectrum_physical_streams_without_changing_spectrum_binding() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![pair_request("combined", 0, 1, "combined")],
       stereo_map: vec![
         stereo_map_request("map-fast", 0, 1, 0.0, "off"),
@@ -642,5 +655,25 @@ mod tests {
       plan.stereo_map_consumers[0].speed_percent,
       plan.stereo_map_consumers[1].speed_percent
     );
+  }
+
+  #[test]
+  fn spectral_waveform_plans_one_shared_physical_stream_per_channel() {
+    let requests = AnalysisRequests {
+      spectral_waveform: true,
+      ..AnalysisRequests::default()
+    };
+
+    let plan = plan_analysis_requests(4, &requests);
+    assert_eq!(
+      plan.streams,
+      vec![
+        TransformStreamId::Physical(0),
+        TransformStreamId::Physical(1),
+        TransformStreamId::Physical(2),
+        TransformStreamId::Physical(3),
+      ]
+    );
+    assert!(plan.consumers.is_empty());
   }
 }

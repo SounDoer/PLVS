@@ -77,6 +77,18 @@ describe("mergeDockSpectrumRequest", () => {
 });
 
 describe("mergeDockAnalysisRequests", () => {
+  it("ORs Dock Waveform spectral needs into the shared request", () => {
+    const off = mergeDockAnalysisRequests(EMPTY_DERIVED, [
+      { panelId: "waveform", moduleId: "waveform", controls: {} },
+    ]);
+    expect(off.spectralWaveform).toBe(false);
+
+    const on = mergeDockAnalysisRequests(EMPTY_DERIVED, [
+      { panelId: "waveform", moduleId: "waveform", controls: { centroid: true } },
+    ]);
+    expect(on.spectralWaveform).toBe(true);
+  });
+
   it("adds a configured Dock vectorscope request", () => {
     const controls = { pair: { x: 2, y: 3 } };
     const merged = mergeDockAnalysisRequests(EMPTY_DERIVED, [

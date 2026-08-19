@@ -57,6 +57,7 @@
         "octaveSmoothing": "off"
       }
     ],
-    "vectorscope": [{ "key": "vectorscope:pair:0:1", "x": 0, "y": 1 }]
+    "vectorscope": [{ "key": "vectorscope:pair:0:1", "x": 0, "y": 1 }],
+    "spectralWaveform": false
   }
 }

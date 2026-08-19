@@ -8,6 +8,12 @@ import {
 } from "../../math/waveformMath.js";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
+import {
+  centroidYFraction,
+  parseCssRgb,
+  sliceSpectralWaveformMetrics,
+  waveformFrequencyRgb,
+} from "../../math/spectralWaveformMath.js";
 
 const MAX_DEVICE_PIXEL_RATIO = 1;
 const MAX_AGGREGATION_STRIDE = 10;
@@ -52,7 +58,22 @@ export function sliceDockWaveformHistory(
 /** Paint all channel envelopes into one bounded canvas. */
 export function paintDockWaveformCanvas(
   canvas,
-  { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, channelCount }
+  {
+    mins,
+    maxes,
+    bucketCount,
+    fracPhase,
+    firstBucket,
+    lastBucket,
+    channelCount,
+    frequencyColor,
+    lowMidSplitHz,
+    midHighSplitHz,
+    dominantFrequencyHz,
+    spectralCentroidHz,
+    tonality,
+    centroid,
+  }
 ) {
   if (!canvas || canvas.width <= 0 || canvas.height <= 0 || channelCount <= 0) return;
   const ctx = canvas.getContext("2d");
@@ -65,6 +86,16 @@ export function paintDockWaveformCanvas(
   const gridColor = style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
   const fillOpacity = cssNumber(style, "--ui-waveform-fill-opacity", 0.22);
   const strokeWidth = cssNumber(style, "--ui-waveform-stroke-width", 1);
+  const spectralPalette = {
+    low: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-low"), [240, 90, 36]),
+    mid: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-mid"), [217, 70, 239]),
+    high: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-high"), [67, 56, 202]),
+    neutral: parseCssRgb(
+      style.getPropertyValue("--ui-waveform-frequency-neutral"),
+      [139, 139, 130]
+    ),
+  };
+  const centroidColor = style.getPropertyValue("--ui-waveform-centroid").trim() || "#f8fafc";
   // The backing store height now uses full DPR while width is capped, so it is no longer 1:1 with
   // CSS pixels. Convert the CSS-px row gap into backing pixels before laying out the lanes.
   const vScale = canvas.clientHeight > 0 ? height / canvas.clientHeight : 1;
@@ -96,34 +127,98 @@ export function paintDockWaveformCanvas(
     }
 
     const xFor = (bucket) => bucket - fracPhase;
-    ctx.beginPath();
-    for (let bucket = firstBucket; bucket <= lastBucket; bucket += 1) {
-      const x = xFor(bucket);
-      const y = centerY - clampAmplitude(maxes[channel][bucket]) * halfHeight;
-      if (bucket === firstBucket) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    for (let bucket = lastBucket; bucket >= firstBucket; bucket -= 1) {
-      const x = xFor(bucket);
-      const y = centerY - clampAmplitude(mins[channel][bucket]) * halfHeight;
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
+    if (frequencyColor) {
+      for (let bucket = firstBucket; bucket <= lastBucket; bucket += 1) {
+        const next = Math.min(lastBucket, bucket + 1);
+        const color = waveformFrequencyRgb(
+          dominantFrequencyHz?.[channel]?.[bucket] ?? 0,
+          tonality?.[channel]?.[bucket] ?? 0,
+          { lowMidSplitHz, midHighSplitHz },
+          spectralPalette
+        );
+        const colorCss = `rgb(${color.join(" ")})`;
+        const x = xFor(bucket);
+        const nextX = xFor(next) + (next === bucket ? 1 : 0);
+        const yMax = centerY - Math.max(0, clampAmplitude(maxes[channel][bucket])) * halfHeight;
+        const yMin = centerY - Math.min(0, clampAmplitude(mins[channel][bucket])) * halfHeight;
+        const nextYMax = centerY - Math.max(0, clampAmplitude(maxes[channel][next])) * halfHeight;
+        const nextYMin = centerY - Math.min(0, clampAmplitude(mins[channel][next])) * halfHeight;
+        const fillLeft = x - 0.5;
+        const fillRight = nextX + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(fillLeft, yMax);
+        ctx.lineTo(fillRight, nextYMax);
+        ctx.lineTo(fillRight, nextYMin);
+        ctx.lineTo(fillLeft, yMin);
+        ctx.closePath();
+        // Frequency Color is the waveform body, not a translucent overlay on the classic trace.
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = colorCss;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = colorCss;
+        ctx.lineWidth = strokeWidth;
+        ctx.beginPath();
+        ctx.moveTo(x, yMax);
+        ctx.lineTo(nextX, nextYMax);
+        ctx.moveTo(x, yMin);
+        ctx.lineTo(nextX, nextYMin);
+        ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      for (let bucket = firstBucket; bucket <= lastBucket; bucket += 1) {
+        const x = xFor(bucket);
+        const y = centerY - clampAmplitude(maxes[channel][bucket]) * halfHeight;
+        if (bucket === firstBucket) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      for (let bucket = lastBucket; bucket >= firstBucket; bucket -= 1) {
+        const x = xFor(bucket);
+        const y = centerY - clampAmplitude(mins[channel][bucket]) * halfHeight;
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
 
-    ctx.globalAlpha = fillOpacity;
-    ctx.fillStyle = traceColor;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = traceColor;
-    ctx.lineWidth = strokeWidth;
-    ctx.stroke();
+      ctx.globalAlpha = fillOpacity;
+      ctx.fillStyle = traceColor;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = traceColor;
+      ctx.lineWidth = strokeWidth;
+      ctx.stroke();
+    }
+
+    if (centroid && spectralCentroidHz?.[channel]?.length) {
+      ctx.strokeStyle = centroidColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      let drawing = false;
+      for (let bucket = firstBucket; bucket <= lastBucket; bucket += 1) {
+        const yFraction = centroidYFraction(spectralCentroidHz[channel][bucket]);
+        if (yFraction === null) {
+          drawing = false;
+          continue;
+        }
+        const x = xFor(bucket);
+        const y = laneTop + yFraction * laneHeight;
+        if (drawing) ctx.lineTo(x, y);
+        else ctx.moveTo(x, y);
+        drawing = true;
+      }
+      ctx.stroke();
+    }
   }
 }
 
 /** Compact, latest-locked waveform with one labeled lane per available channel. */
 export function DockWaveform({ controls }) {
   const frameData = useFrameData() ?? {};
-  const { histSourceList = [], waveformHistoryIndex = null } = useHistoryData() ?? {};
+  const {
+    histSourceList = [],
+    waveformHistoryIndex = null,
+    visualWaveformHist = [],
+  } = useHistoryData() ?? {};
   const canvasRef = useRef(null);
   const plotRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -162,15 +257,17 @@ export function DockWaveform({ controls }) {
     maxDevicePixelRatioX: MAX_DEVICE_PIXEL_RATIO,
   });
 
-  const envelope = useMemo(
-    () =>
-      sliceDockWaveformHistory(
+  const waveformView = useMemo(
+    () => ({
+      envelope: sliceDockWaveformHistory(
         histSourceList,
         waveformHistoryIndex,
         visibleSamples,
         channelCount,
         canvasSize.width
       ),
+      newestVisibleTimestampMs: latestTimestampMs,
+    }),
     [
       histSourceList,
       waveformHistoryIndex,
@@ -181,13 +278,57 @@ export function DockWaveform({ controls }) {
       canvasSize.width,
     ]
   );
+  const { envelope } = waveformView;
+  const spectralMetrics = useMemo(
+    () =>
+      sliceSpectralWaveformMetrics(
+        visualWaveformHist,
+        waveformView.newestVisibleTimestampMs - (visibleSamples - 1) * HIST_SAMPLE_SEC * 1000,
+        waveformView.newestVisibleTimestampMs,
+        envelope.bucketCount,
+        channelCount,
+        {
+          newestVisibleTimestampMs: waveformView.newestVisibleTimestampMs,
+          visibleSamples,
+          pixelWidth: canvasSize.width,
+          fracPhase: envelope.fracPhase,
+          waveformRows: histSourceList,
+          effectiveOffsetSamples: 0,
+          nominalIntervalMs: HIST_SAMPLE_SEC * 1000,
+        }
+      ),
+    [
+      visualWaveformHist,
+      waveformView.newestVisibleTimestampMs,
+      envelope.bucketCount,
+      envelope.fracPhase,
+      visibleSamples,
+      canvasSize.width,
+      channelCount,
+    ]
+  );
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      paintDockWaveformCanvas(canvasRef.current, { ...envelope, channelCount });
+      paintDockWaveformCanvas(canvasRef.current, {
+        ...envelope,
+        ...spectralMetrics,
+        channelCount,
+        frequencyColor: controls?.frequencyColor ?? false,
+        lowMidSplitHz: controls?.lowMidSplitHz ?? 200,
+        midHighSplitHz: controls?.midHighSplitHz ?? 2000,
+        centroid: controls?.centroid ?? false,
+      });
     });
     return () => cancelAnimationFrame(frame);
-  }, [envelope, channelCount, canvasSize.height, frameData.resolvedThemeId]);
+  }, [
+    envelope,
+    spectralMetrics,
+    channelCount,
+    controls,
+    canvasSize.height,
+    frameData.resolvedThemeId,
+  ]);
 
   return (
     <div

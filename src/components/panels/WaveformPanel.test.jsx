@@ -125,6 +125,109 @@ describe("drawWaveformCanvas", () => {
     expect(lineWidths).toEqual([1, 2.5]);
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
   });
+
+  it("fills the complete Frequency Color body at full opacity", () => {
+    const fillAlphas = [];
+    const context = {
+      globalAlpha: 1,
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(() => fillAlphas.push(context.globalAlpha)),
+      stroke: vi.fn(),
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 40;
+    canvas.getContext = vi.fn(() => context);
+
+    drawWaveformCanvas(canvas, {
+      mins: [-0.75, -0.75],
+      maxes: [0.25, 0.25],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      selected: false,
+      frequencyColor: true,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      dominantFrequencyHz: [100, 1000],
+      tonality: [0.2, 0.2],
+    });
+
+    expect(fillAlphas).toEqual([1, 1]);
+  });
+
+  it("overlaps adjacent Frequency Color bodies to avoid sub-pixel seams", () => {
+    const context = {
+      globalAlpha: 1,
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 40;
+    canvas.getContext = vi.fn(() => context);
+
+    drawWaveformCanvas(canvas, {
+      mins: [-0.5, -0.5],
+      maxes: [0.5, 0.5],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      frequencyColor: true,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      dominantFrequencyHz: [100, 1000],
+      tonality: [0.8, 0.8],
+    });
+
+    expect(context.moveTo).toHaveBeenCalledWith(-0.5, 10);
+    expect(context.lineTo).toHaveBeenCalledWith(1.5, 10);
+  });
+
+  it("fills a one-sided positive Frequency Color bucket back to the zero line", () => {
+    const context = {
+      globalAlpha: 1,
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 40;
+    canvas.getContext = vi.fn(() => context);
+
+    drawWaveformCanvas(canvas, {
+      mins: [0.25, 0.25],
+      maxes: [0.5, 0.5],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      selected: false,
+      frequencyColor: true,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      dominantFrequencyHz: [100, 100],
+      tonality: [0.8, 0.8],
+    });
+
+    expect(context.lineTo).toHaveBeenCalledWith(1, 20);
+  });
 });
 
 describe("WaveformPanel", () => {

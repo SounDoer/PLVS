@@ -35,7 +35,7 @@ describe("app runtime derivations", () => {
       panelControlsById: {},
     });
     const payload = deriveBackendAnalysisRequests(deriveAnalysisRequests(state));
-    expect(payload).toEqual({ ...fixtures.wirePayload, stereoMap: [] });
+    expect(payload).toEqual({ ...fixtures.wirePayload, stereoMap: [], spectralWaveform: false });
   });
 
   it("maps aggregate analysis requests to the backend request shape", () => {
@@ -60,6 +60,7 @@ describe("app runtime derivations", () => {
             octaveSmoothing: "1/12",
           },
         ],
+        spectralWaveform: true,
       })
     ).toEqual({
       spectrum: [
@@ -81,6 +82,7 @@ describe("app runtime derivations", () => {
           octaveSmoothing: "1/12",
         },
       ],
+      spectralWaveform: true,
     });
   });
 

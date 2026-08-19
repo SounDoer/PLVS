@@ -198,8 +198,18 @@ export function mergeDockStereoMapRequest(derived, active) {
 }
 
 export function mergeDockAnalysisRequests(derived, active) {
-  return mergeDockVectorscopeRequest(
+  const merged = mergeDockVectorscopeRequest(
     mergeDockStereoMapRequest(mergeDockSpectrumRequest(derived, active), active),
     active
   );
+  if (!Array.isArray(active)) return merged;
+  const dockNeedsSpectralWaveform = active.some((panel) => {
+    const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
+    if (dockModuleId !== "waveform") return false;
+    const controls = normalizeDockModuleControls("waveform", panel.controls);
+    return controls.frequencyColor || controls.centroid;
+  });
+  return dockNeedsSpectralWaveform && !merged.spectralWaveform
+    ? { ...merged, spectralWaveform: true }
+    : merged;
 }

@@ -22,6 +22,9 @@
  * @property {number} sideToMidDb
  * @property {number[]} waveformMin
  * @property {number[]} waveformMax
+ * @property {number[]} dominantFrequencyHz
+ * @property {number[]} spectralCentroidHz
+ * @property {number[]} tonality
  * @property {Float32Array|number[]} waveformSubPairs flat, stride 2*channelCount: [minCh0,maxCh0,...] per sub-block
  * @property {number} waveformSubCount sub-blocks in this tick
  * @property {string} loudnessLayout
@@ -85,6 +88,9 @@
  * @property {number} timestampMs
  * @property {number[]} waveformMin
  * @property {number[]} waveformMax
+ * @property {number[]} dominantFrequencyHz
+ * @property {number[]} spectralCentroidHz
+ * @property {number[]} tonality
  * @property {number} correlation
  * @property {number} sideToMidDb
  * @property {Record<string, SpectrumVisualEntry>} spectrumByKey
@@ -158,6 +164,7 @@
  * @property {SpectrumAnalysisRequest[]} spectrum
  * @property {VectorscopeAnalysisRequest[]} vectorscope
  * @property {StereoMapAnalysisRequest[]} stereoMap
+ * @property {boolean} spectralWaveform
  */
 
 export {};

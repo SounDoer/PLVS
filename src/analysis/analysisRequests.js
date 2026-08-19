@@ -137,6 +137,7 @@ export function deriveAnalysisRequests(
   const spectrumByKey = new Map();
   const vectorscopeByKey = new Map();
   const stereoMapByKey = new Map();
+  let spectralWaveform = false;
 
   const addStereoMapRequest = (panelId, controls) => {
     const measurement = stereoMapMeasurementControlsFromControls(controls);
@@ -180,6 +181,8 @@ export function deriveAnalysisRequests(
         panelId,
         state.panelControlsById?.[panelId] ?? state.panelControls ?? undefined
       );
+    } else if (moduleId === "waveform") {
+      spectralWaveform ||= controls.waveformFrequencyColor || controls.waveformCentroid;
     }
   }
 
@@ -207,6 +210,7 @@ export function deriveAnalysisRequests(
     overCapSpectrumRequests: spectrum.overCap,
     overCapVectorscopeRequests: vectorscope.overCap,
     overCapStereoMapRequests: stereoMap.overCap,
+    spectralWaveform,
     statusByPanelId,
   };
 }

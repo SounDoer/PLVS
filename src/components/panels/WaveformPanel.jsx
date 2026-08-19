@@ -19,6 +19,13 @@ import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
+import { normalizePanelControls } from "../../lib/panelControls.js";
+import {
+  centroidYFraction,
+  parseCssRgb,
+  sliceSpectralWaveformMetrics,
+  waveformFrequencyRgb,
+} from "../../math/spectralWaveformMath.js";
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-chart-y-axis-rail-w";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
@@ -54,17 +61,44 @@ function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiv
     typeof histSourceList.rowAt === "function"
       ? histSourceList.rowAt(index)
       : histSourceList[index];
+  const lowerIndex = Math.max(0, Math.min(total - 1, Math.floor(newestVisible)));
+  const upperIndex = Math.max(0, Math.min(total - 1, Math.ceil(newestVisible)));
+  const lowerTimestampMs = Number(rowAt(lowerIndex)?.timestampMs);
+  const upperTimestampMs = Number(rowAt(upperIndex)?.timestampMs);
+  const newestVisibleTimestampMs =
+    Number.isFinite(lowerTimestampMs) && Number.isFinite(upperTimestampMs)
+      ? lowerTimestampMs +
+        (upperTimestampMs - lowerTimestampMs) * (newestVisible - Math.floor(newestVisible))
+      : Number.isFinite(upperTimestampMs)
+        ? upperTimestampMs
+        : lowerTimestampMs;
   return {
     startIndex,
     endIndex,
     startRow: rowAt(startIndex) ?? null,
     endRow: rowAt(endIndex) ?? null,
+    newestVisibleTimestampMs,
   };
 }
 
 export function drawWaveformCanvas(
   canvas,
-  { mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, selected }
+  {
+    mins,
+    maxes,
+    bucketCount,
+    fracPhase,
+    firstBucket,
+    lastBucket,
+    selected,
+    frequencyColor,
+    lowMidSplitHz,
+    midHighSplitHz,
+    dominantFrequencyHz,
+    spectralCentroidHz,
+    tonality,
+    centroid,
+  }
 ) {
   if (!canvas || canvas.width === 0 || canvas.height === 0) return;
 
@@ -83,6 +117,17 @@ export function drawWaveformCanvas(
   const fillOpacity =
     parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
   const strokeWidth = parseFloat(style.getPropertyValue("--ui-waveform-stroke-width").trim()) || 1;
+  const spectralPalette = {
+    low: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-low"), [240, 90, 36]),
+    mid: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-mid"), [217, 70, 239]),
+    high: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-high"), [67, 56, 202]),
+    neutral: parseCssRgb(
+      style.getPropertyValue("--ui-waveform-frequency-neutral"),
+      [139, 139, 130]
+    ),
+  };
+  const centroidColor =
+    style.getPropertyValue("--ui-waveform-centroid").trim() || "rgba(248,250,252,0.9)";
 
   ctx.clearRect(0, 0, W, H);
 
@@ -97,36 +142,96 @@ export function drawWaveformCanvas(
   if (firstBucket < 0 || !bucketCount || !mins?.length || !maxes?.length) return;
 
   const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
-  ctx.beginPath();
-  for (let j = firstBucket; j <= lastBucket; j++) {
-    const x = xFor(j);
-    const y = cy - maxes[j] * cy;
-    if (j === firstBucket) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  for (let j = lastBucket; j >= firstBucket; j--) {
-    const x = xFor(j);
-    const y = cy - mins[j] * cy;
-    ctx.lineTo(x, y);
-  }
-  ctx.closePath();
+  if (frequencyColor) {
+    for (let j = firstBucket; j <= lastBucket; j++) {
+      const next = Math.min(lastBucket, j + 1);
+      const color = waveformFrequencyRgb(
+        dominantFrequencyHz?.[j] ?? 0,
+        tonality?.[j] ?? 0,
+        { lowMidSplitHz, midHighSplitHz },
+        spectralPalette
+      );
+      const colorCss = `rgb(${color.join(" ")})`;
+      const x = xFor(j);
+      const nextX = xFor(next) + (next === j ? 1 : 0);
+      const yMax = cy - Math.max(0, maxes[j]) * cy;
+      const yMin = cy - Math.min(0, mins[j]) * cy;
+      const nextYMax = cy - Math.max(0, maxes[next]) * cy;
+      const nextYMin = cy - Math.min(0, mins[next]) * cy;
+      const fillLeft = x - 0.5;
+      const fillRight = nextX + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(fillLeft, yMax);
+      ctx.lineTo(fillRight, nextYMax);
+      ctx.lineTo(fillRight, nextYMin);
+      ctx.lineTo(fillLeft, yMin);
+      ctx.closePath();
+      // Frequency Color is the waveform body, not a translucent overlay on the classic trace.
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = colorCss;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = colorCss;
+      ctx.lineWidth = strokeWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, yMax);
+      ctx.lineTo(nextX, nextYMax);
+      ctx.moveTo(x, yMin);
+      ctx.lineTo(nextX, nextYMin);
+      ctx.stroke();
+    }
+  } else {
+    ctx.beginPath();
+    for (let j = firstBucket; j <= lastBucket; j++) {
+      const x = xFor(j);
+      const y = cy - maxes[j] * cy;
+      if (j === firstBucket) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    for (let j = lastBucket; j >= firstBucket; j--) {
+      const x = xFor(j);
+      const y = cy - mins[j] * cy;
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
 
-  ctx.globalAlpha = fillOpacity;
-  ctx.fillStyle = strokeColor;
-  ctx.fill();
-  ctx.globalAlpha = 1;
+    ctx.globalAlpha = fillOpacity;
+    ctx.fillStyle = strokeColor;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = strokeColor;
+    // WAVEFORM_MAX_DEVICE_PIXEL_RATIO caps the backing store width at 1:1 with CSS pixels, so the
+    // token is the width in device pixels as-is. Scaling it by dpr again doubles the trace on HiDPI.
+    ctx.lineWidth = strokeWidth;
+    ctx.stroke();
+  }
 
-  ctx.strokeStyle = strokeColor;
-  // WAVEFORM_MAX_DEVICE_PIXEL_RATIO caps the backing store width at 1:1 with CSS pixels, so the
-  // token is the width in device pixels as-is. Scaling it by dpr again doubles the trace on HiDPI.
-  ctx.lineWidth = strokeWidth;
-  ctx.stroke();
+  if (centroid && spectralCentroidHz?.length) {
+    ctx.strokeStyle = centroidColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    let drawing = false;
+    for (let j = firstBucket; j <= lastBucket; j++) {
+      const yFraction = centroidYFraction(spectralCentroidHz[j]);
+      if (yFraction === null) {
+        drawing = false;
+        continue;
+      }
+      const x = xFor(j);
+      const y = yFraction * H;
+      if (drawing) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+      drawing = true;
+    }
+    ctx.stroke();
+  }
 }
 
 export function WaveformPanel({ compact = false }) {
   const frameData = useFrameData();
   const historyData = useHistoryData();
-  const { panelVisible } = usePanelInstanceData();
+  const { panelVisible, panelControls } = usePanelInstanceData();
+  const waveformControls = useMemo(() => normalizePanelControls(panelControls), [panelControls]);
   const panelData = useMemo(() => ({ ...historyData, ...frameData }), [frameData, historyData]);
   if (panelVisible === false) {
     return (
@@ -140,13 +245,16 @@ export function WaveformPanel({ compact = false }) {
     );
   }
 
-  return <WaveformPanelContent compact={compact} audioData={panelData} />;
+  return (
+    <WaveformPanelContent compact={compact} audioData={panelData} controls={waveformControls} />
+  );
 }
 
-function WaveformPanelContent({ compact, audioData }) {
+function WaveformPanelContent({ compact, audioData, controls }) {
   const {
     histSourceList,
     waveformHistoryIndex,
+    visualWaveformHist,
     visibleSamples,
     effectiveOffsetSamples,
     channelCount,
@@ -238,6 +346,37 @@ function WaveformPanelContent({ compact, audioData }) {
       waveformHistoryWindow.endRow?.timestampMs,
     ]
   );
+  const spectralMetrics = useMemo(
+    () =>
+      sliceSpectralWaveformMetrics(
+        visualWaveformHist,
+        waveformHistoryWindow.startRow?.timestampMs,
+        waveformHistoryWindow.endRow?.timestampMs,
+        bucketCount,
+        effectiveChannels,
+        {
+          newestVisibleTimestampMs: waveformHistoryWindow.newestVisibleTimestampMs,
+          visibleSamples: visibleSamples ?? 0,
+          pixelWidth: canvasW,
+          fracPhase,
+          waveformRows: waveformSourceList,
+          effectiveOffsetSamples: effectiveOffsetSamples ?? 0,
+          nominalIntervalMs: HIST_SAMPLE_SEC * 1000,
+        }
+      ),
+    [
+      visualWaveformHist,
+      visualWaveformHist?.version,
+      waveformHistoryWindow.startRow?.timestampMs,
+      waveformHistoryWindow.endRow?.timestampMs,
+      waveformHistoryWindow.newestVisibleTimestampMs,
+      bucketCount,
+      fracPhase,
+      visibleSamples,
+      canvasW,
+      effectiveChannels,
+    ]
+  );
 
   const {
     hover: waveformHover,
@@ -288,6 +427,13 @@ function WaveformPanelContent({ compact, audioData }) {
             lastBucket={lastBucket}
             compact={compact}
             selected={selectedOffset >= 0}
+            frequencyColor={controls.waveformFrequencyColor}
+            lowMidSplitHz={controls.waveformLowMidSplitHz}
+            midHighSplitHz={controls.waveformMidHighSplitHz}
+            dominantFrequencyHz={spectralMetrics.dominantFrequencyHz[ch]}
+            spectralCentroidHz={spectralMetrics.spectralCentroidHz[ch]}
+            tonality={spectralMetrics.tonality[ch]}
+            centroid={controls.waveformCentroid}
           />
         ))}
 
@@ -444,6 +590,13 @@ function WaveformLane({
   lastBucket,
   compact,
   selected,
+  frequencyColor,
+  lowMidSplitHz,
+  midHighSplitHz,
+  dominantFrequencyHz,
+  spectralCentroidHz,
+  tonality,
+  centroid,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -477,9 +630,32 @@ function WaveformLane({
       firstBucket,
       lastBucket,
       selected,
+      frequencyColor,
+      lowMidSplitHz,
+      midHighSplitHz,
+      dominantFrequencyHz,
+      spectralCentroidHz,
+      tonality,
+      centroid,
     };
     scheduleDraw();
-  }, [mins, maxes, bucketCount, fracPhase, firstBucket, lastBucket, selected, scheduleDraw]);
+  }, [
+    mins,
+    maxes,
+    bucketCount,
+    fracPhase,
+    firstBucket,
+    lastBucket,
+    selected,
+    frequencyColor,
+    lowMidSplitHz,
+    midHighSplitHz,
+    dominantFrequencyHz,
+    spectralCentroidHz,
+    tonality,
+    centroid,
+    scheduleDraw,
+  ]);
 
   useEffect(
     () => () => {

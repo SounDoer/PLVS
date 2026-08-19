@@ -103,6 +103,10 @@ export const DEFAULT_PANEL_CONTROLS = {
   stereoMapMonoLossYMinDb: -24,
   stereoMapMsRatioYMinDb: -48,
   stereoMapMsRatioYMaxDb: 24,
+  waveformFrequencyColor: false,
+  waveformLowMidSplitHz: 200,
+  waveformMidHighSplitHz: 2000,
+  waveformCentroid: false,
 };
 
 const STATS_IDS = new Set(STATS_OPTIONS.map((option) => option.id));
@@ -367,6 +371,26 @@ function normalizeKnownIds(raw, knownIds, fallback) {
   return normalized;
 }
 
+function normalizeWaveformSplits(raw) {
+  const lowMid = Math.round(
+    clampNumber(raw?.waveformLowMidSplitHz, 20, 20000, DEFAULT_PANEL_CONTROLS.waveformLowMidSplitHz)
+  );
+  const midHigh = Math.round(
+    clampNumber(
+      raw?.waveformMidHighSplitHz,
+      20,
+      20000,
+      DEFAULT_PANEL_CONTROLS.waveformMidHighSplitHz
+    )
+  );
+  return lowMid < midHigh
+    ? { lowMid, midHigh }
+    : {
+        lowMid: DEFAULT_PANEL_CONTROLS.waveformLowMidSplitHz,
+        midHigh: DEFAULT_PANEL_CONTROLS.waveformMidHighSplitHz,
+      };
+}
+
 function normalizeOrder(raw, orderTemplate) {
   const known = new Set(orderTemplate);
   const ordered = [];
@@ -386,6 +410,7 @@ function normalizeOrder(raw, orderTemplate) {
 }
 
 export function normalizePanelControls(raw) {
+  const waveformSplits = normalizeWaveformSplits(raw);
   const spectrumXRange = normalizeLogRange({
     rawMin: raw?.spectrumXMinFreq,
     rawMax: raw?.spectrumXMaxFreq,
@@ -496,5 +521,15 @@ export function normalizePanelControls(raw) {
     stereoMapMonoLossYMinDb: normalizeStereoMapMonoLossYMinDb(raw?.stereoMapMonoLossYMinDb),
     stereoMapMsRatioYMinDb: stereoMapMsRatioYRange.min,
     stereoMapMsRatioYMaxDb: stereoMapMsRatioYRange.max,
+    waveformFrequencyColor:
+      typeof raw?.waveformFrequencyColor === "boolean"
+        ? raw.waveformFrequencyColor
+        : DEFAULT_PANEL_CONTROLS.waveformFrequencyColor,
+    waveformLowMidSplitHz: waveformSplits.lowMid,
+    waveformMidHighSplitHz: waveformSplits.midHigh,
+    waveformCentroid:
+      typeof raw?.waveformCentroid === "boolean"
+        ? raw.waveformCentroid
+        : DEFAULT_PANEL_CONTROLS.waveformCentroid,
   };
 }

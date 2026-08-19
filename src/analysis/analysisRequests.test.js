@@ -30,6 +30,22 @@ function stereoMapControls(first, second, overrides = {}) {
 }
 
 describe("analysisRequests", () => {
+  it("activates shared spectral Waveform analysis for either display toggle", () => {
+    const makeState = (controls) =>
+      state({
+        panelsById: { waveform: { id: "waveform", moduleId: "waveform" } },
+        panelControlsById: { waveform: { ...DEFAULT_PANEL_CONTROLS, ...controls } },
+      });
+
+    expect(deriveAnalysisRequests(makeState({})).spectralWaveform).toBe(false);
+    expect(
+      deriveAnalysisRequests(makeState({ waveformFrequencyColor: true })).spectralWaveform
+    ).toBe(true);
+    expect(deriveAnalysisRequests(makeState({ waveformCentroid: true })).spectralWaveform).toBe(
+      true
+    );
+  });
+
   it("deduplicates identical spectrum requests", () => {
     const s = state({
       panelsById: {

@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use rustfft::num_complex::Complex32;
 
 use super::spectral_transform::{ComplexSpectralFrame, SpectralTransform};
+use super::spectral_waveform::{spectral_waveform_metric, SpectralWaveformMetric};
 use super::spectrum_bank::OctaveSmoothing;
 use super::spectrum_bank::{
   spectrum_frequency_bounds, FFT_BIG, FFT_MID, FFT_SMALL, OVERLAP_BIG, OVERLAP_MID, OVERLAP_SMALL,
@@ -164,9 +165,9 @@ impl SharedSpectralFrameSet<'_> {
   ) -> Option<SharedSpectralFrame<'_>> {
     let transforms = self.streams.get(&stream_id)?;
     let frame = match fft_size {
-      FFT_BIG => transforms.big.last_frame(),
+      FFT_BIG => transforms.big.as_ref()?.last_frame(),
       FFT_MID => transforms.mid.last_frame(),
-      FFT_SMALL => transforms.small.last_frame(),
+      FFT_SMALL => transforms.small.as_ref()?.last_frame(),
       _ => None,
     }?;
     (frame.sample_clock == self.sample_clock).then_some(SharedSpectralFrame {
@@ -198,24 +199,45 @@ impl SharedSpectralFrameSet<'_> {
 }
 
 struct StreamTransforms {
-  big: SpectralTransform,
+  big: Option<SpectralTransform>,
   mid: SpectralTransform,
-  small: SpectralTransform,
+  small: Option<SpectralTransform>,
 }
 
 impl StreamTransforms {
-  fn new(sample_clock: u64) -> Self {
+  fn new(sample_clock: u64, full_resolution: bool) -> Self {
     Self {
-      big: SpectralTransform::new(FFT_BIG, OVERLAP_BIG, sample_clock),
+      big: full_resolution.then(|| SpectralTransform::new(FFT_BIG, OVERLAP_BIG, sample_clock)),
       mid: SpectralTransform::new(FFT_MID, OVERLAP_MID, sample_clock),
-      small: SpectralTransform::new(FFT_SMALL, OVERLAP_SMALL, sample_clock),
+      small: full_resolution
+        .then(|| SpectralTransform::new(FFT_SMALL, OVERLAP_SMALL, sample_clock)),
+    }
+  }
+
+  fn set_full_resolution(&mut self, enabled: bool, sample_clock: u64) {
+    if enabled {
+      self
+        .big
+        .get_or_insert_with(|| SpectralTransform::new(FFT_BIG, OVERLAP_BIG, sample_clock));
+      self
+        .small
+        .get_or_insert_with(|| SpectralTransform::new(FFT_SMALL, OVERLAP_SMALL, sample_clock));
+    } else {
+      self.big = None;
+      self.small = None;
     }
   }
 
   fn all_three_ready(&self) -> bool {
-    self.big.last_frame().is_some()
+    self
+      .big
+      .as_ref()
+      .is_some_and(|transform| transform.last_frame().is_some())
       && self.mid.last_frame().is_some()
-      && self.small.last_frame().is_some()
+      && self
+        .small
+        .as_ref()
+        .is_some_and(|transform| transform.last_frame().is_some())
   }
 }
 
@@ -260,25 +282,55 @@ impl SharedSpectralEngine {
 
   pub(crate) fn fft_topology(&self) -> SpectralFftTopology {
     let stream_count = self.streams.len();
+    let big_count = self
+      .streams
+      .values()
+      .filter(|stream| stream.big.is_some())
+      .count();
+    let small_count = self
+      .streams
+      .values()
+      .filter(|stream| stream.small.is_some())
+      .count();
     SpectralFftTopology {
       stream_count,
-      transform_count_by_resolution: [stream_count; 3],
-      total_transform_count: stream_count * 3,
+      transform_count_by_resolution: [big_count, stream_count, small_count],
+      total_transform_count: big_count + stream_count + small_count,
     }
   }
 
   pub(crate) fn update_streams(&mut self, desired: impl IntoIterator<Item = TransformStreamId>) {
-    let desired: std::collections::BTreeSet<_> = desired.into_iter().collect();
+    self.update_stream_needs(desired, []);
+  }
+
+  pub(crate) fn update_stream_needs(
+    &mut self,
+    full_resolution: impl IntoIterator<Item = TransformStreamId>,
+    middle_resolution: impl IntoIterator<Item = TransformStreamId>,
+  ) {
+    let full_resolution: BTreeSet<_> = full_resolution.into_iter().collect();
+    let desired: BTreeSet<_> = full_resolution
+      .iter()
+      .copied()
+      .chain(middle_resolution)
+      .collect();
     self
       .streams
       .retain(|stream_id, _| desired.contains(stream_id));
     for stream_id in desired {
-      self
-        .streams
-        .entry(stream_id)
-        .or_insert_with(|| StreamTransforms::new(self.sample_clock));
+      let transforms = self.streams.entry(stream_id).or_insert_with(|| {
+        StreamTransforms::new(self.sample_clock, full_resolution.contains(&stream_id))
+      });
+      transforms.set_full_resolution(full_resolution.contains(&stream_id), self.sample_clock);
       #[cfg(test)]
-      for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
+      for fft_size in if full_resolution.contains(&stream_id) {
+        [Some(FFT_BIG), Some(FFT_MID), Some(FFT_SMALL)]
+      } else {
+        [None, Some(FFT_MID), None]
+      }
+      .into_iter()
+      .flatten()
+      {
         self
           .fft_invocations
           .entry((stream_id, fft_size))
@@ -316,9 +368,21 @@ impl SharedSpectralEngine {
         #[cfg(test)]
         {
           let emitted = [
-            (FFT_BIG, transforms.big.push_sample(sample).is_some()),
+            (
+              FFT_BIG,
+              transforms
+                .big
+                .as_mut()
+                .is_some_and(|transform| transform.push_sample(sample).is_some()),
+            ),
             (FFT_MID, transforms.mid.push_sample(sample).is_some()),
-            (FFT_SMALL, transforms.small.push_sample(sample).is_some()),
+            (
+              FFT_SMALL,
+              transforms
+                .small
+                .as_mut()
+                .is_some_and(|transform| transform.push_sample(sample).is_some()),
+            ),
           ];
           for (fft_size, did_emit) in emitted {
             if did_emit {
@@ -331,9 +395,13 @@ impl SharedSpectralEngine {
         }
         #[cfg(not(test))]
         {
-          let _ = transforms.big.push_sample(sample);
+          if let Some(transform) = transforms.big.as_mut() {
+            let _ = transform.push_sample(sample);
+          }
           let _ = transforms.mid.push_sample(sample);
-          let _ = transforms.small.push_sample(sample);
+          if let Some(transform) = transforms.small.as_mut() {
+            let _ = transform.push_sample(sample);
+          }
         }
       }
 
@@ -546,8 +614,10 @@ pub(crate) struct SharedSpectralRuntime {
   engine: SharedSpectralEngine,
   current_plan: SpectralPlan,
   desired_streams: Vec<TransformStreamId>,
+  desired_waveform_streams: Vec<TransformStreamId>,
   consumers: BTreeMap<String, RuntimeConsumer>,
   stereo_map_consumers: BTreeMap<String, RuntimeStereoMapConsumer>,
+  spectral_waveform_metrics: BTreeMap<usize, SpectralWaveformMetric>,
   next_identity: u64,
   #[cfg(test)]
   removed_consumer_counts: BTreeMap<String, [u64; 3]>,
@@ -560,12 +630,15 @@ impl SharedSpectralRuntime {
       engine: SharedSpectralEngine::new(),
       current_plan: SpectralPlan {
         streams: Vec::new(),
+        waveform_streams: Vec::new(),
         consumers: Vec::new(),
         stereo_map_consumers: Vec::new(),
       },
       desired_streams: Vec::new(),
+      desired_waveform_streams: Vec::new(),
       consumers: BTreeMap::new(),
       stereo_map_consumers: BTreeMap::new(),
+      spectral_waveform_metrics: BTreeMap::new(),
       next_identity: 1,
       #[cfg(test)]
       removed_consumer_counts: BTreeMap::new(),
@@ -663,6 +736,12 @@ impl SharedSpectralRuntime {
       }
     }
     self.desired_streams = plan.streams;
+    self.desired_waveform_streams = plan.waveform_streams;
+    self.spectral_waveform_metrics.retain(|channel, _| {
+      self
+        .desired_streams
+        .contains(&TransformStreamId::Physical(*channel))
+    });
     self.refresh_engine_streams();
   }
 
@@ -685,10 +764,23 @@ impl SharedSpectralRuntime {
   pub(crate) fn push_interleaved(&mut self, interleaved: &[f32], channels: u16) {
     let consumers = &mut self.consumers;
     let stereo_map_consumers = &mut self.stereo_map_consumers;
+    let spectral_waveform_metrics = &mut self.spectral_waveform_metrics;
+    let sample_rate = self.sample_rate;
     let mut switched = false;
     self
       .engine
       .push_interleaved(interleaved, channels, |frames| {
+        frames.for_each_due(|frame| {
+          if frame.fft_size != FFT_MID {
+            return;
+          }
+          if let TransformStreamId::Physical(channel) = frame.stream_id {
+            spectral_waveform_metrics.insert(
+              channel,
+              spectral_waveform_metric(frame.bins, frame.fft_size, sample_rate),
+            );
+          }
+        });
         for state in consumers.values_mut() {
           if let Some(target) = state.target.as_ref() {
             if input_is_ready(&frames, target.input) {
@@ -746,20 +838,29 @@ impl SharedSpectralRuntime {
   }
 
   fn refresh_engine_streams(&mut self) {
-    let mut streams: BTreeSet<_> = self.desired_streams.iter().copied().collect();
+    let waveform_streams: BTreeSet<_> = self.desired_waveform_streams.iter().copied().collect();
+    let mut full_resolution_streams: BTreeSet<_> = self
+      .desired_streams
+      .iter()
+      .copied()
+      .filter(|stream| !waveform_streams.contains(stream))
+      .collect();
     for state in self.consumers.values() {
-      streams.extend(input_streams(state.binding.input));
+      full_resolution_streams.extend(input_streams(state.binding.input));
       if let Some(target) = &state.target {
-        streams.extend(input_streams(target.input));
+        full_resolution_streams.extend(input_streams(target.input));
       }
     }
     for state in self.stereo_map_consumers.values() {
-      streams.extend(input_streams(state.binding.input));
+      full_resolution_streams.extend(input_streams(state.binding.input));
       if let Some(target) = &state.target {
-        streams.extend(input_streams(target.input));
+        full_resolution_streams.extend(input_streams(target.input));
       }
     }
-    self.engine.update_streams(streams);
+    self.engine.update_stream_needs(
+      full_resolution_streams,
+      self.desired_waveform_streams.iter().copied(),
+    );
   }
 
   pub(crate) fn consumer_output_at_dsp_time(
@@ -776,6 +877,26 @@ impl SharedSpectralRuntime {
 
   pub(crate) fn stereo_map_output(&mut self, key: &str) -> Option<&StereoMapPrimitiveRow> {
     self.stereo_map_consumers.get_mut(key)?.consumer.output()
+  }
+
+  pub(crate) fn spectral_waveform_metrics(
+    &self,
+    channel_count: usize,
+  ) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+    let mut dominant_frequency_hz = Vec::with_capacity(channel_count);
+    let mut spectral_centroid_hz = Vec::with_capacity(channel_count);
+    let mut tonality = Vec::with_capacity(channel_count);
+    for channel in 0..channel_count {
+      let metric = self
+        .spectral_waveform_metrics
+        .get(&channel)
+        .copied()
+        .unwrap_or_default();
+      dominant_frequency_hz.push(metric.dominant_frequency_hz);
+      spectral_centroid_hz.push(metric.spectral_centroid_hz);
+      tonality.push(metric.tonality);
+    }
+    (dominant_frequency_hz, spectral_centroid_hz, tonality)
   }
 
   #[cfg(test)]
@@ -1585,6 +1706,7 @@ mod tests {
   #[test]
   fn stereo_map_consumers_share_spectrum_transforms_and_publish_after_all_three_ready() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![pair_request("combined", 0, 1, "combined", 50.0, "off")],
       vectorscope: vec![],
       stereo_map: vec![
@@ -1611,6 +1733,7 @@ mod tests {
   #[test]
   fn stereo_map_request_keys_keep_independent_speed_ema_state() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![],
       vectorscope: vec![],
       stereo_map: vec![
@@ -1642,6 +1765,7 @@ mod tests {
     runtime.update_plan(plan_analysis_requests(
       4,
       &AnalysisRequests {
+        spectral_waveform: false,
         stereo_map: vec![old_request.clone()],
         ..AnalysisRequests::default()
       },
@@ -1660,6 +1784,7 @@ mod tests {
     runtime.update_plan(plan_analysis_requests(
       4,
       &AnalysisRequests {
+        spectral_waveform: false,
         stereo_map: vec![old_request, new_request],
         ..AnalysisRequests::default()
       },
@@ -1697,11 +1822,45 @@ mod tests {
     runtime.update_plan(plan_analysis_requests(
       4,
       &AnalysisRequests {
+        spectral_waveform: false,
         stereo_map: vec![stereo_map_pair_request("map-23", 2, 3, 25.0, "off")],
         ..AnalysisRequests::default()
       },
     ));
     assert!(runtime.stereo_map_output("map-01").is_none());
     assert_eq!(runtime.streams_for_test(), vec![physical(2), physical(3)]);
+  }
+
+  #[test]
+  fn spectral_waveform_metrics_reuse_planned_physical_transforms() {
+    let requests = AnalysisRequests {
+      spectral_waveform: true,
+      ..AnalysisRequests::default()
+    };
+    let mut runtime = SharedSpectralRuntime::new(48_000.0);
+    runtime.update_plan(plan_analysis_requests(2, &requests));
+    let topology = runtime.fft_topology();
+    assert_eq!(topology.transform_count(FFT_BIG), 0);
+    assert_eq!(topology.transform_count(FFT_MID), 2);
+    assert_eq!(topology.transform_count(FFT_SMALL), 0);
+    assert_eq!(topology.total_transform_count, 2);
+    let pcm: Vec<f32> = (0..FFT_MID)
+      .flat_map(|sample| {
+        let time = sample as f64 / 48_000.0;
+        [
+          (0.5 * (std::f64::consts::TAU * 1_000.0 * time).sin()) as f32,
+          (0.5 * (std::f64::consts::TAU * 4_000.0 * time).sin()) as f32,
+        ]
+      })
+      .collect();
+
+    runtime.push_interleaved(&pcm, 2);
+    let (dominant, centroid, tonality) = runtime.spectral_waveform_metrics(2);
+    assert!((dominant[0] - 1_000.0).abs() < 20.0);
+    assert!((dominant[1] - 4_000.0).abs() < 20.0);
+    assert!((centroid[0] - 1_000.0).abs() < 50.0);
+    assert!((centroid[1] - 4_000.0).abs() < 50.0);
+    assert!(tonality.iter().all(|value| *value > 0.5));
+    assert_eq!(runtime.streams_for_test(), vec![physical(0), physical(1)]);
   }
 }

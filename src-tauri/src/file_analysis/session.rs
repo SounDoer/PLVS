@@ -618,6 +618,7 @@ mod tests {
     let request_key = "file-spectrum".to_string();
     let config = WorkerConfig {
       requests: AnalysisRequests {
+        spectral_waveform: false,
         spectrum: vec![SpectrumAnalysisRequest {
           key: request_key.clone(),
           channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
@@ -710,6 +711,7 @@ mod tests {
     let key = "file-stereo-map".to_string();
     let config = WorkerConfig {
       requests: AnalysisRequests {
+        spectral_waveform: false,
         spectrum: Vec::new(),
         vectorscope: Vec::new(),
         stereo_map: vec![StereoMapAnalysisRequest {
@@ -784,6 +786,7 @@ mod tests {
     let chunk_frames = file_pipeline_chunk_frames(sr);
     let request_key = "divergent-timelines".to_string();
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: request_key.clone(),
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },

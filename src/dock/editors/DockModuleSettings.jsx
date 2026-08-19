@@ -9,6 +9,7 @@ import {
   SettingsSwitch,
   SpectrumDisplaySettingsRows,
   StatsMetricsSettingsRow,
+  WaveformSettingsRows,
 } from "../../components/PanelSettingsContent.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
@@ -259,6 +260,20 @@ function SettingsBody({
         }
         onReorder={(statsOrder) => onChange({ ...controls, statsOrder })}
         showReset={false}
+      />
+    );
+  }
+  if (moduleId === "waveform") {
+    return (
+      <WaveformSettingsRows
+        frequencyColor={controls.frequencyColor}
+        lowMidSplitHz={controls.lowMidSplitHz}
+        midHighSplitHz={controls.midHighSplitHz}
+        centroid={controls.centroid}
+        onFrequencyColorChange={(frequencyColor) => onChange({ ...controls, frequencyColor })}
+        onLowMidSplitChange={(lowMidSplitHz) => onChange({ ...controls, lowMidSplitHz })}
+        onMidHighSplitChange={(midHighSplitHz) => onChange({ ...controls, midHighSplitHz })}
+        onCentroidChange={(centroid) => onChange({ ...controls, centroid })}
       />
     );
   }

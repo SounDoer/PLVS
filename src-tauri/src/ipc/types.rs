@@ -56,6 +56,7 @@ pub struct AnalysisRequests {
   pub spectrum: Vec<SpectrumAnalysisRequest>,
   pub vectorscope: Vec<VectorscopeAnalysisRequest>,
   pub stereo_map: Vec<StereoMapAnalysisRequest>,
+  pub spectral_waveform: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -232,6 +233,12 @@ pub struct VisualHistEntry {
   pub waveform_min: Vec<f32>,
   /// Per-channel linear amplitude maximum over this ~40ms window.
   pub waveform_max: Vec<f32>,
+  /// Per-channel dominant frequency in Hz. Zero means silence or no spectral estimate.
+  pub dominant_frequency_hz: Vec<f32>,
+  /// Per-channel power-weighted spectral centroid in Hz.
+  pub spectral_centroid_hz: Vec<f32>,
+  /// Per-channel normalized spectral concentration in [0, 1].
+  pub tonality: Vec<f32>,
   /// Pearson correlation coefficient [-1, 1].
   pub correlation: f64,
   pub side_to_mid_db: f64,

@@ -6,6 +6,21 @@ import { PanelSettingsMenu } from "./PanelSettingsMenu.jsx";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 
 describe("PanelSettingsMenu", () => {
+  it("exposes Waveform settings from the panel header", () => {
+    render(
+      <PanelSettingsMenu
+        activeTab="waveform"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+        onPanelControlsReset={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("Panel settings"));
+    expect(screen.getByText("Waveform")).toBeTruthy();
+    expect(screen.getByLabelText("waveform frequency color")).toBeTruthy();
+  });
+
   it("renders a single settings trigger and opens level meter settings", () => {
     const onPanelControlsChange = vi.fn();
 

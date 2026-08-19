@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronUp, ExternalLink, GripVertical, RotateCcw } from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
@@ -230,6 +230,127 @@ export function SettingsRangeInput({
         style={{ width: `${maxWidthCh}ch` }}
       />
     </div>
+  );
+}
+
+export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suffix, onCommit }) {
+  const formatDraftValue = (nextValue) =>
+    Number.isFinite(nextValue) ? String(Math.round(nextValue)) : String(nextValue ?? "");
+  const [draft, setDraft] = useState(formatDraftValue(value));
+  const skipNextBlurRef = useRef(false);
+
+  useEffect(() => {
+    setDraft(formatDraftValue(value));
+  }, [value]);
+
+  const restore = () => setDraft(formatDraftValue(value));
+  const commit = (nextDraft) => {
+    const parsed = Number(nextDraft);
+    const nextValue = Math.round(parsed / step) * step;
+    if (
+      !Number.isFinite(parsed) ||
+      !Number.isFinite(nextValue) ||
+      nextValue < min ||
+      nextValue > max ||
+      onCommit(nextValue) === false
+    ) {
+      restore();
+      return;
+    }
+    setDraft(formatDraftValue(nextValue));
+  };
+  const widthCh = Math.min(8, Math.max(4.5, draft.length + 1.5));
+
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <input
+        aria-label={ariaLabel}
+        type="text"
+        inputMode="numeric"
+        step={step}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={(event) => {
+          if (skipNextBlurRef.current) {
+            skipNextBlurRef.current = false;
+            return;
+          }
+          commit(event.currentTarget.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            skipNextBlurRef.current = true;
+            commit(event.currentTarget.value);
+            event.currentTarget.blur();
+          } else if (event.key === "Escape") {
+            skipNextBlurRef.current = true;
+            restore();
+            event.currentTarget.blur();
+          }
+        }}
+        className="h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring"
+        style={{ width: `${widthCh}ch` }}
+      />
+      {suffix ? <span className="text-muted-foreground/60">{suffix}</span> : null}
+    </div>
+  );
+}
+
+export function WaveformSettingsRows({
+  frequencyColor,
+  lowMidSplitHz,
+  midHighSplitHz,
+  centroid,
+  onFrequencyColorChange,
+  onLowMidSplitChange,
+  onMidHighSplitChange,
+  onCentroidChange,
+}) {
+  return (
+    <>
+      <SettingsRow label="Frequency Color">
+        <SettingsSwitch
+          aria-label="waveform frequency color"
+          checked={frequencyColor}
+          onCheckedChange={onFrequencyColorChange}
+        />
+      </SettingsRow>
+      {frequencyColor ? (
+        <>
+          <SettingsRow label="Low / Mid Split">
+            <SettingsNumberInput
+              ariaLabel="waveform low mid split"
+              value={lowMidSplitHz}
+              min={20}
+              max={20000}
+              suffix="Hz"
+              onCommit={(nextValue) =>
+                nextValue < midHighSplitHz ? onLowMidSplitChange(nextValue) : false
+              }
+            />
+          </SettingsRow>
+          <SettingsRow label="Mid / High Split">
+            <SettingsNumberInput
+              ariaLabel="waveform mid high split"
+              value={midHighSplitHz}
+              min={20}
+              max={20000}
+              suffix="Hz"
+              onCommit={(nextValue) =>
+                nextValue > lowMidSplitHz ? onMidHighSplitChange(nextValue) : false
+              }
+            />
+          </SettingsRow>
+        </>
+      ) : null}
+      <SettingsRow label="Centroid">
+        <SettingsSwitch
+          aria-label="waveform centroid"
+          checked={centroid}
+          onCheckedChange={onCentroidChange}
+        />
+      </SettingsRow>
+    </>
   );
 }
 
@@ -992,6 +1113,41 @@ export function PanelSettingsContent({
             }}
           />
         </SettingsRow>
+      </SettingsGroup>
+    );
+  }
+
+  if (activeTab === "waveform") {
+    if (!panelControls || typeof onPanelControlsChange !== "function") return null;
+
+    const normalizedPanelControls = normalizePanelControls(panelControls);
+    const updateWaveformControls = (changes) => {
+      onPanelControlsChange(
+        normalizePanelControls({
+          ...normalizedPanelControls,
+          ...changes,
+        })
+      );
+    };
+
+    return (
+      <SettingsGroup>
+        <WaveformSettingsRows
+          frequencyColor={normalizedPanelControls.waveformFrequencyColor}
+          lowMidSplitHz={normalizedPanelControls.waveformLowMidSplitHz}
+          midHighSplitHz={normalizedPanelControls.waveformMidHighSplitHz}
+          centroid={normalizedPanelControls.waveformCentroid}
+          onFrequencyColorChange={(waveformFrequencyColor) =>
+            updateWaveformControls({ waveformFrequencyColor })
+          }
+          onLowMidSplitChange={(waveformLowMidSplitHz) =>
+            updateWaveformControls({ waveformLowMidSplitHz })
+          }
+          onMidHighSplitChange={(waveformMidHighSplitHz) =>
+            updateWaveformControls({ waveformMidHighSplitHz })
+          }
+          onCentroidChange={(waveformCentroid) => updateWaveformControls({ waveformCentroid })}
+        />
       </SettingsGroup>
     );
   }

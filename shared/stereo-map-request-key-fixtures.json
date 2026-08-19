@@ -74,6 +74,7 @@
         "speedPercent": 75,
         "octaveSmoothing": "1/6"
       }
-    ]
+    ],
+    "spectralWaveform": false
   }
 }

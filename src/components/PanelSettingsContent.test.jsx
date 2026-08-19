@@ -93,6 +93,54 @@ function WorkspaceStateProbe({ onState }) {
 }
 
 describe("PanelSettingsContent", () => {
+  it("shows Waveform spectral toggles and reveals validated frequency split inputs", () => {
+    const onPanelControlsChange = vi.fn();
+    const props = {
+      activeTab: "waveform",
+      panelControls: DEFAULT_PANEL_CONTROLS,
+      onPanelControlsChange,
+    };
+    const { rerender } = render(<PanelSettingsContent {...props} />);
+
+    expect(screen.getByLabelText("waveform frequency color").getAttribute("aria-checked")).toBe(
+      "false"
+    );
+    expect(screen.getByLabelText("waveform centroid").getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryByLabelText("waveform low mid split")).toBeNull();
+    expect(screen.queryByText(/legend/i)).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("waveform frequency color"));
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      waveformFrequencyColor: true,
+    });
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, waveformFrequencyColor: true }}
+      />
+    );
+    const lowMidInput = screen.getByLabelText("waveform low mid split");
+    const midHighInput = screen.getByLabelText("waveform mid high split");
+    expect(lowMidInput.value).toBe("200");
+    expect(midHighInput.value).toBe("2000");
+    expect(screen.getAllByText("Hz")).toHaveLength(2);
+
+    fireEvent.change(lowMidInput, { target: { value: "2500" } });
+    fireEvent.keyDown(lowMidInput, { key: "Enter" });
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    expect(lowMidInput.value).toBe("200");
+
+    fireEvent.change(lowMidInput, { target: { value: "320" } });
+    fireEvent.keyDown(lowMidInput, { key: "Enter" });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      waveformFrequencyColor: true,
+      waveformLowMidSplitHz: 320,
+    });
+  });
+
   it("renders Level Meter mode as a labeled settings row and updates mode", () => {
     const onPanelControlsChange = vi.fn();
     const { container } = render(

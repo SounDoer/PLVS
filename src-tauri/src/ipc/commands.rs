@@ -597,6 +597,7 @@ mod tests {
   #[test]
   fn analysis_requests_validation_accepts_frontend_keys() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![
         SpectrumAnalysisRequest {
           key: "spectrum:pair:0:1:lr:sp50:tilt450:smoff".to_string(),
@@ -628,6 +629,7 @@ mod tests {
   #[test]
   fn analysis_requests_validation_rejects_mismatched_keys() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: "spectrum:pair:0:1:combined:sp50:tilt450:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
@@ -649,6 +651,7 @@ mod tests {
   #[test]
   fn analysis_requests_validation_rejects_over_cap_requests() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: (0..=super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
         .map(|idx| SpectrumAnalysisRequest {
           key: format!("spectrum:single:{idx}:combined:sp50:tilt450:smoff"),
@@ -716,6 +719,7 @@ mod tests {
         }
       };
       let requests = AnalysisRequests {
+        spectral_waveform: false,
         spectrum: vec![SpectrumAnalysisRequest {
           key,
           channel,
@@ -738,6 +742,7 @@ mod tests {
       .expect("vectorscope array")
     {
       let requests = AnalysisRequests {
+        spectral_waveform: false,
         spectrum: vec![],
         vectorscope: vec![VectorscopeAnalysisRequest {
           key: entry["key"].as_str().unwrap().to_string(),
@@ -782,6 +787,7 @@ mod tests {
             .replace("<speedPercent>", &speed_percent.to_string())
             .replace("<smoothingToken>", smoothing["token"].as_str().unwrap());
           let requests = AnalysisRequests {
+            spectral_waveform: false,
             spectrum: vec![],
             vectorscope: vec![],
             stereo_map: vec![StereoMapAnalysisRequest {
@@ -831,6 +837,22 @@ mod tests {
   }
 
   #[test]
+  fn analysis_wire_payload_requires_the_spectral_waveform_flag() {
+    let raw = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../shared/stereo-map-request-key-fixtures.json"
+    ));
+    let fixture: serde_json::Value = serde_json::from_str(raw).expect("fixture parses");
+    let mut wire_payload = fixture["wirePayload"].clone();
+    wire_payload
+      .as_object_mut()
+      .expect("wire payload object")
+      .remove("spectralWaveform");
+
+    assert!(serde_json::from_value::<AnalysisRequests>(wire_payload).is_err());
+  }
+
+  #[test]
   fn stereo_map_validation_rejects_duplicate_keys() {
     let request = StereoMapAnalysisRequest {
       key: "stereoMap:pair:0:1:sp25:sm12".to_string(),
@@ -842,6 +864,7 @@ mod tests {
       octave_smoothing: "1/12".to_string(),
     };
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![],
       vectorscope: vec![],
       stereo_map: vec![request.clone(), request],
@@ -853,6 +876,7 @@ mod tests {
   #[test]
   fn stereo_map_validation_rejects_noncanonical_keys() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![],
       vectorscope: vec![],
       stereo_map: vec![StereoMapAnalysisRequest {
@@ -872,6 +896,7 @@ mod tests {
   #[test]
   fn stereo_map_validation_rejects_invalid_channel_indices() {
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![],
       vectorscope: vec![],
       stereo_map: vec![StereoMapAnalysisRequest {
@@ -902,6 +927,7 @@ mod tests {
       })
       .collect();
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: (0..super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
         .map(|idx| SpectrumAnalysisRequest {
           key: format!("spectrum:single:{idx}:combined:sp25:tilt300:smoff"),
@@ -933,6 +959,7 @@ mod tests {
       })
       .collect();
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![],
       vectorscope: vec![],
       stereo_map,

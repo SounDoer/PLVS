@@ -43,6 +43,7 @@ mod ipc {
       pub(crate) spectrum: Vec<SpectrumAnalysisRequest>,
       pub(crate) vectorscope: Vec<()>,
       pub(crate) stereo_map: Vec<StereoMapAnalysisRequest>,
+      pub(crate) spectral_waveform: bool,
     }
   }
 }
@@ -55,6 +56,8 @@ pub(crate) mod shared_spectral_engine;
 pub(crate) mod spectral_plan;
 #[path = "../src/dsp/spectral_transform.rs"]
 pub(crate) mod spectral_transform;
+#[path = "../src/dsp/spectral_waveform.rs"]
+pub(crate) mod spectral_waveform;
 #[path = "../src/dsp/spectrum.rs"]
 pub(crate) mod spectrum;
 #[path = "../src/dsp/spectrum_bank.rs"]
@@ -84,8 +87,8 @@ mod meter {
 mod dsp {
   pub(crate) use crate::channel_sel::{SpectrumChannelSel, SpectrumView};
   pub(crate) use crate::{
-    meter, shared_spectral_engine, spectral_transform, spectrum, spectrum_bank, spectrum_consumer,
-    stereo_map,
+    meter, shared_spectral_engine, spectral_transform, spectral_waveform, spectrum, spectrum_bank,
+    spectrum_consumer, stereo_map,
   };
 }
 
@@ -93,11 +96,11 @@ mod engine {
   pub(crate) use crate::spectral_plan;
 }
 
-use ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
+use ipc::types::{AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 use shared_spectral_engine::{SharedSpectralEngine, SharedSpectralRuntime, SpectralDspTime};
 use spectral_plan::{
-  plan_spectral_requests, ConsumerProjection, FuturePairNeed, SpectralConsumerBinding,
-  SpectralPlan, TransformStreamId,
+  plan_analysis_requests, plan_spectral_requests, ConsumerProjection, FuturePairNeed,
+  SpectralConsumerBinding, SpectralPlan, TransformStreamId,
 };
 use spectrum::SpectrumMeter;
 use spectrum_bank::{
@@ -188,6 +191,16 @@ fn mixed_plan() -> SpectralPlan {
     FuturePairNeed::new(6, 7),
   ];
   plan_spectral_requests(8, &requests, &pair_consumers)
+}
+
+fn spectral_waveform_plan(channels: u16) -> SpectralPlan {
+  plan_analysis_requests(
+    channels,
+    &AnalysisRequests {
+      spectral_waveform: true,
+      ..AnalysisRequests::default()
+    },
+  )
 }
 
 fn deterministic_pcm(frames: usize, channels: u16) -> Vec<f32> {
@@ -496,6 +509,36 @@ fn spectral_fft_count(c: &mut Criterion) {
     },
   );
   mixed_group.finish();
+
+  let mut waveform_group = c.benchmark_group("spectral_waveform_channels");
+  waveform_group.throughput(Throughput::Elements(audio_microseconds));
+  for channels in [2_u16, 8, 16] {
+    let plan = spectral_waveform_plan(channels);
+    let pcm = deterministic_pcm(AUDIO_FRAMES, channels);
+    let runtime = shared_runtime(&plan);
+    let topology = runtime.fft_topology();
+    assert_eq!(topology.stream_count, channels as usize);
+    assert_eq!(topology.transform_count(FFT_BIG), 0);
+    assert_eq!(topology.transform_count(FFT_MID), channels as usize);
+    assert_eq!(topology.transform_count(FFT_SMALL), 0);
+    assert_eq!(topology.total_transform_count, channels as usize);
+
+    waveform_group.bench_with_input(
+      BenchmarkId::new("middle_resolution_only", channels),
+      &(plan, pcm),
+      |b, (plan, pcm)| {
+        b.iter_batched(
+          || shared_runtime(plan),
+          |mut runtime| {
+            push_shared_in_production_blocks(&mut runtime, plan, black_box(pcm), channels);
+            black_box(runtime.spectral_waveform_metrics(channels as usize));
+          },
+          BatchSize::SmallInput,
+        );
+      },
+    );
+  }
+  waveform_group.finish();
 }
 
 criterion_group!(benches, spectral_fft_count);

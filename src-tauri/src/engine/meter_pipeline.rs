@@ -548,6 +548,11 @@ impl MeterPipeline {
           })
       })
       .collect();
+    let spectral_waveform_metrics = analysis_requests.spectral_waveform.then(|| {
+      self
+        .shared_spectral_runtime
+        .spectral_waveform_metrics(self.channels.max(1) as usize)
+    });
 
     // When this frame carries a visual history tick, attach per-request-key samples so the
     // frontend can keep request-keyed snapshot history. Only active request keys are emitted;
@@ -598,15 +603,34 @@ impl MeterPipeline {
       entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
       entry.vectorscope_by_key = vectorscope_by_key.iter().cloned().collect();
       entry.stereo_map_by_key = stereo_map_by_key.iter().cloned().collect();
+      if let Some((dominant_frequency_hz, spectral_centroid_hz, tonality)) =
+        &spectral_waveform_metrics
+      {
+        entry
+          .dominant_frequency_hz
+          .clone_from(dominant_frequency_hz);
+        entry.spectral_centroid_hz.clone_from(spectral_centroid_hz);
+        entry.tonality.clone_from(tonality);
+      }
     }
     if !frame.visual_hist_batch.is_empty()
       && (!spectrum_by_key.is_empty()
         || !vectorscope_by_key.is_empty()
-        || !stereo_map_by_key.is_empty())
+        || !stereo_map_by_key.is_empty()
+        || spectral_waveform_metrics.is_some())
     {
       for entry in frame.visual_hist_batch.iter_mut() {
         entry.spectrum_by_key = spectrum_by_key.iter().cloned().collect();
         entry.vectorscope_by_key = vectorscope_by_key.iter().cloned().collect();
+        if let Some((dominant_frequency_hz, spectral_centroid_hz, tonality)) =
+          &spectral_waveform_metrics
+        {
+          entry
+            .dominant_frequency_hz
+            .clone_from(dominant_frequency_hz);
+          entry.spectral_centroid_hz.clone_from(spectral_centroid_hz);
+          entry.tonality.clone_from(tonality);
+        }
       }
     }
 
@@ -996,6 +1020,9 @@ impl MeterPipeline {
           timestamp_ms: self.timestamp_ms(),
           waveform_min: visual_waveform_min,
           waveform_max: visual_waveform_max,
+          dominant_frequency_hz: Vec::new(),
+          spectral_centroid_hz: Vec::new(),
+          tonality: Vec::new(),
           correlation: visual_corr,
           side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
@@ -1098,6 +1125,9 @@ impl MeterPipeline {
           timestamp_ms: checkpoint.timestamp_ms,
           waveform_min: visual_waveform_min.clone(),
           waveform_max: visual_waveform_max.clone(),
+          dominant_frequency_hz: Vec::new(),
+          spectral_centroid_hz: Vec::new(),
+          tonality: Vec::new(),
           correlation: visual_corr,
           side_to_mid_db: visual_side_to_mid_db,
           spectrum_by_key: HashMap::new(),
@@ -1338,6 +1368,7 @@ mod tests {
 
     let pipeline = MeterPipeline::new(48_000, 2);
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: "active-single".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 99 },
@@ -1592,11 +1623,13 @@ mod tests {
       ..combined.clone()
     };
     let initial_requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![combined.clone(), secondary.clone()],
       vectorscope: vec![],
       stereo_map: Vec::new(),
     };
     let transition_requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![combined, secondary, pair_need],
       vectorscope: vec![],
       stereo_map: Vec::new(),
@@ -2367,6 +2400,7 @@ mod tests {
     let lr_key = "spectrum:pair:0:1:combined:sp50:tilt450:smoff".to_string();
     let c_key = "spectrum:single:2:combined:sp50:tilt450:smoff".to_string();
     let requests_lr = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: lr_key.clone(),
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
@@ -2379,6 +2413,7 @@ mod tests {
       stereo_map: Vec::new(),
     };
     let requests_c = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: c_key.clone(),
         channel: SpectrumAnalysisChannel::Single { ch: 2 },
@@ -2442,6 +2477,7 @@ mod tests {
     let mut p = MeterPipeline::new(48_000, 3);
     let key = "vectorscope:pair:2:0".to_string();
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![],
       vectorscope: vec![VectorscopeAnalysisRequest {
         key: key.clone(),
@@ -2509,6 +2545,7 @@ mod tests {
     let frames = 4096 * 2;
     let pcm = tone_on_channel(frames, channels as usize, sr as f64, 1000.0, 0);
     let requests_a = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
@@ -2525,6 +2562,7 @@ mod tests {
       stereo_map: Vec::new(),
     };
     let requests_b = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: "spectrum:single:0:combined:sp25:tilt450:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
@@ -2597,6 +2635,7 @@ mod tests {
     let pcm_b = tone_on_channel(frames, channels as usize, sr as f64, 500.0, 1);
     let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![
         SpectrumAnalysisRequest {
           key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
@@ -2678,6 +2717,7 @@ mod tests {
     let pcm_b = tone_on_channel(frames, channels as usize, sr as f64, 500.0, 1);
     let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![
         SpectrumAnalysisRequest {
           key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
@@ -2761,6 +2801,7 @@ mod tests {
     let pcm_b = tone_on_channel(frames, channels as usize, sr as f64, 500.0, 1);
     let pcm: Vec<f32> = pcm_a.iter().zip(pcm_b.iter()).map(|(a, b)| a + b).collect();
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
         key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
@@ -3111,6 +3152,7 @@ mod tests {
       let readiness_split = (FFT_BIG - 1) * 2;
       let cases = [
         AnalysisRequests {
+          spectral_waveform: false,
           spectrum: vec![spectrum_request(
             "direct",
             SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
@@ -3120,6 +3162,7 @@ mod tests {
           stereo_map: Vec::new(),
         },
         AnalysisRequests {
+          spectral_waveform: false,
           spectrum: vec![
             spectrum_request(
               "single",
@@ -3288,6 +3331,7 @@ mod tests {
       "combined",
     );
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![request],
       vectorscope: vec![],
       stereo_map: Vec::new(),
@@ -3360,6 +3404,7 @@ mod tests {
       "combined",
     );
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![request.clone()],
       vectorscope: vec![],
       stereo_map: Vec::new(),
@@ -3415,6 +3460,7 @@ mod tests {
     let mut request = stereo_map_request("batched");
     request.speed_percent = 0.0;
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: Vec::new(),
       vectorscope: Vec::new(),
       stereo_map: vec![request],
@@ -3574,6 +3620,7 @@ mod tests {
         "combined",
       );
       let requests = AnalysisRequests {
+        spectral_waveform: false,
         spectrum: vec![request.clone()],
         vectorscope: vec![],
         stereo_map: Vec::new(),
@@ -3619,6 +3666,7 @@ mod tests {
     use crate::ipc::types::SpectrumAnalysisChannel;
 
     let old = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![spectrum_request(
         "old",
         SpectrumAnalysisChannel::Single { ch: 0 },
@@ -3628,6 +3676,7 @@ mod tests {
       stereo_map: Vec::new(),
     };
     let new = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![spectrum_request(
         "new",
         SpectrumAnalysisChannel::Single { ch: 1 },
@@ -3719,11 +3768,13 @@ mod tests {
       "combined",
     );
     let single = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![first.clone()],
       vectorscope: vec![],
       stereo_map: Vec::new(),
     };
     let duplicate = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![first, second],
       vectorscope: vec![],
       stereo_map: Vec::new(),
@@ -3770,6 +3821,7 @@ mod tests {
     );
     let mut pipeline = MeterPipeline::new(48_000, 2);
     let initial = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![request.clone()],
       vectorscope: vec![],
       stereo_map: Vec::new(),
@@ -3790,6 +3842,7 @@ mod tests {
     request.tilt_db_per_octave = 2.0;
     request.octave_smoothing = "1/3".to_string();
     let updated = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: vec![request],
       vectorscope: vec![],
       stereo_map: Vec::new(),
@@ -4184,6 +4237,7 @@ mod tests {
     use crate::ipc::types::{StereoMapAnalysisPair, StereoMapAnalysisRequest};
 
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: Vec::new(),
       vectorscope: Vec::new(),
       stereo_map: ["first", "second"]
@@ -4231,6 +4285,7 @@ mod tests {
     use crate::dsp::spectrum_bank::FFT_BIG;
 
     let active = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: Vec::new(),
       vectorscope: Vec::new(),
       // Duplicate frontend instances have already collapsed to this one keyed request.
@@ -4321,6 +4376,7 @@ mod tests {
     use crate::dsp::spectrum_bank::FFT_BIG;
 
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: Vec::new(),
       vectorscope: Vec::new(),
       stereo_map: vec![stereo_map_request("visual")],
@@ -4364,6 +4420,7 @@ mod tests {
     use crate::dsp::spectrum_bank::FFT_BIG;
 
     let requests = AnalysisRequests {
+      spectral_waveform: false,
       spectrum: Vec::new(),
       vectorscope: Vec::new(),
       stereo_map: vec![stereo_map_request("clearable")],

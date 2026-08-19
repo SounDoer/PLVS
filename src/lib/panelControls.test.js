@@ -146,6 +146,10 @@ describe("panelControls", () => {
       stereoMapMonoLossYMinDb: -24,
       stereoMapMsRatioYMinDb: -48,
       stereoMapMsRatioYMaxDb: 24,
+      waveformFrequencyColor: false,
+      waveformLowMidSplitHz: 200,
+      waveformMidHighSplitHz: 2000,
+      waveformCentroid: false,
     });
   });
 
@@ -270,6 +274,10 @@ describe("panelControls", () => {
       stereoMapMonoLossYMinDb: -24,
       stereoMapMsRatioYMinDb: -48,
       stereoMapMsRatioYMaxDb: 24,
+      waveformFrequencyColor: false,
+      waveformLowMidSplitHz: 200,
+      waveformMidHighSplitHz: 2000,
+      waveformCentroid: false,
     });
   });
 
@@ -709,5 +717,41 @@ describe("spectrogram 3D tuning controls", () => {
   it("rejects non-boolean floor", () => {
     expect(normalizePanelControls({ spectrogram3dFloor: "yes" }).spectrogram3dFloor).toBe(true);
     expect(normalizePanelControls({ spectrogram3dFloor: false }).spectrogram3dFloor).toBe(false);
+  });
+});
+
+describe("waveform spectral controls", () => {
+  it("defaults both overlays off with 200 Hz and 2 kHz splits", () => {
+    expect(normalizePanelControls({})).toMatchObject({
+      waveformFrequencyColor: false,
+      waveformLowMidSplitHz: 200,
+      waveformMidHighSplitHz: 2000,
+      waveformCentroid: false,
+    });
+  });
+
+  it("accepts independent toggles and ordered integer splits", () => {
+    expect(
+      normalizePanelControls({
+        waveformFrequencyColor: true,
+        waveformLowMidSplitHz: 315.4,
+        waveformMidHighSplitHz: 4100.2,
+        waveformCentroid: true,
+      })
+    ).toMatchObject({
+      waveformFrequencyColor: true,
+      waveformLowMidSplitHz: 315,
+      waveformMidHighSplitHz: 4100,
+      waveformCentroid: true,
+    });
+  });
+
+  it("clamps the analysis range and restores both defaults for invalid ordering", () => {
+    expect(
+      normalizePanelControls({ waveformLowMidSplitHz: 1, waveformMidHighSplitHz: 99_000 })
+    ).toMatchObject({ waveformLowMidSplitHz: 20, waveformMidHighSplitHz: 20_000 });
+    expect(
+      normalizePanelControls({ waveformLowMidSplitHz: 4000, waveformMidHighSplitHz: 1000 })
+    ).toMatchObject({ waveformLowMidSplitHz: 200, waveformMidHighSplitHz: 2000 });
   });
 });

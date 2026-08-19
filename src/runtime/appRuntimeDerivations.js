@@ -39,6 +39,7 @@ export function deriveBackendAnalysisRequests(requests) {
       speedPercent: request.speedPercent,
       octaveSmoothing: request.octaveSmoothing,
     })),
+    spectralWaveform: requests.spectralWaveform === true,
   };
 }
 

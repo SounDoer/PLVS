@@ -298,6 +298,9 @@ export class FrameIntake {
     this._visualWaveformHist.push({
       waveformMin: snapshotNumericArray(row.waveformMin),
       waveformMax: snapshotNumericArray(row.waveformMax),
+      dominantFrequencyHz: snapshotNumericArray(row.dominantFrequencyHz),
+      spectralCentroidHz: snapshotNumericArray(row.spectralCentroidHz),
+      tonality: snapshotNumericArray(row.tonality),
       timestampMs,
     });
 

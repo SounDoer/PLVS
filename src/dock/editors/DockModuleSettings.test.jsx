@@ -29,10 +29,24 @@ describe("DockModuleSettings", () => {
     ["spectrum", "Spectrum channel"],
     ["correlation", "Vectorscope channel pair"],
     ["stats", "Edit metrics"],
+    ["waveform", "waveform frequency color"],
     ["spectrogram", "Spectrogram channel"],
   ])("renders the %s settings family", (moduleId, label) => {
     renderSettings(moduleId);
     expect(screen.getByLabelText(label)).toBeTruthy();
+  });
+
+  it("uses the shared Waveform controls in Dock settings", () => {
+    const controls = {
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.waveform,
+      frequencyColor: true,
+    };
+    const onChange = renderSettings("waveform", { controls });
+
+    expect(screen.getByLabelText("waveform low mid split").value).toBe("200");
+    expect(screen.getByLabelText("waveform mid high split").value).toBe("2000");
+    fireEvent.click(screen.getByLabelText("waveform centroid"));
+    expect(onChange).toHaveBeenCalledWith({ ...controls, centroid: true });
   });
 
   it("emits a complete updated controls object", () => {

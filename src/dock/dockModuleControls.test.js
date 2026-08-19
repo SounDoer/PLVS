@@ -117,7 +117,12 @@ describe("normalizeDockControlsByModuleId", () => {
       minDb: -96,
       maxDb: -12,
     });
-    expect(controls.waveform).toBeUndefined();
+    expect(controls.waveform).toEqual({
+      frequencyColor: false,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      centroid: false,
+    });
   });
 
   it("drops the legacy Dock Loudness reference and adopts the normal layer defaults", () => {
@@ -251,7 +256,34 @@ describe("normalizeDockModuleControls", () => {
 
   it("returns null for modules without controls", () => {
     expect(normalizeDockModuleControls("transport", {})).toBeNull();
-    expect(normalizeDockModuleControls("waveform", {})).toBeNull();
+  });
+
+  it("normalizes Dock Waveform spectral controls", () => {
+    expect(normalizeDockModuleControls("waveform", {})).toEqual({
+      frequencyColor: false,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      centroid: false,
+    });
+    expect(
+      normalizeDockModuleControls("waveform", {
+        frequencyColor: true,
+        lowMidSplitHz: 315.4,
+        midHighSplitHz: 4100.2,
+        centroid: true,
+      })
+    ).toEqual({
+      frequencyColor: true,
+      lowMidSplitHz: 315,
+      midHighSplitHz: 4100,
+      centroid: true,
+    });
+    expect(
+      normalizeDockModuleControls("waveform", {
+        lowMidSplitHz: 5000,
+        midHighSplitHz: 1000,
+      })
+    ).toMatchObject({ lowMidSplitHz: 200, midHighSplitHz: 2000 });
   });
 
   it("normalizes Stereo Map controls independently from Workspace panel control names", () => {

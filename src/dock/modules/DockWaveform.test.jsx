@@ -121,6 +121,73 @@ describe("DockWaveform", () => {
     expect(lineWidths).toEqual([1, 2.5]);
   });
 
+  it("fills the complete Frequency Color body at full opacity", () => {
+    const { canvas, context } = mockCanvas();
+    const fillAlphas = [];
+    context.globalAlpha = 1;
+    context.fill = vi.fn(() => fillAlphas.push(context.globalAlpha));
+
+    paintDockWaveformCanvas(canvas, {
+      mins: [[-0.75, -0.75]],
+      maxes: [[0.25, 0.25]],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      channelCount: 1,
+      frequencyColor: true,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      dominantFrequencyHz: [[100, 1000]],
+      tonality: [[0.2, 0.2]],
+    });
+
+    expect(fillAlphas).toEqual([1, 1]);
+  });
+
+  it("overlaps adjacent Frequency Color bodies to avoid sub-pixel seams", () => {
+    const { canvas, context } = mockCanvas();
+
+    paintDockWaveformCanvas(canvas, {
+      mins: [[-0.5, -0.5]],
+      maxes: [[0.5, 0.5]],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      channelCount: 1,
+      frequencyColor: true,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      dominantFrequencyHz: [[100, 1000]],
+      tonality: [[0.8, 0.8]],
+    });
+
+    expect(context.moveTo).toHaveBeenCalledWith(-0.5, 10);
+    expect(context.lineTo).toHaveBeenCalledWith(1.5, 10);
+  });
+
+  it("fills a one-sided positive Frequency Color bucket back to the zero line", () => {
+    const { canvas, context } = mockCanvas();
+
+    paintDockWaveformCanvas(canvas, {
+      mins: [[0.25, 0.25]],
+      maxes: [[0.5, 0.5]],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      channelCount: 1,
+      frequencyColor: true,
+      lowMidSplitHz: 200,
+      midHighSplitHz: 2000,
+      dominantFrequencyHz: [[100, 100]],
+      tonality: [[0.8, 0.8]],
+    });
+
+    expect(context.lineTo).toHaveBeenCalledWith(1, 20);
+  });
+
   it("bounds the rendered envelope buckets by horizontal resolution for long history", () => {
     const history = rows(Array.from({ length: 150_000 }, (_, index) => (index % 100) / 100));
     const envelope = sliceWaveformSubHistory(history, history.length, 0, 2, 300);

@@ -23,7 +23,7 @@ describe("DOCK_MODULE_REGISTRY", () => {
 
   it("keeps Waveform and Timecode aligned with their settings-free normal panels", () => {
     expect(DOCK_MODULE_REGISTRY.transport.settingsFamily).toBeNull();
-    expect(DOCK_MODULE_REGISTRY.waveform.settingsFamily).toBeNull();
+    expect(DOCK_MODULE_REGISTRY.waveform.settingsFamily).toBe("waveform");
     for (const id of DOCK_MODULE_IDS.filter(
       (moduleId) => !["transport", "waveform"].includes(moduleId)
     )) {

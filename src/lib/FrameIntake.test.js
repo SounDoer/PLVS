@@ -494,6 +494,10 @@ describe("FrameIntake", () => {
     expect(intake.getVisualWaveformHist().at(0)).toEqual({
       waveformMin: [-0.5, -0.3],
       waveformMax: [0.5, 0.3],
+      dominantFrequencyHz: [],
+      spectralCentroidHz: [],
+      tonality: [],
+      timestampMs: undefined,
     });
   });
 
@@ -1017,6 +1021,26 @@ describe("FrameIntake", () => {
     expect(intake.getVisualWaveformHist().at(0).waveformMin).not.toBe(
       intake.getVisualWaveformHist().at(1).waveformMin
     );
+  });
+
+  it("retains per-channel spectral Waveform metrics in visual history", () => {
+    const intake = new FrameIntake();
+    intake.pushVisualHistRow(
+      {
+        waveformMin: [-0.5, -0.25],
+        waveformMax: [0.5, 0.25],
+        dominantFrequencyHz: [120, 2400],
+        spectralCentroidHz: [320, 4800],
+        tonality: [0.8, 0.25],
+      },
+      10
+    );
+
+    expect(intake.getVisualWaveformHist().at(0)).toMatchObject({
+      dominantFrequencyHz: [120, 2400],
+      spectralCentroidHz: [320, 4800],
+      tonality: [0.8, 0.25],
+    });
   });
 
   it("pushHistRow stores waveform sub-pairs as a Float32Array on the row", () => {
