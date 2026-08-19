@@ -15,11 +15,13 @@ Standard reference docs live directly in `docs/`. Working and process docs live 
 
 ## Decision records
 
-| File                                                                           | Decision                                                                           |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| [adr/0001-ui-layout-vs-shadcn-theme.md](adr/0001-ui-layout-vs-shadcn-theme.md) | `--ui-*` layout tokens vs shadcn/Tailwind surface tokens — boundary definition     |
-| [adr/0002-theme-id-and-appearance.md](adr/0002-theme-id-and-appearance.md)     | `themeId`, `appearance`, `data-theme`, first-paint placeholder, chart token naming |
-| [adr/0003-device-identity-layering.md](adr/0003-device-identity-layering.md)   | Keep device DTO / pure id algebra / cpal enumeration split — do not merge          |
+| File                                                                                   | Decision                                                                           |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [adr/0001-ui-layout-vs-shadcn-theme.md](adr/0001-ui-layout-vs-shadcn-theme.md)         | `--ui-*` layout tokens vs shadcn/Tailwind surface tokens — boundary definition     |
+| [adr/0002-theme-id-and-appearance.md](adr/0002-theme-id-and-appearance.md)             | `themeId`, `appearance`, `data-theme`, first-paint placeholder, chart token naming |
+| [adr/0003-device-identity-layering.md](adr/0003-device-identity-layering.md)           | Keep device DTO / pure id algebra / cpal enumeration split — do not merge          |
+| [adr/0004-keep-three-vad-engines.md](adr/0004-keep-three-vad-engines.md)               | Keep the three shipped VAD engines as distinct user-selectable implementations     |
+| [adr/0005-theme-v2-compiler-and-runtime.md](adr/0005-theme-v2-compiler-and-runtime.md) | Theme V2 authoring, Role Registry, compiler, resolved runtime, and V1 migration    |
 
 ADRs are historical records — do not edit them. Add a new ADR to record a new decision.
 
