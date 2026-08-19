@@ -1,47 +1,37 @@
 import { useCallback, useRef, useState } from "react";
-import { applyThemeToDocument } from "../uiPreferences";
-import { makeCustomThemeFromBase } from "../theme/customTheme.js";
-import {
-  listCustomThemes,
-  upsertCustomTheme,
-  removeCustomTheme,
-} from "../theme/customThemesRepo.js";
+import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
+import { upsertCustomTheme } from "../theme/customThemesRepo.js";
+import { themeRuntime } from "../theme/themeRuntime.js";
 
 const noop = () => {};
 
 /**
  * @param {{
  *   activeTheme: object,
- *   customThemes: Record<string, object>,
- *   prevSelection: { appearance: string, themeId: string|null },
  *   setThemeId: (id: string) => void,
  *   setAppearance: (a: string) => void,
- *   apply?: (id: string, customThemes: Record<string, object>) => void,
+ *   publish?: (theme: object) => void,
  *   makeId?: () => string,
  * }} opts
  */
 export function useThemeEditor(opts) {
   const {
     activeTheme,
-    prevSelection,
     setThemeId,
     setAppearance,
-    apply: applyOverride,
+    publish: publishOverride,
     makeId,
     onChange,
   } = opts;
-  const apply = applyOverride ?? applyThemeToDocument;
+  const publish = publishOverride ?? themeRuntime.publishAuthoring;
   const notify = onChange ?? noop;
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
   const [dirty, setDirty] = useState(false);
   const draftRef = useRef(/** @type {object|null} */ (null));
   const wasNewRef = useRef(false);
-  const prevRef = useRef(prevSelection);
+  const restoreThemeRef = useRef(activeTheme);
 
-  const applyDraft = useCallback(
-    (next) => apply(next.id, { ...listCustomThemes(), [next.id]: next }),
-    [apply]
-  );
+  const applyDraft = useCallback((next) => publish(next), [publish]);
 
   // Keep state and ref in sync so save/cancel can read the latest draft without a state-updater.
   const setDraftBoth = useCallback((next) => {
@@ -52,7 +42,7 @@ export function useThemeEditor(opts) {
   const beginEdit = useCallback(
     (theme) => {
       wasNewRef.current = false;
-      prevRef.current = { appearance: "fixed", themeId: theme.id };
+      restoreThemeRef.current = theme;
       const d = structuredClone(theme);
       setDraftBoth(d);
       setDirty(false);
@@ -64,26 +54,13 @@ export function useThemeEditor(opts) {
   const beginCreate = useCallback(
     (name) => {
       wasNewRef.current = true;
-      prevRef.current = prevSelection;
-      const d = makeCustomThemeFromBase(activeTheme, name, makeId);
-      upsertCustomTheme(d);
-      setAppearance("fixed");
-      setThemeId(d.id);
+      restoreThemeRef.current = activeTheme;
+      const d = makeCustomThemeV2FromBase(activeTheme, name, makeId);
       setDraftBoth(d);
       setDirty(false);
       applyDraft(d);
-      notify();
     },
-    [
-      activeTheme,
-      applyDraft,
-      makeId,
-      notify,
-      prevSelection,
-      setAppearance,
-      setDraftBoth,
-      setThemeId,
-    ]
+    [activeTheme, applyDraft, makeId, setDraftBoth]
   );
 
   // Pure mutate of the current draft, then sync + apply + mark dirty (no side-effects in setState).
@@ -101,40 +78,71 @@ export function useThemeEditor(opts) {
 
   const setName = useCallback((name) => edit((d) => ({ ...d, name: String(name) })), [edit]);
 
-  const updateSeed = useCallback(
-    (key, value) =>
-      edit((d) =>
-        key === "good" || key === "warn" || key === "bad"
-          ? { ...d, seeds: { ...d.seeds, signal: { ...d.seeds.signal, [key]: value } } }
-          : { ...d, seeds: { ...d.seeds, [key]: value } }
-      ),
+  const updateCore = useCallback(
+    (key, value) => edit((draft) => ({ ...draft, core: { ...draft.core, [key]: value } })),
     [edit]
   );
 
-  const updateShell = useCallback(
-    (key, value) => edit((d) => ({ ...d, semantic: { ...d.semantic, [key]: value } })),
+  const updatePaletteColor = useCallback(
+    (palette, key, value) =>
+      edit((draft) => ({
+        ...draft,
+        palettes: {
+          ...draft.palettes,
+          [palette]: { ...draft.palettes[palette], presetId: null, [key]: value },
+        },
+      })),
+    [edit]
+  );
+
+  const updateIntensityStop = useCallback(
+    (index, value) =>
+      edit((draft) => ({
+        ...draft,
+        palettes: {
+          ...draft.palettes,
+          intensity: {
+            ...draft.palettes.intensity,
+            presetId: null,
+            stops: draft.palettes.intensity.stops.map((stop, stopIndex) =>
+              stopIndex === index ? { ...stop, color: value } : stop
+            ),
+          },
+        },
+      })),
+    [edit]
+  );
+
+  const updateOverride = useCallback(
+    (roleId, override) =>
+      edit((draft) => {
+        const overrides = { ...draft.overrides };
+        if (override == null) delete overrides[roleId];
+        else overrides[roleId] = override;
+        return { ...draft, overrides };
+      }),
     [edit]
   );
 
   const save = useCallback(() => {
     const d = draftRef.current;
-    if (d) upsertCustomTheme(d);
+    if (d) {
+      upsertCustomTheme(d);
+      if (wasNewRef.current) {
+        setAppearance("fixed");
+        setThemeId(d.id);
+      }
+    }
     setDraftBoth(null);
     setDirty(false);
     notify();
-  }, [setDraftBoth, notify]);
+  }, [notify, setAppearance, setDraftBoth, setThemeId]);
 
   const cancel = useCallback(() => {
-    const d = draftRef.current;
-    if (d && wasNewRef.current) removeCustomTheme(d.id);
-    const prev = prevRef.current;
-    setAppearance(prev.appearance);
-    setThemeId(prev.themeId);
-    apply(prev.appearance === "fixed" ? prev.themeId : "plvs-dark", listCustomThemes());
+    publish(restoreThemeRef.current);
     setDraftBoth(null);
     setDirty(false);
-    notify();
-  }, [apply, notify, setAppearance, setDraftBoth, setThemeId]);
+  }, [publish, setDraftBoth]);
 
   return {
     isEditing: draft != null,
@@ -143,8 +151,10 @@ export function useThemeEditor(opts) {
     beginCreate,
     beginEdit,
     setName,
-    updateSeed,
-    updateShell,
+    updateCore,
+    updatePaletteColor,
+    updateIntensityStop,
+    updateOverride,
     save,
     cancel,
   };

@@ -21,6 +21,36 @@ export function listCustomThemes() {
   return out;
 }
 
+/** @returns {Record<string, object>} normalized Theme V2 documents keyed by id */
+export function listCustomThemeDocuments() {
+  const { themes } = readState();
+  /** @type {Record<string, object>} */
+  const out = {};
+  for (const [id, theme] of Object.entries(themes)) {
+    const normalized = normalizeThemeDocument(theme);
+    if (normalized) out[id] = normalized;
+  }
+  return out;
+}
+
+/** @returns {object[]} normalized Theme V2 documents in display order */
+export function listCustomThemeDocumentsOrdered() {
+  const { order } = readState();
+  const valid = listCustomThemeDocuments();
+  const seen = new Set();
+  const ordered = [];
+  for (const id of order) {
+    if (valid[id] && !seen.has(id)) {
+      ordered.push(valid[id]);
+      seen.add(id);
+    }
+  }
+  for (const [id, theme] of Object.entries(valid)) {
+    if (!seen.has(id)) ordered.push(theme);
+  }
+  return ordered;
+}
+
 /** @returns {object[]} valid custom themes in display order */
 export function listCustomThemesOrdered() {
   const { order } = readState();

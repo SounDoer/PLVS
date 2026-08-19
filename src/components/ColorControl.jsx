@@ -4,9 +4,9 @@ import { Label } from "@/components/ui/label";
 import { toEditable, fromEditable } from "../theme/colorIO.js";
 
 /**
- * @param {{ label: string, value: string, onChange: (css: string) => void }} props
+ * @param {{ label: string, value: string, onChange: (css: string) => void, allowAlpha?: boolean }} props
  */
-export function ColorControl({ label, value, onChange }) {
+export function ColorControl({ label, value, onChange, allowAlpha = true }) {
   const edit = toEditable(value);
   const [hex, setHex] = useState(edit.hex);
   const [alpha, setAlpha] = useState(edit.alpha);
@@ -45,21 +45,23 @@ export function ColorControl({ label, value, onChange }) {
             className="flex-1 rounded border border-input bg-transparent px-2 py-1"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor={`${label}-alpha`}>Alpha</Label>
-          <input
-            id={`${label}-alpha`}
-            aria-label={`${label} alpha`}
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={alpha}
-            onInput={(e) => emit(hex, parseFloat(e.target.value))}
-            className="plvs-range flex-1"
-            style={{ "--range-pct": `${Math.max(0, Math.min(100, alpha * 100))}%` }}
-          />
-        </div>
+        {allowAlpha ? (
+          <div className="flex items-center gap-2">
+            <Label htmlFor={`${label}-alpha`}>Alpha</Label>
+            <input
+              id={`${label}-alpha`}
+              aria-label={`${label} alpha`}
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={alpha}
+              onInput={(e) => emit(hex, parseFloat(e.target.value))}
+              className="plvs-range flex-1"
+              style={{ "--range-pct": `${Math.max(0, Math.min(100, alpha * 100))}%` }}
+            />
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

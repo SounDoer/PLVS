@@ -1,10 +1,11 @@
 import { useState } from "react";
 import {
+  listCustomThemeDocuments,
+  listCustomThemeDocumentsOrdered,
   listCustomThemes,
-  listCustomThemesOrdered,
   removeCustomTheme,
 } from "../theme/customThemesRepo.js";
-import { getTheme } from "../theme/themeRegistry.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { isCustomThemeId } from "../theme/customTheme.js";
 import { settingsStore } from "../persistence/index.js";
 import { normalizeThemeEditorPos } from "../settings/defaults.js";
@@ -22,16 +23,20 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen }) {
   }
 
   const editor = useThemeEditor({
-    activeTheme: getTheme(themeSettings.resolvedThemeId, themeSettings.customThemes),
-    customThemes: themeSettings.customThemes,
-    prevSelection: { appearance: themeSettings.appearance, themeId: themeSettings.themeId },
+    activeTheme:
+      BUILTIN_THEMES_V2[themeSettings.resolvedThemeId] ??
+      listCustomThemeDocuments()[themeSettings.resolvedThemeId] ??
+      BUILTIN_THEMES_V2["plvs-dark"],
     setThemeId: themeSettings.setThemeId,
     setAppearance: themeSettings.setAppearance,
     // pluginStore.subscribe is a no-op, so refresh the list explicitly after editor mutations.
     onChange: () => themeSettings.setCustomThemes(listCustomThemes()),
   });
 
-  const customThemeOptions = listCustomThemesOrdered().map((t) => ({ id: t.id, label: t.name }));
+  const customThemeOptions = listCustomThemeDocumentsOrdered().map((theme) => ({
+    id: theme.id,
+    label: theme.name,
+  }));
 
   function selectThemeId(id) {
     themeSettings.setAppearance("fixed");
@@ -46,7 +51,8 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen }) {
   function editActiveCustomTheme() {
     if (!isCustomThemeId(themeSettings.resolvedThemeId)) return;
     setSettingsOpen(false);
-    editor.beginEdit(getTheme(themeSettings.resolvedThemeId, themeSettings.customThemes));
+    const theme = listCustomThemeDocuments()[themeSettings.resolvedThemeId];
+    if (theme) editor.beginEdit(theme);
   }
 
   function deleteCustomTheme(id) {

@@ -127,8 +127,7 @@ export function AppSettingsOverlays({
         <ThemeEditor
           draft={editor.draft}
           onName={editor.setName}
-          onSeed={editor.updateSeed}
-          onShell={editor.updateShell}
+          onCore={editor.updateCore}
           onSave={editor.save}
           onCancel={editor.cancel}
           onDelete={undefined}

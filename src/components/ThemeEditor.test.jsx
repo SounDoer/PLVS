@@ -2,16 +2,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ThemeEditor } from "./ThemeEditor.jsx";
-import { makeCustomThemeFromBase } from "../theme/customTheme.js";
-import { BUILTIN_THEMES } from "../theme/builtinThemes.js";
+import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 
-const DRAFT = makeCustomThemeFromBase(BUILTIN_THEMES["plvs-dark"], "My Theme", () => "custom-1");
+const DRAFT = makeCustomThemeV2FromBase(
+  BUILTIN_THEMES_V2["plvs-dark"],
+  "My Theme",
+  () => "custom-1"
+);
 
 const BASE_PROPS = {
   draft: DRAFT,
   onName: vi.fn(),
-  onSeed: vi.fn(),
-  onShell: vi.fn(),
+  onCore: vi.fn(),
   onSave: vi.fn(),
   onCancel: vi.fn(),
   dirty: false,
@@ -27,6 +30,23 @@ describe("ThemeEditor", () => {
 
     expect(dialog.textContent).not.toContain("dark");
     expect(dialog.textContent).not.toContain("light");
+  });
+
+  it("shows six understandable core color roles without alpha controls", () => {
+    render(<ThemeEditor {...BASE_PROPS} />);
+
+    for (const label of [
+      "Workspace",
+      "Surface",
+      "Text",
+      "Interface Accent",
+      "Primary Data",
+      "Secondary Data",
+    ]) {
+      expect(screen.getByRole("button", { name: label })).toBeTruthy();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+    expect(screen.queryByLabelText("Workspace alpha")).toBeNull();
   });
 
   it("shows the name statically and opens editing from the rename icon", () => {

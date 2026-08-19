@@ -11,36 +11,44 @@ import { clampPanelPos } from "../lib/dragClamp.js";
 const HEADER_ACTION_CLASS =
   "shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
-const SHELL_GROUPS = [
+const CORE_COLORS = [
   {
-    title: "Surface",
-    keys: ["background", "card", "popover", "secondary", "muted", "accent"],
+    key: "workspace",
+    label: "Workspace",
+    description: "The app canvas behind panels and meters.",
   },
   {
-    title: "Text",
-    keys: [
-      "foreground",
-      "cardForeground",
-      "popoverForeground",
-      "mutedForeground",
-      "secondaryForeground",
-      "accentForeground",
-    ],
+    key: "surface",
+    label: "Surface",
+    description: "Panels, cards, popovers, and controls.",
   },
   {
-    // primary + ring are not listed: they follow the accent seed (see buildThemeTokens), not the shell.
-    title: "Brand",
-    keys: ["primaryForeground", "destructive", "destructiveForeground"],
+    key: "text",
+    label: "Text",
+    description: "Primary labels and values. Secondary text is derived.",
   },
-  { title: "Lines", keys: ["border", "input"] },
+  {
+    key: "interfaceAccent",
+    label: "Interface Accent",
+    description: "Selected controls, focus, and active UI states.",
+  },
+  {
+    key: "primaryData",
+    label: "Primary Data",
+    description: "The main measurement trace or visual emphasis.",
+  },
+  {
+    key: "secondaryData",
+    label: "Secondary Data",
+    description: "Comparison traces and supporting measurements.",
+  },
 ];
 
 /**
  * @param {{
  *   draft: object,
  *   onName: (s: string) => void,
- *   onSeed: (key: string, css: string) => void,
- *   onShell: (key: string, css: string) => void,
+ *   onCore: (key: string, css: string) => void,
  *   onSave: () => void,
  *   onCancel: () => void,
  *   onDelete?: () => void,
@@ -52,8 +60,7 @@ const SHELL_GROUPS = [
 export function ThemeEditor({
   draft,
   onName,
-  onSeed,
-  onShell,
+  onCore,
   onSave,
   onCancel,
   onDelete,
@@ -226,47 +233,27 @@ export function ThemeEditor({
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto px-3 py-2">
-          <section className="flex flex-col gap-1.5">
-            <Label>Seeds</Label>
-            <ColorControl
-              label="Accent"
-              value={draft.seeds.accent}
-              onChange={(c) => onSeed("accent", c)}
-            />
-            <ColorControl
-              label="Accent 2"
-              value={draft.seeds.accentSecondary}
-              onChange={(c) => onSeed("accentSecondary", c)}
-            />
-            <ColorControl
-              label="Signal Good"
-              value={draft.seeds.signal.good}
-              onChange={(c) => onSeed("good", c)}
-            />
-            <ColorControl
-              label="Signal Warn"
-              value={draft.seeds.signal.warn}
-              onChange={(c) => onSeed("warn", c)}
-            />
-            <ColorControl
-              label="Signal Bad"
-              value={draft.seeds.signal.bad}
-              onChange={(c) => onSeed("bad", c)}
-            />
-          </section>
-          {SHELL_GROUPS.map((g) => (
-            <section key={g.title} className="flex flex-col gap-1.5">
-              <Label>{g.title}</Label>
-              {g.keys.map((k) => (
+          <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
+            <div>
+              <Label id="theme-core-title">Core Colors</Label>
+              <p className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+                Six choices shape the whole theme. Related colors are generated automatically.
+              </p>
+            </div>
+            {CORE_COLORS.map(({ key, label, description }) => (
+              <div key={key} className="flex flex-col gap-0.5">
                 <ColorControl
-                  key={k}
-                  label={k}
-                  value={draft.semantic[k]}
-                  onChange={(c) => onShell(k, c)}
+                  label={label}
+                  value={draft.core[key]}
+                  onChange={(color) => onCore(key, color)}
+                  allowAlpha={false}
                 />
-              ))}
-            </section>
-          ))}
+                <p className="pl-7 text-[length:var(--ui-fs-metric-meta)] leading-tight text-muted-foreground">
+                  {description}
+                </p>
+              </div>
+            ))}
+          </section>
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
