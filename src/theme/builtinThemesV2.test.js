@@ -5,12 +5,7 @@ import { compileTheme } from "./compileTheme.js";
 import { V1_BUILTIN_RESOLVED } from "./fixtures/v1BuiltinResolved.js";
 import { isThemeV2 } from "./themeSchema.js";
 
-const REVIEWED_NON_EXACT = new Set([
-  "--border",
-  "--input",
-  "--ui-loudness-grid",
-  "--ui-vectorscope-grid-stroke",
-]);
+const REVIEWED_NON_EXACT = new Set(["--ui-loudness-grid", "--ui-vectorscope-grid-stroke"]);
 
 describe("Theme V2 builtins", () => {
   it.each(Object.keys(BUILTIN_THEMES_V2))("normalizes and compiles %s", (id) => {

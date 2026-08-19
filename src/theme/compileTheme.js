@@ -46,6 +46,10 @@ function effect(color, opacity) {
   return { color, opacity };
 }
 
+function colorOf(value) {
+  return typeof value === "string" ? value : value.color;
+}
+
 const RECIPES = {
   identity: ([value]) => structuredClone(value),
   "surface-panel": ([, surface]) => surface,
@@ -62,14 +66,19 @@ const RECIPES = {
     const workspace = context.roles["core.workspace"];
     return contrastRatio(text, target) >= contrastRatio(workspace, target) ? text : workspace;
   },
-  border: ([surface, text]) => mixHex(surface, text, 0.12),
-  "input-border": ([border, surface]) => mixHex(surface, border, 0.75),
+  border: (_dependencies, context) =>
+    effect(
+      context.colorScheme === "dark" ? "#ffffff" : "#000000",
+      context.colorScheme === "dark" ? 0.09 : 0.1
+    ),
+  "input-border": (_dependencies, context) =>
+    effect(context.colorScheme === "dark" ? "#ffffff" : "#000000", 0.14),
   "focus-ring": ([accent]) => accent,
   critical: ([critical]) => critical,
   companion: ([primary], context) => transformHex(primary, COMPANION[context.colorScheme]),
   snapshot: ([source], context) => transformHex(source, SNAP[context.colorScheme]),
   selection: ([source], context) => transformHex(source, SNAP[context.colorScheme]),
-  grid: ([border, surface]) => mixHex(surface, border, 0.8),
+  grid: ([border, surface]) => mixHex(surface, colorOf(border), 0.08),
   "frequency-neutral": ([surface, low, mid, high]) =>
     mixHex(
       surface,
