@@ -314,6 +314,31 @@ describe("VectorscopePolarPlot", () => {
     ]);
   });
 
+  it("uses the snapshot trace color for Polar snapshots", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
+      getPropertyValue: (name) =>
+        ({
+          "--ui-vectorscope-trace": "#123456",
+          "--ui-vectorscope-trace-snap": "#abcdef",
+          "--ui-vectorscope-grid-stroke": "#654321",
+          "--ui-vectorscope-stroke-width": "1",
+        })[name] ?? "",
+    });
+    render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        snapshotPairs={allPolarLevelBinPairs()}
+        firstLabel="L"
+        secondLabel="R"
+      />
+    );
+    styleSpy.mockRestore();
+
+    expect(ctx.filledColors).toEqual(["#abcdef"]);
+  });
+
   it("hides endpoint labels in compact plots", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);

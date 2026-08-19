@@ -15,8 +15,11 @@ const PEAK_ALPHA = 0.35;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 const POLAR_FIXED_EXTENT = Math.SQRT2;
 const POLAR_FLOOR_DB = -48;
-function resolveTraceColors(style) {
-  const traceColor = style.getPropertyValue("--ui-vectorscope-trace").trim() || "#7dd3fc";
+function resolveTraceColors(style, snapshot) {
+  const liveTraceColor = style.getPropertyValue("--ui-vectorscope-trace").trim() || "#7dd3fc";
+  const traceColor = snapshot
+    ? style.getPropertyValue("--ui-vectorscope-trace-snap").trim() || liveTraceColor
+    : liveTraceColor;
   const gridColor = style.getPropertyValue("--ui-vectorscope-grid-stroke").trim() || traceColor;
   return { traceColor, gridColor };
 }
@@ -192,7 +195,7 @@ export function VectorscopePolarPlot({
 
     const { dpr, width, height } = resizeCanvas(canvas);
     const style = getComputedStyle(canvas);
-    const { traceColor, gridColor } = resolveTraceColors(style);
+    const { traceColor, gridColor } = resolveTraceColors(style, snapshot);
     const lineWidth =
       (parseFloat(style.getPropertyValue("--ui-vectorscope-stroke-width")) || 1) * dpr;
     const newestTimestamp = effectiveRows.at(-1)?.timestampMs;
