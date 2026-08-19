@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { BUILTIN_THEMES_V2 } from "./builtinThemesV2.js";
 import { compileTheme } from "./compileTheme.js";
@@ -10,5 +10,5 @@ const getSnapshot = () => themeRuntime.getSnapshot() ?? FALLBACK_RESOLVED_THEME;
 
 export function useResolvedTheme(selector = (resolved) => resolved) {
   const resolved = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return selector(resolved);
+  return useMemo(() => selector(resolved), [resolved, selector]);
 }

@@ -26,10 +26,22 @@ import {
   sliceSpectralWaveformMetrics,
   waveformFrequencyRgb,
 } from "../../math/spectralWaveformMath.js";
+import { selectWaveformCanvasColors } from "../../theme/themeCanvasSelectors.js";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-chart-y-axis-rail-w";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
 const WAVEFORM_MAX_DEVICE_PIXEL_RATIO = 1;
+const DEFAULT_THEME_COLORS = {
+  trace: "#fb923c",
+  snapshot: "#fbd34d",
+  grid: "#282828",
+  frequencyLow: "#ff2d3d",
+  frequencyMid: "#fb923c",
+  frequencyHigh: "#356dff",
+  frequencyNeutral: "#484850",
+  centroid: "#f8fafc",
+};
 
 function cssLengthToPx(value) {
   const trimmed = value?.trim();
@@ -98,6 +110,7 @@ export function drawWaveformCanvas(
     spectralCentroidHz,
     tonality,
     centroid,
+    themeColors = DEFAULT_THEME_COLORS,
   }
 ) {
   if (!canvas || canvas.width === 0 || canvas.height === 0) return;
@@ -108,26 +121,18 @@ export function drawWaveformCanvas(
   const H = canvas.height;
 
   const style = getComputedStyle(document.documentElement);
-  const zeroLineColor =
-    style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
-  const strokeColor =
-    (selected
-      ? style.getPropertyValue("--ui-waveform-trace-snap").trim()
-      : style.getPropertyValue("--ui-waveform-trace").trim()) || "#fb923c";
+  const zeroLineColor = themeColors.grid;
+  const strokeColor = selected ? themeColors.snapshot : themeColors.trace;
   const fillOpacity =
     parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
   const strokeWidth = parseFloat(style.getPropertyValue("--ui-waveform-stroke-width").trim()) || 1;
   const spectralPalette = {
-    low: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-low"), [240, 90, 36]),
-    mid: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-mid"), [217, 70, 239]),
-    high: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-high"), [67, 56, 202]),
-    neutral: parseCssRgb(
-      style.getPropertyValue("--ui-waveform-frequency-neutral"),
-      [139, 139, 130]
-    ),
+    low: parseCssRgb(themeColors.frequencyLow),
+    mid: parseCssRgb(themeColors.frequencyMid),
+    high: parseCssRgb(themeColors.frequencyHigh),
+    neutral: parseCssRgb(themeColors.frequencyNeutral),
   };
-  const centroidColor =
-    style.getPropertyValue("--ui-waveform-centroid").trim() || "rgba(248,250,252,0.9)";
+  const centroidColor = themeColors.centroid;
 
   ctx.clearRect(0, 0, W, H);
 
@@ -228,6 +233,7 @@ export function drawWaveformCanvas(
 }
 
 export function WaveformPanel({ compact = false }) {
+  const themeColors = useResolvedTheme(selectWaveformCanvasColors);
   const frameData = useFrameData();
   const historyData = useHistoryData();
   const { panelVisible, panelControls } = usePanelInstanceData();
@@ -246,11 +252,16 @@ export function WaveformPanel({ compact = false }) {
   }
 
   return (
-    <WaveformPanelContent compact={compact} audioData={panelData} controls={waveformControls} />
+    <WaveformPanelContent
+      compact={compact}
+      audioData={panelData}
+      controls={waveformControls}
+      themeColors={themeColors}
+    />
   );
 }
 
-function WaveformPanelContent({ compact, audioData, controls }) {
+function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
   const {
     histSourceList,
     waveformHistoryIndex,
@@ -434,6 +445,7 @@ function WaveformPanelContent({ compact, audioData, controls }) {
             spectralCentroidHz={spectralMetrics.spectralCentroidHz[ch]}
             tonality={spectralMetrics.tonality[ch]}
             centroid={controls.waveformCentroid}
+            themeColors={themeColors}
           />
         ))}
 
@@ -597,6 +609,7 @@ function WaveformLane({
   spectralCentroidHz,
   tonality,
   centroid,
+  themeColors,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -637,6 +650,7 @@ function WaveformLane({
       spectralCentroidHz,
       tonality,
       centroid,
+      themeColors,
     };
     scheduleDraw();
   }, [
@@ -654,6 +668,7 @@ function WaveformLane({
     spectralCentroidHz,
     tonality,
     centroid,
+    themeColors,
     scheduleDraw,
   ]);
 

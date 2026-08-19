@@ -95,6 +95,50 @@ afterEach(() => {
 });
 
 describe("drawWaveformCanvas", () => {
+  it("uses resolved theme colors directly instead of reading CSS color tokens", () => {
+    const strokes = [];
+    const fills = [];
+    const context = {
+      globalAlpha: 1,
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(() => fills.push(context.fillStyle)),
+      stroke: vi.fn(() => strokes.push(context.strokeStyle)),
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 40;
+    canvas.getContext = vi.fn(() => context);
+    document.documentElement.style.setProperty("--ui-waveform-trace-snap", "#badbad");
+
+    drawWaveformCanvas(canvas, {
+      mins: [-0.5, -0.5],
+      maxes: [0.5, 0.5],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      selected: true,
+      themeColors: {
+        trace: "#111111",
+        snapshot: "#123456",
+        grid: "#654321",
+        frequencyLow: "#ff0000",
+        frequencyMid: "#00ff00",
+        frequencyHigh: "#0000ff",
+        frequencyNeutral: "#888888",
+        centroid: "#ffffff",
+      },
+    });
+
+    expect(strokes).toEqual(["#654321", "#123456"]);
+    expect(fills).toEqual(["#123456"]);
+    document.documentElement.style.removeProperty("--ui-waveform-trace-snap");
+  });
+
   it("strokes the envelope at the token width and leaves the zero line at 1px", () => {
     document.documentElement.style.setProperty("--ui-waveform-stroke-width", "2.5");
     const lineWidths = [];

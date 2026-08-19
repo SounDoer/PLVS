@@ -14,9 +14,20 @@ import {
   sliceSpectralWaveformMetrics,
   waveformFrequencyRgb,
 } from "../../math/spectralWaveformMath.js";
+import { selectWaveformCanvasColors } from "../../theme/themeCanvasSelectors.js";
+import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 
 const MAX_DEVICE_PIXEL_RATIO = 1;
 const MAX_AGGREGATION_STRIDE = 10;
+const DEFAULT_THEME_COLORS = {
+  trace: "#fb923c",
+  grid: "#282828",
+  frequencyLow: "#ff2d3d",
+  frequencyMid: "#fb923c",
+  frequencyHigh: "#356dff",
+  frequencyNeutral: "#484850",
+  centroid: "#f8fafc",
+};
 
 function cssNumber(style, name, fallback) {
   const value = Number.parseFloat(style.getPropertyValue(name));
@@ -73,6 +84,7 @@ export function paintDockWaveformCanvas(
     spectralCentroidHz,
     tonality,
     centroid,
+    themeColors = DEFAULT_THEME_COLORS,
   }
 ) {
   if (!canvas || canvas.width <= 0 || canvas.height <= 0 || channelCount <= 0) return;
@@ -82,20 +94,17 @@ export function paintDockWaveformCanvas(
   const width = canvas.width;
   const height = canvas.height;
   const style = getComputedStyle(canvas);
-  const traceColor = style.getPropertyValue("--ui-waveform-trace").trim() || "#fb923c";
-  const gridColor = style.getPropertyValue("--ui-loudness-grid").trim() || "rgba(128,128,128,0.18)";
+  const traceColor = themeColors.trace;
+  const gridColor = themeColors.grid;
   const fillOpacity = cssNumber(style, "--ui-waveform-fill-opacity", 0.22);
   const strokeWidth = cssNumber(style, "--ui-waveform-stroke-width", 1);
   const spectralPalette = {
-    low: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-low"), [240, 90, 36]),
-    mid: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-mid"), [217, 70, 239]),
-    high: parseCssRgb(style.getPropertyValue("--ui-waveform-frequency-high"), [67, 56, 202]),
-    neutral: parseCssRgb(
-      style.getPropertyValue("--ui-waveform-frequency-neutral"),
-      [139, 139, 130]
-    ),
+    low: parseCssRgb(themeColors.frequencyLow),
+    mid: parseCssRgb(themeColors.frequencyMid),
+    high: parseCssRgb(themeColors.frequencyHigh),
+    neutral: parseCssRgb(themeColors.frequencyNeutral),
   };
-  const centroidColor = style.getPropertyValue("--ui-waveform-centroid").trim() || "#f8fafc";
+  const centroidColor = themeColors.centroid;
   // The backing store height now uses full DPR while width is capped, so it is no longer 1:1 with
   // CSS pixels. Convert the CSS-px row gap into backing pixels before laying out the lanes.
   const vScale = canvas.clientHeight > 0 ? height / canvas.clientHeight : 1;
@@ -213,6 +222,7 @@ export function paintDockWaveformCanvas(
 
 /** Compact, latest-locked waveform with one labeled lane per available channel. */
 export function DockWaveform({ controls }) {
+  const themeColors = useResolvedTheme(selectWaveformCanvasColors);
   const frameData = useFrameData() ?? {};
   const {
     histSourceList = [],
@@ -318,6 +328,7 @@ export function DockWaveform({ controls }) {
         lowMidSplitHz: controls?.lowMidSplitHz ?? 200,
         midHighSplitHz: controls?.midHighSplitHz ?? 2000,
         centroid: controls?.centroid ?? false,
+        themeColors,
       });
     });
     return () => cancelAnimationFrame(frame);
@@ -328,6 +339,7 @@ export function DockWaveform({ controls }) {
     controls,
     canvasSize.height,
     frameData.resolvedThemeId,
+    themeColors,
   ]);
 
   return (
