@@ -203,7 +203,10 @@ html[data-surface="dock-editor"] #root {
 
 .plvs-color-picker .react-colorful__saturation {
   height: 8rem;
-  border-radius: var(--radius);
+  /* Square on purpose: the panel around it carries the radius, and rounding the
+     field too would clip the corners of the very gamut being picked from. The
+     library's own 12px black bottom border goes with it. */
+  border-radius: 0;
   border-bottom: 0;
 }
 
