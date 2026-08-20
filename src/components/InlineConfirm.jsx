@@ -94,7 +94,7 @@ export function InlineConfirm({
           restoreFocusRef.current = true;
           setArmed(false);
         }}
-        className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+        className="rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground"
       >
         <X className="size-[length:var(--ui-icon-management-action)]" />
       </button>
@@ -109,7 +109,7 @@ export function InlineConfirm({
           setArmed(false);
           onConfirm();
         }}
-        className="rounded p-0.5 text-foreground transition-colors hover:text-foreground"
+        className="rounded-xs p-0.5 text-foreground transition-colors hover:text-foreground"
       >
         <Check className="size-[length:var(--ui-icon-management-action)]" />
       </button>

@@ -10,7 +10,7 @@ import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
-const HEADER_ACTION_CLASS = "shrink-0 rounded text-muted-foreground hover:text-foreground";
+const HEADER_ACTION_CLASS = "shrink-0 rounded-xs text-muted-foreground hover:text-foreground";
 
 const CORE_COLORS = [
   {

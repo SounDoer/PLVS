@@ -34,7 +34,7 @@ function PanelRow({ panelId }) {
 
   if (editing) {
     return (
-      <div className="flex w-full items-center gap-1 rounded px-1.5 py-1">
+      <div className="flex w-full items-center gap-1 rounded-xs px-1.5 py-1">
         <input
           type="text"
           aria-label={`Rename ${title}`}
@@ -124,7 +124,7 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
           aria-label={`Drag ${title} to place`}
           title="Drag to place"
           onMouseDown={(e) => onCreateMouseDown(e, id)}
-          className="flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+          className="flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
         >
           <GripVertical className="size-3.5" />
         </button>

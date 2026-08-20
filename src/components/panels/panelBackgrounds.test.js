@@ -23,8 +23,8 @@ describe("panel chart chrome", () => {
 
     const disallowedChartContainerClasses = [
       ["LoudnessHistoryChart.jsx", "flex-1 rounded-lg"],
-      ["WaveformPanel.jsx", "flex-1 rounded"],
-      ["WaveformPanel.jsx", "w-full rounded"],
+      ["WaveformPanel.jsx", "flex-1 rounded-xs"],
+      ["WaveformPanel.jsx", "w-full rounded-xs"],
       ["SpectrogramPanel.jsx", "h-full rounded-lg"],
       ["SpectrumPanel.jsx", "h-full rounded-lg"],
       ["VectorscopePanel.jsx", "w-full rounded-lg"],

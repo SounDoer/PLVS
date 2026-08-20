@@ -59,7 +59,7 @@ const REMOVE_COL_CLASS = "w-5";
 // because stepping a delivery threshold by 1 is never what anyone wants, and it overlaps the text.
 // The muted icon buttons in the editor header (rename pencil, and the confirm/cancel that replace it
 // while renaming). `onPointerDown` on each stops the drag handle from grabbing the click.
-const HEADER_ACTION_CLASS = "shrink-0 rounded text-muted-foreground hover:text-foreground";
+const HEADER_ACTION_CLASS = "shrink-0 rounded-xs text-muted-foreground hover:text-foreground";
 
 const NUM_INPUT_CLASS =
   "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-muted/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -193,7 +193,7 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         onPointerDown={onDragStart}
         className={cn(
           GRIP_COL_CLASS,
-          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing",
+          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing",
           dragging && "text-foreground"
         )}
       >
@@ -246,7 +246,7 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         onClick={onRemove}
         className={cn(
           REMOVE_COL_CLASS,
-          "flex items-center justify-center rounded text-muted-foreground hover:text-foreground"
+          "flex items-center justify-center rounded-xs text-muted-foreground hover:text-foreground"
         )}
       >
         <X className="size-[length:var(--ui-icon-management-action)]" />

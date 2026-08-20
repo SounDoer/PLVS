@@ -125,7 +125,7 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
               "fixed z-50 opacity-100 pointer-events-none",
               "transition-opacity duration-100 delay-100",
               "text-[length:var(--ui-fs-axis)] text-foreground bg-popover",
-              "border border-white/10 rounded px-2 py-1",
+              "border border-white/10 rounded-xs px-2 py-1",
               "whitespace-nowrap shadow-md",
               tipClassName
             )}

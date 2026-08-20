@@ -39,10 +39,10 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
           // there, and any keypress -- a bare Shift is enough in Chromium --
           // flips :focus-visible on, framing a row whose panel is already the
           // thing being looked at.
-          className="flex items-center gap-2 rounded text-left"
+          className="flex items-center gap-2 rounded-xs text-left"
         >
           <span
-            className="h-5 w-5 rounded border border-border"
+            className="h-5 w-5 rounded-xs border border-border"
             style={{ backgroundColor: value }}
           />
           <span className="text-[length:var(--ui-fs-metric-meta)]">{label}</span>
@@ -71,7 +71,7 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
         <div className="flex items-center gap-2">
           <span
             aria-hidden="true"
-            className="size-5 shrink-0 rounded border border-border"
+            className="size-5 shrink-0 rounded-xs border border-border"
             style={{ backgroundColor: fromEditable(hex, alpha) }}
           />
           <input
@@ -93,7 +93,7 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
             }}
             // `min-w-0` lets the field shrink past a text input's intrinsic width
             // (default `size=20`), which otherwise pushes it out of the popover.
-            className="min-w-0 flex-1 rounded border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)]"
+            className="min-w-0 flex-1 rounded-xs border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)]"
           />
         </div>
       </PopoverContent>

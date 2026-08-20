@@ -103,7 +103,7 @@ export function SourceTransportCluster({
                   setOpen(false);
                   if (option.id !== sourceMode) onSourceModeChange(option.id);
                 }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] transition-colors hover:bg-muted/50"
+                className="flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] transition-colors hover:bg-muted/50"
               >
                 <span
                   aria-hidden="true"

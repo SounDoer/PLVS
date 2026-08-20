@@ -41,7 +41,7 @@ export const PANEL_HEADER_BAR =
 export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
 
 export const PANEL_HEADER_ACTION_BUTTON =
-  "rounded p-0.5 text-muted-foreground opacity-50 hover:opacity-100";
+  "rounded-xs p-0.5 text-muted-foreground opacity-50 hover:opacity-100";
 
 /** Optical compensation for Lucide Pin / PinOff, whose drawing fills more of the viewBox. */
 export const PANEL_HEADER_PIN_ICON = "size-[calc(var(--ui-icon-panel-action)*0.9)]";

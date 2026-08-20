@@ -18,7 +18,7 @@ const NOOP_PRESETS = {
 };
 
 const DRAG_HANDLE_CLASS =
-  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing";
+  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing";
 
 /**
  * Popover body for preset management. Receives the `presets` controller
@@ -118,7 +118,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
             return (
               <div key={preset.id} className="group">
                 {isEditing ? (
-                  <div className="flex items-center gap-1.5 rounded px-1.5 py-1">
+                  <div className="flex items-center gap-1.5 rounded-xs px-1.5 py-1">
                     <input
                       type="text"
                       value={drafts[preset.id] ?? preset.name ?? ""}
@@ -140,7 +140,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       aria-label="Save rename"
                       onClick={() => commitRename(preset.id)}
                       disabled={!(drafts[preset.id] ?? "").trim()}
-                      className="shrink-0 rounded text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="shrink-0 rounded-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                       <Check className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -148,7 +148,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       type="button"
                       aria-label="Cancel rename"
                       onClick={cancelRename}
-                      className="shrink-0 rounded text-muted-foreground hover:text-foreground"
+                      className="shrink-0 rounded-xs text-muted-foreground hover:text-foreground"
                     >
                       <X className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -156,7 +156,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                 ) : (
                   <div
                     className={cn(
-                      "flex items-center gap-1 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50",
+                      "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50",
                       draggingId === preset.id && "z-10 ring-1 ring-primary/60"
                     )}
                   >
@@ -175,7 +175,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after
                       // the drag handle, so the left side doesn't need a second helping of the
                       // handle's own gap.
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded pl-1 pr-1.5 py-1.5 text-left"
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-xs pl-1 pr-1.5 py-1.5 text-left"
                     >
                       <span
                         aria-label={
@@ -201,7 +201,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                           e.stopPropagation();
                           presets.update(preset.id);
                         }}
-                        className="rounded text-muted-foreground hover:text-foreground"
+                        className="rounded-xs text-muted-foreground hover:text-foreground"
                       >
                         <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
@@ -212,7 +212,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                           e.stopPropagation();
                           startRename(preset);
                         }}
-                        className="rounded text-muted-foreground hover:text-foreground"
+                        className="rounded-xs text-muted-foreground hover:text-foreground"
                       >
                         <Pencil className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
@@ -228,7 +228,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                               e.stopPropagation();
                               arm();
                             }}
-                            className="rounded text-muted-foreground hover:text-destructive"
+                            className="rounded-xs text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
                           </button>

@@ -33,7 +33,7 @@ function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
       type="button"
       aria-label={ariaLabel}
       onClick={onSelect}
-      className="flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50"
+      className="flex w-full items-center gap-2 rounded-xs px-1.5 py-1.5 text-left text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50"
     >
       <span
         aria-hidden="true"

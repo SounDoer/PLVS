@@ -458,7 +458,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
               style={{ left: `${waveformHover.leftPct}%` }}
             />
             {/* Popover */}
-            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
+            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
               <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                 {waveformHover.timeLabel}
               </div>

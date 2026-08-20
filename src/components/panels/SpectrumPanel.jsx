@@ -890,7 +890,7 @@ export function SpectrumPanel({ compact = false }) {
                               : "var(--ui-spectrum-primary)",
                         }}
                       />
-                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-border bg-secondary px-1 py-px font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-muted-foreground shadow-sm">
+                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xs border border-border bg-secondary px-1 py-px font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-muted-foreground shadow-sm">
                         {peak.freqLabel}
                       </div>
                     </div>
@@ -918,7 +918,7 @@ export function SpectrumPanel({ compact = false }) {
                           : "var(--ui-spectrum-primary)",
                     }}
                   />
-                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
+                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.freqLabel}
                     </div>

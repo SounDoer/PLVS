@@ -13,7 +13,7 @@ import { isMacOS, supportsDockMode } from "@/lib/platform.js";
 
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
+    <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1.5">
       <Label
         htmlFor={id}
         className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
@@ -73,7 +73,7 @@ export function FocusViewPopoverContent({
         checked={normalized.autoHideControls}
         onCheckedChange={setAutoHideControls}
       />
-      <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
+      <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1.5">
         <Label
           htmlFor="panel-opacity"
           className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
@@ -104,7 +104,7 @@ export function FocusViewPopoverContent({
       {showDock && supportsDockMode() ? (
         <>
           <div className="mx-2 border-t border-border/60" />
-          <div className="flex items-center justify-between gap-3 rounded px-2 py-1.5">
+          <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1.5">
             <Label
               htmlFor="focus-view-dock"
               className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"

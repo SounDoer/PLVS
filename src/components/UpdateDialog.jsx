@@ -70,7 +70,7 @@ export function UpdateDialog({
             {currentVersion ? `What's new since v${currentVersion}` : "What's new"}
           </Dialog.Description>
 
-          <div className="my-3 max-h-[50vh] overflow-y-auto rounded-md border border-border/60 bg-background/35 px-3 py-2 text-[length:var(--ui-fs-control)] text-foreground/90 [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1 [&_h2]:mb-1 [&_h2]:mt-3 [&_h2:first-child]:mt-0 [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold [&_hr]:my-3 [&_hr]:border-border [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-secondary [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
+          <div className="my-3 max-h-[50vh] overflow-y-auto rounded-md border border-border/60 bg-background/35 px-3 py-2 text-[length:var(--ui-fs-control)] text-foreground/90 [&_a]:text-primary [&_a]:underline [&_code]:rounded-xs [&_code]:bg-secondary [&_code]:px-1 [&_h2]:mb-1 [&_h2]:mt-3 [&_h2:first-child]:mt-0 [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold [&_hr]:my-3 [&_hr]:border-border [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-secondary [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
             <ReactMarkdown
               components={{
                 a: ({ href, children }) => (

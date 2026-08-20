@@ -38,7 +38,7 @@ const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--
 const SECTION_CLASS = "flex flex-col gap-[var(--ui-drawer-row-gap)]";
 
 const ROW_CLASS =
-  "grid min-h-[var(--ui-drawer-row-min-h)] grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded px-1.5 py-0.5";
+  "grid min-h-[var(--ui-drawer-row-min-h)] grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded-xs px-1.5 py-0.5";
 
 const ROW_LABEL_CLASS =
   "whitespace-nowrap text-[length:var(--ui-fs-display)] text-muted-foreground";
@@ -58,7 +58,7 @@ const SWITCH_THUMB_CLASS =
   "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
 
 const ICON_BTN_CLASS =
-  "rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground";
+  "rounded-xs p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground";
 
 const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 
@@ -109,7 +109,7 @@ function SettingsLabelWithTip({ label, tip }) {
         <button
           type="button"
           aria-label={`${label} help: ${tip}`}
-          className="rounded p-0.5 text-muted-foreground/55 transition-colors hover:text-muted-foreground"
+          className="rounded-xs p-0.5 text-muted-foreground/55 transition-colors hover:text-muted-foreground"
         >
           <CircleHelp className="size-[1em]" aria-hidden />
         </button>

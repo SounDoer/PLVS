@@ -21,7 +21,7 @@ const ACTIVE_PULSE_MS = 160;
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
 const LOUDNESS_HUD_BOX_POPOVER =
-  "rounded border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm";
+  "rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm";
 
 export function LoudnessHistoryChart({
   plotAreaRef,

@@ -46,7 +46,7 @@ function Action({ label, icon, onClick }) {
 
 function ThemeRow({ theme, selected, onSelect, actions }) {
   return (
-    <div className="flex min-h-8 items-center gap-1 rounded px-1 hover:bg-muted/50">
+    <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 hover:bg-muted/50">
       <button
         type="button"
         onClick={() => onSelect(theme.id)}
