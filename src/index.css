@@ -123,6 +123,20 @@ html[data-surface="dock-editor"] #root {
   opacity: var(--panel-opacity-meter, 1);
 }
 
+/* Every focusable element gets this app's focus ring, not the browser's.
+   Chromium draws its own `outline: auto` on anything focusable that defines no
+   focus style, in a fixed high-contrast color -- white on a dark theme -- and
+   shows it after any keydown, a bare modifier included. Most controls here never
+   defined one, so patching them component by component would be a long tail with
+   no end. Layered as `base` so a component's own `focus-visible:` utilities,
+   which live in the utilities layer, still win outright. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--ring);
+    outline-offset: 0;
+  }
+}
+
 .plvs-range {
   --range-pct: 100%;
   --range-track: var(--input);
