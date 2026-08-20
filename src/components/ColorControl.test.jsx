@@ -34,7 +34,26 @@ describe("ColorControl", () => {
 
     // A text input's intrinsic width beats `flex-1` unless min-width is cleared.
     expect(screen.getByLabelText(/hex/i).classList.contains("min-w-0")).toBe(true);
-    expect(screen.getByLabelText(/alpha/i).classList.contains("min-w-0")).toBe(true);
+  });
+
+  it("keeps the picker resident instead of deferring to the OS color dialog", () => {
+    render(<ColorControl label="Accent" value="#fb923c" onChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /accent/i }));
+
+    // `<input type="color">` opened a third layer on top of the drawer and this
+    // panel; the saturation/hue surface lives in the panel itself now.
+    expect(document.querySelector('input[type="color"]')).toBeNull();
+    expect(document.querySelector(".plvs-color-picker")).toBeTruthy();
+  });
+
+  it("puts the current color and its hex on one row", () => {
+    render(<ColorControl label="Accent" value="rgba(251, 146, 60, 0.5)" onChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /accent/i }));
+
+    const row = screen.getByLabelText(/accent hex/i).parentElement;
+    const swatch = row.querySelector("span[aria-hidden]");
+    expect(swatch).toBeTruthy();
+    expect(swatch.style.backgroundColor).toBe("rgba(251, 146, 60, 0.5)");
   });
 
   it("carries its own focus ring instead of the UA outline", () => {

@@ -190,6 +190,48 @@ html[data-surface="dock-editor"] #root {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
 }
 
+/* react-colorful, dressed as a PLVS control — see ColorControl.jsx. The library
+   ships a fixed 200px square with its own radii and pointer sizes; everything
+   below is only about making it read as part of this app. */
+.plvs-color-picker.react-colorful {
+  width: 100%;
+  height: auto;
+  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.plvs-color-picker .react-colorful__saturation {
+  height: 8rem;
+  border-radius: var(--radius);
+  border-bottom: 0;
+}
+
+.plvs-color-picker .react-colorful__hue {
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+.plvs-color-picker .react-colorful__pointer {
+  width: 1rem;
+  height: 1rem;
+  border-width: 2px;
+  border-color: var(--background);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.plvs-color-picker .react-colorful__saturation-pointer {
+  /* The saturation area is the one place the pointer sits on arbitrary color,
+     so it gets the heavier ring rather than borrowing the track treatment. */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 65%, transparent),
+    0 1px 3px rgb(0 0 0 / 0.4);
+}
+
+.plvs-color-picker .react-colorful__interactive:focus-visible .react-colorful__pointer {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
+}
+
 /* LIVE (history snapshot) pulse on header primary control — see App.jsx */
 /* Fallback: opacity-only pulse for engines that don't support color-mix() */
 @keyframes live-snap-pulse-blink {

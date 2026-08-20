@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { HexColorPicker } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
 import { toEditable, fromEditable } from "../theme/colorIO.js";
 import { normalizeOpaqueColor } from "../theme/themeColorMath.js";
 
@@ -48,17 +48,33 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
           <span className="text-[length:var(--ui-fs-metric-meta)]">{label}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="flex w-56 flex-col gap-2">
-        <input
-          type="color"
+      <PopoverContent className="flex w-56 flex-col gap-2 p-3">
+        <HexColorPicker
           aria-label={`${label} picker`}
-          value={hex}
-          onInput={(e) => emit(e.target.value, alpha)}
+          className="plvs-color-picker"
+          color={hex}
+          onChange={(next) => emit(next, alpha)}
         />
-        <div className="flex items-center gap-2">
-          <Label htmlFor={`${label}-hex`}>Hex</Label>
+        {allowAlpha ? (
           <input
-            id={`${label}-hex`}
+            aria-label={`${label} alpha`}
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={alpha}
+            onInput={(e) => emit(hex, parseFloat(e.target.value))}
+            className="plvs-range w-full"
+            style={{ "--range-pct": `${Math.max(0, Math.min(100, alpha * 100))}%` }}
+          />
+        ) : null}
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="size-5 shrink-0 rounded border border-border"
+            style={{ backgroundColor: fromEditable(hex, alpha) }}
+          />
+          <input
             aria-label={`${label} hex`}
             value={colorText}
             onInput={(event) => {
@@ -77,26 +93,9 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
             }}
             // `min-w-0` lets the field shrink past a text input's intrinsic width
             // (default `size=20`), which otherwise pushes it out of the popover.
-            className="min-w-0 flex-1 rounded border border-input bg-transparent px-2 py-1"
+            className="min-w-0 flex-1 rounded border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)]"
           />
         </div>
-        {allowAlpha ? (
-          <div className="flex items-center gap-2">
-            <Label htmlFor={`${label}-alpha`}>Alpha</Label>
-            <input
-              id={`${label}-alpha`}
-              aria-label={`${label} alpha`}
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={alpha}
-              onInput={(e) => emit(hex, parseFloat(e.target.value))}
-              className="plvs-range min-w-0 flex-1"
-              style={{ "--range-pct": `${Math.max(0, Math.min(100, alpha * 100))}%` }}
-            />
-          </div>
-        ) : null}
       </PopoverContent>
     </Popover>
   );
