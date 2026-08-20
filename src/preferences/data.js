@@ -108,6 +108,8 @@ export const UI_PREFERENCES = {
   /** `card` is used for `--radius` at runtime and for generated first-paint CSS (`scripts/generate-theme-fallbacks.mjs`). */
   radii: {
     card: "0.625rem",
+    /** Floating panels that own a window of their own: theme editor, profile editor, feedback. */
+    modal: "1rem",
   },
 
   modules: {

@@ -485,8 +485,14 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 ## Radius Tokens
 
 ```
---radius   0.625rem   Base card-level radius (shadcn native). Use directly.
+--radius             0.625rem   Base card-level radius (shadcn native). Use directly.
+--ui-radius-modal    1rem       Floating panels that own a window: theme editor, profile editor, feedback.
 ```
+
+A `var(--ui-*)` that nothing defines fails silently — the declaration is dropped and the property
+falls back to its initial value, with no console warning and no test failure. `--ui-radius-modal`
+sat undefined for three releases and squared off all three panels that asked for it, which is why
+`src/preferences/uiTokenContract.test.js` now fails on any dangling reference.
 
 ---
 

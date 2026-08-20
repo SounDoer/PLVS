@@ -37,6 +37,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-icon-panel-module", `${icons.panelModule}px`);
 
   setCssVar("--radius", radii.card);
+  setCssVar("--ui-radius-modal", radii.modal);
 
   setCssVar("--ui-shell-pad", `${shell.paddingRem.base}rem`);
   setCssVar("--ui-shell-gap", `${shell.gapRem.base}rem`);

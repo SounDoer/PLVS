@@ -7,7 +7,11 @@ import { buttonVariants } from "./button.jsx";
 
 /** Every app source except tests, keyed by path. */
 function appSources() {
-  const sources = import.meta.glob("../../**/*.{js,jsx}", { as: "raw", eager: true });
+  const sources = import.meta.glob("../../**/*.{js,jsx}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  });
   return Object.fromEntries(Object.entries(sources).filter(([path]) => !path.includes(".test.")));
 }
 
