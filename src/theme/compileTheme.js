@@ -54,8 +54,12 @@ const RECIPES = {
   identity: ([value]) => structuredClone(value),
   "surface-panel": ([, surface]) => surface,
   "surface-raised": ([surface, workspace]) => mixHex(surface, workspace, 0.08),
-  "surface-control": ([surface, workspace]) => mixHex(surface, workspace, 0.18),
-  "surface-muted": ([surface, workspace]) => mixHex(surface, workspace, 0.24),
+  // Control surfaces step AWAY from the workspace, toward the text pole. Mixing
+  // toward the workspace instead inverts the ladder scheme by scheme -- controls
+  // darker than the panel in dark, lighter in light -- which is why the V1
+  // migration had to pin both roles on every builtin.
+  "surface-control": ([surface, text]) => mixHex(surface, text, 0.07),
+  "surface-muted": ([surface, text]) => mixHex(surface, text, 0.07),
   "surface-interactive": ([surface, accent]) => mixHex(surface, accent, 0.12),
   "text-primary": ([text]) => text,
   "text-secondary": ([text, surface]) => mixHex(surface, text, 0.58),

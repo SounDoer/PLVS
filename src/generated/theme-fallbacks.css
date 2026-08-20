@@ -6,12 +6,12 @@
   --background: #070707;
   --primary: #fb923c;
   --card: #151515;
-  --popover: #151515;
-  --secondary: #232323;
-  --muted: #232323;
+  --popover: #141414;
+  --secondary: #242424;
+  --muted: #242424;
   --accent: #232323;
   --foreground: #f2f2f2;
-  --muted-foreground: #898989;
+  --muted-foreground: #959595;
   --ui-text-annotation: #b0b0b0;
   --ui-text-muted: #7b7b7b;
   --ui-text-disabled: #5c5c5c;
@@ -57,7 +57,7 @@
   --ui-waveform-frequency-mid: #fb923c;
   --ui-waveform-frequency-high: #356dff;
   --ui-waveform-frequency-neutral: #484850;
-  --ui-waveform-centroid: #f8fafc;
+  --ui-waveform-centroid: #f2f2f2;
   --ui-effect-scrim: rgba(7, 7, 7, 0.72);
   --ui-effect-surface-sheen: rgba(132, 132, 132, 0.08);
   --ui-effect-surface-shadow: rgba(7, 7, 7, 0.45);
