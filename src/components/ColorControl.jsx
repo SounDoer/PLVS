@@ -34,8 +34,12 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
           type="button"
           aria-label={label}
           // Without its own ring this falls back to the UA focus outline, which
-          // renders white regardless of the theme and boxes the whole row.
-          className="flex items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          // renders white regardless of the theme and boxes the whole row. The
+          // ring is dropped while the panel is open: the trigger keeps focus
+          // there, and any keypress -- a bare Shift is enough in Chromium --
+          // flips :focus-visible on, framing a row whose panel is already the
+          // thing being looked at.
+          className="flex items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:focus-visible:ring-0"
         >
           <span
             className="h-5 w-5 rounded border border-border"

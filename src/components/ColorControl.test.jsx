@@ -43,6 +43,8 @@ describe("ColorControl", () => {
     const trigger = screen.getByRole("button", { name: /accent/i });
     expect(trigger.className).toContain("focus-visible:ring-ring");
     expect(trigger.className).toContain("focus-visible:outline-none");
+    // ...but not while its own panel is open.
+    expect(trigger.className).toContain("data-[state=open]:focus-visible:ring-0");
   });
 
   it("uses the custom range style for alpha", () => {
