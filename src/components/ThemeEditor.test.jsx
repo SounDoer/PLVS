@@ -85,6 +85,19 @@ describe("ThemeEditor", () => {
     expect(document.activeElement).toBe(screen.getByLabelText("Theme name"));
   });
 
+  it.each([
+    ["Palettes", "status palette preset", "PLVS Default"],
+    ["Advanced", "Panel Surface mode", "Auto"],
+  ])("dresses the %s dropdown as the shared Select, not a bare <select>", (tab, label, shown) => {
+    render(<ThemeEditor {...BASE_PROPS} />);
+    fireEvent.click(screen.getByRole("tab", { name: tab }));
+
+    const trigger = screen.getByLabelText(label);
+    expect(trigger.tagName).not.toBe("SELECT");
+    expect(trigger.getAttribute("data-slot")).toBe("select-trigger");
+    expect(trigger.textContent).toContain(shown);
+  });
+
   it("exposes disabled Undo and Redo actions until history exists", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
 

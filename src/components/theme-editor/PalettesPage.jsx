@@ -2,7 +2,9 @@ import { Plus, Trash2 } from "lucide-react";
 import { ColorControl } from "../ColorControl.jsx";
 import { IconButton } from "../IconButton.jsx";
 import { Label } from "../ui/label.jsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
 import { listPalettePresets } from "../../theme/palettePresets.js";
+import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
 
 const STATUS_COLORS = [
   ["good", "Good"],
@@ -20,21 +22,30 @@ const FREQUENCY_COLORS = [
 
 function PalettePresetSelect({ kind, value, onApplyPreset }) {
   return (
-    <select
-      aria-label={`${kind} palette preset`}
+    <Select
       value={value ?? "custom"}
-      onChange={(event) => {
-        if (event.target.value !== "custom") onApplyPreset(kind, event.target.value);
+      onValueChange={(next) => {
+        if (next !== "custom") onApplyPreset(kind, next);
       }}
-      className="h-7 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-metric-meta)]"
     >
-      {value == null ? <option value="custom">Custom</option> : null}
-      {listPalettePresets(kind).map((preset) => (
-        <option key={preset.id} value={preset.id}>
-          {preset.label}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger aria-label={`${kind} palette preset`} className={EDITOR_SELECT_TRIGGER_CLASS}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent position="popper" className={EDITOR_SELECT_CONTENT_CLASS}>
+        {/* Only offered while the palette has drifted off every preset: picking
+            "Custom" means nothing, it is just what the trigger has to show. */}
+        {value == null ? (
+          <SelectItem value="custom" disabled>
+            Custom
+          </SelectItem>
+        ) : null}
+        {listPalettePresets(kind).map((preset) => (
+          <SelectItem key={preset.id} value={preset.id}>
+            {preset.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

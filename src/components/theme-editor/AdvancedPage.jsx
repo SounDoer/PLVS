@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { ColorControl } from "../ColorControl.jsx";
 import { compileTheme } from "../../theme/compileTheme.js";
 import { THEME_ROLE_REGISTRY } from "../../theme/themeRoleRegistry.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
+import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
 
 const REFERENCE_LABELS = {
   "core.text": "Follow Text",
@@ -60,25 +62,30 @@ function AdvancedRole({ role, override, resolved, onOverride }) {
             {role.advanced.description}
           </p>
         </div>
-        <select
-          aria-label={`${role.advanced.label} mode`}
+        <Select
           value={mode}
-          onChange={(event) => {
-            const value = event.target.value;
+          onValueChange={(value) => {
             if (value === "auto") onOverride(role.id, null);
             else if (value === "custom") onOverride(role.id, makeCustomOverride(role, resolved));
             else onOverride(role.id, { kind: "reference", source: value.slice(10) });
           }}
-          className="h-7 max-w-36 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-metric-meta)]"
         >
-          <option value="auto">Auto</option>
-          {role.advanced.references.map((reference) => (
-            <option key={reference} value={`reference:${reference}`}>
-              {REFERENCE_LABELS[reference] ?? `Follow ${reference}`}
-            </option>
-          ))}
-          <option value="custom">Custom</option>
-        </select>
+          <SelectTrigger
+            aria-label={`${role.advanced.label} mode`}
+            className={`${EDITOR_SELECT_TRIGGER_CLASS} max-w-36`}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper" className={EDITOR_SELECT_CONTENT_CLASS}>
+            <SelectItem value="auto">Auto</SelectItem>
+            {role.advanced.references.map((reference) => (
+              <SelectItem key={reference} value={`reference:${reference}`}>
+                {REFERENCE_LABELS[reference] ?? `Follow ${reference}`}
+              </SelectItem>
+            ))}
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       {mode === "custom" ? (
         <div className="ml-6 flex items-center gap-3">
