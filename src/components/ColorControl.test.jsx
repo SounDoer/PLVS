@@ -28,6 +28,23 @@ describe("ColorControl", () => {
     expect(onChange).toHaveBeenLastCalledWith("rgba(255, 255, 255, 0.5)");
   });
 
+  it("lets the hex field shrink instead of overflowing the popover", () => {
+    render(<ColorControl label="Accent" value="#fb923c" onChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /accent/i }));
+
+    // A text input's intrinsic width beats `flex-1` unless min-width is cleared.
+    expect(screen.getByLabelText(/hex/i).classList.contains("min-w-0")).toBe(true);
+    expect(screen.getByLabelText(/alpha/i).classList.contains("min-w-0")).toBe(true);
+  });
+
+  it("carries its own focus ring instead of the UA outline", () => {
+    render(<ColorControl label="Accent" value="#fb923c" onChange={vi.fn()} />);
+
+    const trigger = screen.getByRole("button", { name: /accent/i });
+    expect(trigger.className).toContain("focus-visible:ring-ring");
+    expect(trigger.className).toContain("focus-visible:outline-none");
+  });
+
   it("uses the custom range style for alpha", () => {
     render(<ColorControl label="Border" value="rgba(255, 255, 255, 0.5)" onChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /border/i }));

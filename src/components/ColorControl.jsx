@@ -30,7 +30,13 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" aria-label={label} className="flex items-center gap-2 text-left">
+        <button
+          type="button"
+          aria-label={label}
+          // Without its own ring this falls back to the UA focus outline, which
+          // renders white regardless of the theme and boxes the whole row.
+          className="flex items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
           <span
             className="h-5 w-5 rounded border border-border"
             style={{ backgroundColor: value }}
@@ -65,7 +71,9 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
                 event.currentTarget.blur();
               }
             }}
-            className="flex-1 rounded border border-input bg-transparent px-2 py-1"
+            // `min-w-0` lets the field shrink past a text input's intrinsic width
+            // (default `size=20`), which otherwise pushes it out of the popover.
+            className="min-w-0 flex-1 rounded border border-input bg-transparent px-2 py-1"
           />
         </div>
         {allowAlpha ? (
@@ -80,7 +88,7 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
               step="0.01"
               value={alpha}
               onInput={(e) => emit(hex, parseFloat(e.target.value))}
-              className="plvs-range flex-1"
+              className="plvs-range min-w-0 flex-1"
               style={{ "--range-pct": `${Math.max(0, Math.min(100, alpha * 100))}%` }}
             />
           </div>
