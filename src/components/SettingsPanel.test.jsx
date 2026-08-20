@@ -205,6 +205,15 @@ describe("SettingsPanel", () => {
     expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
   });
 
+  it("keeps the theme picker clickable while the settings sheet blanks body pointer events", () => {
+    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    const content = document.querySelector("[data-slot='popover-content']");
+    expect(document.body.style.pointerEvents).toBe("none");
+    expect(content.className).toContain("pointer-events-auto");
+  });
+
   it("hides edit/delete for built-in themes", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
