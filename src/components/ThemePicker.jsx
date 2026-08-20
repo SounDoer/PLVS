@@ -1,4 +1,4 @@
-import { Check, Copy, Pencil, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { IconButton } from "./IconButton.jsx";
 import { InlineConfirm } from "./InlineConfirm.jsx";
@@ -96,6 +96,7 @@ export function ThemePicker({
         >
           {selected ? <ThemeSwatch theme={selected} /> : null}
           <span>{selected?.name ?? "Theme"}</span>
+          <ChevronDown className="size-[1.15em] shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-1">
