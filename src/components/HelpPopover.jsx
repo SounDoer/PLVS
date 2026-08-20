@@ -88,7 +88,7 @@ function iconForHint(item) {
 
 function Keycap({ children }) {
   return (
-    <span className="inline-flex h-[1.45em] items-center justify-center rounded-[3px] border border-border bg-background px-1.5 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground shadow-sm">
+    <span className="inline-flex h-[1.45em] items-center justify-center rounded-xs border border-border bg-background px-1.5 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground shadow-sm">
       {children}
     </span>
   );

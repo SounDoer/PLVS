@@ -405,7 +405,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         ref={ref}
         role="dialog"
         aria-label="Loudness Profile editor"
-        className="fixed z-50 flex max-h-[80vh] w-[26rem] flex-col gap-2 overflow-hidden rounded-[var(--ui-radius-modal)] border border-border bg-card text-card-foreground shadow-lg"
+        className="fixed z-50 flex max-h-[80vh] w-[26rem] flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
         style={{ left: pos.x, top: pos.y }}
       >
         <div
@@ -548,7 +548,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60" />
           <Dialog.Content
             role="alertdialog"
-            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl"
+            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl"
           >
             <Dialog.Title className="mb-3 text-[length:var(--ui-fs-body)] font-semibold text-foreground">
               Discard profile changes?

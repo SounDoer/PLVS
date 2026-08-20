@@ -36,14 +36,16 @@ describe("shellLayout token names", () => {
     expect(FOOTER_DIVIDER).toContain("mx-1.5");
   });
 
-  it("SHELL_HEADER uses --radius (not the retired --ui-radius-card)", () => {
-    expect(SHELL_HEADER).toContain("--radius");
+  it("SHELL_HEADER takes the surface rung, not a hand-rolled radius", () => {
+    expect(SHELL_HEADER).toContain("rounded-md");
     expect(SHELL_HEADER).not.toContain("--ui-radius-card");
+    expect(SHELL_HEADER).not.toMatch(/rounded-\[/);
   });
 
-  it("SHELL_FOOTER uses --radius (not the retired --ui-radius-card)", () => {
-    expect(SHELL_FOOTER).toContain("--radius");
+  it("SHELL_FOOTER takes the surface rung, not a hand-rolled radius", () => {
+    expect(SHELL_FOOTER).toContain("rounded-md");
     expect(SHELL_FOOTER).not.toContain("--ui-radius-card");
+    expect(SHELL_FOOTER).not.toMatch(/rounded-\[/);
   });
 
   it("SHELL_HEADER border uses border-border (not a hardcoded white tint)", () => {

@@ -179,7 +179,7 @@ describe("DockEditorApp window behavior", () => {
     expect(classes).toContain("min-w-48");
     expect(classes).not.toContain("min-w-64");
     expect(classes).not.toContain("w-[400px]");
-    expect(classes).toContain("rounded-lg");
+    expect(classes).toContain("rounded-md");
     expect(classes).toContain("border-border/70");
     expect(classes).toContain("bg-popover/95");
     expect(classes).toContain("shadow-sm");

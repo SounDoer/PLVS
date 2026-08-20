@@ -12,7 +12,7 @@ export const SHELL_INNER_FOCUS =
   "relative flex min-h-0 w-full flex-1 select-none flex-col p-[var(--ui-shell-pad)]";
 
 export const SHELL_SURFACE_BASE =
-  "rounded-[calc(var(--radius)*0.66)] border px-[var(--ui-header-pad-x)] backdrop-blur-[24px] backdrop-saturate-[140%]";
+  "rounded-md border px-[var(--ui-header-pad-x)] backdrop-blur-[24px] backdrop-saturate-[140%]";
 
 export const SHELL_SURFACE_INSET_SHADOW = "shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
 
@@ -26,10 +26,10 @@ export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[
 export const SHELL_HEADER_ACTIONS = "flex items-center gap-[var(--ui-header-action-gap)]";
 
 export const SHELL_FOOTER =
-  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-[color-mix(in_srgb,var(--card)_var(--panel-opacity-header),transparent)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px] backdrop-saturate-[140%]";
+  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-[color-mix(in_srgb,var(--card)_var(--panel-opacity-header),transparent)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-[24px] backdrop-saturate-[140%]";
 
 export const SHELL_FOOTER_OVERLAY =
-  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-[var(--radius)] border border-border bg-card/85 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_-8px_24px_rgba(0,0,0,0.14)] backdrop-blur-[24px] backdrop-saturate-[140%] z-30";
+  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-card/85 px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_-8px_24px_rgba(0,0,0,0.14)] backdrop-blur-[24px] backdrop-saturate-[140%] z-30";
 
 export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3 cursor-move";
 
@@ -83,8 +83,8 @@ export const CHART_INSET_MIN_H = "min-h-[var(--ui-min-h-history-chart)]";
 
 /** Horizontal layout rails (column resize) */
 export const RESIZE_COL_CLASS =
-  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-[var(--radius)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
+  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-full opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
 
 /** Vertical layout rails (row resize) */
 export const RESIZE_ROW_CLASS =
-  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-[var(--radius)] opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
+  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-full opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";

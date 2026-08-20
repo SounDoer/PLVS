@@ -44,6 +44,11 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
+  /* Radius ladder -- see design-tokens.md. Only xs / md / xl are in use: items
+     and small controls, surfaces and standard controls, floating windows. sm and
+     lg stay defined because dropping them would hand those utilities back to
+     Tailwind's own defaults, which do not follow --radius at all. */
+  --radius-xs: calc(var(--radius) - 6px);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

@@ -484,15 +484,40 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 
 ## Radius Tokens
 
-```
---radius             0.625rem   Base card-level radius (shadcn native). Use directly.
---ui-radius-modal    1rem       Floating panels that own a window: theme editor, profile editor, feedback.
-```
+Three rungs, all derived from `--radius` (`0.625rem`), plus the pill.
+
+| Utility        | Value  | Owner                                                              |
+| -------------- | ------ | ------------------------------------------------------------------ |
+| `rounded-xs`   | `4px`  | Items nested in a `p-1` container; any control under 28px tall       |
+| `rounded-md`   | `8px`  | Surfaces — panels, popovers, menus — and controls 28px and taller    |
+| `rounded-xl`   | `14px` | Floating windows: the draggable editors and the centred dialogs      |
+| `rounded-full` | pill   | Switches, sliders, resize rails, dots                                |
+
+Two rules decide the rung, in this order:
+
+1. **Concentric.** A child sitting on its parent's corner takes `parent − padding`. A menu row in a
+   `p-1` popover is `8 − 4 = 4`, which is exactly `xs`. Break this and the two arcs stop being
+   concentric, which reads as a seam nobody can name.
+2. **Height.** Otherwise pick by the element's own height: a radius wants to be about a fifth of it.
+   `8px` on a 24px icon button is a third of its height and reads as a squircle, so small controls
+   take `xs` even though they are controls.
+
+Surfaces and standard controls deliberately share one value. Elevation is already carried by the
+`background → card → popover → secondary` lightness ladder and by shadow; saying it a third time in
+the corner radius is redundant. Radius only needs to answer two questions: am I on someone else's
+corner, and am I a window.
+
+`rounded` (bare) is banned: Tailwind compiles it to a literal `0.25rem` that ignores `--radius`, so
+it silently opts out of the ladder — and it was the single most used radius in the app before this
+was written down. `rounded-sm` and `rounded-lg` stay defined but unused; deleting the definitions
+would hand those utilities back to Tailwind's defaults, which is worse than leaving them. Hardcoded
+`rounded-[Npx]` is banned for the same reason. `src/components/ui/radiusContract.test.js` enforces
+all of it.
 
 A `var(--ui-*)` that nothing defines fails silently — the declaration is dropped and the property
 falls back to its initial value, with no console warning and no test failure. `--ui-radius-modal`
-sat undefined for three releases and squared off all three panels that asked for it, which is why
-`src/preferences/uiTokenContract.test.js` now fails on any dangling reference.
+sat undefined long enough to square off all three floating panels that asked for it, which is why
+`src/preferences/uiTokenContract.test.js` fails on any dangling reference.
 
 ---
 

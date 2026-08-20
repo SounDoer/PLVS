@@ -50,7 +50,7 @@ export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-border bg-card p-3 shadow-xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-card p-3 shadow-xl">
           <Dialog.Title className="sr-only">Close PLVS</Dialog.Title>
           <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
             <span className={ROW_LABEL_CLASS}>Close Behavior</span>
