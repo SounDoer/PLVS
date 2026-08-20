@@ -25,7 +25,7 @@ const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
 
 const SETTINGS_VALUE_IDLE_CLASS =
-  "border-transparent bg-transparent hover:border-border hover:bg-secondary/85 hover:text-foreground";
+  "border-transparent bg-transparent hover:border-border hover:bg-muted/50 hover:text-foreground";
 
 const SETTINGS_VALUE_OPEN_CLASS = "border-primary/55 bg-secondary/30 text-foreground";
 
@@ -33,7 +33,7 @@ const SETTINGS_DETAIL_SURFACE_CLASS =
   "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
 
 const SETTINGS_CHOICE_ROW_CLASS =
-  "flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-left text-[length:var(--ui-fs-control)] text-popover-foreground outline-none transition-colors hover:bg-secondary/50 hover:text-foreground";
+  "flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-left text-[length:var(--ui-fs-control)] text-popover-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
 
@@ -442,7 +442,7 @@ export function SettingsSelect({
                           [opt.group]: current[opt.group] !== true,
                         }))
                       }
-                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-sm px-2 pb-0.5 pt-1 text-left text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground/60 outline-none transition-colors hover:bg-secondary/35 hover:text-muted-foreground"
+                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-sm px-2 pb-0.5 pt-1 text-left text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground/60 outline-none transition-colors hover:bg-muted/50 hover:text-muted-foreground"
                     >
                       <span className="min-w-0 truncate">{opt.group}</span>
                       {groupCollapsed ? (
@@ -570,7 +570,7 @@ function SettingsVadSelect({ selectedOption, options, value, onChange, open, onO
                 <button
                   type="button"
                   aria-label={`Open ${option.label} official link`}
-                  className="rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:bg-secondary/60 hover:text-foreground"
+                  className="rounded-sm p-0.5 text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-foreground"
                   onPointerDown={(event) => {
                     event.stopPropagation();
                   }}
@@ -624,7 +624,7 @@ function SortableStatRow({ id, label, checked, onToggle }) {
       value={id}
       dragListener={false}
       dragControls={controls}
-      className="group flex items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-secondary/35"
+      className="group flex items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-muted/50"
     >
       <span
         aria-hidden="true"
@@ -688,7 +688,7 @@ export function SortableStatsList({
                 type="button"
                 aria-label="Reset stats"
                 onClick={arm}
-                className="w-auto rounded-sm px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground/70 outline-none transition-colors hover:bg-secondary/35 hover:text-foreground"
+                className="w-auto rounded-sm px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground/70 outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
               >
                 Reset
               </button>

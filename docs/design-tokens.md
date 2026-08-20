@@ -38,6 +38,24 @@ including a bare modifier. Components must not reintroduce a `focus-visible:ring
 `--ring` still exists and is still compiled, because menu and list keyboard highlighting
 is a background change (`focus:bg-accent`) rather than an outline and is unaffected.
 
+## Highlight States
+
+Two states, never mixed.
+
+| State   | Means                                   | Treatment                                                                                            |
+| ------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Neutral | The pointer or focus is here, right now | `hover:bg-muted/50`, plus `focus-within:bg-muted/50` on list rows                                    |
+| Accent  | This item is the active or selected one | `bg-accent text-accent-foreground` for regions; solid `bg-primary` for small marks and switch tracks |
+
+`--accent` (`interface.surface.interactive`) is accent-tinted, so spending it on hover reads as
+"this is selected" every time the pointer crosses a row. It belongs only to persistent state —
+an open menu's trigger, an engaged toggle. Dropdown items say "selected" with a check mark and
+use the neutral highlight for traversal, mouse and keyboard alike.
+
+`hover:bg-secondary/*` survives only on controls already filled with `--secondary` (the `secondary`
+button and badge variants), where hover shifts the control's own fill rather than tinting a
+transparent one. Contract tests in `src/components/ui/themeColorContract.test.js` hold both rules.
+
 ## Color Tokens
 
 ### Shadcn Semantic

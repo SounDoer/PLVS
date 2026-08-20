@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 import { badgeVariants } from "./badge.jsx";
 import { buttonVariants } from "./button.jsx";
 
+/** Every app source except tests, keyed by path. */
+function appSources() {
+  const sources = import.meta.glob("../../**/*.{js,jsx}", { as: "raw", eager: true });
+  return Object.fromEntries(Object.entries(sources).filter(([path]) => !path.includes(".test.")));
+}
+
 describe("theme color contract", () => {
   it("uses the destructive foreground token for destructive buttons", () => {
     const classes = buttonVariants({ variant: "destructive" });
@@ -23,11 +29,29 @@ describe("theme color contract", () => {
   });
 
   it("leaves no per-component focus ring to fight the global rule", () => {
-    const sources = import.meta.glob("../../**/*.{js,jsx}", { as: "raw", eager: true });
-
-    const offenders = Object.entries(sources)
-      .filter(([path]) => !path.includes(".test."))
+    const offenders = Object.entries(appSources())
       .filter(([, source]) => /focus(?:-visible)?:(?:ring|outline|border-ring)/.test(source))
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("never spends the accent surface on hover", () => {
+    // `--accent` marks what is currently active. Hover is where the pointer is,
+    // which is not the same claim and must not borrow the same color.
+    const offenders = Object.entries(appSources())
+      .filter(([, source]) => /(?:hover|focus):bg-accent/.test(source))
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps one neutral hover for every transparent-base control", () => {
+    // `hover:bg-secondary/*` survives only where the control is already filled
+    // with it and hover shifts its own fill.
+    const offenders = Object.entries(appSources())
+      .filter(([path]) => !/(?:^|\/)(?:badge|button)\.jsx$/.test(path))
+      .filter(([, source]) => /hover:bg-secondary/.test(source))
       .map(([path]) => path);
 
     expect(offenders).toEqual([]);

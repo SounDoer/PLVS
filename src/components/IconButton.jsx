@@ -42,7 +42,7 @@ export function IconButton({
           "flex items-center justify-center size-7 rounded-md",
           "text-muted-foreground bg-transparent",
           "transition-colors duration-[120ms]",
-          disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-secondary hover:text-foreground",
+          disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-muted/50 hover:text-foreground",
           className
         )}
       >

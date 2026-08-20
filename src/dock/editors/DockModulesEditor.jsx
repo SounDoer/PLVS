@@ -287,7 +287,7 @@ export function DockModulesEditor({
                 aria-label="Reset layout"
                 title="Reset layout"
                 onClick={arm}
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
               >
                 <RotateCcw className="size-3.5" />
               </button>

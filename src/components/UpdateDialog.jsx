@@ -2,7 +2,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
 
 const SECONDARY_BUTTON_CLASS =
-  "rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50";
+  "rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-50";
 const PRIMARY_BUTTON_CLASS =
   "rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-60";
 
