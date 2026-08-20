@@ -52,13 +52,40 @@ describe("normalizeThemeV2", () => {
         primaryData: "#f97316",
         secondaryData: "#38bdf8",
       },
-      palettes: raw.palettes,
+      palettes: {
+        ...raw.palettes,
+        interface: { presetId: null, critical: raw.palettes.status.critical },
+      },
       overrides: {
         "waveform.centroid": { kind: "color", value: "#ffffff" },
         "spectrum.primary": { kind: "reference", source: "core.secondaryData" },
         "interface.border.default": { kind: "effect", color: "#ffffff", opacity: 0.09 },
       },
     });
+  });
+
+  it("seeds the interface palette from status critical when a document predates it", () => {
+    const raw = validTheme();
+    raw.palettes.status.critical = "#d03535";
+    delete raw.palettes.interface;
+    expect(normalizeThemeV2(raw)?.palettes.interface).toEqual({
+      presetId: null,
+      critical: "#d03535",
+    });
+  });
+
+  it("keeps an interface critical that differs from the status one", () => {
+    const raw = validTheme();
+    raw.palettes.status.critical = "#d03535";
+    raw.palettes.interface = { critical: "#df202e" };
+    expect(normalizeThemeV2(raw)?.palettes.interface.critical).toBe("#df202e");
+    expect(normalizeThemeV2(raw)?.palettes.status.critical).toBe("#d03535");
+  });
+
+  it("rejects a present but malformed interface palette", () => {
+    const raw = validTheme();
+    raw.palettes.interface = { critical: "not a color" };
+    expect(normalizeThemeV2(raw)).toBeNull();
   });
 
   it("allows an unknown preset ID because palette values are saved snapshots", () => {

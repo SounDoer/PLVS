@@ -16,14 +16,21 @@ const ADOPTED_AUTOMATIC = {
     "--popover": "#141414",
     "--secondary": "#242424",
     "--muted": "#242424",
+    "--accent": "#31241a",
     "--muted-foreground": "#959595",
+    "--primary-foreground": "#f2f2f2",
+    "--destructive-foreground": "#f2f2f2",
+    "--ui-waveform-frequency-neutral": "#4c4c4c",
     "--ui-waveform-centroid": "#f2f2f2",
   },
   "plvs-light": {
     "--popover": "#f5f2ef",
     "--secondary": "#e5e1de",
     "--muted": "#e5e1de",
+    "--accent": "#f2e2d5",
     "--muted-foreground": "#736d6a",
+    "--destructive-foreground": "#140e0a",
+    "--ui-waveform-frequency-neutral": "#a9a7a6",
     "--ui-waveform-centroid": "#140e0a",
   },
 };
@@ -50,6 +57,10 @@ describe("Theme V2 builtins", () => {
       }
     }
   );
+
+  it.each(Object.keys(BUILTIN_THEMES_V2))("authors %s without a single override", (id) => {
+    expect(BUILTIN_THEMES_V2[id].overrides).toEqual({});
+  });
 
   it("is deeply immutable and falls back to Dark", () => {
     expect(Object.isFrozen(BUILTIN_THEMES_V2["plvs-dark"].core)).toBe(true);

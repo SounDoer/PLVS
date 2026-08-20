@@ -10,6 +10,8 @@ const STATUS_COLORS = [
   ["critical", "Critical"],
 ];
 
+const INTERFACE_COLORS = [["critical", "Critical"]];
+
 const FREQUENCY_COLORS = [
   ["low", "Low"],
   ["mid", "Mid"],
@@ -47,11 +49,14 @@ function PaletteStrip({ colors }) {
 }
 
 function SimplePalette({ title, description, kind, palette, colors, onColor, onApplyPreset }) {
+  const presets = listPalettePresets(kind).length > 0;
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <Label>{title}</Label>
-        <PalettePresetSelect kind={kind} value={palette.presetId} onApplyPreset={onApplyPreset} />
+        {presets ? (
+          <PalettePresetSelect kind={kind} value={palette.presetId} onApplyPreset={onApplyPreset} />
+        ) : null}
       </div>
       <p className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">{description}</p>
       <PaletteStrip colors={colors.map(([key]) => palette[key])} />
@@ -182,6 +187,15 @@ export function PalettesPage({ draft, onColor, onStop, onStops, onApplyPreset })
         kind="status"
         palette={draft.palettes.status}
         colors={STATUS_COLORS}
+        onColor={onColor}
+        onApplyPreset={onApplyPreset}
+      />
+      <SimplePalette
+        title="Interface"
+        description="Destructive controls. Separate from the meters' critical so one can move without the other."
+        kind="interface"
+        palette={draft.palettes.interface}
+        colors={INTERFACE_COLORS}
         onColor={onColor}
         onApplyPreset={onApplyPreset}
       />

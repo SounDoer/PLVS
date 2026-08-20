@@ -33,6 +33,7 @@ export function selectSpectrogramCanvasTheme(resolved) {
     ink: resolved.canvas["spectrogram.ink"],
     surfaceInk: resolved.canvas["spectrogram.surfaceInk"],
     grid: resolved.canvas["spectrogram.grid"],
+    axisLabel: resolved.canvas["spectrogram.axisLabel"],
     selection: resolved.canvas["spectrogram.selection"],
   };
 }

@@ -205,8 +205,13 @@ describe("SpectrogramPanel", () => {
     expect(Array.from(customLut)).not.toEqual(Array.from(darkLut));
     expect(Array.from(customLut.slice(-3))).toEqual([255, 255, 255]);
     expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].themeColors).toMatchObject({
-      ink: "#898989",
+      // Monochrome means neutral: ink follows the theme's secondary text, not
+      // its primary data color. Axis labels read that same token, while the
+      // floor rules stay on the faint chart grid.
+      ink: "#959595",
       surfaceInk: "#f2f2f2",
+      axisLabel: "#959595",
+      grid: "#282828",
     });
   });
 

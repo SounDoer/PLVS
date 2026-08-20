@@ -215,13 +215,13 @@ Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `
 
 **Token 分层**（详见 [`design-tokens.md`](design-tokens.md) 与 ADR 0001/0002/0005）：
 
-| 层               | 输出                                                                          | 定义 / 发布位置                                                             |
-| ---------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Authoring intent | Core Colors、Status / Intensity / Frequency Palettes、稀疏 Advanced overrides | `builtinThemesV2.js` 或持久化的 V2 document                                 |
-| Resolved roles   | 完整的 interface、instrument、effect 与 native role                           | `themeRoleRegistry.js` → `compileTheme.js`                                  |
-| CSS / SVG        | `--background`, `--foreground`, `--primary` 与 `--ui-*` color tokens          | Resolved Theme `css` → `themeRuntime.js`                                    |
-| Canvas           | Waveform、Vectorscope、Stereo Map、Spectrogram 等颜色 bundle                  | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
-| UI 布局          | 字号、间距、半径、线宽等非颜色 `--ui-*`                                       | `data.js` → `applyLayoutToDocument`                                         |
+| 层               | 输出                                                                                                      | 定义 / 发布位置                                                             |
+| ---------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Authoring intent | Core Colors、Status / Intensity / Frequency / Interface Palettes、稀疏 Advanced overrides（内置主题不用） | `builtinThemesV2.js` 或持久化的 V2 document                                 |
+| Resolved roles   | 完整的 interface、instrument、effect 与 native role                                                       | `themeRoleRegistry.js` → `compileTheme.js`                                  |
+| CSS / SVG        | `--background`, `--foreground`, `--primary` 与 `--ui-*` color tokens                                      | Resolved Theme `css` → `themeRuntime.js`                                    |
+| Canvas           | Waveform、Vectorscope、Stereo Map、Spectrogram 等颜色 bundle                                              | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
+| UI 布局          | 字号、间距、半径、线宽等非颜色 `--ui-*`                                                                   | `data.js` → `applyLayoutToDocument`                                         |
 
 首屏占位变量由 `npm run theme:generate` 写入 `src/generated/theme-fallbacks.css`（与默认暗色语义同源）。
 

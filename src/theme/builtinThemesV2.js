@@ -19,7 +19,7 @@ export function isThemeId(id) {
   return typeof id === "string" && THEME_IDS.includes(id);
 }
 
-function makeBuiltin({ id, name, colorScheme, core, status, frequency, overrides }) {
+function makeBuiltin({ id, name, colorScheme, core, status, interfaceCritical, frequency }) {
   return {
     version: 2,
     id,
@@ -30,8 +30,9 @@ function makeBuiltin({ id, name, colorScheme, core, status, frequency, overrides
       status: { presetId: "status-plvs", ...status },
       intensity: { presetId: "intensity-inferno", stops: INFERNO_STOPS },
       frequency: { presetId: "frequency-plvs", ...frequency },
+      interface: { presetId: null, critical: interfaceCritical },
     },
-    overrides,
+    overrides: {},
   };
 }
 
@@ -56,15 +57,8 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       secondaryData: "#38bdf8",
     },
     status: { good: "#34d399", warning: "#fbbf24", critical: "#f97373" },
+    interfaceCritical: "#f94144",
     frequency: { low: "#ff2d3d", mid: "#fb923c", high: "#356dff" },
-    overrides: {
-      "interface.surface.interactive": { kind: "color", value: "#232323" },
-      "interface.content.onCritical": { kind: "color", value: "#fafafa" },
-      "interface.critical": { kind: "color", value: "#f94144" },
-      "waveform.frequencyNeutral": { kind: "color", value: "#484850" },
-      "spectrogram.ink": { kind: "color", value: "#898989" },
-      "spectrogram.grid": { kind: "color", value: "#898989" },
-    },
   }),
   "plvs-light": makeBuiltin({
     id: "plvs-light",
@@ -79,15 +73,8 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       secondaryData: "#0e7490",
     },
     status: { good: "#18976a", warning: "#fbbf24", critical: "#d03535" },
+    interfaceCritical: "#df202e",
     frequency: { low: "#d9481c", mid: "#a21caf", high: "#3730a3" },
-    overrides: {
-      "interface.surface.interactive": { kind: "color", value: "#e5e0dc" },
-      "interface.content.onCritical": { kind: "color", value: "#fafafa" },
-      "interface.critical": { kind: "color", value: "#df202e" },
-      "waveform.frequencyNeutral": { kind: "color", value: "#737373" },
-      "spectrogram.ink": { kind: "color", value: "#6a615b" },
-      "spectrogram.grid": { kind: "color", value: "#6a615b" },
-    },
   }),
 });
 

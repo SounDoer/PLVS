@@ -250,7 +250,6 @@ function buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx) {
 }
 
 const FLOOR_DIVISIONS = 4;
-const AXIS_FONT_CSS_PX = 10;
 
 function drawFloor(ctx, proj, ink, dpr) {
   ctx.save();
@@ -309,6 +308,9 @@ function drawFloor(ctx, proj, ink, dpr) {
  */
 function drawAxisLabels(ctx, proj, ink, dpr) {
   const fontFamily = cssVar(ctx.canvas, "--ui-font-mono", "monospace");
+  // Same token the DOM axis labels on every other chart read, so these track
+  // Interface Size with them instead of sitting at a fixed 10px.
+  const fontPx = parseFloat(cssVar(ctx.canvas, "--ui-fs-axis", "11")) || 11;
 
   const { timeAtF, freqAtT } = labelEdges(proj);
   const edges = [
@@ -317,8 +319,7 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
   ];
   ctx.save();
   ctx.fillStyle = ink;
-  ctx.globalAlpha = 0.75;
-  ctx.font = `${AXIS_FONT_CSS_PX * dpr}px ${fontFamily}`;
+  ctx.font = `${fontPx * dpr}px ${fontFamily}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   for (const edge of edges) {
@@ -575,6 +576,7 @@ export function useSpectrogram3dCanvas({
       // else in this hook keeps using `ink`.
       const foreground = p.themeColors?.surfaceInk ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.surfaceInk;
       const gridColor = p.themeColors?.grid ?? ink;
+      const axisLabelColor = p.themeColors?.axisLabel ?? gridColor;
       const selection = p.themeColors?.selection ?? ink;
       const heightPx = proj.heightScale * view.heightGain;
 
@@ -588,7 +590,7 @@ export function useSpectrogram3dCanvas({
 
       if (p.floor) {
         drawFloor(ctx, proj, gridColor, dpr);
-        drawAxisLabels(ctx, proj, gridColor, dpr);
+        drawAxisLabels(ctx, proj, axisLabelColor, dpr);
       }
 
       // Scrub feedback: a vertical line through a 3D scene means nothing, so the selected ridge (or,

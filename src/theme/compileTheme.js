@@ -30,16 +30,8 @@ function transformHex(hex, delta) {
   return oklchToHex(transform(hexToOklch(hex), delta));
 }
 
-function contrastRatio(a, b) {
-  const luminance = (hex) => {
-    const channels = hexChannels(hex).map((value) => {
-      const channel = value / 255;
-      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-    });
-    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-  };
-  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
+function desaturate(hex) {
+  return oklchToHex({ ...hexToOklch(hex), C: 0 });
 }
 
 function effect(color, opacity) {
@@ -66,10 +58,6 @@ const RECIPES = {
   "text-annotation": ([text, surface]) => mixHex(surface, text, 0.7),
   "text-muted": ([text, surface]) => mixHex(surface, text, 0.46),
   "text-disabled": ([text, surface]) => mixHex(surface, text, 0.32),
-  "content-contrast": ([text, target], context) => {
-    const workspace = context.roles["core.workspace"];
-    return contrastRatio(text, target) >= contrastRatio(workspace, target) ? text : workspace;
-  },
   border: (_dependencies, context) =>
     effect(
       context.colorScheme === "dark" ? "#ffffff" : "#000000",
@@ -83,15 +71,21 @@ const RECIPES = {
   snapshot: ([source], context) => transformHex(source, SNAP[context.colorScheme]),
   selection: ([source], context) => transformHex(source, SNAP[context.colorScheme]),
   grid: ([border, surface]) => mixHex(surface, colorOf(border), 0.08),
+  // The waveform paints hue to mean frequency and falls back to this for silence
+  // and noise, so the fallback has to carry no hue at all: averaging the three
+  // frequency colors leaves a tint (pink, on a light theme) that reads as a
+  // frequency it does not mean. Keep the average's lightness, drop its chroma.
   "frequency-neutral": ([surface, low, mid, high]) =>
     mixHex(
       surface,
-      channelsHex(
-        [low, mid, high]
-          .map(hexChannels)
-          .reduce((sum, color) => sum.map((value, index) => value + color[index] / 3), [0, 0, 0])
+      desaturate(
+        channelsHex(
+          [low, mid, high]
+            .map(hexChannels)
+            .reduce((sum, color) => sum.map((value, index) => value + color[index] / 3), [0, 0, 0])
+        )
       ),
-      0.28
+      0.5
     ),
   centroid: ([text]) => text,
   "effect-scrim": ([workspace]) => effect(workspace, 0.72),
@@ -103,6 +97,9 @@ function directValue(roleId, theme) {
   if (roleId.startsWith("core.")) return theme.core[roleId.slice("core.".length)];
   if (roleId.startsWith("palette.status.")) {
     return theme.palettes.status[roleId.slice("palette.status.".length)];
+  }
+  if (roleId.startsWith("palette.interface.")) {
+    return theme.palettes.interface[roleId.slice("palette.interface.".length)];
   }
   if (roleId === "palette.intensity.stops") return theme.palettes.intensity.stops;
   if (roleId.startsWith("palette.frequency.")) {

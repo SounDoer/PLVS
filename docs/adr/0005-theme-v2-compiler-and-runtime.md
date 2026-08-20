@@ -88,6 +88,7 @@ It does not store the complete resolved output. The directional shape is:
     status: { good, warning, critical },
     intensity: { presetId, stops },
     frequency: { presetId, low, mid, high },
+    interface: { critical },
   },
   overrides: {
     // roleId: { kind: "color", value }
@@ -227,6 +228,11 @@ Migration is deterministic and appearance-preserving:
 
 Migration does not guess whether a V1 concrete value was intended as automatic. A later explicit
 “adopt automatic colors” action may remove migrated overrides, but automatic migration does not.
+
+The builtins have since been through that action and author no overrides at all: every color they
+publish is either a document input or a recipe result. Where a recipe disagreed with the pinned V1
+value, the recipe was corrected rather than the pin retained. Persisted user documents keep their
+migrated overrides; only the builtins were adopted.
 
 The V1 resolver, fixtures, and migration code remain isolated and may be deleted only when support
 for all persisted V1 documents is deliberately retired.

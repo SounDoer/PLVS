@@ -13,6 +13,7 @@ export const CORE_COLOR_KEYS = Object.freeze([
 ]);
 
 const STATUS_KEYS = Object.freeze(["good", "warning", "critical"]);
+const INTERFACE_KEYS = Object.freeze(["critical"]);
 const FREQUENCY_KEYS = Object.freeze(["low", "mid", "high"]);
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
@@ -143,13 +144,22 @@ export function normalizeThemeV2(raw) {
   if (!id || !name || !colorScheme || !core || !status || !intensity || !frequency || !overrides) {
     return null;
   }
+  // Documents written before the interface palette existed carry one red for
+  // both the meters and the destructive controls. Seeding the new input from
+  // the old one keeps them looking identical until someone splits them.
+  const interfaceDefault = { presetId: null, critical: status.critical };
+  const interfacePalette =
+    raw.palettes?.interface == null
+      ? interfaceDefault
+      : normalizeSimplePalette(raw.palettes.interface, INTERFACE_KEYS);
+  if (!interfacePalette) return null;
   return {
     version: THEME_DOCUMENT_VERSION,
     id,
     name,
     colorScheme,
     core,
-    palettes: { status, intensity, frequency },
+    palettes: { status, intensity, frequency, interface: interfacePalette },
     overrides,
   };
 }

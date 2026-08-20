@@ -10,7 +10,6 @@ const KNOWN_RECIPES = new Set([
   "text-annotation",
   "text-muted",
   "text-disabled",
-  "content-contrast",
   "border",
   "input-border",
   "focus-ring",
@@ -67,6 +66,9 @@ const RAW_THEME_ROLE_REGISTRY = [
   direct("palette.status.good"),
   direct("palette.status.warning"),
   direct("palette.status.critical"),
+  // Destructive interface controls read their own red: the meters' critical is a
+  // data color, and moving one should not drag the other.
+  direct("palette.interface.critical"),
   direct("palette.intensity.stops", "palette"),
   direct("palette.frequency.low"),
   direct("palette.frequency.mid"),
@@ -163,8 +165,8 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("interface.content.onAccent", {
     kind: "color",
     family: "interface",
-    recipe: "content-contrast",
-    dependencies: ["core.text", "core.interfaceAccent"],
+    recipe: "text-primary",
+    dependencies: ["core.text"],
     bindings: { css: ["--primary-foreground"] },
     advanced: colorOverride(
       "Interface",
@@ -175,16 +177,16 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("interface.content.onPanel", {
     kind: "color",
     family: "interface",
-    recipe: "content-contrast",
-    dependencies: ["core.text", "interface.surface.panel"],
+    recipe: "text-primary",
+    dependencies: ["core.text"],
     bindings: { css: ["--card-foreground"] },
     advanced: colorOverride("Interface", "Text on Panel", "Content placed on panel surfaces."),
   }),
   role("interface.content.onRaised", {
     kind: "color",
     family: "interface",
-    recipe: "content-contrast",
-    dependencies: ["core.text", "interface.surface.raised"],
+    recipe: "text-primary",
+    dependencies: ["core.text"],
     bindings: { css: ["--popover-foreground"] },
     advanced: colorOverride(
       "Interface",
@@ -195,16 +197,16 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("interface.content.onControl", {
     kind: "color",
     family: "interface",
-    recipe: "content-contrast",
-    dependencies: ["core.text", "interface.surface.control"],
+    recipe: "text-primary",
+    dependencies: ["core.text"],
     bindings: { css: ["--secondary-foreground"] },
     advanced: colorOverride("Interface", "Text on Control", "Content placed on neutral controls."),
   }),
   role("interface.content.onInteractive", {
     kind: "color",
     family: "interface",
-    recipe: "content-contrast",
-    dependencies: ["core.text", "interface.surface.interactive"],
+    recipe: "text-primary",
+    dependencies: ["core.text"],
     bindings: { css: ["--accent-foreground"] },
     advanced: colorOverride(
       "Interface",
@@ -215,8 +217,8 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("interface.content.onCritical", {
     kind: "color",
     family: "interface",
-    recipe: "content-contrast",
-    dependencies: ["core.text", "palette.status.critical"],
+    recipe: "text-primary",
+    dependencies: ["core.text"],
     bindings: { css: ["--destructive-foreground"] },
     advanced: colorOverride(
       "Interface",
@@ -260,7 +262,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     kind: "color",
     family: "interface",
     recipe: "critical",
-    dependencies: ["palette.status.critical"],
+    dependencies: ["palette.interface.critical"],
     bindings: { css: ["--destructive"] },
     advanced: colorOverride(
       "Interface",
@@ -501,10 +503,10 @@ function moduleRoles() {
       "spectrogram.ink",
       "Spectrogram",
       "Monochrome Ink",
-      "data.primary",
+      "interface.text.secondary",
       "identity",
       { canvas: ["spectrogram.ink"] },
-      primaryRefs
+      ["core.text", ...primaryRefs]
     ),
     moduleColor(
       "spectrogram.surfaceInk",
@@ -518,11 +520,22 @@ function moduleRoles() {
     moduleColor(
       "spectrogram.grid",
       "Spectrogram",
-      "Grid and Axes",
+      "Grid",
       "data.grid",
       "identity",
       { canvas: ["spectrogram.grid"] },
       primaryRefs
+    ),
+    // Axis labels are text, not rules: they need the contrast of the DOM axis
+    // labels on every other chart, which read `--muted-foreground`.
+    moduleColor(
+      "spectrogram.axisLabel",
+      "Spectrogram",
+      "Axis Labels",
+      "interface.text.secondary",
+      "identity",
+      { canvas: ["spectrogram.axisLabel"] },
+      ["core.text", ...primaryRefs]
     ),
     moduleColor(
       "spectrogram.selection",
