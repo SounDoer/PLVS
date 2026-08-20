@@ -196,7 +196,10 @@ html[data-surface="dock-editor"] #root {
 .plvs-color-picker.react-colorful {
   width: 100%;
   height: auto;
-  gap: 0.5rem;
+  /* Wide enough to clear both pointers: each is 1rem and rides centred on the
+     edge it controls, so the saturation one hangs 0.5rem below its field and the
+     hue one 0.25rem above its 0.5rem track. Anything tighter and they touch. */
+  gap: 1rem;
   display: flex;
   flex-direction: column;
 }
@@ -229,10 +232,6 @@ html[data-surface="dock-editor"] #root {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--foreground) 65%, transparent),
     0 1px 3px rgb(0 0 0 / 0.4);
-}
-
-.plvs-color-picker .react-colorful__interactive:focus-visible .react-colorful__pointer {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
 }
 
 /* LIVE (history snapshot) pulse on header primary control — see App.jsx */

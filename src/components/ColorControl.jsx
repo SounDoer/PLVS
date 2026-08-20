@@ -48,7 +48,7 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
           <span className="text-[length:var(--ui-fs-metric-meta)]">{label}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="flex w-56 flex-col gap-2 p-3">
+      <PopoverContent className="flex w-56 flex-col gap-3 p-3">
         <HexColorPicker
           aria-label={`${label} picker`}
           className="plvs-color-picker"
