@@ -14,16 +14,16 @@ const ROW_CLASS =
   "flex items-center gap-1 rounded text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50";
 
 const DRAG_HANDLE_CLASS =
-  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing";
 
 // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after the drag handle (or,
 // on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
 // padding for its own hover/focus rounding, not a second helping of the handle's own gap.
 const ROW_BUTTON_CLASS =
-  "flex min-w-0 flex-1 items-center gap-2 rounded pl-1 pr-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "flex min-w-0 flex-1 items-center gap-2 rounded pl-1 pr-1.5 py-1.5 text-left";
 
 const ICON_BUTTON_CLASS =
-  "rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100";
+  "rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100";
 
 const GROUP_LABEL_CLASS =
   "px-2 pt-2 pb-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground";

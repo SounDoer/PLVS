@@ -39,7 +39,7 @@ export function ColorControl({ label, value, onChange, allowAlpha = true }) {
           // there, and any keypress -- a bare Shift is enough in Chromium --
           // flips :focus-visible on, framing a row whose panel is already the
           // thing being looked at.
-          className="flex items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:focus-visible:ring-0"
+          className="flex items-center gap-2 rounded text-left"
         >
           <span
             className="h-5 w-5 rounded border border-border"

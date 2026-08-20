@@ -46,19 +46,19 @@ const ROW_LABEL_CLASS =
 const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
 
 const SELECT_TRIGGER_CLASS =
-  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-secondary/85";
 
 const SELECT_CONTENT_CLASS =
   "border-border/50 min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)] [&_[data-slot=select-item]]:hover:bg-secondary/85";
 
 const SWITCH_CLASS =
-  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30";
 
 const SWITCH_THUMB_CLASS =
   "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
 
 const ICON_BTN_CLASS =
-  "rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground";
 
 const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 
@@ -66,7 +66,7 @@ const FOOTER_LINK_CLASS =
   "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground/60 transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-40";
 
 const CONFIG_TEXT_BTN_CLASS =
-  "h-auto bg-transparent px-0 py-0 text-[length:var(--ui-fs-display)] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
+  "h-auto bg-transparent px-0 py-0 text-[length:var(--ui-fs-display)] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
 
 function SettingsBody({ children }) {
   return (
@@ -109,7 +109,7 @@ function SettingsLabelWithTip({ label, tip }) {
         <button
           type="button"
           aria-label={`${label} help: ${tip}`}
-          className="rounded p-0.5 text-muted-foreground/55 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="rounded p-0.5 text-muted-foreground/55 transition-colors hover:text-muted-foreground"
         >
           <CircleHelp className="size-[1em]" aria-hidden />
         </button>

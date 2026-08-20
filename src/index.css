@@ -123,17 +123,18 @@ html[data-surface="dock-editor"] #root {
   opacity: var(--panel-opacity-meter, 1);
 }
 
-/* Every focusable element gets this app's focus ring, not the browser's.
+/* PLVS shows no focus outline anywhere -- see the note in design-tokens.md.
    Chromium draws its own `outline: auto` on anything focusable that defines no
-   focus style, in a fixed high-contrast color -- white on a dark theme -- and
-   shows it after any keydown, a bare modifier included. Most controls here never
-   defined one, so patching them component by component would be a long tail with
-   no end. Layered as `base` so a component's own `focus-visible:` utilities,
-   which live in the utilities layer, still win outright. */
+   focus style, in a fixed high-contrast color the theme cannot reach, and reveals
+   it after any keydown, a bare modifier included. Suppressing it here is what
+   makes that decision hold for every control at once, including the ones added
+   next; the per-component focus rings that used to fight it are gone.
+
+   Menus and lists are unaffected: their keyboard highlight is a background
+   change (`focus:bg-accent`), not an outline. */
 @layer base {
   :focus-visible {
-    outline: 1px solid var(--ring);
-    outline-offset: 0;
+    outline: none;
   }
 }
 
@@ -146,10 +147,6 @@ html[data-surface="dock-editor"] #root {
   height: 1rem;
   background: transparent;
   cursor: pointer;
-}
-
-.plvs-range:focus-visible {
-  outline: none;
 }
 
 .plvs-range::-webkit-slider-runnable-track {
@@ -175,10 +172,6 @@ html[data-surface="dock-editor"] #root {
   background-color: var(--range-thumb);
 }
 
-.plvs-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
-}
-
 .plvs-range::-moz-range-track {
   height: 0.5rem;
   border: 0;
@@ -198,10 +191,6 @@ html[data-surface="dock-editor"] #root {
   border: 2px solid var(--primary);
   border-radius: 9999px;
   background-color: var(--range-thumb);
-}
-
-.plvs-range:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
 }
 
 /* react-colorful, dressed as a PLVS control — see ColorControl.jsx. The library

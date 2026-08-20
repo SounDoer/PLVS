@@ -80,7 +80,7 @@ function DockModuleRow({
           // `size={1}`, not the default 20: keeps the input's intrinsic width from widening the
           // shrink-to-fit editor; `flex-1` fills the width the module rows already set.
           size={1}
-          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm"
           autoFocus
         />
         <ManagementIconAction
@@ -108,7 +108,7 @@ function DockModuleRow({
         type="button"
         aria-label={`Reorder ${title}`}
         onPointerDown={(event) => onDragStart(panel.id, event)}
-        className="-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
       >
         <GripVertical className="size-3.5" />
       </button>
@@ -222,10 +222,7 @@ export function DockModulesEditor({
                 key={id}
                 type="button"
                 onClick={() => onAdd(id)}
-                className={cn(
-                  MANAGEMENT_ROW_CLASS,
-                  "text-left text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                )}
+                className={cn(MANAGEMENT_ROW_CLASS, "text-left text-foreground")}
               >
                 <span className="flex shrink-0 text-muted-foreground">
                   {entry?.Icon ? (
@@ -290,7 +287,7 @@ export function DockModulesEditor({
                 aria-label="Reset layout"
                 title="Reset layout"
                 onClick={arm}
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 <RotateCcw className="size-3.5" />
               </button>

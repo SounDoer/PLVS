@@ -13,13 +13,24 @@ describe("theme color contract", () => {
     expect(classes).not.toMatch(/(?:^|\s)text-white(?:\s|$)/);
   });
 
-  it("gives every focusable element a themed focus ring", () => {
-    // Without this the browser draws its own, in a color no theme can reach.
+  it("suppresses focus outlines globally rather than per component", () => {
+    // The browser draws its own unless something says otherwise, so this one rule
+    // carries the whole decision.
     const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
     const base = css.match(/@layer base \{[\s\S]*?\n\}/)?.[0] ?? "";
 
-    expect(base).toContain(":focus-visible");
-    expect(base).toContain("var(--ring)");
+    expect(base).toMatch(/:focus-visible\s*\{\s*outline:\s*none;\s*\}/);
+  });
+
+  it("leaves no per-component focus ring to fight the global rule", () => {
+    const sources = import.meta.glob("../../**/*.{js,jsx}", { as: "raw", eager: true });
+
+    const offenders = Object.entries(sources)
+      .filter(([path]) => !path.includes(".test."))
+      .filter(([, source]) => /focus(?:-visible)?:(?:ring|outline|border-ring)/.test(source))
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
   });
 
   it("uses the destructive foreground token for destructive badges", () => {

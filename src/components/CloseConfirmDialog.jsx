@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/select";
 
 const SELECT_TRIGGER_CLASS =
-  "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:border-border hover:bg-secondary/85";
 
 const SELECT_CONTENT_CLASS =
   "border-border/50 min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)] [&_[data-slot=select-item]]:hover:bg-secondary/85";
 
 const SWITCH_CLASS =
-  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30";
 
 const SWITCH_THUMB_CLASS =
   "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
@@ -50,7 +50,7 @@ export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-border bg-card p-3 shadow-xl focus:outline-none">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-border bg-card p-3 shadow-xl">
           <Dialog.Title className="sr-only">Close PLVS</Dialog.Title>
           <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
             <span className={ROW_LABEL_CLASS}>Close Behavior</span>

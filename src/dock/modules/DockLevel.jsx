@@ -85,7 +85,7 @@ function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
   return onReset ? (
     <button
       type="button"
-      className={`${className} rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary`}
+      className={`${className} rounded-sm`}
       style={style}
       onClick={onReset}
       aria-label="Reset true peak maximum"

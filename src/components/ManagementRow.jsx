@@ -14,7 +14,7 @@ export function ManagementIconAction({ label, icon, onClick, className, disabled
       title={title}
       disabled={disabled}
       className={cn(
-        "rounded p-0.5 text-muted-foreground opacity-70 transition-colors hover:text-foreground hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30",
+        "rounded p-0.5 text-muted-foreground opacity-70 transition-colors hover:text-foreground hover:opacity-100 disabled:pointer-events-none disabled:opacity-30",
         className
       )}
       onClick={onClick}

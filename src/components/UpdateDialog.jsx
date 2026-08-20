@@ -54,7 +54,7 @@ export function UpdateDialog({
           onClick={handleDismiss}
         />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border bg-card p-3 shadow-xl focus:outline-none"
+          className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border bg-card p-3 shadow-xl"
           onEscapeKeyDown={(event) => {
             event.preventDefault();
             handleDismiss();

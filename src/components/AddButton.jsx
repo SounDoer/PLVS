@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 /// rest of its props, so it works as a Radix `PopoverTrigger asChild` and accepts `aria-expanded`,
 /// `disabled`, `onClick` and the like unchanged.
 const ADD_BUTTON_CLASS =
-  "flex h-7 w-full items-center justify-center gap-1 rounded-md border border-dashed border-border px-2 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:bg-secondary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40";
+  "flex h-7 w-full items-center justify-center gap-1 rounded-md border border-dashed border-border px-2 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:bg-secondary/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
 
 export const AddButton = React.forwardRef(function AddButton(
   { label, className, "aria-label": ariaLabel, ...props },

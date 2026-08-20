@@ -26,6 +26,18 @@ Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
 
 ---
 
+## Focus
+
+PLVS draws no focus outline. One rule in the `base` layer of `index.css` clears the
+browser's own — Chromium paints `outline: auto` in a fixed high-contrast color on any
+focusable element that defines no focus style, and reveals it after any keydown,
+including a bare modifier. Components must not reintroduce a `focus-visible:ring-*` or
+`focus-visible:outline-*` of their own; a contract test in
+`src/components/ui/themeColorContract.test.js` fails if one appears.
+
+`--ring` still exists and is still compiled, because menu and list keyboard highlighting
+is a background change (`focus:bg-accent`) rather than an outline and is unaffected.
+
 ## Color Tokens
 
 ### Shadcn Semantic

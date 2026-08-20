@@ -48,7 +48,7 @@ function PanelRow({ panelId }) {
           // popover; `min-w-0` scrolls a long value inside the field instead of pushing the
           // shrink-0 confirm/cancel buttons off-panel.
           size={1}
-          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm"
           autoFocus
         />
         <ManagementIconAction
@@ -110,7 +110,7 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
     <div className={cn(MANAGEMENT_ROW_CLASS, "text-foreground")}>
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex min-w-0 flex-1 items-center gap-2 text-left"
         onClick={() => onAdd(id)}
       >
         <span className="flex shrink-0 text-muted-foreground">
@@ -124,7 +124,7 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
           aria-label={`Drag ${title} to place`}
           title="Drag to place"
           onMouseDown={(e) => onCreateMouseDown(e, id)}
-          className="flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
         >
           <GripVertical className="size-3.5" />
         </button>
@@ -194,7 +194,7 @@ export function ModulesPopoverContent() {
               aria-label="Reset layout"
               title="Reset layout"
               onClick={arm}
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
             </button>

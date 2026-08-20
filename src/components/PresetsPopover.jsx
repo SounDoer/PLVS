@@ -18,7 +18,7 @@ const NOOP_PRESETS = {
 };
 
 const DRAG_HANDLE_CLASS =
-  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing";
 
 /**
  * Popover body for preset management. Receives the `presets` controller
@@ -89,7 +89,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
           // popover, and `min-w-0` lets a long value scroll inside the field instead of pushing the
           // shrink-0 Save button off-panel. The panel adapts to the saved names, not to typing.
           size={1}
-          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground"
         />
         <Button
           type="button"
@@ -133,14 +133,14 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       // pushing the shrink-0 confirm/cancel buttons off-panel.
                       size={1}
                       autoFocus
-                      className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm"
                     />
                     <button
                       type="button"
                       aria-label="Save rename"
                       onClick={() => commitRename(preset.id)}
                       disabled={!(drafts[preset.id] ?? "").trim()}
-                      className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-40"
+                      className="shrink-0 rounded text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                       <Check className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -148,7 +148,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       type="button"
                       aria-label="Cancel rename"
                       onClick={cancelRename}
-                      className="shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="shrink-0 rounded text-muted-foreground hover:text-foreground"
                     >
                       <X className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -175,7 +175,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                       // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after
                       // the drag handle, so the left side doesn't need a second helping of the
                       // handle's own gap.
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded pl-1 pr-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded pl-1 pr-1.5 py-1.5 text-left"
                     >
                       <span
                         aria-label={
@@ -201,7 +201,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                           e.stopPropagation();
                           presets.update(preset.id);
                         }}
-                        className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="rounded text-muted-foreground hover:text-foreground"
                       >
                         <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
@@ -212,7 +212,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                           e.stopPropagation();
                           startRename(preset);
                         }}
-                        className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="rounded text-muted-foreground hover:text-foreground"
                       >
                         <Pencil className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
@@ -228,7 +228,7 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                               e.stopPropagation();
                               arm();
                             }}
-                            className="rounded text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="rounded text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
                           </button>

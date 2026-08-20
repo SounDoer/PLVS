@@ -87,7 +87,7 @@ export function FeedbackDialog({ onClose }) {
           onInput={(e) => setContent(e.target.value)}
           rows={5}
           placeholder="What's on your mind?"
-          className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
         />
         <input
           aria-label="Your email (optional)"
@@ -96,7 +96,7 @@ export function FeedbackDialog({ onClose }) {
           onInput={(e) => setEmail(e.target.value)}
           onBlur={() => setEmailTouched(true)}
           placeholder="you@example.com (optional)"
-          className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
         />
         {emailInvalid ? (
           <span className="text-[length:var(--ui-fs-axis)] text-destructive">

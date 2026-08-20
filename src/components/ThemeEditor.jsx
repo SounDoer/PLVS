@@ -10,8 +10,7 @@ import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
-const HEADER_ACTION_CLASS =
-  "shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+const HEADER_ACTION_CLASS = "shrink-0 rounded text-muted-foreground hover:text-foreground";
 
 const CORE_COLORS = [
   {
@@ -207,7 +206,7 @@ export function ThemeEditor({
                   }
                 }}
                 onBlur={commitName}
-                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm"
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}
@@ -363,7 +362,7 @@ export function ThemeEditor({
           <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60" />
           <Dialog.Content
             role="alertdialog"
-            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none"
+            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl"
           >
             <Dialog.Title className="mb-3 text-[length:var(--ui-fs-body)] font-semibold text-foreground">
               Discard theme changes?

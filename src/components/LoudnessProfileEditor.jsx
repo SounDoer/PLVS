@@ -32,7 +32,7 @@ const DEFAULT_RULE_METRIC = "integrated";
 // `auto` column would size independently in each, breaking the value/unit alignment between them.
 // `gap-1` tightens the base `gap-2` between label and chevron (tailwind-merge keeps this one).
 const TRIGGER_CLASS =
-  "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85 focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-secondary/85";
 const CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
@@ -59,11 +59,10 @@ const REMOVE_COL_CLASS = "w-5";
 // because stepping a delivery threshold by 1 is never what anyone wants, and it overlaps the text.
 // The muted icon buttons in the editor header (rename pencil, and the confirm/cancel that replace it
 // while renaming). `onPointerDown` on each stops the drag handle from grabbing the click.
-const HEADER_ACTION_CLASS =
-  "shrink-0 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+const HEADER_ACTION_CLASS = "shrink-0 rounded text-muted-foreground hover:text-foreground";
 
 const NUM_INPUT_CLASS =
-  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-secondary/85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-secondary/85 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /**
  * One numeric field, committed on blur or Enter.
@@ -194,7 +193,7 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         onPointerDown={onDragStart}
         className={cn(
           GRIP_COL_CLASS,
-          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing",
           dragging && "text-foreground"
         )}
       >
@@ -247,7 +246,7 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         onClick={onRemove}
         className={cn(
           REMOVE_COL_CLASS,
-          "flex items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          "flex items-center justify-center rounded text-muted-foreground hover:text-foreground"
         )}
       >
         <X className="size-[length:var(--ui-icon-management-action)]" />
@@ -433,7 +432,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
                   }
                 }}
                 onBlur={commitName}
-                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm"
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}
@@ -549,7 +548,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60" />
           <Dialog.Content
             role="alertdialog"
-            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none"
+            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-xl"
           >
             <Dialog.Title className="mb-3 text-[length:var(--ui-fs-body)] font-semibold text-foreground">
               Discard profile changes?

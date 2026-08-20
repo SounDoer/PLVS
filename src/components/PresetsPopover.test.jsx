@@ -251,21 +251,6 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByText("Focus")).toBeTruthy();
   });
 
-  it("uses visible focus styles on rename action buttons", () => {
-    render(
-      <PresetsPopoverContent
-        presets={{
-          ...NOOP_PRESETS,
-          list: [{ id: "a", name: "Focus" }],
-        }}
-      />
-    );
-    fireEvent.click(screen.getByLabelText("Rename preset Focus"));
-
-    expect(screen.getByLabelText("Save rename").className).toContain("focus-visible:ring-1");
-    expect(screen.getByLabelText("Cancel rename").className).toContain("focus-visible:ring-1");
-  });
-
   it("does not call apply when the Rename icon is clicked (stopPropagation)", () => {
     const apply = vi.fn();
     render(
@@ -351,25 +336,5 @@ describe("PresetsPopoverContent", () => {
     const iconsSpan = screen.getByLabelText("Update preset Focus").closest("span.flex.shrink-0");
     expect(iconsSpan).toBeTruthy();
     expect(iconsSpan.className).toContain("group-focus-within:opacity-100");
-  });
-
-  it("uses visible focus styles on row-tail action buttons", () => {
-    render(
-      <PresetsPopoverContent
-        presets={{
-          ...NOOP_PRESETS,
-          list: [{ id: "a", name: "Focus" }],
-        }}
-      />
-    );
-    expect(screen.getByLabelText("Update preset Focus").className).toContain(
-      "focus-visible:ring-1"
-    );
-    expect(screen.getByLabelText("Rename preset Focus").className).toContain(
-      "focus-visible:ring-1"
-    );
-    expect(screen.getByLabelText("Delete preset Focus").className).toContain(
-      "focus-visible:ring-1"
-    );
   });
 });

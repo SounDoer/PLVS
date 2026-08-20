@@ -56,16 +56,6 @@ describe("ColorControl", () => {
     expect(swatch.style.backgroundColor).toBe("rgba(251, 146, 60, 0.5)");
   });
 
-  it("carries its own focus ring instead of the UA outline", () => {
-    render(<ColorControl label="Accent" value="#fb923c" onChange={vi.fn()} />);
-
-    const trigger = screen.getByRole("button", { name: /accent/i });
-    expect(trigger.className).toContain("focus-visible:ring-ring");
-    expect(trigger.className).toContain("focus-visible:outline-none");
-    // ...but not while its own panel is open.
-    expect(trigger.className).toContain("data-[state=open]:focus-visible:ring-0");
-  });
-
   it("uses the custom range style for alpha", () => {
     render(<ColorControl label="Border" value="rgba(255, 255, 255, 0.5)" onChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /border/i }));

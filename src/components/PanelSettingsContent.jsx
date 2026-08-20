@@ -22,7 +22,7 @@ import { openExternalUrl } from "@/ipc/openExternal.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
-  "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors focus:ring-0 focus:ring-offset-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
 
 const SETTINGS_VALUE_IDLE_CLASS =
   "border-transparent bg-transparent hover:border-border hover:bg-secondary/85 hover:text-foreground";
@@ -38,7 +38,7 @@ const SETTINGS_CHOICE_ROW_CLASS =
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
 
 const SETTINGS_SWITCH_CLASS =
-  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0";
+  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30";
 
 const SETTINGS_SWITCH_THUMB_CLASS =
   "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
@@ -200,7 +200,7 @@ export function SettingsRangeInput({
   const minWidthCh = Math.min(7, Math.max(4.5, draftMin.length + 1.5));
   const maxWidthCh = Math.min(7, Math.max(4.5, draftMax.length + 1.5));
   const inputClass =
-    "h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring";
+    "h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors";
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -288,7 +288,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
             event.currentTarget.blur();
           }
         }}
-        className="h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors focus-visible:ring-1 focus-visible:ring-ring"
+        className="h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors"
         style={{ width: `${widthCh}ch` }}
       />
       {suffix ? <span className="text-muted-foreground/60">{suffix}</span> : null}

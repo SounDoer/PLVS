@@ -54,7 +54,7 @@ export function FileAnalysisHistoryMenu({
         <button
           type="button"
           aria-label={countLabel}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)]"
         >
           <FileStack className="size-[1.15em]" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>
@@ -76,7 +76,7 @@ export function FileAnalysisHistoryMenu({
           <button
             type="button"
             onClick={() => onClearAllFiles?.()}
-            className="rounded px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="rounded px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-destructive"
             aria-label="Clear all file history"
           >
             Clear all
@@ -96,7 +96,7 @@ export function FileAnalysisHistoryMenu({
                   type="button"
                   onClick={() => onSelectFile?.(session.id)}
                   aria-label={`Show file ${session.fileName}`}
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left"
                 >
                   <span
                     aria-label={isActive ? `Active file ${session.fileName}` : undefined}
@@ -132,7 +132,7 @@ export function FileAnalysisHistoryMenu({
                       type="button"
                       onClick={() => onStopFile?.(session.id)}
                       aria-label={`Stop analyzing ${session.fileName}`}
-                      className="rounded p-1 text-[color:var(--ui-signal-bad)] transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="rounded p-1 text-[color:var(--ui-signal-bad)] transition-colors hover:bg-muted/50"
                     >
                       <Square className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -142,7 +142,7 @@ export function FileAnalysisHistoryMenu({
                         type="button"
                         onClick={() => onReanalyzeFile?.(session.id)}
                         aria-label={`Reanalyze ${session.fileName}`}
-                        className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
@@ -150,7 +150,7 @@ export function FileAnalysisHistoryMenu({
                         type="button"
                         onClick={() => onRemoveFile?.(session.id)}
                         aria-label={`Remove ${session.fileName}`}
-                        className="rounded p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="rounded p-1 text-muted-foreground transition-colors hover:text-destructive"
                       >
                         <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
