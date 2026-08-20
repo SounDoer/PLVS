@@ -490,7 +490,7 @@ Three rungs, all derived from `--radius` (`0.625rem`), plus the pill.
 | -------------- | ------ | ------------------------------------------------------------------ |
 | `rounded-xs`   | `4px`  | Items nested in a `p-1` container; any control under 28px tall       |
 | `rounded-md`   | `8px`  | Surfaces — panels, popovers, menus — and controls 28px and taller    |
-| `rounded-xl`   | `14px` | Floating windows: the draggable editors and the centred dialogs      |
+| `rounded-xl`   | `12px` | Floating windows: the draggable editors and the centred dialogs      |
 | `rounded-full` | pill   | Switches, sliders, resize rails, dots                                |
 
 Two rules decide the rung, in this order:
