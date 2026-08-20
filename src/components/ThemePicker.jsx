@@ -101,7 +101,10 @@ export function ThemePicker({
           <ChevronDown className="size-[1.15em] shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-1">
+      {/* Sized to the names it holds, capped at the width it used to be fixed at:
+          three short built-in names left a gap between them and the row actions
+          wide enough to read as two separate columns. Long names still truncate. */}
+      <PopoverContent align="end" className="w-auto max-w-72 min-w-44 p-1">
         <div className="px-2 py-1 text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
           Built-in
         </div>

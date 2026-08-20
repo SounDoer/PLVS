@@ -230,6 +230,17 @@ describe("SettingsPanel", () => {
     expect(createCustomTheme).toHaveBeenCalled();
   });
 
+  it("sizes the theme panel to its names instead of a fixed width", () => {
+    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    const content = document.querySelector("[data-slot='popover-content']");
+
+    expect(content.className).toContain("w-auto");
+    expect(content.className).toContain("max-w-72");
+    expect(content.className).not.toMatch(/(?:^|\s)w-72(?:\s|$)/);
+  });
+
   it("hides edit/delete for built-in themes", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
