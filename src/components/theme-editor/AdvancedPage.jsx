@@ -51,7 +51,7 @@ function AdvancedRole({ role, override, resolved, onOverride }) {
       <div className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="size-4 shrink-0 rounded-sm border border-border"
+          className="size-4 shrink-0 rounded-xs border border-border"
           style={{ backgroundColor: resolvedColor(resolved) }}
         />
         <div className="min-w-0 flex-1">

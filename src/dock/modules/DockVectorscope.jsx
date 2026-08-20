@@ -217,7 +217,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
           <div className="flex w-full min-w-0 flex-col gap-1">
             <div
               data-testid="dock-vectorscope-correlation-rail"
-              className={`relative h-[4px] w-full rounded-sm bg-muted/40 ${
+              className={`relative h-[4px] w-full rounded-full bg-muted/40 ${
                 displayCorrelation === null ? "opacity-30" : "opacity-100"
               }`}
             >
@@ -257,7 +257,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               className={`flex items-center gap-[var(--ui-dock-gap-column)] font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground ${displayCorrelation === null ? "opacity-30" : "opacity-100"}`}
             >
               <span className="shrink-0">-1</span>
-              <div className="relative h-[4px] min-w-6 flex-1 rounded-sm bg-muted/40">
+              <div className="relative h-[4px] min-w-6 flex-1 rounded-full bg-muted/40">
                 <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground" />
                 {displayCorrelation !== null ? (
                   <div

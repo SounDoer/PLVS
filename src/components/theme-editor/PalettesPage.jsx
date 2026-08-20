@@ -53,7 +53,7 @@ function PaletteStrip({ colors }) {
   return (
     <div
       aria-hidden="true"
-      className="h-3 rounded-sm border border-border"
+      className="h-3 rounded-xs border border-border"
       style={{ background: `linear-gradient(to right, ${colors.join(", ")})` }}
     />
   );
@@ -133,7 +133,7 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
       </p>
       <div
         aria-label="Intensity palette preview"
-        className="h-5 rounded-sm border border-border"
+        className="h-5 rounded-xs border border-border"
         style={{ background: `linear-gradient(to right, ${gradient})` }}
       />
       <div className="flex flex-col gap-2">

@@ -38,11 +38,11 @@ function MeterFill({ value, min, max, peakFamily, style }) {
   return (
     <div
       data-testid="dock-level-bar"
-      className="h-full min-h-[var(--ui-dock-bar-min-h)] w-full overflow-hidden rounded-sm bg-muted/40"
+      className="h-full min-h-[var(--ui-dock-bar-min-h)] w-full overflow-hidden rounded-xs bg-muted/40"
       style={style}
     >
       <div
-        className="h-full rounded-sm"
+        className="h-full rounded-xs"
         style={{
           width: `${widthPct(value, min, max)}%`,
           background:
@@ -85,7 +85,7 @@ function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
   return onReset ? (
     <button
       type="button"
-      className={`${className} rounded-sm`}
+      className={`${className} rounded-xs`}
       style={style}
       onClick={onReset}
       aria-label="Reset true peak maximum"

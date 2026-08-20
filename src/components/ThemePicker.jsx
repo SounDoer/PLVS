@@ -17,7 +17,7 @@ function ThemeSwatch({ theme }) {
   return (
     <span
       aria-hidden="true"
-      className="flex h-3 w-12 shrink-0 overflow-hidden rounded-sm border border-border"
+      className="flex h-3 w-12 shrink-0 overflow-hidden rounded-xs border border-border"
     >
       {colors.map((color, index) => (
         <span key={`${color}-${index}`} className="flex-1" style={{ backgroundColor: color }} />
