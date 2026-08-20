@@ -45,11 +45,13 @@ function colorOf(value) {
 const RECIPES = {
   identity: ([value]) => structuredClone(value),
   "surface-panel": ([, surface]) => surface,
-  "surface-raised": ([surface, workspace]) => mixHex(surface, workspace, 0.08),
-  // Control surfaces step AWAY from the workspace, toward the text pole. Mixing
-  // toward the workspace instead inverts the ladder scheme by scheme -- controls
-  // darker than the panel in dark, lighter in light -- which is why the V1
-  // migration had to pin both roles on every builtin.
+  // One ladder, all of it stepping AWAY from the workspace toward the text pole:
+  // panel sits at the surface, raised a little above it, controls further still.
+  // Mixing toward the workspace instead inverts the ladder scheme by scheme --
+  // in the default dark theme it made the raised popover a shade darker than the
+  // panel it floats over -- which is why the V1 migration had to pin these roles
+  // on every builtin.
+  "surface-raised": ([surface, text]) => mixHex(surface, text, 0.03),
   "surface-control": ([surface, text]) => mixHex(surface, text, 0.07),
   "surface-muted": ([surface, text]) => mixHex(surface, text, 0.07),
   "surface-interactive": ([surface, accent]) => mixHex(surface, accent, 0.12),

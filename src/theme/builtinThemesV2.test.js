@@ -13,7 +13,7 @@ const REVIEWED_NON_EXACT = new Set(["--ui-loudness-grid", "--ui-vectorscope-grid
 // than skipping the binding, so unintended drift still fails here.
 const ADOPTED_AUTOMATIC = {
   "plvs-dark": {
-    "--popover": "#141414",
+    "--popover": "#1c1c1c",
     "--secondary": "#242424",
     "--muted": "#242424",
     "--accent": "#31241a",
@@ -24,7 +24,7 @@ const ADOPTED_AUTOMATIC = {
     "--ui-waveform-centroid": "#f2f2f2",
   },
   "plvs-light": {
-    "--popover": "#f5f2ef",
+    "--popover": "#eeeae7",
     "--secondary": "#e5e1de",
     "--muted": "#e5e1de",
     "--accent": "#f2e2d5",

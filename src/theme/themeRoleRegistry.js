@@ -86,7 +86,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     kind: "color",
     family: "interface",
     recipe: "surface-raised",
-    dependencies: ["core.surface", "core.workspace"],
+    dependencies: ["core.surface", "core.text"],
     bindings: { css: ["--popover"] },
     advanced: colorOverride("Interface", "Raised Surface", "Menus, popovers, and raised layers."),
   }),
