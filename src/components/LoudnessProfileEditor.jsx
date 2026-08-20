@@ -48,9 +48,16 @@ const CONTENT_CLASS =
 const GRID_TEMPLATE_CLASS =
   "relative grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-0.5 text-[length:var(--ui-fs-control)]";
 const GRIP_COL_CLASS = "w-5";
-const OP_COL_CLASS = "w-11";
+// Both selects hold their label plus the chevron, and both scale: the text and
+// the icon follow --ui-fs-control while the trigger's padding and gap stay in
+// rem. A width in px can therefore only fit one Interface Size -- w-14 held
+// "Warn" at none of them, clipping it to "Wa" even at Default -- so these are
+// part em, part rem. The rem share is exact -- px-2 plus gap-1 -- while the em
+// share is the widest label plus the 1.15em chevron, with a little headroom
+// since a proportional label's width is not something CSS can be told.
+const OP_COL_CLASS = "w-[calc(2.1em+1.25rem)]";
 const UNIT_COL_CLASS = "w-9";
-const SEVERITY_COL_CLASS = "w-14";
+const SEVERITY_COL_CLASS = "w-[calc(3.9em+1.25rem)]";
 const REMOVE_COL_CLASS = "w-5";
 
 // Sized in `ch`, not rem: the field's font-size is `--ui-fs-control`, which grows with the

@@ -50,6 +50,17 @@ function appliedDocument(props, call = 0) {
 }
 
 describe("LoudnessProfileEditor", () => {
+  it("sizes the operator and severity columns in em so labels survive Interface Size", () => {
+    renderEditor();
+
+    // A px width can only fit one Interface Size: the label and chevron scale
+    // with --ui-fs-control, the padding does not. w-14 clipped "Warn" to "Wa".
+    for (const name of [/severity/i, /operator/i]) {
+      const trigger = screen.getAllByLabelText(name)[0];
+      expect(trigger.className).toMatch(/w-\[calc\([\d.]+em\+[\d.]+rem\)\]/);
+    }
+  });
+
   it("lists a row per rule, in the profile's own order", () => {
     renderEditor();
     expect(screen.getByRole("combobox", { name: "Rule 1 metric" }).textContent).toContain(
