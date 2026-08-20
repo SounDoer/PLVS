@@ -92,6 +92,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   const drawer = prefs.layout.drawer;
   setCssVar("--ui-drawer-w", `${drawer.preferredWidthPx}px`);
+  setCssVar("--ui-editor-w", `${prefs.layout.editor.preferredWidthPx}px`);
   setCssVar("--ui-drawer-pad", `${drawer.paddingRem}rem`);
   setCssVar("--ui-drawer-gap", `${drawer.sectionGapRem}rem`);
   setCssVar("--ui-drawer-row-gap", `${drawer.rowGapRem}rem`);

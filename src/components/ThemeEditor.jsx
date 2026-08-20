@@ -179,7 +179,7 @@ export function ThemeEditor({
         ref={ref}
         role="dialog"
         aria-label="Theme editor"
-        className="fixed z-50 flex max-h-[80vh] w-96 flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
+        className="fixed z-50 flex max-h-[80vh] w-[var(--ui-editor-w)] flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
         style={{ left: pos.x, top: pos.y }}
       >
         <div

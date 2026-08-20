@@ -38,6 +38,25 @@ including a bare modifier. Components must not reintroduce a `focus-visible:ring
 `--ring` still exists and is still compiled, because menu and list keyboard highlighting
 is a background change (`focus:bg-accent`) rather than an outline and is unaffected.
 
+## Scaling with Interface Size
+
+Interface Size rewrites the whole `--ui-fs-*` scale (`control` goes 13 → 15 → 17), so anything sized
+in `px` or `rem` stays put while the text inside it grows. A box that fits at Default clips at
+Extra Large, and nothing warns you.
+
+The rule: **if a box's job is to hold text, size it in units that scale with that text.**
+
+| Situation                       | Use                                                        |
+| ------------------------------- | ---------------------------------------------------------- |
+| Column holding a known label    | `w-[calc(<label>em + <padding>rem)]` — the em share covers the text and any icon, the rem share the padding and gaps |
+| Numeric field                   | `w-[7ch]` — `ch` follows the font                           |
+| Column holding a short unit     | `w-[3.2em]`                                                 |
+| Chart axis rail                 | `max(<px floor>, calc(var(--ui-fs-axis) * <ratio>))`, as `--ui-chart-y-axis-rail-w` already does |
+| Floating editor panel           | `--ui-editor-w`, which the Interface Size profiles set alongside `--ui-drawer-w` |
+
+Heights are the looser half of this: a control at `h-6` still holds 17px text, since flex centring
+plus visible overflow degrades quietly rather than clipping. Widths do not — they clip.
+
 ## Highlight States
 
 Two states, never mixed.

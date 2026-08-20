@@ -21,6 +21,10 @@ export const UI_PREFERENCES = {
       paddingXRem: 0.5,
       paddingYRem: 0.4,
     },
+    /** Floating editors: theme and loudness profile. Both scale with Interface Size. */
+    editor: {
+      preferredWidthPx: 416,
+    },
     drawer: {
       preferredWidthPx: 320,
       paddingRem: 0.875,

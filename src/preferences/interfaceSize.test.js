@@ -9,6 +9,18 @@ import {
 } from "./interfaceSize.js";
 
 describe("interface size profiles", () => {
+  it("scales the floating editors with Interface Size", () => {
+    // The editors' columns are sized in em, so their contents grow with the
+    // Interface Size while a fixed panel width would not: the rule rows ran out
+    // of room for the metric names at extra-large before this scaled too.
+    const widths = ["default", "large", "extra-large"].map(
+      (size) => resolveInterfacePreferences(UI_PREFERENCES, size).layout.editor.preferredWidthPx
+    );
+
+    expect(widths).toEqual([...widths].sort((a, b) => a - b));
+    expect(new Set(widths).size).toBe(widths.length);
+  });
+
   it("exposes four discrete user-facing options", () => {
     expect(DEFAULT_INTERFACE_SIZE).toBe("default");
     expect(INTERFACE_SIZE_OPTIONS).toEqual([

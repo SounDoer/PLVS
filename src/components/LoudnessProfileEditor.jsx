@@ -56,7 +56,7 @@ const GRIP_COL_CLASS = "w-5";
 // share is the widest label plus the 1.15em chevron, with a little headroom
 // since a proportional label's width is not something CSS can be told.
 const OP_COL_CLASS = "w-[calc(2.1em+1.25rem)]";
-const UNIT_COL_CLASS = "w-9";
+const UNIT_COL_CLASS = "w-[3.2em]";
 const SEVERITY_COL_CLASS = "w-[calc(3.9em+1.25rem)]";
 const REMOVE_COL_CLASS = "w-5";
 
@@ -412,7 +412,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         ref={ref}
         role="dialog"
         aria-label="Loudness Profile editor"
-        className="fixed z-50 flex max-h-[80vh] w-[26rem] flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
+        className="fixed z-50 flex max-h-[80vh] w-[var(--ui-editor-w)] flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
         style={{ left: pos.x, top: pos.y }}
       >
         <div

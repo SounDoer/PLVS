@@ -166,7 +166,7 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
                 }
                 className="plvs-range min-w-0 flex-1"
               />
-              <span className="w-8 text-right text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+              <span className="w-[3em] text-right text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
                 {Math.round(stop.position * 100)}%
               </span>
               {!endpoint ? (
