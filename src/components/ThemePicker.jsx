@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Copy, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
+import { AddButton } from "./AddButton.jsx";
 import { IconButton } from "./IconButton.jsx";
 import { InlineConfirm } from "./InlineConfirm.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
@@ -70,6 +71,7 @@ export function ThemePicker({
   onEdit,
   onDuplicate,
   onDelete,
+  onCreate,
   disabled = false,
 }) {
   const [open, setOpen] = useState(false);
@@ -124,58 +126,56 @@ export function ThemePicker({
         <div className="mt-1 border-t border-border px-2 pb-1 pt-2 text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
           Custom
         </div>
-        {customThemes.length ? (
-          customThemes.map((theme) => (
-            <ThemeRow
-              key={theme.id}
-              theme={theme}
-              selected={value === theme.id}
-              onSelect={(id) => {
-                setOpen(false);
-                onSelect(id);
-              }}
-              actions={
-                <>
-                  <Action
-                    label={`Edit ${theme.name}`}
-                    icon={<Pencil className="size-[length:var(--ui-icon-management-action)]" />}
-                    onClick={() => onEdit(theme.id)}
-                  />
-                  <Action
-                    label={`Duplicate ${theme.name}`}
-                    icon={<Copy className="size-[length:var(--ui-icon-management-action)]" />}
-                    onClick={() => onDuplicate(theme.id)}
-                  />
-                  <InlineConfirm
-                    onConfirm={() => {
-                      confirmingDeleteRef.current = false;
-                      onDelete(theme.id);
-                    }}
-                    confirmLabel={`Confirm delete ${theme.name}`}
-                    cancelLabel={`Cancel delete ${theme.name}`}
-                    onArmedChange={(armed) => {
-                      confirmingDeleteRef.current = armed;
-                    }}
-                    trigger={(arm) => (
-                      <Action
-                        label={`Delete ${theme.name}`}
-                        icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
-                        onClick={() => {
-                          confirmingDeleteRef.current = true;
-                          arm();
-                        }}
-                      />
-                    )}
-                  />
-                </>
-              }
-            />
-          ))
-        ) : (
-          <div className="px-2 py-2 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-            No custom themes yet.
-          </div>
-        )}
+        {customThemes.map((theme) => (
+          <ThemeRow
+            key={theme.id}
+            theme={theme}
+            selected={value === theme.id}
+            onSelect={(id) => {
+              setOpen(false);
+              onSelect(id);
+            }}
+            actions={
+              <>
+                <Action
+                  label={`Edit ${theme.name}`}
+                  icon={<Pencil className="size-[length:var(--ui-icon-management-action)]" />}
+                  onClick={() => onEdit(theme.id)}
+                />
+                <Action
+                  label={`Duplicate ${theme.name}`}
+                  icon={<Copy className="size-[length:var(--ui-icon-management-action)]" />}
+                  onClick={() => onDuplicate(theme.id)}
+                />
+                <InlineConfirm
+                  onConfirm={() => {
+                    confirmingDeleteRef.current = false;
+                    onDelete(theme.id);
+                  }}
+                  confirmLabel={`Confirm delete ${theme.name}`}
+                  cancelLabel={`Cancel delete ${theme.name}`}
+                  onArmedChange={(armed) => {
+                    confirmingDeleteRef.current = armed;
+                  }}
+                  trigger={(arm) => (
+                    <Action
+                      label={`Delete ${theme.name}`}
+                      icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
+                      onClick={() => {
+                        confirmingDeleteRef.current = true;
+                        arm();
+                      }}
+                    />
+                  )}
+                />
+              </>
+            }
+          />
+        ))}
+        {/* The dashed empty slot is the empty state; no "none yet" copy on top of it. */}
+        <div className="px-1 pt-1">
+          <AddButton label="Add Theme" onClick={onCreate} />
+        </div>
       </PopoverContent>
     </Popover>
   );

@@ -214,6 +214,22 @@ describe("SettingsPanel", () => {
     expect(content.className).toContain("pointer-events-auto");
   });
 
+  it("creates a custom theme from inside the picker panel", () => {
+    const createCustomTheme = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="plvs-dark"
+        createCustomTheme={createCustomTheme}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Theme" }));
+    expect(createCustomTheme).toHaveBeenCalled();
+  });
+
   it("hides edit/delete for built-in themes", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
@@ -240,7 +256,9 @@ describe("SettingsPanel", () => {
     ).toBeTruthy();
     expect(screen.getByLabelText("Appearance").disabled).toBe(true);
     expect(screen.getByLabelText("Theme").disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Add Theme" }).disabled).toBe(true);
+    // Add Theme lives inside the picker panel, so locking the trigger is what
+    // keeps it out of reach.
+    expect(screen.queryByRole("button", { name: "Add Theme" })).toBeNull();
   });
 
   it("does not render panel-specific channel selectors", () => {

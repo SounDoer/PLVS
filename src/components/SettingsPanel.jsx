@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleHelp, ExternalLink, RotateCcw, Terminal, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { AddButton } from "@/components/AddButton";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -421,16 +420,8 @@ export function SettingsPanel({
                         onEdit={editCustomTheme}
                         onDuplicate={duplicateCustomTheme}
                         onDelete={deleteCustomTheme}
+                        onCreate={createCustomTheme}
                         disabled={themeControlsDisabled}
-                      />
-                    </div>
-                  ) : null}
-                  {appearance === "fixed" ? (
-                    <div className="px-1.5 py-0.5">
-                      <AddButton
-                        label="Add Theme"
-                        disabled={themeControlsDisabled}
-                        onClick={createCustomTheme}
                       />
                     </div>
                   ) : null}
