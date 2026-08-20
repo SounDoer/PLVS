@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Copy, Pencil, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { AddButton } from "./AddButton.jsx";
 import { IconButton } from "./IconButton.jsx";
@@ -26,11 +26,16 @@ function ThemeSwatch({ theme }) {
   );
 }
 
-function Action({ label, icon, onClick }) {
+/**
+ * `label` names the row it belongs to, so screen readers can tell one row's
+ * actions from the next. The tooltip says only the verb: it appears next to the
+ * row it acts on, and repeating the theme name there just makes it long.
+ */
+function Action({ label, tip, icon, onClick }) {
   return (
     <IconButton
       aria-label={label}
-      tip={label}
+      tip={tip}
       tipSide="left"
       icon={icon}
       onClick={(event) => {
@@ -120,6 +125,7 @@ export function ThemePicker({
             actions={
               <Action
                 label={`Customize ${theme.name}`}
+                tip="Customize"
                 icon={<Copy className="size-[length:var(--ui-icon-management-action)]" />}
                 onClick={() => onCustomize(theme.id)}
               />
@@ -142,11 +148,15 @@ export function ThemePicker({
               <>
                 <Action
                   label={`Edit ${theme.name}`}
-                  icon={<Pencil className="size-[length:var(--ui-icon-management-action)]" />}
+                  tip="Edit"
+                  icon={
+                    <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
+                  }
                   onClick={() => onEdit(theme.id)}
                 />
                 <Action
                   label={`Duplicate ${theme.name}`}
+                  tip="Duplicate"
                   icon={<Copy className="size-[length:var(--ui-icon-management-action)]" />}
                   onClick={() => onDuplicate(theme.id)}
                 />
@@ -163,6 +173,7 @@ export function ThemePicker({
                   trigger={(arm) => (
                     <Action
                       label={`Delete ${theme.name}`}
+                      tip="Delete"
                       icon={<Trash2 className="size-[length:var(--ui-icon-management-action)]" />}
                       onClick={() => {
                         confirmingDeleteRef.current = true;

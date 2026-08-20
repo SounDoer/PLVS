@@ -241,6 +241,25 @@ describe("SettingsPanel", () => {
     expect(content.className).not.toMatch(/(?:^|\s)w-72(?:\s|$)/);
   });
 
+  it("keeps the row name out of the action tooltips", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="custom-1"
+        customThemeOptions={[CUSTOM_THEME_OPTION]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+
+    // The name stays in the accessible name, which has to tell the rows apart.
+    const edit = screen.getByRole("button", { name: "Edit Custom Theme" });
+    fireEvent.mouseEnter(edit);
+
+    expect(screen.getByText("Edit")).toBeTruthy();
+    expect(screen.queryByText("Edit Custom Theme")).toBeNull();
+  });
+
   it("hides edit/delete for built-in themes", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
