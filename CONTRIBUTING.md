@@ -4,7 +4,7 @@
 
 ## 环境
 
-- **Node.js**：>= 24.19.0（与 `package.json` 的 `engines` 一致）
+- **Node.js**：`.nvmrc` 是唯一版本源，CI 的 `setup-node` 也读它；`package.json` 的 `engines` 只声明下限。
 - **Rust**：stable（与 `src-tauri/Cargo.toml` 的 `rust-version` 一致）
 - **FFmpeg sidecar**：`npm run ffmpeg:fetch`。`src-tauri/binaries/` 不入库（sidecar 走 Release 资产），新 clone 和新 worktree 都是空的，缺了它 Rust 侧构建会失败——而且报错指向 `serde_derive` 编译失败这种无关的第三方 crate，真正原因埋在 build script 的输出里。构建流程见 [`docs/ffmpeg-sidecar-build.md`](docs/ffmpeg-sidecar-build.md)。
 
