@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-21
+
+### Added
+- Waveform spectral coloring: two independent, opt-in toggles - Frequency Color (dominant frequency selects the hue, spectral tonality controls saturation) and Centroid (a spectral-centroid trace on a logarithmic frequency axis). Workspace and Dock persist their own settings, both default to Off, and the classic waveform stays the default look.
+- Theme V2: themes are now authored as six core color roles with everything else derived, with editable palettes, curated Advanced role overrides, undo/redo on the unsaved draft, and inline theme actions plus Add Theme in the Theme Picker.
+- Split dividers snap to the midpoint while dragging.
+- Frameless header supports a double-click maximize gesture.
+
+### Changed
+- Less visual furniture: the Spectrum grid, Waveform zero line, Stereo Map baseline and Loudness grid are gone, and the Vectorscope diagonals are wider. Every remaining grid is painted in the color the theme gives it.
+- Focus is consistent: default focus outlines are gone everywhere, replaced by a themed focus ring on every focusable element.
+- Theme editor: every Advanced section is collapsed by default, and the Interface palette moved to the end of Palettes.
+- Existing custom themes migrate to V2 automatically on load.
+- Radii settled on a three-rung ladder; hover and active settled on two states.
+
+### Fixed
+- Stereo Map y axis labels no longer overlap on short rails.
+- Floating editors scale with Interface Size, and the rule selects fit their labels at any Interface Size.
+- Popovers inside the settings sheet stay clickable.
+- Corrected the modal scrim and kept the discard confirmations dimmed.
+
 ## [0.13.1] - 2026-08-10
 
 ### Added
