@@ -136,7 +136,7 @@ Use JSON commands for automation, then use `report --format markdown` when a use
 
 ## Development
 
-Requires [Node.js ≥ 20.19.0](https://nodejs.org/) and [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) (Rust, platform build tools).
+Requires [Node.js ≥ 24.19.0](https://nodejs.org/) and [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) (Rust, platform build tools).
 
 ```bash
 git clone https://github.com/SounDoer/PLVS.git
