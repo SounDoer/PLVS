@@ -134,11 +134,7 @@ export function AdvancedPage({ draft, onOverride }) {
         Keep roles on Auto unless one specific part of the app should differ from the theme.
       </p>
       {ADVANCED_SECTIONS.map(([section, roles]) => (
-        <details
-          key={section}
-          className="rounded-md border border-border"
-          open={section === "Interface"}
-        >
+        <details key={section} className="rounded-md border border-border">
           <summary className="cursor-pointer select-none px-2 py-1.5 text-[length:var(--ui-fs-metric-meta)] font-semibold">
             {section}
           </summary>
