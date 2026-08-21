@@ -232,7 +232,7 @@ impl SpeechDetector {
   fn build_resampler(source_rate: f64) -> Option<Async<f32>> {
     let params = SincInterpolationParameters {
       sinc_len: 128,
-      f_cutoff: 0.95,
+      f_cutoff: Some(0.95),
       oversampling_factor: 128,
       interpolation: SincInterpolationType::Linear,
       window: WindowFunction::BlackmanHarris2,
