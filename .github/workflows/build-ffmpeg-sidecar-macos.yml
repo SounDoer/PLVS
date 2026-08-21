@@ -21,7 +21,7 @@ jobs:
     runs-on: macos-latest # Apple Silicon (arm64)
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Download FFmpeg source
         run: |
