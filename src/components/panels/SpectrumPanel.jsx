@@ -781,36 +781,6 @@ export function SpectrumPanel({ compact = false }) {
                       />
                     </linearGradient>
                   </defs>
-                  <g pointerEvents="none" aria-hidden>
-                    {spectrumYTicks.map(({ v }) => (
-                      <line
-                        key={`sp-grid-h-${v}`}
-                        x1={0}
-                        x2={1000}
-                        y1={spectrumDbToYViewBox(v, spectrumRange)}
-                        y2={spectrumDbToYViewBox(v, spectrumRange)}
-                        stroke="var(--ui-spectrum-grid)"
-                        strokeWidth={1}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                    {spectrumFreqTicks.map(({ v: f }) => {
-                      const x =
-                        rangedFreqToXFrac(f, spectrumRange.minHz, spectrumRange.maxHz) * 1000;
-                      return (
-                        <line
-                          key={`sp-grid-v-${f}`}
-                          x1={x}
-                          x2={x}
-                          y1={0}
-                          y2={260}
-                          stroke="var(--ui-spectrum-grid)"
-                          strokeWidth={1}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      );
-                    })}
-                  </g>
                   {displayPanelSpectrumPath ? (
                     <AnimatePresence mode="sync">
                       <motion.g
