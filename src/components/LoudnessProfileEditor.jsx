@@ -20,6 +20,7 @@ import {
   withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
 import { STATS_META, roundToStatPrecision, statDecimals } from "@/lib/statsCatalog.js";
+import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 
 /// A new rule opens on Integrated: the metric every delivery reference judges. The user re-picks it
 /// from the row's own metric select.
@@ -552,6 +553,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
 
       <Dialog.Root open={discardOpen} onOpenChange={setDiscardOpen}>
         <Dialog.Portal>
+          <Dialog.Overlay className={cn(SCRIM_CLASS, "z-[60]")} />
           <Dialog.Content
             role="alertdialog"
             className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl"

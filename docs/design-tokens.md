@@ -86,13 +86,9 @@ spent a long time at `0.35`.
 ## Modal Scrim
 
 `SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
-carried by the settings drawer, the close confirmation and the update dialog. Callers add their own
-stacking order and, in the drawer's case, the blur.
-
-It dims for **app-level** modals only. A floating editor's own confirmation — discarding theme or
-profile changes — does not dim: the editor already floats over a live application, and darkening
-everything for a decision that concerns only that panel overstates it. Those dialogs stay modal
-regardless; without an overlay Radix still blocks the pointer behind them.
+carried by every modal — the settings drawer, the close confirmation, the update dialog, and the
+two editors' discard confirmations. Callers add their own stacking order and, in the drawer's case,
+the blur.
 
 The scrim is deliberately not a theme colour. Darkening is a direction, not a hue, and a value
 derived from the theme reverses it: the retired `effect.scrim` role tinted the workspace, which on

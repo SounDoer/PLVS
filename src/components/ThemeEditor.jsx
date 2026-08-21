@@ -7,6 +7,8 @@ import { ColorControl } from "./ColorControl.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
+import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { cn } from "@/lib/utils";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -359,6 +361,7 @@ export function ThemeEditor({
       </div>
       <Dialog.Root open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
         <Dialog.Portal>
+          <Dialog.Overlay className={cn(SCRIM_CLASS, "z-[60]")} />
           <Dialog.Content
             role="alertdialog"
             className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl"
