@@ -8,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 
 const SELECT_TRIGGER_CLASS =
   "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:border-border hover:bg-muted/50";
@@ -49,7 +51,7 @@ export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Overlay className={cn(SCRIM_CLASS, "z-50")} />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-card p-3 shadow-xl">
           <Dialog.Title className="sr-only">Close PLVS</Dialog.Title>
           <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">

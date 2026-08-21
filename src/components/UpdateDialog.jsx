@@ -1,5 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
+import { cn } from "@/lib/utils";
+import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 
 const SECONDARY_BUTTON_CLASS =
   "rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-50";
@@ -50,7 +52,7 @@ export function UpdateDialog({
       <Dialog.Portal>
         <Dialog.Overlay
           data-testid="update-overlay"
-          className="fixed inset-0 z-50 bg-black/60"
+          className={cn(SCRIM_CLASS, "z-50")}
           onClick={handleDismiss}
         />
         <Dialog.Content

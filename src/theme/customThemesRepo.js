@@ -15,7 +15,9 @@ export function listCustomThemes() {
   const out = {};
   for (const [id, t] of Object.entries(themes)) {
     const normalized = normalizeThemeDocument(t);
-    if (normalized) out[id] = normalized;
+    // A document whose own id disagrees with the key it is stored under cannot
+    // be addressed either way round, so it is not a theme this app can use.
+    if (normalized && normalized.id === id) out[id] = normalized;
   }
   return out;
 }

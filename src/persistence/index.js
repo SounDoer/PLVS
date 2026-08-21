@@ -11,7 +11,6 @@ import { createLocalStorageBackend } from "./localStorageBackend.js";
 import { createPluginStoreBackend } from "./pluginStoreBackend.js";
 import { createDomainStore } from "./createDomainStore.js";
 import { isTauri } from "../ipc/env.js";
-import { normalizeThemeDocument } from "../theme/migrations/migrateV1Theme.js";
 
 const backend = isTauri() ? createPluginStoreBackend() : createLocalStorageBackend();
 
@@ -31,32 +30,7 @@ export const presetsStore = createDomainStore({
   backend,
   notifySameContext: true,
 });
-function migrateThemes(raw) {
-  const source = raw && typeof raw.themes === "object" && raw.themes ? raw.themes : {};
-  const themes = {};
-  for (const [id, theme] of Object.entries(source)) {
-    const normalized = normalizeThemeDocument(theme);
-    if (normalized && normalized.id === id) themes[id] = normalized;
-  }
-  const seen = new Set();
-  const order = [];
-  for (const id of Array.isArray(raw.order) ? raw.order : []) {
-    if (themes[id] && !seen.has(id)) {
-      order.push(id);
-      seen.add(id);
-    }
-  }
-  for (const id of Object.keys(themes)) {
-    if (!seen.has(id)) order.push(id);
-  }
-  return { themes, order };
-}
-
-export const themesStore = createDomainStore({
-  name: "plvs:themes",
-  backend,
-  migrate: migrateThemes,
-});
+export const themesStore = createDomainStore({ name: "plvs:themes", backend });
 
 /** Whole-app snapshot of every persisted domain (foundation for problem #5). */
 export function exportAll() {

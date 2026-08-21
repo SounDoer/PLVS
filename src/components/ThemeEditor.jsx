@@ -359,7 +359,6 @@ export function ThemeEditor({
       </div>
       <Dialog.Root open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60" />
           <Dialog.Content
             role="alertdialog"
             className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl"

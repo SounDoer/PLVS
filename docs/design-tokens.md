@@ -83,6 +83,22 @@ A grid line is 1px. Below that a stroke lands on a fraction of a device pixel an
 pays for it in alpha, which reads as a colour problem and is not one — the vectorscope's diagonals
 spent a long time at `0.35`.
 
+## Modal Scrim
+
+`SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
+carried by the settings drawer, the close confirmation and the update dialog. Callers add their own
+stacking order and, in the drawer's case, the blur.
+
+It dims for **app-level** modals only. A floating editor's own confirmation — discarding theme or
+profile changes — does not dim: the editor already floats over a live application, and darkening
+everything for a decision that concerns only that panel overstates it. Those dialogs stay modal
+regardless; without an overlay Radix still blocks the pointer behind them.
+
+The scrim is deliberately not a theme colour. Darkening is a direction, not a hue, and a value
+derived from the theme reverses it: the retired `effect.scrim` role tinted the workspace, which on
+a light theme produced a near-white veil that washed the background out instead of dimming it. If
+this ever needs to follow the theme, the opacity is what varies.
+
 ## Highlight States
 
 Two states, never mixed.

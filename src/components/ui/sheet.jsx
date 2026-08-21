@@ -4,6 +4,7 @@ import { cva } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { SCRIM_CLASS } from "./surfaceStyles.js";
 
 function Sheet(props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -26,8 +27,9 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
     ref={ref}
     data-slot="sheet-overlay"
     className={cn(
-      "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:fade-in",
-      "bg-black/55 backdrop-blur-sm",
+      SCRIM_CLASS,
+      "z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:fade-in",
+      "backdrop-blur-sm",
       className
     )}
     {...props}
