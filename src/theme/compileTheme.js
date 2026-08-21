@@ -30,6 +30,14 @@ function transformHex(hex, delta) {
   return oklchToHex(transform(hexToOklch(hex), delta));
 }
 
+function relativeLuminance(hex) {
+  const channels = hexChannels(hex).map((value) => {
+    const channel = value / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
 function desaturate(hex) {
   return oklchToHex({ ...hexToOklch(hex), C: 0 });
 }
@@ -66,6 +74,16 @@ const RECIPES = {
   "input-border": (_dependencies, context) =>
     effect(context.colorScheme === "dark" ? "#ffffff" : "#000000", 0.14),
   "focus-ring": ([accent]) => accent,
+  // A shadow has to be darker than whatever it falls on, so it cannot simply
+  // follow a core color: on a light theme the workspace is the palest thing
+  // there is. Take the theme's darkest core color instead -- workspace on a
+  // dark theme, text on a light one -- which keeps the shadow dark while still
+  // letting the theme tint it. The scheme sets how heavily it lands.
+  shadow: ([workspace, text], context) =>
+    effect(
+      relativeLuminance(workspace) <= relativeLuminance(text) ? workspace : text,
+      context.colorScheme === "dark" ? 0.5 : 0.18
+    ),
   critical: ([critical]) => critical,
   companion: ([primary], context) => transformHex(primary, COMPANION[context.colorScheme]),
   snapshot: ([source], context) => transformHex(source, SNAP[context.colorScheme]),
@@ -166,13 +184,11 @@ export function compileTheme(rawTheme, options = {}) {
   const css = {};
   const canvas = {};
   const native = { colorScheme: theme.colorScheme };
-  const effects = {};
   for (const entry of registry) {
     const value = roles[entry.id];
     for (const binding of entry.bindings.css ?? []) css[binding] = cssValue(value);
     for (const binding of entry.bindings.canvas ?? []) canvas[binding] = structuredClone(value);
     for (const binding of entry.bindings.native ?? []) native[binding] = structuredClone(value);
-    if (entry.kind === "effect") effects[entry.id] = structuredClone(value);
   }
 
   return {
@@ -184,7 +200,6 @@ export function compileTheme(rawTheme, options = {}) {
     roles,
     css,
     canvas,
-    effects,
     native,
   };
 }

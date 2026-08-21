@@ -48,6 +48,18 @@
      and small controls, surfaces and standard controls, floating windows. sm and
      lg stay defined because dropping them would hand those utilities back to
      Tailwind's own defaults, which do not follow --radius at all. */
+  /* Tailwind's own shadows are black at fixed alphas, tuned for black on white,
+     so they neither follow the theme nor read on a dark one. Keep its geometry
+     -- that is the elevation ladder -- and swap the colour for the theme's.
+     Tailwind rewrites the colour slot of a shadow value, discarding anything
+     wrapped around it, so the one rung that wants less weight reads a variable
+     already mixed for it rather than a color-mix() written here. */
+  --shadow-xs: 0 1px 2px 0 var(--ui-shadow-subtle);
+  --shadow-sm: 0 1px 3px 0 var(--ui-shadow-color), 0 1px 2px -1px var(--ui-shadow-color);
+  --shadow-md: 0 4px 6px -1px var(--ui-shadow-color), 0 2px 4px -2px var(--ui-shadow-color);
+  --shadow-lg: 0 10px 15px -3px var(--ui-shadow-color), 0 4px 6px -4px var(--ui-shadow-color);
+  --shadow-xl: 0 20px 25px -5px var(--ui-shadow-color), 0 8px 10px -6px var(--ui-shadow-color);
+
   --radius-xs: calc(var(--radius) - 6px);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -57,6 +69,9 @@
 
 /* Defaults aligned with --ui-* tokens injected by `applyLayoutToDocument` / `applyThemeToDocument` */
 :root {
+  /* Half weight, matching the ratio Tailwind's own xs rung had to the others. */
+  --ui-shadow-subtle: color-mix(in srgb, var(--ui-shadow-color) 50%, transparent);
+
   --ui-font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-family: var(--ui-font-sans, Inter, system-ui, sans-serif);

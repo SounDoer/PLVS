@@ -73,6 +73,26 @@ describe("theme color contract", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("casts shadows in a colour the theme owns", () => {
+    // Tailwind's own shadows are black at a fixed alpha. The ladder is redefined
+    // against --ui-shadow-color, so every shadow-* utility in the app follows the
+    // theme without any component naming a colour.
+    const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
+    const theme = css.match(/@theme[^{]*\{[\s\S]*?\n\}/)?.[0] ?? "";
+
+    for (const rung of [
+      "--shadow-xs",
+      "--shadow-sm",
+      "--shadow-md",
+      "--shadow-lg",
+      "--shadow-xl",
+    ]) {
+      expect(theme).toContain(rung);
+    }
+    expect(theme).toMatch(/--shadow-sm:[^;]*var\(--ui-shadow-color\)/);
+    expect(theme).toMatch(/--shadow-xs:[^;]*var\(--ui-shadow-subtle\)/);
+  });
+
   it("uses the destructive foreground token for destructive badges", () => {
     const classes = badgeVariants({ variant: "destructive" });
 

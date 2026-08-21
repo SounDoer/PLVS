@@ -11,6 +11,7 @@ const KNOWN_RECIPES = new Set([
   "border",
   "input-border",
   "focus-ring",
+  "shadow",
   "critical",
   "companion",
   "snapshot",
@@ -228,6 +229,14 @@ const RAW_THEME_ROLE_REGISTRY = [
     dependencies: ["core.interfaceAccent", "core.surface"],
     bindings: { css: ["--ring"] },
     advanced: colorOverride("Interface", "Focus Ring", "Keyboard focus indicator."),
+  }),
+  role("interface.shadow", {
+    kind: "color",
+    family: "interface",
+    recipe: "shadow",
+    dependencies: ["core.workspace", "core.text"],
+    bindings: { css: ["--ui-shadow-color"] },
+    advanced: effectOverride("Interface", "Shadow", "Cast by floating panels and dialogs."),
   }),
   role("interface.critical", {
     kind: "color",

@@ -83,6 +83,23 @@ A grid line is 1px. Below that a stroke lands on a fraction of a device pixel an
 pays for it in alpha, which reads as a colour problem and is not one — the vectorscope's diagonals
 spent a long time at `0.35`.
 
+## Shadows
+
+`interface.shadow` publishes `--ui-shadow-color`, and the `--shadow-*` ladder in `index.css` is
+redefined against it. Tailwind's own shadows are black at fixed alphas, tuned for black on white:
+they follow no theme and barely read on a dark one. The geometry is kept — that ladder is the
+elevation cue — and only the colour is swapped, so every `shadow-*` in the app follows the theme
+without a single component naming a colour.
+
+A shadow has to be darker than what it falls on, so it cannot simply track a core colour: on a
+light theme the workspace is the palest thing there is. The recipe takes whichever of `workspace`
+and `text` is darker — workspace on a dark theme, text on a light one — which keeps it dark while
+still letting the theme tint it. The colour scheme sets the weight: 50% on dark, 18% on light.
+
+Tailwind rewrites the colour slot of a shadow value and discards anything wrapped around it, so a
+`color-mix()` written inside `@theme` is silently dropped. The one rung that wants less weight
+reads `--ui-shadow-subtle`, mixed in `:root` instead.
+
 ## Modal Scrim
 
 `SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
