@@ -64,7 +64,7 @@ second multiplier anywhere: a grid that should read lighter takes the lighter ro
 
 | Role              | Dark      | Used by                                                        |
 | ----------------- | --------- | -------------------------------------------------------------- |
-| `data.grid`       | `#282828` | Loudness history, vectorscope diagonals, 3D floor frame |
+| `data.grid`       | `#282828` | Vectorscope diagonals, 3D floor frame |
 | `data.gridSubtle` | `#1e1e1e` | Subdivisions inside a grid — today only the 3D spectrogram floor |
 
 Dimming in the draw call is what this replaces. Five panels each carried their own constant — `0.3`
@@ -75,9 +75,13 @@ around `0.007`. None of it was visible to the theme, so none of it moved when a 
 A contract test in `src/components/ui/themeColorContract.test.js` rejects the two shapes that
 brought it back: a reference to `--ui-spectrum-grid-opacity`, and a grid stroked from `--border`.
 
-Spectrum, Stereo Map and Waveform draw no grid at all. Their roles — `spectrum.grid`,
-`stereoMap.grid`, `waveform.grid` — stay in the registry against a future toggle, so each resolves
-a colour that nothing paints.
+Only the Vectorscope and the 3D Spectrogram draw a grid. Spectrum, Stereo Map, Waveform and
+Loudness draw none; their roles stay in the registry against a future toggle, so each resolves a
+colour that nothing paints.
+
+A grid line is 1px. Below that a stroke lands on a fraction of a device pixel and the renderer
+pays for it in alpha, which reads as a colour problem and is not one — the vectorscope's diagonals
+spent a long time at `0.35`.
 
 ## Highlight States
 

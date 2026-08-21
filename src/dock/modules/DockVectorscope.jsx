@@ -151,7 +151,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 x2="256"
                 y2="256"
                 stroke="var(--ui-vectorscope-grid-stroke)"
-                strokeWidth="0.35"
+                strokeWidth="1"
                 strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
               />
@@ -161,7 +161,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 x2="4"
                 y2="256"
                 stroke="var(--ui-vectorscope-grid-stroke)"
-                strokeWidth="0.35"
+                strokeWidth="1"
                 strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
               />

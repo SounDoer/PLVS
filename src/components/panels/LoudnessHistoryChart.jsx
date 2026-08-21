@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
@@ -160,9 +160,6 @@ export function LoudnessHistoryChart({
   const [chartDragging, setChartDragging] = useState(false);
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
 
-  const historyGridRef = useRef(null);
-  const [historyGridTopPx, setHistoryGridTopPx] = useState(() => ({}));
-
   const onChartPointerDown = useCallback(
     (e) => {
       if (e.ctrlKey && e.button === 0 && typeof onLoudnessYRangeChange === "function") {
@@ -213,37 +210,6 @@ export function LoudnessHistoryChart({
     },
     [onHistoryPointerUp]
   );
-
-  useLayoutEffect(() => {
-    const el = historyGridRef.current;
-    if (!el) return;
-    const measure = () => {
-      const h = el.getBoundingClientRect().height;
-      if (!(h > 0)) return;
-      const next = {};
-      for (const { v } of historyYAxisTicksLabeled) {
-        if (v === targetLufs && hasHistoryData) continue;
-        const frac = loudnessFromTopFrac(v, loudnessYRange);
-        const raw = Math.round(frac * h - 0.5);
-        next[v] = Math.max(0, Math.min(h - 1, raw));
-      }
-      setHistoryGridTopPx((prev) => {
-        const prevKeys = Object.keys(prev);
-        const nextKeys = Object.keys(next);
-        if (
-          prevKeys.length === nextKeys.length &&
-          nextKeys.every((key) => prev[key] === next[key])
-        ) {
-          return prev;
-        }
-        return next;
-      });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [historyYAxisTicksLabeled, hasHistoryData, loudnessYMinDb, loudnessYMaxDb, targetLufs]);
 
   return (
     <div className="grid min-h-0 h-full grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
@@ -322,28 +288,6 @@ export function LoudnessHistoryChart({
           onHistoryHoverLeave?.(e);
         }}
       >
-        {/* Horizontal grid lines */}
-        <div
-          ref={historyGridRef}
-          className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-0"
-        >
-          {historyYAxisTicksLabeled.map(({ v }) => {
-            if (v === targetLufs && hasHistoryData) return null;
-            const topPx = historyGridTopPx[v];
-            return (
-              <div
-                key={`hist-grid-${v}`}
-                className={`absolute left-0 right-0 h-px bg-[var(--ui-loudness-grid)]${topPx == null ? " -translate-y-1/2" : ""}`}
-                style={
-                  topPx == null
-                    ? { top: `${loudnessFromTopFrac(v, loudnessYRange) * 100}%` }
-                    : { top: `${topPx}px` }
-                }
-              />
-            );
-          })}
-        </div>
-
         {/* SVG paths + selection line */}
         <svg
           viewBox="0 0 600 220"

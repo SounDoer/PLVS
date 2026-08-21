@@ -335,7 +335,7 @@ export function VectorscopePanel() {
                     x2={vsGridDiagFar}
                     y2={vsGridDiagFar}
                     stroke="var(--ui-vectorscope-grid-stroke)"
-                    strokeWidth="0.35"
+                    strokeWidth="1"
                     strokeDasharray="var(--ui-vectorscope-grid-dash)"
                     vectorEffect="non-scaling-stroke"
                   />
@@ -345,7 +345,7 @@ export function VectorscopePanel() {
                     x2={vsGridDiagInset}
                     y2={vsGridDiagFar}
                     stroke="var(--ui-vectorscope-grid-stroke)"
-                    strokeWidth="0.35"
+                    strokeWidth="1"
                     strokeDasharray="var(--ui-vectorscope-grid-dash)"
                     vectorEffect="non-scaling-stroke"
                   />
