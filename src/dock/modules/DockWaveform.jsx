@@ -88,7 +88,6 @@ export function paintDockWaveformCanvas(
   const height = canvas.height;
   const style = getComputedStyle(canvas);
   const traceColor = themeColors.trace;
-  const gridColor = themeColors.grid;
   const fillOpacity = cssNumber(style, "--ui-waveform-fill-opacity", 0.22);
   const strokeWidth = cssNumber(style, "--ui-waveform-stroke-width", 1);
   const spectralPalette = {
@@ -110,13 +109,6 @@ export function paintDockWaveformCanvas(
     const laneTop = channel * (laneHeight + rowGap);
     const centerY = laneTop + laneHeight / 2;
     const halfHeight = laneHeight / 2;
-
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, centerY);
-    ctx.lineTo(width, centerY);
-    ctx.stroke();
 
     if (
       firstBucket < 0 ||

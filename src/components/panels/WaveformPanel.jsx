@@ -113,7 +113,6 @@ export function drawWaveformCanvas(
   const H = canvas.height;
 
   const style = getComputedStyle(document.documentElement);
-  const zeroLineColor = themeColors.grid;
   const strokeColor = selected ? themeColors.snapshot : themeColors.trace;
   const fillOpacity =
     parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
@@ -128,13 +127,8 @@ export function drawWaveformCanvas(
 
   ctx.clearRect(0, 0, W, H);
 
+  // No line is drawn at zero; the trace is still measured from it.
   const cy = H / 2;
-  ctx.strokeStyle = zeroLineColor;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, cy);
-  ctx.lineTo(W, cy);
-  ctx.stroke();
 
   if (firstBucket < 0 || !bucketCount || !mins?.length || !maxes?.length) return;
 

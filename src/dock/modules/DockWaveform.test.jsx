@@ -99,10 +99,10 @@ describe("DockWaveform", () => {
     expect(context.lineTo).toHaveBeenCalledWith(1, 15);
     expect(context.lineTo).toHaveBeenCalledWith(1, 35);
     expect(context.fill).toHaveBeenCalledOnce();
-    expect(context.stroke).toHaveBeenCalledTimes(2);
+    expect(context.stroke).toHaveBeenCalledTimes(1);
   });
 
-  it("strokes the envelope at the token width and leaves the zero line at 1px", () => {
+  it("strokes the envelope at the token width", () => {
     const { canvas, context } = mockCanvas();
     canvas.style.setProperty("--ui-waveform-stroke-width", "2.5");
     const lineWidths = [];
@@ -118,7 +118,7 @@ describe("DockWaveform", () => {
       channelCount: 1,
     });
 
-    expect(lineWidths).toEqual([1, 2.5]);
+    expect(lineWidths).toEqual([2.5]);
   });
 
   it("fills the complete Frequency Color body at full opacity", () => {

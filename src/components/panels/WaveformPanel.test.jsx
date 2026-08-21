@@ -134,12 +134,12 @@ describe("drawWaveformCanvas", () => {
       },
     });
 
-    expect(strokes).toEqual(["#654321", "#123456"]);
+    expect(strokes).toEqual(["#123456"]);
     expect(fills).toEqual(["#123456"]);
     document.documentElement.style.removeProperty("--ui-waveform-trace-snap");
   });
 
-  it("strokes the envelope at the token width and leaves the zero line at 1px", () => {
+  it("strokes the envelope at the token width", () => {
     document.documentElement.style.setProperty("--ui-waveform-stroke-width", "2.5");
     const lineWidths = [];
     const context = {
@@ -166,7 +166,7 @@ describe("drawWaveformCanvas", () => {
       selected: false,
     });
 
-    expect(lineWidths).toEqual([1, 2.5]);
+    expect(lineWidths).toEqual([2.5]);
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
   });
 
