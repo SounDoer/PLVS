@@ -122,8 +122,11 @@ describe("compileTheme", () => {
   it("keeps effect opacity separate from its source color", () => {
     const resolved = compileTheme(authoringTheme());
 
-    expect(resolved.effects["effect.scrim"]).toEqual({ color: "#070707", opacity: 0.72 });
-    expect(resolved.css["--ui-effect-scrim"]).toBe("rgba(7, 7, 7, 0.72)");
+    expect(resolved.roles["interface.border.default"]).toEqual({
+      color: "#ffffff",
+      opacity: 0.09,
+    });
+    expect(resolved.css["--border"]).toBe("rgba(255, 255, 255, 0.09)");
   });
 
   it("supports explicit leaf effect overrides without making Core colors translucent", () => {

@@ -325,7 +325,7 @@ export function LoudnessHistoryChart({
               x2={600}
               y1={refTopFrac * 220}
               y2={refTopFrac * 220}
-              stroke="var(--foreground)"
+              stroke="var(--ui-loudness-reference)"
               strokeWidth="1"
               strokeDasharray="4 4"
               vectorEffect="non-scaling-stroke"

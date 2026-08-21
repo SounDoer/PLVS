@@ -25,6 +25,6 @@ describe("buildThemeFallbackCssV2", () => {
     const css = buildThemeFallbackCssV2(dark.css, "0.5rem");
     expect(css).toContain("--background: #070707;");
     expect(css).toContain("--ui-spectrum-primary: #fb923c;");
-    expect(css).toContain("--ui-effect-scrim: rgba(7, 7, 7, 0.72);");
+    expect(css).toContain("--border: rgba(255, 255, 255, 0.09);");
   });
 });

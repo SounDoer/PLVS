@@ -366,7 +366,7 @@ export function VectorscopePanel() {
                       }
                       strokeWidth="var(--ui-vectorscope-stroke-width)"
                       vectorEffect="non-scaling-stroke"
-                      opacity="var(--ui-vectorscope-axis-opacity)"
+                      opacity="var(--ui-vectorscope-trace-opacity)"
                       strokeLinecap="round"
                     />
                   )}

@@ -12,9 +12,6 @@
   --accent: #31241a;
   --foreground: #f2f2f2;
   --muted-foreground: #959595;
-  --ui-text-annotation: #b0b0b0;
-  --ui-text-muted: #7b7b7b;
-  --ui-text-disabled: #5c5c5c;
   --primary-foreground: #f2f2f2;
   --card-foreground: #f2f2f2;
   --popover-foreground: #f2f2f2;
@@ -24,7 +21,6 @@
   --border: rgba(255, 255, 255, 0.09);
   --input: rgba(255, 255, 255, 0.14);
   --ring: #fb923c;
-  --ui-selection: #fbd34d;
   --destructive: #f94144;
   --ui-signal-good: #34d399;
   --ui-meter-gradient-bottom: #34d399;
@@ -58,7 +54,4 @@
   --ui-waveform-frequency-high: #356dff;
   --ui-waveform-frequency-neutral: #4c4c4c;
   --ui-waveform-centroid: #f2f2f2;
-  --ui-effect-scrim: rgba(7, 7, 7, 0.72);
-  --ui-effect-surface-sheen: rgba(132, 132, 132, 0.08);
-  --ui-effect-surface-shadow: rgba(7, 7, 7, 0.45);
 }

@@ -58,8 +58,6 @@ const RECIPES = {
   "text-primary": ([text]) => text,
   "text-secondary": ([text, surface]) => mixHex(surface, text, 0.58),
   "text-annotation": ([text, surface]) => mixHex(surface, text, 0.7),
-  "text-muted": ([text, surface]) => mixHex(surface, text, 0.46),
-  "text-disabled": ([text, surface]) => mixHex(surface, text, 0.32),
   border: (_dependencies, context) =>
     effect(
       context.colorScheme === "dark" ? "#ffffff" : "#000000",
@@ -94,9 +92,6 @@ const RECIPES = {
       0.5
     ),
   centroid: ([text]) => text,
-  "effect-scrim": ([workspace]) => effect(workspace, 0.72),
-  "effect-sheen": ([surface, text]) => effect(mixHex(surface, text, 0.5), 0.08),
-  "effect-shadow": ([workspace]) => effect(workspace, 0.45),
 };
 
 function directValue(roleId, theme) {

@@ -101,7 +101,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   const vs = prefs.modules.vectorscope;
   setCssVar("--ui-vectorscope-stroke-width", String(vs.strokeWidth));
-  setCssVar("--ui-vectorscope-axis-opacity", String(vs.axisOpacity));
+  setCssVar("--ui-vectorscope-trace-opacity", String(vs.traceOpacity));
   setCssVar("--ui-vectorscope-grid-dash", vs.gridDiagDash);
 
   const spectrum = prefs.modules.spectrum;

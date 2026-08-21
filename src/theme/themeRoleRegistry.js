@@ -8,8 +8,6 @@ const KNOWN_RECIPES = new Set([
   "text-primary",
   "text-secondary",
   "text-annotation",
-  "text-muted",
-  "text-disabled",
   "border",
   "input-border",
   "focus-ring",
@@ -21,9 +19,6 @@ const KNOWN_RECIPES = new Set([
   "grid-subtle",
   "frequency-neutral",
   "centroid",
-  "effect-scrim",
-  "effect-sheen",
-  "effect-shadow",
 ]);
 
 const BINDING_KINDS = ["css", "canvas", "native"];
@@ -140,28 +135,11 @@ const RAW_THEME_ROLE_REGISTRY = [
     family: "interface",
     recipe: "text-annotation",
     dependencies: ["core.text", "core.surface"],
-    bindings: { css: ["--ui-text-annotation"] },
     advanced: colorOverride(
       "Interface",
       "Annotation Text",
       "Units, axes, and compact annotations."
     ),
-  }),
-  role("interface.text.muted", {
-    kind: "color",
-    family: "interface",
-    recipe: "text-muted",
-    dependencies: ["core.text", "core.surface"],
-    bindings: { css: ["--ui-text-muted"] },
-    advanced: colorOverride("Interface", "Muted Text", "Intentionally quiet text."),
-  }),
-  role("interface.text.disabled", {
-    kind: "color",
-    family: "interface",
-    recipe: "text-disabled",
-    dependencies: ["core.text", "core.surface"],
-    bindings: { css: ["--ui-text-disabled"] },
-    advanced: colorOverride("Interface", "Disabled Text", "Unavailable control labels."),
   }),
   role("interface.content.onAccent", {
     kind: "color",
@@ -250,14 +228,6 @@ const RAW_THEME_ROLE_REGISTRY = [
     dependencies: ["core.interfaceAccent", "core.surface"],
     bindings: { css: ["--ring"] },
     advanced: colorOverride("Interface", "Focus Ring", "Keyboard focus indicator."),
-  }),
-  role("interface.selection", {
-    kind: "color",
-    family: "interface",
-    recipe: "selection",
-    dependencies: ["core.interfaceAccent", "core.surface"],
-    bindings: { css: ["--ui-selection"] },
-    advanced: colorOverride("Interface", "Selection", "Selected interface content."),
   }),
   role("interface.critical", {
     kind: "color",
@@ -356,28 +326,6 @@ const RAW_THEME_ROLE_REGISTRY = [
   }),
 
   ...moduleRoles(),
-
-  role("effect.scrim", {
-    kind: "effect",
-    family: "effect",
-    recipe: "effect-scrim",
-    dependencies: ["core.workspace", "core.text"],
-    bindings: { css: ["--ui-effect-scrim"] },
-  }),
-  role("effect.surfaceSheen", {
-    kind: "effect",
-    family: "effect",
-    recipe: "effect-sheen",
-    dependencies: ["core.surface", "core.text"],
-    bindings: { css: ["--ui-effect-surface-sheen"] },
-  }),
-  role("effect.surfaceShadow", {
-    kind: "effect",
-    family: "effect",
-    recipe: "effect-shadow",
-    dependencies: ["core.workspace", "core.text"],
-    bindings: { css: ["--ui-effect-surface-shadow"] },
-  }),
 ];
 
 function moduleRoles() {

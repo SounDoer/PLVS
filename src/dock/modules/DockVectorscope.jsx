@@ -172,7 +172,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                   fill="none"
                   stroke="var(--ui-vectorscope-trace)"
                   strokeWidth="var(--ui-vectorscope-stroke-width)"
-                  opacity="var(--ui-vectorscope-axis-opacity)"
+                  opacity="var(--ui-vectorscope-trace-opacity)"
                   strokeLinecap="round"
                   vectorEffect="non-scaling-stroke"
                 />
