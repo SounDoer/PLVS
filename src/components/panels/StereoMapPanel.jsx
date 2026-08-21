@@ -16,6 +16,7 @@ import {
 } from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
+import { useAxisSize } from "../../hooks/useAxisSize";
 import {
   computeStereoMapHoverIndex,
   formatSpectrumFreq,
@@ -39,9 +40,6 @@ export const STEREO_MAP_MONO_MESSAGE = "Mono input — Stereo Map requires a cha
 const CHART_ZOOM_IN_FACTOR = 0.85;
 const CHART_ZOOM_OUT_FACTOR = 1.18;
 const CHART_WHEEL_PAN_SCALE = 0.5;
-// No axis rail measurement is wired for Stereo Map's Y axis (it is not chart-interactive — see
-// below), so tick density uses one fixed, reasonable pixel budget instead.
-const Y_AXIS_TICK_PX = 220;
 
 function rangeForMode(mode, controls) {
   if (mode === STEREO_MAP_MODES.MONO_LOSS_DB) {
@@ -57,11 +55,10 @@ function rangeForMode(mode, controls) {
   return { lowerBound: -1, upperBound: 1 };
 }
 
-function yTicksForMode(mode, range, firstLabel, secondLabel) {
+function yTicksForMode(mode, range, firstLabel, secondLabel, yAxisPx) {
   if (mode === STEREO_MAP_MODES.POSITION) {
     return [
       { v: 1, lb: firstLabel },
-      { v: 0, lb: "0%" },
       { v: -1, lb: secondLabel },
     ];
   }
@@ -72,7 +69,7 @@ function yTicksForMode(mode, range, firstLabel, secondLabel) {
       { v: -1, lb: "-1" },
     ];
   }
-  return buildAdaptiveDbTicks(range.lowerBound, range.upperBound, Y_AXIS_TICK_PX);
+  return buildAdaptiveDbTicks(range.lowerBound, range.upperBound, yAxisPx);
 }
 
 function formatPositionHoldLabel(holdValues, index, range, firstLabel, secondLabel) {
@@ -138,6 +135,10 @@ export function StereoMapPanel() {
     [normalizedPanelControls, onPanelControlsChange]
   );
 
+  // Stereo Map's y axis is not zoom/pan interactive (Position and Correlation are fixed-range; the
+  // dB modes take their bounds from panel settings), but it still labels adaptive ticks, so it
+  // measures its rail for the tick spacing budget without taking the interaction handlers.
+  const yAxis = useAxisSize("y");
   const stereoMapXAxis = useAxisInteraction({
     axis: "x",
     min: normalizedPanelControls.stereoMapXMinFreq,
@@ -167,7 +168,7 @@ export function StereoMapPanel() {
   const firstLabel = channelLabels[firstIndex] ?? `Ch ${firstIndex + 1}`;
   const secondLabel = channelLabels[secondIndex] ?? `Ch ${secondIndex + 1}`;
 
-  const yTicks = yTicksForMode(mode, range, firstLabel, secondLabel);
+  const yTicks = yTicksForMode(mode, range, firstLabel, secondLabel, yAxis.axisPx);
 
   const snapResolved = isSnapshot
     ? resolveStereoMapSnapshotForKey?.(stereoMapKey, mode, range, { withHold: holdVisible })
@@ -369,6 +370,7 @@ export function StereoMapPanel() {
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div className="grid min-h-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
           <div
+            ref={yAxis.axisRef}
             className={cn(
               W_SPECTRUM_Y_AXIS,
               "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"

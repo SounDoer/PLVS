@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   computeLinearPan,
   computeLinearZoom,
@@ -7,6 +7,7 @@ import {
   pixelToLinearValue,
   pixelToLogValue,
 } from "../math/axisInteractionMath";
+import { useAxisSize } from "./useAxisSize";
 
 const ZOOM_IN_FACTOR = 0.85;
 const ZOOM_OUT_FACTOR = 1.18;
@@ -24,11 +25,10 @@ export function useAxisInteraction({
   scale,
   onRangeChange,
 }) {
-  const axisRef = useRef(null);
+  const { axisRef, axisPx } = useAxisSize(axis);
   const dragRef = useRef(null);
   const moveCleanupRef = useRef(null);
   const activeTimerRef = useRef(null);
-  const [axisPx, setAxisPx] = useState(axis === "y" ? 300 : 500);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isActive, setIsActive] = useState(false);
@@ -42,21 +42,6 @@ export function useAxisInteraction({
       setIsActive(false);
     }, ACTIVE_PULSE_MS);
   }, []);
-
-  useLayoutEffect(() => {
-    const el = axisRef.current;
-    if (!el) return undefined;
-    const measure = () => {
-      const rect = el.getBoundingClientRect();
-      const next = axis === "y" ? rect.height : rect.width;
-      if (next > 0) setAxisPx(next);
-    };
-    measure();
-    if (typeof ResizeObserver !== "function") return undefined;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [axis]);
 
   useEffect(
     () => () => {
@@ -101,7 +86,7 @@ export function useAxisInteraction({
       onRangeChange(next.min, next.max);
       pulseActive();
     },
-    [absMax, absMin, axis, max, min, minSpan, onRangeChange, pulseActive, scale]
+    [absMax, absMin, axis, axisRef, max, min, minSpan, onRangeChange, pulseActive, scale]
   );
 
   const onMouseDown = useCallback(
@@ -161,7 +146,7 @@ export function useAxisInteraction({
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", cleanup);
     },
-    [absMax, absMin, axis, max, min, onRangeChange, scale]
+    [absMax, absMin, axis, axisRef, max, min, onRangeChange, scale]
   );
 
   const onDoubleClick = useCallback(

@@ -215,7 +215,7 @@ describe("StereoMapPanel", () => {
     expect(container.querySelector('[data-stereo-map-plot="position"]')).toBeNull();
   });
 
-  it("labels Position with the selected channel names and 0%, never Center", () => {
+  it("labels Position with the selected channel names only, never a center tick", () => {
     renderPanel(
       baseAudioData({
         peakLabelContext: {},
@@ -228,7 +228,7 @@ describe("StereoMapPanel", () => {
 
     expect(screen.getByText("L")).toBeTruthy();
     expect(screen.getByText("R")).toBeTruthy();
-    expect(screen.getByText("0%")).toBeTruthy();
+    expect(screen.queryByText("0%")).toBeNull();
     expect(screen.queryByText("Center")).toBeNull();
     expect(screen.queryByText("C")).toBeNull();
   });
